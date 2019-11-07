@@ -15,7 +15,7 @@
 
 def build(bld):
 
-    remote_console_core = dict(
+    bld.CryEngineStaticLibrary(
         target                  = 'RemoteConsoleCore',
         vs_filter               = 'Tools',
         copyright_org           = 'Amazon-CryTek',
@@ -23,11 +23,12 @@ def build(bld):
         platforms               = ['all'],
         configurations          = ['all'],
 
+        # Platform Roots
+        platform_roots          = [bld.PlatformRoot('Platform', export_includes=False)],
+    
         use                     = ['AzFramework'],
+        includes       = [bld.Path('Code/CryEngine/CryCommon')
+                         ],
         export_includes         = ['Core'],
+        
     )
-
-    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
-        remote_console_core['{}_file_list'.format(p3)] = 'Core/{0}/remoteconsolecore_{1}.waf_files'.format(p0, p1)
-
-    bld.CryEngineStaticLibrary(**remote_console_core)

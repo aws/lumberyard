@@ -65,8 +65,8 @@ namespace EMotionFX
         AZ_RTTI(CommandAddRagdollJoint, "{70F21A7D-8EC9-4F7B-B0FE-E63205E1F3FF}", MCore::Command, ParameterMixinActorId, ParameterMixinJointName)
         AZ_CLASS_ALLOCATOR_DECL
 
-        CommandAddRagdollJoint(MCore::Command* orgCommand = nullptr);
-        CommandAddRagdollJoint(AZ::u32 actorId, const AZStd::string& jointName);
+        explicit CommandAddRagdollJoint(MCore::Command* orgCommand = nullptr);
+        CommandAddRagdollJoint(AZ::u32 actorId, const AZStd::string& jointName, MCore::Command* orgCommand = nullptr);
 
         static void Reflect(AZ::ReflectContext* context);
 
@@ -100,8 +100,8 @@ namespace EMotionFX
         AZ_RTTI(CommandRemoveRagdollJoint, "{AC5DAC4D-89EF-49CD-8E0C-DBA94147CED0}", MCore::Command, ParameterMixinActorId, ParameterMixinJointName)
         AZ_CLASS_ALLOCATOR_DECL
 
-        CommandRemoveRagdollJoint(MCore::Command* orgCommand = nullptr);
-        CommandRemoveRagdollJoint(AZ::u32 actorId, const AZStd::string& jointName);
+        explicit CommandRemoveRagdollJoint(MCore::Command* orgCommand = nullptr);
+        CommandRemoveRagdollJoint(AZ::u32 actorId, const AZStd::string& jointName, MCore::Command* orgCommand = nullptr);
         static void Reflect(AZ::ReflectContext* context);
 
         bool Execute(const MCore::CommandLine& parameters, AZStd::string& outResult) override;

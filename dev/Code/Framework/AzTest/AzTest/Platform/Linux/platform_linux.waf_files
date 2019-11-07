@@ -1,0 +1,7 @@
+{
+    "auto": {
+        "Platform/Linux": [
+            "Platform_Linux.cpp"
+        ]
+    }
+}

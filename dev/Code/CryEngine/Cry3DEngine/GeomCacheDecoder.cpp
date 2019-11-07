@@ -24,6 +24,7 @@
 #include "GeomCachePredictors.h"
 #include "IZlibDecompressor.h"
 #include "ILZ4Decompressor.h"
+#include "IZStdDecompressor.h"
 #include "Cry3DEngineTraits.h"
 
 namespace GeomCacheDecoder
@@ -916,6 +917,11 @@ namespace GeomCacheDecoder
         {
             ILZ4Decompressor* pDecompressor = GetISystem()->GetLZ4Decompressor();
             return pDecompressor->DecompressData(pBlockData, const_cast<char*>(pDest), pBlockHeader->m_uncompressedSize);
+        }
+        else if (compressionFormat == GeomCacheFile::eBlockCompressionFormat_ZSTD)
+        {
+            IZStdDecompressor* pDecompressor = GetISystem()->GetZStdDecompressor();
+            return pDecompressor->DecompressData(pBlockData, pBlockHeader->m_compressedSize, const_cast<char*>(pDest), pBlockHeader->m_uncompressedSize);
         }
         else
         {

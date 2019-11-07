@@ -62,6 +62,8 @@ namespace PhysX
             m_pxShape->userData = this;
 
             ExtractMaterialsFromPxShape();
+
+            m_tag = AZ::Crc32(colliderConfiguration.m_tag);
         }
     }
 
@@ -217,6 +219,11 @@ namespace PhysX
     void* Shape::GetNativePointer()
     {
         return m_pxShape.get();
+    }
+
+    AZ::Crc32 Shape::GetTag() const
+    {
+        return m_tag;
     }
 
     bool Shape::IsTrigger() const

@@ -73,8 +73,8 @@ namespace ScriptCanvas
                             int index = -1;
                             if (slotNameToIndexElement->GetChildData(AZ_CRC("value1", 0xa2756c5a), slotName) && slotName == "BusId" && slotNameToIndexElement->GetChildData(AZ_CRC("value2", 0x3b7c3de0), index))
                             {
-                                SlotType slotType;
-                                if (slotElements.size() > static_cast<size_t>(index) && slotElements[index]->GetChildData(AZ_CRC("type", 0x8cde5729), slotType) && slotType == SlotType::DataIn)
+                                CombinedSlotType slotType;
+                                if (slotElements.size() > static_cast<size_t>(index) && slotElements[index]->GetChildData(AZ_CRC("type", 0x8cde5729), slotType) && slotType == CombinedSlotType::DataIn)
                                 {
                                     AZ::SerializeContext::DataElementNode& slotElement = *slotElements[index];
 
@@ -168,8 +168,8 @@ namespace ScriptCanvas
                             int index = -1;
                             if (slotNameToIndexElement->GetChildData(AZ_CRC("value1", 0xa2756c5a), slotName) && slotName == "EntityId" && slotNameToIndexElement->GetChildData(AZ_CRC("value2", 0x3b7c3de0), index))
                             {
-                                SlotType slotType;
-                                if (slotElements.size() > static_cast<size_t>(index) && slotElements[index]->GetChildData(AZ_CRC("type", 0x8cde5729), slotType) && slotType == SlotType::DataIn)
+                                CombinedSlotType slotType;
+                                if (slotElements.size() > static_cast<size_t>(index) && slotElements[index]->GetChildData(AZ_CRC("type", 0x8cde5729), slotType) && slotType == CombinedSlotType::DataIn)
                                 {
                                     AZ::SerializeContext::DataElementNode& slotElement = *slotElements[index];
 
@@ -260,9 +260,9 @@ namespace ScriptCanvas
                     {
                         if (auto busEntityId = busIdDatum->GetAs<AZ::EntityId>())
                         {
-                            if (!busEntityId->IsValid() || *busEntityId == ScriptCanvas::SelfReferenceId)
+                            if (!busEntityId->IsValid() || *busEntityId == ScriptCanvas::GraphOwnerId)
                             {
-                                RuntimeRequestBus::EventResult(connectToEntityId, m_executionUniqueId, &RuntimeRequests::GetRuntimeEntityId);
+                                RuntimeRequestBus::EventResult(connectToEntityId, GetGraphId(), &RuntimeRequests::GetRuntimeEntityId);
                                 busIdParameter.m_value = &connectToEntityId;
                             }
                         }
@@ -326,7 +326,7 @@ namespace ScriptCanvas
             {
                 AZStd::vector<SlotId> nonEventSlotIds;
 
-                for (const auto& slot : m_slots)
+                for (const auto& slot : GetSlots())
                 {
                     const SlotId slotId = slot.GetId();
 
@@ -421,31 +421,25 @@ namespace ScriptCanvas
                     {
                         const auto busToolTip = AZStd::string::format("%s (Type: %s)", c_busIdTooltip, m_ebus->m_idParam.m_name);
                         const AZ::TypeId& busId = m_ebus->m_idParam.m_typeId;
+
+                        DataSlotConfiguration config;
+
+                        config.m_name = c_busIdName;
+                        config.m_toolTip = busToolTip;
+                        config.SetConnectionType(ConnectionType::Input);
                         
                         if (busId == azrtti_typeid<AZ::EntityId>())
                         {
-                            DataSlotConfiguration config;
-                            
-                            config.m_name = c_busIdName;
-                            config.m_toolTip = busToolTip;
-                            config.m_slotType = SlotType::DataIn;
-                            config.m_contractDescs = { { []() { return aznew RestrictedTypeContract({ Data::Type::EntityID() }); } } };
-
-                            AddInputDatumSlot(config, Datum(SelfReferenceId));
+                            config.SetDefaultValue(GraphOwnerId);
                         }
                         else
                         {
                             Data::Type busIdType(AZ::BehaviorContextHelper::IsStringParameter(m_ebus->m_idParam) ? Data::Type::String() : Data::FromAZType(busId));
-
-                            DataSlotConfiguration config;
-
-                            config.m_name = c_busIdName;
-                            config.m_toolTip = busToolTip;
-                            config.m_slotType = SlotType::DataIn;
-                            config.m_contractDescs = { { [busIdType]() { return aznew RestrictedTypeContract({ busIdType }); } } };
-
-                            AddInputDatumSlot(config, Datum(busIdType, Datum::eOriginality::Original));
+                            
+                            config.ConfigureDatum(AZStd::move(Datum(busIdType, Datum::eOriginality::Original)));
                         }
+
+                        AddSlot(config);
                     }
                 }
 
@@ -496,7 +490,17 @@ namespace ScriptCanvas
                     const AZ::BehaviorParameter& argument(event.m_parameters[AZ::eBehaviorBusForwarderEventIndices::Result]);
                     Data::Type inputType(AZ::BehaviorContextHelper::IsStringParameter(argument) ? Data::Type::String() : Data::FromAZType(argument.m_typeId));
                     const AZStd::string argName(AZStd::string::format("Result: %s", Data::GetName(inputType).data()).data());
-                    ebusEventEntry.m_resultSlotId = AddInputDatumSlot(argName.c_str(), "", AZStd::move(inputType), Datum::eOriginality::Copy, false);
+
+                    DataSlotConfiguration resultConfiguration;
+
+                    resultConfiguration.m_name = argName.c_str();
+                    resultConfiguration.m_toolTip = "";
+                    resultConfiguration.SetConnectionType(ConnectionType::Input);
+                    resultConfiguration.m_addUniqueSlotByNameAndType = false;
+
+                    resultConfiguration.ConfigureDatum(AZStd::move(Datum(inputType, Datum::eOriginality::Copy)));
+
+                    ebusEventEntry.m_resultSlotId = AddSlot(resultConfiguration);
                 }
 
                 for (size_t parameterIndex(AZ::eBehaviorBusForwarderEventIndices::ParameterFirst)
@@ -512,11 +516,24 @@ namespace ScriptCanvas
                         argName = Data::GetName(outputType);
                     }
                     const AZStd::string& argToolTip = event.m_metadataParameters[parameterIndex].m_toolTip;
-                    ebusEventEntry.m_parameterSlotIds.push_back(AddOutputTypeSlot(argName, argToolTip, AZStd::move(outputType), OutputStorage::Required, false));
+
+                    DataSlotConfiguration slotConfiguration;
+                    slotConfiguration.m_name = argName;
+                    slotConfiguration.m_toolTip = argToolTip;
+                    slotConfiguration.SetConnectionType(ConnectionType::Output);
+                    slotConfiguration.m_addUniqueSlotByNameAndType = false;
+                    slotConfiguration.SetType(outputType);
+
+                    ebusEventEntry.m_parameterSlotIds.push_back(AddSlot(slotConfiguration));
                 }
 
                 const AZStd::string eventID(AZStd::string::format("ExecutionSlot:%s", event.m_name));
-                ebusEventEntry.m_eventSlotId = AddSlot(eventID, "", SlotType::ExecutionOut);
+
+                {
+                    ExecutionSlotConfiguration slotConfiguration(eventID, ConnectionType::Output);
+                    ebusEventEntry.m_eventSlotId = AddSlot(slotConfiguration);
+                }
+
                 AZ_Assert(ebusEventEntry.m_eventSlotId.IsValid(), "the event execution out slot must be valid");
                 ebusEventEntry.m_eventName = event.m_name;
                 ebusEventEntry.m_eventId = event.m_eventId;

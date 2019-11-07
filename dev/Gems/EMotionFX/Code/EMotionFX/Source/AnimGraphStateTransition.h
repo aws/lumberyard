@@ -140,6 +140,7 @@ namespace EMotionFX
         AZ::u32 GetPriority() const;
 
         void SetCanBeInterrupted(bool canBeInterrupted);
+        void SetCanBeInterruptedBy(const AZStd::vector<AZ::u64>& transitionIds) { m_canBeInterruptedByTransitionIds = transitionIds; }
         void SetCanBeInterruptedBy(const AZStd::vector<AnimGraphConnectionId>& transitionIds);
         bool CanBeInterruptedBy(const AnimGraphStateTransition* transition, const AnimGraphInstance* animGraphInstance = nullptr) const;
         const AZStd::vector<AZ::u64>& GetCanBeInterruptedByTransitionIds() const { return m_canBeInterruptedByTransitionIds; }

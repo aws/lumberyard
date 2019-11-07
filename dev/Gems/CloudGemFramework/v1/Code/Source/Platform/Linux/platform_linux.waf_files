@@ -1,0 +1,8 @@
+{
+  "auto": {
+    "Platform/Linux": [
+      "CloudGemFramework_Traits_Platform.h",
+      "CloudGemFramework_Traits_Linux.h"
+    ]
+  }
+}

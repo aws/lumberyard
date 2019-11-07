@@ -98,10 +98,10 @@ namespace CLogUnitTests
 
     TEST_F(CLogUnitTests, LogAlways_InvalidString_Asserts)
     {
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         CLog testLog(&m_data->m_system);
         testLog.LogAlways(nullptr);
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
     }
 
     TEST_F(CLogUnitTests, LogAlways_EmptyString_IgnoresWithoutCrashing)

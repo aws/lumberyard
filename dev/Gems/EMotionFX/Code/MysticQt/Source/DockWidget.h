@@ -36,7 +36,6 @@ namespace MysticQt
 
     public:
         DockWidget(QWidget* parent, const QString& name);
-        ~DockWidget();
 
         void SetContents(QWidget* contents);
     };

@@ -59,11 +59,16 @@
 #include <QtWidgets/QWidgetAction>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QDialog>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QFileInfo::d_ptr': class 'QSharedDataPointer<QFileInfoPrivate>' needs to have dll-interface to be used by clients of class 'QFileInfo'
 #include <QtWidgets/QFileDialog>
+AZ_POP_DISABLE_WARNING
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QErrorMessage>
+AZ_PUSH_DISABLE_WARNING(4251 4244, "-Wunknown-warning-option") // 4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
+                                                               // 4244: 'argument': conversion from 'int' to 'float', possible loss of data
 #include <QtWidgets/QVBoxLayout>
+AZ_POP_DISABLE_WARNING
 #include <QtCore/QThread>
 
 #include <QDialogButtonBox>
@@ -153,6 +158,11 @@ namespace AzToolsFramework
             bool GetSliceSaveLocation(AZStd::string& path, AZ::u32 settingsId);
 
             /**
+             * Calculate the centroid bottom level of a group of entities to be made into a slice
+             */
+            AZ::Vector3 GetSliceRootPosition(const AZ::EntityId commonRoot, const AzToolsFramework::EntityList& selectionRootEntities);
+
+            /**
              * Calculates the differences between a live entity and a comparison entity (typically a slice ancestor).
              * Optionally, function can determine if a specific field differs, vs. all differences across the entity.
              */
@@ -173,15 +183,13 @@ namespace AzToolsFramework
             * \param selectedEntities Entities that are about to be added to slice
             * \param sliceRootName IF a slice root is added, the slice root entity is set to this name (Currently, the name of the slice)
             * \param sliceRootParentEntityId [OUT] If the common root of all entities in selection is not null then that common root is to be set as the parent of the newly created slice root
-            * \param sliceRootPositionAfterReplacement [OUT] Position of the slice root entity wrt its parent after the slice has replaced live entities in the editor
-            * \param sliceRootRotationAfterReplacement [OUT] Rotation of the slice root entity wrt its parent after the slice has replaced live entities in the editor
+            * \param sliceRootTranslation Position of the slice root entity wrt its parent after the slice has replaced live entities in the editor
             * \param wasRootAutoCreated [OUT] indicates if a root was auto created and added
             */
             SliceTransaction::Result CheckAndAddSliceRoot(const AzToolsFramework::SliceUtilities::SliceTransaction::SliceAssetPtr& asset,
                 AZStd::string sliceRootName,
                 AZ::EntityId& sliceRootParentEntityId,
-                AZ::Vector3& sliceRootPositionAfterReplacement,
-                AZ::Quaternion& sliceRootRotationAfterReplacement,
+                const AZ::Vector3& sliceRootTranslation,
                 bool& wasRootAutoCreated,
                 QWidget* activeWindow);
 
@@ -321,6 +329,22 @@ namespace AzToolsFramework
                 AZStd::unordered_map<AZ::Data::AssetId, EntityIdSet>& unpushableEntityIdsPerAsset,
                 AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>>& newChildEntityIdAncestorPairs,
                 AZStd::vector< AZ::Data::AssetId>& rootAncestorPushList);
+
+            /**
+            * \brief Determines whether the provided entity id is the root of a slice or subslice
+            * \param id The entity id to check
+            */
+            bool IsSliceOrSubsliceRootEntity(const AZ::EntityId id);
+
+            /**
+            * \brief Adds details about the provided entity into the Select Slice context menu, recursively adds children.
+            * \param entityId Entity to add to the menu.
+            * \param selectMenu Menu to add details to.
+            * \param indentation Current indent level within submenu.
+            * \param nearestSliceRoot Entity of closest slice root. This is the item the "Next" menu shortcut will be added to.
+            * \param shortcutWidth Size of label contaning the shortcut for this item.
+            */
+            int PopulateSliceSelectSubmenuWithEntity(const AZ::EntityId& entityId, QMenu*& selectMenu, int indentation, const AZ::EntityId& nearestSliceRoot, int shortcutWidth);
         } // namespace Internal
 
         //=========================================================================
@@ -644,55 +668,120 @@ namespace AzToolsFramework
             // e.g. the new slice would reference the parent slice and apply a data patch to remove the parent entity
             // and if so, break the connection only to the root slice
             //
+            ScopedUndoBatch createSliceUndo("Create New Slice");
+            AZ::EntityId parentAfterReplacement;
+            AZ::Vector3 positionAfterReplacement(AZ::Vector3::CreateZero());
+            AZ::Quaternion rotationAfterReplacement(AZ::Quaternion::CreateZero());
+            bool wasRootAutoCreated = false;
             UndoSystem::URSequencePoint* cloneUndoSequence = nullptr;
-            if (inheritSlices)
-            {
-                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::MakeNewSlice:CloneExistingSliceEntities");
 
-                const AZ::EntityId dummyParentId;
-
-                AzToolsFramework::EntityIdList topLevelEntityIds;
-                AzToolsFramework::EntityIdList sliceEntities(entitiesToIncludeInAsset.begin(), entitiesToIncludeInAsset.end());
-
-                AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(
-                    &AzToolsFramework::ToolsApplicationRequests::FindTopLevelEntityIdsInactive,
-                    sliceEntities,
-                    topLevelEntityIds);
-
-                entitiesToIncludeInAsset.clear();
-
-                ScopedUndoBatch cloneUndo("Clone New Slice Entities");
-
-                for (AZ::EntityId rootEntity : topLevelEntityIds)
+            { 
+                if (inheritSlices)
                 {
-                    if (IsReparentNonTrivial(rootEntity, dummyParentId))
+                    AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::MakeNewSlice:CloneExistingSliceEntities");
+
+                    const AZ::EntityId dummyParentId;
+
+                    AzToolsFramework::EntityIdList topLevelEntityIds;
+                    AzToolsFramework::EntityIdList sliceEntities(entitiesToIncludeInAsset.begin(), entitiesToIncludeInAsset.end());
+
+                    AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(
+                        &AzToolsFramework::ToolsApplicationRequests::FindTopLevelEntityIdsInactive,
+                        sliceEntities,
+                        topLevelEntityIds);
+
+                    entitiesToIncludeInAsset.clear();
+
+                    for (AZ::EntityId rootEntity : topLevelEntityIds)
                     {
-                        AZ::EntityId oldParentId;
-                        AZ::TransformBus::EventResult(oldParentId, rootEntity, &AZ::TransformBus::Events::GetParentId);
-
-                        rootEntity = ReparentNonTrivialEntityHierarchy(rootEntity, dummyParentId);
-
-                        // reparent to the old parent
-                        AZ::TransformBus::Event(rootEntity, &AZ::TransformBus::Events::SetParent, oldParentId);
-                        cloneUndo.MarkEntityDirty(rootEntity);
-
-                        // delay the setting of the undo sequence point until we can guarantee it has a valid operation
-                        // otherwise an empty undo will cause a crash when invoked (on slice save failure in this case)
-                        if (!cloneUndoSequence)
+                        if (IsReparentNonTrivial(rootEntity, dummyParentId))
                         {
-                            cloneUndoSequence = cloneUndo.GetUndoBatch();
+                            AZ::EntityId oldParentId;
+                            AZ::TransformBus::EventResult(oldParentId, rootEntity, &AZ::TransformBus::Events::GetParentId);
+
+                            rootEntity = ReparentNonTrivialEntityHierarchy(rootEntity, dummyParentId);
+
+                            // reparent to the old parent
+                            AZ::TransformBus::Event(rootEntity, &AZ::TransformBus::Events::SetParent, oldParentId);
+                            ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::Bus::Events::AddDirtyEntity, rootEntity);
+
+                            // delay the setting of the undo sequence point until we can guarantee it has a valid operation
+                            // otherwise an empty undo will cause a crash when invoked (on slice save failure in this case)
+                            if (!cloneUndoSequence)
+                            {
+                                cloneUndoSequence = createSliceUndo.GetUndoBatch();
+                            }
                         }
+
+                        // update the list of entities to include in the new slice
+                        AzToolsFramework::EntityIdSet entityHierarchy;
+                        AzToolsFramework::EntityIdList currentEntity{ rootEntity };
+                        AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(
+                            entityHierarchy,
+                            &AzToolsFramework::ToolsApplicationRequestBus::Events::GatherEntitiesAndAllDescendents,
+                            currentEntity);
+
+                        entitiesToIncludeInAsset.insert(entityHierarchy.begin(), entityHierarchy.end());
+                    }
+                }
+
+                //calculate new slice root transform
+                AZ::EntityId commonRoot;
+                AzToolsFramework::EntityList sliceRootEntities;
+
+                bool entitiesHaveCommonRoot = false;
+                
+                AzToolsFramework::EntityList entityObjectsToInclude;
+                for (const AZ::EntityId entityId : entitiesToIncludeInAsset)
+                {
+                    AZ::Entity* entity = nullptr;
+                    AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, entityId);
+                    entityObjectsToInclude.push_back(entity);
+                }
+
+                AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(entitiesHaveCommonRoot, &AzToolsFramework::ToolsApplicationRequests::FindCommonRootInactive,
+                    entityObjectsToInclude, commonRoot, &sliceRootEntities);
+
+                if (sliceRootEntities.size() > 1)
+                {
+                    positionAfterReplacement = Internal::GetSliceRootPosition(commonRoot, sliceRootEntities);
+                }
+                else
+                {
+                    AzToolsFramework::Components::TransformComponent* transformComponent =
+                        sliceRootEntities.front()->FindComponent<AzToolsFramework::Components::TransformComponent>();
+                    if (transformComponent)
+                    {
+                        positionAfterReplacement = transformComponent->GetWorldTranslation();
+                        rotationAfterReplacement = transformComponent->GetWorldRotationQuaternion();
+                    }
+                }
+
+                // prepare entities for upcoming prent transform schange
+                for (const AZ::Entity* entity : entityObjectsToInclude)
+                {
+                    if (entity->GetTransform()->GetParentId().IsValid())
+                    {
+                        //if the entity is not in the top level, it won't need adjusting
+                        continue;
                     }
 
-                    // update the list of entities to include in the new slice
-                    AzToolsFramework::EntityIdSet entityHierarchy;
-                    AzToolsFramework::EntityIdList currentEntity { rootEntity };
-                    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(
-                        entityHierarchy, 
-                        &AzToolsFramework::ToolsApplicationRequestBus::Events::GatherEntitiesAndAllDescendents, 
-                        currentEntity);
+                    AZ::Transform oldParentWorldTM = AZ::Transform::Identity();
+                    AZ::Transform newParentWorldTM = AZ::Transform::Identity();
 
-                    entitiesToIncludeInAsset.insert(entityHierarchy.begin(), entityHierarchy.end());
+                    newParentWorldTM.SetPosition(positionAfterReplacement);
+
+                    //signal entities that parent is about to move  
+                    EBUS_EVENT_ID(entity->GetId(), AZ::TransformNotificationBus, OnParentTransformWillChange, oldParentWorldTM, newParentWorldTM);
+
+                    ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::Bus::Events::AddDirtyEntity, entity->GetId());
+
+                    // delay the setting of the undo sequence point until we can guarantee it has a valid operation
+                    // otherwise an empty undo will cause a crash when invoked (on slice save failure in this case)
+                    if (!cloneUndoSequence)
+                    {
+                        cloneUndoSequence = createSliceUndo.GetUndoBatch();
+                    }
                 }
             }
 
@@ -702,18 +791,13 @@ namespace AzToolsFramework
             {
                 AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::MakeNewSlice:SetupAndExecuteTransaction");
 
-                AZ::EntityId parentAfterReplacement;
-                AZ::Vector3 positionAfterReplacement(AZ::Vector3::CreateZero());
-                AZ::Quaternion rotationAfterReplacement(AZ::Quaternion::CreateZero());
-                bool wasRootAutoCreated = false;
-
                 // PreSaveCallback for slice creation: Before saving slice, we ensure it has a single root by optionally auto-creating one for the user
                 SliceTransaction::PreSaveCallback preSaveCallback =
-                    [&sliceName, &parentAfterReplacement, &positionAfterReplacement, &rotationAfterReplacement, &wasRootAutoCreated, &activeWindow]
+                    [&sliceName, &parentAfterReplacement, &positionAfterReplacement, &wasRootAutoCreated, &activeWindow]
                     (SliceTransaction::TransactionPtr transaction, const char* fullPath, SliceTransaction::SliceAssetPtr& asset) -> SliceTransaction::Result
                     {
                         AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::MakeNewSlice:PreSaveCallback");
-                        auto addRootResult = Internal::CheckAndAddSliceRoot(asset, sliceName.c_str(), parentAfterReplacement, positionAfterReplacement, rotationAfterReplacement, wasRootAutoCreated, activeWindow);
+                        auto addRootResult = Internal::CheckAndAddSliceRoot(asset, sliceName.c_str(), parentAfterReplacement, positionAfterReplacement, wasRootAutoCreated, activeWindow);
                         if (!addRootResult)
                         {
                             return addRootResult;
@@ -771,8 +855,6 @@ namespace AzToolsFramework
                         }
                     }
                 }
-
-                ScopedUndoBatch undoBatch("Create new slice");
 
                 SliceTransaction::Result result = transaction->Commit(
                     sliceFilePath.c_str(), 
@@ -1693,148 +1775,33 @@ namespace AzToolsFramework
 
         bool PopulateSliceSelectSubMenu(const AZ::EntityId& selectedEntity, QMenu*& selectMenu)
         {
-            int itemCount = 0;
-            int shortcutWidth = 0;
-
-            static const AZ::u32 kPixelIndentationPerLevel = GetSliceHierarchyMenuIdentationPerLevel();
-
             selectMenu->clear();
 
-            QPixmap sliceItemIcon(GetSliceItemIconPath());
-            QIcon sliceEntityItemIcon(GetSliceEntityIconPath());
-            QPixmap lShapeIcon(GetLShapeIconPath());
-
-            AZStd::stack<AZ::EntityId> parents;
+            //find closest slice root that is above selectedEntity and the topmost entity
             AZ::EntityId parentId;
+            
+            bool gotNearest = false;
+            AZ::EntityId nearestSliceRoot;
+            AZ::EntityId topMostEntity = selectedEntity;
+
             AzToolsFramework::EditorEntityInfoRequestBus::EventResult(parentId, selectedEntity, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetParent);
-            for (AZ::EntityId currentId = parentId; currentId.IsValid(); currentId = parentId)
+            while (parentId.IsValid())
             {
-                itemCount++;
-                parents.push(currentId);
-                AzToolsFramework::EditorEntityInfoRequestBus::EventResult(parentId, currentId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetParent);
+                topMostEntity = parentId;
+
+                if (!gotNearest)
+                {
+                    if (Internal::IsSliceOrSubsliceRootEntity(parentId))
+                    {
+                        nearestSliceRoot = parentId;
+                        gotNearest = true;
+                    }
+                }
+
+                AzToolsFramework::EditorEntityInfoRequestBus::EventResult(parentId, parentId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetParent);
             }
 
-            QString topShortcutText = QObject::tr("(Top) Shift+R");
-            QString nextShortcutText = QObject::tr("(Next) R");
-
-            // Track how many ancestors deep the loop is, so the hierarchy can be visually represented.
-            AZ::u32 indentation = 0;
-            AZ::u32 spacer = (itemCount+1) * GetSliceHierarchyMenuIdentationPerLevel();
-            while (!parents.empty())
-            {
-                AZ::EntityId id = parents.top();
-                parents.pop();
-
-                AZStd::string name;
-                AzToolsFramework::EditorEntityInfoRequestBus::EventResult(name, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetName);
-               
-                // Build the menu item. A QWidgetAction is used instead of a QAction to allow the ancestry 
-                // hierarchy to be represented by identing each ancestor under the previous.
-                // The layout for each row is: [QLabel Indent][QLabel Slice Icon][QLabel Slice Name]
-
-                // Create the container for the row: A WidgetAction to attach to the menu, 
-                // the base Widget to contain the horizontal layout, and the horizontal layout.
-                QWidgetAction* findAction = new QWidgetAction(selectMenu);
-                               
-                QWidget* sliceLayoutWidget = new QWidget(selectMenu);
-                sliceLayoutWidget->setObjectName("SliceHierarchyMenuItem");
-                QHBoxLayout* sliceLayout = new QHBoxLayout(sliceLayoutWidget);
-                findAction->setDefaultWidget(sliceLayoutWidget);
-
-                int LShapeIconWidgetWidth = GetLShapeIconSize().width();
-
-                if (indentation > 0)
-                {
-                    QLabel* indentLabel = new QLabel(selectMenu);
-                    indentLabel->setFixedSize((indentation - 1) * LShapeIconWidgetWidth, GetSliceItemHeight());
-                    sliceLayout->addWidget(indentLabel);
-
-                    // Add the L shape icon to show the slice hierarchy
-                    QLabel* lShapeIconLabel = new QLabel(selectMenu);
-                    lShapeIconLabel->setPixmap(lShapeIcon);
-                    lShapeIconLabel->setFixedSize(GetLShapeIconSize());
-                    sliceLayout->addWidget(lShapeIconLabel);
-                }
-
-                // Use the SliceIcon to visually reinforce that this is a slice file.
-                QLabel* iconLabel = new QLabel(selectMenu);
-                iconLabel->setPixmap(sliceEntityItemIcon.pixmap(GetSliceItemIconSize()));
-                iconLabel->setFixedSize(GetSliceItemIconSize());
-                sliceLayout->addWidget(iconLabel);
-               
-                // Use the filename without the path as the label for this menu icon, to match the QuickPush menu's behavior.
-                QLabel* sliceLabel = new QLabel(name.c_str(), selectMenu);
-                
-                sliceLabel->setToolTip(QObject::tr("Selects this slice in the Asset Browser."));
-
-                sliceLayout->addWidget(sliceLabel);
-
-                //work out what shortcuts are needed
-                QString shortcutText = "";
-                QList<QKeySequence> shortcuts;
-
-                QFontMetrics fontMetrics = sliceLabel->fontMetrics();
-
-                if (indentation == 0)
-                {
-                    //first time round, work out how long the font label has to be
-                    shortcutWidth = fontMetrics.width(topShortcutText);
-                    if (fontMetrics.width(nextShortcutText) > shortcutWidth)
-                    {
-                        shortcutWidth = fontMetrics.width(nextShortcutText);
-                    }
-
-                    //goto top
-                    shortcutText += topShortcutText;
-                    shortcuts.append(QKeySequence(Qt::SHIFT + Qt::Key_R));
-                }
-
-                if (parents.empty())
-                {
-                    //if there's only one item left, allow both shortcuts to work
-                    if (indentation == 0)
-                    {
-                        shortcutText += ", ";
-                        shortcutWidth = fontMetrics.width(shortcutText);
-                        shortcutWidth += fontMetrics.width(nextShortcutText);
-                    }
-                    //last shortcut = go up one level
-                    shortcutText += nextShortcutText;
-                    shortcuts.append(QKeySequence(Qt::Key_R));
-                }
-
-                //add shortcuts by hand as they don't appear on a QWidgetAction
-                QLabel* indentLabel2 = new QLabel(selectMenu);
-                 indentLabel2->setFixedSize(spacer, GetSliceItemHeight());
-                sliceLayout->addWidget(indentLabel2);
-
-                QLabel* indentLabelShortcut = new QLabel(selectMenu);
-                indentLabelShortcut->setFixedSize(shortcutWidth, GetSliceItemHeight());
-                sliceLayout->addWidget(indentLabelShortcut);
-
-                if (shortcuts.length())
-                {
-                    indentLabelShortcut->setText(shortcutText);
-                    findAction->setShortcuts(shortcuts);
-                }
-
-                QObject::connect(findAction, &QAction::triggered,
-                    [id]
-                {
-                    AzToolsFramework::ToolsApplicationRequestBus::Broadcast(
-                        &AzToolsFramework::ToolsApplicationRequestBus::Events::SetSelectedEntities, AzToolsFramework::EntityIdList{ id });
-
-                });
-
-                selectMenu->addAction(findAction);
-
-                // Grow the indentation size for the next step in the hierarchy.
-                indentation++;
-                //shrink the space between menu option and shortcut
-                spacer -= GetSliceHierarchyMenuIdentationPerLevel();
-            }
-
-            return indentation > 0;
+            return Internal::PopulateSliceSelectSubmenuWithEntity(topMostEntity, selectMenu, 0, nearestSliceRoot, 0) != 0;
         }
 
         //=========================================================================
@@ -1952,7 +1919,7 @@ namespace AzToolsFramework
                 const AZ::SliceComponent::SliceReference* sliceReference = ancestors[currentAncestorIndex].m_sliceAddress.GetReference();
                 if (!sliceReference)
                 {
-                    AZ_Warning("Slice", "Entity with ID %s has an invalid slice reference.", selectedEntity.ToString().c_str());
+                    AZ_Warning("Slice", false, "Entity with ID %s has an invalid slice reference.", selectedEntity.ToString().c_str());
                     continue;
                 }
                 const AZ::Data::AssetId sliceAssetId = sliceReference->GetSliceAsset().GetId();
@@ -3082,11 +3049,50 @@ namespace AzToolsFramework
             }
 
             //=========================================================================
+            AZ::Vector3 GetSliceRootPosition(const AZ::EntityId commonRoot, const AzToolsFramework::EntityList& selectionRootEntities)
+            {
+                AZ::Vector3 sliceRootTranslation = AZ::Vector3::CreateZero();
+                AZ::VectorFloat sliceZmin = FLT_MAX;
+
+                int count = 0;
+                for (AZ::Entity* selectionRootEntity : selectionRootEntities)
+                {
+                    if (selectionRootEntity)
+                    {
+                        AzToolsFramework::Components::TransformComponent* transformComponent =
+                            selectionRootEntity->FindComponent<AzToolsFramework::Components::TransformComponent>();
+
+                        if (transformComponent)
+                        {
+                            count++;
+                            AZ::Vector3 currentPosition;
+                            if (commonRoot.IsValid())
+                            {
+                                currentPosition = transformComponent->GetLocalTranslation();
+                            }
+                            else
+                            {
+                                currentPosition = transformComponent->GetWorldTranslation();
+                            }
+
+                            sliceRootTranslation += currentPosition;
+                            sliceZmin = sliceZmin.GetMin(currentPosition.GetZ());
+                        }
+                    }
+                }
+
+                sliceRootTranslation = (sliceRootTranslation / static_cast<float>(count));
+
+                sliceRootTranslation.SetZ(sliceZmin);
+
+                return sliceRootTranslation;
+            }
+
+            //=========================================================================
             SliceTransaction::Result CheckAndAddSliceRoot(const AzToolsFramework::SliceUtilities::SliceTransaction::SliceAssetPtr& asset,
                 AZStd::string sliceRootName,
                 AZ::EntityId& sliceRootParentEntityId,
-                AZ::Vector3& sliceRootPositionAfterReplacement,
-                AZ::Quaternion& sliceRootRotationAfterReplacement,
+                const AZ::Vector3& sliceRootTranslation,
                 bool& wasRootAutoCreated,
                 QWidget* activeWindow)
             {
@@ -3113,11 +3119,7 @@ namespace AzToolsFramework
                 AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(result, &AzToolsFramework::ToolsApplicationRequests::FindCommonRootInactive, sliceEntities, commonRoot, &selectionRootEntities);
 
                 // The translation of the new slice root
-                AZ::Vector3 sliceRootTranslation(AZ::Vector3::CreateZero());
-                AZ::Quaternion sliceRootRotation(AZ::Quaternion::CreateZero());
                 wasRootAutoCreated = false;
-
-                AZ::EntityId rootEntityId;
 
                 if (result)
                 {
@@ -3143,46 +3145,11 @@ namespace AzToolsFramework
                             // Create a new slice root entity
                             AZ::Entity* sliceRootEntity = aznew AZ::Entity();
                             sliceRootEntity->SetName(sliceRootName);
-                            rootEntityId = sliceRootEntity->GetId();
 
                             wasRootAutoCreated = true;
 
                             // Add all required editor components
                             AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequests::AddRequiredComponents, *sliceRootEntity);
-
-                            // Reposition everything so that the new slice root is at the centroid bottom of the top level entities in user selection
-                            AZ::VectorFloat sliceZmin = FLT_MAX;
-
-                            int count = 0;
-                            for (AZ::Entity* selectionRootEntity : selectionRootEntities)
-                            {
-                                if (selectionRootEntity)
-                                {
-                                    AzToolsFramework::Components::TransformComponent* transformComponent =
-                                        selectionRootEntity->FindComponent<AzToolsFramework::Components::TransformComponent>();
-
-                                    if (transformComponent)
-                                    {
-                                        count++;
-                                        AZ::Vector3 currentPosition;
-                                        if (commonRoot.IsValid())
-                                        {
-                                            currentPosition = transformComponent->GetLocalTranslation();
-                                        }
-                                        else
-                                        {
-                                            currentPosition = transformComponent->GetWorldTranslation();
-                                        }
-
-                                        sliceRootTranslation += currentPosition;
-                                        sliceZmin = sliceZmin.GetMin(currentPosition.GetZ());
-                                    }
-                                }
-                            }
-
-                            sliceRootTranslation = (sliceRootTranslation / count);
-
-                            sliceRootTranslation.SetZ(sliceZmin);
 
                             // Re root entities so that the new slice root is the parent of all selection root entities 
                             // and reposition top level entities so that the slice root is at 0,0,0 in the slice
@@ -3205,22 +3172,13 @@ namespace AzToolsFramework
                             asset.Get()->GetComponent()->AddEntity(sliceRootEntity);
                         }
                     }
-                    else if (selectionRootEntities.size() == 1)
-                    {
-                        rootEntityId = selectionRootEntities.front()->GetId();
-
-                        AzToolsFramework::Components::TransformComponent* transformComponent =
-                            selectionRootEntities.front()->FindComponent<AzToolsFramework::Components::TransformComponent>();
-
-                        if (transformComponent)
-                        {
-                            sliceRootTranslation = transformComponent->GetWorldTranslation();
-                            sliceRootRotation = transformComponent->GetWorldRotationQuaternion();
-                        }
-                    }
-                    else
+                    else if (selectionRootEntities.size() == 0)
                     {
                         return AZ::Failure(AZStd::string::format("Transforms could not be rooted."));
+                    }
+                    else if (selectionRootEntities.size() == 1)
+                    {
+                        //we have one common root, don't need to do anything
                     }
                 }
                 else
@@ -3229,8 +3187,6 @@ namespace AzToolsFramework
                 }
 
                 sliceRootParentEntityId = commonRoot;
-                sliceRootPositionAfterReplacement = sliceRootTranslation;
-                sliceRootRotationAfterReplacement = sliceRootRotation;
                 return AZ::Success();
             }
 
@@ -4155,6 +4111,177 @@ namespace AzToolsFramework
                     // This is an entity that doesn't belong to a slice yet, consider it for addition
                     newChildEntityIdAncestorPairs.emplace_back(entityId, AZStd::move(sliceAncestryToPushTo));
                 }
+            }
+
+            bool IsSliceOrSubsliceRootEntity(const AZ::EntityId id)
+            {
+                bool isSliceEntity = false;
+                AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceEntity, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceEntity);
+                if (!isSliceEntity)
+                {
+                    return false;
+                }
+
+                bool isSliceRoot = false;
+                AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceRoot, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceRoot);
+                bool isSubsliceRoot = false;
+                AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSubsliceRoot, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSubsliceRoot);
+
+                return isSliceRoot | isSubsliceRoot;
+            }
+
+            int PopulateSliceSelectSubmenuWithEntity(const AZ::EntityId& entityId, QMenu*& selectMenu, int indentation, const AZ::EntityId& nearestSliceRoot, int shortcutWidth)
+            {
+                bool addedMenuItem = false;
+
+                QPixmap sliceItemIcon(GetSliceItemIconPath());
+                QIcon sliceEntityItemIcon(GetSliceEntityIconPath());
+                QPixmap lShapeIcon(GetLShapeIconPath());
+
+                QString topShortcutText = QObject::tr("(Top) Shift+R");
+                QString nextShortcutText = QObject::tr("(Next) R");
+
+                AZ::u32 spacer = indentation * GetSliceHierarchyMenuIdentationPerLevel();
+
+                //should we add current parent to the display?
+                bool isSliceRoot = false;
+                AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceRoot, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceRoot);
+                bool isSliceEntity = false;
+                AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceEntity, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceEntity);
+                bool isSubsliceRoot = false;
+                AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSubsliceRoot, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSubsliceRoot);
+
+                bool addToTree = IsSliceOrSubsliceRootEntity(entityId);
+
+                {
+                    AZStd::string name;
+                    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(name, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetName);
+
+                    printf("%s", name.c_str());
+                }
+                if (addToTree)
+                {
+                    AZStd::string name;
+                    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(name, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetName);
+
+                    // Build the menu item. A QWidgetAction is used instead of a QAction to allow the ancestry 
+                    // hierarchy to be represented by identing each ancestor under the previous.
+                    // The layout for each row is: [QLabel Indent][QLabel Slice Icon][QLabel Slice Name]
+
+                    // Create the container for the row: A WidgetAction to attach to the menu, 
+                    // the base Widget to contain the horizontal layout, and the horizontal layout.
+                    QWidgetAction* findAction = new QWidgetAction(selectMenu);
+
+                    QWidget* sliceLayoutWidget = new QWidget(selectMenu);
+                    sliceLayoutWidget->setObjectName("SliceHierarchyMenuItem");
+                    QHBoxLayout* sliceLayout = new QHBoxLayout(sliceLayoutWidget);
+                    findAction->setDefaultWidget(sliceLayoutWidget);
+
+                    int LShapeIconWidgetWidth = GetLShapeIconSize().width();
+
+                    if (indentation > 0)
+                    {
+                        QLabel* indentLabel = new QLabel(selectMenu);
+                        indentLabel->setFixedSize((indentation - 1) * LShapeIconWidgetWidth, GetSliceItemHeight());
+                        sliceLayout->addWidget(indentLabel);
+
+                        // Add the L shape icon to show the slice hierarchy
+                        QLabel* lShapeIconLabel = new QLabel(selectMenu);
+                        lShapeIconLabel->setPixmap(lShapeIcon);
+                        lShapeIconLabel->setFixedSize(GetLShapeIconSize());
+                        sliceLayout->addWidget(lShapeIconLabel);
+                    }
+
+                    // Use the SliceIcon to visually reinforce that this is a slice file.
+                    QLabel* iconLabel = new QLabel(selectMenu);
+                    iconLabel->setPixmap(sliceEntityItemIcon.pixmap(GetSliceItemIconSize()));
+                    iconLabel->setFixedSize(GetSliceItemIconSize());
+                    sliceLayout->addWidget(iconLabel);
+
+                    // Use the filename without the path as the label for this menu icon, to match the QuickPush menu's behavior.
+                    QLabel* sliceLabel = new QLabel(name.c_str(), selectMenu);
+
+                    sliceLabel->setToolTip(QObject::tr("Selects this slice in the Asset Browser."));
+
+                    sliceLayout->addWidget(sliceLabel);
+
+                    //work out what shortcuts are needed
+                    QString shortcutText = "";
+                    QList<QKeySequence> shortcuts;
+
+                    QFontMetrics fontMetrics = sliceLabel->fontMetrics();
+
+                    if (indentation == 0)
+                    {
+                        //first time round, work out how long the font label has to be
+                        shortcutWidth = fontMetrics.width(topShortcutText);
+                        if (fontMetrics.width(nextShortcutText) > shortcutWidth)
+                        {
+                            shortcutWidth = fontMetrics.width(nextShortcutText);
+                        }
+
+                        //goto top
+                        shortcutText += topShortcutText;
+                        shortcuts.append(QKeySequence(Qt::SHIFT + Qt::Key_R));
+                    }
+
+                    if (entityId == nearestSliceRoot)
+                    {
+                        //if this entity is the only one above the selected item, allow both shortcuts to work
+                        if (indentation == 0)
+                        {
+                            shortcutText += ", ";
+                            shortcutWidth = fontMetrics.width(shortcutText);
+                            shortcutWidth += fontMetrics.width(nextShortcutText);
+                        }
+                        //last shortcut = go up one level
+                        shortcutText += nextShortcutText;
+                        shortcuts.append(QKeySequence(Qt::Key_R));
+                    }
+
+                    //add shortcuts by hand as they don't appear on a QWidgetAction
+                    QLabel* indentLabel2 = new QLabel(selectMenu);
+                    indentLabel2->setFixedSize(spacer, GetSliceItemHeight());
+                    sliceLayout->addWidget(indentLabel2);
+
+                    QLabel* indentLabelShortcut = new QLabel(selectMenu);
+                    indentLabelShortcut->setFixedSize(shortcutWidth, GetSliceItemHeight());
+                    sliceLayout->addWidget(indentLabelShortcut);
+
+                    if (shortcuts.length())
+                    {
+                        indentLabelShortcut->setText(shortcutText);
+                        findAction->setShortcuts(shortcuts);
+                    }
+
+                    QObject::connect(findAction, &QAction::triggered,
+                        [entityId]
+                    {
+                        AzToolsFramework::ToolsApplicationRequestBus::Broadcast(
+                            &AzToolsFramework::ToolsApplicationRequestBus::Events::SetSelectedEntities, AzToolsFramework::EntityIdList{ entityId });
+
+                    });
+
+                    selectMenu->addAction(findAction);
+
+                    // Grow the indentation size for the next step in the hierarchy.
+                    indentation++;
+                    addedMenuItem = true;
+                }
+
+                //recursively call function again on children
+                EntityIdList children;
+                AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
+
+                for (auto child : children)
+                {
+                    if (PopulateSliceSelectSubmenuWithEntity(child, selectMenu, indentation, nearestSliceRoot, shortcutWidth))
+                    {
+                        addedMenuItem = true;
+                    }
+                }
+
+                return addedMenuItem;
             }
         } // namespace Internal
 

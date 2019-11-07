@@ -65,39 +65,39 @@ namespace PhysX
         // WorldEventHandler
         void OnTriggerEnter(const Physics::TriggerEvent& triggerEvent) override
         {
-            Physics::TriggerNotificationBus::Event(triggerEvent.m_triggerBody->GetEntityId(), &Physics::TriggerNotifications::OnTriggerEnter, triggerEvent);
+            Physics::TriggerNotificationBus::QueueEvent(triggerEvent.m_triggerBody->GetEntityId(), &Physics::TriggerNotifications::OnTriggerEnter, triggerEvent);
         }
 
         void OnTriggerExit(const Physics::TriggerEvent& triggerEvent) override
         {
-            Physics::TriggerNotificationBus::Event(triggerEvent.m_triggerBody->GetEntityId(), &Physics::TriggerNotifications::OnTriggerExit, triggerEvent);
+            Physics::TriggerNotificationBus::QueueEvent(triggerEvent.m_triggerBody->GetEntityId(), &Physics::TriggerNotifications::OnTriggerExit, triggerEvent);
         }
 
         void OnCollisionBegin(const Physics::CollisionEvent& event)
         {
             Physics::CollisionEvent collisionEvent = event;
-            Physics::CollisionNotificationBus::Event(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionBegin, collisionEvent);
+            Physics::CollisionNotificationBus::QueueEvent(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionBegin, collisionEvent);
             AZStd::swap(collisionEvent.m_body1, collisionEvent.m_body2);
             AZStd::swap(collisionEvent.m_shape1, collisionEvent.m_shape2);
-            Physics::CollisionNotificationBus::Event(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionBegin, collisionEvent);
+            Physics::CollisionNotificationBus::QueueEvent(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionBegin, collisionEvent);
         }
 
         void OnCollisionPersist(const Physics::CollisionEvent& event)
         {
             Physics::CollisionEvent collisionEvent = event;
-            Physics::CollisionNotificationBus::Event(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionPersist, collisionEvent);
+            Physics::CollisionNotificationBus::QueueEvent(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionPersist, collisionEvent);
             AZStd::swap(collisionEvent.m_body1, collisionEvent.m_body2);
             AZStd::swap(collisionEvent.m_shape1, collisionEvent.m_shape2);
-            Physics::CollisionNotificationBus::Event(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionPersist, collisionEvent);
+            Physics::CollisionNotificationBus::QueueEvent(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionPersist, collisionEvent);
         }
 
         void OnCollisionEnd(const Physics::CollisionEvent& event)
         {
             Physics::CollisionEvent collisionEvent = event;
-            Physics::CollisionNotificationBus::Event(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionEnd, collisionEvent);
+            Physics::CollisionNotificationBus::QueueEvent(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionEnd, collisionEvent);
             AZStd::swap(collisionEvent.m_body1, collisionEvent.m_body2);
             AZStd::swap(collisionEvent.m_shape1, collisionEvent.m_shape2);
-            Physics::CollisionNotificationBus::Event(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionEnd, collisionEvent);
+            Physics::CollisionNotificationBus::QueueEvent(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionEnd, collisionEvent);
         }
 
         AZStd::shared_ptr<Physics::World> m_defaultWorld;
@@ -240,16 +240,27 @@ namespace PhysX
 
         void OnTriggerEnter(const Physics::TriggerEvent& event) override
         {
+            if (m_onTriggerEnter)
+            {
+                m_onTriggerEnter(event);
+            }
             m_enteredEvents.push_back(event);
         }
 
         void OnTriggerExit(const Physics::TriggerEvent& event) override
         {
+            if (m_onTriggerExit)
+            {
+                m_onTriggerExit(event);
+            }
             m_exitedEvents.push_back(event);
         }
 
         const AZStd::vector<Physics::TriggerEvent>& GetEnteredEvents() const { return m_enteredEvents; }
         const AZStd::vector<Physics::TriggerEvent>& GetExitedEvents() const { return m_exitedEvents; }
+
+        AZStd::function<void(const Physics::TriggerEvent& event)> m_onTriggerEnter;
+        AZStd::function<void(const Physics::TriggerEvent& event)> m_onTriggerExit;
 
     private:
         AZStd::vector<Physics::TriggerEvent> m_enteredEvents;
@@ -272,22 +283,38 @@ namespace PhysX
 
         void OnCollisionBegin(const Physics::CollisionEvent& collision) override
         {
+            if (m_onCollisionBegin)
+            {
+                m_onCollisionBegin(collision);
+            }
             m_beginCollisions.push_back(collision);
         }
 
         void OnCollisionPersist(const Physics::CollisionEvent& collision) override
         {
+            if (m_onCollisionPersist)
+            {
+                m_onCollisionPersist(collision);
+            }
             m_persistCollisions.push_back(collision);
         }
 
         void OnCollisionEnd(const Physics::CollisionEvent& collision) override
         {
+            if (m_onCollisionEnd)
+            {
+                m_onCollisionEnd(collision);
+            }
             m_endCollisions.push_back(collision);
         }
 
         AZStd::vector<Physics::CollisionEvent> m_beginCollisions;
         AZStd::vector<Physics::CollisionEvent> m_persistCollisions;
         AZStd::vector<Physics::CollisionEvent> m_endCollisions;
+
+        AZStd::function<void(const Physics::CollisionEvent& collisionEvent)> m_onCollisionBegin;
+        AZStd::function<void(const Physics::CollisionEvent& collisionEvent)> m_onCollisionPersist;
+        AZStd::function<void(const Physics::CollisionEvent& collisionEvent)> m_onCollisionEnd;
     };
 
     TEST_F(PhysXSpecificTest, VectorConversion_ConvertToPxVec3_ConvertedVectorsCorrect)
@@ -370,7 +397,7 @@ namespace PhysX
 
     TEST_F(PhysXSpecificTest, QuaternionConversion_ConvertToLyQuat_ConvertedQuatsCorrect)
     {
-        physx::PxQuat pxQ = physx::PxQuat(9.0f, -8.0f, -4.0f, 8.0f) * (1.0 / 15.0f);
+        physx::PxQuat pxQ = physx::PxQuat(9.0f, -8.0f, -4.0f, 8.0f) * (1.0f / 15.0f);
         AZ::Quaternion lyQ = PxMathConvert(pxQ);
         AZ::Vector3 lyV = lyQ * AZ::Vector3(-8.0f, 1.0f, -4.0f);
 
@@ -652,7 +679,7 @@ namespace PhysX
         AZ::TransformConfig transformConfig;
         transformConfig.m_worldTransform = AZ::Transform::CreateTranslation(position);
         triggerEntity->CreateComponent<AzFramework::TransformComponent>()->SetConfiguration(transformConfig);
-        ColliderT::Configuration config;
+        typename ColliderT::Configuration config;
         Physics::ColliderConfiguration colliderConfiguartion;
         colliderConfiguartion.m_isTrigger = true;
         triggerEntity->CreateComponent<ColliderT>(colliderConfiguartion, config);
@@ -671,7 +698,7 @@ namespace PhysX
         AZ::TransformConfig transformConfig;
         transformConfig.m_worldTransform = AZ::Transform::CreateTranslation(position);
         triggerEntity->CreateComponent<AzFramework::TransformComponent>()->SetConfiguration(transformConfig);
-        ColliderT::Configuration config;
+        typename ColliderT::Configuration config;
         Physics::ColliderConfiguration colliderConfiguartion;
         colliderConfiguartion.m_isTrigger = true;
         triggerEntity->CreateComponent<ColliderT>(colliderConfiguartion, config);
@@ -811,7 +838,6 @@ namespace PhysX
         // Checkes one of the collision point details
         ASSERT_EQ(collisionBegin01.m_contacts.size(), 1);
         EXPECT_NEAR(collisionBegin01.m_contacts[0].m_impulse.GetZ(), -37.12f, 0.01f);
-        EXPECT_NEAR(collisionBegin01.m_contacts[0].m_position.GetZ(), 9.38, 0.01f);
         float dotNormal = collisionBegin01.m_contacts[0].m_normal.Dot(AZ::Vector3(0.0f, 0.0f, -1.0f));
         EXPECT_NEAR(dotNormal, 1.0f, 0.01f);
         EXPECT_NEAR(collisionBegin01.m_contacts[0].m_separation, -0.12, 0.01f);
@@ -907,8 +933,8 @@ namespace PhysX
         Physics::TerrainRequestBus::BroadcastResult(terrainBody, &Physics::TerrainRequests::GetTerrainTile, 0.0f, 0.0f);
 
         Physics::RayCastRequest request;
-        request.m_start = AZ::Vector3(0, 0, 1);
-        request.m_direction = AZ::Vector3(0, 0, -1);
+        request.m_start = AZ::Vector3(0.5f, 0.5f, 1.0f);
+        request.m_direction = AZ::Vector3(0.0f, 0.0f, -1.0f);
         request.m_distance = 2;
 
         Physics::RayCastHit hit;
@@ -925,11 +951,10 @@ namespace PhysX
         auto terrain = CreateFlatTestTerrain();
         Physics::RigidBodyStatic* terrainBody;
         Physics::TerrainRequestBus::BroadcastResult(terrainBody, &Physics::TerrainRequests::GetTerrainTile, 0.0f, 0.0f);
-
         Physics::RayCastRequest request;
-        request.m_start = AZ::Vector3(0, 0, 1);
-        request.m_direction = AZ::Vector3(0, 0, -1);
-        request.m_distance = 2;
+        request.m_start = AZ::Vector3(0.5f, 0.5f, 1.0f);
+        request.m_direction = AZ::Vector3(0.0f, 0.0f, -1.0f);
+        request.m_distance = 2.0f;
         request.m_customFilterCallback = [](const Physics::WorldBody* body, const Physics::Shape* shape)
         {
             return true;
@@ -1142,5 +1167,106 @@ namespace PhysX
 
         delete dynamicTrigger;
     }
+
+    TEST_F(PhysXSpecificTest, TriggerArea_BodyDestroyedOnTriggerEnter_DoesNotCrash)
+    {
+        // Given a rigid body falling into a trigger.
+        auto triggerBox = CreateTriggerAtPosition<BoxColliderComponent>(AZ::Vector3(0.0f, 0.0f, 0.0f));
+        auto testBox = AddUnitTestObject(AZ::Vector3(0.0f, 0.0f, 1.2f), "TestBox");
+
+        // When the rigid body is deleted inside on trigger enter event.
+        TestTriggerAreaNotificationListener testTriggerAreaNotificationListener(triggerBox->GetId());
+        testTriggerAreaNotificationListener.m_onTriggerEnter = [&](const Physics::TriggerEvent& triggerEvent)
+        {
+            delete testBox;
+        };
+
+        // Update the world. This should not crash.
+        UpdateWorld(30, 1.0f / 30.0f);
+
+        /// Then the program does not crash (If you made it this far the test passed).
+        ASSERT_TRUE(true);
+    }
+
+    TEST_F(PhysXSpecificTest, TriggerArea_BodyDestroyedOnTriggerExit_DoesNotCrash)
+    {
+        // Given a rigid body falling into a trigger.
+        auto triggerBox = CreateTriggerAtPosition<BoxColliderComponent>(AZ::Vector3(0.0f, 0.0f, 0.0f));
+        auto testBox = AddUnitTestObject(AZ::Vector3(0.0f, 0.0f, 1.2f), "TestBox");
+
+        // When the rigid body is deleted inside on trigger enter event.
+        TestTriggerAreaNotificationListener testTriggerAreaNotificationListener(triggerBox->GetId());
+        testTriggerAreaNotificationListener.m_onTriggerExit = [&](const Physics::TriggerEvent& triggerEvent)
+        {
+            delete testBox;
+        };
+
+        // Update the world. This should not crash.
+        UpdateWorld(30, 1.0f / 30.0f);
+
+        /// Then the program does not crash (If you made it this far the test passed).
+        ASSERT_TRUE(true);
+    }
+
+    TEST_F(PhysXSpecificTest, CollisionEvents_BodyDestroyedOnCollisionBegin_DoesNotCrash)
+    {
+        // Given a rigid body falling onto a static box.
+        auto staticBox = AddStaticUnitTestObject<BoxColliderComponent>(AZ::Vector3(0.0f, 0.0f, 0.0f), "StaticTestBox");
+        auto testBox = AddUnitTestObject(AZ::Vector3(0.0f, 0.0f, 1.2f), "TestBox");
+
+        // When the rigid body is deleted inside on collision begin event.
+        CollisionCallbacksListener collisionListener(testBox->GetId());
+        collisionListener.m_onCollisionBegin = [&](const Physics::CollisionEvent& collisionEvent)
+        {
+            delete testBox;
+        };
+
+        // Update the world. This should not crash.
+        UpdateWorld(30, 1.0f / 30.0f);
+
+        /// Then the program does not crash (If you made it this far the test passed).
+        ASSERT_TRUE(true);
+    }
+
+    TEST_F(PhysXSpecificTest, CollisionEvents_BodyDestroyedOnCollisionPersist_DoesNotCrash)
+    {
+        // Given a rigid body falling onto a static box.
+        auto staticBox = AddStaticUnitTestObject<BoxColliderComponent>(AZ::Vector3(0.0f, 0.0f, 0.0f), "StaticTestBox");
+        auto testBox = AddUnitTestObject(AZ::Vector3(0.0f, 0.0f, 1.2f), "TestBox");
+
+        // When the rigid body is deleted inside on collision begin event.
+        CollisionCallbacksListener collisionListener(testBox->GetId());
+        collisionListener.m_onCollisionPersist = [&](const Physics::CollisionEvent& collisionEvent)
+        {
+            delete testBox;
+        };
+
+        // Update the world. This should not crash.
+        UpdateWorld(30, 1.0f / 30.0f);
+
+        /// Then the program does not crash (If you made it this far the test passed).
+        ASSERT_TRUE(true);
+    }
+
+    TEST_F(PhysXSpecificTest, CollisionEvents_BodyDestroyedOnCollisionEnd_DoesNotCrash)
+    {
+        // Given a rigid body falling onto a static box.
+        auto staticBox = AddStaticUnitTestObject<BoxColliderComponent>(AZ::Vector3(0.0f, 0.0f, 0.0f), "StaticTestBox");
+        auto testBox = AddUnitTestObject(AZ::Vector3(0.0f, 0.0f, 1.2f), "TestBox");
+
+        // When the rigid body is deleted inside on collision begin event.
+        CollisionCallbacksListener collisionListener(testBox->GetId());
+        collisionListener.m_onCollisionEnd = [&](const Physics::CollisionEvent& collisionEvent)
+        {
+            delete testBox;
+        };
+
+        // Update the world. This should not crash.
+        UpdateWorld(30, 1.0f / 30.0f);
+
+        /// Then the program does not crash (If you made it this far the test passed).
+        ASSERT_TRUE(true);
+    }
+
 } // namespace PhysX
 

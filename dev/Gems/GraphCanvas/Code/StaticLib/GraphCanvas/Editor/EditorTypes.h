@@ -31,5 +31,124 @@ namespace GraphCanvas
 
     typedef AZ::EntityId GraphicsEffectId;
 
+    typedef AZ::EntityId ToastId;
+
     typedef AZ::Uuid PersistentGraphMemberId;
+
+    typedef AZ::Crc32 ExtenderId;
+
+    namespace Styling
+    {
+        // Style of curve for connection lines
+        enum class ConnectionCurveType : AZ::u32
+        {
+            Straight,
+            Curved
+        };
+    }
+
+    enum class ToastType
+    {
+        Information,
+        Warning,
+        Error,
+        Custom
+    };
+
+    class ToastConfiguration
+    {
+    public:
+        ToastConfiguration(ToastType toastType, const AZStd::string& titleLabel, const AZStd::string& descriptionLabel)
+            : m_toastType(toastType)
+            , m_titleLabel(titleLabel)
+            , m_descriptionLabel(descriptionLabel)
+        {
+        }
+
+        ~ToastConfiguration() = default;
+
+        ToastType GetToastType() const
+        {
+            return m_toastType;
+        }
+
+        const AZStd::string& GetTitleLabel() const
+        {
+            return m_titleLabel;
+        }
+
+        const AZStd::string& GetDescriptionLabel() const
+        {
+            return m_descriptionLabel;
+        }
+
+        void SetCustomToastImage(const AZStd::string& toastImage)
+        {
+            AZ_Error("GraphCanvas", m_toastType == ToastType::Custom, "Setting a custom image on a non-custom Toast notification");
+            m_customToastImage = toastImage;
+        }
+
+        const AZStd::string& GetCustomToastImage() const
+        {
+            return m_customToastImage;
+        }
+
+        void SetDuration(AZStd::chrono::milliseconds duration)
+        {
+            m_duration = duration;
+        }
+
+        AZStd::chrono::milliseconds GetDuration() const
+        {
+            return m_duration;
+        }
+
+        void SetCloseOnClick(bool closeOnClick)
+        {
+            m_closeOnClick = closeOnClick;
+        }
+
+        bool GetCloseOnClick() const
+        {
+            return m_closeOnClick;
+        }
+
+        void SetFadeDuration(AZStd::chrono::milliseconds fadeDuration)
+        {
+            m_fadeDuration = fadeDuration;
+        }
+
+        AZStd::chrono::milliseconds GetFadeDuration() const
+        {
+            return m_fadeDuration;
+        }
+
+    private:
+
+        AZStd::chrono::milliseconds m_fadeDuration = AZStd::chrono::milliseconds(250);
+
+        AZStd::chrono::milliseconds m_duration;
+        bool m_closeOnClick;
+
+        AZStd::string m_customToastImage;
+
+        ToastType m_toastType;
+        AZStd::string   m_titleLabel;
+        AZStd::string   m_descriptionLabel;
+    };
+
+    struct ConnectionValidationTooltip
+    {
+        bool operator()() const
+        {
+            return m_isValid;
+        }
+
+        bool m_isValid;
+
+        NodeId m_nodeId;
+        SlotId m_slotId;
+
+        AZStd::string m_failureReason;
+    };
 }

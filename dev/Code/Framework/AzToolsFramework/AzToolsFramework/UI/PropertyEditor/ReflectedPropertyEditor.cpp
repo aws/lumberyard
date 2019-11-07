@@ -626,7 +626,7 @@ namespace AzToolsFramework
     {
         for (auto childWidget : parentWidget->GetChildrenRows())
         {
-            if (expand)
+            if (expand || parentWidget->ForceAutoExpand())
             {
                 childWidget->show();
                 CreateEditorWidget(childWidget);
@@ -989,29 +989,38 @@ namespace AzToolsFramework
 
     void ReflectedPropertyEditor::InvalidateValues()
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         m_releasePrompt = true;
 
-        for (InstanceDataHierarchy& instance : m_impl->m_instances)
         {
-            bool dataIdentical = instance.RefreshComparisonData(AZ::SerializeContext::ENUM_ACCESS_FOR_READ, m_impl->m_dynamicEditDataProvider);
-
-            if (m_impl->m_editorParent)
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "ReflectedPropertyEditor::InvalidateValues:InstancesRefreshDataCompare");
+            for (InstanceDataHierarchy& instance : m_impl->m_instances)
             {
-                m_impl->m_editorParent->SetComponentOverridden(!dataIdentical);
+                const bool dataIdentical = instance.RefreshComparisonData(
+                    AZ::SerializeContext::ENUM_ACCESS_FOR_READ, m_impl->m_dynamicEditDataProvider);
+
+                if (m_impl->m_editorParent)
+                {
+                    m_impl->m_editorParent->SetComponentOverridden(!dataIdentical);
+                }
             }
         }
 
-        for (auto it = m_impl->m_userWidgetsToData.begin(); it != m_impl->m_userWidgetsToData.end(); ++it)
         {
-            auto rowWidget = m_impl->m_widgets.find(it->second);
-
-            if (rowWidget != m_impl->m_widgets.end())
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "ReflectedPropertyEditor::InvalidateValues:RowWidgetGuiUpdate");
+            for (auto it = m_impl->m_userWidgetsToData.begin(); it != m_impl->m_userWidgetsToData.end(); ++it)
             {
-                PropertyRowWidget* pWidget = rowWidget->second;
-                if (pWidget->GetHandler())
+                auto rowWidget = m_impl->m_widgets.find(it->second);
+
+                if (rowWidget != m_impl->m_widgets.end())
                 {
-                    pWidget->GetHandler()->ReadValuesIntoGUI_Internal(it->first, rowWidget->first);
-                    pWidget->OnValuesUpdated();
+                    PropertyRowWidget* pWidget = rowWidget->second;
+                    if (pWidget->GetHandler())
+                    {
+                        pWidget->GetHandler()->ReadValuesIntoGUI_Internal(it->first, rowWidget->first);
+                        pWidget->OnValuesUpdated();
+                    }
                 }
             }
         }
@@ -1951,6 +1960,8 @@ namespace AzToolsFramework
 
     void ReflectedPropertyEditor::DoRefresh()
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         if (m_impl->m_preventRefresh || (m_impl->m_queuedRefreshLevel == Refresh_None))
         {
             return;

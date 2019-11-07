@@ -324,7 +324,7 @@ int CPostEffectsMgr::Init()
         "Example: r_setposteffectparamf HUD3D_FOV 35.0	 (Doesn't force value)\n"
         "Example: r_setposteffectparamf HUD3D_FOV 35.0 1 (Forces value)\n");
 
-    REGISTER_COMMAND("r_getposteffectparamf", GetPostEffectParamF, VF_CHEAT, "Outputs post effect param value (float) to log"
+     REGISTER_COMMAND("r_getposteffectparamf", GetPostEffectParamF, VF_CHEAT, "Outputs post effect param value (float) to log"
         "Usage: r_setposteffectparamf [posteffectparamname]\n"
         "Example: r_getposteffectparamf HUD3D_FOV\n");
 #endif

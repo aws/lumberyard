@@ -17,7 +17,6 @@
 
 #include <platform.h>
 #include <Cry_Math.h>
-#include <BoostHelpers.h>
 #include <AzCore/IO/FileIO.h>
 
 class ICrySizer;
@@ -689,7 +688,6 @@ inline XmlNodeRef&  XmlNodeRef::operator=(const XmlNodeRef& newp)
 
 //XmlNodeRef can be treated as a container. Iterating through it, iterates through its children
 class XmlNodeRefIterator
-    : public boost::iterator_facade<XmlNodeRefIterator, XmlNodeRef, boost::random_access_traversal_tag, IXmlNode*>
 {
 public:
     XmlNodeRefIterator()
@@ -703,20 +701,51 @@ public:
         Update();
     }
 
-    bool operator!=(const XmlNodeRefIterator& rhs) {
-        return m_index != rhs.m_index;
-    }
-    XmlNodeRefIterator& operator++() {
+    XmlNodeRefIterator& operator=(const XmlNodeRefIterator& other) = default;
+
+    XmlNodeRefIterator& operator++() 
+    {
         ++m_index;
         Update();
         return *this;
     }
-    IXmlNode* operator*() const {
+    XmlNodeRefIterator operator++(int)
+    {
+        XmlNodeRefIterator ret = *this;
+        ++m_index;
+        Update();
+        return ret;
+    }
+
+    IXmlNode* operator*() const 
+    {
         return m_currentChildNode;
     }
 
+    XmlNodeRefIterator& operator--()
+    {
+        --m_index;
+        Update();
+        return *this;
+    }
+
+    XmlNodeRefIterator operator--(int)
+    {
+        XmlNodeRefIterator ret = *this;
+        --m_index;
+        Update();
+        return ret;
+    }
+
+    bool operator!=(const XmlNodeRefIterator& rhs) {
+        return m_index != rhs.m_index;
+    }
+
 private:
-    friend class boost::iterator_core_access;
+    friend void swap(XmlNodeRefIterator& lhs, XmlNodeRefIterator& rhs);
+    friend bool operator==(const XmlNodeRefIterator& lhs, const XmlNodeRefIterator& rhs);
+    friend bool operator!=(const XmlNodeRefIterator& lhs, const XmlNodeRefIterator& rhs);
+
     void Update()
     {
         if (m_index >= 0 && m_index < m_parentNode->getChildCount())
@@ -724,17 +753,28 @@ private:
             m_currentChildNode = m_parentNode->getChild(static_cast<int>(m_index));
         }
     }
-    void increment() { ++m_index; Update(); }
-    void decrement() { --m_index; Update(); }
-    void advance(std::size_t distance) { m_index += distance; Update(); }
-    difference_type distance_to(const XmlNodeRefIterator& other) const { return other.m_index - m_index; }
-    bool equal(const XmlNodeRefIterator& other) const { return m_index == other.m_index; }
-    reference dereference() const { return m_currentChildNode; }
 
     XmlNodeRef m_parentNode;
     XmlNodeRef m_currentChildNode;
     std::size_t m_index; //default to first child, if no children then this will equal size which is what we use for the end iterator
 };
+
+inline void swap(XmlNodeRefIterator& lhs, XmlNodeRefIterator& rhs)
+{
+    AZStd::swap(lhs.m_parentNode, rhs.m_parentNode);
+    AZStd::swap(lhs.m_currentChildNode, rhs.m_currentChildNode);
+    AZStd::swap(lhs.m_index, rhs.m_index);
+}
+
+inline bool operator==(const XmlNodeRefIterator& lhs, const XmlNodeRefIterator& rhs)
+{
+    return lhs.m_index == rhs.m_index;
+}
+
+inline bool operator!=(const XmlNodeRefIterator& lhs, const XmlNodeRefIterator& rhs)
+{
+    return lhs.m_index != rhs.m_index;
+}
 
 inline XmlNodeRefIterator XmlNodeRef::begin()
 {

@@ -13,7 +13,6 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/Thumbnails/SourceControlThumbnail.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
-#include <QtConcurrent/QtConcurrent>
 
 namespace AzToolsFramework
 {
@@ -147,5 +146,5 @@ namespace AzToolsFramework
         }
     } // namespace Thumbnailer
 } // namespace AzToolsFramework
-#include <Thumbnails/SourceControlThumbnail.moc>
 
+#include <Thumbnails/SourceControlThumbnail.moc>

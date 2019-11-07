@@ -43,6 +43,8 @@ namespace ScriptCanvasEditor
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
         virtual QWidget* GetMainWindow() = 0;
+
+        virtual void OpenValidationPanel() = 0;
     };
 
     using UIRequestBus = AZ::EBus<UIRequests>;

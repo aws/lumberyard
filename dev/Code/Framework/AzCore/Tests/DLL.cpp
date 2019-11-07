@@ -10,13 +10,12 @@
 *
 */
 
-#include "TestTypes.h"
-
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
 #include <AzCore/Module/Module.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Module/Environment.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 using namespace AZ;
 

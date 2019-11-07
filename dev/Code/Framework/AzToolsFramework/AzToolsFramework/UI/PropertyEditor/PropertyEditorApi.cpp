@@ -76,7 +76,7 @@ namespace AzToolsFramework
 
         return false;
     }
-    
+
     //-----------------------------------------------------------------------------
 
     bool HasAnyVisibleChildren(const InstanceDataNode& node, bool isSlicePushUI)
@@ -103,6 +103,8 @@ namespace AzToolsFramework
     //-----------------------------------------------------------------------------
     NodeDisplayVisibility CalculateNodeDisplayVisibility(const InstanceDataNode& node, bool isSlicePushUI)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         NodeDisplayVisibility visibility = NodeDisplayVisibility::NotVisible;
 
         // If parent is a dynamic serializable field with edit reflection, default to visible.
@@ -189,10 +191,10 @@ namespace AzToolsFramework
     AZStd::string GetNodeDisplayName(const AzToolsFramework::InstanceDataNode& node)
     {
         // Introspect template for generic component wrappers.
-        if (node.GetClassMetadata() && 
+        if (node.GetClassMetadata() &&
             node.GetClassMetadata()->m_typeId == AZ::AzTypeInfo<AzToolsFramework::Components::GenericComponentWrapper>::Uuid())
         {
-            const Components::GenericComponentWrapper* componentWrapper = nullptr;
+            Components::GenericComponentWrapper* componentWrapper = nullptr;
             if (node.GetNumInstances() > 0)
             {
                 componentWrapper = static_cast<Components::GenericComponentWrapper*>(node.FirstInstance());
@@ -239,7 +241,7 @@ namespace AzToolsFramework
         }
         return displayName;
     }
-    
+
     bool ReadVisibilityAttribute(void* instance, AZ::Edit::Attribute* attr, AZ::Crc32& visibility)
     {
         PropertyAttributeReader reader(instance, attr);
@@ -360,6 +362,19 @@ namespace AzToolsFramework
 
         // No one said no, show by default
         return AZ::Edit::PropertyVisibility::Show;
+    }
+
+    void OnEntityComponentPropertyChanged(AZ::EntityId entityId, AZ::ComponentId componentId)
+    {
+        PropertyEditorEntityChangeNotificationBus::Event(
+            entityId, &PropertyEditorEntityChangeNotifications::OnEntityComponentPropertyChanged,
+            componentId);
+    }
+
+    void OnEntityComponentPropertyChanged(const AZ::EntityComponentIdPair& entityComponentIdPair)
+    {
+        OnEntityComponentPropertyChanged(
+            entityComponentIdPair.GetEntityId(), entityComponentIdPair.GetComponentId());
     }
 
 } // namespace AzToolsFramework

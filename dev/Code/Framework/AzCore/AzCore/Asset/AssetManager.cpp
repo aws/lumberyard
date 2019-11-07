@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetInternal/LegacyBlockingAssetTypeManager.h>
@@ -22,8 +21,8 @@
 #include <AzCore/std/string/osstring.h>
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Memory/OSAllocator.h>
-#include <AzCore/IO/Streamer.h>
-#include <AzCore/IO/GenericStreams.h>
+#include <AzCore/IO/FileIO.h>
+
 
 namespace AZ
 {
@@ -153,8 +152,8 @@ namespace AZ
                     }
                     else
                     {
-                        AZ_Assert(IO::Streamer::IsReady(), "We only support streamer IO at the moment. Make sure the streamer has been started!");
-                        IO::StreamerStream stream(loadInfo.m_streamName.c_str(), loadInfo.m_streamFlags, loadInfo.m_dataOffset, loadInfo.m_dataLen);
+                        IO::FileIOStream stream(loadInfo.m_streamName.c_str(), loadInfo.m_streamFlags);
+                        stream.Seek(loadInfo.m_dataOffset, IO::GenericStream::SeekMode::ST_SEEK_BEGIN);
                         return  m_assetHandler->LoadAssetData(m_asset, &stream, m_assetLoadFilterCB);
                     }
                 }
@@ -326,11 +325,9 @@ namespace AZ
                 AssetStreamInfo saveInfo = m_owner->GetSaveStreamInfoForAsset(m_asset.GetId(), m_asset.GetType());
                 if (saveInfo.IsValid())
                 {
-                    AZ_Assert(IO::Streamer::IsReady(), "We only support streamer IO at the moment. Make sure the streamer has been started!");
-                    {
-                        IO::StreamerStream stream(saveInfo.m_streamName.c_str(), saveInfo.m_streamFlags, saveInfo.m_dataOffset);
-                        isSaved = m_assetHandler->SaveAssetData(m_asset, &stream);
-                    }
+                    IO::FileIOStream stream(saveInfo.m_streamName.c_str(), saveInfo.m_streamFlags);
+                    stream.Seek(saveInfo.m_dataOffset, IO::GenericStream::SeekMode::ST_SEEK_BEGIN);
+                    isSaved = m_assetHandler->SaveAssetData(m_asset, &stream);
                 }
                 // queue broadcast message for delivery on game thread
                 EBUS_QUEUE_EVENT_ID(m_asset.GetId(), AssetBus, OnAssetSaved, m_asset, isSaved);
@@ -690,7 +687,7 @@ namespace AZ
                 {
                     // check if asset already exists
                     {
-                        
+
                         AssetMap::iterator it = m_assets.find(assetInfo.m_assetId);
                         if (it != m_assets.end())
                         {
@@ -705,31 +702,31 @@ namespace AZ
 
                     {
 
-                    // find the asset type handler
-                    AssetHandlerMap::iterator handlerIt = m_handlers.find(assetInfo.m_assetType);
-                    AZ_Error("AssetDatabase", handlerIt != m_handlers.end(), "No handler was registered for this asset [type:%s id:%s]!",
-                        assetInfo.m_assetType.ToString<AZ::OSString>().c_str(), assetInfo.m_assetId.ToString<AZ::OSString>().c_str());
-                    if (handlerIt != m_handlers.end())
-                    {
-                        // Create the asset ptr and insert it into our asset map.
-                        handler = handlerIt->second;
-                        if (isNewEntry)
+                        // find the asset type handler
+                        AssetHandlerMap::iterator handlerIt = m_handlers.find(assetInfo.m_assetType);
+                        AZ_Error("AssetDatabase", handlerIt != m_handlers.end(), "No handler was registered for this asset [type:%s id:%s]!",
+                            assetInfo.m_assetType.ToString<AZ::OSString>().c_str(), assetInfo.m_assetId.ToString<AZ::OSString>().c_str());
+                        if (handlerIt != m_handlers.end())
                         {
-                            assetData = handler->CreateAsset(assetInfo.m_assetId, assetInfo.m_assetType);
-                            if (assetData)
+                            // Create the asset ptr and insert it into our asset map.
+                            handler = handlerIt->second;
+                            if (isNewEntry)
                             {
-                                assetData->m_assetId = assetInfo.m_assetId;
-                                ++handler->m_nActiveAssets;
-                                assetData->m_creationToken = ++m_creationTokenGenerator;
-                                asset = assetData;
-                            }
-                            else
-                            {
-                                AZ_Error("AssetDatabase", false, "Failed to create asset with (id=%s, type=%s)",
-                                    assetInfo.m_assetId.ToString<AZ::OSString>().c_str(), assetInfo.m_assetType.ToString<AZ::OSString>().c_str());
+                                assetData = handler->CreateAsset(assetInfo.m_assetId, assetInfo.m_assetType);
+                                if (assetData)
+                                {
+                                    assetData->m_assetId = assetInfo.m_assetId;
+                                    ++handler->m_nActiveAssets;
+                                    assetData->m_creationToken = ++m_creationTokenGenerator;
+                                    asset = assetData;
+                                }
+                                else
+                                {
+                                    AZ_Error("AssetDatabase", false, "Failed to create asset with (id=%s, type=%s)",
+                                        assetInfo.m_assetId.ToString<AZ::OSString>().c_str(), assetInfo.m_assetType.ToString<AZ::OSString>().c_str());
+                                }
                             }
                         }
-                    }
                     }
 
                     if (assetData)
@@ -768,15 +765,15 @@ namespace AZ
                                 if (m_blockingAssetTypeManager->HasBlockingHandlersForCurrentThread())
                                 {
                                     blockingWait = aznew WaitForAssetOnThreadWithBlockingJobs(assetData, m_blockingAssetTypeManager);
-                        }
+                                }
                                 else
                                 {
                                     blockingWait = aznew WaitForAssetOnThreadWithNoBlockingJobs(assetData);
                                 }
                             }
+                        }
                     }
                 }
-            }
             }
 
             if (!assetInfo.m_relativePath.empty())
@@ -787,7 +784,7 @@ namespace AZ
             // when AZCORE_JOBS_IMPL_SYNCHRONOUS is defined
             if (loadBlocking)
             {
-                if(loadJob)
+                if (loadJob)
                 {
                     // Process directly within the calling thread if loadBlocking flag is set.
                     loadJob->Process();
@@ -1030,7 +1027,7 @@ namespace AZ
         //=========================================================================
         // GetHandler
         //=========================================================================
-        const AssetHandler* AssetManager::GetHandler(const AssetType& assetType)
+        AssetHandler* AssetManager::GetHandler(const AssetType& assetType)
         {
             auto handlerEntry = m_handlers.find(assetType);
             if (handlerEntry != m_handlers.end())
@@ -1337,5 +1334,3 @@ namespace AZ
         }
     } // namespace Data
 }   // namespace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

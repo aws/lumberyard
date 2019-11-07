@@ -1,0 +1,14 @@
+{
+    "auto":
+    {
+        "Platform/Windows":
+        [
+            "EMotionFX_Traits_Platform.h",
+            "EMotionFX_Traits_Windows.h"
+        ],
+        "Platform/Common/WinAPI":
+        [
+            "../Common/WinAPI/MCore/Source/DiskFile_WinAPI.cpp"
+        ]
+    }
+}

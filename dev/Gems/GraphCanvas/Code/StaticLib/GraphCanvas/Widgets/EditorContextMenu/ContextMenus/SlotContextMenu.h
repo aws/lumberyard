@@ -21,7 +21,7 @@ namespace GraphCanvas
     public:
         AZ_CLASS_ALLOCATOR(SlotContextMenu, AZ::SystemAllocator, 0);
 
-        SlotContextMenu(QWidget* parent = nullptr);
+        SlotContextMenu(EditorId editorId, QWidget* parent = nullptr);
         ~SlotContextMenu() override = default;
     };
 }

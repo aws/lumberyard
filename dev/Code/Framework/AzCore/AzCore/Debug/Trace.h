@@ -9,29 +9,11 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZCORE_TRACE_H
-#define AZCORE_TRACE_H 1
+#pragma once
 
 #include <AzCore/PlatformDef.h>
+#define AZ_VA_HAS_ARGS(...) ""#__VA_ARGS__[0] != 0
 
-#if defined(AZ_COMPILER_MSVC)
-//# pragma warning(push)
-#   pragma warning(disable:4127) //conditional expression is constant (use for conditional check everywhere)
-#endif // AZ_COMPILER_MSVC
-
-#if defined(AZ_COMPILER_SNC)
-//# pragma diag_push
-#   pragma diag_suppress=237 // controlling expression is constant
-#endif // AZ_COMPILER_SNC
-
-/**
-    *  Forward declarations
-    */
-namespace AZStd
-{
-    template <typename Signature>
-    class delegate;
-}
 
 namespace AZ
 {
@@ -95,39 +77,128 @@ namespace AZ
 *    - Printfs are purely informational. They print the message unadorned.
 *    - Traces which have "Once" at the end will display the message only once for the life of the application instance.
 *
-* \note In the future we can change the macros to #define AZ_Assert(expression, format, ...) this is supported by all compilers except
-* Metrowerks. They require at least one parameter for "...".
 * \note AZCore implements the AZStd::Default_Assert so if you want to customize it, use the Trace Listeners...
 */
-    #define AZ_Assert(expression, ...)                           if (!(expression)) { \
-        AZ::Debug::Trace::Instance().Assert(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, /*format,*/ __VA_ARGS__); }
 
-    #define AZ_Error(window, expression, ...)                     if (!(expression)) { \
-        AZ::Debug::Trace::Instance().Error(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, window, /*format,*/ __VA_ARGS__); }
 
-    #define AZ_ErrorOnce(window, expression, ...)                 if (!(expression))                                        \
+/**
+ * This is used to prevent incorrect usage if the user forgets to write the boolean expression to assert.
+ * Example:
+ *     AZ_Assert("Fail always"); // <- assertion will never fail
+ * Correct usage:
+ *     AZ_Assert(false, "Fail always");
+ */
+    
+    namespace AZ
+    {
+        namespace TraceInternal
+        {
+            enum class ExpressionValidResult { Valid, Invalid_ConstCharPtr, Invalid_ConstCharArray };
+            template<typename T>
+            struct ExpressionIsValid
+            {
+                static constexpr ExpressionValidResult value = ExpressionValidResult::Valid;
+            };
+            template<>
+            struct ExpressionIsValid<const char*&> 
+            {
+                static constexpr ExpressionValidResult value = ExpressionValidResult::Valid;
+            };
+            template<unsigned int N>
+            struct ExpressionIsValid<const char(&)[N]>
+            {
+                static constexpr ExpressionValidResult value = ExpressionValidResult::Invalid_ConstCharArray;
+            };
+        } // namespace TraceInternal
+    } // namespace AZ
+
+    #if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1900
+        // For VS2015 and backwards we don't support this check since it relies on relaxed constexpr c++14 feature: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3652.html
+        #define AZ_TraceFmtCompileTimeCheck(...)
+    #else
+        #define AZ_TraceFmtCompileTimeCheck(expression, isVaArgs, baseMsg, msg, msgVargs)                                                                                                 \
+        {                                                                                                                                                                                 \
+            using namespace AZ::TraceInternal;                                                                                                                                            \
+            auto&& rTraceFmtCompileTimeCheckExpressionHelper = (expression); /* This is needed for edge cases for expressions containing lambdas, that were unsupported before C++20 */   \
+            constexpr ExpressionValidResult isValidTraceFmtResult = ExpressionIsValid<decltype(rTraceFmtCompileTimeCheckExpressionHelper)>::value;                                        \
+            /* Assert different message depending whether it's const char array or if we have extra arguments */                                                                          \
+            static_assert(!isVaArgs ? isValidTraceFmtResult != ExpressionValidResult::Invalid_ConstCharArray : true, baseMsg " " msg);                                                    \
+            static_assert(isVaArgs  ? isValidTraceFmtResult != ExpressionValidResult::Invalid_ConstCharArray : true, baseMsg " " msgVargs);                                               \
+            static_assert(!isVaArgs ? isValidTraceFmtResult != ExpressionValidResult::Invalid_ConstCharPtr   : true, baseMsg " " msg " or "#expression" != nullptr");                     \
+            static_assert(isVaArgs  ? isValidTraceFmtResult != ExpressionValidResult::Invalid_ConstCharPtr   : true, baseMsg " " msgVargs " or "#expression" != nullptr");                \
+        }
+    #endif
+
+    #define AZ_Assert(expression, ...)                                                                                  \
+    AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option")                                                           \
+    if (!(expression))                                                                                                  \
+    {                                                                                                                   \
+        AZ_TraceFmtCompileTimeCheck(expression, AZ_VA_HAS_ARGS(__VA_ARGS__),                                            \
+            "String used in place of boolean expression for AZ_Assert.",                                                \
+            "Did you mean AZ_Assert(false, \"%s\", "#expression"); ?",                                                  \
+            "Did you mean AZ_Assert(false, "#expression", "#__VA_ARGS__"); ?");                                         \
+        AZ::Debug::Trace::Instance().Assert(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, /*format,*/ __VA_ARGS__);        \
+    }                                                                                                                   \
+    AZ_POP_DISABLE_WARNING
+
+    #define AZ_Error(window, expression, ...)                                                                              \
+    AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option")                                                              \
+    if (!(expression))                                                                                                     \
+    {                                                                                                                      \
+        AZ_TraceFmtCompileTimeCheck(expression, AZ_VA_HAS_ARGS(__VA_ARGS__),                                               \
+            "String used in place of boolean expression for AZ_Error.",                                                    \
+            "Did you mean AZ_Error("#window", false, \"%s\", "#expression"); ?",                                           \
+            "Did you mean AZ_Error("#window", false, "#expression", "#__VA_ARGS__"); ?");                                  \
+        AZ::Debug::Trace::Instance().Error(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, window, /*format,*/ __VA_ARGS__);    \
+    }                                                                                                                      \
+    AZ_POP_DISABLE_WARNING
+
+    #define AZ_ErrorOnce(window, expression, ...)                                                                           \
+    AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option")                                                               \
+    if (!(expression))                                                                                                      \
     {                                                                                                                       \
+        AZ_TraceFmtCompileTimeCheck(expression, AZ_VA_HAS_ARGS(__VA_ARGS__),                                                \
+            "String used in place of boolean expression for AZ_ErrorOnce.",                                                 \
+            "Did you mean AZ_ErrorOnce("#window", false, \"%s\", "#expression"); ?",                                        \
+            "Did you mean AZ_ErrorOnce("#window", false, "#expression", "#__VA_ARGS__"); ?");                               \
         static bool isDisplayed = false;                                                                                    \
         if (!isDisplayed)                                                                                                   \
         {                                                                                                                   \
             isDisplayed = true;                                                                                             \
             AZ::Debug::Trace::Instance().Error(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, window, /*format,*/ __VA_ARGS__); \
         }                                                                                                                   \
-    }
+    }                                                                                                                       \
+    AZ_POP_DISABLE_WARNING
 
-    #define AZ_Warning(window, expression, ...)                   if (!(expression)) { \
-        AZ::Debug::Trace::Instance().Warning(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, window, /*format,*/ __VA_ARGS__); }
+    #define AZ_Warning(window, expression, ...)                                                                             \
+    AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option")                                                               \
+    if (!(expression))                                                                                                      \
+    {                                                                                                                       \
+        AZ_TraceFmtCompileTimeCheck(expression, AZ_VA_HAS_ARGS(__VA_ARGS__),                                                \
+            "String used in place of boolean expression for AZ_Warning.",                                                   \
+            "Did you mean AZ_Warning("#window", false, \"%s\", "#expression"); ?",                                          \
+            "Did you mean AZ_Warning("#window", false, "#expression", "#__VA_ARGS__"); ?");                                 \
+        AZ::Debug::Trace::Instance().Warning(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, window, /*format,*/ __VA_ARGS__);   \
+    }                                                                                                                       \
+    AZ_POP_DISABLE_WARNING
 
 
-    #define AZ_WarningOnce(window, expression, ...)               if (!(expression))                                          \
-    {                                                                                                                         \
-        static bool isDisplayed = false;                                                                                      \
-        if (!isDisplayed)                                                                                                     \
-        {                                                                                                                     \
-            AZ::Debug::Trace::Instance().Warning(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, window, /*format,*/ __VA_ARGS__); \
-            isDisplayed = true;                                                                                               \
-        }                                                                                                                     \
-    }
+    #define AZ_WarningOnce(window, expression, ...)                                                                             \
+    AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option")                                                                   \
+    if (!(expression))                                                                                                          \
+    {                                                                                                                           \
+        AZ_TraceFmtCompileTimeCheck(expression, AZ_VA_HAS_ARGS(__VA_ARGS__),                                                    \
+            "String used in place of boolean expression for AZ_WarningOnce.",                                                   \
+            "Did you mean AZ_WarningOnce("#window", false, \"%s\", "#expression"); ?",                                          \
+            "Did you mean AZ_WarningOnce("#window", false, "#expression", "#__VA_ARGS__"); ?");                                 \
+        static bool isDisplayed = false;                                                                                        \
+        if (!isDisplayed)                                                                                                       \
+        {                                                                                                                       \
+            AZ::Debug::Trace::Instance().Warning(__FILE__, __LINE__, AZ_FUNCTION_SIGNATURE, window, /*format,*/ __VA_ARGS__);   \
+            isDisplayed = true;                                                                                                 \
+        }                                                                                                                       \
+    }                                                                                                                           \
+    AZ_POP_DISABLE_WARNING
 
     #define AZ_TracePrintf(window, ...)                      AZ::Debug::Trace::Instance().Printf(window, __VA_ARGS__);
 
@@ -165,20 +236,15 @@ namespace AZ
 #define AZ_Printf(window, ...)       AZ::Debug::Trace::Instance().Printf(window, __VA_ARGS__);
 
 #if defined(AZ_DEBUG_BUILD)
-#   define AZ_DbgIf(expression)         if (expression)
-#   define AZ_DbgElseIf(expression)     else if (expression)
+#   define AZ_DbgIf(expression) \
+        AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") \
+        if (expression) \
+        AZ_POP_DISABLE_WARNING
+#   define AZ_DbgElseIf(expression) \
+        AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") \
+        else if (expression) \
+        AZ_POP_DISABLE_WARNING
 #else
-#   define AZ_DbgIf(expression)         if (0)
-#   define AZ_DbgElseIf(expression)     else if (0)
+#   define AZ_DbgIf(expression)         if (false)
+#   define AZ_DbgElseIf(expression)     else if (false)
 #endif
-
-#if defined(AZ_COMPILER_MSVC)
-//# pragma warning(pop)
-#endif // AZ_COMPILER_MSVC
-
-#if defined(AZ_COMPILER_SNC)
-//# pragma diag_pop
-#endif // AZ_COMPILER_SNC
-
-#endif // AZCORE_TRACE_H
-#pragma once

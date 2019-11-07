@@ -233,6 +233,21 @@ namespace GraphCanvas
         //! Hides the specified graph member from the scene.
         virtual bool Hide(const AZ::EntityId& graphMember) = 0;
 
+        //! Enables the specified graph member in the graph
+        virtual bool Enable(const NodeId& nodeId) = 0;
+
+        //! Enables the selected elements in the graph.
+        virtual void EnableSelection() = 0;
+
+        //! Disables the specified graph member in the graph
+        virtual bool Disable(const NodeId& nodeId) = 0;
+
+        //! Disables the selected elements in the graph
+        virtual void DisableSelection() = 0;
+
+        //! Used during start-up to get the scene to process the queued enable/disable
+        virtual void ProcessEnableDisableQueue() = 0;
+
         //! Clears the selection in the scene.
         virtual void ClearSelection() = 0;
 
@@ -401,6 +416,10 @@ namespace GraphCanvas
         virtual void RemoveUnusedElements() = 0;
 
         virtual void HandleProposalDaisyChain(const NodeId& startNode, SlotType slotType, ConnectionType connectionType, const QPoint& screenPoint, const QPointF& focusPoint) = 0;
+
+        // Signals used to managge the state around the generic add position
+        virtual QPointF SignalGenericAddPositionUseBegin() = 0;
+        virtual void SignalGenericAddPositionUseEnd() = 0;
     };
 
     using SceneRequestBus = AZ::EBus<SceneRequests>;
@@ -601,6 +620,7 @@ namespace GraphCanvas
             OnRemovedFromScene(sceneId);
         }
         
+        virtual void PreOnRemovedFromScene(const AZ::EntityId& /*sceneId*/) {}
         virtual void OnRemovedFromScene(const AZ::EntityId& /*sceneId*/) {}
 
         //! Signal sent once the scene is fully configured and ready to be displayed.

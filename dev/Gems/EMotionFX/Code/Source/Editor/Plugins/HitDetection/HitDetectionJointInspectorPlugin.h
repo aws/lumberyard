@@ -51,9 +51,6 @@ namespace EMotionFX
         void OnAddCollider();
         void OnClearColliders();
 
-        // QDockWidget overrides
-        void OnVisibilityChanged(bool visible);
-
     private:
         HitDetectionJointWidget* m_nodeWidget;
     };

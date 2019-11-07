@@ -34,6 +34,7 @@ def build(bld):
                            'QT5GUI',
                            'QT5WIDGETS',
                            'ZLIB',
+                           'ZSTD',
                            'DBG_HELP',
                            'D3D_COMPILER_47',
                            'PVR_TEX_TOOL',

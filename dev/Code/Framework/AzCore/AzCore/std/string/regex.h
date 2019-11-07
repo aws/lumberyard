@@ -21,16 +21,7 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/regex_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/regex_h_provo.inl"
-    #endif
-#elif  defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-#   include <limits.h>
-#   include <limits>
-#endif
+#include <limits>
 
 // used for std::pointer_traits \note do an AZStd version
 #include <memory>
@@ -740,7 +731,6 @@ namespace AZStd
             return (*this);
         }
 
-#if defined(AZ_HAS_RVALUE_REFS)
         match_results(this_type&& right)
             : m_isReady(right.m_isReady)
             , m_original(right.m_original)
@@ -764,7 +754,6 @@ namespace AZStd
             }
             return (*this);
         }
-#endif //
 
         bool ready() const              { return m_isReady; }
 
@@ -1747,7 +1736,6 @@ namespace AZStd
             Reset(right.m_rootNode);
         }
 
-#if defined(AZ_HAS_RVALUE_REFS)
         basic_regex(this_type&& right)
             : m_rootNode(nullptr)
             , m_error(nullptr)
@@ -1778,7 +1766,6 @@ namespace AZStd
             _Assign_rv(AZStd:: move(right));
             return (*this);
         }
-#endif // AZ_HAS_RVALUE_REFS
 
         ~basic_regex()
         {   // destroy the object
@@ -4788,7 +4775,3 @@ namespace AZStd
 #if defined(AZ_COMPILER_MSVC)
 #   pragma warning(pop)
 #endif // AZ_COMPILER_MSVC
-
-/*
- * Copyright (c) 1992-2012 by P.J. Plauger.  ALL RIGHTS RESERVED.
- * Consult your license regarding permissions and restrictions. V6.00:0009 */

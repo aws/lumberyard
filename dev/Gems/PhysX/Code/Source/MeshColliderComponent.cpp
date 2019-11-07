@@ -15,6 +15,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzFramework/Physics/SystemBus.h>
 #include <Source/MeshColliderComponent.h>
 
 namespace PhysX
@@ -116,6 +117,11 @@ namespace PhysX
         if (asset == m_shapeConfiguration.m_asset)
         {
             m_shapeConfiguration.m_asset = asset;
+
+#ifdef ENABLE_DEFAULT_MATERIAL_LIBRARY
+            Physics::SystemRequestBus::Broadcast(&Physics::SystemRequests::UpdateMaterialSelection, 
+                m_shapeConfiguration, m_configuration);
+#endif
         }
     }
 
@@ -124,6 +130,11 @@ namespace PhysX
         if (asset == m_shapeConfiguration.m_asset)
         {
             m_shapeConfiguration.m_asset = asset;
+
+#ifdef ENABLE_DEFAULT_MATERIAL_LIBRARY
+            Physics::SystemRequestBus::Broadcast(&Physics::SystemRequests::UpdateMaterialSelection,
+                m_shapeConfiguration, m_configuration);
+#endif
         }
     }
 

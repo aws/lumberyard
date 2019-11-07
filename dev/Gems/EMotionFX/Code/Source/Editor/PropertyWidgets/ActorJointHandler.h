@@ -28,7 +28,7 @@ namespace EMotionFX
     public:
         AZ_CLASS_ALLOCATOR_DECL
 
-        ActorJointPicker(bool singleSelection, const char* dialogTitle, const char* dialogDescriptionLabelText, QWidget* parent);
+        ActorJointPicker(bool singleSelection, const QString& dialogTitle, const QString& dialogDescriptionLabelText, QWidget* parent);
 
         void AddDefaultFilter(const QString& category, const QString& displayName);
 
@@ -38,8 +38,8 @@ namespace EMotionFX
         void SetJointNames(const AZStd::vector<AZStd::string>& jointNames);
         AZStd::vector<AZStd::string> GetJointNames() const;
 
-        void SetWeightedJointNames(const AZStd::vector<AZStd::pair<AZStd::string, float> >& weightedJointNames);
-        AZStd::vector<AZStd::pair<AZStd::string, float> > GetWeightedJointNames() const;
+        void SetWeightedJointNames(const AZStd::vector<AZStd::pair<AZStd::string, float>>& weightedJointNames);
+        AZStd::vector<AZStd::pair<AZStd::string, float>> GetWeightedJointNames() const;
 
     signals:
         void SelectionChanged();
@@ -51,44 +51,33 @@ namespace EMotionFX
     private:
         void UpdateInterface();
 
-        AZStd::vector<AZStd::pair<AZStd::string, float> >   m_weightedJointNames;
-        AZStd::vector<AZStd::pair<QString, QString> >       m_defaultFilters;
-        AZStd::string                                       m_dialogTitle;
-        AZStd::string                                       m_dialogDescriptionLabelText;
-        QPushButton*                                        m_pickButton;
-        QPushButton*                                        m_resetButton;
-        bool                                                m_singleSelection;
+        AZStd::vector<AZStd::pair<AZStd::string, float>> m_weightedJointNames;
+        AZStd::vector<AZStd::pair<QString, QString>> m_defaultFilters;
+        QString m_dialogTitle;
+        QString m_dialogDescriptionLabelText;
+        QLabel* m_label;
+        QPushButton* m_pickButton;
+        QPushButton* m_resetButton;
+        bool m_singleSelection;
     };
 
-
-    class ActorJointElementWidget
-        : public QLineEdit
-    {
-        Q_OBJECT // AUTOMOC
-    public:
-        AZ_CLASS_ALLOCATOR_DECL
-
-        ActorJointElementWidget(QWidget* parent);
-    };
-
-
-    class ActorJointElementHandler
+    template<class T>
+    class ActorJointElementHandlerImpl
         : public QObject
-        , public AzToolsFramework::PropertyHandler<AZStd::string, ActorJointElementWidget>
+        , public AzToolsFramework::PropertyHandler<T, QWidget>
     {
-        Q_OBJECT // AUTOMOC
-
     public:
         AZ_CLASS_ALLOCATOR_DECL
 
         AZ::u32 GetHandlerName() const override;
         QWidget* CreateGUI(QWidget* parent) override;
 
-        void ConsumeAttribute(ActorJointElementWidget* widget, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName) override;
-
-        void WriteGUIValuesIntoProperty(size_t index, ActorJointElementWidget* GUI, property_t& instance, AzToolsFramework::InstanceDataNode* node) override;
-        bool ReadValuesIntoGUI(size_t index, ActorJointElementWidget* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node) override;
+        void WriteGUIValuesIntoProperty(size_t index, QWidget* GUI, T& instance, AzToolsFramework::InstanceDataNode* node) override;
+        bool ReadValuesIntoGUI(size_t index, QWidget* GUI, const T& instance, AzToolsFramework::InstanceDataNode* node) override;
     };
+
+    using ActorJointElementHandler = ActorJointElementHandlerImpl<AZStd::string>;
+    using ActorWeightedJointElementHandler = ActorJointElementHandlerImpl<AZStd::pair<AZStd::string, float>>;
 
 
     class ActorSingleJointHandler

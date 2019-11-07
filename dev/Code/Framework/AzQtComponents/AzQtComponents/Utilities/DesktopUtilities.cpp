@@ -50,7 +50,7 @@ namespace AzQtComponents
     {
 #ifdef AZ_PLATFORM_WINDOWS
         const char* exploreActionName = "Open in Explorer";
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
         const char* exploreActionName = "Open in Finder";
 #else
         const char* exploreActionName = "Open in file browser";

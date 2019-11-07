@@ -56,7 +56,7 @@ namespace GraphCanvas
         , m_elapsedDuration(0)
         , m_configuration(pulseConfiguration)
     {
-        PulseRequestBus::Handler::BusConnect(GetId());
+        PulseRequestBus::Handler::BusConnect(GetEffectId());
         AZ::TickBus::Handler::BusConnect();
 
         setAcceptHoverEvents(false);
@@ -117,7 +117,7 @@ namespace GraphCanvas
 
             QTimer::singleShot(0, [this]()
             {
-                PulseNotificationBus::Event(GetId(), &PulseNotifications::OnPulseComplete);
+                PulseNotificationBus::Event(GetEffectId(), &PulseNotifications::OnPulseComplete);
                 QGraphicsScene* graphicsScene = this->scene();
                 graphicsScene->removeItem(this);
                 delete this;
@@ -226,6 +226,6 @@ namespace GraphCanvas
 
     void AnimatedPulse::OnGraphicsEffectCancelled()
     {
-        PulseNotificationBus::Event(GetId(), &PulseNotifications::OnPulseCanceled);
+        PulseNotificationBus::Event(GetEffectId(), &PulseNotifications::OnPulseCanceled);
     }    
 }

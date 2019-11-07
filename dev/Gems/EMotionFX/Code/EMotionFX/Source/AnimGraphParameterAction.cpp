@@ -84,7 +84,6 @@ namespace EMotionFX
 
     void AnimGraphParameterAction::TriggerAction(AnimGraphInstance* animGraphInstance) const
     {
-        if (m_parameterIndex.IsSuccess())
         {
             MCore::Attribute* attribute = animGraphInstance->GetParameterValue(static_cast<uint32>(m_parameterIndex.GetValue()));
             if (attribute)
@@ -105,7 +104,7 @@ namespace EMotionFX
                     }
                     default:
                     {
-                        AZ_Assert(false, "Type %d of attribute %s are not supported", attribute->GetType(), m_parameterName);
+                        AZ_Assert(false, "Type %d of attribute %s are not supported", attribute->GetType(), m_parameterName.c_str());
                         break;
                     }
                 }

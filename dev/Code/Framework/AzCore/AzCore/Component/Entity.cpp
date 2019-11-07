@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/EntityBus.h>
@@ -30,177 +29,14 @@
 #include <AzCore/std/chrono/chrono.h>
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/string/conversions.h>
-#include <AzCore/Platform/Platform.h>
+#include <AzCore/Platform.h>
 
 #include <AzCore/Debug/Profiler.h>
-
-
-#if defined(AZ_PLATFORM_WINDOWS)
-#   include <AzCore/IPC/SharedMemory.h>
-#   include <AzCore/PlatformIncl.h>
-#else
-#   include <AzCore/std/parallel/spin_mutex.h>
-#   include <AzCore/std/parallel/lock.h>
-#endif // AZ_PLATFORM_WINDOWS
 
 namespace AZ
 {
     //////////////////////////////////////////////////////////////////////////
     // Globals
-#if defined(AZ_PLATFORM_WINDOWS)
-    /**
-     * TODO: We can store the last ID generated on this computer into the registry
-     * (starting for the first time stamp), this way not waits, etc. will be needed.
-     * We are NOT doing this, because need of unique entity ID might be gone soon.
-     */
-    class TimeIntervalStamper
-    {
-    public:
-        TimeIntervalStamper(AZ::u64 timeInterval)
-            : m_time(nullptr)
-            , m_timeInterval(timeInterval)
-        {
-            AZ_Assert(m_timeInterval > 0, "You can't have 0 time interval!");
-            SharedMemory::CreateResult createResult = m_sharedData.Create("AZCoreIdStorage", sizeof(AZ::u64), true);
-            (void)createResult;
-            AZ_Assert(createResult != SharedMemory::CreateFailed, "Failed to create shared memory block for Id's!");
-            bool isReady = m_sharedData.Map();
-            (void)isReady;
-            AZ_Assert(isReady, "Failed to map the shared memory data!");
-            m_time = reinterpret_cast<AZ::u64*>(m_sharedData.Data());
-        }
-
-        ~TimeIntervalStamper()
-        {
-            // make sure we wait for time generated it time period, otherwise if
-            // we restart instantly we can generate the same ID.
-            AZ::u64 intervalUTC = AZStd::GetTimeUTCMilliSecond() / m_timeInterval;
-            lock();
-            AZ::u64 lastStamp = *m_time;
-            unlock();
-            if (intervalUTC < lastStamp)
-            {
-                // wait for the time
-                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds((lastStamp - intervalUTC) * m_timeInterval));
-            }
-        }
-
-        //////////////////////////////////////////////////////////////////////////
-        /// Naming is conforming with AZStd::lock_guard/unique_lock/etc.
-        void    lock()
-        {
-            m_sharedData.lock();
-            if (m_sharedData.IsLockAbandoned())
-            {
-                *m_time = 0; // reset the time
-            }
-        }
-        bool    try_lock()
-        {
-            bool isLocked = m_sharedData.try_lock();
-            if (isLocked && m_sharedData.IsLockAbandoned())
-            {
-                *m_time = 0; // reset the time
-            }
-            return m_sharedData.try_lock();
-        }
-        void    unlock()                    { m_sharedData.unlock(); }
-        //////////////////////////////////////////////////////////////////////////
-
-        AZ::u64  GetTimeStamp()
-        {
-            AZ::u64 utcTime = AZStd::GetTimeUTCMilliSecond();
-            AZ::u64 intervalUTC = utcTime / m_timeInterval;
-            if (intervalUTC <= *m_time) // if we generated more than one ID for the current time.
-            {
-                *m_time += 1; // get next interval
-            }
-            else
-            {
-                *m_time = intervalUTC;
-            }
-
-            return *m_time;
-        }
-    private:
-        SharedMemory        m_sharedData;
-        AZ::u64*            m_time;
-        AZ::u64             m_timeInterval; ///< Interval in milliseconds in which we store a time stamp
-    };
-#else // !AZ_PLATFORM_WINDOWS
-    static const char* kTimeVariableName = "TimeIntervalStamp";
-    static AZ::EnvironmentVariable<AZ::u64> g_sharedTimeStorage;
-
-    class TimeIntervalStamper
-    {
-    public:
-        TimeIntervalStamper(AZ::u64 timeInterval)
-            : m_time(nullptr)
-            , m_timeInterval(timeInterval)
-        {
-            AZ_Assert(m_timeInterval > 0, "You can't have 0 time interval!");
-
-            const bool isConstruct = true;
-            const bool isTransferOwnership = false;
-
-            g_sharedTimeStorage = Environment::CreateVariableEx<AZ::u64>(kTimeVariableName, isConstruct, isTransferOwnership);
-            m_time = &g_sharedTimeStorage.Get();
-
-            if (g_sharedTimeStorage.IsOwner())
-            {
-                *m_time = 0;
-            }
-
-        }
-
-        ~TimeIntervalStamper()
-        {
-            // make sure we wait for time generated it time period, otherwise if
-            // we restart instantly we can generate the same ID.
-            AZ::u64 intervalUTC = AZStd::GetTimeUTCMilliSecond() / m_timeInterval;
-            lock();
-            AZ::u64 lastStamp = *m_time;
-            unlock();
-            if (intervalUTC < lastStamp)
-            {
-                // wait for the time
-                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds((lastStamp - intervalUTC) * m_timeInterval));
-            }
-
-            g_sharedTimeStorage = nullptr;
-            m_time = nullptr;
-        }
-
-        //////////////////////////////////////////////////////////////////////////
-        /// Naming is conforming with AZStd::lock_guard/unique_lock/etc.
-        void    lock()                      { m_mutex.lock(); }
-        bool    try_lock()                  { return m_mutex.try_lock(); }
-        void    unlock()                    { m_mutex.unlock(); }
-        //////////////////////////////////////////////////////////////////////////
-
-        AZ::u64  GetTimeStamp()
-        {
-            AZ::u64 utcTime = AZStd::GetTimeUTCMilliSecond();
-            AZ::u64 intervalUTC = utcTime / m_timeInterval;
-            if (intervalUTC <= *m_time) // if we generated more than one ID for the current time.
-            {
-                *m_time += 1; // get next interval
-            }
-            else
-            {
-                *m_time = intervalUTC;
-            }
-
-            return *m_time;
-        }
-
-    private:
-        AZStd::spin_mutex       m_mutex;
-        AZ::u64*                m_time;
-        AZ::u64                 m_timeInterval; ///< Interval in milliseconds in which we store a time stamp
-    };
-#endif // !AZ_PLATFORM_WINDOWS
-
     class SerializeEntityFactory
         : public SerializeContext::IObjectFactory
     {
@@ -1536,5 +1372,3 @@ namespace AZ
         return eid;
     }
 } // namespace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

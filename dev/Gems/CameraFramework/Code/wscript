@@ -17,4 +17,6 @@ def build(bld):
         disable_tests = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
         file_list     = ['CameraFramework.waf_files'],
         win_features  = ['crcfix'],
+        includes      = [bld.Path('Code/CryEngine/CryCommon')
+                         ],
     )

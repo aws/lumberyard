@@ -544,6 +544,7 @@ namespace PhysX
             rigidDynamic->setAngularDamping(configuration.m_angularDamping);
             rigidDynamic->setCMassLocalPose(physx::PxTransform(PxMathConvert(configuration.m_centerOfMassOffset)));
             rigidDynamic->setRigidBodyFlag(physx::PxRigidBodyFlag::eKINEMATIC, configuration.m_kinematic);
+            rigidDynamic->setMaxAngularVelocity(configuration.m_maxAngularVelocity);
             return rigidDynamic;
         }
 

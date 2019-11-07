@@ -21,6 +21,7 @@ namespace CodeGenerator
 
         // Globally-accessible settings
         extern bool g_enableVerboseOutput;
+        extern std::string g_inputPath;
 
         //! Helper class to simplify syntax for setting up clang arguments, supports loading settings from a file.
         //! Usage:

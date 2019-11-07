@@ -486,6 +486,7 @@ namespace EMotionFX
 
     void BlendTreeParameterNode::ParameterRemoved(const AZStd::string& oldParameterName)
     {
+        AZ_UNUSED(oldParameterName);
         // This may look unnatural, but the method ParameterOrderChanged deals with this as well, we just need to pass an empty before the change
         // and the current parameters after the change
         ParameterOrderChanged(ValueParameterVector(), GetAnimGraph()->RecursivelyGetValueParameters());

@@ -102,7 +102,7 @@
             "native/utilities/CommunicatorTracePrinter.h",
             "native/utilities/CommunicatorTracePrinter.cpp",
             "native/utilities/AssetServerHandler.h",
-            "native/utilities/AssetServerhandler.cpp"
+            "native/utilities/AssetServerHandler.cpp"
         ]
 
     }

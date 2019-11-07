@@ -9,12 +9,12 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *
  */
-#include "TestTypes.h"
 
 #include <AzCore/Script/ScriptContext.h>
 #include <AzCore/Script/lua/lua.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Math/MathReflection.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 using namespace AZ;
 
@@ -1702,9 +1702,9 @@ namespace UnitTest
         script->Execute("crc32 = Crc32(0x12345680)");
         script->Execute("AZTestAssert(tostring(crc32) == \"0x12345680\")");
 
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         script->Execute("globalCrc32Prop = crc32.value");
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
     }
 
     TEST_F(ScriptMathTest, AabbTest)

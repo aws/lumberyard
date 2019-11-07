@@ -31,6 +31,6 @@ struct IComponentBoids
     // </interfuscator:shuffle>
 };
 
-DECLARE_COMPONENT_POINTERS(IComponentBoids);
+DECLARE_SMART_POINTERS(IComponentBoids);
 
 #endif // CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTBOIDS_H

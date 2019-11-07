@@ -27,11 +27,14 @@ namespace Ui
 
 namespace AzQtComponents
 {
+    class OutlinerSearchItemDelegate;
+
     class OutlinerSearchTypeSelector
         : public SearchTypeSelector
     {
     public:
         OutlinerSearchTypeSelector(QPushButton* parent = nullptr);
+        const QString& GetFilterString() { return m_filterString; }
 
     protected:
         // can be used to override the logic when adding items in RepopulateDataModel
@@ -66,6 +69,9 @@ namespace AzQtComponents
             Separator,
             FirstRealFilter
         };
+    private:
+        OutlinerSearchTypeSelector* m_selector = nullptr;
+        OutlinerSearchItemDelegate* m_delegate = nullptr;
     };
 
     class OutlinerIcons
@@ -91,7 +97,13 @@ namespace AzQtComponents
     public:
         OutlinerSearchItemDelegate(QWidget* parent = nullptr);
 
+        void PaintRichText(QPainter* painter, QStyleOptionViewItemV4& opt, QString& text) const;
         void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
         QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override;
+
+        void SetSelector(OutlinerSearchTypeSelector* selector) { m_selector = selector; }
+
+    private:
+        OutlinerSearchTypeSelector* m_selector;
     };
 }

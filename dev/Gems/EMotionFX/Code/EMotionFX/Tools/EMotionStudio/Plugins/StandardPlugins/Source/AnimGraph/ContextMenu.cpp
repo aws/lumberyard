@@ -123,11 +123,16 @@ namespace EMStudio
         const AZStd::vector<EMotionFX::AnimGraphNode*>& selectedNodes, bool graphWidgetOnlyMenusEnabled, bool selectingAnyReferenceNodeFromNavigation,
         const AnimGraphActionFilter& actionFilter)
     {
-        BlendGraphWidget*       blendGraphWidget = plugin->GetGraphWidget();
-        BlendGraphViewWidget*   viewWidget       = plugin->GetViewWidget();
-        NodeGraph*              nodeGraph        = blendGraphWidget->GetActiveGraph();
-        AnimGraphActionManager& actionManager    = plugin->GetActionManager();
-        const bool              inReferenceGraph = nodeGraph->IsInReferencedGraph() || selectingAnyReferenceNodeFromNavigation;
+        BlendGraphWidget* blendGraphWidget = plugin->GetGraphWidget();
+        NodeGraph* nodeGraph = blendGraphWidget->GetActiveGraph();
+        if (!nodeGraph)
+        {
+            return;
+        }
+
+        BlendGraphViewWidget* viewWidget = plugin->GetViewWidget();
+        AnimGraphActionManager& actionManager = plugin->GetActionManager();
+        const bool inReferenceGraph = nodeGraph->IsInReferencedGraph() || selectingAnyReferenceNodeFromNavigation;
 
         // only show the paste and the create node menu entries in case the function got called from the graph widget
         if (!inReferenceGraph && graphWidgetOnlyMenusEnabled)

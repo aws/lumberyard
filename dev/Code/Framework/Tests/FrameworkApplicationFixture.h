@@ -11,13 +11,12 @@
 */
 #pragma once
 
-#include <Tests/TestTypes.h>
-
 #include <AzCore/std/typetraits/alignment_of.h>
 #include <AzCore/std/typetraits/aligned_storage.h>
 #include <AzFramework/Application/Application.h>
 #include <AzCore/UserSettings/UserSettingsComponent.h>
 #include <AzCore/IO/SystemFile.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 namespace AZ
 {

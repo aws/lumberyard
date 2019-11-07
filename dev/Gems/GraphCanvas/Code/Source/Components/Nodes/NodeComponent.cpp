@@ -89,8 +89,8 @@ namespace GraphCanvas
             delete slotRef;
         }
     }
-	
-	void NodeComponent::Init()
+
+    void NodeComponent::Init()
     {
         GraphCanvasPropertyComponent::Init();
         AZ::EntityBus::Handler::BusConnect(GetEntityId());
@@ -127,6 +127,50 @@ namespace GraphCanvas
                 {
                     slotEntity->Deactivate();
                 }
+            }
+        }
+    }
+
+    void NodeComponent::OnConnectedTo(const AZ::EntityId& connectionId, const Endpoint& endpoint)
+    {
+        AZ_UNUSED(connectionId);
+        AZ_UNUSED(endpoint);
+
+        RootGraphicsItemRequests* itemInterface = RootGraphicsItemRequestBus::FindFirstHandler(GetEntityId());
+
+        if (itemInterface)
+        {
+            RootGraphicsItemEnabledState enabledState = itemInterface->GetEnabledState();
+            RootGraphicsItemEnabledState updatedState = UpdateEnabledState();
+
+            if (updatedState != enabledState)
+            {
+                AZStd::unordered_set< NodeId > updatedStateSet;
+                updatedStateSet.insert(GetEntityId());
+
+                GraphUtils::SetNodesEnabledState(updatedStateSet, updatedState);
+            }
+        }
+    }
+
+    void NodeComponent::OnDisconnectedFrom(const AZ::EntityId& connectionId, const Endpoint& endpoint)
+    {
+        AZ_UNUSED(connectionId);
+        AZ_UNUSED(endpoint);
+
+        RootGraphicsItemRequests* itemInterface = RootGraphicsItemRequestBus::FindFirstHandler(GetEntityId());
+
+        if (itemInterface)
+        {
+            RootGraphicsItemEnabledState enabledState = itemInterface->GetEnabledState();
+            RootGraphicsItemEnabledState updatedState = UpdateEnabledState();
+
+            if (updatedState != enabledState)
+            {
+                AZStd::unordered_set< NodeId > updatedStateSet;
+                updatedStateSet.insert(GetEntityId());
+
+                GraphUtils::SetNodesEnabledState(updatedStateSet, updatedState);
             }
         }
     }
@@ -285,6 +329,7 @@ namespace GraphCanvas
                 m_slots.emplace_back(slotEntity);
                 SlotRequestBus::Event(slotId, &SlotRequests::SetNode, GetEntityId());
                 NodeNotificationBus::Event(GetEntityId(), &NodeNotifications::OnSlotAddedToNode, slotId);
+                SlotNotificationBus::MultiHandler::BusConnect(slotId);
             }
         }
         else
@@ -304,9 +349,10 @@ namespace GraphCanvas
         {
             m_slots.erase(entry);
 
+            SlotNotificationBus::MultiHandler::BusDisconnect(slotId);
             NodeNotificationBus::Event(GetEntityId(), &NodeNotifications::OnSlotRemovedFromNode, slotId);
             SlotRequestBus::Event(slotId, &SlotRequests::ClearConnections);
-            SlotRequestBus::Event(slotId, &SlotRequests::SetNode, AZ::EntityId());
+            SlotRequestBus::Event(slotId, &SlotRequests::SetNode, AZ::EntityId());            
 
             QGraphicsItem* item = nullptr;
             VisualRequestBus::EventResult(item, slotId, &VisualRequests::AsGraphicsItem);
@@ -456,5 +502,91 @@ namespace GraphCanvas
     AZ::EntityId NodeComponent::GetWrappingNode() const
     {
         return m_wrappingNode;
+    }
+
+    void NodeComponent::SignalBatchedConnectionManipulationBegin()
+    {
+        NodeNotificationBus::Event(GetEntityId(), &NodeNotifications::OnBatchedConnectionManipulationBegin);
+    }
+
+    void NodeComponent::SignalBatchedConnectionManipulationEnd()
+    {
+        NodeNotificationBus::Event(GetEntityId(), &NodeNotifications::OnBatchedConnectionManipulationEnd);
+    }
+
+    RootGraphicsItemEnabledState NodeComponent::UpdateEnabledState()
+    {
+        RootGraphicsItemRequests* graphicsInterface = RootGraphicsItemRequestBus::FindFirstHandler(GetEntityId());
+
+        if (graphicsInterface == nullptr)
+        {
+            return RootGraphicsItemEnabledState::ES_Enabled;
+        }
+
+        if (graphicsInterface && graphicsInterface->GetEnabledState() == RootGraphicsItemEnabledState::ES_Disabled)
+        {
+            return graphicsInterface->GetEnabledState();
+        }
+
+        bool foundDisabledNode = false;
+        bool foundEnabledNode = false;
+
+        AZStd::unordered_set< NodeId > connectedNodes;
+
+        for (AZ::Entity* slotEntity : m_slots)
+        {
+            Endpoint currentEndpoint(GetEntityId(), slotEntity->GetId());
+
+            SlotRequests* slotInterface = SlotRequestBus::FindFirstHandler(slotEntity->GetId());
+
+            if (slotInterface == nullptr)
+            {
+                continue;
+            }
+
+            ConnectionType connectionType = slotInterface->GetConnectionType();
+            SlotType slotType = slotInterface->GetSlotType();
+
+            // We only want to follow execution In's for now.
+            if (connectionType == CT_Input
+                && slotType == SlotTypes::ExecutionSlot)
+            {            
+                AZStd::vector< ConnectionId > connections;
+                SlotRequestBus::EventResult(connections, slotEntity->GetId(), &SlotRequests::GetConnections);                
+
+                for (ConnectionId connectionId : connections)
+                {
+                    Endpoint otherEndpoint;
+                    ConnectionRequestBus::EventResult(otherEndpoint, connectionId, &ConnectionRequests::FindOtherEndpoint, currentEndpoint);
+
+                    if (otherEndpoint.IsValid())
+                    {
+                        bool isEnabled = false;
+                        RootGraphicsItemRequestBus::EventResult(isEnabled, otherEndpoint.GetNodeId(), &RootGraphicsItemRequests::IsEnabled);
+
+                        if (isEnabled)
+                        {
+                            foundEnabledNode = true;
+                            break;
+                        }
+                        else
+                        {
+                            foundDisabledNode = true;
+                        }
+                    }                    
+                }
+            }
+        }
+
+        if (foundDisabledNode && !foundEnabledNode)
+        {
+            graphicsInterface->SetEnabledState(RootGraphicsItemEnabledState::ES_PartialDisabled);
+        }
+        else
+        {
+            graphicsInterface->SetEnabledState(RootGraphicsItemEnabledState::ES_Enabled);
+        }
+
+        return graphicsInterface->GetEnabledState();
     }
 }

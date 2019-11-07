@@ -308,7 +308,6 @@ namespace AZStd
                     pi_->add_ref_copy();
                 }
             }
-#if defined(AZ_HAS_RVALUE_REFS)
             shared_count(shared_count&& r)
                 : pi_(r.pi_)                            // nothrow
 #if defined(AZSTD_SP_ENABLE_DEBUG_HOOKS)
@@ -317,7 +316,6 @@ namespace AZStd
             {
                 r.pi_ = 0;
             }
-#endif
 
             explicit shared_count(weak_count const& r);  // throws bad_weak_ptr when r.use_count() == 0
             shared_count(weak_count const& r, sp_nothrow_tag);    // constructs an empty *this when r.use_count() == 0
@@ -420,7 +418,6 @@ namespace AZStd
                 }
             }
             // Move support
-#if defined(AZ_HAS_RVALUE_REFS)
             weak_count(weak_count&& r)
                 : pi_(r.pi_)                        // nothrow
 #if defined(AZSTD_SP_ENABLE_DEBUG_HOOKS)
@@ -429,7 +426,6 @@ namespace AZStd
             {
                 r.pi_ = 0;
             }
-#endif
             ~weak_count() // nothrow
             {
                 if (pi_ != 0)

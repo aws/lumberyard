@@ -11,12 +11,14 @@
 */
 #pragma once
 
+#include <GraphCanvas/Components/NodePropertyDisplay/ComboBoxDataInterface.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/NumericDataInterface.h>
 
 #include "ScriptCanvasDataInterface.h"
 
 namespace ScriptCanvasEditor
 {
+    // Used for general numeric input.
     class ScriptCanvasNumericDataInterface
         : public ScriptCanvasDataInterface<GraphCanvas::NumericDataInterface>        
     {
@@ -29,7 +31,7 @@ namespace ScriptCanvasEditor
         
         ~ScriptCanvasNumericDataInterface() = default;
         
-        // DoubleDataInterface
+        // NumericDataInterface
         double GetNumber() const override
         {
             const ScriptCanvas::Datum* object = GetSlotObject();            

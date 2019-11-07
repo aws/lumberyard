@@ -12,7 +12,7 @@
 
 def build(bld):
     bld.DefineGem(
-        includes    = [
+        includes    = [ bld.Path('Code/CryEngine/CryCommon'),
                         bld.Path('Code/CryEngine/CryAction'),
                         bld.Path('Code/Tools')
                       ],

@@ -1,0 +1,16 @@
+{
+  "auto": {
+    "Source/BehaviorContext/Platform/Linux": [
+      "../Common/Multiplayer/BehaviorContext/GridSystemContext_Unimplemented.cpp"
+    ],
+    "Source/MultiplayerLobbyServiceWrapper/Platform/Linux": [
+      "../Common/Multiplayer/MultiplayerLobbyComponent_Unimplemented.cpp"
+    ],
+    "Platform/Linux": [
+      "Multiplayer_GridMateServiceWrapper_Platform.h",
+      "Multiplayer_GridMateServiceWrapper_Linux.h",
+      "Multiplayer_Traits_Platform.h",
+      "Multiplayer_Traits_Linux.h"
+    ]
+  }
+}

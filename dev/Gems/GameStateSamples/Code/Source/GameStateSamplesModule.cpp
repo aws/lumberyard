@@ -19,6 +19,7 @@
 #include <GameStateSamples/GameStateLevelRunning.h>
 #include <GameStateSamples/GameStateMainMenu.h>
 #include <GameStateSamples/GameStatePrimaryUserSelection.h>
+#include <GameStateSamples/GameStateSamples_Traits_Platform.h>
 
 #include <platform_impl.h>
 #include <IConsole.h>
@@ -121,11 +122,11 @@ namespace GameStateSamples
             }
 
             bool primaryUserSelectionEnabled = false;
-        #if defined(AZ_TRAIT_PRIMARY_USER_SELECTION_ENABLED)
+        #if AZ_TRAIT_GAMESTATESAMPLES_PRIMARY_USER_SELECTION_ENABLED
             primaryUserSelectionEnabled = true;
         #else
             primaryUserSelectionEnabled = false;
-        #endif // defined(AZ_TRAIT_PRIMARY_USER_SELECTION_ENABLED)
+        #endif // AZ_TRAIT_GAMESTATESAMPLES_PRIMARY_USER_SELECTION_ENABLED
             if (gEnv && gEnv->pConsole && gEnv->pConsole->GetCVar("sys_primaryUserSelectionEnabled"))
             {
                 switch (gEnv->pConsole->GetCVar("sys_primaryUserSelectionEnabled")->GetIVal())

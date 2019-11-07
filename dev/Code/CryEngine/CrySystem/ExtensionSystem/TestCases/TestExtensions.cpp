@@ -812,7 +812,7 @@ namespace TestExtension
             return &CDontLikeMacrosFactory::Access();
         };
 
-		// only needed to be able to create initial shared_ptr<CDontLikeMacros> so we don't lose type info for debugging (i.e. inspecting shared_ptr<>)
+        // only needed to be able to create initial shared_ptr<CDontLikeMacros> so we don't lose type info for debugging (i.e. inspecting shared_ptr<>)
         template <class T>
         friend void AZStd::Internal::sp_ms_deleter<T>::destroy();
         template <class T>
@@ -856,7 +856,7 @@ namespace TestExtension
     ICryUnknownPtr CDontLikeMacrosFactory::CreateClassInstance() const
     {
         AZStd::shared_ptr<CDontLikeMacros> p = AZStd::make_shared<CDontLikeMacros>();
-        return ICryUnknownPtr(*static_cast<boost::shared_ptr<ICryUnknown>*>(static_cast<void*>(&p)));
+        return ICryUnknownPtr(*static_cast<AZStd::shared_ptr<ICryUnknown>*>(static_cast<void*>(&p)));
     }
 
     static SRegFactoryNode g_dontLikeMacrosFactory(&CDontLikeMacrosFactory::Access());

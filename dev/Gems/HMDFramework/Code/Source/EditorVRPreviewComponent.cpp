@@ -38,7 +38,7 @@ namespace AZ
                         "VR Preview", "The VR Preview component creates a user-editable navigation mesh that defines valid areas that users can teleport to")
                         ->ClassElement(Edit::ClassElements::EditorData, "")
                         ->Attribute(Edit::Attributes::Category, "VR")
-                        ->Attribute(Edit::Attributes::Icon, "Editor/Icons/Components/VRPreview.png")
+                        ->Attribute(Edit::Attributes::Icon, "Editor/Icons/Components/VRPreview.svg")
                         ->Attribute(Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/VRPreview.png")
                         ->Attribute(Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-vrpreview-component.html")

@@ -214,6 +214,7 @@ namespace EMotionFX
 
         void SimpleMotionComponent::OnActorInstanceDestroyed(EMotionFX::ActorInstance* actorInstance)
         {
+            AZ_UNUSED(actorInstance);
             RemoveMotionInstanceFromActor(m_motionInstance);
             m_motionInstance = nullptr;
             RemoveMotionInstanceFromActor(m_lastMotionInstance);

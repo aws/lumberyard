@@ -10,10 +10,9 @@
 *
 */
 
-#include <Tests/TestTypes.h>
-
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Outcome/Outcome.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #include <AzToolsFramework/API/EntityCompositionNotificationBus.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>

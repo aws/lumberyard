@@ -20,7 +20,7 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/functional.h>
 #include <AzCore/std/parallel/atomic.h>
-#include <AzCore/std/parallel/conditional_variable.h>
+#include <AzCore/std/parallel/condition_variable.h>
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/parallel/threadbus.h>
 #include <AzCore/Debug/Trace.h>

@@ -302,7 +302,7 @@ void  CRealtimeRemoteUpdateListener::LoadTerrainLayer(XmlNodeRef& root, unsigned
     {
         texId = gEnv->pRenderer->DownLoadToVideoMemory(uchData, w, h, eTFSrc, eTFSrc, 0, false, FILTER_NONE, 0, NULL, FT_USAGE_ALLOWREADSRGB);
         // Swapped x & y for historical reasons.
-        gEnv->p3DEngine->SetTerrainSectorTexture(posy, posx, texId);
+        gEnv->p3DEngine->SetTerrainSectorTexture(posy, posx, texId, w, h);
     }
 }
 

@@ -87,7 +87,7 @@ void CD3DStereoRenderer::SelectDefaultDevice()
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DStereo_cpp_provo.inl"
     #endif
-#elif defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
     device = STEREO_DEVICE_FRAMECOMP;
 #endif
 

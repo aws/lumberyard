@@ -885,9 +885,13 @@ namespace LmbrCentral
     {
         if (CanGenerateCubemap())
         {
-            AzToolsFramework::EditorRequestBus::Broadcast(
-                &AzToolsFramework::EditorRequests::GenerateCubemapForEntity,
-                GetEntityId(), nullptr, false);
+            EBUS_EVENT(AzToolsFramework::EditorRequests::Bus,
+                GenerateCubemapWithIDForEntity,
+                GetEntityId(),
+                GetCubemapId(),
+                nullptr,
+                false, 
+                true);
         }
     }
 

@@ -674,10 +674,6 @@ bool CObjectMode::OnLButtonDown(CViewport* view, int nFlags, const QPoint& point
         AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(
             selectedEntities,
             &AzToolsFramework::ToolsApplicationRequests::Bus::Events::GetSelectedEntities);
-
-        AzToolsFramework::EditorTransformChangeNotificationBus::Broadcast(
-            &AzToolsFramework::EditorTransformChangeNotificationBus::Events::OnEntityTransformChanging,
-            selectedEntities);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -705,6 +701,8 @@ bool CObjectMode::OnLButtonDown(CViewport* view, int nFlags, const QPoint& point
 //////////////////////////////////////////////////////////////////////////
 bool CObjectMode::OnLButtonUp(CViewport* view, int nFlags, const QPoint& point)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
     if (GetIEditor()->IsInGameMode() || GetIEditor()->IsInSimulationMode())
     {
         // Ignore clicks while in game.

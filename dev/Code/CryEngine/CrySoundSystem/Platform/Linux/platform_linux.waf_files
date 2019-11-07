@@ -1,0 +1,11 @@
+{
+    "auto":
+    {
+        "Platform/Linux":
+        [
+            "CrySoundSystem_Traits_Platform.h",
+            "CrySoundSystem_Traits_Linux.h",
+            "../Common/Unimplemented/CrySoundSystem_Unimplemented.cpp"
+        ]
+    }
+}

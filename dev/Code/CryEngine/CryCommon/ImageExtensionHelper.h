@@ -62,7 +62,7 @@
 // usually added to the end of DDS files
 
 //Needed to write out DDS files on Mac
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 #define    DDPF_ALPHAPIXELS     0x00000001  // Texture contains alpha data
 #define    DDPF_ALPHA           0x00000002  // For alpha channel only uncompressed data
 #define    DDPF_FOURCC          0x00000004  // Texture contains compressed RGB data

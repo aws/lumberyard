@@ -48,7 +48,7 @@ static bool inline operator!=(const _GUID& lhs, const _GUID& rhs)
 }
 #endif //  !defined _SYS_GUID_OPERATOR_EQ_
 
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 
 #ifndef _REFGUID_DEFINED
 #define _REFGUID_DEFINED

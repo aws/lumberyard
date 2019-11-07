@@ -281,7 +281,7 @@ namespace AzToolsFramework
         AZ::EntityId sortEntityId = GetEntityIdForSortInfo(parentId);
 
         bool success = false;
-        EditorEntitySortRequestBus::BroadcastResult(success, &EditorEntitySortRequestBus::Events::AddChildEntityAtPosition, childId, beforeEntity);
+        EditorEntitySortRequestBus::EventResult(success, sortEntityId, &EditorEntitySortRequestBus::Events::AddChildEntityAtPosition, childId, beforeEntity);
         if (success && parentId != sortEntityId)
         {
             EditorEntitySortNotificationBus::Event(parentId, &EditorEntitySortNotificationBus::Events::ChildEntityOrderArrayUpdated);
@@ -1120,6 +1120,7 @@ namespace AzToolsFramework
 
             for (int entityIndex = 0; entityIndex < looseEntityClones.size(); ++entityIndex)
             {
+                EditorEntityContextNotificationBus::Broadcast(&EditorEntityContextNotification::OnEditorEntityDuplicated, duplicationList[entityIndex], looseEntityClones[entityIndex]->GetId());
                 out_sourceToCloneEntityIdMap[duplicationList[entityIndex]] = looseEntityClones[entityIndex]->GetId();
             }
         }

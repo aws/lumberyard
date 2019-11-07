@@ -1294,7 +1294,7 @@ namespace CryPakUnitTests
     TEST(CryPakUnitTests, BeautifyPath_AbsolutePathMakeLowerTrue_LoweredAndSlashesSwitched)
     {
         char nativeSlash = CCryPak::g_cNativeSlash;
-#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_MAC)
         AZStd::string caseSensitiveAliasPath = "//absolutePath\\someDir\\SomeFile.EXT";
         CCryPak::BeautifyPath(caseSensitiveAliasPath.data(), true);
 
@@ -1304,7 +1304,7 @@ namespace CryPakUnitTests
         CCryPak::BeautifyPath(caseSensitiveAliasPath.data(), true);
 
         constexpr const char* expectedPath = "c:" CRY_NATIVE_PATH_SEPSTR "absolutepath" CRY_NATIVE_PATH_SEPSTR "somedir" CRY_NATIVE_PATH_SEPSTR "somefile.ext";
-#endif // defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+#endif // defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_MAC)
 
         EXPECT_STREQ(caseSensitiveAliasPath.data(), expectedPath);
     }
@@ -1320,7 +1320,7 @@ namespace CryPakUnitTests
     }
 
     /*
-    // Commenting this test out since CryPak tests do not support AZ_TEST_START_ASSERTTEST
+    // Commenting this test out since CryPak tests do not support AZ_TEST_START_TRACE_SUPPRESSION
     TEST(CryPakUnitTests, BeautifyPath_NullCharPtr_AssertsPathIsNullptr)
     {
         char nativeSlash = CCryPak::g_cNativeSlash;

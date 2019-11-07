@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Mac":
+        [
+            "CryAudioImplNoSound_Traits_Platform.h",
+            "CryAudioImplNoSound_Traits_Mac.h"
+        ]
+    }
+}

@@ -18,7 +18,7 @@
 #define CRYINCLUDE_CRYACTION_ISHAREDPARAMSMANAGER_H
 #pragma once
 
-#include <BoostHelpers.h>
+#include <SmartPointersHelpers.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Forward declaration of shared parameters type information class.

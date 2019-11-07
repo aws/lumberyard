@@ -19,6 +19,9 @@
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/std/string/string.h>
 
+#include <GraphCanvas/Types/EntitySaveData.h>
+#include <GraphCanvas/Utils/ColorUtils.h>
+
 namespace GraphCanvas
 {   
     const int k_findShortcut = -1;
@@ -155,4 +158,95 @@ namespace GraphCanvas
     };
 
     using BookmarkTableRequestBus = AZ::EBus<BookmarkTableRequests>;
+
+    class BookmarkAnchorComponent;
+
+    class BookmarkAnchorComponentSaveDataCallback
+    {
+    public:
+        virtual void OnBookmarkNameChanged() = 0;
+        virtual void OnBookmarkColorChanged() = 0;
+    };
+
+    class BookmarkAnchorComponentSaveData
+        : public ComponentSaveData
+    {
+    public:
+        AZ_RTTI(BookmarkAnchorComponentSaveData, "{E285D2EF-ABD4-438D-8797-DA1F099DAE51}", ComponentSaveData);
+        AZ_CLASS_ALLOCATOR(BookmarkAnchorComponentSaveData, AZ::SystemAllocator, 0);
+
+        BookmarkAnchorComponentSaveData()
+            : m_shortcut(k_findShortcut)
+            , m_color(ColorUtils::GetRandomColor())
+            , m_callback(nullptr)
+            , m_position(0, 0)
+            , m_dimension(0, 0)
+        {
+        }
+
+        BookmarkAnchorComponentSaveData(BookmarkAnchorComponentSaveDataCallback* callback)
+            : BookmarkAnchorComponentSaveData()
+        {
+            m_callback = callback;
+        }
+
+        void operator=(const BookmarkAnchorComponentSaveData& other)
+        {
+            // Callback purposefully skipped
+            m_bookmarkName = other.m_bookmarkName;
+            m_shortcut = other.m_shortcut;
+            m_color = other.m_color;
+            m_position = other.m_position;
+            m_dimension = other.m_dimension;
+        }
+
+        void OnBookmarkNameChanged()
+        {
+            if (m_callback)
+            {
+                m_callback->OnBookmarkNameChanged();
+            }
+        }
+
+        void OnBookmarkColorChanged()
+        {
+            if (m_callback)
+            {
+                m_callback->OnBookmarkColorChanged();
+            }
+        }
+
+        void SetVisibleArea(QRectF visibleArea)
+        {
+            m_position.SetX(visibleArea.x());
+            m_position.SetY(visibleArea.y());
+
+            m_dimension.SetX(visibleArea.width());
+            m_dimension.SetY(visibleArea.height());
+        }
+
+        QRectF GetVisibleArea(const QPointF& center) const
+        {
+            QRectF displayRect(m_position.GetX(), m_position.GetY(), m_dimension.GetX(), m_dimension.GetY());
+            displayRect.moveCenter(center);
+
+            return displayRect;
+        }
+
+        bool HasVisibleArea() const
+        {
+            return !m_dimension.IsZero();
+        }
+
+        int m_shortcut;
+        AZStd::string m_bookmarkName;
+        AZ::Color m_color;
+
+        AZ::Vector2 m_position;
+        AZ::Vector2 m_dimension;
+
+    private:
+
+        BookmarkAnchorComponentSaveDataCallback* m_callback;
+    };
 }

@@ -252,17 +252,17 @@ namespace AZ
         ~BehaviorMethod() override;
 
         template<class... Args>
-        bool Invoke(Args&&... args);
-        bool Invoke();
+        bool Invoke(Args&&... args) const;
+        bool Invoke() const;
 
         template<class R, class... Args>
-        bool InvokeResult(R& r, Args&&... args);
+        bool InvokeResult(R& r, Args&&... args) const;
         template<class R>
-        bool InvokeResult(R& r);
+        bool InvokeResult(R& r) const;
         void SetDeprecatedName(const AZStd::string& name) { m_deprecatedName = name; }
         const AZStd::string& GetDeprecatedName() const { return m_deprecatedName; }
 
-        virtual bool Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result = nullptr) = 0;
+        virtual bool Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result = nullptr) const = 0;
         virtual bool HasResult() const = 0;
         /// Returns true if the method is a class member method. If true the first argument should always be the "this"/ClassType pointer.
         virtual bool IsMember() const = 0;
@@ -284,6 +284,8 @@ namespace AZ
         virtual void SetDefaultValue(size_t index, BehaviorDefaultValuePtr defaultValue) = 0;
         virtual BehaviorDefaultValuePtr GetDefaultValue(size_t index) const = 0;
         virtual const BehaviorParameter* GetResult() const = 0;
+
+ 
 
         AZStd::string m_name;   ///< Debug friendly behavior method name
         AZStd::string m_deprecatedName;     ///<this is the deprecated name of this method
@@ -357,7 +359,7 @@ namespace AZ
 
             BehaviorMethodImpl(FunctionPointer functionPointer, BehaviorContext* context, const AZStd::string& name = AZStd::string());
             
-            bool Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result) override;
+            bool Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result) const override;
 
             bool HasResult() const override;
             bool IsMember() const override;
@@ -401,7 +403,7 @@ namespace AZ
             BehaviorMethodImpl(FunctionPointer functionPointer, BehaviorContext* context, const AZStd::string& name = AZStd::string());
             BehaviorMethodImpl(FunctionPointerConst functionPointer, BehaviorContext* context, const AZStd::string& name = AZStd::string());
 
-            bool Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result) override;
+            bool Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result) const override;
 
             bool HasResult() const override;
             bool IsMember() const override;
@@ -546,7 +548,7 @@ namespace AZ
             template<bool IsBusId>
             inline AZStd::enable_if_t<!IsBusId> SetBusIdType();
 
-            bool Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result) override;
+            bool Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result) const override;
             bool HasResult() const override;
             bool IsMember() const override;
             bool HasBusId() const override;
@@ -818,6 +820,7 @@ namespace AZ
         MoveContructorType m_mover;
         EqualityComparisonType m_equalityComparer;
 
+
         void* m_userData;
         AZStd::string m_name;
         AZStd::vector<AZ::Uuid> m_baseClasses;  
@@ -1075,10 +1078,10 @@ namespace AZ
         void SetEvent(Event e, AZStd::string_view name, const AZStd::array<BehaviorParameterOverrides, AZStd::function_traits<Event>::num_args>& args);
 
         template<class... Args>
-        void Call(int index, Args&&... args);
+        void Call(int index, Args&&... args) const;
 
         template<class R, class... Args>
-        void CallResult(R& result, int index, Args&&... args);
+        void CallResult(R& result, int index, Args&&... args) const;
 
         EventArray m_events;
     };
@@ -2228,21 +2231,21 @@ namespace AZ
 
     //////////////////////////////////////////////////////////////////////////
     template<class... Args>
-    bool BehaviorMethod::Invoke(Args&&... args)
+    bool BehaviorMethod::Invoke(Args&&... args) const
     {
         BehaviorValueParameter arguments[] = { &args... };
         return Call(arguments, sizeof...(Args), nullptr);
     }
 
     //////////////////////////////////////////////////////////////////////////
-    AZ_FORCE_INLINE bool BehaviorMethod::Invoke()
+    AZ_FORCE_INLINE bool BehaviorMethod::Invoke() const
     {
         return Call(nullptr, 0, nullptr);
     }
 
     //////////////////////////////////////////////////////////////////////////
     template<class R, class... Args>
-    bool BehaviorMethod::InvokeResult(R& r, Args&&... args)
+    bool BehaviorMethod::InvokeResult(R& r, Args&&... args) const
     {
         if (!HasResult())
         {
@@ -2255,12 +2258,13 @@ namespace AZ
 
     //////////////////////////////////////////////////////////////////////////
     template<class R>
-    bool BehaviorMethod::InvokeResult(R& r)
+    bool BehaviorMethod::InvokeResult(R& r) const
     {
         if (!HasResult())
         {
             return false;
         }
+
         BehaviorValueParameter result(&r);
         return Call(nullptr, 0, &result);
     }
@@ -2576,20 +2580,20 @@ namespace AZ
 
     //////////////////////////////////////////////////////////////////////////
     template<class... Args>
-    void BehaviorEBusHandler::Call(int index, Args&&... args)
+    void BehaviorEBusHandler::Call(int index, Args&&... args) const
     {
-        BusForwarderEvent& e = m_events[index];
+        const BusForwarderEvent& e = m_events[index];
         if (e.m_function)
         {
             if (e.m_isFunctionGeneric)
             {
                 BehaviorValueParameter arguments[sizeof...(args)+1] = { &args... };
-                reinterpret_cast<GenericHookType>(e.m_function)(e.m_userData, e.m_name, index, nullptr, AZ_ARRAY_SIZE(arguments)-1, arguments);
+                reinterpret_cast<GenericHookType>(e.m_function)(const_cast<void*>(e.m_userData), e.m_name, index, nullptr, AZ_ARRAY_SIZE(arguments)-1, arguments);
             }
             else
             {
                 typedef void(*FunctionType)(void*, Args...);
-                reinterpret_cast<FunctionType>(e.m_function)(e.m_userData, args...);
+                reinterpret_cast<FunctionType>(e.m_function)(const_cast<void*>(e.m_userData), args...);
             }
         }
     }
@@ -2597,16 +2601,16 @@ namespace AZ
     //////////////////////////////////////////////////////////////////////////
         
     template<class R, class... Args>
-    void BehaviorEBusHandler::CallResult(R& result, int index, Args&&... args)
+    void BehaviorEBusHandler::CallResult(R& result, int index, Args&&... args) const
     {
-        BusForwarderEvent& e = m_events[index];
+        const BusForwarderEvent& e = m_events[index];
         if (e.m_function)
         {
             if (e.m_isFunctionGeneric)
             {
                 BehaviorValueParameter arguments[sizeof...(args)+1] = { &args... };
                 BehaviorValueParameter r(&result);
-                reinterpret_cast<GenericHookType>(e.m_function)(e.m_userData, e.m_name, index, &r, AZ_ARRAY_SIZE(arguments) - 1, arguments);
+                reinterpret_cast<GenericHookType>(e.m_function)(const_cast<void*>(e.m_userData), e.m_name, index, &r, AZ_ARRAY_SIZE(arguments) - 1, arguments);
                 // Assign on top of the the value if the param isn't a pointer
                 // (otherwise the pointer just gets overridden and no value is returned).
                 if ((r.m_traits & BehaviorParameter::TR_POINTER) == 0 && r.GetAsUnsafe<R>())
@@ -2617,7 +2621,7 @@ namespace AZ
             else
             {
                 typedef R(*FunctionType)(void*, Args...);
-                result = reinterpret_cast<FunctionType>(e.m_function)(e.m_userData, args...);
+                result = reinterpret_cast<FunctionType>(e.m_function)(const_cast<void*>(e.m_userData), args...);
             }
         }
     }
@@ -3001,10 +3005,9 @@ namespace AZ
             {
                 // technically we can support multiple names with different signatures, however this will make binding to script
                 // possible conversions of addressed trickier, so let's delay it till we have more data if we actually need it. Same it 
-                // true for the global method insert above
                 AZ_Error("Reflection", false, "Class '%s' already have Method '%s' reflected!", m_class->m_name.c_str(), name);
-                delete method;
-                return this;
+                    delete method;
+                    return this;
             }
 
             size_t classPtrIndex = method->IsMember() ? 1 : 0;
@@ -3577,7 +3580,7 @@ namespace AZ
         
         //////////////////////////////////////////////////////////////////////////
         template<class R, class... Args>
-        bool BehaviorMethodImpl<R(Args...)>::Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result)
+        bool BehaviorMethodImpl<R(Args...)>::Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result) const
         {
             size_t totalArguments = GetNumArguments();
             if (numArguments < totalArguments)
@@ -3781,7 +3784,7 @@ namespace AZ
         
         //////////////////////////////////////////////////////////////////////////
         template<class R, class C, class... Args>
-        bool BehaviorMethodImpl<R(C::*)(Args...)>::Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result)
+        bool BehaviorMethodImpl<R(C::*)(Args...)>::Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result) const
         {
             size_t totalArguments = GetNumArguments();
             if (numArguments < totalArguments)
@@ -4008,7 +4011,7 @@ namespace AZ
 
         //////////////////////////////////////////////////////////////////////////
         template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
-        bool BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result)
+        bool BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>::Call(BehaviorValueParameter* arguments, unsigned int numArguments, BehaviorValueParameter* result) const
         {
             size_t totalArguments = GetNumArguments();
             if (numArguments < totalArguments)

@@ -1372,7 +1372,7 @@ public:
 
         const QByteArray d = data->data(QStringLiteral("x-application/x-smartobjects-rows"));
         QVector<int> rows(d.count() / sizeof(int));
-        std::copy(d.begin(), d.end(), reinterpret_cast<char*>(rows.data()));
+        AZStd::copy(d.begin(), d.end(), reinterpret_cast<char*>(rows.data()));
         const QString path = parent.data(Qt::UserRole).toString();
         for (auto i : rows)
         {

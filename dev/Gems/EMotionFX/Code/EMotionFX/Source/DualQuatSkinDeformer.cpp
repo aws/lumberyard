@@ -81,14 +81,10 @@ namespace EMotionFX
     // the main method where all calculations are done
     void DualQuatSkinDeformer::Update(ActorInstance* actorInstance, Node* node, float timeDelta)
     {
+        AZ_UNUSED(node);
         MCORE_UNUSED(timeDelta);
 
-        // get some vars
-        TransformData*  transformData       = actorInstance->GetTransformData();
-        MCore::Matrix*  skinningMatrices    = actorInstance->GetTransformData()->GetSkinningMatrices();
-        Actor*          actor               = actorInstance->GetActor();
-
-        const Pose* bindPose = actorInstance->GetTransformData()->GetBindPose();
+        const Actor* actor = actorInstance->GetActor();
         const Pose* pose = actorInstance->GetTransformData()->GetCurrentPose();
 
         AZ::Vector3  newPos, newNormal, newTangent, newBitangent;

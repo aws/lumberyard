@@ -12,7 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include <ImageProcessing_precompiled.h>
-
+#include <ImageProcessing_Traits_Platform.h>
 #include "ColorBlockRGBA4x4c.h"
 #include "ColorBlockRGBA4x4s.h"
 #include "ColorBlockRGBA4x4f.h"
@@ -34,11 +34,11 @@
 #   pragma clang diagnostic ignored "-Wshift-negative-value"
 #endif
 
-#if defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
+#if AZ_TRAIT_IMAGEPROCESSING_SQUISH_DO_NOT_USE_FASTCALL
 #define  __fastcall
 #define  _fastcall
 #define __assume(x)
-#endif // defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
+#endif
 
 #include <squish.h>
 #include <squish.inl>

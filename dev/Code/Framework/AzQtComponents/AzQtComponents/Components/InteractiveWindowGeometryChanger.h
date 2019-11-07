@@ -41,7 +41,9 @@ namespace AzQtComponents
         virtual void handleKeyPress(QKeyEvent*) = 0;
         virtual void handleMouseMove(QMouseEvent*) = 0;
         void restoreCursorPosition();
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::InteractiveWindowGeometryChanger::m_targetWindow': class 'QPointer<QWindow>' needs to have dll-interface to be used by clients of class 'AzQtComponents::InteractiveWindowGeometryChanger'
         QPointer<QWindow> m_targetWindow;
+        AZ_POP_DISABLE_WARNING
         const QPoint m_originalCursorPos;
         bool m_restoreCursorAtExit = true;
     };
@@ -77,7 +79,9 @@ namespace AzQtComponents
         bool sideIsVertical(SidesToResize) const;
         bool sideIsHorizontal(SidesToResize) const;
         bool sideIsCorner(SidesToResize) const;
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::InteractiveWindowResizer::m_sideToResize': class 'QFlags<AzQtComponents::InteractiveWindowResizer::SideToResize>' needs to have dll-interface to be used by clients of class 'AzQtComponents::InteractiveWindowResizer'
         SidesToResize m_sideToResize = NoneSide;
+        AZ_POP_DISABLE_WARNING
     };
 
     // This implementation handles arrow key presses and moves the window accordingly

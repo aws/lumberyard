@@ -43,9 +43,10 @@ namespace PhysX
             verticalLayout->addWidget(m_tabs);
 
             connect(m_settings, &SettingsWidget::onValueChanged,
-                this, [this](const PhysX::Settings& settings, const Physics::WorldConfiguration& worldConfiguration,
+                this, [this](const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary, const Physics::WorldConfiguration& worldConfiguration,
                              const PhysX::EditorConfiguration& editorConfiguration)
             {
+                m_configuration.m_materialLibrary = materialLibrary;
                 m_configuration.m_worldConfiguration = worldConfiguration;
                 m_configuration.m_editorConfiguration = editorConfiguration;
                 emit onConfigurationChanged(m_configuration);
@@ -77,7 +78,7 @@ namespace PhysX
         void ConfigurationWidget::SetConfiguration(const PhysX::Configuration& configuration)
         {
             m_configuration = configuration;
-            m_settings->SetValue(m_configuration.m_settings, m_configuration.m_worldConfiguration,
+            m_settings->SetValue(m_configuration.m_materialLibrary, m_configuration.m_worldConfiguration,
                 m_configuration.m_editorConfiguration);
             m_collisionFiltering->SetConfiguration(configuration.m_collisionLayers, configuration.m_collisionGroups);
             m_pvd->SetValue(m_configuration.m_settings);
@@ -90,16 +91,22 @@ namespace PhysX
 
         void ConfigurationWidget::ShowCollisionLayersTab()
         {
-            int index = m_tabs->indexOf(m_collisionFiltering);
+            const int index = m_tabs->indexOf(m_collisionFiltering);
             m_tabs->setCurrentIndex(index);
             m_collisionFiltering->ShowLayersTab();
         }
 
         void ConfigurationWidget::ShowCollisionGroupsTab()
         {
-            int index = m_tabs->indexOf(m_collisionFiltering);
+            const int index = m_tabs->indexOf(m_collisionFiltering);
             m_tabs->setCurrentIndex(index);
             m_collisionFiltering->ShowGroupsTab();
+        }
+
+        void ConfigurationWidget::ShowGlobalSettingsTab()
+        {
+            const int index = m_tabs->indexOf(m_settings);
+            m_tabs->setCurrentIndex(index);
         }
 
     } // namespace PhysXConfigurationWidget

@@ -68,10 +68,10 @@ namespace AZ
             virtual void OnRegisterStream(AZ::IO::GenericStream* stream, OpenMode flags);
             virtual void OnUnregisterStream(AZ::IO::GenericStream* /*stream*/) {}
             virtual void OnReadCacheHit(AZ::IO::GenericStream* /*stream*/, AZ::u64 /*offset*/, AZ::u64 /*size*/, const char* /*debugName*/) {}
-            virtual void OnAddRequest(AZ::IO::Request* /*request*/) {}
-            virtual void OnCompleteRequest(AZ::IO::Request* /*request*/, AZ::IO::Request::StateType /*state*/) {}
-            virtual void OnCancelRequest(AZ::IO::Request* /*request*/)  {}
-            virtual void OnRescheduleRequest(AZ::IO::Request* /*request*/, AZStd::chrono::system_clock::time_point /*newDeadline*/, Request::PriorityType /*newPriority*/) {}
+            virtual void OnAddRequest(const AZStd::shared_ptr<Request>& /*request*/) {}
+            virtual void OnCompleteRequest(const AZStd::shared_ptr<Request>& /*request*/, AZ::IO::Request::StateType /*state*/) {}
+            virtual void OnCancelRequest(const AZStd::shared_ptr<Request>& /*request*/)  {}
+            virtual void OnRescheduleRequest(const AZStd::shared_ptr<Request>& /*request*/, AZStd::chrono::system_clock::time_point /*newDeadline*/, Request::PriorityType /*newPriority*/) {}
 
             virtual void OnRead(AZ::IO::GenericStream* /*stream*/, AZ::u64 /*byteSize*/, AZ::u64 /*byteOffset*/) {}
             virtual void OnReadComplete(AZ::IO::GenericStream* stream, AZ::u64 bytesTransferred);

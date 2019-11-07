@@ -22,6 +22,8 @@ namespace ScriptedEntityTweener
         AZStd::string m_componentName;
         AZStd::string m_virtualPropertyName;
 
+        AnimationParameterAddressData() {}
+
         AnimationParameterAddressData(const AZStd::string& componentName, const AZStd::string virtualPropertyName)
             : m_componentName(componentName), m_virtualPropertyName(virtualPropertyName)
         {

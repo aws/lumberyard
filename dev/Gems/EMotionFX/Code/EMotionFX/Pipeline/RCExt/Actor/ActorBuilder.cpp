@@ -727,7 +727,7 @@ namespace EMotionFX
             {
                 if (!emfxMesh->CalcTangents(tangentUVSetIndex, false))
                 {
-                    AZ_Error("EMotionFX", "Failed to generate tangents for node '%s'.", emfxNode->GetName());
+                    AZ_Error("EMotionFX", false, "Failed to generate tangents for node '%s'.", emfxNode->GetName());
                 }
             }
             actor->SetMesh(lodLevel, emfxNode->GetNodeIndex(), emfxMesh);

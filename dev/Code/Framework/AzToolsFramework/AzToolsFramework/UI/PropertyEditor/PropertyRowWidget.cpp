@@ -18,8 +18,12 @@
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QWidget>
 #include <QtGui/QFontMetrics>
+AZ_PUSH_DISABLE_WARNING(4244 4251 4800, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
+                                                                    // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
+                                                                    // 4800: QTextEngine *const ': forcing value to bool 'true' or 'false' (performance warning)
 #include <QtGui/QTextLayout>
 #include <QtGui/QPainter>
+AZ_POP_DISABLE_WARNING
 
 #include <QMessageBox>
 
@@ -441,6 +445,8 @@ namespace AzToolsFramework
 
     void PropertyRowWidget::OnValuesUpdated()
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         if (m_sourceNode)
         {
             bool showAsOverridden = false;
@@ -1070,11 +1076,11 @@ namespace AzToolsFramework
 
     void PropertyRowWidget::UpdateDropDownArrow()
     {
-        if ((!m_hadChildren) || (m_forbidExpansion))
+        if ((!m_hadChildren) || (m_forbidExpansion) || m_forceAutoExpand)
         {
             if (m_dropDownArrow)
             {
-            m_dropDownArrow->hide();
+                m_dropDownArrow->hide();
             }
             m_indent->changeSize((m_treeDepth * m_treeIndentation) + m_leafIndentation, 1, QSizePolicy::Fixed, QSizePolicy::Fixed);
             m_leftHandSideLayout->invalidate();

@@ -313,6 +313,11 @@ namespace LmbrCentral
             m_configuration.m_lightType = lightType;
         }
 
+        AZ::Uuid GetCubemapId()
+        {
+            return m_configuration.m_cubemapId;
+        }
+
         virtual const char* GetLightTypeText() const;
 
     private:

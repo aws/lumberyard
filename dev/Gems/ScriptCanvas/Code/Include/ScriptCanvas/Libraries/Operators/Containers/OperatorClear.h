@@ -23,28 +23,49 @@ namespace ScriptCanvas
     {
         namespace Operators
         {
-            class OperatorClear : public OperatorBase
+            class OperatorClear : public Node
             {
             public:
                 ScriptCanvas_Node(OperatorClear,
                     ScriptCanvas_Node::Name("Clear All Elements")
                     ScriptCanvas_Node::Uuid("{26DDC284-BD01-471E-BA8F-36C3A1ADA169}")
                     ScriptCanvas_Node::Description("Eliminates all the elements in the container")
-                    ScriptCanvas_Node::Version(0)
+                    ScriptCanvas_Node::Version(1, OperatorClearVersionConverter)
                     ScriptCanvas_Node::Category("Containers")
                 );
 
-                OperatorClear()
-                    : OperatorBase(DefaultContainerOperatorConfiguration())
+                enum Version
                 {
-                }
+                    InitialVersion = 0,
+                    RemoveOperatorBase,
+
+                    Current
+                };
+
+                static bool OperatorClearVersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement);
+
+                OperatorClear() = default;
+
+                ScriptCanvas_In(ScriptCanvas_In::Name("In", ""));
+                ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", ""));
+                
+                // Because the slots are grouped. Only one needs to be configured with the data restrictions and the others will all get them.
+                ScriptCanvas_DynamicDataSlot(ScriptCanvas::DynamicDataType::Container,
+                                             ScriptCanvas::ConnectionType::Input,                                             
+                                             ScriptCanvas_DynamicDataSlot::Name("Source", "The container to be cleared from the node.")
+                                             ScriptCanvas_DynamicDataSlot::DynamicGroup("ContainerGroup")
+                                             ScriptCanvas::SupportsMethodContract("Clear")                                             
+                                            );
+
+                ScriptCanvas_DynamicDataSlot(ScriptCanvas::DynamicDataType::Container,
+                                             ScriptCanvas::ConnectionType::Output,
+                                             ScriptCanvas_DynamicDataSlot::Name("Container", "The container, now cleared of elements.")
+                                             ScriptCanvas::SupportsMethodContract("Clear")
+                                            );
 
             protected:
 
-                void ConfigureContracts(SourceType sourceType, AZStd::vector<ContractDescriptor>& contractDescs) override;
-                void OnSourceTypeChanged() override;
                 void OnInputSignal(const SlotId& slotId) override;
-                void InvokeOperator();
             };
 
         }

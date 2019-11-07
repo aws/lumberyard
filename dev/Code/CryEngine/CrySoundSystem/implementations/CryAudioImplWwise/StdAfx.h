@@ -25,51 +25,7 @@
     #define INCLUDE_WWISE_IMPL_PRODUCTION_CODE
 #endif // !_RELEASE
 
-
-#if defined(AZ_PLATFORM_WINDOWS)
-    #if defined(AZ_PLATFORM_WINDOWS_X64)
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-    // Windows64
-    #else
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-    // Windows32
-    #endif
-#endif
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/StdAfx_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/StdAfx_h_provo.inl"
-    #endif
-#endif
-
-#if defined(AZ_PLATFORM_APPLE_OSX)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Mac
-#endif
-
-#if defined(AZ_PLATFORM_APPLE_IOS)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// iOS
-#endif
-
-#if defined(AZ_PLATFORM_APPLE_TV)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// AppleTV
-#endif
-
-#if defined(AZ_PLATFORM_ANDROID)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Android
-    #include <AzCore/Android/AndroidEnv.h>
-#endif
-
-#if defined(AZ_PLATFORM_LINUX_X64)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Linux64
-#endif
-
+#include <CryAudioImplWwise_Traits_Platform.h>
 
 #include <AudioAllocators.h>
 #include <AudioLogger.h>
@@ -81,7 +37,7 @@ namespace Audio
 
 
 // Secondary Memory Allocation Pool
-#if defined(PROVIDE_WWISE_IMPL_SECONDARY_POOL)
+#if AZ_TRAIT_CRYAUDIOIMPLWWISE_PROVIDE_IMPL_SECONDARY_POOL
 
 #include <CryPool/PoolAlloc.h>
 
@@ -92,5 +48,5 @@ namespace Audio
     extern tMemoryPoolReferenced g_audioImplMemoryPoolSecondary_wwise;
 } // namespace Audio
 
-#endif // PROVIDE_AUDIO_IMPL_SECONDARY_POOL
+#endif // AZ_TRAIT_CRYAUDIOIMPLWWISE_PROVIDE_IMPL_SECONDARY_POOL
 

@@ -54,7 +54,7 @@ namespace PhysX
             m_meshWeldTolerance = defaultCookingParams.meshWeldTolerance;
 
             defaultCookingParams.midphaseDesc.setToDefault(physx::PxMeshMidPhase::eBVH34);
-            m_numTrisPerLeaf = defaultCookingParams.midphaseDesc.mBVH34Desc.numTrisPerLeaf;
+            m_numTrisPerLeaf = defaultCookingParams.midphaseDesc.mBVH34Desc.numPrimsPerLeaf;
         }
 
         const AZStd::string& MeshGroup::GetName() const

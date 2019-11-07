@@ -43,7 +43,7 @@ namespace LmbrCentral
                     "Tube Shape", "The Tube Shape component creates a spline around the associated entity")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Shape")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Tube_Shape.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Tube_Shape.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Tube_Shape.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)

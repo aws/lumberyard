@@ -1,0 +1,11 @@
+{
+  "auto": {
+    "Tests/Platform/iOS": [
+      "GridMateTests/Tests_Platform.h"
+    ],
+    "Platform/iOS": [
+      "GridMateTests_Traits_Platform.h",
+      "GridMateTests_Traits_iOS.h"
+    ]
+  }
+}

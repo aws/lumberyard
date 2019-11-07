@@ -28,11 +28,19 @@ namespace GraphCanvas
     public:    
         AZ_CLASS_ALLOCATOR(EditorContextMenu, AZ::SystemAllocator, 0);
         
-        EditorContextMenu(QWidget* parent = nullptr);
+        EditorContextMenu(EditorId editorId, QWidget* parent = nullptr);
         virtual ~EditorContextMenu() = default;
+
+        void SetIsToolBarMenu(bool isToolBarMenu);
+        bool IsToolBarMenu() const;
+
+        EditorId GetEditorId() const;
         
         void AddActionGroup(const ActionGroupId& actionGroup);
-        void AddMenuAction(QAction* contextMenuAction);
+        void AddMenuAction(QAction* contextMenuAction);        
+
+        bool   IsFinalized() const;
+        QMenu* FindSubMenu(AZStd::string_view subMenuPath);
         
         void RefreshActions(const GraphId& graphId, const AZ::EntityId& targetMemberId);
         
@@ -46,6 +54,9 @@ namespace GraphCanvas
         void ConstructMenu();
     
         bool m_finalized;
+        bool m_isToolBarMenu;
+
+        EditorId                                m_editorId;
 
         AZStd::vector< ActionGroupId >          m_actionGroupOrdering;
         AZStd::unordered_set< ActionGroupId >   m_actionGroups;

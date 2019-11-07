@@ -1357,7 +1357,7 @@ static void OnChange_CV_r_DebugLightLayers(ICVar* pCVar)
 
 static void OnChange_CV_r_DeferredShadingTiled(ICVar* pCVar)
 {
-#if defined (AZ_PLATFORM_APPLE_OSX)
+#if defined (AZ_PLATFORM_MAC)
     // We don't support deferred shading tiled on macOS yet so always force the cvar to 0
     AZ_Warning("Rendering", pCVar->GetIVal() == 0, "Deferred Shading Tiled is not supported on macOS");
     CRenderer::CV_r_DeferredShadingTiled = 0;
@@ -1379,7 +1379,7 @@ static void OnChange_CV_r_Fur(ICVar* pCVar)
 
 static void OnChange_CV_r_SunShafts(ICVar* pCVar)
 {
-#if defined (AZ_PLATFORM_APPLE_OSX)
+#if defined (AZ_PLATFORM_MAC)
     // We don't support sunshaft settings greater than 1 on macOS yet so always force the cvar to 1
     AZ_Warning("Rendering", pCVar->GetIVal() > 1, "Sunshaft value settings above 1 are not supported on macOS");
     if (pCVar->GetIVal() >= 1)

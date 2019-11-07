@@ -17,6 +17,7 @@ import zlib
 import json
 import re
 import traceback
+import runpy
 
 from waflib import Logs, Options, Utils, Configure, ConfigSet, Node, Errors
 from waflib.TaskGen import taskgen_method
@@ -58,7 +59,8 @@ NON_BUILD_COMMANDS = [
     'android_studio',
     'xcode_ios',
     'xcode_appletv',
-    'xcode_mac'
+    'xcode_mac',
+    'info'
 ]
 
 REGEX_PATH_ALIAS = re.compile('@(.+)@')
@@ -124,7 +126,10 @@ LMBR_WAFLIB_MODULES = [
         'winres',
 
         'bootstrap',
-        'lmbr_setup_tools'
+        'lmbr_setup_tools',
+        'artifacts_cache',
+
+        'module_info'
     ])
 ]
 
@@ -1419,3 +1424,112 @@ def get_engine_node(ctx):
         
     return ctx.engine_node
 
+@conf
+def add_platform_root(ctx, kw, root, export):
+    """
+    Preprocess/update a project definition's keywords (kw) to include platform-specific settings
+    
+    :param ctx:     The current build context
+    :param kw:      The keyword dictionary to preprocess
+    :param root:    The root folder where the platform subfolders will reside. This folder is relative to the current
+                    project folder.
+    :param export:  Flag to include the include paths as an export_includes to add to any dependent project
+    """
+    
+    if not os.path.isabs(root):
+        platform_base_path = os.path.normpath(os.path.join(ctx.path.abspath(), root))
+    else:
+        platform_base_path = root
+        
+    if not os.path.isdir(platform_base_path):
+        Logs.warn("[WARN] platform root '{}' is not a valid folder.".format(platform_base_path))
+        return
+    
+        # Get the current list of platforms
+    target_platforms = ctx.get_all_target_platforms(False)
+    
+    for target_platform in target_platforms:
+        platform_folder = target_platform.attributes.get('platform_folder', None)
+        if not platform_folder:
+            Logs.warn("[WARN] Missing attribute 'platform_folder' for platform setting '{}'".format(target_platform.platform))
+            continue
+        platform_keyword = target_platform.attributes.get('platform_keyword', None)
+        if not platform_keyword:
+            Logs.warn("[WARN] Missing attribute 'platform_keyword' for platform setting '{}'".format(target_platform.platform))
+            continue
+
+        directory = os.path.join(platform_base_path, platform_folder)
+
+        waf_file_list = os.path.join(directory, 'platform_{}.waf_files'.format(platform_keyword))
+        if os.path.isfile(waf_file_list):
+            waf_files_relative_path = os.path.relpath(waf_file_list, ctx.path.abspath())
+            # the platform file list can be a list or a string, since append_to_unique_list expects a list, we convert to a list if it is not
+            file_list = kw.setdefault('{}_file_list'.format(target_platform.platform), [])
+            if not isinstance(file_list, list):
+                file_list = [file_list]
+            append_to_unique_list(file_list, waf_files_relative_path)
+        else:
+            # The platform_<platform>.waf_files file list is REQUIRED for every platform subfolder under the platform root.
+            raise Errors.WafError("Missing required 'platform_{}.waf_files' from path '{}'.".format(platform_keyword, directory))
+
+        append_to_unique_list(kw.setdefault('{}_includes'.format(target_platform.platform),[]),
+                              directory)
+        if export:
+            append_to_unique_list(kw.setdefault('{}_export_includes'.format(target_platform.platform), []),
+                                  directory)
+
+        platform_wscript = os.path.join(directory, 'wscript_{}'.format(platform_keyword))
+        if os.path.isfile(platform_wscript):
+            platform_script = runpy.run_path(platform_wscript)
+            if 'update_platform_parameters' not in platform_script:
+                raise Errors.WafError("Missing required function 'def update_platform_parameters(bld, platform_folder, kw): ... in {}".format(platform_wscript))
+            try:
+                platform_script['update_platform_parameters'](ctx, directory, kw)
+            except Exception as e:
+                raise Errors.WafError("Error running function 'update_platform_parameters' in {}: {}".format(platform_wscript, e))
+
+
+@conf
+def append_kw_value(ctx, kw_dict, key, value, unique=True):
+    """
+    Context helper function to add a value keyword list entry
+    
+    :param ctx:     The context that this function is attached to
+    :param kw_dict: The kw dict to update
+    :param key:     The key in the kw dict to append to. The key must represent a list
+    :param value:   The value to add. If its a list, then add the items in the list individually
+    :param unique:  Option to add uniquely
+
+    """
+    target_kw_value_list = kw_dict.setdefault(key, [])
+    if not isinstance(target_kw_value_list, list):
+        raise ValueError("Cannot append a kw value to a non-list kw entry '{}'".format(key))
+    if unique:
+        append_to_unique_list(target_kw_value_list, value)
+    elif isinstance(value, list):
+        target_kw_value_list += value
+    else:
+        target_kw_value_list.append(value)
+
+
+@conf
+def merge_kw_dictionaries(ctx, kw_target, kw_src, unique=True):
+    """
+    Context helper function to merge an input kw dictionary to an existing kw dictionary. This will only work with
+    keyword entries represented as lists.
+    
+    :param ctx:         The context that this function is attached to
+    :param kw_target:   The target kw dictionary to merge into
+    :param kw_src:      The source kw dictionary to merge from
+    :param unique:      Apply values uniquely
+    """
+    for key_src_key, key_src_value in kw_src.items():
+        ctx.append_kw_value(kw_dict=kw_target,
+                            key=key_src_key,
+                            value=key_src_value,
+                            unique=unique)
+
+
+@conf
+def PlatformRoot(self, root, export_includes=False):
+    return {'root': root, 'export_includes': export_includes}

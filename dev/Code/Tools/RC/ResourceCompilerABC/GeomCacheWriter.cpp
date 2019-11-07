@@ -153,6 +153,9 @@ GeomCacheWriter::GeomCacheWriter(const string& filename, GeomCacheFile::EBlockCo
     case GeomCacheFile::eBlockCompressionFormat_LZ4HC:
         m_pBlockCompressor.reset(new GeomCacheLZ4HCBlockCompressor);
         break;
+    case GeomCacheFile::eBlockCompressionFormat_ZSTD:
+        m_pBlockCompressor.reset(new GeomCacheZStdBlockCompressor);
+        break;
     }
 
     m_pCompressionWriter.reset(new GeomCacheBlockCompressionWriter(m_pBlockCompressor.get(), *m_pDiskWriteThread));

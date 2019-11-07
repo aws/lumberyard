@@ -12,10 +12,15 @@
 
 #pragma once
 
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
+#include <QtWidgets/QHBoxLayout>
+AZ_POP_DISABLE_WARNING
+
+#include <QPushButton>
+#include <QLabel>
+
 #include <AzToolsFramework/UI/PropertyEditor/PropertyQTConstants.h>
 #include <AzToolsFramework/UI/PropertyEditor/DHQComboBox.hxx>
-#include <QtWidgets/QHBoxLayout>
-#include <QPushButton>
 
 namespace
 {
@@ -166,6 +171,36 @@ namespace AzToolsFramework
     }
 
     template<typename T>
+    inline void GenericComboBoxCtrl<T>::SetWarning(const AZStd::string& warningText)
+    {
+        if (warningText.empty() && m_warningLabel == nullptr)
+        {
+            return;
+        }
+
+        PrepareWarningLabel();
+
+        m_warningLabel->setToolTip(warningText.c_str());
+        m_warningLabel->setVisible(!warningText.empty());
+    }
+
+    template<typename T>
+    inline void GenericComboBoxCtrl<T>::PrepareWarningLabel()
+    {
+        if (m_warningLabel == nullptr)
+        {
+            const int warningIconHeight = 18;
+            m_warningLabel = new QLabel(this);
+            QPixmap warningIcon(":/PropertyEditor/Resources/warning.png");
+            m_warningLabel->setPixmap(warningIcon.scaledToHeight(warningIconHeight, Qt::SmoothTransformation));
+
+            m_warningLabel->setVisible(false);
+
+            layout()->addWidget(m_warningLabel);
+        }
+    }
+
+    template<typename T>
     inline QWidget* GenericComboBoxCtrl<T>::GetFirstInTabOrder()
     {
         return m_pComboBox;
@@ -260,6 +295,14 @@ namespace AzToolsFramework
                 AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'ComboBoxEditable' attribute from property '%s' into generic combo box", debugName);
             }
         }
+        else if (attrib == AZ_CRC("Warning", 0x404e9cc6))
+        {
+            AZStd::string warningText;
+            if (attrReader->Read<AZStd::string>(warningText))
+            {
+                genericGUI->SetWarning(warningText);
+            }
+        }
     }
 
     template<typename T>
@@ -295,7 +338,8 @@ namespace AzToolsFramework
                         notifyInstance = node->GetInstance(index);
                         break;
                     }
-                } while (node = node->GetParent());
+                    node = node->GetParent();
+                } while (node);
             }
 
             genericGUI->m_postChangeNotifyCB->Invoke(notifyInstance, oldValue);

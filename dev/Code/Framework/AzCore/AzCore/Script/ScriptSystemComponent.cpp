@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #if !defined(AZCORE_EXCLUDE_LUA)
 
@@ -267,7 +266,7 @@ void    ScriptSystemComponent::OnSystemTick()
         if (contextContainer.m_context->GetId() == ScriptContextIds::DefaultScriptContextId)
         {
             size_t memoryUsageBytes = contextContainer.m_context->GetMemoryUsage();
-            AZ_PROFILE_DATAPOINT(AZ::Debug::ProfileCategory::Script, "Script Memory (KB)", memoryUsageBytes / 1024.0);
+            AZ_PROFILE_DATAPOINT(AZ::Debug::ProfileCategory::Script, memoryUsageBytes / 1024.0, "Script Memory (KB)");
         }
 #endif // AZ_PROFILE_TELEMETRY
 
@@ -773,7 +772,7 @@ const char* ScriptSystemComponent::GetGroup() const
 
 const char* AZ::ScriptSystemComponent::GetBrowserIcon() const
 {
-    return "Editor/Icons/Components/LuaScript.png";
+    return "Editor/Icons/Components/LuaScript.svg";
 }
 
 AZ::Uuid AZ::ScriptSystemComponent::GetComponentTypeId() const
@@ -894,5 +893,3 @@ void ScriptSystemComponent::Reflect(ReflectContext* reflection)
 }
 
 #endif // #if !defined(AZCORE_EXCLUDE_LUA)
-
-#endif // #ifndef AZ_UNITY_BUILD

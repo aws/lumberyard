@@ -31,6 +31,7 @@ namespace Physics
                 ->Field("Rotation", &ColliderConfiguration::m_rotation)
                 ->Field("MaterialSelection", &ColliderConfiguration::m_materialSelection)
                 ->Field("propertyVisibilityFlags", &ColliderConfiguration::m_propertyVisibilityFlags)
+                ->Field("ColliderTag", &ColliderConfiguration::m_tag)
             ;
 
             if (auto editContext = serializeContext->GetEditContext())
@@ -38,7 +39,6 @@ namespace Physics
                 editContext->Class<ColliderConfiguration>("ColliderConfiguration", "Configuration for a collider")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &ColliderConfiguration::m_visible, "Draw Collider", "Draw the collider.")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ColliderConfiguration::m_isTrigger, "Trigger", "If set, this collider will act as a trigger")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &ColliderConfiguration::GetIsTriggerVisibility)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ColliderConfiguration::m_collisionLayer, "Collision Layer", "The collision layer assigned to the collider")
@@ -50,6 +50,9 @@ namespace Physics
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ColliderConfiguration::m_rotation, "Rotation", "Local rotation relative to the rigid body")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ColliderConfiguration::m_materialSelection, "Material", "Assign material library and select material")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &ColliderConfiguration::GetMaterialSelectionVisibility)
+#ifdef ENABLE_COLLIDER_TAG
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &ColliderConfiguration::m_tag, "Tag", "Tag used to identify colliders from one another")
+#endif
                     ;
             }
         }
@@ -85,5 +88,10 @@ namespace Physics
     AZ::Crc32 ColliderConfiguration::GetMaterialSelectionVisibility() const
     {
         return GetPropertyVisibility(MaterialSelection);
+    }
+
+    AZ::Crc32 ColliderConfiguration::GetIsVisibleVisibility() const
+    {
+        return GetPropertyVisibility(IsVisible);
     }
 }

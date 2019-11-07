@@ -1,0 +1,14 @@
+{
+    "auto":
+    {
+        "Platform/Mac":
+        [
+            "EMotionFX_Traits_Platform.h",
+            "EMotionFX_Traits_Mac.h"
+        ],
+        "Platform/Common/FileOffsetType":
+        [
+            "../Common/FileOffsetType/MCore/Source/DiskFile_FileOffsetType.cpp"
+        ]
+    }
+}

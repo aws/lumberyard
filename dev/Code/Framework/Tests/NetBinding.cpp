@@ -10,13 +10,11 @@
 *
 */
 
-#include <Tests/TestTypes.h>
-
-
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/containers/ring_buffer.h>
 #include <AzCore/Math/Transform.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzFramework/Network/NetBindingComponent.h>
 #include <AzFramework/Network/NetBindingSystemComponent.h>
 #include <AzFramework/Network/NetBindable.h>

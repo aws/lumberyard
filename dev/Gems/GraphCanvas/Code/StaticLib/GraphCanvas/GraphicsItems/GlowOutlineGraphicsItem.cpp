@@ -20,6 +20,8 @@
 #include <GraphCanvas/Components/VisualBus.h>
 #include <GraphCanvas/Utils/GraphUtils.h>
 
+#include <GraphCanvas/Editor/AssetEditorBus.h>
+
 namespace GraphCanvas
 {
     ////////////////////////////
@@ -45,34 +47,6 @@ namespace GraphCanvas
         , m_opacityEnd(0.0)
     {
         ConfigureGlowOutline(configuration);
-
-        if (configuration.m_sceneMember.IsValid())
-        {
-            if (GraphUtils::IsConnection(m_trackingSceneMember))
-            {
-                ConnectionVisualNotificationBus::Handler::BusConnect(m_trackingSceneMember);
-            }
-            else if (GraphUtils::IsNode(m_trackingSceneMember))
-            {
-                GeometryNotificationBus::Handler::BusConnect(m_trackingSceneMember);
-            }
-
-            GraphCanvas::GraphId graphId;
-            GraphCanvas::SceneMemberRequestBus::EventResult(graphId, m_trackingSceneMember, &GraphCanvas::SceneMemberRequests::GetScene);
-
-            GraphCanvas::ViewId viewId;
-            GraphCanvas::SceneRequestBus::EventResult(viewId, graphId, &GraphCanvas::SceneRequests::GetViewId);
-
-            GraphCanvas::ViewNotificationBus::Handler::BusConnect(viewId);
-
-            qreal zoomLevel = 0.0f;
-
-            GraphCanvas::ViewRequestBus::EventResult(zoomLevel, viewId, &GraphCanvas::ViewRequests::GetZoomLevel);
-
-            OnZoomChanged(zoomLevel);
-        }
-
-        UpdateOutlinePath();
     }
 
     void GlowOutlineGraphicsItem::OnTick(float delta, AZ::ScriptTimePoint timePoint)
@@ -106,22 +80,67 @@ namespace GraphCanvas
     }
 
     void GlowOutlineGraphicsItem::OnZoomChanged(qreal zoomLevel)
-    {
-        zoomLevel = AZ::GetClamp(zoomLevel, GraphCanvas::ViewLimits::ZOOM_MIN, GraphCanvas::ViewLimits::ZOOM_MAX);
+    {        
+        auto settingsHandler = AssetEditorSettingsRequestBus::FindFirstHandler(GetEditorId());
 
-        // We want to invert our range to make this easier to work with.
-        // 0.0f == ZOOM_MAX which is the closest zoom, and we don't want to scale anything.
-        // 1.0f == ZOOM_MIN which is the furthest out zoom, and we need to scale up
-        float zoomPercent = (GraphCanvas::ViewLimits::ZOOM_RANGE - (zoomLevel - GraphCanvas::ViewLimits::ZOOM_MIN)) / GraphCanvas::ViewLimits::ZOOM_RANGE;
+        if (settingsHandler == nullptr)
+        {
+            return;
+        }
+
+        float scaledZoomLevel = 1.0f;
+        float zoomPercent = 0.0f;
+        
+        if (zoomLevel > 0.0f)
+        {
+            // Matching with my previous magic formula. I want half of the current steps as
+            // the zoom level. So instead of dividing 1 by the value, I want to divide 0.5f by the zoom value.
+            scaledZoomLevel = 0.5f / zoomLevel;
+        }
 
         // We never want to scale down. So always set ourselves to 1 if we would be otherwise
-        float scaleFactor = AZ::GetMax(1.0f, 5.0f * zoomPercent);
+        float scaleFactor = AZ::GetMax(1.0f, scaledZoomLevel);
 
         QPen currentPen = pen();
 
         currentPen.setWidth(m_defaultPenWidth * scaleFactor);
 
         setPen(currentPen);
+    }
+
+    void GlowOutlineGraphicsItem::OnSettingsChanged()
+    {        
+        GraphCanvas::ViewId viewId;
+        GraphCanvas::SceneRequestBus::EventResult(viewId, GetGraphId(), &GraphCanvas::SceneRequests::GetViewId);
+
+        GraphCanvas::ViewNotificationBus::Handler::BusConnect(viewId);
+
+        qreal zoomLevel = 0.0f;
+
+        GraphCanvas::ViewRequestBus::EventResult(zoomLevel, viewId, &GraphCanvas::ViewRequests::GetZoomLevel);
+
+        OnZoomChanged(zoomLevel);
+    }
+
+    void GlowOutlineGraphicsItem::OnEditorIdSet()
+    {
+        AssetEditorSettingsNotificationBus::Handler::BusConnect(GetEditorId());
+
+        if (m_trackingSceneMember.IsValid())
+        {
+            if (GraphUtils::IsConnection(m_trackingSceneMember))
+            {
+                ConnectionVisualNotificationBus::Handler::BusConnect(m_trackingSceneMember);
+            }
+            else if (GraphUtils::IsNode(m_trackingSceneMember))
+            {
+                GeometryNotificationBus::Handler::BusConnect(m_trackingSceneMember);
+            }
+        }
+
+        OnSettingsChanged();
+
+        UpdateOutlinePath();
     }
 
     void GlowOutlineGraphicsItem::UpdateOutlinePath()

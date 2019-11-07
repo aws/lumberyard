@@ -63,13 +63,13 @@ namespace
         BMax.Set(-1, 2); 
         AZ_Assert(!AxisAlignedBoxesIntersect(AMin, AMax, BMin, BMax), "Test failed");
         BMin.Set(-2, 1);
-        BMax.Set(-1.1, 2);
+        BMax.Set(-1.1f, 2);
         AZ_Assert(!AxisAlignedBoxesIntersect(AMin, AMax, BMin, BMax), "Test failed");
-        BMin.Set(1.1, 1);
+        BMin.Set(1.1f, 1);
         BMax.Set(2, 2);
         AZ_Assert(!AxisAlignedBoxesIntersect(AMin, AMax, BMin, BMax), "Test failed");
         BMin.Set(1, -2);
-        BMax.Set(2, -1.1);
+        BMax.Set(2, -1.1f);
         AZ_Assert(!AxisAlignedBoxesIntersect(AMin, AMax, BMin, BMax), "Test failed");
     }
 
@@ -207,7 +207,7 @@ namespace
     }
 
     // Test that the scale to device flag is functioning properly
-    void TestScaleToDeviceFlag(CLyShine* lyShine)
+    void TestScaleToDeviceMode(CLyShine* lyShine)
     {
         AZ::EntityId canvasEntityId = lyShine->CreateCanvas();
         UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
@@ -216,64 +216,65 @@ namespace
         AZ::EntityId testElemId = CreateElementWithTransform2dComponent(canvas, "UiTransfrom2DTestElement:ScaleToDevice");
 
         AZ::Matrix4x4 active;
-        bool enabled = true;
         AZ::Matrix4x4 transform;
         AZ::Matrix4x4 transform2;
 
-        // Test that the flag defaults to false
-        EBUS_EVENT_ID_RESULT(enabled, testElemId, UiTransformBus, GetScaleToDevice);
-        AZ_Assert(!enabled, "Test failed");
+        // Test that the flag defaults to None
+        UiTransformInterface::ScaleToDeviceMode scaleToDeviceMode = UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit;
+        EBUS_EVENT_ID_RESULT(scaleToDeviceMode, testElemId, UiTransformBus, GetScaleToDeviceMode);
+        AZ_Assert(scaleToDeviceMode == UiTransformInterface::ScaleToDeviceMode::None, "Test failed");
 
         // Test that we aren't registered as having a rotation or scale by default
-        EBUS_EVENT_ID_RESULT(enabled, testElemId, UiTransformBus, HasScaleOrRotation);
-        AZ_Assert(!enabled, "Test failed");
+        bool hasScaleOrRotation = true;
+        EBUS_EVENT_ID_RESULT(hasScaleOrRotation, testElemId, UiTransformBus, HasScaleOrRotation);
+        AZ_Assert(!hasScaleOrRotation, "Test failed");
 
         // Test that scaling to the device modifies the transform
-        EBUS_EVENT_ID(testElemId, UiTransformBus, SetScaleToDevice, false);
+        EBUS_EVENT_ID(testElemId, UiTransformBus, SetScaleToDeviceMode, UiTransformInterface::ScaleToDeviceMode::None);
         EBUS_EVENT_ID(testElemId, UiTransformBus, GetLocalTransform, transform);
-        EBUS_EVENT_ID(testElemId, UiTransformBus, SetScaleToDevice, true);
+        EBUS_EVENT_ID(testElemId, UiTransformBus, SetScaleToDeviceMode, UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit);
         
         // Resize the canvas to change the DeviceScale
         canvas->SetTargetCanvasSize(true, AZ::Vector2(3, 3));
         EBUS_EVENT_ID(testElemId, UiTransformBus, GetLocalTransform, transform2);
         AZ_Assert(transform != transform2, "Test failed");
 
-        // Test that setting it to false when it is already false, does not set it to true.
-        EBUS_EVENT_ID(testElemId, UiTransformBus, SetScaleToDevice, false);
-        EBUS_EVENT_ID(testElemId, UiTransformBus, SetScaleToDevice, false);
-        EBUS_EVENT_ID_RESULT(enabled, testElemId, UiTransformBus, GetScaleToDevice);
-        AZ_Assert(!enabled, "Test failed");
+        // Test that setting it to None when it is already None, does not set it to UniformScaleToFit.
+        EBUS_EVENT_ID(testElemId, UiTransformBus, SetScaleToDeviceMode, UiTransformInterface::ScaleToDeviceMode::None);
+        EBUS_EVENT_ID(testElemId, UiTransformBus, SetScaleToDeviceMode, UiTransformInterface::ScaleToDeviceMode::None);
+        EBUS_EVENT_ID_RESULT(scaleToDeviceMode, testElemId, UiTransformBus, GetScaleToDeviceMode);
+        AZ_Assert(scaleToDeviceMode == UiTransformInterface::ScaleToDeviceMode::None, "Test failed");
 
         // Check that the flag is actually disabled by checking the transform
         EBUS_EVENT_ID(testElemId, UiTransformBus, GetLocalTransform, active);
         AZ_Assert(active == transform, "Test failed");
 
-        // Test that setting it to true when it is false, sets it to true
-        EBUS_EVENT_ID(testElemId, UiTransformBus, SetScaleToDevice, true);
-        EBUS_EVENT_ID_RESULT(enabled, testElemId, UiTransformBus, GetScaleToDevice);
-        AZ_Assert(enabled, "Test failed");
+        // Test that setting it to UniformScaleToFit when it is None, sets it to UniformScaleToFit
+        EBUS_EVENT_ID(testElemId, UiTransformBus, SetScaleToDeviceMode, UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit);
+        EBUS_EVENT_ID_RESULT(scaleToDeviceMode, testElemId, UiTransformBus, GetScaleToDeviceMode);
+        AZ_Assert(scaleToDeviceMode == UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit, "Test failed");
 
-        // Check that the flag is actually enabled by checking the transform
+        // Check that the flag is actually working by checking the transform
         EBUS_EVENT_ID(testElemId, UiTransformBus, GetLocalTransform, active);
         AZ_Assert(active == transform2, "Test failed");
 
         // Test that we are registered as having a scale by now
-        EBUS_EVENT_ID_RESULT(enabled, testElemId, UiTransformBus, HasScaleOrRotation);
-        AZ_Assert(enabled, "Test failed");
+        EBUS_EVENT_ID_RESULT(hasScaleOrRotation, testElemId, UiTransformBus, HasScaleOrRotation);
+        AZ_Assert(hasScaleOrRotation, "Test failed");
 
-        // Test that setting it to true when it is true, does not set it to false
-        EBUS_EVENT_ID(testElemId, UiTransformBus, SetScaleToDevice, true);
-        EBUS_EVENT_ID_RESULT(enabled, testElemId, UiTransformBus, GetScaleToDevice);
-        AZ_Assert(enabled, "Test failed");
+        // Test that setting it to UniformScaleToFit when it is UniformScaleToFit, does not set it to None
+        EBUS_EVENT_ID(testElemId, UiTransformBus, SetScaleToDeviceMode, UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit);
+        EBUS_EVENT_ID_RESULT(scaleToDeviceMode, testElemId, UiTransformBus, GetScaleToDeviceMode);
+        AZ_Assert(scaleToDeviceMode == UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit, "Test failed");
 
         // Check that the flag is actually enabled by checking the transform
         EBUS_EVENT_ID(testElemId, UiTransformBus, GetLocalTransform, active);
         AZ_Assert(active == transform2, "Test failed");
 
-        // Test that setting it to false when it is true, properly sets it to false.
-        EBUS_EVENT_ID(testElemId, UiTransformBus, SetScaleToDevice, false);
-        EBUS_EVENT_ID_RESULT(enabled, testElemId, UiTransformBus, GetScaleToDevice);
-        AZ_Assert(!enabled, "Test failed");
+        // Test that setting it to None when it is UniformScaleToFit, properly sets it to None.
+        EBUS_EVENT_ID(testElemId, UiTransformBus, SetScaleToDeviceMode, UiTransformInterface::ScaleToDeviceMode::None);
+        EBUS_EVENT_ID_RESULT(scaleToDeviceMode, testElemId, UiTransformBus, GetScaleToDeviceMode);
+        AZ_Assert(scaleToDeviceMode == UiTransformInterface::ScaleToDeviceMode::None, "Test failed");
 
         // Check that the flag is actually disabled by checking the transform
         EBUS_EVENT_ID(testElemId, UiTransformBus, GetLocalTransform, active);
@@ -622,7 +623,7 @@ namespace
         }
 
         // Test cases that would be negative cases, but aren't due to a scale
-        EBUS_EVENT_ID(testElemId, UiTransformBus, SetScale, AZ::Vector2(1.1, 1.1));
+        EBUS_EVENT_ID(testElemId, UiTransformBus, SetScale, AZ::Vector2(1.1f, 1.1f));
 
         for (size_t i = 0; i < pointsB.size(); i++)
         {
@@ -705,7 +706,7 @@ namespace
         }
 
         // Test cases that would be negative cases, but aren't due to a scale
-        EBUS_EVENT_ID(testElemId, UiTransformBus, SetScale, AZ::Vector2(1.1, 1.1));
+        EBUS_EVENT_ID(testElemId, UiTransformBus, SetScale, AZ::Vector2(1.1f, 1.1f));
 
         for (size_t i = 0; i < boundsB.size(); i++)
         {
@@ -1030,7 +1031,7 @@ void UiTransform2dComponent::UnitTest(CLyShine* lyShine, IConsoleCmdArgs* /* cmd
     TestRotation(lyShine);
     TestScale(lyShine);
     TestPivot(lyShine);
-    TestScaleToDeviceFlag(lyShine);
+    TestScaleToDeviceMode(lyShine);
     TestViewportSpaceTransforms(lyShine);
     TestCanvasSpaceTransforms(lyShine);
     TestCanvasSpaceNoScaleNoRot(lyShine);

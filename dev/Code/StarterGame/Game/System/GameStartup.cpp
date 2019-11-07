@@ -192,43 +192,6 @@ void GameStartup::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lp
     }
 }
 
-
-//////////////////////////////////////////////////////////////////////////
-#ifdef WIN32
-
-bool GameStartup::HandleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT* pResult)
-{
-    switch (msg)
-    {
-    case WM_SYSCHAR: // Prevent ALT + key combinations from creating 'ding' sounds
-    {
-        const bool bAlt = (lParam & (1 << 29)) != 0;
-        if (bAlt && wParam == VK_F4)
-        {
-            return false;     // Pass though ALT+F4
-        }
-
-        *pResult = 0;
-        return true;
-    }
-    break;
-
-    case WM_SIZE:
-        break;
-
-    case WM_SETFOCUS:
-        // 3.8.1 - set a hasWindowFocus CVar to true
-        break;
-
-    case WM_KILLFOCUS:
-        // 3.8.1 - set a hasWindowFocus CVar to false
-        break;
-    }
-    return false;
-}
-#endif // WIN32
-
-
 GameStartup* GameStartup::Create()
 {
     static char buffer[sizeof(GameStartup)];

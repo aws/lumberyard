@@ -530,6 +530,7 @@ void BatchApplicationManager::InitAssetRequestHandler()
     m_connectionManager->RegisterService(AssetJobLogRequest::MessageType(), serviceRedirectHandler);
     m_connectionManager->RegisterService(GetAbsoluteAssetDatabaseLocationRequest::MessageType(), serviceRedirectHandler);
     m_connectionManager->RegisterService(SourceAssetInfoRequest::MessageType(), serviceRedirectHandler);
+    m_connectionManager->RegisterService(SourceAssetProductsInfoRequest::MessageType(), serviceRedirectHandler);
     m_connectionManager->RegisterService(GetScanFoldersRequest::MessageType(), serviceRedirectHandler);
     m_connectionManager->RegisterService(GetAssetSafeFoldersRequest::MessageType(), serviceRedirectHandler);
     m_connectionManager->RegisterService(RegisterSourceAssetRequest::MessageType(), serviceRedirectHandler);

@@ -63,7 +63,7 @@ void ImGuiManager::Initialize()
 {
     if (!gEnv || !gEnv->pGame || !gEnv->pRenderer)
     {
-        AZ_Warning("%s %s", __func__, "gEnv Invalid -- Skipping ImGui Initialization.");
+        AZ_Warning("ImGuiManager", false, "%s %s", __func__, "gEnv Invalid -- Skipping ImGui Initialization.");
         return;
     }
     // Register for Game Framework Notifications
@@ -85,7 +85,7 @@ void ImGuiManager::Initialize()
     m_imgSharedLib = AZ::DynamicModuleHandle::Create(imgGuiLibPath.c_str());
     if (!m_imgSharedLib->Load(false))
     {
-        AZ_Warning("%s %s", __func__, "Unable to load " AZ_DYNAMIC_LIBRARY_PREFIX "imguilib" AZ_DYNAMIC_LIBRARY_EXTENSION "-- Skipping ImGui Initialization.");
+        AZ_Warning("ImGuiManager", false, "%s %s", __func__, "Unable to load " AZ_DYNAMIC_LIBRARY_PREFIX "imguilib" AZ_DYNAMIC_LIBRARY_EXTENSION "-- Skipping ImGui Initialization.");
         return;
     }
 
@@ -144,7 +144,7 @@ void ImGuiManager::Shutdown()
 {
     if (!gEnv || !gEnv->pGame)
     {
-        AZ_Warning("%s %s", __func__, "gEnv Invalid -- Skipping ImGui Shutdown.");
+        AZ_Warning("ImGuiManager", false, "%s %s", __func__, "gEnv Invalid -- Skipping ImGui Shutdown.");
         return;
     }
 #if defined(LOAD_IMGUI_LIB_DYNAMICALLY)

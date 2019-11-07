@@ -26,24 +26,11 @@ def build(bld):
         export_includes     = ['..'],
         use                 = ['AzCore', 'GridMate', 'GridMateForTools'],
         uselib              = ['LUA'],
-
+    
+        # Platform Roots
+        platform_roots      = [bld.PlatformRoot('../Platform', export_includes=True)],
+    
         # Compiler Specific
         msvc_cxxflags       = ['/W4'],
-
-        # Platform Specific
-        win_file_list       = ['azframework_win.waf_files'],
-        win_features        = ['crcfix'],
-
-        restricted_script   = 'update_restricted_parameters',
-
-        android_file_list   = ['azframework_android.waf_files'],
-
-        ios_file_list       = ['azframework_ios.waf_files'],
-
-        appletv_file_list   = ['azframework_appletv.waf_files'],
-
-        darwin_file_list    = ['azframework_darwin.waf_files'],
-        darwin_enable_rtti  = True,
-
-        linux_file_list     = ['azframework_linux.waf_files'],
     )
+

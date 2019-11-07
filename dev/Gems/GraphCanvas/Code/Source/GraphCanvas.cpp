@@ -42,8 +42,8 @@
 #include <Components/Nodes/Wrapper/WrapperNodeLayoutComponent.h>
 
 #include <Components/NodePropertyDisplays/BooleanNodePropertyDisplay.h>
+#include <Components/NodePropertyDisplays/ComboBoxNodePropertyDisplay.h>
 #include <Components/NodePropertyDisplays/EntityIdNodePropertyDisplay.h>
-#include <Components/NodePropertyDisplays/ItemModelNodePropertyDisplay.h>
 #include <Components/NodePropertyDisplays/NumericNodePropertyDisplay.h>
 #include <Components/NodePropertyDisplays/ReadOnlyNodePropertyDisplay.h>
 #include <Components/NodePropertyDisplays/StringNodePropertyDisplay.h>
@@ -51,16 +51,20 @@
 
 #include <Components/Slots/Data/DataSlotComponent.h>
 #include <Components/Slots/Execution/ExecutionSlotComponent.h>
+#include <Components/Slots/Extender/ExtenderSlotComponent.h>
 #include <Components/Slots/Property/PropertySlotComponent.h>
 
 #include <GraphCanvas/Styling/Selector.h>
 #include <GraphCanvas/Styling/SelectorImplementations.h>
 #include <GraphCanvas/Styling/PseudoElement.h>
 
+#include <GraphCanvas/Types/ConstructPresets.h>
 #include <GraphCanvas/Types/EntitySaveData.h>
 #include <GraphCanvas/Types/TranslationTypes.h>
 
+#include <GraphCanvas/Widgets/GraphCanvasMimeEvent.h>
 #include <GraphCanvas/Widgets/GraphCanvasTreeModel.h>
+#include <GraphCanvas/Widgets/MimeEvents/CreateSplicingNodeMimeEvent.h>
 
 namespace GraphCanvas
 {
@@ -125,8 +129,8 @@ namespace GraphCanvas
                     ->Attribute(AZ::Edit::Attributes::Category, "Editor")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                     ;
-            }
-
+            }            
+            
             NodeConfiguration::Reflect(serializeContext);
             Styling::SelectorImplementation::Reflect(serializeContext);
             Styling::Selector::Reflect(serializeContext);
@@ -137,10 +141,12 @@ namespace GraphCanvas
             Styling::NestedSelector::Reflect(serializeContext);
             TranslationKeyedString::Reflect(serializeContext);
             Styling::Style::Reflect(serializeContext);
-
         }
 
-        GraphCanvasTreeModel::Reflect(context);
+        EditorConstructPresets::Reflect(context);
+        GraphCanvasMimeEvent::Reflect(context);
+        GraphCanvasTreeModel::Reflect(context);        
+        CreateSplicingNodeMimeEvent::Reflect(context);
     }
 
     void GraphCanvasSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
@@ -224,6 +230,10 @@ namespace GraphCanvas
         {
             return ExecutionSlotComponent::CreateExecutionSlot(nodeId, (*executionSlotConfiguration));
         }
+        else if (const ExtenderSlotConfiguration* extenderSlotConfiguration = azrtti_cast<const ExtenderSlotConfiguration*>(&slotConfiguration))
+        {
+            return ExtenderSlotComponent::CreateExtenderSlot(nodeId, (*extenderSlotConfiguration));
+        }
         else
         {
             AZ_Error("GraphCanvas", false, "Trying to create using an unknown Slot Configuration");
@@ -242,14 +252,14 @@ namespace GraphCanvas
         return aznew NumericNodePropertyDisplay(dataInterface);
     }
 
+    NodePropertyDisplay* GraphCanvasSystemComponent::CreateComboBoxNodePropertyDisplay(ComboBoxDataInterface* dataInterface) const
+    {
+        return aznew ComboBoxNodePropertyDisplay(dataInterface);
+    }
+
     NodePropertyDisplay* GraphCanvasSystemComponent::CreateEntityIdNodePropertyDisplay(EntityIdDataInterface* dataInterface) const
     {
         return aznew EntityIdNodePropertyDisplay(dataInterface);
-    }
-
-    NodePropertyDisplay* GraphCanvasSystemComponent::CreateItemModelNodePropertyDisplay(ItemModelDataInterface* dataInterface) const
-    {
-        return aznew ItemModelNodePropertyDisplay(dataInterface);
     }
 
     NodePropertyDisplay* GraphCanvasSystemComponent::CreateReadOnlyNodePropertyDisplay(ReadOnlyDataInterface* dataInterface) const

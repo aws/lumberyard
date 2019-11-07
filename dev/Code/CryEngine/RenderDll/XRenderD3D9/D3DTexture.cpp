@@ -2351,7 +2351,7 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
 
                 //  Confetti End: Igor Lobanchikov
                 {
-#if !defined(AZ_PLATFORM_APPLE_OSX) || defined(CRY_USE_METAL) // really only for OpenGL 4.1, metal should do this just fine
+#if !defined(AZ_PLATFORM_MAC) || defined(CRY_USE_METAL) // really only for OpenGL 4.1, metal should do this just fine
                     D3DFmt = nFormatSRGB;
 #endif
                 }
@@ -2372,7 +2372,7 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
             nUsage |= CDeviceManager::USAGE_RENDER_TARGET;
         }
         
-#if defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_IOS)
         if (m_nFlags & FT_USAGE_MEMORYLESS)
         {
             nUsage |= CDeviceManager::USAGE_MEMORYLESS;
@@ -2543,7 +2543,7 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
 #endif
             ))
         {
-#if !defined(AZ_PLATFORM_APPLE_OSX) || defined(CRY_USE_METAL)// really only for OpenGL 4.1, metal should do this just fine
+#if !defined(AZ_PLATFORM_MAC) || defined(CRY_USE_METAL)// really only for OpenGL 4.1, metal should do this just fine
             m_bIsSRGB = true;
 #endif
         }
@@ -2555,7 +2555,7 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
 
         if (m_nFlags & FT_USAGE_ALLOWREADSRGB)
         {
-#if !defined(AZ_PLATFORM_APPLE_OSX) || defined(CRY_USE_METAL)// really only for OpenGL 4.1, metal should do this just fine
+#if !defined(AZ_PLATFORM_MAC) || defined(CRY_USE_METAL)// really only for OpenGL 4.1, metal should do this just fine
             m_pDeviceShaderResourceSRGB = static_cast<D3DShaderResourceView*> (CreateDeviceResourceView(SResourceView::ShaderResourceView(m_eTFDst, 0, -1, 0, nMips, true, false)));
 #endif
         }
@@ -2574,7 +2574,7 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
             nUsage |= CDeviceManager::USAGE_RENDER_TARGET;
         }
         
-#if defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_IOS)
         if (m_nFlags & FT_USAGE_MEMORYLESS)
         {
             nUsage |= CDeviceManager::USAGE_MEMORYLESS;
@@ -2800,7 +2800,7 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
             nUsage |= CDeviceManager::USAGE_RENDER_TARGET;
         }
         
-#if defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_IOS)
         if (m_nFlags & FT_USAGE_MEMORYLESS)
         {
             nUsage |= CDeviceManager::USAGE_MEMORYLESS;

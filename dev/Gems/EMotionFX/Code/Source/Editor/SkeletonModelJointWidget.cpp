@@ -30,7 +30,6 @@ namespace EMotionFX
         , m_jointNameLabel(nullptr)
         , m_contentsWidget(nullptr)
         , m_noSelectionWidget(nullptr)
-        , m_isVisible(true)
     {
     }
 
@@ -95,7 +94,7 @@ namespace EMotionFX
     {
         m_modelIndex = modelIndex;
 
-        if (!m_isVisible)
+        if (!isVisible())
         {
             return;
         }
@@ -138,14 +137,10 @@ namespace EMotionFX
         }
     }
 
-    void SkeletonModelJointWidget::SetIsVisible(bool isVisible)
+    void SkeletonModelJointWidget::showEvent(QShowEvent* event)
     {
-        m_isVisible = isVisible;
-
-        if (m_isVisible)
-        {
-            Reinit(m_modelIndex);
-        }
+        QWidget::showEvent(event);
+        Reinit(m_modelIndex);
     }
 
     void SkeletonModelJointWidget::OnSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected)

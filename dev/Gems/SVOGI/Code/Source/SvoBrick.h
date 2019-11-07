@@ -29,7 +29,7 @@
 #include "ITexture.h"
 #include "IMaterial.h"
 #include "IStatObj.h"
-
+#include <SVOGI_Traits_Platform.h>
 
 
 /*
@@ -92,11 +92,7 @@ namespace SVOGI
     };
 
     // SuperMesh index type
-#if defined(WIN64)
-    typedef AZ::u32 SMINDEX;
-#else
-    typedef AZ::u16 SMINDEX;
-#endif
+    typedef AZ_TRAIT_SVOGI_SUPERMESH_INDEX_TYPE SMINDEX;
 
     struct SuperTriangle
     {

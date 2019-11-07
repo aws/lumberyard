@@ -1,0 +1,125 @@
+{
+    "none":
+    {
+        "Platform/AppleTV":
+        [
+            "AzCore/AzCore_Traits_Platform.h",
+            "AzCore/AzCore_Traits_AppleTV.h",
+            "AzCore/base_Platform.h",
+            "AzCore/base_AppleTV.h"
+        ],
+        "std/parallel/internal/Platform/AppleTV": 
+        [
+            "../Common/Apple/AzCore/std/parallel/internal/semaphore_Apple.h",
+            "../Common/Apple/AzCore/std/parallel/internal/thread_Apple.cpp",
+            "../Common/Apple/AzCore/std/parallel/internal/time_Apple.h",
+            "../Common/UnixLike/AzCore/std/parallel/internal/condition_variable_UnixLike.h",
+            "../Common/UnixLike/AzCore/std/parallel/internal/mutex_UnixLike.h",
+            "../Common/UnixLike/AzCore/std/parallel/internal/thread_UnixLike.cpp",
+            "../Common/UnixLike/AzCore/std/parallel/internal/thread_UnixLike.h",
+            "AzCore/std/parallel/internal/condition_variable_Platform.h",
+            "AzCore/std/parallel/internal/mutex_Platform.h",
+            "AzCore/std/parallel/internal/semaphore_Platform.h",
+            "AzCore/std/parallel/internal/thread_Platform.h"
+        ],
+        "std/parallel/Platform/AppleTV":
+        [
+            "../Common/Apple/AzCore/std/parallel/config_Apple.h",
+            "AzCore/std/parallel/config_Platform.h"
+        ]
+    },
+    "AzCore_uber_appletv.cpp":
+    {
+        "Component/Platform/AppleTV":
+        [
+            "../Common/Apple/AzCore/Component/ComponentApplication_Apple.cpp",
+            "../Common/Default/AzCore/Component/ComponentApplication_Default.cpp"
+        ],
+        
+        "Debug/Platform/AppleTV":
+        [
+            "../Common/UnixLike/AzCore/Debug/StackTracer_UnixLike.cpp",
+            "../Common/Apple/AzCore/Debug/Trace_Apple.cpp"
+        ],
+
+        "IO/Platform/AppleTV":
+        [
+            "../Common/Apple/AzCore/IO/SystemFile_Apple.h",
+            "../Common/UnixLike/AzCore/IO/Streamer_UnixLike.cpp",
+            "../Common/UnixLike/AzCore/IO/SystemFile_UnixLike.cpp",
+            "../Common/UnixLikeDefault/AzCore/IO/SystemFile_UnixLikeDefault.cpp",
+            "../Common/UnixLike/AzCore/IO/Internal/SystemFileUtils_UnixLike.h",
+            "../Common/UnixLike/AzCore/IO/Internal/SystemFileUtils_UnixLike.cpp",
+            "AzCore/IO/SystemFile_Platform.h"
+        ],
+
+        "IPC/Platform/AppleTV":
+        [
+            "AzCore/IPC/SharedMemory_Platform.h"
+        ],
+
+        "Memory/Platform/AppleTV":
+        [
+            "../Common/Apple/AzCore/Memory/OSAllocator_Apple.h",
+            "AzCore/Memory/HeapSchema_AppleTV.cpp",
+            "AzCore/Memory/OSAllocator_Platform.h"
+        ],
+
+        "Math/Internal/Platform/AppleTV":
+        [
+            "AzCore/Math/Internal/MathTypes_AppleTV.h",
+            "../Common/FPU/AzCore/Math/Internal/MathTypes_FPU.h",
+            "../Common/SIMD/AzCore/Math/Internal/MathTypes_SIMD.h"
+        ],
+
+        "Math/Platform/AppleTV":
+        [
+            "AzCore/Math/Random_Platform.h",
+            "../Common/UnixLike/AzCore/Math/Random_UnixLike.cpp",
+            "../Common/UnixLike/AzCore/Math/Random_UnixLike.h"
+        ],
+
+        "Module/Platform/AppleTV":
+        [
+            "../Common/Apple/AzCore/Module/DynamicModuleHandle_Apple.cpp",
+            "../Common/UnixLike/AzCore/Module/DynamicModuleHandle_UnixLike.cpp"
+        ],
+
+        "NativeUI/Platform/AppleTV":
+        [
+            "AzCore/NativeUI/NativeUISystemComponent_AppleTV.mm"
+        ],
+
+        "Platform/AppleTV":
+        [
+            "../Common/Unimplemented/AzCore/PlatformIncl_Unimplemented.h",
+            "../Common/UnixLike/AzCore/Platform_UnixLike.cpp",
+            "AzCore/PlatformIncl_Platform.h"
+        ],
+
+        "Socket/Platform/AppleTV":
+        [
+            "../Common/UnixLike/AzCore/Socket/AzSocket_fwd_UnixLike.h",
+            "../Common/UnixLike/AzCore/Socket/AzSocket_UnixLike.cpp",
+            "../Common/UnixLike/AzCore/Socket/AzSocket_UnixLike.h",
+            "AzCore/Socket/AzSocket_fwd_Platform.h",
+            "AzCore/Socket/AzSocket_Platform.h"
+        ],
+
+        "std/Platform/AppleTV":
+        [
+            "../Common/Apple/AzCore/std/time_Apple.cpp"
+        ],
+
+        "Utils/Platform/AppleTV":
+        [
+            "../Common/Apple/AzCore/Utils/Utils_Apple.cpp",
+            "../Common/UnixLike/AzCore/Utils/Utils_UnixLike.cpp"
+        ],
+
+        "IO/Streamer" :
+        [
+            "../../AzCore/IO/Streamer/StreamStackPreferences.cpp"
+        ]
+    }
+}

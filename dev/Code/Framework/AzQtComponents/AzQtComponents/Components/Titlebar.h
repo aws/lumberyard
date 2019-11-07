@@ -243,7 +243,9 @@ namespace AzQtComponents
         bool m_dragEnabled = false;
         bool m_tearEnabled = false;
         QPoint m_dragPos;
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::TitleBar::m_buttons': class 'QList<AzQtComponents::DockBarButton::WindowDecorationButton>' needs to have dll-interface to be used by clients of class 'AzQtComponents::TitleBar'
         WindowDecorationButtons m_buttons;
+        AZ_POP_DISABLE_WARNING
         bool m_forceInactive = false; // So we can show it inactive in the gallery, for demo purposes
         bool m_autoButtons = false;
         bool m_pendingRepositioning = false;
@@ -270,7 +272,9 @@ namespace AzQtComponents
         Qt::CursorShape m_originalCursor = Qt::ArrowCursor;
         QTimer m_enableMouseTrackingTimer;
 
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::TitleBar::m_interactiveWindowGeometryChanger': class 'QPointer<AzQtComponents::InteractiveWindowGeometryChanger>' needs to have dll-interface to be used by clients of class 'AzQtComponents::TitleBar'
         QPointer<InteractiveWindowGeometryChanger> m_interactiveWindowGeometryChanger;
+        AZ_POP_DISABLE_WARNING
     };
 } // namespace AzQtComponents
 

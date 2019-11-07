@@ -1,0 +1,8 @@
+{
+  "auto": {
+    "Platform/iOS": [
+      "PhysX_Traits_Platform.h", 
+      "PhysX_Traits_iOS.h"
+    ]
+  }
+}

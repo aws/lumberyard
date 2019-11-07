@@ -49,11 +49,20 @@ namespace ScriptCanvas
             return false;
         }
 
+        void SetAllowSignalOnChange(bool allowSignalChange)
+        {
+            m_signalValueChanges = allowSignalChange;
+        }
+
     protected:
         void OnValueChanged();
 
         Datum m_data;
         VariableId m_id;
+
+        // Certain editor functions do not need to be notified of value changes (e.g. exposed properties)
+        bool m_signalValueChanges = true;
+
     };
 }
 

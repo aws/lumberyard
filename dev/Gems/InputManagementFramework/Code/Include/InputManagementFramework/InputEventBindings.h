@@ -124,6 +124,6 @@ namespace Input
         }
 
     private:
-        InputEventBindingsAsset(const InputEventBindingsAsset&) = default;
+        InputEventBindingsAsset(const InputEventBindingsAsset&) = delete;
     };
 } // namespace Input

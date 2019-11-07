@@ -28,13 +28,30 @@ namespace ScriptCanvas
 
             void IsNull::OnInit()
             {
-                AZStd::vector<ContractDescriptor> contracts;
-                auto func = []() { return aznew IsReferenceTypeContract(); };
-                ContractDescriptor descriptor{ AZStd::move(func) };
-                contracts.emplace_back(descriptor);
 
-                AddInputDatumOverloadedSlot("Reference", "", contracts);
-                AddOutputTypeSlot("Is Null", "", AZStd::move(Data::Type::Boolean()), OutputStorage::Optional);
+                {
+                    auto func = []() { return aznew IsReferenceTypeContract(); };
+                    ContractDescriptor descriptor{ AZStd::move(func) };                    
+
+                    DynamicDataSlotConfiguration slotConfiguration;
+
+                    slotConfiguration.m_name = "Reference";
+                    slotConfiguration.m_contractDescs.emplace_back(descriptor);
+                    slotConfiguration.m_dynamicDataType = DynamicDataType::Any;
+                    slotConfiguration.SetConnectionType(ConnectionType::Input);
+
+                    AddSlot(slotConfiguration);
+                }
+
+                {
+                    DataSlotConfiguration slotConfiguration;
+
+                    slotConfiguration.m_name = "Is Null";
+                    slotConfiguration.SetType(Data::Type::Boolean());
+                    slotConfiguration.SetConnectionType(ConnectionType::Output);
+
+                    AddSlot(slotConfiguration);
+                }
             }
 
             void IsNull::OnInputSignal(const SlotId&)

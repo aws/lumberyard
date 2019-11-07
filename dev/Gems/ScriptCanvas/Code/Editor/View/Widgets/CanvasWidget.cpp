@@ -72,7 +72,8 @@ namespace ScriptCanvasEditor
 
         void CanvasWidget::SetupGraphicsView()
         {
-            m_graphicsView = aznew GraphCanvas::GraphCanvasGraphicsView();
+            const bool registerMenuActions = false;
+            m_graphicsView = aznew GraphCanvas::GraphCanvasGraphicsView(nullptr, registerMenuActions);
 
             AZ_Assert(m_graphicsView, "Could Canvas Widget unable to create CanvasGraphicsView object.");
             if (m_graphicsView)

@@ -161,7 +161,6 @@ namespace ScriptCanvas
         void Core::InitNodeRegistry(NodeRegistry& nodeRegistry)
         {
             using namespace ScriptCanvas::Nodes::Core;
-            AddNodeToRegistry<Core, Assign>(nodeRegistry);
             AddNodeToRegistry<Core, Error>(nodeRegistry);
             AddNodeToRegistry<Core, ErrorHandler>(nodeRegistry);
             AddNodeToRegistry<Core, Method>(nodeRegistry);
@@ -175,12 +174,12 @@ namespace ScriptCanvas
             AddNodeToRegistry<Core, SetVariableNode>(nodeRegistry);
             AddNodeToRegistry<Core, ReceiveScriptEvent>(nodeRegistry);
             AddNodeToRegistry<Core, SendScriptEvent>(nodeRegistry);
+            AddNodeToRegistry<Core, Repeater>(nodeRegistry);
         }
 
         AZStd::vector<AZ::ComponentDescriptor*> Core::GetComponentDescriptors()
         {
             return AZStd::vector<AZ::ComponentDescriptor*>({
-                ScriptCanvas::Nodes::Core::Assign::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::Error::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::ErrorHandler::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::Method::CreateDescriptor(),
@@ -189,11 +188,12 @@ namespace ScriptCanvas
                 ScriptCanvas::Nodes::Core::String::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::EBusEventHandler::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::ExtractProperty::CreateDescriptor(),
-                ScriptCanvas::Nodes::Core::ForEach::CreateDescriptor(),
+                ScriptCanvas::Nodes::Core::ForEach::CreateDescriptor(),                
                 ScriptCanvas::Nodes::Core::GetVariableNode::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::SetVariableNode::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::ReceiveScriptEvent::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::SendScriptEvent::CreateDescriptor(),
+                ScriptCanvas::Nodes::Core::Repeater::CreateDescriptor()
             });
         }
     }

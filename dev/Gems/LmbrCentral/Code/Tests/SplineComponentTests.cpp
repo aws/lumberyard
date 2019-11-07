@@ -21,7 +21,7 @@
 #include <AzFramework/Application/Application.h>
 #include <AzFramework/Components/TransformComponent.h>
 
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <Shape/SplineComponent.h>
 
 using namespace AZ;

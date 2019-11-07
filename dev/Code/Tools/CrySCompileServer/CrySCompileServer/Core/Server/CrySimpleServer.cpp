@@ -44,12 +44,12 @@
 #include <AzCore/std/bind/bind.h>
 #include <AzCore/std/string/string.h>
 
-#if defined(AZ_RESTRICTED_PLATFORM)
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #undef AZ_RESTRICTED_SECTION
 #define CRYSIMPLESERVER_CPP_SECTION_1 1
 #endif
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
 #include <libproc.h>
 #include <sys/stat.h>
 #endif
@@ -173,7 +173,7 @@ bool SEnviropment::IsShaderCompilerValid( const AZStd::string& shaderCompilerID 
     bool validCompiler = (m_ShaderCompilersMap.find(shaderCompilerID) != m_ShaderCompilersMap.end());
     
     // Extra check for Mac: Only GL_LLVM_DXC and METAL_LLVM_DXC compilers are supported.
-    #if defined(AZ_PLATFORM_APPLE_OSX)
+    #if defined(AZ_PLATFORM_MAC)
         if (validCompiler &&
             shaderCompilerID != m_GLSL_LLVM_DXC &&
             shaderCompilerID != m_METAL_LLVM_DXC)
@@ -221,14 +221,14 @@ bool CopyFileOnPlatform(const char* nameOfFileToCopy, const char* copiedFileName
 {
     if (AZ::IO::SystemFile::Exists(copiedFileName) && failIfFileExists)
     {
-        AZ_Warning(0, ("File to copy to, %s, already exists."), copiedFileName);
+        AZ_Warning("CrySimpleServer", false, ("File to copy to, %s, already exists."), copiedFileName);
         return false;
     }
 
     AZ::IO::SystemFile fileToCopy;
     if (fileToCopy.Open(nameOfFileToCopy, AZ::IO::SystemFile::SF_OPEN_READ_ONLY))
     {
-        AZ_Warning(0, ("Unable to open file: %s for copying."), nameOfFileToCopy);
+        AZ_Warning("CrySimpleServer", false, ("Unable to open file: %s for copying."), nameOfFileToCopy);
         return false;
     }
 
@@ -237,7 +237,7 @@ bool CopyFileOnPlatform(const char* nameOfFileToCopy, const char* copiedFileName
     AZ::IO::SystemFile newFile;
     if (newFile.Open(copiedFileName, AZ::IO::SystemFile::SF_OPEN_WRITE_ONLY | AZ::IO::SystemFile::SF_OPEN_CREATE))
     {
-        AZ_Warning(0, ("Unable to open new file: %s for copying."), copiedFileName);
+        AZ_Warning("CrySimpleServer", false, ("Unable to open new file: %s for copying."), copiedFileName);
         return false;
     }
 
@@ -368,10 +368,16 @@ void CompileJob::Process()
                     m_pThreadData->Socket()->WaitForShutDownEvent(true);
                 }
 
-                #if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
-                    #define AZ_RESTRICTED_SECTION CRYSIMPLESERVER_CPP_SECTION_1
-                    #include "Provo/CrySimpleServer_cpp_provo.inl"
-                #endif
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+    #if defined(TOOLS_SUPPORT_XENIA)
+        #define AZ_RESTRICTED_SECTION CRYSIMPLESERVER_CPP_SECTION_1
+        #include "Xenia/CrySimpleJobCompile_cpp_xenia.inl"
+    #endif
+    #if defined(TOOLS_SUPPORT_PROVO)
+        #define AZ_RESTRICTED_SECTION CRYSIMPLESERVER_CPP_SECTION_1
+        #include "Provo/CrySimpleJobCompile_cpp_provo.inl"
+    #endif
+#endif
 
                 if (pJobType)
                 {

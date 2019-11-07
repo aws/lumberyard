@@ -13,7 +13,7 @@
 #include <AzFramework/Network/AssetProcessorConnection.h>
 
 #include <AzCore/Math/Crc.h>
-#include <AzCore/Platform/Platform.h>
+#include <AzCore/Platform.h>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/parallel/semaphore.h>
@@ -23,12 +23,10 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
 
+#include <inttypes.h>
+
 // Enable this if you want to see a message for every socket/session event
 //#define ASSETPROCESORCONNECTION_VERBOSE_LOGGING
-
-#if defined AZ_PLATFORM_ANDROID
-    #include <android/log.h>
-#endif
 
 namespace AzFramework
 {
@@ -123,33 +121,27 @@ namespace AzFramework
         void AssetProcessorConnection::DebugMessage(const char* format, ...)
         {
 #ifdef ASSETPROCESORCONNECTION_VERBOSE_LOGGING
-            char msg[2048];
+            constexpr size_t MaxMessageSize = 2048;
+            AZStd::array<char, MaxMessageSize> msg;
             va_list va;
             va_start(va, format);
-            azvsnprintf(msg, 2048, format, va);
+            azvsnprintf(msg.data(), msg.size(), format, va);
             va_end(va);
-            char buffer[2048];
-#   if AZ_TRAIT_OS_USE_WINDOWS_THREADS
-            // on these platforms, this_thread::getId returns an unsigned.
-            azsnprintf(buffer, 2048, "(%p/%u): %s\n", this, AZStd::this_thread::get_id().m_id, msg);
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/AssetProcessorConnection_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/AssetProcessorConnection_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#   elif defined(AZ_PLATFORM_ANDROID)
-            // on android, the thread id is a long int.
-            azsnprintf(buffer, 2048, "(%p/%li): %s\n", this, AZStd::this_thread::get_id().m_id, msg);
-#   else
-#       error we do not know how to output on this platform - consider trying one of the above cases.
-#   endif
+            
+            static_assert(sizeof(AZStd::thread_id) <= sizeof(uintptr_t), "Thread Id should less than a size of a pointer");
+            uintptr_t numericThreadId{};
+            *reinterpret_cast<AZStd::thread_id*>(&numericThreadId) = AZStd::this_thread::get_id();
+            
+            AZStd::array<char, MaxMessageSize> buffer;
+            azsnprintf(buffer.data(), buffer.size(), "(%p/%#" PRIxPTR "): %s\n", this, numericThreadId, msg.data());
+
+    #if AZ_TRAIT_COMPILER_USE_OUTPUT_DEBUG_STRING
             ::OutputDebugString("AssetProcessorConnection:");
-            ::OutputDebugString(buffer);
+            ::OutputDebugString(buffer.data());
+    #else
+            fputs("AssetProcessorConnection:", stdout);
+            fputs(buffer.data(), stdout);
+    #endif
 #else // ASSETPROCESORCONNECTION_VERBOSE_LOGGING is not defined
             (void)format;
 #endif

@@ -35,9 +35,13 @@
 #define REMOTECOMPILER_CPP_SECTION_2 2
 #endif
 
-#if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
-    #define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_3
-    #include "Provo/RemoteCompiler_cpp_provo.inl"
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_3
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RemoteCompiler_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RemoteCompiler_cpp_provo.inl"
+    #endif
 #endif
 
 namespace NRemoteCompiler
@@ -612,7 +616,7 @@ namespace NRemoteCompiler
                 0x800 |  // Global uniforms are not stored in a struct
                 0x2000;  // Do not use an array for temporary registers
 
-            #if defined(AZ_PLATFORM_APPLE_OSX)
+            #if defined(AZ_PLATFORM_MAC)
                 translateFlags |= 0x1000; // Declare dynamically indexed constant buffers as an array of floats
             #endif
 
@@ -745,9 +749,13 @@ namespace NRemoteCompiler
         Nodes.push_back(std::pair<string, string>(string("Entry"), string(pEntry)));
         Nodes.push_back(std::pair<string, string>(string("CompileFlags"), string(pCompileFlags)));
 
-#if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
+#if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_4
-#include "Provo/RemoteCompiler_cpp_provo.inl"
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RemoteCompiler_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RemoteCompiler_cpp_provo.inl"
+    #endif
 #endif
 
         // Any fields coming after "HashStop" will not contribute to the hash calculated on the Remote Shader Compiler Server for its local cache.
@@ -914,10 +922,14 @@ namespace NRemoteCompiler
         std::vector<uint8>  CompileData;
         std::vector<std::pair<string, string> > Nodes;
 
-        #if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
-            #define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_4
-            #include "Provo/RemoteCompiler_cpp_provo.inl"
-        #endif
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_4
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RemoteCompiler_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RemoteCompiler_cpp_provo.inl"
+    #endif
+#endif
 
         Nodes.push_back(std::pair<string, string>(string("JobType"), string("RequestLine")));
         Nodes.push_back(std::pair<string, string>(string("ShaderRequest"), rString));

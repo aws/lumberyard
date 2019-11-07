@@ -10,10 +10,9 @@
 *
 */
 
-#include "TestTypes.h"
-
 #include <AzCore/State/HSM.h>
 #include <AzCore/std/string/string.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #include <AzCore/std/allocator_static.h>
 #include <AzCore/std/allocator_ref.h>

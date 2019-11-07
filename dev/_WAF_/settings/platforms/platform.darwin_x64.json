@@ -32,7 +32,9 @@
             "macx/libqtga.dylib",
             "macx/libqtga_debug.dylib"
         ],
-        "default_launcher_name" :  "MacLauncher"
+        "default_launcher_name" : "MacLauncher",
+        "platform_folder"       : "Mac",
+        "platform_keyword"      : "mac"
     },
 
     "settings"      : {

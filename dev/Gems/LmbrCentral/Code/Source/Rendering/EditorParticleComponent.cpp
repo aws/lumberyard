@@ -50,7 +50,7 @@ namespace LmbrCentral
 
                     ClassElement(AZ::Edit::ClassElements::EditorData, "")->
                     Attribute(AZ::Edit::Attributes::Category, "Rendering")->
-                    Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Particle.png")->
+                    Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Particle.svg")->
                     Attribute(AZ::Edit::Attributes::PrimaryAssetType, AZ::AzTypeInfo<LmbrCentral::ParticleAsset>::Uuid())->
                     Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Particle.png")->
                     Attribute(AZ::Edit::Attributes::AutoExpand, true)->

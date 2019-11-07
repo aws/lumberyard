@@ -15,6 +15,7 @@
 #include <GameStateSamples/GameStateOptionsMenu.h>
 #include <GameStateSamples/GameStateLevelLoading.h>
 #include <GameStateSamples/GameStatePrimaryUserSelection.h>
+#include <GameStateSamples/GameStateSamples_Traits_Platform.h>
 
 #include <LocalUser/LocalUserRequestBus.h>
 
@@ -40,11 +41,11 @@ namespace GameStateSamples
         // of the process that is only needed while this state is active (which is not very often).
 
         bool createLocalUserLobbySubState = false;
-    #if defined(AZ_TRAIT_LOCAL_USER_LOBBY_ENABLED)
+    #if AZ_TRAIT_GAMESTATESAMPLES_LOCAL_USER_LOBBY_ENABLED
         createLocalUserLobbySubState = true;
     #else
         createLocalUserLobbySubState = false;
-    #endif // defined(AZ_TRAIT_PAUSE_ON_APPLICATION_CONSTRAINED)
+    #endif // AZ_TRAIT_GAMESTATESAMPLES_LOCAL_USER_LOBBY_ENABLED
         ISystem* iSystem = GetISystem();
         IConsole* iConsole = iSystem ? iSystem->GetIConsole() : nullptr;
         if (iConsole && iConsole->GetCVar("sys_localUserLobbyEnabled"))

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "TestTypes.h"
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/Asset/AssetCommon.h>
 
 namespace UnitTest

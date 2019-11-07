@@ -10,8 +10,6 @@
 *
 */
 
-#include <Tests/TestTypes.h>
-
 #include <AzFramework/Network/NetworkContext.h>
 #include <AzFramework/Application/Application.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
@@ -19,6 +17,7 @@
 #include <AzCore/Memory/AllocationRecords.h>
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/IO/ByteContainerStream.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #include <GridMate/Replica/ReplicaChunk.h>
 #include <GridMate/Replica/DataSet.h>

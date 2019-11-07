@@ -13,8 +13,7 @@
 #pragma once
 
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
-#include <QLineEdit>
-#include <QRegExpValidator>
+#include <Editor/LineEditValidatable.h>
 
 
 namespace EMotionFX
@@ -22,7 +21,7 @@ namespace EMotionFX
     class AnimGraphNode;
 
     class AnimGraphNodeNameLineEdit
-        : public QLineEdit
+        : public EMStudio::LineEditValidatable
     {
         Q_OBJECT // AUTOMOC
     public:
@@ -32,26 +31,9 @@ namespace EMotionFX
         ~AnimGraphNodeNameLineEdit() = default;
 
         void SetNode(AnimGraphNode* node);
-        void SetName(const QString& newName);
-        void SetPreviousName(const QString& previousName);
-        QString GetName() const;
-        QString GetPreviousName() const;
-
-    signals:
-        void NameChanged();
-
-    private slots:
-        void OnTextChanged();
-        void OnEditingFinished();
 
     private:
-        bool IsValid();
-
         AnimGraphNode* m_node;
-        QString m_previousName;
-
-        QRegExp m_validationExpr;
-        QRegExpValidator m_lineValidator;
     };
 
 

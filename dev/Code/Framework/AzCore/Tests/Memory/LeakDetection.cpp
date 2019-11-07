@@ -47,11 +47,11 @@ namespace UnitTest
 
             if (m_leakExpected)
             {
-                AZ_TEST_STOP_ASSERTTEST(1);
+                AZ_TEST_STOP_TRACE_SUPPRESSION(1);
             }
         }
 
-        void SetLeakExpected() { AZ_TEST_START_ASSERTTEST; m_leakExpected = true; }
+        void SetLeakExpected() { AZ_TEST_START_TRACE_SUPPRESSION; m_leakExpected = true; }
 
     private:
         bool OnPreError(const char* window, const char* file, int line, const char* func, const char* message) override
@@ -172,10 +172,10 @@ namespace UnitTest
 
                 if (m_leakExpected)
                 {
-                    // The macro AZ_TEST_STOP_ASSERTTEST contains a return statement, therefore we cannot use it in a destructor, 
+                    // The macro AZ_TEST_STOP_TRACE_SUPPRESSION contains a return statement, therefore we cannot use it in a destructor, 
                     // to overcome that, we wrap it in a lambda so we can drop the returned value.
                     auto stopAsserts = [] {
-                        AZ_TEST_STOP_ASSERTTEST(1);
+                        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
                     };
                     stopAsserts();
                 }
@@ -226,7 +226,7 @@ namespace UnitTest
             EXPECT_EQ(m_busRedirector.m_leakExpected, UnitTest::TestRunner::Instance().m_isAssertTest);
         }
 
-        void SetLeakExpected() { AZ_TEST_START_ASSERTTEST; m_busRedirector.m_leakExpected = true; }
+        void SetLeakExpected() { AZ_TEST_START_TRACE_SUPPRESSION; m_busRedirector.m_leakExpected = true; }
 
     private:
         BusRedirector m_busRedirector;
@@ -296,11 +296,11 @@ namespace UnitTest
 
             if (m_leakExpected)
             {
-                AZ_TEST_STOP_ASSERTTEST(1);
+                AZ_TEST_STOP_TRACE_SUPPRESSION(1);
             }
         }
 
-        void SetLeakExpected() { AZ_TEST_START_ASSERTTEST; m_leakExpected = true; }
+        void SetLeakExpected() { AZ_TEST_START_TRACE_SUPPRESSION; m_leakExpected = true; }
 
         // Dummy test class that uses AllocatorType
         class ThisAllocatorTestClass

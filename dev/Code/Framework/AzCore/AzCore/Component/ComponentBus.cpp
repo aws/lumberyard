@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
+
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include "ComponentBus.h"
@@ -29,4 +29,3 @@ namespace AZ
         }
     }
 }
-#endif // #ifndef AZ_UNITY_BUILD

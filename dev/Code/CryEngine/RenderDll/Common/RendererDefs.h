@@ -878,7 +878,7 @@ extern ISystem* iSystem;
 #   define VOLUMETRIC_FOG_SHADOWS
 #endif
 
-#if ((defined(AZ_PLATFORM_WINDOWS) && !defined(OPENGL)) || defined(AZ_PLATFORM_APPLE_OSX)) && !defined(CRY_USE_DX12) && !defined(RELEASE)
+#if ((defined(AZ_PLATFORM_WINDOWS) && !defined(OPENGL)) || defined(AZ_PLATFORM_MAC)) && !defined(CRY_USE_DX12) && !defined(RELEASE)
 #   define ENABLE_NULL_D3D11DEVICE
 #endif
 

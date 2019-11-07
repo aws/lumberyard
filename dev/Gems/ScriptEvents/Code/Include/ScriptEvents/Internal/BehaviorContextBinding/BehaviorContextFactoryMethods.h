@@ -38,7 +38,7 @@ namespace ScriptEvents
         ~BehaviorHandlerFactoryMethod() override
         {}
 
-        bool Call(AZ::BehaviorValueParameter* arguments, unsigned int numArguments, AZ::BehaviorValueParameter* result = nullptr) override
+        bool Call(AZ::BehaviorValueParameter* arguments, unsigned int numArguments, AZ::BehaviorValueParameter* result = nullptr) const override
         {
             return false;
         }
@@ -131,7 +131,7 @@ namespace ScriptEvents
         {
         }
 
-        bool Call(AZ::BehaviorValueParameter* arguments, unsigned int numArguments, AZ::BehaviorValueParameter* result = nullptr) override
+        bool Call(AZ::BehaviorValueParameter* arguments, unsigned int numArguments, AZ::BehaviorValueParameter* result = nullptr) const override
         {
             const ScriptEvents::ScriptEvent* scriptEventDefinition = nullptr;
             if (numArguments > 0)
@@ -171,8 +171,9 @@ namespace ScriptEvents
         {
         }
 
-        bool Call(AZ::BehaviorValueParameter* arguments, unsigned int numArguments, AZ::BehaviorValueParameter* result = nullptr) override
+        bool Call(AZ::BehaviorValueParameter* arguments, unsigned int numArguments, AZ::BehaviorValueParameter* result = nullptr) const override
         {
+            AZ_Assert(arguments, "Must pass in the handler to delete");
             if (arguments)
             {
                 // The first argument is the handler that needs to be deleted

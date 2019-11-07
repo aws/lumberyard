@@ -340,6 +340,8 @@ PakManager::ECallResult PakManager::CreatePakFile(
 
     const int zipCompressionLevel = config->GetAsInt("zip_compression", 6, 6);
 
+    const bool useFastestDecompressionCodec = config->GetAsBool("use_fastest", false, false);
+
     ECallResult bResult = eCallResult_Succeeded;
     for (std::map<string, std::vector<PakHelpers::PakEntry> >::iterator it = fileMap.begin(); it != fileMap.end(); ++it)
     {
@@ -607,7 +609,8 @@ PakManager::ECallResult PakManager::CreatePakFile(
                 RCLog("Adding files into %s...", pakFilenameToWrite.c_str());
                 pPakFile->zip->UpdateMultipleFiles(&realFilenamePtrs[0], &filenameInZipPtrs[0], filenameCount,
                     zipCompressionLevel, zipEncrypt && zipEncryptContent, nMaxZipSize, nMinSrcSize, nMaxSrcSize,
-                    GetMaxThreads(), &errorReporter, bSplitOnSizeOverflow ? &sizeSplitter : nullptr);
+                    GetMaxThreads(), &errorReporter, bSplitOnSizeOverflow ? &sizeSplitter : nullptr, useFastestDecompressionCodec);
+                
 
                 // divide files in case it has overflown the maximum allowed file-size
                 if (bSplitOnSizeOverflow)
@@ -905,7 +908,7 @@ PakManager::ECallResult PakManager::UnzipPakFile(const IConfig* config, const st
         const RcFile& pakFile = *it;
 #if defined(AZ_PLATFORM_WINDOWS)
         const string pakFilePath = PathHelpers::Join(PathHelpers::ToDosPath(pakFile.m_sourceLeftPath), PathHelpers::ToDosPath(pakFile.m_sourceInnerPathAndName));
-#elif defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
         const string pakFilePath = PathHelpers::Join(PathHelpers::ToUnixPath(pakFile.m_sourceLeftPath), PathHelpers::ToUnixPath(pakFile.m_sourceInnerPathAndName));
 #endif
         ZipDir::CacheFactory factory(ZipDir::ZD_INIT_FAST, 0);
@@ -917,7 +920,7 @@ PakManager::ECallResult PakManager::UnzipPakFile(const IConfig* config, const st
         }
 #if defined(AZ_PLATFORM_WINDOWS)
         const string destFolder = PathHelpers::Join(PathHelpers::ToDosPath(unzipFolder), PathHelpers::ToDosPath(pakFile.m_sourceInnerPathAndName.substr(0, index)));
-#elif defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
         const string destFolder = PathHelpers::Join(PathHelpers::ToUnixPath(unzipFolder), PathHelpers::ToUnixPath(pakFile.m_sourceInnerPathAndName.substr(0, index)));
 #endif
         params.emplace_back(UnpakParameters{ cache, pakFilePath, destFolder, onFinishCb });

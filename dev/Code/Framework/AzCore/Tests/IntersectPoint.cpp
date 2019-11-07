@@ -10,9 +10,8 @@
 *
 */
 
-#include "TestTypes.h"
-
 #include <AzCore/Math/IntersectPoint.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 using namespace AZ;
 

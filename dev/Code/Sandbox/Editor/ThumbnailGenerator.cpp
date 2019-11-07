@@ -16,7 +16,7 @@
 
 #include <I3DEngine.h>
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
 #include <sys/types.h>
 #include <utime.h>
 #endif
@@ -95,7 +95,7 @@ inline bool ThumbFileTimeIsEqual(const FILETIME& ft1, const FILETIME& ft2)
 {
     return ft1.dwHighDateTime == ft2.dwHighDateTime && ft1.dwLowDateTime == ft2.dwLowDateTime;
 }
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
 #define FileTimeType utimbuf
 
 inline void GetThumbFileTime(const char* fileName, utimbuf& times)

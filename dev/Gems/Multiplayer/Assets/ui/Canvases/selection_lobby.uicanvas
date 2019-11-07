@@ -630,7 +630,7 @@
 																	<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 																		<Class name="AZ::u64" field="id" value="16587206540904798588" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 																	</Class>
-																	<Class name="AZStd::string" field="Name" value="XboxLiveButton" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+																	<Class name="AZStd::string" field="Name" value="XeniaLiveButton" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
 																	<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 																	<Class name="AZStd::vector" field="Components" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}">
 																		<Class name="UiElementComponent" field="element" version="1" type="{4A97D63E-CE7A-45B6-AAE4-102DB4334688}">
@@ -858,7 +858,7 @@
 																	<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 																		<Class name="AZ::u64" field="id" value="16587206708408523132" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 																	</Class>
-																	<Class name="AZStd::string" field="Name" value="PSNButton" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+																	<Class name="AZStd::string" field="Name" value="ProvoButton" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
 																	<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 																	<Class name="AZStd::vector" field="Components" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}">
 																		<Class name="UiElementComponent" field="element" version="1" type="{4A97D63E-CE7A-45B6-AAE4-102DB4334688}">

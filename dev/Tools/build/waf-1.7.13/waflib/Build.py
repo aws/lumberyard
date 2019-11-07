@@ -102,7 +102,7 @@ class BuildContext(Context.Context):
 		self.jobs = Options.options.jobs
 		self.targets = Options.options.targets
 		self.keep = Options.options.keep
-		self.cache_global = Options.cache_global
+		self.artifacts_cache = Options.options.artifacts_cache
 		self.nocache = Options.options.nocache
 		self.progress_bar = Options.options.progress_bar
 

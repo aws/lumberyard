@@ -14,14 +14,7 @@
 
 #include <GridMate/Memory.h>
 #include <AzCore/std/string/string.h>
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/string_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/string_h_provo.inl"
-    #endif
-#endif
+#include <AzCore/std/string/conversions.h>  // for getting from string->wstring and backwards
 
 namespace GridMate
 {

@@ -22,6 +22,7 @@
 #include <WaterVolumeComponent.h>
 #include <Source/OceanSurfaceDataComponent.h>
 #include <Source/WaterVolumeSurfaceDataComponent.h>
+#include <Source/WaterRippleGeneratorComponent.h>
 
 #include <IGem.h>
 
@@ -36,13 +37,14 @@ namespace Water
             WaterVolumeComponent::CreateDescriptor(),
             OceanSurfaceDataComponent::CreateDescriptor(),
             WaterVolumeSurfaceDataComponent::CreateDescriptor(),
+            WaterRippleGeneratorComponent::CreateDescriptor(),
         });
     }
 
     /**
      * Add required SystemComponents to the SystemEntity.
      */
-    AZ::ComponentTypeList WaterModule::GetRequiredSystemComponents() const 
+    AZ::ComponentTypeList WaterModule::GetRequiredSystemComponents() const
     {
         return AZ::ComponentTypeList{
             azrtti_typeid<WaterSystemComponent>(),

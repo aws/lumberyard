@@ -10,11 +10,14 @@
 *
 */
 
-#include "TestTypes.h"
 #include "FileIOBaseTestTypes.h"
 
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/Streamer.h>
+
+#include <AzCore/Jobs/JobManager.h>
+#include <AzCore/Jobs/JobContext.h>
+
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Component/Entity.h>
@@ -26,52 +29,18 @@
 #include <AzCore/Math/Sfmt.h>
 #include <AzCore/Memory/PoolAllocator.h>
 #include <AzCore/Slice/SliceMetadataInfoComponent.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #if defined(HAVE_BENCHMARK)
 #include <benchmark/benchmark.h>
 #endif
 
+#include "Utils.h"
+
 using namespace AZ;
-
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/AssetManager_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/AssetManager_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_ANDROID)
-#   define AZ_ROOT_TEST_FOLDER "/sdcard/"
-#elif defined(AZ_PLATFORM_APPLE_IOS)
-#   define AZ_ROOT_TEST_FOLDER "/Documents/"
-#elif defined(AZ_PLATFORM_APPLE_TV)
-#   define AZ_ROOT_TEST_FOLDER "/Library/Caches/"
-#else
-#   define AZ_ROOT_TEST_FOLDER  ""
-#endif
-
-
-namespace SliceTestInternal
-{
-#if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
-    AZStd::string GetTestFolderPath()
-    {
-        return AZStd::string(getenv("HOME")) + AZ_ROOT_TEST_FOLDER;
-    }
-#else
-    AZStd::string GetTestFolderPath()
-    {
-        return AZ_ROOT_TEST_FOLDER;
-    }
-#endif
-}
 
 namespace UnitTest
 {
-    using namespace SliceTestInternal;
     using namespace AZ::Data;
     using namespace AZ::IO;
 
@@ -261,11 +230,6 @@ namespace UnitTest
             m_prevFileIO = IO::FileIOBase::GetInstance();
             IO::FileIOBase::SetInstance(&m_fileIO);
             IO::Streamer::Descriptor streamerDesc;
-            AZStd::string testFolder = GetTestFolderPath();
-            if (testFolder.length() > 0)
-            {
-                streamerDesc.m_fileMountPoint = testFolder.c_str();
-            }
             IO::Streamer::Create(streamerDesc);
 
             m_sliceDescriptor->Reflect(m_serializeContext);
@@ -694,262 +658,6 @@ namespace UnitTest
             return info;
         }
     };
-
-    // A test which creates two slice assets which form a cycle with each other, and then
-    // makes sure that instantiation and loading does not deadlock or cause stack overflows
-    // and that the appropriate errors are detected.
-    // it does so by first creating the two assets and saving them to disk.
-    // then it loads them blocking
-    // then it unloads them and loads one nonblocking
-    // then it instantiates one and ensures that the cycle is automatically severed (and we dont crash or anything).
-  
-    class SliceTest_RecursionDetection
-        : public AllocatorsFixture
-        , public ComponentApplicationBus::Handler
-    {
-    public:
-
-        //////////////////////////////////////////////////////////////////////////
-        // ComponentApplicationMessages
-        ComponentApplication* GetApplication() override { return nullptr; }
-        void RegisterComponentDescriptor(const ComponentDescriptor*) override { }
-        void UnregisterComponentDescriptor(const ComponentDescriptor*) override { }
-        bool AddEntity(Entity*) override { return true; }
-        bool RemoveEntity(Entity*) override { return true; }
-        bool DeleteEntity(const EntityId&) override { return true; }
-        Entity* FindEntity(const EntityId&) override { return nullptr; }
-        SerializeContext* GetSerializeContext() override { return m_serializeContext.get(); }
-        BehaviorContext*  GetBehaviorContext() override { return nullptr; }
-        const char* GetExecutableFolder() const override { return nullptr; }
-        const char* GetAppRoot() override { return nullptr; }
-        const char* GetBinFolder() const override { return nullptr; }
-        Debug::DrillerManager* GetDrillerManager() override { return nullptr; }
-        void EnumerateEntities(const EntityCallback& /*callback*/) override {}
-        //////////////////////////////////////////////////////////////////////////
-
-        FileIOBase* m_prevFileIO{ nullptr };
-        TestFileIOBase m_fileIO;
-        AZStd::unique_ptr<AZ::SerializeContext> m_serializeContext;
-        AZStd::unique_ptr<SliceTest_RecursionDetection_Catalog> m_catalog;
-        AZStd::unique_ptr<ComponentDescriptor> m_sliceDescriptor;
-
-        SliceTest_RecursionDetection()
-            : AllocatorsFixture()
-        {
-        }
-
-        void SetUp() override
-        {
-            AllocatorsFixture::SetUp();
-
-            AllocatorInstance<PoolAllocator>::Create();
-            AllocatorInstance<ThreadPoolAllocator>::Create();
-
-            m_prevFileIO = IO::FileIOBase::GetInstance();
-            IO::FileIOBase::SetInstance(&m_fileIO);
-            IO::Streamer::Descriptor streamerDesc;
-            AZStd::string testFolder = GetTestFolderPath();
-            if (testFolder.length() > 0)
-            {
-                streamerDesc.m_fileMountPoint = testFolder.c_str();
-            }
-            IO::Streamer::Create(streamerDesc);
-            ComponentApplicationBus::Handler::BusConnect();
-            m_serializeContext.reset(aznew AZ::SerializeContext(true, true));
-
-            m_sliceDescriptor.reset(SliceComponent::CreateDescriptor());
-            m_sliceDescriptor->Reflect(m_serializeContext.get());
-            Entity::Reflect(m_serializeContext.get());
-            DataPatch::Reflect(m_serializeContext.get());
-            // Create database
-            AssetManager::Descriptor desc;
-            AssetManager::Create(desc);
-            AssetManager::Instance().RegisterHandler(aznew SliceAssetHandler(m_serializeContext.get()), AzTypeInfo<AZ::SliceAsset>::Uuid());
-            m_catalog.reset(aznew SliceTest_RecursionDetection_Catalog());
-            AssetManager::Instance().RegisterCatalog(m_catalog.get(), AzTypeInfo<AZ::SliceAsset>::Uuid());
-        }
-
-        void TearDown() override
-        {
-            m_catalog->DisableCatalog();
-            m_sliceDescriptor.reset();
-            AssetManager::Destroy();
-
-            m_catalog.reset();
-            m_serializeContext.reset();
-            ComponentApplicationBus::Handler::BusDisconnect();
-            if (IO::Streamer::IsReady())
-            {
-                IO::Streamer::Destroy();
-            }
-
-            IO::FileIOBase::SetInstance(m_prevFileIO);
-            AllocatorInstance<ThreadPoolAllocator>::Destroy();
-            AllocatorInstance<PoolAllocator>::Destroy();
-
-            AllocatorsFixture::TearDown();
-        }
-
-        bool SaveAsset(Asset<SliceAsset>& asset)
-        {
-            volatile bool isDone = false;
-            volatile bool succeeded = false;
-            AssetBusCallbacks callbacks;
-            callbacks.SetOnAssetSavedCallback(
-                [&isDone, &succeeded](const Asset<AssetData>& /*asset*/, bool isSuccessful, AssetBusCallbacks& /*callbacks*/)
-            {
-                isDone = true;
-                succeeded = isSuccessful;
-            });
-
-            callbacks.BusConnect(asset.GetId());
-            asset.Save();
-
-            while (!isDone)
-            {
-                AssetManager::Instance().DispatchEvents();
-            }
-            return succeeded;
-        }
-
-        void run()
-        {
-            /////////////////////////////////////////////////////////////////////////////
-            // Test recursion loop:
-            {
-                Entity* sliceEntity = nullptr;
-                SliceComponent* sliceComponent = nullptr;
-
-                Entity* sliceEntity2 = nullptr;
-                SliceComponent* sliceComponent2 = nullptr;
-                // create a bunch of assets in the asset manager.
-                // note that these entities will be ingested into their slice asset and thus become owned (and deleted) by it.
-                sliceEntity = aznew Entity();
-                sliceComponent = aznew SliceComponent();
-                sliceComponent->SetSerializeContext(m_serializeContext.get());
-                sliceEntity->AddComponent(sliceComponent);
-                sliceEntity->Init();
-                sliceEntity->Activate();
-
-                // Test recursion loop:
-                sliceEntity2 = aznew Entity();
-                sliceComponent2 = aznew SliceComponent();
-                sliceComponent2->SetSerializeContext(m_serializeContext.get());
-                sliceEntity2->AddComponent(sliceComponent2);
-                sliceEntity2->Init();
-                sliceEntity2->Activate();
-            
-                // Create "fake" asset - so we don't have to deal with the asset database, etc.
-                Asset<SliceAsset> sliceAssetHolder = AssetManager::Instance().CreateAsset<SliceAsset>(m_catalog->m_assetIdSlice1);
-                SliceAsset* sliceAsset1 = sliceAssetHolder.Get();
-                sliceAsset1->SetData(sliceEntity, sliceComponent);
-
-                // Create "fake" asset - so we don't have to deal with the asset database, etc.
-                Asset<SliceAsset> sliceAssetHolder2 = AssetManager::Instance().CreateAsset<SliceAsset>(m_catalog->m_assetIdSlice2);
-                SliceAsset* sliceAsset2 = sliceAssetHolder2.Get();
-                sliceAsset2->SetData(sliceEntity2, sliceComponent2);
-
-                // NOW DO THE RECURSION!
-                sliceComponent2->AddSlice(sliceAssetHolder);
-                sliceComponent->AddSlice(sliceAssetHolder2);
-
-                sliceEntity->Deactivate();
-                sliceEntity2->Deactivate();
-
-                ASSERT_TRUE(SaveAsset(sliceAssetHolder));
-                ASSERT_TRUE(SaveAsset(sliceAssetHolder2));
-
-                // before we try to purge these out of memory we're going to drop the cyclic reference so that they are purge-able.
-                // in actual production we expect instantiating a slice to automatically sever cyclic refererences, so this is more of a unit test problem
-                // than a real production problem.
-                sliceComponent2->RemoveSlice(sliceAssetHolder);
-                sliceComponent->RemoveSlice(sliceAssetHolder2);
-            }
-
-            AssetManager::Instance().DispatchEvents(); // let things clear from memory as necessary
-
-            // make sure these are NOT in the asset database anymore, they should be unloaded since refcount hit zero.
-            ASSERT_FALSE(AssetManager::Instance().FindAsset<SliceAsset>(m_catalog->m_assetIdSlice1).GetId().IsValid());
-            ASSERT_FALSE(AssetManager::Instance().FindAsset<SliceAsset>(m_catalog->m_assetIdSlice2).GetId().IsValid());
-
-            {
-                // Test if they cause an infinite loop or stack overflow while loading as a blocking load. 
-                AZ_TEST_START_ASSERTTEST;
-                Asset<SliceAsset> tester1 = AssetManager::Instance().GetAsset<SliceAsset>(m_catalog->m_assetIdSlice1, true, nullptr, true );
-                Asset<SliceAsset> tester2 = AssetManager::Instance().GetAsset<SliceAsset>(m_catalog->m_assetIdSlice2, true, nullptr, true);
-                AZ_TEST_STOP_ASSERTTEST(1); // expect 1x cyclic error.  Note that the second GetAsset is basically a hash lookup becuase it already was loaded by first.
-
-                AssetManager::Instance().DispatchEvents(); // let things clear from memory as necessary
-
-                ASSERT_EQ(tester1.GetStatus(), AssetData::AssetStatus::Ready);
-                ASSERT_EQ(tester2.GetStatus(), AssetData::AssetStatus::Ready);
-
-                // elimiate the cycle so they can unload.
-                tester1.Get()->GetComponent()->RemoveSlice(tester2);
-                tester2.Get()->GetComponent()->RemoveSlice(tester1);
-            }
-
-            AssetManager::Instance().DispatchEvents();
-            
-            // make sure these are NOT in the asset database anymore, they should be unloaded since refcount hit zero.
-            ASSERT_FALSE(AssetManager::Instance().FindAsset<SliceAsset>(m_catalog->m_assetIdSlice1).GetId().IsValid());
-            ASSERT_FALSE(AssetManager::Instance().FindAsset<SliceAsset>(m_catalog->m_assetIdSlice2).GetId().IsValid());
-
-            {
-                // Test if they cause an infinite loop or stack overflow while loading as a non-blocking load:
-                bool isDone = false;
-                bool succeeded = true;
-                AssetBusCallbacks callbacks;
-                callbacks.SetOnAssetReadyCallback(
-                    [&isDone, &succeeded](const Asset<AssetData>&, AssetBusCallbacks&) // success
-                {
-                    isDone = true;
-                    succeeded = true;
-                });
-                callbacks.SetOnAssetErrorCallback(
-                    [&isDone, &succeeded](const Asset<AssetData>&, AssetBusCallbacks&) // error
-                {
-                    isDone = true;
-                    succeeded = false;
-                });
-
-                callbacks.BusConnect(m_catalog->m_assetIdSlice1);
-
-                AZ_TEST_START_ASSERTTEST;
-
-                Asset<SliceAsset> tester1 = AssetManager::Instance().GetAsset<SliceAsset>(m_catalog->m_assetIdSlice1, true, nullptr, false);
-                while (!isDone)
-                {
-                    AssetManager::Instance().DispatchEvents();
-                }
-                AZ_TEST_STOP_ASSERTTEST(1); // expect (assetmanager cycle warning)
-
-                ASSERT_TRUE(isDone);
-                ASSERT_TRUE(succeeded);
-
-                AZ_TEST_START_ASSERTTEST;
-                // now make sure it doesn't kill us to actually instantiate it.
-                tester1.Get()->GetComponent()->Instantiate();
-                AZ_TEST_STOP_ASSERTTEST(2); // failure to instantiate slice itself, + cycle detected and dump of slice heirarhcy.
-
-                // make sure it automatically removed the erroring cycle.
-                // Slices which contain cyclic references should get those cycles "cut" automatically on instantiate
-                // this should ultimately mean that there is no cycle after instantiation, and that simply dropping the asset ref
-                // when we go out of scope results in the related asset(s) being unloaded.
-                ASSERT_TRUE(tester1.Get()->GetComponent()->GetSlices().empty());
-            }
-
-            // make sure it all unloaded.  this will fail if it did not automatically sever the cycle during instantiation.
-            ASSERT_FALSE(AssetManager::Instance().FindAsset<SliceAsset>(m_catalog->m_assetIdSlice1).GetId().IsValid());
-            ASSERT_FALSE(AssetManager::Instance().FindAsset<SliceAsset>(m_catalog->m_assetIdSlice2).GetId().IsValid());
-            AssetManager::Instance().DispatchEvents();
-        }
-    };
-
-    TEST_F(SliceTest_RecursionDetection, TestForRecursion)
-    {
-        run();
-    }
 
     class DataFlags_CleanupTest
         : public ScopedAllocatorSetupFixture

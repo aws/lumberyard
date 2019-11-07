@@ -74,7 +74,7 @@ namespace ZipDir
         ErrorEnum ReadFileStreaming (FileEntry* pFileEntry, void* pOut, int64 nDataOffset, int64 nDataReadSize);
 
         // decompress compressed file
-        ErrorEnum DecompressFile (FileEntry* pFileEntry, void* pCompressed, void* pUncompressed, CryCriticalSection& csDecmopressLock);
+        ErrorEnum DecompressFile (FileEntry* pFileEntry, void* pCompressed, void* pUncompressed);
 
         // loads and unpacks the file into a newly created buffer (that must be subsequently freed with
         // Free()) Returns NULL if failed

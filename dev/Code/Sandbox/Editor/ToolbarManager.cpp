@@ -1289,7 +1289,7 @@ const bool AmazonToolbar::IsSame(const AmazonToolbar& other) const
         return false;
     }
 
-    bool actionListsSame = std::equal(m_actions.cbegin(), m_actions.cend(), other.m_actions.cbegin(), [](const ActionData& l, const ActionData& r) { return l.actionId == r.actionId; });
+    bool actionListsSame = AZStd::equal(m_actions.cbegin(), m_actions.cend(), other.m_actions.cbegin());
     if (!actionListsSame)
     {
         return false;
@@ -1312,7 +1312,7 @@ void AmazonToolbar::InstantiateToolbar(QMainWindow* mainWindow, ToolbarManager* 
     // So hide if we're hidden by default XOR we've toggled the default visibility
     if ((!m_showByDefault) ^ m_showToggled)
     {
-#ifdef AZ_PLATFORM_APPLE_OSX
+#ifdef AZ_PLATFORM_MAC
         // on macOS, initially hidden tool bars result in a white rectangle when
         // attaching a previously detached toolbar LY-66320
         m_toolbar->show();

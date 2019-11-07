@@ -39,7 +39,7 @@ namespace LmbrCentral
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::Category, "AI")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/NavigationSeed.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/NavigationSeed.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/NavigationSeed.png")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-nav-seed.html")

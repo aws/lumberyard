@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -1452,5 +1451,3 @@ namespace AzFramework
         }
     }
 } // namespace AZ
-
-#endif  // AZ_UNITY_BUILD

@@ -29,13 +29,16 @@ def build(bld):
         export_includes = 'Source/CryAction',
         platforms       = ['all'],
         configurations  = ['all'],
-        use             = ['AzCore']
+        use             = ['AzCore'],
+        includes        = [bld.Path('Code/CryEngine/CryCommon')
+                          ],
     )
 
     kw = dict(
         # Add custom build options here
         defines             = ['USE_CRY_NEW_AND_DELETE'],
-        includes            = [bld.Path('Code/CryEngine/CryAction'),
+        includes            = [bld.Path('Code/CryEngine/CryCommon'),
+                               bld.Path('Code/CryEngine/CryAction'),
                                bld.Path('Gems/CryLegacy/Code/Source/CryAction'),
                                bld.Path('Gems/CryLegacy/Code/Source/CryAISystem'),
                                bld.Path('Gems/CryLegacy/Code/Source/CryAnimation'),

@@ -19,6 +19,7 @@ import sys
 # sys.stdout.write('[WAF] Command line: ' + str(sys.argv))
 
 import os
+import time
 
 from waflib import Configure, Logs, Utils, Options, ConfigSet
 from waflib.Build import BuildContext, CleanContext, Context
@@ -203,6 +204,8 @@ def build(bld):
 
     bld.initialize_third_party_settings()
 
+    bld.load('artifacts_cache', tooldir=[CRY_WAF_TOOL_DIR])
+
     bld.options.project_spec = bld.options.project_spec.strip()  # remove spaces
 
     bld.load_lmbr_data_driven_modules()
@@ -346,3 +349,42 @@ if AZ_TEST_SUPPORTED:
     class RunTestsContext(BuildContext):
         cmd = 'run_tests'
         fun = 'run_tests'
+
+
+def clean_stale_cached_artifacts(ctx):
+    def should_delete(folder_path, days_to_keep):
+        if not os.path.isdir(folder_path):
+            return False
+        last_access_timestamp = os.stat(folder_path).st_mtime
+        current_timestamp = time.time()
+        days_since_last_access = (current_timestamp - last_access_timestamp) / 60 / 60 / 24
+        if days_since_last_access > days_to_keep:
+            return True
+        return False
+
+    whitelist = ['wafpickle']
+    artifacts_cache = ctx.options.artifacts_cache
+    artifacts_cache_days_to_keep = int(ctx.options.artifacts_cache_days_to_keep)
+    if ctx.is_option_true('artifacts_cache_wipeout'):
+        artifacts_cache_days_to_keep = -1
+        whitelist = []
+    success = True
+    for dir in os.listdir(artifacts_cache):
+        folder_path = os.path.join(artifacts_cache, dir)
+        if dir not in whitelist and should_delete(folder_path, artifacts_cache_days_to_keep):
+            Logs.info('Deleting stale artifacts {}'.format(folder_path))
+            try:
+                if Utils.is_win32:
+                    os.system('rmdir /S /Q {}'.format(folder_path))
+                else:
+                    os.system('rm -fr {}'.format(folder_path))
+            except Exception as e:
+                Logs.warn('Failed to delete stale artifacts {}. {}'.format(dir, str(e)))
+                success = False
+    if not success:
+        Logs.warn('Failed to delete all stale artifacts, make sure you have the correct permission to clean the cache and the cache is not in use.')
+
+
+class CleanStaleCachedArtifacts(BuildContext):
+    cmd = 'clean_stale_cached_artifacts'
+    fun = 'clean_stale_cached_artifacts'

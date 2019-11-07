@@ -12,9 +12,10 @@
 
 #pragma once
 
+#if !defined(_RELEASE)
+
 #include <AzCore/std/containers/unordered_map.h>
 #include <ScriptCanvas/Core/Core.h>
-#include <ScriptCanvas/Core/NodeVisitor.h>
 #include <ScriptCanvas/Variable/VariableCore.h>
 #include <ScriptCanvas/Variable/VariableDatum.h>
 #include <AzCore/Outcome/Outcome.h>
@@ -76,7 +77,6 @@ namespace ScriptCanvas
         /// This class parses a graph into abstract programming concepts for easier translation
         /// into C++, LLVM-IR, Lua, or whatever else would be needed
         class AbstractCodeModel
-            : public NodeVisitor
         {
         public:
             
@@ -91,11 +91,7 @@ namespace ScriptCanvas
             const Node* GetStartNode() const;
             
             bool IsPureLibrary() const;
-
-            void Visit(const Node& node) override;
-
-            SCRIPT_CANVAS_NODE_VISITOR_FUNCTION_OVERRIDES;
-
+                                  
         private:
             AZ::Outcome<void, AZStd::string> m_outcome;
             // if only functions, or pure data, but no with state operations or handlers, etc
@@ -141,3 +137,8 @@ namespace ScriptCanvas
     } // namespace Grammar
 
 } // namespace ScriptCanvas
+
+#else
+
+
+#endif

@@ -11,7 +11,12 @@
 */
 
 #include <AzToolsFramework/Thumbnails/Thumbnail.h>
+AZ_PUSH_DISABLE_WARNING(4127 4251 4800 4244, "-Wunknown-warning-option") // 4127: conditional expression is constant
+                                                                         // 4251: 'QTextCodec::ConverterState::flags': class 'QFlags<QTextCodec::ConversionFlag>' needs to have dll-interface to be used by clients of struct 'QTextCodec::ConverterState'
+                                                                         // 4800: 'QTextBoundaryFinderPrivate *const ': forcing value to bool 'true' or 'false' (performance warning)
+                                                                         // 4244: conversion from 'int' to 'qint8', possible loss of data
 #include <QtConcurrent/QtConcurrent>
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {

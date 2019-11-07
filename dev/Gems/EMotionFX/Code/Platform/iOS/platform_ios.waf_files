@@ -1,0 +1,14 @@
+{
+    "auto":
+    {
+        "Platform/iOS":
+        [
+            "EMotionFX_Traits_Platform.h",
+            "EMotionFX_Traits_iOS.h"
+        ],
+        "Platform/Common/FileOffsetType":
+        [
+            "../Common/FileOffsetType/MCore/Source/DiskFile_FileOffsetType.cpp"
+        ]
+    }
+}

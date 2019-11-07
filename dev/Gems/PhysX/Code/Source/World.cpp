@@ -24,6 +24,9 @@
 #include <Source/Shape.h>
 #include <PhysX/Utils.h>
 #include <PhysX/TriggerEventCallback.h>
+#include <AzFramework/Physics/CollisionNotificationBus.h>
+#include <AzFramework/Physics/TriggerBus.h>
+
 
 namespace PhysX
 {
@@ -116,12 +119,12 @@ namespace PhysX
         
         if (settings.m_kinematicFiltering)
         {
-            sceneDesc.flags |= physx::PxSceneFlag::eENABLE_KINEMATIC_PAIRS;
+            sceneDesc.kineKineFilteringMode = physx::PxPairFilteringMode::eKEEP;
         }
 
         if (settings.m_kinematicStaticFiltering)
         {
-            sceneDesc.flags |= sceneDesc.flags |= physx::PxSceneFlag::eENABLE_KINEMATIC_STATIC_PAIRS;
+            sceneDesc.staticKineFilteringMode = physx::PxPairFilteringMode::eKEEP;
         }
 
         sceneDesc.filterCallback = this;
@@ -432,7 +435,8 @@ namespace PhysX
                 m_world->simulate(simDeltaTime);
                 m_world->fetchResults(true);
             }
-            AzFramework::PhysicsComponentNotificationBus::ExecuteQueuedEvents();
+            Physics::CollisionNotificationBus::ExecuteQueuedEvents();
+            Physics::TriggerNotificationBus::ExecuteQueuedEvents();
 
             if (m_world->getFlags() & physx::PxSceneFlag::eENABLE_ACTIVE_ACTORS)
             {

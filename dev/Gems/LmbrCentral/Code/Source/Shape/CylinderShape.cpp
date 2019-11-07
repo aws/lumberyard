@@ -154,11 +154,7 @@ namespace LmbrCentral
         // As std:normal_distribution requires a std:random_engine to be passed in, create one using a random seed that is guaranteed to be properly
         // random each time it is called
         time_t seedVal;
-#ifdef AZ_OS32
-        seedVal = AZ::Sfmt::GetInstance().Rand32();
-#else
         seedVal = AZ::Sfmt::GetInstance().Rand64();
-#endif
         std::default_random_engine generator;
         generator.seed(static_cast<unsigned int>(seedVal));
 

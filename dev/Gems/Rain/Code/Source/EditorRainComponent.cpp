@@ -38,7 +38,7 @@ namespace Rain
                 editContext->Class<EditorRainComponent>("Rain", "Defines rain settings for the level ")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Environment")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Rain.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Rain.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Rain.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/rain-component")

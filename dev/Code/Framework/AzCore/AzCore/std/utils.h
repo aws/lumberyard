@@ -23,11 +23,10 @@
 #include <AzCore/std/typetraits/add_reference.h>
 #include <AzCore/std/reference_wrapper.h>
 
-#ifdef AZ_HAS_RVALUE_REFS
-#   include <AzCore/std/typetraits/remove_reference.h>
-#   include <AzCore/std/typetraits/is_convertible.h>
-#   include <AzCore/std/typetraits/is_lvalue_reference.h>
-#endif // AZ_HAS_RVALUE_REFS
+#include <AzCore/std/typetraits/remove_reference.h>
+#include <AzCore/std/typetraits/is_convertible.h>
+#include <AzCore/std/typetraits/is_lvalue_reference.h>
+
 #ifndef AZSTD_HAS_TYPE_TRAITS_INTRINSICS
     #include <AzCore/std/typetraits/has_trivial_constructor.h>
     #include <AzCore/std/typetraits/has_trivial_destructor.h>
@@ -101,15 +100,9 @@ namespace AZStd
     template<class T>
     AZ_INLINE void swap(T& a, T& b)
     {
-#ifdef AZ_HAS_RVALUE_REFS
         T tmp = AZStd::move(a);
         a = AZStd::move(b);
         b = AZStd::move(tmp);
-#else
-        T tmp = a;
-        a = b;
-        b = tmp;
-#endif
     }
 
     template<class ForewardIterator1, class ForewardIterator2>
@@ -214,7 +207,6 @@ namespace AZStd
             : first(rhs.first)
             , second(rhs.second) {}
 
-#ifdef AZ_HAS_RVALUE_REFS
         typedef typename AZStd::remove_reference<T1>::type TT1;
         typedef typename AZStd::remove_reference<T2>::type TT2;
 
@@ -272,7 +264,6 @@ namespace AZStd
                 second = AZStd::move(rhs.second);
             }
         }
-#endif // AZ_HAS_RVALUE_REFS
 
         AZ_FORCE_INLINE void swap(this_type& rhs)
         {
@@ -304,7 +295,6 @@ namespace AZStd
     };
 
     // pair
-#ifdef AZ_HAS_RVALUE_REFS
     template<class T1, class T2>
     inline
     void swap(pair<T1, T2>& left, pair<T1, T2>&& right)
@@ -320,7 +310,6 @@ namespace AZStd
         typedef pair<T1, T2> pair_type;
         right.swap(AZStd::forward<pair_type>(left));
     }
-#endif // #ifdef AZ_HAS_RVALUE_REFS
 
     template<class T1, class T2>
     AZ_FORCE_INLINE void swap(pair<T1, T2>& left, pair<T1, T2>& _Right)
@@ -435,7 +424,6 @@ namespace AZStd
 
     //////////////////////////////////////////////////////////////////////////
     // make_pair
-#ifdef AZ_HAS_RVALUE_REFS
     template<class T1, class T2>
     inline pair<typename AZStd::unwrap_reference<T1>::type, typename AZStd::unwrap_reference<T2>::type>
     make_pair(T1&& value1, T2&& value2)
@@ -466,14 +454,7 @@ namespace AZStd
         typedef pair<typename AZStd::unwrap_reference<T1>::type, typename AZStd::unwrap_reference<T2>::type> pair_type;
         return pair_type((typename AZStd::unwrap_reference<T1>::type)value1, (typename AZStd::unwrap_reference<T2>::type)value2);
     }
-#else
-    template<class T1, class T2>
-    inline pair<T1, T2> make_pair(const T1& value1, const T2& value2)
-    {
-        return pair<T1, T2>(value1, value2);
-    }
-#endif // AZ_HAS_RVALUE_REFS
-       //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
 
     template<class T, bool isEnum = AZStd::is_enum<T>::value>
     struct RemoveEnum

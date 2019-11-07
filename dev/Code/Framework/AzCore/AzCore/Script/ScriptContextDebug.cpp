@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #if !defined(AZCORE_EXCLUDE_LUA)
 
@@ -73,11 +72,7 @@ ScriptContextDebug::ScriptContextDebug(ScriptContext& scriptContext, bool isEnab
     , m_currentStackLevel(-1)
     , m_stepStackLevel(-1)
     , m_isRecordCallstack(isEnableStackRecord)
-#if defined(AZ_PLATFORM_WINDOWS)
-    , m_isRecordCodeCallstack(true)   // PC is fast enough to do it all the time.
-#else
-    , m_isRecordCodeCallstack(false)  // On consoles we need to traverse map files (for full stack decode)
-#endif
+    , m_isRecordCodeCallstack(AZ_TRAIT_SCRIPT_RECORD_CALLSTACK_DEFAULT)
     , m_context(scriptContext)
 {
     ConnectHook();
@@ -1545,5 +1540,3 @@ ScriptContextDebug::SetValue(const DebugValue& sourceValue)
 }
 
 #endif // #if !defined(AZCORE_EXCLUDE_LUA)
-
-#endif // #ifndef AZ_UNITY_BUILD

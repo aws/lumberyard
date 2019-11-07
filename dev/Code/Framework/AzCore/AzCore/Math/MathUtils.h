@@ -128,6 +128,9 @@ namespace AZ
         return a % 2 != 0;
     }
 
+    AZ_MATH_FORCE_INLINE float GetAbs(float a) { return std::fabs(a); }
+    AZ_MATH_FORCE_INLINE double GetAbs(double a) { return std::abs(a); }
+
     AZ_MATH_FORCE_INLINE float GetMod(float a, float b) { return fmod(a, b); }
     AZ_MATH_FORCE_INLINE double GetMod(double a, double b) { return fmod(a, b); }
 

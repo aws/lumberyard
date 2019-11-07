@@ -36,25 +36,28 @@ namespace ScriptCanvas
                 {
                     // Add the INPUT slot for the data to insert
                     Data::Type type = Data::FromAZType(m_sourceTypes[0]);
-                    m_inputSlots.insert(AddInputDatumSlot(Data::GetName(type), "", type, Datum::eOriginality::Original, false));
 
+                    DataSlotConfiguration slotConfiguration;
+
+                    slotConfiguration.m_name = Data::GetName(type);
+                    slotConfiguration.m_displayGroup = GetSourceDisplayGroup();
+                    slotConfiguration.SetType(type);
+                    slotConfiguration.SetConnectionType(ConnectionType::Input);
+
+                    m_inputSlots.insert(AddSlot(slotConfiguration));
                 }
-
-                // TODO: Get the output slot name from the connection.
-                Data::Type containerType = Data::FromAZType(GetSourceAZType());
-                m_outputSlots.insert(AddOutputTypeSlot("Container", "", containerType, Node::OutputStorage::Required, false));
             }
 
             void OperatorPushBack::InvokeOperator()
             {
-                const SlotSet& slotSets = GetSourceSlots();
+                Slot*  inputSlot = GetFirstInputSourceSlot();
+                Slot*  outputSlot = GetFirstOutputSourceSlot();                
 
-                if (!slotSets.empty())
+                if (inputSlot && outputSlot)
                 {
-                    SlotId sourceSlotId = (*slotSets.begin());
+                    const Datum* containerDatum = GetInput(inputSlot->GetId());
 
-                    const Datum* containerDatum = GetInput(sourceSlotId);
-                    if (containerDatum != nullptr && !containerDatum->Empty() && IsConnected(sourceSlotId))
+                    if (Datum::IsValidDatum(containerDatum))
                     {
                         AZ::BehaviorMethod* method = GetOperatorMethod("PushBack");
                         AZ_Assert(method, "The contract must have failed because you should not be able to invoke an operator for a type that does not have the method");
@@ -96,7 +99,7 @@ namespace ScriptCanvas
                         resultSlotIDs.push_back();
                         BehaviorContextMethodHelper::Call(*this, false, method, paramFirst, paramIter, resultSlotIDs);
 
-                        PushOutput(*containerDatum, *GetSlot(*m_outputSlots.begin()));
+                        PushOutput(*containerDatum, (*outputSlot));
                     }
                 }
 

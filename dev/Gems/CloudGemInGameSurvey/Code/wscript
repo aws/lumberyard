@@ -26,8 +26,11 @@ def build(bld):
     bld.DefineGem(
         # Add custom build options here
         file_list = file_list,
- 
+
         uselib = ['AWS_CPP_SDK_CORE', 'AWS_CPP_SDK_LAMBDA'],
-         
-        use = ['CloudGemFramework.StaticLibrary']
+
+        use = ['CloudGemFramework.StaticLibrary'],
+
+        includes = [bld.Path('Code/CryEngine/CryCommon')
+                   ],
     )

@@ -32,6 +32,6 @@ struct IComponentUser
     // </interfuscator:shuffle>
 };
 
-DECLARE_COMPONENT_POINTERS(IComponentUser);
+DECLARE_SMART_POINTERS(IComponentUser);
 
 #endif // CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTUSER_H

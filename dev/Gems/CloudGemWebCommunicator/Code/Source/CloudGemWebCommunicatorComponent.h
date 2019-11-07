@@ -105,7 +105,8 @@ namespace CloudGemWebCommunicator
         {
             NOT_CONNECTED,
             CONNECTING,
-            CONNECTED
+            CONNECTED,
+            DISCONNECTING
         };
 
         bool Connect(const AZStd::string& connectionType, const AZStd::string& endPoint, int endpointPort);

@@ -17,7 +17,7 @@
 #include <AzCore/PlatformDef.h>
 #include <assert.h>
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
 #include <netdb.h>
 #include <unistd.h>
 #endif

@@ -60,7 +60,7 @@ namespace ScriptCanvas
                     ScriptCanvas_In::Contracts({ DisallowReentrantExecutionContract }));
 
                 // Outputs
-                ScriptCanvas_OutLatent(ScriptCanvas_Out::Name("Out", "Signaled after waiting for the specified amount of frames."));
+                ScriptCanvas_OutLatent(ScriptCanvas_OutLatent::Name("Out", "Signaled after waiting for the specified amount of frames."));
 
                 // Data
                 ScriptCanvas_PropertyWithDefaults(int, 1,

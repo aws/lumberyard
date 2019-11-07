@@ -22,6 +22,7 @@
 #include <QVBoxLayout>
 #include <QGridLayout>
 #include <QLabel>
+#include <QLineEdit>
 #include <QHeaderView>
 #include <QCheckBox>
 #include <QMessageBox>

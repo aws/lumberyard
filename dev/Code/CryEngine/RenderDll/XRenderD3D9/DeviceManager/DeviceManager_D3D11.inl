@@ -3,9 +3,9 @@
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-* or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
@@ -37,7 +37,7 @@ D3DResource* CDeviceManager::AllocateStagingResource(D3DResource* pForTex, bool 
     Desc.CPUAccessFlags = bUpload ? D3D11_CPU_ACCESS_WRITE     : D3D11_CPU_ACCESS_READ;
     Desc.BindFlags      = bUpload ? D3D11_BIND_SHADER_RESOURCE : 0;
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     // For metal when we do a subresource copy we render to the texture so need to set the render target flag
     Desc.BindFlags |= D3D11_BIND_RENDER_TARGET; //todo: Remove this for mac too
 #endif
@@ -63,7 +63,7 @@ D3DResource* CDeviceManager::AllocateStagingResource(D3DResource* pForTex, bool 
             stagingDesc.CPUAccessFlags = bUpload ? D3D11_CPU_ACCESS_WRITE     : D3D11_CPU_ACCESS_READ;
             stagingDesc.BindFlags      = bUpload ? D3D11_BIND_SHADER_RESOURCE : 0;
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
             // For metal when we do a subresource copy we render to the texture so need to set the render target flag
             stagingDesc.BindFlags |= D3D11_BIND_RENDER_TARGET; //todo: Remove this for mac too
 #endif
@@ -248,7 +248,7 @@ HRESULT CDeviceManager::Create2DTexture(const string& textureName, uint32 nWidth
         nBindFlags |= D3D11_BIND_RENDER_TARGET;
     }
     
-#if defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_IOS)
     if (nUsage & USAGE_MEMORYLESS)
     {
         nBindFlags |= D3D11_BIND_MEMORYLESS;
@@ -389,7 +389,7 @@ HRESULT CDeviceManager::CreateCubeTexture(const string& textureName, uint32 nSiz
         nBindFlags |= D3D11_BIND_RENDER_TARGET;
     }
     
-#if defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_IOS)
     if (nUsage & USAGE_MEMORYLESS)
     {
         nBindFlags |= D3D11_BIND_MEMORYLESS;
@@ -508,7 +508,7 @@ HRESULT CDeviceManager::CreateVolumeTexture(const string& textureName, uint32 nW
         nBindFlags |= D3D11_BIND_RENDER_TARGET;
     }
     
-#if defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_IOS)
     if (nUsage & USAGE_MEMORYLESS)
     {
         nBindFlags |= D3D11_BIND_MEMORYLESS;

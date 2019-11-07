@@ -1,0 +1,11 @@
+{
+    "auto":
+    {
+        "Platform/AppleTV":
+        [
+            "CrySoundSystem_Traits_Platform.h",
+            "CrySoundSystem_Traits_AppleTV.h",
+            "../Common/Unimplemented/CrySoundSystem_Unimplemented.cpp"
+        ]
+    }
+}

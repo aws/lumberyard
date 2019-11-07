@@ -52,7 +52,7 @@ static inline int Vscprintf(const char* format, va_list argList)
 {
 #if defined(AZ_PLATFORM_WINDOWS)
     return _vscprintf(format, argList);
-#elif defined(AZ_PLATFORM_APPLE)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE
     int retval;
     va_list argcopy;
     va_copy(argcopy, argList);
@@ -68,7 +68,7 @@ static inline int Vscprintf(const wchar_t* format, va_list argList)
 {
 #if defined(AZ_PLATFORM_WINDOWS)
     return _vscwprintf(format, argList);
-#elif defined(AZ_PLATFORM_APPLE)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE
     int retval;
     va_list argcopy;
     va_copy(argcopy, argList);

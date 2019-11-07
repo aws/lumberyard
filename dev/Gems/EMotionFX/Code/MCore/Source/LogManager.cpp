@@ -11,6 +11,7 @@
 */
 
 // include the Core headers
+#include <AzCore/PlatformIncl.h>
 #include "LogManager.h"
 #include "LogFile.h"
 
@@ -481,25 +482,7 @@ namespace MCore
     // print a debug line to the visual studio output, or console output, etc
     void Print(const char* message)
     {
-        // output to the Visual Studio debug window
-    #if (defined(MCORE_PLATFORM_WINDOWS))
-        OutputDebugStringA(message);
-        OutputDebugStringA("\n");
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/LogManager_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/LogManager_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-    #elif (defined(MCORE_PLATFORM_ANDROID))
-        __android_log_print(ANDROID_LOG_INFO, "MCore", message);
-    #else
-        std::cout << message << "\n";
-    #endif
+        AZ_TracePrintf("EMotionFX", "%s\n", message);
     }
 
 

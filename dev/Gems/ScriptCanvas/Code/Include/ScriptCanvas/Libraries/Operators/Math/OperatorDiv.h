@@ -33,24 +33,20 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Category("Math")
                 );
 
-                OperatorDiv()
-                    : OperatorArithmetic(GeneralMathOperatorConfiguration())
-                {
-                }
+                OperatorDiv() = default;
+                ~OperatorDiv() = default;
 
                 AZStd::string_view OperatorFunction() const override { return "Divide"; }
                 AZStd::unordered_set< Data::Type > GetSupportedNativeDataTypes() const override;
 
-                void Operator(Data::eType type, const OperatorOperands& operands, Datum& result) override;
+                void Operator(Data::eType type, const ArithmeticOperands& operands, Datum& result) override;
 
             protected:
 
-                void InitializeDatum(Datum* datum, ScriptCanvas::Data::Type dataType);
-
-                void OnDisplayTypeChanged(ScriptCanvas::Data::Type dataType) override;
-
-                void OnInputSlotAdded(const SlotId& slotId) override;
+                void InitializeDatum(Datum* datum, const ScriptCanvas::Data::Type& dataType) override;
                 bool IsValidArithmeticSlot(const SlotId& slotId) const override;
+
+                void OnResetDatumToDefaultValue(Datum* datum) override;
             };
         }
     }

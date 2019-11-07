@@ -76,7 +76,7 @@ namespace LmbrCentral
                     "Fog Volume", "Allows to specify an area with a fog")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Environment")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/FogVolume.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/FogVolume.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/FogVolume.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/fog-volume-component")

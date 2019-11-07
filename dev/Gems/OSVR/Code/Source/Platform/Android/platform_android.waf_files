@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Android":
+        [
+            "OSVR_Traits_Platform.h",
+            "OSVR_Traits_Android.h"
+        ]
+    }
+}

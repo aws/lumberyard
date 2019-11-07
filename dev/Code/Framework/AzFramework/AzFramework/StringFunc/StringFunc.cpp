@@ -18,23 +18,15 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/IO/SystemFile.h> // AZ_MAX_PATH_LEN
 #include "StringFunc.h"
+#include <AzCore/AzCore_Traits_Platform.h>
+#include <AzFramework/AzFramework_Traits_Platform.h>
 
-#if !defined(AZ_PLATFORM_WINDOWS)
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/StringFunc_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/StringFunc_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
+#if !AZ_TRAIT_USE_WINDOWS_FILE_API
 
 //Have to declare this typedef for Android & Linux to minimise changes elsewhere in this file
-#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
+#if AZ_TRAIT_AZFRAMEWORK_USE_ERRNO_T_TYPEDEF
 typedef int errno_t;
-#endif //AZ_PLATFORM_ANDROID
+#endif
 
 void ClearToEmptyStr(char* buffer)
 {
@@ -158,7 +150,6 @@ errno_t _splitpath_s (const char* path,
 
     return 0;
 }
-#endif
 #endif
 
 // Some platforms define NAME_MAX but Windows doesn't and the AZ headers provide no equivalent

@@ -12,7 +12,10 @@
 #pragma once
 
 #include <AzToolsFramework/Thumbnails/Thumbnail.h>
+
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: class 'QImageIOHandler::d_ptr': class 'QScopedPointer<QImageIOHandlerPrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QImageIOHandler'
 #include <QMovie>
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {

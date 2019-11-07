@@ -10,23 +10,21 @@
 *
 */
 
-#include <AzCore/Serialization/SerializeContext.h>
+#include "BlendTreeTwoLinkIKNode.h"
+#include "AnimGraphManager.h"
+#include "EventManager.h"
+#include "Node.h"
+#include "Recorder.h"
+#include "TransformData.h"
 #include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Serialization/SerializeContext.h>
 #include <EMotionFX/Source/AnimGraph.h>
 #include <EMotionFX/Source/DebugDraw.h>
-#include "BlendTreeTwoLinkIKNode.h"
-#include "EventManager.h"
-#include "AnimGraphManager.h"
-#include "Recorder.h"
-#include "Node.h"
-#include "TransformData.h"
-
 
 namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeTwoLinkIKNode, AnimGraphAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeTwoLinkIKNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
-
 
     BlendTreeTwoLinkIKNode::BlendTreeTwoLinkIKNode()
         : AnimGraphNode()
@@ -47,11 +45,9 @@ namespace EMotionFX
         SetupOutputPortAsPose("Output Pose", OUTPUTPORT_POSE, PORTID_OUTPUT_POSE);
     }
 
-
     BlendTreeTwoLinkIKNode::~BlendTreeTwoLinkIKNode()
     {
     }
-
 
     void BlendTreeTwoLinkIKNode::Reinit()
     {
@@ -78,7 +74,6 @@ namespace EMotionFX
         }
     }
 
-
     bool BlendTreeTwoLinkIKNode::InitAfterLoading(AnimGraph* animGraph)
     {
         if (!AnimGraphNode::InitAfterLoading(animGraph))
@@ -92,13 +87,11 @@ namespace EMotionFX
         return true;
     }
 
-
     // get the palette name
     const char* BlendTreeTwoLinkIKNode::GetPaletteName() const
     {
         return "TwoLink IK";
     }
-
 
     // get the category
     AnimGraphObject::ECategory BlendTreeTwoLinkIKNode::GetPaletteCategory() const
@@ -106,26 +99,25 @@ namespace EMotionFX
         return AnimGraphObject::CATEGORY_CONTROLLERS;
     }
 
-
     // update the unique data
     void BlendTreeTwoLinkIKNode::UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData)
     {
         // update the unique data if needed
         if (uniqueData->mMustUpdate)
         {
-            ActorInstance*  actorInstance   = animGraphInstance->GetActorInstance();
-            Actor*          actor           = actorInstance->GetActor();
-            Skeleton*       skeleton        = actor->GetSkeleton();
+            ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
+            Actor* actor = actorInstance->GetActor();
+            Skeleton* skeleton = actor->GetSkeleton();
 
             // don't update the next time again
-            uniqueData->mMustUpdate             = false;
-            uniqueData->mNodeIndexA             = MCORE_INVALIDINDEX32;
-            uniqueData->mNodeIndexB             = MCORE_INVALIDINDEX32;
-            uniqueData->mNodeIndexC             = MCORE_INVALIDINDEX32;
-            uniqueData->mAlignNodeIndex         = MCORE_INVALIDINDEX32;
-            uniqueData->mBendDirNodeIndex       = MCORE_INVALIDINDEX32;
-            uniqueData->mEndEffectorNodeIndex   = MCORE_INVALIDINDEX32;
-            uniqueData->mIsValid                = false;
+            uniqueData->mMustUpdate = false;
+            uniqueData->mNodeIndexA = MCORE_INVALIDINDEX32;
+            uniqueData->mNodeIndexB = MCORE_INVALIDINDEX32;
+            uniqueData->mNodeIndexC = MCORE_INVALIDINDEX32;
+            uniqueData->mAlignNodeIndex = MCORE_INVALIDINDEX32;
+            uniqueData->mBendDirNodeIndex = MCORE_INVALIDINDEX32;
+            uniqueData->mEndEffectorNodeIndex = MCORE_INVALIDINDEX32;
+            uniqueData->mIsValid = false;
 
             // find the end node
             if (m_endNodeName.empty())
@@ -185,7 +177,6 @@ namespace EMotionFX
         }
     }
 
-
     // solve the IK problem by calculating the 'knee/elbow' position
     bool BlendTreeTwoLinkIKNode::Solve2LinkIK(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& goal, const AZ::Vector3& bendDir, AZ::Vector3* outMidPos)
     {
@@ -216,7 +207,6 @@ namespace EMotionFX
         return (d > MCore::Math::epsilon && d < lengthA + MCore::Math::epsilon);
     }
 
-
     // calculate the direction matrix
     void BlendTreeTwoLinkIKNode::CalculateMatrix(const AZ::Vector3& goal, const AZ::Vector3& bendDir, MCore::Matrix* outForward)
     {
@@ -235,7 +225,6 @@ namespace EMotionFX
         outForward->SetRow(1, y);
         outForward->SetRow(2, z);
     }
-
 
     // the main process method of the final node
     void BlendTreeTwoLinkIKNode::Output(AnimGraphInstance* animGraphInstance)
@@ -294,11 +283,11 @@ namespace EMotionFX
         }
 
         // get the node indices
-        const uint32 nodeIndexA     = uniqueData->mNodeIndexA;
-        const uint32 nodeIndexB     = uniqueData->mNodeIndexB;
-        const uint32 nodeIndexC     = uniqueData->mNodeIndexC;
-        const uint32 bendDirIndex   = uniqueData->mBendDirNodeIndex;
-        uint32 alignNodeIndex       = uniqueData->mAlignNodeIndex;
+        const uint32 nodeIndexA = uniqueData->mNodeIndexA;
+        const uint32 nodeIndexB = uniqueData->mNodeIndexB;
+        const uint32 nodeIndexC = uniqueData->mNodeIndexC;
+        const uint32 bendDirIndex = uniqueData->mBendDirNodeIndex;
+        uint32 alignNodeIndex = uniqueData->mAlignNodeIndex;
         uint32 endEffectorNodeIndex = uniqueData->mEndEffectorNodeIndex;
 
         // use the end node as end effector node if no goal node has been specified
@@ -330,7 +319,7 @@ namespace EMotionFX
             if (alignInstance)
             {
                 if (m_alignToNode.second == 0)
-                {   // we are aligning to a node in our current graphInstance so we can use the input pose
+                { // we are aligning to a node in our current graphInstance so we can use the input pose
                     alignNodeTransform = inputPose->GetPose().GetWorldSpaceTransform(alignNodeIndex);
                 }
                 else
@@ -475,15 +464,15 @@ namespace EMotionFX
             DebugDraw& debugDraw = GetDebugDraw();
             DebugDraw::ActorInstanceData* drawData = debugDraw.GetActorInstanceData(animGraphInstance->GetActorInstance());
             drawData->Lock();
-            drawData->AddLine(realGoal - AZ::Vector3(s, 0, 0), realGoal + AZ::Vector3(s, 0, 0), mVisualizeColor);
-            drawData->AddLine(realGoal - AZ::Vector3(0, s, 0), realGoal + AZ::Vector3(0, s, 0), mVisualizeColor);
-            drawData->AddLine(realGoal - AZ::Vector3(0, 0, s), realGoal + AZ::Vector3(0, 0, s), mVisualizeColor);
+            drawData->DrawLine(realGoal - AZ::Vector3(s, 0, 0), realGoal + AZ::Vector3(s, 0, 0), mVisualizeColor);
+            drawData->DrawLine(realGoal - AZ::Vector3(0, s, 0), realGoal + AZ::Vector3(0, s, 0), mVisualizeColor);
+            drawData->DrawLine(realGoal - AZ::Vector3(0, 0, s), realGoal + AZ::Vector3(0, 0, s), mVisualizeColor);
 
             const AZ::Color color(0.0f, 1.0f, 1.0f, 1.0f);
-            drawData->AddLine(globalTransformA.mPosition, globalTransformA.mPosition + bendDir * s * 2.5f, color);
-            drawData->AddLine(globalTransformA.mPosition - AZ::Vector3(s, 0, 0), globalTransformA.mPosition + AZ::Vector3(s, 0, 0), color);
-            drawData->AddLine(globalTransformA.mPosition - AZ::Vector3(0, s, 0), globalTransformA.mPosition + AZ::Vector3(0, s, 0), color);
-            drawData->AddLine(globalTransformA.mPosition - AZ::Vector3(0, 0, s), globalTransformA.mPosition + AZ::Vector3(0, 0, s), color);
+            drawData->DrawLine(globalTransformA.mPosition, globalTransformA.mPosition + bendDir * s * 2.5f, color);
+            drawData->DrawLine(globalTransformA.mPosition - AZ::Vector3(s, 0, 0), globalTransformA.mPosition + AZ::Vector3(s, 0, 0), color);
+            drawData->DrawLine(globalTransformA.mPosition - AZ::Vector3(0, s, 0), globalTransformA.mPosition + AZ::Vector3(0, s, 0), color);
+            drawData->DrawLine(globalTransformA.mPosition - AZ::Vector3(0, 0, s), globalTransformA.mPosition + AZ::Vector3(0, 0, s), color);
             drawData->Unlock();
         }
 
@@ -590,12 +579,11 @@ namespace EMotionFX
             DebugDraw& debugDraw = GetDebugDraw();
             DebugDraw::ActorInstanceData* drawData = debugDraw.GetActorInstanceData(animGraphInstance->GetActorInstance());
             drawData->Lock();
-            drawData->AddLine(outTransformPose.GetWorldSpaceTransform(nodeIndexA).mPosition, outTransformPose.GetWorldSpaceTransform(nodeIndexB).mPosition, mVisualizeColor);
-            drawData->AddLine(outTransformPose.GetWorldSpaceTransform(nodeIndexB).mPosition, outTransformPose.GetWorldSpaceTransform(nodeIndexC).mPosition, mVisualizeColor);
+            drawData->DrawLine(outTransformPose.GetWorldSpaceTransform(nodeIndexA).mPosition, outTransformPose.GetWorldSpaceTransform(nodeIndexB).mPosition, mVisualizeColor);
+            drawData->DrawLine(outTransformPose.GetWorldSpaceTransform(nodeIndexB).mPosition, outTransformPose.GetWorldSpaceTransform(nodeIndexC).mPosition, mVisualizeColor);
             drawData->Unlock();
         }
     }
-
 
     // update the parameter contents, such as combobox values
     void BlendTreeTwoLinkIKNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
@@ -611,7 +599,6 @@ namespace EMotionFX
         uniqueData->mMustUpdate = true;
         UpdateUniqueData(animGraphInstance, uniqueData);
     }
-
 
     AZ::Crc32 BlendTreeTwoLinkIKNode::GetRelativeBendDirVisibility() const
     {
@@ -671,7 +658,6 @@ namespace EMotionFX
             ->Field("extractBendDir", &BlendTreeTwoLinkIKNode::m_extractBendDir)
             ->Version(1);
 
-
         AZ::EditContext* editContext = serializeContext->GetEditContext();
         if (!editContext)
         {
@@ -699,7 +685,6 @@ namespace EMotionFX
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTwoLinkIKNode::m_relativeBendDir, "Relative Bend Dir", "Use a relative (to the actor instance) bend direction, instead of world space?")
             ->Attribute(AZ::Edit::Attributes::Visibility, &BlendTreeTwoLinkIKNode::GetRelativeBendDirVisibility)
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTwoLinkIKNode::m_extractBendDir, "Extract Bend Dir", "Extract the bend direction from the input pose instead of using the bend dir input value?")
-            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-        ;
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree);
     }
 } // namespace EMotionFX

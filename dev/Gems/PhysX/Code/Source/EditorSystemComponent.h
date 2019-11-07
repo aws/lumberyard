@@ -16,6 +16,8 @@
 #include <AzCore/Component/TickBus.h>
 #include <AzFramework/Physics/World.h>
 #include <AzFramework/Physics/SystemBus.h>
+#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#include <IEditor.h>
 
 namespace PhysX
 {
@@ -26,6 +28,9 @@ namespace PhysX
         : public AZ::Component
         , public AZ::TickBus::Handler
         , public Physics::EditorWorldBus::Handler
+        , private CrySystemEventBus::Handler
+        , private AzToolsFramework::EditorEvents::Bus::Handler
+        , private IEditorNotifyListener
     {
     public:
         AZ_COMPONENT(EditorSystemComponent, "{560F08DC-94F5-4D29-9AD4-CDFB3B57C654}");
@@ -54,6 +59,24 @@ namespace PhysX
         // AZ::Component
         void Activate() override;
         void Deactivate() override;
+
+        // IEditorNotifyListener interface implementation
+        void OnEditorNotifyEvent(EEditorNotifyEvent event) override;
+
+        // CrySystemEvents
+        void OnCrySystemShutdown(ISystem&) override;
+
+        // AzToolsFramework::EditorEvents
+        void NotifyRegisterViews() override;
+
+        /// Register for Cry Editor events.
+        void RegisterForEditorEvents();
+
+        /// Unregister for Cry Editor events.
+        void UnregisterForEditorEvents();
+
+        void UpdateDefaultMaterialLibrary();
+        AZ::Data::AssetId GenerateSurfaceTypesLibrary();
 
         AZStd::shared_ptr<Physics::World> m_editorWorld;
         bool m_editorWorldDirty = false; ///< When true, it's time to update the editor world.

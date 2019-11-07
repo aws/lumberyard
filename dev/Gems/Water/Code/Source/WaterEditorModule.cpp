@@ -17,6 +17,7 @@
 #include <Editor/EditorWaterVolumeComponent.h>
 #include <Editor/EditorOceanSurfaceDataComponent.h>
 #include <Editor/EditorWaterVolumeSurfaceDataComponent.h>
+#include <Editor/EditorWaterRippleGeneratorComponent.h>
 
 namespace Water
 {
@@ -27,6 +28,7 @@ namespace Water
             EditorWaterVolumeComponent::CreateDescriptor(),
             EditorOceanSurfaceDataComponent::CreateDescriptor(),
             EditorWaterVolumeSurfaceDataComponent::CreateDescriptor(),
+            EditorWaterRippleGeneratorComponent::CreateDescriptor(),
         });
 
         m_waterConverter = AZStd::make_unique<WaterConverter>();

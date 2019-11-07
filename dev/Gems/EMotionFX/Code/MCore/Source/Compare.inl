@@ -38,7 +38,7 @@ MCORE_INLINE bool Compare<AZ::Vector3>::CheckIfIsClose(const AZ::Vector3& a, con
 template <>
 MCORE_INLINE bool Compare<AZ::PackedVector3f>::CheckIfIsClose(const AZ::PackedVector3f& a, const AZ::PackedVector3f& b, float threshold)
 {
-	return ((AZ::Vector3(a) - AZ::Vector3(b)).GetLengthExact() <= threshold);
+    return ((AZ::Vector3(a) - AZ::Vector3(b)).GetLengthExact() <= threshold);
 }
 
 
@@ -82,6 +82,46 @@ MCORE_INLINE bool Compare<MCore::Quaternion>::CheckIfIsClose(const MCore::Quater
     // convert to an axis and angle representation
     a.ToAxisAngle(&axisA, &angleA);
     b.ToAxisAngle(&axisB, &angleB);
+
+    // compare the axis and angles
+    if (Math::Abs(angleA  - angleB) > threshold)
+    {
+        return false;
+    }
+    if (Math::Abs(axisA.GetX() - axisB.GetX()) > threshold)
+    {
+        return false;
+    }
+    if (Math::Abs(axisA.GetY() - axisB.GetY()) > threshold)
+    {
+        return false;
+    }
+    if (Math::Abs(axisA.GetZ() - axisB.GetZ()) > threshold)
+    {
+        return false;
+    }
+
+    // they are the same!
+    return true;
+}
+
+// Quaternion
+template <>
+MCORE_INLINE bool Compare<AZ::Quaternion>::CheckIfIsClose(const AZ::Quaternion& a, const AZ::Quaternion& b, float threshold)
+{
+    /*
+    if (a.Dot(b) < 0.0f)
+        return Compare<Vector4>::CheckIfIsClose( Vector4(a.x, a.y, a.z, a.w), Vector4(-b.x, -b.y, -b.z, -b.w), threshold);
+    else
+        return Compare<Vector4>::CheckIfIsClose( Vector4(a.x, a.y, a.z, a.w), Vector4(b.x, b.y, b.z, b.w), threshold);
+        */
+
+    AZ::Vector3 axisA, axisB;
+    float   angleA, angleB;
+
+    // convert to an axis and angle representation
+    MCore::ToAxisAngle(a, axisA, angleA);
+    MCore::ToAxisAngle(b, axisB, angleB);
 
     // compare the axis and angles
     if (Math::Abs(angleA  - angleB) > threshold)

@@ -217,6 +217,8 @@ namespace UnitTest
             {
                 constexpr bool lvalueArg = AZStd::conjunction<AZStd::is_lvalue_reference<Args>...>::value;
                 constexpr bool constArg = AZStd::conjunction<AZStd::is_const<AZStd::remove_reference_t<Args>>...>::value;
+
+                AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") // conditional expression is constant
                 if (lvalueArg && !constArg)
                 {
                     return MemberFuncQualifiers::lvalue_ref;
@@ -233,6 +235,7 @@ namespace UnitTest
                 {
                     return MemberFuncQualifiers::const_rvalue_ref;
                 }
+                AZ_POP_DISABLE_WARNING
 
                 return MemberFuncQualifiers{};
             }

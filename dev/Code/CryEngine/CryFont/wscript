@@ -27,6 +27,8 @@ def build(bld):
         configurations  = ['all'],
         pch             = 'StdAfx.cpp',
         use             = ['AzCore'],
+        includes        = [bld.Path('Code/CryEngine/CryCommon')
+                          ],
         defines         = ['ENGINE_EXPORTS', 'USE_CRY_NEW_AND_DELETE'],
 
         # Platform Specific

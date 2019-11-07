@@ -1,0 +1,9 @@
+{
+    "auto":
+    {
+        "Platform/Linux":
+        [
+            "../None/MicrophoneSystemComponent_None.cpp"
+        ]
+    }
+}

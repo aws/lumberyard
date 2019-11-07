@@ -96,10 +96,10 @@ namespace EMStudio
         void LogInfo();
 
         // in case the array is empty, all nodes are shown
-        void SetVisibleJointIndices(const MCore::Array<uint32>& visibleJointIndices);
+        void SetVisibleJointIndices(const AZStd::unordered_set<AZ::u32>& visibleJointIndices);
         const AZStd::unordered_set<AZ::u32>& GetVisibleJointIndices() const                                 { return m_visibleJointIndices; }
 
-        void SetSelectedJointIndices(const MCore::Array<uint32>& selectedJointIndices);
+        void SetSelectedJointIndices(const AZStd::unordered_set<AZ::u32>& selectedJointIndices);
         const AZStd::unordered_set<AZ::u32>& GetSelectedJointIndices() const                                { return m_selectedJointIndices; }
 
         Workspace* GetWorkspace()                                                               { return &mWorkspace; }

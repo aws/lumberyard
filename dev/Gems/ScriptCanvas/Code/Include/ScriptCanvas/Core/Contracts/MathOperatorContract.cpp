@@ -21,6 +21,16 @@ namespace ScriptCanvas
         m_supportedNativeTypes = nativeTypes;
     }
 
+    void MathOperatorContract::SetSupportedOperator(AZStd::string_view operatorString)
+    {
+        m_supportedOperator = operatorString;
+    }
+
+    bool MathOperatorContract::HasOperatorFunction() const
+    {
+        return m_supportedOperator.empty();
+    }
+
     AZ::Outcome<void, AZStd::string> MathOperatorContract::OnEvaluate(const Slot& sourceSlot, const Slot& targetSlot) const
     {
         // Check that the type in the target slot is one of the built in math functions
@@ -29,26 +39,14 @@ namespace ScriptCanvas
         auto dataNode = targetSlotEntity ? AZ::EntityUtils::FindFirstDerivedComponent<Node>(targetSlotEntity) : nullptr;
         if (dataNode)
         {
-            const Data::Type& dataType = dataNode->GetSlotDataType(targetSlot.GetId());
-            if (dataType != Data::Type::Invalid())
-            {
-                if (m_supportedNativeTypes.count(dataType) != 0)
-                {
-                    // This supports math operators
-                    return AZ::Success();
-                }
-            }
-            else 
+            const Data::Type& dataType = dataNode->GetSlotDataType(targetSlot.GetId());            
+
+            if (dataType == Data::Type::Invalid())
             {
                 // For right now we don't want to let dynamic slots connect to each other since the updating mechanism
                 // doesn't work for passing along type updating.
                 if (targetSlot.IsDynamicSlot())
                 {
-                    if (sourceSlot.IsDynamicSlot() && !sourceSlot.HasDisplayType())
-                    {
-                        return AZ::Failure(AZStd::string("Untyped Operator Connections are not currently supported."));
-                    }
-
                     for (const auto& supportedDataType : m_supportedNativeTypes)
                     {
                         if (targetSlot.IsTypeMatchFor(supportedDataType))
@@ -58,35 +56,53 @@ namespace ScriptCanvas
                     }
                 }
             }
-        
-            AZ::BehaviorContext* behaviorContext(nullptr);
-            AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
-            if (!behaviorContext)
+            else
             {
-                AZ_Assert(false, "A behavior context is required!");
-                return AZ::Failure(AZStd::string::format("No Behavior Context"));
-            }
-
-            // Finally if we're not sure if the type supports the operator, check if it has the operator's method
-            const AZ::TypeId azType = Data::ToAZType(dataType);
-
-            const auto classIter(behaviorContext->m_typeToClassMap.find(azType));
-            if (classIter == behaviorContext->m_typeToClassMap.end())
-            {
-                return AZ::Failure(AZStd::string::format("Behavior Context does not contain reflection for type provided: %s", azType.ToString<AZStd::string>().c_str()));
-            }
-
-            AZ::BehaviorClass* behaviorClass = classIter->second;
-            if (behaviorClass)
-            {
-                if (behaviorClass->m_methods.find(m_supportedOperator) != behaviorClass->m_methods.end())
-                {
-                    return AZ::Success();
-                }
+                return EvaluateForType(dataType);
             }
         }
 
         return AZ::Failure(AZStd::string::format("Type does not support the method: %s", m_supportedOperator.c_str()));
+    }
+
+    AZ::Outcome<void, AZStd::string> MathOperatorContract::OnEvaluateForType(const Data::Type& dataType) const
+    {
+        if (dataType != Data::Type::Invalid())
+        {
+            if (m_supportedNativeTypes.count(dataType) != 0)
+            {
+                // This supports math operators
+                return AZ::Success();
+            }
+        }
+
+        AZ::BehaviorContext* behaviorContext(nullptr);
+        AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
+        if (!behaviorContext)
+        {
+            AZ_Assert(false, "A behavior context is required!");
+            return AZ::Failure(AZStd::string::format("No Behavior Context"));
+        }
+
+        // Finally if we're not sure if the type supports the operator, check if it has the operator's method
+        const AZ::TypeId azType = Data::ToAZType(dataType);
+
+        const auto classIter(behaviorContext->m_typeToClassMap.find(azType));
+        if (classIter == behaviorContext->m_typeToClassMap.end())
+        {
+            return AZ::Failure(AZStd::string::format("Behavior Context does not contain reflection for type provided: %s", azType.ToString<AZStd::string>().c_str()));
+        }
+
+        AZ::BehaviorClass* behaviorClass = classIter->second;
+        if (behaviorClass)
+        {
+            if (behaviorClass->m_methods.find(m_supportedOperator) != behaviorClass->m_methods.end())
+            {
+                return AZ::Success();
+            }
+        }
+
+        return AZ::Failure(AZStd::string::format("%s does not support the method: %s", ScriptCanvas::Data::GetName(dataType), m_supportedOperator.c_str()));
     }
 
     void MathOperatorContract::Reflect(AZ::ReflectContext* reflection)

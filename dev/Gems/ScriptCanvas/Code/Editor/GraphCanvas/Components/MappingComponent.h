@@ -25,6 +25,7 @@ namespace ScriptCanvasEditor
         : public AZ::Component
         , public SceneMemberMappingRequestBus::Handler
         , public SceneMemberMappingConfigurationRequestBus::Handler
+        , public GraphCanvas::NodeNotificationBus::Handler
     {
     public:
         AZ_COMPONENT(SceneMemberMappingComponent, "{145667DE-EBD6-4EC5-B630-7C9B1A5ACFF0}");
@@ -43,6 +44,11 @@ namespace ScriptCanvasEditor
 
         // SceneMemberMappingRequestBus
         AZ::EntityId GetGraphCanvasEntityId() const override;
+        ////
+
+        // NodeNotificationBus
+        void OnBatchedConnectionManipulationBegin() override;
+        void OnBatchedConnectionManipulationEnd() override;
         ////
 
     private:

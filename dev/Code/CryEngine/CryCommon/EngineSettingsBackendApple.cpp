@@ -17,7 +17,7 @@
 
 #include "AzCore/PlatformDef.h"
 
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 
 #include "EngineSettingsManager.h"
 #include "SettingsManagerHelpers.h"
@@ -505,6 +505,6 @@ void CEngineSettingsBackendApple::LoadEngineSettingsFromRegistry()
     }
 }
 
-#endif // AZ_PLATFORM_APPLE
+#endif // AZ_TRAIT_OS_PLATFORM_APPLE
 #endif // CRY_ENABLE_RC_HELPER
 

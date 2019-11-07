@@ -90,7 +90,7 @@ namespace DeployTool
             appOutputFolderExtNameOutcomeRelease.GetValue() != appOutputFolderExtNameOutcomeDebug.GetValue()
         );
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         // If this is a Mac, check the iOS settings that will be used by the Deployment Tool
         StringOutcome defaultFolderNameOutcomeiOS = DeployWorkerBase::GetPlatformSpecficDefaultAttributeValue("default_folder_name", PlatformOptions::iOS, devRoot);
         ASSERT_TRUE(defaultFolderNameOutcomeiOS.IsSuccess());

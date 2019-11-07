@@ -22,6 +22,7 @@
 #include <EMotionFX/Source/AnimGraphStateTransition.h>
 #include <EMotionFX/Source/BlendTreeConnection.h>
 #include <EMotionFX/Source/Node.h>
+#include <EMotionFX/Source/SimulatedObjectSetup.h>
 #include <QMetaType>
 #include <QVector>
 
@@ -37,4 +38,6 @@ Q_DECLARE_METATYPE(EMotionFX::AnimGraphObject*);
 Q_DECLARE_METATYPE(EMotionFX::AnimGraphStateTransition*);
 Q_DECLARE_METATYPE(EMotionFX::BlendTreeConnection*);
 Q_DECLARE_METATYPE(EMotionFX::Node*);
+Q_DECLARE_METATYPE(EMotionFX::SimulatedObject*);
+Q_DECLARE_METATYPE(EMotionFX::SimulatedJoint*);
 Q_DECLARE_METATYPE(QVector<int>);

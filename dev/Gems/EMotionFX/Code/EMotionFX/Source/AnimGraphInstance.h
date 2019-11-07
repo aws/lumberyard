@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/PlatformIncl.h>
 #include <AzCore/Outcome/Outcome.h>
 #include <EMotionFX/Source/AnimGraphEventBuffer.h>
 #include <EMotionFX/Source/AnimGraphObject.h>

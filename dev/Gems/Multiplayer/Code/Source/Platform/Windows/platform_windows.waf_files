@@ -1,0 +1,16 @@
+{
+  "auto": {
+    "Source/BehaviorContext/Platform/Windows": [
+      "../Common/Multiplayer/BehaviorContext/GridSystemContext_Unimplemented.cpp"
+    ],
+    "Source/MultiplayerLobbyServiceWrapper/Platform/Windows": [
+      "../Common/Multiplayer/MultiplayerLobbyComponent_Unimplemented.cpp"
+    ],
+    "Platform/Windows": [
+      "Multiplayer_GridMateServiceWrapper_Platform.h",
+      "Multiplayer_GridMateServiceWrapper_Windows.h",
+      "Multiplayer_Traits_Platform.h",
+      "Multiplayer_Traits_Windows.h"
+    ]
+  }
+}

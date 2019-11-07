@@ -10,60 +10,8 @@
 *
 */
 
-#include "TestTypes.h"
-
-#include <AzCore/Debug/Timer.h>
-#include <AzCore/Debug/TraceMessageBus.h>
-
-#include <AzCore/std/typetraits/typetraits.h>
-
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#undef AZ_RESTRICTED_SECTION
-#define MAIN_CPP_SECTION_1 1
-#endif
-
-#if defined(AZ_TESTS_ENABLED)
-DECLARE_AZ_UNIT_TEST_MAIN()
-#endif
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION MAIN_CPP_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Main_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Main_cpp_provo.inl"
-    #endif
-#endif
-
-namespace AZ
-{
-    inline void* AZMemAlloc(AZStd::size_t byteSize, AZStd::size_t alignment, const char* name = "No name allocation")
-    {
-        (void)name;
-#if AZ_TRAIT_SUPPORT_WINDOWS_ALIGNED_MALLOC
-        return _aligned_malloc(byteSize, alignment);
-#else
-        return memalign((size_t)alignment, (size_t)byteSize);
-#endif
-    }
-
-    inline void AZFree(void* ptr, AZStd::size_t byteSize = 0, AZStd::size_t alignment = 0)
-    {
-        (void)byteSize;
-        (void)alignment;
-#if AZ_TRAIT_SUPPORT_WINDOWS_ALIGNED_MALLOC
-        _aligned_free(ptr);
-#else
-        free(ptr);
-#endif
-    }
-}
-// END OF TEMP MEMORY ALLOCATIONS
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
-using namespace AZ;
+#include <AzCore/UnitTest/UnitTest.h>
+#include <AzTest/AzTest.h>
 
 AZ_UNIT_TEST_HOOK(new UnitTest::TraceBusHook());
 

@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Module/DynamicModuleHandle.h>
 #include <AzCore/Module/Environment.h>
@@ -110,5 +109,3 @@ namespace AZ
     }
 #endif
 } // namespace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

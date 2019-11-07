@@ -146,25 +146,17 @@ namespace Audio
     // Summary:
     //          This is a POD structure used to pass the information about a file preloaded into memory between
     //          the CryAudioSystem and an AudioSystemImplementation
-    //          Note: This struct cannot define a constructor, it needs to be a POD!
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct SATLAudioFileEntryInfo
     {
-        void* pFileData;                // pointer to the memory location of the file's contents
-        size_t nMemoryBlockAlignment;   // memory alignment to be used for storing this file's contents in memory
-        size_t nSize;                   // file size
-        const char* sFileName;          // file name
-        bool bLocalized;                // is the file localized
-        IATLAudioFileEntryData* pImplData; // pointer to the implementation-specific data needed for this AudioFileEntry
+        IATLAudioFileEntryData* pImplData = nullptr; // the implementation-specific data needed for this AudioFileEntry
+        const char* sFileName = nullptr;    // file name
+        void* pFileData = nullptr;          // memory location of the file's contents
+        size_t nSize = 0;                   // file size
+        size_t nMemoryBlockAlignment = 0;   // alignment to be used when allocating memory for this file's contents
+        bool bLocalized = false;            // is the file localized?
 
-        SATLAudioFileEntryInfo()
-            : pFileData(nullptr)
-            , nMemoryBlockAlignment(0)
-            , nSize(0)
-            , sFileName(nullptr)
-            , bLocalized(false)
-            , pImplData(nullptr)
-        {}
+        SATLAudioFileEntryInfo() = default;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

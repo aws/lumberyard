@@ -12,12 +12,6 @@
 
 #include <AzCore/Memory/OSAllocator.h>
 
-#if defined(AZ_PLATFORM_LINUX)
-    #include <malloc.h>
-#elif defined(AZ_PLATFORM_APPLE)
-    #include <malloc/malloc.h>
-#endif
-
 namespace AZ
 {
     //=========================================================================

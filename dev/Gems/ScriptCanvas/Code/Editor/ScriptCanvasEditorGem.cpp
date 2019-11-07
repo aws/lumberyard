@@ -66,8 +66,6 @@
 #include <Editor/GraphCanvas/Components/NodeDescriptors/VariableNodeDescriptorComponent.h>
 #include <Editor/GraphCanvas/Components/MappingComponent.h>
 
-#include <Editor/GraphCanvas/Components/NodeDescriptors/DeprecatedVariableNodeDescriptorComponents.h>
-
 #include <Editor/View/Widgets/VariablePanel/VariableDockWidget.h>
 
 namespace ScriptCanvas
@@ -115,11 +113,6 @@ namespace ScriptCanvas
             ScriptCanvasEditor::GetVariableNodeDescriptorComponent::CreateDescriptor(),
             ScriptCanvasEditor::SetVariableNodeDescriptorComponent::CreateDescriptor(),
             ScriptCanvasEditor::UserDefinedNodeDescriptorComponent::CreateDescriptor(),
-
-            // Deprecated Node Descriptors
-            ScriptCanvasEditor::Deprecated::GetVariableNodeDescriptorComponent::CreateDescriptor(),
-            ScriptCanvasEditor::Deprecated::SetVariableNodeDescriptorComponent::CreateDescriptor(),
-            ScriptCanvasEditor::Deprecated::VariableNodeDescriptorComponent::CreateDescriptor(),
             });
 
         auto libraryDescriptors = ScriptCanvasEditor::GetLibraryDescriptors();

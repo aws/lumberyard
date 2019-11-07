@@ -135,6 +135,8 @@ public:
     bool dropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent) override;
     bool canDropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent) const override;
 
+    bool IsSelected(const AZ::EntityId& entityId) const;
+
     QMimeData* mimeData(const QModelIndexList& indexes) const override;
     QStringList mimeTypes() const override;
 
@@ -183,7 +185,23 @@ protected:
 
     //! Editor entity context notification bus
     void OnEditorEntitiesReplacedBySlicedEntities(const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& replacedEntitiesMap) override;
+    void OnEditorEntityDuplicated(const AZ::EntityId& oldEntity, const AZ::EntityId& newEntity) override;
     void OnContextReset() override;
+
+    //! Editor component lock interface to enable/disable selection of entity in the viewport.
+    //! Setting the editor lock state on a parent will recursively set the flag on all descendants as well. (to match visibility)
+    void ToggleEditorLockState(const AZ::EntityId& entityId);
+    void SetEditorLockState(const AZ::EntityId& entityId, bool isLocked);
+    void SetEditorLockStateRecursively(const AZ::EntityId& entityId, bool isLocked, const AZ::EntityId& toggledEntityId, bool toggledEntityWasLayer);
+
+    //! Editor Visibility interface to enable/disable rendering in the viewport.
+    //! Setting the editor visibility on a parent will recursively set the flag on all descendants as well.
+    void ToggleEditorVisibility(const AZ::EntityId& entityId);
+    void SetEditorVisibility(const AZ::EntityId& entityId, bool isVisible);
+    void SetEditorVisibilityStateRecursively(const AZ::EntityId& entityId, bool isVisible, const AZ::EntityId& toggledEntityId, bool toggledEntityWasLayer);
+
+    bool IsEntityVisible(const AZ::EntityId& entityId) const;
+    void SetEntityVisibility(const AZ::EntityId& entityId, bool visibility) const;
 
     void QueueEntityUpdate(AZ::EntityId entityId);
     void QueueAncestorUpdate(AZ::EntityId entityId);

@@ -17,6 +17,39 @@
 
 namespace GraphCanvas
 {
+    class AddSlotMenuAction
+        : public SlotContextMenuAction
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(AddSlotMenuAction, AZ::SystemAllocator, 0);
+
+        AddSlotMenuAction(QObject* parent);
+        virtual ~AddSlotMenuAction() = default;
+
+        void RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId) override;
+        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
+
+    private:
+        AZ::EntityId m_targetId;
+    };
+
+    class RemoveSlotMenuAction
+        : public SlotContextMenuAction
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(RemoveSlotMenuAction, AZ::SystemAllocator, 0);
+
+        RemoveSlotMenuAction(QObject* parent);
+        virtual ~RemoveSlotMenuAction() = default;
+
+        void RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId) override;
+        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
+
+    private:
+        AZ::EntityId m_targetId;
+    };
+
+
     class ClearConnectionsMenuAction
         : public SlotContextMenuAction
     {
@@ -29,6 +62,26 @@ namespace GraphCanvas
         void RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId) override;
         SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
     
+    private:
+        AZ::EntityId m_targetId;
+    };
+
+    //////////////////////
+    // Data Slot Actions
+    //////////////////////
+
+    class ResetToDefaultValueMenuAction
+        : public SlotContextMenuAction
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(ResetToDefaultValueMenuAction, AZ::SystemAllocator, 0);
+
+        ResetToDefaultValueMenuAction(QObject* parent);
+        virtual ~ResetToDefaultValueMenuAction() = default;
+
+        void RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId) override;
+        SceneReaction TriggerAction(const GraphId& graphId, const AZ::Vector2& scenePos) override;
+
     private:
         AZ::EntityId m_targetId;
     };

@@ -37,10 +37,10 @@
 
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
     #if defined(TOOLS_SUPPORT_XENIA)
-        #include "Xenia/ImageProcess_xenia.inl"
+        #include <Platform/Xenia/ImageProcess_Xenia.inl>
     #endif
     #if defined(TOOLS_SUPPORT_PROVO)
-        #include "Provo/ImageProcess_provo.inl"
+        #include <Platform/Provo/ImageProcess_Provo.inl>
     #endif
 #endif
 
@@ -469,7 +469,7 @@ namespace ImageProcessing
         else
         {
             //For PVRTC compression we need to clear out the alpha to get accurate rgb compression.
-            if (IsPVRTCFormat(m_presetSetting.m_pixelFormat))
+            if (IsPVRTCFormat(m_presetSetting.m_pixelFormat) || IsASTCFormat(m_presetSetting.m_pixelFormat))
             {
                 alphaImage.ConvertFormat(ePixelFormat_R8G8B8A8);
                 alphaImage.Get()->Swizzle("rgb1");
@@ -492,7 +492,7 @@ namespace ImageProcessing
     {
 
         //For PVRTC compression we need to clear out the alpha to get accurate rgb compression.
-        if(m_alphaImage && IsPVRTCFormat(m_presetSetting.m_pixelFormat))
+        if(m_alphaImage && (IsPVRTCFormat(m_presetSetting.m_pixelFormat) || IsASTCFormat(m_presetSetting.m_pixelFormat)))
         {
             m_image->Get()->Swizzle("rgb1");
         }

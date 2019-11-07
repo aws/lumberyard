@@ -78,9 +78,7 @@ namespace AZ
 
     private:
         Descriptor          m_desc;
-#if defined(AZ_OS64)
         int                 m_pad;      // pad the Descriptor to avoid C4355
-#endif
         size_type           m_capacity;                 ///< Capacity in bytes.
         HpAllocator*        m_allocator;
         AZStd::aligned_storage<5120, 16>::type m_hpAllocatorBuffer;    ///< Memory buffer for HpAllocator

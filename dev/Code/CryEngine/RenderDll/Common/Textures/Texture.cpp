@@ -2932,7 +2932,7 @@ void CTexture::LoadDefaultSystemTextures()
     #endif
 #endif
             
-#if defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_IOS)
             int nRTSceneDiffuseFlags =  nRTFlags;
             static ICVar* pVar = gEnv->pConsole->GetCVar("e_ShadowsClearShowMaskAtLoad");
             if (pVar && !pVar->GetIVal())

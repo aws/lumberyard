@@ -57,8 +57,6 @@ namespace ScriptCanvas
                 
                 void InitializeObject(const Data::Type& type);
 
-                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
-
                 void OnWriteEnd();
 
             protected:

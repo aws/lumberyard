@@ -12,95 +12,53 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#undef AZ_RESTRICTED_SECTION
-#define SHALLOCATOR_H_SECTION_1 1
-#define SHALLOCATOR_H_SECTION_2 2
-#endif
-
 #ifndef CRYINCLUDE_TOOLS_PRT_SHALLOCATOR_H
 #define CRYINCLUDE_TOOLS_PRT_SHALLOCATOR_H
 #pragma once
 
-// Detect potential mismatches of this macro
-#if defined(_MSC_VER) && _MSC_VER >= 1600
-#if defined(USE_MEM_ALLOCATOR)
-#pragma detect_mismatch("SH_USE_MEM_ALLOCATOR", "yes")
-#else
-#pragma detect_mismatch("SH_USE_MEM_ALLOCATOR", "no")
-#endif
-#endif
-
-#ifdef _WIN32
-	#include <windows.h>
-#endif
-#include <limits>
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SHALLOCATOR_H_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SHAllocator_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SHAllocator_h_provo.inl"
-    #endif
-#elif !defined(LINUX) && !defined(APPLE)
-#ifdef __cplusplus
-	#include <new.h> 
-#endif
-#endif
-
-#undef min
-#undef max
-
-#ifdef __APPLE__
-typedef long long int int64;
-#endif
+#include <AzCore/PlatformIncl.h>
 
 //class specific new handlers
 #define INSTALL_CLASS_NEW(T) \
-	static void* operator new(size_t size)\
-	{\
-		static CSHAllocator<T> sAllocator;\
-		return sAllocator.new_mem(size);\
-	}\
-	static void* operator new(size_t, void *p)\
-	{\
-		return p;\
-	}\
-	static void* operator new(size_t size, const std::nothrow_t&)\
-	{\
-	  static CSHAllocator<T> sAllocator;\
-		return sAllocator.new_mem(size);\
-	}\
-	static void operator delete(void *pMem, size_t size)\
-	{\
-		static CSHAllocator<T> sAllocator;\
-		sAllocator.delete_mem(pMem, size);\
-	}\
-	static void *operator new[](size_t size)\
-	{\
-		static CSHAllocator<T> sAllocator;\
-		return sAllocator.new_mem_array(size);\
-	}\
-	static void *operator new[](size_t size, const std::nothrow_t&)\
-	{\
-	  static CSHAllocator<T> sAllocator;\
-		return sAllocator.new_mem_array(size);\
-	}\
-	static void operator delete[](void *pMem, size_t size)\
-	{\
-		static CSHAllocator<T> sAllocator;\
-		sAllocator.delete_mem_array(pMem, size);\
-	}\
-
-#if defined(_WIN32) || defined(_WIN64)
-	//#define USE_MEM_ALLOCATOR
-#endif
+    static void* operator new(size_t size)\
+    {\
+        static CSHAllocator<T> sAllocator;\
+        return sAllocator.new_mem(size);\
+    }\
+    static void* operator new(size_t, void *p)\
+    {\
+        return p;\
+    }\
+    static void* operator new(size_t size, const std::nothrow_t&)\
+    {\
+      static CSHAllocator<T> sAllocator;\
+        return sAllocator.new_mem(size);\
+    }\
+    static void operator delete(void *pMem, size_t size)\
+    {\
+        static CSHAllocator<T> sAllocator;\
+        sAllocator.delete_mem(pMem, size);\
+    }\
+    static void *operator new[](size_t size)\
+    {\
+        static CSHAllocator<T> sAllocator;\
+        return sAllocator.new_mem_array(size);\
+    }\
+    static void *operator new[](size_t size, const std::nothrow_t&)\
+    {\
+      static CSHAllocator<T> sAllocator;\
+        return sAllocator.new_mem_array(size);\
+    }\
+    static void operator delete[](void *pMem, size_t size)\
+    {\
+        static CSHAllocator<T> sAllocator;\
+        sAllocator.delete_mem_array(pMem, size);\
+    }\
 
 #if defined(SH_ALLOCATOR_EXPORT)
-	#define SH_ALLOCATOR_API __declspec(dllexport)
+    #define SH_ALLOCATOR_API AZ_DLL_EXPORT
 #else
-	#define SH_ALLOCATOR_API __declspec(dllimport)
+    #define SH_ALLOCATOR_API AZ_DLL_IMPORT
 #endif
 
 #if defined(USE_MEM_ALLOCATOR)
@@ -112,15 +70,15 @@ void LoadAllocatorModule(FNC_SHMalloc&, FNC_SHFreeSize&);
 
 extern "C"
 {
-	void* SHModuleMalloc(size_t Size) ;
-	void  SHModuleFreeSize(void *pPtr,size_t Size);
+    void* SHModuleMalloc(size_t Size) ;
+    void  SHModuleFreeSize(void *pPtr,size_t Size);
 }
 
 extern "C" 
 {
 #if defined(SH_ALLOCATOR_EXPORT)
-	SH_ALLOCATOR_API void *SHMalloc(size_t Size);
-	SH_ALLOCATOR_API void SHFreeSize(void *pPtr,size_t Size);
+    SH_ALLOCATOR_API void *SHMalloc(size_t Size);
+    SH_ALLOCATOR_API void SHFreeSize(void *pPtr,size_t Size);
 #endif
 }
 
@@ -133,195 +91,179 @@ template <class T>
 class CSHAllocator
 {
 public:
-	// type definitions
-	typedef T        value_type;
-	typedef T*       pointer;
-	typedef const T* const_pointer;
-	typedef T&       reference;
-	typedef const T& const_reference;
-	typedef size_t    size_type;
-#ifdef  _WIN64
-	typedef __int64 difference_type;
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SHALLOCATOR_H_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SHAllocator_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SHAllocator_h_provo.inl"
-    #endif
+    // type definitions
+    typedef T        value_type;
+    typedef T*       pointer;
+    typedef const T* const_pointer;
+    typedef T&       reference;
+    typedef const T& const_reference;
+    typedef size_t    size_type;
+    typedef ptrdiff_t difference_type;
+
+    CSHAllocator();
+    
+    ~CSHAllocator();
+
+    // rebind allocator to type U
+    template <class U>
+    struct rebind 
+    {
+        typedef CSHAllocator<U> other;
+    };
+
+    // return address of values
+    pointer address (reference rValue) const 
+    {
+        return &rValue;
+    }
+
+    const_pointer address(const_reference crValue) const 
+    {
+        return &crValue;
+    }
+
+    CSHAllocator(const CSHAllocator& crSrc)  
+    {
+#if defined(USE_MEM_ALLOCATOR)
+        m_pSHAllocFnc       = crSrc.m_pSHAllocFnc;
+        m_pSHFreeSizeFnc    = crSrc.m_pSHFreeSizeFnc;
 #endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(LINUX) || defined(APPLE)
-	typedef int64 difference_type;
+    }
+
+    const CSHAllocator& operator=(const CSHAllocator& crSrc)  
+    {
+#if defined(USE_MEM_ALLOCATOR)
+        m_pSHAllocFnc       = crSrc.m_pSHAllocFnc;
+        m_pSHFreeSizeFnc    = crSrc.m_pSHFreeSizeFnc;
+#endif
+        return *this;
+    }
+
+    template <class U >
+    CSHAllocator(const CSHAllocator<U>& crSrc)  
+    {
+#if defined(USE_MEM_ALLOCATOR)
+        m_pSHAllocFnc       = crSrc.m_pSHAllocFnc;
+        m_pSHFreeSizeFnc    = crSrc.m_pSHFreeSizeFnc;
+#endif
+    }
+    
+    // allocate but don't initialize num elements of type T
+    pointer allocate(size_type Num, const void* = 0) 
+    {
+        // print message and allocate memory with global new
+#if defined(USE_MEM_ALLOCATOR)
+        pointer pRet = (pointer)m_pSHAllocFnc(Num * sizeof(T));
 #else
-	typedef _W64 int difference_type;
+        pointer pRet = (pointer)malloc(Num * sizeof(T));
 #endif
-	CSHAllocator();
-	
-	~CSHAllocator();
+        return pRet;
+    }
 
-	// rebind allocator to type U
-	template <class U>
-	struct rebind 
-	{
-		typedef CSHAllocator<U> other;
-	};
+    // initialize elements of allocated storage p with value value
+    void construct(pointer pPtr, const T& crValue) 
+    {
+        // initialize memory with placement new
+        ::new(reinterpret_cast<void*>(pPtr) ) T(crValue);
+    }
 
-	// return address of values
-	pointer address (reference rValue) const 
-	{
-		return &rValue;
-	}
+    // destroy elements of initialized storage p
+    void destroy(pointer pPtr) 
+    {
+        // destroy objects by calling their destructor
+        pPtr->~T();
+    }
 
-	const_pointer address(const_reference crValue) const 
-	{
-		return &crValue;
-	}
-
-	CSHAllocator(const CSHAllocator& crSrc)  
-	{
+    // deallocate storage p of deleted elements
+    void deallocate(pointer pPtr, size_type Num) 
+    {
+        if(pPtr == NULL)
+            return;
 #if defined(USE_MEM_ALLOCATOR)
-		m_pSHAllocFnc			= crSrc.m_pSHAllocFnc;
-		m_pSHFreeSizeFnc	= crSrc.m_pSHFreeSizeFnc;
-#endif
-	}
-
-	const CSHAllocator& operator=(const CSHAllocator& crSrc)  
-	{
-#if defined(USE_MEM_ALLOCATOR)
-		m_pSHAllocFnc			= crSrc.m_pSHAllocFnc;
-		m_pSHFreeSizeFnc	= crSrc.m_pSHFreeSizeFnc;
-#endif
-		return *this;
-	}
-
-	template <class U >
-	CSHAllocator(const CSHAllocator<U>& crSrc)  
-	{
-#if defined(USE_MEM_ALLOCATOR)
-		m_pSHAllocFnc			= crSrc.m_pSHAllocFnc;
-		m_pSHFreeSizeFnc	= crSrc.m_pSHFreeSizeFnc;
-#endif
-	}
-	
-	// allocate but don't initialize num elements of type T
-	pointer allocate(size_type Num, const void* = 0) 
-	{
-		// print message and allocate memory with global new
-#if defined(USE_MEM_ALLOCATOR)
-		pointer pRet = (pointer)m_pSHAllocFnc(Num * sizeof(T));
+        m_pSHFreeSizeFnc(pPtr, Num * sizeof(T));
 #else
-		pointer pRet = (pointer)malloc(Num * sizeof(T));
+        free(pPtr);
 #endif
-		return pRet;
-	}
+    }
 
-	// initialize elements of allocated storage p with value value
-	void construct(pointer pPtr, const T& crValue) 
-	{
-		// initialize memory with placement new
-		::new(reinterpret_cast<void*>(pPtr) ) T(crValue);
-	}
+    size_type max_size () const
+    {
+        return std::numeric_limits<size_t>::max() / sizeof(T);
+    }
 
-	// destroy elements of initialized storage p
-	void destroy(pointer pPtr) 
-	{
-		// destroy objects by calling their destructor
-		pPtr->~T();
-	}
-
-	// deallocate storage p of deleted elements
-	void deallocate(pointer pPtr, size_type Num) 
-	{
-		if(pPtr == NULL)
-			return;
-#if defined(USE_MEM_ALLOCATOR)
-		m_pSHFreeSizeFnc(pPtr, Num * sizeof(T));
-#else
-		free(pPtr);
-#endif
-	}
-
-	size_type max_size () const
-	{
-		return std::numeric_limits<size_t>::max() / sizeof(T);
-	}
-
-	// templatized new operator 
-	void* new_mem(size_type Mem) 
-	{
-/*		// print message and allocate memory with global new
-		if(Mem != sizeof(value_type))
-			return ::operator new(Mem);
+    // templatized new operator 
+    void* new_mem(size_type Mem) 
+    {
+/*        // print message and allocate memory with global new
+        if(Mem != sizeof(value_type))
+            return ::operator new(Mem);
 */
 #if defined(USE_MEM_ALLOCATOR)
-		void* pRet = (pointer)m_pSHAllocFnc(Mem);
+        void* pRet = (pointer)m_pSHAllocFnc(Mem);
 #else
-		void* pRet = (pointer)malloc(Mem);
+        void* pRet = (pointer)malloc(Mem);
 #endif
-		return pRet;
-	}
+        return pRet;
+    }
 
-	// templatized delete operator 
-	void delete_mem(void *pMem, size_type Mem) 
-	{
-/*		// print message and allocate memory with global new
-		if(Mem != sizeof(value_type))
-		{
-			::operator delete(pMem);
-			return;
-		}
+    // templatized delete operator 
+    void delete_mem(void *pMem, size_type Mem) 
+    {
+/*        // print message and allocate memory with global new
+        if(Mem != sizeof(value_type))
+        {
+            ::operator delete(pMem);
+            return;
+        }
 */
 #if defined(USE_MEM_ALLOCATOR)
-		m_pSHFreeSizeFnc(pMem, Mem);
+        m_pSHFreeSizeFnc(pMem, Mem);
 #else
-		free(pMem);
+        free(pMem);
 #endif
-	}
-	// templatized new array operator 
-	void* new_mem_array(size_type Mem) 
-	{
+    }
+    // templatized new array operator 
+    void* new_mem_array(size_type Mem) 
+    {
 #if defined(USE_MEM_ALLOCATOR)
-		void* pRet = (pointer)m_pSHAllocFnc(Mem);
+        void* pRet = (pointer)m_pSHAllocFnc(Mem);
 #else
-		void* pRet = (pointer)malloc(Mem);
+        void* pRet = (pointer)malloc(Mem);
 #endif
-		return pRet;
-	}
+        return pRet;
+    }
 
-	// templatized delete array operator 
-	void delete_mem_array(void *pMem, size_type Mem) 
-	{
+    // templatized delete array operator 
+    void delete_mem_array(void *pMem, size_type Mem) 
+    {
 #if defined(USE_MEM_ALLOCATOR)
-		m_pSHFreeSizeFnc(pMem, Mem);
+        m_pSHFreeSizeFnc(pMem, Mem);
 #else
-		free(pMem);
+        free(pMem);
 #endif
-	}
+    }
 
 protected:
 #if defined(USE_MEM_ALLOCATOR)
-	FNC_SHMalloc m_pSHAllocFnc;
-	FNC_SHFreeSize m_pSHFreeSizeFnc;
+    FNC_SHMalloc m_pSHAllocFnc;
+    FNC_SHFreeSize m_pSHFreeSizeFnc;
 #endif
 
-	template<class U>
-	friend class CSHAllocator;
+    template<class U>
+    friend class CSHAllocator;
 };
 
 // return that all specializations of this allocator are interchangeable
 template <class T1, class T2>
 bool operator ==(const CSHAllocator<T1>&, const CSHAllocator<T2>&)  
 {
-	return true;
+    return true;
 }
 
 template <class T1, class T2>
 bool operator !=(const CSHAllocator<T1>&, const CSHAllocator<T2>&)  
 {
-	return false;
+    return false;
 }
 
 template <class T>
@@ -333,7 +275,7 @@ template <class T>
 CSHAllocator<T>::CSHAllocator() 
 {
 #if defined(USE_MEM_ALLOCATOR)
-	LoadAllocatorModule(m_pSHAllocFnc, m_pSHFreeSizeFnc);
+    LoadAllocatorModule(m_pSHAllocFnc, m_pSHFreeSizeFnc);
 #endif 
 }
 

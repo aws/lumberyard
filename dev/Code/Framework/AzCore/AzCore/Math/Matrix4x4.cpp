@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Math/Matrix3x3.h>
 #include <AzCore/Math/Matrix4x4.h>
@@ -299,5 +298,3 @@ const Matrix4x4 Matrix4x4::CreateInterpolated(const Matrix4x4& m1, const Matrix4
     result.MultiplyByScale(s1);
     return result;
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

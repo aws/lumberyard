@@ -16,7 +16,6 @@
 #include <AzCore/Casting/numeric_cast.h>
 
 class CFlowDataReadVisitor
-    : public boost::static_visitor<void>
 {
 public:
     CFlowDataReadVisitor(const char* data)
@@ -109,7 +108,6 @@ private:
 };
 
 class CFlowDataWriteVisitor
-    : public boost::static_visitor<void>
 {
 public:
     CFlowDataWriteVisitor(string& out)

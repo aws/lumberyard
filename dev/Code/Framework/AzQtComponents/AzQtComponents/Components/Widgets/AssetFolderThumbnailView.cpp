@@ -14,10 +14,14 @@
 #include <AzQtComponents/Components/Style.h>
 
 #include <QAbstractItemDelegate>
+AZ_PUSH_DISABLE_WARNING(4244 4251 4800, "-Wunknown-warning-option") // 4244: 'initializing': conversion from 'int' to 'float', possible loss of data
+                                                                    // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
+                                                                    // 4800: 'QFlags<QPainter::RenderHint>::Int': forcing value to bool 'true' or 'false' (performance warning)
 #include <QMouseEvent>
 #include <QPainter>
 #include <QScrollBar>
 #include <QSettings>
+AZ_POP_DISABLE_WARNING
 
 namespace
 {
@@ -138,7 +142,7 @@ namespace AzQtComponents
                 const auto& buttonConfig = m_config.expandButton;
                 const auto width = buttonConfig.width;
                 const auto buttonRect = QRect{rect.left() + rect.width() - width, rect.top(), width, rect.width()};
-                paintExpandButton(painter, buttonRect, option.state & QStyle::State_DownArrow, buttonConfig);
+                paintExpandButton(painter, buttonRect, (option.state & QStyle::State_DownArrow) != 0, buttonConfig);
             }
 
             // text
@@ -189,7 +193,7 @@ namespace AzQtComponents
 
     static void readExpandButton(QSettings& settings, AssetFolderThumbnailView::Config::ExpandButton& expandButton)
     {
-        expandButton.width = settings.value(QStringLiteral("Width"), expandButton.width).toReal();
+        expandButton.width = settings.value(QStringLiteral("Width"), expandButton.width).toInt();
         expandButton.caretWidth = settings.value(QStringLiteral("CaretWidth"), expandButton.caretWidth).toReal();
         expandButton.borderRadius = settings.value(QStringLiteral("BorderRadius"), expandButton.borderRadius).toReal();
         readColor(settings, "BackgroundColor", expandButton.backgroundColor);

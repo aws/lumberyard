@@ -22,82 +22,24 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(AnimGraphNodeNameHandler, AZ::SystemAllocator, 0)
 
     AnimGraphNodeNameLineEdit::AnimGraphNodeNameLineEdit(QWidget* parent)
-        : QLineEdit(parent)
+        : LineEditValidatable(parent)
         , m_node(nullptr)
-        , m_validationExpr(R"(^[^{}"]*$)")
-        , m_lineValidator(m_validationExpr, 0)
     {
-        setValidator(&m_lineValidator);
-        connect(this, &QLineEdit::textChanged, this, &AnimGraphNodeNameLineEdit::OnTextChanged);
-        connect(this, &QLineEdit::editingFinished, this, &AnimGraphNodeNameLineEdit::OnEditingFinished);
-    }
+        SetValidatorFunc([this]()
+        {
+            if (m_node)
+            {
+                const AnimGraph* animGraph = m_node->GetAnimGraph();
+                return animGraph->IsNodeNameUnique(text().toUtf8().data(), m_node);
+            }
 
+            return false;
+        });
+    }
 
     void AnimGraphNodeNameLineEdit::SetNode(AnimGraphNode* node)
     {
         m_node = node;
-    }
-
-
-    void AnimGraphNodeNameLineEdit::SetName(const QString& newName)
-    {
-        setText(newName);
-    }
-
-
-    void AnimGraphNodeNameLineEdit::SetPreviousName(const QString& previousName)
-    {
-        m_previousName = previousName;
-    }
-
-
-    QString AnimGraphNodeNameLineEdit::GetName() const
-    {
-        return text();
-    }
-
-
-    QString AnimGraphNodeNameLineEdit::GetPreviousName() const
-    {
-        return m_previousName;
-    }
-
-
-    void AnimGraphNodeNameLineEdit::OnTextChanged()
-    {
-        if (IsValid())
-        {
-            setStyleSheet("");
-        }
-        else
-        {
-            setStyleSheet("border: 1px solid red;");
-        }
-    }
-
-
-    void AnimGraphNodeNameLineEdit::OnEditingFinished()
-    {
-        if (IsValid() && m_previousName != text())
-        {
-            emit NameChanged();
-        }
-        else
-        {
-            SetName(m_previousName);
-        }
-    }
-
-
-    bool AnimGraphNodeNameLineEdit::IsValid()
-    {
-        if (!m_node)
-        {
-            return false;
-        }
-
-        const AnimGraph* animGraph = m_node->GetAnimGraph();
-        return animGraph->IsNodeNameUnique(text().toUtf8().data(), m_node);
     }
 
     //---------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -119,7 +61,7 @@ namespace EMotionFX
     {
         AnimGraphNodeNameLineEdit* lineEdit = aznew AnimGraphNodeNameLineEdit(parent);
 
-        connect(lineEdit, &AnimGraphNodeNameLineEdit::NameChanged, this, [lineEdit]()
+        connect(lineEdit, &AnimGraphNodeNameLineEdit::TextEditingFinished, this, [lineEdit]()
         {
             EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, lineEdit);
         });
@@ -151,22 +93,22 @@ namespace EMotionFX
     {
         if (!m_node)
         {
-            AZ_Error("EMotionFX", false, "Cannot set new name (%s) to anim graph node named %s. Node is not valid.", GUI->GetName().toUtf8().data(), GUI->GetPreviousName().toUtf8().data());
+            AZ_Error("EMotionFX", false, "Cannot set new name (%s) to anim graph node named %s. Node is not valid.", GUI->text().toUtf8().data(), GUI->GetPreviousText().toUtf8().data());
             return;
         }
 
         const AnimGraph* animGraph = m_node->GetAnimGraph();
-        const AZStd::string command = AZStd::string::format("AnimGraphAdjustNode -animGraphID %d -name \"%s\" -newName \"%s\"", animGraph->GetID(), GUI->GetPreviousName().toUtf8().data(), GUI->GetName().toUtf8().data());
+        const AZStd::string command = AZStd::string::format("AnimGraphAdjustNode -animGraphID %d -name \"%s\" -newName \"%s\"", animGraph->GetID(), GUI->GetPreviousText().toUtf8().data(), GUI->text().toUtf8().data());
 
         AZStd::string result;
         if (!CommandSystem::GetCommandManager()->ExecuteCommand(command, result))
         {
             AZ_Error("EMotionFX", false, result.c_str());
-            GUI->SetName(GUI->GetPreviousName());
+            GUI->setText(GUI->GetPreviousText());
         }
         else
         {
-            GUI->SetPreviousName(GUI->GetName());
+            GUI->SetPreviousText(GUI->text());
         }
     }
 
@@ -174,8 +116,8 @@ namespace EMotionFX
     bool AnimGraphNodeNameHandler::ReadValuesIntoGUI(size_t index, AnimGraphNodeNameLineEdit* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node)
     {
         QSignalBlocker signalBlocker(GUI);
-        GUI->SetPreviousName(instance.c_str());
-        GUI->SetName(instance.c_str());
+        GUI->SetPreviousText(instance.c_str());
+        GUI->setText(instance.c_str());
         return true;
     }
 } // namespace EMotionFX

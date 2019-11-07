@@ -14,7 +14,7 @@
 
 #include <IAudioSystem.h>
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX) || defined(SUPPORT_WINDOWS_DLL_DECLSPEC)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_MAC) || defined(SUPPORT_WINDOWS_DLL_DECLSPEC)
     #ifdef CRYSOUND_EXPORTS
         #define CRYSOUND_API AZ_DLL_EXPORT
     #else

@@ -32,6 +32,8 @@ namespace AzToolsFramework
 
     namespace AssetDatabase
     {
+        constexpr AZ::s64 InvalidEntryId = -1;
+
         //! List all database version changes here with descriptive naming to explain what was changed in
         //! the database
         enum class DatabaseVersion : int
@@ -105,7 +107,7 @@ namespace AzToolsFramework
             AZStd::string ToString() const;
             auto GetColumns();
 
-            AZ::s64 m_scanFolderID = -1; // the database Primary Key row index, not to be used for any logic purpose
+            AZ::s64 m_scanFolderID = InvalidEntryId; // the database Primary Key row index, not to be used for any logic purpose
             AZStd::string m_scanFolder; // the actual local computer path to that scan folder.
             AZStd::string m_displayName; // a display name, blank means it should not show up in UIs
             AZStd::string m_portableKey; // a key that uniquely identifies a scan folder so that we can recognize the same one in other databases/computer
@@ -127,8 +129,8 @@ namespace AzToolsFramework
             AZStd::string ToString() const;
             auto GetColumns();
 
-            AZ::s64 m_sourceID = -1;
-            AZ::s64 m_scanFolderPK = -1;
+            AZ::s64 m_sourceID = InvalidEntryId;
+            AZ::s64 m_scanFolderPK = InvalidEntryId;
             AZStd::string m_sourceName;
             AZ::Uuid m_sourceGuid = AZ::Uuid::CreateNull();
             AZStd::string m_analysisFingerprint;
@@ -142,7 +144,7 @@ namespace AzToolsFramework
         public:
             BuilderInfoEntry() = default;
             BuilderInfoEntry(AZ::s64 builderInfoID, const AZ::Uuid& builderUuid, const char* analysisFingerprint);
-            AZ::s64 m_builderInfoID = -1;
+            AZ::s64 m_builderInfoID = InvalidEntryId;
             AZ::Uuid m_builderUuid = AZ::Uuid::CreateNull();
             AZStd::string m_analysisFingerprint;
 
@@ -170,8 +172,8 @@ namespace AzToolsFramework
             AZStd::string ToString() const;
             auto GetColumns();
 
-            AZ::s64 m_jobID = -1;
-            AZ::s64 m_sourcePK = -1;
+            AZ::s64 m_jobID = InvalidEntryId;
+            AZ::s64 m_sourcePK = InvalidEntryId;
             AZStd::string m_jobKey;
             AZ::u32 m_fingerprint = 0;
             AZStd::string m_platform;
@@ -209,7 +211,7 @@ namespace AzToolsFramework
             AZStd::string ToString() const;
             auto GetColumns();
 
-            AZ::s64 m_sourceDependencyID = -1;
+            AZ::s64 m_sourceDependencyID = InvalidEntryId;
             AZ::Uuid m_builderGuid = AZ::Uuid::CreateNull();
             TypeOfDependency m_typeOfDependency = DEP_SourceToSource;
             AZStd::string m_source;
@@ -238,8 +240,8 @@ namespace AzToolsFramework
             AZStd::string ToString() const;
             auto GetColumns();
 
-            AZ::s64 m_productID = -1;
-            AZ::s64 m_jobPK = -1;
+            AZ::s64 m_productID = InvalidEntryId;
+            AZ::s64 m_jobPK = InvalidEntryId;
             AZ::u32 m_subID = 0;
             AZStd::string m_productName;
             AZ::Data::AssetType m_assetType = AZ::Data::AssetType::CreateNull();
@@ -253,13 +255,13 @@ namespace AzToolsFramework
             LegacySubIDsEntry() = default;
             LegacySubIDsEntry(AZ::s64 subIDsEntryID, AZ::s64 productPK, AZ::u32 subId); // loaded from db, and thus includes the PK
             LegacySubIDsEntry(AZ::s64 productPK, AZ::u32 subId);  // being synthesized does not include the PK.
-            LegacySubIDsEntry(const LegacySubIDsEntry& entry) = default;
-            LegacySubIDsEntry& operator=(const LegacySubIDsEntry& other) = default;
+
+            bool operator==(const LegacySubIDsEntry& other) const;
 
             auto GetColumns();
 
-            AZ::s64 m_subIDsEntryID = -1; // the main ID of this table.
-            AZ::s64 m_productPK = -1; // the foreign key to the Products table.
+            AZ::s64 m_subIDsEntryID = InvalidEntryId; // the main ID of this table.
+            AZ::s64 m_productPK = InvalidEntryId; // the foreign key to the Products table.
             AZ::u32 m_subID = 0; // the legacy subID.
         };
 
@@ -285,8 +287,8 @@ namespace AzToolsFramework
             AZStd::string ToString() const;
             auto GetColumns();
 
-            AZ::s64 m_productDependencyID = -1;
-            AZ::s64 m_productPK = -1;
+            AZ::s64 m_productDependencyID = InvalidEntryId;
+            AZ::s64 m_productPK = InvalidEntryId;
             AZ::Uuid m_dependencySourceGuid = AZ::Uuid::CreateNull();
             AZ::u32 m_dependencySubID = 0;
             AZStd::bitset<64> m_dependencyFlags = 0;
@@ -332,8 +334,8 @@ namespace AzToolsFramework
             AZStd::string ToString() const;
             auto GetColumns();
 
-            AZ::s64 m_fileID = -1;
-            AZ::s64 m_scanFolderPK = -1;
+            AZ::s64 m_fileID = InvalidEntryId;
+            AZ::s64 m_scanFolderPK = InvalidEntryId;
             AZStd::string m_fileName;
             int m_isFolder;
             AZ::u64 m_modTime{};

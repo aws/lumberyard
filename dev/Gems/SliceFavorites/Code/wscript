@@ -23,6 +23,8 @@ def build(bld):
 
             features        = ['qt5'],
             autod_uselib    = ['QT5CORE','QT5GUI','QT5WIDGETS'],
-            includes        = [ 'Include' ],
+            includes        = [ 'Include',
+                                bld.Path('Code/CryEngine/CryCommon')
+                              ],
       ),
     )

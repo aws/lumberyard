@@ -19,7 +19,8 @@ def build(bld):
     bld.DefineGem(
         # Add custom build options here
         includes    = [bld.Path('Code/CryEngine/CryAction'),
-                       bld.Path('Code/CryEngine/CryCommon')],  
+                       bld.Path('Code/CryEngine/CryCommon')
+                      ],  
         pch         = 'Source/ScriptCanvasPhysics_precompiled.cpp', 
         file_list   = ['scriptcanvas_physics.waf_files'],
         test_all_file_list = ['scriptcanvas_physics_tests.waf_files'],

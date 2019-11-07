@@ -88,7 +88,7 @@ static QString GetFancyViewPaneStateGroupName()
     return QString("%1/%2").arg("Editor").arg("fancyWindowLayouts");
 }
 
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 // this event filter class eats mouse events
 // it is used in the non dockable fake dock widget
 // to make sure its inner title bar cannot be dragged
@@ -244,7 +244,7 @@ static bool SkipTitleBarOverdraw(QtViewPane* pane)
 
 DockWidget::DockWidget(QWidget* widget, QtViewPane* pane, QSettings* settings, QMainWindow* parent, AzQtComponents::FancyDocking* advancedDockManager)
     : AzQtComponents::StyledDockWidget(pane->m_name, SkipTitleBarOverdraw(pane),
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
           pane->m_options.detachedWindow ? nullptr : parent)
 #else
           parent)
@@ -279,7 +279,7 @@ bool DockWidget::event(QEvent* qtEvent)
     // so that window can't ever be placed on top of it.  This is not what we want.  We want you to be able to then take that window and drag it into this new one.
     // (Qt's original behavior is like that so if you double click on a floating widget it docks back into the parent which it came from - we don't use this functionality)
     if (qtEvent->type() == QEvent::WindowActivate
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
         && !m_pane->m_options.detachedWindow
 #endif
     )
@@ -327,7 +327,7 @@ QString DockWidget::PaneName() const
 
 void DockWidget::RestoreState(bool forceDefault)
 {
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
     if (m_pane->m_options.detachedWindow)
     {
         if (forceDefault)
@@ -690,7 +690,7 @@ const QtViewPane* QtViewPaneManager::OpenPane(const QString& name, QtViewPane::O
                 emit viewPaneCreated(pane);
             }
 
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
             // handle showing fake dock widgets
             if (pane->m_options.detachedWindow)
             {
@@ -701,7 +701,7 @@ const QtViewPane* QtViewPaneManager::OpenPane(const QString& name, QtViewPane::O
         else if (!QtViewPane::IsTabbed(newDockWidget))
         {
             newDockWidget->setVisible(true);
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
             if (pane->m_options.detachedWindow)
             {
                 newDockWidget->window()->show();
@@ -1193,7 +1193,7 @@ void QtViewPaneManager::SaveStateToLayout(const ViewLayoutState& state, const QS
     }
 }
 
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 /*
  * This methods creates a fake wrapper dock widget around the passed dock widget. The returned dock widget has
  * no parent and can therefore be used for a contained QOpenGLWidget on macOS, since this doesn't work as expected

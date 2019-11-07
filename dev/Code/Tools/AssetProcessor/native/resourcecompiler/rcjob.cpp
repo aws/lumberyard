@@ -179,7 +179,7 @@ namespace AssetProcessor
 
         if ((wasPending)&&(m_jobState == cancelled))
         {
-            // if we were pending (had not started yet) and we are now cancelled, we sitll have to emit the finished signal
+            // if we were pending (had not started yet) and we are now canceled, we still have to emit the finished signal
             // so that all the various systems waiting for us can do their housekeeping.
             Q_EMIT Finished();
         }
@@ -338,7 +338,7 @@ namespace AssetProcessor
         }
         else
         {
-            AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Job cancelled due to quit being requested.");
+            AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Job canceled due to quit being requested.");
             SetState(terminated);
             Q_EMIT Finished();
         }
@@ -704,9 +704,9 @@ namespace AssetProcessor
 
             QString absolutePathOfSource = fileInfo.absoluteFilePath();
             QString outputFilename = fileInfo.fileName();
-            QString productFile = outputDirectory.filePath(outputFilename.toLower());
+            QString productFile = AssetUtilities::NormalizeFilePath(outputDirectory.filePath(outputFilename.toLower()));
 
-            // Don't make productFile all lowercase for case-insenstive as this
+            // Don't make productFile all lowercase for case-insensitive as this
             // breaks macOS. The case is already setup properly when the job
             // was created.
 
@@ -747,7 +747,7 @@ namespace AssetProcessor
             const QString& productAbsolutePath = filePair.second;
             // note that this absolute path is a real file system path, and the following API requires normalized paths:
             QString normalized = AssetUtilities::NormalizeFilePath(productAbsolutePath);
-            AssetProcessor::ProcessingJobInfoBus::Broadcast(&AssetProcessor::ProcessingJobInfoBus::Events::BeginIgnoringCacheFileDelete, normalized.toUtf8().constData());
+            AssetProcessor::ProcessingJobInfoBus::Broadcast(&AssetProcessor::ProcessingJobInfoBus::Events::BeginCacheFileUpdate, normalized.toUtf8().constData());
         }
 
         // after we do the above notify its important that we do not early exit this function without undoing those locks.
@@ -782,7 +782,7 @@ namespace AssetProcessor
             const QString& productAbsolutePath = filePair.second;
             // note that this absolute path is a real file system path, and the following API requires normalized paths:
             QString normalized = AssetUtilities::NormalizeFilePath(productAbsolutePath);
-            AssetProcessor::ProcessingJobInfoBus::Broadcast(&AssetProcessor::ProcessingJobInfoBus::Events::StopIgnoringCacheFileDelete, normalized.toUtf8().constData(), anyFileFailed);
+            AssetProcessor::ProcessingJobInfoBus::Broadcast(&AssetProcessor::ProcessingJobInfoBus::Events::EndCacheFileUpdate, normalized.toUtf8().constData(), anyFileFailed);
         }
         
         return !anyFileFailed;

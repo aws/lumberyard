@@ -26,6 +26,7 @@
 #include <Processing/ImageToProcess.h>
 #include <Converters/Cubemap.h>
 #include <ImageLoader/ImageLoaders.h>
+#include <ImageProcessing_Traits_Platform.h>
 
 #include <AzCore/Math/Sha1.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
@@ -54,11 +55,7 @@ AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
     const char* BuilderSettingManager::s_environmentVariableName = "ImageBuilderSettingManager";
     AZ::EnvironmentVariable<BuilderSettingManager*> BuilderSettingManager::s_globalInstance = nullptr;
     AZStd::mutex BuilderSettingManager::s_instanceMutex;
-#if defined(AZ_PLATFORM_APPLE)
-    const PlatformName BuilderSettingManager::s_defaultPlatform = "osx_gl";
-#else
-    const PlatformName BuilderSettingManager::s_defaultPlatform = "pc";
-#endif // AZ_PLATFORM_APPLE
+    const PlatformName BuilderSettingManager::s_defaultPlatform = AZ_TRAIT_IMAGEPROCESSING_DEFAULT_PLATFORM;
     
     AZ::Outcome<AZStd::vector<AZStd::string>, AZStd::string> GetPlatformNamesFromRC(AZStd::string& filePath)
     {

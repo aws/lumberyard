@@ -12,7 +12,7 @@
 
 #include "StdAfx.h"
 #include <AzTest/AzTest.h>
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <QtUI/ClickableLabel.h>
 
 #include <QApplication>

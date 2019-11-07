@@ -20,6 +20,7 @@
 class QAction;
 class QActionGroup;
 class QKeySequence;
+class QWidget;
 
 namespace AzToolsFramework
 {

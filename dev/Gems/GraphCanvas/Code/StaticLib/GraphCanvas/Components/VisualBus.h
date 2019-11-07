@@ -125,6 +125,11 @@ namespace GraphCanvas
 
     class RootGraphicsItemRequests : public AZ::EBusTraits
     {
+        // There are a few classes which need to manipulate the enabled state. But I don't want it public editable.
+        friend class GraphUtils;
+        friend class NodeComponent;
+        friend class WrapperNodeLayoutComponent;        
+
     public:
         // Allow any number of handlers per address.
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
@@ -136,6 +141,16 @@ namespace GraphCanvas
 
         virtual StateController<RootGraphicsItemDisplayState>* GetDisplayStateStateController() = 0;
         virtual RootGraphicsItemDisplayState GetDisplayState() const = 0;
+        
+        virtual RootGraphicsItemEnabledState GetEnabledState() const = 0;
+        
+        bool IsEnabled() const
+        {
+            return GetEnabledState() == RootGraphicsItemEnabledState::ES_Enabled;
+        }
+
+    private:
+        virtual void SetEnabledState(RootGraphicsItemEnabledState enabledState) = 0;
     };
 
     using RootGraphicsItemRequestBus = AZ::EBus<RootGraphicsItemRequests>;
@@ -147,7 +162,8 @@ namespace GraphCanvas
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
-        virtual void OnDisplayStateChanged(RootGraphicsItemDisplayState oldState, RootGraphicsItemDisplayState newState) = 0;
+        virtual void OnEnabledChanged(RootGraphicsItemEnabledState enabledState) {};
+        virtual void OnDisplayStateChanged(RootGraphicsItemDisplayState oldState, RootGraphicsItemDisplayState newState) {};
     };
 
     using RootGraphicsItemNotificationBus = AZ::EBus<RootGraphicsItemNotifications>;

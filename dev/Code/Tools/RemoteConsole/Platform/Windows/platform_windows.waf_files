@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Windows":
+        [
+            "RemoteConsole_Traits_Platform.h",
+            "RemoteConsole_Traits_Windows.h"
+        ]
+    }
+}

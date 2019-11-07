@@ -14,12 +14,13 @@
 #include <platform_impl.h>
 #include <IGem.h>
 #include <FlowSystem/Nodes/FlowBaseNode.h>
+#include <OSVR_Traits_Platform.h>
 
 #include <AzFramework/Metrics/MetricsPlainTextNameRegistration.h>
 
-#if defined(AZ_PLATFORM_WINDOWS_X64)
+#if AZ_TRAIT_OSVR_DEVICE_SUPPORTED
 #include "OSVRDevice.h"
-#endif // Windows x64
+#endif // AZ_TRAIT_OSVR_DEVICE_SUPPORTED
 
 namespace OSVR
 {
@@ -32,12 +33,12 @@ namespace OSVR
         OSVRGem()
             : CryHooksModule()
         {
-#if defined(AZ_PLATFORM_WINDOWS_X64)
+#if AZ_TRAIT_OSVR_DEVICE_SUPPORTED
             // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
             m_descriptors.insert(m_descriptors.end(), {
                 OSVRDevice::CreateDescriptor(),
             });
-#endif // Windows x64
+#endif // AZ_TRAIT_OSVR_DEVICE_SUPPORTED
 
 
 
@@ -59,9 +60,9 @@ namespace OSVR
         AZ::ComponentTypeList GetRequiredSystemComponents() const override
         {
             return AZ::ComponentTypeList{
-#if defined(AZ_PLATFORM_WINDOWS_X64)
+#if AZ_TRAIT_OSVR_DEVICE_SUPPORTED
                 azrtti_typeid<OSVRDevice>(),
-#endif // Windows x64
+#endif // AZ_TRAIT_OSVR_DEVICE_SUPPORTED
             };
         }
 

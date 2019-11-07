@@ -42,6 +42,7 @@ namespace GraphCanvas
     class GraphCanvasMimeEvent;
     class NodePaletteTreeDelegate;
     class NodePaletteWidget;
+    struct NodePaletteConfig;
 
     class NodePaletteDockWidget
         : public AzQtComponents::StyledDockWidget
@@ -49,6 +50,8 @@ namespace GraphCanvas
         Q_OBJECT
     public:
         NodePaletteDockWidget(GraphCanvasTreeItem* treeItem, const EditorId& editorId, const QString& windowLabel, QWidget* parent, const char* mimeType, bool inContextMenu, AZStd::string_view identifier);
+        NodePaletteDockWidget(QWidget* parent, const QString& windowLabel, const NodePaletteConfig& configuration);
+
         ~NodePaletteDockWidget();
 
         void FocusOnSearchFilter();

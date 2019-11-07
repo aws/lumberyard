@@ -1,0 +1,14 @@
+{
+    "auto":
+    {
+        "Platform/Linux":
+        [
+            "EMotionFX_Traits_Platform.h",
+            "EMotionFX_Traits_Linux.h"
+        ],
+        "Platform/Common/FileOffsetType":
+        [
+            "../Common/FileOffsetType/MCore/Source/DiskFile_FileOffsetType.cpp"
+        ]
+    }
+}

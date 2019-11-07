@@ -34,6 +34,8 @@
 #include <GraphCanvas/GraphCanvasBus.h>
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/SceneMenuActions/SceneContextMenuActions.h>
 
+#include <Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h>
+
 #include "ScriptCanvasContextMenus.h"
 
 namespace ScriptCanvasEditor
@@ -150,11 +152,14 @@ namespace ScriptCanvasEditor
     /////////////////////
 
     SceneContextMenu::SceneContextMenu(const NodePaletteModel& paletteModel, AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* assetModel)
+        : GraphCanvas::SceneContextMenu(ScriptCanvasEditor::AssetEditorId)
     {
         QWidgetAction* actionWidget = new QWidgetAction(this);
 
         const bool inContextMenu = true;
-        m_palette = aznew Widget::NodePaletteDockWidget(paletteModel, tr("Node Palette"), this, assetModel, inContextMenu);
+        Widget::ScriptCanvasNodePaletteConfig paletteConfig(paletteModel, assetModel, inContextMenu);
+
+        m_palette = aznew Widget::NodePaletteDockWidget(tr("Node Palette"), this, paletteConfig);
 
         actionWidget->setDefaultWidget(m_palette);
 
@@ -186,6 +191,8 @@ namespace ScriptCanvasEditor
 
     void SceneContextMenu::OnRefreshActions(const GraphCanvas::GraphId& graphId, const AZ::EntityId& targetMemberId)
     {
+        GraphCanvas::SceneContextMenu::OnRefreshActions(graphId, targetMemberId);
+
         // Don't want to overly manipulate the state. So we only modify this when we know we want to turn it on.
         if (GraphVariablesTableView::HasCopyVariableData())
         {
@@ -217,11 +224,13 @@ namespace ScriptCanvasEditor
     //////////////////////////
 
     ConnectionContextMenu::ConnectionContextMenu(const NodePaletteModel& nodePaletteModel, AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* assetModel)
+        : GraphCanvas::ConnectionContextMenu(ScriptCanvasEditor::AssetEditorId)
     {
         QWidgetAction* actionWidget = new QWidgetAction(this);
 
         const bool inContextMenu = true;
-        m_palette = aznew Widget::NodePaletteDockWidget(nodePaletteModel, tr("Node Palette"), this, assetModel, inContextMenu);
+        Widget::ScriptCanvasNodePaletteConfig paletteConfig(nodePaletteModel, assetModel, inContextMenu);
+        m_palette = aznew Widget::NodePaletteDockWidget(tr("Node Palette"), this, paletteConfig);
 
         actionWidget->setDefaultWidget(m_palette);
 

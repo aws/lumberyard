@@ -23,15 +23,16 @@ namespace Physics
     public:
         // Ebus Traits. ID'd on trigger entity Id
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        static const bool EnableEventQueue = true;
         using BusIdType = AZ::EntityId;
 
         virtual ~TriggerNotifications() {}
 
         /// Dispatched when an entity enters a trigger. The bus message is ID'd on the triggers entity Id.
-        virtual void OnTriggerEnter(const TriggerEvent& triggerEvent) {};
+        virtual void OnTriggerEnter(const TriggerEvent& /*triggerEvent*/) {};
 
         /// Dispatched when an entity exits a trigger. The bus message is ID'd on the triggers entity Id.
-        virtual void OnTriggerExit(const TriggerEvent& triggerEvent) {};
+        virtual void OnTriggerExit(const TriggerEvent& /*triggerEvent*/) {};
     };
 
     /// Bus to service the PhysX Trigger Area Component event group.

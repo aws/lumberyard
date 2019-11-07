@@ -18,8 +18,10 @@ def build(bld):
         file_list        = 'maclauncher.waf_files',
         platforms        = ['darwin'],
         client_only      = True,
-        includes         = [bld.Path('Code/CryEngine/CrySystem'),
-                            bld.Path('Code/Launcher')],
+        includes         = [bld.Path('Code/CryEngine/CryCommon'),
+                            bld.Path('Code/CryEngine/CrySystem'),
+                            bld.Path('Code/Launcher')
+                           ],
         use              = ['AzGameFramework',
                             'TOMCRYPT',
                             'TOMMATH'],

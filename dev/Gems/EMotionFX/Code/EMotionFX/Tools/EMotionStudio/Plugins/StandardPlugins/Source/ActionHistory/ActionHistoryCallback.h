@@ -21,6 +21,7 @@
 #include <MCore/Source/CommandLine.h>
 #include <EMotionFX/CommandSystem/Source/CommandManager.h>
 
+#include <QBrush>
 #include <QListWidget>
 #include <QDialog>
 #include <QTextEdit>
@@ -31,7 +32,7 @@ namespace EMStudio
     class ErrorWindow
         : public QDialog
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
         MCORE_MEMORYOBJECTCATEGORY(ErrorWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
 
     public:
@@ -63,15 +64,17 @@ namespace EMStudio
         void OnShowErrorReport(const AZStd::vector<AZStd::string>& errors) override;
 
     private:
-        QListWidget*            mList;
-        AZStd::string           mTempString;
-        uint32                  mIndex;
-        bool                    mIsRemoving;
-        ErrorWindow*            mErrorWindow;
+        QListWidget* mList;
+        AZStd::string mTempString;
+        uint32 mIndex;
+        bool mIsRemoving;
+        ErrorWindow* mErrorWindow;
 
-        bool                    mGroupExecuting;
-        MCore::CommandGroup*    mExecutedGroup;
-        uint32                  mNumGroupCommands;
-        uint32                  mCurrentCommandIndex;
+        bool mGroupExecuting;
+        MCore::CommandGroup* mExecutedGroup;
+        size_t mNumGroupCommands;
+        uint32 mCurrentCommandIndex;
+        QBrush m_brush;
+        QBrush m_darkenedBrush;
     };
 } // namespace EMStudio

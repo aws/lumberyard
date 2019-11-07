@@ -675,9 +675,9 @@ namespace UnitTest
         );
 
         LoadVariant loadVariant;
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         EXPECT_FALSE(AZ::Utils::LoadObjectFromStreamInPlace(byteStream, loadVariant, m_serializeContext.get()));
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
     }
 
     TEST_F(VariantSerializationTest, SavingVariantWithVectorOfStringAlternativeAndIsAbleToLoadCorrectly)

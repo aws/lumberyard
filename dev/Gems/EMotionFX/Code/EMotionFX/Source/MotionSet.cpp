@@ -751,16 +751,16 @@ namespace EMotionFX
     MotionSet* MotionSet::GetChildSet(uint32 index) const
     {
         MCore::LockGuardRecursive lock(m_mutex);
-        uint32 currentIndex = -1;
+        uint32 currentIndex = 0;
         for (MotionSet* motionSet : m_childSets)
         {
             if (!motionSet->GetIsOwnedByRuntime())
             {
-                ++currentIndex;
                 if (currentIndex == index)
                 {
                     return motionSet;
                 }
+                ++currentIndex;
             }
         }
         return nullptr;

@@ -435,12 +435,12 @@ def add_game_projects_to_specs(self):
 #############################################################################
 @conf
 def get_product_name(self, target, game_project):
-    if target == 'PCLauncher':
-        return self.get_launcher_product_name(game_project)
-    elif target == 'DedicatedLauncher':
+    if target.endswith('DedicatedLauncher') or target.endswith('ServerLauncher'):
         return self.get_dedicated_server_product_name(game_project)
+    elif target.endswith('Launcher'):
+        return self.get_launcher_product_name(game_project)
     else:
-        return target
+        return target 
 
 
 @conf

@@ -141,7 +141,7 @@ LevelEditorMenuHandler::LevelEditorMenuHandler(
     , m_settings(settings)
     , m_enableLegacyCryEntities(false)
 {
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     // Hide the non-native toolbar, then setNativeMenuBar to ensure it is always visible on macOS.
     m_mainWindow->menuBar()->hide();
     m_mainWindow->menuBar()->setNativeMenuBar(true);

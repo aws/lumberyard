@@ -1,6 +1,6 @@
 {
     "name": "mikkt",
-    "source": "@3P:mikkt@/",
+    "source": "@3P:mikkt@",
     "description": "Mikkt Library",
     "includes": [
         "."

@@ -231,7 +231,7 @@ static uint64 sGetFlag(char** s, SShaderGen* shaderGenInfo)
 
         if (i == shaderGenInfo->m_BitMask.Num())
         {
-            AZ_Warning("ShaderCache", "Couldn't find runtime flag '%s' (skipped)", name);
+            AZ_Warning("ShaderCache", false, "Couldn't find runtime flag '%s' (skipped)", name);
         }
 
         if (**s == '|')
@@ -2094,7 +2094,7 @@ void CShaderMan::mfPrecacheShaders(bool bStatsOnly)
 #if defined(AZ_PLATFORM_WINDOWS)
     CRenderer::CV_r_shadersPlatform = AZ::PLATFORM_WINDOWS_64;
     CParserBin::SetupForD3D11();
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
     CRenderer::CV_r_shadersPlatform = AZ::PLATFORM_APPLE_OSX;
     CParserBin::SetupForMETAL();
 #endif

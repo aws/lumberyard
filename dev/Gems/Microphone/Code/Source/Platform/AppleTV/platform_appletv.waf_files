@@ -1,0 +1,9 @@
+{
+    "auto":
+    {
+        "Platform/AppleTV":
+        [
+            "../None/MicrophoneSystemComponent_None.cpp"
+        ]
+    }
+}

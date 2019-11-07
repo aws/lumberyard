@@ -22,8 +22,10 @@ def build(bld):
         exclude_test          = True,
         server_only           = True,
         file_list             = 'linuxlauncher.waf_files',
-        includes              = [bld.Path('Code/CryEngine/CrySystem'),
-                                 bld.Path('Code/Launcher')],
+        includes              = [bld.Path('Code/CryEngine/CryCommon'),
+                                 bld.Path('Code/CryEngine/CrySystem'),
+                                 bld.Path('Code/Launcher')
+                                ],
         lib                   = ['uuid'],
         create_linux_launcher = True,
         use                   = ['AzGameFramework'],

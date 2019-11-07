@@ -1,0 +1,11 @@
+{
+  "auto": {
+    "Tests/Platform/Linux": [
+      "GridMateTests/Tests_Platform.h"
+    ],
+    "Platform/Linux": [
+      "GridMateTests_Traits_Linux.h",
+      "GridMateTests_Traits_Platform.h"
+    ]
+  }
+}

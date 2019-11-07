@@ -39,3 +39,19 @@ namespace ScriptCanvas
 
     using ErrorReporterBus = AZ::EBus<ErrorReporter>;
 }
+
+#define SCRIPTCANVAS_HANDLE_ERROR(node)\
+    bool inErrorState = false;\
+    ScriptCanvas::ErrorReporterBus::EventResult(inErrorState, node.GetGraphId(), &ScriptCanvas::ErrorReporter::IsInErrorState);\
+    if (inErrorState)\
+    {\
+        ScriptCanvas::ErrorReporterBus::Event(node.GetGraphId(), &ScriptCanvas::ErrorReporter::HandleError, (node));\
+    }
+
+#define SCRIPTCANVAS_REPORT_ERROR(node, ...)\
+    ScriptCanvas::ErrorReporterBus::Event(node.GetGraphId(), &ScriptCanvas::ErrorReporter::ReportError, (node), __VA_ARGS__)
+
+#define SCRIPTCANVAS_RETURN_IF_ERROR_STATE(node)\
+    bool inErrorState = false;\
+    ScriptCanvas::ErrorReporterBus::EventResult(inErrorState, node.GetGraphId(), &ScriptCanvas::ErrorReporter::IsInErrorState);\
+    if (inErrorState) { return; }  

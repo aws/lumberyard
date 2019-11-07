@@ -46,7 +46,32 @@ namespace ScriptEvents
             m_parameters = rhs.m_parameters;
         }
 
+        Method& operator=(const Method& rhs)
+        {
+            if (this != &rhs)
+            {
+                m_name = rhs.m_name;
+                m_tooltip = rhs.m_tooltip;
+                m_returnType = rhs.m_returnType;
+                m_parameters.assign(rhs.m_parameters.begin(), rhs.m_parameters.end());
+            }
+            return *this;
+        }
+
+        Method(Method&& rhs)
+        {
+            m_name = AZStd::move(rhs.m_name);
+            m_tooltip = AZStd::move(rhs.m_tooltip);
+            m_returnType = AZStd::move(rhs.m_returnType);
+            m_parameters.swap(rhs.m_parameters);
+        }
+
         Method(AZ::ScriptDataContext& dc)
+        {
+            FromScript(dc);
+        }
+
+        void FromScript(AZ::ScriptDataContext& dc)
         {
             if (dc.GetNumArguments() > 0)
             {
@@ -70,21 +95,23 @@ namespace ScriptEvents
 
         }
 
-        ~Method() = default;
+        ~Method()
+        {
+            m_parameters.clear();
+        }
 
         void AddParameter(AZ::ScriptDataContext& dc)
         {
             Parameter& parameter = NewParameter();
-            parameter = Parameter(dc);
+            parameter.FromScript(dc);
             dc.PushResult(parameter);
         }
-
 
         bool IsValid() const;
 
         Parameter& NewParameter()
         {
-            m_parameters.push_back();
+            m_parameters.emplace_back();
             return m_parameters.back();
         }
 

@@ -124,7 +124,6 @@ namespace AZStd
             return *this;
         }
         // Move support
-#if defined(AZ_HAS_RVALUE_REFS)
         intrusive_ptr(intrusive_ptr&& rhs)
             : px(rhs.px)
         {
@@ -135,7 +134,7 @@ namespace AZStd
             this_type(static_cast< intrusive_ptr && >(rhs)).swap(*this);
             return *this;
         }
-#endif
+
         intrusive_ptr& operator=(intrusive_ptr const& rhs)
         {
             this_type(rhs).swap(*this);

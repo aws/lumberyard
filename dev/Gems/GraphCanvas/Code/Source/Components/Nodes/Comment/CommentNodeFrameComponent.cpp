@@ -70,6 +70,14 @@ namespace GraphCanvas
     CommentNodeFrameGraphicsWidget::CommentNodeFrameGraphicsWidget(const AZ::EntityId& entityKey)
         : GeneralNodeFrameGraphicsWidget(entityKey)
     {
+        CommentNotificationBus::Handler::BusConnect(entityKey);
+    }
+
+    void CommentNodeFrameGraphicsWidget::OnBackgroundColorChanged(const AZ::Color& color)
+    {
+        QColor convertedColor = ConversionUtils::AZToQColor(color);
+        m_style.AddAttributeOverride(Styling::Attribute::BackgroundColor, convertedColor);
+        update();
     }
 
     void CommentNodeFrameGraphicsWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* mouseEvent)

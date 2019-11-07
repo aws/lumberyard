@@ -288,6 +288,7 @@ namespace EMotionFX
 
     void AnimGraphTagCondition::ParameterAdded(size_t newParameterIndex)
     {
+        AZ_UNUSED(newParameterIndex);
         // Just recompute the indexes in the case the new parameter was inserted before ours
         Reinit();
     }
@@ -306,12 +307,15 @@ namespace EMotionFX
 
     void AnimGraphTagCondition::ParameterOrderChanged(const ValueParameterVector& beforeChange, const ValueParameterVector& afterChange)
     {
+        AZ_UNUSED(beforeChange);
+        AZ_UNUSED(afterChange);
         // Just recompute the indexes
         Reinit();
     }
 
     void AnimGraphTagCondition::ParameterRemoved(const AZStd::string& oldParameterName)
     {
+        AZ_UNUSED(oldParameterName);
         // Removing a parameter can also shift indexes, so just recompute them
         Reinit();
     }

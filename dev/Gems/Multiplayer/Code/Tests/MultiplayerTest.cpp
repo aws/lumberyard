@@ -44,11 +44,7 @@
 #include <INetwork.h>
 #include <ISystem.h>
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#undef AZ_RESTRICTED_SECTION
-#define MULTIPLAYERTEST_CPP_SECTION_1 1
-#define MULTIPLAYERTEST_CPP_SECTION_2 2
-#endif
+#include <Multiplayer_Traits_Platform.h>
 
 // see also: dev/Code/Framework/AzCore/Tests/TestTypes.h
 namespace UnitTest
@@ -259,20 +255,7 @@ public:
         }
         else if (!strcmp(param, "gm_ipversion"))
         {
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION MULTIPLAYERTEST_CPP_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/MultiplayerTest_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/MultiplayerTest_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-            p.SetValue(GridMate::Driver::BSD_AF_INET);
-#endif
+            p.SetValue(AZ_TRAIT_MULTIPLAYER_ADDRESS_TYPE);
         }
 
         return p;
@@ -550,19 +533,7 @@ namespace UnitTest
         }
         else if (!strcmp(param, "gm_ipversion"))
         {
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION MULTIPLAYERTEST_CPP_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/MultiplayerTest_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/MultiplayerTest_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-            p.SetValue(GridMate::Driver::BSD_AF_INET);
-#endif
+            p.SetValue(AZ_TRAIT_MULTIPLAYER_ADDRESS_TYPE);
         }
 
         return p;

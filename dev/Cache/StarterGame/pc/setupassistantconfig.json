@@ -880,7 +880,7 @@
                     "exampleFile": "clang_64/bin/moc"
                 },
                 {
-                    "hostOS": [ "setuplinux" ],
+                    "hostOS": [ "linux" ],
                     "source": "Qt/5.6.2.7-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
                     "exampleFile": "gcc_64/bin/moc"
@@ -1057,6 +1057,24 @@
                     "source": "zlib/1.2.8-pkg.2",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/Alembic/zlib-common",
                     "exampleFile": "build/linux/clang-3.4/release/libzlib.a"
+                }
+            ]
+        },
+        {
+            "identifier" : "zstd",
+            "name" : "zstdName",
+            "version": "1.35",
+            "source" : "zstd/1.35",
+            "optional" : 0,
+            "description" : "zstandardDescriptionSummary",
+            "detailedInstructions" : "zstandardDetailedInstructions",
+            "roles" : ["compilegame", "compileeditor", "setuplinux"],
+            "symlinks" :
+            [
+                {
+                    "source" : "zstd/1.35",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/zstd",
+                    "exampleFile" : "lib/zstd.h"
                 }
             ]
         },
@@ -1350,22 +1368,58 @@
         {
             "identifier" : "PHYSXSDK",
             "name" : "PHYSXSDKName",
-            "version" : "3.4.23173160-az1",
-            "source" : "PhysX/3.4.23173160-az1",
+            "version" : "4.1.0.25992954",
+            "source" : "PhysX/4.1.0.25992954",
             "description" : "PHYSXSDKDescriptionSummary",
             "detailedInstructions" : "PHYSXSDKDetailedInstructions",
-            "roles" : ["compilegame", "compileengine", "compilesandbox"],
+            "roles" : ["compilegame", "compileengine", "compilesandbox", "compileios", "compileandroid", "setuplinux"],
             "symlinks" :
             [
                 {
-                    "source" : "PhysX/3.4.23173160-az1/PhysX_3.4",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/PhysX/PXSrc",
-                    "exampleFile" : "Include/PxActor.h"
+                    "source" : "PhysX/4.1.0.25992954/physx",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/PhysX/physx",
+                    "exampleFile" : "include/PxActor.h"
                 },
                 {
-                    "source" : "PhysX/3.4.23173160-az1/PxShared",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/PhysX/PxShared",
+                    "source" : "PhysX/4.1.0.25992954/pxshared",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/PhysX/pxshared",
                     "exampleFile" : "include/foundation/Px.h"
+                },
+                {
+                    "compilers" : ["vc140"],
+                    "source": "PhysX/4.1.0.25992954/physx",
+                    "destination": "$CODEFOLDERNAME$/SDKs/PhysX/physx",
+                    "exampleFile": "bin/win.x86_64.vc140.md/release/PhysX_static_64.lib"
+                },
+                {
+                    "compilers" : ["vc141"],
+                    "source": "PhysX/4.1.0.25992954/physx",
+                    "destination": "$CODEFOLDERNAME$/SDKs/PhysX/physx",
+                    "exampleFile": "bin/win.x86_64.vc141.md/release/PhysX_static_64.lib"
+                },
+                {
+                    "hostOS" : ["macOS"],
+                    "source": "PhysX/4.1.0.25992954/physx",
+                    "destination": "$CODEFOLDERNAME$/SDKs/PhysX/physx",
+                    "exampleFile": "bin/mac.x86_64/release/libPhysX_static_64.a"
+                },
+                {
+                    "roles" : ["compileios"],
+                    "source": "PhysX/4.1.0.25992954/physx",
+                    "destination": "$CODEFOLDERNAME$/SDKs/PhysX/physx",
+                    "exampleFile": "bin/ios.arm_64/release/libPhysX_static_64.a"
+                },
+                {
+                    "roles" : ["compileandroid"],
+                    "source": "PhysX/4.1.0.25992954/physx",
+                    "destination": "$CODEFOLDERNAME$/SDKs/PhysX/physx",
+                    "exampleFile": "bin/android.arm64-v8a/release/libPhysX_static.a"
+                },
+                {
+                    "roles" : ["setuplinux"],
+                    "source": "PhysX/4.1.0.25992954/physx",
+                    "destination": "$CODEFOLDERNAME$/SDKs/PhysX/physx",
+                    "exampleFile": "bin/linux.clang/release/libPhysX_static_64.a"
                 }
             ]
         },
@@ -1745,6 +1799,32 @@
                     "source" : "DirectXShaderCompiler/1.0.1-az.1",
                     "destination" : "$CODEFOLDERNAME$/Tools/SDKs/DirectXShaderCompiler",
                     "exampleFile" : "bin/darwin_x64/release/dxcMetal"
+                }
+           ]
+        },
+        {
+           "identifier" : "astcenc",
+           "name" : "astcencName",
+           "version" : "2017_11_14",
+           "source" : "ASTCEncoder/2017_11_14",
+           "optional" : 0,
+           "description" : "astcencDescriptionSummary",
+           "detailedInstructions" : "astcencDetailedInstructions",
+           "roles": [ "compilegame", "compileengine", "compilesandbox" ],
+           "hostOS": [ "windows", "macOS" ],
+           "symlinks" :
+           [
+                {
+                    "hostOS" : ["windows"],
+                    "source" : "ASTCEncoder/2017_11_14",
+                    "destination" : "$CODEFOLDERNAME$/Tools/SDKs/ASTCEncoder",
+                    "exampleFile" : "Binary/windows-x64/astcenc.exe"
+                },
+                {
+                    "hostOS" : ["macOS"],
+                    "source" : "ASTCEncoder/2017_11_14",
+                    "destination" : "$CODEFOLDERNAME$/Tools/SDKs/ASTCEncoder",
+                    "exampleFile" : "Binary/mac-x64/astcenc"
                 }
            ]
         },

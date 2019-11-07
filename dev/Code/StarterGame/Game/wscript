@@ -31,7 +31,8 @@ def build(bld):
         #==============================
         includes    = [ '.' ,
                         bld.Path('Code/CryEngine/CryCommon'),
-                        bld.Path('Code/CryEngine/CryAction')],
+                        bld.Path('Code/CryEngine/CryAction')
+                      ],
 
         #==============================
         # Windows
@@ -66,8 +67,5 @@ def build(bld):
         #==============================
         test_all_file_list = ['game_tests.waf_files'],
     )
-
-    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
-        kw['{}_file_list'.format(p3)] = ['Core/{0}/game_{1}.waf_files'.format(p0, p1)]
 
     bld.CryEngineModule(**kw)

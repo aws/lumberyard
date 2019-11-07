@@ -31,6 +31,16 @@ bool CImageUtil::Save(const QString& strFileName, CImageEx& inImage)
     QImage imgBitmap;
 
     ImageToQImage(inImage, imgBitmap);
+
+    // Explicitly set the pixels per meter in our images to a consistent default.
+    // The normal default is 96 pixels per inch, or 3780 pixels per meter.
+    // However, the Windows scaling display setting can cause these numbers to vary
+    // on different machines, producing output files that have slightly different
+    // headers from machine to machine, which often isn't desirable.
+    const int defaultPixelsPerMeter = 3780;
+    imgBitmap.setDotsPerMeterX(defaultPixelsPerMeter);
+    imgBitmap.setDotsPerMeterY(defaultPixelsPerMeter);
+    
     return imgBitmap.save(strFileName);
 }
 
@@ -516,7 +526,7 @@ bool CImageUtil::QImageToImage(const QImage& bitmap, CImageEx& image)
         return false;
     }
 
-    std::copy(srcBitmap->bits(), srcBitmap->bits() + (srcBitmap->width() * srcBitmap->height() * sizeof(uint32)), reinterpret_cast<uint8*>(image.GetData()));
+    AZStd::copy(srcBitmap->bits(), srcBitmap->bits() + (srcBitmap->width() * srcBitmap->height() * sizeof(uint32)), reinterpret_cast<uint8*>(image.GetData()));
 
     return true;
 }
@@ -524,7 +534,7 @@ bool CImageUtil::QImageToImage(const QImage& bitmap, CImageEx& image)
 bool CImageUtil::ImageToQImage(const CImageEx& image, QImage& bitmapObj)
 {
     bitmapObj = QImage(image.GetWidth(), image.GetHeight(), QImage::Format_RGBA8888);
-    std::copy(image.GetData(), image.GetData() + image.GetWidth() * image.GetHeight(), reinterpret_cast<uint32*>(bitmapObj.bits()));
+    AZStd::copy(image.GetData(), image.GetData() + image.GetWidth() * image.GetHeight(), reinterpret_cast<uint32*>(bitmapObj.bits()));
 
     return true;
 }

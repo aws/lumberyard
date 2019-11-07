@@ -1,4 +1,4 @@
-﻿#
+#
 # All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 # its licensors.
 #
@@ -245,6 +245,15 @@ def check_cpp_platform_tools(toolsetVer, platform_tool_name, vs2017vswhereOption
 
 @conf
 def get_available_launchers(self, project):
+
+    if self.is_option_true('use_unified_launcher'):
+        return {
+            'modules':
+            [
+                'ClientLauncher',
+                'ServerLauncher'
+            ]
+        }
 
     launchers_to_exclude = set()
     if not self.is_target_platform_enabled('android'):

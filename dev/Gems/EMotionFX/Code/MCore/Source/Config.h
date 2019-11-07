@@ -12,12 +12,9 @@
 
 #pragma once
 
-#ifndef NOMINMAX
-    #define NOMINMAX
-#endif
+#include <AzCore/PlatformDef.h>
 
 #include <wchar.h>
-#include "Platform.h"
 #include <stdint.h>
 
 // compilers
@@ -112,18 +109,6 @@
 #endif
 
 
-// disable conversion compile warning
-#if (MCORE_COMPILER == MCORE_COMPILER_MSVC)
-    #pragma warning (disable : 4324)    // structure was padded due to __declspec(align())
-    #pragma warning (disable : 4251)    // class 'type' needs to have dll-interface to be used by clients of class 'type2'
-
-// disable this warning only on VS2010 or older
-    #if (MCORE_COMPILER_VERSION_MAJOR <= 1600)
-        #pragma warning (disable : 4481)    // nonstandard extension used: override specifier 'override'
-    #endif
-#endif
-
-
 // define the basic types
 #include <BaseTypes.h>
 
@@ -161,13 +146,6 @@ typedef uintptr_t uintPointer;
     #include <stddef.h>
     #include <stdint.h>
 typedef uintptr_t uintPointer;
-#endif
-
-
-// disable conversion compile warning
-#if (MCORE_COMPILER == MCORE_COMPILER_INTELC)
-    #pragma warning(disable : 1744)     // about missing DLL export declare inside a class that gets exported, but this is triggered when using templates
-//  #pragma warning(disable : 3199)     // defined is always false in a macro expansion in Microsoft mode (used to disable some Qt warnings)
 #endif
 
 
@@ -226,7 +204,7 @@ typedef uintptr_t uintPointer;
 
 
 // endian conversion, defaults to big endian
-#if defined(MCORE_BIG_ENDIAN)
+#if defined(AZ_BIG_ENDIAN)
     #define MCORE_FROM_LITTLE_ENDIAN16(buffer, count)   MCore::Endian::ConvertEndian16(buffer, count)
     #define MCORE_FROM_LITTLE_ENDIAN32(buffer, count)   MCore::Endian::ConvertEndian32(buffer, count)
     #define MCORE_FROM_LITTLE_ENDIAN64(buffer, count)   MCore::Endian::ConvertEndian64(buffer, count)
@@ -240,12 +218,6 @@ typedef uintptr_t uintPointer;
     #define MCORE_FROM_BIG_ENDIAN16(buffer, count)  MCore::Endian::ConvertEndian16(buffer, count)
     #define MCORE_FROM_BIG_ENDIAN32(buffer, count)  MCore::Endian::ConvertEndian32(buffer, count)
     #define MCORE_FROM_BIG_ENDIAN64(buffer, count)  MCore::Endian::ConvertEndian64(buffer, count)
-#endif
-
-// setup if we support SSE or not
-// we assume here that all x86 machines support SSE today
-#if (defined(MCORE_PLATFORM_WINDOWS) && (MCORE_COMPILER == MCORE_COMPILER_MSVC || MCORE_COMPILER == MCORE_COMPILER_INTELC))
-    #define MCORE_SSE_ENABLED
 #endif
 
 #ifndef NULL
@@ -274,7 +246,7 @@ typedef uintptr_t uintPointer;
 #endif
 
 // shared lib import/export
-#if defined(MCORE_PLATFORM_WINDOWS)
+#if defined(AZ_PLATFORM_WINDOWS)
     #define MCORE_EXPORT __declspec(dllexport)
     #define MCORE_IMPORT __declspec(dllimport)
 #else
@@ -292,18 +264,6 @@ typedef uintptr_t uintPointer;
     #else
         #define MCORE_API
     #endif
-#endif
-
-
-// check if fast float math operations such as sinf etc are available, or if we need to stick with standard calls to sin etc
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Config_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Config_h_provo.inl"
-    #endif
-#elif ((defined(MCORE_PLATFORM_WINDOWS) || defined(MCORE_PLATFORM_MAC) || defined(MCORE_PLATFORM_IPHONE) || defined(MCORE_PLATFORM_ANDROID)))
-    #define MCORE_FASTFLOAT_MATH
 #endif
 
 

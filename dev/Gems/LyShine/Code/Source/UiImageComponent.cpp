@@ -882,7 +882,7 @@ float UiImageComponent::GetMinHeight()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-float UiImageComponent::GetTargetWidth()
+float UiImageComponent::GetTargetWidth(float /*maxWidth*/)
 {
     float targetWidth = 0.0f;
 
@@ -917,7 +917,7 @@ float UiImageComponent::GetTargetWidth()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-float UiImageComponent::GetTargetHeight()
+float UiImageComponent::GetTargetHeight(float /*maxHeight*/)
 {
     float targetHeight = 0.0f;
 

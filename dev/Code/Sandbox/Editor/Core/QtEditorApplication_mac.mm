@@ -16,7 +16,7 @@
 
 #include "QtEditorApplication.h"
 
-#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_darwin.h>
+#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 
 #include <QCursor>
 
@@ -27,7 +27,7 @@ namespace Editor
         NSEvent* event = (NSEvent*)message;
         if (GetIEditor()->IsInGameMode())
         {
-            EBUS_EVENT(AzFramework::RawInputNotificationBusOsx, OnRawInputEvent, event);
+            AzFramework::RawInputNotificationBusMac::Broadcast(&AzFramework::RawInputNotificationsMac::OnRawInputEvent, event);
             return true;
         }
 

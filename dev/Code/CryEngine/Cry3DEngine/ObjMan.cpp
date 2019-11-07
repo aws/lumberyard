@@ -549,7 +549,7 @@ IStatObj* CObjManager::LoadNewCGF(IStatObj* pObject, int flagCloth, bool bUseStr
     }
 
     // now try to load lods
-    if (!pData)
+    if (!pObject->AreLodsLoaded())
     {
         pObject->LoadLowLODs(bUseStreaming, nLoadingFlags);
     }
@@ -1234,8 +1234,6 @@ void CObjManager::ClearStatObjGarbage()
 {
     FUNCTION_PROFILER_3DENGINE;
 
-    std::vector<IStatObj*> garbage;
-
     // No work? Exit early before attempting to take any locks
     if (m_checkForGarbage.empty())
     {
@@ -1244,7 +1242,23 @@ void CObjManager::ClearStatObjGarbage()
 
     // We have to take the load lock here because InternalDeleteObject needs this lock and loadMutex has to be locked before garbageMutex
     // Additionally, we need to hold one of these locks for the entire duration of this function to prevent the loading thread from using an object that is about to be deleted
-    AZStd::lock_guard<AZStd::recursive_mutex> loadLock(m_loadMutex);
+    // To avoid stalls due to the threads loading files, try to get the lock and if it fails simply try again next frame unless there are too many garbage objects.
+    AZStd::unique_lock<AZStd::recursive_mutex> loadLock(m_loadMutex, AZStd::try_to_lock_t());
+    if (!loadLock.owns_lock())
+    {
+        if (m_checkForGarbage.size() > s_maxPendingGarbageObjects)
+        {
+            AZ_PROFILE_SCOPE_STALL(AZ::Debug::ProfileCategory::ThreeDEngine, "StatObjGarbage overflow");
+            // There are too many objects pending garbage collection so force a clear this frame even if loading is happening.
+            loadLock.lock();
+        }
+        else
+        {
+            return;
+        }
+    }
+
+    AZStd::vector<IStatObj*> garbage;
 
     // We might need to perform the entire garbage collection logic more than once because the call to
     // pStatObj->Shutdown() has the potential to add separate LOD models back onto the m_checkForGarbage list.

@@ -62,5 +62,6 @@ namespace ScriptCanvas
         AZStd::vector<Data::Type> m_types;
 
         AZ::Outcome<void, AZStd::string> OnEvaluate(const Slot& sourceSlot, const Slot& targetSlot) const override;
+        AZ::Outcome<void, AZStd::string> OnEvaluateForType(const Data::Type& dataType) const override;
     };
 }

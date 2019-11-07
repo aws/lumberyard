@@ -61,7 +61,7 @@ namespace ScriptCanvasEditor
         virtual void CloseGraph() = 0;
 
         //! Retrieves script canvas asset reference
-        virtual AZ::Data::Asset<ScriptCanvasAsset> GetAsset() const = 0;
+        virtual AZ::Data::Asset<ScriptCanvasAsset> GetAsset() const = 0;        
 
         //! Returns the Entity ID of the Editor Entity that owns this graph.
         virtual AZ::EntityId GetEditorEntityId() const = 0;
@@ -69,6 +69,17 @@ namespace ScriptCanvasEditor
     };
 
     using EditorScriptCanvasRequestBus = AZ::EBus<EditorScriptCanvasRequests>;
+
+    class EditorScriptCanvasComponentRequests : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::EntityId;
+
+        virtual void SetAssetId(const AZ::Data::AssetId& assetId) = 0;
+    };
+
+    using EditorScriptCanvasComponentRequestBus = AZ::EBus<EditorScriptCanvasComponentRequests>;
 
     // Above bus is keyed off of the graph Id. Which I don't really have access to.
     // This bus is here just so I can tell it to open the Editor.

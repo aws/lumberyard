@@ -52,13 +52,15 @@
 
 #endif
 
+#include <AzCore/PlatformIncl.h>
+
 #include "TypeInfo_impl.h"
 #include "CryTypeInfo.cpp"
 #include "MTPseudoRandom.cpp"
 #include "CryStructPack.cpp"
 #include "IResourceCompilerHelper.cpp"
 
-#if defined(LINUX) || defined(APPLE) || ( defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO))
+#if AZ_TRAIT_LEGACY_CRYCOMMON_USE_WINDOWS_STUBS
     #include "WinBase.cpp"
 #endif
 

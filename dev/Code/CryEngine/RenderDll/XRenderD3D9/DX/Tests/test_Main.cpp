@@ -19,7 +19,7 @@ namespace
 {
     class RenderDllTestEnvironment final
         : public AZ::Test::ITestEnvironment
-        , UnitTest::TraceBusRedirector // provides AZ_TEST_START_ASSERTTEST
+        , UnitTest::TraceBusRedirector // provides AZ_TEST_START_TRACE_SUPPRESSION
     {
     public:
         AZ_TEST_CLASS_ALLOCATOR(RenderDllTestEnvironment);

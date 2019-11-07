@@ -18,10 +18,10 @@
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <AzCore/Driller/Driller.h>
-#include <AzCore/Memory/MemoryDriller.h>
 #include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/Asset/AssetManagerComponent.h>
+#include <AzCore/UnitTest/TestTypes.h>
+
 #include <AzFramework/IO/LocalFileIO.h>
 
 #include <ScriptEvents/ScriptEventsGem.h>
@@ -33,13 +33,13 @@
 
 #include "ScriptEventTestUtilities.h"
 #include <AzCore/Math/MathReflection.h>
+#include <AzCore/Memory/PoolAllocator.h>
 
 namespace ScriptEventsTests
 {
     class ScriptEventsTestFixture
         : public ::testing::Test
     {
-        static AZ::Debug::DrillerManager* s_drillerManager;
         static const bool s_enableMemoryLeakChecking;
 
         static ScriptEventsTests::Application* GetApplication();
@@ -47,86 +47,64 @@ namespace ScriptEventsTests
     protected:
 
         static ScriptEventsTests::Application* s_application;
+        static UnitTest::AllocatorsBase s_allocatorSetup;
 
         static void SetUpTestCase()
         {
-            if (!s_drillerManager)
+            s_allocatorSetup.SetupAllocator();
+
+            if (s_application == nullptr)
             {
-                s_drillerManager = AZ::Debug::DrillerManager::Create();
-                // Memory driller is responsible for tracking allocations. 
-                // Tracking type and overhead is determined by app configuration.
-                s_drillerManager->Register(aznew AZ::Debug::MemoryDriller);
+                AZ::ComponentApplication::StartupParameters appStartup;
+                s_application = aznew ScriptEventsTests::Application();
+
+                {
+                    AZ::ComponentApplication::Descriptor descriptor;
+                    descriptor.m_enableDrilling = false; // We'll manage our own driller in these tests
+                    descriptor.m_useExistingAllocator = true; // Use the SystemAllocator we own in this test.
+
+                    appStartup.m_createStaticModulesCallback =
+                        [](AZStd::vector<AZ::Module*>& modules)
+                        {
+                            modules.emplace_back(new ScriptEvents::Module);
+                        };
+
+                    s_application->Start(descriptor, appStartup);
+                }
+
+                AZ::SerializeContext* serializeContext = s_application->GetSerializeContext();
+                serializeContext->RegisterGenericType<AZStd::string>();
+                serializeContext->RegisterGenericType<AZStd::any>();
+
+                AZ::BehaviorContext* behaviorContext = s_application->GetBehaviorContext();
+
+                Utilities::Reflect(behaviorContext);
+
+                AZ::Entity* systemEntity = s_application->FindEntity(AZ::SystemEntityId);
+                AZ_Assert(systemEntity, "SystemEntity must exist");
+                systemEntity->FindComponent<ScriptEvents::SystemComponent>()->RegisterAssetHandler();
+
             }
-
-            AZ::SystemAllocator::Descriptor systemAllocatorDesc;
-            systemAllocatorDesc.m_allocationRecords = s_enableMemoryLeakChecking;
-            systemAllocatorDesc.m_stackRecordLevels = 12;
-            AZ::AllocatorInstance<AZ::SystemAllocator>::Create(systemAllocatorDesc);
-
-            AZ::Debug::AllocationRecords* records = AZ::AllocatorInstance<AZ::SystemAllocator>::Get().GetRecords();
-            if (records && s_enableMemoryLeakChecking)
-            {
-                records->SetMode(AZ::Debug::AllocationRecords::RECORD_FULL);
-            }
-
-            AZ::ComponentApplication::StartupParameters appStartup;
-
-            appStartup.m_createStaticModulesCallback =
-                [](AZStd::vector<AZ::Module*>& modules)
-            {
-                modules.emplace_back(new ScriptEvents::Module);
-            };
-
-            AZ::ComponentApplication::Descriptor appDesc;
-            appDesc.m_enableDrilling = false; // We'll manage our own driller in these tests
-            appDesc.m_useExistingAllocator = true; // Use the SystemAllocator we own in this test.
-
-            s_application = aznew ScriptEventsTests::Application();
-            s_application->Start(appDesc, appStartup);
 
             AZ::TickBus::AllowFunctionQueuing(true);
-
-            AZ::SerializeContext* serializeContext = s_application->GetSerializeContext();
-            serializeContext->RegisterGenericType<AZStd::string>();
-            serializeContext->RegisterGenericType<AZStd::any>();
-
-            AZ::BehaviorContext* behaviorContext = s_application->GetBehaviorContext();
-
-            Utilities::Reflect(behaviorContext);
-
-            AZ::Entity* systemEntity = s_application->FindEntity(AZ::SystemEntityId);
-            AZ_Assert(systemEntity, "SystemEntity must exist");
-            systemEntity->FindComponent<ScriptEvents::SystemComponent>()->RegisterAssetHandler();
         }
 
         static void TearDownTestCase()
         {
-            AZ::Data::AssetManager::Instance().DispatchEvents();
-
             AZ::Entity* systemEntity = s_application->FindEntity(AZ::SystemEntityId);
             AZ_Assert(systemEntity, "SystemEntity must exist");
             systemEntity->FindComponent<ScriptEvents::SystemComponent>()->UnregisterAssetHandler();
 
-            s_application->Stop();
-            delete s_application;
-            s_application = nullptr;
+            AZ::Data::AssetManager::Instance().DispatchEvents();
 
-            // This allows us to print the raw dump of allocations that have not been freed, but is not required. 
-            // Leaks will be reported when we destroy the allocator.
-            const bool printRecords = false;
-            AZ::Debug::AllocationRecords* records = AZ::AllocatorInstance<AZ::SystemAllocator>::Get().GetRecords();
-            if (records && printRecords)
+            if (s_application)
             {
-                records->EnumerateAllocations(AZ::Debug::PrintAllocationsCB(false));
+                s_application->Stop();
+                delete s_application;
+                s_application = nullptr;
             }
 
-            AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
-
-            if (s_drillerManager)
-            {
-                AZ::Debug::DrillerManager::Destroy(s_drillerManager);
-                s_drillerManager = nullptr;
-            }
+            s_allocatorSetup.TeardownAllocator();
         }
 
         void SetUp() override

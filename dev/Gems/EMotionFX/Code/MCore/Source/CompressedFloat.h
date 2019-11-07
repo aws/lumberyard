@@ -13,6 +13,7 @@
 #pragma once
 
 // include the required headers
+#include <AzCore/RTTI/TypeInfo.h>
 #include "StandardHeaders.h"
 #include "Algorithms.h"
 
@@ -36,6 +37,8 @@ namespace MCore
     class TCompressedFloat
     {
     public:
+        AZ_TYPE_INFO(MCore::TCompressedFloat, "{BFA1578B-66F8-4536-8CA6-FF5CC3E441AD}", StorageType)
+
         /**
          * Default constructor.
          * This leaves the member uninitialized, so if you get the uncompressed version, the result is unknown.

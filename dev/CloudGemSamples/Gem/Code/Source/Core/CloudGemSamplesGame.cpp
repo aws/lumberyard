@@ -36,7 +36,6 @@ CloudGemSamplesGame::CloudGemSamplesGame()
     , m_gameRules(nullptr)
     , m_gameFramework(nullptr)
     , m_defaultActionMap(nullptr)
-    , m_platformInfo()
 {
     g_Game = this;
     GetISystem()->SetIGame(this);
@@ -155,102 +154,10 @@ bool CloudGemSamplesGame::ReadProfile(const XmlNodeRef& rootNode)
     if (IActionMapManager* actionMapManager = m_gameFramework->GetIActionMapManager())
     {
         actionMapManager->Clear();
-
-        // Load platform information in.
-        XmlNodeRef platforms = rootNode->findChild("platforms");
-        if (!platforms || !ReadProfilePlatform(platforms, GetPlatform()))
-        {
-            CryLogAlways("[Profile] Warning: No platform information specified!");
-        }
-
         successful = actionMapManager->LoadFromXML(rootNode);
     }
 
     return successful;
-}
-
-bool CloudGemSamplesGame::ReadProfilePlatform(const XmlNodeRef& platformsNode, LYGame::Platform platformId)
-{
-    bool successful = false;
-
-    if (platformsNode && (platformId > ePlatform_Unknown) && (platformId < ePlatform_Count))
-    {
-        if (XmlNodeRef platform = platformsNode->findChild(s_PlatformNames[platformId]))
-        {
-            // Extract which Devices we want.
-            if (!strcmp(platform->getAttr("keyboard"), "0"))
-            {
-                m_platformInfo.m_devices &= ~eAID_KeyboardMouse;
-            }
-
-            if (!strcmp(platform->getAttr("xboxpad"), "0"))
-            {
-                m_platformInfo.m_devices &= ~eAID_XboxPad;
-            }
-
-            if (!strcmp(platform->getAttr("ps4pad"), "0"))
-            {
-                m_platformInfo.m_devices &= ~eAID_PS4Pad;
-            }
-
-            if (!strcmp(platform->getAttr("androidkey"), "0"))
-            {
-                m_platformInfo.m_devices &= ~eAID_AndroidKey;
-            }
-
-            // Map the Devices we want.
-            IActionMapManager* actionMapManager = m_gameFramework->GetIActionMapManager();
-
-            if (m_platformInfo.m_devices & eAID_KeyboardMouse)
-            {
-                actionMapManager->AddInputDeviceMapping(eAID_KeyboardMouse, "keyboard");
-            }
-
-            if (m_platformInfo.m_devices & eAID_XboxPad)
-            {
-                actionMapManager->AddInputDeviceMapping(eAID_XboxPad, "xboxpad");
-            }
-
-            if (m_platformInfo.m_devices & eAID_PS4Pad)
-            {
-                actionMapManager->AddInputDeviceMapping(eAID_PS4Pad, "ps4pad");
-            }
-
-            if (m_platformInfo.m_devices & eAID_AndroidKey)
-            {
-                actionMapManager->AddInputDeviceMapping(eAID_AndroidKey, "androidkey");
-            }
-
-            successful = true;
-        }
-        else
-        {
-            GameWarning("CloudGemSamplesGame::ReadProfilePlatform: Failed to find platform, action mappings loading will fail");
-        }
-    }
-
-    return successful;
-}
-
-LYGame::Platform CloudGemSamplesGame::GetPlatform() const
-{
-    LYGame::Platform platform = ePlatform_Unknown;
-
-#if defined(ANDROID)
-    platform = ePlatform_Android;
-#elif defined(IOS)
-    platform = ePlatform_iOS;
-#elif defined(WIN32) || defined(WIN64) || defined(APPLE) || defined(LINUX)
-    platform = ePlatform_PC;
-#elif defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/CloudGemSamplesGame_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/CloudGemSamplesGame_cpp_provo.inl"
-    #endif
-#endif
-
-    return platform;
 }
 
 void CloudGemSamplesGame::OnActionEvent(const SActionEvent& event)

@@ -1,0 +1,11 @@
+{
+  "auto": {
+    "Tests/Platform/AppleTV": [
+      "GridMateTests/Tests_Platform.h"
+    ],
+    "Platform/AppleTV": [
+      "GridMateTests_Traits_AppleTV.h",
+      "GridMateTests_Traits_Platform.h"
+    ]
+  }
+}

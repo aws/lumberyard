@@ -11,9 +11,12 @@
 */
 #include <AzCore/PlatformDef.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
 
 #include <Source/Framework/ScriptCanvasTestFixture.h>
 #include <Source/Framework/ScriptCanvasTestUtilities.h>
+
+#include <ScriptCanvas/Core/SlotConfigurationDefaults.h>
 
 using namespace ScriptCanvasTests;
 using namespace ScriptCanvasEditor;
@@ -87,8 +90,8 @@ public:
 
     void ConfigureSlots() override
     {
-        AddSlot("In", "", ScriptCanvas::SlotType::ExecutionIn);
-        AddSlot("Out", "", ScriptCanvas::SlotType::LatentOut);
+        AddSlot(ScriptCanvas::CommonSlots::GeneralInSlot());
+        AddSlot(ScriptCanvas::CommonSlots::GeneralOutSlot());
     }
 
     void OnActivate() override
@@ -99,7 +102,7 @@ public:
 
         std::packaged_task<void()> task([this]() { LongRunningProcessSimulator3000::Run(GetEntityId()); }); // wrap the function
 
-        m_eventThread = std::make_shared<std::thread>(std::move(task)); // launch on a thread
+        m_eventThread = AZStd::make_shared<AZStd::thread>(AZStd::move(task)); // launch on a thread
     }
 
     void OnDeactivate() override
@@ -143,9 +146,8 @@ public:
         m_duration += deltaTime;
     }
 
-    void Visit(ScriptCanvas::NodeVisitor& visitor) const override { visitor.Visit(*this); }
 protected:
-    std::shared_ptr<std::thread> m_eventThread;
+    AZStd::shared_ptr<AZStd::thread> m_eventThread;
 private:
     double m_duration = 0.f;
 };
@@ -176,7 +178,7 @@ TEST_F(ScriptCanvasTestFixture, Asynchronous_Behaviors)
     AZ::EntityId asyncNodeId;
     AsyncNode* asyncNode = CreateTestNode<AsyncNode>(graphUniqueId, asyncNodeId);
 
-    EXPECT_TRUE(Connect(*graph, startNodeId, "Out", asyncNodeId, "In"));
+    EXPECT_TRUE(Connect(*graph, startNodeId, ScriptCanvas::CommonSlots::GeneralOutSlot::GetName(), asyncNodeId, ScriptCanvas::CommonSlots::GeneralInSlot::GetName()));
     
     {
         ScopedOutputSuppression supressOutput;
@@ -249,11 +251,11 @@ public:
 
         std::promise<long> p;
         m_computeFuture = p.get_future();
-        m_eventThread = std::make_shared<std::thread>([this, digits](std::promise<long> p)
+        m_eventThread = AZStd::make_shared<AZStd::thread>([this, digits, p = AZStd::move(p)]() mutable
         {
             p.set_value(ComputeFibonacci(digits));
             AsyncEventNotificationBus::Event(GetEntityId(), &AsyncEvent::OnAsyncEvent);
-        }, AZStd::move(p));
+        });
     }
 
     void HandleAsyncEvent() override

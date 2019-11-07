@@ -33,14 +33,9 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Category("Math")
                 );
 
-                OperatorAdd()
-                    : OperatorArithmetic(GeneralMathOperatorConfiguration())
-                {
-                }
+                OperatorAdd() = default;
 
-                virtual AZStd::string_view OperatorFunction() const { return "Add"; }
-
-                void Operator(Data::eType type, const OperatorOperands& operands, Datum& result) override;
+                void Operator(Data::eType type, const ArithmeticOperands& operands, Datum& result) override;
                 AZStd::unordered_set< Data::Type > GetSupportedNativeDataTypes() const override;                
 
             protected:

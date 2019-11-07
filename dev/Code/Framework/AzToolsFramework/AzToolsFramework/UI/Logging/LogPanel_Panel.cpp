@@ -24,12 +24,19 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 
 #include <QTimer>
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option") // 4251: 'QPainter::d_ptr': class 'QScopedPointer<QPainterPrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QPainter'
+                                                               // 4800: 'QFlags<QPainter::RenderHint>::Int': forcing value to bool 'true' or 'false' (performance warning)
 #include <QDateTime>
 #include <QPainter>
+AZ_POP_DISABLE_WARNING
 #include <QPushButton>
 #include <QAbstractItemModel>
 #include <QTextDocument>
+AZ_PUSH_DISABLE_WARNING(4244 4251 4800, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
+                                                                    // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
+                                                                    // 4800 'QTextEngine *const ': forcing value to bool 'true' or 'false' (performance warning)
 #include <QAbstractTextDocumentLayout>
+AZ_POP_DISABLE_WARNING
 #include <QTabWidget>
 
 #include "NewLogTabDialog.h"
@@ -736,7 +743,7 @@ namespace AzToolsFramework
                         doc.setDocumentMargin(2);
                         doc.setDefaultFont(viewItem.font);
                         doc.setTextWidth(viewItem.rect.width());
-                        return QSize(doc.idealWidth(), doc.size().height());
+                        return QSize(static_cast<int>(doc.idealWidth()), static_cast<int>(doc.size().height()));
                     }
                 }
             }

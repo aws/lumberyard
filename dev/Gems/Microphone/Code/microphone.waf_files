@@ -10,7 +10,7 @@
             "Source/MicrophoneModule.cpp",
             "Source/MicrophoneSystemComponent.cpp",
             "Source/MicrophoneSystemComponent.h",
-            "Source/MicrophoneSystemComponent_null.h"
+            "Source/SimpleDownsample.cpp"
         ]
     }
 }

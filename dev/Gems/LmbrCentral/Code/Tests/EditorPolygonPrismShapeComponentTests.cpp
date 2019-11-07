@@ -80,10 +80,10 @@ namespace LmbrCentral
 
         AZStd::vector<AZ::Vector2> sourceVertices = 
         {
-            AZ::Vector2(-0.57, -0.57),
-            AZ::Vector2(0.57, -0.57),
-            AZ::Vector2(0.57, 0.57),
-            AZ::Vector2(-0.57, 0.57)
+            AZ::Vector2(-0.57f, -0.57f),
+            AZ::Vector2(0.57f, -0.57f),
+            AZ::Vector2(0.57f, 0.57f),
+            AZ::Vector2(-0.57f, 0.57f)
         };
         EXPECT_EQ(polygonPrism->m_vertexContainer.GetVertices(), sourceVertices);
     }

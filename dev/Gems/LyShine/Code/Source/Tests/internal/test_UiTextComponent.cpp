@@ -2714,11 +2714,11 @@ namespace
         EBUS_EVENT_ID(testElemId, UiTextBus, SetFontSize, fontSize);
 
         float baseWidth;
-        EBUS_EVENT_ID_RESULT(baseWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
+        EBUS_EVENT_ID_RESULT(baseWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth, LyShine::UiLayoutCellUnspecifiedSize);
 
         EBUS_EVENT_ID(testElemId, UiTextBus, SetCharacterSpacing, characterSpacing);
         float newWidth;
-        EBUS_EVENT_ID_RESULT(newWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth);
+        EBUS_EVENT_ID_RESULT(newWidth, testElemId, UiLayoutCellDefaultBus, GetTargetWidth, LyShine::UiLayoutCellUnspecifiedSize);
 
         const int testStringLength = testString.length();
         const int numGapsBetweenCharacters = testStringLength >= 1 ? testStringLength - 1 : 0;
@@ -2753,11 +2753,11 @@ namespace
         EBUS_EVENT_ID(testElemId, UiTextBus, SetFontSize, fontSize);
 
         float baseHeight;
-        EBUS_EVENT_ID_RESULT(baseHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
+        EBUS_EVENT_ID_RESULT(baseHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight, LyShine::UiLayoutCellUnspecifiedSize);
 
         EBUS_EVENT_ID(testElemId, UiTextBus, SetLineSpacing, lineSpacing);
         float newHeight;
-        EBUS_EVENT_ID_RESULT(newHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight);
+        EBUS_EVENT_ID_RESULT(newHeight, testElemId, UiLayoutCellDefaultBus, GetTargetHeight, LyShine::UiLayoutCellUnspecifiedSize);
 
         float expectedHeight = baseHeight + numNewlines * lineSpacing;
 

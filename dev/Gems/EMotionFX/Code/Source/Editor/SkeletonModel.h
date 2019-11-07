@@ -41,7 +41,8 @@ namespace EMotionFX
             COLUMN_RAGDOLL_LIMIT,
             COLUMN_RAGDOLL_COLLIDERS,
             COLUMN_HITDETECTION_COLLIDERS,
-            COLUMN_CLOTH_COLLIDERS
+            COLUMN_CLOTH_COLLIDERS,
+            COLUMN_SIMULATED_COLLIDERS
         };
 
         enum Role
@@ -55,6 +56,8 @@ namespace EMotionFX
             ROLE_RAGDOLL,
             ROLE_HITDETECTION,
             ROLE_CLOTH,
+            ROLE_SIMULATED_JOINT,
+            ROLE_SIMULATED_OBJECT_COLLIDER
         };
 
         SkeletonModel();
@@ -117,6 +120,7 @@ namespace EMotionFX
         QIcon m_hitDetectionColliderIcon;
         QIcon m_ragdollColliderIcon;
         QIcon m_ragdollJointLimitIcon;
+        QIcon m_simulatedColliderIcon;
     };
 
 } // namespace EMotionFX

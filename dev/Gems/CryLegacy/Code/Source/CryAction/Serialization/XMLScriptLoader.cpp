@@ -57,7 +57,6 @@ private:
     IScriptTable* CurTable() { CRY_ASSERT(!m_tableStack.empty()); return m_tableStack.top().GetPtr(); }
 
     class SSetValueVisitor
-        : public boost::static_visitor<void>
     {
     public:
         SSetValueVisitor(IScriptTable* pTable, const char* name)
@@ -81,7 +80,6 @@ private:
         const char* m_name;
     };
     class SSetValueAtVisitor
-        : public boost::static_visitor<void>
     {
     public:
         SSetValueAtVisitor(IScriptTable* pTable, int elem)
@@ -143,7 +141,7 @@ IReadXMLSinkPtr CXmlScriptLoad::BeginTableAt(int elem, const XmlNodeRef& definit
 bool CXmlScriptLoad::SetValue(const char* name, const TValue& value, const XmlNodeRef& definition)
 {
     SSetValueVisitor visitor(CurTable(), name);
-    boost::apply_visitor(visitor, value);
+    AZStd::visit(visitor, value);
     return true;
 }
 
@@ -172,7 +170,7 @@ IReadXMLSinkPtr CXmlScriptLoad::BeginArray(const char* name, const XmlNodeRef& d
 bool CXmlScriptLoad::SetAt(int elem, const TValue& value, const XmlNodeRef& definition)
 {
     SSetValueAtVisitor visitor(CurTable(), elem);
-    boost::apply_visitor(visitor, value);
+    AZStd::visit(visitor, value);
     return true;
 }
 
@@ -317,7 +315,6 @@ bool CXmlScriptSaver::EndArray(const char* name)
 namespace
 {
     struct CGetValueVisitor
-        : public boost::static_visitor<void>
     {
     public:
         CGetValueVisitor(IScriptTable* pTable, const char* name)
@@ -348,7 +345,6 @@ namespace
     };
 
     struct CGetAtVisitor
-        : public boost::static_visitor<void>
     {
     public:
         CGetAtVisitor(IScriptTable* pTable, int elem)
@@ -382,14 +378,14 @@ namespace
 bool CXmlScriptSaver::GetValue(const char* name, TValue& value, const XmlNodeRef& definition)
 {
     CGetValueVisitor visitor(CurTable(), name);
-    boost::apply_visitor(visitor, value);
+    AZStd::visit(visitor, value);
     return visitor.Ok();
 }
 
 bool CXmlScriptSaver::GetAt(int elem, TValue& value, const XmlNodeRef& definition)
 {
     CGetAtVisitor visitor(CurTable(), elem);
-    boost::apply_visitor(visitor, value);
+    AZStd::visit(visitor, value);
     return visitor.Ok();
 }
 

@@ -903,7 +903,7 @@ void OutlinerWidget::SetupActions()
     addAction(m_actionToDeleteSelectionAndDescendants);
 
     m_actionToRenameSelection = new QAction(tr("Rename"), this);
-#ifdef AZ_PLATFORM_APPLE_OSX
+#ifdef AZ_PLATFORM_MAC
     // "Alt+Return" translates to Option+Return on macOS
     m_actionToRenameSelection->setShortcut(tr("Alt+Return"));
 #endif

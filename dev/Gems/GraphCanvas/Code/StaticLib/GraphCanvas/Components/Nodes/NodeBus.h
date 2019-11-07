@@ -80,6 +80,16 @@ namespace GraphCanvas
         virtual void SetWrappingNode(const AZ::EntityId& wrappingNode) = 0;
 
         virtual AZ::EntityId GetWrappingNode() const = 0;
+
+        // Signals that this node is involved in a batched connection manipulation action
+        // This is usually splicing of some sort(deleting and adding a connection).
+        //
+        // Mainly there to postpone any updates that might occur while editing connections
+        virtual void SignalBatchedConnectionManipulationBegin() = 0;
+        virtual void SignalBatchedConnectionManipulationEnd() = 0;
+
+        // Will attempt to update the partially disabled state based on the connection Execution connections
+        virtual RootGraphicsItemEnabledState UpdateEnabledState() = 0;
     };
 
     using NodeRequestBus = AZ::EBus<NodeRequests>;
@@ -123,6 +133,10 @@ namespace GraphCanvas
 
         virtual void OnNodeWrapped(const AZ::EntityId& wrappingNode) {}
         virtual void OnNodeUnwrapped(const AZ::EntityId& wrappingNode) {}
+
+        //! Signals that some batched connection manipulation operation is going on involving this node
+        virtual void OnBatchedConnectionManipulationBegin() {};
+        virtual void OnBatchedConnectionManipulationEnd() {};
     };
 
     using NodeNotificationBus = AZ::EBus<NodeNotifications>;

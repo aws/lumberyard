@@ -1,0 +1,8 @@
+{
+  "auto": {
+    "Platform/Android": [
+      "CloudGemFramework_Traits_Platform.h",
+      "CloudGemFramework_Traits_Android.h"
+    ]
+  }
+}

@@ -139,7 +139,7 @@ namespace EMotionFX
             AZStd::vector<AZ::Crc32>         m_eventsToRemove;
 
             AZStd::unordered_map<AZ::Crc32, TriggerEventData>  m_eventTriggerMap;
-            AZStd::unordered_map<AZ::u32, Audio::IAudioProxy*> m_jointProxies;
+            AZStd::unordered_map<AZ::s32, Audio::IAudioProxy*> m_jointProxies;
             AZStd::unique_ptr<Audio::SAudioCallBackInfos>      m_callbackInfo;
 
             AZ::Transform m_transform;

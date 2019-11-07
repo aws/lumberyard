@@ -13,8 +13,9 @@
 
 #include <LyViewPaneNames.h>
 
-#include <Asset/EditorAssetRegistry.h>
 #include <Editor/Assets/ScriptCanvasAssetHolder.h>
+
+#include <ScriptCanvas/Asset/AssetRegistry.h>
 #include <ScriptCanvas/Assets/ScriptCanvasAsset.h>
 #include <ScriptCanvas/Assets/ScriptCanvasAssetHandler.h>
 #include <ScriptCanvas/Bus/EditorScriptCanvasBus.h>
@@ -92,11 +93,27 @@ namespace ScriptCanvasEditor
         AzToolsFramework::OpenViewPane(LyViewPane::ScriptCanvas);
 
         AZ::Outcome<int, AZStd::string> openOutcome = AZ::Failure(AZStd::string());
-        GeneralRequestBus::BroadcastResult(openOutcome, &GeneralRequests::OpenScriptCanvasAsset, m_scriptCanvasAsset, -1);
-        if (!openOutcome)
+
+        if (m_scriptCanvasAsset.GetId().IsValid())
         {
-            AZ_Warning("Script Canvas", openOutcome, "%s", openOutcome.GetError().data());
+            GeneralRequestBus::BroadcastResult(openOutcome, &GeneralRequests::OpenScriptCanvasAsset, m_scriptCanvasAsset, -1);
+
+            if (!openOutcome)
+            {
+                AZ_Warning("Script Canvas", openOutcome, "%s", openOutcome.GetError().data());
+            }
         }
+        else if (m_ownerId.IsValid())
+        {
+            AzToolsFramework::EntityIdList selectedEntityIds;
+            AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(selectedEntityIds, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
+
+            // Going to bypass the multiple selected entities flow for right now.
+            if (selectedEntityIds.size() == 1)
+            {
+                GeneralRequestBus::Broadcast(&GeneralRequests::CreateScriptCanvasAssetFor, m_ownerId);
+            }
+        }        
     }
 
     AZ::EntityId ScriptCanvasAssetHolder::GetGraphId() const

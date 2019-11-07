@@ -40,7 +40,7 @@
     if ((self = [super initWithFrame: frame]))
     {
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         self.wantsLayer = YES;
         self.layer = _metalLayer = [CAMetalLayer layer];
         self.autoresizingMask = (NSViewWidthSizable | NSViewHeightSizable);		
@@ -63,9 +63,9 @@
         self.autoresizesSubviews = TRUE;
 
         
-#if defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_IOS)
         self.multipleTouchEnabled = TRUE;
-#endif // defined(AZ_PLATFORM_APPLE_IOS)
+#endif // defined(AZ_PLATFORM_IOS)
 
     }
 
@@ -74,7 +74,7 @@
 
 - (void)setFrameSize: (CGSize) size
 {
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     // iOS UiView may not respond to this message according to the compile error...
     [super setFrameSize: size];
 #endif
@@ -91,7 +91,7 @@
     return TRUE;
 }
 
-#if defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_IOS)
 - (void)viewWillTransitionToSize: (CGSize)size withTransitionCoordinator: (id<UIViewControllerTransitionCoordinator>) coordinator
 {
     [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
@@ -119,20 +119,20 @@
 }
 #endif
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
 ////////////////////////////////////////////////////////////////////////////////
 - (void)keyDown: (NSEvent*)nsEvent
 {
     // Override and do nothing to suppress beeping sound
 }
-#endif // defined(AZ_PLATFORM_APPLE_OSX)
+#endif // defined(AZ_PLATFORM_MAC)
 
 @end // MetalViewController Implementation
 
 ////////////////////////////////////////////////////////////////////////////////
 bool UIDeviceIsTablet()
 {
-#if defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_IOS)
     if([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad)
     {
         return true;
@@ -146,7 +146,7 @@ bool UIKitGetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_heightP
 {
 
     NativeScreenType* nativeScreen = [NativeScreenType mainScreen];
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     CGRect screenBounds = [nativeScreen frame];
     CGFloat screenScale = 1.0f;
 #else
@@ -156,7 +156,7 @@ bool UIKitGetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_heightP
     o_widthPixels = static_cast<int>(screenBounds.size.width * screenScale);
     o_heightPixels = static_cast<int>(screenBounds.size.height * screenScale);
 
-#if defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_IOS)
     const bool isScreenLandscape = o_widthPixels > o_heightPixels;
     const bool isInterfaceLandscape = UIInterfaceOrientationIsLandscape([[NativeApplicationType sharedApplication] statusBarOrientation]);
     if (isScreenLandscape != isInterfaceLandscape)
@@ -165,7 +165,7 @@ bool UIKitGetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_heightP
         o_widthPixels = o_heightPixels;
         o_heightPixels = width;
     }
-#endif // defined(AZ_PLATFORM_APPLE_IOS)
+#endif // defined(AZ_PLATFORM_IOS)
 
     return true;
 }
@@ -194,7 +194,7 @@ namespace NCryMetal
                                     uint32 height,
                                     bool fullScreen)
     {
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         CGRect screenBounds = CGRectMake(0, 0, width, height);
         //Make the window closeable and minimizeable.
         NSUInteger styleMask = NSClosableWindowMask|NSTitledWindowMask|NSMiniaturizableWindowMask;
@@ -257,7 +257,7 @@ namespace NCryMetal
             assert(nativeWindow != nullptr);
             
             // Create the MetalView
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
             bool isFullScreen = (([nativeWindow styleMask] & NSFullScreenWindowMask) == NSFullScreenWindowMask);
             CGRect screenBounds = [nativeScreen visibleFrame];
             if(isFullScreen)
@@ -295,7 +295,7 @@ namespace NCryMetal
             [m_viewController retain];
             
             // Add the MetalView and assign the MetalViewController to the UIWindow        
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
             // Setting the contentViewController implicitly sets the contentView
             nativeWindow.contentViewController = m_viewController;
             [nativeWindow makeFirstResponder: m_currentView];
@@ -315,7 +315,7 @@ namespace NCryMetal
         if (m_viewController)
         {
             NativeWindowType* nativeWindow = static_cast<NativeWindowType*>(m_currentView.superview);
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
             if (nativeWindow.contentViewController == m_viewController)
             {
                 nativeWindow.contentViewController = nil;

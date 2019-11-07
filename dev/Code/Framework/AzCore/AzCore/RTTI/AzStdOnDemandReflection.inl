@@ -910,6 +910,7 @@ namespace AZ
                     ->Method("Size", [](ContainerType& thisPtr) { return aznumeric_cast<int>(thisPtr.size()); })
                         ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Length)
                     ->Method("Swap", &Swap)
+                    ->Method("Clear", [](ContainerType& thisMap){ thisMap.clear(); })
                     ;
             }
         }

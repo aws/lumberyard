@@ -84,8 +84,7 @@ namespace EMotionFX
             scrollArea->setWidgetResizable(true);
         
             mDock->SetContents(scrollArea);
-            connect(mDock, &QDockWidget::visibilityChanged, this, &RagdollNodeInspectorPlugin::OnVisibilityChanged);
-        
+
             EMotionFX::SkeletonOutlinerNotificationBus::Handler::BusConnect();
         }
         else
@@ -141,22 +140,13 @@ namespace EMotionFX
             QAction* addSphereAction = addColliderMenu->addAction("Add sphere");
             addSphereAction->setProperty("typeId", azrtti_typeid<Physics::SphereShapeConfiguration>().ToString<AZStd::string>().c_str());
             connect(addSphereAction, &QAction::triggered, this, &RagdollNodeInspectorPlugin::OnAddCollider);
-
-            QMenu* copyFromColliderMenu = contextMenu->addMenu("Copy from");
-
-            QAction* copyFromAction = copyFromColliderMenu->addAction(PhysicsSetup::GetStringForColliderConfigType(PhysicsSetup::HitDetection));
-            connect(copyFromAction, &QAction::triggered, this, [=]
-                {
-                    CopyColliders(selectedRowIndices, PhysicsSetup::HitDetection);
-                });
-
-            // Note: Cloth collider editor is disabled as it is in preview
-            /*copyFromAction = copyFromColliderMenu->addAction(PhysicsSetup::GetStringForColliderConfigType(PhysicsSetup::Cloth));
-            connect(copyFromAction, &QAction::triggered, this, [=]
-                {
-                    CopyColliders(selectedRowIndices, PhysicsSetup::Cloth);
-                });*/
         }
+
+        ColliderHelpers::AddCopyFromMenu(this, contextMenu, PhysicsSetup::ColliderConfigType::Ragdoll,
+            [=](PhysicsSetup::ColliderConfigType copyFrom, PhysicsSetup::ColliderConfigType copyTo)
+            {
+                CopyColliders(selectedRowIndices, copyFrom);
+            });
 
         if (ragdollNodeCount > 0)
         {
@@ -165,14 +155,6 @@ namespace EMotionFX
 
             QAction* removeToRagdollAction = contextMenu->addAction("Remove from ragdoll");
             connect(removeToRagdollAction, &QAction::triggered, this, &RagdollNodeInspectorPlugin::OnRemoveFromRagdoll);
-        }
-    }
-
-    void RagdollNodeInspectorPlugin::OnVisibilityChanged(bool visible)
-    {
-        if (m_nodeWidget)
-        {
-            m_nodeWidget->SetIsVisible(visible);
         }
     }
 

@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/iOS":
+        [
+            "GameStateSamples/GameStateSamples_Traits_Platform.h",
+            "GameStateSamples/GameStateSamples_Traits_iOS.h"
+        ]
+    }
+}

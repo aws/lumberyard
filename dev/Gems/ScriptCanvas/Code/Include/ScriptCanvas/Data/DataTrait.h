@@ -184,7 +184,7 @@ namespace ScriptCanvas
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<EntityIDType>(); }
             static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::EntityID(); }
             static AZStd::string GetName(const Data::Type& = {}) { return "EntityID"; }
-            static Type GetDefault(const Data::Type& = {}) { return SelfReferenceId; }
+            static Type GetDefault(const Data::Type& = {}) { return GraphOwnerId; }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value == GetDefault(); }
         };
 
@@ -200,7 +200,7 @@ namespace ScriptCanvas
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<NamedEntityIDType>(); }
             static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::NamedEntityID(); }
             static AZStd::string GetName(const Data::Type& = {}) { return "NamedEntityID"; }
-            static Type GetDefault(const Data::Type& = {}) { return AZ::NamedEntityId(SelfReferenceId, "Self"); }
+            static Type GetDefault(const Data::Type& = {}) { return AZ::NamedEntityId(GraphOwnerId, "Self"); }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value == GetDefault(); }
         };
 

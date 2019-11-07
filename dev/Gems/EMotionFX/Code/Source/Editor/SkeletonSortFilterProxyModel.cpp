@@ -32,7 +32,6 @@ namespace EMotionFX
     SkeletonSortFilterProxyModel::SkeletonSortFilterProxyModel(SkeletonModel* sourceSkeletonModel, QItemSelectionModel* sourceSelectionModel, QObject* parent)
         : QSortFilterProxyModel(parent)
         , m_recursiveMode(true)
-        , m_sourceSkeletonModel(sourceSkeletonModel)
         , m_actor(nullptr)
     {
         m_filterFlags[SHOW_BONES] = false;

@@ -670,27 +670,28 @@ namespace AZ
             {
                 return limits::infinity();
             }
+            AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") // conditional expression is constant
             else if (limits::is_signed && number == -std::numeric_limits<double>::infinity())
+            AZ_POP_DISABLE_WARNING
             {
-#if defined(AZ_COMPILER_MSVC)
-#   pragma warning(push)
-#   pragma warning(disable: 4146) // negative unsigned value, but we're checking for it above
-#endif // MSVC
+                AZ_PUSH_DISABLE_WARNING(4146, "-Wunknown-warning-option") // unary minus operator applied to unsigned type, result still unsigned
                 return -limits::infinity();
-#if defined(AZ_COMPILER_MSVC)
-#   pragma warning(pop)
-#endif // MSVC
+                AZ_POP_DISABLE_WARNING
             }
         }
 
         // Check for decimal to integer conversion
+        AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") // conditional expression is constant
         if (!std::is_floating_point<T>::value && std::fmod(number, 1.0f) > std::numeric_limits<double>::epsilon())
+        AZ_POP_DISABLE_WARNING
         {
             luaL_error(l, "%s", "integer expected, got floating point");
         }
 
         // Check for proper signed-ness
+        AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") // conditional expression is constant
         if (!limits::is_signed && number < 0.0f)
+        AZ_POP_DISABLE_WARNING
         {
             luaL_error(l, "%s", "unsigned expected, got negative");
         }
@@ -1945,9 +1946,7 @@ LUA_API const Node* lua_getDummyNode()
         {
             u32 magicData;
             u32 storageType;
-#ifdef AZ_OS64
             u64 m_pad;
-#endif
             void* value;
             BehaviorClass* behaviorClass;
         };
@@ -2454,10 +2453,27 @@ LUA_API const Node* lua_getDummyNode()
                         LuaUserData* userData = reinterpret_cast<LuaUserData*>(lua_touserdata(lua, stackIndex));
                         if (userData->magicData == Internal::AZLuaUserData) // make sure this is our user data (4 bytes userdata required)
                         {
+                            // Handle wrapped base classes
+                            bool unwrap = false;
+                            // If we have an unwrapper, see if it is for the value type
+                            if (userData->behaviorClass->m_unwrapper)
+                            {
+                                unwrap = value.m_typeId == userData->behaviorClass->m_wrappedTypeId;
+                                // If not the exact value type, check to see it is a base class of the value type
+                                if (!unwrap)
+                                {
+                                    AZ::BehaviorContext* behaviorContext{};
+                                    AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
+                                    auto unwrappedClassIter = behaviorContext->m_typeToClassMap.find(value.m_typeId);
+                                    AZ::BehaviorClass* unwrappedClass = unwrappedClassIter != behaviorContext->m_typeToClassMap.end() ? unwrappedClassIter->second : nullptr;
+                                    unwrap = unwrappedClass && unwrappedClass->m_azRtti && unwrappedClass->m_azRtti->IsTypeOf(valueClass->m_typeId);
+                                }
+                            }
+
                             void* valueAddress = nullptr;
 
-                            // Run converter before doing type check
-                            if (userData->behaviorClass->m_unwrapper && value.m_typeId == userData->behaviorClass->m_wrappedTypeId)
+                            // If we found a proper unwrapper, use it
+                            if (unwrap)
                             {
                                 userData->behaviorClass->m_unwrapper(userData->value, valueAddress, value.m_typeId, userData->behaviorClass->m_unwrapperUserData);
                                 value.m_typeId = userData->behaviorClass->m_wrappedTypeId;
@@ -2467,16 +2483,13 @@ LUA_API const Node* lua_getDummyNode()
                                 // Update type name for use in type checking and error messages
                                 value.m_name = userData->behaviorClass->m_name.c_str();
                                 value.m_typeId = userData->behaviorClass->m_typeId;
-                                valueAddress = userData->value;
-                            }
 
-                            // Check that the type of user data is the type requested (or convertible to it)
-                            if (value.m_typeId != valueClass->m_typeId && (!userData->behaviorClass->m_azRtti || !userData->behaviorClass->m_azRtti->IsTypeOf(valueClass->m_typeId)))
-                            {
-                                // Update type name for use in error messages
-                                value.m_name = userData->behaviorClass->m_name.c_str();
-                                value.m_typeId = userData->behaviorClass->m_typeId;
-                                return false;
+                                // Check that the type of user data is the type requested (or convertible to it)
+                                if (value.m_typeId != valueClass->m_typeId && (!userData->behaviorClass->m_azRtti || !userData->behaviorClass->m_azRtti->IsTypeOf(valueClass->m_typeId)))
+                                {
+                                    return false;
+                                }
+                                valueAddress = userData->value;
                             }
 
                             if (value.m_traits & BehaviorParameter::TR_POINTER)
@@ -3278,6 +3291,19 @@ LUA_API const Node* lua_getDummyNode()
             return result;
         }
 
+        static void CallDestructorOnBehaviorValueParameter(BehaviorClass* idClass, BehaviorValueParameter* parameter)
+        {
+            if (idClass && idClass->m_destructor && (parameter->m_traits & AZ::BehaviorParameter::TR_POINTER) == 0)
+            {
+                void* valueAddress = parameter->GetValueAddress();
+                if (valueAddress)
+                {
+                    idClass->m_destructor(valueAddress, idClass->m_userData);
+                }
+            }
+
+        }
+
 
         class LuaEBusHandler
         {
@@ -3294,7 +3320,7 @@ LUA_API const Node* lua_getDummyNode()
                 LuaEBusHandler* m_luaHandler;
             };
 
-            LuaEBusHandler(BehaviorContext* behaviorContext, BehaviorEBus* bus, ScriptDataContext& scriptTable, BehaviorValueParameter* connectionId /*= nullptr*/, bool autoConnect)
+            LuaEBusHandler(BehaviorContext* behaviorContext, BehaviorEBus* bus, BehaviorClass* idClass, ScriptDataContext& scriptTable, BehaviorValueParameter* connectionId /*= nullptr*/, bool autoConnect)
                 : m_context(behaviorContext)
                 , m_bus(bus)
                 , m_handler(nullptr)
@@ -3328,6 +3354,8 @@ LUA_API const Node* lua_getDummyNode()
                     if (autoConnect)
                     {
                         m_handler->Connect(connectionId);
+
+                        CallDestructorOnBehaviorValueParameter(idClass, connectionId);
                     }
                 }
             }
@@ -3462,7 +3490,7 @@ LUA_API const Node* lua_getDummyNode()
                         {
                             // create handler
                             new(lua_newuserdata(lua, sizeof(LuaEBusHandler)))
-                                LuaEBusHandler(reinterpret_cast<BehaviorContext*>(lua_touserdata(lua, lua_upvalueindex(1))), ebus, scriptTable, (idFromLua && autoConnect) ? &idParam : nullptr, autoConnect);
+                                LuaEBusHandler(reinterpret_cast<BehaviorContext*>(lua_touserdata(lua, lua_upvalueindex(1))), ebus, idClass, scriptTable, (idFromLua && autoConnect) ? &idParam : nullptr, autoConnect);
                             lua_pushvalue(lua, lua_upvalueindex(3)); // set the metatable for the user data
                             lua_setmetatable(lua, -2);
                         }
@@ -3529,6 +3557,8 @@ LUA_API const Node* lua_getDummyNode()
                         }
 
                         ebusHandler->m_handler->Connect(idFromLua ? &idParam : nullptr);
+
+                        CallDestructorOnBehaviorValueParameter(idClass, &idParam);
                     }
                     else
                     {

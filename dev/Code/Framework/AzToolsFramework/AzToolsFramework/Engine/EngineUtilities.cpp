@@ -15,7 +15,9 @@
 #include "EngineUtilities.h"
 
 #include <QString>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QFileInfo::d_ptr': class 'QSharedDataPointer<QFileInfoPrivate>' needs to have dll-interface to be used by clients of class 'QFileInfo'
 #include <QDir>
+AZ_POP_DISABLE_WARNING
 
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -31,13 +33,13 @@ namespace AzToolsFramework
         // Maintain a cache of engine configurations that have been read
         static QMap<QString, QMap<QString, QString>>  s_engineConfigurationCache;
         static QMutex                                 s_engineConfigurationCacheMutex;
-        static QMap<QString, QString> 	              s_assetRootToEngineRootCache;
+        static QMap<QString, QString>                 s_assetRootToEngineRootCache;
         static QMutex                                 s_assetRootToEngineRootCacheMutex;
     }
 
     AZ::Outcome<AZStd::string, AZStd::string> EngineConfiguration::ReadValue(const AZStd::string& rootFolderPath, const AZStd::string& key)
     {
-        QString	assetFolderCacheKey(rootFolderPath.c_str());
+        QString assetFolderCacheKey(rootFolderPath.c_str());
         {
             // Attempt to read from the cache based on the asset root folder first
             QMutexLocker cacheLock(&Cache::s_engineConfigurationCacheMutex);

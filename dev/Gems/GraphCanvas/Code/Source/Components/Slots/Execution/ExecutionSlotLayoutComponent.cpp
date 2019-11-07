@@ -22,9 +22,10 @@ namespace GraphCanvas
     ////////////////////////
     // ExecutionSlotLayout
     ////////////////////////
-	
+
     ExecutionSlotLayout::ExecutionSlotLayout(ExecutionSlotLayoutComponent& owner)
-        : m_owner(owner)
+        : m_connectionType(ConnectionType::CT_Invalid)
+        , m_owner(owner)
     {
         setInstantInvalidatePropagation(true);
         setOrientation(Qt::Horizontal);

@@ -25,6 +25,7 @@
 
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Widgets/GraphCanvasTreeCategorizer.h>
+#include <GraphCanvas/Widgets/NodePalette/NodePaletteWidget.h>
 #include <GraphCanvas/Widgets/NodePalette/NodePaletteDockWidget.h>
 #include <GraphCanvas/Widgets/NodePalette/TreeItems/NodePaletteTreeItem.h>
 #include <GraphCanvas/Editor/AssetEditorBus.h>
@@ -110,6 +111,17 @@ namespace ScriptCanvasEditor
             AZStd::unique_ptr< Ui::ScriptCanvasNodePaletteToolbar > m_ui;
         };
 
+        class ScriptCanvasNodePaletteConfig
+            : public GraphCanvas::NodePaletteConfig
+        {
+        public:
+            ScriptCanvasNodePaletteConfig(const NodePaletteModel& nodePaletteModel, AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* assetModel, bool isInContextMenu);
+            ~ScriptCanvasNodePaletteConfig();
+
+            const NodePaletteModel& m_nodePaletteModel;
+            AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* m_assetModel;
+        };
+
         class NodePaletteDockWidget
             : public GraphCanvas::NodePaletteDockWidget
             , public GraphCanvas::AssetEditorNotificationBus::Handler
@@ -119,8 +131,8 @@ namespace ScriptCanvasEditor
             AZ_CLASS_ALLOCATOR(NodePaletteDockWidget, AZ::SystemAllocator, 0);
 
             static const char* GetMimeType() { return "scriptcanvas/node-palette-mime-event"; }
-
-            NodePaletteDockWidget(const NodePaletteModel& model, const QString& windowLabel, QWidget* parent, AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* assetModel, bool inContextMenu = false);
+            
+            NodePaletteDockWidget(const QString& windowLabel, QWidget* parent, const ScriptCanvasNodePaletteConfig& paletteConfig);
             ~NodePaletteDockWidget() = default;
 
             void OnNewCustomEvent();

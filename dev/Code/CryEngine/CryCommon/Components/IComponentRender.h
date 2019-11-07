@@ -367,6 +367,6 @@ struct IComponentRender
     // </interfuscator:shuffle>
 };
 
-DECLARE_COMPONENT_POINTERS(IComponentRender);
+DECLARE_SMART_POINTERS(IComponentRender);
 
 #endif // CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTRENDER_H

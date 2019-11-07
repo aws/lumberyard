@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Component/EntityUtils.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -254,5 +253,3 @@ namespace AZ
         }
     } // namespace EntityUtils
 }   // namespace AZ
-
-#endif  // AZ_UNITY_BUILD

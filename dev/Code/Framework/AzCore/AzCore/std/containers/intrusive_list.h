@@ -360,7 +360,6 @@ namespace AZStd
         }
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifdef AZ_HAS_RVALUE_REFS
         AZ_FORCE_INLINE intrusive_list(this_type&& rhs)
         {
             assign_rv(AZStd::forward<this_type>(rhs));
@@ -406,7 +405,6 @@ namespace AZStd
         {
             assign_rv(AZStd::forward(rhs));
         }
-#endif // AZ_HAS_RVALUE_REFS
 
         AZ_FORCE_INLINE ~intrusive_list()
         {

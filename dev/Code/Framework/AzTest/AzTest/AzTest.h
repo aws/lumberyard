@@ -11,48 +11,22 @@
 */
 #pragma once
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#undef AZ_RESTRICTED_SECTION
-#define AZTEST_H_SECTION_1 1
-#endif
+#include <AzCore/PlatformDef.h>
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION AZTEST_H_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/AzTest_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/AzTest_h_provo.inl"
-    #endif
-#elif defined(DARWIN) || defined(ANDROID) || defined(LINUX)
-#define AZTEST_H_TRAITS_UNDEF_STRDUP 1
-#endif
-
-#if AZTEST_H_TRAITS_UNDEF_STRDUP
-// Notes in the Cry* code indicate that strdup may cause memory errors, and shouldn't be
-// used. It's required, however, by googletest, so for test builds, un-hack the strdup removal.
-#   undef strdup
-#endif // AZTEST_H_TRAITS_UNDEF_STRDUP
-
-#pragma warning( push )
-#pragma warning(disable: 4800)  // 'int' : forcing value to bool 'true' or 'false' (performance warning)
+AZ_PUSH_DISABLE_WARNING(4800, "-Wunknown-warning-option"); // 'int' : forcing value to bool 'true' or 'false' (performance warning). Needed in VS2015
+#undef strdup // platform.h in CryCommon changes this define which is required by googletest
 #include <gtest/gtest.h>
-#pragma warning( pop )
 #include <gmock/gmock.h>
+AZ_POP_DISABLE_WARNING;
+
+#if defined(HAVE_BENCHMARK)
+#include <benchmark/benchmark.h>
+#endif
 
 #include <AzCore/Memory/OSAllocator.h>
 
-#if defined(DARWIN) || defined(ANDROID) || defined(LINUX)
-#   define AZTEST_DLL_PUBLIC __attribute__ ((visibility ("default")))
-#else
-#   define AZTEST_DLL_PUBLIC
-#endif
-
-
-#if defined(DARWIN) || defined(ANDROID) || defined(LINUX)
-#   define AZTEST_EXPORT extern "C" AZTEST_DLL_PUBLIC
-#else
-#   define AZTEST_EXPORT extern "C" __declspec(dllexport)
-#endif
+#define AZTEST_DLL_PUBLIC AZ_DLL_EXPORT
+#define AZTEST_EXPORT extern "C" AZTEST_DLL_PUBLIC
 
 namespace AZ
 {

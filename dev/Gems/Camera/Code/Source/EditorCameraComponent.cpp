@@ -113,7 +113,7 @@ namespace Camera
                 editContext->Class<EditorCameraComponent>("Camera", "The Camera component allows an entity to be used as a camera")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Camera")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Camera.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Camera.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Camera.png")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))

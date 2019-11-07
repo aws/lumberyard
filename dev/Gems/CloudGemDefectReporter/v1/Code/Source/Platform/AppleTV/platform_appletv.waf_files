@@ -1,0 +1,7 @@
+{
+  "auto": {
+    "Platform/AppleTV": [
+      "../Common/Unimplemented/DxDiagCollectingComponent_Unimplemented.cpp"
+    ]
+  }
+}

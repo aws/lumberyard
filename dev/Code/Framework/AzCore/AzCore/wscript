@@ -14,7 +14,7 @@ def build(bld):
 
     defines = []
 
-    kw = dict(
+    bld.CryEngineStaticLibrary(
         # Settings
         target          = 'AzCore',
         vs_filter       = 'AZ Framework',
@@ -27,6 +27,8 @@ def build(bld):
         use             = ['RAPIDJSON',
                            'RAPIDXML',
                            'LUA',
+                           'ZSTD',
+                           'LZ4',
                            'ZLIB',
                            'RAD_TELEMETRY',
                            'UNWIND'],
@@ -34,36 +36,10 @@ def build(bld):
         export_defines  = list(defines),
         features        = ['internal_telemetry'],
 
-        # Compiler Specific
-        msvc_cxxflags       = ['/W4'],
-
+        # Platform Roots
+        platform_roots  = [bld.PlatformRoot('../Platform', export_includes=True)],
+    
         # Testing
-        test_all_file_list = ['azcore_test.waf_files'],
+        test_all_file_list  = ['azcore_test.waf_files'],
 
-        # Platform Specific
-        win_file_list       = ['azcore_win.waf_files', 'std/azstd_win.waf_files'],
-        win_defines         = [
-                              '_HAS_EXCEPTIONS=0',  # prevents warning: "C++ exception handler used, but unwind semantics are not enabled"
-                              ],
-        win_features        = ['crcfix'],
-
-        restricted_script = 'update_restricted_parameters',
-
-        android_file_list   = ['azcore_android.waf_files', 'std/azstd_android.waf_files'],
-
-        ios_file_list       = ['azcore_ios.waf_files', 'std/azstd_apple.waf_files'],
-
-        appletv_file_list   = ['azcore_appletv.waf_files', 'std/azstd_apple.waf_files'],
-
-        darwin_file_list    = ['azcore_osx.waf_files', 'std/azstd_apple.waf_files'],
-        darwin_enable_rtti  = True,
-
-        linux_file_list     = ['azcore_linux.waf_files', 'std/azstd_linux.waf_files'],
-        linux_includes      = ['/usr/include/libcxxabi'],
     )
-    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
-        kw['{}_file_list'.format(p3)] = [
-            '{0}/azcore_{1}.waf_files'.format(p0, p1),
-            'std/{0}/azstd_{1}.waf_files'.format(p0, p1),
-        ]
-    bld.CryEngineStaticLibrary(**kw)

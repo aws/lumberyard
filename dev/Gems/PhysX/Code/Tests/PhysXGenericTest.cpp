@@ -23,7 +23,7 @@
 #include <AzCore/Asset/AssetManagerComponent.h>
 #include <AzCore/Jobs/JobManagerComponent.h>
 #include <Physics/PhysicsTests.h>
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <RigidBodyComponent.h>
 #include <Material.h>
 #include <Physics/PhysicsGenericInterfaceTests.inl>

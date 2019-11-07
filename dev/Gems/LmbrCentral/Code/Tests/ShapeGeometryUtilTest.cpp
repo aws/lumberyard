@@ -15,7 +15,7 @@
 
 #include <AzCore/Component/ComponentApplication.h>
 #include <Shape/ShapeGeometryUtil.h>
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/Math/Vector3.h>
 
 using namespace AZ;

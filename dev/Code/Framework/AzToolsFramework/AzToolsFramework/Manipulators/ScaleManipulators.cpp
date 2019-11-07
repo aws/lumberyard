@@ -24,6 +24,8 @@ namespace AzToolsFramework
         }
 
         m_uniformScaleManipulator = LinearManipulator::MakeShared(worldFromLocal);
+
+        m_space = worldFromLocal;
     }
 
     void ScaleManipulators::InstallAxisLeftMouseDownCallback(
@@ -118,6 +120,8 @@ namespace AzToolsFramework
         }
 
         m_uniformScaleManipulator->SetSpace(worldFromLocal);
+
+        m_space = worldFromLocal;
     }
 
     void ScaleManipulators::SetAxes(

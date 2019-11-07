@@ -19,9 +19,10 @@
 
 #include "ChatPlay/ChatPlayCVars.h"
 #include "Broadcast/BroadcastCVars.h"
-#if !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE) && !defined(LINUX)
+#include <ChatPlay_Traits_Platform.h>
+#if AZ_TRAIT_CHATPLAY_JOIN_AND_BROADCAST
 #include "JoinIn/JoinInCVars.h"
-#endif // !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE) && !defined(LINUX)
+#endif // AZ_TRAIT_CHATPLAY_JOIN_AND_BROADCAST
 
 
 namespace ChatPlay
@@ -55,10 +56,10 @@ namespace ChatPlay
         {
             CryHooksModule::OnCrySystemInitialized(system, systemInitParams);
             ChatPlayCVars::GetInstance()->RegisterCVars();
-#if !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE) && !defined(LINUX)
+#if AZ_TRAIT_CHATPLAY_JOIN_AND_BROADCAST
             JoinInCVars::GetInstance()->RegisterCVars();
             BroadcastCVars::GetInstance()->RegisterCVars();
-#endif // !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE) && !defined(LINUX)
+#endif // AZ_TRAIT_CHATPLAY_JOIN_AND_BROADCAST
         }
 
         void OnSystemEvent(ESystemEvent systemEvent, UINT_PTR wparam, UINT_PTR lparam)
@@ -74,10 +75,10 @@ namespace ChatPlay
             case ESYSTEM_EVENT_FULL_SHUTDOWN:
             case ESYSTEM_EVENT_FAST_SHUTDOWN:
                 ChatPlayCVars::GetInstance()->UnregisterCVars();
-#if !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE) && !defined(LINUX)
+#if AZ_TRAIT_CHATPLAY_JOIN_AND_BROADCAST
                 JoinInCVars::GetInstance()->UnregisterCVars();
                 BroadcastCVars::GetInstance()->UnregisterCVars();
-#endif // !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE) && !defined(LINUX)
+#endif // AZ_TRAIT_CHATPLAY_JOIN_AND_BROADCAST
                 break;
             default:
                 break;

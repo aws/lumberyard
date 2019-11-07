@@ -343,8 +343,6 @@ namespace EMotionFX
     {
         ActorInstance*  actorInstance   = instance->GetActorInstance();
         Actor*          actor           = actorInstance->GetActor();
-        TransformData*  transformData   = actorInstance->GetTransformData();
-        const Pose*     bindPose        = transformData->GetBindPose();
 
         // make sure the pose has the same number of transforms
         MCORE_ASSERT(outPose->GetNumTransforms() == actor->GetNumNodes());

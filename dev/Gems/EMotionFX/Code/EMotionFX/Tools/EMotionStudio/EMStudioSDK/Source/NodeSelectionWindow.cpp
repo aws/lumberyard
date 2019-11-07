@@ -64,12 +64,6 @@ namespace EMStudio
     }
 
 
-    // destructor
-    NodeSelectionWindow::~NodeSelectionWindow()
-    {
-    }
-
-
     void NodeSelectionWindow::OnDoubleClicked(MCore::Array<SelectionItem> selection)
     {
         MCORE_UNUSED(selection);

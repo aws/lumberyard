@@ -88,13 +88,12 @@ namespace AZ
          */
         void operator=(const T& rhs) { value = unary(value, rhs); }
 
-#if defined(AZ_HAS_RVALUE_REFS)
         /**
          * Overloads the assignment operator to aggregate a new value with
          * the existing aggregated value using rvalue-ref to move
          */
         void operator=(T&& rhs) { value = unary(value, AZStd::move(rhs)); }
-#endif // defined(AZ_HAS_RVALUE_REFS)
+
         /**
          * Disallows copying an EBusReduceResult object by reference.
          */
@@ -159,13 +158,12 @@ namespace AZ
             , unary(aggregator)
         { }
 
-#if defined(AZ_HAS_RVALUE_REFS)
         /**
          * Overloads the assignment operator to aggregate a new value with
          * the existing aggregated value using rvalue-ref
          */
         void operator=(T&& rhs)          { value = unary(value, AZStd::move(rhs)); }
-#endif // defined(AZ_HAS_RVALUE_REFS)
+
         /**
         * Overloads the assignment operator to aggregate a new value with
         * the existing aggregated value.  Used only when the return type is const, or const&
@@ -222,13 +220,11 @@ namespace AZ
          */
         void operator=(const T& rhs) { values.push_back(rhs); }
         
-#if defined(AZ_HAS_RVALUE_REFS)
         /**
          * Overloads the assignment operator to add a new result to a vector 
          * of previous results, using rvalue-reference to move
          */
         void operator=(T&& rhs) { values.push_back(AZStd::move(rhs)); }
-#endif // defined(AZ_HAS_RVALUE_REFS)
     };
 }
 

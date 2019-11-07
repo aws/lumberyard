@@ -588,7 +588,7 @@ namespace ScriptCanvasEditor
 
                     const ScriptCanvas::Slot* slot = node->GetSlot(scSlotId);
 
-                    if (!slot || slot->GetType() != ScriptCanvas::SlotType::DataIn)
+                    if (!slot || slot->GetDescriptor() != ScriptCanvas::SlotDescriptors::DataIn())
                     {
                         continue;
                     }

@@ -99,7 +99,7 @@ namespace LmbrCentral
                 editContext->Class<EditorHighQualityShadowComponent>("High Quality Shadow", "Assigns a unique shadow map to the entity to provide higher quality shadows. Has performance and memory impact so use sparingly.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Shadow.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Shadow.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Shadow.png")
                         ->Attribute(AZ::Edit::Attributes::PreferNoViewportIcon, true)
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)

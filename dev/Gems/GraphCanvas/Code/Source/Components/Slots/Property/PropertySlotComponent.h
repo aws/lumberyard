@@ -43,7 +43,7 @@ namespace GraphCanvas
     private:
         PropertySlotComponent(const PropertySlotComponent&) = delete;
         PropertySlotComponent& operator=(const PropertySlotComponent&) = delete;
-        AZ::Entity* ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection) const override;
+        AZ::Entity* ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection) override;
         
         AZ::Crc32 m_propertyId;
     };

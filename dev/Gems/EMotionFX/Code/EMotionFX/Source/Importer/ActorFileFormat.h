@@ -42,6 +42,7 @@ namespace EMotionFX
             ACTOR_CHUNK_MATERIALATTRIBUTESET  = 16,
             ACTOR_CHUNK_GENERICMATERIAL       = 17,       // Actor_GenericMaterial
             ACTOR_CHUNK_PHYSICSSETUP          = 18,
+            ACTOR_CHUNK_SIMULATEDOBJECTSETUP  = 19,
             ACTOR_FORCE_32BIT                 = 0xFFFFFFFF
         };
 

@@ -155,7 +155,6 @@ namespace
     }
 
     struct CGetValueVisitor
-        : public boost::static_visitor<void>
     {
     public:
         CGetValueVisitor(IVariablePtr pNode, const char* name)
@@ -201,7 +200,6 @@ namespace
     };
 
     struct CGetAtVisitor
-        : public boost::static_visitor<void>
     {
     public:
         CGetAtVisitor(IVariablePtr pNode, int elem)
@@ -250,14 +248,14 @@ namespace
 bool CVehicleDataSaver::GetValue(const char* name, TValue& value, const XmlNodeRef& definition)
 {
     CGetValueVisitor visitor(CurNode(), name);
-    boost::apply_visitor(visitor, value);
+    AZStd::visit(visitor, value);
     return visitor.Ok();
 }
 
 bool CVehicleDataSaver::GetAt(int elem, TValue& value, const XmlNodeRef& definition)
 {
     CGetAtVisitor visitor(CurNode(), elem);
-    boost::apply_visitor(visitor, value);
+    AZStd::visit(visitor, value);
     return visitor.Ok();
 }
 

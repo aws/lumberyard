@@ -35,7 +35,7 @@ namespace LmbrCentral
                     "Mannequin", "The Mannequin component animates a component entity using the Mannequin system")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Animation (Legacy)")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Mannequin.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Mannequin.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Mannequin.png")
 #ifndef ENABLE_LEGACY_ANIMATION
                         ->Attribute(AZ::Edit::Attributes::AddableByUser, false)

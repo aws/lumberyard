@@ -13,5 +13,7 @@ def build(bld):
 
     bld.DefineGem(
         use    = [ 'AzFramework' ],
-        includes = [bld.Path('Code/CryEngine/CryAction')],
+        includes = [bld.Path('Code/CryEngine/CryCommon'),
+                    bld.Path('Code/CryEngine/CryAction')
+                   ],
     )

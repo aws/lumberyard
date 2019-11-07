@@ -33,7 +33,7 @@ namespace ScriptCanvas
 
         bool HasErrors() const
         {
-            return HasSeverity(ValidationSeverity::Warning);
+            return HasSeverity(ValidationSeverity::Error);
         }
 
         int ErrorCount() const

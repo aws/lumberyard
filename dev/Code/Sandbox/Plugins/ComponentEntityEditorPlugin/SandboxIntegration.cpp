@@ -26,6 +26,7 @@
 #include <AzCore/Outcome/Outcome.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/Entity/EntityContextBus.h>
+#include <AzFramework/Physics/Material.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
@@ -1144,10 +1145,13 @@ bool SandboxIntegrationManager::CanGoToEntityOrChildren(const AZ::EntityId& enti
         isLayerEntity,
         entityId,
         &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
-    // If this entity is not a layer, then the camera can go to it.
+    // If this entity is not a layer
     if (!isLayerEntity)
     {
-        return true;
+        // check if the entity exists to determine if we can go to it (e.g. system & internal entities are not visible in the viewport)
+        AZ::Entity* entity = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
+        return entity != nullptr;
     }
 
     AZStd::vector<AZ::EntityId> layerChildren;
@@ -2432,6 +2436,12 @@ void SandboxIntegrationManager::BrowseForAssets(AssetSelectionModel& selection)
 
 void SandboxIntegrationManager::GenerateCubemapForEntity(AZ::EntityId entityId, AZStd::string* cubemapOutputPath, bool hideEntity)
 {
+    GenerateCubemapWithIDForEntity(entityId, AZ::Uuid::CreateNull(), cubemapOutputPath, hideEntity, false);
+}
+
+void SandboxIntegrationManager::GenerateCubemapWithIDForEntity(AZ::EntityId entityId, AZ::Uuid cubemapId,
+                                                         AZStd::string* cubemapOutputPath, bool hideEntity, bool hasCubemapId)
+{
     AZ::u32 resolution = 0;
     EBUS_EVENT_ID_RESULT(resolution, entityId, LmbrCentral::EditorLightComponentRequestBus, GetCubemapResolution);
 
@@ -2444,7 +2454,15 @@ void SandboxIntegrationManager::GenerateCubemapForEntity(AZ::EntityId entityId, 
             QString levelfolder = GetIEditor()->GetGameEngine()->GetLevelPath();
             QString levelname = Path::GetFile(levelfolder).toLower();
             QString fullGameFolder = QString(Path::GetEditingGameDataFolder().c_str());
-            QString texturename = QStringLiteral("%1_cm.tif").arg(static_cast<qulonglong>(componentEntity->GetAssociatedEntityId()));
+            QString texturename;
+            if (hasCubemapId)
+            {
+                texturename = QStringLiteral("%1_cm.tif").arg(cubemapId.ToString<QString>(false, false));
+            }
+            else
+            {
+                texturename = QStringLiteral("%1_cm.tif").arg(static_cast<qulonglong>(componentEntity->GetAssociatedEntityId()));
+            }
             texturename = texturename.toLower();
 
             QString fullFolder = Path::SubDirectoryCaseInsensitive(fullGameFolder, {"textures", "cubemaps", levelname});
@@ -3355,4 +3373,61 @@ bool SandboxIntegrationManager::IsNewViewportInteractionModelEnabled()
 bool SandboxIntegrationManager::DisplayHelpersVisible()
 {
     return GetIEditor()->GetDisplaySettings()->IsDisplayHelpers();
+}
+
+bool SandboxIntegrationManager::CreateSurfaceTypeMaterialLibrary(const AZStd::string & targetFilePath)
+{
+    auto assetType = AZ::AzTypeInfo<Physics::MaterialLibraryAsset>::Uuid();
+
+    // Create File
+    AZ::Data::Asset<AZ::Data::AssetData> newAsset = AZ::Data::AssetManager::Instance().CreateAsset(AZ::Uuid::CreateRandom(), assetType);
+
+    AZ::IO::FileIOStream fileStream(targetFilePath.c_str(), AZ::IO::OpenMode::ModeWrite);
+    if (fileStream.IsOpen())
+    {
+        Physics::MaterialLibraryAsset* materialLibraryAsset = azrtti_cast<Physics::MaterialLibraryAsset*>(newAsset.GetData());
+        if (materialLibraryAsset)
+        {
+            // Enumerate through CryEngine surface types and create a Physics API material for each of them
+            ISurfaceTypeEnumerator* surfaceTypeEnumerator = GetIEditor()->Get3DEngine()->GetMaterialManager()->GetSurfaceTypeManager()->GetEnumerator();
+            if (surfaceTypeEnumerator)
+            {
+                for (ISurfaceType* pSurfaceType = surfaceTypeEnumerator->GetFirst(); pSurfaceType != nullptr;
+                    pSurfaceType = surfaceTypeEnumerator->GetNext())
+                {
+                    const ISurfaceType::SPhysicalParams& physicalParams = pSurfaceType->GetPhyscalParams();
+
+                    Physics::MaterialFromAssetConfiguration configuration;
+                    configuration.m_configuration = Physics::MaterialConfiguration();
+                    configuration.m_configuration.m_dynamicFriction = physicalParams.friction;
+                    configuration.m_configuration.m_staticFriction = physicalParams.friction;
+                    configuration.m_configuration.m_restitution = physicalParams.bouncyness;
+                    configuration.m_configuration.m_surfaceType = pSurfaceType->GetType();
+                    configuration.m_id = Physics::MaterialId::Create();
+
+                    materialLibraryAsset->AddMaterialData(configuration);
+                }
+            }
+
+            // check it out in the source control system
+            AzToolsFramework::SourceControlCommandBus::Broadcast(
+                &AzToolsFramework::SourceControlCommandBus::Events::RequestEdit, targetFilePath.c_str(), true,
+                [](bool /*success*/, const AzToolsFramework::SourceControlFileInfo& /*info*/) {});
+
+            // Save the material library asset into a file
+            auto assetHandler = const_cast<AZ::Data::AssetHandler*>(AZ::Data::AssetManager::Instance().GetHandler(assetType));
+            if (assetHandler->SaveAssetData(newAsset, &fileStream))
+            {
+                return true;
+            }
+            else
+            {
+                AZ_Error("Physics", false,
+                    "CreateSurfaceTypeMaterialLibrary: Unable to save Surface Types Material Library Asset to %s",
+                    targetFilePath.c_str());
+            }
+        }
+    }
+
+    return false;
 }

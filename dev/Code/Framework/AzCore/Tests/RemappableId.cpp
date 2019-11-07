@@ -10,8 +10,7 @@
 *
 */
 
-#include "TestTypes.h"
-
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Serialization/IdUtils.h>
 

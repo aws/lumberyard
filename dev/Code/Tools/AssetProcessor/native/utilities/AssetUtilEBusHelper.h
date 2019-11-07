@@ -162,17 +162,13 @@ namespace AssetProcessor
 
         virtual ~ProcessingJobInfoBusTraits() {}
 
-        //! Will notify other systems which old product is just about to get removed from the cache 
-        //! before we copy the new product instead along. 
-        //! this path MUST be in normalized format - that is, forward slashes, correct case, absolute full path
-        //! and on windows, drive letter capital.
-        virtual void BeginIgnoringCacheFileDelete(const char* /*productPath*/) {};
-        
-        // Will notify other systems which product we are trying to copy in the cache 
-        // along with status of whether that copy succeeded or failed.
-        //! this path MUST be in normalized format - that is, forward slashes, correct case, absolute full path
-        //! and on windows, drive letter capital.
-        virtual void StopIgnoringCacheFileDelete(const char* /*productPath*/, bool /*queueAgainForProcessing*/) {};
+        // Will notify other systems a product is about to be updated in the cache. This can mean that 
+        // it will be created, overwritten with new data or deleted. BeginCacheFileUpdate is pared with 
+        // EndCacheFileUpdate.
+        virtual void BeginCacheFileUpdate(const char* /*productPath*/) {};
+        // Will notify other systems that a file in the cache has been updated along with status of whether it
+        // succeeded or failed. EndCacheFileUpdate is paired with BeginCacheFileUpdate.
+        virtual void EndCacheFileUpdate(const char* /*productPath*/, bool /*queueAgainForDeletion*/) {};
         virtual AZ::u32 GetJobFingerprint(const AssetProcessor::JobIndentifier& /*jobIndentifier*/) { return 0; };
     };
 

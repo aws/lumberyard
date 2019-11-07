@@ -1,0 +1,259 @@
+{
+    "name": "physx_sdk_shared",
+    "source": "@3P:PHYSXSDK@",
+    "description": "NVidia PhysX physics simulation backend.",
+    "defines": [],
+    "non_release_only": "False",
+    "lib_required": "True",
+    "engine_configs": "True",
+    "includes": ["physx/include", "pxshared/include"],
+    "aliases": {
+        "lib_names": [           
+            "PhysX",            
+            "PhysXCooking",
+            "PhysXFoundation",
+            "PhysXCommon"
+        ],
+        "lib_names_ext": [
+            "PhysXVehicle",
+            "PhysXPvdSDK",
+            "PhysXCharacterKinematic",
+            "PhysXExtensions"
+        ],
+        "lib_names_additional": [      
+            "LowLevel",
+            "LowLevelAABB",
+            "LowLevelDynamics",
+            "SimulationController",
+            "PhysXTask",
+            "SceneQuery"
+        ],
+        "lib_paths": ["physx/bin/"],
+        "lib_paths_win_x64_vs2015": ["${lib_paths}/win.x86_64.vc140.md.shared/"],
+        "lib_paths_win_x64_vs2017": ["${lib_paths}/win.x86_64.vc141.md.shared/"],
+        "lib_paths_orbis_vs2015": ["${lib_paths}/ps4.shared/"],
+        "lib_paths_durango_vs2015": ["${lib_paths}/xboxone.vc140.shared/"],
+        "lib_paths_durango_vs2017": ["${lib_paths}/xboxone.vc141.shared/"],
+        "lib_paths_linux_x64": ["${lib_paths}/linux.clang.shared/"],
+        "lib_paths_darwin_x64": ["${lib_paths}/mac.x86_64.shared/"],
+        "lib_paths_ios": ["${lib_paths}/ios.arm_64.shared/"],
+        "lib_paths_android_armv7_gcc": ["${lib_paths}/android.armeabi-v7a with NEON.shared/"],
+        "lib_paths_android_armv8_gcc": ["${lib_paths}/android.arm64-v8a.shared/"]
+    },
+    "platform": {
+        "win_x64_vs2015": {
+            "importlibpath_debug": ["${lib_paths_win_x64_vs2015}/debug"],
+            "importlibpath_profile": ["${lib_paths_win_x64_vs2015}/profile"],
+            "importlibpath_release": ["${lib_paths_win_x64_vs2015}/release"],
+            "importlibpath_performance": ["${lib_paths_win_x64_vs2015}/release"],
+
+            "sharedlibpath_debug": ["${lib_paths_win_x64_vs2015}/debug"],
+            "sharedlibpath_profile": ["${lib_paths_win_x64_vs2015}/profile"],
+            "sharedlibpath_release": ["${lib_paths_win_x64_vs2015}/release"],
+            "sharedlibpath_performance": ["${lib_paths_win_x64_vs2015}/release"],
+
+            "import": [
+                "${lib_names}_64.lib",
+                "${lib_names_ext}_static_64.lib",
+                "${lib_names_additional}_static_64.lib"
+            ],
+            
+            "shared": [
+                "${lib_names}_64.dll",
+                "PhysXGpu_64.dll",
+                "PhysXDevice64.dll"
+            ]
+        },
+        "win_x64_vs2017": {
+            "importlibpath_debug": ["${lib_paths_win_x64_vs2017}/debug"],
+            "importlibpath_profile": ["${lib_paths_win_x64_vs2017}/profile"],
+            "importlibpath_release": ["${lib_paths_win_x64_vs2017}/release"],
+            "importlibpath_performance": ["${lib_paths_win_x64_vs2017}/release"],
+
+            "sharedlibpath_debug": ["${lib_paths_win_x64_vs2017}/debug"],
+            "sharedlibpath_profile": ["${lib_paths_win_x64_vs2017}/profile"],
+            "sharedlibpath_release": ["${lib_paths_win_x64_vs2017}/release"],
+            "sharedlibpath_performance": ["${lib_paths_win_x64_vs2017}/release"],
+
+            "import": [
+                "${lib_names}_64.lib",
+                "${lib_names_ext}_static_64.lib",
+                "${lib_names_additional}_static_64.lib"
+            ],
+            
+            "shared": [
+                "${lib_names}_64.dll",
+                "PhysXGpu_64.dll",
+                "PhysXDevice64.dll"
+            ]
+        },
+        "win_x64_clang": "@win_x64_vs2017",
+        "orbis_vs2015": {
+            "importlibpath_debug": ["${lib_paths_orbis_vs2015}/debug"],
+            "importlibpath_profile": ["${lib_paths_orbis_vs2015}/profile"],
+            "importlibpath_release": ["${lib_paths_orbis_vs2015}/release"],
+            "importlibpath_performance": ["${lib_paths_orbis_vs2015}/release"],
+            
+            "sharedlibpath_debug": ["${lib_paths_orbis_vs2015}/debug"],
+            "sharedlibpath_profile": ["${lib_paths_orbis_vs2015}/profile"],
+            "sharedlibpath_release": ["${lib_paths_orbis_vs2015}/release"],
+            "sharedlibpath_performance": ["${lib_paths_orbis_vs2015}/release"],
+
+            "import": [
+                "lib${lib_names}_stub_weak.a",
+                "lib${lib_names_ext}_static.a",
+                "lib${lib_names_additional}_static.a"
+            ],
+            
+            "shared": [
+                "lib${lib_names}.prx"
+            ]
+        },
+        "orbis_vs2017": "@orbis_vs2015",
+        "durango_vs2015": {
+            "importlibpath_debug": ["${lib_paths_durango_vs2015}/debug"],
+            "importlibpath_profile": ["${lib_paths_durango_vs2015}/profile"],
+            "importlibpath_release": ["${lib_paths_durango_vs2015}/release"],
+            "importlibpath_performance": ["${lib_paths_durango_vs2015}/release"],
+            
+            "sharedlibpath_debug": ["${lib_paths_durango_vs2015}/debug"],
+            "sharedlibpath_profile": ["${lib_paths_durango_vs2015}/profile"],
+            "sharedlibpath_release": ["${lib_paths_durango_vs2015}/release"],
+            "sharedlibpath_performance": ["${lib_paths_durango_vs2015}/release"],
+
+            "import": [
+                "${lib_names}.lib",
+                "${lib_names_ext}_static.lib",
+                "${lib_names_additional}_static.lib"
+            ],
+            
+            "shared": [
+                "${lib_names}.dll"
+            ]
+        },
+        "durango_vs2017": {
+            "importlibpath_debug": ["${lib_paths_durango_vs2017}/debug"],
+            "importlibpath_profile": ["${lib_paths_durango_vs2017}/profile"],
+            "importlibpath_release": ["${lib_paths_durango_vs2017}/release"],
+            "importlibpath_performance": ["${lib_paths_durango_vs2017}/release"],
+            
+            "sharedlibpath_debug": ["${lib_paths_durango_vs2017}/debug"],
+            "sharedlibpath_profile": ["${lib_paths_durango_vs2017}/profile"],
+            "sharedlibpath_release": ["${lib_paths_durango_vs2017}/release"],
+            "sharedlibpath_performance": ["${lib_paths_durango_vs2017}/release"],
+
+            "import": [
+                "${lib_names}.lib",
+                "${lib_names_ext}_static.lib",
+                "${lib_names_additional}_static.lib"
+            ],
+            
+            "shared": [
+                "${lib_names}.dll"
+            ]
+        },
+        "linux_x64": {
+            "importlibpath_debug": ["${lib_paths_linux_x64}/debug"],
+            "importlibpath_profile": ["${lib_paths_linux_x64}/profile"],
+            "importlibpath_release": ["${lib_paths_linux_x64}/release"],
+            "importlibpath_performance": ["${lib_paths_linux_x64}/release"],
+
+            "sharedlibpath_debug": ["${lib_paths_linux_x64}/debug"],
+            "sharedlibpath_profile": ["${lib_paths_linux_x64}/profile"],
+            "sharedlibpath_release": ["${lib_paths_linux_x64}/release"],
+            "sharedlibpath_performance": ["${lib_paths_linux_x64}/release"],
+
+            "import": [
+                "lib${lib_names}_64.so",
+                "lib${lib_names_ext}_static_64.a"
+            ],
+            
+            "shared": [
+                "lib${lib_names}_64.so",
+                "libPhysXGpu_64.so"
+            ]
+        },
+        "darwin_x64": {
+            "importlibpath_debug": ["${lib_paths_darwin_x64}/debug"],
+            "importlibpath_profile": ["${lib_paths_darwin_x64}/profile"],
+            "importlibpath_release": ["${lib_paths_darwin_x64}/release"],
+            "importlibpath_performance": ["${lib_paths_darwin_x64}/release"],
+
+            "sharedlibpath_debug": ["${lib_paths_darwin_x64}/debug"],
+            "sharedlibpath_profile": ["${lib_paths_darwin_x64}/profile"],
+            "sharedlibpath_release": ["${lib_paths_darwin_x64}/release"],
+            "sharedlibpath_performance": ["${lib_paths_darwin_x64}/release"],
+
+            "import": [
+                "lib${lib_names}_64.dylib",
+                "lib${lib_names_ext}_static_64.a"
+            ],
+            
+            "shared": [
+                "lib${lib_names}_64.dylib"
+            ]
+        },
+        "ios": {
+            "importlibpath_debug": ["${lib_paths_ios}/debug"],
+            "importlibpath_profile": ["${lib_paths_ios}/profile"],
+            "importlibpath_release": ["${lib_paths_ios}/release"],
+            "importlibpath_performance": ["${lib_paths_ios}/release"],
+
+            "sharedlibpath_debug": ["${lib_paths_ios}/debug"],
+            "sharedlibpath_profile": ["${lib_paths_ios}/profile"],
+            "sharedlibpath_release": ["${lib_paths_ios}/release"],
+            "sharedlibpath_performance": ["${lib_paths_ios}/release"],
+
+            "import": [
+                "lib${lib_names}_64.dylib",
+                "lib${lib_names_ext}_static_64.a"
+            ],
+            
+            "shared": [
+                "lib${lib_names}_64.dylib"
+            ]
+        },
+        "android_armv7_gcc": {
+            "importlibpath_debug": ["${lib_paths_android_armv7_gcc}/debug"],
+            "importlibpath_profile": ["${lib_paths_android_armv7_gcc}/profile"],
+            "importlibpath_release": ["${lib_paths_android_armv7_gcc}/release"],
+            "importlibpath_performance": ["${lib_paths_android_armv7_gcc}/release"],
+
+            "sharedlibpath_debug": ["${lib_paths_android_armv7_gcc}/debug"],
+            "sharedlibpath_profile": ["${lib_paths_android_armv7_gcc}/profile"],
+            "sharedlibpath_release": ["${lib_paths_android_armv7_gcc}/release"],
+            "sharedlibpath_performance": ["${lib_paths_android_armv7_gcc}/release"],
+
+            "import": [
+                "lib${lib_names}.so",
+                "lib${lib_names_ext}_static.a"
+            ],
+            
+            "shared": [
+                "lib${lib_names}.so"
+            ]
+        },
+        "android_armv7_clang": "@android_armv7_gcc",
+        "android_armv8_gcc": {
+            "importlibpath_debug": ["${lib_paths_android_armv8_gcc}/debug"],
+            "importlibpath_profile": ["${lib_paths_android_armv8_gcc}/profile"],
+            "importlibpath_release": ["${lib_paths_android_armv8_gcc}/release"],
+            "importlibpath_performance": ["${lib_paths_android_armv8_gcc}/release"],
+
+            "sharedlibpath_debug": ["${lib_paths_android_armv8_gcc}/debug"],
+            "sharedlibpath_profile": ["${lib_paths_android_armv8_gcc}/profile"],
+            "sharedlibpath_release": ["${lib_paths_android_armv8_gcc}/release"],
+            "sharedlibpath_performance": ["${lib_paths_android_armv8_gcc}/release"],
+
+            "import": [
+                "lib${lib_names}.so",
+                "lib${lib_names_ext}_static.a"
+            ],
+            
+            "shared": [
+                "lib${lib_names}.so"
+            ]
+        },
+        "android_armv8_clang": "@android_armv8_gcc"
+    }
+}

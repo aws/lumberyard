@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Math/Color.h>
 #include <AzCore/Math/Quaternion.h>
@@ -54,7 +55,8 @@ namespace AzToolsFramework
 
         virtual ~BaseManipulator();
 
-    private:
+        using EntityComponentIds = AZStd::unordered_set<AZ::EntityComponentIdPair>;
+
         /// Callback for the event when the mouse pointer is over this manipulator and the left mouse button is pressed.
         /// @param interaction It contains various mouse states when the event happens, as well as a ray shooting from the viewing camera through the mouse pointer.
         /// @param rayIntersectionDistance The parameter value in the ray's explicit equation that represents the intersecting point on the target manipulator in world space.
@@ -87,14 +89,6 @@ namespace AzToolsFramework
         /// It is called in the event of OnMouseMove and OnMouseWheel only when there is no manipulator currently performing actions.
         bool OnMouseOver(ManipulatorId /*manipulatorId*/, const ViewportInteraction::MouseInteraction& interaction);
 
-        /// Rendering for the manipulator - it is recommended drawing be delegated to a ManipulatorView.
-        virtual void Draw(
-            const ManipulatorManagerState& managerState,
-            AzFramework::DebugDisplayRequests& debugDisplay,
-            const AzFramework::CameraState& cameraState,
-            const ViewportInteraction::MouseInteraction& mouseInteraction) = 0;
-
-    public:
         /// Register itself to a manipulator manager so that it can receive various mouse events and perform manipulations.
         /// @param managerId The id identifying a unique manipulator manager.
         void Register(ManipulatorManagerId managerId);
@@ -130,13 +124,44 @@ namespace AzToolsFramework
         static AZ::EntityId GetEntityId() { return AZ::EntityId(); }
 
         /// The id of the Entities this manipulator is associated with.
-        const AZStd::set<AZ::EntityId>& EntityIds() const { return m_entityIds; }
+        AZ_DEPRECATED(, "EntityIds() is deprecated, please use EntityComponentIdPairs()")
+        const AZStd::unordered_set<AZ::EntityId> EntityIds() const
+        {
+            AZStd::unordered_set<AZ::EntityId> entityIds;
+            for (const AZ::EntityComponentIdPair& entityComponentIdPair : m_entityComponentIdPairs)
+            {
+                entityIds.insert(entityComponentIdPair.GetEntityId());
+            }
 
+            return entityIds;
+        }
+
+        /// Returns all EntityComponentIdPairs associated with this manipulator.
+        const EntityComponentIds& EntityComponentIdPairs() const
+        {
+            return m_entityComponentIdPairs;
+        }
+
+        // Note: intentionally left commented (disabled) to stop warnings firing while this call is still in use.
+        // AZ_DEPRECATED(, "AddEntityId() is deprecated, please use AddEntityComponentIdPair()")
         /// Add an entity the manipulator is responsible for.
         void AddEntityId(AZ::EntityId entityId);
 
+        /// Add an entity and component the manipulator is responsible for.
+        void AddEntityComponentIdPair(const AZ::EntityComponentIdPair& entityComponentIdPair);
+
         /// Remove an entity from being affected by this manipulator.
-        AZStd::set<AZ::EntityId>::iterator RemoveEntityId(AZ::EntityId entityId);
+        /// @note All components on this entity registered with the manipulator will be removed.
+        EntityComponentIds::iterator RemoveEntityId(AZ::EntityId entityId);
+
+        /// Remove a specific component (via a EntityComponentIdPair) being affected by this manipulator.
+        EntityComponentIds::iterator RemoveEntityComponentIdPair(const AZ::EntityComponentIdPair& entityComponentIdPair);
+
+        /// Is this entity currently being tracked by this manipulator.
+        bool HasEntityId(AZ::EntityId entityId) const ;
+
+        /// Is this entity component pair currently being tracked by this manipulator.
+        bool HasEntityComponentIdPair(const AZ::EntityComponentIdPair& entityComponentIdPair) const;
 
         static const AZ::Color s_defaultMouseOverColor;
 
@@ -174,7 +199,8 @@ namespace AzToolsFramework
         virtual void OnMouseMoveImpl(const ViewportInteraction::MouseInteraction& /*interaction*/) {}
 
         /// The implementation to override in a derived class for OnMouseOver.
-        virtual void OnMouseOverImpl(ManipulatorId /*manipulatorId*/, const ViewportInteraction::MouseInteraction& /*interaction*/) {}
+        virtual void OnMouseOverImpl(
+            ManipulatorId /*manipulatorId*/, const ViewportInteraction::MouseInteraction& /*interaction*/) {}
 
         /// The implementation to override in a derived class for OnMouseWheel.
         virtual void OnMouseWheelImpl(const ViewportInteraction::MouseInteraction& /*interaction*/) {}
@@ -182,10 +208,16 @@ namespace AzToolsFramework
         /// The implementation to override in a derived class for SetBoundsDirty.
         virtual void SetBoundsDirtyImpl() {}
 
+        /// Rendering for the manipulator - it is recommended drawing be delegated to a ManipulatorView.
+        virtual void Draw(
+            const ManipulatorManagerState& managerState,
+            AzFramework::DebugDisplayRequests& debugDisplay,
+            const AzFramework::CameraState& cameraState,
+            const ViewportInteraction::MouseInteraction& mouseInteraction) = 0;
+
     private:
         friend class ManipulatorManager;
-
-        AZStd::set<AZ::EntityId> m_entityIds; ///< The entities this manipulator is associated with.
+        AZStd::unordered_set<AZ::EntityComponentIdPair> m_entityComponentIdPairs; ///< The entities this manipulator is associated with.
 
         ManipulatorId m_manipulatorId = InvalidManipulatorId; ///< The unique id of this manipulator.
         ManipulatorManagerId m_manipulatorManagerId = InvalidManipulatorManagerId; ///< The manager this manipulator was registered with.
@@ -217,6 +249,9 @@ namespace AzToolsFramework
 
         /// Record an action as having stopped.
         void EndAction();
+
+        /// Let other systems (UI) know that a component property has been modified by a manipulator.
+        void NotifyEntityComponentPropertyChanged();
     };
 
     /// Base class to be used when composing aggregate manipulator types - wraps some
@@ -229,13 +264,19 @@ namespace AzToolsFramework
         void Register(ManipulatorManagerId manipulatorManagerId);
         void Unregister();
         void SetBoundsDirty();
+        AZ_DEPRECATED(, "AddEntityId() is deprecated, please use AddEntityComponentIdPair()")
         void AddEntityId(AZ::EntityId entityId);
+        void AddEntityComponentIdPair(const AZ::EntityComponentIdPair& entityComponentIdPair);
         void RemoveEntityId(AZ::EntityId entityId);
+        void RemoveEntityComponentIdPair(const AZ::EntityComponentIdPair& entityComponentIdPair);
         bool PerformingAction();
         bool Registered();
 
+        AZ_DEPRECATED(, "GetPosition() is deprecated, please use GetLocalTransform().GetTranslation()")
         AZ::Vector3 GetPosition() const { return m_localTransform.GetPosition(); }
+
         const AZ::Transform& GetLocalTransform() const { return m_localTransform; }
+        const AZ::Transform& GetSpace() const { return m_space; }
 
         virtual void SetSpace(const AZ::Transform& worldFromLocal) = 0;
         virtual void SetLocalTransform(const AZ::Transform& localTransform) = 0;
@@ -250,7 +291,8 @@ namespace AzToolsFramework
         /// individual manipulators used in an aggregate manipulator.
         virtual void ProcessManipulators(const AZStd::function<void(BaseManipulator*)>&) = 0;
 
-        AZ::Transform m_localTransform = AZ::Transform::CreateIdentity(); ///< Local space transform of TranslationManipulators.
+        AZ::Transform m_localTransform = AZ::Transform::CreateIdentity(); ///< Local space transform of Manipulators.
+        AZ::Transform m_space = AZ::Transform::CreateIdentity(); ///< Space the Manipulators are in.
     };
 
     namespace Internal

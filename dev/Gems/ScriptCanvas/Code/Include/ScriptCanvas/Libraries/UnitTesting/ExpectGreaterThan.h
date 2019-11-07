@@ -44,15 +44,17 @@ namespace ScriptCanvas
                 ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", ""));
 
             private:
-                ScriptCanvas_Property(AZStd::string,
-                    ScriptCanvas_Property::Name("Candidate", "left of >"),
-                    ScriptCanvas_Property::Input,
-                    ScriptCanvas_Property::Overloaded);
-                
-                ScriptCanvas_Property(AZStd::string,
-                    ScriptCanvas_Property::Name("Reference", "right of >"),
-                    ScriptCanvas_Property::Input,
-                    ScriptCanvas_Property::Overloaded);
+                ScriptCanvas_DynamicDataSlot(DynamicDataType::Any,
+                                             ConnectionType::Input,
+                                             ScriptCanvas_DynamicDataSlot::Name("Candidate", "left of >")
+                                             ScriptCanvas_DynamicDataSlot::DynamicGroup("DynamicGroup")
+                                            );
+
+                ScriptCanvas_DynamicDataSlot(DynamicDataType::Any,
+                                             ConnectionType::Input,
+                                             ScriptCanvas_DynamicDataSlot::Name("Reference", "right of >")
+                                             ScriptCanvas_DynamicDataSlot::DynamicGroup("DynamicGroup")
+                                            );
 
                 ScriptCanvas_Property(AZStd::string,
                     ScriptCanvas_Property::Name("Report", "additional notes for the test report"),

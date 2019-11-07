@@ -55,6 +55,7 @@ namespace ScriptCanvas
             AddNodeToRegistry<Operators, OperatorSub>(nodeRegistry);
             AddNodeToRegistry<Operators, OperatorLength>(nodeRegistry);
             AddNodeToRegistry<Operators, Nodes::LerpBetween>(nodeRegistry);
+            AddNodeToRegistry<Operators, OperatorDivideByNumber>(nodeRegistry);
 
             // Containers
             AddNodeToRegistry<Operators, OperatorAt>(nodeRegistry);
@@ -80,6 +81,7 @@ namespace ScriptCanvas
                 ScriptCanvas::Nodes::Operators::OperatorSub::CreateDescriptor(),
                 ScriptCanvas::Nodes::Operators::OperatorLength::CreateDescriptor(),
                 ScriptCanvas::Nodes::LerpBetween::CreateDescriptor(),
+                ScriptCanvas::Nodes::Operators::OperatorDivideByNumber::CreateDescriptor(),
 
                 // Containers
                 ScriptCanvas::Nodes::Operators::OperatorAt::CreateDescriptor(),

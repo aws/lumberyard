@@ -35,42 +35,12 @@ namespace GraphCanvas
         , public SceneBookmarkRequestBus::Handler
         , public SceneMemberNotificationBus::Handler
         , public EntitySaveDataRequestBus::Handler
+        , public BookmarkAnchorComponentSaveDataCallback
     {
     public:
         AZ_COMPONENT(BookmarkAnchorComponent, "{33C63E10-81EE-458D-A716-F63478E57517}");
 
         static void Reflect(AZ::ReflectContext* reflectContext);
-
-        class BookmarkAnchorComponentSaveData
-            : public ComponentSaveData
-        {
-        public:
-            AZ_RTTI(BookmarkAnchorComponentSaveData, "{E285D2EF-ABD4-438D-8797-DA1F099DAE51}", ComponentSaveData);
-            AZ_CLASS_ALLOCATOR(BookmarkAnchorComponentSaveData, AZ::SystemAllocator, 0);
-
-            BookmarkAnchorComponentSaveData();
-            BookmarkAnchorComponentSaveData(BookmarkAnchorComponent* component);
-
-            void operator=(const BookmarkAnchorComponentSaveData& other);
-
-            void OnBookmarkNameChanged();
-            void OnBookmarkColorChanged();
-
-            void SetVisibleArea(QRectF visibleArea);
-            QRectF GetVisibleArea(const QPointF& center) const;
-            bool HasVisibleArea() const;
-
-            int m_shortcut;
-            AZStd::string m_bookmarkName;
-            AZ::Color m_color;
-
-            AZ::Vector2 m_position;
-            AZ::Vector2 m_dimension;
-
-        private:
-
-            BookmarkAnchorComponent* m_callback;
-        };
 
         friend class BookmarkVisualComponentSaveData;
 
@@ -113,9 +83,11 @@ namespace GraphCanvas
         ////
 
     protected:
-
-        void OnBookmarkNameChanged();
-        void OnBookmarkColorChanged();
+        
+        // SaveDataCallback
+        void OnBookmarkNameChanged() override;
+        void OnBookmarkColorChanged() override;
+        ////
 
     private:
 

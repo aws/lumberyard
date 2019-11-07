@@ -15,7 +15,7 @@
 
 #include "SynergyKeyboard.h"
 
-#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard_win_scancodes.inl>
+#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboardWindowsScanCodes.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace SynergyInput

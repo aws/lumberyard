@@ -12,6 +12,7 @@
 #pragma once
 
 #include <ScriptCanvas/Core/Contract.h>
+#include <ScriptCanvas/Data/Data.h>
 
 namespace ScriptCanvas
 {

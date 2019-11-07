@@ -40,7 +40,7 @@ typedef unsigned __int64  uint64_t;
 #include "Core/UnixCompat.h"
 #endif
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
 #include <stdint.h>
 #endif
 

@@ -13,7 +13,7 @@
 #define CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTENTITYATTRIBUTES_H
 #pragma once
 
-#include "BoostHelpers.h"
+#include "SmartPointersHelpers.h"
 
 struct IEntityAttribute;
 
@@ -36,7 +36,7 @@ struct IComponentEntityAttributes
     virtual const TEntityAttributeArray& GetAttributes() const = 0;
 };
 
-DECLARE_COMPONENT_POINTERS(IComponentEntityAttributes)
+DECLARE_SMART_POINTERS(IComponentEntityAttributes)
 
 namespace EntityAttributeUtils
 {

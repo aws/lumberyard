@@ -40,6 +40,9 @@
             "CommandLine/CommandLine.h",
             "CommandLine/CommandRegistrationBus.h"
         ],
+        "Debug": [
+            "Debug/DebugCameraBus.h"
+        ],
         "Viewport": [
             "Viewport/ViewportColors.h",
             "Viewport/ViewportColors.cpp",
@@ -86,6 +89,119 @@
         "InGameUI": [
             "InGameUI/UiFrameworkBus.h"
         ],
+        "IO": [
+            "IO/LocalFileIO.cpp",
+            "IO/LocalFileIO.h",
+            "IO/FileOperations.h",
+            "IO/FileOperations.cpp"
+        ],
+        "Math": [
+            "Math/InterpolationSample.h",
+            "Math/MathUtils.cpp",
+            "Math/MathUtils.h"
+        ],
+        "Metrics":  [
+            "Metrics/MetricsPlainTextNameRegistration.h"
+        ],
+        "Network": [
+            "Network/AssetProcessorConnection.cpp",
+            "Network/AssetProcessorConnection.h",
+            "Network/DynamicSerializableFieldMarshaler.h",
+            "Network/EntityIdMarshaler.h",
+            "Network/InterestManagerComponent.h",
+            "Network/InterestManagerComponent.cpp",
+            "Network/NetBindable.h",
+            "Network/NetBindable.cpp",
+            "Network/NetBindingEventsBus.h",
+            "Network/NetBindingHandlerBus.h",
+            "Network/NetBindingSystemBus.h",
+            "Network/NetBindingComponent.h",
+            "Network/NetBindingComponent.cpp",
+            "Network/NetBindingComponentChunk.h",
+            "Network/NetBindingComponentChunk.cpp",
+            "Network/NetBindingSystemImpl.h",
+            "Network/NetBindingSystemImpl.cpp",
+            "Network/NetBindingSystemComponent.h",
+            "Network/NetBindingSystemComponent.cpp",
+            "Network/NetworkContext.h",
+            "Network/NetworkContext.cpp",
+            "Network/NetSystemBus.h",
+            "Network/SocketConnection.cpp",
+            "Network/SocketConnection.h"
+        ],
+        "Logging": [
+            "Logging/LogFile.cpp",
+            "Logging/LogFile.h",
+            "Logging/LoggingComponent.cpp",
+            "Logging/LoggingComponent.h",
+            "Logging/StartupLogSinkReporter.cpp",
+            "Logging/StartupLogSinkReporter.h"
+        ],
+        "Script": [
+            "Script/ScriptComponent.h",
+            "Script/ScriptComponent.cpp",
+            "Script/ScriptDebugAgentBus.h",
+            "Script/ScriptDebugMsgReflection.cpp",
+            "Script/ScriptDebugMsgReflection.h",
+            "Script/ScriptMarshal.h",
+            "Script/ScriptMarshal.cpp",
+            "Script/ScriptNetBindings.h",
+            "Script/ScriptNetBindings.cpp",
+            "Script/ScriptRemoteDebugging.cpp",
+            "Script/ScriptRemoteDebugging.h"
+        ],
+        "Physics": [
+            "Physics/AnimationConfiguration.cpp",
+            "Physics/AnimationConfiguration.h",
+            "Physics/Character.cpp",
+            "Physics/Character.h",
+            "Physics/Collision.cpp",
+            "Physics/Collision.h",
+            "Physics/CollisionBus.h",
+            "Physics/Material.cpp",
+            "Physics/Material.h",
+            "Physics/RigidBody.cpp",
+            "Physics/RigidBody.h",
+            "Physics/RigidBodyBus.h",
+            "Physics/Shape.cpp",
+            "Physics/Shape.h",
+            "Physics/ShapeConfiguration.h",
+            "Physics/ShapeConfiguration.cpp",
+            "Physics/SystemBus.h",
+            "Physics/World.cpp",
+            "Physics/World.h",
+            "Physics/Casts.h",
+            "Physics/Casts.cpp",
+            "Physics/WorldBody.cpp",
+            "Physics/WorldBody.h",
+            "Physics/ColliderComponentBus.h",
+            "Physics/ConstraintComponentBus.h",
+            "Physics/PhysicsComponentBus.h",
+            "Physics/PhysicsSystemComponentBus.h",
+            "Physics/PhysicsSystemComponentBus.inl",
+            "Physics/RagdollPhysicsBus.h",
+            "Physics/CharacterPhysicsDataBus.h",
+            "Physics/CharacterBus.h",
+            "Physics/Ragdoll.cpp",
+            "Physics/Ragdoll.h",
+            "Physics/Utils.h",
+            "Physics/Utils.cpp",
+            "Physics/Joint.h",
+            "Physics/Joint.cpp",
+            "Physics/TriggerBus.h",
+            "Physics/CollisionNotificationBus.h",
+            "Physics/TerrainBus.h",
+            "Physics/ClassConverters.cpp",
+            "Physics/ClassConverters.h",
+            "Physics/MaterialBus.h",
+            "Physics/TouchBendingBus.h",
+            "Physics/WorldEventhandler.h",
+            "Physics/ScriptCanvasPhysicsUtils.h",
+            "Physics/ScriptCanvasPhysicsUtils.cpp"
+        ]
+    },
+    "AzFramework_Input_Uber.cpp":
+    {
         "Input/Buses/Notifications": [
             "Input/Buses/Notifications/InputChannelNotificationBus.h",
             "Input/Buses/Notifications/InputDeviceNotificationBus.h",
@@ -144,7 +260,8 @@
         ],
         "Input/Devices/Keyboard": [
             "Input/Devices/Keyboard/InputDeviceKeyboard.cpp",
-            "Input/Devices/Keyboard/InputDeviceKeyboard.h"
+            "Input/Devices/Keyboard/InputDeviceKeyboard.h",
+            "Input/Devices/Keyboard/InputDeviceKeyboardWindowsScanCodes.h"
         ],
         "Input/Devices/Motion": [
             "Input/Devices/Motion/InputDeviceMotion.cpp",
@@ -183,127 +300,17 @@
             "Input/Utils/AdjustAnalogInputForDeadZone.h",
             "Input/Utils/IsAnyKeyOrButton.h",
             "Input/Utils/ProcessRawInputEventQueues.h"
-        ],
-        "IO": [
-            "IO/LocalFileIO.cpp",
-            "IO/LocalFileIO.h",
-            "IO/LocalFileIO_android.inl",
-            "IO/LocalFileIO_posix.inl",
-            "IO/LocalFileIO_win.inl",
-            "IO/FileOperations.h",
-            "IO/FileOperations.cpp"
-        ],
-        "Math": [
-            "Math/InterpolationSample.h",
-            "Math/MathUtils.cpp",
-            "Math/MathUtils.h"
-        ],
-        "Metrics":  [
-            "Metrics/MetricsPlainTextNameRegistration.h"
-        ],
-        "Network": [
-            "Network/AssetProcessorConnection.cpp",
-            "Network/AssetProcessorConnection.h",
-            "Network/DynamicSerializableFieldMarshaler.h",
-            "Network/EntityIdMarshaler.h",
-            "Network/InterestManagerComponent.h",
-            "Network/InterestManagerComponent.cpp",
-            "Network/NetBindable.h",
-            "Network/NetBindable.cpp",
-            "Network/NetBindingEventsBus.h",
-            "Network/NetBindingHandlerBus.h",
-            "Network/NetBindingSystemBus.h",
-            "Network/NetBindingComponent.h",
-            "Network/NetBindingComponent.cpp",
-            "Network/NetBindingComponentChunk.h",
-            "Network/NetBindingComponentChunk.cpp",
-            "Network/NetBindingSystemImpl.h",
-            "Network/NetBindingSystemImpl.cpp",
-            "Network/NetBindingSystemComponent.h",
-            "Network/NetBindingSystemComponent.cpp",
-            "Network/NetworkContext.h",
-            "Network/NetworkContext.cpp",
-            "Network/NetSystemBus.h",
-            "Network/SocketConnection.cpp",
-            "Network/SocketConnection.h"
-        ],
-        "Logging": [
-            "Logging/LogFile.cpp",
-            "Logging/LogFile.h",
-            "Logging/LoggingComponent.cpp",
-            "Logging/LoggingComponent.h",
-            "Logging/StartupLogSinkReporter.cpp",
-            "Logging/StartupLogSinkReporter.h"
-        ],
-      "Script": [
-        "Script/ScriptComponent.h",
-        "Script/ScriptComponent.cpp",
-        "Script/ScriptDebugAgentBus.h",
-        "Script/ScriptDebugMsgReflection.cpp",
-        "Script/ScriptDebugMsgReflection.h",
-        "Script/ScriptMarshal.h",
-        "Script/ScriptMarshal.cpp",
-        "Script/ScriptNetBindings.h",
-        "Script/ScriptNetBindings.cpp",
-        "Script/ScriptRemoteDebugging.cpp",
-        "Script/ScriptRemoteDebugging.h"
-      ],
-        "Physics": [
-            "Physics/AnimationConfiguration.cpp",
-            "Physics/AnimationConfiguration.h",
-            "Physics/Character.cpp",
-            "Physics/Character.h",
-            "Physics/Collision.cpp",
-            "Physics/Collision.h",
-            "Physics/CollisionBus.h",
-            "Physics/Material.cpp",
-            "Physics/Material.h",
-            "Physics/RigidBody.cpp",
-            "Physics/RigidBody.h",
-            "Physics/RigidBodyBus.h",
-            "Physics/Shape.cpp",
-            "Physics/Shape.h",
-            "Physics/ShapeConfiguration.h",
-            "Physics/ShapeConfiguration.cpp",
-            "Physics/SystemBus.h",
-            "Physics/World.cpp",
-            "Physics/World.h",
-            "Physics/Casts.h",
-            "Physics/Casts.cpp",
-            "Physics/WorldBody.cpp",
-            "Physics/WorldBody.h",
-            "Physics/ColliderComponentBus.h",
-            "Physics/ConstraintComponentBus.h",
-            "Physics/PhysicsComponentBus.h",
-            "Physics/PhysicsSystemComponentBus.h",
-            "Physics/PhysicsSystemComponentBus.inl",
-            "Physics/RagdollPhysicsBus.h",
-            "Physics/CharacterPhysicsDataBus.h",
-            "Physics/CharacterBus.h",
-            "Physics/Ragdoll.cpp",
-            "Physics/Ragdoll.h",
-            "Physics/Utils.h",
-            "Physics/Utils.cpp",
-            "Physics/Joint.h",
-            "Physics/Joint.cpp",
-            "Physics/TriggerBus.h",
-            "Physics/CollisionNotificationBus.h",
-            "Physics/TerrainBus.h",
-            "Physics/ClassConverters.cpp",
-            "Physics/ClassConverters.h",
-            "Physics/MaterialBus.h",
-            "Physics/TouchBendingBus.h",
-            "Physics/WorldEventHandler.h"
         ]
     },
-    "AzFramework_Uber_misc0.cpp": {
-        "TargetManagement": [
+    "AzFramework_TargetManagement_Uber.cpp":
+    {
+        "TargetManagement":
+        [
             "TargetManagement/NeighborhoodAPI.cpp",
             "TargetManagement/NeighborhoodAPI.h",
             "TargetManagement/TargetManagementAPI.h",
             "TargetManagement/TargetManagementComponent.cpp",
             "TargetManagement/TargetManagementComponent.h"
-
         ]
     }
 }

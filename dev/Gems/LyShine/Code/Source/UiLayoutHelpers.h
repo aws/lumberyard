@@ -22,6 +22,7 @@ namespace UiLayoutHelpers
 
         float m_minSize;
         float m_targetSize;
+        float m_maxSize;
         float m_extraSizeRatio;
     };
 

@@ -5,6 +5,7 @@
         [
           "test_Main.cpp",
           "TestProfiler.cpp",
+          "Tests.h",
           "Session.cpp",
           "Serialize.cpp",
           "Certificates.cpp",

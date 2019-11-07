@@ -64,7 +64,7 @@ namespace RoadsAndRivers
                     "Road", "The Road component is used to create roads on the terrain")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Terrain")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Road.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Road.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Road.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/road-component")

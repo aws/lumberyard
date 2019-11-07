@@ -389,7 +389,8 @@ def add_pch_to_dependencies(self):
 class pch_msvc(waflib.Task.Task):
     run_str = '${CXX} ${PCH_CREATE_ST:PCH_NAME} ${CXXFLAGS} ${CPPPATH_ST:INCPATHS} ${DEFINES_ST:DEFINES} ${SRC} ${CXX_TGT_F}${PCH_OBJ} ${PCH_FILE}'
     scan    = c_preproc.scan
-    color   = 'BLUE'    
+    color   = 'BLUE'
+    nocache = True
     
     def exec_command(self, *k, **kw):   
         return exec_command_msvc(self, *k, **kw)

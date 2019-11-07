@@ -24,9 +24,7 @@ namespace ScriptCanvasEditor
 {
     class EntityRefNodeDescriptorComponent
         : public NodeDescriptorComponent
-        , public AZ::EntityBus::Handler
-        , public ScriptCanvas::NodeNotificationsBus::Handler
-        , public GraphCanvas::NodeNotificationBus::Handler
+        , public AZ::EntityBus::Handler        
     {
     public:
         AZ_COMPONENT(EntityRefNodeDescriptorComponent, "{887AE9AC-C793-4FE5-BAE2-AF6A7F70A374}", NodeDescriptorComponent);
@@ -35,17 +33,8 @@ namespace ScriptCanvasEditor
         EntityRefNodeDescriptorComponent();
         ~EntityRefNodeDescriptorComponent() = default;
 
-        // Component
-        void Activate() override;
-        void Deactivate() override;
-        ////
-
         // AZ::EntityBus
         void OnEntityNameChanged(const AZStd::string& name) override;
-        ////
-        
-        // GraphCanvas::NodeNotificationBus
-        void OnAddedToScene(const AZ::EntityId& sceneId);
         ////
         
         // ScriptCanvas::NodeNotificationsBus
@@ -54,9 +43,9 @@ namespace ScriptCanvasEditor
 
     private:
 
+        void OnAddedToGraphCanvasGraph(const GraphCanvas::GraphId& graphId, const AZ::EntityId& scriptCanvasNodeId) override;
+
         AZ::EntityId GetReferencedEntityId() const;
-    
-        void PopulateIds();
         void UpdateNodeTitle();
         
         ScriptCanvas::Endpoint m_endpoint;

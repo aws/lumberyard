@@ -238,20 +238,6 @@ namespace AZStd
         {
             clear();
         }
-#ifdef AZ_HAS_RVALUE_REFS
-        //forward_list(this_type&& rhs)
-        //  : m_numElements(rhs.m_numElements)
-        //  , m_allocator(rhs.m_allocator)
-        //{
-        //  m_head =
-        //  base_node_type      m_head;             ///< Node header.
-        //  base_node_ptr_type  m_lastNode;         ///< Cached last valid node.
-        //  size_type           m_numElements;      ///< Number of elements so size() is O(1).
-        //  // reset rhs
-        //  rhs.m_head.m_next = rhs.m_lastNode = &rhs.m_head;
-        //  rhs.m_numElements = 0;
-        //}
-#endif //AZ_HAS_RVALUE_REFS
 
         AZ_FORCE_INLINE this_type& operator=(const this_type& rhs)
         {

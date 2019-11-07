@@ -85,8 +85,10 @@ namespace AzQtComponents
         QImage m_sample;
         QColor m_color;
 
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::Eyedropper::m_grabber': class 'QScopedPointer<AzQtComponents::ScreenGrabber,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'AzQtComponents::Eyedropper'
         QScopedPointer<ScreenGrabber> m_grabber;
         QScopedPointer<MouseHider> m_mouseHider;
+        AZ_POP_DISABLE_WARNING
     };
 
 } // namespace AzQtComponents

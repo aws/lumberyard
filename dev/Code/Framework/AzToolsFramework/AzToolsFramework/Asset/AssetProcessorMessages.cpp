@@ -500,5 +500,51 @@ namespace AzToolsFramework
                     ->Field("FilePath", &AssetBrowserShowRequest::m_filePath);
             }
         }
+
+        //---------------------------------------------------------------------
+        SourceAssetProductsInfoRequest::SourceAssetProductsInfoRequest(const AZ::Data::AssetId& assetId)
+            : m_assetId(assetId)
+        {
+        }
+
+        unsigned int SourceAssetProductsInfoRequest::MessageType()
+        {
+            static unsigned int messageType = AZ_CRC("AssetProcessor::SourceAssetProductsInfoRequest", 0x97f169fc);
+            return messageType;
+        }
+
+        unsigned int SourceAssetProductsInfoRequest::GetMessageType() const
+        {
+            return MessageType();
+        }
+
+        void SourceAssetProductsInfoRequest::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<SourceAssetProductsInfoRequest, BaseAssetProcessorMessage>()
+                    ->Version(1)
+                    ->Field("AssetId", &SourceAssetProductsInfoRequest::m_assetId);
+            }
+        }
+
+        //---------------------------------------------------------------------
+        unsigned int SourceAssetProductsInfoResponse::GetMessageType() const
+        {
+            return SourceAssetProductsInfoRequest::MessageType();
+        }
+
+        void SourceAssetProductsInfoResponse::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<SourceAssetProductsInfoResponse, BaseAssetProcessorMessage>()
+                    ->Version(1)
+                    ->Field("Found", &SourceAssetProductsInfoResponse::m_found)
+                    ->Field("ProductsAssetInfo", &SourceAssetProductsInfoResponse::m_productsAssetInfo);
+            }
+        }
     } // namespace AssetSystem
 } // namespace AzToolsFramework

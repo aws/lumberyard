@@ -34,7 +34,7 @@
 #include <AzFramework/Physics/SystemBus.h>
 #include <AzFramework/Physics/TriggerBus.h>
 #include <AzFramework/Physics/World.h>
-#include <AzFramework/Physics/WorldEventHandler.h>
+#include <AzFramework/Physics/WorldEventhandler.h>
 
 namespace PhysX
 {
@@ -89,14 +89,14 @@ namespace PhysX
 
         void OnTriggerEnter(const Physics::TriggerEvent& triggerEvent) override
         {
-            Physics::TriggerNotificationBus::Event(triggerEvent.m_triggerBody->GetEntityId()
+            Physics::TriggerNotificationBus::QueueEvent(triggerEvent.m_triggerBody->GetEntityId()
                 , &Physics::TriggerNotifications::OnTriggerEnter
                 , triggerEvent);
         }
 
         void OnTriggerExit(const Physics::TriggerEvent& triggerEvent) override
         {
-            Physics::TriggerNotificationBus::Event(triggerEvent.m_triggerBody->GetEntityId()
+            Physics::TriggerNotificationBus::QueueEvent(triggerEvent.m_triggerBody->GetEntityId()
                 , &Physics::TriggerNotifications::OnTriggerExit
                 , triggerEvent);
         }
@@ -222,7 +222,8 @@ namespace PhysX
     {
         AZ::Vector3 velocity = AZ::Vector3::CreateZero();
 
-        auto rigidBodyCollider = AddTestRigidBodyCollider(AZ::Vector3(0.0f, 0.0f, 16.0f), forceType, "TestBox");
+        AZ::Vector3 position(0.0f, 0.0f, 16.0f);
+        auto rigidBodyCollider = AddTestRigidBodyCollider(position, forceType, "TestBox");
         auto forceRegion = AddForceRegion<ColliderType>(AZ::Vector3(0.0f, 0.0f, 12.0f), forceType);
 
         AZStd::shared_ptr<Physics::World> world;

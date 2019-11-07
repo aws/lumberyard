@@ -20,6 +20,7 @@
 #include <ISystem.h> // <> required for Interfuscator
 #include "IStreamEngineDefs.h"
 #include <AzCore/IO/FileIO.h>
+#include "Codec.h"
 
 struct IResourceList;
 struct _finddata_t;
@@ -127,8 +128,7 @@ struct ICryArchive
     //   METHOD_DEFLATE == METHOD_COMPRESS == 8 (deflate) , compression
     //   level is LEVEL_FASTEST == 0 till LEVEL_BEST == 9 or LEVEL_DEFAULT == -1
     //   for default (like in zlib)
-    virtual int UpdateFile(const char* szRelativePath, void* pUncompressed, unsigned nSize, unsigned nCompressionMethod = 0, int nCompressionLevel = -1) = 0;
-
+    virtual int UpdateFile(const char* szRelativePath, void* pUncompressed, unsigned nSize, unsigned nCompressionMethod = 0, int nCompressionLevel = -1, CompressionCodec::Codec codec = CompressionCodec::Codec::ZLIB) = 0;
 
     // Summary:
     //   Adds a new file to the zip or update an existing one if it is not compressed - just stored  - start a big file

@@ -862,7 +862,7 @@ const char* AssetBuilderComponent::GetLibraryExtension()
     return "*.dll";
 #elif defined(AZ_PLATFORM_LINUX)
     return "*.so";
-#elif defined(AZ_PLATFORM_APPLE)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE
     return "*.dylib";
 #endif
 }

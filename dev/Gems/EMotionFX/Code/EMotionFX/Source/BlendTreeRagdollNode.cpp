@@ -258,7 +258,6 @@ namespace EMotionFX
 
             const Actor* actor = actorInstance->GetActor();
             const Skeleton* skeleton = actor->GetSkeleton();
-            const Node* motionExtractionNode = actor->GetMotionExtractionNode();
             const Physics::RagdollState& currentRagdollState = ragdollInstance->GetCurrentState();
             Node* ragdollRootNode = ragdollInstance->GetRagdollRootNode();
             const AZ::Outcome<size_t> ragdollRootNodeIndex = ragdollInstance->GetRootRagdollNodeIndex();

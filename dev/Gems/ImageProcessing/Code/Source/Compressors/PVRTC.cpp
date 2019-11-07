@@ -11,12 +11,12 @@
 */
 
 #include <ImageProcessing_precompiled.h>
-
+#include <ImageProcessing_Traits_Platform.h>
 #include <Processing/ImageObject.h>
 #include <Processing/PixelFormatInfo.h>
 #include <Compressors/PVRTC.h>
 
-#if defined(AZ_PLATFORM_WINDOWS)
+#if AZ_TRAIT_IMAGEPROCESSING_PVRTEXLIB_USE_WINDLL_IMPORT
 //_WINDLL_IMPORT need to be defined before including PVRTexLib header files to avoid linking error on windows.
 #define _WINDLL_IMPORT
 // NOMINMAX needs to be defined before including PVRTexLib header files (which include Windows.h)

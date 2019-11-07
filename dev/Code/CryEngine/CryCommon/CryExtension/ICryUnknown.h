@@ -20,7 +20,7 @@
 
 
 #include "CryTypeID.h"
-#include <BoostHelpers.h>
+#include <SmartPointersHelpers.h>
 
 
 struct ICryFactory;
@@ -183,7 +183,7 @@ using CompositeQuerySemantics::crycomposite_query;
     template <class T, class A>                             \
     friend AZStd::shared_ptr<T> AZStd::allocate_shared(A const& a);
 
-// prevent explicit destruction from client side (exception is boost::checked_delete which gets befriended)
+// prevent explicit destruction from client side
 #define _PROTECTED_DTOR(iname) \
 protected:                     \
     virtual ~iname() {}

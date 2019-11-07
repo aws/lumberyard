@@ -1214,11 +1214,6 @@ bool CObjectManager::SelectObject(CBaseObject* obj, bool bUseMask)
         return false;
     }
 
-    if (!obj->IsSelectable())
-    {
-        return false;
-    }
-
     if (m_selectCallback)
     {
         if (!m_selectCallback->OnSelectObject(obj))
@@ -1879,10 +1874,6 @@ int CObjectManager::SelectObjects(const AABB& box, bool bUnselect)
         CBaseObject* obj = it->second;
 
         if (obj->IsHidden())
-        {
-            continue;
-        }
-        if (obj->IsFrozen())
         {
             continue;
         }

@@ -33,7 +33,7 @@
 #include "../SimpleStringPool.h"
 
 
-#if defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
+#if AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
 #include <clocale>
 #include <locale>
 

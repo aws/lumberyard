@@ -52,11 +52,11 @@ namespace AZ
 
             virtual void OnReadCacheHit(IO::GenericStream* stream, AZ::u64 offset, AZ::u64 size, const char* debugName);
 
-            virtual void OnAddRequest(IO::Request* request);
-            virtual void OnCompleteRequest(IO::Request* request, IO::Request::StateType state);
+            virtual void OnAddRequest(const AZStd::shared_ptr<IO::Request>& request);
+            virtual void OnCompleteRequest(const AZStd::shared_ptr<IO::Request>& request, IO::Request::StateType state);
 
-            virtual void OnCancelRequest(IO::Request* request);
-            virtual void OnRescheduleRequest(IO::Request* request, AZStd::chrono::system_clock::time_point newDeadline, IO::Request::PriorityType newPriority);
+            virtual void OnCancelRequest(const AZStd::shared_ptr<IO::Request>& request);
+            virtual void OnRescheduleRequest(const AZStd::shared_ptr<IO::Request>& request, AZStd::chrono::system_clock::time_point newDeadline, IO::Request::PriorityType newPriority);
 
             // Lower level events
             virtual void OnRead(IO::GenericStream* stream, AZ::u64 byteSize, AZ::u64 byteOffset);

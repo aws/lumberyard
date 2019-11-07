@@ -737,7 +737,13 @@ namespace GraphCanvas
 
                     if (GraphUtils::IsWrapperNode(wrappedNodeId))
                     {
-                        wrappedNodes.push_back(wrappedNodeId);
+                        AZStd::vector< NodeId > internalNodes;
+                        WrapperNodeRequestBus::EventResult(internalNodes, wrappedNodeId, &WrapperNodeRequests::GetWrappedNodeIds);
+
+                        for (NodeId nodeId : internalNodes)
+                        {
+                            wrappedNodes.push_back(nodeId);
+                        }
                     }
                 }
             }
@@ -1116,7 +1122,7 @@ namespace GraphCanvas
 
     bool GraphUtils::IsValidModelConnection(const GraphId& graphId, const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint)
     {
-        bool validConnection = false;
+        bool validConnection;
 
         AZStd::unordered_set< Endpoint > finalSourceEndpoints = RemapEndpointForModel(sourceEndpoint);
         AZStd::unordered_set< Endpoint > finalTargetEndpoints = RemapEndpointForModel(targetEndpoint);
@@ -1135,6 +1141,29 @@ namespace GraphCanvas
         }
 
         return validConnection;
+    }
+
+    ConnectionValidationTooltip GraphUtils::GetModelConnnectionValidityToolTip(const GraphId& graphId, const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint)
+    {
+        ConnectionValidationTooltip validationTooltip;
+
+        AZStd::unordered_set< Endpoint > finalSourceEndpoints = RemapEndpointForModel(sourceEndpoint);
+        AZStd::unordered_set< Endpoint > finalTargetEndpoints = RemapEndpointForModel(targetEndpoint);
+
+        for (const Endpoint& modelSourceEndpoint : finalSourceEndpoints)
+        {
+            for (const Endpoint& modelTargetEndpoint : finalTargetEndpoints)
+            {
+                GraphModelRequestBus::EventResult(validationTooltip, graphId, &GraphModelRequests::GetConnectionValidityTooltip, modelSourceEndpoint, modelTargetEndpoint);
+
+                if (!validationTooltip.m_isValid)
+                {
+                    break;
+                }
+            }
+        }
+
+        return validationTooltip;
     }
 
     bool GraphUtils::CreateModelConnection(const GraphId& graphId, const ConnectionId& connectionId, const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint)
@@ -1298,7 +1327,7 @@ namespace GraphCanvas
                 return false;
             }
 
-            GraphModelRequestBus::Event(graphId, &GraphModelRequests::RequestPushPreventUndoStateUpdate);
+            ScopedGraphUndoBlocker undoBlocker(graphId);
 
             Endpoint connectionSourceEndpoint;
             ConnectionRequestBus::EventResult(connectionSourceEndpoint, connectionId, &ConnectionRequests::GetSourceEndpoint);
@@ -1309,6 +1338,9 @@ namespace GraphCanvas
             if (connectionSourceEndpoint.IsValid()
                 && connectionTargetEndpoint.IsValid())
             {
+                NodeRequestBus::Event(connectionSourceEndpoint.GetNodeId(), &NodeRequests::SignalBatchedConnectionManipulationBegin);
+                NodeRequestBus::Event(connectionTargetEndpoint.GetNodeId(), &NodeRequests::SignalBatchedConnectionManipulationBegin);
+
                 // Delete the old connection just in case something prevents new connections while it has one.
                 AZStd::unordered_set< AZ::EntityId > deletionIds{ connectionId };
                 SceneRequestBus::Event(graphId, &SceneRequests::Delete, deletionIds);
@@ -1342,8 +1374,6 @@ namespace GraphCanvas
                 }
             }
 
-            GraphModelRequestBus::Event(graphId, &GraphModelRequests::RequestPopPreventUndoStateUpdate);
-
             if (allowNode)
             {
                 GraphModelRequestBus::Event(graphId, &GraphModelRequests::RequestUndoPoint);
@@ -1359,6 +1389,9 @@ namespace GraphCanvas
                     spliceConfiguration.m_opportunisticSpliceResult = CreateOpportunisticsConnectionsForSplice(graphId, connectedEndpoints, nodeId);
                 }
             }
+
+            NodeRequestBus::Event(connectionSourceEndpoint.GetNodeId(), &NodeRequests::SignalBatchedConnectionManipulationEnd);
+            NodeRequestBus::Event(connectionTargetEndpoint.GetNodeId(), &NodeRequests::SignalBatchedConnectionManipulationEnd);
         }
 
         return allowNode;
@@ -1380,6 +1413,9 @@ namespace GraphCanvas
 
             Endpoint targetEndpoint;
             ConnectionRequestBus::EventResult(targetEndpoint, connectionId, &ConnectionRequests::GetTargetEndpoint);
+
+            NodeRequestBus::Event(sourceEndpoint.GetNodeId(), &NodeRequests::SignalBatchedConnectionManipulationBegin);
+            NodeRequestBus::Event(targetEndpoint.GetNodeId(), &NodeRequests::SignalBatchedConnectionManipulationBegin);
 
             AZStd::unordered_set< AZ::EntityId > deletionIds{ connectionId };
             SceneRequestBus::Event(graphId, &SceneRequests::Delete, deletionIds);
@@ -1422,8 +1458,11 @@ namespace GraphCanvas
             }
             else
             {
-                handledSplice = true;
+                handledSplice = true;                
             }
+
+            NodeRequestBus::Event(sourceEndpoint.GetNodeId(), &NodeRequests::SignalBatchedConnectionManipulationEnd);
+            NodeRequestBus::Event(targetEndpoint.GetNodeId(), &NodeRequests::SignalBatchedConnectionManipulationEnd);
         }
 
         if (handledSplice)
@@ -1448,6 +1487,8 @@ namespace GraphCanvas
             AZStd::vector< Endpoint > sourceEndpoints;
             AZStd::vector< Endpoint > targetEndpoints;
 
+            AZStd::unordered_set< NodeId > nodesInvolvedInSplice;
+
             AZStd::unordered_set< AZ::EntityId > deletedConnections;
 
             for (const AZ::EntityId& slotId : slotIds)
@@ -1463,6 +1504,13 @@ namespace GraphCanvas
                     if (sourceEndpoint.m_nodeId != nodeId)
                     {
                         sourceEndpoints.push_back(sourceEndpoint);
+
+                        auto insertResult = nodesInvolvedInSplice.insert(sourceEndpoint.GetNodeId());
+
+                        if (insertResult.second)
+                        {
+                            NodeRequestBus::Event(sourceEndpoint.GetNodeId(), &NodeRequests::SignalBatchedConnectionManipulationBegin);
+                        }
                     }
 
                     Endpoint targetEndpoint;
@@ -1471,6 +1519,13 @@ namespace GraphCanvas
                     if (targetEndpoint.m_nodeId != nodeId)
                     {
                         targetEndpoints.push_back(targetEndpoint);
+                        
+                        auto insertResult = nodesInvolvedInSplice.insert(targetEndpoint.GetNodeId());
+
+                        if (insertResult.second)
+                        {
+                            NodeRequestBus::Event(targetEndpoint.GetNodeId(), &NodeRequests::SignalBatchedConnectionManipulationBegin);
+                        }
                     }
 
                     deletedConnections.insert(connectionId);
@@ -1486,6 +1541,11 @@ namespace GraphCanvas
                 {
                     SceneRequestBus::Event(graphId, &SceneRequests::CreateConnectionBetween, sourceEndpoint, targetEndpoint);
                 }
+            }
+
+            for (const NodeId& nodeId : nodesInvolvedInSplice)
+            {
+                NodeRequestBus::Event(nodeId, &NodeRequests::SignalBatchedConnectionManipulationEnd);
             }
 
             if (GraphUtils::IsWrapperNode(nodeId))
@@ -1521,14 +1581,23 @@ namespace GraphCanvas
             AZStd::unordered_set< Endpoint > sourceEndpoints;
             AZStd::unordered_set< Endpoint > targetEndpoints;
 
+            AZStd::unordered_set< NodeId > nodesInvolvedInSplice;
+
             AZStd::unordered_set< ConnectionId > deletionIds;
 
             for (const ConnectionId& connectionId : subGraph.m_entryConnections)
             {
                 Endpoint sourceEndpoint;
-                ConnectionRequestBus::EventResult(sourceEndpoint, connectionId, &ConnectionRequests::GetSourceEndpoint);
+                ConnectionRequestBus::EventResult(sourceEndpoint, connectionId, &ConnectionRequests::GetSourceEndpoint);                
 
                 sourceEndpoints.insert(sourceEndpoint);
+
+                auto insertIter = nodesInvolvedInSplice.insert(sourceEndpoint.GetNodeId());
+
+                if (insertIter.second)
+                {
+                    NodeRequestBus::Event(sourceEndpoint.GetNodeId(), &NodeRequests::SignalBatchedConnectionManipulationBegin);
+                }
 
                 deletionIds.insert(connectionId);
             }
@@ -1539,6 +1608,13 @@ namespace GraphCanvas
                 ConnectionRequestBus::EventResult(targetEndpoint, connectionId, &ConnectionRequests::GetTargetEndpoint);
 
                 targetEndpoints.insert(targetEndpoint);
+
+                auto insertIter = nodesInvolvedInSplice.insert(targetEndpoint.GetNodeId());
+
+                if (insertIter.second)
+                {
+                    NodeRequestBus::Event(targetEndpoint.GetNodeId(), &NodeRequests::SignalBatchedConnectionManipulationBegin);
+                }
 
                 deletionIds.insert(connectionId);
             }
@@ -1551,6 +1627,11 @@ namespace GraphCanvas
                 {
                     SceneRequestBus::Event(graphId, &SceneRequests::CreateConnectionBetween, sourceEndpoint, targetEndpoint);
                 }
+            }
+
+            for (const NodeId& nodeId : nodesInvolvedInSplice)
+            {
+                NodeRequestBus::Event(nodeId, &NodeRequests::SignalBatchedConnectionManipulationEnd);
             }
         }
 
@@ -2593,6 +2674,193 @@ namespace GraphCanvas
                         {
                             exploreableNodes.insert(newNodeId);
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    AZStd::unordered_set<NodeId> GraphUtils::FindTerminalForNodeChain(const AZStd::vector<AZ::EntityId>& nodeIds, ConnectionType searchDirection)
+    {
+        AZStd::unordered_set<NodeId> terminalNodes;
+
+        AZStd::unordered_set< NodeId> nodesToTraverse;
+        nodesToTraverse.insert(nodeIds.begin(), nodeIds.end());
+
+        AZStd::unordered_set< NodeId > exploredNodes;
+
+        while (!nodesToTraverse.empty())
+        {
+            NodeId testNode = (*nodesToTraverse.begin());
+            nodesToTraverse.erase(nodesToTraverse.begin());
+
+            auto insertResult = exploredNodes.insert(testNode);
+
+            // If we already explored the node, we can skip it.
+            if (!insertResult.second)
+            {
+                continue;
+            }
+
+            AZStd::unordered_set<AZ::EntityId> connectedNodes;
+            FindConnectedNodes({ testNode }, connectedNodes, {searchDirection});
+
+            if (connectedNodes.empty())
+            {
+                terminalNodes.insert(testNode);
+            }
+            else
+            {
+                nodesToTraverse.insert(connectedNodes.begin(), connectedNodes.end());
+            }
+        }
+
+        return terminalNodes;
+    }
+
+    void GraphUtils::SetNodesEnabledState(const AZStd::unordered_set<NodeId>& nodeIds, RootGraphicsItemEnabledState enabledState)
+    {
+        AZStd::unordered_set< NodeId > unexploredNodes;
+
+        for (AZ::EntityId nodeId : nodeIds)
+        {
+            // If we are wrapped we want to add the parent.
+            if (IsNodeWrapped(nodeId))
+            {
+                nodeId = FindOutermostNode(nodeId);
+            }
+
+            RootGraphicsItemRequests* itemInterface = RootGraphicsItemRequestBus::FindFirstHandler(nodeId);            
+
+            if (itemInterface)
+            {
+                bool isDisabled = false;
+                bool stateChanged = false;
+
+                if (enabledState == RootGraphicsItemEnabledState::ES_Enabled)
+                {
+                    itemInterface->SetEnabledState(enabledState);
+
+                    RootGraphicsItemEnabledState newState = RootGraphicsItemEnabledState::ES_Enabled;
+                    NodeRequestBus::EventResult(newState, nodeId, &NodeRequests::UpdateEnabledState);
+                }
+                else
+                {
+                    itemInterface->SetEnabledState(enabledState);
+                }
+                
+                unexploredNodes.insert(nodeId);
+            }
+
+            if (IsWrapperNode(nodeId) && unexploredNodes.count(nodeId) > 0)
+            {
+                AZStd::vector< NodeId > wrapperNodes;
+
+                wrapperNodes.push_back(nodeId);
+
+                while (!wrapperNodes.empty())
+                {
+                    NodeId wrapperNode = wrapperNodes.back();
+
+                    wrapperNodes.pop_back();
+
+                    AZStd::vector< NodeId > wrappedNodes;
+                    WrapperNodeRequestBus::EventResult(wrappedNodes, wrapperNode, &WrapperNodeRequests::GetWrappedNodeIds);
+
+                    for (auto wrappedNodeId : wrappedNodes)
+                    {
+                        if (IsWrapperNode(wrappedNodeId))
+                        {
+                            wrapperNodes.push_back(wrappedNodeId);
+                        }
+
+                        RootGraphicsItemRequestBus::Event(wrappedNodeId, &RootGraphicsItemRequests::SetEnabledState, enabledState);
+                        unexploredNodes.insert(wrappedNodeId);
+                    }
+                }
+            }
+        }        
+
+        AZStd::unordered_set< NodeId > exploredNodes;
+
+        while (!unexploredNodes.empty())
+        {
+            NodeId nodeId = (*unexploredNodes.begin());
+
+            auto insertResult = exploredNodes.insert(nodeId);
+
+            unexploredNodes.erase(unexploredNodes.begin());
+
+            if (!insertResult.second)
+            {
+                continue;
+            }
+
+            RootGraphicsItemEnabledState enabledState = RootGraphicsItemEnabledState::ES_Enabled;
+            RootGraphicsItemRequestBus::EventResult(enabledState, nodeId, &RootGraphicsItemRequests::GetEnabledState);
+
+            // We'll allow re-entrant attempts for partially disabled nodes as they're beholdent on order of operation problems.
+            if (enabledState == RootGraphicsItemEnabledState::ES_PartialDisabled)
+            {
+                exploredNodes.erase(nodeId);
+            }
+
+            bool nodeDisabled = enabledState != RootGraphicsItemEnabledState::ES_Enabled;
+
+            AZStd::vector< SlotId > nodeSlots;
+            NodeRequestBus::EventResult(nodeSlots, nodeId, &NodeRequests::GetSlotIds);
+
+            for (const SlotId& slotId : nodeSlots)
+            {
+                Endpoint currentEndpoint(nodeId, slotId);
+
+                AZStd::vector< ConnectionId > connectionIds;
+                SlotRequestBus::EventResult(connectionIds, slotId, &SlotRequests::GetConnections);
+
+                ConnectionType connectionType = CT_Invalid;
+                SlotRequestBus::EventResult(connectionType, slotId, &SlotRequests::GetConnectionType);
+
+                SlotType slotType = SlotTypes::Invalid;
+                SlotRequestBus::EventResult(slotType, slotId, &SlotRequests::GetSlotType);
+
+                for (const ConnectionId& connectionId : connectionIds)
+                {
+                    RootGraphicsItemEnabledState connectionState = RootGraphicsItemEnabledState::ES_Enabled;
+                    RootGraphicsItemRequestBus::EventResult(connectionState, connectionId, &RootGraphicsItemRequests::GetEnabledState);
+
+                    bool connectionEnabled = connectionState != RootGraphicsItemEnabledState::ES_Enabled;
+
+                    if (enabledState != connectionState)
+                    {                        
+                        Endpoint otherEndpoint;
+
+                        ConnectionRequestBus::EventResult(otherEndpoint, connectionId, &ConnectionRequests::FindOtherEndpoint, currentEndpoint);
+
+                        RootGraphicsItemEnabledState otherEnabledState = RootGraphicsItemEnabledState::ES_Enabled;
+                        RootGraphicsItemRequestBus::EventResult(otherEnabledState, otherEndpoint.GetNodeId(), &RootGraphicsItemRequests::GetEnabledState);
+
+                        // If we are an execution out slot. We'll want to tell the node to update its display state
+                        // to maintain the right affect.
+                        if (connectionType == CT_Output && slotType == SlotTypes::ExecutionSlot)
+                        {
+                            RootGraphicsItemEnabledState newState = RootGraphicsItemEnabledState::ES_Enabled;
+                            NodeRequestBus::EventResult(newState, otherEndpoint.GetNodeId(), &NodeRequests::UpdateEnabledState);
+
+                            if (newState != otherEnabledState
+                                && exploredNodes.count(otherEndpoint.GetNodeId()) == 0)
+                            {
+                                unexploredNodes.insert(otherEndpoint.GetNodeId());
+                            }
+                        }                        
+
+                        RootGraphicsItemEnabledState connectionState = enabledState;
+
+                        if (otherEnabledState > enabledState)
+                        {
+                            connectionState = otherEnabledState;
+                        }
+
+                        RootGraphicsItemRequestBus::Event(connectionId, &RootGraphicsItemRequests::SetEnabledState, connectionState);
                     }
                 }
             }

@@ -329,6 +329,8 @@ namespace MCore
          */
         void RemoveAllCallbacks();
 
+        void SetOriginalCommand(Command* orgCommand) { mOrgCommand = orgCommand; }
+
         /**
          * Get the original command where this command has been cloned from.
          * The original command contains the syntax.
@@ -344,6 +346,19 @@ namespace MCore
             else
             {
                 return this;
+            }
+        }
+
+        template<class T>
+        void ExecuteParameter(AZStd::optional<T>& oldParameter, AZStd::optional<T>& parameter, T& value)
+        {
+            if (parameter.has_value())
+            {
+                if (!oldParameter.has_value())
+                {
+                    oldParameter = value;
+                }
+                value = parameter.value();
             }
         }
 

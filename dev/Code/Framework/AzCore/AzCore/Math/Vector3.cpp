@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/MathUtils.h>
@@ -55,5 +54,3 @@ Vector3 Vector3::GetOrthogonalVector() const
     const Vector3 axis = (GetX() * GetX() < 0.5f * GetLengthSq()) ? Vector3::CreateAxisX() : Vector3::CreateAxisY();
     return Cross(axis);
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

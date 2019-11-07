@@ -239,6 +239,9 @@ namespace AzToolsFramework
         // sends a map from the old Entity id's to the new Entity id's
         virtual void OnEditorEntitiesReplacedBySlicedEntities(const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& /*replacedEntitiesMap*/) {}
 
+        //Fired when an entity is duplicated. newEntity is the new duplicate of oldEntity
+        virtual void OnEditorEntityDuplicated(const AZ::EntityId& /*oldEntity*/, const AZ::EntityId& /*newEntity*/) {}
+
         /// Fired when an group of entities has slice ownership change.
         /// This should only be fired if all of the entities now belong to the same slice or all now belong to no slice
         virtual void OnEditorEntitiesSliceOwnershipChanged(const EntityIdList& /*entityIdList*/) {}

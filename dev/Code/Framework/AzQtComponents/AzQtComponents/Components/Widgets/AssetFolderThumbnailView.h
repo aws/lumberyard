@@ -116,7 +116,8 @@ namespace AzQtComponents
         int rootThumbnailSizeInPixels() const;
         int childThumbnailSizeInPixels() const;
 
-        AssetFolderThumbnailViewDelegate* m_delegate;
+        AssetFolderThumbnailViewDelegate* m_delegate;   
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'AzQtComponents::AssetFolderThumbnailView::m_itemGeometry': class 'QHash<QPersistentModelIndex,QRect>' needs to have dll-interface to be used by clients of class 'AzQtComponents::AssetFolderThumbnailView'
         QHash<QPersistentModelIndex, QRect> m_itemGeometry;
         struct ChildFrame
         {
@@ -125,6 +126,7 @@ namespace AzQtComponents
         };
         QVector<ChildFrame> m_childFrames;
         QSet<int> m_expandedRows;
+        AZ_POP_DISABLE_WARNING
         ThumbnailSize m_thumbnailSize;
         Config m_config;
     };

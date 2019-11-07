@@ -109,7 +109,7 @@ namespace ScriptCanvas
 
             return source / ToVectorFloat(divisor);
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(DivideByNumber, "Math/Vector3", "{16CC9068-93DA-44E0-83E4-78474DCE4046}", "returns the source with each element divided by Divisor", "Source", "Divisor");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(DivideByNumber, "Math/Vector3", "{16CC9068-93DA-44E0-83E4-78474DCE4046}", "returns the source with each element divided by Divisor", "Source", "Divisor");
 
         AZ_INLINE Vector3Type DivideByVector(const Vector3Type source, const Vector3Type divisor)
         {

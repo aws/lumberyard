@@ -45,7 +45,7 @@ import packaging
 
 ################################################################
 #                     Defaults                                 #
-BUILDER_DIR = 'Code/Launcher/AndroidLauncher/ProjectBuilder'
+BUILDER_DIR = 'Code/Tools/Android/ProjectBuilder'
 BUILDER_FILES = 'android_builder.json'
 ANDROID_LIBRARY_FILES = 'android_libraries.json'
 
@@ -1192,6 +1192,14 @@ def create_strip_debug_symbols_task(self, src, tgt):
 class android_manifest_preproc(Task):
     color = 'PINK'
 
+    def runnable_status(self):
+        result = super(android_manifest_preproc, self).runnable_status()
+
+        if result == SKIP_ME and not os.path.isfile(self.outputs[0].abspath()):
+            return RUN_ME
+
+        return result
+
     def run(self):
         min_sdk = self.env['ANDROID_NDK_PLATFORM_NUMBER']
         target_sdk = self.env['ANDROID_SDK_VERSION_NUMBER']
@@ -1253,6 +1261,7 @@ class android_code_gen(aapt_package_base):
     Generates the R.java files from the Android resources
     """
     run_str = '${AAPT} package -f -M ${ANDROID_MANIFEST} ${AAPT_RESOURCE_ST:AAPT_RESOURCES} ${AAPT_INLC_ST:AAPT_INCLUDES} ${AAPT_PACKAGE_FLAGS} -m -J ${OUTDIR}'
+    nocache = True
 
 
 ################################################################
@@ -1772,7 +1781,7 @@ def apply_android_java(self):
     other_uses = []
     for tsk in game_project_modules:
         # skip the launchers / same module, those source paths were already added above
-        if tsk.name.endswith('AndroidLauncher'):
+        if tsk.name.endswith('Launcher'):
             continue
 
         other_uses.extend(self.to_list(getattr(tsk, 'use', [])))

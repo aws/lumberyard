@@ -10,18 +10,33 @@
 *
 */
 
-#include "EMotionFX_precompiled.h"
+#include <AzCore/PlatformDef.h>
+#if defined(AZ_COMPILER_MSVC)
+    #pragma warning(push)
+    #pragma warning(disable : 4714)
+#endif
 
-#include <MathConversion.h>
+#include "EMotionFX_precompiled.h"
 
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 
+#include <Integration/Components/AnimAudioComponent.h>
+
+#if defined(AZ_COMPILER_MSVC)
+    #pragma warning(push, 0)
+#endif
+
 #include <LmbrCentral/Audio/AudioProxyComponentBus.h>
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
-#include <Integration/Components/AnimAudioComponent.h>
+
+#include <MathConversion.h>
+
+#if defined(AZ_COMPILER_MSVC)
+    #pragma warning(pop)
+#endif
 
 using namespace LmbrCentral;
 
@@ -64,11 +79,11 @@ namespace EMotionFX
 
         void AnimAudioComponent::RemoveTriggerEvent(const AZStd::string& eventName)
         {
-            AZ::Crc32 eventCrc(eventName.c_str());
+            const AZ::Crc32 eventCrc(eventName.c_str());
 
-            AZ::Entity* entity = GetEntity();
+            const AZ::Entity* entity = GetEntity();
             AZ_Assert(entity, "Component must be added to entity prior to removing an audio trigger event.");
-            if (GetEntity()->GetState() == AZ::Entity::State::ES_ACTIVE)
+            if (entity->GetState() == AZ::Entity::State::ES_ACTIVE)
             {
                 RemoveTriggerEventInternal(eventCrc);
             }
@@ -427,6 +442,8 @@ namespace EMotionFX
 
         void AnimAudioComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
         {
+            AZ_UNUSED(deltaTime);
+            AZ_UNUSED(time);
             for (auto& iter : m_jointProxies)
             {
                 if (Audio::IAudioProxy* proxy = iter.second)
@@ -443,6 +460,7 @@ namespace EMotionFX
 
         void AnimAudioComponent::OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world)
         {
+            AZ_UNUSED(local);
             m_transform = world;
         }
 
@@ -616,6 +634,7 @@ namespace EMotionFX
             : m_jointId(jointId)
             , m_triggerId(triggerId)
         {
+            AZ_UNUSED(entity);
         }
 
         AZ::s32 AnimAudioComponent::TriggerEventData::GetJointId() const
@@ -629,3 +648,7 @@ namespace EMotionFX
         }
     } // namespace Integration
 } // namespace EMotionFX
+
+#if defined(AZ_COMPILER_MSVC)
+    #pragma warning(pop)
+#endif

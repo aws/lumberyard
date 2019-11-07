@@ -108,7 +108,8 @@ namespace AzToolsFramework
 
         /// Create a translation manipulator for a given vertex.
         void CreateTranslationManipulator(
-            AZ::EntityId entityId, ManipulatorManagerId managerId, const Vertex& vertex, size_t index);
+            const AZ::EntityComponentIdPair& entityComponentIdPair,
+            ManipulatorManagerId managerId, const Vertex& vertex, size_t index);
 
         /// Destroy all manipulators associated with the vertex selection.
         void Destroy();
@@ -131,6 +132,12 @@ namespace AzToolsFramework
         virtual bool HandleMouse(
             const ViewportInteraction::MouseInteractionEvent& mouseInteraction);
 
+        /// Snap the selected vertices to the terrain.
+        /// Note: With a multi-selection the manipulator will be translated to the picked
+        /// terrain position with all verts moved relative to it.
+        void SnapVerticesToTerrain(
+            const ViewportInteraction::MouseInteractionEvent& mouseInteraction);
+
         /// The Actions provided by the EditorVertexSelection while it is active.
         /// e.g. Vertex deletion, duplication etc.
         AZStd::vector<ActionOverride> ActionOverrides() const;
@@ -147,19 +154,21 @@ namespace AzToolsFramework
         /// Internal interface for EditorVertexSelection.
         virtual void SetupSelectionManipulator(
             const AZStd::shared_ptr<SelectionManipulator>& selectionManipulator,
-            AZ::EntityId entityId, ManipulatorManagerId managerId, size_t index) = 0;
+            const AZ::EntityComponentIdPair& entityComponentIdPair,
+            ManipulatorManagerId managerId, size_t index) = 0;
         virtual void PrepareActions() = 0;
 
         /// Default behavior when clicking on a selection manipulator (representing a vertex).
         void SelectionManipulatorSelectCallback(
             size_t index, const ViewportInteraction::MouseInteraction& interaction,
-            AZ::EntityId entityId, ManipulatorManagerId managerId);
+            const AZ::EntityComponentIdPair& entityComponentIdPair, ManipulatorManagerId managerId);
 
         /// Destroy the translation manipulator and deselect all vertices.
         void ClearSelected();
 
         AZ::EntityId GetEntityId() const { return m_entityComponentIdPair.GetEntityId(); }
         AZ::ComponentId GetComponentId() const { return m_entityComponentIdPair.GetComponentId(); }
+        const AZ::EntityComponentIdPair& GetEntityComponentIdPair() const { return m_entityComponentIdPair; }
         ManipulatorManagerId GetManipulatorManagerId() const { return m_manipulatorManagerId; }
 
         /// Is the translation vertex manipulator in 2D or 3D.
@@ -236,7 +245,8 @@ namespace AzToolsFramework
         // EditorVertexSelectionBase
         void SetupSelectionManipulator(
             const AZStd::shared_ptr<SelectionManipulator>& selectionManipulator,
-            AZ::EntityId entityId, ManipulatorManagerId managerId, size_t index) override;
+            const AZ::EntityComponentIdPair& entityComponentIdPair,
+            ManipulatorManagerId managerId, size_t index) override;
         void PrepareActions() override;
     };
 
@@ -257,7 +267,8 @@ namespace AzToolsFramework
         // EditorVertexSelectionBase
         void SetupSelectionManipulator(
             const AZStd::shared_ptr<SelectionManipulator>& selectionManipulator,
-            AZ::EntityId entityId, ManipulatorManagerId managerId, size_t vertIndex) override;
+            const AZ::EntityComponentIdPair& entityComponentIdPair,
+            ManipulatorManagerId managerId, size_t vertIndex) override;
         void PrepareActions() override;
 
         /// @return The center point of the selected vertices.
@@ -269,6 +280,14 @@ namespace AzToolsFramework
 
     /// Helper for inserting a vertex in a variable vertices container.
     template<typename Vertex>
-    void InsertVertexAfter(AZ::EntityId entityId, size_t vertIndex, const Vertex& localPosition);
+    void InsertVertexAfter(
+        const AZ::EntityComponentIdPair& entityComponentIdPair, size_t vertIndex, const Vertex& localPosition);
+
+    /// Helper for removing a vertex in a variable vertices container.
+    /// Remove a vertex from the container and ensure the associated manipulator is unset and
+    /// property display values are refreshed.
+    template<typename Vertex>
+    void SafeRemoveVertex(
+        const AZ::EntityComponentIdPair& entityComponentIdPair, size_t vertexIndex);
 
 } // namespace AzToolsFramework

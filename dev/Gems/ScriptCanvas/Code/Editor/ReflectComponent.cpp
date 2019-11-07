@@ -39,7 +39,7 @@ namespace ScriptCanvasEditor
         ScriptCanvasAssetReference::Reflect(context);
         ScriptCanvasAssetInstance::Reflect(context);
         ScriptCanvasAssetHolder::Reflect(context);
-        EditorSettings::WindowSavedState::Reflect(context);        
+        EditorSettings::EditorWorkspace::Reflect(context);        
         EditorSettings::ScriptCanvasEditorSettings::Reflect(context);        
         Library::Editor::Reflect(context);
         LiveLoggingUserSettings::Reflect(context);

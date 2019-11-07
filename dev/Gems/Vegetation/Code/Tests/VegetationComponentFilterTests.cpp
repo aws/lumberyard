@@ -15,7 +15,7 @@
 #include "VegetationMocks.h"
 
 #include <AzTest/AzTest.h>
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/Component/Entity.h>
 
 #include <Source/Components/DistanceBetweenFilterComponent.h>

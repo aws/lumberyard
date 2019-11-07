@@ -1225,7 +1225,5 @@ void CVars::Init()
     REGISTER_CVAR(e_StaticInstancing, 0, VF_NULL, "Enables instancing of static objects");
     REGISTER_CVAR(e_StaticInstancingMinInstNum, 10, VF_NULL, "Minimum number of common static objects in a tree node before hardware instancing is used.");
 
-#ifndef _RELEASE
     DefineConstIntCVar(e_MemoryProfiling, 0, VF_DEV_ONLY, "Toggle displaying memory usage statistics");
-#endif
 }

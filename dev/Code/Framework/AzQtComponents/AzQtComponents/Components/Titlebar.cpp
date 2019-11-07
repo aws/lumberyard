@@ -12,10 +12,6 @@
 
 #include <qglobal.h> // For Q_OS_WIN
 
-#ifdef Q_OS_WIN
-# pragma warning(disable: 4127) // warning C4127: conditional expression is constant in qvector.h when including qpainter.h
-#endif
-
 #include <AzQtComponents/Components/Titlebar.h>
 #include <AzQtComponents/Components/ButtonDivider.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
@@ -33,7 +29,10 @@
 #include <QPainter>
 #include <QMenu>
 #include <QDesktopWidget>
+AZ_PUSH_DISABLE_WARNING(4251 4244, "-Wunknown-warning-option") // 4251: 'QHighDpiScaling::m_logicalDpi': struct 'QPair<qreal,qreal>' needs to have dll-interface to be used by clients of class 'QHighDpiScaling'
+                                                               // 4244: 'argument': conversion from 'qreal' to 'int', possible loss of data
 #include <QtGui/private/qhighdpiscaling_p.h>
+AZ_POP_DISABLE_WARNING
 #include <QLabel>
 #include <QStackedLayout>
 #include <QVector>
@@ -1009,7 +1008,7 @@ namespace AzQtComponents
             // width will be smaller when you restore.
             if (topLevel)
             {
-                const int offset = m_lastLocalPosX * width();
+                const int offset = static_cast<int>(m_lastLocalPosX) * width();
                 topLevel->move(globalPos - QPoint(offset, 0));
                 m_dragPos.setX(offset);
             }
@@ -1023,7 +1022,7 @@ namespace AzQtComponents
             {
                 // The window was resized while we were dragging to a screen with different (dpi) scale factor
                 // It shrunk, so calculate a new sensible drag pos, because the old is out of screen
-                m_dragPos.setX(m_relativeDragPos * wind->width());
+                m_dragPos.setX(static_cast<int>(m_relativeDragPos) * wind->width());
             }
 
             // (Don't cache the margins, they are be different when moving to screens with different scale factors)
@@ -1036,7 +1035,7 @@ namespace AzQtComponents
 
     bool TitleBar::isTitleBarForDockWidget() const
     {
-        return qobject_cast<StyledDockWidget*>(parent());
+        return qobject_cast<StyledDockWidget*>(parent()) != nullptr;
     }
 
     void TitleBar::mouseMoveEvent(QMouseEvent* ev)
@@ -1206,7 +1205,7 @@ namespace AzQtComponents
 
     bool TitleBar::isLeftButtonDown() const
     {
-        return QApplication::mouseButtons() & Qt::LeftButton;
+        return (QApplication::mouseButtons() & Qt::LeftButton) != 0;
     }
 
     bool TitleBar::canDragWindow() const

@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzCore/PlatformDef.h>
+#include <AzCore/base.h>
 
 namespace AZ
 {
@@ -32,14 +33,31 @@ namespace AZ
         //! is booting or shutting down. NativeMessageBox will not return until the user
         //! has closed the message box.
         void NativeErrorMessageBox(const char* title, const char* message);
+
+
+        //! Enum used for the GetExecutablePath return type which indicates 
+        //! whether the function returned with a success value or a specific error
+        enum class ExecutablePathResult : int8_t
+        {
+            Success,
+            BufferSizeNotLargeEnough,
+            GeneralError
+
+        };
+        //! Structure used to encapsulate the return value of GetExecutablePath
+        //! Two pieces of information is returned.
+        //! 1. Whether the executable path was able to be stored in the buffer.
+        //! 2. If the executable path that was returned includes the executable filename
+        struct GetExecutablePathReturnType
+        {
+            ExecutablePathResult m_pathStored{ ExecutablePathResult::Success };
+            bool m_pathIncludesFilename{};
+        };
+        //! Retrieves the path to the application executable
+        //! @param exeStorageBuffer output buffer which is used to store the executable path within
+        //! @param exeStorageSize size of the exeStorageBuffer
+        //! @returns a struct that indicates if the executable path was able to be stored within the executableBuffer 
+        //! as well as if the executable path contains the executable filename or the executable directory
+        GetExecutablePathReturnType GetExecutablePath(char* exeStorageBuffer, size_t exeStorageSize);
     }
 }
-
-//Platform specific Utils go in an .h.inl file here
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Utils_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Utils_h_provo.inl"
-    #endif
-#endif

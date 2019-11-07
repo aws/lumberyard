@@ -1,0 +1,71 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+import os
+import shutil
+
+from waflib import Logs
+from waflib import Utils
+
+from waflib.Configure import ConfigurationContext
+from waflib.Build import BuildContext
+
+
+def build(bld):
+
+    native_app_glue_node = bld.path.make_node('native_app_glue')
+
+    # only copy the native app glue files in the configure context
+    if isinstance(bld, ConfigurationContext):
+        native_app_glue_node.mkdir()
+
+        ndk_root = bld.get_env_file_var('LY_ANDROID_NDK')
+        native_app_glue = os.path.join(ndk_root, 'sources', 'android', 'native_app_glue')
+
+        for src in ('android_native_app_glue.c', 'android_native_app_glue.h'):
+
+            source_file = os.path.join(native_app_glue, src)
+            dest_file = native_app_glue_node.make_node(src)
+
+            if os.path.exists(dest_file.abspath()):
+                dest_file.chmod(Utils.O755)
+
+            shutil.copy2(source_file, dest_file.abspath())
+            dest_file.chmod(Utils.O755)
+
+    elif isinstance(bld, BuildContext):
+        bld.read_aar(
+            name = 'support-compat',
+            group = 'com.android.support'
+        )
+
+    # launchers are considered exempt modules with the system that determines which modules, and their 
+    # dependencies, should be included in the build.  because of this, launcher only dependencies 
+    # will be skipped unless we force them in the build by either adding them into a spec file
+    # or manually like below
+    if bld.is_android_platform(bld.env['PLATFORM']) and bld.options.project_spec:
+        bld.get_all_module_uses(bld.options.project_spec).add('NativeActivityGlue')
+
+    bld.CryEngineStaticLibrary(
+        target                      = 'NativeActivityGlue',
+        file_list                   = 'empty.waf_files',
+        vs_filter                   = 'Launchers/Android',
+        platforms                   = ['android'],
+        client_only                 = True,
+        exclude_test                = True,
+
+        android_file_list           = 'native_app_glue.waf_files',
+        android_export_includes     = [native_app_glue_node.path_from(bld.path)],
+        android_cflags              = ['-fvisibility=default'],
+    )
+
+

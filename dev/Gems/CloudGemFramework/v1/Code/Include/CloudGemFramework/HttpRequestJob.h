@@ -164,7 +164,7 @@ namespace CloudGemFramework
         static const char* HttpMethodToString(Aws::Http::HttpMethod);
 
         /// Converts a string to an HttpMethod.
-        static boost::optional<HttpMethod> StringToHttpMethod(const AZStd::string& method);
+        static AZStd::optional<HttpMethod> StringToHttpMethod(const AZStd::string& method);
 
     protected:
         /// Override to provide a custom instantiation of the HttpRequest.

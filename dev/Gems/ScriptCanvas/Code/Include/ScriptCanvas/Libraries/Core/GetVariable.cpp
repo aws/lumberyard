@@ -123,7 +123,15 @@ namespace ScriptCanvas
                     VariableRequestBus::EventResult(varName, m_variableId, &VariableRequests::GetName);
                     VariableRequestBus::EventResult(varType, m_variableId, &VariableRequests::GetType);
 
-                    m_variableDataOutSlotId = AddOutputTypeSlot(Data::GetName(varType), "", varType, OutputStorage::Optional);
+                    {
+                        DataSlotConfiguration slotConfiguration;
+
+                        slotConfiguration.m_name = Data::GetName(varType);
+                        slotConfiguration.SetConnectionType(ConnectionType::Output);
+                        slotConfiguration.SetType(varType);
+
+                        m_variableDataOutSlotId = AddSlot(slotConfiguration);
+                    }
                     AddPropertySlots(varType);
                 }
             }
@@ -139,8 +147,15 @@ namespace ScriptCanvas
                     propertyAccount.m_propertyType = getterWrapper.m_propertyType;
                     propertyAccount.m_propertyName = propertyName;
 
-                    const AZStd::string resultSlotName(AZStd::string::format("%s: %s", propertyName.data(), Data::GetName(getterWrapper.m_propertyType).data()));
-                    propertyAccount.m_propertySlotId = AddOutputTypeSlot(resultSlotName, "", getterWrapper.m_propertyType, OutputStorage::Optional);
+                    {
+                        DataSlotConfiguration slotConfiguration;
+
+                        slotConfiguration.m_name = AZStd::string::format("%s: %s", propertyName.data(), Data::GetName(getterWrapper.m_propertyType).data());
+                        slotConfiguration.SetType(getterWrapper.m_propertyType);
+                        slotConfiguration.SetConnectionType(ConnectionType::Output);
+
+                        propertyAccount.m_propertySlotId = AddSlot(slotConfiguration);
+                    }
 
                     propertyAccount.m_getterFunction = getterWrapper.m_getterFunction;
                     m_propertyAccounts.push_back(propertyAccount);

@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/AppleTV":
+        [
+            "Twitch_Traits_Platform.h",
+            "Twitch_Traits_AppleTV.h"
+        ]
+    }
+}

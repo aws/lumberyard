@@ -44,7 +44,7 @@ namespace
             case PlatformOptions::Android_ARMv8:
                 return "android_armv8_clang";
 
-        #if defined(AZ_PLATFORM_APPLE_OSX)
+        #if defined(AZ_PLATFORM_MAC)
             case PlatformOptions::iOS:
                 return "ios";
         #endif

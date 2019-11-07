@@ -47,7 +47,9 @@ def build(bld):
         pch                 = '../StdAfx.cpp',
         includes            = ['..',
                                bld.ThirdPartyPath('squish'),
-                               bld.Path('Code/CryEngine/RenderDll/XRenderD3D9')],
+                               bld.Path('Code/CryEngine/RenderDll/XRenderD3D9'),
+                               bld.Path('Code/CryEngine/CryCommon')
+                              ],
         defines             = ['NULL_RENDERER', '_RENDERER', 'USE_CRY_NEW_AND_DELETE' ],
         use                 = ['AzFramework'],
         uselib              = ['LZMA',

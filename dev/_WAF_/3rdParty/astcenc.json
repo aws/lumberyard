@@ -1,0 +1,20 @@
+{
+    "name": "astcenc",
+    "source": "@3P:astcenc@",
+    "description": "ASTC Encoder",
+    "lib_required": "False",
+    "platform": {
+        "win_x64_vs2013": {
+            "copy_extra": [
+                "Binary/windows-x64/astcenc.exe:."
+            ]
+        },
+        "win_x64_vs2015": "@win_x64_vs2013",
+        "win_x64_vs2017": "@win_x64_vs2013",
+        "darwin_x64": {
+            "copy_extra": [
+                "Binary/mac-x64/astcenc:."
+            ]
+        }
+    }
+}

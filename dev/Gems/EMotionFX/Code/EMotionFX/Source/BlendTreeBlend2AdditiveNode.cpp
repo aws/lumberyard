@@ -216,8 +216,6 @@ namespace EMotionFX
         if (numNodes > 0)
         {
             Transform transform;
-            const ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
-            const Pose* bindPose = actorInstance->GetTransformData()->GetBindPose();
             for (size_t n = 0; n < numNodes; ++n)
             {
                 const float finalWeight = blendWeight;// * uniqueData->mWeights[n];

@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <GridMate/Replica/ReplicaChunkDescriptor.h>
 #include <GridMate/Replica/DataSet.h>
@@ -312,5 +311,3 @@ namespace GridMate
     }
     //-----------------------------------------------------------------------------
 } // GridMate
-
-#endif  // AZ_UNITY_BUILD

@@ -15,8 +15,12 @@
 #include <AzCore/Component/Entity.h>
 
 #include <AzToolsFramework/ToolsMessaging/EntityHighlightBus.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4244: conversion from 'qreal' to 'int', possible loss of data
+                                                               // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
 #include <QMouseEvent>
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {
@@ -34,12 +38,12 @@ namespace AzToolsFramework
         m_entityId = newId;
         if (!m_entityId.IsValid())
         {
-            setText(QString());
-        }
+                setText(QString());
+            }
         else
         {
             AZ::Entity* pEntity = NULL;
-            EBUS_EVENT_RESULT(pEntity, AZ::ComponentApplicationBus, FindEntity, m_entityId);
+            AZ::ComponentApplicationBus::BroadcastResult(pEntity, &AZ::ComponentApplicationRequests::FindEntity, m_entityId);
             if (pEntity && nameOverride.empty())
             {
                 setText(pEntity->GetName().c_str());
@@ -63,7 +67,7 @@ namespace AzToolsFramework
         }
         else
         {
-            EBUS_EVENT(AzToolsFramework::EntityHighlightMessages::Bus, EntityHighlightRequested, m_entityId);
+            AzToolsFramework::EntityHighlightMessages::Bus::Broadcast(&AzToolsFramework::EntityHighlightMessages::EntityHighlightRequested, m_entityId);
         }
 
         QLabel::mousePressEvent(e);
@@ -72,7 +76,23 @@ namespace AzToolsFramework
     void EntityIdQLabel::mouseDoubleClickEvent(QMouseEvent* e)
     {
         QLabel::mouseDoubleClickEvent(e);
-        EBUS_EVENT(AzToolsFramework::EntityHighlightMessages::Bus, EntityStrongHighlightRequested, m_entityId);
+
+        if (m_entityId.IsValid())
+        {
+            EntityIdList selectionList = { m_entityId };
+
+            AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::SetSelectedEntities, selectionList);
+
+            bool canGoTo = false;
+            AzToolsFramework::EditorRequestBus::BroadcastResult(canGoTo, &AzToolsFramework::EditorRequests::CanGoToSelectedEntitiesInViewports);
+
+            if (canGoTo)
+            {
+                AzToolsFramework::EditorRequestBus::Broadcast(&AzToolsFramework::EditorRequests::GoToSelectedEntitiesInViewports);
+            }
+        }
+
+        AzToolsFramework::EntityHighlightMessages::Bus::Broadcast(&AzToolsFramework::EntityHighlightMessages::EntityStrongHighlightRequested, m_entityId);
         // The above EBus request calls EntityPropertyEditor::UpdateContents() down the code path, which in turn destroys 
         // the current EntityIdQLabel object, therefore calling any method of EntityIdQLabel at this point is invalid.
     }

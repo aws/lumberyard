@@ -16,6 +16,7 @@
 #include <AzCore/XML/rapidxml.h>
 
 #include <AzFramework/Asset/AssetCatalogBus.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 
 #include <AzQtComponents/Buses/DragAndDrop.h>
 
@@ -93,7 +94,7 @@ namespace SliceFavorites
 
         ~FavoriteData();
 
-        int LoadFromXML(AZ::rapidxml::xml_node<char>* node);
+        int LoadFromXML(AZ::rapidxml::xml_node<char>* node, const FavoriteData* root);
         int AddToXML(AZ::rapidxml::xml_node<char>* node, AZ::rapidxml::xml_document<char>* xmlDoc) const;
 
         QString m_name;
@@ -121,6 +122,8 @@ namespace SliceFavorites
         int GetNumOfType(FavoriteType type) const;
 
         QString GenerateTooltip() const;
+
+        bool IsAssetUnique(AZ::Data::AssetId assetId, const FavoriteData* root);
     };
 
     class FavoriteDataModel 
@@ -129,6 +132,7 @@ namespace SliceFavorites
         , private AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
         , private AzFramework::AssetCatalogEventBus::Handler
         , private AzQtComponents::DragAndDropEventsBus::Handler
+        , private AzToolsFramework::AssetBrowser::AssetBrowserComponentNotificationBus::Handler
     {
         Q_OBJECT
 
@@ -144,8 +148,6 @@ namespace SliceFavorites
         int rowCount(const QModelIndex &parent = QModelIndex()) const override;
         int columnCount(const QModelIndex &parent = QModelIndex()) const override;
         bool moveRows(const QModelIndex& sourceParent, int sourceRow, int count, const QModelIndex& destinationParent, int destinationChild) override;
-
-        void SetupModelData();
 
         size_t GetNumFavorites();
         void EnumerateFavorites(const AZStd::function<void(const AZ::Data::AssetId& assetId)>& callback);
@@ -188,6 +190,7 @@ namespace SliceFavorites
         ////////////////////////////////////////////////////////////////////////
         // AssetCatalogBus::Handler overrides
         void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
+        void OnAssetBrowserComponentReady() override;
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////

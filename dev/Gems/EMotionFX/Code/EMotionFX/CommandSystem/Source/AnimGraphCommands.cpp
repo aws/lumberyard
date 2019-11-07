@@ -25,6 +25,7 @@
 #include <EMotionFX/Source/ActorManager.h>
 #include <EMotionFX/Source/MotionManager.h>
 #include <EMotionFX/Source/MotionSystem.h>
+#include <EMotionFX/Source/Recorder.h>
 #include <EMotionFX/Source/Importer/Importer.h>
 #include <EMotionFX/Exporters/ExporterLib/Exporter/ExporterFileProcessor.h>
 #include <AzFramework/API/ApplicationAPI.h>
@@ -627,6 +628,18 @@ namespace CommandSystem
             GetCommandManager()->ExecuteCommandInsideCommand(AZStd::string::format("Select -animGraphID %d", animGraph->GetID()), resultString);
         }
 
+        if (parameters.GetValueAsBool("startRecording", this))
+        {
+            EMotionFX::Recorder::RecordSettings settings;
+            settings.mFPS = 1000000;
+            settings.mRecordTransforms = true;
+            settings.mRecordAnimGraphStates = true;
+            settings.mRecordNodeHistory = true;
+            settings.mRecordScale = true;
+            settings.mInitialAnimGraphAnimBytes = 4 * 1024 * 1024; // 4 mb
+            EMotionFX::GetRecorder().StartRecording(settings);
+        }
+
         // done
         return true;
     }
@@ -766,6 +779,7 @@ namespace CommandSystem
         GetSyntax().AddParameter("motionSetID",         "The id of the motion set.",        MCore::CommandSyntax::PARAMTYPE_INT,    "-1");
         GetSyntax().AddParameter("motionSetIndex",      "The index of the motion set.",     MCore::CommandSyntax::PARAMTYPE_INT,    "-1");
         GetSyntax().AddParameter("visualizeScale",      "The visualize scale.",             MCore::CommandSyntax::PARAMTYPE_FLOAT,  "1.0");
+        GetSyntax().AddParameter("startRecording",      "Start a recording as soon as the activation occurs", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");
     }
 
 

@@ -171,7 +171,9 @@ namespace AzQtComponents
         int sizeHintForSelectedRow(const QModelIndex& mappedIndex, const TableView* view) const;
 
         mutable int m_unexpandedRowHeight = -1;
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'AzQtComponents::TableViewItemDelegate::m_parentView': class 'QPointer<AzQtComponents::TableView>' needs to have dll-interface to be used by clients of class 'AzQtComponents::TableViewItemDelegate'
         QPointer<TableView> m_parentView;
+        AZ_POP_DISABLE_WARNING
     };
 
 } // namespace AzQtComponents

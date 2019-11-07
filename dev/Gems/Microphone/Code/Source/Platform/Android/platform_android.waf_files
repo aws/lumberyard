@@ -1,0 +1,9 @@
+{
+    "auto":
+    {
+        "Platform/Android":
+        [
+            "MicrophoneSystemComponent_Android.cpp"
+        ]
+    }
+}

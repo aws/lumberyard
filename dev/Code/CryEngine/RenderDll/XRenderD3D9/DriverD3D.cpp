@@ -5372,7 +5372,7 @@ void CD3D9Renderer::ReadFrameBufferFast(uint32* pDstARGBA8, int dstWidth, int ds
         return;
     }
 
-#if defined (AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX)
+#if defined (AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_MAC)
     gRenDev->ForceFlushRTCommands();
     assert(m_pBackBuffer);
 

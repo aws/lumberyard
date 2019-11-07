@@ -26,7 +26,7 @@
 #if defined(AZ_PLATFORM_WINDOWS)
 #include "EngineSettingsBackendWin32.h"
 #include <Windows.h>
-#elif defined(AZ_PLATFORM_APPLE)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE
 #include "EngineSettingsBackendApple.h"
 #endif
 
@@ -50,7 +50,7 @@ CEngineSettingsManager::CEngineSettingsManager(const wchar_t* moduleName, const 
 
 #if defined(AZ_PLATFORM_WINDOWS)
     m_backend = new CEngineSettingsBackendWin32(this, moduleName);
-#elif defined(AZ_PLATFORM_APPLE)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE
     m_backend = new CEngineSettingsBackendApple(this, moduleName);
 #endif
     assert(m_backend);

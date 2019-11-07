@@ -1,8 +1,0 @@
-{
-    "none": {
-        "Implementation": [
-            "Source/Android/InAppPurchasesAndroid.h",
-            "Source/Android/InAppPurchasesAndroid.cpp"
-        ]
-    }
-}

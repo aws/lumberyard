@@ -28,7 +28,7 @@
     #endif
 #endif
 
-#ifdef MCORE_PLATFORM_WINDOWS
+#if defined(AZ_PLATFORM_WINDOWS)
     #define HAS_GAME_CONTROLLER
 #endif
 

@@ -35,35 +35,71 @@ namespace ScriptCanvas
                 if (Data::IsVectorContainerType(GetSourceAZType()))
                 {
                     // Add the INDEX as the INPUT slot
-                    m_inputSlots.insert(AddInputDatumSlot("Index", "", Data::Type::Number(), Datum::eOriginality::Original, false));
+                    {
+                        DataSlotConfiguration slotConfiguration;
+
+                        slotConfiguration.m_name = "Index";
+                        slotConfiguration.m_displayGroup = GetSourceDisplayGroup();
+                        slotConfiguration.SetType(Data::Type::Number());
+                        slotConfiguration.SetConnectionType(ConnectionType::Input);
+
+                        m_inputSlots.insert(AddSlot(slotConfiguration));
+                    }
 
                     // Add the INPUT slot for the data to insert
-                    Data::Type type = Data::FromAZType(m_sourceTypes[0]);
-                    m_inputSlots.insert(AddInputDatumSlot(Data::GetName(type), "", type, Datum::eOriginality::Original, false));
+                    {
+                        Data::Type type = Data::FromAZType(m_sourceTypes[0]);
 
+                        DataSlotConfiguration slotConfiguration;
+
+                        slotConfiguration.m_name = Data::GetName(type);
+                        slotConfiguration.m_displayGroup = GetSourceDisplayGroup();
+                        slotConfiguration.SetType(type);
+                        slotConfiguration.SetConnectionType(ConnectionType::Input);                        
+
+                        m_inputSlots.insert(AddSlot(slotConfiguration));
+                    }
                 }
                 else
                 {
-                    for (AZ::TypeId sourceType : m_sourceTypes)
+                    // Key
                     {
-                        Data::Type type = Data::FromAZType(sourceType);
-                        m_inputSlots.insert(AddInputDatumSlot(Data::GetName(type), "", type, Datum::eOriginality::Original, false));
+                        Data::Type type = Data::FromAZType(m_sourceTypes[0]);
+
+                        DataSlotConfiguration slotConfiguration;
+
+                        slotConfiguration.m_name = "Key";
+                        slotConfiguration.m_displayGroup = GetSourceDisplayGroup();
+                        slotConfiguration.SetType(type);
+                        slotConfiguration.SetConnectionType(ConnectionType::Input);
+
+                        m_inputSlots.insert(AddSlot(slotConfiguration));
+                    }
+
+                    // Value
+                    {
+                        Data::Type type = Data::FromAZType(m_sourceTypes[1]);
+                        DataSlotConfiguration slotConfiguration;
+                        slotConfiguration.m_name = "Value";
+                        slotConfiguration.m_displayGroup = GetSourceDisplayGroup();
+                        slotConfiguration.SetType(type);
+                        slotConfiguration.SetConnectionType(ConnectionType::Input);
+                        m_inputSlots.insert(AddSlot(slotConfiguration));
                     }
                 }
-                
-                m_outputSlots.insert(AddOutputTypeSlot(Data::GetName(GetSourceType()), "Container", GetSourceType(), Node::OutputStorage::Required, false));
             }
 
             void OperatorInsert::InvokeOperator()
             {
-                const SlotSet& slotSets = GetSourceSlots();
+                Slot* inputSlot = GetFirstInputSourceSlot();
+                Slot* outputSlot = GetFirstOutputSourceSlot();
 
-                if (!slotSets.empty())
+                if (inputSlot && outputSlot)
                 {
-                    SlotId sourceSlotId = (*slotSets.begin());
-
+                    SlotId sourceSlotId = inputSlot->GetId();
                     const Datum* containerDatum = GetInput(sourceSlotId);
-                    if (containerDatum != nullptr && !containerDatum->Empty() && IsConnected(sourceSlotId))
+
+                    if (Datum::IsValidDatum(containerDatum))
                     {
                         AZ::BehaviorMethod* method = GetOperatorMethod("Insert");
                         AZ_Assert(method, "The contract must have failed because you should not be able to invoke an operator for a type that does not have the method");
@@ -140,7 +176,7 @@ namespace ScriptCanvas
                         BehaviorContextMethodHelper::Call(*this, false, method, paramFirst, paramIter, resultSlotIDs);
 
                         // Push the source container as an output to support chaining
-                        PushOutput(*containerDatum, *GetSlot(*m_outputSlots.begin()));
+                        PushOutput(*containerDatum, (*outputSlot));
                     }
                 }
 

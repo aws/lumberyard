@@ -16,7 +16,9 @@
 #include <QObject>
 #include <QColor>
 #include <QHash>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::StyleManager::m_widgetToStyleSheetMap': class 'QHash<QWidget *,QString>' needs to have dll-interface to be used by clients of class 'AzQtComponents::StyleManager'
 #include <QPointer>
+AZ_POP_DISABLE_WARNING
 
 class QApplication;
 class QStyle;
@@ -119,6 +121,7 @@ namespace AzQtComponents
         bool m_useUI10 = true;
 
         using WidgetToStyleSheetMap = QHash<QWidget*, QString>;
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::StyleManager::m_widgetToStyleSheetMap': class 'QHash<QWidget *,QString>' needs to have dll-interface to be used by clients of class 'AzQtComponents::StyleManager'
         WidgetToStyleSheetMap m_widgetToStyleSheetMap;
         QStyleSheetStyle* m_styleSheetStyle10 = nullptr;
         QStyleSheetStyle* m_styleSheetStyle20 = nullptr;
@@ -128,6 +131,7 @@ namespace AzQtComponents
 
         // Track the 2.0 style as a QPointer, as the QApplication will delete it if it still has a pointer to it
         QPointer<QStyle> m_style20;
+        AZ_POP_DISABLE_WARNING
 
         AutoCustomWindowDecorations* m_autoCustomWindowDecorations = nullptr;
     };

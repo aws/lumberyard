@@ -38,6 +38,7 @@ struct CRenderChunk;
 struct IRenderMesh;
 
 #include <Tarray.h>
+#include <AzCore/EBus/EBus.h>
 
 #ifdef MAX_SUB_MATERIALS
 // This checks that the values are in sync in the different files.
@@ -50,6 +51,24 @@ COMPILE_TIME_ASSERT(MAX_SUB_MATERIALS == 128);
 #define MTL_SPECIAL_NAME_COLLISION_PROXY "collision_proxy"
 #define MTL_SPECIAL_NAME_COLLISION_PROXY_VEHICLE "nomaterial_vehicle"
 #define MTL_SPECIAL_NAME_RAYCAST_PROXY "raycast_proxy"
+
+namespace AZ
+{
+    class MaterialNotificationEvents : public AZ::EBusTraits
+    {
+    public:
+        virtual ~MaterialNotificationEvents() {}
+
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        static const bool EnableEventQueue = true;
+        using EventQueueMutexType = AZStd::mutex;
+
+
+        virtual void OnShaderLoaded(IShader* shader) {}
+    };
+    using MaterialNotificationEventBus = AZ::EBus<MaterialNotificationEvents>;
+}
 
 enum
 {

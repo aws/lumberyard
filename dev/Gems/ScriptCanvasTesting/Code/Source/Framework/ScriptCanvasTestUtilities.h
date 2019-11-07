@@ -95,7 +95,7 @@ namespace ScriptCanvasTests
 
     ScriptCanvas::Nodes::Core::BehaviorContextObjectNode* CreateTestObjectNode(const AZ::EntityId& graphUniqueId, AZ::EntityId& entityOut, const AZ::Uuid& objectTypeID);
     AZ::EntityId CreateClassFunctionNode(const AZ::EntityId& graphUniqueId, AZStd::string_view className, AZStd::string_view methodName);
-    const char* SlotTypeToString(ScriptCanvas::SlotType type);
+    AZStd::string SlotDescriptorToString(ScriptCanvas::SlotDescriptor type);
     void DumpSlots(const ScriptCanvas::Node& node);
     bool Connect(ScriptCanvas::Graph& graph, const AZ::EntityId& fromNodeID, const char* fromSlotName, const AZ::EntityId& toNodeID, const char* toSlotName, bool dumpSlotsOnFailure = true);
 
@@ -105,10 +105,10 @@ namespace ScriptCanvasTests
         : public AZ::EBusTraits
     {
     public:
-        virtual void Failed(AZStd::string_view description) = 0;
-        virtual AZStd::string Result(AZStd::string_view description) = 0;
-        virtual void SideEffect(AZStd::string_view description) = 0;
-        virtual void Succeeded(AZStd::string_view description) = 0;
+        virtual void Failed(AZStd::string description) = 0;
+        virtual AZStd::string Result(AZStd::string description) = 0;
+        virtual void SideEffect(AZStd::string description) = 0;
+        virtual void Succeeded(AZStd::string description) = 0;
     };
 
     using UnitTestEventsBus = AZ::EBus<UnitTestEvents>;
@@ -140,7 +140,7 @@ namespace ScriptCanvasTests
             m_results.clear();
         }
 
-        void Failed(AZStd::string_view description)
+        void Failed(AZStd::string description) override
         {
             auto iter = m_failures.find(description);
             if (iter != m_failures.end())
@@ -169,7 +169,7 @@ namespace ScriptCanvasTests
             return !m_successes.empty();
         }
 
-        void SideEffect(AZStd::string_view description)
+        void SideEffect(AZStd::string description) override
         {
             auto iter = m_sideEffects.find(description);
             if (iter != m_sideEffects.end())
@@ -201,7 +201,7 @@ namespace ScriptCanvasTests
             return iter != m_sideEffects.end() ? iter->second : 0;
         }
 
-        void Succeeded(AZStd::string_view description)
+        void Succeeded(AZStd::string description) override
         {
             auto iter = m_successes.find(description);
 
@@ -221,7 +221,7 @@ namespace ScriptCanvasTests
             return iter != m_successes.end() ? iter->second : 0;
         }
 
-        AZStd::string Result(AZStd::string_view description)
+        AZStd::string Result(AZStd::string description) override
         {
             auto iter = m_results.find(description);
 
@@ -607,58 +607,6 @@ namespace ScriptCanvasTests
         delete graph;
     }
 
-    template<typename t_Value>
-    void AssignTest(const t_Value& lhs, const t_Value& rhs, UnitTestEntityContext* entityContext = {})
-    {
-        using namespace ScriptCanvas;
-        using namespace Nodes;
-        AZ::Entity graphEntity("Graph");
-        if (entityContext)
-        {
-            entityContext->AddEntity(graphEntity.GetId());
-        }
-        graphEntity.Init();
-        Graph* graph{};
-        SystemRequestBus::BroadcastResult(graph, &SystemRequests::CreateGraphOnEntity, &graphEntity);
-        EXPECT_NE(nullptr, graph);
-        EXPECT_NE(lhs, rhs);
-
-        const AZ::EntityId& graphEntityId = graph->GetEntityId();
-        const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
-
-        AZ::EntityId startID;
-        CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
-        AZ::EntityId operatorID;
-        CreateTestNode<Nodes::Core::Assign>(graphUniqueId, operatorID);
-        AZ::EntityId lhsID;
-        auto sourceNode = CreateDataNode(graphUniqueId, lhs, lhsID);
-        AZ::EntityId rhsID;
-        auto targetNode = CreateDataNode(graphUniqueId, rhs, rhsID);
-
-        EXPECT_TRUE(Connect(*graph, lhsID, "Get", operatorID, "Source"));
-        EXPECT_TRUE(Connect(*graph, rhsID, "Set", operatorID, "Target"));
-
-        EXPECT_TRUE(Connect(*graph, startID, "Out", operatorID, "In"));
-
-        graph->GetEntity()->Activate();
-        EXPECT_FALSE(graph->IsInErrorState());
-
-        if (auto result = targetNode->template GetInput_UNIT_TEST<t_Value>("Set"))
-        {
-            EXPECT_EQ(*result, lhs);
-        }
-        else
-        {
-            ADD_FAILURE();
-        }
-
-        graph->GetEntity()->Deactivate();
-        if (entityContext)
-        {
-            entityContext->RemoveEntity(graphEntity.GetId());
-        }
-    }
-
     template<typename TBusIdType>
     class TemplateEventTest
         : public AZ::EBusTraits
@@ -755,24 +703,24 @@ namespace ScriptCanvasTests
             }
         }
 
-        void Failed(AZStd::string_view description) override
+        void Failed(AZStd::string description) override
         {
             Call(FN_Failed, description);
         }
 
-        AZStd::string Result(AZStd::string_view description) override
+        AZStd::string Result(AZStd::string description) override
         {
             AZStd::string output;
             CallResult(output, FN_Result, description);
             return output;
         }
 
-        void SideEffect(AZStd::string_view description) override
+        void SideEffect(AZStd::string description) override
         {
             Call(FN_SideEffect, description);
         }
 
-        void Succeeded(AZStd::string_view description) override
+        void Succeeded(AZStd::string description) override
         {
             Call(FN_Succeeded, description);
         }

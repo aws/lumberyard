@@ -16,7 +16,9 @@
 
 #include <QToolButton>
 #include <QLabel>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include <QHBoxLayout>
+AZ_POP_DISABLE_WARNING
 #include <QSettings>
 #include <QMenu>
 #include <QResizeEvent>
@@ -195,7 +197,7 @@ namespace AzQtComponents
         m_truncatedPaths = fullPath;
 
         // used to measure the width used by the path
-        const int availableWidth = width() * m_config.optimalPathWidth;
+        const int availableWidth = static_cast<int>(width() * m_config.optimalPathWidth);
         const QFontMetricsF fm(m_label->font());
         QString plainTextPath = "";
 
@@ -287,7 +289,7 @@ namespace AzQtComponents
         Config config;
 
         config.linkColor = QStringLiteral("white");
-        config.optimalPathWidth = 0.8;
+        config.optimalPathWidth = 0.8f;
 
         return config;
     }

@@ -25,6 +25,10 @@ namespace ScriptCanvas
             template<typename Type>
             struct OperatorDivImpl
             {
+                OperatorDivImpl(Node* node)
+                    : m_node(node)
+                {}
+
                 Type operator()(const Type& a, const Datum& b)
                 {
                     const Type* dataB = b.GetAs<Type>();
@@ -34,6 +38,7 @@ namespace ScriptCanvas
                         const Type& divisor = (*dataB);
                         if (AZ::IsClose(divisor, Type(0), std::numeric_limits<Type>::epsilon()))
                         {
+                            SCRIPTCANVAS_REPORT_ERROR((*m_node), "Divide by Zero");
                             return Type(0);
                         }
 
@@ -44,6 +49,9 @@ namespace ScriptCanvas
                         return a;
                     }
                 }
+
+            private:
+                Node* m_node;
             };
 
             template <typename VectorType, int Elements>
@@ -57,6 +65,7 @@ namespace ScriptCanvas
                     if (divisor && divisor->IsClose(Type::CreateZero()))
                     {
                         // Divide by zero
+                        SCRIPTCANVAS_REPORT_ERROR((*m_node), "Divide by Zero");
                         return VectorType(0);
                     }
 
@@ -65,6 +74,7 @@ namespace ScriptCanvas
                         if (AZ::IsClose((*divisor)(i), AZ::VectorFloat(0.f), std::numeric_limits<AZ::VectorFloat>::epsilon()))
                         {
                             // Divide by zero
+                            SCRIPTCANVAS_REPORT_ERROR((*m_node), "Divide by Zero");
                             return VectorType(0);
                         }
                     }
@@ -78,23 +88,47 @@ namespace ScriptCanvas
                         return a;
                     }
                 }
+
+                OperatorDivVectorTypes(Node* node)
+                    : m_node(node)
+                {}
+
+            private:
+                Node* m_node;
+
             };
 
             template <>
             struct OperatorDivImpl<Data::Vector2Type> : public OperatorDivVectorTypes<AZ::Vector2, 2>
-            {};
+            {
+                OperatorDivImpl(Node* node)
+                    : OperatorDivVectorTypes(node)
+                {}
+            };
 
             template <>
             struct OperatorDivImpl<Data::Vector3Type> : public OperatorDivVectorTypes<AZ::Vector3, 3>
-            {};
+            {
+                OperatorDivImpl(Node* node)
+                    : OperatorDivVectorTypes(node)
+                {}
+            };
 
             template <>
             struct OperatorDivImpl<Data::Vector4Type> : public OperatorDivVectorTypes<AZ::Vector4, 4>
-            {};
+            {
+                OperatorDivImpl(Node* node)
+                    : OperatorDivVectorTypes(node)
+                {}
+            };
 
             template <>
             struct OperatorDivImpl<Data::ColorType>
             {
+                OperatorDivImpl(Node* node)
+                    : m_node(node)
+                {}
+
                 Datum operator()(const Datum& lhs, const Datum& rhs)
                 {
                     const AZ::Color* dataA = lhs.GetAs<AZ::Color>();
@@ -105,14 +139,16 @@ namespace ScriptCanvas
                         if (dataB->IsClose(AZ::Color(), std::numeric_limits<float>::epsilon()))
                         {
                             // Divide by zero
+                            SCRIPTCANVAS_REPORT_ERROR((*m_node), "Divide by Zero");
                             return Datum();
                         }
 
-                        // TODO: clamping should happen at the AZ::Color level, not here - but it does not.
+                        // TODO: clamping should happen at the AZ::Color level, not here - but it does not. 
                         AZ::VectorFloat divisorA = dataB->GetA();
                         if (AZ::IsClose(divisorA, 0.f, std::numeric_limits<AZ::VectorFloat>::epsilon()))
                         {
                             // Divide by zero
+                            SCRIPTCANVAS_REPORT_ERROR((*m_node), "Divide by Zero");
                             return Datum();
                         }
 
@@ -120,6 +156,7 @@ namespace ScriptCanvas
                         if (AZ::IsClose(divisorR, 0.f, std::numeric_limits<AZ::VectorFloat>::epsilon()))
                         {
                             // Divide by zero
+                            SCRIPTCANVAS_REPORT_ERROR((*m_node), "Divide by Zero");
                             return Datum();
                         }
 
@@ -127,6 +164,7 @@ namespace ScriptCanvas
                         if (AZ::IsClose(divisorG, 0.f, std::numeric_limits<AZ::VectorFloat>::epsilon()))
                         {
                             // Divide by zero
+                            SCRIPTCANVAS_REPORT_ERROR((*m_node), "Divide by Zero");
                             return Datum();
                         }
 
@@ -134,6 +172,7 @@ namespace ScriptCanvas
                         if (AZ::IsClose(divisorB, 0.f, std::numeric_limits<AZ::VectorFloat>::epsilon()))
                         {
                             // Divide by zero
+                            SCRIPTCANVAS_REPORT_ERROR((*m_node), "Divide by Zero");
                             return Datum();
                         }
 
@@ -157,6 +196,9 @@ namespace ScriptCanvas
 
                     return Datum();
                 }
+
+            private:
+                Node* m_node;
             };
 
             AZStd::unordered_set< Data::Type > OperatorDiv::GetSupportedNativeDataTypes() const
@@ -166,25 +208,20 @@ namespace ScriptCanvas
                 };
             }
 
-            void OperatorDiv::Operator(Data::eType type, const OperatorOperands& operands, Datum& result)
+            void OperatorDiv::Operator(Data::eType type, const ArithmeticOperands& operands, Datum& result)
             {
                 switch (type)
                 {
                 case Data::eType::Number:
-                    OperatorEvaluator::Evaluate<Data::NumberType>(OperatorDivImpl<Data::NumberType>(), operands, result);
+                    OperatorEvaluator::Evaluate<Data::NumberType>(OperatorDivImpl<Data::NumberType>(this), operands, result);
                     break;
                 default:
                     AZ_Assert(false, "Division operator not defined for type: %s", Data::ToAZType(type).ToString<AZStd::string>().c_str());
                     break;
                 }
-
-                if (result == Datum())
-                {
-                    SCRIPTCANVAS_REPORT_ERROR((*this), "Division by zero");
-                }
             }
 
-            void OperatorDiv::InitializeDatum(Datum* datum, ScriptCanvas::Data::Type dataType)
+            void OperatorDiv::InitializeDatum(Datum* datum, const ScriptCanvas::Data::Type& dataType)
             {
                 switch (dataType.GetType())
                 {
@@ -214,37 +251,23 @@ namespace ScriptCanvas
                 };
             }
 
-            void OperatorDiv::OnDisplayTypeChanged(ScriptCanvas::Data::Type dataType)
-            {
-                for (const SlotId& sourceSlotId : GetSourceSlots())
-                {
-                    Slot* sourceSlot = GetSlot(sourceSlotId);
-
-                    if (sourceSlot && sourceSlot->GetType() == SlotType::DataIn)
-                    {
-                        Datum* newDatum = ModInput(sourceSlotId);
-                        InitializeDatum(newDatum, dataType);
-                    }
-                }
-            }
-
-            void OperatorDiv::OnInputSlotAdded(const SlotId& slotId)
-            {
-                Slot* newSlot = GetSlot(slotId);
-
-                if (newSlot)
-                {
-                    Datum* newDatum = ModInput(slotId);
-
-                    InitializeDatum(newDatum, newSlot->GetDataType());
-                }
-            }
-
             bool OperatorDiv::IsValidArithmeticSlot(const SlotId& slotId) const
             {
+                const Datum* datum = GetInput(slotId);
+
                 // We could do some introspection here to drops 1s, but for now just going to let it perform the pointless math
                 // But it gets a bit messy(since x/1 is invalid, but 1/x is very valid).
-                return true;
+                return datum != nullptr;
+            }
+
+            void OperatorDiv::OnResetDatumToDefaultValue(Datum* datum)
+            {
+                Data::Type displayType = GetDisplayType(GetArithmeticDynamicTypeGroup());
+
+                if (displayType.IsValid())
+                {
+                    InitializeDatum(datum, displayType);
+                }
             }
         }
     }

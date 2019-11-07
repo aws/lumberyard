@@ -604,7 +604,7 @@ void QtViewport::wheelEvent(QWheelEvent* event)
 void QtViewport::keyPressEvent(QKeyEvent* event)
 {
     int nativeKey = event->nativeVirtualKey();
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
     // nativeVirtualKey is always zero on macOS, therefore we
     // need to manually set the nativeKey based on the Qt key
     switch (event->key())
@@ -641,7 +641,7 @@ void QtViewport::keyPressEvent(QKeyEvent* event)
 void QtViewport::keyReleaseEvent(QKeyEvent* event)
 {
     int nativeKey = event->nativeVirtualKey();
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
     // nativeVirtualKey is always zero on macOS, therefore we
     // need to manually set the nativeKey based on the Qt key
     switch (event->key())

@@ -218,6 +218,7 @@ class copy_outputs(Task):
     color = 'YELLOW'
     optional = False
     """If True, build doesn't fail if copy fails."""
+    nocache = True
 
     def __init__(self, *k, **kw):
         super(copy_outputs, self).__init__(self, *k, **kw)

@@ -17,8 +17,6 @@
 
 namespace ScriptCanvas
 {
-    class NodeVisitor;
-
     namespace Nodes
     {
         namespace Math
@@ -36,7 +34,7 @@ namespace ScriptCanvas
                 static const char* GetOperatorDesc() { return "Performs the Xor between two numbers"; }
                 static const char* GetIconPath() { return "Editor/Icons/ScriptCanvas/Xor.png"; }
 
-                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
+                
 
             };
 #endif

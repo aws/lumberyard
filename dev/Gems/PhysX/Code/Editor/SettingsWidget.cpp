@@ -31,10 +31,10 @@ namespace PhysX
             CreatePropertyEditor(this);
         }
 
-        void SettingsWidget::SetValue(const PhysX::Settings& settings, const Physics::WorldConfiguration& worldConfiguration,
+        void SettingsWidget::SetValue(const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary, const Physics::WorldConfiguration& worldConfiguration,
             const PhysX::EditorConfiguration& editorConfiguration)
         {
-            m_settings = settings;
+            m_defaultPhysicsMaterialLibrary.m_asset = materialLibrary;
             m_worldConfiguration = worldConfiguration;
             m_editorConfiguration = editorConfiguration;
 
@@ -42,6 +42,9 @@ namespace PhysX
             m_propertyEditor->ClearInstances();
             m_propertyEditor->AddInstance(&m_worldConfiguration);
             m_propertyEditor->AddInstance(&m_editorConfiguration);
+#ifdef ENABLE_DEFAULT_MATERIAL_LIBRARY
+            m_propertyEditor->AddInstance(&m_defaultPhysicsMaterialLibrary);
+#endif
             m_propertyEditor->InvalidateAll();
             blockSignals(false);
         }
@@ -74,7 +77,7 @@ namespace PhysX
 
         void SettingsWidget::AfterPropertyModified(AzToolsFramework::InstanceDataNode* /*node*/)
         {
-            emit onValueChanged(m_settings, m_worldConfiguration, m_editorConfiguration);
+            emit onValueChanged(m_defaultPhysicsMaterialLibrary.m_asset, m_worldConfiguration, m_editorConfiguration);
         }
 
         void SettingsWidget::SetPropertyEditingActive(AzToolsFramework::InstanceDataNode* /*node*/)
@@ -83,7 +86,7 @@ namespace PhysX
 
         void SettingsWidget::SetPropertyEditingComplete(AzToolsFramework::InstanceDataNode* /*node*/)
         {
-            emit onValueChanged(m_settings, m_worldConfiguration, m_editorConfiguration);
+            emit onValueChanged(m_defaultPhysicsMaterialLibrary.m_asset, m_worldConfiguration, m_editorConfiguration);
         }
 
         void SettingsWidget::SealUndoStack()

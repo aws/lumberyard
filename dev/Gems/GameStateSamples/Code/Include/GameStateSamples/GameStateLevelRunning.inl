@@ -14,6 +14,7 @@
 #include <GameStateSamples/GameStateLevelRunning.h>
 #include <GameStateSamples/GameStateLevelLoading.h>
 #include <GameStateSamples/GameStateLevelPaused.h>
+#include <GameStateSamples/GameStateSamples_Traits_Platform.h>
 
 #include <AzFramework/Input/Buses/Requests/InputTextEntryRequestBus.h>
 #include <AzFramework/Input/Devices/Gamepad/InputDeviceGamepad.h>
@@ -114,11 +115,11 @@ namespace GameStateSamples
     inline void GameStateLevelRunning::OnApplicationConstrained(AzFramework::ApplicationLifecycleEvents::Event /*lastEvent*/)
     {
         bool pauseOnApplicationConstrained = false;
-    #if defined(AZ_TRAIT_PAUSE_ON_APPLICATION_CONSTRAINED)
+    #if AZ_TRAIT_GAMESTATESAMPLES_PAUSE_ON_APPLICATION_CONSTRAINED
         pauseOnApplicationConstrained = true;
     #else
         pauseOnApplicationConstrained = false;
-    #endif // defined(AZ_TRAIT_PAUSE_ON_APPLICATION_CONSTRAINED)
+    #endif // AZ_TRAIT_GAMESTATESAMPLES_PAUSE_ON_APPLICATION_CONSTRAINED
         ISystem* iSystem = GetISystem();
         IConsole* iConsole = iSystem ? iSystem->GetIConsole() : nullptr;
         if (iConsole && iConsole->GetCVar("sys_pauseOnApplicationConstrained"))

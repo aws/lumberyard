@@ -18,7 +18,9 @@
 
 #include <AssetEditor/AssetEditorBus.h>
 #include <AssetEditor/Resources/rcc_AssetEditorResources.h>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include <AssetEditor/ui_AssetEditorToolbar.h>
+AZ_POP_DISABLE_WARNING
 #include <AssetEditor/ui_AssetEditorStatusBar.h>
 
 #include <AssetBrowser/AssetSelectionModel.h>
@@ -48,7 +50,9 @@
 #include <QMessageBox>
 #include <QMenu>
 #include <QMenuBar>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QFileInfo::d_ptr': class 'QSharedDataPointer<QFileInfoPrivate>' needs to have dll-interface to be used by clients of class 'QFileInfo'
 #include <QFileDialog>
+AZ_POP_DISABLE_WARNING
 #include <QAction>
 
 namespace AzToolsFramework
@@ -145,6 +149,12 @@ namespace AzToolsFramework
 
         void AssetEditorWidgetUserSettings::AddRecentPath(const AZStd::string& recentPath)
         {
+            auto item = AZStd::find(m_recentPaths.begin(), m_recentPaths.end(), recentPath);
+            if (item != m_recentPaths.end())
+            {
+                m_recentPaths.erase(item);
+            }
+
             m_recentPaths.emplace(m_recentPaths.begin(), recentPath);
 
             while (m_recentPaths.size() > 10)
@@ -163,7 +173,6 @@ namespace AzToolsFramework
             : QWidget(parent)
             , m_statusBar(new Ui::AssetEditorStatusBar())
             , m_dirty(true)
-            , m_isNewAsset(true)
         {
             AZ::ComponentApplicationBus::BroadcastResult(m_serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
             AZ_Assert(m_serializeContext, "Failed to retrieve serialize context.");
@@ -257,13 +266,18 @@ namespace AzToolsFramework
         {
             m_dirty = false;
 
-            AZ::Data::AssetBus::Handler::BusDisconnect(asset.GetId());
+            AZ::Data::AssetBus::Handler::BusDisconnect(asset.GetId());            
 
-            m_inMemoryAsset = asset;
+            // Clone the asset
+            AZ::Data::AssetId newAssetId = AZ::Data::AssetId(AZ::Uuid::CreateRandom());
+            m_inMemoryAsset = AZ::Data::AssetManager::Instance().CreateAsset(newAssetId, asset.GetType());
+
+            auto serializeContext = AZ::EntityUtils::GetApplicationSerializeContext();
+            serializeContext->CloneObjectInplace((*m_inMemoryAsset.GetData()), asset.GetData());
 
             UpdatePropertyEditor(m_inMemoryAsset);
 
-            if (m_isNewAsset)
+            if (!m_sourceAssetId.IsValid())
             {
                 SetStatusText(Status::assetCreated);
             }
@@ -279,11 +293,6 @@ namespace AzToolsFramework
 
             AZ::Crc32 saveStateKey;
             saveStateKey.Add(&asset.GetId(), sizeof(AZ::Data::AssetId));
-
-            // LW-DV ML Integration:  Fix!  (possible regression of LY-92830)
-            // Set the assetOriginal to the loaded one, so it updates state properly when an asset is saved
-            //m_assetOriginal = asset;
-            // LW-DV ML Integration:  Fix!  (possible regression of LY-92830)
 
             m_propertyEditor->SetSavedStateKey(saveStateKey);
             m_propertyEditor->AddInstance(asset.Get(), asset.GetType(), nullptr);
@@ -306,7 +315,7 @@ namespace AzToolsFramework
 
         bool AssetEditorWidget::TrySave(const AZStd::function<void()>& savedCallback)
         {
-            if (m_isNewAsset || !m_dirty)
+            if (!m_sourceAssetId.IsValid() || !m_dirty)
             {
                 return false;
             }
@@ -325,7 +334,7 @@ namespace AzToolsFramework
                 if (savedCallback)
                 {
                     #pragma warning(push)
-                    #pragma warning(disable: 4573)    // the usage of 'X' requires the compiler to capture 'this' but the current default capture mode 
+                    #pragma warning(disable: 4573)  // the usage of 'X' requires the compiler to capture 'this' but the current default capture mode 
 
                     auto conn = AZStd::make_shared<QMetaObject::Connection>();
                     *conn = connect(this, &AssetEditorWidget::OnAssetSavedSignal, this, [conn, savedCallback]()
@@ -398,7 +407,15 @@ namespace AzToolsFramework
 
                         fileStream.Write(byteBuffer.size(), byteBuffer.data());
 
-                        m_isNewAsset = false;
+                        AZStd::string watchFolder;
+                        AZ::Data::AssetInfo assetInfo;
+                        bool sourceInfoFound{};
+                        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(sourceInfoFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetSourceInfoBySourcePath, targetFilePath.c_str(), assetInfo, watchFolder);
+
+                        if (sourceInfoFound)
+                        {
+                            m_sourceAssetId = assetInfo.m_assetId;
+                        }
 
                         AZStd::string fileName = targetFilePath;
 
@@ -463,7 +480,8 @@ namespace AzToolsFramework
             }
 
             AddRecentPath(fullPath.c_str());
-            m_isNewAsset = false;
+
+            m_sourceAssetId = asset.GetId();
 
             LoadAsset(asset.GetId(), asset.GetType());
         }
@@ -486,7 +504,7 @@ namespace AzToolsFramework
                 AddRecentPath(product->GetFullPath());
 
                 LoadAsset(product->GetAssetId(), product->GetAssetType());
-                m_isNewAsset = false;
+                m_sourceAssetId = product->GetAssetId();
             }
         }
 
@@ -511,13 +529,15 @@ namespace AzToolsFramework
                 AZ::Data::AssetCatalogRequestBus::BroadcastResult(typeInfo, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetInfoById, assetInfo.m_assetId);
 
                 LoadAsset(assetInfo.m_assetId, typeInfo.m_assetType);
-                m_isNewAsset = false;
+
+                m_sourceAssetId = assetInfo.m_assetId;
             }
         }
 
         void AssetEditorWidget::LoadAsset(AZ::Data::AssetId assetId, AZ::Data::AssetType assetType)
         {
             auto asset = AZ::Data::AssetManager::Instance().GetAsset(assetId, assetType);
+
             if (asset.IsReady())
             {
                 OnAssetReady(asset);
@@ -533,13 +553,13 @@ namespace AzToolsFramework
 
         void AssetEditorWidget::SaveAsset()
         {
-            if (m_isNewAsset)
+            if (!m_sourceAssetId.IsValid())
             {
                 SaveAsDialog(m_inMemoryAsset);
             }
             else if (m_dirty)
             {
-                AssetCheckoutAndSaveCommon(m_inMemoryAsset.Get()->GetId(), m_inMemoryAsset, m_serializeContext,
+                AssetCheckoutAndSaveCommon(m_sourceAssetId, m_inMemoryAsset, m_serializeContext,
                 [this](bool success, const AZStd::string& error)
                 {
                     if (success)
@@ -593,7 +613,8 @@ namespace AzToolsFramework
                 m_recentlyAddedAssetPath = assetInfo.m_relativePath;
 
                 LoadAsset(assetId, assetInfo.m_assetType);
-                m_isNewAsset = false;
+
+                m_sourceAssetId = assetId;
             }
         }
 
@@ -608,7 +629,7 @@ namespace AzToolsFramework
 
                 // The file was removed due to errors, but the user needs to be 
                 // given a chance to fix the errors and try again.
-                m_isNewAsset = true;
+                m_sourceAssetId.SetInvalid();
                 m_currentAsset = "New Asset";
                 m_propertyEditor->setEnabled(true);
 
@@ -654,8 +675,6 @@ namespace AzToolsFramework
 
         void AssetEditorWidget::CreateAssetImpl(AZ::Data::AssetType assetType)
         {
-            m_isNewAsset = true;
-
             // If an unsaved asset is open, ask.
             if (TrySave([this, assetType]() { CreateAssetImpl(assetType); }))
             {
@@ -666,6 +685,8 @@ namespace AzToolsFramework
             {
                 m_inMemoryAsset.Release();
             }
+
+            m_sourceAssetId.SetInvalid();
 
             AZ::Data::AssetId newAssetId = AZ::Data::AssetId(AZ::Uuid::CreateRandom());
             m_inMemoryAsset = AZ::Data::AssetManager::Instance().CreateAsset(newAssetId, assetType);

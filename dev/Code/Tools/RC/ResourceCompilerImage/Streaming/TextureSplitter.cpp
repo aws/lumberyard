@@ -41,7 +41,7 @@
 
 #if defined(AZ_PLATFORM_WINDOWS)
 static const unsigned long MIN_TEX_SIZE = 1ul;
-#elif defined(AZ_PLATFORM_APPLE)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE
 static const unsigned int MIN_TEX_SIZE = 1u;
 #endif
 

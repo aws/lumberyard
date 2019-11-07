@@ -9,9 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
-#include <AzCore/PlatformIncl.h>
 #include <AzCore/AzCoreModule.h>
 
 #include <AzCore/Casting/numeric_cast.h>
@@ -54,12 +52,14 @@
 #include <AzCore/Debug/StackTracer.h>
 #endif // defined(AZ_ENABLE_DEBUG_TOOLS)
 
-#if defined(AZ_PLATFORM_APPLE)
-#   include <mach-o/dyld.h>
-#endif
-
 namespace AZ
 {
+    // Forward declare platform specific functions ...
+    namespace Platform
+    {
+        void GetExePath(char* exeDirectory, size_t exeDirectorySize, bool& pathIncludesExe);
+    }
+
     //=========================================================================
     // ComponentApplication::Descriptor
     // [5/30/2012]
@@ -979,132 +979,30 @@ namespace AZ
             return;
         }
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/ComponentApplication_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/ComponentApplication_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_ANDROID)
-        // On Android, all dlopen calls should be relative.
-        azstrcpy(m_exeDirectory, AZ_ARRAY_SIZE(m_exeDirectory), "");
-#else
-
         char exeDirectory[AZ_MAX_PATH_LEN];
 
-        // Platform specific get exe path: http://stackoverflow.com/a/1024937
-#if AZ_TRAIT_USE_GET_MODULE_FILE_NAME
-        // https://msdn.microsoft.com/en-us/library/windows/desktop/ms683197(v=vs.85).aspx
-        DWORD pathLen = GetModuleFileNameA(nullptr, exeDirectory, AZ_ARRAY_SIZE(exeDirectory));
-#elif defined(AZ_PLATFORM_APPLE)
-        // https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man3/dyld.3.html
-        uint32_t bufSize = AZ_ARRAY_SIZE(exeDirectory);
-        _NSGetExecutablePath(exeDirectory, &bufSize);
-        // _NSGetExecutablePath doesn't update bufSize
-        size_t pathLen = strlen(exeDirectory);
-#else
-        // http://man7.org/linux/man-pages/man5/proc.5.html
-        size_t pathLen = readlink("/proc/self/exe", exeDirectory, AZ_ARRAY_SIZE(exeDirectory));
-#endif // MSVC
+        bool pathIncludesExe = true;
+        Platform::GetExePath(exeDirectory, AZ_ARRAY_SIZE(exeDirectory), pathIncludesExe);
 
-        char* exeDirEnd = exeDirectory + pathLen;
-
-        AZStd::replace(exeDirectory, exeDirEnd, '\\', '/');
-
-        // exeDirectory currently contains full path to EXE.
-        // Modify to end the string after the last '/'
-        char* finalSlash = strrchr(exeDirectory, '/');
-
-        // If no slashes found, path invalid.
-        if (finalSlash)
+        if (pathIncludesExe)
         {
-            *(finalSlash + 1) = '\0';
-        }
-        else
-        {
-            AZ_Error("ComponentApplication", false, "Failed to process exe directory. Path given by OS: %s", exeDirectory);
+            // exeDirectory currently contains full path to EXE.
+            // Modify to end the string after the last '/'
+            char* finalSlash = strrchr(exeDirectory, '/');
+            if (finalSlash)
+            {
+                *(finalSlash + 1) = '\0';
+            }
+            else
+            {
+                // If no slashes found, path invalid.
+                AZ_Error("ComponentApplication", false, "Failed to process exe directory. Path given by OS: %s", exeDirectory);
+            }
         }
 
         azstrcpy(m_exeDirectory, AZ_ARRAY_SIZE(m_exeDirectory), exeDirectory);
 
-        CalculateBinFolder();
-
-#endif
-    }
-    /// Calculates the Bin folder name where the application is running from (off of the engine root folder)
-    void ComponentApplication::CalculateBinFolder()
-    {
-        azstrcpy(m_binFolder, AZ_ARRAY_SIZE(m_binFolder), "");
-
-#if !defined(AZ_RESTRICTED_PLATFORM) && !defined(AZ_PLATFORM_ANDROID) && !defined(AZ_PLATFORM_APPLE_TV) && !defined(AZ_PLATFORM_APPLE_IOS)
-        if (strlen(m_exeDirectory) > 0)
-        {
-            bool engineMarkerFound = false;
-            // Prepare a working mutable path initialized with the current exe path
-            char workingExeDirectory[AZ_MAX_PATH_LEN];
-            azstrcpy(workingExeDirectory, AZ_ARRAY_SIZE(workingExeDirectory), m_exeDirectory);
-
-            const char* lastCheckFolderName = "";
-
-            // Calculate the bin folder name by walking up the path folders until we find the 'engine.json' file marker
-            size_t checkFolderIndex = strlen(workingExeDirectory);
-            if (checkFolderIndex > 0)
-            {
-                checkFolderIndex--; // Skip the right-most trailing slash since exeDirectory represents a folder
-                while (true)
-                {
-                    // Eat up all trailing slashes
-                    while ((checkFolderIndex > 0) && workingExeDirectory[checkFolderIndex] == '/')
-                    {
-                        workingExeDirectory[checkFolderIndex] = '\0';
-                        checkFolderIndex--;
-                    }
-                    // Check if the current index is the drive letter separater
-                    if (workingExeDirectory[checkFolderIndex] == ':')
-                    {
-                        // If we reached a drive letter separator, then use the last check folder 
-                        // name as the bin folder since we cant go any higher
-                        break;
-                    }
-                    else
-                    {
-
-                        // Find the next path separator
-                        while ((checkFolderIndex > 0) && workingExeDirectory[checkFolderIndex] != '/')
-                        {
-                            checkFolderIndex--;
-                        }
-                    }
-                    // Split the path and folder and test for engine.json
-                    if (checkFolderIndex > 0)
-                    {
-                        lastCheckFolderName = &workingExeDirectory[checkFolderIndex + 1];
-                        workingExeDirectory[checkFolderIndex] = '\0';
-                        if (CheckPathForEngineMarker(workingExeDirectory))
-                        {
-                            // engine.json was found at the folder, break now to register the lastCheckFolderName as the bin folder
-                            engineMarkerFound = true;
-
-                            // Set the bin folder name only if the engine marker was found
-                            azstrcpy(m_binFolder, AZ_ARRAY_SIZE(m_binFolder), lastCheckFolderName);
-
-                            break;
-                        }
-                        checkFolderIndex--;
-                    }
-                    else
-                    {
-                        // We've reached the beginning, break out of the loop
-                        break;
-                    }
-                }
-                AZ_Warning("ComponentApplication", engineMarkerFound, "Unable to determine Bin folder. Cannot locate engine marker file 'engine.json'");
-            }
-        }
-#endif // !defined(AZ_RESTRICTED_PLATFORM) && !defined(AZ_PLATFORM_ANDROID) && !defined(AZ_PLATFORM_APPLE_TV) && !defined(AZ_PLATFORM_APPLE_IOS)
+        PlatformCalculateBinFolder();
     }
 
     //=========================================================================
@@ -1223,5 +1121,3 @@ namespace AZ
     }
 
 } // namespace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

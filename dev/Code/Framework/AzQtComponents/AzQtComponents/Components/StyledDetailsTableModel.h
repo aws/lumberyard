@@ -127,6 +127,7 @@ namespace AzQtComponents
 
         int m_sortColumn = -1;
         Qt::SortOrder m_sortOrder = Qt::AscendingOrder;
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::StyledDetailsTableModel::m_columnAliases': class 'QHash<QString,QString>' needs to have dll-interface to be used by clients of class 'AzQtComponents::StyledDetailsTableModel'
         QHash<QString, QString> m_columnAliases;
         QVector<Column> m_columns;
         QVector<InternalTableEntry*> m_entries;
@@ -137,5 +138,6 @@ namespace AzQtComponents
 
         // non-static for allocation tracking
         QVector<int> m_detailsChangedRoleVector;
+        AZ_POP_DISABLE_WARNING
     };
 } // namespace AzQtComponents

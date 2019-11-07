@@ -26,7 +26,7 @@ namespace ComponentHelpers
 {
     AZStd::string GetComponentIconPath(const AZ::SerializeContext::ClassData* componentClass)
     {
-        AZStd::string iconPath = "Editor/Icons/Components/Component_Placeholder.png";
+        AZStd::string iconPath = "Editor/Icons/Components/Component_Placeholder.svg";
 
         auto editorElementData = componentClass->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData);
         if (auto iconAttribute = editorElementData->FindAttribute(AZ::Edit::Attributes::Icon))

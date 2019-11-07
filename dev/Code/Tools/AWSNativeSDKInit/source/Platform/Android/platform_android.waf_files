@@ -1,0 +1,7 @@
+{
+  "auto": {
+    "Platform/Android": [
+        "../Common/Default/AWSNativeSDKInit_Default.cpp"
+    ]
+  }
+}

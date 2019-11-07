@@ -30,6 +30,9 @@ namespace RADTelemetry
     static int s_telemetryPort;
     static const char* s_telemetryCaptureMask;
     static int s_memCaptureEnabled;
+    static int s_frameAdvanceType;
+
+    using FrameAdvanceType = AZ::Debug::ProfileFrameAdvanceType;
 
     static void MaskCvarChangedCallback(ICVar*)
     {
@@ -54,10 +57,16 @@ namespace RADTelemetry
         TelemetryRequestBus::Broadcast(&TelemetryRequests::SetCaptureMask, fullCaptureMask);
     }
 
+    static void FrameAdvancedTypeCvarChangedCallback(ICVar*)
+    {
+        TelemetryRequestBus::Broadcast(&TelemetryRequests::SetFrameAdvanceType, (s_frameAdvanceType == 0) ? FrameAdvanceType::Game : FrameAdvanceType::Render);
+    }
+
     static void CmdTelemetryToggleEnabled(IConsoleCmdArgs* args)
     {
         TelemetryRequestBus::Broadcast(&TelemetryRequests::SetAddress, s_telemetryAddress, s_telemetryPort);
 
+        FrameAdvancedTypeCvarChangedCallback(nullptr); // Set frame advance type
         MaskCvarChangedCallback(nullptr); // Set the capture mask
 
         TelemetryRequestBus::Broadcast(&TelemetryRequests::ToggleEnabled);
@@ -106,6 +115,9 @@ namespace RADTelemetry
             REGISTER_CVAR2("radtm_Address", &s_telemetryAddress, "127.0.0.1", VF_NULL, "The IP address for the telemetry server");
             REGISTER_CVAR2("radtm_Port", &s_telemetryPort, 4719, VF_NULL, "The port for the RAD telemetry server");
             REGISTER_CVAR2("radtm_MemoryCaptureEnabled", &s_memCaptureEnabled, 0, VF_NULL, "Toggle for telemetry memory capture");
+
+            const int defaultFrameAdvanceTypeCvarValue = (FrameAdvanceType::Default == FrameAdvanceType::Game) ? 0 : 1;
+            REGISTER_CVAR2_CB("radtm_FrameAdvanceType", &s_frameAdvanceType, defaultFrameAdvanceTypeCvarValue, VF_NULL, "Advance profile frames from either: =0 the main thread, or =1 render frame advance", FrameAdvancedTypeCvarChangedCallback);
 
             // Get the default value from ProfileTelemetryComponent
             MaskType defaultCaptureMaskValue = 0;

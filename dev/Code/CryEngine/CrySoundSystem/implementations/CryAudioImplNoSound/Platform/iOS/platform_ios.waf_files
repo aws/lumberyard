@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/iOS":
+        [
+            "CryAudioImplNoSound_Traits_Platform.h",
+            "CryAudioImplNoSound_Traits_iOS.h"
+        ]
+    }
+}

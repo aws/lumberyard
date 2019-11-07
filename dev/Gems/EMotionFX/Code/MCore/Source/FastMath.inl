@@ -26,11 +26,7 @@ MCORE_INLINE bool Math::IsFloatEqual(float x, float y)
 
 MCORE_INLINE float Math::Floor(float x)
 {
-    #ifdef MCORE_FASTFLOAT_MATH
     return floorf(x);
-    #else
-    return floor(x);
-    #endif
 }
 
 
@@ -79,23 +75,13 @@ MCORE_INLINE float Math::SignOfFloat(float x)
 
 MCORE_INLINE float Math::Abs(float x)
 {
-    #if defined(MCORE_FASTFLOAT_MATH)
     return fabsf(x);
-    #elif (defined(MCORE_PLATFORM_MAC) || defined(MCORE_PLATFORM_IPHONE))
-    return fabs(x);
-    #else
-    return (x < 0.0f) ? -x : x;
-    #endif
 }
 
 
 MCORE_INLINE float Math::Ceil(float x)
 {
-    #ifdef MCORE_FASTFLOAT_MATH
     return ceilf(x);
-    #else
-    return ceil(x);
-    #endif
 }
 
 
@@ -113,71 +99,43 @@ MCORE_INLINE float Math::DegreesToRadians(float deg)
 
 MCORE_INLINE float Math::Sin(float x)
 {
-    #if defined(MCORE_FASTFLOAT_MATH)
     return sinf(x);
-    #else
-    return sin(x);
-    #endif
 }
 
 
 MCORE_INLINE float Math::Cos(float x)
 {
-    #if defined(MCORE_FASTFLOAT_MATH)
     return cosf(x);
-    #else
-    return cos(x);
-    #endif
 }
 
 
 MCORE_INLINE float Math::Tan(float x)
 {
-    #if defined(MCORE_FASTFLOAT_MATH)
     return tanf(x);
-    #else
-    return tan(x);
-    #endif
 }
 
 
 MCORE_INLINE float Math::ASin(float x)
 {
-    #ifdef MCORE_FASTFLOAT_MATH
     return asinf(x);
-    #else
-    return asin(x);
-    #endif
 }
 
 
 MCORE_INLINE float Math::ACos(float x)
 {
-    #ifdef MCORE_FASTFLOAT_MATH
     return acosf(x);
-    #else
-    return acos(x);
-    #endif
 }
 
 
 MCORE_INLINE float Math::ATan(float x)
 {
-    #if defined(MCORE_FASTFLOAT_MATH)
     return atanf(x);
-    #else
-    return atan(x);
-    #endif
 }
 
 
 MCORE_INLINE float Math::ATan2(float y, float x)
 {
-    #if defined(MCORE_FASTFLOAT_MATH)
     return atan2f(y, x);
-    #else
-    return atan2(y, x);
-    #endif
 }
 
 
@@ -222,61 +180,37 @@ MCORE_INLINE float Math::SignOfSin(float y)
 
 MCORE_INLINE float Math::Exp(float x)
 {
-    #if defined(MCORE_FASTFLOAT_MATH)
     return expf(x);
-    #else
-    return exp(x);
-    #endif
 }
 
 
 MCORE_INLINE float Math::Log(float x)
 {
-    #if defined(MCORE_FASTFLOAT_MATH)
     return logf(x);
-    #else
-    return log(x);
-    #endif
 }
 
 
 MCORE_INLINE float Math::Log2(float x)
 {
-    #if defined(MCORE_FASTFLOAT_MATH)
     return logf(x) / logf(2.0f);
-    #else
-    return log(x) / log(2.0f);
-    #endif
 }
 
 
 MCORE_INLINE float Math::Pow(float base, float exponent)
 {
-    #if defined(MCORE_FASTFLOAT_MATH)
     return powf(base, exponent);
-    #else
-    return pow(base, exponent);
-    #endif
 }
 
 
 MCORE_INLINE float Math::Sqrt(float x)
 {
-    #if defined(MCORE_FASTFLOAT_MATH)
     return sqrtf(x);
-    #else
-    return sqrt(x);
-    #endif
 }
 
 
 MCORE_INLINE float Math::SafeSqrt(float x)
 {
-    #if defined(MCORE_FASTFLOAT_MATH)
     return (x > Math::epsilon) ? sqrtf(x) : 0.0f;
-    #else
-    return (x > Math::epsilon) ? sqrt(x) : 0.0f;
-    #endif
 }
 
 
@@ -305,15 +239,15 @@ MCORE_INLINE uint32 Math::NextPowerOfTwo(uint32 x)
 // returns an approximation to 1/sqrt(x)
 MCORE_INLINE float Math::FastInvSqrt(float x)
 {
-    #ifdef MCORE_SSE_ENABLED
+#if AZ_TRAIT_USE_PLATFORM_SIMD
     float result = x;
     __m128 input = _mm_load_ss(&result);
     __m128 output = _mm_rsqrt_ss(input);
     _mm_store_ss(&result, output);
     return result;
-    #else
+#else
     return 1.0f / Math::FastSqrt(x);
-    #endif
+#endif
 }
 
 /*
@@ -346,7 +280,7 @@ MCORE_INLINE float Math::FastInvSqrt3(float x)
 // 11 bit precision sqrt
 MCORE_INLINE float Math::FastSqrt2(float x)
 {
-    /*  #ifdef MCORE_SSE_ENABLED
+    /*  #if AZ_TRAIT_USE_PLATFORM_SIMD
             float result;
             __m128 input        = _mm_load_ss( &x );
             __m128 oneOverSqrt  = _mm_rsqrt_ss( input );
@@ -363,7 +297,7 @@ MCORE_INLINE float Math::FastSqrt2(float x)
 MCORE_INLINE float Math::FastSqrt(float x)
 {
     /*
-        #ifdef MCORE_SSE_ENABLED
+        #if AZ_TRAIT_USE_PLATFORM_SIMD
             const float halfFloat = 0.5f;
             float result;
 
@@ -447,11 +381,7 @@ MCORE_INLINE bool Math::IsFloatNegative(float f)
 // fmod
 MCORE_INLINE float Math::FMod(float x, float y)
 {
-    #ifdef MCORE_FASTFLOAT_MATH
     return fmodf(x, y);
-    #else
-    return fmod(x, y);
-    #endif
 }
 
 
@@ -459,15 +389,9 @@ MCORE_INLINE float Math::FMod(float x, float y)
 MCORE_INLINE float Math::SafeFMod(float x, float y)
 {
     if (y < -epsilon || y > epsilon)
-        #ifdef MCORE_FASTFLOAT_MATH
     {
         return fmodf(x, y);
     }
-        #else
-    {
-        return fmod(x, y);
-    }
-        #endif
     else
     {
         return 0.0f;

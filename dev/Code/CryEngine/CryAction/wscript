@@ -28,5 +28,7 @@ def build(bld):
         configurations          = ['all'],
         defines                 = ['USE_CRY_NEW_AND_DELETE'],
         use                     = ['AzCore'],
+        includes                = [bld.Path('Code/CryEngine/CryCommon')
+                                  ],
     )
 

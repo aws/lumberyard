@@ -14,12 +14,19 @@
 
 #include <AzCore/Math/IntersectSegment.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
+#include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 
 namespace AzToolsFramework
 {
     const AZ::Color BaseManipulator::s_defaultMouseOverColor = AZ::Color(1.0f, 1.0f, 0.0f, 1.0f); // yellow
 
     AZ_CLASS_ALLOCATOR_IMPL(BaseManipulator, AZ::SystemAllocator, 0)
+
+    static bool EntityIdAndEntityComponentIdComparison(
+        const AZ::EntityId entityId, const AZ::EntityComponentIdPair& entityComponentId)
+    {
+        return entityId == entityComponentId.GetEntityId();
+    }
 
     BaseManipulator::~BaseManipulator()
     {
@@ -30,19 +37,24 @@ namespace AzToolsFramework
     bool BaseManipulator::OnLeftMouseDown(
         const ViewportInteraction::MouseInteraction& interaction, const float rayIntersectionDistance)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         if (m_onLeftMouseDownImpl)
         {
             BeginAction();
             ToolsApplicationRequests::Bus::BroadcastResult(
                 m_undoBatch, &ToolsApplicationRequests::Bus::Events::BeginUndoBatch, "ManipulatorLeftMouseDown");
 
-            for (const AZ::EntityId entityId : m_entityIds)
+            for (const AZ::EntityComponentIdPair& entityComponentId : m_entityComponentIdPairs)
             {
                 ToolsApplicationRequests::Bus::Broadcast(
-                    &ToolsApplicationRequests::Bus::Events::AddDirtyEntity, entityId);
+                    &ToolsApplicationRequests::Bus::Events::AddDirtyEntity, entityComponentId.GetEntityId());
             }
 
             (*this.*m_onLeftMouseDownImpl)(interaction, rayIntersectionDistance);
+
+            ToolsApplicationNotificationBus::Broadcast(
+                &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
 
             return true;
         }
@@ -53,19 +65,24 @@ namespace AzToolsFramework
     bool BaseManipulator::OnRightMouseDown(
         const ViewportInteraction::MouseInteraction& interaction, const float rayIntersectionDistance)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         if (m_onRightMouseDownImpl)
         {
             BeginAction();
             ToolsApplicationRequests::Bus::BroadcastResult(
                 m_undoBatch, &ToolsApplicationRequests::Bus::Events::BeginUndoBatch, "ManipulatorRightMouseDown");
 
-            for (const AZ::EntityId entityId : m_entityIds)
+            for (const AZ::EntityComponentIdPair& entityComponentId : m_entityComponentIdPairs)
             {
                 ToolsApplicationRequests::Bus::Broadcast(
-                    &ToolsApplicationRequests::Bus::Events::AddDirtyEntity, entityId);
+                    &ToolsApplicationRequests::Bus::Events::AddDirtyEntity, entityComponentId.GetEntityId());
             }
 
             (*this.*m_onRightMouseDownImpl)(interaction, rayIntersectionDistance);
+
+            ToolsApplicationNotificationBus::Broadcast(
+                &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
 
             return true;
         }
@@ -77,6 +94,8 @@ namespace AzToolsFramework
     // attached as no active manipulator will have been set in ManipulatorManager.
     void BaseManipulator::OnLeftMouseUp(const ViewportInteraction::MouseInteraction& interaction)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         EndAction();
         OnLeftMouseUpImpl(interaction);
         EndUndoBatch();
@@ -84,6 +103,8 @@ namespace AzToolsFramework
 
     void BaseManipulator::OnRightMouseUp(const ViewportInteraction::MouseInteraction& interaction)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         EndAction();
         OnRightMouseUpImpl(interaction);
         EndUndoBatch();
@@ -92,6 +113,8 @@ namespace AzToolsFramework
     bool BaseManipulator::OnMouseOver(
         const ManipulatorId manipulatorId, const ViewportInteraction::MouseInteraction& interaction)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         UpdateMouseOver(manipulatorId);
         OnMouseOverImpl(manipulatorId, interaction);
         return m_mouseOver;
@@ -100,21 +123,35 @@ namespace AzToolsFramework
     void BaseManipulator::OnMouseWheel(const ViewportInteraction::MouseInteraction& interaction)
     {
         OnMouseWheelImpl(interaction);
+
+        ToolsApplicationNotificationBus::Broadcast(
+            &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
     }
 
     void BaseManipulator::OnMouseMove(const ViewportInteraction::MouseInteraction& interaction)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         if (!m_performingAction)
         {
-            AZ_Warning("Manipulators", false, "MouseMove action received, but this manipulator is not performing actions!");
+            AZ_Warning(
+                "Manipulators", false,
+                "MouseMove action received, but this manipulator is not performing an action");
+
             return;
         }
+
+        // ensure property grid (entity inspector) values are refreshed
+        ToolsApplicationNotificationBus::Broadcast(
+            &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
 
         OnMouseMoveImpl(interaction);
     }
 
     void BaseManipulator::SetBoundsDirty()
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         SetBoundsDirtyImpl();
     }
 
@@ -164,6 +201,8 @@ namespace AzToolsFramework
 
     void BaseManipulator::EndAction()
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         if (!m_performingAction)
         {
             AZ_Warning(
@@ -174,6 +213,9 @@ namespace AzToolsFramework
         }
 
         m_performingAction = false;
+
+        // let other systems know that a manipulator has modified an entity component property
+        NotifyEntityComponentPropertyChanged();
     }
 
     void BaseManipulator::EndUndoBatch()
@@ -187,18 +229,103 @@ namespace AzToolsFramework
 
     void BaseManipulator::AddEntityId(const AZ::EntityId entityId)
     {
-        m_entityIds.insert(entityId);
+        m_entityComponentIdPairs.insert(AZ::EntityComponentIdPair(entityId, AZ::ComponentId{}));
     }
 
-    AZStd::set<AZ::EntityId>::iterator BaseManipulator::RemoveEntityId(const AZ::EntityId entityId)
+    void BaseManipulator::AddEntityComponentIdPair(const AZ::EntityComponentIdPair& entityIdComponentPair)
     {
-        const auto entityIdIt = m_entityIds.find(entityId);
-        if (entityIdIt != m_entityIds.end())
+        m_entityComponentIdPairs.insert(entityIdComponentPair);
+    }
+
+    void BaseManipulator::NotifyEntityComponentPropertyChanged()
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        for (const AZ::EntityComponentIdPair& entityComponentIdPair : m_entityComponentIdPairs)
         {
-            return m_entityIds.erase(entityIdIt);
+            // if we have a valid component, send a single message for that component id
+            if (entityComponentIdPair.GetComponentId() != AZ::InvalidComponentId)
+            {
+                PropertyEditorEntityChangeNotificationBus::Event(
+                    entityComponentIdPair.GetEntityId(),
+                    &PropertyEditorEntityChangeNotifications::OnEntityComponentPropertyChanged,
+                    entityComponentIdPair.GetComponentId());
+            }
+            else
+            {
+                AZ_Warning("Manipulators", false,
+                    "This Manipulator was only registered with an EntityId and not an EntityComponentIdPair. "
+                    "Please use AddEntityComponentIdPair() instead of AddEntityId() when registering what this "
+                    "Manipulator is changing.");
+
+                // if we do not have a valid component id, send the message to all components on the entity,
+                // this is inefficient but will guarantee the component that changed does get the message.
+                const AZ::Entity* entity = GetEntityById(entityComponentIdPair.GetEntityId());
+                for (const AZ::Component* component : entity->GetComponents())
+                {
+                    PropertyEditorEntityChangeNotificationBus::Event(
+                        entity->GetId(), &PropertyEditorEntityChangeNotifications::OnEntityComponentPropertyChanged,
+                        component->GetId());
+                }
+            }
+        }
+    }
+
+    AZStd::unordered_set<AZ::EntityComponentIdPair>::iterator BaseManipulator::RemoveEntityId(const AZ::EntityId entityId)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        auto afterErased = m_entityComponentIdPairs.end();
+
+        bool allErased = false;
+        while (!allErased)
+        {
+            // look for a match (keep looking in case we have several entity ids with different component ids)
+            const auto entityComponentPairId =
+                m_entityComponentIdPairs.find_as(
+                    entityId, AZStd::hash<AZ::EntityId>(),
+                    &EntityIdAndEntityComponentIdComparison);
+
+            // update the afterErased variable so we can return an iterator
+            // to the correct position in the container.
+            if (entityComponentPairId != m_entityComponentIdPairs.end())
+            {
+                afterErased = m_entityComponentIdPairs.erase(entityComponentPairId);
+            }
+            else
+            {
+                allErased = true;
+            }
+        }
+
+        return afterErased;
+    }
+
+    AZStd::unordered_set<AZ::EntityComponentIdPair>::iterator BaseManipulator::RemoveEntityComponentIdPair(
+        const AZ::EntityComponentIdPair& entityComponentIdPair)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        const auto entityIdIt = m_entityComponentIdPairs.find(entityComponentIdPair);
+
+        if (entityIdIt != m_entityComponentIdPairs.end())
+        {
+            return m_entityComponentIdPairs.erase(entityIdIt);
         }
 
         return entityIdIt;
+    }
+
+    bool BaseManipulator::HasEntityId(const AZ::EntityId entityId) const
+    {
+        return m_entityComponentIdPairs.find_as(
+            entityId, AZStd::hash<AZ::EntityId>(),
+            &EntityIdAndEntityComponentIdComparison) != m_entityComponentIdPairs.end();
+    }
+
+    bool BaseManipulator::HasEntityComponentIdPair(const AZ::EntityComponentIdPair& entityComponentIdPair) const
+    {
+        return m_entityComponentIdPairs.find(entityComponentIdPair) != m_entityComponentIdPairs.end();
     }
 
     void Manipulators::Register(const ManipulatorManagerId manipulatorManagerId)
@@ -233,6 +360,22 @@ namespace AzToolsFramework
         ProcessManipulators([entityId](BaseManipulator* manipulator)
         {
             manipulator->AddEntityId(entityId);
+        });
+    }
+
+    void Manipulators::AddEntityComponentIdPair(const AZ::EntityComponentIdPair& entityComponentIdPair)
+    {
+        ProcessManipulators([&entityComponentIdPair](BaseManipulator* manipulator)
+        {
+            manipulator->AddEntityComponentIdPair(entityComponentIdPair);
+        });
+    }
+
+    void Manipulators::RemoveEntityComponentIdPair(const AZ::EntityComponentIdPair& entityComponentIdPair)
+    {
+        ProcessManipulators([&entityComponentIdPair](BaseManipulator* manipulator)
+        {
+            manipulator->RemoveEntityComponentIdPair(entityComponentIdPair);
         });
     }
 

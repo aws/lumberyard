@@ -22,7 +22,7 @@
 
 #include <algorithm>
 
-#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_MAC)
 #include <libkern/OSAtomic.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -371,7 +371,7 @@ CCrySimpleSock* CCrySimpleSock::Accept()
         SOCKET Sock = accept(m_pImpl->m_Socket, reinterpret_cast<sockaddr*>(&connectingAddress), reinterpret_cast<socklen_t*>(&addressSize));
         if (Sock == INVALID_SOCKET)
         {
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
             switch (errno)
             {
             case EINTR:

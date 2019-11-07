@@ -17,7 +17,7 @@
 #include <AzCore/std/time.h>
 #include "TwitchSystemComponent.h"
 #include "TwitchReflection.h"
-
+#include <Twitch_Traits_Platform.h>
 
 #if defined(_WIN32)
 #pragma warning (push) 
@@ -775,11 +775,11 @@ namespace Twitch
 
     void TwitchSystemComponent::Init()
     {
-#if defined(AZ_PLATFORM_WINDOWS_X64)
+#if AZ_TRAIT_TWITCH_INITIALIZE_SDK
         // You must define the Twitch Application Client ID
         m_fuelInterface = IFuelInterface::Alloc();
         m_twitchREST    = ITwitchREST::Alloc(m_fuelInterface);
-#endif //defined(AZ_PLATFORM_WINDOWS_X64)
+#endif // AZ_TRAIT_TWITCH_INITIALIZE_SDK
     }
 
     void TwitchSystemComponent::Activate()

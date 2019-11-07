@@ -10,8 +10,13 @@
 #
 ########################################################################################
 
+
 def build(bld):
+    
     bld.DefineGem(
         # Add custom build options here
-        includes    = [bld.Path('Code/CryEngine/CryAction')],
+        includes = [bld.Path('Code/CryEngine/CryAction'),
+                    bld.Path('Code/CryEngine/CryCommon')],
+        # Platform Roots
+        platform_roots=[bld.PlatformRoot('Source/Platform', export_includes=True)]
     )

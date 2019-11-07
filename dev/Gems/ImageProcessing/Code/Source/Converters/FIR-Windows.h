@@ -17,6 +17,7 @@
 
 #pragma once
 #include <math.h>
+#include <ImageProcessing_Traits_Platform.h>
 
 /* ####################################################################################################################
  */
@@ -557,11 +558,7 @@ namespace ImageProcessing
             {
                 return M_PI / 4.0;
             }
-#ifdef AZ_PLATFORM_WINDOWS
-            return _j1(M_PI * pos) / (2.0 * pos);
-#else
-            return j1(M_PI * pos) / (2.0 * pos);
-#endif 
+            return AZ_TRAIT_IMAGEPROCESSING_BESSEL_FUNCTION_FIRST_ORDER(M_PI * pos) / (2.0 * pos);
         }
     };
 

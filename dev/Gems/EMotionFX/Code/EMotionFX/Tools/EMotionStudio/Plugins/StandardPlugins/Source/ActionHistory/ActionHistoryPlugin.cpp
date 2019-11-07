@@ -108,8 +108,8 @@ namespace EMStudio
         AZStd::string historyItemString;
 
         // Add all history items to the action history list.
-        const uint32 numHistoryItems = commandManager->GetNumHistoryItems();
-        for (uint32 i = 0; i < numHistoryItems; ++i)
+        const size_t numHistoryItems = commandManager->GetNumHistoryItems();
+        for (size_t i = 0; i < numHistoryItems; ++i)
         {
             const MCore::CommandManager::CommandHistoryEntry& historyItem = commandManager->GetHistoryItem(i);
 

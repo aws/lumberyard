@@ -54,21 +54,17 @@ namespace AZ
                 : m_value(value)
             {}
 
-#ifdef AZ_HAS_RVALUE_REFS
             OutcomeStorage(ValueType&& value)
                 : m_value(AZStd::move(value))
             {}
-#endif // AZ_HAS_RVALUE_REFS
 
             OutcomeStorage(const OutcomeStorage& other)
                 : m_value(other.m_value)
             {}
 
-#ifdef AZ_HAS_RVALUE_REFS
             OutcomeStorage(OutcomeStorage&& other)
                 : m_value(AZStd::move(other.m_value))
             {}
-#endif // AZ_HAS_RVALUE_REFS
 
             OutcomeStorage& operator=(const OutcomeStorage& other)
             {
@@ -76,13 +72,11 @@ namespace AZ
                 return *this;
             }
 
-#ifdef AZ_HAS_RVALUE_REFS
             OutcomeStorage& operator=(OutcomeStorage&& other)
             {
                 m_value = AZStd::move(other.m_value);
                 return *this;
             }
-#endif // AZ_HAS_RVALUE_REFS
 
             ValueType m_value;
         };

@@ -78,6 +78,7 @@ namespace AzToolsFramework
             // AssetBrowserComponentRequestBus
             //////////////////////////////////////////////////////////////////////////
             AssetBrowserModel* GetAssetBrowserModel() override;
+            bool AreEntriesReady() override;
 
             //////////////////////////////////////////////////////////////////////////
             // AssetCatalogEventBus
@@ -114,6 +115,8 @@ namespace AzToolsFramework
 
             //! wait until database is ready
             bool m_dbReady;
+            //! have entries been populated yet
+            bool m_entriesReady = false;
             //! is query waiting for more update requests
             AZStd::atomic_bool m_waitingForMore;
             //! should the query thread stop

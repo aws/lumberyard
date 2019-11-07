@@ -22,83 +22,20 @@
 
 namespace EMotionFX
 {
-    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphTagPicker, AZ::SystemAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphTagSelector, AZ::SystemAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(AnimGraphTagHandler, AZ::SystemAllocator, 0)
 
-    AnimGraphTagPicker::AnimGraphTagPicker(QWidget* parent)
-        : QWidget(parent)
-        , m_animGraph(nullptr)
-        , m_tagSelector(nullptr)
+    AnimGraphTagSelector::AnimGraphTagSelector(QWidget* parent)
+        : TagSelector(parent)
     {
-        QHBoxLayout* hLayout = new QHBoxLayout();
-        hLayout->setMargin(0);
-
-        // Create the tag selector widget.
-        m_tagSelector = new AzQtComponents::TagSelector(this);
-
-        connect(m_tagSelector, &AzQtComponents::TagSelector::TagsChanged, this, &AnimGraphTagPicker::OnSelectedTagsChanged);
-
-        hLayout->addWidget(m_tagSelector);
-        setLayout(hLayout);
+        connect(this, &AnimGraphTagSelector::TagsChanged, this, [this]()
+            {
+                EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, this);
+                AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, this);
+            });
     }
 
-
-    void AnimGraphTagPicker::Reinit()
-    {
-        SetTags(m_tags);
-    }
-
-
-    void AnimGraphTagPicker::SetAnimGraph(AnimGraph* animGraph)
-    {
-        m_animGraph = animGraph;
-    }
-
-
-    void AnimGraphTagPicker::SetTags(const AZStd::vector<AZStd::string>& tags)
-    {
-        m_tags = tags;
-
-        // Get the list of available tags and update the tag selector.
-        QVector<QString> availableTags;
-        GetAvailableTags(availableTags);
-        m_tagSelector->Reinit(availableTags);
-
-        // Get the tag strings from the array of string attributes for selection.
-        QVector<QString> tagStrings;
-        GetSelectedTags(tagStrings);
-        
-        QSignalBlocker tagSelectorSignalBlocker(m_tagSelector);
-        m_tagSelector->SelectTags(tagStrings);
-    }
-
-
-    const AZStd::vector<AZStd::string>& AnimGraphTagPicker::GetTags() const
-    {
-        return m_tags;
-    }
-
-
-    void AnimGraphTagPicker::OnSelectedTagsChanged()
-    {
-        // Get the currently selected tag strings from the widget.
-        QVector<QString> tagStrings;
-        m_tagSelector->GetSelectedTagStrings(tagStrings);
-        const int numTags = tagStrings.count();
-
-        AZStd::vector<AZStd::string> newTags;
-        newTags.reserve(numTags);
-        for (const QString& tagString : tagStrings)
-        {
-            newTags.emplace_back(tagString.toUtf8().data());
-        }
-
-        m_tags = newTags;
-        emit TagsChanged();
-    }
-
-
-    void AnimGraphTagPicker::GetAvailableTags(QVector<QString>& outTags) const
+    void AnimGraphTagSelector::GetAvailableTags(QVector<QString>& outTags) const
     {
         outTags.clear();
 
@@ -118,23 +55,11 @@ namespace EMotionFX
         }
     }
 
-
-    void AnimGraphTagPicker::GetSelectedTags(QVector<QString>& outTags) const
-    {
-        outTags.clear();
-        outTags.reserve(static_cast<int>(m_tags.size()));
-
-        for (const AZStd::string& tag : m_tags)
-        {
-            outTags.push_back(tag.c_str());
-        }
-    }
-
     //---------------------------------------------------------------------------------------------------------------------------------------------------------
 
     AnimGraphTagHandler::AnimGraphTagHandler()
         : QObject()
-        , AzToolsFramework::PropertyHandler<AZStd::vector<AZStd::string>, AnimGraphTagPicker>()
+        , AzToolsFramework::PropertyHandler<AZStd::vector<AZStd::string>, AnimGraphTagSelector>()
         , m_animGraph(nullptr)
     {
     }
@@ -147,18 +72,11 @@ namespace EMotionFX
 
     QWidget* AnimGraphTagHandler::CreateGUI(QWidget* parent)
     {
-        AnimGraphTagPicker* picker = aznew AnimGraphTagPicker(parent);
-
-        connect(picker, &AnimGraphTagPicker::TagsChanged, this, [picker]()
-        {
-            EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, picker);
-        });
-
-        return picker;
+        return aznew AnimGraphTagSelector(parent);
     }
 
 
-    void AnimGraphTagHandler::ConsumeAttribute(AnimGraphTagPicker* GUI, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName)
+    void AnimGraphTagHandler::ConsumeAttribute(AnimGraphTagSelector* GUI, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName)
     {
         if (attrib == AZ::Edit::Attributes::ReadOnly)
         {
@@ -177,13 +95,13 @@ namespace EMotionFX
     }
 
 
-    void AnimGraphTagHandler::WriteGUIValuesIntoProperty(size_t index, AnimGraphTagPicker* GUI, property_t& instance, AzToolsFramework::InstanceDataNode* node)
+    void AnimGraphTagHandler::WriteGUIValuesIntoProperty(size_t index, AnimGraphTagSelector* GUI, property_t& instance, AzToolsFramework::InstanceDataNode* node)
     {
         instance = GUI->GetTags();
     }
 
 
-    bool AnimGraphTagHandler::ReadValuesIntoGUI(size_t index, AnimGraphTagPicker* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node)
+    bool AnimGraphTagHandler::ReadValuesIntoGUI(size_t index, AnimGraphTagSelector* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node)
     {
         QSignalBlocker signalBlocker(GUI);
         GUI->SetTags(instance);

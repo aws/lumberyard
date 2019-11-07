@@ -337,7 +337,8 @@ namespace CloudGemPlayerAccount
         {
             if (!basicResult.wasSuccessful)
             {
-                EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnGetCurrentUserComplete, basicResult);
+                BasicResultInfo resultInfo FAILED_RESULT_INITIALIZER(requestId, "", basicResult.errorTypeName, basicResult.errorMessage);
+                EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnGetCurrentUserComplete, resultInfo);
                 return;
             }
 
@@ -1081,20 +1082,7 @@ namespace CloudGemPlayerAccount
         char buffer[TIME_BUFFER_SIZE];
 
         time(&rawtime);
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/CloudGemPlayerAccountSystemComponent_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/CloudGemPlayerAccountSystemComponent_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_WINDOWS)
-        gmtime_s(&timeinfo, &rawtime);
-#else
-        gmtime_r(&rawtime, &timeinfo);
-#endif
+        AZ_TRAIT_CTIME_GMTIME(&timeinfo, &rawtime);
 
         // Matches SimpleDateFormat("EEE MMM d HH:mm:ss z yyyy") in Java. 
         // First, the month and day ("Mon Day ") section

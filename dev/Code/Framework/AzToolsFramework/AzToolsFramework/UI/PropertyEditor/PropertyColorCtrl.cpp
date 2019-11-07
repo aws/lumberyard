@@ -14,7 +14,9 @@
 #include "PropertyQTConstants.h"
 #include <QtWidgets/QSlider>
 #include <QtWidgets/QLineEdit>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include <QtWidgets/QHBoxLayout>
+AZ_POP_DISABLE_WARNING
 
 #include "../UICore/ColorPickerDelegate.hxx"
 

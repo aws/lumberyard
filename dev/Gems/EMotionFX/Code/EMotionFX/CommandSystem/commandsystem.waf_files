@@ -59,7 +59,9 @@
             "Source/SelectionCommands.cpp",
             "Source/SelectionCommands.h",
             "Source/SelectionList.cpp",
-            "Source/SelectionList.h"
+            "Source/SelectionList.h",
+            "Source/SimulatedObjectCommands.cpp",
+            "Source/SimulatedObjectCommands.h"
         ]
     }
 }

@@ -12,7 +12,14 @@
 #include <QToolButton>
 
 #include <GraphCanvas/Widgets/AssetEditorToolbar/AssetEditorToolbar.h>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include <StaticLib/GraphCanvas/Widgets/AssetEditorToolbar/ui_AssetEditorToolbar.h>
+AZ_POP_DISABLE_WARNING
+
+#include <GraphCanvas/Components/Nodes/Group/NodeGroupBus.h>
+#include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ConstructMenuActions/ConstructPresetMenuActions.h>
+#include <GraphCanvas/Widgets/EditorContextMenu/EditorContextMenu.h>
+#include <GraphCanvas/Utils/ConversionUtils.h>
 
 namespace GraphCanvas
 {
@@ -23,10 +30,38 @@ namespace GraphCanvas
     AssetEditorToolbar::AssetEditorToolbar(EditorId editorId)
         : m_editorId(editorId)
         , m_ui(new Ui::AssetEditorToolbar())
+        , m_commentPresetActionGroup(nullptr)
+        , m_nodeGroupPresetActionGroup(nullptr)
     {
         m_ui->setupUi(this);
 
         AssetEditorNotificationBus::Handler::BusConnect(editorId);
+
+        QObject::connect(m_ui->addComment, &QToolButton::clicked, this, &AssetEditorToolbar::AddComment);
+        QObject::connect(m_ui->groupNodes, &QToolButton::clicked, this, &AssetEditorToolbar::GroupSelection);
+        QObject::connect(m_ui->ungroupNodes, &QToolButton::clicked, this, &AssetEditorToolbar::UngroupSelection);
+
+        m_commentPresetsMenu = aznew EditorContextMenu(editorId);
+        m_commentPresetsMenu->SetIsToolBarMenu(true);
+
+        QObject::connect(m_commentPresetsMenu, &QMenu::aboutToShow, this, &AssetEditorToolbar::OnCommentMenuAboutToShow);
+        QObject::connect(m_commentPresetsMenu, &QMenu::triggered, this, &AssetEditorToolbar::OnPresetActionTriggered);
+
+        m_ui->addComment->setPopupMode(QToolButton::ToolButtonPopupMode::MenuButtonPopup);
+        m_ui->addComment->setMenu(m_commentPresetsMenu);
+        m_ui->addComment->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
+        QObject::connect(m_ui->addComment, &QWidget::customContextMenuRequested, this, &AssetEditorToolbar::OnCommentPresetsContextMenu);
+
+        m_nodeGroupPresetsMenu = aznew EditorContextMenu(editorId);
+        m_nodeGroupPresetsMenu->SetIsToolBarMenu(true);
+
+        QObject::connect(m_nodeGroupPresetsMenu, &QMenu::aboutToShow, this, &AssetEditorToolbar::OnNodeGroupMenuAboutToShow);
+        QObject::connect(m_nodeGroupPresetsMenu, &QMenu::triggered, this, &AssetEditorToolbar::OnPresetActionTriggered);
+
+        m_ui->groupNodes->setPopupMode(QToolButton::ToolButtonPopupMode::MenuButtonPopup);
+        m_ui->groupNodes->setMenu(m_nodeGroupPresetsMenu);
+        m_ui->groupNodes->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
+        QObject::connect(m_ui->groupNodes, &QWidget::customContextMenuRequested, this, &AssetEditorToolbar::OnNodeGroupPresetsContextMenu);
 
         QObject::connect(m_ui->topAlign, &QToolButton::clicked, this, &AssetEditorToolbar::AlignSelectedTop);
         QObject::connect(m_ui->bottomAlign, &QToolButton::clicked, this, &AssetEditorToolbar::AlignSelectedBottom);
@@ -46,6 +81,8 @@ namespace GraphCanvas
         QObject::connect(m_ui->organizeTopLeft, &QToolButton::clicked, this, &AssetEditorToolbar::OrganizeTopLeft);
         QObject::connect(m_ui->organizeCentered, &QToolButton::clicked, this, &AssetEditorToolbar::OrganizeCentered);
         QObject::connect(m_ui->organizeBottomRight, &QToolButton::clicked, this, &AssetEditorToolbar::OrganizeBottomRight);
+
+        UpdateButtonStates();
     }
 
     void AssetEditorToolbar::AddCustomAction(QToolButton* action)
@@ -67,6 +104,65 @@ namespace GraphCanvas
     void AssetEditorToolbar::OnSelectionChanged()
     {
         UpdateButtonStates();
+    }
+
+    void AssetEditorToolbar::AddComment(bool)
+    {
+        if (m_editorId != EditorId() && m_activeGraphId.IsValid())
+        {
+            const ConstructTypePresetBucket* presetBucket = nullptr;
+            AssetEditorSettingsRequestBus::EventResult(presetBucket, m_editorId, &AssetEditorSettingsRequests::GetConstructTypePresetBucket, ConstructType::CommentNode);
+
+            if (presetBucket)
+            {
+                EditorContextMenu fakeMenu(m_editorId);
+                fakeMenu.SetIsToolBarMenu(true);
+
+                AddCommentPresetMenuAction menuAction(&fakeMenu, presetBucket->GetDefaultPreset());
+                menuAction.RefreshAction(m_activeGraphId, AZ::EntityId());
+
+                OnPresetActionTriggered(&menuAction);
+            }
+        }
+    }
+
+    void AssetEditorToolbar::GroupSelection(bool)
+    {
+        if (m_editorId != EditorId() && m_activeGraphId.IsValid())
+        {
+            const ConstructTypePresetBucket* presetBucket = nullptr;
+            AssetEditorSettingsRequestBus::EventResult(presetBucket, m_editorId, &AssetEditorSettingsRequests::GetConstructTypePresetBucket, ConstructType::NodeGroup);
+
+            if (presetBucket)
+            {
+                EditorContextMenu fakeMenu(m_editorId);
+                fakeMenu.SetIsToolBarMenu(true);
+
+                AddNodeGroupPresetMenuAction menuAction(&fakeMenu, presetBucket->GetDefaultPreset());
+                menuAction.RefreshAction(m_activeGraphId, AZ::EntityId());
+
+                OnPresetActionTriggered(&menuAction);
+            }
+        }
+    }
+
+    void AssetEditorToolbar::UngroupSelection(bool)
+    {
+        if (m_editorId != EditorId() && m_activeGraphId.IsValid())
+        {
+            AZStd::vector< AZ::EntityId >  selectedElements;
+            SceneRequestBus::EventResult(selectedElements, m_activeGraphId, &SceneRequests::GetSelectedNodes);
+
+            if (selectedElements.size() == 1)
+            {
+                AZ::EntityId selectedElement = selectedElements.front();
+
+                if (GraphUtils::IsNodeGroup(selectedElement))
+                {
+                    NodeGroupRequestBus::Event(selectedElement, &NodeGroupRequests::UngroupGroup);
+                }
+            }
+        }
     }
 
     void AssetEditorToolbar::AlignSelectedTop(bool)
@@ -146,6 +242,34 @@ namespace GraphCanvas
         OrganizeSelected(config);
     }
 
+    void AssetEditorToolbar::OnCommentPresetsContextMenu(const QPoint& pos)
+    {
+        QMenu contextMenu;
+
+        QAction* editPresetsAction = contextMenu.addAction("Edit Presets");
+        
+        QAction* action = contextMenu.exec(m_ui->addComment->mapToGlobal(pos));
+
+        if (action == editPresetsAction)
+        {
+            AssetEditorRequestBus::Event(m_editorId, &AssetEditorRequests::ShowAssetPresetsMenu, ConstructType::CommentNode);
+        }
+    }
+
+    void AssetEditorToolbar::OnNodeGroupPresetsContextMenu(const QPoint& pos)
+    {
+        QMenu contextMenu;
+
+        QAction* editPresetsAction = contextMenu.addAction("Edit Presets");
+
+        QAction* action = contextMenu.exec(m_ui->addComment->mapToGlobal(pos));
+
+        if (action == editPresetsAction)
+        {
+            AssetEditorRequestBus::Event(m_editorId, &AssetEditorRequests::ShowAssetPresetsMenu, ConstructType::NodeGroup);
+        }
+    }
+
     void AssetEditorToolbar::AlignSelected(const AlignConfig& alignConfig)
     {
         AZStd::vector< NodeId > selectedNodes;
@@ -164,14 +288,69 @@ namespace GraphCanvas
 
     void AssetEditorToolbar::UpdateButtonStates()
     {
+        bool hasScene = m_activeGraphId.IsValid();
+
         bool hasSelection = false;
         SceneRequestBus::EventResult(hasSelection, m_activeGraphId, &SceneRequests::HasSelectedItems);
 
-        m_ui->topAlign->setEnabled(hasSelection);
-        m_ui->bottomAlign->setEnabled(hasSelection);
+        m_ui->topAlign->setEnabled(hasSelection && hasScene);
+        m_ui->bottomAlign->setEnabled(hasSelection && hasScene);
 
-        m_ui->leftAlign->setEnabled(hasSelection);
-        m_ui->rightAlign->setEnabled(hasSelection);
+        m_ui->leftAlign->setEnabled(hasSelection && hasScene);
+        m_ui->rightAlign->setEnabled(hasSelection && hasScene);
+
+        m_ui->addComment->setEnabled(hasScene);
+        m_ui->groupNodes->setEnabled(hasScene);
+        m_ui->ungroupNodes->setEnabled(hasSelection && hasScene);
+    }
+
+    void AssetEditorToolbar::OnCommentMenuAboutToShow()
+    {
+        if (m_commentPresetActionGroup == nullptr)
+        {
+            m_commentPresetActionGroup = aznew CommentPresetsMenuActionGroup();
+            m_commentPresetActionGroup->PopulateMenu(m_commentPresetsMenu);
+        }
+
+        m_commentPresetActionGroup->RefreshPresets();
+    }
+
+    void AssetEditorToolbar::OnNodeGroupMenuAboutToShow()
+    {
+        if (m_nodeGroupPresetActionGroup == nullptr)
+        {
+            m_nodeGroupPresetActionGroup = aznew NodeGroupPresetsMenuActionGroup();
+            m_nodeGroupPresetActionGroup->PopulateMenu(m_nodeGroupPresetsMenu);
+        }
+
+        m_nodeGroupPresetActionGroup->RefreshPresets();
+    }
+
+    void AssetEditorToolbar::OnPresetActionTriggered(QAction* action)
+    {
+        GraphCanvas::ContextMenuAction* contextMenuAction = qobject_cast<GraphCanvas::ContextMenuAction*>(action);
+
+        if (contextMenuAction)
+        {
+            ContextMenuAction::SceneReaction reaction = ContextMenuAction::SceneReaction::Unknown;
+
+            {
+                ScopedGraphUndoBlocker undoBlocker(m_activeGraphId);
+
+                QPointF scenePosition;
+                SceneRequestBus::EventResult(scenePosition, m_activeGraphId, &SceneRequests::SignalGenericAddPositionUseBegin);
+
+                reaction = contextMenuAction->TriggerAction(m_activeGraphId, ConversionUtils::QPointToVector(scenePosition));
+
+                SceneRequestBus::Event(m_activeGraphId, &SceneRequests::SignalGenericAddPositionUseEnd);
+            }
+
+            if (reaction == ContextMenuAction::SceneReaction::PostUndo)
+            {                
+                GraphModelRequestBus::Event(m_activeGraphId, &GraphModelRequests::RequestUndoPoint);
+            }
+
+        }
     }
 }
 

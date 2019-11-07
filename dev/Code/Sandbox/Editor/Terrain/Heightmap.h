@@ -62,6 +62,14 @@ public:
 class CHeightmap : public IHeightmap
 {
 public:
+
+    enum class HeightmapImportTechnique
+    {
+        Resize,
+        Clip,
+        PromptUser
+    };
+
     CHeightmap();
     CHeightmap(const CHeightmap&);
     virtual ~CHeightmap();
@@ -114,6 +122,12 @@ public:
 
     //! resets the height map data, ocean, and mods
     void Reset(int resolution, int unitSize);
+
+    //! Invalidate and reload the terrain in the editor
+    void RefreshTerrain();
+
+    //! Invalidate and reload a layer texture tile in the editor
+    void RefreshTextureTile(uint32 xIndex, uint32 yIndex);
 
     //////////////////////////////////////////////////////////////////////////
     // Terrain Grid functions.
@@ -175,22 +189,8 @@ public:
     void SerializeTerrain(CXmlArchive& xmlAr);
     void SaveImage(LPCSTR pszFileName) const;
 
-    void LoadImage(const QString& fileName);
-    void LoadASC(const QString& fileName);
-    void LoadBT(const QString& fileName);
-    void LoadTIF(const QString& fileName);
-
-    void SaveASC(const QString& fileName);
-    void SaveBT(const QString& fileName);
-    void SaveTIF(const QString& fileName);
-
-    //! Save heightmap to 16-bit image file format (PGM, ASC, BT)
-    void SaveImage16Bit(const QString& fileName);
-
-    //! Save heightmap in RAW format.
-    void    SaveRAW(const QString& rawFile);
-    //! Load heightmap from RAW format.
-    void    LoadRAW(const QString& rawFile);
+    void ImportHeightmap(const QString& fileName, HeightmapImportTechnique importType = HeightmapImportTechnique::PromptUser);
+    void ExportHeightmap(const QString& fileName);
 
     //! Return the heightmap as type CImageEx
     //! The image will be BGR format in grayscale
@@ -294,7 +294,24 @@ private:
     void CopyFrom(t_hmap* prevHeightmap, LayerWeight* prevWeightmap, int prevSize);
     void CopyFromInterpolate(t_hmap* prevHeightmap, LayerWeight* prevWeightmap, int resolution, int prevUnitSize);
 
-    bool ProcessLoadedImage(const QString& fileName, const CFloatImage& tmpImage, bool atWorldScale, ImageRotationDegrees rotationAmount);
+    void LoadImage(const QString& fileName, HeightmapImportTechnique importType = HeightmapImportTechnique::PromptUser);
+    void LoadASC(const QString& fileName, HeightmapImportTechnique importType = HeightmapImportTechnique::PromptUser);
+    void LoadBT(const QString& fileName, HeightmapImportTechnique importType = HeightmapImportTechnique::PromptUser);
+    void LoadTIF(const QString& fileName, HeightmapImportTechnique importType = HeightmapImportTechnique::PromptUser);
+    //! Load heightmap from RAW format.
+    void    LoadRAW(const QString& rawFile, HeightmapImportTechnique importType);
+
+    void SaveASC(const QString& fileName);
+    void SaveBT(const QString& fileName);
+    void SaveTIF(const QString& fileName);
+    //! Save heightmap in RAW format.
+    void    SaveRAW(const QString& rawFile);
+
+    //! Save heightmap to 16-bit image file format (PGM, ASC, BT)
+    void SaveImage16Bit(const QString& fileName);
+
+
+    bool ProcessLoadedImage(const QString& fileName, const CFloatImage& tmpImage, bool atWorldScale, ImageRotationDegrees rotationAmount, HeightmapImportTechnique importType);
 
     __inline float ExpCurve(float v, float fCover, float fSharpness);
 

@@ -108,9 +108,7 @@
             "Source/Components/SequenceAgent.h",
             "Source/Components/SequenceAgent.cpp",
             "Source/Components/SequenceAgentComponent.h",
-            "Source/Components/SequenceAgentComponent.cpp",
-            "Source/Components/SequenceAgentExternalCreator.h",
-            "Source/Components/SequenceAgentExternalCreator.cpp"
+            "Source/Components/SequenceAgentComponent.cpp"
         ]
     }
 }

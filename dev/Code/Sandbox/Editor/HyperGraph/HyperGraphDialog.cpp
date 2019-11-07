@@ -1216,7 +1216,7 @@ void CFlowGraphManagerPrototypeModel::Reload()
     std::vector<_smart_ptr<CHyperNode> > prototypes;
     NodeFilter filter(m_mask);
 
-    pMgr->GetPrototypesEx(prototypes, true, functor_ret(filter, &NodeFilter::Visit));
+    pMgr->GetPrototypesEx(prototypes, true, functor(filter, &NodeFilter::Visit));
     for (int i = 0; i < prototypes.size(); i++)
     {
         const CHyperNode* pNode = prototypes[i];

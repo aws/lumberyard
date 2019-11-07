@@ -24,7 +24,6 @@ def build(bld):
         configurations      = ['all'],
         test_only           = True,
         includes            = [bld.Path('Code/CryEngine/CryCommon')],
-        uselib              = ['BOOST'],
         use                 = ['AzGameFramework', 'AzTest'],
         
         #==============================

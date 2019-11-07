@@ -107,6 +107,6 @@ protected:
     virtual void RegisterInternal(uint32, const ComponentType&, SerializeFunction, SerializeXMLFunction, NeedSerializeFunction, GetSignatureFunction) = 0;
 };
 
-DECLARE_COMPONENT_POINTERS(IComponentSerialization)
+DECLARE_SMART_POINTERS(IComponentSerialization)
 
 #endif // CRYINCLUDE_CRYCOMMON_ICOMPONENTSERIALIZATION_H

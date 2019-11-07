@@ -33,16 +33,6 @@ namespace GraphCanvas
         bool m_collapseGroup;
     };
 
-    class CreateNewNodeGroupMenuAction
-        : public CreateNodeGroupMenuAction
-    {
-    public:
-        AZ_CLASS_ALLOCATOR(CreateNewNodeGroupMenuAction, AZ::SystemAllocator, 0);
-        CreateNewNodeGroupMenuAction(QObject* parent);
-
-        void RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId) override;
-    };
-
     class UngroupNodeGroupMenuAction
         : public NodeGroupContextMenuAction
     {

@@ -131,9 +131,13 @@ namespace AzQtComponents
         bool m_selected = false;
         bool m_dragging = false;
         bool m_dropTarget = false;
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'AzQtComponents::Card::m_notifications': class 'QVector<AzQtComponents::CardNotification *>' needs to have dll-interface to be used by clients of class 'AzQtComponents::Card'
         QVector<CardNotification*> m_notifications;
+        AZ_POP_DISABLE_WARNING
         QIcon m_warningIcon;
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'AzQtComponents::Card::m_separatorMargins': class 'QMargins' needs to have dll-interface to be used by clients of class 'AzQtComponents::Card'
         QMargins m_separatorMargins;
+        AZ_POP_DISABLE_WARNING
 
         friend class Style;
     };

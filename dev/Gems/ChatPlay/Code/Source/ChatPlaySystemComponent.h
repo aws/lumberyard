@@ -22,10 +22,11 @@
 #include "ChatPlay/ChatPlay.h"
 #include "ChatPlay/ChatPlayCVars.h"
 #include "Broadcast/BroadcastAPI.h"
+#include <ChatPlay_Traits_Platform.h>
 
-#if !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE)
+#if AZ_TRAIT_CHATPLAY_JOIN_AND_BROADCAST
 #include "JoinIn/JoinInCVars.h"
-#endif // !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE)
+#endif // AZ_TRAIT_CHATPLAY_JOIN_AND_BROADCAST
 
 namespace ChatPlay
 {
@@ -37,7 +38,7 @@ namespace ChatPlay
     {
     public:
         AZ_COMPONENT(ChatPlaySystemComponent, "{20952273-903A-4B2F-9C64-EF75193B941A}");
-		ChatPlaySystemComponent() = default;
+        ChatPlaySystemComponent() = default;
         static void Reflect(AZ::ReflectContext* context);
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
@@ -49,9 +50,9 @@ namespace ChatPlay
         ////////////////////////////////////////////////////////////////////////
         // ChatPlayRequestBus interface implementation
         //
-#if !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE)
+#if AZ_TRAIT_CHATPLAY_JOIN_AND_BROADCAST
         IBroadcast* GetBroadcastAPI() override { return m_broadcastAPI.get(); }
-#endif // !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE)
+#endif // AZ_TRAIT_CHATPLAY_JOIN_AND_BROADCAST
 
         bool CreateChannel(const AZStd::string& channelId) override;
         void DestroyChannel(const AZStd::string& channelId) override;
@@ -94,10 +95,10 @@ namespace ChatPlay
         AZStd::shared_ptr<ChatPlay> m_chatPlay;
         AZStd::shared_ptr<ChatPlayCVars> m_chatPlayCVars;
         
-#if !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE)
+#if AZ_TRAIT_CHATPLAY_JOIN_AND_BROADCAST
         AZStd::shared_ptr<JoinInCVars> m_joinInCVars;
         IBroadcastPtr m_broadcastAPI;
-#endif // !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE)
+#endif // AZ_TRAIT_CHATPLAY_JOIN_AND_BROADCAST
 
         WhisperToken m_lastWhisperToken;
 

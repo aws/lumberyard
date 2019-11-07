@@ -79,7 +79,7 @@ namespace ScriptCanvas
         const AZStd::unordered_set<AZ::Entity*>& GetNodeEntities() const { return m_graphData.m_nodes; }
 
         bool AddConnection(const AZ::EntityId&) override;
-        bool RemoveConnection(const AZ::EntityId& nodeId) override;
+        bool RemoveConnection(const AZ::EntityId& connectionId) override;
         AZStd::vector<AZ::EntityId> GetConnections() const override;
         AZStd::vector<Endpoint> GetConnectedEndpoints(const Endpoint& firstEndpoint) const override;
         bool IsEndpointConnected(const Endpoint& endpoint) const override;
@@ -184,6 +184,7 @@ namespace ScriptCanvas
         Data::Type GetVariableType(const VariableId& variableId) const override;
         AZStd::string_view GetVariableName(const VariableId& variableId) const override;
         ////
+
 
     private:
         AZ::EntityId m_uniqueId;

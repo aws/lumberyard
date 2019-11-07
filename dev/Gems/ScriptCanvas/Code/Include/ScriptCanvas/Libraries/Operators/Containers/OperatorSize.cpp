@@ -14,72 +14,96 @@
 #include <ScriptCanvas/Libraries/Core/MethodUtility.h>
 #include <ScriptCanvas/Core/Contracts/SupportsMethodContract.h>
 
+#include <ScriptCanvas/Utils/SerializationUtils.h>
+
 namespace ScriptCanvas
 {
     namespace Nodes
     {
         namespace Operators
         {
-            void OperatorSize::ConfigureContracts(SourceType sourceType, AZStd::vector<ContractDescriptor>& contractDescs)
+            /////////////////
+            // OperatorSize
+            /////////////////
+
+            bool OperatorSize::OperatorSizeVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
             {
-                if (sourceType == SourceType::SourceInput)
+                // Remove the now unnecessary OperatorBase class from the inheritance chain.
+                if (classElement.GetVersion() < 1)
                 {
-                    ContractDescriptor supportsMethodContract;
-                    supportsMethodContract.m_createFunc = [this]() -> SupportsMethodContract* { return aznew SupportsMethodContract("Size"); };
-                    contractDescs.push_back(AZStd::move(supportsMethodContract));
-                }
-            }
+                    AZ::SerializeContext::DataElementNode* operatorBaseClass = classElement.FindSubElement(AZ::Crc32("BaseClass1"));
 
-            void OperatorSize::OnSourceTypeChanged()
-            {
-                m_outputSlots.insert(AddOutputTypeSlot("Size", "The number of elements in the container", Data::Type::Number(), Node::OutputStorage::Required, false));
-            }
-
-            void OperatorSize::InvokeOperator()
-            {
-                const SlotSet& slotSets = GetSourceSlots();
-
-                if (!slotSets.empty())
-                {
-                    SlotId sourceSlotId = (*slotSets.begin());
-
-                    if (Data::IsVectorContainerType(GetSourceAZType()) || Data::IsMapContainerType(GetSourceAZType()))
+                    if (operatorBaseClass == nullptr)
                     {
-                        const Datum* containerDatum = GetInput(sourceSlotId);
+                        return false;
+                    }
 
-                        if (containerDatum && !containerDatum->Empty())
-                        {
-                            // Get the size of the container
-                            auto sizeOutcome = BehaviorContextMethodHelper::CallMethodOnDatum(*containerDatum, "Size");
-                            if (!sizeOutcome)
-                            {
-                                SCRIPTCANVAS_REPORT_ERROR((*this), "Failed to get size of container: %s", sizeOutcome.GetError().c_str());
-                                return;
-                            }
+                    int nodeElementIndex = operatorBaseClass->FindElement(AZ_CRC("BaseClass1", 0xd4925735));
 
-                            // Index
-                            Datum sizeResult = sizeOutcome.TakeValue();
-                            const size_t* sizePtr = sizeResult.GetAs<size_t>();
+                    if (nodeElementIndex < 0)
+                    {
+                        return false;
+                    }
 
-                            PushOutput(sizeResult, *GetSlot(*m_outputSlots.begin()));
-                        }
-                        else
-                        {
-                            Datum zero(0);
-                            PushOutput(zero, *GetSlot(*m_outputSlots.begin()));
-                        }
+                    // The DataElementNode is being copied purposefully in this statement to clone the data
+                    AZ::SerializeContext::DataElementNode baseNodeElement = operatorBaseClass->GetSubElement(nodeElementIndex);
+
+                    classElement.RemoveElementByName(AZ::Crc32("BaseClass1"));
+                    classElement.AddElement(baseNodeElement);                    
+                }
+
+                return true;
+            }
+
+            void OperatorSize::OnInit()
+            {
+                // Version Conversion away from Operator Base
+                if (HasSlots())
+                {
+                    const Slot* slot = GetSlot(OperatorSizeProperty::GetSizeSlotId(this));
+                    if (slot == nullptr)
+                    {
+                        ConfigureSlots();
                     }
                 }
-
-                SignalOutput(GetSlotId("Out"));
+                ////
             }
 
             void OperatorSize::OnInputSignal(const SlotId& slotId)
             {
-                const SlotId inSlotId = OperatorBaseProperty::GetInSlotId(this);
+                const SlotId inSlotId = OperatorSizeProperty::GetInSlotId(this);
                 if (slotId == inSlotId)
                 {
-                    InvokeOperator();
+                    bool pushedSize = false;
+
+                    SlotId sourceSlotId = OperatorSizeProperty::GetSourceSlotId(this);
+                    SlotId sizeSlotId = OperatorSizeProperty::GetSizeSlotId(this);
+
+                    const Datum* containerDatum = GetInput(sourceSlotId);
+
+                    if (Datum::IsValidDatum(containerDatum))
+                    {
+                        // Get the size of the container
+                        auto sizeOutcome = BehaviorContextMethodHelper::CallMethodOnDatum(*containerDatum, "Size");
+                        if (!sizeOutcome)
+                        {
+                            SCRIPTCANVAS_REPORT_ERROR((*this), "Failed to get size of container: %s", sizeOutcome.GetError().c_str());
+                            return;
+                        }
+
+                        // Index
+                        Datum sizeResult = sizeOutcome.TakeValue();
+                        const size_t* sizePtr = sizeResult.GetAs<size_t>();
+
+                        PushOutput(sizeResult, *GetSlot(sizeSlotId));                        
+                    }
+                    else
+                    {
+                        Datum zero(0);
+                        PushOutput(zero, *GetSlot(sizeSlotId));
+                    }
+
+                    SignalOutput(OperatorSizeProperty::GetOutSlotId(this));
                 }
             }
         }

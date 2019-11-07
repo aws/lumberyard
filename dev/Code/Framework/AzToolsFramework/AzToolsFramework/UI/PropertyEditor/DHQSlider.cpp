@@ -13,7 +13,10 @@
 #include "DHQSlider.hxx"
 #include "PropertyQTConstants.h"
 #include <QtWidgets/QAbstractSpinBox>
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
+                                                               // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
 #include <QWheelEvent>
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {

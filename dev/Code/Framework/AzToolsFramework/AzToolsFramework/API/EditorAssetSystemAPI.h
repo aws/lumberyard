@@ -121,6 +121,14 @@ namespace AzToolsFramework
             * @return -1 if the process fails, a positive number otherwise
             */
             virtual int GetPendingAssetsForPlatform(const char* platform) = 0;
+
+            /**
+            * Given a UUID of a source file, retrieve the products info.
+            * @param sourceUUID is the UUID of a source file - If you have an AssetID, its the m_guid member of that assetId
+            * @param productsAssetInfo is a /ref AZStd::vector<AZ::Data::AssetInfo> filled out with details about the products
+            * returns false if it cannot find the source, true otherwise.
+            */
+            virtual bool GetAssetsProducedBySourceUUID(const AZ::Uuid& sourceUuid, AZStd::vector<AZ::Data::AssetInfo>& productsAssetInfo) = 0;
         };
         
 
@@ -317,7 +325,7 @@ namespace AzToolsFramework
 
         inline const char* GetHostAssetPlatform()
         {
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
             return "osx_gl";
 #elif defined(AZ_PLATFORM_WINDOWS)
             return "pc";

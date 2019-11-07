@@ -142,9 +142,9 @@ inline Quat w_dt(const Vec3& w, float dt)
     float wlen = w.len();
 
     // In some cases (likely due to low frame rates), the angular velocity can reach values so
-    // close to zero that the result of len() produces NaN.  Here is the safest place to guard
-    // against that NaN from propagating.
-    if (_isnan(wlen))
+    // close to zero that the result of len() produces an invalid number.  Here is the safest place to guard
+    // against invalid numbers from propagating.
+    if (!NumberValid(wlen))
     {
         return Quat(IDENTITY);
     }

@@ -1,0 +1,9 @@
+{
+    "auto":
+    {
+        "Platform/iOS":
+        [
+            "MicrophoneSystemComponent_iOS.mm"
+        ]
+    }
+}

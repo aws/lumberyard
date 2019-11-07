@@ -194,12 +194,14 @@ namespace EMStudio
         {
             EMotionFX::AnimGraphInstance* currentAnimGraphInstance = actorInstance->GetAnimGraphInstance();
             EMotionFX::AnimGraphInstance* oldAnimGraphInstance = commandActivateAnimGraph->m_oldAnimGraphInstance;
+            EMotionFX::AnimGraph* oldAnimGraph = nullptr;
             if (oldAnimGraphInstance)
             {
-                EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(commandActivateAnimGraph->mOldAnimGraphUsed);
-                if (animGraph)
+                // Grab the anim graph from the manager to check if the graph is still valid.
+                oldAnimGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(commandActivateAnimGraph->mOldAnimGraphUsed);
+                if (oldAnimGraph)
                 {
-                    m_animGraphModel.SetAnimGraphInstance(animGraph, oldAnimGraphInstance, nullptr);
+                    m_animGraphModel.SetAnimGraphInstance(oldAnimGraph, oldAnimGraphInstance, nullptr);
                 }
                 if (currentAnimGraphInstance)
                 {
@@ -213,6 +215,14 @@ namespace EMStudio
                     m_animGraphModel.SetAnimGraphInstance(currentAnimGraphInstance->GetAnimGraph(), nullptr, currentAnimGraphInstance);
                 }
             }
+
+            // Focus on the new anim graph after activation if the old anim graph is different than the new one.
+            if (currentAnimGraphInstance && currentAnimGraphInstance->GetAnimGraph() && oldAnimGraph != currentAnimGraphInstance->GetAnimGraph())
+            {
+                EMotionFX::AnimGraphStateMachine* rootStateMachine = currentAnimGraphInstance->GetAnimGraph()->GetRootStateMachine();
+                m_animGraphModel.Focus(m_animGraphModel.FindFirstModelIndex(rootStateMachine));
+            }
+            
         }
         
         return true;

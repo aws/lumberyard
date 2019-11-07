@@ -16,6 +16,8 @@
 
 #include "ScriptCanvasTestingSystemComponent.h"
 
+#include <Nodes/BehaviorContextObjectTestNode.h>
+
 namespace ScriptCanvasTesting
 {
     void ScriptCanvasTestingSystemComponent::Reflect(AZ::ReflectContext* context)
@@ -35,6 +37,8 @@ namespace ScriptCanvasTesting
                     ;
             }
         }
+
+        ScriptCanvasTestingNodes::BehaviorContextObjectTest::Reflect(context);
     }
 
     void ScriptCanvasTestingSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)

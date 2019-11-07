@@ -1134,6 +1134,7 @@ namespace EMotionFX
         RegisterChunkProcessor(aznew ChunkProcessorActorAttachmentNodes());
         RegisterChunkProcessor(aznew ChunkProcessorActorMaterialAttributeSet());
         RegisterChunkProcessor(aznew ChunkProcessorActorPhysicsSetup());
+        RegisterChunkProcessor(aznew ChunkProcessorActorSimulatedObjectSetup());
 
         // Motion file format
         RegisterChunkProcessor(aznew ChunkProcessorMotionInfo());
@@ -1762,7 +1763,7 @@ namespace EMotionFX
         if (animGraph->GetRootStateMachine())
         {
             animGraph->InitAfterLoading();
-            animGraph->RemoveInvalidConnections(true);
+            animGraph->RemoveInvalidConnections(true);  // Remove connections that have nullptr source node's, which happens when connections point to unknown nodes.
         }
         else
         {

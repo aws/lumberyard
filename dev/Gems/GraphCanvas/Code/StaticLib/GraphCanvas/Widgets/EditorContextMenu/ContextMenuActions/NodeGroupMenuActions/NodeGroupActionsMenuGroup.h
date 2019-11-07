@@ -12,6 +12,7 @@
 #pragma once
 
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ContextMenuAction.h>
+#include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ConstructMenuActions/ConstructPresetMenuActions.h>
 #include <GraphCanvas/Widgets/EditorContextMenu/EditorContextMenu.h>
 
 namespace GraphCanvas
@@ -25,15 +26,16 @@ namespace GraphCanvas
         ~NodeGroupActionsMenuGroup();
 
         void PopulateMenu(EditorContextMenu* contextMenu);
+
+        void RefreshPresets();
     
-        void SetGroupNodesEnabled(bool enabled);
         void SetUngroupNodesEnabled(bool enabled);
         void SetCollapseGroupEnabled(bool enabled);
         void SetExpandGroupEnabled(bool enabled);
         
     private:
     
-        ContextMenuAction* m_groupAction;
+        NodeGroupPresetsMenuActionGroup m_nodeGroupPresets;
         ContextMenuAction* m_ungroupAction;
         ContextMenuAction* m_collapseAction;
         ContextMenuAction* m_expandAction;

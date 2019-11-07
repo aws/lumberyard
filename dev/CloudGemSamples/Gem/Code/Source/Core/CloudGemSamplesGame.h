@@ -33,49 +33,6 @@ namespace LYGame
     class Actor;
 
     /*!
-     * Platform types that the game can run on.
-     */
-    enum Platform
-    {
-        ePlatform_Unknown,
-        ePlatform_PC,
-#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
-        ePlatform_##PublicName,
-#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM)
-        AZ_EXPAND_FOR_RESTRICTED_PLATFORM
-#else
-        AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
-#endif
-#undef AZ_RESTRICTED_PLATFORM_EXPANSION
-#endif
-        ePlatform_Android,
-        ePlatform_iOS,
-        ePlatform_Count
-    };
-
-    /*!
-     * Platform names.
-     */
-    static char const* s_PlatformNames[ePlatform_Count] =
-    {
-        "Unknown",
-        "PC",
-#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
-        #CodeName,
-#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM)
-        AZ_EXPAND_FOR_RESTRICTED_PLATFORM
-#else
-        AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
-#endif
-#undef AZ_RESTRICTED_PLATFORM_EXPANSION
-#endif
-        "Android",
-        "iOS"
-    };
-
-    /*!
      * Initializes, runs, and handles a game's simulation.
      */
     class CloudGemSamplesGame
@@ -133,35 +90,11 @@ namespace LYGame
          */
         bool ReadProfile(const XmlNodeRef& rootNode);
 
-        /*!
-         * Reads a profile xml node and adds an input device mapping to ActionMapManager
-         * /param[in] platformNode a refernece to profile xml node
-         * /param[in] platformId current platform
-         * /return returns true if mapping device was added, false if failed
-         */
-        bool ReadProfilePlatform(const XmlNodeRef& platformsNode, Platform platformId);
-
-        Platform GetPlatform() const;
-    protected:
-        /*!
-         * Platform information as defined in defaultProfile.xml.
-         */
-        struct PlatformInfo
-        {
-            Platform    m_platformId;
-            BYTE        m_devices;
-
-            PlatformInfo(Platform platformId = ePlatform_Unknown)
-                : m_platformId(platformId)
-                , m_devices(eAID_KeyboardMouse | eAID_XboxPad | eAID_PS4Pad) { } // ACCEPTED_USE
-        };
-
     protected:
         EntityId                    m_clientEntityId;
         GameRules*                  m_gameRules;
         IGameFramework*             m_gameFramework;
         IActionMap*                 m_defaultActionMap;
-        PlatformInfo                m_platformInfo;
     };
 
     SC_API extern CloudGemSamplesGame* g_Game;

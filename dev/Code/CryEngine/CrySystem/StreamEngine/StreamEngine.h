@@ -28,6 +28,9 @@
 #include "StreamReadStream.h"
 
 #include <AzFramework/Input/Events/InputChannelEventListener.h>
+#include <AzCore/IO/StreamerRequest.h>
+#include <AzCore/std/chrono/clocks.h>
+#include <AzCore/std/containers/queue.h>
 
 enum EIOThread
 {
@@ -50,6 +53,11 @@ public:
     void Shutdown();
     // This is called to cancel all pending requests, without sending callbacks.
     void CancelAll();
+
+
+    //Helper added to aid in migration from Cry's CStreamEngine to AZ::IO::Streamer
+    static AZ::IO::Request::PriorityType CryStreamPriorityToAZStreamPriority(EStreamTaskPriority cryPriority);
+    static AZStd::chrono::microseconds AZDeadlineFromReadParams(const StreamReadParams& params);
 
     //////////////////////////////////////////////////////////////////////////
     // IStreamEngine interface
@@ -139,7 +147,7 @@ private:
     void DrawStatistics();
 #endif
 
-    void PushRequestToAsyncCallbackThread(CAsyncIOFileRequest* pFileRequest);
+    void QueueRequestCompleteJob(class AZRequestReadStream* stream, AZ::IO::SizeType numBytesRead, void* buffer, AZ::IO::Request::StateType requestState);
 
     //////////////////////////////////////////////////////////////////////////
     // ISystemEventListener
@@ -153,6 +161,9 @@ private:
     CryMT::set<CReadStream_AutoPtr> m_streams;
     CryMT::vector<CReadStream_AutoPtr> m_finishedStreams;
     std::vector<CReadStream_AutoPtr> m_tempFinishedStreams;
+
+    CryCriticalSection m_pendingRequestCompletionsLock;
+    AZStd::queue<AZ::Job*> m_pendingRequestCompletions;
 
     // 2 IO threads.
     _smart_ptr<CStreamingIOThread> m_pThreadIO[eIOThread_Last];

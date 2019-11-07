@@ -162,7 +162,7 @@ namespace GraphCanvas
 
             treeItem->DetachItem();
 
-            if (parentItem->GetChildCount() == 0 && parentItem->AllowPruneOnEmpty())
+            if (parentItem && parentItem->GetChildCount() == 0 && parentItem->AllowPruneOnEmpty())
             {
                 potentialCategories.insert(parentItem);
             }

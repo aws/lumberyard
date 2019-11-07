@@ -210,9 +210,9 @@ public: // member functions
     //! When running in game in full screen mode the target canvas size should be set to the viewport size
     virtual void SetTargetCanvasSize(bool isInGame, const AZ::Vector2& targetCanvasSize) = 0;
 
-    //! Get uniform scale to adjust for the difference between canvas size (authored size)
-    //! and the viewport size when running on current device
-    virtual float GetUniformDeviceScale() = 0;
+    //! Get scale to adjust for the difference between canvas size (authored size)
+    //! and the viewport size (target canvas size) when running on current device
+    virtual AZ::Vector2 GetDeviceScale() = 0;
 
     //! Get flag that indicates whether visual element's vertices should snap to the nearest pixel
     virtual bool GetIsPixelAligned() = 0;

@@ -24,10 +24,12 @@ def build(bld):
             file_list.append('lmbraws_unsupported.waf_files')
 
     bld.DefineGem(
-        includes    = [bld.Path('Code/CryEngine/CryAction'),
-                       bld.Path('Code/CryEngine/CrySoundSystem')],
-        
+        includes    = [bld.Path('Code/CryEngine/CryCommon'),
+                       bld.Path('Code/CryEngine/CryAction'),
+                       bld.Path('Code/CryEngine/CrySoundSystem')
+                      ],
+
         file_list = file_list,
         uselib = ['AWS_CPP_SDK_CORE', 'MD5'],
-        use = ['CloudGemFramework.StaticLibrary', 'CrySoundSystem']
+        use = ['CloudGemFramework.StaticLibrary']
     )

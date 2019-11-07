@@ -105,7 +105,8 @@ def build(bld):
                                                bld.Path('Code/Lyzard/Modules/Projects/include'),
                                                bld.Path('Code/Lyzard/Modules/Engines/include')],
 
-        defines                             = ['DONT_BAN_STD_STRING',
+        defines                             = ['LY_BUILD={}'.format(bld.get_lumberyard_build()),
+                                               'DONT_BAN_STD_STRING',
                                                'USE_MEM_ALLOCATOR',
                                                'IS_NEW_AUDIO_BRANCH' ] + additionalDefines,
 

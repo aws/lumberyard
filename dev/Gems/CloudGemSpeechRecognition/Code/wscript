@@ -23,18 +23,17 @@ def build(bld):
             file_list.append('cloudgemspeechrecognition.waf_files')
         else:
             file_list.append('lmbraws_unsupported.waf_files')
-            
+    
     bld.DefineGem(
         file_list = file_list,
-        ios_file_list = ['cloudgemspeechrecognition_cocoa.waf_files'],
-        darwin_file_list = ['cloudgemspeechrecognition_cocoa.waf_files'],
         includes    = [
+            bld.Path('Code/CryEngine/CryCommon'),
             bld.Path('Code/CryEngine/CryAction')
         ],
         uselib = ['AWS_CPP_SDK_CORE', 'AWS_CPP_SDK_LAMBDA'],
         use = ['CloudGemFramework.StaticLibrary', 'Microphone'],
 
         darwin_framework    = ['AVFoundation'],
-        ios_framework  = ['AVFoundation']
-
+        ios_framework  = ['AVFoundation'],
+        platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)]
     )

@@ -22,15 +22,6 @@
 
 namespace GraphCanvas
 {
-    //////////////////////////////
-    // GeometryComponentMetaData
-    //////////////////////////////
-
-    GeometryComponent::GeometryComponentSaveData::GeometryComponentSaveData()
-        : m_position(0,0)
-    {
-    }
-
     //////////////////////
     // GeometryComponent
     //////////////////////
@@ -42,7 +33,7 @@ namespace GraphCanvas
         {
             AZ::Crc32 positionId = AZ_CRC("Position", 0x462ce4f5);
 
-            GeometryComponent::GeometryComponentSaveData saveData;
+            GeometrySaveData saveData;
 
             AZ::SerializeContext::DataElementNode* dataNode = classElement.FindSubElement(positionId);
 
@@ -66,9 +57,9 @@ namespace GraphCanvas
             return;
         }
 
-        serializeContext->Class<GeometryComponentSaveData>()
+        serializeContext->Class<GeometrySaveData>()
             ->Version(1)
-            ->Field("Position", &GeometryComponentSaveData::m_position)
+            ->Field("Position", &GeometrySaveData::m_position)
         ;
 
         serializeContext->Class<GeometryComponent, AZ::Component>()
@@ -196,7 +187,7 @@ namespace GraphCanvas
 
     void GeometryComponent::WriteSaveData(EntitySaveDataContainer& saveDataContainer) const
     {
-        GeometryComponentSaveData* saveData = saveDataContainer.FindCreateSaveData<GeometryComponentSaveData>();
+        GeometrySaveData* saveData = saveDataContainer.FindCreateSaveData<GeometrySaveData>();
 
         if (saveData)
         {
@@ -206,7 +197,7 @@ namespace GraphCanvas
 
     void GeometryComponent::ReadSaveData(const EntitySaveDataContainer& saveDataContainer)
     {
-        GeometryComponentSaveData* saveData = saveDataContainer.FindSaveDataAs<GeometryComponentSaveData>();
+        GeometrySaveData* saveData = saveDataContainer.FindSaveDataAs<GeometrySaveData>();
 
         if (saveData)
         {

@@ -291,7 +291,8 @@ namespace
                 }
 
                 PySys_SetArgv(argv.size(), const_cast<char**>(&argv[0]));
-                PyRun_SimpleFile(PyFile_AsFile(pyFileObject), path.toUtf8().data());
+                int result = PyRun_SimpleFile(PyFile_AsFile(pyFileObject), path.toUtf8().data());
+                AZ_TracePrintf("Python", "Python result code: %d", result);
                 PyErr_Print();
             }
             Py_DECREF(pyFileObject);

@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/Math/Matrix3x3.h>
@@ -307,5 +306,3 @@ namespace AZ
         quat.ConvertToAxisAngle(outAxis, outAngle);
     }
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

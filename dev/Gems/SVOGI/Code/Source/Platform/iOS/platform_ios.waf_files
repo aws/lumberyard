@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/iOS":
+        [
+            "SVOGI_Traits_Platform.h",
+            "SVOGI_Traits_iOS.h"
+        ]
+    }
+}

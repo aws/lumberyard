@@ -20,11 +20,5 @@ def build(bld):
         test_all_file_list      = ['localuser_tests.waf_files'],
 
         # Platform Specific
-        win_file_list           = ['localuser_none.waf_files'],
-        ios_file_list           = ['localuser_none.waf_files'],
-        linux_file_list         = ['localuser_none.waf_files'],
-        darwin_file_list        = ['localuser_none.waf_files'],
-        appletv_file_list       = ['localuser_none.waf_files'],
-        android_file_list       = ['localuser_none.waf_files'],
-        restricted_script       = 'update_restricted_parameters',
+        platform_roots          = [bld.PlatformRoot('Source/Platform', export_includes=False)]
     )

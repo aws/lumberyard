@@ -52,7 +52,9 @@ namespace AzQtComponents
         void recalculate();
 
         bool m_dirty = true;
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::LogicalTabOrderingWidget<AzQtComponents::StyledDialog>::m_entries': class 'QMap<QObject *,AzQtComponents::LogicalTabOrderingInternal::TabKeyEntry>' needs to have dll-interface to be used by clients of class 'AzQtComponents::LogicalTabOrderingWidget<AzQtComponents::StyledDialog>'
         QMap<QObject*, LogicalTabOrderingInternal::TabKeyEntry> m_entries;
+        AZ_POP_DISABLE_WARNING
         QWidget* m_first;
         QWidget* m_last;
     };

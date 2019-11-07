@@ -14,14 +14,19 @@
 
 #include <QtWidgets/QDialog>
 #include <QtWidgets/QDialogButtonBox>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QTreeWidgetItemIterator::d_ptr': class 'QScopedPointer<QTreeWidgetItemIteratorPrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QTreeWidgetItemIterator'
 #include <QtWidgets/QTreeWidget>
 #include <QtWidgets/QVBoxLayout>
+AZ_POP_DISABLE_WARNING
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QHeaderView>
 #include <QtWidgets/QRadioButton>
 #include <QtWidgets/QSplitter>
 #include <QtWidgets/QMessageBox>
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
+                                                               // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
 #include <QKeyEvent>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Quaternion.h>
@@ -248,11 +253,19 @@ namespace AzToolsFramework
 
         bool IsConflicted() const
         {
+            //item cannot be conflicted if the user has deactivated it 
             if (checkState(0) != Qt::CheckState::Checked)
             {
                 return false;
             }
 
+            //conflicts can only happen with multiple changes to the same fields in multiple entity instances, ignore additions/deletions
+            if (m_slicePushType != SlicePushType::Changed)
+            {
+                return false;
+            }
+
+            //check to see whether any entity marked as a potential conflict is checked in the UI
             for (int itemIndex = 0; itemIndex < m_conflictsWithItems.size(); itemIndex++)
             {
                 FieldTreeItem *item = m_conflictsWithItems.at(itemIndex);
@@ -954,15 +967,46 @@ namespace AzToolsFramework
             {
                 FieldTreeItem* confictTestItem = static_cast<FieldTreeItem*>(*conflictTestIter);
 
-                if (!confictTestItem->IsPushableItem())
+                if (!confictTestItem->IsPushableItem() ||
+                    item->m_slicePushType != FieldTreeItem::SlicePushType::Changed)
                 {
+                    // Only items of 'SlicePushType::Changed' needs to be checked. Additions and 
+                    // removals don't generate override conflict.
                     continue;
                 }
 
-                if (item->m_address == confictTestItem->m_address && item->m_slicePushType == FieldTreeItem::SlicePushType::Changed)
+                // Check if components added are incompatible.
+                bool incompatibleComponents = false;
+
+                AZ::ComponentDescriptor* componentDesc = nullptr;
+                AZ::ComponentDescriptorBus::EventResult(componentDesc, item->m_node->GetClassMetadata()->m_typeId, &AZ::ComponentDescriptorBus::Events::GetDescriptor);
+
+                if (componentDesc)
+                {
+                    AZ::ComponentDescriptor* componentDesc_conflictTest = nullptr;
+                    AZ::ComponentDescriptorBus::EventResult(componentDesc_conflictTest, confictTestItem->m_node->GetClassMetadata()->m_typeId, &AZ::ComponentDescriptorBus::Events::GetDescriptor);
+
+                    if (componentDesc_conflictTest)
+                    {
+                        AZ::ComponentDescriptor::DependencyArrayType providedServices_conflictTest;
+                        const AZ::Component* conflictInstance = confictTestItem->m_node->GetNumInstances() > 0 ? static_cast<AZ::Component*>(confictTestItem->m_node->FirstInstance()) : nullptr;
+                        componentDesc_conflictTest->GetProvidedServices(providedServices_conflictTest, conflictInstance);
+
+                        AZ::ComponentDescriptor::DependencyArrayType incompatibleServices;
+                        const AZ::Component* itemInstance = item->m_node->GetNumInstances() > 0 ? static_cast<AZ::Component*>(item->m_node->FirstInstance()) : nullptr;
+                        componentDesc->GetIncompatibleServices(incompatibleServices, itemInstance);
+
+                        auto foundItr = AZStd::find_first_of(incompatibleServices.begin(), incompatibleServices.end(), providedServices_conflictTest.begin(), providedServices_conflictTest.end());
+                        if (foundItr != incompatibleServices.end())
+                        {
+                            incompatibleComponents = true;
+                        }
+                    }
+                }
+
+                if (incompatibleComponents || item->m_address == confictTestItem->m_address)
                 {
                     // Check whether both changes will be pushed to the same entity down in the target slice.
-                    // Only items of 'SlicePushType::Changed' needs to be checked. Additions and removals don't generate override conflict.
 
                     AZ::Entity* rootEntity_item = nullptr;
                     FieldTreeItem* entityField_item = item->m_entityItem;
@@ -1031,21 +1075,7 @@ namespace AzToolsFramework
                     AZStd::string sliceAssetPath;
                     EBUS_EVENT_RESULT(sliceAssetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, item->m_selectedAsset);
 
-                    if (item->m_node)
-                    {
-                        if (item->m_node->IsNewVersusComparison()) // New data vs. slice
-                        {
-                            item->setIcon(0, m_iconNewDataItem);
-                        }
-                        else if (item->m_node->IsRemovedVersusComparison()) // Removed data vs. slice
-                        {
-                            item->setIcon(0, m_iconRemovedDataItem);
-                        }
-                        else if (item->m_sliceAddress.IsValid()) // Changed data vs. slice
-                        {
-                            SetFieldIcon(item);
-                        }
-                    }
+                    SetFieldIcon(item);
 
                     const char* shortPath = sliceAssetPath.c_str();
                     auto pos = sliceAssetPath.find_last_of('/');
@@ -1327,7 +1357,9 @@ namespace AzToolsFramework
             }
             else
             {
-                item->setIcon(0, m_iconChangedDataItem);
+                QVariant iconVariant = item->data(0, s_iconStorageRole);
+                QIcon icon = iconVariant.value<QIcon>();
+                item->setIcon(0, icon);
             }
         }
     }
@@ -1377,7 +1409,7 @@ namespace AzToolsFramework
                 }
             }
         }
-        return conflictedAddresses.size();
+        return !conflictedAddresses.empty();
     }
 
     //=========================================================================
@@ -1824,6 +1856,7 @@ namespace AzToolsFramework
                 
                 entityItem->setText(0, QString("%1 (changed)").arg(entity->GetName().c_str()));
                 entityItem->setIcon(0, m_iconChangedDataItem);
+                entityItem->setData(0, s_iconStorageRole, m_iconChangedDataItem);
                 entityItem->setCheckState(0, Qt::CheckState::Checked);
 
                 AZStd::unordered_map<AzToolsFramework::InstanceDataNode*, FieldTreeItem*> nodeItemMap;
@@ -1974,6 +2007,7 @@ namespace AzToolsFramework
 
                                     FieldTreeItem* item = FieldTreeItem::CreateFieldItem(walkNode, entityItem, displayParent);
                                     item->setText(0, fieldName.c_str());
+                                    item->setData(0, s_iconStorageRole, m_iconChangedDataItem);
                                     item->setCheckState(0, Qt::CheckState::Checked);
                                     item->setIcon(0, m_iconGroup);
                                     item->m_sliceAddress = sliceAddress;
@@ -2205,6 +2239,7 @@ namespace AzToolsFramework
                 FieldTreeItem* item = FieldTreeItem::CreateEntityAddItem(entity);
                 item->setText(0, QString("%1 (added, unsaveable [see (B) below])").arg(entity->GetName().c_str()));
                 item->setIcon(0, m_iconNewDataItem);
+                item->setData(0, s_iconStorageRole, m_iconNewDataItem);
                 item->m_ancestors = AZStd::move(ancestors);
                 item->setCheckState(0, Qt::CheckState::Unchecked);
                 item->setDisabled(true);
@@ -2216,6 +2251,7 @@ namespace AzToolsFramework
                 FieldTreeItem* item = FieldTreeItem::CreateEntityAddItem(entity);
                 item->setText(0, QString("%1 (added)").arg(entity->GetName().c_str()));
                 item->setIcon(0, m_iconNewDataItem);
+                item->setData(0, s_iconStorageRole, m_iconNewDataItem);
 
                 //add any potential ancestors that aren't in the unpushable list for this entity
                 for (auto ancestor : ancestors)
@@ -2236,7 +2272,6 @@ namespace AzToolsFramework
                         item->m_ancestors.push_back(ancestor);
                     }
                 }
-                
 
                 item->setCheckState(0, m_config->m_defaultAddedEntitiesCheckState ? Qt::CheckState::Checked : Qt::CheckState::Unchecked);
                 entityToFieldTreeItemMap[entity->GetId()] = item;
@@ -2291,6 +2326,7 @@ namespace AzToolsFramework
             FieldTreeItem* item = FieldTreeItem::CreateEntityRemovalItem(assetEntity, instanceAddr.GetReference()->GetSliceAsset(), instanceAddr);
             item->setText(0, QString("%1 (deleted)").arg(assetEntity->GetName().c_str()));
             item->setIcon(0, m_iconRemovedDataItem);
+            item->setData(0, s_iconStorageRole, m_iconRemovedDataItem);
             item->setCheckState(0, m_config->m_defaultRemovedEntitiesCheckState ? Qt::CheckState::Checked : Qt::CheckState::Unchecked);
             item->m_ancestors.push_back(AZ::SliceComponent::Ancestor(assetEntity, instanceAddr));
 

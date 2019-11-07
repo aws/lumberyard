@@ -219,17 +219,10 @@ namespace AZStd
         inline ForwardIterator move(const InputIterator& first, const InputIterator& last, ForwardIterator result, const false_type& /* is_fast_copy<InputIterator,ForwardIterator>() */)
         {
             InputIterator iter(first);
-#ifdef AZ_HAS_RVALUE_REFS
             for (; iter != last; ++result, ++iter)
             {
                 *result = AZStd::move(*iter);
             }
-#else
-            for (; iter != last; ++result, ++iter)
-            {
-                *result = *iter;
-            }
-#endif
             return result;
         }
 
@@ -252,17 +245,10 @@ namespace AZStd
         inline BidirectionalIterator2 move_backward(const BidirectionalIterator1& first, const BidirectionalIterator1& last, BidirectionalIterator2 result, const false_type& /* is_fast_copy<BidirectionalIterator1,BidirectionalIterator2>() */)
         {
             BidirectionalIterator1 iter(last);
-#ifdef AZ_HAS_RVALUE_REFS
             while (first != iter)
             {
                 *--result = AZStd::move(*--iter);
             }
-#else
-            while (first != iter)
-            {
-                *--result = *--iter;
-            }
-#endif
             return result;
         }
 
@@ -451,17 +437,10 @@ namespace AZStd
     {
         InputIterator iter(first);
 
-#ifdef AZ_HAS_RVALUE_REFS
         for (; iter != last; ++result, ++iter)
         {
             ::new (static_cast<void*>(&*result)) typename iterator_traits<ForwardIterator>::value_type(AZStd::move(*iter));
         }
-#else
-        for (; iter != last; ++result, ++iter)
-        {
-            ::new (static_cast<void*>(&*result)) typename iterator_traits<ForwardIterator>::value_type(*iter);
-        }
-#endif
         return result;
     }
     // Specialized copy for continuous iterators and trivial move type. (since the object is POD we will just perform a copy)

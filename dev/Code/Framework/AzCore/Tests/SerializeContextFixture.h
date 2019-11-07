@@ -10,7 +10,7 @@
 *
 */
 #pragma once
-#include "TestTypes.h"
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/Memory/PoolAllocator.h>
 #include <AzCore/Serialization/SerializeContext.h>
 

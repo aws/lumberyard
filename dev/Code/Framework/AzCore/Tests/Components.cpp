@@ -10,7 +10,6 @@
 *
 */
 
-#include "TestTypes.h"
 #include "FileIOBaseTestTypes.h"
 
 #include <AzCore/Math/Crc.h>
@@ -30,8 +29,11 @@
 #include <AzCore/Debug/FrameProfilerBus.h>
 #include <AzCore/Debug/FrameProfilerComponent.h>
 #include <AzCore/Memory/AllocationRecords.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #include <AzCore/std/parallel/containers/concurrent_unordered_set.h>
+
+#include "Utils.h"
 
 #if defined(HAVE_BENCHMARK)
 #include <benchmark/benchmark.h>
@@ -39,50 +41,6 @@
 
 using namespace AZ;
 using namespace AZ::Debug;
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Components_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Components_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_APPLE_IOS)
-#   define AZ_ROOT_TEST_FOLDER  "/Documents/"
-#elif defined(AZ_PLATFORM_APPLE_TV)
-#   define AZ_ROOT_TEST_FOLDER "/Library/Caches/"
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
-#   define AZ_ROOT_TEST_FOLDER  "./"
-#elif defined(AZ_PLATFORM_ANDROID)
-#   define AZ_ROOT_TEST_FOLDER  "/sdcard/"
-#else
-#   define AZ_ROOT_TEST_FOLDER  ""
-#endif
-
-namespace // anonymous
-{
-#if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
-    AZStd::string GetTestFolderPath()
-    {
-        return AZStd::string(getenv("HOME")) + AZ_ROOT_TEST_FOLDER;
-    }
-    void MakePathFromTestFolder(char* buffer, int bufferLen, const char* fileName)
-    {
-        azsnprintf(buffer, bufferLen, "%s%s%s", getenv("HOME"), AZ_ROOT_TEST_FOLDER, fileName);
-    }
-#else
-    AZStd::string GetTestFolderPath()
-    {
-        return AZ_ROOT_TEST_FOLDER;
-    }
-    void MakePathFromTestFolder(char* buffer, int bufferLen, const char* fileName)
-    {
-        azsnprintf(buffer, bufferLen, "%s%s", AZ_ROOT_TEST_FOLDER, fileName);
-    }
-#endif
-} // anonymous namespace
 
 // This test needs to be outside of a fixture, as it needs to bring up its own allocators
 TEST(ComponentApplication, Test)
@@ -108,7 +66,7 @@ TEST(ComponentApplication, Test)
 
     // store the app state for next time
     char bootstrapFile[AZ_MAX_PATH_LEN];
-    MakePathFromTestFolder(bootstrapFile, AZ_MAX_PATH_LEN, "bootstrap.xml");
+    UnitTest::MakePathFromTestFolder(bootstrapFile, AZ_MAX_PATH_LEN, "bootstrap.xml");
     UnitTest::TestFileIOBase fileIO;
     UnitTest::SetRestoreFileIOBaseRAII restoreFileIOScope(fileIO);
     bool writeSuccess = app.WriteApplicationDescriptor(bootstrapFile);
@@ -246,9 +204,9 @@ namespace UnitTest
         entity->SetId(newId);
         AZ_TEST_ASSERT(entity->GetId() == newId);
 
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         entity->SetId(SystemEntityId); // this is disallowed.
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
         // we can always create components directly when we have the factory
         // but it is intended to be used in generic way...
@@ -274,9 +232,9 @@ namespace UnitTest
         // Make sure its NOT possible to set the id of the entity after INIT
         newId = AZ::Entity::MakeId();
         AZ::EntityId oldID = entity->GetId();
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         entity->SetId(newId); // this should not work because its init.
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
         AZ_TEST_ASSERT(entity->GetId() == oldID); // id should be unaffected.
 
                                                   // try to send a component message, since it's not active nobody should listen to it
@@ -294,9 +252,9 @@ namespace UnitTest
 
         // Make sure its NOT possible to set the id of the entity after Activate
         newId = AZ::Entity::MakeId();
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         entity->SetId(newId); // this should not work because its init.
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
         // test the tick events
         componentApp.Tick(); // first tick will set-up timers and have 0 delta time
@@ -304,25 +262,25 @@ namespace UnitTest
         componentApp.Tick(); // this will dispatch actual valid delta time
 
                              // make sure we can't remove components while active
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         AZ_TEST_ASSERT(entity->RemoveComponent(comp1) == false);
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
             // make sure we can't add components while active
             {
                 SimpleComponent anotherComp;
-                AZ_TEST_START_ASSERTTEST;
+                AZ_TEST_START_TRACE_SUPPRESSION;
                 AZ_TEST_ASSERT(entity->AddComponent(&anotherComp) == false);
-                AZ_TEST_STOP_ASSERTTEST(1);
+                AZ_TEST_STOP_TRACE_SUPPRESSION(1);
             }
 
-            AZ_TEST_START_ASSERTTEST;
+            AZ_TEST_START_TRACE_SUPPRESSION;
             AZ_TEST_ASSERT(entity->CreateComponent<SimpleComponent>() == nullptr);
-            AZ_TEST_STOP_ASSERTTEST(1);
+            AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
-            AZ_TEST_START_ASSERTTEST;
+            AZ_TEST_START_TRACE_SUPPRESSION;
             AZ_TEST_ASSERT(entity->CreateComponent(azrtti_typeid<SimpleComponent>()) == nullptr);
-            AZ_TEST_STOP_ASSERTTEST(1);
+            AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
         // deactivate
         entity->Deactivate();

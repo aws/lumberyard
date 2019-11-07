@@ -12,13 +12,13 @@
 
 #pragma once
 
-#include <AzCore/Component/EntityId.h>
 #include <AzCore/std/smart_ptr/weak_ptr.h>
 #include <AzToolsFramework/Manipulators/HoverSelection.h>
 
 namespace AZ
 {
     class Spline;
+    class EntityComponentIdPair;
 }
 
 namespace AzToolsFramework
@@ -32,7 +32,7 @@ namespace AzToolsFramework
     {
     public:
         explicit SplineHoverSelection(
-            AZ::EntityId entityId, ManipulatorManagerId managerId,
+            const AZ::EntityComponentIdPair& entityComponentIdPair, ManipulatorManagerId managerId,
             const AZStd::shared_ptr<AZ::Spline>& spline);
         SplineHoverSelection(const SplineHoverSelection&) = delete;
         SplineHoverSelection& operator=(const SplineHoverSelection&) = delete;

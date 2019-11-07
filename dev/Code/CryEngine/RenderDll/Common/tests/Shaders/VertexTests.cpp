@@ -11,10 +11,11 @@
 */
 #include "StdAfx.h"
 #include <AzTest/AzTest.h>
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/UnitTest/UnitTest.h>
 #include "Common/Shaders/Vertex.h"
 #include "DriverD3D.h"
+
 // General vertex stream stride
 int32 m_cSizeVF[eVF_Max] =
 {
@@ -158,7 +159,7 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
         OOFS(SVF_P2F_C4B_T2F_F4B, color.dcolor),
         -1
     },
-	{     // eVF_P3F_C4B
+    {     // eVF_P3F_C4B
         -1,
         OOFS(SVF_P3F_C4B, color.dcolor),
         -1
@@ -369,11 +370,11 @@ protected:
 TEST_F(VertexFormatAssertTest, VertexFormatConstructor_AssertsOnInvalidInput)
 {
     // The vertex format constructor should assert when an invalid vertex format enum is used
-    AZ_TEST_START_ASSERTTEST;
+    AZ_TEST_START_TRACE_SUPPRESSION;
     AZ::Vertex::Format(static_cast<EVertexFormat>(EVertexFormat::eVF_Max));
     AZ::Vertex::Format(static_cast<EVertexFormat>(EVertexFormat::eVF_Max + 1));
     // Expect 2 asserts
-    AZ_TEST_STOP_ASSERTTEST(2);
+    AZ_TEST_STOP_TRACE_SUPPRESSION(2);
 }
 
 class VertexFormatTest

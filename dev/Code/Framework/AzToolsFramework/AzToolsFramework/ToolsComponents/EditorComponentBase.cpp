@@ -57,7 +57,14 @@ namespace AzToolsFramework
 
         void EditorComponentBase::SetDirty()
         {
-            EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, AddDirtyEntity, GetEntity()->GetId());
+            if (GetEntity())
+            {
+                EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, AddDirtyEntity, GetEntity()->GetId());
+            }
+            else
+            {
+                AZ_Warning("Editor", false, "EditorComponentBase::SetDirty() failed. Couldn't add dirty entity because the pointer to the entity is NULL. Make sure the entity is Init()'d properly.");
+            }
         }
 
         AZ::TransformInterface* EditorComponentBase::GetTransform() const

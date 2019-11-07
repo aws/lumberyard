@@ -17,7 +17,7 @@
 namespace ScriptCanvas
 {
 
-    BehaviorContextMethodHelper::CallResult BehaviorContextMethodHelper::Call(Node& node, bool isExpectingMultipleResults, AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* paramBegin, AZ::BehaviorValueParameter* paramEnd, AZStd::vector<SlotId>& resultSlotIds)
+    BehaviorContextMethodHelper::CallResult BehaviorContextMethodHelper::Call(Node& node, bool isExpectingMultipleResults, const AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* paramBegin, AZ::BehaviorValueParameter* paramEnd, AZStd::vector<SlotId>& resultSlotIds)
     {
         if (isExpectingMultipleResults)
         {
@@ -29,19 +29,19 @@ namespace ScriptCanvas
         }
     }
 
-    BehaviorContextMethodHelper::CallResult BehaviorContextMethodHelper::Call(Node& node, AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* paramBegin, AZ::BehaviorValueParameter* paramEnd, SlotId resultSlotId)
+    BehaviorContextMethodHelper::CallResult BehaviorContextMethodHelper::Call(Node& node, const AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* paramBegin, AZ::BehaviorValueParameter* paramEnd, SlotId resultSlotId)
     {
         AZ_PROFILE_SCOPE_DYNAMIC(AZ::Debug::ProfileCategory::ScriptCanvas, "ScriptCanvas::Method::OnInputSignal::Call %s", method->m_name.c_str());
         return CallGeneric(node, method, paramBegin, paramEnd, &AttemptCallWithResults, resultSlotId);
     }
 
-    BehaviorContextMethodHelper::CallResult BehaviorContextMethodHelper::Call(Node& node, AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* paramBegin, AZ::BehaviorValueParameter* paramEnd, AZStd::vector<SlotId>& resultSlotIds)
+    BehaviorContextMethodHelper::CallResult BehaviorContextMethodHelper::Call(Node& node, const AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* paramBegin, AZ::BehaviorValueParameter* paramEnd, AZStd::vector<SlotId>& resultSlotIds)
     {
         AZ_PROFILE_SCOPE_DYNAMIC(AZ::Debug::ProfileCategory::ScriptCanvas, "ScriptCanvas::Method::OnInputSignal::Call %s", method->m_name.c_str());
         return CallGeneric(node, method, paramBegin, paramEnd, &AttemptCallWithTupleResults, resultSlotIds);
     }
 
-    AZ::Outcome<BehaviorContextMethodHelper::CallResult, AZStd::string> BehaviorContextMethodHelper::AttemptCallWithResults(Node& node, AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs, SlotId resultSlotId)
+    AZ::Outcome<BehaviorContextMethodHelper::CallResult, AZStd::string> BehaviorContextMethodHelper::AttemptCallWithResults(Node& node, const AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs, SlotId resultSlotId)
     {
         auto resultSlot = resultSlotId.IsValid() ? node.GetSlot(resultSlotId) : nullptr;
         const AZ::BehaviorParameter* resultType = method->GetResult();
@@ -68,7 +68,7 @@ namespace ScriptCanvas
         return AZ::Success(CallResult(MethodCallStatus::NotAttempted));
     }
 
-    AZ::Outcome<BehaviorContextMethodHelper::CallResult, AZStd::string> BehaviorContextMethodHelper::AttemptCallWithTupleResults(Node& node, AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs, AZStd::vector<SlotId> resultSlotIds)
+    AZ::Outcome<BehaviorContextMethodHelper::CallResult, AZStd::string> BehaviorContextMethodHelper::AttemptCallWithTupleResults(Node& node, const AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs, AZStd::vector<SlotId> resultSlotIds)
     {
         AZ_Assert(resultSlotIds.size() < BehaviorContextInputOutput::MaxCount, "Result slot id size is too large");
 
@@ -133,7 +133,7 @@ namespace ScriptCanvas
         return AZ::Success(CallResult(MethodCallStatus::NotAttempted));
     }
 
-    AZ::Outcome<Datum, AZStd::string> BehaviorContextMethodHelper::CallTupleGetMethod(AZ::BehaviorMethod* method, Datum& thisPointer)
+    AZ::Outcome<Datum, AZStd::string> BehaviorContextMethodHelper::CallTupleGetMethod(const AZ::BehaviorMethod* method, Datum& thisPointer)
     {
         auto argument = method->GetArgument(0);
         if (!argument)
@@ -168,7 +168,7 @@ namespace ScriptCanvas
         }
 
         // a nullptr method just means a void type, which is acceptable, just no call attempt is made
-        if (AZ::BehaviorMethod* method = tupleGetMethodIt->second)
+        if (const AZ::BehaviorMethod* method = tupleGetMethodIt->second)
         {
             if (!method->HasResult())
             {
@@ -204,9 +204,9 @@ namespace ScriptCanvas
         return AZ::BehaviorValueParameter();
     }
 
-    AZStd::map<size_t, AZ::BehaviorMethod*> GetTupleGetMethods(const AZ::TypeId& typeId)
+    AZStd::map<size_t, const AZ::BehaviorMethod*> GetTupleGetMethods(const AZ::TypeId& typeId)
     {
-        AZStd::map<size_t, AZ::BehaviorMethod*> tupleGetMethodMap;
+        AZStd::map<size_t, const AZ::BehaviorMethod*> tupleGetMethodMap;
         
         AZ::BehaviorContext* behaviorContext{};
         AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
@@ -217,7 +217,7 @@ namespace ScriptCanvas
         {
             for (auto& methodPair : behaviorClass->m_methods)
             {
-                AZ::BehaviorMethod* behaviorMethod = methodPair.second;
+                const AZ::BehaviorMethod* behaviorMethod = methodPair.second;
                 if (AZ::Attribute* attribute = FindAttribute(AZ::ScriptCanvasAttributes::TupleGetFunctionIndex, behaviorMethod->m_attributes))
                 {
                     AZ::AttributeReader tupleGetFuncAttrReader(nullptr, attribute);
@@ -236,9 +236,9 @@ namespace ScriptCanvas
         return tupleGetMethodMap;
     }
 
-    AZ::Outcome<AZ::BehaviorMethod*, void> GetTupleGetMethod(const AZ::TypeId& typeId, size_t index)
+    AZ::Outcome<const AZ::BehaviorMethod*, void> GetTupleGetMethod(const AZ::TypeId& typeId, size_t index)
     {
-        AZ::BehaviorContext* behaviorContext{};
+        const AZ::BehaviorContext* behaviorContext{};
         AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
         auto bcClassIterator = behaviorContext->m_typeToClassMap.find(typeId);
         const AZ::BehaviorClass* behaviorClass = bcClassIterator != behaviorContext->m_typeToClassMap.end() ? bcClassIterator->second : nullptr;
@@ -247,7 +247,7 @@ namespace ScriptCanvas
         {
             for (auto methodPair : behaviorClass->m_methods)
             {
-                AZ::BehaviorMethod* behaviorMethod = methodPair.second;
+                const AZ::BehaviorMethod* behaviorMethod = methodPair.second;
                 if (AZ::Attribute* attribute = FindAttribute(AZ::ScriptCanvasAttributes::TupleGetFunctionIndex, behaviorMethod->m_attributes))
                 {
                     AZ::AttributeReader tupleGetFuncAttrReader(nullptr, attribute);

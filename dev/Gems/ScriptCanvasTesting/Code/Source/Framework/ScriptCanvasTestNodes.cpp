@@ -14,6 +14,7 @@
 #include "ScriptCanvasTestNodes.h"
 #include <ScriptCanvas/Core/Core.h>
 #include <ScriptCanvas/Core/Graph.h>
+#include <ScriptCanvas/Core/SlotConfigurationDefaults.h>
 
 #include <gtest/gtest.h>
 
@@ -21,10 +22,17 @@ namespace TestNodes
 {
     //////////////////////////////////////////////////////////////////////////////
     void TestResult::OnInit()
-    {
-        AddSlot("In", "", ScriptCanvas::SlotType::ExecutionIn);
-        AddSlot("Out", "", ScriptCanvas::SlotType::ExecutionOut);
-        AddInputDatumOverloadedSlot("Value");
+    {        
+        Node::AddSlot(ScriptCanvas::CommonSlots::GeneralInSlot());
+        Node::AddSlot(ScriptCanvas::CommonSlots::GeneralOutSlot());
+
+        ScriptCanvas::DynamicDataSlotConfiguration slotConfiguration;
+
+        slotConfiguration.m_name = "Value";
+        slotConfiguration.m_dynamicDataType = ScriptCanvas::DynamicDataType::Any;
+        slotConfiguration.SetConnectionType(ScriptCanvas::ConnectionType::Input);
+
+        AddSlot(slotConfiguration);
     }
 
     void TestResult::OnInputSignal(const ScriptCanvas::SlotId&)
@@ -43,7 +51,7 @@ namespace TestNodes
             AZ_TracePrintf("Script Canvas", "%s\n", m_string.c_str());
         }
 
-        SignalOutput(GetSlotId("Out"));
+        SignalOutput(GetSlotId(ScriptCanvas::CommonSlots::GeneralOutSlot::GetName()));
     }
 
     void TestResult::Reflect(AZ::ReflectContext* context)
@@ -85,22 +93,23 @@ namespace TestNodes
     {
         using namespace ScriptCanvas;
 
-        const SlotId& inSlot = AddSlot("In", "", SlotType::ExecutionIn);
+        SlotId inSlotId = Node::AddSlot(ScriptCanvas::CommonSlots::GeneralInSlot());
+        Node::AddSlot(ScriptCanvas::CommonSlots::GeneralOutSlot());
 
         auto func = []() { return aznew DisallowReentrantExecutionContract{}; };
         ContractDescriptor descriptor{ AZStd::move(func) };
-        GetSlot(inSlot)->AddContract(descriptor);
+        GetSlot(inSlotId)->AddContract(descriptor);
 
-        AddSlot("Out", "", SlotType::ExecutionOut);
-        AddInputTypeSlot("Set String", "", Data::Type::String(), InputTypeContract::CustomType);
-        AddInputTypeSlot("Set Number", "", Data::Type::Number(), InputTypeContract::CustomType);
-        AddOutputTypeSlot("Get String", "", Data::Type::String(), OutputStorage::Optional);
-        AddOutputTypeSlot("Get Number", "", Data::Type::Number(), OutputStorage::Optional);
+        AddSlot(ScriptCanvas::DataSlotConfiguration(Data::Type::String(), "Set String", ScriptCanvas::ConnectionType::Input));
+        AddSlot(ScriptCanvas::DataSlotConfiguration(Data::Type::String(), "Get String", ScriptCanvas::ConnectionType::Output));
+
+        AddSlot(ScriptCanvas::DataSlotConfiguration(Data::Type::Number(), "Set Number", ScriptCanvas::ConnectionType::Input));
+        AddSlot(ScriptCanvas::DataSlotConfiguration(Data::Type::Number(), "Get Number", ScriptCanvas::ConnectionType::Output));
     }
 
     void ContractNode::OnInputSignal(const ScriptCanvas::SlotId&)
     {
-        SignalOutput(GetSlotId("Out"));
+        SignalOutput(GetSlotId(ScriptCanvas::CommonSlots::GeneralOutSlot::GetName()));
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -121,9 +130,9 @@ namespace TestNodes
 
     void InfiniteLoopNode::OnInit()
     {
-        AddSlot("In", "", ScriptCanvas::SlotType::ExecutionIn);
-        AddSlot("Before Infinity", "", ScriptCanvas::SlotType::ExecutionOut);
-        AddSlot("After Infinity", "", ScriptCanvas::SlotType::ExecutionOut);
+        AddSlot(ScriptCanvas::CommonSlots::GeneralInSlot());
+        AddSlot(ScriptCanvas::ExecutionSlotConfiguration("Before Infinity", ScriptCanvas::ConnectionType::Output));
+        AddSlot(ScriptCanvas::ExecutionSlotConfiguration("After Infinity", ScriptCanvas::ConnectionType::Output));
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -140,9 +149,16 @@ namespace TestNodes
 
     void UnitTestErrorNode::OnInit()
     {
-        AddSlot("In", "", ScriptCanvas::SlotType::ExecutionIn);
-        AddSlot("Out", "", ScriptCanvas::SlotType::ExecutionOut);
-        AddSlot("This", "", ScriptCanvas::SlotType::DataOut);
+        AddSlot(ScriptCanvas::CommonSlots::GeneralInSlot());
+        AddSlot(ScriptCanvas::CommonSlots::GeneralOutSlot());
+
+        ScriptCanvas::DynamicDataSlotConfiguration slotConfiguration;
+
+        slotConfiguration.SetConnectionType(ScriptCanvas::ConnectionType::Output);
+        slotConfiguration.m_name = "This";
+        slotConfiguration.m_dynamicDataType = ScriptCanvas::DynamicDataType::Any;
+
+        AddSlot(slotConfiguration);
     }
 
     void UnitTestErrorNode::OnInputSignal(const ScriptCanvas::SlotId&)
@@ -168,10 +184,17 @@ namespace TestNodes
 
     ScriptCanvas::SlotId AddNodeWithRemoveSlot::AddSlot(AZStd::string_view slotName)
     {
-        ScriptCanvas::SlotId addedSlotId;
-        if (!SlotExists(slotName, ScriptCanvas::SlotType::DataIn, addedSlotId))
+        ScriptCanvas::SlotId addedSlotId = FindSlotIdForDescriptor(slotName, ScriptCanvas::SlotDescriptors::DataIn());
+        if (!addedSlotId.IsValid())
         {
-            addedSlotId = AddInputDatumSlot(slotName, "", ScriptCanvas::Datum::eOriginality::Original, ScriptCanvas::Data::NumberType(0));
+            ScriptCanvas::DataSlotConfiguration slotConfiguration;
+
+            slotConfiguration.m_name = slotName;
+            slotConfiguration.SetDefaultValue(0.0);
+            slotConfiguration.SetConnectionType(ScriptCanvas::ConnectionType::Input);
+
+            addedSlotId = Node::AddSlot(slotConfiguration);
+
             m_dynamicSlotIds.push_back(addedSlotId);
         }
 
@@ -214,29 +237,62 @@ namespace TestNodes
 
     void AddNodeWithRemoveSlot::OnInit()
     {
-        Node::AddSlot("In", "", ScriptCanvas::SlotType::ExecutionIn);
-        Node::AddSlot("Out", "", ScriptCanvas::SlotType::ExecutionOut);
-        if (!SlotExists("A", ScriptCanvas::SlotType::DataIn))
+        Node::AddSlot(ScriptCanvas::CommonSlots::GeneralInSlot());
+        Node::AddSlot(ScriptCanvas::CommonSlots::GeneralOutSlot());
+
+        for (AZStd::string slotName : {"A", "B", "C"})
         {
-            m_dynamicSlotIds.push_back(AddInputDatumSlot("A", "", ScriptCanvas::Datum::eOriginality::Original, ScriptCanvas::Data::NumberType(0)));
+            ScriptCanvas::SlotId slotId = FindSlotIdForDescriptor(slotName, ScriptCanvas::SlotDescriptors::DataIn());
+
+            if (!slotId.IsValid())
+            {
+                ScriptCanvas::DataSlotConfiguration slotConfiguration;
+
+                slotConfiguration.m_name = slotName;
+                slotConfiguration.SetDefaultValue(0);
+                slotConfiguration.SetConnectionType(ScriptCanvas::ConnectionType::Input);
+
+                m_dynamicSlotIds.push_back(Node::AddSlot(slotConfiguration));
+            }
         }
-        if (!SlotExists("B", ScriptCanvas::SlotType::DataIn))
+
         {
-            m_dynamicSlotIds.push_back(AddInputDatumSlot("B", "", ScriptCanvas::Datum::eOriginality::Original, ScriptCanvas::Data::NumberType(0)));
+            ScriptCanvas::DataSlotConfiguration slotConfiguration;
+
+            slotConfiguration.m_name = "Result";
+            slotConfiguration.SetType(ScriptCanvas::Data::Type::Number());
+            slotConfiguration.SetConnectionType(ScriptCanvas::ConnectionType::Output);
+
+            m_resultSlotId = Node::AddSlot(slotConfiguration);
         }
-        if (!SlotExists("C", ScriptCanvas::SlotType::DataIn))
-        {
-            m_dynamicSlotIds.push_back(AddInputDatumSlot("C", "", ScriptCanvas::Datum::eOriginality::Original, ScriptCanvas::Data::NumberType(0)));
-        }
-        m_resultSlotId = AddOutputTypeSlot("Result", "", ScriptCanvas::Data::Type::Number(), OutputStorage::Optional);
     }
 
     void StringView::OnInit()
     {
-        AddSlot("In", "", ScriptCanvas::SlotType::ExecutionIn);
-        AddSlot("Out", "", ScriptCanvas::SlotType::ExecutionOut);
-        AddInputDatumSlot("View", "Input string_view object", ScriptCanvas::Data::Type::String(), ScriptCanvas::Datum::eOriginality::Copy);
-        m_resultSlotId = AddOutputTypeSlot("Result", "Output string object", ScriptCanvas::Data::FromAZType(azrtti_typeid<AZStd::string>()), Node::OutputStorage::Optional);
+        AddSlot(ScriptCanvas::CommonSlots::GeneralInSlot());
+        AddSlot(ScriptCanvas::CommonSlots::GeneralOutSlot());
+
+        {
+            ScriptCanvas::DataSlotConfiguration slotConfiguration;
+
+            slotConfiguration.m_name = "View";
+            slotConfiguration.m_toolTip = "Input string_view object";
+            slotConfiguration.ConfigureDatum(AZStd::move(ScriptCanvas::Datum(ScriptCanvas::Data::Type::String(), ScriptCanvas::Datum::eOriginality::Copy)));
+            slotConfiguration.SetConnectionType(ScriptCanvas::ConnectionType::Input);
+
+            AddSlot(slotConfiguration);
+        }
+
+        {
+            ScriptCanvas::DataSlotConfiguration slotConfiguration;
+
+            slotConfiguration.m_name = "Result";
+            slotConfiguration.m_toolTip = "Output string object";
+            slotConfiguration.SetAZType<AZStd::string>();
+            slotConfiguration.SetConnectionType(ScriptCanvas::ConnectionType::Output);
+
+            m_resultSlotId = AddSlot(slotConfiguration);
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -288,15 +344,16 @@ namespace TestNodes
     ScriptCanvas::SlotId InsertSlotConcatNode::InsertSlot(AZ::s64 index, AZStd::string_view slotName)
     {
         using namespace ScriptCanvas;
-        SlotId addedSlotId;
-        if (!SlotExists(slotName, SlotType::DataIn, addedSlotId))
+        SlotId addedSlotId = FindSlotIdForDescriptor(slotName, ScriptCanvas::SlotDescriptors::DataIn());
+        if (!addedSlotId.IsValid())
         {
             DataSlotConfiguration dataConfig;
             dataConfig.m_name = slotName;
             dataConfig.m_toolTip = "";
-            dataConfig.m_slotType = SlotType::DataIn;
+            dataConfig.SetConnectionType(ScriptCanvas::ConnectionType::Input);
+            dataConfig.SetDefaultValue(Data::StringType());
 
-            addedSlotId = InsertInputDatumSlot(index, dataConfig, Datum(Data::StringType()));
+            addedSlotId = Node::InsertSlot(index, dataConfig);
         }
 
         return addedSlotId;
@@ -305,10 +362,11 @@ namespace TestNodes
 
     void InsertSlotConcatNode::OnInputSignal(const ScriptCanvas::SlotId& slotId)
     {
-        if (slotId == GetSlotId("In"))
+        if (slotId == GetSlotId(ScriptCanvas::CommonSlots::GeneralInSlot::GetName()))
         {
             ScriptCanvas::Data::StringType result{};
-            for (const ScriptCanvas::Slot* concatSlot : GetSlotsByType(ScriptCanvas::SlotType::DataIn))
+
+            for (const ScriptCanvas::Slot* concatSlot : GetAllSlotsByDescriptor(ScriptCanvas::SlotDescriptors::DataIn()))
             {
                 if (auto inputDatum = GetInput(concatSlot->GetId()))
                 {
@@ -333,36 +391,54 @@ namespace TestNodes
 
     void InsertSlotConcatNode::OnInit()
     {
-        Node::AddSlot("In", "", ScriptCanvas::SlotType::ExecutionIn);
-        Node::AddSlot("Out", "", ScriptCanvas::SlotType::ExecutionOut);
-        AddOutputTypeSlot("Result", "", ScriptCanvas::Data::Type::String(), OutputStorage::Optional);
+        Node::AddSlot(ScriptCanvas::CommonSlots::GeneralInSlot());
+        Node::AddSlot(ScriptCanvas::CommonSlots::GeneralOutSlot());
+        Node::AddSlot(ScriptCanvas::DataSlotConfiguration(ScriptCanvas::Data::Type::String(), "Result", ScriptCanvas::ConnectionType::Output));
     }
 
-    //////////////
-    // EmptyNode
-    //////////////
+    /////////////////////////////
+    // ConfigurableUnitTestNode
+    /////////////////////////////
 
-    void ConfigurableNode::Reflect(AZ::ReflectContext* reflection)
+    void ConfigurableUnitTestNode::Reflect(AZ::ReflectContext* reflection)
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
         {
-            serializeContext->Class<ConfigurableNode, ScriptCanvas::Node>()
+            serializeContext->Class<ConfigurableUnitTestNode, ScriptCanvas::Node>()
                 ->Version(0)
                 ;
         }
     }
 
-    ScriptCanvas::Slot* ConfigurableNode::AddTestingSlot(const ScriptCanvas::SlotConfiguration& slotConfiguration)
+    ScriptCanvas::Slot* ConfigurableUnitTestNode::AddTestingSlot(ScriptCanvas::SlotConfiguration& slotConfiguration)
     {
         ScriptCanvas::SlotId slotId = AddSlot(slotConfiguration);
 
         return GetSlot(slotId);
     }
 
-    ScriptCanvas::Slot* ConfigurableNode::AddTestingDataSlot(const ScriptCanvas::DataSlotConfiguration& dataSlotConfiguration)
+    ScriptCanvas::Datum* ConfigurableUnitTestNode::FindDatum(const ScriptCanvas::SlotId& slotId)
     {
-        ScriptCanvas::SlotId slotId = AddDataSlot(dataSlotConfiguration);
-
-        return GetSlot(slotId);
+        return ModInput(slotId);
     }
+
+    void ConfigurableUnitTestNode::TestClearDisplayType(const AZ::Crc32& dynamicGroup)
+    {
+        ClearDisplayType(dynamicGroup);
+    }
+
+    void ConfigurableUnitTestNode::TestSetDisplayType(const AZ::Crc32& dynamicGroup, const ScriptCanvas::Data::Type& dataType)
+    {
+        SetDisplayType(dynamicGroup, dataType);
+    }
+
+    bool ConfigurableUnitTestNode::TestHasConcreteDisplayType(const AZ::Crc32& dynamicGroup) const
+    {
+        return HasConcreteDisplayType(dynamicGroup);
+    }
+
+    bool ConfigurableUnitTestNode::TestIsSlotConnectedToConcreteDisplayType(const ScriptCanvas::Slot& slot, ExploredDynamicGroupCache& exploredGroupCache) const
+    {
+        return IsSlotConnectedToConcreteDisplayType(slot, exploredGroupCache);
+    }    
 }

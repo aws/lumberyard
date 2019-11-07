@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Serialization/DataPatch.h>
 #include <AzCore/Serialization/Utils.h>
@@ -1018,7 +1017,6 @@ namespace AZ
         m_targetClassId = rhs.m_targetClassId;
     }
 
-#ifdef AZ_HAS_RVALUE_REFS
     //=========================================================================
     // DataPatch
     //=========================================================================
@@ -1037,7 +1035,6 @@ namespace AZ
         m_targetClassId = AZStd::move(rhs.m_targetClassId);
         return *this;
     }
-#endif // AZ_HAS_RVALUE_REF
 
     //=========================================================================
     // operator=
@@ -1280,5 +1277,3 @@ namespace AZ
         }
     }
 }   // namespace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

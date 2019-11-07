@@ -72,7 +72,7 @@ def cache_outputs(cls):
 		class foo(Task.Task):
 			nocache = True
 
-	If bld.cache_global is defined and if the task instances produces output nodes,
+	If bld.artifacts_cache is defined and if the task instances produces output nodes,
 	the files will be copied into a folder in the cache directory
 
 	The files may also be retrieved from that folder, if it exists
@@ -80,7 +80,7 @@ def cache_outputs(cls):
 	m1 = cls.run
 	def run(self):
 		bld = self.generator.bld
-		if bld.cache_global and not bld.nocache:
+		if bld.artifacts_cache and bld.is_option_true('artifacts_cache_restore') and not bld.nocache:
 			if self.can_retrieve_cache():
 				return 0
 		return m1(self)
@@ -90,7 +90,7 @@ def cache_outputs(cls):
 	def post_run(self):
 		bld = self.generator.bld
 		ret = m2(self)
-		if bld.cache_global and not bld.nocache:
+		if bld.artifacts_cache and bld.is_option_true('artifacts_cache_upload') and not bld.nocache:
 			self.put_files_cache()
 		return ret
 	cls.post_run = post_run
@@ -603,6 +603,9 @@ class Task(TaskBase):
 
 		# compare the signatures of the outputs
 		for node in self.outputs:
+			# Check if output exists
+			if not os.path.exists(node.abspath()):
+				return RUN_ME
 			try:
 				if node.sig != new_sig:
 					return RUN_ME
@@ -633,7 +636,7 @@ class Task(TaskBase):
 				raise Errors.WafError(self.err_msg)
 
 			# important, store the signature for the next run
-			node.sig = node.cache_sig = sig
+			node.sig = sig
 
 		bld.task_sigs[self.uid()] = self.cache_sig
 
@@ -925,7 +928,7 @@ class Task(TaskBase):
 		ssig = Utils.to_hex(self.uid()) + Utils.to_hex(sig)
 
 		# first try to access the cache folder for the task
-		dname = os.path.join(self.generator.bld.cache_global, ssig)
+		dname = os.path.join(self.generator.bld.artifacts_cache, ssig)
 		try:
 			t1 = os.stat(dname).st_mtime
 		except OSError:
@@ -972,8 +975,8 @@ class Task(TaskBase):
 
 		sig = self.signature()
 		ssig = Utils.to_hex(self.uid()) + Utils.to_hex(sig)
-		dname = os.path.join(self.generator.bld.cache_global, ssig)
-		tmpdir = tempfile.mkdtemp(prefix=self.generator.bld.cache_global + os.sep + 'waf')
+		dname = os.path.join(self.generator.bld.artifacts_cache, ssig)
+		tmpdir = tempfile.mkdtemp(prefix=self.generator.bld.artifacts_cache + os.sep + 'waf')
 
 		try:
 			shutil.rmtree(dname)
@@ -1308,7 +1311,7 @@ def update_outputs(cls):
 	def post_run(self):
 		old_post_run(self)
 		for node in self.outputs:
-			node.sig = node.cache_sig = Utils.h_file(node.abspath())
+			node.sig = Utils.h_file(node.abspath())
 			self.generator.bld.task_sigs[node.abspath()] = self.uid() # issue #1017
 	cls.post_run = post_run
 

@@ -20,7 +20,7 @@
 #include <AzCore/std/parallel/spin_mutex.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/parallel/shared_mutex.h>
-#include <AzCore/std/parallel/conditional_variable.h>
+#include <AzCore/std/parallel/condition_variable.h>
 
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/delegate/delegate.h>
@@ -323,13 +323,7 @@ namespace UnitTest
             AZ_TEST_ASSERT(the_id == x_id);
         }
 
-        /*thread make_thread_return_lvalue(boost::thread::id* the_id)
-        {
-            thread t(&Parallel_Thread::do_nothing_id,this,the_id);
-            return AZStd::move(t);
-        }
-
-        void test_move_from_function_return_lvalue()
+        /*void test_move_from_function_return_lvalue()
         {
             thread::id the_id;
             thread x=make_thread_return_lvalue(&the_id);

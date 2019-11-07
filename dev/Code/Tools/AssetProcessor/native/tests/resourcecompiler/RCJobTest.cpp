@@ -39,14 +39,14 @@ namespace UnitTests
     public:
         // Will notify other systems which old product is just about to get removed from the cache 
         // before we copy the new product instead along. 
-        void BeginIgnoringCacheFileDelete(const char* productPath) override
+        void BeginCacheFileUpdate(const char* productPath) override
         {
             m_capturedStartPaths.push_back(productPath);
         }
         
         // Will notify other systems which product we are trying to copy in the cache 
         // along with status of whether that copy succeeded or failed.
-        void StopIgnoringCacheFileDelete(const char* productPath, bool /*queueAgainForProcessing*/) override
+        void EndCacheFileUpdate(const char* productPath, bool /*queueAgainForProcessing*/) override
         {
             m_capturedStopPaths.push_back(productPath);
         }

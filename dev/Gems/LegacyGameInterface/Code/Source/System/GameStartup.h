@@ -48,10 +48,6 @@ namespace LegacyGameInterface
         virtual ~GameStartup();
 
     private:
-#if defined(WIN32)
-        bool HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT* pResult);
-#endif
-
         IGameFramework*         m_Framework;
         IGame*                  m_Game;
     };

@@ -65,9 +65,23 @@ namespace AzToolsFramework
 
             //! Request File Browser model
             virtual AssetBrowserModel* GetAssetBrowserModel() = 0;
+
+            //! Returns true if entries were populated
+            virtual bool AreEntriesReady() = 0;
         };
 
         using AssetBrowserComponentRequestBus = AZ::EBus<AssetBrowserComponentRequests>;
+
+        //! Sends notifications from AssetBrowserComponent
+        class AssetBrowserComponentNotifications
+            : public AZ::EBusTraits
+        {
+        public:
+            //! Notifies when entries are physically populated in asset browser
+            virtual void OnAssetBrowserComponentReady() {}
+        };
+
+        using AssetBrowserComponentNotificationBus = AZ::EBus<AssetBrowserComponentNotifications>;
 
         //////////////////////////////////////////////////////////////////////////
         // Interaction

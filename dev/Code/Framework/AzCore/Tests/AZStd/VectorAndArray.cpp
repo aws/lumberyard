@@ -435,32 +435,31 @@ namespace UnitTest
         //////////////////////////////////////////////////////////////////////////////////////////
         // Test asserts (which don't cause throw exceptions)
         int_vector10.clear();
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         int_vector10.reserve(1000000);  // too many elements, 1 assert on too many, 1 assert on allocator returning NULL
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
 #ifdef AZSTD_HAS_CHECKED_ITERATORS
         int_vector.clear();
         iter = int_vector.end();
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         int b = *iter; // the end if is valid but can not dereferenced
         (void)b;
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
         int_vector.push_back(1);
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         int_vector.validate_iterator(iter); // The push back should make the end iterator invalid.
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
         iter = int_vector.begin();
         int_vector.clear();
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         int_vector.validate_iterator(iter); // The clear should invalidate all iterators
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 #endif
         //////////////////////////////////////////////////////////////////////////////////////////
         // Vector rvalue refs test
-#ifdef AZ_HAS_RVALUE_REFS
         int_vector.clear();
         int_vector.resize(33, 55);
 
@@ -493,7 +492,6 @@ namespace UnitTest
         AZ_TEST_ASSERT(myclass_vector[1].m_data == 22);
         AZ_TEST_ASSERT(myclass_vector[1].m_isMoved == true);
         AZ_TEST_ASSERT(myclass_vector[2].m_data == 23);
-#endif // AZ_HAS_RVALUE_REFS
 
         // move iterator
         AZStd::vector<VectorMoveOnly> move_only_vector;
@@ -685,21 +683,21 @@ namespace UnitTest
 #ifdef AZSTD_HAS_CHECKED_ITERATORS
         int_vector.clear();
         iter = int_vector.end();
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         int b = *iter;  // the end if is valid but can not dereferenced
         (void)b;
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
         int_vector.push_back(1);
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         int_vector.validate_iterator(iter);  // The push back should make the end iterator invalid.
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
         iter = int_vector.begin();
         int_vector.clear();
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         int_vector.validate_iterator(iter);  // The clear should invalidate all iterators
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 #endif
         // FixedVectorContainerTest-End
     }
@@ -808,12 +806,12 @@ namespace UnitTest
         EXPECT_TRUE(myArr.empty());
         EXPECT_EQ(0, myArr.size());
         EXPECT_EQ(0, myArr.max_size());
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         myArr.front();
         myArr.back();
         myArr.at(0);
         myArr[0];
-        AZ_TEST_STOP_ASSERTTEST(4);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(4);
 
         array<int, 0> myArr2;
         EXPECT_EQ(myArr, myArr2);
@@ -843,14 +841,12 @@ namespace UnitTest
                 , m_data(rhs.m_data)
                 , m_intVector(rhs.m_intVector)
             {}
-#ifdef AZ_HAS_RVALUE_REFS
             MyDeepClass(MyDeepClass&& rhs)
             {
                 m_moved = true;
                 m_data = rhs.m_data;
                 m_intVector = AZStd::move(rhs.m_intVector);
             }
-#endif // AZ_HAS_RVALUE_REFS
 
             MyDeepClass& operator=(const MyDeepClass& rhs)
             {
@@ -871,22 +867,18 @@ namespace UnitTest
 
         deep_vector_type deep_vec_2(10);
         AZ_TEST_VALIDATE_VECTOR(deep_vec_2, 10);
-#ifdef AZ_HAS_RVALUE_REFS
         for (size_t i = 0; i < deep_vec_2.size(); ++i)
         {
             AZ_TEST_ASSERT(deep_vec_2[i].m_moved == false);
         }
-#endif //AZ_HAS_RVALUE_REFS
 
         // reserve some space
         deep_vec_2.set_capacity(15);
 
-#ifdef AZ_HAS_RVALUE_REFS
         for (size_t i = 0; i < deep_vec_2.size(); ++i)
         {
             AZ_TEST_ASSERT(deep_vec_2[i].m_moved == true);
         }
-#endif //AZ_HAS_RVALUE_REFS
 
         // insert at the end
         deep_vec_2.insert(deep_vec_2.end(), MyDeepClass(100));

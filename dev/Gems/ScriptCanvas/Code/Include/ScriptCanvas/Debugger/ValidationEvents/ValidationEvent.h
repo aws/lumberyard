@@ -11,10 +11,12 @@
 */
 #pragma once
 
-#include <AzCore/std/string/string.h>
 #include <AzCore/Math/Crc.h>
-
+#include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/RTTI/RTTI.h>
+#include <AzCore/std/smart_ptr/intrusive_ptr.h>
+#include <AzCore/std/smart_ptr/intrusive_refcount.h>
+#include <AzCore/std/string/string.h>
 
 namespace ScriptCanvas
 {
@@ -24,11 +26,10 @@ namespace ScriptCanvas
         Error,
         Warning,
         Informative,
-
-        
     };
     
     class ValidationEvent
+        : public AZStd::intrusive_refcount<AZ::u32>
     {
     protected:
         ValidationEvent(const ValidationSeverity& validationType)
@@ -82,4 +83,6 @@ namespace ScriptCanvas
         ValidationSeverity  m_validationType;
         AZStd::string       m_description;
     };
+    using ValidationPtr = AZStd::intrusive_ptr<ValidationEvent>;
+    using ValidationConstPtr = AZStd::intrusive_ptr<const ValidationEvent>;
 }

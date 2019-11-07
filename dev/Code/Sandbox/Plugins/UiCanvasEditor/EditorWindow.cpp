@@ -2273,9 +2273,9 @@ void EditorWindow::SubmitUnloadSavedCanvasMetricEvent(AZ::EntityId canvasEntityI
         }
 
         // Check if this element is scaled to device
-        bool scaleToDevice = false;
-        EBUS_EVENT_ID_RESULT(scaleToDevice, entity->GetId(), UiTransformBus, GetScaleToDevice);
-        if (scaleToDevice)
+        UiTransformInterface::ScaleToDeviceMode scaleToDeviceMode = UiTransformInterface::ScaleToDeviceMode::None;
+        EBUS_EVENT_ID_RESULT(scaleToDeviceMode, entity->GetId(), UiTransformBus, GetScaleToDeviceMode);
+        if (scaleToDeviceMode != UiTransformInterface::ScaleToDeviceMode::None)
         {
             numScaleToDeviceElements++;
         }

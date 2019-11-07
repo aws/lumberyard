@@ -30,11 +30,7 @@ namespace AZStd
         template<typename T>
         struct lock_free_stamped_node_ptr
         {
-#if defined(AZ_PLATFORM_WINDOWS) && !defined(AZ_PLATFORM_WINDOWS_X64)
-            struct lock_free_stamped_queue_node<T>* m_node;
-#else
             AZ_ALIGN(struct lock_free_stamped_queue_node<T>* m_node, 8);
-#endif
             unsigned int m_stamp;
         };
 

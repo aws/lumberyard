@@ -115,8 +115,15 @@ ReflectedPropertyItem* ReflectedPropertyControl::AddVarBlock(CVarBlock *varBlock
     //filter list based on search string
     if (!m_filterString.isEmpty())
     {
-        auto it = std::copy_if(variables.begin(), variables.end(), variables.begin(), [this](IVariable *var){return QString(var->GetName()).toLower().contains(m_filterString); });
-        variables.resize(std::distance(variables.begin(), it));  // shrink container to new size
+        AZStd::vector<IVariable*> newVariables;
+        for (IVariable* var : variables)
+        {
+            if (QString(var->GetName()).toLower().contains(m_filterString))
+            {
+                newVariables.emplace_back(var);
+            }
+        }
+        variables.swap(newVariables);
     }
 
     //sorting if needed.  sort first when grouping to make grouping easier

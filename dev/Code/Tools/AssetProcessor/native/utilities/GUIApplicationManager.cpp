@@ -48,7 +48,7 @@
 #include <ToolsCrashHandler.h>
 #endif
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
 #include <AppKit/NSRunningApplication.h>
 #include <CoreServices/CoreServices.h>
 
@@ -91,7 +91,7 @@ namespace
 GUIApplicationManager::GUIApplicationManager(int* argc, char*** argv, QObject* parent)
     : BatchApplicationManager(argc, argv, parent)
 {
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     // Since AP is not a proper Mac application yet it will not receive keyboard focus
     // unless we tell the OS specifically to treat it as a foreground application
     ProcessSerialNumber psn = { 0, kCurrentProcess };
@@ -244,7 +244,7 @@ bool GUIApplicationManager::Run()
 #endif
     }
 
-#ifdef AZ_PLATFORM_APPLE_OSX
+#ifdef AZ_PLATFORM_MAC
     connect(new MacDockIconHandler(this), &MacDockIconHandler::dockIconClicked, m_mainWindow, &MainWindow::ShowWindow);
 #endif
 
@@ -274,7 +274,7 @@ bool GUIApplicationManager::Run()
         trayIconMenu->addAction(hideAction);
         trayIconMenu->addSeparator();
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
         QAction* systemTrayQuitAction = new QAction(QObject::tr("Quit"), m_mainWindow);
         systemTrayQuitAction->setMenuRole(QAction::NoRole);
         m_mainWindow->connect(systemTrayQuitAction, SIGNAL(triggered()), this, SLOT(QuitRequested()));

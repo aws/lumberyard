@@ -975,9 +975,10 @@ namespace AZ
 
 
         //////////////////////////////////////////////////////////////////////////
-        RemoteFileIO::RemoteFileIO()
+        RemoteFileIO::RemoteFileIO(FileIOBase* excludedFileIO)
         {
             REMOTEFILE_LOG_CALL(AZStd::string::format("RemoteFileIO()::RemoteFileIO()").c_str());
+            m_excludedFileIO = excludedFileIO;
 #ifdef REMOTEFILEIO_CACHE_FILETREE
             CacheFileTree();
 #endif
@@ -985,6 +986,7 @@ namespace AZ
 
         RemoteFileIO::~RemoteFileIO()
         {
+            delete m_excludedFileIO; //for now delete it, when We change to always create local file io We won't
 #ifdef REMOTEFILEIO_CACHE_FILETREE
             AzFramework::AssetSystemBus::Handler::BusDisconnect();
 #endif
@@ -1333,6 +1335,37 @@ namespace AZ
             // check this because it is a serious error since it may be that you're in an unguarded access to a non-existent handle.
             AZ_Assert(found != m_remoteFileCache.end(), "RemoteFileIO::GetCache(fileHandle=%u) Missing! Did something go wrong with open?", fileHandle);
             return found->second;
+        }
+
+        void RemoteFileIO::SetAlias(const char* alias, const char* path)
+        {
+            if (m_excludedFileIO)
+            {
+                m_excludedFileIO->SetAlias(alias, path);
+            }
+        }
+
+        const char* RemoteFileIO::GetAlias(const char* alias)
+        {
+            return m_excludedFileIO ? m_excludedFileIO->GetAlias(alias) : nullptr;
+        }
+
+        void RemoteFileIO::ClearAlias(const char* alias)
+        {
+            if (m_excludedFileIO)
+            {
+                m_excludedFileIO->ClearAlias(alias);
+            }
+        }
+
+        AZ::u64 RemoteFileIO::ConvertToAlias(char* inOutBuffer, AZ::u64 bufferLength) const
+        {
+            return m_excludedFileIO ? m_excludedFileIO->ConvertToAlias(inOutBuffer, bufferLength) : strlen(inOutBuffer);
+        }
+
+        bool RemoteFileIO::ResolvePath(const char* path, char* resolvedPath, AZ::u64 resolvedPathSize)
+        {
+            return m_excludedFileIO ? m_excludedFileIO->ResolvePath(path, resolvedPath, resolvedPathSize) : false;
         }
 
 #ifdef REMOTEFILEIO_CACHE_FILETREE

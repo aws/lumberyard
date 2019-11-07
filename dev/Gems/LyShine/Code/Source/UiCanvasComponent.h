@@ -125,7 +125,7 @@ public: // member functions
     AZ::Vector2 GetCanvasSize() override;
     void SetCanvasSize(const AZ::Vector2& canvasSize) override;
     void SetTargetCanvasSize(bool isInGame, const AZ::Vector2& targetCanvasSize) override;
-    float GetUniformDeviceScale() override;
+    AZ::Vector2 GetDeviceScale() override;
     bool GetIsPixelAligned() override;
     void SetIsPixelAligned(bool isPixelAligned) override;
     bool GetIsTextPixelAligned() override;
@@ -530,7 +530,7 @@ private: // data
     //! In the editor this is always 1.0f
     //! In game it is the closer value to 1.0f of the two values m_viewportSize.x/m_canvasSize.x
     //! and m_viewportSize.y/m_canvasSize.y
-    float m_uniformDeviceScale;
+    AZ::Vector2 m_deviceScale;
 
     //! True if this canvas is loaded in game (including for Ctrl-G in Sandbox), false if open in the UI Editor
     bool m_isLoadedInGame;

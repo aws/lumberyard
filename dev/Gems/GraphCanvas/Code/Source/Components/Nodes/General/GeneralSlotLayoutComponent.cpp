@@ -203,21 +203,21 @@ namespace GraphCanvas
 
             if (connectionType == CT_Input)
             {
-                layoutOrder = m_inputs->count();
+                SlotLayoutInfo slotInfo(slotId);
 
-                m_inputs->insertItem(layoutOrder - 1, layoutItem);
+                layoutOrder = LayoutSlot(m_inputSlots, slotInfo);
+
+                m_inputs->insertItem(layoutOrder, layoutItem);
                 m_inputs->setAlignment(layoutItem, Qt::AlignTop);
-
-                m_inputSlots.emplace_back(slotId);
             }
             else if (connectionType == CT_Output)
             {
-                layoutOrder = m_outputs->count();
+                SlotLayoutInfo slotInfo(slotId);
 
-                m_outputs->insertItem(layoutOrder - 1, layoutItem);
-                m_outputs->setAlignment(layoutItem, Qt::AlignBottom);
+                layoutOrder = LayoutSlot(m_outputSlots, slotInfo);
 
-                m_outputSlots.emplace_back(slotId);
+                m_outputs->insertItem(layoutOrder, layoutItem);
+                m_outputs->setAlignment(layoutItem, Qt::AlignTop);                
             }
             else
             {
@@ -248,7 +248,7 @@ namespace GraphCanvas
 
                 for (unsigned int i = 0; i < m_inputSlots.size(); ++i)
                 {
-                    if (m_inputSlots[i] == slotId)
+                    if (m_inputSlots[i].m_slotId == slotId)
                     {
                         m_inputSlots.erase(m_inputSlots.begin() + i);
                         break;
@@ -261,7 +261,7 @@ namespace GraphCanvas
 
                 for (unsigned int i = 0; i < m_outputSlots.size(); ++i)
                 {
-                    if (m_outputSlots[i] == slotId)
+                    if (m_outputSlots[i].m_slotId == slotId)
                     {
                         m_outputSlots.erase(m_outputSlots.begin() + i);
                         break;
@@ -271,12 +271,12 @@ namespace GraphCanvas
         }
     }
 
-    const AZStd::vector< AZ::EntityId >& GeneralSlotLayoutGraphicsWidget::LinearSlotGroupWidget::GetInputSlots() const
+    const AZStd::vector< SlotLayoutInfo >& GeneralSlotLayoutGraphicsWidget::LinearSlotGroupWidget::GetInputSlots() const
     {
         return m_inputSlots;
     }
 
-    const AZStd::vector< AZ::EntityId >& GeneralSlotLayoutGraphicsWidget::LinearSlotGroupWidget::GetOutputSlots() const
+    const AZStd::vector< SlotLayoutInfo >& GeneralSlotLayoutGraphicsWidget::LinearSlotGroupWidget::GetOutputSlots() const
     {
         return m_outputSlots;
     }
@@ -301,10 +301,37 @@ namespace GraphCanvas
             internalLayout->setSpacing(spacing);
             internalLayout->invalidate();
             internalLayout->updateGeometry();
-        }        
+        }
 
         updateGeometry();
         update();
+    }
+
+    int GeneralSlotLayoutGraphicsWidget::LinearSlotGroupWidget::LayoutSlot(AZStd::vector<SlotLayoutInfo>& slotList, const SlotLayoutInfo& slotInfo)
+    {
+        bool inserted = false;
+        int i = 0;
+        auto listIter = slotList.begin();
+
+        while (listIter != slotList.end())
+        {
+            if (listIter->m_priority < slotInfo.m_priority)
+            {
+                inserted = true;
+                slotList.insert(listIter, slotInfo);
+                break;
+            }
+
+            ++i;
+            ++listIter;
+        }
+
+        if (!inserted)
+        {
+            slotList.insert(slotList.end(), slotInfo);
+        }
+
+        return i;
     }
 
     QGraphicsLayoutItem* GeneralSlotLayoutGraphicsWidget::LinearSlotGroupWidget::GetLayoutItem(const AZ::EntityId& slotId) const
@@ -496,18 +523,18 @@ namespace GraphCanvas
 
             if (slotGroupWidget)
             {
-                AZStd::vector< AZ::EntityId > inputSlots = slotGroupWidget->GetInputSlots();
+                AZStd::vector< SlotLayoutInfo > inputSlots = slotGroupWidget->GetInputSlots();
 
-                for (const AZ::EntityId& inputSlot : inputSlots)
+                for (const SlotLayoutInfo& inputSlot : inputSlots)
                 {
-                    NodeRequestBus::Event(GetEntityId(), &NodeRequests::RemoveSlot, inputSlot);
+                    NodeRequestBus::Event(GetEntityId(), &NodeRequests::RemoveSlot, inputSlot.m_slotId);
                 }
 
-                AZStd::vector< AZ::EntityId > outputSlots = slotGroupWidget->GetOutputSlots();
+                AZStd::vector< SlotLayoutInfo > outputSlots = slotGroupWidget->GetOutputSlots();
 
-                for (const AZ::EntityId& outputSlot : outputSlots)
+                for (const SlotLayoutInfo& outputSlot : outputSlots)
                 {
-                    NodeRequestBus::Event(GetEntityId(), &NodeRequests::RemoveSlot, outputSlot);
+                    NodeRequestBus::Event(GetEntityId(), &NodeRequests::RemoveSlot, outputSlot.m_slotId);
                 }
             }
         }

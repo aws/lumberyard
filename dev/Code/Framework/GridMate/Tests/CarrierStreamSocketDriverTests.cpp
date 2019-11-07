@@ -183,11 +183,11 @@ namespace UnitTest
     public:
         void run()
         {
-#ifdef AZ_SOCKET_IPV6_SUPPORT
+#if AZ_TRAIT_GRIDMATE_TEST_SOCKET_IPV6_SUPPORT_ENABLED
             bool useIpv6 = true;
 #else
             bool useIpv6 = false;
-#endif // AZ_SOCKET_IPV6_SUPPORT
+#endif
 
             CarrierStreamCallbacksHandler clientCB, serverCB;
             TestCarrierDesc serverCarrierDesc, clientCarrierDesc;

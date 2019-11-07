@@ -1,0 +1,12 @@
+{
+    "auto":
+    {
+        "Platform/Android":
+        [
+            "../Common/Unimplemented/CryAudioImplWwise_Unimplemented.cpp",
+            "AudioSystemImpl_wwise_Android.cpp",
+            "CryAudioImplWwise_Traits_Android.h",
+            "CryAudioImplWwise_Traits_Platform.h"
+        ]
+    }
+}

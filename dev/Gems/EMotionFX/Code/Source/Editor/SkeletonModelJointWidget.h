@@ -36,7 +36,8 @@ namespace EMotionFX
         virtual void CreateGUI();
 
         void Reinit(const QModelIndex& modelIndex);
-        void SetIsVisible(bool isVisible);
+
+        void showEvent(QShowEvent* event) override;
 
     protected:
         virtual QWidget* CreateContentWidget(QWidget* parent) = 0;
@@ -59,6 +60,5 @@ namespace EMotionFX
     private:
         QWidget*        m_contentsWidget;
         QWidget*        m_noSelectionWidget;
-        bool            m_isVisible; ///< Indicates if the widget is obscured by other widgets or is visible to the user. Updates will be blocked in case it is obscured.
     };
 } // namespace EMotionFX

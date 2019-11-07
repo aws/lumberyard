@@ -51,6 +51,6 @@ struct IComponentAudio
     virtual void RemoveAsListenerFromAuxAudioProxy(const Audio::TAudioProxyID nAudioProxyLocalID, Audio::AudioRequestCallbackType func) = 0;
 };
 
-DECLARE_COMPONENT_POINTERS(IComponentAudio);
+DECLARE_SMART_POINTERS(IComponentAudio);
 
 #endif // CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTAUDIO_H

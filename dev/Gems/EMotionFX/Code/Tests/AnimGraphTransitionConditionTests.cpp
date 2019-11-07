@@ -675,6 +675,25 @@ namespace EMotionFX
                 {60, {"testSkeletalMotion1"}}
             },
             ChangeFloatParamToNegativePointFiveOnFrameThirty
+        },
+
+        // Time requirement test
+        {
+            [](AnimGraphParameterCondition* condition) {
+                condition->SetParameterName("FloatParam");
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_GREATER);
+                condition->SetTimeRequirement(0.5f);
+                condition->SetTestValue(0.1f);
+            },
+            ActiveNodesMap {
+                {0, {"testSkeletalMotion0"}},
+                {29, {"testSkeletalMotion0"}},
+                {30, {"testSkeletalMotion0"}},
+                {59, {"testSkeletalMotion0", "testSkeletalMotion1"}},
+                {88, {"testSkeletalMotion0", "testSkeletalMotion1"}},
+                {89, {"testSkeletalMotion1"}}
+            },
+            ChangeFloatParamToPointFiveOnFrameThirty
         }
     };
 

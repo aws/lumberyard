@@ -40,8 +40,7 @@ def build(bld):
                                'QT5GUI',
                                'QTMAIN',
                                'QT5WIDGETS',
-                               'QT5XML',
-                               'BOOST'],
+                               'QT5XML'],
         darwin_uselib       = ['QT5MACEXTRAS'],
         enable_rtti         = True,
 

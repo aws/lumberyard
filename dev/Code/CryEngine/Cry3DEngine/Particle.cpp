@@ -879,7 +879,7 @@ void CParticle::InitPos(SParticleUpdateContext const& context, QuatTS const& loc
 
             const float radius = params.fEmitterSizeDiameter(VRANDOM, fEmissionStrength) * 0.5f;
             const float circumference = gf_PI2 * radius;
-            const float percentageToUniformScale = 0.01;
+            const float percentageToUniformScale = 0.01f;
 
             Vec3 positionIncrement = m_pEmitter->GetCurrentPosIncrementXYZ();
 

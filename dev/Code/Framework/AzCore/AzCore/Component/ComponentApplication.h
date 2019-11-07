@@ -289,8 +289,8 @@ namespace AZ
         /// Calculates the directory the application executable comes from.
         void CalculateExecutablePath();
 
-        /// Calculates the Bin folder name where the application is running from (off of the engine root folder)
-        void CalculateBinFolder();
+        /// Platform specific calculation of the Bin folder name where the application is running from (off of the engine root folder)
+        void PlatformCalculateBinFolder();
 
         /// Adjusts an input descriptor path to the app's root path.
         AZ::OSString GetFullPathForDescriptor(const char* descriptorPath);

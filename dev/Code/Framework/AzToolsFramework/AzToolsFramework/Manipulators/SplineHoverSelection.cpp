@@ -12,6 +12,7 @@
 
 #include "SplineHoverSelection.h"
 
+#include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Math/Spline.h>
 #include <AzToolsFramework/Manipulators/EditorVertexSelection.h>
 #include <AzToolsFramework/Manipulators/ManipulatorView.h>
@@ -22,13 +23,13 @@ namespace AzToolsFramework
     static const AZ::Color s_splineSelectManipulatorColor = AZ::Color(0.0f, 1.0f, 0.0f, 1.0f);
 
     SplineHoverSelection::SplineHoverSelection(
-        const AZ::EntityId entityId, const ManipulatorManagerId managerId,
-        const AZStd::shared_ptr<AZ::Spline>& spline)
+        const AZ::EntityComponentIdPair& entityComponentIdPair,
+        const ManipulatorManagerId managerId, const AZStd::shared_ptr<AZ::Spline>& spline)
     {
         m_splineSelectionManipulator = SplineSelectionManipulator::MakeShared();
         m_splineSelectionManipulator->Register(managerId);
-        m_splineSelectionManipulator->AddEntityId(entityId);
-        m_splineSelectionManipulator->SetSpace(WorldFromLocalWithUniformScale(entityId));
+        m_splineSelectionManipulator->AddEntityComponentIdPair(entityComponentIdPair);
+        m_splineSelectionManipulator->SetSpace(WorldFromLocalWithUniformScale(entityComponentIdPair.GetEntityId()));
 
         const float splineWidth = 0.05f;
         m_splineSelectionManipulator->SetSpline(spline);
@@ -36,9 +37,11 @@ namespace AzToolsFramework
             *m_splineSelectionManipulator, s_splineSelectManipulatorColor, splineWidth));
 
         m_splineSelectionManipulator->InstallLeftMouseUpCallback(
-            [entityId](const SplineSelectionManipulator::Action& action)
+            [entityComponentIdPair](const SplineSelectionManipulator::Action& action)
         {
-            InsertVertexAfter(entityId, action.m_splineAddress.m_segmentIndex, action.m_localSplineHitPosition);
+            InsertVertexAfter(
+                entityComponentIdPair, action.m_splineAddress.m_segmentIndex,
+                action.m_localSplineHitPosition);
         });
     }
 

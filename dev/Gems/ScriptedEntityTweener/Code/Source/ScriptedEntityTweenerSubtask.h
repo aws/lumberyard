@@ -14,7 +14,7 @@
 
 #include <AzCore/std/any.h>
 #include <AzCore/std/containers/set.h>
-#include <Maestro/Bus/SequenceAgentComponentBus.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <ScriptedEntityTweener/ScriptedEntityTweenerEnums.h>
 
 namespace ScriptedEntityTweener
@@ -24,23 +24,19 @@ namespace ScriptedEntityTweener
     class ScriptedEntityTweenerSubtask
     {
     public:
-        ScriptedEntityTweenerSubtask(const Maestro::SequenceAgentEventBusId* agentBusId)
-            : m_sequenceAgentBusId(agentBusId)
+        ScriptedEntityTweenerSubtask(const AZ::EntityId& entityId)
+            : m_entityId(entityId)
         {
-            AZ_Assert(m_sequenceAgentBusId, "m_sequenceAgentBusId should never be null");
             Reset();
         }
 
-        bool Initialize(const AnimationParameterAddressData& addressData, const AZStd::any& targetValue, const AnimationProperties& properties);
+        bool Initialize(const AnimationParameterAddressData& animParamData, const AZStd::any& targetValue, const AnimationProperties& properties);
         
         //! Update virtual property based on animation properties, fill out callbacks vector with any callback information that needs to be called this update.
         void Update(float deltaTime, AZStd::set<CallbackData>& callbacks);
 
         //! True if active and animating a virtual property
         bool IsActive() { return m_isActive; }
-
-        //! Clear any callbacks stored in lua for this subtask
-        void ClearCallbacks();
 
         void SetPaused(int timelineId, bool isPaused)
         {
@@ -77,10 +73,15 @@ namespace ScriptedEntityTweener
             return m_animationProperties.m_timelineId;
         }
 
-        bool GetVirtualPropertyValue(AZStd::any& returnVal, const AnimationParameterAddressData& addressData);
+        const AnimationProperties& GetAnimationProperties() const
+        {
+            return m_animationProperties;
+        }
+
+        bool GetVirtualPropertyValue(AZStd::any& returnVal, const AnimationParameterAddressData& animParamData);
 
     private:
-        //! EntityAnimatedValue exists to simplify logic relating to using Maestro's AnimatedValues
+        //! Animated value class that abstracts the supported types
         struct EntityAnimatedValue
         {
         public:
@@ -120,15 +121,19 @@ namespace ScriptedEntityTweener
             AZ::Quaternion quatVal;
         };
 
-        const Maestro::SequenceAgentEventBusId* const m_sequenceAgentBusId;
-
         AnimationProperties m_animationProperties;
 
-        //! Address to specific parameter/component/bus and virtual property being modified.
-        Maestro::SequenceComponentRequests::AnimatablePropertyAddress m_animatableAddress;
+        // The entity being modified
+        AZ::EntityId m_entityId;
 
-        //! RTTI type info of the AnimatablePropertyAddress
-        AZ::Uuid m_propertyTypeId;
+        // The component and property name to be modified. This is only used for displaying warning messages
+        AnimationParameterAddressData m_animParamData;
+
+        // Cached virtual property
+        AZ::BehaviorEBus::VirtualProperty* m_virtualProperty;
+
+        // Type of the virtual property
+        AZ::Uuid m_virtualPropertyTypeId;
 
         bool m_isActive;
         bool m_isPaused;
@@ -137,7 +142,6 @@ namespace ScriptedEntityTweener
 
         EntityAnimatedValue m_valueInitial;
         EntityAnimatedValue m_valueTarget;
-
 
         void Reset()
         {
@@ -151,11 +155,16 @@ namespace ScriptedEntityTweener
             m_timesPlayed = 0;
 
             m_animationProperties.Reset();
-            m_animatableAddress = Maestro::SequenceComponentRequests::AnimatablePropertyAddress();
-            m_propertyTypeId = AZ::Uuid::CreateNull();
+            m_animParamData = AnimationParameterAddressData();
+            m_virtualPropertyTypeId = AZ::Uuid::CreateNull();
+            m_virtualProperty = nullptr;
         }
 
-        bool GetAnimatablePropertyAddress(Maestro::SequenceComponentRequests::AnimatablePropertyAddress& outAddress, const AZStd::string& componentName, const AZStd::string& virtualPropertyName);
+        //! Cache the virtual property to be animated
+        bool CacheVirtualProperty(const AnimationParameterAddressData& animParamData);
+
+        //! Return whether the virtual property has been cached
+        bool IsVirtualPropertyCached();
 
         //! Set value from an AZStd::any object
         bool GetValueFromAny(EntityAnimatedValue& value, const AZStd::any& anyValue);
@@ -169,5 +178,4 @@ namespace ScriptedEntityTweener
         //! Set the virtual address's value
         bool SetVirtualValue(const EntityAnimatedValue& value);
     };
-
 }

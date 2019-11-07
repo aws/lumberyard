@@ -20,7 +20,7 @@
 
 #include <GraphCanvas/Components/GridBus.h>
 #include <GraphCanvas/Editor/GraphCanvasProfiler.h>
-#include <Utils/ConversionUtils.h>
+#include <GraphCanvas/Utils/ConversionUtils.h>
 
 namespace GraphCanvas
 {

@@ -10,10 +10,10 @@
 *
 */
 
-#include <Tests/TestTypes.h>
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Memory/PoolAllocator.h>
 #include <AzCore/Math/Uuid.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzFramework/Asset/AssetCatalog.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include <AzFramework/Application/Application.h>

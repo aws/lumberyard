@@ -86,6 +86,7 @@ namespace Physics
     {
         AZ_CLASS_ALLOCATOR(RayCastHit, AZ::SystemAllocator, 0);
         AZ_TYPE_INFO(RayCastHit, "{A46CBEA6-6B92-4809-9363-9DDF0F74F296}");
+        static void Reflect(AZ::ReflectContext* context);
 
         inline operator bool() const { return m_body != nullptr; }
 

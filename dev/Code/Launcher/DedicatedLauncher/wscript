@@ -19,7 +19,9 @@ def build(bld):
         server_only         = True,
         use                 = ['CryRenderNULL',
                                'AzGameFramework'],
-        includes            = [bld.Path('Code/Launcher')],
+        includes            = [bld.Path('Code/CryEngine/CryCommon'),
+                               bld.Path('Code/Launcher')
+                              ],
 
         debug_uselib        = ['AWS_GAMELIFT_SERVER_SHARED'],
         profile_uselib      = ['AWS_GAMELIFT_SERVER_SHARED'],

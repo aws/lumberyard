@@ -35,7 +35,7 @@ namespace ScriptCanvas
                 );
 
                 OperatorErase()
-                    : OperatorBase(DefaultContainerOperatorConfiguration())
+                    : OperatorBase(DefaultContainerManipulationOperatorConfiguration())
                 {
                 }
 

@@ -25,6 +25,7 @@
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/FileManager.h>
 
 #include <SceneAPIExt/Rules/ActorPhysicsSetupRule.h>
+#include <SceneAPIExt/Rules/SimulatedObjectSetupRule.h>
 #include <SceneAPIExt/Rules/MetaDataRule.h>
 #include <SceneAPIExt/Groups/MotionGroup.h>
 #include <SceneAPIExt/Groups/ActorGroup.h>
@@ -172,9 +173,25 @@ namespace EMStudio
                 const AZStd::shared_ptr<EMotionFX::PhysicsSetup>& physicsSetup = actor->GetPhysicsSetup();
                 if (!physicsSetup->GetRagdollConfig().m_nodes.empty() ||
                     !physicsSetup->GetHitDetectionConfig().m_nodes.empty() ||
-                    !physicsSetup->GetClothConfig().m_nodes.empty())
+                    !physicsSetup->GetClothConfig().m_nodes.empty() ||
+                    !physicsSetup->GetSimulatedObjectColliderConfig().m_nodes.empty())
                 {
                     EMotionFX::Pipeline::Rule::SaveToGroup<EMotionFX::Pipeline::Rule::ActorPhysicsSetupRule, AZStd::shared_ptr<EMotionFX::PhysicsSetup>>(*scene, group, physicsSetup);
+                }
+                else
+                {
+                    EMotionFX::Pipeline::Rule::RemoveRuleFromGroup<EMotionFX::Pipeline::Rule::ActorPhysicsSetupRule, AZStd::shared_ptr<EMotionFX::PhysicsSetup>>(*scene, group);
+                }
+
+                // Save simulated object rule
+                const AZStd::shared_ptr<EMotionFX::SimulatedObjectSetup>& simulatedObjectSetup = actor->GetSimulatedObjectSetup();
+                if (simulatedObjectSetup->GetNumSimulatedObjects() > 0)
+                {
+                    EMotionFX::Pipeline::Rule::SaveToGroup<EMotionFX::Pipeline::Rule::SimulatedObjectSetupRule, AZStd::shared_ptr<EMotionFX::SimulatedObjectSetup>>(*scene, group, simulatedObjectSetup);
+                }
+                else
+                {
+                    EMotionFX::Pipeline::Rule::RemoveRuleFromGroup<EMotionFX::Pipeline::Rule::SimulatedObjectSetupRule, AZStd::shared_ptr<EMotionFX::SimulatedObjectSetup>>(*scene, group);
                 }
             }
         }

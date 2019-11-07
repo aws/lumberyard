@@ -17,6 +17,8 @@
 
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/Memory/Memory.h>
+#include <AzCore/Debug/StackTracer.h>
+#include <AzCore/Math/Sfmt.h>
 
 namespace Internal
 {
@@ -34,12 +36,11 @@ namespace Internal
         }
     }
 
+    using AZ::Debug::SymbolStorage;
+
 #define DEBUG_ALLOCATOR
 #include <AzCore/Memory/HphaSchema.cpp>
 #include <AzCore/Memory/MallocSchema.cpp>
-#include <AzCore/Math/Random.cpp>
-#include <AzCore/Math/Sfmt.cpp>
-#include <AzCore/Debug/StackTracer.cpp>
 #undef DEBUG_ALLOCATOR
 }
 
@@ -120,7 +121,7 @@ namespace UnitTest
 
             if (m_expectedAsserts > 0)
             {
-                AZ_TEST_STOP_ASSERTTEST(m_expectedAsserts);
+                AZ_TEST_STOP_TRACE_SUPPRESSION(m_expectedAsserts);
             }
         }
 
@@ -195,7 +196,7 @@ namespace UnitTest
 
     TEST_F(HphaSchemaErrorDetectionTest, BucketLeak)
     {
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         m_nonEmptyBuckets.m_expected = 1;
         m_expectedAsserts = 1;
 
@@ -206,7 +207,7 @@ namespace UnitTest
     // Leak on two different buckets
     TEST_F(HphaSchemaErrorDetectionTest, TwoBucketLeak)
     {
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         m_nonEmptyBuckets.m_expected = 2;
         m_expectedAsserts = 2;
 
@@ -219,7 +220,7 @@ namespace UnitTest
 
     TEST_F(HphaSchemaErrorDetectionTest, DoubleDelete)
     {
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         m_doubleDelete.m_expected = 1;
         m_nonEmptyBuckets.m_expected = 1; // double deletes produce memory tracking to fail since the counters change
         m_expectedAsserts = 3;
@@ -232,7 +233,7 @@ namespace UnitTest
 AZ_PUSH_DISABLE_WARNING(4700, "-Wuninitialized")
     TEST_F(HphaSchemaErrorDetectionTest, InvalidDelete)
     {
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         m_deletePtrNotInBucket.m_expected = 1;
         m_doubleDelete.m_expected = 1; // invalid deletes will also produce this
         m_overflow.m_expected = 1; // invalid deletes will also produce this
@@ -310,7 +311,7 @@ AZ_POP_DISABLE_WARNING
         pointerToEnd[0] = 0x62;
 
         // delete the object, we should get the overflow detected
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         m_overflow.m_expected = 1;
         m_expectedAsserts = 1;
         delete someObject;

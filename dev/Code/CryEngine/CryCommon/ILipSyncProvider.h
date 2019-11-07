@@ -17,7 +17,7 @@
 #pragma once
 
 #include <IAudioInterfacesCommonData.h>
-#include "BoostHelpers.h"
+#include "SmartPointersHelpers.h"
 typedef uint32 tSoundID;
 
 enum ELipSyncMethod

@@ -35,7 +35,7 @@ namespace LmbrCentral
                 editContext->Class<EditorAudioRtpcComponent>("Audio Rtpc", "The Audio RTPC component provides basic Real-Time Parameter Control (RTPC) functionality allowing you to tweak sounds in realtime")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Audio")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/AudioRtpc.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/AudioRtpc.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/AudioRtpc.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)

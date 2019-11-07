@@ -17,20 +17,6 @@
 
 #include "MicrophoneSystemComponent.h"
 
-// Pimpls...
-#if defined(AZ_PLATFORM_WINDOWS)
-    #include "MicrophoneSystemComponent_windows.inl"
-#elif defined(AZ_PLATFORM_ANDROID)
-    #include "MicrophoneSystemComponent_android.inl"
-#elif defined(AZ_PLATFORM_APPLE_IOS)
-    #include "MicrophoneSystemComponent_ios.inl"
-#elif defined(AZ_PLATFORM_APPLE_OSX)
-    #include "MicrophoneSystemComponent_macos.inl"
-//#elif ...
-#else
-    #include "MicrophoneSystemComponent_null.h"
-#endif // AZ_PLATFORM_*
-
 namespace Audio
 {
     void MicrophoneSystemComponent::Reflect(AZ::ReflectContext* context)
@@ -74,7 +60,7 @@ namespace Audio
     }
 
     MicrophoneSystemComponent::MicrophoneSystemComponent()
-        : m_impl(aznew Pimpl)
+        : m_impl(Implementation::Create())
     {
     }
 

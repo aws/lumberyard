@@ -13,8 +13,15 @@
 #pragma once
 
 // include core system
+#include <AzCore/RTTI/TypeInfo.h>
+#include <AzCore/Serialization/SerializeContext.h>
 #include "EMotionFXConfig.h"
 
+
+namespace AZ
+{
+    class ReflectContext;
+}
 
 namespace EMotionFX
 {
@@ -24,12 +31,14 @@ namespace EMotionFX
      * Interpolators can then calculate interpolated values between a set of keys, which are stored
      * inside a key track. This makes it possible to do keyframed animations.
      */
-    template <class ReturnType, class StorageType>
+    template <class ReturnType, class StorageType = ReturnType>
     class KeyFrame
     {
         MCORE_MEMORYOBJECTCATEGORY(KeyFrame, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MOTIONS_KEYTRACKS);
 
     public:
+        AZ_TYPE_INFO(EMotionFX::KeyFrame, "{BCB35EA0-4C4C-4482-B32A-5E1D1F461D3D}", StorageType)
+
         /**
          * Default constructor.
          */
@@ -46,6 +55,8 @@ namespace EMotionFX
          * Destructor.
          */
         ~KeyFrame();
+
+        static void Reflect(AZ::ReflectContext* context);
 
         /**
          * Return the time of the keyframe.

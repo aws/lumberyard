@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/PlatformIncl.h>
 #include <AzCore/Memory/AllocationRecords.h>
@@ -473,5 +472,3 @@ PrintAllocationsCB::operator()(void* address, const AllocationInfo& info, unsign
     }
     return true; // continue enumerating
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

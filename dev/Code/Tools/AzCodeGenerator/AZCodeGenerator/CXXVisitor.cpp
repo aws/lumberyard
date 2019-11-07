@@ -13,6 +13,7 @@
 #include "CXXVisitor.h"
 #include "Object.h"
 #include "Enum.h"
+#include "Configuration.h"
 
 namespace CodeGenerator
 {
@@ -158,9 +159,20 @@ namespace CodeGenerator
         m_writer->Begin();
         {
             std::string fileName = context.getSourceManager().getFileEntryForID(context.getSourceManager().getMainFileID())->getName();
-            m_writer->WriteString("path");
             std::replace(fileName.begin(), fileName.end(), '\\', '/');
+            m_writer->WriteString("path");
             m_writer->WriteString(fileName.c_str());
+            std::string basePath = GlobalConfiguration::g_inputPath;
+            std::replace(basePath.begin(), basePath.end(), '\\', '/');
+            m_writer->WriteString("relpath");
+            if (fileName.compare(0, basePath.length(), basePath) == 0)
+            {
+                m_writer->WriteString(fileName.substr(basePath.length() + 1).c_str());
+            }
+            else
+            {
+                m_writer->WriteString(fileName.c_str());
+            }
         }
         m_writer->End();
     }

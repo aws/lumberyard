@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Android":
+        [
+            "CryAudioImplNoSound_Traits_Platform.h",
+            "CryAudioImplNoSound_Traits_Android.h"
+        ]
+    }
+}

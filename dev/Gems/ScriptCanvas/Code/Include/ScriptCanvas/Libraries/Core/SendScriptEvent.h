@@ -85,7 +85,7 @@ namespace ScriptCanvas
                 void ConfigureMethod(AZ::BehaviorMethod& method);
                 bool RegisterScriptEvent(AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> asset);
 
-                bool FindEvent(AZ::BehaviorMethod*& outMethod, const Namespaces& namespaces, AZStd::string_view className, AZStd::string_view methodName);
+                bool FindEvent(AZ::BehaviorMethod*& outMethod, const Namespaces& namespaces, AZStd::string_view methodName);
                 void OnInputSignal(const SlotId&) override;
 
                 void AddInputSlot(size_t argIndex, const AZStd::string_view argName, const AZStd::string_view tooltip, AZ::BehaviorMethod* method, const AZ::BehaviorParameter* argument, AZ::Uuid slotKey, SlotIdMapping& populationMapping);
@@ -98,6 +98,8 @@ namespace ScriptCanvas
 
                 AZStd::string m_eventName;
                 AZStd::string m_busName;
+
+                bool m_ignoreReadyEvent = false;
             };
         }
     }

@@ -115,7 +115,7 @@ typedef int (* pDrawModelFunc)(void);
 
 #define DEF_SHAD_DBT_DEFAULT_VAL 1
 
-#if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV) || defined (AZ_PLATFORM_ANDROID)
+#if defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_APPLE_TV) || defined (AZ_PLATFORM_ANDROID)
     #define TEXSTREAMING_DEFAULT_VAL 0
 #else
     #define TEXSTREAMING_DEFAULT_VAL 1

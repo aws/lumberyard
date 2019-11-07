@@ -1246,8 +1246,14 @@ int CryMessageBox(const char* lpText, const char* lpCaption, unsigned int uType)
         &kResult                           //response flags
     );
 
-    CFRelease(strCaption);
-    CFRelease(strText);
+    if (strCaption)
+    {
+        CFRelease(strCaption);
+    }
+    if (strText)
+    {
+        CFRelease(strText);
+    }
 
     if (kResult == kCFUserNotificationDefaultResponse)
     {

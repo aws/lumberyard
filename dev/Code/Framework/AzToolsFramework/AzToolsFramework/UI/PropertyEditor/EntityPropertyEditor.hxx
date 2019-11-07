@@ -30,6 +30,8 @@
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/ToolsComponents/ComponentMimeData.h>
 #include <AzToolsFramework/ToolsComponents/EditorInspectorComponentBus.h>
+#include <AzQtComponents/Components/LumberyardStylesheet.h>
+
 #include <QtWidgets/QWidget>
 #include <QtGui/QIcon>
 #include <QComboBox>
@@ -280,7 +282,9 @@ namespace AzToolsFramework
          */
         bool CanAddComponentsToSelection(const SelectionEntityTypeInfo& selectionEntityTypeInfo) const;
 
+        AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") // conditional expression is constant
         QVector<QAction*> m_entityComponentActions;
+        AZ_POP_DISABLE_WARNING
         QAction* m_actionToAddComponents = nullptr;
         QAction* m_actionToDeleteComponents = nullptr;
         QAction* m_actionToCutComponents = nullptr;
@@ -400,10 +404,11 @@ namespace AzToolsFramework
 
         // drag and drop events
         QRect GetInflatedRectFromPoint(const QPoint& point, int radius) const;
+        bool GetComponentsAtDropEventPosition(QDropEvent* event, AZ::Entity::ComponentArrayType& targetComponents);
         bool IsDragAllowed(const ComponentEditorVector& componentEditors) const;
         bool IsDropAllowed(const QMimeData* mimeData, const QPoint& posGlobal) const;
         bool IsDropAllowedForComponentReorder(const QMimeData* mimeData, const QPoint& posGlobal) const;
-        bool CreateComponentWithAsset(const AZ::Uuid& componentType, const AZ::Data::AssetId& assetId);
+        bool CreateComponentWithAsset(const AZ::Uuid& componentType, const AZ::Data::AssetId& assetId, AZ::Entity::ComponentArrayType& createdComponents);
 
         // given mimedata, filter it down to only the entries that can actually be spawned in this context.
         void GetCreatableAssetEntriesFromMimeData(const QMimeData* mimeData, ProductCallback callbackFunction) const;
@@ -525,6 +530,7 @@ namespace AzToolsFramework
         void ScrollToNewComponent();
         void QueueScrollToNewComponent();
         void OnStatusChanged(int index);
+        void OnSearchContextMenu(const QPoint& pos);
         void BuildEntityIconMenu();
 
         void OnSearchTextChanged();

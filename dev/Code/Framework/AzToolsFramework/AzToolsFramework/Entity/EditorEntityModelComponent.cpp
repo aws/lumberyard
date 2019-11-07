@@ -9,12 +9,18 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include "EditorEntityModelComponent.h"
-#include "EditorEntityContextBus.h"
+
+#include <AzToolsFramework/Entity/EditorEntityModel.h>
+
 namespace AzToolsFramework
 {
     namespace Components
     {
+        EditorEntityModelComponent::EditorEntityModelComponent() = default;
+        EditorEntityModelComponent::~EditorEntityModelComponent() = default;
+
         void EditorEntityModelComponent::Reflect(AZ::ReflectContext* context)
         {
             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -48,5 +54,5 @@ namespace AzToolsFramework
             m_entityModel.reset();
         }
 
-    }
+    } // namespace Components
 } // namespace AzToolsFramework

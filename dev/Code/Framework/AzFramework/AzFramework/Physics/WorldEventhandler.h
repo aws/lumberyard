@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <AzCore/Math/Vector3.h>
+
 namespace Physics
 {
     class WorldBody;
@@ -29,6 +31,9 @@ namespace Physics
     /// Stores information about the contacts between two overlapping shapes.
     struct Contact
     {
+        AZ_CLASS_ALLOCATOR(Contact, AZ::SystemAllocator, 0);
+        AZ_TYPE_INFO(Contact, "{D7439508-ED10-4395-9D48-1FC3D7815361}");
+
         AZ::Vector3 m_position; ///< The position of the contact
         AZ::Vector3 m_normal; ///< The normal of the contact
         AZ::Vector3 m_impulse; ///< The impulse force applied to separate the bodies
@@ -40,6 +45,9 @@ namespace Physics
     /// A collision event raised when two objects, neither of which can be triggers, overlap.
     struct CollisionEvent
     {
+        AZ_CLASS_ALLOCATOR(CollisionEvent, AZ::SystemAllocator, 0);
+        AZ_TYPE_INFO(CollisionEvent, "{7602AA36-792C-4BDC-BDF8-AA16792151A3}");
+
         Physics::WorldBody* m_body1; ///< The first body
         Physics::Shape* m_shape1; ///< The shape on the first body
         Physics::WorldBody* m_body2; ///< The second body

@@ -353,6 +353,10 @@ public:
     {
         MaxPrecachePoints = 4,
     };
+    //! The maximum number of objects pending garbage collection before cleanup is forced
+    //! in the current frame instead of delayed until loading has completed.
+    //! This helps reduce spikes when cleaning up render objects.
+    static const size_t s_maxPendingGarbageObjects = 250;
 
 public:
     CObjManager();

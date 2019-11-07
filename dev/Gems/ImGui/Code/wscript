@@ -29,30 +29,35 @@ def build(bld):
         defines=list(config_based_defines) + list(platform_defines) + ['IMGUI_INCLUDE_IMGUI_USER_INL'],
         export_includes=[bld.Path('Gems/ImGui/External/ImGui/v1.53')],
         export_defines=['IMGUI_API_IMPORT', 'IMGUI_INCLUDE_IMGUI_USER_H'],
-        restricted_script='update_restricted_parameters'
+        platform_roots=[bld.PlatformRoot('Source/Platform', export_includes=False)]
     )
 
     bld.CryEngineSharedLibrary(**kw_shared_lib)
 
     kw_gem = dict(
-        includes=[bld.Path('Code/CryEngine/CryAction')],
+        includes=[bld.Path('Code/CryEngine/CryCommon'),
+                  bld.Path('Code/CryEngine/CryAction')
+                  ],
         use=['imguilib'],
         file_list=['imgui_common.waf_files', 'imgui_game.waf_files'],
         test_all_file_list=['imgui_test.waf_files'],
         defines=list(config_based_defines),
         linux_rpath = ['$ORIGIN'],
-	restricted_script   = 'update_restricted_parameters',
+        platform_roots=[bld.PlatformRoot('Source/Platform', export_includes=False)],
 
         # Editor Gem configuration
         editor=dict(
             includes=[
+                bld.Path('Code/CryEngine/CryCommon'),
                 bld.Path('Code/CryEngine/CryAction'),
                 bld.Path('Code/Sandbox/Plugins/EditorCommon'),
-                bld.Path('Code/Sandbox/Editor')],
+                bld.Path('Code/Sandbox/Editor')
+                ],
             use=['imguilib', 'AzToolsFramework', 'AzQtComponents'],
             file_list=['imgui_common.waf_files', 'imgui_editor.waf_files'],
             test_all_file_list=['imgui_test.waf_files'],
             defines=list(config_based_defines),
+            platform_roots=[bld.PlatformRoot('Source/Platform', export_includes=False)],
 
             uselib=['QT5CORE', 'QT5GUI', 'QT5WIDGETS'],
 

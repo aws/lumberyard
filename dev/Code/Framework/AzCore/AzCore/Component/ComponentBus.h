@@ -159,7 +159,21 @@ namespace AZ
          * @param other An entity-component ID pair whose equality you want to check against.
          * @result Returns true if the entity-component ID pairs are equal.
          */
-        bool operator==(const EntityComponentIdPair& other) const { return m_entityId == other.m_entityId && m_componentId == other.m_componentId; }
+        bool operator==(const EntityComponentIdPair& other) const
+        {
+            return m_entityId == other.m_entityId && m_componentId == other.m_componentId;
+        }
+
+        /**
+         * Overloads the != operator so that entity-component ID pairs can
+         * be checked for difference.
+         * @param other An entity-component ID pair whose equality you want to check against.
+         * @result Returns true if the entity-component ID pairs are not equal.
+         */
+        bool operator!=(const EntityComponentIdPair& other) const
+        {
+            return m_entityId != other.m_entityId || m_componentId != other.m_componentId;
+        }
 
         /**
          * Reflects this class into a variety of contexts (script, serialize, edit, and so on).

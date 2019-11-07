@@ -1,0 +1,9 @@
+{
+    "auto":
+    {
+        "Platform/Windows":
+        [
+            "MicrophoneSystemComponent_Windows.cpp"
+        ]
+    }
+}

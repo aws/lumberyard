@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Memory/AllocatorManager.h>
 #include <AzCore/Memory/Memory.h>
@@ -247,5 +246,3 @@ AllocatorManager::DebugBreak(void* address, const Debug::AllocationInfo& info)
         }
     }
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

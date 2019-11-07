@@ -56,6 +56,7 @@ protected:
 protected:
 
     void ReloadLayers();
+    bool SetMaskLayer(uint32 layerId);
 
 protected slots:
     void OnSliderChange();

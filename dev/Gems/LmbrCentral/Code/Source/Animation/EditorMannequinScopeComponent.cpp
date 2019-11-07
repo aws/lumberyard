@@ -35,7 +35,7 @@ namespace LmbrCentral
                     "Mannequin Scope Context", "The Mannequin Scope Context component associates a runtime character instance with a given scope context and an Animation Database (.adb) file")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Animation (Legacy)")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/MannequinScopeContext.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/MannequinScopeContext.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/MannequinScopeContext.png")
 #ifndef ENABLE_LEGACY_ANIMATION
                         ->Attribute(AZ::Edit::Attributes::AddableByUser, false)

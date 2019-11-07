@@ -1,0 +1,8 @@
+{
+  "auto": {
+    "Platform/Mac": [
+      "PhysX_Traits_Platform.h", 
+      "PhysX_Traits_Mac.h"
+    ]
+  }
+}

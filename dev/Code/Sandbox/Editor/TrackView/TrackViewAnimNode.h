@@ -272,6 +272,7 @@ public:
     //////////////////////////////////////////////////////////////////////////
     //! AZ::TransformNotificationBus::Handler
     void OnParentChanged(AZ::EntityId oldParent, AZ::EntityId newParent) override;
+    void OnParentTransformWillChange(AZ::Transform oldTransform, AZ::Transform newTransform) override;
     //////////////////////////////////////////////////////////////////////////
 
     void OnEntityRemoved();

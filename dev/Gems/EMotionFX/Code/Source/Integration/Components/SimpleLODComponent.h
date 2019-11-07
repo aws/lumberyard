@@ -65,6 +65,7 @@ namespace EMotionFX
             }
             static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
             {
+                AZ_UNUSED(dependent);
             }
             static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
             {

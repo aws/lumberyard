@@ -12,49 +12,34 @@
 
 #pragma once
 
-#include <EMotionFX/Source/AnimGraph.h>
-#include <AzQtComponents/Components/TagSelector.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
+#include <Editor/TagSelector.h>
+#include <EMotionFX/Source/AnimGraph.h>
 #include <QWidget>
 #include <QPushButton>
 
 
 namespace EMotionFX
 {
-    class AnimGraphTagPicker
-        : public QWidget
+    class AnimGraphTagSelector
+        : public TagSelector
     {
         Q_OBJECT // AUTOMOC
     public:
         AZ_CLASS_ALLOCATOR_DECL
 
-        AnimGraphTagPicker(QWidget* parent);
-        void SetAnimGraph(AnimGraph* animGraph);
-
-        void Reinit();
-
-        void SetTags(const AZStd::vector<AZStd::string>& tags);
-        const AZStd::vector<AZStd::string>& GetTags() const;
-
-    signals:
-        void TagsChanged();
-
-    private slots:
-        void OnSelectedTagsChanged();
+        AnimGraphTagSelector(QWidget* parent);
+        void SetAnimGraph(AnimGraph* animGraph) { m_animGraph = animGraph; }
 
     private:
-        void GetAvailableTags(QVector<QString>& outTags) const;
-        void GetSelectedTags(QVector<QString>& outTags) const;
+        void GetAvailableTags(QVector<QString>& outTags) const override;
 
-        AnimGraph*                      m_animGraph;
-        AZStd::vector<AZStd::string>    m_tags;
-        AzQtComponents::TagSelector*    m_tagSelector;
+        AnimGraph* m_animGraph = nullptr;
     };
-
 
     class AnimGraphTagHandler
         : public QObject
-        , public AzToolsFramework::PropertyHandler<AZStd::vector<AZStd::string>, AnimGraphTagPicker>
+        , public AzToolsFramework::PropertyHandler<AZStd::vector<AZStd::string>, AnimGraphTagSelector>
     {
         Q_OBJECT
 
@@ -66,10 +51,10 @@ namespace EMotionFX
         AZ::u32 GetHandlerName() const override;
         QWidget* CreateGUI(QWidget* parent) override;
 
-        void ConsumeAttribute(AnimGraphTagPicker* widget, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName) override;
+        void ConsumeAttribute(AnimGraphTagSelector* widget, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName) override;
 
-        void WriteGUIValuesIntoProperty(size_t index, AnimGraphTagPicker* GUI, property_t& instance, AzToolsFramework::InstanceDataNode* node) override;
-        bool ReadValuesIntoGUI(size_t index, AnimGraphTagPicker* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node) override;
+        void WriteGUIValuesIntoProperty(size_t index, AnimGraphTagSelector* GUI, property_t& instance, AzToolsFramework::InstanceDataNode* node) override;
+        bool ReadValuesIntoGUI(size_t index, AnimGraphTagSelector* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node) override;
 
     protected:
         AnimGraph* m_animGraph;

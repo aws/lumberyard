@@ -246,6 +246,12 @@ namespace EMStudio
         AZ::Color GetSelectedClothColliderColor() const { return m_selectedClothColliderColor; }
         void SetSelectedClothColliderColor(const AZ::Color& colliderColor);
 
+        AZ::Color GetSimulatedObjectColliderColor() const { return m_simulatedObjectColliderColor; }
+        void SetSimulatedObjectColliderColor(const AZ::Color& colliderColor);
+
+        AZ::Color GetSelectedSimulatedObjectColliderColor() const { return m_selectedSimulatedObjectColliderColor; }
+        void SetSelectedSimulatedColliderObjectColor(const AZ::Color& colliderColor);
+
         AZ::Color GetTrajectoryArrowInnerColor() const { return m_trajectoryArrowInnerColor; }
         void SetTrajectoryArrowInnerColor(const AZ::Color& trajectoryArrowInnerColor);
         
@@ -365,6 +371,8 @@ namespace EMStudio
         AZ::Color        m_violatedJointLimitColor;
         AZ::Color        m_clothColliderColor;
         AZ::Color        m_selectedClothColliderColor;
+        AZ::Color        m_simulatedObjectColliderColor;
+        AZ::Color        m_selectedSimulatedObjectColliderColor;
 
         // The following are not in the  UI
         AZStd::string    m_lastUsedLayout;

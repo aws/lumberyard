@@ -10,19 +10,6 @@
 *
 */
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#undef AZ_RESTRICTED_SECTION
-#define GRIDMATE_CPP_SECTION_1 1
-#define GRIDMATE_CPP_SECTION_2 2
-#define GRIDMATE_CPP_SECTION_3 3
-#define GRIDMATE_CPP_SECTION_4 4
-#define GRIDMATE_CPP_SECTION_5 5
-#define GRIDMATE_CPP_SECTION_6 6
-#define GRIDMATE_CPP_SECTION_7 7
-#endif
-
-#ifndef AZ_UNITY_BUILD
-
 #include <AzCore/Memory/AllocationRecords.h>
 #include <AzCore/std/hash.h>
 
@@ -35,26 +22,15 @@
 #include <GridMate/Leaderboard/LeaderboardService.h>
 #include <GridMate/Storage/GridStorageService.h>
 
-#ifndef GRIDMATE_FOR_TOOLS
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION GRIDMATE_CPP_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/GridMate_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/GridMate_cpp_provo.inl"
-    #endif
-#   endif
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION GRIDMATE_CPP_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/GridMate_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/GridMate_cpp_provo.inl"
-    #endif
-#   endif
-#endif
-
+namespace GridMate
+{
+    namespace Platform
+    {
+        bool CreateAchievementService(ServiceType type, const AchievementServiceDesc& desc, AchievementMgr*& service, const char*& serviceName);
+        bool CreateGridStorageService(ServiceType type, const GridStorageServiceDesc& desc, GridStorageService*& service, const char*& serviceName);
+        bool CreateLeaderboardService(ServiceType type, LeaderboardService*& leaderboardService, const char*& serviceName);
+    }
+}
 namespace GridMate
 {
     class GridMateImpl
@@ -334,72 +310,34 @@ GridMateImpl::Update()
 
 }
 
+
 //=========================================================================
 // StartLeaderboardService
 //=========================================================================
 bool GridMateImpl::StartLeaderboardService(ServiceType type)
 {
-    AZ_Assert(m_lbService == nullptr, "Leaderboard service already started!");
     if (m_lbService != nullptr)
     {
+        AZ_Error("GridMate", false, "Leaderboard service already started!");
+        return false;
+    }
+    else if (type == ST_LAN)
+    {
+        AZ_Error("GridMate", false, "Leaderboard service is not available for ST_LAN!");
         return false;
     }
 
     m_isCustomLbService = false;
 
     const char* serviceName = "Unknown";
-    (void)serviceName;
-    switch (type)
+    if (!Platform::CreateLeaderboardService(type, m_lbService, serviceName))
     {
-    case ST_LAN:
-        AZ_Assert(false, "Leaderboard service is not available for ST_LAN!");
-        break;
-
-#ifndef GRIDMATE_FOR_TOOLS
-    case ST_XLIVE: // ACCEPTED_USE
-    {
-        serviceName = "  XLive"; // ACCEPTED_USE
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION GRIDMATE_CPP_SECTION_3
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/GridMate_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/GridMate_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-        AZ_Assert(false, "Xbox Live leaderboard service is available on XBone platform only!"); // ACCEPTED_USE
-#endif
-        break;
+        AZ_Error("GridMate", false, "ServiceType 0x%x is not supported!", static_cast<int>(type));
+        return false;
     }
-
-    case ST_PSN: // ACCEPTED_USE
-        serviceName = "  PSN"; // ACCEPTED_USE
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION GRIDMATE_CPP_SECTION_4
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/GridMate_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/GridMate_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-        AZ_Assert(false, "PSN leaderboard service is available on PS4 platform only!"); // ACCEPTED_USE
-#endif
-        break;
-#endif // GRIDMATE_FOR_TOOLS
-
-    default:
-        AZ_Assert(false, "ServiceType 0x%x is not supported!", static_cast<int>(type));
-        break;
-    }
-
-    if (m_lbService == nullptr)
+    else if (m_lbService == nullptr)
     {
+        AZ_Error("GridMate", false, "Failed to create ServiceType 0x%x named %s!", static_cast<int>(type), serviceName);
         return false;
     }
 
@@ -468,64 +406,28 @@ void GridMateImpl::StopLeaderboardService()
 //=========================================================================
 bool GridMateImpl::StartAchievementService(ServiceType type, const AchievementServiceDesc& desc)
 {
-    (void)desc;
-    AZ_Assert(m_achievementMgr == nullptr, "Achievement service already started!");
     if (m_achievementMgr != nullptr)
     {
+        AZ_Error("GridMate", m_achievementMgr == nullptr, "Achievement service already started!");
+        return false;
+    }
+    else if (type == ST_LAN)
+    {
+        AZ_Error("GridMate", false, "Achievement service is not available for ST_LAN!");
         return false;
     }
 
     m_isCustomAchievementMgr = false;
 
-    const char* serviceName = "Unknown";
-    (void)serviceName;
-    switch (type)
+    const char* serviceName = " Unknown";
+    if (!Platform::CreateAchievementService(type, desc, m_achievementMgr, serviceName))
     {
-    case ST_LAN:
-        AZ_Assert(false, "Achievement service is not available for ST_LAN!");
-        break;
-
-#ifndef GRIDMATE_FOR_TOOLS
-    case ST_XLIVE: // ACCEPTED_USE
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION GRIDMATE_CPP_SECTION_5
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/GridMate_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/GridMate_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-        AZ_Assert(false, "Xbox live achievement service is available on XBone platform only!"); // ACCEPTED_USE
-#endif
-        break;
-
-    case ST_PSN: // ACCEPTED_USE
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION GRIDMATE_CPP_SECTION_6
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/GridMate_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/GridMate_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-        AZ_Assert(false, "PSN trophy service is available on PS4 platform only!"); // ACCEPTED_USE
-#endif
-        break;
-#endif // GRIDMATE_FOR_TOOLS
-
-    default:
-        AZ_Assert(false, "ServiceType 0x%x is not supported!", static_cast<int>(type));
-        break;
+        AZ_Error("GridMate", false, "ServiceType 0x%x is not supported for Achievement!", static_cast<int>(type));
+        return false;
     }
-
-    if (m_achievementMgr == nullptr)
+    else if (m_achievementMgr == nullptr)
     {
+        AZ_Error("GridMate", false, "Could not create Achievement service type %s!", serviceName);
         return false;
     }
 
@@ -593,39 +495,28 @@ void GridMateImpl::StopAchievementService()
 //=========================================================================
 bool GridMateImpl::StartStorageService(ServiceType type, const GridStorageServiceDesc& desc)
 {
-    (void)desc;
-    AZ_Assert(m_storageService == nullptr, "Storage service already started!");
     if (m_storageService != nullptr)
     {
+        AZ_Error("GridMate", false, "Storage service already started!");
+        return false;
+    }
+    else if (type == ST_LAN)
+    {
+        AZ_Error("GridMate", false, "Storage service is not available for ST_LAN!");
         return false;
     }
 
     m_isCustomStorageService = false;
 
-    const char* serviceName = "Unknown";
-    (void)serviceName;
-    switch (type)
+    const char* serviceName = " Unknown";
+    if (!Platform::CreateGridStorageService(type, desc, m_storageService, serviceName))
     {
-    case ST_LAN:
-        AZ_Assert(false, "Storage service is not available for ST_LAN!");
-        break;
-#ifndef GRIDMATE_FOR_TOOLS
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION GRIDMATE_CPP_SECTION_7
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/GridMate_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/GridMate_cpp_provo.inl"
-    #endif
-#endif
-#endif // GRIDMATE_FOR_TOOLS
-    default:
-        AZ_Assert(false, "ServiceType 0x%x is not supported!", static_cast<int>(type));
-        break;
+        AZ_Error("GridMate", false, "ServiceType 0x%x is not supported!", static_cast<int>(type));
+        return false;
     }
-
-    if (m_storageService == nullptr)
+    else if (m_storageService == nullptr)
     {
+        AZ_Error("GridMate", false, "Could not create storage service type %s!", serviceName);
         return false;
     }
 
@@ -687,12 +578,3 @@ void GridMateImpl::StopStorageService()
     AZ_TracePrintf("GridMate", "= GridMate Storage Service stopped!            =\n");
     AZ_TracePrintf("GridMate", "================================================\n\n");
 }
-
-/**
- * Windows platform-specific net modules
- */
-#if AZ_TRAIT_OS_USE_WINDOWS_SOCKETS
-#   pragma comment(lib,"WS2_32.lib")
-#endif  // AZ_PLATFORM_WINDOWS
-
-#endif // #ifndef AZ_UNITY_BUILD

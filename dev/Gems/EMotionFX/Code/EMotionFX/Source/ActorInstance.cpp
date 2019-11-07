@@ -11,31 +11,30 @@
 */
 
 #include "EMotionFXConfig.h"
-#include <MCore/Source/Random.h>
 #include <MCore/Source/IDGenerator.h>
+#include <MCore/Source/Random.h>
 
 #include "Actor.h"
 #include "ActorInstance.h"
-#include "MotionLayerSystem.h"
-#include "Attachment.h"
 #include "ActorManager.h"
+#include "ActorUpdateScheduler.h"
+#include "AnimGraphInstance.h"
+#include "Attachment.h"
+#include "AttachmentNode.h"
+#include "AttachmentSkin.h"
+#include "EventManager.h"
 #include "Mesh.h"
 #include "MeshDeformerStack.h"
 #include "MorphMeshDeformer.h"
-#include "TransformData.h"
-#include "EventManager.h"
-#include "Recorder.h"
-#include "AnimGraphInstance.h"
-#include "AttachmentNode.h"
-#include "AttachmentSkin.h"
-#include "NodeGroup.h"
-#include "ActorUpdateScheduler.h"
 #include "MorphSetup.h"
 #include "MorphSetupInstance.h"
+#include "MotionLayerSystem.h"
 #include "Node.h"
-#include <EMotionFX/Source/RagdollInstance.h>
+#include "NodeGroup.h"
+#include "Recorder.h"
+#include "TransformData.h"
 #include <EMotionFX/Source/DebugDraw.h>
-
+#include <EMotionFX/Source/RagdollInstance.h>
 
 namespace EMotionFX
 {
@@ -72,7 +71,7 @@ namespace EMotionFX
         mTrajectoryDelta.ZeroWithIdentityQuaternion();
         mStaticAABB.Init();
 
-        mAnimGraphInstance     = nullptr;
+        mAnimGraphInstance = nullptr;
 
         // set the boolean defaults
         SetFlag(BOOL_ISVISIBLE, true);
@@ -111,10 +110,10 @@ namespace EMotionFX
         }
 
         // setup auto bounds update (it is enabled on default)
-        mBoundsUpdateFrequency  = 0.0f;
+        mBoundsUpdateFrequency = 0.0f;
         mBoundsUpdatePassedTime = 0.0f;
-        mBoundsUpdateType       = BOUNDS_STATIC_BASED;
-        mBoundsUpdateItemFreq   = 1;
+        mBoundsUpdateType = BOUNDS_STATIC_BASED;
+        mBoundsUpdateItemFreq = 1;
 
         // initialize the actor local and global transform
         mParentWorldTransform.Identity();
@@ -143,7 +142,7 @@ namespace EMotionFX
         mStaticAABB = mActor->GetStaticAABB();
         if (mStaticAABB.CheckIfIsValid() == false)
         {
-            UpdateMeshDeformers(0.0f, true);      // TODO: not really thread safe because of shared meshes, although it probably will output correctly
+            UpdateMeshDeformers(0.0f, true); // TODO: not really thread safe because of shared meshes, although it probably will output correctly
             UpdateStaticBasedAABBDimensions();
         }
 
@@ -158,7 +157,6 @@ namespace EMotionFX
 
         GetActorManager().GetScheduler()->RecursiveInsertActorInstance(this);
     }
-
 
     // the destructor
     ActorInstance::~ActorInstance()
@@ -219,12 +217,10 @@ namespace EMotionFX
         GetActorManager().UnregisterActorInstance(this);
     }
 
-
     ActorInstance* ActorInstance::Create(Actor* actor, AZ::Entity* entity, uint32 threadIndex)
     {
         return aznew ActorInstance(actor, entity, threadIndex);
     }
-
 
     // update the transformation data
     void ActorInstance::UpdateTransformations(float timePassedInSeconds, bool updateJointTransforms, bool sampleMotions)
@@ -263,7 +259,7 @@ namespace EMotionFX
             // perform forward kinematics etc
             UpdateWorldTransform();
             UpdateSkinningMatrices();
-            UpdateAttachments();            // update the attachment parent matrices
+            UpdateAttachments(); // update the attachment parent matrices
 
             // update the bounds when needed
             if (GetBoundsUpdateEnabled() && mBoundsUpdateType != BOUNDS_MESH_BASED)
@@ -300,8 +296,7 @@ namespace EMotionFX
                     }
                 }
             }
-            else
-            if (mMotionSystem)
+            else if (mMotionSystem)
             {
                 mMotionSystem->Update(timePassedInSeconds, (updateJointTransforms && sampleMotions));
             }
@@ -340,8 +335,7 @@ namespace EMotionFX
                     mAnimGraphInstance->Output(mTransformData->GetCurrentPose());
                 }
             }
-            else
-            if (mMotionSystem)
+            else if (mMotionSystem)
             {
                 mMotionSystem->Update(timePassedInSeconds, (updateJointTransforms && sampleMotions));
             }
@@ -379,7 +373,6 @@ namespace EMotionFX
         }
     }
 
-
     // update the world transformation
     void ActorInstance::UpdateWorldTransform()
     {
@@ -387,7 +380,6 @@ namespace EMotionFX
         mWorldTransform.Multiply(mParentWorldTransform);
         mWorldTransformInv = mWorldTransform.Inversed();
     }
-
 
     // updates the skinning matrices of all nodes
     void ActorInstance::UpdateSkinningMatrices()
@@ -404,7 +396,6 @@ namespace EMotionFX
             skinningMatrices[nodeNumber] = skinningTransform.ToMatrix();
         }
     }
-
 
     // Update the mesh deformers, which updates the vertex positions on the CPU, so performing CPU skinning and morphing etc.
     void ActorInstance::UpdateMeshDeformers(float timePassedInSeconds, bool processDisabledDeformers)
@@ -436,8 +427,6 @@ namespace EMotionFX
             }
         }
     }
-
-
 
     // Update the mesh morph deformers, which updates the vertex positions on the CPU, so performing CPU morphing.
     void ActorInstance::UpdateMorphMeshDeformers(float timePassedInSeconds, bool processDisabledDeformers)
@@ -505,7 +494,6 @@ namespace EMotionFX
         GetActorManager().GetScheduler()->RecursiveInsertActorInstance(root);
     }
 
-
     // try to find the attachment number for a given actor instance
     uint32 ActorInstance::FindAttachmentNr(ActorInstance* actorInstance)
     {
@@ -522,7 +510,6 @@ namespace EMotionFX
         return MCORE_INVALIDINDEX32;
     }
 
-
     // remove an attachment by actor instance pointer
     bool ActorInstance::RemoveAttachment(ActorInstance* actorInstance, bool delFromMem)
     {
@@ -537,7 +524,6 @@ namespace EMotionFX
         RemoveAttachment(attachmentNr, delFromMem);
         return true;
     }
-
 
     // remove an attachment
     void ActorInstance::RemoveAttachment(uint32 nr, bool delFromMem)
@@ -586,7 +572,6 @@ namespace EMotionFX
         }
     }
 
-
     // remove all attachments
     void ActorInstance::RemoveAllAttachments(bool delFromMem)
     {
@@ -597,7 +582,6 @@ namespace EMotionFX
         }
     }
 
-
     // update the dependencies
     void ActorInstance::UpdateDependencies()
     {
@@ -606,8 +590,8 @@ namespace EMotionFX
 
         // add the main dependency
         Actor::Dependency mainDependency;
-        mainDependency.mActor       = mActor;
-        mainDependency.mAnimGraph  = (mAnimGraphInstance) ? mAnimGraphInstance->GetAnimGraph() : nullptr;
+        mainDependency.mActor = mActor;
+        mainDependency.mAnimGraph = (mAnimGraphInstance) ? mAnimGraphInstance->GetAnimGraph() : nullptr;
         mDependencies.Add(mainDependency);
 
         // add all dependencies stored inside the actor
@@ -617,7 +601,6 @@ namespace EMotionFX
             mDependencies.Add(*mActor->GetDependency(i));
         }
     }
-
 
     // set the attachment matrices
     void ActorInstance::UpdateAttachments()
@@ -629,7 +612,6 @@ namespace EMotionFX
             mAttachments[i]->Update();
         }
     }
-
 
     // find the root attachment actor instance, for example if you have a
     // knight with knife attached to his hands, where the knight is attached to a horse, the horse will be the
@@ -644,7 +626,6 @@ namespace EMotionFX
         return const_cast<ActorInstance*>(this);
     }
 
-
     // change visibility state
     void ActorInstance::SetIsVisible(bool isVisible)
     {
@@ -658,49 +639,46 @@ namespace EMotionFX
         SetFlag(BOOL_ISVISIBLE, isVisible);
     }
 
-
     // update the bounding volume
     void ActorInstance::UpdateBounds(uint32 geomLODLevel, EBoundsType boundsType, uint32 itemFrequency)
     {
         // depending on the bounding volume update type
         switch (boundsType)
         {
-        // calculate the static based AABB
-        case BOUNDS_STATIC_BASED:
-            CalcStaticBasedAABB(&mAABB);
-            break;
+            // calculate the static based AABB
+            case BOUNDS_STATIC_BASED:
+                CalcStaticBasedAABB(&mAABB);
+                break;
 
-        // based on the world space positions of the nodes (least accurate, but fastest)
-        case BOUNDS_NODE_BASED:
-            CalcNodeBasedAABB(&mAABB, itemFrequency);
-            break;
+            // based on the world space positions of the nodes (least accurate, but fastest)
+            case BOUNDS_NODE_BASED:
+                CalcNodeBasedAABB(&mAABB, itemFrequency);
+                break;
 
-        // based on the world space positions of the vertices of the collision meshes (faster and more accurate than mesh based)
-        case BOUNDS_COLLISIONMESH_BASED:
-            CalcCollisionMeshBasedAABB(geomLODLevel, &mAABB, itemFrequency);
-            break;
+            // based on the world space positions of the vertices of the collision meshes (faster and more accurate than mesh based)
+            case BOUNDS_COLLISIONMESH_BASED:
+                CalcCollisionMeshBasedAABB(geomLODLevel, &mAABB, itemFrequency);
+                break;
 
-        // based on the world space positions of the vertices of the meshes (most accurate)
-        case BOUNDS_MESH_BASED:
-            CalcMeshBasedAABB(geomLODLevel, &mAABB, itemFrequency);
-            break;
+            // based on the world space positions of the vertices of the meshes (most accurate)
+            case BOUNDS_MESH_BASED:
+                CalcMeshBasedAABB(geomLODLevel, &mAABB, itemFrequency);
+                break;
 
-        // based on the world space positions of the vertices of the meshes (most accurate)
-        case BOUNDS_NODEOBB_BASED:
-            CalcNodeOBBBasedAABB(&mAABB, itemFrequency);
-            break;
+            // based on the world space positions of the vertices of the meshes (most accurate)
+            case BOUNDS_NODEOBB_BASED:
+                CalcNodeOBBBasedAABB(&mAABB, itemFrequency);
+                break;
 
-        case BOUNDS_NODEOBBFAST_BASED:
-            CalcNodeOBBBasedAABBFast(&mAABB, itemFrequency);
-            break;
+            case BOUNDS_NODEOBBFAST_BASED:
+                CalcNodeOBBBasedAABBFast(&mAABB, itemFrequency);
+                break;
 
-        // when we're dealing with an unspecified bounding volume update method
-        default:
-            MCore::LogInfo("*** EMotionFX::ActorInstance::UpdateBounds() - Unknown boundsType specified! (%d) ***", (uint32)boundsType);
+            // when we're dealing with an unspecified bounding volume update method
+            default:
+                MCore::LogInfo("*** EMotionFX::ActorInstance::UpdateBounds() - Unknown boundsType specified! (%d) ***", (uint32)boundsType);
         }
-        ;
     }
-
 
     // calculate the axis aligned bounding box that contains the object oriented boxes of all nodes
     void ActorInstance::CalcNodeOBBBasedAABBFast(MCore::AABB* outResult, uint32 nodeFrequency)
@@ -737,7 +715,6 @@ namespace EMotionFX
             }
         }
     }
-
 
     // more accurate node obb based method that uses the 8 corner points of the obb
     void ActorInstance::CalcNodeOBBBasedAABB(MCore::AABB* outResult, uint32 nodeFrequency)
@@ -778,7 +755,6 @@ namespace EMotionFX
         }
     }
 
-
     // calculate the axis aligned bounding box based on the world space positions of the nodes
     void ActorInstance::CalcNodeBasedAABB(MCore::AABB* outResult, uint32 nodeFrequency)
     {
@@ -799,7 +775,6 @@ namespace EMotionFX
             }
         }
     }
-
 
     // calculate the AABB that contains all world space vertices of all meshes
     void ActorInstance::CalcMeshBasedAABB(uint32 geomLODLevel, MCore::AABB* outResult, uint32 vertexFrequency)
@@ -838,7 +813,6 @@ namespace EMotionFX
             outResult->Encapsulate(meshBox);
         }
     }
-
 
     void ActorInstance::CalcCollisionMeshBasedAABB(uint32 geomLODLevel, MCore::AABB* outResult, uint32 vertexFrequency)
     {
@@ -883,17 +857,15 @@ namespace EMotionFX
         }
     }
 
-
     // setup bounding volume auto update settings
     void ActorInstance::SetupAutoBoundsUpdate(float updateFrequencyInSeconds, EBoundsType boundsType, uint32 itemFrequency)
     {
         MCORE_ASSERT(itemFrequency > 0); // zero would cause an infinite loop
-        mBoundsUpdateFrequency  = updateFrequencyInSeconds;
-        mBoundsUpdateType       = boundsType;
-        mBoundsUpdateItemFreq   = itemFrequency;
+        mBoundsUpdateFrequency = updateFrequencyInSeconds;
+        mBoundsUpdateType = boundsType;
+        mBoundsUpdateItemFreq = itemFrequency;
         SetBoundsUpdateEnabled(true);
     }
-
 
     // apply the morph setup
     void ActorInstance::ApplyMorphSetup()
@@ -988,17 +960,16 @@ namespace EMotionFX
         return nullptr;
     }
 
-
     Node* ActorInstance::IntersectsCollisionMesh(uint32 lodLevel, const MCore::Ray& ray, AZ::Vector3* outIntersect, AZ::Vector3* outNormal, AZ::Vector2* outUV, float* outBaryU, float* outBaryV, uint32* outIndices) const
     {
-        Node*           closestNode = nullptr;
-        AZ::Vector3     point;
-        AZ::Vector3     closestPoint(0.0f, 0.0f, 0.0f);
-        float           dist, baryU, baryV, closestBaryU = 0, closestBaryV = 0;
-        float           closestDist = FLT_MAX;
-        Transform       closestTransform;
-        uint32          closestIndices[3];
-        uint32          triIndices[3];
+        Node* closestNode = nullptr;
+        AZ::Vector3 point;
+        AZ::Vector3 closestPoint(0.0f, 0.0f, 0.0f);
+        float dist, baryU, baryV, closestBaryU = 0, closestBaryV = 0;
+        float closestDist = FLT_MAX;
+        Transform closestTransform;
+        uint32 closestIndices[3];
+        uint32 triIndices[3];
 
         const Skeleton* skeleton = mActor->GetSkeleton();
         const Pose* pose = mTransformData->GetCurrentPose();
@@ -1032,15 +1003,15 @@ namespace EMotionFX
                 // if it is the closest point till now, record it as closest
                 if (dist < closestDist)
                 {
-                    closestTransform    = worldTransform;
-                    closestPoint        = point;
-                    closestDist         = dist;
-                    closestNode         = curNode;
-                    closestBaryU        = baryU;
-                    closestBaryV        = baryV;
-                    closestIndices[0]   = triIndices[0];
-                    closestIndices[1]   = triIndices[1];
-                    closestIndices[2]   = triIndices[2];
+                    closestTransform = worldTransform;
+                    closestPoint = point;
+                    closestDist = dist;
+                    closestNode = curNode;
+                    closestBaryU = baryU;
+                    closestBaryV = baryV;
+                    closestIndices[0] = triIndices[0];
+                    closestIndices[1] = triIndices[1];
+                    closestIndices[2] = triIndices[2];
                 }
             }
         }
@@ -1079,7 +1050,7 @@ namespace EMotionFX
                 if (outNormal)
                 {
                     AZ::PackedVector3f* normals = (AZ::PackedVector3f*)mesh->FindVertexData(Mesh::ATTRIB_NORMALS);
-                    AZ::Vector3  norm = MCore::BarycentricInterpolate<AZ::Vector3>(closestBaryU, closestBaryV, AZ::Vector3(normals[closestIndices[0]]), AZ::Vector3(normals[closestIndices[1]]), AZ::Vector3(normals[closestIndices[2]]));
+                    AZ::Vector3 norm = MCore::BarycentricInterpolate<AZ::Vector3>(closestBaryU, closestBaryV, AZ::Vector3(normals[closestIndices[0]]), AZ::Vector3(normals[closestIndices[1]]), AZ::Vector3(normals[closestIndices[2]]));
                     norm = closestTransform.TransformVector(norm);
                     norm.Normalize();
                     *outNormal = norm;
@@ -1093,9 +1064,7 @@ namespace EMotionFX
                     if (uvData)
                     {
                         // calculate the interpolated texture coordinate
-                        *outUV = MCore::BarycentricInterpolate<AZ::Vector2>(closestBaryU, closestBaryV, uvData[ closestIndices[0] ],
-                                uvData[ closestIndices[1] ],
-                                uvData[ closestIndices[2] ]);
+                        *outUV = MCore::BarycentricInterpolate<AZ::Vector2>(closestBaryU, closestBaryV, uvData[closestIndices[0]], uvData[closestIndices[1]], uvData[closestIndices[2]]);
                     }
                 }
             }
@@ -1104,7 +1073,6 @@ namespace EMotionFX
         // return the result
         return closestNode;
     }
-
 
     // check intersection with a ray, but don't get the intersection point or closest intersecting node
     Node* ActorInstance::IntersectsMesh(uint32 lodLevel, const MCore::Ray& ray) const
@@ -1140,7 +1108,6 @@ namespace EMotionFX
         return nullptr;
     }
 
-
     void ActorInstance::SetRagdoll(Physics::Ragdoll* ragdoll)
     {
         if (ragdoll && ragdoll->GetNumNodes() > 0)
@@ -1153,24 +1120,22 @@ namespace EMotionFX
         }
     }
 
-
     RagdollInstance* ActorInstance::GetRagdollInstance() const
     {
         return m_ragdollInstance.get();
     }
 
-
     // intersection test that returns the closest intersection
     Node* ActorInstance::IntersectsMesh(uint32 lodLevel, const MCore::Ray& ray, AZ::Vector3* outIntersect, AZ::Vector3* outNormal, AZ::Vector2* outUV, float* outBaryU, float* outBaryV, uint32* outIndices) const
     {
-        Node*           closestNode = nullptr;
-        AZ::Vector3     point;
-        AZ::Vector3     closestPoint(0.0f, 0.0f, 0.0f);
-        Transform       closestTransform;
-        float           dist, baryU, baryV, closestBaryU = 0, closestBaryV = 0;
-        float           closestDist = FLT_MAX;
-        uint32          closestIndices[3];
-        uint32          triIndices[3];
+        Node* closestNode = nullptr;
+        AZ::Vector3 point;
+        AZ::Vector3 closestPoint(0.0f, 0.0f, 0.0f);
+        Transform closestTransform;
+        float dist, baryU, baryV, closestBaryU = 0, closestBaryV = 0;
+        float closestDist = FLT_MAX;
+        uint32 closestIndices[3];
+        uint32 triIndices[3];
 
         const Pose* pose = mTransformData->GetCurrentPose();
         const Skeleton* skeleton = mActor->GetSkeleton();
@@ -1199,15 +1164,15 @@ namespace EMotionFX
                 // if it is the closest point till now, record it as closest
                 if (dist < closestDist)
                 {
-                    closestTransform    = worldTransform;
-                    closestPoint        = point;
-                    closestDist         = dist;
-                    closestNode         = curNode;
-                    closestBaryU        = baryU;
-                    closestBaryV        = baryV;
-                    closestIndices[0]   = triIndices[0];
-                    closestIndices[1]   = triIndices[1];
-                    closestIndices[2]   = triIndices[2];
+                    closestTransform = worldTransform;
+                    closestPoint = point;
+                    closestDist = dist;
+                    closestNode = curNode;
+                    closestBaryU = baryU;
+                    closestBaryV = baryV;
+                    closestIndices[0] = triIndices[0];
+                    closestIndices[1] = triIndices[1];
+                    closestIndices[2] = triIndices[2];
                 }
             }
         }
@@ -1247,8 +1212,7 @@ namespace EMotionFX
                 {
                     AZ::PackedVector3f* normals = (AZ::PackedVector3f*)mesh->FindVertexData(Mesh::ATTRIB_NORMALS);
                     AZ::Vector3 norm = MCore::BarycentricInterpolate<AZ::Vector3>(
-                            closestBaryU, closestBaryV,
-                            AZ::Vector3(normals[closestIndices[0]]), AZ::Vector3(normals[closestIndices[1]]), AZ::Vector3(normals[closestIndices[2]]));                   
+                        closestBaryU, closestBaryV, AZ::Vector3(normals[closestIndices[0]]), AZ::Vector3(normals[closestIndices[1]]), AZ::Vector3(normals[closestIndices[2]]));
                     norm = closestTransform.TransformVector(norm);
                     norm.Normalize();
                     *outNormal = norm;
@@ -1262,9 +1226,7 @@ namespace EMotionFX
                     if (uvData)
                     {
                         // calculate the interpolated texture coordinate
-                        *outUV = MCore::BarycentricInterpolate<AZ::Vector2>(closestBaryU, closestBaryV, uvData[ closestIndices[0] ],
-                                uvData[ closestIndices[1] ],
-                                uvData[ closestIndices[2] ]);
+                        *outUV = MCore::BarycentricInterpolate<AZ::Vector2>(closestBaryU, closestBaryV, uvData[closestIndices[0]], uvData[closestIndices[1]], uvData[closestIndices[2]]);
                     }
                 }
             }
@@ -1275,7 +1237,6 @@ namespace EMotionFX
     }
 
     //---------------------
-
 
     //
     void ActorInstance::EnableNode(uint16 nodeIndex)
@@ -1323,14 +1284,12 @@ namespace EMotionFX
         } while (found == false);
     }
 
-
     // disable a given node
     void ActorInstance::DisableNode(uint16 nodeIndex)
     {
         // try to remove the node from the array
         mEnabledNodes.RemoveByValue(nodeIndex);
     }
-
 
     // enable all nodes
     void ActorInstance::EnableAllNodes()
@@ -1343,13 +1302,11 @@ namespace EMotionFX
         }
     }
 
-
     // disable all nodes
     void ActorInstance::DisableAllNodes()
     {
         mEnabledNodes.Clear();
     }
-
 
     // change the skeletal LOD level
     void ActorInstance::SetSkeletalLODLevelNodeFlags(uint32 level)
@@ -1382,7 +1339,7 @@ namespace EMotionFX
                 {
                     EnableNode(static_cast<uint16>(i));
                 }
-                else        // otherwise disable it
+                else // otherwise disable it
                 {
                     DisableNode(static_cast<uint16>(i));
                 }
@@ -1394,7 +1351,6 @@ namespace EMotionFX
     {
         m_requestedLODLevel = level;
     }
-
     void ActorInstance::UpdateLODLevel()
     {
         // Switch LOD level in case a change was requested.
@@ -1430,13 +1386,12 @@ namespace EMotionFX
             {
                 EnableNode(static_cast<uint16>(i));
             }
-            else        // otherwise disable it
+            else // otherwise disable it
             {
                 DisableNode(static_cast<uint16>(i));
             }
         }
     }
-
 
     // calculate the number of disabled nodes for a given skeletal lod level
     uint32 ActorInstance::CalcNumDisabledNodes(uint32 skeletalLODLevel) const
@@ -1461,7 +1416,6 @@ namespace EMotionFX
 
         return numDisabledNodes;
     }
-
 
     // calculate the number of skeletal LOD levels
     uint32 ActorInstance::CalcNumSkeletalLODLevels() const
@@ -1492,7 +1446,6 @@ namespace EMotionFX
         return numSkeletalLODLevels;
     }
 
-
     // change the current motion system
     void ActorInstance::SetMotionSystem(MotionSystem* newSystem, bool delCurrentFromMem)
     {
@@ -1504,7 +1457,6 @@ namespace EMotionFX
         mMotionSystem = newSystem;
     }
 
-
     // check if this actor instance is a skin attachment
     bool ActorInstance::GetIsSkinAttachment() const
     {
@@ -1515,7 +1467,6 @@ namespace EMotionFX
 
         return mSelfAttachment->GetIsInfluencedByMultipleJoints();
     }
-
 
     // draw a skeleton using lines, calling the drawline callbacks in the event handlers
     void ActorInstance::DrawSkeleton(Pose& pose, const AZ::Color& color)
@@ -1535,12 +1486,11 @@ namespace EMotionFX
             {
                 const AZ::Vector3 startPos = pose.GetWorldSpaceTransform(nodeIndex).mPosition;
                 const AZ::Vector3 endPos = pose.GetWorldSpaceTransform(parentIndex).mPosition;
-                drawData->AddLine(startPos, endPos, color);
+                drawData->DrawLine(startPos, endPos, color);
             }
         }
         drawData->Unlock();
     }
-
 
     // Remove the trajectory transform from the input transformation.
     void ActorInstance::MotionExtractionCompensate(Transform& inOutMotionExtractionNodeTransform, EMotionExtractionFlags motionExtractionFlags)
@@ -1571,7 +1521,6 @@ namespace EMotionFX
         inOutMotionExtractionNodeTransform.mRotation.Normalize();
     }
 
-
     // Remove the trajectory transform from the motion extraction node to prevent double transformation.
     void ActorInstance::MotionExtractionCompensate(EMotionExtractionFlags motionExtractionFlags)
     {
@@ -1588,7 +1537,6 @@ namespace EMotionFX
         currentPose->SetLocalSpaceTransform(motionExtractIndex, transform);
     }
 
-
     // Apply the motion extraction delta transform to the actor instance.
     void ActorInstance::ApplyMotionExtractionDelta(const Transform& trajectoryDelta)
     {
@@ -1598,11 +1546,11 @@ namespace EMotionFX
         }
 
         Transform curTransform = mLocalTransform;
-        #ifndef EMFX_SCALE_DISABLED
+#ifndef EMFX_SCALE_DISABLED
         curTransform.mPosition += trajectoryDelta.mPosition * curTransform.mScale;
-        #else
+#else
         curTransform.mPosition += trajectoryDelta.mPosition;
-        #endif
+#endif
 
         curTransform.mRotation *= trajectoryDelta.mRotation;
         curTransform.mRotation.Normalize();
@@ -1610,25 +1558,21 @@ namespace EMotionFX
         mLocalTransform = curTransform;
     }
 
-
     // apply the currently set motion extraction delta transform to the actor instance
     void ActorInstance::ApplyMotionExtractionDelta()
     {
         ApplyMotionExtractionDelta(mTrajectoryDelta);
     }
 
-
     void ActorInstance::SetMotionExtractionEnabled(bool enabled)
     {
         SetFlag(BOOL_MOTIONEXTRACTION, enabled);
     }
 
-
     bool ActorInstance::GetMotionExtractionEnabled() const
     {
         return (mBoolFlags & BOOL_MOTIONEXTRACTION) != 0;
     }
-
 
     // update the static based aabb dimensions
     void ActorInstance::UpdateStaticBasedAABBDimensions()
@@ -1640,10 +1584,8 @@ namespace EMotionFX
         // reset position and scale
         SetLocalSpacePosition(AZ::Vector3::CreateZero());
 
-        EMFX_SCALECODE
-        (
-            SetLocalSpaceScale(AZ::Vector3(1.0f, 1.0f, 1.0f));
-        )
+        EMFX_SCALECODE(
+            SetLocalSpaceScale(AZ::Vector3(1.0f, 1.0f, 1.0f));)
 
         // rotate over x, y and z axis
         AZ::Vector3 boxMin(FLT_MAX, FLT_MAX, FLT_MAX);
@@ -1721,7 +1663,6 @@ namespace EMotionFX
         mLocalTransform = orgTransform;
     }
 
-
     // calculate the moved static based aabb
     void ActorInstance::CalcStaticBasedAABB(MCore::AABB* outResult)
     {
@@ -1732,14 +1673,11 @@ namespace EMotionFX
         }
 
         *outResult = mStaticAABB;
-        EMFX_SCALECODE
-        (
+        EMFX_SCALECODE(
             outResult->SetMin(mStaticAABB.GetMin() * mWorldTransform.mScale);
-            outResult->SetMax(mStaticAABB.GetMax() * mWorldTransform.mScale);
-        )
+            outResult->SetMax(mStaticAABB.GetMax() * mWorldTransform.mScale);)
         outResult->Translate(mWorldTransform.mPosition);
     }
-
 
     // adjust the animgraph instance
     void ActorInstance::SetAnimGraphInstance(AnimGraphInstance* instance)
@@ -1748,48 +1686,40 @@ namespace EMotionFX
         UpdateDependencies();
     }
 
-
     Actor* ActorInstance::GetActor() const
     {
         return mActor;
     }
-
 
     void ActorInstance::SetID(uint32 id)
     {
         mID = id;
     }
 
-
     MotionSystem* ActorInstance::GetMotionSystem() const
     {
         return mMotionSystem;
     }
-
 
     uint32 ActorInstance::GetLODLevel() const
     {
         return mLODLevel;
     }
 
-
     void ActorInstance::SetCustomData(void* customData)
     {
         mCustomData = customData;
     }
-
 
     void* ActorInstance::GetCustomData() const
     {
         return mCustomData;
     }
 
-
     AZ::Entity* ActorInstance::GetEntity() const
     {
         return m_entity;
     }
-
 
     AZ::EntityId ActorInstance::GetEntityId() const
     {
@@ -1801,54 +1731,45 @@ namespace EMotionFX
         return AZ::EntityId();
     }
 
-
     bool ActorInstance::GetBoundsUpdateEnabled() const
     {
         return (mBoolFlags & BOOL_BOUNDSUPDATEENABLED);
     }
-
 
     float ActorInstance::GetBoundsUpdateFrequency() const
     {
         return mBoundsUpdateFrequency;
     }
 
-
     float ActorInstance::GetBoundsUpdatePassedTime() const
     {
         return mBoundsUpdatePassedTime;
     }
-
 
     ActorInstance::EBoundsType ActorInstance::GetBoundsUpdateType() const
     {
         return mBoundsUpdateType;
     }
 
-
     uint32 ActorInstance::GetBoundsUpdateItemFrequency() const
     {
         return mBoundsUpdateItemFreq;
     }
-
 
     void ActorInstance::SetBoundsUpdateFrequency(float seconds)
     {
         mBoundsUpdateFrequency = seconds;
     }
 
-
     void ActorInstance::SetBoundsUpdatePassedTime(float seconds)
     {
         mBoundsUpdatePassedTime = seconds;
     }
 
-
     void ActorInstance::SetBoundsUpdateType(EBoundsType bType)
     {
         mBoundsUpdateType = bType;
     }
-
 
     void ActorInstance::SetBoundsUpdateItemFrequency(uint32 freq)
     {
@@ -1856,126 +1777,105 @@ namespace EMotionFX
         mBoundsUpdateItemFreq = freq;
     }
 
-
     void ActorInstance::SetBoundsUpdateEnabled(bool enable)
     {
         SetFlag(BOOL_BOUNDSUPDATEENABLED, enable);
     }
-
 
     void ActorInstance::SetStaticBasedAABB(const MCore::AABB& aabb)
     {
         mStaticAABB = aabb;
     }
 
-
     void ActorInstance::GetStaticBasedAABB(MCore::AABB* outAABB)
     {
         *outAABB = mStaticAABB;
     }
-
 
     const MCore::AABB& ActorInstance::GetStaticBasedAABB() const
     {
         return mStaticAABB;
     }
 
-
     const MCore::AABB& ActorInstance::GetAABB() const
     {
         return mAABB;
     }
-
 
     void ActorInstance::SetAABB(const MCore::AABB& aabb)
     {
         mAABB = aabb;
     }
 
-
     uint32 ActorInstance::GetNumAttachments() const
     {
         return mAttachments.GetLength();
     }
-
 
     Attachment* ActorInstance::GetAttachment(uint32 nr) const
     {
         return mAttachments[nr];
     }
 
-
     bool ActorInstance::GetIsAttachment() const
     {
         return (mAttachedTo != nullptr);
     }
-
 
     ActorInstance* ActorInstance::GetAttachedTo() const
     {
         return mAttachedTo;
     }
 
-
     Attachment* ActorInstance::GetSelfAttachment() const
     {
         return mSelfAttachment;
     }
-
 
     uint32 ActorInstance::GetNumDependencies() const
     {
         return mDependencies.GetLength();
     }
 
-
     Actor::Dependency* ActorInstance::GetDependency(uint32 nr)
     {
         return &mDependencies[nr];
     }
-
 
     MorphSetupInstance* ActorInstance::GetMorphSetupInstance() const
     {
         return mMorphSetup;
     }
 
-
     void ActorInstance::SetParentWorldSpaceTransform(const Transform& transform)
     {
         mParentWorldTransform = transform;
     }
-
 
     const Transform& ActorInstance::GetParentWorldSpaceTransform() const
     {
         return mParentWorldTransform;
     }
 
-
     void ActorInstance::SetRender(bool enabled)
     {
         SetFlag(BOOL_RENDER, enabled);
     }
-
 
     bool ActorInstance::GetRender() const
     {
         return (mBoolFlags & BOOL_RENDER) != 0;
     }
 
-
     void ActorInstance::SetIsUsedForVisualization(bool enabled)
     {
         SetFlag(BOOL_USEDFORVISUALIZATION, enabled);
     }
 
-
     bool ActorInstance::GetIsUsedForVisualization() const
     {
         return (mBoolFlags & BOOL_USEDFORVISUALIZATION) != 0;
     }
-
 
     void ActorInstance::SetIsOwnedByRuntime(bool isOwnedByRuntime)
     {
@@ -1986,7 +1886,6 @@ namespace EMotionFX
 #endif
     }
 
-
     bool ActorInstance::GetIsOwnedByRuntime() const
     {
 #if defined(EMFX_DEVELOPMENT_BUILD)
@@ -1996,66 +1895,55 @@ namespace EMotionFX
 #endif
     }
 
-
     uint32 ActorInstance::GetThreadIndex() const
     {
         return mThreadIndex;
     }
-
 
     void ActorInstance::SetThreadIndex(uint32 index)
     {
         mThreadIndex = index;
     }
 
-
     void ActorInstance::SetTrajectoryDeltaTransform(const Transform& transform)
     {
         mTrajectoryDelta = transform;
     }
-
 
     const Transform& ActorInstance::GetTrajectoryDeltaTransform() const
     {
         return mTrajectoryDelta;
     }
 
-
     AnimGraphPose* ActorInstance::RequestPose(uint32 threadIndex)
     {
         return GetEMotionFX().GetThreadData(threadIndex)->GetPosePool().RequestPose(this);
     }
-
 
     void ActorInstance::FreePose(uint32 threadIndex, AnimGraphPose* pose)
     {
         GetEMotionFX().GetThreadData(threadIndex)->GetPosePool().FreePose(pose);
     }
 
-
     void ActorInstance::SetMotionSamplingTimer(float timeInSeconds)
     {
         mMotionSamplingTimer = timeInSeconds;
     }
-
 
     void ActorInstance::SetMotionSamplingRate(float updateRateInSeconds)
     {
         mMotionSamplingRate = updateRateInSeconds;
     }
 
-
     float ActorInstance::GetMotionSamplingTimer() const
     {
         return mMotionSamplingTimer;
     }
 
-
     float ActorInstance::GetMotionSamplingRate() const
     {
         return mMotionSamplingRate;
     }
-
 
     void ActorInstance::IncreaseNumAttachmentRefs(uint8 numToIncreaseWith)
     {
@@ -2069,36 +1957,30 @@ namespace EMotionFX
         MCORE_ASSERT(mNumAttachmentRefs == 0 || mNumAttachmentRefs == 1);
     }
 
-
     uint8 ActorInstance::GetNumAttachmentRefs() const
     {
         return mNumAttachmentRefs;
     }
-
 
     void ActorInstance::SetAttachedTo(ActorInstance* actorInstance)
     {
         mAttachedTo = actorInstance;
     }
 
-
     void ActorInstance::SetSelfAttachment(Attachment* selfAttachment)
     {
         mSelfAttachment = selfAttachment;
     }
-
 
     void ActorInstance::EnableFlag(uint8 flag)
     {
         mBoolFlags |= flag;
     }
 
-
     void ActorInstance::DisableFlag(uint8 flag)
     {
         mBoolFlags &= ~flag;
     }
-
 
     void ActorInstance::SetFlag(uint8 flag, bool enabled)
     {
@@ -2112,7 +1994,6 @@ namespace EMotionFX
         }
     }
 
-
     void ActorInstance::RecursiveSetIsVisible(bool isVisible)
     {
         SetIsVisible(isVisible);
@@ -2125,7 +2006,6 @@ namespace EMotionFX
         }
     }
 
-
     void ActorInstance::RecursiveSetIsVisibleTowardsRoot(bool isVisible)
     {
         SetIsVisible(isVisible);
@@ -2135,12 +2015,10 @@ namespace EMotionFX
         }
     }
 
-
     void ActorInstance::SetIsEnabled(bool enabled)
     {
         SetFlag(BOOL_ENABLED, enabled);
     }
-
 
     // update the normal scale factor based on the bounds
     void ActorInstance::UpdateVisualizeScale()
@@ -2170,20 +2048,17 @@ namespace EMotionFX
         mVisualizeScale *= 0.01f;
     }
 
-
     // get the normal scale factor
     float ActorInstance::GetVisualizeScale() const
     {
         return mVisualizeScale;
     }
 
-
     // manually set the visualize scale factor
     void ActorInstance::SetVisualizeScale(float factor)
     {
         mVisualizeScale = factor;
     }
-
 
     // Recursively check if we have a given attachment in the hierarchy going downwards.
     bool ActorInstance::RecursiveHasAttachment(const ActorInstance* attachmentInstance) const
@@ -2206,7 +2081,6 @@ namespace EMotionFX
         return false;
     }
 
-
     // Check if we can safely attach an attachment that uses the specified actor instance.
     // This will check for infinite recursion/circular chains.
     bool ActorInstance::CheckIfCanHandleAttachment(const ActorInstance* attachmentInstance) const
@@ -2218,4 +2092,4 @@ namespace EMotionFX
 
         return true;
     }
-}   // namespace EMotionFX
+} // namespace EMotionFX

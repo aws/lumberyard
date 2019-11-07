@@ -64,7 +64,6 @@ namespace AzToolsFramework
                 return true;
             }
 
-            // FL[FD-10097] Speed up search of assets in Asset Browser
             // we can safely accept entry if it's parent folder is accepted already
             if (entry->parent() && static_cast<AssetBrowserEntry*>(entry->parent())->GetEntryType() == AssetBrowserEntry::AssetEntryType::Folder)
             {
@@ -75,7 +74,6 @@ namespace AzToolsFramework
             {
                 return true;
             }
-
 
             if (m_filter->Match(entry))
             {
@@ -159,14 +157,13 @@ namespace AzToolsFramework
                 }
             }
 
-            // FL[FD-10097] Speed up search of assets in Asset Browser
             m_seenAndAcceptedIndices.clear();
+
             beginResetModel();
             endResetModel();
 
             Q_EMIT filterChanged();
 
-            // FL[FD-10097] Speed up search of assets in Asset Browser
             m_seenAndAcceptedIndices.clear();
         }
 
@@ -176,7 +173,6 @@ namespace AzToolsFramework
             {
                 m_alreadyRecomputingFilters = true;
                 // de-bounce it, since we may get many filter updates all at once.
-                // FL[FD-10097] Speed up search of assets in Asset Browser
                 QTimer::singleShot(500, this, [this]()
                 {
                     m_alreadyRecomputingFilters = false;

@@ -24,10 +24,35 @@ AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QCollatorSor
 #include <QCollator>
 AZ_POP_DISABLE_WARNING
 
+// FL[FD-10097] Speed up search of assets in Asset Browser
+#include <AzCore/std/containers/unordered_set.h>
+
 namespace AzToolsFramework
 {
     namespace AssetBrowser
     {
+        // FL[FD-10097] Speed up search of assets in Asset Browser
+        namespace detail
+        {
+            struct QModelIndexEqualityPredicate : AZStd::binary_function<QModelIndex, QModelIndex, bool>
+            {
+                inline bool operator()(QModelIndex left, QModelIndex right) const
+                {
+                    return left == right;
+                }
+            };
+
+            struct QModelIndexHasher : AZStd::unary_function<QModelIndex, AZStd::size_t>
+            {
+                inline AZStd::size_t operator()(QModelIndex value) const
+                {
+                    return static_cast<uintptr_t>(value.internalId());
+                }
+            };
+
+            using QModelIndexSet = AZStd::unordered_set<QModelIndex, detail::QModelIndexHasher, detail::QModelIndexEqualityPredicate>;
+        }
+
         class AssetBrowserFilterModel
             : public QSortFilterProxyModel
         {
@@ -66,6 +91,9 @@ namespace AzToolsFramework
             QWeakPointer<const StringFilter> m_stringFilter;
             QWeakPointer<const CompositeFilter> m_assetTypeFilter;
             QCollator m_collator;  // cache the collator as its somewhat expensive to constantly create and destroy one.
+
+            // FL[FD-10097] Speed up search of assets in Asset Browser
+            detail::QModelIndexSet m_seenAndAcceptedIndices;
         };
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

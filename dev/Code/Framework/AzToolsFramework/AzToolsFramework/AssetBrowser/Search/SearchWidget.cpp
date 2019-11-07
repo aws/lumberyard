@@ -86,12 +86,15 @@ namespace AzToolsFramework
             , m_stringFilter(new CompositeFilter(CompositeFilter::LogicOperatorType::AND))
             , m_typesFilter(new CompositeFilter(CompositeFilter::LogicOperatorType::OR))
         {
-            m_filter->SetFilterPropagation(AssetBrowserEntryFilter::PropagateDirection::Down);
+            // FL[FD-10097] Speed up search of assets in Asset Browser
+            m_filter->SetFilterPropagation(AssetBrowserEntryFilter::PropagateDirection::None);
 
-            m_stringFilter->SetFilterPropagation(AssetBrowserEntryFilter::PropagateDirection::Up);
+            // FL[FD-10097] Speed up search of assets in Asset Browser
+            m_stringFilter->SetFilterPropagation(AssetBrowserEntryFilter::PropagateDirection::None);
             m_stringFilter->SetTag("String");
 
-            m_typesFilter->SetFilterPropagation(AssetBrowserEntryFilter::PropagateDirection::Down);
+            // FL[FD-10097] Speed up search of assets in Asset Browser
+            m_typesFilter->SetFilterPropagation(AssetBrowserEntryFilter::PropagateDirection::None);
             m_typesFilter->SetTag("AssetTypes");
 
             connect(this, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this,

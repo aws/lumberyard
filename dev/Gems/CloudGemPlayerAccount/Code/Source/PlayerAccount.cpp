@@ -10,7 +10,7 @@
 *
 */
 #include "CloudGemPlayerAccount_precompiled.h"
-#include "PlayerAccount.h"
+#include <CloudGemPlayerAccount/PlayerAccount.h>
 
 #include <AzCore/base.h>
 #include <AzCore/Memory/Memory.h>

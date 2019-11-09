@@ -11,22 +11,16 @@
 */
 #pragma once
 #include <AzCore/EBus/EBus.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
-#pragma warning(push)
-#pragma warning(disable: 4355 4251) // <future> includes ppltasks.h which throws a C4355 warning: 'this' used in base member initializer list
-#include <aws/cognito-idp/CognitoIdentityProviderClient.h>
-#include <aws/core/client/AWSError.h>
-#include <aws/core/utils/Outcome.h>
-#pragma warning(pop)
-
-#include "BasicResultInfo.h"
-#include "DeliveryDetails.h"
-#include "PlayerAccount.h"
-#include "AccountResultInfo.h"
-#include "UserAttributeList.h"
-#include "UserAttributeValues.h"
+#include <CloudGemPlayerAccount/AccountResultInfo.h>
+#include <CloudGemPlayerAccount/BasicResultInfo.h>
+#include <CloudGemPlayerAccount/DeliveryDetails.h>
+#include <CloudGemPlayerAccount/PlayerAccount.h>
+#include <CloudGemPlayerAccount/UserAttributeList.h>
+#include <CloudGemPlayerAccount/UserAttributeValues.h>
 
 using namespace Aws::CognitoIdentityProvider;
 

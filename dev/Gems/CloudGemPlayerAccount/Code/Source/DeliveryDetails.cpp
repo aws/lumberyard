@@ -10,7 +10,7 @@
 *
 */
 #include "CloudGemPlayerAccount_precompiled.h"
-#include "DeliveryDetails.h"
+#include <CloudGemPlayerAccount/DeliveryDetails.h>
 
 #include <AzCore/base.h>
 #include <AzCore/Memory/Memory.h>
@@ -18,6 +18,9 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Script/ScriptContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
+
+#include <aws/cognito-idp/model/CodeDeliveryDetailsType.h>
+#include <aws/core/utils/memory/stl/AWSVector.h>
 
 namespace CloudGemPlayerAccount
 {
@@ -113,15 +116,6 @@ namespace CloudGemPlayerAccount
                 ->Method("GetSize", &DeliveryDetailsArray::GetSize)
                 ->Method("At", &DeliveryDetailsArray::At)
                 ;
-        }
-    }
-
-    DeliveryDetailsArray::DeliveryDetailsArray(const Aws::Vector<CognitoDeliveryDetailsType>& data)
-        : m_data(data.size())
-    {
-        for (size_t i = 0; i < data.size(); ++i)
-        {
-            m_data[i].Reset(data[i]);
         }
     }
 

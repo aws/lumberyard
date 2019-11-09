@@ -16,8 +16,18 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
 
-#include <aws/cognito-idp/model/CodeDeliveryDetailsType.h>
-#include <aws/core/utils/memory/stl/AWSVector.h>
+#include <vector>
+
+namespace Aws
+{
+    namespace CognitoIdentityProvider
+    {
+        namespace Model
+        {
+            class CodeDeliveryDetailsType;
+        }
+    }
+}
 
 namespace CloudGemPlayerAccount
 {
@@ -56,7 +66,18 @@ namespace CloudGemPlayerAccount
         static void Reflect(AZ::ReflectContext* context);
 
         DeliveryDetailsArray() {}
-        DeliveryDetailsArray(const Aws::Vector<CognitoDeliveryDetailsType>& data);
+        // avoid using the aws vector directly so that this header works without wscript changes
+        // aws::vector is just std::vector with the aws allocator
+        // since we're already copying into a AZStd::vector anyway, we don't need to care about that
+        template <class T>
+        DeliveryDetailsArray(const std::vector<CognitoDeliveryDetailsType, T>& data)
+            : m_data(data.size())
+        {
+            for (size_t i = 0; i < data.size(); ++i)
+            {
+                m_data[i].Reset(data[i]);
+            }
+        }
 
         int GetSize() const;
         DeliveryDetails At(int index) const;

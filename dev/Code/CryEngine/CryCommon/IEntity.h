@@ -134,6 +134,8 @@ struct SEntitySpawnParams
     bool                    bStaticEntityId;
     // Entity Pool useage.
     bool                    bCreatedThroughPool;
+    // Initial entity sector.
+    Vec3i         vSector;
     // Initial entity position (Local space).
     Vec3          vPosition;
     // Initial entity rotation (Local space).
@@ -885,6 +887,18 @@ struct IEntity
     // See Also:
     //     GetLocalBounds
     virtual void InvalidateBounds() {}
+
+    //////////////////////////////////////////////////////////////////////////
+    // Description:
+    //     Sets the entity sector.
+    // See Also:
+    //     GetSector
+    virtual void SetSector(const Vec3i &vSector, int nWhyFlags = 0, bool bRecalcPhyBounds = false) = 0;
+    // Description:
+    //     Retrieves the entity sector.
+    // See Also:
+    //      SetSector
+    virtual const Vec3i &GetSector() const=0;
 
     //////////////////////////////////////////////////////////////////////////
     // Description:

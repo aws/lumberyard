@@ -337,6 +337,37 @@ protected:
     Functor6<LIST(6, P)> m_functor;
 };
 
+template <LIST(7, typename P)>
+class CCommand7
+    : public CCommand
+{
+public:
+    CCommand7(const string& module, const string& name,
+        const string& description, const string& example,
+        const Functor7<LIST(7, P)>& functor);
+
+    QString Execute(const CArgs& args);
+
+protected:
+    friend class CEditorCommandManager;
+    Functor7<LIST(7, P)> m_functor;
+};
+
+template <LIST(7, typename P), typename RT>
+class CCommand7wRet
+    : public CCommand
+{
+public:
+    CCommand7wRet(const string& module, const string& name,
+        const string& description, const string& example,
+        const Functor7wRet<LIST(7, P), RT>& functor);
+
+    QString Execute(const CArgs& args);
+
+protected:
+    friend class CEditorCommandManager;
+    Functor7wRet<LIST(7, P), RT> m_functor;
+};
 //////////////////////////////////////////////////////////////////////////
 
 template <typename RT>
@@ -753,6 +784,102 @@ QString CCommand6<LIST(6, P)>::Execute(const CCommand::CArgs& args)
         CryLogAlways("Cannot execute the command %s.%s(%s,%s,%s,%s,%s,%s)! Invalid argument type(s).",
             m_module, m_name, args.GetArg(0).c_str(), args.GetArg(1).c_str(), args.GetArg(2).c_str(),
             args.GetArg(3).c_str(), args.GetArg(4).c_str(), args.GetArg(5).c_str());
+    }
+    return "";
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+
+template <LIST(7, typename P)>
+CCommand7<LIST(7, P)>::CCommand7(const string& module, const string& name,
+    const string& description, const string& example,
+    const Functor7<LIST(7, P)>& functor)
+    : CCommand(module, name, description, example)
+    , m_functor(functor)
+{}
+
+template <LIST(7, typename P)>
+QString CCommand7<LIST(7, P)>::Execute(const CCommand::CArgs& args)
+{
+    assert(args.GetArgCount()==7);
+    if(args.GetArgCount() < 7)
+    {
+        CryLogAlways("Cannot execute the command %s.%s! Four arguments required.", m_module.c_str(), m_name.c_str());
+        return "";
+    }
+
+    P1 p1;
+    P2 p2;
+    P3 p3;
+    P4 p4;
+    P5 p5;
+    P6 p6;
+    P7 p7;
+    bool ok=FromString_(p1, args.GetArg(0).c_str())
+        &&FromString_(p2, args.GetArg(1).c_str())
+        &&FromString_(p3, args.GetArg(2).c_str())
+        &&FromString_(p4, args.GetArg(3).c_str())
+        &&FromString_(p5, args.GetArg(4).c_str())
+        &&FromString_(p6, args.GetArg(5).c_str())
+        &&FromString_(p7, args.GetArg(6).c_str());
+    if(ok)
+    {
+        m_functor(p1, p2, p3, p4, p5, p6, p7);
+    }
+    else
+    {
+        CryLogAlways("Cannot execute the command %s.%s(%s,%s,%s,%s,%s,%s,%s)! Invalid argument type(s).",
+            m_module, m_name, args.GetArg(0).c_str(), args.GetArg(1).c_str(), args.GetArg(2).c_str(),
+            args.GetArg(3).c_str(), args.GetArg(4).c_str(), args.GetArg(5).c_str(), args.GetArg(6).c_str());
+    }
+    return "";
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+template <LIST(7, typename P), typename RT>
+CCommand7wRet<LIST(7, P), RT>::CCommand7wRet(const string& module, const string& name,
+    const string& description, const string& example,
+    const Functor7wRet<LIST(7, P), RT>& functor)
+    : CCommand(module, name, description, example)
+    , m_functor(functor)
+{}
+
+template <LIST(7, typename P), typename RT>
+QString CCommand7wRet<LIST(7, P), RT>::Execute(const CCommand::CArgs& args)
+{
+    assert(args.GetArgCount()==7);
+    if(args.GetArgCount() < 7)
+    {
+        CryLogAlways("Cannot execute the command %s.%s! Four arguments required.", m_module.c_str(), m_name.c_str());
+        return "";
+    }
+
+    P1 p1;
+    P2 p2;
+    P3 p3;
+    P4 p4;
+    P5 p5;
+    P6 p6;
+    P7 p7;
+    bool ok=FromString_(p1, args.GetArg(0).c_str())
+        &&FromString_(p2, args.GetArg(1).c_str())
+        &&FromString_(p3, args.GetArg(2).c_str())
+        &&FromString_(p4, args.GetArg(3).c_str())
+        &&FromString_(p5, args.GetArg(4).c_str())
+        &&FromString_(p6, args.GetArg(5).c_str())
+        &&FromString_(p7, args.GetArg(6).c_str());
+    if(ok)
+    {
+        RT ret=m_functor(p1, p2, p3, p4, p5, p6, p7);
+        return ToString_(ret).c_str();
+    }
+    else
+    {
+        CryLogAlways("Cannot execute the command %s.%s(%s,%s,%s,%s,%s,%s,%s)! Invalid argument type(s).",
+            m_module, m_name, args.GetArg(0).c_str(), args.GetArg(1).c_str(), args.GetArg(2).c_str(),
+            args.GetArg(3).c_str(), args.GetArg(4).c_str(), args.GetArg(5).c_str(), args.GetArg(6).c_str());
     }
     return "";
 }

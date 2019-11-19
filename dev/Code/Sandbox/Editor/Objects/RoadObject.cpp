@@ -546,8 +546,14 @@ void CRoadObject::AlignHeightMap()
         GetIEditor()->BeginUndo();
     }
 
-    CHeightmap* heightmap = GetIEditor()->GetHeightmap();
-    int unitSize = heightmap->GetUnitSize();
+    IEditorTerrain *terrain = GetIEditor()->GetTerrain();
+
+    if(!terrain->SupportHeightMap())
+        return;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
+
+    int unitSize = terrain->GetUnitSize();
     const Matrix34& wtm = GetWorldTM();
 
     int minx = 0, miny = 0, maxx = 0, maxy = 0;

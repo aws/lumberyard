@@ -21,7 +21,9 @@
 #include "Sky Accessibility/HeightmapAccessibility.h"
 #include "TerrainTexGen.h"
 
+#include "CryCommon/Iterrain.h"
 #include "Terrain/TerrainManager.h"
+#include "Terrain/Heightmap.h"
 
 // Sector flags.
 enum
@@ -43,7 +45,7 @@ CTerrainLayerTexGen::CTerrainLayerTexGen()
     m_bLog = true;
 
     SSectorInfo si;
-    GetIEditor()->GetHeightmap()->GetSectorsInfo(si);
+    GetIEditor()->GetTerrain()->GetSectorsInfo(si);
     Init(si.surfaceTextureSize);
 }
 
@@ -86,7 +88,7 @@ void CTerrainLayerTexGen::Init(const int resolution)
     }
 
     SSectorInfo si;
-    GetIEditor()->GetHeightmap()->GetSectorsInfo(si);
+    GetIEditor()->GetTerrain()->GetSectorsInfo(si);
 
     m_numSectors = si.numSectors;
     if (m_numSectors > 0)
@@ -105,6 +107,13 @@ void CTerrainLayerTexGen::Init(const int resolution)
 //////////////////////////////////////////////////////////////////////////
 bool CTerrainLayerTexGen::UpdateSectorLayers(const QPoint& sector)
 {
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(!terrain->SupportHeightMap())
+        return false;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
+
     QRect sectorRect;
     GetSectorRect(sector, sectorRect);
 
@@ -137,7 +146,7 @@ bool CTerrainLayerTexGen::UpdateSectorLayers(const QPoint& sector)
             memset(&m_sectorGrid[0], 0, m_sectorGrid.size() * sizeof(m_sectorGrid[0]));
         }
 
-        GetIEditor()->GetHeightmap()->GetData(recHMap, m_resolution, recHMap.topLeft(), hmap, true, true);
+        heightmap->GetData(recHMap, m_resolution, recHMap.topLeft(), hmap, true, true);
     }
 
     // For this sector all layers are valid.
@@ -157,6 +166,13 @@ bool CTerrainLayerTexGen::UpdateSectorLayers(const QPoint& sector)
 ////////////////////////////////////////////////////////////////////////
 bool CTerrainLayerTexGen::GenerateSectorTexture(const QPoint& sector, const QRect& rect, int flags, CImageEx& surfaceTexture)
 {
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(!terrain->SupportHeightMap())
+        return false;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
+
     // set flags.
     bool bNoTexture = flags & ETTG_NOTEXTURE;
     bool bUseLightmap = flags & ETTG_USE_LIGHTMAPS;
@@ -170,12 +186,11 @@ bool CTerrainLayerTexGen::GenerateSectorTexture(const QPoint& sector, const QRec
     uint32 i;
 
     CCryEditDoc* pDocument = GetIEditor()->GetDocument();
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
     CTexSectorInfo& texsectorInfo = GetCTexSectorInfo(sector);
     int sectorFlags = texsectorInfo.m_Flags;
 
     assert(pDocument);
-    assert(pHeightmap);
+    assert(heightmap);
 
     if (bNoTexture)
     {

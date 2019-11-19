@@ -1779,6 +1779,8 @@
         ],
         "Terrain": [
             "Terrain/Clouds.cpp",
+            "Terrain/EditorTerrainFactory.cpp",
+            "Terrain/EditorTerrainFactory.h",
             "Terrain/GenerationParam.cpp",
             "Terrain/GenerationParam.ui",
             "Terrain/Heightmap.cpp",

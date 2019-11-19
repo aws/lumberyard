@@ -135,7 +135,8 @@ int CTerrain::GetCompiledDataSize(SHotUpdateInfo* pExportInfo)
     }
 
     // get header size
-    nDataSize += sizeof(STerrainChunkHeader);
+    nDataSize+=sizeof(STerrainChunkHeader);
+    nDataSize+=sizeof(STerrainInfo);
 
     // get vegetation objects table size
     if (bObjs)
@@ -328,15 +329,23 @@ bool CTerrain::GetCompiledData(byte* pData, int nDataSize, std::vector<struct IS
 
     pTerrainChunkHeader->nFlags2 = (Get3DEngine()->m_bAreaActivationInUse ? TCH_FLAG2_AREA_ACTIVATION_IN_USE : 0);
     pTerrainChunkHeader->nChunkSize = nDataSize;
-    pTerrainChunkHeader->TerrainInfo.nHeightMapSize_InUnits = m_nSectorSize * GetSectorsTableSize() / m_nUnitSize;
-    pTerrainChunkHeader->TerrainInfo.nUnitSize_InMeters = m_nUnitSize;
-    pTerrainChunkHeader->TerrainInfo.nSectorSize_InMeters = m_nSectorSize;
-    pTerrainChunkHeader->TerrainInfo.nSectorsTableSize_InSectors = GetSectorsTableSize();
-    pTerrainChunkHeader->TerrainInfo.fHeightmapZRatio = 0;
-    pTerrainChunkHeader->TerrainInfo.fOceanWaterLevel = (m_fOceanWaterLevel > WATER_LEVEL_UNKNOWN) ? m_fOceanWaterLevel : 0;
+
+    STerrainInfo *pTerrainInfo=(STerrainInfo*)(pData+sizeof(STerrainChunkHeader));
+
+    pTerrainInfo->type=m_terrainTypeId;// STerrainInfo::Default;
+    pTerrainInfo->nTerrainSizeX_InUnits= m_nSectorSize * GetSectorsTableSize() / m_nUnitSize;
+    pTerrainInfo->nTerrainSizeY_InUnits=pTerrainInfo->nTerrainSizeX_InUnits;
+    pTerrainInfo->nTerrainSizeX_InUnits=1;
+    pTerrainInfo->nUnitSize_InMeters = m_nUnitSize;
+    pTerrainInfo->nSectorSize_InMeters = m_nSectorSize;
+    pTerrainInfo->nSectorsTableSize_InSectors = GetSectorsTableSize();
+    pTerrainInfo->fHeightmapZRatio = 0;
+    pTerrainInfo->fOceanWaterLevel = (m_fOceanWaterLevel > WATER_LEVEL_UNKNOWN) ? m_fOceanWaterLevel : 0;
 
     SwapEndian(*pTerrainChunkHeader, eEndian);
-    UPDATE_PTR_AND_SIZE(pData, nDataSize, sizeof(STerrainChunkHeader));
+    SwapEndian(*pTerrainInfo, eEndian);
+
+    UPDATE_PTR_AND_SIZE(pData, nDataSize, sizeof(STerrainChunkHeader)+sizeof(STerrainInfo));
 
     std::vector<struct IStatObj*>* pStatObjTable = NULL;
     std::vector< _smart_ptr<IMaterial> >* pMatTable = NULL;
@@ -517,12 +526,12 @@ void CTerrain::LoadVegetationData(PodArray<StatInstGroup>& rTable, PodArray<Stat
 }
 
 template <class T>
-bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHeader, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, bool bHotUpdate, SHotUpdateInfo* pExportInfo)
+bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHeader, STerrainInfo *pTerrainInfo, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, bool bHotUpdate, SHotUpdateInfo* pExportInfo)
 {
     LOADING_TIME_PROFILE_SECTION;
 
-    assert(pTerrainChunkHeader->nVersion == TERRAIN_CHUNK_VERSION);
-    if (pTerrainChunkHeader->nVersion != TERRAIN_CHUNK_VERSION)
+    assert(pTerrainChunkHeader->nVersion == TERRAIN_CHUNK_VERSION || pTerrainChunkHeader->nVersion==29);
+    if ((pTerrainChunkHeader->nVersion != TERRAIN_CHUNK_VERSION) && (pTerrainChunkHeader->nVersion!=29))
     {
         Error("CTerrain::SetCompiledData: version of file is %d, expected version is %d", pTerrainChunkHeader->nVersion, (int)TERRAIN_CHUNK_VERSION);
         return 0;
@@ -541,20 +550,15 @@ bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHe
             (bHMap && bObjs) ? "Objects and heightmap" : (bHMap ? "Heightmap" : (bObjs ? "Objects" : "Nothing")), ((float)nDataSize) / 1024.f / 1024.f);
     }
 
-    if (pTerrainChunkHeader->nChunkSize != nDataSize + sizeof(STerrainChunkHeader))
-    {
-        return 0;
-    }
-
     // get terrain settings
-    m_nUnitSize = pTerrainChunkHeader->TerrainInfo.nUnitSize_InMeters;
+    m_nUnitSize = pTerrainInfo->nUnitSize_InMeters;
     m_fInvUnitSize = 1.f / m_nUnitSize;
-    m_nTerrainSize = pTerrainChunkHeader->TerrainInfo.nHeightMapSize_InUnits * pTerrainChunkHeader->TerrainInfo.nUnitSize_InMeters;
+    m_nTerrainSize = pTerrainInfo->nTerrainSizeX_InUnits * pTerrainInfo->nUnitSize_InMeters;
 
     m_nTerrainSizeDiv = (m_nTerrainSize >> m_MeterToUnitBitShift) - 1;
-    m_nSectorSize = pTerrainChunkHeader->TerrainInfo.nSectorSize_InMeters;
-    m_nSectorsTableSize = pTerrainChunkHeader->TerrainInfo.nSectorsTableSize_InSectors;
-    m_fOceanWaterLevel = pTerrainChunkHeader->TerrainInfo.fOceanWaterLevel ? pTerrainChunkHeader->TerrainInfo.fOceanWaterLevel : WATER_LEVEL_UNKNOWN;
+    m_nSectorSize = pTerrainInfo->nSectorSize_InMeters;
+    m_nSectorsTableSize = pTerrainInfo->nSectorsTableSize_InSectors;
+    m_fOceanWaterLevel = pTerrainInfo->fOceanWaterLevel ? pTerrainInfo->fOceanWaterLevel : WATER_LEVEL_UNKNOWN;
 
     if (bHotUpdate)
     {
@@ -592,7 +596,7 @@ bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHe
     {
         LOADING_TIME_PROFILE_SECTION_NAMED("SetupEntityGrid");
 
-        int nCellSize = CTerrain::GetTerrainSize() > 2048 ? CTerrain::GetTerrainSize() >> 10 : 2;
+        int nCellSize = GetTerrainSize() > 2048 ? GetTerrainSize() >> 10 : 2;
         nCellSize = max(nCellSize, GetCVars()->e_PhysMinCellSize);
         int log2PODGridSize = 0;
         if (nCellSize == 2)
@@ -604,7 +608,7 @@ bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHe
             log2PODGridSize = 1;
         }
         GetPhysicalWorld()->SetupEntityGrid(2, Vec3(0, 0, 0), // this call will destroy all physicalized stuff
-            CTerrain::GetTerrainSize() / nCellSize, CTerrain::GetTerrainSize() / nCellSize, (float)nCellSize, (float)nCellSize, log2PODGridSize);
+            GetTerrainSize() / nCellSize, GetTerrainSize() / nCellSize, (float)nCellSize, (float)nCellSize, log2PODGridSize);
     }
 
     std::vector<_smart_ptr<IMaterial> >* pMatTable = NULL;
@@ -857,14 +861,15 @@ bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHe
 bool CTerrain::SetCompiledData(byte* pData, int nDataSize, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, bool bHotUpdate, SHotUpdateInfo* pExportInfo)
 {
     STerrainChunkHeader* pTerrainChunkHeader = (STerrainChunkHeader*)pData;
+    STerrainInfo* pTerrainInfo=(STerrainInfo*)(pData+sizeof(STerrainChunkHeader));
     SwapEndian(*pTerrainChunkHeader, eLittleEndian);
 
-    pData += sizeof(STerrainChunkHeader);
-    nDataSize -= sizeof(STerrainChunkHeader);
-    return Load_T(pData, nDataSize, pTerrainChunkHeader, ppStatObjTable, ppMatTable, bHotUpdate, pExportInfo);
+    pData += (sizeof(STerrainChunkHeader)+sizeof(STerrainInfo));
+    nDataSize -= (sizeof(STerrainChunkHeader)+sizeof(STerrainInfo));
+    return Load_T(pData, nDataSize, pTerrainChunkHeader, pTerrainInfo, ppStatObjTable, ppMatTable, bHotUpdate, pExportInfo);
 }
 
-bool CTerrain::Load(AZ::IO::HandleType fileHandle, int nDataSize, STerrainChunkHeader* pTerrainChunkHeader, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable)
+bool CTerrain::LoadHandle(AZ::IO::HandleType fileHandle, int nDataSize, STerrainChunkHeader* pTerrainChunkHeader, STerrainInfo* pTerrainInfo, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable)
 {
     bool bRes;
 
@@ -883,12 +888,12 @@ bool CTerrain::Load(AZ::IO::HandleType fileHandle, int nDataSize, STerrainChunkH
             return false;
         }
 
-        bRes = Load_T(pPtr, nDataSize, pTerrainChunkHeader, ppStatObjTable, ppMatTable, 0, 0);
+        bRes = Load_T(pPtr, nDataSize, pTerrainChunkHeader, pTerrainInfo, ppStatObjTable, ppMatTable, 0, 0);
     }
     else
     {
         // in case of big data files - load data in many small blocks
-        bRes = Load_T(fileHandle, nDataSize, pTerrainChunkHeader, ppStatObjTable, ppMatTable, 0, 0);
+        bRes = Load_T(fileHandle, nDataSize, pTerrainChunkHeader, pTerrainInfo, ppStatObjTable, ppMatTable, 0, 0);
     }
 
     if (m_RootNode)

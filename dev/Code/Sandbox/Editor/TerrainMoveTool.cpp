@@ -20,6 +20,7 @@
 #include "Viewport.h"
 #include "VegetationMap.h"
 #include "Terrain/TerrainManager.h"
+#include "Terrain/Heightmap.h"
 #include "CryEditDoc.h"
 #include "MainWindow.h"
 
@@ -382,18 +383,23 @@ void CTerrainMoveTool::Move(bool isCopy, bool bOnlyVegetation, bool bOnlyTerrain
     CUndo undo("Copy Area");
     QWaitCursor wait;
 
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
-    if (!pHeightmap || !pHeightmap->GetHeight() || !pHeightmap->GetWidth())
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+    if (!terrain || !terrain->GetHeight() || !terrain->GetWidth())
     {
         return;
     }
 
+    if(!terrain->SupportHeightMap())
+        return;
+
+    CHeightmap *pHeightmap=(CHeightmap *)terrain;
+
     AABB srcBox(m_source.pos - m_dym / 2, m_source.pos + m_dym / 2);
 
-    LONG bx1 = pHeightmap->WorldToHmap(srcBox.min).x();
-    LONG by1 = pHeightmap->WorldToHmap(srcBox.min).y();
-    LONG bx2 = pHeightmap->WorldToHmap(srcBox.max).x();
-    LONG by2 = pHeightmap->WorldToHmap(srcBox.max).y();
+    LONG bx1 = pHeightmap->FromWorld(srcBox.min).x();
+    LONG by1 = pHeightmap->FromWorld(srcBox.min).y();
+    LONG bx2 = pHeightmap->FromWorld(srcBox.max).x();
+    LONG by2 = pHeightmap->FromWorld(srcBox.max).y();
 
     LONG xc = (bx1 + bx2) / 2;
     LONG yc = (by1 + by2) / 2;
@@ -401,13 +407,13 @@ void CTerrainMoveTool::Move(bool isCopy, bool bOnlyVegetation, bool bOnlyTerrain
     LONG cx1 = bx1;
     LONG cy1 = by1;
 
-    QPoint hmapPosStart = pHeightmap->WorldToHmap(m_target.pos - m_dym / 2) - QPoint(cx1, cy1);
+    QPoint hmapPosStart = pHeightmap->FromWorld(m_target.pos - m_dym / 2) - QPoint(cx1, cy1);
 
     if (m_targetRot == ImageRotationDegrees::Rotate90 || m_targetRot == ImageRotationDegrees::Rotate270)
     {
         cx1 = xc - (by2 - by1) / 2;
         cy1 = yc - (bx2 - bx1) / 2;
-        hmapPosStart = pHeightmap->WorldToHmap(m_target.pos - Vec3(m_dym.y / 2, m_dym.x / 2, m_dym.z)) - QPoint(cx1, cy1);
+        hmapPosStart = pHeightmap->FromWorld(m_target.pos - Vec3(m_dym.y / 2, m_dym.x / 2, m_dym.z)) - QPoint(cx1, cy1);
     }
 
 #ifdef WIN64
@@ -677,13 +683,13 @@ void CTerrainMoveTool::OnManipulatorDrag(CViewport* view, ITransformManipulator*
     int editMode = GetIEditor()->GetEditMode();
     if (editMode == eEditModeMove)
     {
-        CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
+        IEditorTerrain* terrain = GetIEditor()->GetTerrain();
         GetIEditor()->RestoreUndo();
 
         Vec3 pos = m_source.pos;
         Vec3 val = value;
 
-        Vec3 max = pHeightmap->HmapToWorld(QPoint(pHeightmap->GetWidth(), pHeightmap->GetHeight()));
+        Vec3 max = terrain->ToWorld(QPoint(terrain->GetWidth(), terrain->GetHeight()));
 
         uint32 wid = max.x;
         uint32 hey = max.y;

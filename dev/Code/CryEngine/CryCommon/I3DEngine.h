@@ -1741,6 +1741,47 @@ struct I3DEngine
     virtual bool ReadMacroTextureFile(const char* filepath, MacroTextureConfiguration& configuration) const = 0;
 
     // Summary:
+    //     Gets the terrain type id from the TerrainFactory based on terrain type name.
+    // Notes:
+    //     
+    // Arguments:
+    //     name                     - Name of terrain type
+    // Return Value:
+    //     A size_t which is the terrain id
+    virtual size_t GetTerrainId(const char *name) const=0;
+
+    // Summary:
+    //     Gets the terrain type name from the TerrainFactory based on terrain type id.
+    // Notes:
+    //     
+    // Arguments:
+    //     id                     - Terrain type id
+    // Return Value:
+    //     Name of terrain type
+    virtual const char *GetTerrainName(size_t id) const=0;
+
+    // Summary:
+    //     Gets the number of types
+    // Notes:
+    //     
+    // Arguments:
+    //     none
+    // Return Value:
+    //     Count of terrain types
+    virtual size_t TerrainTypeSize() const=0;
+
+    std::vector<std::string> GetTerrainNames()
+    {
+        std::vector<std::string> names;
+
+        for(size_t i=0; i<TerrainTypeSize(); ++i)
+        {
+            names.emplace_back(GetTerrainName(i));
+        }
+        return names;
+    }
+
+    // Summary:
     //     Gets the interpolated terrain elevation for a specified location.
     // Notes:
     //     All x,y values are valid.

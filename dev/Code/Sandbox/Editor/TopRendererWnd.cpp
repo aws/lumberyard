@@ -153,8 +153,9 @@ void QTopRendererWnd::UpdateContent(int flags)
         return;
     }
 
-    CHeightmap* heightmap = GetIEditor()->GetHeightmap();
-    if (!heightmap)
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if (!terrain)
     {
         return;
     }
@@ -164,8 +165,8 @@ void QTopRendererWnd::UpdateContent(int flags)
         return;
     }
 
-    m_heightmapSize.setWidth(heightmap->GetWidth() * heightmap->GetUnitSize());
-    m_heightmapSize.setHeight(heightmap->GetHeight() * heightmap->GetUnitSize());
+    m_heightmapSize.setWidth(terrain->GetWidth() * terrain->GetUnitSize());
+    m_heightmapSize.setHeight(terrain->GetHeight() * terrain->GetUnitSize());
 
     UpdateSurfaceTexture(flags);
     m_bContentsUpdated = true;
@@ -181,11 +182,12 @@ void QTopRendererWnd::UpdateContent(int flags)
 //////////////////////////////////////////////////////////////////////////
 void QTopRendererWnd::InitHeightmapAlignment()
 {
-    CHeightmap* heightmap = GetIEditor()->GetHeightmap();
-    if (heightmap)
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(terrain)
     {
         SSectorInfo si;
-        heightmap->GetSectorsInfo(si);
+        terrain->GetSectorsInfo(si);
         float sizeMeters = si.numSectors * si.sectorSize;
         float mid = sizeMeters / 2;
         if (sizeMeters != 0.f)
@@ -199,6 +201,13 @@ void QTopRendererWnd::InitHeightmapAlignment()
 //////////////////////////////////////////////////////////////////////////
 void QTopRendererWnd::UpdateSurfaceTexture(int flags)
 {
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(!terrain->SupportHeightMap())
+        return;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
+
     ////////////////////////////////////////////////////////////////////////
     // Generate a new surface texture
     ////////////////////////////////////////////////////////////////////////
@@ -243,14 +252,14 @@ void QTopRendererWnd::UpdateSurfaceTexture(int flags)
             }
 
             AABB box = GetIEditor()->GetViewManager()->GetUpdateRegion();
-            QRect updateRect = GetIEditor()->GetHeightmap()->WorldBoundsToRect(box);
+            QRect updateRect =heightmap->WorldBoundsToRect(box);
             QRect* pUpdateRect = &updateRect;
             if (bRedrawFullTexture)
             {
                 pUpdateRect = 0;
             }
 
-            GetIEditor()->GetHeightmap()->GetPreviewBitmap((DWORD*)m_terrainTexture.GetData(), m_textureSize.width(), false, false, pUpdateRect, m_bShowWater, m_bAutoScaleGreyRange);
+            heightmap->GetPreviewBitmap((DWORD*)m_terrainTexture.GetData(), m_textureSize.width(), false, false, pUpdateRect, m_bShowWater, m_bAutoScaleGreyRange);
         }
     }
 

@@ -1521,10 +1521,10 @@ float CEditorImpl::GetTerrainElevation(float x, float y)
     return engine->GetTerrainElevation(x, y);
 }
 
-CHeightmap* CEditorImpl::GetHeightmap()
+IEditorTerrain *CEditorImpl::GetTerrain()
 {
     assert(m_pTerrainManager);
-    return m_pTerrainManager->GetHeightmap();
+    return m_pTerrainManager->GetTerrain();
 }
 
 CVegetationMap* CEditorImpl::GetVegetationMap()

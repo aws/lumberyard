@@ -89,7 +89,7 @@ const int nThreadsNum = 3;
 #include "3dEngine.h"
 #include "ObjMan.h"
 #include "Vegetation.h"
-#include "terrain.h"
+#include <IEngineTerrain.h>
 #include "ObjectsTree.h"
 
 // TODO refactor!

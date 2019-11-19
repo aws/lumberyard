@@ -255,6 +255,9 @@ public:
     virtual void SetFOV(float fov) {}
     virtual float GetFOV() const;
 
+    virtual void SetSectorSize(Vec3i size)=0;
+    virtual Vec3i GetSectorSize() const=0;
+
     virtual QObject* qobject() { return nullptr; }
     virtual QWidget* widget() { return nullptr; }
 

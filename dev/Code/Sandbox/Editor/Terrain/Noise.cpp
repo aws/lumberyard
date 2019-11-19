@@ -86,7 +86,7 @@ __forceinline float CNoise::Spline(float x, float* knot)
     return ((c3*x + c2)*x + c1)*x + c0;
 }
 
-void CNoise::FracSynthPass(CDynamicArray2D* hBuf, float freq, float zscale, int xres, int zres, BOOL bLoop)
+void CNoise::FracSynthPass(CDynamicArray2D* hBuf, float freq, float zscale, int xres, int zres, bool bLoop)
 {
     // WARNING: Function is messy, and lots of dirty optimisation is used...
 

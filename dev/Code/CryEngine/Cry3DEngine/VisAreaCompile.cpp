@@ -17,6 +17,7 @@
 #include "StdAfx.h"
 #include "ObjMan.h"
 #include "VisAreas.h"
+#include "terrain.h"
 
 #define VISAREA_NODE_CHUNK_VERSION 2
 

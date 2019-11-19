@@ -248,6 +248,7 @@ struct IActorSystem
     virtual void Reload() = 0;
     virtual IActor* GetActor(EntityId entityId) = 0;
     virtual IActor* CreateActor(ChannelId channelId, const char* name, const char* actorClass, const Vec3& pos, const Quat& rot, const Vec3& scale, EntityId id = 0, TSerialize* serializer = nullptr) = 0;
+    virtual IActor* CreateActor(ChannelId channelId, const char* name, const char* actorClass, const Vec3i &sector, const Vec3& pos, const Quat& rot, const Vec3& scale, EntityId id = 0, TSerialize* serializer = nullptr)=0;
     virtual IActor* GetActorByChannelId(ChannelId channelId) = 0;
 
     virtual int GetActorCount() const = 0;

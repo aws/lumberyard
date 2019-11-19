@@ -121,13 +121,13 @@ void CTerrainHoleTool::Display(DisplayContext& dc)
         return;
     }
 
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
-    if (!pHeightmap)
+    IEditorTerrain* terrain = GetIEditor()->GetTerrain();
+    if (!terrain)
     {
         return;
     }
 
-    int unitSize = pHeightmap->GetUnitSize();
+    int unitSize = terrain->GetUnitSize();
 
     dc.SetColor(0, 1, 0, 1);
     dc.DrawTerrainCircle(m_pointerPos, m_brushRadius, 0.2f);
@@ -198,15 +198,17 @@ bool CTerrainHoleTool::OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, ui
 void CTerrainHoleTool::Modify()
 {
     if (!GetIEditor()->Get3DEngine()->GetITerrain())
-    {
         return;
-    }
 
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
-    if (!pHeightmap)
-    {
+    IEditorTerrain *terrain = GetIEditor()->GetTerrain();
+
+    if(!terrain)
         return;
-    }
+
+    if(!terrain->SupportHeightMap())
+        return;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
 
     Vec2i min;
     Vec2i max;
@@ -219,19 +221,19 @@ void CTerrainHoleTool::Modify()
         (max.y - min.y) >= 0
         )
     {
-        pHeightmap->MakeHole(min.x, min.y, max.x - min.x, max.y - min.y, m_bMakeHole);
+        heightmap->MakeHole(min.x, min.y, max.x - min.x, max.y - min.y, m_bMakeHole);
     }
 }
 //////////////////////////////////////////////////////////////////////////
 bool CTerrainHoleTool::CalculateHoleArea(Vec2i& min, Vec2i& max) const
 {
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
-    if (!pHeightmap)
+    IEditorTerrain *terrain = GetIEditor()->GetTerrain();
+    if (!terrain)
     {
         return false;
     }
 
-    int unitSize = pHeightmap->GetUnitSize();
+    int unitSize =terrain->GetUnitSize();
 
     float fx1 = (m_pointerPos.y - (float)m_brushRadius) / (float)unitSize;
     float fy1 = (m_pointerPos.x - (float)m_brushRadius) / (float)unitSize;
@@ -242,8 +244,8 @@ bool CTerrainHoleTool::CalculateHoleArea(Vec2i& min, Vec2i& max) const
     // and needed to correctly predict.
     min.x = MAX(fx1, 0);
     min.y = MAX(fy1, 0);
-    max.x = MIN(fx2, pHeightmap->GetWidth() - 1.0f);
-    max.y = MIN(fy2, pHeightmap->GetHeight() - 1.0f);
+    max.x = MIN(fx2, terrain->GetWidth() - 1.0f);
+    max.y = MIN(fy2, terrain->GetHeight() - 1.0f);
 
     return true;
 }

@@ -226,7 +226,7 @@ void CRoadRenderNode::Compile() PREFAST_SUPPRESS_WARNING(6262) //function uses >
             }
 
             // Ignore any trapezoids that are outside the terrain boundary.  Roads rely on terrain height to work.
-            float terrainSize = (float)CTerrain::GetTerrainSize();
+            float terrainSize = (float)GetTerrain()->GetTerrainSize();
             if ((WSBBox.min.x > terrainSize) || (WSBBox.min.y > terrainSize) ||
                 (WSBBox.max.x < 0.0f) || (WSBBox.max.y < 0.0f))
             {
@@ -283,7 +283,7 @@ void CRoadRenderNode::Compile() PREFAST_SUPPRESS_WARNING(6262) //function uses >
                     int X_in_meters = x1 + x * nUnitSize;
                     int Y_in_meters = y1 + y * nUnitSize;
 
-                    CTerrain* pTerrain = GetTerrain();
+                    IEngineTerrain* pTerrain = GetTerrain();
 
                     if (m_bIgnoreTerrainHoles || (pTerrain && !pTerrain->IsHole(X_in_meters, Y_in_meters)))
                     {
@@ -350,7 +350,7 @@ void CRoadRenderNode::Compile() PREFAST_SUPPRESS_WARNING(6262) //function uses >
             m_lstTang.Clear();
             m_lstTang.PreAllocate(m_lstVerts.Count(), m_lstVerts.Count());
 
-            int nStep = CTerrain::GetHeightMapUnitSize();
+            int nStep = GetTerrain()->GetHeightMapUnitSize();
 
             Vec3 vWSBoxCenter = m_WSBBox.GetCenter(); //vWSBoxCenter.z=0;
 

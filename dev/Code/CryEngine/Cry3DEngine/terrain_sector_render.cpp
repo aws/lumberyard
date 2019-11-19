@@ -170,8 +170,8 @@ bool CTerrainUpdateDispatcher::AddJob(CTerrainNode* pNode, bool executeAsJob, co
     const unsigned alignPad = TARGET_DEFAULT_ALIGN;
 
     // Preallocate enough temp memory to prevent reallocations
-    const int nStep = (1 << pNode->m_QueuedLOD) * CTerrain::GetHeightMapUnitSize();
-    const int nSectorSize = CTerrain::GetSectorSize() << pNode->m_nTreeLevel;
+    const int nStep = (1 << pNode->m_QueuedLOD) * GetTerrain()->GetHeightMapUnitSize();
+    const int nSectorSize  = GetTerrain()->GetSectorSize() << pNode->m_nTreeLevel;
 
     int nNumVerts = (nStep) ? ((nSectorSize / nStep) + 1) * ((nSectorSize / nStep) + 1) : 0;
     int nNumIdx = (nStep) ? (nSectorSize / nStep) * (nSectorSize / nStep) * 6 : 0;
@@ -578,13 +578,13 @@ void CTerrainNode::BuildVertices(int nStep)
 
     m_MeshData->m_Vertices.Clear();
 
-    int nSectorSize = CTerrain::GetSectorSize() << m_nTreeLevel;
+    int nSectorSize =GetTerrain()->GetSectorSize() << m_nTreeLevel;
 
     // keep often used variables on stack
     const int nOriginX = m_nOriginX;
     const int nOriginY = m_nOriginY;
-    const int nTerrainSize = CTerrain::GetTerrainSize();
-    const int iLookupRadius = 2 * CTerrain::GetHeightMapUnitSize();
+    const int nTerrainSize =GetTerrain()->GetTerrainSize();
+    const int iLookupRadius = 2 *GetTerrain()->GetHeightMapUnitSize();
     CTerrain*      pTerrain = GetTerrain();
 
     for (int x = nOriginX; x <= nOriginX + nSectorSize; x += nStep)
@@ -673,7 +673,7 @@ void CTerrainNode::AddIndexAliased(int _x, int _y, int _step, int nSectorSize, P
     int nShiftX = 0, nShiftY = 0;
 
     CTerrain* pTerrain = GetTerrain();
-    int nHeightMapUnitSize = CTerrain::GetHeightMapUnitSize();
+    int nHeightMapUnitSize =GetTerrain()->GetHeightMapUnitSize();
 
     IF(_x && _x < nSectorSize && plstNeighbourSectors, true)
     {
@@ -755,8 +755,8 @@ void CTerrainNode::BuildIndices(InPlaceIndexBuffer& indices, PodArray<CTerrainNo
         return;
     }
 
-    int nStep = (1 << m_QueuedLOD) * CTerrain::GetHeightMapUnitSize();
-    int nSectorSize = CTerrain::GetSectorSize() << m_nTreeLevel;
+    int nStep = (1 << m_QueuedLOD) * GetTerrain()->GetHeightMapUnitSize();
+    int nSectorSize =GetTerrain()->GetSectorSize() << m_nTreeLevel;
 
     indices.Clear();
 
@@ -1004,8 +1004,8 @@ void CTerrainNode::BuildVertices_Wrapper()
         return;
     }
 
-    int nStep = (1 << m_QueuedLOD) * CTerrain::GetHeightMapUnitSize();
-    int nSectorSize = CTerrain::GetSectorSize() << m_nTreeLevel;
+    int nStep = (1 << m_QueuedLOD) * GetTerrain()->GetHeightMapUnitSize();
+    int nSectorSize =GetTerrain()->GetSectorSize() << m_nTreeLevel;
     assert(nStep && nStep <= nSectorSize);
     if (nStep > nSectorSize)
     {

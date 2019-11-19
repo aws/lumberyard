@@ -26,8 +26,10 @@
 #include "MergedMeshRenderNode.h"
 #include "MergedMeshGeometry.h"
 #include "ShadowCache.h"
+#include "terrain.h"
 
 #include <AzCore/Component/TransformBus.h>
+#include "Environment/OceanEnvironmentBus.h"
 
 #define MAX_NODE_NUM 7
 

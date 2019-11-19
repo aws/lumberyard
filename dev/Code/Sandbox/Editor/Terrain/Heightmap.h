@@ -18,6 +18,9 @@
 #include "RGBLayer.h"
 #include "Layer.h"
 
+#include "Editor/Terrain/IEditorTerrain.h"
+#include <Editor/Terrain/EditorTerrainFactory.h>
+
 #define DEFAULT_HEIGHTMAP_SIZE 4096
 
 // Heightmap data type
@@ -31,43 +34,32 @@ struct SNoiseParams;
 class CTerrainGrid;
 struct SEditorPaintBrush;
 
-// Note: This type is used by the Terrain system; it isn't really a heightmap thing
-struct SSectorInfo
-{
-    //! Size of terrain unit.
-    int unitSize;
-
-    //! Sector size in meters.
-    int sectorSize;
-
-    //! Size of texture for one sector in pixels.
-    int sectorTexSize;
-
-    //! Number of sectors on one side of terrain.
-    int numSectors;
-
-    //! Size of whole terrain surface texture.
-    int surfaceTextureSize;
-};
-
-// Interface to access CHeightmap from gems
-class IHeightmap
-{
-public:
-    virtual void UpdateEngineTerrain(int x1, int y1, int width, int height, bool bElevation, bool bInfoBits) = 0;
-    virtual void RecordAzUndoBatchTerrainModify(AZ::u32 x, AZ::u32 y, AZ::u32 width, AZ::u32 height) = 0;
-};
-
 // Editor data structure to keep the heights, detail layer information/holes, terrain texture
-class CHeightmap : public IHeightmap
+class CHeightmap : 
+    public RegisterEditorTerrain<CHeightmap, IHeightmap>
 {
 public:
     CHeightmap();
     CHeightmap(const CHeightmap&);
     virtual ~CHeightmap();
 
+    static const char *Name() { return m_name; }
+
+    size_t GetType() override;
+    const char *GetTypeName() override;
+    size_t GetTerrainTypeId() override;
+    const char *GetTerrainTypeName() override;
+
+    void Init() override { InitTerrain(); }
+    void Update() override { UpdateEngineTerrain(); }
+
+    bool SupportLayers() override { return true; }
+    bool SupportSerialize() override { return true; }
+    bool SupportSerializeTexture() override { return true; }
+
     uint64 GetWidth() const { return m_iWidth; }
     uint64 GetHeight() const { return m_iHeight; }
+    uint64 GetDepth() const { return 0; }
     float GetMaxHeight() const { return m_fMaxHeight; }
 
     //! Get size of every heightmap unit in meters.
@@ -81,9 +73,11 @@ public:
 
     //! Convert from world coordinates to heightmap coordinates.
     QPoint WorldToHmap(const Vec3& wp) const;
+    QPoint FromWorld(const Vec3& wp) const { return WorldToHmap(wp); }
 
     //! Convert from heightmap coordinates to world coordinates.
-    Vec3 HmapToWorld(const QPoint& hpos) const;
+    Vec3 HmapToWorld(const QPoint& pos) const;
+    Vec3 ToWorld(const QPoint& pos) const { return HmapToWorld(pos); }
 
     // Maps world bounding box to the heightmap space rectangle.
     QRect WorldBoundsToRect(const AABB& worldBounds) const;
@@ -94,6 +88,11 @@ public:
     //! Returns information about sectors on terrain.
     //! @param si Structure filled with queried data.
     void GetSectorsInfo(SSectorInfo& si);
+
+    Vec3i GetSectorSizeVector() const
+    {
+        return Vec3i(0, 0, 0); //this is related to positioning
+    }
 
     // TODO: This unchecked buffer access needs to go
     t_hmap* GetData() { return m_pHeightmap.data(); }
@@ -119,6 +118,10 @@ public:
     // Terrain Grid functions.
     //////////////////////////////////////////////////////////////////////////
     void InitSectorGrid();
+    void InitSectorGrid(int numSectors) override;
+    int GetNumSectors() const override;
+    Vec3 SectorToWorld(const QPoint& sector) const override;
+
     CTerrainGrid* GetTerrainGrid() const { return m_terrainGrid.get(); }
 
     //////////////////////////////////////////////////////////////////////////
@@ -162,35 +165,36 @@ public:
     void MarkUsedLayerIds(bool bFree[CLayer::e_undefined]) const;
 
     // Hold / fetch
-    void Fetch();
-    void Hold();
-    bool Read(QString strFileName);
+    void Fetch() override;
+    void Hold() override;
+    bool Read(QString strFileName) override;
 
     // (Re)Allocate / deallocate
     void Resize(int iWidth, int iHeight, int unitSize, bool bCleanOld = true, bool bForceKeepVegetation = false);
+    void Resize(int iWidth, int iHeight, int iDepth, int unitSize, bool bCleanOld=true, bool bForceKeepVegetation=false) { Resize(iWidth, iHeight, unitSize, bCleanOld, bForceKeepVegetation); }
     void CleanUp();
 
     // Importing / exporting
     void Serialize(CXmlArchive& xmlAr);
     void SerializeTerrain(CXmlArchive& xmlAr);
-    void SaveImage(LPCSTR pszFileName) const;
+    void SaveImage(LPCSTR pszFileName) const override;
 
-    void LoadImage(const QString& fileName);
-    void LoadASC(const QString& fileName);
-    void LoadBT(const QString& fileName);
-    void LoadTIF(const QString& fileName);
+    void LoadImage(const QString& fileName) override;
+    void LoadASC(const QString& fileName) override;
+    void LoadBT(const QString& fileName) override;
+    void LoadTIF(const QString& fileName) override;
 
-    void SaveASC(const QString& fileName);
-    void SaveBT(const QString& fileName);
-    void SaveTIF(const QString& fileName);
+    void SaveASC(const QString& fileName) override;
+    void SaveBT(const QString& fileName) override;
+    void SaveTIF(const QString& fileName) override;
 
     //! Save heightmap to 16-bit image file format (PGM, ASC, BT)
-    void SaveImage16Bit(const QString& fileName);
+    void SaveImage16Bit(const QString& fileName) override;
 
     //! Save heightmap in RAW format.
-    void    SaveRAW(const QString& rawFile);
+    void    SaveRAW(const QString& rawFile) override;
     //! Load heightmap from RAW format.
-    void    LoadRAW(const QString& rawFile);
+    void    LoadRAW(const QString& rawFile) override;
 
     //! Return the heightmap as type CImageEx
     //! The image will be BGR format in grayscale
@@ -201,20 +205,20 @@ public:
     std::shared_ptr<CFloatImage> GetHeightmapFloatImage(bool scaleValues, ImageRotationDegrees rotationAmount) const;
 
     // Actions
-    void Smooth();
-    void Smooth(CFloatImage& hmap, const QRect& rect) const;
+    void Smooth() override;
+    void Smooth(CFloatImage& hmap, const QRect& rect) const override;
 
-    void Noise();
-    void Normalize();
-    void Invert();
-    void MakeIsle();
-    void SmoothSlope();
-    void Randomize();
-    void LowerRange(float fFactor);
-    void Flatten(float fFactor);
-    void GenerateTerrain(const SNoiseParams& sParam);
-    void Clear(bool bClearLayerBitmap = true);
-    void InitHeight(float fHeight);
+    void Noise() override;
+    void Normalize() override;
+    void Invert() override;
+    void MakeIsle() override;
+    void SmoothSlope() override;
+    void Randomize() override;
+    void LowerRange(float fFactor) override;
+    void Flatten(float fFactor) override;
+    void GenerateTerrain(const SNoiseParams& sParam) override;
+    void Clear(bool bClearLayerBitmap = true) override;
+    void InitHeight(float fHeight) override;
 
     // Drawing
     void DrawSpot(unsigned long iX, unsigned long iY,
@@ -286,10 +290,14 @@ public:
 
     bool IsAllocated();
 
-
+    void SetTerrainType(int type);
     void SetUseTerrain(bool useTerrain);
     bool GetUseTerrain();
 
+    void Update(bool bOnlyElevation=true, bool boUpdateReloadSurfacertypes=true) override;
+    void UpdateSectors() override;
+
+    void ClearTerrain() override;
 private:
     void CopyFrom(t_hmap* prevHeightmap, LayerWeight* prevWeightmap, int prevSize);
     void CopyFromInterpolate(t_hmap* prevHeightmap, LayerWeight* prevWeightmap, int resolution, int prevUnitSize);
@@ -307,6 +315,8 @@ private:
 
     // Initialization
     void InitNoise() const;
+
+    static const char *m_name;
 
     float m_fOceanLevel;
     float m_fMaxHeight;

@@ -1340,9 +1340,12 @@ void CRenderViewport::OnEditorNotifyEvent(EEditorNotifyEvent event)
         PopDisableRendering();
 
         {
-            CHeightmap* pHmap = GetIEditor()->GetHeightmap();
-            float sx = pHmap->GetWidth() * pHmap->GetUnitSize();
-            float sy = pHmap->GetHeight() * pHmap->GetUnitSize();
+            IEditorTerrain *terrain = GetIEditor()->GetTerrain();
+            float sx = terrain->GetWidth() * terrain->GetUnitSize();
+            float sy = terrain->GetHeight() * terrain->GetUnitSize();
+
+            //update camera sector size to new terrain
+            m_Camera.SetSectorSize(terrain->GetSectorSizeVector());
 
             Matrix34 viewTM;
             viewTM.SetIdentity();
@@ -1361,9 +1364,9 @@ void CRenderViewport::OnEditorNotifyEvent(EEditorNotifyEvent event)
         PopDisableRendering();
 
         {
-            CHeightmap* pHmap = GetIEditor()->GetHeightmap();
-            float sx = pHmap->GetWidth() * pHmap->GetUnitSize();
-            float sy = pHmap->GetHeight() * pHmap->GetUnitSize();
+            IEditorTerrain *terrain = GetIEditor()->GetTerrain();
+            float sx = terrain->GetWidth() * terrain->GetUnitSize();
+            float sy = terrain->GetHeight() * terrain->GetUnitSize();
 
             Matrix34 viewTM;
             viewTM.SetIdentity();
@@ -1579,14 +1582,11 @@ void CRenderViewport::OnRender()
         GetIEditor()->GetSystem()->RenderStatistics();
     }
 
-    //Update the heightmap *after* RenderWorld otherwise RenderWorld will capture the terrain render requests and not handle them properly
+    //Update the terrain *after* RenderWorld otherwise RenderWorld will capture the terrain render requests and not handle them properly
     //Actual terrain heightmap data gets rendered later
-    CHeightmap* heightmap = GetIEditor()->GetHeightmap();
-    if (heightmap)
-    {
-        heightmap->UpdateModSectors();
-    }
+    IEditorTerrain *terrain = GetIEditor()->GetTerrain();
 
+    terrain->UpdateSectors();
 
     if (ITestSystem* pTestSystem = GetISystem()->GetITestSystem())
     {
@@ -2673,7 +2673,29 @@ void CRenderViewport::keyReleaseEvent(QKeyEvent* event)
 void CRenderViewport::SetViewTM(const Matrix34& viewTM, bool bMoveOnly)
 {
     Matrix34 camMatrix = viewTM;
+    Vec3i sector=m_Camera.GetSector();
 
+    //check if move is outside of the sector?
+    Vec3i sectorSize=m_Camera.GetSectorSize();
+    if(sectorSize.x>0)
+    {
+        Vec3 position=camMatrix.GetTranslation();
+        Vec3i sectorOffset;
+
+        sectorOffset=Vec3i(position)/sectorSize;
+        
+        if(position.x<0)
+            sectorOffset.x-=1;
+        if(position.y<0)
+            sectorOffset.y-=1;
+        if(position.z<0)
+            sectorOffset.z-=1;
+
+        position=position-Vec3(sectorOffset.CompMul(sectorSize));
+
+        camMatrix.SetTranslation(position);
+        sector+=sectorOffset;
+    }
     // If no collision flag set do not check for terrain elevation.
     if (GetType() == ET_ViewportCamera)
     {
@@ -2795,6 +2817,7 @@ void CRenderViewport::SetViewTM(const Matrix34& viewTM, bool bMoveOnly)
 
     QtViewport::SetViewTM(camMatrix);
 
+    m_Camera.SetSector(sector);
     m_Camera.SetMatrix(camMatrix);
 }
 
@@ -3730,6 +3753,16 @@ float CRenderViewport::GetFOV() const
     }
 
     return m_camFOV;
+}
+
+void CRenderViewport::SetSectorSize(Vec3i size)
+{
+    m_Camera.SetSectorSize(size);
+}
+
+Vec3i CRenderViewport::GetSectorSize() const
+{
+    return m_Camera.GetSectorSize();
 }
 
 //////////////////////////////////////////////////////////////////////////

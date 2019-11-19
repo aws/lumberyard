@@ -87,10 +87,10 @@ CTerrainModifyTool::CTerrainModifyTool()
     m_pointerPos(0, 0, 0);
     GetIEditor()->ClearSelection();
 
-    m_brush[eBrushFlatten].heightRange.y = GetIEditor()->GetHeightmap()->GetMaxHeight();
+    m_brush[eBrushFlatten].heightRange.y = GetIEditor()->GetTerrain()->GetMaxHeight();
     m_brush[eBrushRiseLower].heightRange.x = -50;
     m_brush[eBrushRiseLower].heightRange.y =  50;
-    m_brush[eBrushPickHeight].heightRange.y = GetIEditor()->GetHeightmap()->GetMaxHeight();
+    m_brush[eBrushPickHeight].heightRange.y = GetIEditor()->GetTerrain()->GetMaxHeight();
     m_brush[eBrushPickHeight].radius = 0;
     m_brush[eBrushPickHeight].hardness = 0;
 
@@ -515,7 +515,12 @@ void CTerrainModifyTool::Paint()
         return;
     }
 
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(!terrain->SupportHeightMap())
+        return;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
 
     CTerrainBrush* pBrush = m_pBrush;
     if (m_bSmoothOverride)
@@ -523,7 +528,7 @@ void CTerrainModifyTool::Paint()
         pBrush = &m_brush[eBrushSmooth];
     }
 
-    int unitSize = pHeightmap->GetUnitSize();
+    int unitSize = heightmap->GetUnitSize();
 
     //dc.renderer->SetMaterialColor( 1,1,0,1 );
     int tx = RoundFloatToInt(m_pointerPos.y / unitSize);
@@ -541,17 +546,17 @@ void CTerrainModifyTool::Paint()
 
     if (pBrush->type == eBrushFlatten && !m_bSmoothOverride)
     {
-        pHeightmap->DrawSpot2(tx, ty, tsize, fInsideRadius, pBrush->height, pBrush->hardness, pBrush->bNoise, pBrush->noiseFreq / 10.0f, pBrush->noiseScale / 1000.0f);
+        heightmap->DrawSpot2(tx, ty, tsize, fInsideRadius, pBrush->height, pBrush->hardness, pBrush->bNoise, pBrush->noiseFreq / 10.0f, pBrush->noiseScale / 1000.0f);
     }
     if (pBrush->type == eBrushRiseLower && !m_bSmoothOverride)
     {
-        pHeightmap->RiseLowerSpot(tx, ty, tsize, fInsideRadius, pBrush->height, pBrush->hardness, pBrush->bNoise, pBrush->noiseFreq / 10.0f, pBrush->noiseScale / 1000.0f);
+        heightmap->RiseLowerSpot(tx, ty, tsize, fInsideRadius, pBrush->height, pBrush->hardness, pBrush->bNoise, pBrush->noiseFreq / 10.0f, pBrush->noiseScale / 1000.0f);
     }
     else if (pBrush->type == eBrushSmooth || m_bSmoothOverride)
     {
-        pHeightmap->SmoothSpot(tx, ty, tsize, pBrush->height, pBrush->hardness);//,m_pBrush->noiseFreq/10.0f,m_pBrush->noiseScale/10.0f );
+        heightmap->SmoothSpot(tx, ty, tsize, pBrush->height, pBrush->hardness);//,m_pBrush->noiseFreq/10.0f,m_pBrush->noiseScale/10.0f );
     }
-    pHeightmap->UpdateEngineTerrain(x1, y1, tsize2, tsize2, true, false);
+    heightmap->UpdateEngineTerrain(x1, y1, tsize2, tsize2, true, false);
     AABB box;
     box.min = m_pointerPos - Vec3(pBrush->radius, pBrush->radius, 0);
     box.max = m_pointerPos + Vec3(pBrush->radius, pBrush->radius, 0);

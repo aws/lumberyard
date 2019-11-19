@@ -121,6 +121,11 @@ struct IImageUtil;  // Vladimir@conffx
 struct IEditorParticleUtils;  // Leroy@conffx
 struct ILogFile; // Vladimir@conffx
 
+namespace editor
+{
+class ITerrain;
+}//namespace editor
+
 // Qt/QML
 
 #ifdef DEPRECATED_QML_SUPPORT
@@ -658,7 +663,7 @@ struct IEditor
     //! Get Lens Flare Manager.
     virtual CLensFlareManager* GetLensFlareManager() = 0;
     virtual float GetTerrainElevation(float x, float y) = 0;
-    virtual class CHeightmap* GetHeightmap() = 0;
+    virtual class IEditorTerrain* GetTerrain() = 0;
     virtual class CVegetationMap* GetVegetationMap() = 0;
     virtual class CAIManager*   GetAI() = 0;
     virtual Editor::EditorQtApplication* GetEditorQtApplication() = 0;

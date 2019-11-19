@@ -21,8 +21,10 @@
 
 //////////////////////////////////////////////////////////////////////////
 // Dependencies
-#include "Terrain/Heightmap.h"
 #include "DocMultiArchive.h"
+#include "Layer.h"
+#include "RGBLayer.h"
+#include "Terrain/IEditorTerrain.h"
 
 //////////////////////////////////////////////////////////////////////////
 // Forward declarations
@@ -91,15 +93,21 @@ public:
 
     //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
-    // Heightmap
-    CHeightmap* GetHeightmap() { return &m_heightmap; };
+    // Terrain
+    IEditorTerrain *GetTerrain() { return m_terrain; }
     CRGBLayer* GetRGBLayer();
 
+    void SetTerrainType(int type);
     void SetTerrainSize(int resolution, int unitSize);
-    void ResetHeightMap();
+    void SetTerrainSize(int sizeX, int sizeY, int sizeZ, int unitSize);
+
+    void InitTerrain();
+    void ResetTerrain();
 
     void SetUseTerrain(bool useTerrain);
     bool GetUseTerrain();
+
+    void GetSectorsInfo(SSectorInfo& si);
 
     void Save();
     bool Load();
@@ -121,7 +129,9 @@ public:
 protected:
     std::vector<_smart_ptr<CSurfaceType> > m_surfaceTypes;
     std::vector<CLayer*> m_layers;
-    CHeightmap m_heightmap;
+
+    bool m_useTerrain;
+    IEditorTerrain *m_terrain;
 };
 
 #endif // CRYINCLUDE_EDITOR_TERRAIN_TERRAINMANAGER_H

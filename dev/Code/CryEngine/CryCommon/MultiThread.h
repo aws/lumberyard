@@ -114,7 +114,7 @@ void CrySpinLock(volatile int* pLock, int checkVal, int setVal);
 void CryReleaseSpinLock   (volatile int*, int);
 
 LONG   CryInterlockedIncrement(int volatile* lpAddend);
-LONG   CryInterlockedDecrement(int volatile* lpAddend);
+DLL_EXPORT LONG   CryInterlockedDecrement(int volatile* lpAddend);
 LONG   CryInterlockedOr(LONG volatile* Destination, LONG Value);
 LONG   CryInterlockedExchangeAdd(LONG volatile* lpAddend, LONG Value);
 LONG     CryInterlockedCompareExchange(LONG volatile* dst, LONG exchange, LONG comperand);

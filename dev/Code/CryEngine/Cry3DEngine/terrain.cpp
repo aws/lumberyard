@@ -14,6 +14,7 @@
 // Description : check vis
 
 
+
 #include "StdAfx.h"
 
 #include "terrain.h"
@@ -34,7 +35,7 @@ float CTerrain::m_fInvUnitSize = 1.0f / 2.0f;
 int CTerrain::m_nTerrainSize = 1024;
 int CTerrain::m_nSectorSize = 64;
 int CTerrain::m_nSectorsTableSize = 16;
-
+const char *CTerrain::m_name="CTerrain";
 
 CTerrain::CTerrain(const STerrainInfo& TerrainInfo)
     : m_RootNode(nullptr)
@@ -55,7 +56,7 @@ CTerrain::CTerrain(const STerrainInfo& TerrainInfo)
     // set params
     m_nUnitSize = TerrainInfo.nUnitSize_InMeters;
     m_fInvUnitSize = 1.f / TerrainInfo.nUnitSize_InMeters;
-    m_nTerrainSize = TerrainInfo.nHeightMapSize_InUnits * TerrainInfo.nUnitSize_InMeters;
+    m_nTerrainSize = TerrainInfo.nTerrainSizeX_InUnits * TerrainInfo.nUnitSize_InMeters;
     m_nSectorSize = TerrainInfo.nSectorSize_InMeters;
     m_nSectorsTableSize = TerrainInfo.nSectorsTableSize_InSectors;
     m_fOceanWaterLevel = TerrainInfo.fOceanWaterLevel;
@@ -142,7 +143,7 @@ void CTerrain::InitHeightfieldPhysics()
     hf.Basis.SetIdentity();
     hf.origin.zero();
     hf.step.x = hf.step.y = (float)CTerrain::GetHeightMapUnitSize();
-    hf.size.x = hf.size.y = CTerrain::GetTerrainSize() / CTerrain::GetHeightMapUnitSize();
+    hf.size.x = hf.size.y = GetTerrainSize() / CTerrain::GetHeightMapUnitSize();
     hf.stride.set(hf.size.y + 1, 1);
     hf.heightscale = 1.0f;
     hf.typemask = SurfaceWeight::Hole | SurfaceWeight::Undefined;
@@ -234,7 +235,7 @@ void CTerrain::BuildSectorsTree(bool bBuildErrorsTable)
         float(sizeof(CTerrainNode) * nCount) / 1024.f / 1024.f);
 
     m_RootNode = new CTerrainNode();
-    m_RootNode->Init(0, 0, CTerrain::GetTerrainSize(), NULL, bBuildErrorsTable);
+    m_RootNode->Init(0, 0, GetTerrainSize(), NULL, bBuildErrorsTable);
 
     if (Get3DEngine()->IsObjectTreeReady())
     {
@@ -709,7 +710,7 @@ void CTerrain::UpdateSectorMeshes(const SRenderingPassInfo& passInfo)
 
 static Vec3 GetTerrainNormal(CTerrain& terrain, int x, int y)
 {
-    const int   nTerrainSize = CTerrain::GetTerrainSize();
+    const int   nTerrainSize =terrain.GetTerrainSize();
     const int nRange = terrain.GetHeightMapUnitSize();
 
     float sx;
@@ -774,7 +775,7 @@ _smart_ptr<IRenderMesh> CTerrain::MakeAreaRenderMesh(const Vec3& vPos, float fRa
     lstIndices.reserve(nEstimateVerts * 6);
     lstClippedIndices.reserve(nEstimateVerts * 6);
 
-    const CTerrain* pTerrain = GetTerrain();
+    const IEngineTerrain* pTerrain = GetTerrain();
     for (int x = vBoxMin.x; x <= vBoxMax.x; x += nUnitSize)
     {
         for (int y = vBoxMin.y; y <= vBoxMax.y; y += nUnitSize)

@@ -82,7 +82,12 @@ struct CUndoTPElement
 
     void AddSector(float fpx, float fpy, float radius)
     {
-        CHeightmap* heightmap = GetIEditor()->GetHeightmap();
+        IEditorTerrain* terrain = GetIEditor()->GetTerrain();
+
+        if(!terrain->SupportHeightMap())
+            return;
+
+        CHeightmap *heightmap=(CHeightmap *)terrain;
 
         CRGBLayer* pRGBLayer = GetIEditor()->GetTerrainManager()->GetRGBLayer();
         uint32 dwMaxRes = pRGBLayer->CalcMaxLocalResolution(0, 0, 1, 1);
@@ -251,7 +256,12 @@ struct CUndoTPElement
 
     void Paste(bool bIsRedo = false)
     {
-        CHeightmap* heightmap = GetIEditor()->GetHeightmap();
+        IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+        if(!terrain->SupportHeightMap())
+            return;
+
+        CHeightmap *heightmap=(CHeightmap *)terrain;
         CRGBLayer* pRGBLayer = GetIEditor()->GetTerrainManager()->GetRGBLayer();
 
         bool bFirst = true;
@@ -290,7 +300,12 @@ struct CUndoTPElement
 
     void StoreRedo()
     {
-        CHeightmap* heightmap = GetIEditor()->GetHeightmap();
+        IEditorTerrain* terrain=GetIEditor()->GetTerrain();
+
+        if(!terrain->SupportHeightMap())
+            return;
+
+        CHeightmap *heightmap=(CHeightmap *)terrain;
 
         for (int i = sects.size() - 1; i >= 0; i--)
         {
@@ -433,7 +448,11 @@ CTerrainTexturePainter::CTerrainTexturePainter()
 
     SetStatusText(tr("Paint Texture Layers"));
 
-    m_heightmap = GetIEditor()->GetHeightmap();
+    IEditorTerrain* terrain=GetIEditor()->GetTerrain();
+
+    assert(terrain->SupportHeightMap());
+
+    m_heightmap=(CHeightmap *)terrain;
     assert(m_heightmap);
 
     m_3DEngine = GetIEditor()->Get3DEngine();
@@ -697,7 +716,14 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
 {
     float fTerrainSize = (float)m_3DEngine->GetTerrainSize();                                                                           // in m
 
-    SEditorPaintBrush br(*GetIEditor()->GetHeightmap(), *pLayer, m_brush.bMaskByLayerSettings, m_brush.m_dwMaskLayerId, bFlood);
+    IEditorTerrain* terrain=GetIEditor()->GetTerrain();
+
+    if(!terrain->SupportHeightMap())
+        return;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
+
+    SEditorPaintBrush br(*heightmap, *pLayer, m_brush.bMaskByLayerSettings, m_brush.m_dwMaskLayerId, bFlood);
 
     br.m_cFilterColor = m_brush.m_cFilterColor * m_brush.m_fBrightness;
     br.m_cFilterColor.rgb2srgb();

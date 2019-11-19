@@ -21,6 +21,7 @@
 #include "ParticleEnviron.h"
 #include "ParticleMemory.h"
 #include "IPerfHud.h"
+#include "VectorMap.h"
 
 #include <AzCore/Jobs/LegacyJobExecutor.h>
 

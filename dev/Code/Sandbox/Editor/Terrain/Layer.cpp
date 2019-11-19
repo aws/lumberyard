@@ -20,6 +20,7 @@
 #include "SurfaceType.h"                    // CSurfaceType
 
 #include "Terrain/TerrainManager.h"
+#include "Terrain/Heightmap.h"
 
 #include "MaterialUtils.h" // for Canonicalizing legacy asset IDs
 
@@ -100,6 +101,13 @@ uint32 CLayer::GetCurrentLayerId()
 
 uint32 CLayer::GetOrRequestLayerId()
 {
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(!terrain->SupportHeightMap())
+        return 0;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
+
     if (m_dwLayerId == e_undefined)      // not set yet
     {
         bool bFree[e_undefined];
@@ -110,7 +118,7 @@ uint32 CLayer::GetOrRequestLayerId()
         }
 
         GetIEditor()->GetTerrainManager()->MarkUsedLayerIds(bFree);
-        GetIEditor()->GetHeightmap()->MarkUsedLayerIds(bFree);
+        heightmap->MarkUsedLayerIds(bFree);
 
         for (uint32 id = 0; id < e_undefined; id++)
         {
@@ -604,9 +612,15 @@ void CLayer::PrecacheTexture()
 //////////////////////////////////////////////////////////////////////////
 void CLayer::SetSectorInfoSurfaceTextureSize()
 {
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(!terrain->SupportHeightMap())
+        return;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
+
     SSectorInfo si;
-    pHeightmap->GetSectorsInfo(si);
+    heightmap->GetSectorsInfo(si);
     m_numSectors = si.numSectors;
 
     m_sectorInfoSurfaceTextureSize = si.surfaceTextureSize;

@@ -15,6 +15,7 @@
 #define __animtime_h__
 
 #include <IXml.h>
+#include <Serialization/IArchive.h>
 #include <AzCore/Casting/numeric_cast.h>
 
 struct SAnimTime

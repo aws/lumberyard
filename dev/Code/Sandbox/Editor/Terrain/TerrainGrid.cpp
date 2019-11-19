@@ -47,7 +47,7 @@ void CTerrainGrid::InitSectorGrid(int numSectors)
     }
 
     SSectorInfo si;
-    GetIEditor()->GetHeightmap()->GetSectorsInfo(si);
+    GetIEditor()->GetTerrain()->GetSectorsInfo(si);
     m_sectorSize = si.sectorSize;
 }
 
@@ -142,9 +142,16 @@ void CTerrainGrid::GetSectorRect(const QPoint& sector, QRect& rect)
 //////////////////////////////////////////////////////////////////////////
 int CTerrainGrid::LockSectorTexture(const QPoint& sector, const uint32 dwTextureResolution, bool& bTextureWasRecreated)
 {
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(!terrain->SupportHeightMap())
+        return 0;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
+
     CTerrainSector* st = GetSector(sector);
     assert(st);
-    GetIEditor()->GetHeightmap()->AddModSector(sector.x(), sector.y());
+    heightmap->AddModSector(sector.x(), sector.y());
     bTextureWasRecreated = false;
 
     I3DEngine* p3Engine = GetIEditor()->Get3DEngine();

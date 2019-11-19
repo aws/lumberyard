@@ -95,7 +95,12 @@ CTerrainDialog::CTerrainDialog()
     m_sLastParam = new SNoiseParams;
     m_sLastParam->bValid = false;
 
-    m_pHeightmap = GetIEditor()->GetHeightmap();
+    IEditorTerrain *terrain = GetIEditor()->GetTerrain();
+     
+    if(!terrain->SupportEditing())
+        return;
+
+    m_pTerrain=(IEditableTerrain *)terrain;
 
     GetIEditor()->RegisterNotifyListener(this);
     LmbrCentral::WaterNotificationBus::Handler::BusConnect();
@@ -212,7 +217,7 @@ void CTerrainDialog::OnInitDialog()
 
 void CTerrainDialog::UpdateTerrainDimensions()
 {
-    m_terrainDimensions->setText(QString("Heightmap %1x%2").arg(m_pHeightmap->GetWidth()).arg(m_pHeightmap->GetHeight()));
+    m_terrainDimensions->setText(QString("Heightmap %1x%2").arg(m_pTerrain->GetWidth()).arg(m_pTerrain->GetHeight()));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -253,26 +258,26 @@ void CTerrainDialog::OnTerrainLoad()
         if (ext == "asc")
         {
             // Treat 32-bit formats special to make sure we preserve full data precision
-            m_pHeightmap->LoadASC(fileName);
+            m_pTerrain->LoadASC(fileName);
         }
         else if (ext == "bt")
         {
             // Treat 32-bit formats special to make sure we preserve full data precision
-            m_pHeightmap->LoadBT(fileName);
+            m_pTerrain->LoadBT(fileName);
         }
         else if (ext == "tif")
         {
             // Treat 32-bit formats special to make sure we preserve full data precision
-            m_pHeightmap->LoadTIF(fileName);
+            m_pTerrain->LoadTIF(fileName);
         }
         else if (ext == "raw" || ext == "r16")
         {
-            m_pHeightmap->LoadRAW(fileName);
+            m_pTerrain->LoadRAW(fileName);
         }
         else
         {
             // Assumes the input format is in 8-bit or 16-bit height values.  Not recommended, but supported.
-            m_pHeightmap->LoadImage(fileName);
+            m_pTerrain->LoadImage(fileName);
         }
 
         InvalidateTerrain();
@@ -291,7 +296,7 @@ void CTerrainDialog::OnTerrainErase()
     auto result = QMessageBox::question(this, tr("Erase Heightmap?"), tr("Really erase the heightmap?"));
     if (QMessageBox::Yes == result)
     {
-        m_pHeightmap->Clear(false);
+        m_pTerrain->Clear(false);
 
         InvalidateTerrain();
     }
@@ -316,14 +321,14 @@ void CTerrainDialog::OnTerrainInvert()
 
     QWaitCursor wait;
 
-    m_pHeightmap->Invert();
+    m_pTerrain->Invert();
 
     InvalidateTerrain();
 }
 
 void CTerrainDialog::OnTerrainGenerate()
 {
-    if (!m_pHeightmap || !m_pHeightmap->GetWidth() || !m_pHeightmap->GetHeight())
+    if (!m_pTerrain || !m_pTerrain->GetWidth() || !m_pTerrain->GetHeight())
     {
         // Can't generate a terrain without a valid heightmap
         return;
@@ -352,7 +357,7 @@ void CTerrainDialog::OnTerrainGenerate()
         cDialog.LoadParam(sDefaultParam);
     }
 
-    HeightmapPreviewGenerator previewDelegate(*m_pHeightmap);
+    HeightmapPreviewGenerator previewDelegate(*((CHeightmap *)m_pTerrain));
     cDialog.SetPreviewDelegate(&previewDelegate);
 
     // Show the generation parameter dialog
@@ -370,8 +375,8 @@ void CTerrainDialog::OnTerrainGenerate()
 
     // Fill the parameter structure for the terrain generation
     cDialog.FillParam(sParam);
-    sParam.iWidth = m_pHeightmap->GetWidth();
-    sParam.iHeight = m_pHeightmap->GetHeight();
+    sParam.iWidth = m_pTerrain->GetWidth();
+    sParam.iHeight = m_pTerrain->GetHeight();
     sParam.bBlueSky = false;
 
     // Save the parameters
@@ -379,7 +384,7 @@ void CTerrainDialog::OnTerrainGenerate()
 
     QWaitCursor wait;
     // Generate
-    m_pHeightmap->GenerateTerrain(sParam);
+    m_pTerrain->GenerateTerrain(sParam);
 
     InvalidateTerrain();
 }
@@ -399,28 +404,28 @@ void CTerrainDialog::OnExportHeightmap()
 
         if (ext == "asc")
         {
-            m_pHeightmap->SaveASC(fileName);
+            m_pTerrain->SaveASC(fileName);
         }
         else if (ext == "bt")
         {
-            m_pHeightmap->SaveBT(fileName);
+            m_pTerrain->SaveBT(fileName);
         }
         else if (ext == "tif")
         {
-            m_pHeightmap->SaveTIF(fileName);
+            m_pTerrain->SaveTIF(fileName);
         }
         else if (ext == "pgm")
         {
-            m_pHeightmap->SaveImage16Bit(fileName);
+            m_pTerrain->SaveImage16Bit(fileName);
         }
         else if (ext == "raw" || ext == "r16")
         {
-            m_pHeightmap->SaveRAW(fileName);
+            m_pTerrain->SaveRAW(fileName);
         }
         else
         {
             // BMP or others
-            m_pHeightmap->SaveImage(fileName.toUtf8().data());
+            m_pTerrain->SaveImage(fileName.toUtf8().data());
         }
     }
 }
@@ -438,7 +443,7 @@ void CTerrainDialog::OnModifyMakeisle()
     QWaitCursor wait;
 
     // Call the make isle function of the heightmap class
-    m_pHeightmap->MakeIsle();
+    m_pTerrain->MakeIsle();
 
     InvalidateTerrain();
 }
@@ -455,7 +460,7 @@ void CTerrainDialog::Flatten(float flattenPercent)
     float flattenFactor = 1.0f - (flattenPercent / 100.f);
 
     // Call the flatten function of the heightmap class
-    m_pHeightmap->Flatten(flattenFactor);
+    m_pTerrain->Flatten(flattenFactor);
 
     InvalidateTerrain();
 }
@@ -494,7 +499,7 @@ void CTerrainDialog::OnModifyRemoveOcean()
 
     // Using a ocean level <=0, if we reload the environment, it will
     // cause in method CTerrain::InitTerrainWater the SAFE_DELETE(m_pOcean);
-    m_pHeightmap->SetOceanLevel(WATER_LEVEL_UNKNOWN);
+    m_pTerrain->SetOceanLevel(WATER_LEVEL_UNKNOWN);
 
     // Changed the InvalidateTerrain to include a environment reload.
     InvalidateTerrain();
@@ -513,7 +518,7 @@ void CTerrainDialog::OnModifySmoothSlope()
     QWaitCursor wait;
 
     // Call the smooth slope function of the heightmap class
-    m_pHeightmap->SmoothSlope();
+    m_pTerrain->SmoothSlope();
 
     InvalidateTerrain();
 }
@@ -531,7 +536,7 @@ void CTerrainDialog::OnModifySmooth()
 
     QWaitCursor wait;
 
-    m_pHeightmap->Smooth();
+    m_pTerrain->Smooth();
     InvalidateTerrain();
 }
 
@@ -546,7 +551,7 @@ void CTerrainDialog::OnModifyNormalize()
     }
 
     QWaitCursor wait;
-    m_pHeightmap->Normalize();
+    m_pTerrain->Normalize();
 
     InvalidateTerrain();
 }
@@ -562,7 +567,7 @@ void CTerrainDialog::OnModifyReduceRange()
     }
 
     QWaitCursor wait;
-    m_pHeightmap->LowerRange(0.8f);
+    m_pTerrain->LowerRange(0.8f);
 
     InvalidateTerrain();
 }
@@ -578,7 +583,7 @@ void CTerrainDialog::OnModifyReduceRangeLight()
     }
 
     QWaitCursor wait;
-    m_pHeightmap->LowerRange(0.95f);
+    m_pTerrain->LowerRange(0.95f);
 
     InvalidateTerrain();
 }
@@ -593,8 +598,8 @@ void CTerrainDialog::OnHeightmapShowLargePreview()
 
     CLogFile::WriteLine("Exporting heightmap...");
 
-    UINT iWidth = m_pHeightmap->GetWidth();
-    UINT iHeight = m_pHeightmap->GetHeight();
+    UINT iWidth = m_pTerrain->GetWidth();
+    UINT iHeight = m_pTerrain->GetHeight();
 
     CImageEx image;
     image.Allocate(iHeight, iWidth);   // swap x with y
@@ -604,7 +609,7 @@ void CTerrainDialog::OnHeightmapShowLargePreview()
     bool bOk = false;
 
     // Get the full bitmap, no additional smoothing or noise, no water texture.
-    bOk = m_pHeightmap->GetPreviewBitmap(pImageData, iWidth, false, false, NULL, false, m_ui->viewport->GetAutoScaleGreyRange());
+    bOk = m_pTerrain->GetPreviewBitmap(pImageData, iWidth, false, false, NULL, false, m_ui->viewport->GetAutoScaleGreyRange());
 
     QString tempDirectory = Path::AddBackslash(gSettings.strStandardTempDirectory);
     QString imageName = "HeightmapPreview.bmp";
@@ -660,7 +665,7 @@ void CTerrainDialog::OnTerrainSurface()
 void CTerrainDialog::OnHold()
 {
     // Hold the current heightmap state
-    m_pHeightmap->Hold();
+    m_pTerrain->Hold();
 }
 
 void CTerrainDialog::OnFetch()
@@ -679,7 +684,7 @@ void CTerrainDialog::OnFetch()
     }
 
     // Restore the old heightmap state
-    m_pHeightmap->Fetch();
+    m_pTerrain->Fetch();
 
     // We modified the document
     GetIEditor()->SetModifiedFlag();
@@ -829,7 +834,9 @@ void CTerrainDialog::OnSetOceanLevel()
     ////////////////////////////////////////////////////////////////////////
     // Get the ocean level from the document and set it as default into
     // the dialog
-    float fPreviousOceanLevel = GetIEditor()->GetHeightmap()->GetOceanLevel();
+	IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    float fPreviousOceanLevel = terrain->GetOceanLevel();
     bool ok = false;
     int fractionalDigitCount = 2;
     float oceanLevel = aznumeric_caster(QInputDialog::getDouble(this, tr("Set Ocean Height"), tr("Ocean height"), fPreviousOceanLevel, AZ::OceanConstants::s_HeightMin, AZ::OceanConstants::s_HeightMax, fractionalDigitCount, &ok));
@@ -838,7 +845,7 @@ void CTerrainDialog::OnSetOceanLevel()
     if (ok)
     {
         // Save the new ocean level in the document
-        GetIEditor()->GetHeightmap()->SetOceanLevel(oceanLevel);
+        terrain->SetOceanLevel(oceanLevel);
         InvalidateTerrain();
         GetIEditor()->Notify(eNotify_OnTerrainRebuild);
     }
@@ -846,8 +853,10 @@ void CTerrainDialog::OnSetOceanLevel()
 
 void CTerrainDialog::OnSetMaxHeight()
 {
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
     // Set up dialog box to update Max Height
-    float fValue = GetIEditor()->GetHeightmap()->GetMaxHeight();
+    float fValue =terrain->GetMaxHeight();
     bool ok = false;
     int fractionalDigitCount = 2;
     fValue = aznumeric_caster(QInputDialog::getDouble(this, tr("Set Max Terrain Height"), tr("Maximum terrain height"), fValue, 1.0, 65536.0, fractionalDigitCount, &ok));
@@ -855,7 +864,7 @@ void CTerrainDialog::OnSetMaxHeight()
     if (ok)
     {
         // Set the new max height, but don't rescale the terrain.
-        GetIEditor()->GetHeightmap()->SetMaxHeight(fValue, false);
+        terrain->SetMaxHeight(fValue, false);
 
         InvalidateTerrain();
     }
@@ -863,22 +872,22 @@ void CTerrainDialog::OnSetMaxHeight()
 
 void CTerrainDialog::OnSetUnitSize()
 {
-    CHeightmap* heightmap = GetIEditor()->GetHeightmap();
-    if (!heightmap)
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();;
+    if (!terrain)
     {
         return;
     }
 
-    // Don't go further if a level hasn't been loaded, since the heightmap
+    // Don't go further if a level hasn't been loaded, since the terrain
     // resolution will be 0, causing a divide by 0
-    uint64 terrainResolution = heightmap->GetWidth();
+    uint64 terrainResolution = terrain->GetWidth();
     if (terrainResolution <= 0)
     {
         return;
     }
 
     // Calculate valid unit sizes for the current terrain resolution
-    int currentUnitSize = heightmap->GetUnitSize();
+    int currentUnitSize = terrain->GetUnitSize();
     int maxUnitSize = IntegerLog2(Ui::MAXIMUM_TERRAIN_RESOLUTION / terrainResolution);
     int units = Ui::START_TERRAIN_UNITS;
     QStringList unitSizes;
@@ -901,7 +910,7 @@ void CTerrainDialog::OnSetUnitSize()
     QString newUnitSize = QInputDialog::getItem(this, tr("Set Unit Size"), tr("Unit size (meters/texel)"), unitSizes, currentIndex, false, &ok);
     if (ok)
     {
-        GetIEditor()->GetHeightmap()->SetUnitSize(newUnitSize.toInt());
+        terrain->SetUnitSize(newUnitSize.toInt());
 
         InvalidateTerrain();
     }
@@ -912,7 +921,7 @@ void CTerrainDialog::InvalidateTerrain()
 {
     GetIEditor()->SetModifiedFlag();
     GetIEditor()->SetModifiedModule(eModifiedTerrain);
-    GetIEditor()->GetHeightmap()->UpdateEngineTerrain(true);
+    GetIEditor()->GetTerrain()->Update();
 
     if (m_pTerrainTool)
     {

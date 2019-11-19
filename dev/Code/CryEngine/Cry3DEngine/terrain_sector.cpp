@@ -22,7 +22,7 @@
 void CTerrainNode::SetLOD(const SRenderingPassInfo& passInfo)
 {
     const float distanceToCamera = m_DistanceToCamera[passInfo.GetRecursiveLevel()];
-    const float sectorSizeAndAHalf = static_cast<float>(CTerrain::GetSectorSize() + (CTerrain::GetSectorSize() >> 2));
+    const float sectorSizeAndAHalf = static_cast<float>(GetTerrain()->GetSectorSize() + (GetTerrain()->GetSectorSize() >> 2));
 
     // Force highest detail when camera is in sector.
     if (distanceToCamera < sectorSizeAndAHalf)
@@ -62,8 +62,8 @@ void CTerrainNode::SetLOD(const SRenderingPassInfo& passInfo)
 
 int CTerrainNode::GetSecIndex()
 {
-    int nSectorSize = CTerrain::GetSectorSize() << m_nTreeLevel;
-    int nSectorsTableSize = CTerrain::GetSectorsTableSize() >> m_nTreeLevel;
+    int nSectorSize =GetTerrain()->GetSectorSize() << m_nTreeLevel;
+    int nSectorsTableSize =GetTerrain()->GetSectorsTableSize() >> m_nTreeLevel;
     return (m_nOriginX / nSectorSize) * nSectorsTableSize + (m_nOriginY / nSectorSize);
 }
 

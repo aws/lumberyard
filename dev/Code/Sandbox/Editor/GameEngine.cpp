@@ -25,6 +25,7 @@
 #include "Mission.h"
 #include "Terrain/SurfaceType.h"
 #include "Terrain/Heightmap.h"
+#include "Terrain/TerrainManager.h"
 #include "Terrain/TerrainGrid.h"
 #include "TerrainLighting.h"
 #include "ViewManager.h"
@@ -864,7 +865,9 @@ bool CGameEngine::LoadLevel(
     {
         SSectorInfo si;
 
-        GetIEditor()->GetHeightmap()->GetSectorsInfo(si);
+//        GetIEditor()->GetHeightmap()->GetSectorsInfo(si);
+        GetIEditor()->GetTerrainManager()->GetSectorsInfo(si);
+
         float terrainSize = si.sectorSize * si.numSectors;
 
         if (m_pISystem->GetIPhysicalWorld())

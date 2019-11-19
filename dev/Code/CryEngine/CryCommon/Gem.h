@@ -53,7 +53,6 @@
 #include <Cry3DEngineBase.h>
 #include <cvars.h>
 #include <Material.h>
-#include <terrain.h>
 #include <3dEngine.h>
 #include <ObjMan.h>
 #include <StlUtils.h>

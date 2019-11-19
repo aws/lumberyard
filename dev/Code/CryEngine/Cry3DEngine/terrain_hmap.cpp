@@ -24,9 +24,11 @@ float CTerrain::GetBilinearZ(MeterF xWS, MeterF yWS) const
 
     float fZ;
 
+    CTerrain* pTerrain=(CTerrain *)GetTerrain();
+
     // convert into hmap space
-    float x1 = xWS * CTerrain::GetInvUnitSize();
-    float y1 = yWS * CTerrain::GetInvUnitSize();
+    float x1 = xWS * pTerrain->GetInvUnitSize();
+    float y1 = yWS * pTerrain->GetInvUnitSize();
 
     if (!Cry3DEngineBase::GetTerrain() || x1 < 0 || y1 < 0)
     {
@@ -36,7 +38,7 @@ float CTerrain::GetBilinearZ(MeterF xWS, MeterF yWS) const
     int nX = fastftol_positive(x1);
     int nY = fastftol_positive(y1);
 
-    int nHMSize = CTerrain::GetTerrainSize() / CTerrain::GetHeightMapUnitSize();
+    int nHMSize =pTerrain->GetTerrainSize() /pTerrain->GetHeightMapUnitSize();
 
     if (!Cry3DEngineBase::GetTerrain() || nX < 0 || nY < 0 || nX >= nHMSize || nY >= nHMSize)
     {
@@ -49,7 +51,7 @@ float CTerrain::GetBilinearZ(MeterF xWS, MeterF yWS) const
 
         float afZCorners[4];
 
-        const CTerrainNode* pNode = GetLeafNodeAt_Units(nX, nY);
+        const CTerrainNode* pNode =pTerrain->GetLeafNodeAt_Units(nX, nY);
 
         if (pNode && pNode->GetSurfaceTile().GetHeightmap())
         {
@@ -86,7 +88,7 @@ bool CTerrain::RayTrace(Vec3 const& vStart, Vec3 const& vEnd, SRayTrace* prt)
 {
     FUNCTION_PROFILER_3DENGINE;
 
-    CTerrain* pTerrain = GetTerrain();
+    CTerrain* pTerrain = (CTerrain *)GetTerrain();
 
     if (!pTerrain->GetRootNode())
     {
@@ -97,9 +99,9 @@ bool CTerrain::RayTrace(Vec3 const& vStart, Vec3 const& vEnd, SRayTrace* prt)
     SRayTrace s_rt;
     SRayTrace& rt = prt ? *prt : s_rt;
 
-    float fUnitSize = (float)CTerrain::GetHeightMapUnitSize();
-    float fInvUnitSize = CTerrain::GetInvUnitSize();
-    int nGridSize = (int)(CTerrain::GetTerrainSize() * fInvUnitSize);
+    float fUnitSize = (float)GetHeightMapUnitSize();
+    float fInvUnitSize = GetInvUnitSize();
+    int nGridSize = (int)(GetTerrainSize() * fInvUnitSize);
 
     // Convert to grid units.
     Vec3 vDelta = vEnd - vStart;
@@ -307,7 +309,7 @@ bool CTerrain::IsHole(Meter x, Meter y) const
 {
     int nX_units = x >> m_MeterToUnitBitShift;
     int nY_units = y >> m_MeterToUnitBitShift;
-    int nTerrainSize_units = (CTerrain::GetTerrainSize() >> m_MeterToUnitBitShift) - 2;
+    int nTerrainSize_units = (GetTerrainSize() >> m_MeterToUnitBitShift) - 2;
 
     if (nX_units < 0 || nX_units > nTerrainSize_units || nY_units < 0 || nY_units > nTerrainSize_units)
     {
@@ -319,7 +321,7 @@ bool CTerrain::IsHole(Meter x, Meter y) const
 
 ITerrain::SurfaceWeight CTerrain::GetSurfaceWeight(Meter x, Meter y) const
 {
-    if (x >= 0 && y >= 0 && x <= CTerrain::GetTerrainSize() && y <= CTerrain::GetTerrainSize())
+    if (x >= 0 && y >= 0 && x <= GetTerrainSize() && y <= GetTerrainSize())
     {
         return GetSurfaceWeight_Units(x >> m_MeterToUnitBitShift, y >> m_MeterToUnitBitShift);
     }
@@ -418,7 +420,7 @@ float CTerrain::GetHeightFromUnits_Callback(int ix, int iy)
     rCache.x = ix;
     rCache.y = iy;
 
-    CTerrain* terrain = CTerrain::GetTerrain();
+    CTerrain* terrain = (CTerrain*)CTerrain::GetTerrain();
 
     if (!terrain)
     {
@@ -438,7 +440,7 @@ unsigned char CTerrain::GetSurfaceTypeFromUnits_Callback(int ix, int iy)
         return rCache.surfType;
     }
 
-    CTerrain* terrain = CTerrain::GetTerrain();
+    CTerrain* terrain =(CTerrain*)CTerrain::GetTerrain();
     if (!terrain)
     {
         return 0;

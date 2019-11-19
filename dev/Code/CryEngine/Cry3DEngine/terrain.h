@@ -16,7 +16,8 @@
 #pragma once
 
 #include <ISerialize.h>
-#include <ITerrain.h>
+#include <IEngineTerrain.h>
+#include <TerrainFactory.h>
 
 #include <Terrain/Texture/MacroTexture.h>
 #include <Terrain/Texture/TexturePool.h>
@@ -167,18 +168,18 @@ struct SNameChunk
 #pragma pack(pop)
 
 class CTerrain
-    : public ITerrain
-    , public Cry3DEngineBase
-    , public LegacyTerrain::CryTerrainRequestBus::Handler
+    : public RegisterTerrain<CTerrain, IEngineTerrain>,
+    public Cry3DEngineBase, 
+    public LegacyTerrain::CryTerrainRequestBus::Handler
 {
     friend class CTerrainNode;
 public:
-    using Meter = int;
-    using MeterF = float;
-    using Unit = int;
-
     CTerrain(const STerrainInfo& TerrainInfo);
     ~CTerrain();
+
+ //Interface for TerrainFactory
+    static const char *Name() { return m_name; }
+    virtual int GetType() { return (int)RegisterTerrain<CTerrain, IEngineTerrain>::m_terrainTypeId; }
 
     virtual float GetZ(Meter x, Meter y) const;
     virtual float GetBilinearZ(MeterF x1, MeterF y1) const;
@@ -193,40 +194,21 @@ public:
     virtual bool IsHole(Meter x, Meter y) const;
     virtual bool IsMeshQuadFlipped(const Meter x, const Meter y, const Meter nUnitSize) const;
 
-    struct SRayTrace
-    {
-        float t;
-        Vec3  hitPoint;
-        Vec3  hitNormal;
-        _smart_ptr<IMaterial> material;
-
-        SRayTrace()
-            : t(0)
-            , hitPoint(0, 0, 0)
-            , hitNormal(0, 0, 1)
-            , material(nullptr)
-        {}
-
-        SRayTrace(float t_, Vec3 const& hitPoint_, Vec3 const& hitNormal_, _smart_ptr<IMaterial> material_)
-            : t(t_)
-            , hitPoint(hitPoint_)
-            , hitNormal(hitNormal_)
-            , material(material_)
-        {}
-    };
-
     bool RayTrace(Vec3 const& vStart, Vec3 const& vEnd, SRayTrace* prt);
 
     void InitHeightfieldPhysics();
 
-    inline static const int GetTerrainSize();
-    inline static const int GetSectorSize();
-    inline static const int GetHeightMapUnitSize();
+    virtual int GetTerrainSize() const;
+    virtual int GetSectorSize() const;
+    Vec3i GetSectorSizeVector() const override;
+    virtual int GetHeightMapUnitSize() const;
     inline static const int GetSectorsTableSize();
     inline static const float GetInvUnitSize();
     inline const int GetTerrainUnits() const;
 
-    inline CTerrainNode* GetRootNode();
+    bool HasRootNode() override;
+    virtual CTerrainNode* GetRootNode();
+    AABB GetRootBBoxVirtual() override;
     CTerrainNode* GetLeafNodeAt(Meter x, Meter y);
     inline CTerrainNode* GetLeafNodeAt(const Vec3& pos);
 
@@ -288,16 +270,17 @@ public:
     void ActivateNodeTexture(CTerrainNode* pNode, const SRenderingPassInfo& passInfo);
     void ActivateNodeProcObj(CTerrainNode* pNode);
 
-    bool Load(AZ::IO::HandleType fileHandle, int nDataSize, struct STerrainChunkHeader* pTerrainChunkHeader, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable);
+    bool Load(const char *levelPath, STerrainInfo* pTerrainInfo) override { return false; }
+    bool LoadHandle(AZ::IO::HandleType fileHandle, int nDataSize, struct STerrainChunkHeader* pTerrainChunkHeader, STerrainInfo* pTerrainInfo, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable) override;
 
     // REFACTOR IN PROGRESS
     //////////////////////////////////////////////////////////////////////////
 
     // (bethelz) TODO: These belong in 3DEngine
-    static void RemoveAllStaticObjects();
-    static bool RemoveObjectsInArea(Vec3 vExploPos, float fExploRadius);
-    static void GetObjectsAround(Vec3 vPos, float fRadius, PodArray<struct SRNInfo>* pEntList, bool bSkip_ERF_NO_DECALNODE_DECALS, bool bSkipDynamicObjects);
-    static bool Recompile_Modified_Incrementaly_RoadRenderNodes();
+    void RemoveAllStaticObjects() override;
+    bool RemoveObjectsInArea(Vec3 vExploPos, float fExploRadius) override;
+    void GetObjectsAround(Vec3 vPos, float fRadius, PodArray<struct SRNInfo>* pEntList, bool bSkip_ERF_NO_DECALNODE_DECALS, bool bSkipDynamicObjects) override;
+    bool Recompile_Modified_Incrementaly_RoadRenderNodes() override;
     //
 
     // (bethelz) TODO: Remove global ocean dependency
@@ -330,7 +313,7 @@ public:
 
 private:
     template <class T>
-    bool Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHeader, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable, bool bHotUpdate, SHotUpdateInfo* pExportInfo);
+    bool Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHeader, STerrainInfo *pTerrainInfo, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable, bool bHotUpdate, SHotUpdateInfo* pExportInfo);
 
     int GetTablesSize(SHotUpdateInfo* pExportInfo);
     void SaveTables(byte*& pData, int& nDataSize, std::vector<struct IStatObj*>*& pStatObjTable, std::vector<_smart_ptr<IMaterial>>*& pMatTable, std::vector<struct IStatInstGroup*>*& pStatInstGroupTable, EEndian eEndian, SHotUpdateInfo* pExportInfo);
@@ -352,6 +335,7 @@ private:
 
     void TraverseTree(AZStd::function<void(CTerrainNode*)> callback);
 
+    static const char *m_name;
     int m_nLoadedSectors;
     int m_bOceanIsVisible;
 
@@ -386,7 +370,7 @@ private:
 
     PodArray<CTerrainNode*> m_lstSectors;
 
-    static void BuildErrorsTableForArea(
+    void BuildErrorsTableForArea(
         float* pLodErrors, int nMaxLods,
         int X1, int Y1, int X2, int Y2,
         const float* heightmap,
@@ -427,17 +411,22 @@ private:
 };
 
 
-inline const int CTerrain::GetTerrainSize()
+inline int CTerrain::GetTerrainSize() const
 {
     return m_nTerrainSize;
 }
 
-inline const int CTerrain::GetSectorSize()
+inline int CTerrain::GetSectorSize() const
 {
     return m_nSectorSize;
 }
 
-inline const int CTerrain::GetHeightMapUnitSize()
+inline Vec3i CTerrain::GetSectorSizeVector() const
+{
+    return Vec3i(m_nSectorSize, m_nSectorSize, 1);
+}
+
+inline int CTerrain::GetHeightMapUnitSize() const
 {
     return m_nUnitSize;
 }
@@ -463,9 +452,19 @@ inline void CTerrain::Clamp_Unit(Unit& x, Unit& y) const
     y = (Unit)y < 0 ? 0 : (Unit)y < GetTerrainUnits() ? y : GetTerrainUnits();
 }
 
+inline bool CTerrain::HasRootNode()
+{
+    return true;
+}
+
 inline CTerrainNode* CTerrain::GetRootNode()
 {
     return m_RootNode;
+}
+
+inline AABB CTerrain::GetRootBBoxVirtual()
+{
+    return m_RootNode->GetBBoxVirtual();
 }
 
 inline CTerrainNode* CTerrain::GetLeafNodeAt(Meter x, Meter y)

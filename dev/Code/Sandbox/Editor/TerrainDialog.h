@@ -17,6 +17,7 @@
 
 #include <QMainWindow>
 #include <LmbrCentral/Physics/WaterNotificationBus.h>
+#include <Terrain/IEditorTerrain.h>
 
 struct SNoiseParams;
 class CHeightmap;
@@ -110,7 +111,7 @@ protected:
     QScopedPointer<Ui::TerrainDialog> m_ui;
 
     SNoiseParams* m_sLastParam;
-    CHeightmap* m_pHeightmap;
+    IEditableTerrain* m_pTerrain;
 
     _smart_ptr<CTerrainModifyTool> m_pTerrainTool;
 

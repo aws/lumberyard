@@ -68,10 +68,10 @@ uint8 CTerrainNode::GetTextureLOD(float fDistance, const SRenderingPassInfo& pas
 
 MacroTexture::Region CTerrainNode::GetTextureRegion() const
 {
-    float terrainSize = (float)CTerrain::GetTerrainSize();
+    float terrainSize = (float)GetTerrain()->GetTerrainSize();
     float left        = (float)m_nOriginX / terrainSize;
     float bottom      = (float)m_nOriginY / terrainSize;
-    float size        = (float)((CTerrain::GetSectorSize() << m_nTreeLevel) - 1) / terrainSize;
+    float size        = (float)((GetTerrain()->GetSectorSize() << m_nTreeLevel) - 1) / terrainSize;
     return MacroTexture::Region(bottom, left, size);
 }
 
@@ -145,7 +145,7 @@ void CTerrainNode::SetupTexturing(const SRenderingPassInfo& passInfo)
     if (bMacroTextureExists())
     {
         float tileSizeInPixels = (float)GetMacroTexture()->GetTileSizeInPixels();
-        float nodeSizeInUnits = (float)(CTerrain::GetSectorSize() << m_nTreeLevel);
+        float nodeSizeInUnits = (float)(GetTerrain()->GetSectorSize() << m_nTreeLevel);
         InitSectorTextureSet(tileSizeInPixels, nodeSizeInUnits, m_nOriginX, m_nOriginY, m_TextureSet);
 
         if (!m_nEditorDiffuseTex)
@@ -153,7 +153,7 @@ void CTerrainNode::SetupTexturing(const SRenderingPassInfo& passInfo)
             MacroTexture::TextureTile tile;
             if (GetMacroTexture()->TryGetTextureTile(GetTextureRegion(), m_TextureLOD, tile))
             {
-                float terrainSize = (float)CTerrain::GetTerrainSize();
+                float terrainSize = (float)GetTerrain()->GetTerrainSize();
                 float tileSize = tile.region.Size   * terrainSize;
                 float tileX    = tile.region.Left   * terrainSize;
                 float tileY    = tile.region.Bottom * terrainSize;
@@ -183,7 +183,7 @@ void CTerrainNode::SetupTexturing(const SRenderingPassInfo& passInfo)
     switch (GetCVars()->e_TerrainTextureDebug)
     {
     case DEBUG_MATERIAL_WHITE:
-        pRenderMesh->SetCustomTexID(m_pTerrain->m_nWhiteTexId);
+        pRenderMesh->SetCustomTexID(GetTerrain()->m_nWhiteTexId);
         break;
 
     case DEBUG_MATERIAL_DEFAULT:

@@ -397,10 +397,10 @@ bool CObjectMode::OnLButtonDown(CViewport* view, int nFlags, const QPoint& point
 
     // Swap X/Y
     int unitSize = 1;
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
-    if (pHeightmap)
+    IEditorTerrain* terrain = GetIEditor()->GetTerrain();
+    if (terrain)
     {
-        unitSize = pHeightmap->GetUnitSize();
+        unitSize =terrain->GetUnitSize();
     }
     float hx = pos.y / unitSize;
     float hy = pos.x / unitSize;

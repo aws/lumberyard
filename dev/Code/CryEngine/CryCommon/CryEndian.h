@@ -86,7 +86,7 @@ inline bool IsSystemLittleEndian()
 
 // SwapEndian function, using TypeInfo.
 struct CTypeInfo;
-void SwapEndian(const CTypeInfo& Info, size_t nSizeCheck, void* pData, size_t nCount = 1, bool bWriting = false);
+AZ_DLL_EXPORT void SwapEndian(const CTypeInfo& Info, size_t nSizeCheck, void* pData, size_t nCount = 1, bool bWriting = false);
 
 // Default template utilizes TypeInfo.
 template<class T>

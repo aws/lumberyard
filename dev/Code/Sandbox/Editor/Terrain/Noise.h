@@ -65,7 +65,7 @@ public:
     CNoise();
     virtual ~CNoise();
 
-    void FracSynthPass(CDynamicArray2D* hBuf, float freq, float zscale, int xres, int zres, BOOL bLoop);
+    void FracSynthPass(CDynamicArray2D* hBuf, float freq, float zscale, int xres, int zres, bool bLoop);
     float Spline(float x, /*int nknots,*/ float* knot);
 };
 

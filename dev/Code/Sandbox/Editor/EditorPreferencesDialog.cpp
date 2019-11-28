@@ -74,6 +74,7 @@ EditorPreferencesDialog::EditorPreferencesDialog(QWidget* pParent)
             CEditorPreferencesPage_ExperimentalLighting::Reflect(*serializeContext);
             CEditorPreferencesPage_FlowGraphGeneral::Reflect(*serializeContext);
             CEditorPreferencesPage_FlowGraphColors::Reflect(*serializeContext);
+            CEditorPreferencesPage_FragLabGeneral::Reflect(*serializeContext);
         }
     }
 

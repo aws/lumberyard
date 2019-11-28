@@ -55,7 +55,7 @@ public:
     QString GetLibName();
 
     void enableReordering();
-    void fillFromLibrary(bool alphaSort = false);
+    void fillFromLibrary();
     void refreshActiveState();
     QString storeExpandState();
     void restoreExpandState(const QString& data);
@@ -78,7 +78,7 @@ public:
     void SelectItem(QString pathWithoutLibrary, bool forceSelection = false);
     void UpdateColors(const QColor& enabledColor, const QColor& disabledColor);
     void setReloading(bool val);
-    void SetLibrary(IDataBaseLibrary* lib, bool alphaSort = false);
+    void SetLibrary(IDataBaseLibrary* lib);
 
     /// Returns true if the given library item name and item full-name are valid.
     /// \param itemName The name of the single item. Corresponds to a single folder's name or single leaf item's name. Ex: "myItem".

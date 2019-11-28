@@ -1507,6 +1507,26 @@ void SandboxIntegrationManager::OnSliceInstantiated(const AZ::Data::AssetId& /*s
         m_unsavedEntities.insert(sliceInstantEntityIdPair.second);
     }
 
+    if (GetIEditor()->GetEditorSettings()->sFragLabSettings.lockInstantiatedSlice)
+    {
+        const AZ::SliceComponent::EntityList& entities = sliceAddress.second->GetInstantiated()->m_entities;
+
+        for (AZ::Entity* pEntity : entities)
+        {
+            if (!pEntity)
+            {
+                continue;
+            }
+
+            AZ::EntityId entityId = pEntity->GetId();
+            AZ::EntityId parentId;
+            EBUS_EVENT_ID_RESULT(parentId, entityId, AZ::TransformBus, GetParentId);
+            if (parentId.IsValid())
+            {
+                EBUS_EVENT_ID(entityId, AzToolsFramework::EditorLockComponentRequestBus, SetLocked, true);
+            }
+        }
+    }
 }
 
 AZStd::string SandboxIntegrationManager::GetHyperGraphName(IFlowGraph* runtimeGraphPtr)

@@ -51,6 +51,7 @@ CStdPreferencesClassDesc::CStdPreferencesClassDesc()
     m_pageCreators.push_back([]() { return new CEditorPreferencesPage_MannequinGeneral(); });
 #endif //ENABLE_LEGACY_ANIMATION
     m_pageCreators.push_back([]() { return new CEditorPreferencesPage_ExperimentalLighting(); });
+    m_pageCreators.push_back([]() { return new CEditorPreferencesPage_FragLabGeneral(); });
 }
 
 HRESULT CStdPreferencesClassDesc::QueryInterface(const IID& riid, void** ppvObj)
@@ -102,3 +103,47 @@ IPreferencesPage* CStdPreferencesClassDesc::CreateEditorPreferencesPage(int inde
     return (index >= m_pageCreators.size()) ? nullptr : m_pageCreators[index]();
 }
 
+void CEditorPreferencesPage_FragLabGeneral::Reflect(AZ::SerializeContext& serialize)
+{
+    serialize.Class<FragLabGeneralSettings>()
+        ->Version(1)
+        ->Field("LockInstantiatedSlice", &FragLabGeneralSettings::m_lockInstantiatedSlice)
+        ->Field("ParticlesSortingMode", &FragLabGeneralSettings::m_particlesSortingMode);
+
+    serialize.Class<CEditorPreferencesPage_FragLabGeneral>()
+        ->Version(0)
+        ->Field("GeneralSettings", &CEditorPreferencesPage_FragLabGeneral::m_generalSettings);
+
+    AZ::EditContext* editContext = serialize.GetEditContext();
+    if (editContext)
+    {
+        editContext->Class<FragLabGeneralSettings>("General Settings", "")
+            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &FragLabGeneralSettings::m_lockInstantiatedSlice, "Lock Instantiated Slice", "Leave only root slice entity unlocked on 'Instantiate slice'")
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &FragLabGeneralSettings::m_particlesSortingMode, "Particles Sorting Mode", "Toggle particles sorting in Particle Editor's Library")
+                ->EnumAttribute(ParticlesSortingMode::Off, "Off")
+                ->EnumAttribute(ParticlesSortingMode::Ascending, "Ascending (A-Z)")
+                ->EnumAttribute(ParticlesSortingMode::Descending, "Descending (Z-A)");
+
+        editContext->Class<CEditorPreferencesPage_FragLabGeneral>("FragLab Preferences", "FragLab Preferences")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
+            ->DataElement(AZ::Edit::UIHandlers::Default, &CEditorPreferencesPage_FragLabGeneral::m_generalSettings, "General Settings", "General Settings");
+    }
+}
+
+CEditorPreferencesPage_FragLabGeneral::CEditorPreferencesPage_FragLabGeneral()
+{
+    InitializeSettings();
+}
+
+void CEditorPreferencesPage_FragLabGeneral::OnApply()
+{
+    gSettings.sFragLabSettings.lockInstantiatedSlice = m_generalSettings.m_lockInstantiatedSlice;
+    gSettings.sFragLabSettings.particlesSortingMode = m_generalSettings.m_particlesSortingMode;
+}
+
+void CEditorPreferencesPage_FragLabGeneral::InitializeSettings()
+{
+    m_generalSettings.m_lockInstantiatedSlice = gSettings.sFragLabSettings.lockInstantiatedSlice;
+    m_generalSettings.m_particlesSortingMode = gSettings.sFragLabSettings.particlesSortingMode;
+}

@@ -761,6 +761,12 @@ void SEditorSettings::Save()
     //////////////////////////////////////////////////////////////////////////
     SaveValue("Settings", "EnableUI20", bEnableUI2);
 
+    //////////////////////////////////////////////////////////////////////////
+    // FragLab settings
+    //////////////////////////////////////////////////////////////////////////
+    SaveValue("Settings", "LockInstantiatedSlice", sFragLabSettings.lockInstantiatedSlice);
+    SaveValue("Settings", "ParticlesSortingMode", static_cast<int>(sFragLabSettings.particlesSortingMode));
+
     /*
     //////////////////////////////////////////////////////////////////////////
     // Save paths.
@@ -1079,6 +1085,20 @@ void SEditorSettings::Load()
     // UI 2.0 Settings
     //////////////////////////////////////////////////////////////////////////
     LoadValue("Settings", "EnableUI20", bEnableUI2);
+
+    //////////////////////////////////////////////////////////////////////////
+    // FragLab settings
+    //////////////////////////////////////////////////////////////////////////
+    LoadValue("Settings", "LockInstantiatedSlice", sFragLabSettings.lockInstantiatedSlice);
+
+    auto particlesSortingMode = static_cast<int>(sFragLabSettings.particlesSortingMode);
+    LoadValue("Settings", "ParticlesSortingMode", particlesSortingMode);
+
+    sFragLabSettings.particlesSortingMode = static_cast<ParticlesSortingMode>(particlesSortingMode);
+    if (sFragLabSettings.particlesSortingMode != ParticlesSortingMode::Ascending && sFragLabSettings.particlesSortingMode != ParticlesSortingMode::Descending)
+    {
+        sFragLabSettings.particlesSortingMode = ParticlesSortingMode::Off;
+    }
 
     //////////////////////////////////////////////////////////////////////////
     // Load paths.

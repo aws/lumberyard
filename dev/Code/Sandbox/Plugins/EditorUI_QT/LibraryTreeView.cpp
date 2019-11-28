@@ -64,19 +64,19 @@ QTreeWidgetItem* findTreeViewItem(const char* name, QTreeWidgetItem* root)
     return found;
 }
 
-void sortTreeRecurse(QTreeWidgetItem* root)
+void sortTreeRecurse(QTreeWidgetItem* root, Qt::SortOrder order)
 {
     if (!root)
     {
         return;
     }
 
-    root->sortChildren(LIBRARY_TREEVIEW_NAME_COLUMN, Qt::SortOrder::AscendingOrder);
+    root->sortChildren(LIBRARY_TREEVIEW_NAME_COLUMN, order);
 
     int ccount = root->childCount();
     for (int c = 0; c < ccount; c++)
     {
-        sortTreeRecurse(root->child(c));
+        sortTreeRecurse(root->child(c), order);
     }
 }
 
@@ -152,7 +152,7 @@ void CLibraryTreeView::enableReordering()
     setDragDropOverwriteMode(false);
 }
 
-void CLibraryTreeView::fillFromLibrary(bool alphaSort /*= false*/)
+void CLibraryTreeView::fillFromLibrary()
 {
     setReloading(true);
     CRY_ASSERT(m_baseLibrary);
@@ -230,9 +230,10 @@ void CLibraryTreeView::fillFromLibrary(bool alphaSort /*= false*/)
     child->SetVirtual(true);
     m_nameToNode[libraryName + QTUI_UNPARENT_ITEMNAME] = child;
 
-    if (alphaSort)
+    const auto sortingMode = GetIEditor()->GetEditorSettings()->sFragLabSettings.particlesSortingMode;
+    if (sortingMode != ParticlesSortingMode::Off)
     {
-        sortTreeRecurse(invisibleRootItem());
+        sortTreeRecurse(invisibleRootItem(), sortingMode == ParticlesSortingMode::Ascending ? Qt::SortOrder::AscendingOrder : Qt::SortOrder::DescendingOrder);
     }
 
     //signal that the tree has been filled so any library specific styling can be done
@@ -841,12 +842,12 @@ QString CLibraryTreeView::GetLibName()
     return QString(m_baseLibrary->GetName());
 }
 
-void CLibraryTreeView::SetLibrary(IDataBaseLibrary* lib, bool alphaSort /*= false*/)
+void CLibraryTreeView::SetLibrary(IDataBaseLibrary* lib)
 {
     IDataBaseLibrary* oldLib = m_baseLibrary;
     CRY_ASSERT(lib);
     m_baseLibrary = lib;
-    fillFromLibrary(false);
+    fillFromLibrary();
 }
 
 QSize CLibraryTreeView::GetSizeOfContents()
@@ -1536,7 +1537,7 @@ void CLibraryTreeView::DropMetaData(QDropEvent* event, bool dropToLocation /*= t
         //if we are dragging to a new library we can miss the paste, so fill from library before pasting
         if (!dropLibraryItem)
         {
-            fillFromLibrary(false);
+            fillFromLibrary();
         }
         emit SignalPasteSelected(placeholderItem, true);
         _newItems.push_back(placeholderItem);

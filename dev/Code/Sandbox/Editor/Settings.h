@@ -395,6 +395,21 @@ struct SSmartOpenDialogSettings
 };
 
 //////////////////////////////////////////////////////////////////////////
+
+enum class ParticlesSortingMode
+{
+    Off,
+    Ascending,
+    Descending
+};
+
+struct SFragLabSettings
+{
+    bool lockInstantiatedSlice { false };
+    ParticlesSortingMode particlesSortingMode { ParticlesSortingMode::Off };
+};
+
+//////////////////////////////////////////////////////////////////////////
 /** Various editor settings.
 */
 struct SANDBOX_API SEditorSettings
@@ -616,6 +631,9 @@ struct SANDBOX_API SEditorSettings
     bool bEnableUI2;
 
     bool newViewportInteractionModel = false; ///< Toggle for new Viewport Interaction Model.
+
+    // FragLab settings
+    SFragLabSettings sFragLabSettings;
 
 private:
     void SaveValue(const char* sSection, const char* sKey, int value);

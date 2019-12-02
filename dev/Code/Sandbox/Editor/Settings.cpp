@@ -762,10 +762,9 @@ void SEditorSettings::Save()
     SaveValue("Settings", "EnableUI20", bEnableUI2);
 
     //////////////////////////////////////////////////////////////////////////
-    // FragLab settings
+    // Particle sorting settings
     //////////////////////////////////////////////////////////////////////////
-    SaveValue("Settings", "LockInstantiatedSlice", sFragLabSettings.lockInstantiatedSlice);
-    SaveValue("Settings", "ParticlesSortingMode", static_cast<int>(sFragLabSettings.particlesSortingMode));
+    SaveValue("Settings", "ParticlesSortingMode", static_cast<int>(particlesSortingMode));
 
     /*
     //////////////////////////////////////////////////////////////////////////
@@ -1087,17 +1086,15 @@ void SEditorSettings::Load()
     LoadValue("Settings", "EnableUI20", bEnableUI2);
 
     //////////////////////////////////////////////////////////////////////////
-    // FragLab settings
+    // Particle sorting settings
     //////////////////////////////////////////////////////////////////////////
-    LoadValue("Settings", "LockInstantiatedSlice", sFragLabSettings.lockInstantiatedSlice);
+    auto tmpParticlesSortingMode = static_cast<int>(particlesSortingMode);
+    LoadValue("Settings", "ParticlesSortingMode", tmpParticlesSortingMode);
 
-    auto particlesSortingMode = static_cast<int>(sFragLabSettings.particlesSortingMode);
-    LoadValue("Settings", "ParticlesSortingMode", particlesSortingMode);
-
-    sFragLabSettings.particlesSortingMode = static_cast<ParticlesSortingMode>(particlesSortingMode);
-    if (sFragLabSettings.particlesSortingMode != ParticlesSortingMode::Ascending && sFragLabSettings.particlesSortingMode != ParticlesSortingMode::Descending)
+    particlesSortingMode = static_cast<ParticlesSortingMode>(tmpParticlesSortingMode);
+    if (particlesSortingMode != ParticlesSortingMode::Ascending && particlesSortingMode != ParticlesSortingMode::Descending)
     {
-        sFragLabSettings.particlesSortingMode = ParticlesSortingMode::Off;
+        particlesSortingMode = ParticlesSortingMode::Off;
     }
 
     //////////////////////////////////////////////////////////////////////////

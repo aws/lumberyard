@@ -50,7 +50,8 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
         ->Field("EnableSceneInspector", &GeneralSettings::m_enableSceneInspector)
         ->Field("RestoreViewportCamera", &GeneralSettings::m_restoreViewportCamera)
         ->Field("EnableLegacyUI", &GeneralSettings::m_enableLegacyUI)
-        ->Field("NewViewportInteractionModel", &GeneralSettings::m_enableNewViewportInteractionModel);
+        ->Field("NewViewportInteractionModel", &GeneralSettings::m_enableNewViewportInteractionModel)
+        ->Field("ParticlesSortingMode", &GeneralSettings::m_particlesSortingMode);
 
     serialize.Class<Messaging>()
         ->Version(2)
@@ -136,7 +137,11 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
                 ->Attribute(AZ::Edit::Attributes::Visibility, !isCryEntityRemovalGemPresent)
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GeneralSettings::SynchronizeLegacyUi)
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableNewViewportInteractionModel, "Enable New Viewport Interaction Model (EXPERIMENTAL)", "Enable this option to preview an early version of Lumberyard's updated viewport, which makes modifying entities easier")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GeneralSettings::SynchronizeNewViewportInteractionModel);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GeneralSettings::SynchronizeNewViewportInteractionModel)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &GeneralSettings::m_particlesSortingMode, "Particles Sorting Mode", "Toggle particles sorting in Particle Editor's Library")
+                ->EnumAttribute(ParticlesSortingMode::Off, "Off")
+                ->EnumAttribute(ParticlesSortingMode::Ascending, "Ascending (A-Z)")
+                ->EnumAttribute(ParticlesSortingMode::Descending, "Descending (Z-A)");
 
         editContext->Class<Messaging>("Messaging", "")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Messaging::m_showDashboard, "Show Welcome to Lumberyard at startup", "Show Welcome to Lumberyard at startup")
@@ -224,6 +229,8 @@ void CEditorPreferencesPage_General::OnApply()
     gSettings.enableSceneInspector = m_generalSettings.m_enableSceneInspector;
     gSettings.enableLegacyUI = m_generalSettings.m_enableLegacyUI;
     gSettings.newViewportInteractionModel = m_generalSettings.m_enableNewViewportInteractionModel;
+
+    gSettings.particlesSortingMode = m_generalSettings.m_particlesSortingMode;
 
     gSettings.bEnableUI2 = m_generalSettings.m_enableUI2;
     Editor::EditorQtApplication::instance()->EnableUI2(gSettings.bEnableUI2);
@@ -314,6 +321,8 @@ void CEditorPreferencesPage_General::InitializeSettings()
     m_generalSettings.m_enableLegacyUIInitialValue = gSettings.enableLegacyUI;
     m_generalSettings.m_enableNewViewportInteractionModel = gSettings.newViewportInteractionModel;
     m_generalSettings.m_enableNewViewportInteractionModelInitialValue = gSettings.newViewportInteractionModel;
+
+    m_generalSettings.m_particlesSortingMode = gSettings.particlesSortingMode;
 
     m_generalSettings.m_toolbarIconSize = gSettings.gui.nToolbarIconSize;
 

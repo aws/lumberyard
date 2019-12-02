@@ -403,12 +403,6 @@ enum class ParticlesSortingMode
     Descending
 };
 
-struct SFragLabSettings
-{
-    bool lockInstantiatedSlice { false };
-    ParticlesSortingMode particlesSortingMode { ParticlesSortingMode::Off };
-};
-
 //////////////////////////////////////////////////////////////////////////
 /** Various editor settings.
 */
@@ -632,8 +626,7 @@ struct SANDBOX_API SEditorSettings
 
     bool newViewportInteractionModel = false; ///< Toggle for new Viewport Interaction Model.
 
-    // FragLab settings
-    SFragLabSettings sFragLabSettings;
+    ParticlesSortingMode particlesSortingMode { ParticlesSortingMode::Off };
 
 private:
     void SaveValue(const char* sSection, const char* sKey, int value);

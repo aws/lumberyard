@@ -23,37 +23,6 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/RTTI/RTTI.h>
 
-class CEditorPreferencesPage_FragLabGeneral
-    : public IPreferencesPage
-{
-public:
-    AZ_RTTI(CEditorPreferencesPage_FragLabGeneral, "{E50D0D5D-2A67-453D-BCFE-2694D8A3EF6E}", IPreferencesPage)
-
-    static void Reflect(AZ::SerializeContext& serialize);
-
-    CEditorPreferencesPage_FragLabGeneral();
-    virtual ~CEditorPreferencesPage_FragLabGeneral() = default;
-
-    virtual const char* GetCategory() override { return "FragLab"; }
-    virtual const char* GetTitle() override { return "General"; }
-    virtual void OnApply() override;
-    virtual void OnCancel() override {}
-    virtual bool OnQueryCancel() override { return true; }
-
-private:
-    void InitializeSettings();
-
-    struct FragLabGeneralSettings
-    {
-        AZ_TYPE_INFO(FragLabGeneralSettings, "{86BD4B58-551D-44C1-BDEF-4DFA0D41B46D}")
-
-        bool m_lockInstantiatedSlice;
-        ParticlesSortingMode m_particlesSortingMode;
-    };
-
-    FragLabGeneralSettings m_generalSettings;
-};
-
 //////////////////////////////////////////////////////////////////////////
 class CStdPreferencesClassDesc
     : public IPreferencesPageClassDesc

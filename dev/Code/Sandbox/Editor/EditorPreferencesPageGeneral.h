@@ -69,6 +69,8 @@ private:
         bool m_enableLegacyUI;
         bool m_enableNewViewportInteractionModel;
 
+        ParticlesSortingMode m_particlesSortingMode;
+
         // Only used to tell if the user has changed this value since it requires a restart
         bool m_enableLegacyUIInitialValue;
         bool m_enableNewViewportInteractionModelInitialValue;

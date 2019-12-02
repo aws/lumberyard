@@ -714,11 +714,4 @@ Negative values will be ignored.\n")->
     {
         return m_settings.m_particleSizeScaleZ;
     }
-
-    // FL[FD-3977] Add camera shake to trackview
-    void EditorParticleComponent::ForceEmitOnce()
-    {
-        m_emitter.ForceEmitOnce();
-    }
-
 } // namespace LmbrCentral

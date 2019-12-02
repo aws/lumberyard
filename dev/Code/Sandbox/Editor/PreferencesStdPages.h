@@ -19,10 +19,6 @@
 #include <AzCore/std/functional.h>
 #include <AzCore/std/containers/vector.h>
 
-#include <AzCore/Serialization/SerializeContext.h>
-#include <AzCore/Serialization/EditContext.h>
-#include <AzCore/RTTI/RTTI.h>
-
 //////////////////////////////////////////////////////////////////////////
 class CStdPreferencesClassDesc
     : public IPreferencesPageClassDesc

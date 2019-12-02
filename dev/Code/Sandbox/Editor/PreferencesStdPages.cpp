@@ -101,3 +101,4 @@ IPreferencesPage* CStdPreferencesClassDesc::CreateEditorPreferencesPage(int inde
 {
     return (index >= m_pageCreators.size()) ? nullptr : m_pageCreators[index]();
 }
+

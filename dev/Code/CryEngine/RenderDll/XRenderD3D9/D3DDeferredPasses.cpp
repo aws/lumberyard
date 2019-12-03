@@ -698,9 +698,8 @@ bool CD3D9Renderer::FX_DeferredSnowLayer()
     {
         SD3DPostEffectsUtils::CreateRenderTarget(
             "$SnowDisplacement", s_snowDisplacement,
-            CTexture::s_ptexSceneDiffuse->GetWidth(), CTexture::s_ptexSceneDiffuse->GetHeight(), Clr_Empty, eTT_2D,
-            FT_DONT_STREAM | FT_USAGE_RENDERTARGET,
-            eTF_R8G8B8A8
+            CTexture::s_ptexSceneDiffuse->GetWidth(), CTexture::s_ptexSceneDiffuse->GetHeight(),
+            Clr_Empty, true, false, eTF_R8G8B8A8, -1, FT_DONT_STREAM | FT_USAGE_RENDERTARGET
         );
     }
 

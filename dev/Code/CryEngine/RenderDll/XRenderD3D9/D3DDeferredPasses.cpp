@@ -673,6 +673,8 @@ bool CD3D9Renderer::FX_DeferredRainGBuffer()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+static CTexture* s_snowDisplacement = nullptr;
+
 bool CD3D9Renderer::FX_DeferredSnowLayer()
 {
     const SSnowParams& snowVolParams = m_p3DEngineCommon.m_SnowInfo;
@@ -692,6 +694,16 @@ bool CD3D9Renderer::FX_DeferredSnowLayer()
         return false;
     }
 
+    if (!s_snowDisplacement || s_snowDisplacement->GetWidth() != CTexture::s_ptexSceneDiffuse->GetWidth() || s_snowDisplacement->GetHeight() != CTexture::s_ptexSceneDiffuse->GetHeight())
+    {
+        SD3DPostEffectsUtils::CreateRenderTarget(
+            "$SnowDisplacement", s_snowDisplacement,
+            CTexture::s_ptexSceneDiffuse->GetWidth(), CTexture::s_ptexSceneDiffuse->GetHeight(), Clr_Empty, eTT_2D,
+            FT_DONT_STREAM | FT_USAGE_RENDERTARGET,
+            eTF_R8G8B8A8
+        );
+    }
+
     PROFILE_LABEL_SCOPE("DEFERRED_SNOW_ACCUMULATION");
 
     if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr)) // needed RTs already in GMEM
@@ -704,10 +716,9 @@ bool CD3D9Renderer::FX_DeferredSnowLayer()
         gcpRendD3D->FX_PushRenderTarget(0, CTexture::s_ptexSceneDiffuse, &gcpRendD3D->m_DepthBufferOrigMSAA);
         gcpRendD3D->FX_PushRenderTarget(1, CTexture::s_ptexSceneNormalsMap, NULL);
         gcpRendD3D->FX_PushRenderTarget(2, CTexture::s_ptexSceneSpecular, NULL);
-
         if (CRenderer::CV_r_snow_displacement)
         {
-            gcpRendD3D->FX_PushRenderTarget(3, CTexture::s_ptexStereoR, NULL);
+            gcpRendD3D->FX_PushRenderTarget(3, s_snowDisplacement, NULL);
         }
     }
     else
@@ -815,7 +826,6 @@ bool CD3D9Renderer::FX_DeferredSnowLayer()
         gcpRendD3D->FX_PopRenderTarget(0);
         gcpRendD3D->FX_PopRenderTarget(1);
         gcpRendD3D->FX_PopRenderTarget(2);
-
         if (CRenderer::CV_r_snow_displacement)
         {
             gcpRendD3D->FX_PopRenderTarget(3);
@@ -891,7 +901,7 @@ bool CD3D9Renderer::FX_DeferredSnowDisplacement()
 
         pShader->FXSetPSFloat(param5Name, (Vec4*)matView.GetData(), 3);
 
-        PostProcessUtils().SetTexture(CTexture::s_ptexStereoR, 0, FILTER_POINT);
+        PostProcessUtils().SetTexture(s_snowDisplacement, 0, FILTER_POINT);
 
         SD3DPostEffectsUtils::DrawFullScreenTri(CTexture::s_ptexBackBuffer->GetWidth(), CTexture::s_ptexBackBuffer->GetHeight());
 

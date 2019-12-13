@@ -118,6 +118,7 @@ namespace EMotionFX
         void ReplaceMotionId(const char* what, const char* replaceWith);
         void AddMotionId(const AZStd::string& name);
 
+        float GetMotionPlaySpeed() const            { return m_playSpeed; }
         bool GetIsLooping() const                   { return m_loop; }
         bool GetIsRetargeting() const               { return m_retarget; }
         bool GetIsReversed() const                  { return m_reverse; }
@@ -134,7 +135,7 @@ namespace EMotionFX
         void SetMotionExtraction(bool motionExtraction);
         void SetMotionPlaySpeed(float playSpeed);
         void SetIndexMode(EIndexMode eIndexMode);
-        void SetNextMotionAfterLooop(bool nextMotionAfterLoop);
+        void SetNextMotionAfterLoop(bool nextMotionAfterLoop);
         void SetRewindOnZeroWeight(bool rewindOnZeroWeight);
         int FindCumulativeProbabilityIndex(float randomValue) const;
 

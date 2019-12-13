@@ -49,7 +49,6 @@
 #include <ILog.h> // <> required for Interfuscator
 #include "CryVersion.h"
 #include "smartptr.h"
-#include <IMemory.h> // <> required for Interfuscator
 #include <ISystemScheduler.h> // <> required for Interfuscator
 #include <memory> // shared_ptr
 #include <IFilePathManager.h>
@@ -216,7 +215,7 @@ enum ESystemConfigSpec
     CONFIG_HIGH_SPEC = 3,
     CONFIG_VERYHIGH_SPEC = 4,
 
-    END_CONFIG_SPEC_ENUM, // MUST BE LSAT VALUE. USED FOR ERROR CHECKING.
+    END_CONFIG_SPEC_ENUM, // MUST BE LAST VALUE. USED FOR ERROR CHECKING.
 };
 
 // Description:
@@ -229,9 +228,10 @@ enum ESystemConfigPlatform
     CONFIG_OSX_METAL = 3,
     CONFIG_ANDROID = 4,
     CONFIG_IOS = 5,
-    CONFIG_XBONE = 6,
-    CONFIG_PS4 = 7,
+    CONFIG_XENIA = 6,
+    CONFIG_PROVO = 7,
     CONFIG_APPLETV = 8,
+    CONFIG_SALEM = 9,
 
     END_CONFIG_PLATFORM_ENUM, // MUST BE LSAT VALUE. USED FOR ERROR CHECKING.
 };
@@ -483,6 +483,8 @@ enum ESystemEvent
         #include "Xenia/ISystem_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ISystem_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ISystem_h_salem.inl"
     #endif
 #endif
 
@@ -492,6 +494,8 @@ enum ESystemEvent
         #include "Xenia/ISystem_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ISystem_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ISystem_h_salem.inl"
     #endif
 #endif
     ESYSTEM_EVENT_STREAMING_INSTALL_ERROR,
@@ -654,6 +658,8 @@ struct ICVarsWhitelist
         #include "Xenia/ISystem_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ISystem_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ISystem_h_salem.inl"
     #endif
 #endif
 
@@ -681,7 +687,7 @@ struct SSystemInitParams
     bool remoteResourceCompiler;
     bool connectToRemote;
     bool waitForConnection; // if true, wait for the remote connection to be established before proceeding to system init.
-    char assetsPlatform[64]; // what flavor of assets to load.  ("pc" / "es3" / "ps4" / "ios" / "xboxone").  Corresponds to those in rc.ini and asset processor ini // ACCEPTED_USE
+    char assetsPlatform[64]; // what flavor of assets to load.  Corresponds to those in rc.ini and asset processor ini
     char gameFolderName[256]; // just the name.  Not the full path.
     char gameDLLName[256]; // just the name.  Not the full path.  ("ExampleGame") - does not include extension
     char branchToken[12]; // information written by the assetprocessor which help determine whether the game/editor are running from the same branch or not
@@ -983,6 +989,8 @@ struct SSystemGlobalEnvironment
         #include "Xenia/ISystem_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ISystem_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ISystem_h_salem.inl"
     #endif
 #endif
 
@@ -1692,7 +1700,7 @@ struct ISystem
     virtual bool UnregisterErrorObserver(IErrorObserver* errorObserver) = 0;
 
     // Summary:
-    //  Called after the processing of the assert message box(Windows or Xbox). // ACCEPTED_USE
+    //  Called after the processing of the assert message box on some platforms.
     //  It will be called even when asserts are disabled by the console variables.
     virtual void OnAssert(const char* condition, const char* message, const char* fileName, unsigned int fileLineNumber) = 0;
 
@@ -2092,6 +2100,8 @@ inline void CryWarning(EValidatorModule module, EValidatorSeverity severity, con
         #include "Xenia/ISystem_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ISystem_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ISystem_h_salem.inl"
     #endif
 #endif
 #if defined(_RELEASE) && defined(IS_CONSOLE_PLATFORM)
@@ -2238,7 +2248,7 @@ namespace Detail
 
 #else
 
-# define DeclareConstIntCVar(name, defaultValue) int name
+# define DeclareConstIntCVar(name, defaultValue) int name { defaultValue }
 # define DeclareStaticConstIntCVar(name, defaultValue) static int name
 # define DefineConstIntCVarName(strname, name, defaultValue, flags, help) \
     (gEnv->pConsole == 0 ? 0 : gEnv->pConsole->Register(strname, &name, defaultValue, flags | CONST_CVAR_FLAGS, CVARHELP(help)))

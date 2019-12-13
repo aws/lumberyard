@@ -1,0 +1,40 @@
+{
+    "platform": {
+        "appletv": {
+            "libpath_debug": [
+                "SDK/tvOS/Debug-appletvos/lib"
+            ],
+            "libpath_profile": [
+                "SDK/tvOS/Profile-appletvos/lib"
+            ],
+            "libpath_performance": [
+                "SDK/tvOS/Release-appletvos/lib"
+            ],
+            "libpath_release": [
+                "SDK/tvOS/Release-appletvos/lib"
+            ],
+            "lib_debug": [
+                "lib${communication_libs}.a",
+                "lib${common_libs_nix}.a",
+                "lib${extra_libs}.a",
+                "lib${codec_libs_apple}.a"
+            ],
+            "lib_profile": [
+                "lib${communication_libs}.a",
+                "lib${common_libs_nix}.a",
+                "lib${extra_libs}.a",
+                "lib${codec_libs_apple}.a"
+            ],
+            "lib_performance": [
+                "lib${common_libs_nix}.a",
+                "lib${extra_libs}.a",
+                "lib${codec_libs_apple}.a"
+            ],
+            "lib_release": [
+                "lib${common_libs_nix}.a",
+                "lib${extra_libs}.a",
+                "lib${codec_libs_apple}.a"
+            ]
+        }
+    }
+}

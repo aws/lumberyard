@@ -10,12 +10,7 @@
 *
 */
 
-#if !defined(AFX_STDAFX_H__B36C325D_F0EA_4C45_F3BC_1E5EAB3A5E43__INCLUDED_)
-#define AFX_STDAFX_H__B36C325D_F0EA_4C45_F3BC_1E5EAB3A5E43__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 #include <algorithm>
 #include <vector>
@@ -38,4 +33,3 @@
 
 #include <GameWarning.h>
 
-#endif // !defined(AFX_STDAFX_H__B36C325D_F0EA_4C45_F3BC_1E5EAB3A5E43__INCLUDED_)

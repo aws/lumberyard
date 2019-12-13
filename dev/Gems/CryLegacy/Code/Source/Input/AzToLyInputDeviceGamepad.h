@@ -31,6 +31,8 @@ protected:
         #include "Xenia/AzToLyInputDeviceGamepad_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/AzToLyInputDeviceGamepad_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/AzToLyInputDeviceGamepad_h_salem.inl"
     #endif
 #elif defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #if defined(TOOLS_SUPPORT_XENIA)
@@ -38,5 +40,8 @@ protected:
 #endif
 #if defined(TOOLS_SUPPORT_PROVO)
     #include "Provo/AzToLyInputDeviceGamepad_h_provo.inl"
+#endif
+#if defined(TOOLS_SUPPORT_SALEM)
+    #include "Salem/AzToLyInputDeviceGamepad_h_salem.inl"
 #endif
 #endif

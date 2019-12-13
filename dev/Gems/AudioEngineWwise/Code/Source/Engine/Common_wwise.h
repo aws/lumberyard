@@ -13,9 +13,24 @@
 
 #pragma once
 
-#include "AK/SoundEngine/Common/AkTypes.h"
-#include "AK/AkWwiseSDKVersion.h"
+#include <AK/SoundEngine/Common/AkTypes.h>
+#include <AK/AkWwiseSDKVersion.h>
 #include <IAudioSystem.h>
+#include <AudioEngineWwise_Traits_Platform.h>
+
+
+#if AZ_TRAIT_AUDIOENGINEWWISE_PROVIDE_IMPL_SECONDARY_POOL
+    #include <platform.h>
+    #include <CryPool/PoolAlloc.h>
+
+    using TMemoryPoolReferenced = NCryPoolAlloc::CThreadSafe<NCryPoolAlloc::CBestFit<NCryPoolAlloc::CReferenced<NCryPoolAlloc::CMemoryDynamic, 4 * 1024, true>, NCryPoolAlloc::CListItemReference>>;
+
+    namespace Audio
+    {
+        extern TMemoryPoolReferenced g_audioImplMemoryPoolSecondary_wwise;
+    }
+#endif // AZ_TRAIT_AUDIOENGINEWWISE_PROVIDE_IMPL_SECONDARY_POOL
+
 
 #define WWISE_IMPL_BASE_PATH "sounds/wwise/"
 #define WWISE_IMPL_BANK_PATH "" // No further sub folders necessary.
@@ -35,19 +50,31 @@
 #define ASSERT_WWISE_OK(x) (AKASSERT((x) == AK_Success))
 #define IS_WWISE_OK(x)     ((x) == AK_Success)
 
+
 namespace Audio
 {
-    // wwise-specific helper functions
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    inline AkVector LYVec3ToAkVector(const Vec3& vec3)
+    // Wwise Xml Element Names
+    namespace WwiseXmlTags
     {
-        // swizzle Y <--> Z
-        AkVector akVec;
-        akVec.X = vec3.x;
-        akVec.Y = vec3.z;
-        akVec.Z = vec3.y;
-        return akVec;
-    }
+        static constexpr const char* WwiseEventTag = "WwiseEvent";
+        static constexpr const char* WwiseRtpcTag = "WwiseRtpc";
+        static constexpr const char* WwiseSwitchTag = "WwiseSwitch";
+        static constexpr const char* WwiseStateTag = "WwiseState";
+        static constexpr const char* WwiseRtpcSwitchTag = "WwiseRtpc";
+        static constexpr const char* WwiseFileTag = "WwiseFile";
+        static constexpr const char* WwiseAuxBusTag = "WwiseAuxBus";
+        static constexpr const char* WwiseValueTag = "WwiseValue";
+        static constexpr const char* WwiseNameAttribute = "wwise_name";
+        static constexpr const char* WwiseValueAttribute = "wwise_value";
+        static constexpr const char* WwiseMutiplierAttribute = "atl_mult";
+        static constexpr const char* WwiseShiftAttribute = "atl_shift";
+        static constexpr const char* WwiseLocalizedAttribute = "wwise_localised";
+
+    } // namespace WwiseXmlTags
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    // Wwise-specific helper functions
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     inline AkVector AZVec3ToAkVector(const AZ::Vector3& vec3)
@@ -73,10 +100,10 @@ namespace Audio
     inline void ATLTransformToAkTransform(const SATLWorldPosition& atlTransform, AkTransform& akTransform)
     {
         akTransform.Set(
-            LYVec3ToAkVector(atlTransform.mPosition.GetColumn3()),
-            LYVec3ToAkVector(atlTransform.mPosition.GetColumn1().GetNormalized()),  // Wwise SDK requires that the Orientation vectors
-            LYVec3ToAkVector(atlTransform.mPosition.GetColumn2().GetNormalized())   // are normalized prior to sending to the apis.
-            );
+            AZVec3ToAkVector(atlTransform.m_transform.GetPosition()),
+            AZVec3ToAkVector(atlTransform.m_transform.GetColumn(1).GetNormalized()),    // Wwise SDK requires that the Orientation vectors
+            AZVec3ToAkVector(atlTransform.m_transform.GetColumn(2).GetNormalized())     // are normalized prior to sending to the apis.
+        );
     }
 
 } // namespace Audio

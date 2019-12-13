@@ -149,10 +149,13 @@ namespace AZ
                     break;
                 case Phase::Construction:
                 {
-                    //Add the Bones to CSkinningInfo.
+                    //Add the Bones to CSkinningInfo only if they have not been added already.
                     CSkinningInfo* skinningInfo = context.m_container.GetSkinningInfo();
-                    result = SceneEvents::Process<AddBonesToSkinningInfoContext>(
-                        *skinningInfo, context.m_scene, rootBoneName);
+                    if (skinningInfo->m_arrBonesDesc.size() == 0)
+                    {
+                        result = SceneEvents::Process<AddBonesToSkinningInfoContext>(
+                            *skinningInfo, context.m_scene, rootBoneName);
+                    }
                 }
                 break;
                 default:

@@ -13,13 +13,13 @@
 
 #pragma once
 
-#include "AudioControl.h"
-
-#include <ui_ConnectionsWidget.h>
+#include <AudioControl.h>
 
 #include <QWidget>
 #include <QListWidget>
 #include <QColor>
+
+#include <Source/Editor/ui_ConnectionsWidget.h>
 
 namespace AudioControls
 {
@@ -33,11 +33,11 @@ namespace AudioControls
     {
         Q_OBJECT
     public:
-        QConnectionsWidget(QWidget* pParent = nullptr, const string& sGroup = "");
+        QConnectionsWidget(QWidget* pParent = nullptr, const AZStd::string& sGroup = "");
 
     public slots:
         void SetControl(CATLControl* pControl);
-        void Init(const string& sGroup);
+        void Init(const AZStd::string& sGroup);
 
     private slots:
         void ShowConnectionContextMenu(const QPoint& pos);
@@ -51,7 +51,7 @@ namespace AudioControls
         void UpdateConnections();
         void CreateItemFromConnection(IAudioSystemControl* pAudioSystemControl);
 
-        string m_sGroup;
+        AZStd::string m_sGroup;
         CATLControl* m_pControl;
         QColor m_notFoundColor;
         QColor m_localisedColor;

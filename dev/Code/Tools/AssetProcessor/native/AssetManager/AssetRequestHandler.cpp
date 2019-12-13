@@ -119,9 +119,20 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
         SourceAssetInfoResponse response;
         if (request->m_assetId.IsValid())
         {
+
             AZStd::string rootFolder;
-            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(response.m_found, &AzToolsFramework::AssetSystem::AssetSystemRequest::GetSourceInfoBySourceUUID, request->m_assetId.m_guid, response.m_assetInfo, rootFolder );
-            response.m_rootFolder = rootFolder.c_str();
+            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(response.m_found, &AzToolsFramework::AssetSystem::AssetSystemRequest::GetSourceInfoBySourceUUID, request->m_assetId.m_guid, response.m_assetInfo, rootFolder);
+ 
+            if (response.m_found)
+            {
+                response.m_assetInfo.m_assetId.m_subId = request->m_assetId.m_subId;
+                response.m_assetInfo.m_assetType = request->m_assetType;
+                response.m_rootFolder = rootFolder.c_str();
+            }
+            else 
+            {
+                response.m_assetInfo.m_assetId.SetInvalid();
+            }
             AssetProcessor::ConnectionBus::Event(key.first, &AssetProcessor::ConnectionBusTraits::SendResponse, key.second, response);
         }
         else if (!request->m_assetPath.empty())
@@ -284,7 +295,7 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
     }
 }
 
-void AssetRequestHandler::ProcessAssetRequest(NetworkRequestID networkRequestId, BaseAssetProcessorMessage* message, QString platform, bool fencingFailed)
+void AssetRequestHandler::ProcessAssetRequest(NetworkRequestID networkRequestId, BaseAssetProcessorMessage* message, QString platform, bool /*fencingFailed*/)
 {
     using RequestAssetStatus = AzFramework::AssetSystem::RequestAssetStatus;
     RequestAssetStatus* stat = azrtti_cast<RequestAssetStatus*>(message);
@@ -384,7 +395,7 @@ void AssetRequestHandler::OnRequestAssetExistsResponse(NetworkRequestID groupID,
     m_pendingAssetRequests.erase(located);
 }
 
-void AssetRequestHandler::SendAssetStatus(NetworkRequestID groupID, unsigned int type, AssetStatus status)
+void AssetRequestHandler::SendAssetStatus(NetworkRequestID groupID, unsigned int /*type*/, AssetStatus status)
 {
     AzFramework::AssetSystem::ResponseAssetStatus resp;
     resp.m_assetStatus = status;
@@ -401,7 +412,7 @@ void AssetRequestHandler::RegisterRequestHandler(unsigned int messageId, QObject
     m_RequestHandlerMap.insert(messageId, object);
 }
 
-void AssetRequestHandler::DeRegisterRequestHandler(unsigned int messageId, QObject* object)
+void AssetRequestHandler::DeRegisterRequestHandler(unsigned int messageId, QObject* /*object*/)
 {
     auto located = m_RequestHandlerMap.find(messageId);
 

@@ -279,13 +279,13 @@ namespace ScriptCanvas
         const Datum* GetDatumByIndex(size_t index) const;
         const Slot* GetSlotByIndex(size_t index) const;
         
-        SlotId AddSlot(const SlotConfiguration& slotConfiguration);
+        SlotId AddSlot(const SlotConfiguration& slotConfiguration, bool signalAdd = true);
 
         // Inserts a slot before the element found at @index. If the index < 0 or >= slots.size(), the slot will be will be added at the end
-        SlotId InsertSlot(AZ::s64 index, const SlotConfiguration& slotConfiguration);
+        SlotId InsertSlot(AZ::s64 index, const SlotConfiguration& slotConfiguration, bool signalAdd = true);
 
         // Removes the slot on this node that matches the supplied slotId
-        bool RemoveSlot(const SlotId& slotId, bool removeConnections = true);
+        bool RemoveSlot(const SlotId& slotId, bool signalRemoval = true);
         void RemoveConnectionsForSlot(const SlotId& slotId);
         void SignalSlotRemoved(const SlotId& slotId);
 
@@ -576,23 +576,8 @@ namespace ScriptCanvas
         template<typename, typename = AZStd::void_t<>>
         struct IsTupleLike : AZStd::false_type {};
 
-        /* 
-        https://blogs.msdn.microsoft.com/vcblog/2015/12/02/partial-support-for-expression-sfinae-in-vs-2015-update-1/
-        VS2013 is unable to deal with the decltype expressions in template arguments(but only in some cases)
-        // This signature would have allowed any type that specializes the std::get template function to produce multiple output slots
-        // UNCOMMENT when VS2013 is no longer supported
         template<typename ResultType>
-        struct IsTupleLike<ResultType, AZStd::void_t<decltype(AZStd::get<0>(AZStd::declval<ResultType>()))> : AZStd::true_type {};
-        */
-        // TODO: More constrained template that should be removed when VS2013 is no longer supported
-        template<typename... Args>
-        struct IsTupleLike<AZStd::tuple<Args...>, AZStd::void_t<>> : AZStd::true_type {};
-
-        template<typename T, size_t N>
-        struct IsTupleLike<AZStd::array<T, N>, AZStd::void_t<>> : AZStd::true_type {};
-
-        template<typename T1, typename T2>
-        struct IsTupleLike<AZStd::pair<T1, T2>, AZStd::void_t<>> : AZStd::true_type {};
+        struct IsTupleLike<ResultType, AZStd::void_t<decltype(AZStd::get<0>(AZStd::declval<ResultType>()))>> : AZStd::true_type {};
 
         template<typename ResultType, typename t_Traits, typename = AZStd::void_t<>>
         struct OutputSlotHelper

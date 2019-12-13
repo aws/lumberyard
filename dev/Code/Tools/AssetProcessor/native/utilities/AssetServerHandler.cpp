@@ -60,17 +60,20 @@ namespace AssetProcessor
         QString archiveAbsFilePath = ComputeArchiveFilePath(builderParams);
         if (archiveAbsFilePath.isEmpty())
         {
+            AZ_Error(AssetProcessor::DebugChannel, false, "Extracting archive operation failed. Archive Absolute Path is empty. \n");
             return false;
         }
 
         if (!QFile::exists(archiveAbsFilePath))
         {
-            // file does not exists on the server 
+            // file does not exist on the server 
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Extracting archive operation cancelled. Archive does not exist on server. \n");
             return false;
         }
 
         if (listener.WasQuitRequested() || jobCancelListener.IsCancelled())
         {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Extracting archive operation cancelled. \n");
             return false;
         }
         AZ_TracePrintf(AssetProcessor::DebugChannel, "Extracting archive for job (%s, %s, %s) with fingerprint (%u).\n",
@@ -78,11 +81,11 @@ namespace AssetProcessor
             builderParams.m_rcJob->GetPlatformInfo().m_identifier.c_str(), builderParams.m_rcJob->GetOriginalFingerprint());
         bool success = false;
         AzToolsFramework::ArchiveCommands::Bus::BroadcastResult(success, &AzToolsFramework::ArchiveCommands::ExtractArchiveBlocking, archiveAbsFilePath.toUtf8().data(), builderParams.GetTempJobDirectory(), false);
-        AZ_Warning(AssetProcessor::DebugChannel, success, "Extracting archive operation failed.\n");
+        AZ_Error(AssetProcessor::DebugChannel, success, "Extracting archive operation failed.\n");
         return success;
     }
 
-    bool AssetServerHandler::StoreJobResult(const AssetProcessor::BuilderParams& builderParams)
+    bool AssetServerHandler::StoreJobResult(const AssetProcessor::BuilderParams& builderParams, AZStd::vector<AZStd::string>& sourceFileList)
     {
         AssetBuilderSDK::JobCancelListener jobCancelListener(builderParams.m_rcJob->GetJobEntry().m_jobRunKey);
         AssetUtilities::QuitListener listener;
@@ -91,29 +94,63 @@ namespace AssetProcessor
         
         if (archiveAbsFilePath.isEmpty())
         {
+            AZ_Error(AssetProcessor::DebugChannel, false, "Creating archive operation failed. Archive Absolute Path is empty. \n");
             return false;
         }
 
         if (QFile::exists(archiveAbsFilePath))
         {
             // file already exists on the server 
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Creating archive operation cancelled. An archive of this asset already exists on server. \n");
             return true;
         }
         
         if (listener.WasQuitRequested() || jobCancelListener.IsCancelled())
         {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Creating archive operation cancelled. \n");
             return false;
         }
 
         bool success = false;
 
-        AZ_TracePrintf(AssetProcessor::DebugChannel, " Creating archive for job (%s, %s, %s) with fingerprint (%u).\n",
+        AZ_TracePrintf(AssetProcessor::DebugChannel, "Creating archive for job (%s, %s, %s) with fingerprint (%u).\n",
             builderParams.m_rcJob->GetJobEntry().m_pathRelativeToWatchFolder.toUtf8().data(), builderParams.m_rcJob->GetJobKey().toUtf8().data(),
             builderParams.m_rcJob->GetPlatformInfo().m_identifier.c_str(), builderParams.m_rcJob->GetOriginalFingerprint());
         AzToolsFramework::ArchiveCommands::Bus::BroadcastResult(success, &AzToolsFramework::ArchiveCommands::CreateArchiveBlocking, archiveAbsFilePath.toUtf8().data(), builderParams.GetTempJobDirectory());
-        AZ_Warning(AssetProcessor::DebugChannel, success, "Creating archive operation failed.\n");
+        AZ_Error(AssetProcessor::DebugChannel, success, "Creating archive operation failed. \n");
 
+        if (success && sourceFileList.size())
+        {
+            // Check if any of our output products for this job was a source file which would not be in the temp folder
+            // If so add it to the archive
+            AddSourceFilesToArchive(builderParams, archiveAbsFilePath, sourceFileList);
+        }
         return success;
     }
 
+    bool AssetServerHandler::AddSourceFilesToArchive(const AssetProcessor::BuilderParams& builderParams, const QString& archivePath, AZStd::vector<AZStd::string>& sourceFileList)
+    {
+        bool allSuccess{ true };
+        for (const auto& thisProduct : sourceFileList)
+        {
+            QFileInfo sourceFile{ builderParams.m_rcJob->GetJobEntry().GetAbsoluteSourcePath() };
+            QDir sourceDir{ sourceFile.absoluteDir() };
+
+            if (!QFileInfo(sourceDir.absoluteFilePath(thisProduct.c_str())).exists())
+            {
+                AZ_Warning(AssetProcessor::DebugChannel, false, "Failed to add %s to %s - source does not exist in expected location (sourceDir %s )", thisProduct.c_str(), archivePath.toUtf8().data(), sourceDir.path().toUtf8().data());
+                allSuccess = false;
+                continue;
+            }
+            bool success{ false };
+            AzToolsFramework::ArchiveCommands::Bus::BroadcastResult(success, &AzToolsFramework::ArchiveCommands::AddFileToArchiveBlocking, archivePath.toUtf8().data(), sourceDir.path().toUtf8().data(), thisProduct.c_str());
+            if (!success)
+            {
+                AZ_Warning(AssetProcessor::DebugChannel, false, "Failed to add %s to %s", thisProduct.c_str(), archivePath.toUtf8().data());
+                allSuccess = false;
+            }
+
+        }
+        return allSuccess;
+    }
 }// AssetProcessor

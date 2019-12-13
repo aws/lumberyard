@@ -18,6 +18,7 @@
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/string/string.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
+#include <AssetBuilderSDK/AssetBuilderSDK.h>
 
 namespace AssetBuilderSDK
 {
@@ -74,9 +75,9 @@ namespace AZ
             IConvertContext* GetConvertContext() override;
 
         protected:
-            virtual bool PrepareForExporting(const char* configFilePath, RCToolApplication& application, const AZStd::string& appRoot);
-            virtual bool LoadAndExportScene(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response);
-            virtual bool ExportScene(AssetBuilderSDK::ProcessJobResponse& response, const AZ::SceneAPI::Containers::Scene& scene, const char* platformIdentifier);
+            bool PrepareForExporting(const char* configFilePath, RCToolApplication& application, const AZStd::string& appRoot, bool& connectedToAssetProcessor);
+            bool LoadAndExportScene(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response);
+            bool ExportScene(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response, const AZ::SceneAPI::Containers::Scene& scene, const char* platformIdentifier);
             
             // Several file produced by this compiler used to have their sub id automatically assigned by the AP. This was causing problems with keeping
             //      the sub id stable and the sub id was changed to be provided by this compiler. However these new sub ids differ from the original sub id
@@ -86,9 +87,9 @@ namespace AZ
             virtual bool IsPreSubIdFile(const AZStd::string& file) const;
             virtual void ResolvePreSubIds(AssetBuilderSDK::ProcessJobResponse& response, const AZStd::map<AZStd::string, size_t>& preSubIdFiles) const;
             virtual u32 BuildSubId(const SceneAPI::Events::ExportProduct& product) const;
-
+            
             virtual AZStd::unique_ptr<AssetBuilderSDK::ProcessJobRequest> ReadJobRequest(const char* cacheFolder) const;
-            virtual bool WriteResponse(const char* cacheFolder, AssetBuilderSDK::ProcessJobResponse& response, bool success = true) const;
+            virtual bool WriteResponse(const char* cacheFolder, AssetBuilderSDK::ProcessJobResponse& response, AssetBuilderSDK::ProcessJobResultCode jobResult) const;
 
             ConvertContext m_context;
             AZStd::shared_ptr<ISceneConfig> m_config;

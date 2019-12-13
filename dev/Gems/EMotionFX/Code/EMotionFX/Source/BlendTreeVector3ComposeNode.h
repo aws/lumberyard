@@ -60,6 +60,7 @@ namespace EMotionFX
 
     private:
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
+        void Output(AnimGraphInstance* animGraphInstance) override;
+        void UpdateOutputPortValues(AnimGraphInstance* animGraphInstance);
     };
-}   // namespace EMotionFX
-
+} // namespace EMotionFX

@@ -37,11 +37,8 @@ namespace GraphCanvas
 
     protected:
 
-        // VS2013 Fixes
         DataConnectionComponent(const DataConnectionComponent&) = delete;
         const DataConnectionComponent& operator=(const DataConnectionComponent&) = delete;
-        ////
-
         ConnectionMoveResult OnConnectionMoveComplete(const QPointF& scenePos, const QPoint& screenPos) override;
     }; 
 }

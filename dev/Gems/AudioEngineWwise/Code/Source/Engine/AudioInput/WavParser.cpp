@@ -10,10 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
-
-#include "WavParser.h"
-
+#include <AudioInput/WavParser.h>
 
 namespace Audio
 {
@@ -35,7 +32,7 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
-    AZStd::size_t WavFileParser::ParseHeader(AZ::IO::FileIOStream& fileStream)
+    size_t WavFileParser::ParseHeader(AZ::IO::FileIOStream& fileStream)
     {
         if (IsHeaderValid())
         {
@@ -52,7 +49,7 @@ namespace Audio
 
         // Begin parsing, start with the RIFF + WAVE tags...
         AZ::u8* writePtr = reinterpret_cast<AZ::u8*>(&m_header);
-        AZStd::size_t copySize = sizeof(m_header.riff) + sizeof(m_header.wave);
+        size_t copySize = sizeof(m_header.riff) + sizeof(m_header.wave);
         fileStream.Read(copySize, writePtr);
 
         if (!ValidTag(m_header.riff.tag, WavFileParser::riff_tag))

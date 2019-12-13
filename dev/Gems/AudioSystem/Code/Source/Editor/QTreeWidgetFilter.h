@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <AzCore/std/containers/vector.h>
+
 class QTreeWidget;
 class QTreeWidgetItem;
 
@@ -36,5 +38,5 @@ private:
     bool IsItemValid(QTreeWidgetItem* pItem);
 
     QTreeWidget* m_pTreeWidget;
-    std::vector<ITreeWidgetItemFilter*> m_filters;
+    AZStd::vector<ITreeWidgetItemFilter*> m_filters;
 };

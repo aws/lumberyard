@@ -25,7 +25,6 @@ namespace RenderCapabilities
     static const unsigned int s_gpuVendorIdIntel = 0x8086;
     static const unsigned int s_gpuVendorIdQualcomm = 0x5143;
     static const unsigned int s_gpuVendorIdSamsung = 0x1099;
-    //  Confetti BEGIN: Igor Lobanchikov :END
     static const unsigned int s_gpuVendorIdARM = 0x13B5;
 
     //Note that for platforms that don't support texture views, you are still allowed to create a single view, that view must "match" the creation parameters of

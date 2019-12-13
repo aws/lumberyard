@@ -13,42 +13,36 @@
 
 #pragma once
 
-#include "platform.h"
-#include "CryString.h"
-#include "IAudioConnection.h"
-#include "ACETypes.h"
+#include <AzCore/std/string/string.h>
+#include <AzCore/std/string/string_view.h>
+
+#include <ACETypes.h>
+#include <IAudioConnection.h>
 
 namespace AudioControls
 {
-    // lumberyard-refactor:
-    // since this class is in a file named IAudioSystemControl.h and this is a concrete class,
-    // it is named badly.  The 'I' should denote an interface.  Two ways to go here:
-    // 1) Make a real Interface class, keep it named IAudioSystemControl and derive a concrete
-    //    'shared' class that has all this implementation.
-    // 2) Rename the file and class to AudioSystemControl, then it is no longer confusing.
-
     //-------------------------------------------------------------------------------------------//
     class IAudioSystemControl
     {
     public:
         IAudioSystemControl()
             : m_name()
+            , m_parent(nullptr)
             , m_id(ACE_INVALID_CID)
             , m_type(AUDIO_IMPL_INVALID_TYPE)
             , m_bPlaceholder(false)
             , m_bLocalised(false)
-            , m_parent(nullptr)
             , m_isConnected(false)
         {
         }
 
-        IAudioSystemControl(const string& name, CID id, TImplControlType type)
+        IAudioSystemControl(const AZStd::string& name, CID id, TImplControlType type)
             : m_name(name)
+            , m_parent(nullptr)
             , m_id(id)
             , m_type(type)
             , m_bPlaceholder(false)
             , m_bLocalised(false)
-            , m_parent(nullptr)
             , m_isConnected(false)
         {
         }
@@ -62,10 +56,10 @@ namespace AudioControls
         TImplControlType GetType() const { return m_type; }
         void SetType(TImplControlType type) { m_type = type; }
 
-        string GetName() const { return m_name; }
-        void SetName(const string& name)
+        const AZStd::string& GetName() const { return m_name; }
+        void SetName(const AZStd::string_view name)
         {
-            if (name != m_name)
+            if (m_name != name)
             {
                 m_name = name;
             }
@@ -87,13 +81,14 @@ namespace AudioControls
         IAudioSystemControl* GetParent() const { return m_parent; }
 
     private:
+        AZStd::vector<IAudioSystemControl*> m_children;
+
+        AZStd::string m_name;
+        IAudioSystemControl* m_parent;
         CID m_id;
         TImplControlType m_type;
-        string m_name;
         bool m_bPlaceholder;
         bool m_bLocalised;
         bool m_isConnected;
-        std::vector<IAudioSystemControl*> m_children;
-        IAudioSystemControl* m_parent;
     };
 } // namespace AudioControls

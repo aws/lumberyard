@@ -10,9 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
-
-#include "AudioSourceManager.h"
+#include <AudioSourceManager.h>
 #include <AudioInput/AudioInputFile.h>
 #include <AudioInput/AudioInputMicrophone.h>
 #include <AudioInput/AudioInputStream.h>

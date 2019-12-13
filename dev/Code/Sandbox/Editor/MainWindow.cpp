@@ -66,8 +66,14 @@
 
 #include "EditorPreferencesPageGeneral.h"
 #include "SettingsManagerDialog.h"
+
+#ifdef LY_TERRAIN_EDITOR
 #include "TerrainTexture.h"
+#endif //#ifdef LY_TERRAIN_EDITOR
+
+// This is the "Sun Trajectory Tool", so it's not directly related to the rest of the Terrain Editor code above.
 #include "TerrainLighting.h"
+
 #include "TimeOfDayDialog.h"
 #include "TrackView/TrackViewDialog.h"
 #include "DataBaseDialog.h"
@@ -84,8 +90,12 @@
 #include "AI/AIDebugger.h"
 #include "VisualLogViewer/VisualLogWnd.h"
 #include "SelectObjectDlg.h"
+
+#ifdef LY_TERRAIN_EDITOR
 #include "TerrainDialog.h"
+#endif //#ifdef LY_TERRAIN_EDITOR
 #include "TerrainPanel.h"
+
 #include "Dialogs/PythonScriptsDialog.h"
 #include "AssetResolver/AssetResolverDialog.h"
 #include "ObjectCreateTool.h"
@@ -101,7 +111,9 @@
 #include <EngineSettingsManager.h>
 
 #include <algorithm>
+AZ_PUSH_DISABLE_WARNING(4251 4355 4996, "-Wunknown-warning-option")
 #include <aws/core/auth/AWSCredentialsProvider.h>
+AZ_POP_DISABLE_WARNING
 
 #include <QDesktopServices>
 #include <QDockWidget>
@@ -138,6 +150,8 @@
 #include <Editor/AzAssetBrowser/AzAssetBrowserWindow.h>
 #include <Editor/AssetEditor/AssetEditorWindow.h>
 #include <Editor/GridSettingsDialog.h>
+
+#include <AzCore/RTTI/BehaviorContext.h>
 
 // uncomment this to show thumbnail demo widget
 // #define ThumbnailDemo
@@ -300,20 +314,49 @@ namespace
     {
         QtViewPaneManager::instance()->ClosePane(viewClassName);
     }
+    
+    bool PyIsViewPaneVisible(const char* viewClassName)
+    {
+        return QtViewPaneManager::instance()->IsVisible(viewClassName);
+    }
 
     std::vector<std::string> PyGetViewPaneClassNames()
     {
-        IEditorClassFactory* pClassFactory = GetIEditor()->GetClassFactory();
-        std::vector<IClassDesc*> classDescs;
-        pClassFactory->GetClassesBySystemID(ESYSTEM_CLASS_VIEWPANE, classDescs);
+        const QtViewPanes panes = QtViewPaneManager::instance()->GetRegisteredPanes();
 
         std::vector<std::string> classNames;
-        for (auto iter = classDescs.begin(); iter != classDescs.end(); ++iter)
+        classNames.reserve(panes.size());
+
+        AZStd::transform(panes.begin(), panes.end(), AZStd::back_inserter(classNames), [](const QtViewPane& pane)
         {
-            classNames.push_back((*iter)->ClassName().toUtf8().data());
-        }
+            return pane.m_name.toUtf8().data();
+        });
 
         return classNames;
+    }
+
+    AZStd::string PyGetStatusText()
+    {
+        if (GetIEditor()->GetEditTool())
+        {
+            return AZStd::string(GetIEditor()->GetEditTool()->GetStatusText().toUtf8().data());
+        }
+        return AZStd::string("");
+    }
+
+    AZStd::vector<AZStd::string> PyGetViewPaneNames()
+    {
+        const QtViewPanes panes = QtViewPaneManager::instance()->GetRegisteredPanes();
+
+        AZStd::vector<AZStd::string> names;
+        names.reserve(panes.size());
+
+        AZStd::transform(panes.begin(), panes.end(), AZStd::back_inserter(names), [](const QtViewPane& pane)
+        {
+            return pane.m_name.toUtf8().data();
+        });
+
+        return names;
     }
 
     void PyExit()
@@ -730,10 +773,15 @@ MainWindow* MainWindow::instance()
 
 void MainWindow::closeEvent(QCloseEvent* event)
 {
-    if (m_dayCountManager->ShouldShowNetPromoterScoreDialog())
+    auto cryEdit = CCryEditApp::instance();
+    // Don't show the net promoter when running in batch mode.
+    if (!cryEdit || !cryEdit->IsInConsoleMode())
     {
-        m_NetPromoterScoreDialog->SetRatingInterval(m_dayCountManager->GetRatingInterval());
-        m_NetPromoterScoreDialog->exec();
+        if (m_dayCountManager->ShouldShowNetPromoterScoreDialog())
+        {
+            m_NetPromoterScoreDialog->SetRatingInterval(m_dayCountManager->GetRatingInterval());
+            m_NetPromoterScoreDialog->exec();
+        }
     }
 
     if (GetIEditor()->GetDocument() && !GetIEditor()->GetDocument()->CanCloseFrame())
@@ -991,6 +1039,9 @@ void MainWindow::InitActions()
 #endif
 #if defined(TOOLS_SUPPORT_PROVO)
     #include "Provo/MainWindow_cpp_provo.inl"
+#endif
+#if defined(TOOLS_SUPPORT_SALEM)
+    #include "Salem/MainWindow_cpp_salem.inl"
 #endif
 #endif
     am->AddAction(ID_GAME_APPLETV_ENABLESPEC, tr("Apple TV")).SetCheckable(true)
@@ -1587,10 +1638,12 @@ void MainWindow::InitActions()
         .SetStatusTip(tr("Enable processing of Physics and AI."))
         .SetMetricsIdentifier("MainEditor", "TogglePhysicsAndAI")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnSwitchPhysicsUpdate);
+#ifdef LY_TERRAIN_EDITOR
     am->AddAction(ID_TERRAIN_COLLISION, tr("Terrain Collision")).SetCheckable(true)
         .SetStatusTip(tr("Enable collision of camera with terrain."))
         .SetMetricsIdentifier("MainEditor", "ToggleTerrainCameraCollision")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnTerrainCollisionUpdate);
+#endif //#ifdef LY_TERRAIN_EDITOR
     am->AddAction(ID_GAME_SYNCPLAYER, tr("Synchronize Player with Camera")).SetCheckable(true)
         .SetStatusTip(tr("Synchronize Player with Camera\nSynchronize Player with Camera"))
         .SetMetricsIdentifier("MainEditor", "SynchronizePlayerWithCamear")
@@ -1934,6 +1987,7 @@ void MainWindow::InitActions()
         .SetIcon(EditorProxyStyle::icon("Audio"))
         .SetApplyHoverEffect();
 
+#ifdef LY_TERRAIN_EDITOR
     if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
     {
         am->AddAction(ID_OPEN_TERRAIN_EDITOR, tr(LyViewPane::TerrainEditor))
@@ -1945,6 +1999,7 @@ void MainWindow::InitActions()
             .SetIcon(EditorProxyStyle::icon("Terrain_Texture"))
             .SetApplyHoverEffect();
     }
+#endif // #ifdef LY_TERRAIN_EDITOR
 
     am->AddAction(ID_PARTICLE_EDITOR, tr("Particle Editor"))
         .SetToolTip(tr("Open Particle Editor"))
@@ -2338,35 +2393,35 @@ QRollupCtrl* MainWindow::GetRollUpControl(int rollupBarId)
     // If we are in legacy UI mode, just grab the rollup bar directly
     QtViewPane* pane = nullptr;
     if (m_enableLegacyCryEntities)
-{
+    {
         pane = m_viewPaneManager->GetPane(LyViewPane::LegacyRollupBar);
-}
+    }
     // Otherwise, we only have the terrain tool
     else if (rollupBarId == ROLLUP_TERRAIN)
-{
+    {
         pane = m_viewPaneManager->GetPane(LyViewPane::TerrainTool);
-}
+    }
 
     if (!pane)
-{
+    {
         // TODO: This needs to be replaced with an equivalent workflow when the
         // rollupbar functionality has been replaced
         return nullptr;
-}
+    }
 
     // In legacy UI mode, we need to find the proper control from the rollupbar
     QRollupCtrl* ctrl = nullptr;
     if (m_enableLegacyCryEntities)
-{
-    CRollupBar* rollup = qobject_cast<CRollupBar*>(pane->Widget());
-    if (rollup)
     {
+        CRollupBar* rollup = qobject_cast<CRollupBar*>(pane->Widget());
+        if (rollup)
+        {
             ctrl = rollup->GetRollUpControl(rollupBarId);
+        }
     }
-}
     // Otherwise, our terrain tool is the actual rollup control
     else
-{
+    {
         ctrl = qobject_cast<CTerrainTool*>(pane->Widget());
     }
 
@@ -2591,10 +2646,14 @@ void MainWindow::RegisterStdViewClasses()
     CPanelDisplayLayer::RegisterViewClass();
     CPythonScriptsDialog::RegisterViewClass();
     CMissingAssetDialog::RegisterViewClass();
+
+#ifdef LY_TERRAIN_EDITOR
     CTerrainDialog::RegisterViewClass();
-    CTerrainTool::RegisterViewClass();
     CTerrainTextureDialog::RegisterViewClass();
+#endif //#ifdef LY_TERRAIN_EDITOR
+    CTerrainTool::RegisterViewClass();
     CTerrainLighting::RegisterViewClass();
+
     CScriptTermDialog::RegisterViewClass();
     CMeasurementSystemDialog::RegisterViewClass();
     CConsoleSCB::RegisterViewClass();
@@ -3028,11 +3087,6 @@ void MainWindow::MatEditSend(int param)
     }
 }
 
-void MainWindow::SetSelectedEntity(AZ::EntityId& id)
-{
-    m_levelEditorMenuHandler->SetupSliceSelectMenu(id);
-}
-
 #ifdef Q_OS_WIN
 bool MainWindow::nativeEventFilter(const QByteArray &eventType, void *message, long *)
 {
@@ -3275,6 +3329,32 @@ bool MainWindow::focusNextPrevChild(bool next)
 
     return QMainWindow::focusNextPrevChild(next);
 }
+
+namespace AzToolsFramework
+{
+    void MainWindowEditorFuncsHandler::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            // this will put these methods into the 'azlmbr.legacy.general' module
+            auto addLegacyGeneral = [](AZ::BehaviorContext::GlobalMethodBuilder methodBuilder)
+            {
+                methodBuilder->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Category, "Legacy/Editor")
+                    ->Attribute(AZ::Script::Attributes::Module, "legacy.general");
+            };
+            addLegacyGeneral(behaviorContext->Method("open_pane", PyOpenViewPane, nullptr, "Opens a view pane specified by the pane class name."));
+            addLegacyGeneral(behaviorContext->Method("close_pane", PyCloseViewPane, nullptr, "Closes a view pane specified by the pane class name."));
+            addLegacyGeneral(behaviorContext->Method("is_pane_visible", PyIsViewPaneVisible, nullptr, "Returns true if pane specified by the pane class name is visible."));
+            addLegacyGeneral(behaviorContext->Method("get_pane_class_names", PyGetViewPaneNames, nullptr, "Get all available class names for use with open_pane & close_pane."));
+            addLegacyGeneral(behaviorContext->Method("exit", PyExit, nullptr, "Exits the editor."));
+            addLegacyGeneral(behaviorContext->Method("exit_no_prompt", PyExitNoPrompt, nullptr, "Exits the editor without prompting to save first."));
+            addLegacyGeneral(behaviorContext->Method("get_status_text", PyGetStatusText, nullptr, "Gets the status text from the Editor's current edit tool"));
+        }
+    }
+}
+
+// TODO: When removing legacy bindings, also remove PyGetViewPaneClassNames function - new bindings use PyGetViewPaneNames.
 
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyOpenViewPane, general, open_pane,
     "Opens a view pane specified by the pane class name.",

@@ -13,11 +13,14 @@
 
 #pragma once
 
-#include <QMainWindow>
+#include <ATLControlsModel.h>
+#include <AzCore/std/string/string_view.h>
 #include <IEditor.h>
-#include <ui_AudioControlsEditorMainWindow.h>
-#include "ATLControlsModel.h"
+
+#include <QMainWindow>
 #include <QFileSystemWatcher>
+
+#include <Source/Editor/ui_AudioControlsEditorMainWindow.h>
 
 namespace AudioControls
 {
@@ -34,10 +37,11 @@ namespace AudioControls
         , public IEditorNotifyListener
     {
         Q_OBJECT
+
     public:
         CAudioControlsEditorWindow();
         ~CAudioControlsEditorWindow();
-        virtual void OnEditorNotifyEvent(EEditorNotifyEvent event);
+        void OnEditorNotifyEvent(EEditorNotifyEvent event) override;
 
         // you are required to implement this to satisfy the unregister/registerclass requirements on "RegisterQtViewPane"
         // make sure you pick a unique GUID
@@ -66,12 +70,14 @@ namespace AudioControls
 
     private:
         void UpdateAudioSystemData();
-        void StartWatchingFolder(const string& folder);
+        void StartWatchingFolder(const AZStd::string_view folder);
 
         CATLControlsModel* m_pATLModel = nullptr;
-        CATLControlsPanel* m_pATLControlsPanel = nullptr;
-        CInspectorPanel* m_pInspectorPanel = nullptr;
-        CAudioSystemPanel* m_pAudioSystemPanel = nullptr;
+        CATLControlsPanel* m_pATLControlsPanel = nullptr;     // Left ATL panel
+        CInspectorPanel* m_pInspectorPanel = nullptr;         // Center Connection Editing panel
+        CAudioSystemPanel* m_pAudioSystemPanel = nullptr;     // Right Middleware panel
         QFileSystemWatcher m_fileSystemWatcher;
+
+        static bool m_wasClosed;        // true indicates that the window was once open and closed, used for refreshing data
     };
 } // namespace AudioControls

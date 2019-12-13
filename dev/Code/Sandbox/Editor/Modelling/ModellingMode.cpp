@@ -25,6 +25,7 @@
 #include "EditMode/SubObjectSelectionReferenceFrameCalculator.h"
 
 #include "Util/BoostPythonHelpers.h"
+#include <AzCore/RTTI/BehaviorContext.h>
 
 #define HIT_PIXELS_SIZE (5)
 
@@ -54,6 +55,72 @@ void CModellingModeTool::PySetSelectionType(const char* modeName)
     else if (_stricmp(modeName, "polygon") == 0)
     {
         m_pModellingModeTool->SetSelectType(SO_ELEM_POLYGON);
+    }
+    else if (_stricmp(modeName, "uv") == 0)
+    {
+        m_pModellingModeTool->SetSelectType(SO_ELEM_UV);
+    }
+}
+
+const char* CModellingModeTool::Debug_GetSelectionType()
+{
+    if (!m_pModellingModeTool)
+    {
+        GetIEditor()->SetEditTool(new CModellingModeTool);
+    }
+    if (!m_pModellingModeTool)
+    {
+        return "";
+    }
+
+    switch (m_pModellingModeTool->m_currSelectionType) 
+    {
+        case SO_ELEM_VERTEX:
+        {
+            return "vertex";
+        }
+        case SO_ELEM_EDGE:
+        {
+            return "edge";
+        }
+        case SO_ELEM_FACE:
+        {
+            return "face";
+        }
+        case SO_ELEM_POLYGON:
+        {
+            return "polygon";
+        }
+        case SO_ELEM_UV:
+        {
+            return "uv";
+        }
+        default:
+        {
+            break;
+        }
+    }
+
+    return "";
+}
+
+namespace AzToolsFramework
+{
+    void ModellingModeFuncsHandler::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            // this will put these methods into the 'azlmbr.legacy.general' module
+            auto addLegacyGeneral = [](AZ::BehaviorContext::GlobalMethodBuilder methodBuilder)
+            {
+                methodBuilder->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Category, "Legacy/Editor")
+                    ->Attribute(AZ::Script::Attributes::Module, "legacy.general");
+            };
+            addLegacyGeneral(behaviorContext->Method("set_modelling_selection", CModellingModeTool::PySetSelectionType, nullptr, "Sets the selection type in the modelling mode."));
+            addLegacyGeneral(behaviorContext->Method("get_modelling_selection", CModellingModeTool::Debug_GetSelectionType, nullptr, "Gets the selection type in the modelling mode."));
+
+        }
     }
 }
 

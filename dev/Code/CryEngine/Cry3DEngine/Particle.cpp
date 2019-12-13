@@ -16,7 +16,11 @@
 #include "Particle.h"
 #include "ParticleEmitter.h"
 #include "ParticleContainer.h"
+
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
 #include "terrain.h"
+#endif
+
 #include "GeomQuery.h"
 #include "MatMan.h"
 
@@ -1669,6 +1673,7 @@ float CParticle::UpdateAlignment(SParticleState& state, SParticleUpdateContext c
     }
     case ParticleParams::EFacing::Terrain:
     {
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
         if (CTerrain* const pTerrain = GetTerrain())
         {
             // Project center and velocity onto plane.
@@ -1707,6 +1712,7 @@ float CParticle::UpdateAlignment(SParticleState& state, SParticleUpdateContext c
                 }
             }
         }
+#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
         break;
     }
     case ParticleParams::EFacing::Velocity:

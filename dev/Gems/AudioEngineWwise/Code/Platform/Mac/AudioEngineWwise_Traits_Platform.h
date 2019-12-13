@@ -11,4 +11,4 @@
 */
 #pragma once
 
-#include <CryAudioImplWwise_Traits_Mac.h>
+#include <AudioEngineWwise_Traits_Mac.h>

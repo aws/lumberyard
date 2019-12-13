@@ -11,8 +11,8 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRY3DENGINE_ARRAY2D_H
-#define CRYINCLUDE_CRY3DENGINE_ARRAY2D_H
+#ifndef CRYINCLUDE_CRYCOMMON_ARRAY2D_H
+#define CRYINCLUDE_CRYCOMMON_ARRAY2D_H
 #pragma once
 
 // Dynamic replacement for static 2d array
@@ -25,13 +25,8 @@ struct Array2d
         m_pData = 0;
     }
 
-    void GetMemoryUsage(ICrySizer* pSizer) const
-    {
-        pSizer->AddObject (m_pData, m_nSize * m_nSize * sizeof(T));
-    }
-
     int GetSize() const { return m_nSize; }
-    int GetDataSize() { return m_nSize * m_nSize * sizeof(T); }
+    int GetDataSize() const { return m_nSize * m_nSize * sizeof(T); }
 
     T* GetData() { return m_pData; }
 
@@ -86,4 +81,4 @@ struct Array2d
     }
 };
 
-#endif // CRYINCLUDE_CRY3DENGINE_ARRAY2D_H
+#endif // CRYINCLUDE_CRYCOMMON_ARRAY2D_H

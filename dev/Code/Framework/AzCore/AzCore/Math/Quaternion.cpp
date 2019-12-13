@@ -235,6 +235,11 @@ namespace AZ
 
     void Quaternion::SetFromEulerRadians(const AZ::Vector3& eulerRadians)
     {
+        SetFromEulerRadiansApprox(eulerRadians);
+    }
+
+    void Quaternion::SetFromEulerRadiansApprox(const AZ::Vector3& eulerRadians)
+    {
         AZ::VectorFloat half(0.5f);
         AZ::VectorFloat rotx = eulerRadians.GetX() * half;
         AZ::VectorFloat roty = eulerRadians.GetY() * half;
@@ -246,17 +251,50 @@ namespace AZ
         rotz.GetSinCos(sz, cz);
 
         // rot = rotx * roty * rotz
-        auto w = cx * cy * cz - sx * sy * sz;
-        auto x = cx * sy * sz + sx * cy * cz;
-        auto y = cx * sy * cz - sx * cy * sz;
-        auto z = cx * cy * sz + sx * sy * cz;
+        const auto w = cx * cy * cz - sx * sy * sz;
+        const auto x = cx * sy * sz + sx * cy * cz;
+        const auto y = cx * sy * cz - sx * cy * sz;
+        const auto z = cx * cy * sz + sx * sy * cz;
+
+        Set(x, y, z, w);
+    }
+
+    void Quaternion::SetFromEulerRadiansExact(const AZ::Vector3& eulerRadians)
+    {
+        AZ::VectorFloat half(0.5f);
+        AZ::VectorFloat rotx = eulerRadians.GetX() * half;
+        AZ::VectorFloat roty = eulerRadians.GetY() * half;
+        AZ::VectorFloat rotz = eulerRadians.GetZ() * half;
+
+        const float sx = sinf(rotx);
+        const float cx = cosf(rotx);
+        const float sy = sinf(roty);
+        const float cy = cosf(roty);
+        const float sz = sinf(rotz);
+        const float cz = cosf(rotz);
+
+        // rot = rotx * roty * rotz
+        const float w = cx * cy * cz - sx * sy * sz;
+        const float x = cx * sy * sz + sx * cy * cz;
+        const float y = cx * sy * cz - sx * cy * sz;
+        const float z = cx * cy * sz + sx * sy * cz;
 
         Set(x, y, z, w);
     }
 
     void Quaternion::SetFromEulerDegrees(const AZ::Vector3& eulerDegrees)
     {
-        SetFromEulerRadians(Vector3DegToRad(eulerDegrees));
+        SetFromEulerRadiansApprox(Vector3DegToRad(eulerDegrees));
+    }
+
+    void Quaternion::SetFromEulerDegreesApprox(const AZ::Vector3& eulerDegrees)
+    {
+        SetFromEulerRadiansApprox(Vector3DegToRad(eulerDegrees));
+    }
+
+    void Quaternion::SetFromEulerDegreesExact(const AZ::Vector3& eulerDegrees)
+    {
+        SetFromEulerRadiansExact(Vector3DegToRad(eulerDegrees));
     }
 
     void Quaternion::ConvertToAxisAngle(AZ::Vector3& outAxis, float& outAngle) const
@@ -289,15 +327,39 @@ namespace AZ
 
     AZ::Quaternion ConvertEulerRadiansToQuaternion(const AZ::Vector3& eulerRadians)
     {
+        return ConvertEulerRadiansToQuaternionApprox(eulerRadians);
+    }
+
+    AZ::Quaternion ConvertEulerRadiansToQuaternionApprox(const AZ::Vector3& eulerRadians)
+    {
         Quaternion q;
-        q.SetFromEulerRadians(eulerRadians);
+        q.SetFromEulerRadiansApprox(eulerRadians);
+        return q;
+    }
+
+    AZ::Quaternion ConvertEulerRadiansToQuaternionExact(const AZ::Vector3& eulerRadians)
+    {
+        Quaternion q;
+        q.SetFromEulerRadiansExact(eulerRadians);
         return q;
     }
 
     AZ::Quaternion ConvertEulerDegreesToQuaternion(const AZ::Vector3& eulerDegrees)
     {
+        return ConvertEulerDegreesToQuaternionApprox(eulerDegrees);
+    }
+
+    AZ::Quaternion ConvertEulerDegreesToQuaternionApprox(const AZ::Vector3& eulerDegrees)
+    {
         Quaternion q;
-        q.SetFromEulerDegrees(eulerDegrees);
+        q.SetFromEulerDegreesApprox(eulerDegrees);
+        return q;
+    }
+
+    AZ::Quaternion ConvertEulerDegreesToQuaternionExact(const AZ::Vector3& eulerDegrees)
+    {
+        Quaternion q;
+        q.SetFromEulerDegreesExact(eulerDegrees);
         return q;
     }
 

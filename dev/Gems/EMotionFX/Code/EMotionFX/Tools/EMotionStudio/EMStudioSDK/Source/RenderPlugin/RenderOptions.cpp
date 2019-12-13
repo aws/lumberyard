@@ -10,9 +10,7 @@
 *
 */
 
-// include the required headers
 #include "RenderOptions.h"
-
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
@@ -551,14 +549,13 @@ namespace EMStudio
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnRagdollColliderColorChangedCallback)
             ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectedRagdollColliderColor, "Selected ragdoll collider color", "")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSelectedRagdollColliderColorChangedCallback)
-                ;
-             /* Disable cloth - not available
+#ifdef EMOTIONFX_ENABLE_CLOTH
             ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_clothColliderColor, "Cloth collider color", "")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnClothColliderColorChangedCallback)
             ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectedClothColliderColor, "Selected cloth collider color", "")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSelectedClothColliderColorChangedCallback)
+#endif
             ;
-            */
     }
 
     void RenderOptions::SetGridUnitSize(float gridUnitSize)

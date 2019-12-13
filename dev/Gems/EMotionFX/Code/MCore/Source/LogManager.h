@@ -95,13 +95,10 @@ namespace MCore
 
     //----------------------------------------------------------------------------
 
-    /**
-     * The log file callback. This logs to a text file on disk.
-     */
-    class MCORE_API LogFileCallback
+    class MCORE_API AzLogCallback
         : public LogCallback
     {
-        MCORE_MEMORYOBJECTCATEGORY(LogFileCallback, MCORE_DEFAULT_ALIGNMENT, MCORE_MEMCATEGORY_LOGFILECALLBACK)
+        MCORE_MEMORYOBJECTCATEGORY(AzLogCallback, MCORE_DEFAULT_ALIGNMENT, MCORE_MEMCATEGORY_LOGFILECALLBACK)
 
     public:
         // the type returned by GetType()
@@ -111,21 +108,10 @@ namespace MCore
         };
 
         /**
-         * Constructor.
-         * @param filename The filename of the log file including extension
-         */
-        LogFileCallback(const char* filename);
-
-        /**
-         * Destructor.
-         */
-        ~LogFileCallback();
-
-        /**
          * Get the unique log callback type ID.
          * @result The log callback type identification number.
          */
-        uint32 GetType() const override;
+        uint32 GetType() const override { return TYPE_ID; }
 
         /**
          * The concrete callback logging method.
@@ -133,15 +119,6 @@ namespace MCore
          * @param logLevel The log message priority.
          */
         void Log(const char* text, ELogLevel logLevel) override;
-
-        /**
-         * Return the log file.
-         * @return A pointer to the log file.
-         */
-        LogFile* GetLogFile() const;
-
-    private:
-        LogFile* mLog; /**< A pointer to the log file. */
     };
 
     //----------------------------------------------------------------------------
@@ -204,14 +181,6 @@ namespace MCore
         ~LogManager();
 
         /**
-         * Create a new log callback which creates a log file with the given name and
-         * add the callback to the stack. This function is a helper so that you dont have to
-         * create callback instances and add them to the manager all the time.
-         * @param filename The filename to give the log e.g. "Core.log".
-         */
-        LogFile* CreateLogFile(const char* filename);
-
-        /**
          * Add the given callback to the stack.
          * Don't delete the callbacks yourself, the manager will keep track of the callbacks in the stack.
          * @param callback The callback to add.
@@ -223,12 +192,6 @@ namespace MCore
          * @param index The index of the callback to remove.
          */
         void RemoveLogCallback(uint32 index);
-
-        /**
-         * Remove all given log file callbacks by file name from the stack.
-         * @param filename The file of the log file callbacks to remove.
-         */
-        void RemoveAllByFileName(const char* fileName);
 
         /**
          * Remove all given log callbacks by type from the stack.
@@ -247,13 +210,6 @@ namespace MCore
          * @return A pointer to the callback.
          */
         LogCallback* GetLogCallback(uint32 index);
-
-        /**
-         * Find the first log file callback by file name.
-         * @param filename The file of the log file callbacks to find.
-         * @return A pointer to the found log file callback. nullptr in case nothing has been found.
-         */
-        LogFileCallback* FindByFileName(const char* filename);
 
         /**
          * Find the index of a given callback.

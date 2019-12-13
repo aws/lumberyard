@@ -9,11 +9,18 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+#include <API/EditorAssetSystemAPI.h>
+
+#include <AzCore/Asset/AssetManagerBus.h>
 #include <AzCore/Math/Crc.h>
+#include <AzCore/std/containers/vector.h>
+
+#include <AzFramework/StringFunc/StringFunc.h>
 
 #include <AzToolsFramework/UI/UICore/QTreeViewStateSaver.hxx>
 #include <AzToolsFramework/AssetBrowser/Views/AssetBrowserTreeView.h>
 #include <AzToolsFramework/AssetBrowser/Views/EntryDelegate.h>
+#include <AzToolsFramework/AssetBrowser/Entries/AssetBrowserEntryCache.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
@@ -123,9 +130,54 @@ namespace AzToolsFramework
             SelectProduct(QModelIndex(), assetID);
         }
 
+        void AssetBrowserTreeView::SelectFileAtPath(const AZStd::string& assetPath)
+        {
+            if (assetPath.empty())
+            {
+                return;
+            }
+
+            auto path = AZStd::string(assetPath);
+            if (!AzFramework::StringFunc::Path::Normalize(path))
+            {
+                return;
+            }
+
+            auto entryCache = EntryCache::GetInstance();
+
+            // Find the fileId associated with this assetPath
+            AZStd::unordered_map<AZStd::string, AZ::s64>::const_iterator itFileId = entryCache->m_absolutePathToFileId.find(path);
+            if (itFileId == entryCache->m_absolutePathToFileId.end())
+            {
+                return;
+            }
+
+            // Find the assetBrowserEntry associated with this fileId
+            AZStd::unordered_map<AZ::s64, AssetBrowserEntry*>::const_iterator itABEntry = entryCache->m_fileIdMap.find(itFileId->second);
+            if (itABEntry == entryCache->m_fileIdMap.end())
+            {
+                return;
+            }
+
+            // Get all entries in the AssetBrowser-relative path-to-product
+            AZStd::vector<AZStd::string> entries;
+            AssetBrowserEntry* entry = itABEntry->second;
+            do 
+            {
+                entries.push_back(entry->GetName());
+                entry = entry->GetParent();
+            } while (entry->GetParent() != nullptr);
+
+            // Entries are in reverse order, so fix this
+            AZStd::reverse(entries.begin(), entries.end());
+
+            SelectEntry(QModelIndex(), entries);
+        }
+
         void AssetBrowserTreeView::ClearFilter()
         {
             emit ClearStringFilter();
+            emit ClearTypeFilter();
             m_assetBrowserSortFilterProxyModel->FilterUpdatedSlotImmediate();
         }
 
@@ -247,6 +299,51 @@ namespace AzToolsFramework
                     return true;
                 }
             }
+            return false;
+        }
+
+        bool AssetBrowserTreeView::SelectEntry(const QModelIndex& idxParent, const AZStd::vector<AZStd::string>& entries, const uint32_t entryPathIndex)
+        {
+            if (entries.empty())
+            {
+                return false;
+            }
+
+            // The entry name being queried at this depth in the Asset Browser hierarchy
+            const AZStd::string& entry = entries.at(entryPathIndex);
+            int elements = model()->rowCount(idxParent);
+            for (int idx = 0; idx < elements; ++idx)
+            {
+                auto rowIdx = model()->index(idx, 0, idxParent);
+                auto rowEntry = GetEntryFromIndex<AssetBrowserEntry>(rowIdx);
+
+                // Check if this entry name matches the query
+                if (rowEntry && AzFramework::StringFunc::Equal(entry.c_str(), rowEntry->GetName().c_str(), true))
+                {
+                    // Final entry found - set it as the selected element
+                    if (entryPathIndex == entries.size() - 1)
+                    {
+                        selectionModel()->clear();
+                        selectionModel()->select(rowIdx, QItemSelectionModel::Select);
+                        setCurrentIndex(rowIdx);
+                        return true;
+                    }
+
+                    // If this isn't the final entry, it needs to be a folder for the path to be valid (otherwise, early out)
+                    if (rowEntry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Folder)
+                    {
+                        // Folder found - if the final entry is found, expand this folder so the final entry is viewable in the Asset Browser (otherwise, early out)
+                        if (SelectEntry(rowIdx, entries, entryPathIndex + 1))
+                        {
+                            expand(rowIdx);
+                            return true;
+                        }
+                    }
+                    
+                    return false;
+                }
+            }
+
             return false;
         }
 

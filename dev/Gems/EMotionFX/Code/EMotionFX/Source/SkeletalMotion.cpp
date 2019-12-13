@@ -102,7 +102,15 @@ namespace EMotionFX
         const MotionLink* motionLink = instance->GetMotionLink(nodeIndex);
         if (motionLink->GetIsActive() == false)
         {
-            *outTransform = transformData->GetCurrentPose()->GetLocalSpaceTransform(nodeIndex);
+            if (!GetIsAdditive())
+            {
+                *outTransform = transformData->GetCurrentPose()->GetLocalSpaceTransform(nodeIndex);
+            }
+            else
+            {
+                outTransform->Identity();
+            }
+
             return;
         }
 
@@ -349,6 +357,7 @@ namespace EMotionFX
 
         // get the time value
         const float timeValue = instance->GetCurrentTime();
+        const bool isAdditive = GetIsAdditive();
 
         // reset the cache hit counters
         instance->ResetCacheHitCounters();
@@ -372,8 +381,16 @@ namespace EMotionFX
             // if there is no submotion linked to this node
             if (link->GetIsActive() == false)
             {
-                outTransform = inPose->GetLocalSpaceTransform(nodeNumber);
-                outPose->SetLocalSpaceTransformDirect(nodeNumber, outTransform);
+                if (!isAdditive)
+                {
+                    outTransform = inPose->GetLocalSpaceTransform(nodeNumber);
+                    outPose->SetLocalSpaceTransformDirect(nodeNumber, outTransform);
+                }
+                else
+                {
+                    outTransform.Identity();
+                    outPose->SetLocalSpaceTransformDirect(nodeNumber, outTransform);
+                }
                 continue;
             }
 
@@ -461,7 +478,7 @@ namespace EMotionFX
             }
             else
             {
-                outPose->SetMorphWeight(i, inPose->GetMorphWeight(i));
+                outPose->SetMorphWeight(i, !isAdditive ? inPose->GetMorphWeight(i) : 0.0f);
             }
         }
     }

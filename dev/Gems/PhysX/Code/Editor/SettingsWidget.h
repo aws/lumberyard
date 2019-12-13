@@ -10,13 +10,13 @@
 *
 */
 
+#pragma once
+
 #include <AzFramework/Physics/Collision.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI_Internals.h>
 #include <AzFramework/Physics/World.h>
 #include <QWidget>
 #include <PhysX/ConfigurationBus.h>
-
-#pragma once
 
 namespace PhysX
 {
@@ -53,7 +53,7 @@ namespace PhysX
 
             AzToolsFramework::ReflectedPropertyEditor* m_propertyEditor;
             DocumentationLinkWidget* m_documentationLinkWidget;
-            Physics::MaterialLibraryAssetReflectionWrapper m_defaultPhysicsMaterialLibrary;
+            Physics::DefaultMaterialLibraryAssetReflectionWrapper m_defaultPhysicsMaterialLibrary;
             Physics::WorldConfiguration m_worldConfiguration;
             PhysX::EditorConfiguration m_editorConfiguration;
         };

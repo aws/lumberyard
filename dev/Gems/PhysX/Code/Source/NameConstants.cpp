@@ -15,6 +15,15 @@
 
 namespace PhysX
 {
+    namespace UXNameConstants
+    {
+        const AZStd::string& GetPhysXDocsRoot()
+        {
+            static const AZStd::string val = "https://docs.aws.amazon.com/console/lumberyard/physx/";
+            return val;
+        }
+    }
+
     namespace NameConstants
     {
         // Some of these constants include UTF-8 hex values which generate unicode characters needed for some units such

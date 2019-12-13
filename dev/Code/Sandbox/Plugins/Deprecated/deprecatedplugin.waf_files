@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+        "Root":
+        [
+            "DeprecatedPlugin.cpp"
+        ]
+    }
+}

@@ -69,9 +69,6 @@ namespace ScriptCanvas
         void SetSerializeContext(AZ::SerializeContext* context);
 
     protected:
-        // Workaround for VS2013 - Delete the copy constructor and make it private
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-        RuntimeAssetHandler(const RuntimeAssetHandler&) = delete;
 
         AZ::SerializeContext* m_serializeContext;
     };

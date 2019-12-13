@@ -13,12 +13,16 @@
 
 #pragma once
 
+#include <AzCore/std/containers/set.h>
+#include <AzCore/std/string/string_view.h>
+
+#include <ATLControlsModel.h>
+#include <IAudioInterfacesCommonData.h>
+#include <IAudioSystemEditor.h>
+#include <QATLControlsTreeModel.h>
+
 #include <IEditor.h>
 #include <Include/IPlugin.h>
-#include "ATLControlsModel.h"
-#include "QATLControlsTreeModel.h"
-#include <IAudioSystemEditor.h>
-#include <IAudioInterfacesCommonData.h>
 
 #include <QStandardItem>
 
@@ -37,11 +41,12 @@ class CAudioControlsEditorPlugin
 {
 public:
     explicit CAudioControlsEditorPlugin(IEditor* editor);
+    ~CAudioControlsEditorPlugin() override;
 
     void Release() override;
     void ShowAbout() override {}
-    const char* GetPluginGUID() override { return "{DFA4AFF7-2C70-4B29-B736-GRH00040314}"; }
-    DWORD GetPluginVersion() override { return 1; }
+    const char* GetPluginGUID() override { return "{DDD96BF3-892E-4A75-ABF7-BBAE446972DA}"; }
+    DWORD GetPluginVersion() override { return 2; }
     const char* GetPluginName() override { return "AudioControlsEditor"; }
     bool CanExitNow() override { return true; }
     void OnEditorNotify(EEditorNotifyEvent aEventId) override {}
@@ -53,7 +58,7 @@ public:
     static AudioControls::QATLTreeModel* GetControlsTree();
     static CImplementationManager* GetImplementationManager();
     static AudioControls::IAudioSystemEditor* GetAudioSystemEditorImpl();
-    static void ExecuteTrigger(const string& sTriggerName);
+    static void ExecuteTrigger(const AZStd::string_view sTriggerName);
     static void StopTriggerExecution();
 
     ///////////////////////////////////////////////////////////////////////////
@@ -64,7 +69,7 @@ public:
 private:
     static AudioControls::CATLControlsModel ms_ATLModel;
     static AudioControls::QATLTreeModel ms_layoutModel;
-    static std::set<string> ms_currentFilenames;
+    static AZStd::set<AZStd::string> ms_currentFilenames;
     static Audio::IAudioProxy* ms_pIAudioProxy;
     static Audio::TAudioControlID ms_nAudioTriggerID;
 

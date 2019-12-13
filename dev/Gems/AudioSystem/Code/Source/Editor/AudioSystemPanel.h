@@ -13,13 +13,14 @@
 
 #pragma once
 
+#include <AudioControl.h>
+#include <QTreeWidgetFilter.h>
+#include <AudioControlFilters.h>
+
 #include <QWidget>
 #include <QMenu>
 
-#include <ui_AudioSystemPanel.h>
-#include "AudioControl.h"
-#include "QTreeWidgetFilter.h"
-#include "AudioControlFilters.h"
+#include <Source/Editor/ui_AudioSystemPanel.h>
 
 namespace AudioControls
 {

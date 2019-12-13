@@ -1,0 +1,12 @@
+{
+    "platform": {
+        "linux_x64": {
+            "libpath": [
+                "lib/linux"
+            ],
+            "lib": [
+               "libsz.a"
+            ]
+        }
+    }
+}

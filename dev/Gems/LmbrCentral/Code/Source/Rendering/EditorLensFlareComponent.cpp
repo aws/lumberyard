@@ -327,14 +327,20 @@ namespace LmbrCentral
 
     void EditorLensFlareComponent::RefreshLensFlare()
     {
-        EditorLensFlareConfiguration temp = m_configuration;
+        m_light.UpdateRenderLight(GetEditorLensFlareConfiguration());
+    }
+
+    EditorLensFlareConfiguration EditorLensFlareComponent::GetEditorLensFlareConfiguration() const
+    {
+        EditorLensFlareConfiguration configuration = m_configuration;
 
         // take the entity's visibility into account
         bool entityVisibility = true;
         AzToolsFramework::EditorVisibilityRequestBus::EventResult(entityVisibility, GetEntityId(), &AzToolsFramework::EditorVisibilityRequestBus::Events::GetCurrentVisibility);
-        temp.m_visible &= entityVisibility;
+        configuration.m_visible &= entityVisibility;
+        configuration.m_asset = m_asset;
 
-        m_light.UpdateRenderLight(temp);
+        return configuration;
     }
 
     void EditorLensFlareComponent::BuildGameEntity(AZ::Entity* gameEntity)
@@ -344,6 +350,7 @@ namespace LmbrCentral
         if (lensFlareComponent)
         {
             lensFlareComponent->m_configuration = m_configuration;
+            lensFlareComponent->m_configuration.m_asset = m_asset;
         }
     }
 

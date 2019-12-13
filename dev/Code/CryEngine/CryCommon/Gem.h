@@ -18,6 +18,8 @@
         #include "Xenia/Gem_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/Gem_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/Gem_h_salem.inl"
     #endif
 #endif
 
@@ -48,7 +50,7 @@
 #include <I3DEngine.h>
 #include <IStreamEngine.h>
 
-#include <Array2d.h>
+#include <CryArray2d.h>
 #include <PoolAllocator.h>
 #include <Cry3DEngineBase.h>
 #include <cvars.h>

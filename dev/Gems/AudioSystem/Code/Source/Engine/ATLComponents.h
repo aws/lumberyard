@@ -13,11 +13,13 @@
 
 #pragma once
 
-#include <IAudioSystem.h>
+#include <AzCore/XML/rapidxml.h>
 
+#include <IAudioSystem.h>
 #include <ATLAudioObject.h>
 #include <ATLEntities.h>
 #include <ATLUtils.h>
+#include <AudioInternalInterfaces.h>
 #include <FileCacheManager.h>
 
 class CATLAudioObjectBase;
@@ -114,7 +116,7 @@ namespace Audio
         {
             return m_cAudioObjects;
         }
-        void DrawPerObjectDebugInfo(IRenderAuxGeom& rAuxGeom, Vec3 const& rListenerPos) const;
+        void DrawPerObjectDebugInfo(IRenderAuxGeom& rAuxGeom, const AZ::Vector3& rListenerPos) const;
         void DrawDebugInfo(IRenderAuxGeom& rAuxGeom, float fPosX, float fPosY) const;
 
     private:
@@ -235,22 +237,22 @@ namespace Audio
         void ClearPreloadsData(const EATLDataScope eDataScope);
 
     private:
-        void ParseAudioTriggers(const XmlNodeRef pXMLTriggerRoot, const EATLDataScope eDataScope);
-        void ParseAudioSwitches(const XmlNodeRef pXMLSwitchRoot, const EATLDataScope eDataScope);
-        void ParseAudioRtpcs(const XmlNodeRef pXMLRtpcRoot, const EATLDataScope eDataScope);
-        void ParseAudioPreloads(const XmlNodeRef pPreloadDataRoot, const EATLDataScope eDataScope, const char* const sFolderName);
-        void ParseAudioEnvironments(const XmlNodeRef pAudioEnvironmentRoot, const EATLDataScope eDataScope);
+        void ParseAudioTriggers(const AZ::rapidxml::xml_node<char>* triggersXmlRoot, const EATLDataScope dataScope);
+        void ParseAudioSwitches(const AZ::rapidxml::xml_node<char>* switchesXmlRoot, const EATLDataScope dataScope);
+        void ParseAudioRtpcs(const AZ::rapidxml::xml_node<char>* rtpcsXmlRoot, const EATLDataScope dataScope);
+        void ParseAudioPreloads(const AZ::rapidxml::xml_node<char>* preloadsXmlRoot, const EATLDataScope dataScope, const char* const folderName);
+        void ParseAudioEnvironments(const AZ::rapidxml::xml_node<char>* environmentsXmlRoot, const EATLDataScope dataScope);
 
-        const IATLTriggerImplData* NewAudioTriggerImplDataInternal(const XmlNodeRef pXMLTriggerRoot);
-        const IATLRtpcImplData* NewAudioRtpcImplDataInternal(const XmlNodeRef pXMLRtpcRoot);
-        const IATLSwitchStateImplData* NewAudioSwitchStateImplDataInternal(const XmlNodeRef pXMLSwitchRoot);
-        const IATLEnvironmentImplData* NewAudioEnvironmentImplDataInternal(const XmlNodeRef pXMLEnvironmentRoot);
+        IATLTriggerImplData* NewAudioTriggerImplDataInternal(const AZ::rapidxml::xml_node<char>* triggerXmlRoot);
+        IATLRtpcImplData* NewAudioRtpcImplDataInternal(const AZ::rapidxml::xml_node<char>* rtpcXmlRoot);
+        IATLSwitchStateImplData* NewAudioSwitchStateImplDataInternal(const AZ::rapidxml::xml_node<char>* switchXmlRoot);
+        IATLEnvironmentImplData* NewAudioEnvironmentImplDataInternal(const AZ::rapidxml::xml_node<char>* environmentXmlRoot);
 
-        void DeleteAudioTrigger(const CATLTrigger* const pOldTrigger);
-        void DeleteAudioRtpc(const CATLRtpc* const pOldRtpc);
-        void DeleteAudioSwitch(const CATLSwitch* const pOldSwitch);
-        void DeleteAudioPreloadRequest(const CATLPreloadRequest* const pOldPreloadRequest);
-        void DeleteAudioEnvironment(const CATLAudioEnvironment* const pOldEnvironment);
+        void DeleteAudioTrigger(CATLTrigger* const pOldTrigger);
+        void DeleteAudioRtpc(CATLRtpc* const pOldRtpc);
+        void DeleteAudioSwitch(CATLSwitch* const pOldSwitch);
+        void DeleteAudioPreloadRequest(CATLPreloadRequest* const pOldPreloadRequest);
+        void DeleteAudioEnvironment(CATLAudioEnvironment* const pOldEnvironment);
 
         TATLTriggerLookup& m_rTriggers;
         TATLRtpcLookup& m_rRtpcs;
@@ -258,13 +260,15 @@ namespace Audio
         TATLEnvironmentLookup& m_rEnvironments;
         TATLPreloadRequestLookup& m_rPreloadRequests;
 
-        TAudioTriggerImplID m_nTriggerImplIDCounter;
-
         CFileCacheManager& m_rFileCacheMgr;
+
+        TAudioTriggerImplID m_nTriggerImplIDCounter;
+        AZStd::string m_rootPath;
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
     public:
         void SetDebugNameStore(CATLDebugNameStore* const pDebugNameStore);
+        void SetRootPath(const char* path);
 
     private:
         CATLDebugNameStore* m_pDebugNameStore;

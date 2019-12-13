@@ -2886,3 +2886,9 @@ AzQtComponents--SegmentBar QAbstractButton:pressed:!checked
 {
     background-color: #444444;
 }
+
+AzToolsFramework--AssetCompleterListView
+{
+    color: #fff;
+    background: #000;
+}

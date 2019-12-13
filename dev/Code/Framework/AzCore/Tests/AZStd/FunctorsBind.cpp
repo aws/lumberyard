@@ -939,6 +939,25 @@ namespace UnitTest
         EXPECT_EQ(78, testFunction1(testInt1, AZStd::move(testInt2)));
     }
 
+    TEST_F(Function, FunctionWithNonAZStdAllocatorDestructsSuccessfully)
+    {
+        // 64 Byte buffer is used to prevent AZStd::function for storing the 
+        // lambda internal storage using the small buffer optimization
+        // Therefore causing the supplied allocator to be used
+        AZStd::aligned_storage_t<64, 1> bufferToAvoidSmallBufferOptimization;
+        auto xValueAndConstXValueFunc = [bufferToAvoidSmallBufferOptimization](int lhs, int rhs) -> int
+        {
+            return lhs + rhs;
+        };
+
+        {
+            AZStd::function<int(int, const int&&)> testFunction1(xValueAndConstXValueFunc, AZ::OSStdAllocator());
+            const int testInt1 = 76;
+            const int testInt2 = -56;
+            EXPECT_EQ(20, testFunction1(testInt1, AZStd::move(testInt2)));
+        }
+    }
+
     inline namespace FunctionTestInternal
     {
         static int s_functorCopyAssignmentCount;

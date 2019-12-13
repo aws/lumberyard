@@ -56,12 +56,18 @@ namespace EMStudio
         delete mLockEnabledIcon;
         delete mLockDisabledIcon;
 
-        GetCommandManager()->RemoveCommandCallback(mToggleLockSelectionCallback, false);
-        delete mToggleLockSelectionCallback;
+        if (mToggleLockSelectionCallback)
+        {
+            GetCommandManager()->RemoveCommandCallback(mToggleLockSelectionCallback, false);
+            delete mToggleLockSelectionCallback;
+        }
 
         // remove the event handler again
-        EMotionFX::GetEventManager().RemoveEventHandler(mProgressHandler);
-        delete mProgressHandler;
+        if (mProgressHandler)
+        {
+            EMotionFX::GetEventManager().RemoveEventHandler(mProgressHandler);
+            delete mProgressHandler;
+        }
     }
 
 

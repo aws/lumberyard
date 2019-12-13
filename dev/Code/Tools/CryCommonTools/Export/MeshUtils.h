@@ -891,7 +891,7 @@ namespace MeshUtils
                     }
                     else
                     {
-                        res = memcmp(&m.m_links[a].links[0], &m.m_links[a].links[0], sizeof(m.m_links[a].links[0]) * m.m_links[a].links.size());
+                        res = memcmp(&m.m_links[a].links[0], &m.m_links[b].links[0], sizeof(m.m_links[a].links[0]) * m.m_links[a].links.size());
                     }
                 }
 

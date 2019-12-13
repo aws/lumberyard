@@ -16,6 +16,11 @@
 #include <AzFramework/Network/NetBindingSystemImpl.h>
 #include <AzCore/Component/Component.h>
 
+namespace AZ
+{
+    class ReflectContext;
+}
+
 namespace AzFramework
 {
     /**

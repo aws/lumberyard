@@ -149,12 +149,12 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct SATLAudioFileEntryInfo
     {
-        IATLAudioFileEntryData* pImplData = nullptr; // the implementation-specific data needed for this AudioFileEntry
-        const char* sFileName = nullptr;    // file name
-        void* pFileData = nullptr;          // memory location of the file's contents
-        size_t nSize = 0;                   // file size
-        size_t nMemoryBlockAlignment = 0;   // alignment to be used when allocating memory for this file's contents
-        bool bLocalized = false;            // is the file localized?
+        IATLAudioFileEntryData* pImplData = nullptr;    // the implementation-specific data needed for this AudioFileEntry
+        const char* sFileName = nullptr;                // file name
+        void* pFileData = nullptr;                      // memory location of the file's contents
+        size_t nSize = 0;                               // file size
+        size_t nMemoryBlockAlignment = 0;               // alignment to be used when allocating memory for this file's contents
+        bool bLocalized = false;                        // is the file localized?
 
         SATLAudioFileEntryInfo() = default;
     };
@@ -167,12 +167,12 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct SAudioImplMemoryInfo
     {
-        size_t nPrimaryPoolSize;        // total size in bytes of the Primary Memory Pool used by an AudioSystemImplementation
-        size_t nPrimaryPoolUsedSize;    // bytes allocated inside the Primary Memory Pool used by an AudioSystemImplementation
-        size_t nPrimaryPoolAllocations; // number of allocations performed in the Primary Memory Pool used by an AudioSystemImplementation
-        size_t nSecondaryPoolSize;      // total size in bytes of the Secondary Memory Pool used by an AudioSystemImplementation
-        size_t nSecondaryPoolUsedSize;  // bytes allocated inside the Secondary Memory Pool used by an AudioSystemImplementation
-        size_t nSecondaryPoolAllocations; // number of allocations performed in the Secondary Memory Pool used by an AudioSystemImplementation
+        size_t nPrimaryPoolSize;             // total size in bytes of the Primary Memory Pool
+        size_t nPrimaryPoolUsedSize;         // bytes allocated inside the Primary Memory Pool
+        size_t nPrimaryPoolAllocations;      // number of allocations performed in the Primary Memory Pool
+        size_t nSecondaryPoolSize;           // total size in bytes of the Secondary Memory Pool
+        size_t nSecondaryPoolUsedSize;       // bytes allocated inside the Secondary Memory Pool
+        size_t nSecondaryPoolAllocations;    // number of allocations performed in the Secondary Memory Pool
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

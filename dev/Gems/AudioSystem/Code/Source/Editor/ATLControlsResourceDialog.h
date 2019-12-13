@@ -13,12 +13,16 @@
 
 #pragma once
 
+#include <AzCore/std/string/string.h>
+#include <AzCore/std/string/string_view.h>
+
+#include <ACETypes.h>
+#include <AudioControlFilters.h>
+#include <QTreeWidgetFilter.h>
+
 #include <QWidget>
 #include <QDialog>
 #include <QLineEdit>
-#include "QTreeWidgetFilter.h"
-#include "AudioControlFilters.h"
-#include "common/ACETypes.h"
 
 class QAudioControlsTreeView;
 class QDialogButtonBox;
@@ -46,14 +50,14 @@ namespace AudioControls
         void StopTrigger();
 
     public:
-        void SetScope(string sScope);
+        void SetScope(const AZStd::string& sScope);
         const char* ChooseItem(const char* currentValue);
         QSize sizeHint() const override;
         void showEvent(QShowEvent* e) override;
 
     private:
 
-        QModelIndex FindItem(const string& sControlName);
+        QModelIndex FindItem(const AZStd::string_view sControlName);
         void ApplyFilter();
         bool ApplyFilter(const QModelIndex parent);
         bool IsValid(const QModelIndex index);
@@ -68,9 +72,9 @@ namespace AudioControls
         // Filtering
         QString m_sFilter;
         EACEControlType m_eType;
-        string m_sScope;
+        AZStd::string m_sScope;
 
-        string m_sControlName;
+        AZStd::string m_sControlName;
         QAudioControlsTreeView* m_pControlTree;
         QDialogButtonBox* pDialogButtons;
         QLineEdit* m_TextFilterLineEdit;

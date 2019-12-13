@@ -16,8 +16,6 @@
         "CryNetwork",
         "CryPhysics",
         "CryRenderNULL",
-        "CryAudioCommon",
-        "CryAudioImplNoSound",
         "CrySystem",
         "CryAction",
         "CryAction_AutoFlowNode",

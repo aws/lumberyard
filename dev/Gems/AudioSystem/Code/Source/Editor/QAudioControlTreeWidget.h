@@ -13,14 +13,15 @@
 
 #pragma once
 
+#include <ACETypes.h>
+#include <ATLControlsModel.h>
+
 #include <QTreeWidget>
 #include <QTreeView>
 #include <QDropEvent>
 #include <QStandardItem>
 #include <QMimeData>
 #include <QSortFilterProxyModel>
-#include "common/ACETypes.h"
-#include "ATLControlsModel.h"
 
 namespace AudioControls
 {

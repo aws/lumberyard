@@ -10,10 +10,8 @@
 *
 */
 
-#include "StdAfx.h"
-
-#include "AudioInputMicrophone.h"
-
+#include <AudioInput/AudioInputMicrophone.h>
+#include <AzCore/Casting/numeric_cast.h>
 #include <MicrophoneBus.h>
 
 namespace Audio
@@ -53,10 +51,10 @@ namespace Audio
             channelData[channel] = akBuffer->GetChannel(channel);
         }
 
-        AZStd::size_t numSampleFramesCopied = 0;
+        size_t numSampleFramesCopied = 0;
         MicrophoneRequestBus::BroadcastResult(numSampleFramesCopied, &MicrophoneRequestBus::Events::GetData, reinterpret_cast<void**>(channelData), numSampleFramesRequested, m_config, true);
 
-        akBuffer->uValidFrames += numSampleFramesCopied;
+        akBuffer->uValidFrames += aznumeric_cast<AkUInt16>(numSampleFramesCopied);
 
         akBuffer->eState = (numSampleFramesCopied > 0) ? AK_DataReady : AK_NoDataReady;
         // handle the AK_NoMoreData condition?

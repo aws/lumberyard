@@ -21,6 +21,7 @@
 #include <EMotionFX/Source/Allocators.h>
 #include <EMotionFX/Source/EMotionFXManager.h>
 #include <EMotionFX/Source/Node.h>
+#include <EMotionFX/Source/SimulatedObjectBus.h>
 #include <EMotionFX/Source/SimulatedObjectSetup.h>
 #include <MCore/Source/Command.h>
 #include <MCore/Source/ReflectionSerializer.h>
@@ -243,8 +244,13 @@ namespace EMotionFX
             {
                 simulatedObjectSetup->AddSimulatedObject();
             }
+            m_objectIndex = simulatedObjectSetup->GetNumSimulatedObjects() - 1;
         }
 
+        SimulatedObjectNotificationBus::Broadcast(&SimulatedObjectNotificationBus::Events::OnSimulatedObjectChanged);
+
+        m_oldDirtyFlag = actor->GetDirtyFlag();
+        actor->SetDirtyFlag(true);
         return true;
     }
 
@@ -259,8 +265,11 @@ namespace EMotionFX
         }
 
         const AZStd::shared_ptr<SimulatedObjectSetup>& simulatedObjectSetup = actor->GetSimulatedObjectSetup();
-        simulatedObjectSetup->RemoveSimulatedObject(simulatedObjectSetup->GetNumSimulatedObjects() - 1);
+        simulatedObjectSetup->RemoveSimulatedObject(m_objectIndex);
 
+        SimulatedObjectNotificationBus::Broadcast(&SimulatedObjectNotificationBus::Events::OnSimulatedObjectChanged);
+
+        actor->SetDirtyFlag(m_oldDirtyFlag);
         return true;
     }
 
@@ -341,6 +350,10 @@ namespace EMotionFX
         m_oldContents = MCore::ReflectionSerializer::Serialize(simulatedObjectSetup->GetSimulatedObject(m_objectIndex)).GetValue();
         simulatedObjectSetup->RemoveSimulatedObject(m_objectIndex);
 
+        SimulatedObjectNotificationBus::Broadcast(&SimulatedObjectNotificationBus::Events::OnSimulatedObjectChanged);
+
+        m_oldDirtyFlag = actor->GetDirtyFlag();
+        actor->SetDirtyFlag(true);
         return true;
     }
 
@@ -366,6 +379,7 @@ namespace EMotionFX
             return false;
         }
 
+        actor->SetDirtyFlag(m_oldDirtyFlag);
         return true;
     }
 
@@ -426,6 +440,12 @@ namespace EMotionFX
     {
         AZ_UNUSED(parameters);
 
+        Actor* actor = GetActor(this, outResult);
+        if (!actor)
+        {
+            return false;
+        }
+
         SimulatedObject* object = GetSimulatedObject(outResult);
         if (!object)
         {
@@ -471,14 +491,24 @@ namespace EMotionFX
                 m_oldColliderTags = object->GetColliderTags();
             }
             object->SetColliderTags(m_colliderTags.value());
+
+            SimulatedObjectNotificationBus::Broadcast(&SimulatedObjectNotificationBus::Events::OnSimulatedObjectChanged);
         }
 
+        m_oldDirtyFlag = actor->GetDirtyFlag();
+        actor->SetDirtyFlag(true);
         return true;
     }
 
     bool CommandAdjustSimulatedObject::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         AZ_UNUSED(parameters);
+
+        Actor* actor = GetActor(this, outResult);
+        if (!actor)
+        {
+            return false;
+        }
 
         SimulatedObject* object = GetSimulatedObject(outResult);
         if (!object)
@@ -505,8 +535,10 @@ namespace EMotionFX
         if (m_oldColliderTags.has_value())
         {
             object->SetColliderTags(m_oldColliderTags.value());
+            SimulatedObjectNotificationBus::Broadcast(&SimulatedObjectNotificationBus::Events::OnSimulatedObjectChanged);
         }
 
+        actor->SetDirtyFlag(m_oldDirtyFlag);
         return true;
     }
 
@@ -708,6 +740,10 @@ namespace EMotionFX
             object->AddSimulatedJointAndChildren(m_jointIndices[0]);
         }
 
+        SimulatedObjectNotificationBus::Broadcast(&SimulatedObjectNotificationBus::Events::OnSimulatedObjectChanged);
+
+        m_oldDirtyFlag = actor->GetDirtyFlag();
+        actor->SetDirtyFlag(true);
         return true;
     }
 
@@ -739,6 +775,7 @@ namespace EMotionFX
             CommandRemoveSimulatedJoints::s_objectIndexParameterName, m_objectIndex,
             CommandRemoveSimulatedJoints::s_removeChildrenParameterName, m_addChildren ? "true" : "false");
 
+        actor->SetDirtyFlag(m_oldDirtyFlag);
         return CommandSystem::GetCommandManager()->ExecuteCommandInsideCommand(command, outResult);
     }
 
@@ -851,6 +888,10 @@ namespace EMotionFX
         // After removing joints, the object could contain sparse chains - therefore we should do another loading to determine if we need to build the root list again.
         object->InitAfterLoading(setup);
 
+        SimulatedObjectNotificationBus::Broadcast(&SimulatedObjectNotificationBus::Events::OnSimulatedObjectChanged);
+
+        m_oldDirtyFlag = actor->GetDirtyFlag();
+        actor->SetDirtyFlag(true);
         return true;
     }
 
@@ -893,6 +934,7 @@ namespace EMotionFX
             return false;
         }
 
+        actor->SetDirtyFlag(m_oldDirtyFlag);
         return true;
     }
 
@@ -1078,6 +1120,13 @@ namespace EMotionFX
             joint->SetGeometricAutoExclusion(m_geometricAutoExclusion.value());
         }
 
+        if (m_colliderExclusionTags.has_value() || m_autoExcludeMode.has_value() || m_geometricAutoExclusion.has_value())
+        {
+            SimulatedObjectNotificationBus::Broadcast(&SimulatedObjectNotificationBus::Events::OnSimulatedObjectChanged);
+        }
+
+        m_oldDirtyFlag = actor->GetDirtyFlag();
+        actor->SetDirtyFlag(true);
         return true;
     }
 
@@ -1154,6 +1203,12 @@ namespace EMotionFX
             joint->SetGeometricAutoExclusion(m_oldGeometricAutoExclusion.value());
         }
 
+        if (m_oldColliderExclusionTags.has_value() || m_oldAutoExcludeMode.has_value() || m_oldGeometricAutoExclusion.has_value())
+        {
+            SimulatedObjectNotificationBus::Broadcast(&SimulatedObjectNotificationBus::Events::OnSimulatedObjectChanged);
+        }
+
+        actor->SetDirtyFlag(m_oldDirtyFlag);
         return true;
     }
 

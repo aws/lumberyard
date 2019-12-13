@@ -6,42 +6,5 @@
         "src"
     ],
     "defines": [],
-    "lib_required": "True",
-    "platform": {
-        "win_x64_vs2013": {
-            "libpath_debug": [
-                "lib/x64_v120_Debug"
-            ],
-            "libpath_release": [
-                "lib/x64_v120_Release"
-            ],
-            "lib": [
-                "libdyad.lib"
-            ]
-        },
-        "win_x64_vs2015": {
-            "libpath_debug": [
-                "lib/x64_v140_Debug"
-            ],
-            "libpath_release": [
-                "lib/x64_v140_Release"
-            ],
-            "lib": [
-                "libdyad.lib"
-            ]
-        },
-        "win_x64_vs2017": "@win_x64_vs2015",
-        "linux_x64": {
-            "libpath_debug": [
-                "lib/linux_debug"
-            ],
-            "libpath_release": [
-                "lib/linux_release"
-            ],
-            "lib": [
-                "libdyad.a"
-            ]
-        }
-
-    }
+    "lib_required": "True"
 }

@@ -110,7 +110,7 @@ struct TestInternalRecognizerBasedBuilder
         }
     }
 
-    bool FindRC(QString& systemRootOut, QString& rcPathOut) override
+    bool FindRC(QString& rcPathOut) override
     {
         return true;
     }
@@ -156,7 +156,8 @@ struct TestInternalRecognizerBasedBuilder
         const AssetBuilderSDK::JobCancelListener& jobCancelListener,
         AssetBuilderSDK::ProcessJobResponse& response)
     {
-        InternalRecognizerBasedBuilder::ProcessCopyJob(request, productAssetType, jobCancelListener, response);
+        const bool outputProductDependency = false;
+        InternalRecognizerBasedBuilder::ProcessCopyJob(request, productAssetType, outputProductDependency, jobCancelListener, response);
     }
 
 
@@ -174,7 +175,7 @@ struct TestInternalRecognizerBasedBuilder
         QString versionZero("0");
         AZ::Data::AssetType productAssetType = AZ::Uuid::CreateRandom();
 
-        AssetRecognizer baseAssetRecognizer(QString("test-").append(extraRCParam), false, 1, false, false, patternMatcher, versionZero, productAssetType);
+        AssetRecognizer baseAssetRecognizer(QString("test-").append(extraRCParam), false, 1, false, false, patternMatcher, versionZero, productAssetType, false);
 
         QHash<QString, AssetPlatformSpec> assetPlatformSpecByPlatform;
         AssetPlatformSpec   assetSpec;

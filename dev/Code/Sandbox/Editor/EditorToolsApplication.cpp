@@ -24,6 +24,21 @@
 #include <Engines/EnginesAPI.h> // For LyzardSDK
 #include <QMessageBox>
 
+#include <CryEdit.h>
+#include <CryEditDoc.h>
+#include <DisplaySettingsPythonFuncs.h>
+#include <Material/MaterialPythonFuncs.h>
+#include <Modelling/ModellingMode.h>
+#include <PythonEditorFuncs.h>
+#include <TrackView/TrackViewPythonFuncs.h>
+#include <VegetationTool.h>
+#include <ViewPane.h>
+#ifdef LY_TERRAIN_EDITOR
+#include <TerrainModifyTool.h>
+#include <Terrain/PythonTerrainFuncs.h>
+#include <Terrain/PythonTerrainLayerFuncs.h>
+#endif
+
 namespace EditorInternal
 {
     bool EditorToolsApplication::OnFailedToFindConfiguration(const char* configFilePath)
@@ -60,6 +75,24 @@ namespace EditorInternal
         AzToolsFramework::ToolsApplication::RegisterCoreComponents();
 
         RegisterComponentDescriptor(AZ::CratesHandler::CreateDescriptor());
+
+        // Expose Legacy Python Bindings to Behavior Context for EditorPythonBindings Gem
+        RegisterComponentDescriptor(AzToolsFramework::CryEditPythonHandler::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::CryEditDocFuncsHandler::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::DisplaySettingsPythonFuncsHandler::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::MainWindowEditorFuncsHandler::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::ModellingModeFuncsHandler::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::ObjectManagerFuncsHandler::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::MaterialPythonFuncsHandler::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::PythonEditorFuncsHandler::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::TrackViewFuncsHandler::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::VegetationToolFuncsHandler::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::ViewPanePythonFuncsHandler::CreateDescriptor());
+#ifdef LY_TERRAIN_EDITOR
+        RegisterComponentDescriptor(AzToolsFramework::TerrainModifyPythonFuncsHandler::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::TerrainPythonFuncsHandler::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::TerrainLayerPythonFuncsHandler::CreateDescriptor());
+#endif
     }
 
 

@@ -42,12 +42,6 @@ def set_editor_flags(self, kw):
 
     kw['client_only'] = True
 
-    prepend_kw_entry(kw,'includes',['.',
-                                    self.CreateRootRelativePath('Code/Sandbox/Editor'),
-                                    self.CreateRootRelativePath('Code/Sandbox/Editor/Include'),
-                                    self.CreateRootRelativePath('Code/Sandbox/Plugins/EditorCommon'),
-                                    self.CreateRootRelativePath('Code/CryEngine/CryCommon')])
-
     if 'priority_includes' in kw:
         prepend_kw_entry(kw,'includes',kw['priority_includes'])
 
@@ -63,9 +57,6 @@ def set_editor_flags(self, kw):
 @conf
 def set_rc_flags(self, kw, ctx):
 
-    prepend_kw_entry(kw,'includes',['.',
-                                    self.CreateRootRelativePath('Code/CryEngine/CryCommon'),
-                                    self.CreateRootRelativePath('Code/Sandbox/Plugins/EditorCommon')])
     rc_defines = ['RESOURCE_COMPILER',
                   'FORCE_STANDARD_ASSERT',
                   '_CRT_SECURE_NO_DEPRECATE=1',
@@ -96,13 +87,6 @@ def initialize_lumberyard(ctx):
 
     if conf.is_option_true('enable_memory_tracking'):
         append_to_unique_list(v['DEFINES'], 'AZCORE_ENABLE_MEMORY_TRACKING')
-
-    # BEGIN JAVELIN MOD: https://jira.agscollab.com/browse/JAV-18779 Allows for an AZ Allocator to be used for memory management
-    # removed below if check because of issues related to https://jira.agscollab.com/browse/LYAJAV-126
-    # if conf.is_option_true('use_az_allocator_for_cry_memory_manager'):
-    #    append_to_unique_list(v['DEFINES'], 'USE_AZ_ALLOCATOR_FOR_CRY_MEMORY_MANAGER')
-    v['DEFINES'] += ['USE_AZ_ALLOCATOR_FOR_CRY_MEMORY_MANAGER']
-    # END JAVELIN MOD
 
     # To allow pragma comment (lib, 'SDKs/...) uniformly, pass Code to the libpath
     append_to_unique_list(v['LIBPATH'], conf.CreateRootRelativePath('Code'))

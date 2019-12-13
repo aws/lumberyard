@@ -23,12 +23,13 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option") // (qwidget.h) 'uint': forcing value to bool 'true' or 'false' (performance warning)
 #include <QAbstractItemModel>
 #include <QList>
-#include <QModelIndex>
 #include <QMenu>
+AZ_POP_DISABLE_WARNING
+#include <QModelIndex>
 #include <QSettings>
-#include <QVariant>
 
 #include <SliceFavorites/SliceFavoritesBus.h>
 
@@ -162,7 +163,7 @@ namespace SliceFavorites
         QModelIndex GetModelIndexForFavorite(const FavoriteData* favorite) const;
         FavoriteData* GetFavoriteDataFromModelIndex(const QModelIndex& modelIndex) const;
 
-        void CountFoldersAndFavoritesFromIndices(QModelIndexList& indices, int& numFolders, int& numFavorites);
+        void CountFoldersAndFavoritesFromIndices(const QModelIndexList& indices, int& numFolders, int& numFavorites);
         int GetNumFavoritesAndFolders();
 
         void ClearAll();
@@ -171,6 +172,8 @@ namespace SliceFavorites
 
         int ImportFavorites(const QString& importFileName);
         int ExportFavorites(const QString& exportFileName) const;
+
+        void AddFavorite(const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* product, const QModelIndex parent = QModelIndex());
 
     Q_SIGNALS:
         void DataModelChanged();
@@ -207,13 +210,12 @@ namespace SliceFavorites
         AZStd::unique_ptr<FavoriteData> m_rootItem = nullptr;
         AZStd::unique_ptr<QMenu> m_favoritesMenu = nullptr;
 
-        using FavoriteMap = AZStd::unordered_map<AZStd::string, FavoriteData*>;
+        using FavoriteMap = AZStd::unordered_map<AZ::Data::AssetId, FavoriteData*>;
         using FavoriteList = QList<FavoriteData*>;
 
         FavoriteMap m_favoriteMap;
 
         bool IsFavorite(const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* product) const;
-        void AddFavorite(const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* product, const QModelIndex parent = QModelIndex());
         void RemoveFavorite(const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* product);
 
         void RemoveFavorite(const AZ::Data::AssetId& assetId);
@@ -240,7 +242,7 @@ namespace SliceFavorites
         void GetSelectedIndicesFromMimeData(QList<FavoriteData*>& results, const QByteArray& buffer) const;
 
         const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* GetSliceProductFromBrowserEntry(AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) const;
-        bool FavoriteDataModel::IsSliceAssetType(const AZ::Data::AssetType& type) const;
+        bool IsSliceAssetType(const AZ::Data::AssetType& type) const;
 
         bool dropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent) override;
         bool canDropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent) const override;

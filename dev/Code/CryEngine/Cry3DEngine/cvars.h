@@ -65,6 +65,8 @@ struct CVars
         #include "Xenia/cvars_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/cvars_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/cvars_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -308,6 +310,7 @@ struct CVars
     DeclareConstFloatCVar(e_WindBendingDistRatio);
     float e_SQTestDelay;
     int e_PhysMinCellSize;
+    DeclareConstIntCVar(e_PhysEntityGridSizeDefault, 4096);
     int e_StreamCgfMaxTasksInProgress;
     int e_StreamCgfMaxNewTasksPerUpdate;
     int e_CoverageBufferResolution;
@@ -586,4 +589,10 @@ struct CVars
     int e_StaticInstancingMinInstNum;
 
     DeclareConstIntCVar(e_MemoryProfiling, 0);
+
+#if !defined(_RELEASE)
+    DeclareConstFloatCVar(e_TerrainPerformanceSecondsPerLog);
+    DeclareConstIntCVar(e_TerrainPerformanceCollectMemoryStats, 0);
+#endif
+
 };

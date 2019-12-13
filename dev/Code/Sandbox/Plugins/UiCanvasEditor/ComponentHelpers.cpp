@@ -22,13 +22,14 @@
 #include <AzToolsFramework/ToolsComponents/ComponentMimeData.h>
 #include <LyShine/Bus/UiLayoutManagerBus.h>
 
-namespace ComponentHelpers
+// Internal helper functions
+namespace Internal
 {
-    AZStd::string GetComponentIconPath(const AZ::SerializeContext::ClassData* componentClass)
+    AZStd::string GetComponentIconPath(const AZ::SerializeContext::ClassData& componentClassData)
     {
         AZStd::string iconPath = "Editor/Icons/Components/Component_Placeholder.svg";
 
-        auto editorElementData = componentClass->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData);
+        auto editorElementData = componentClassData.m_editData->FindElementData(AZ::Edit::ClassElements::EditorData);
         if (auto iconAttribute = editorElementData->FindAttribute(AZ::Edit::Attributes::Icon))
         {
             if (auto iconAttributeData = azdynamic_cast<const AZ::Edit::AttributeData<const char*>*>(iconAttribute))
@@ -42,36 +43,57 @@ namespace ComponentHelpers
         }
 
         // use absolute path if possible
-        AZStd::string iconFullPath;
-        bool pathFound = false;
-        using AssetSysReqBus = AzToolsFramework::AssetSystemRequestBus;
-        AssetSysReqBus::BroadcastResult(pathFound, &AssetSysReqBus::Events::GetFullSourcePathFromRelativeProductPath, iconPath, iconFullPath);
-
-        if (pathFound)
+        bool result = false;
+        AZ::Data::AssetInfo info;
+        AZStd::string watchFolder;
+        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(result, &AzToolsFramework::AssetSystemRequestBus::Events::GetSourceInfoBySourcePath, iconPath.c_str(), info, watchFolder);
+        if (result)
         {
-            iconPath = iconFullPath;
+            iconPath = AZStd::string::format("%s/%s", watchFolder.c_str(), info.m_relativePath.c_str());
         }
 
         return iconPath;
     }
 
-    const char* GetFriendlyComponentName(const AZ::SerializeContext::ClassData& classData)
+    AZ::SerializeContext* GetSerializeContext()
     {
-        return classData.m_editData
-               ? classData.m_editData->m_name
-               : classData.m_name;
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+        AZ_Assert(serializeContext, "We should have a valid context!");
+        return serializeContext;
     }
 
-    bool AppearsInUIComponentMenu(const AZ::SerializeContext::ClassData& classData, bool isCanvasSelected)
+    const char* GetFriendlyComponentName(const AZ::SerializeContext::ClassData& componentClassData)
     {
-        return AzToolsFramework::AppearsInAddComponentMenu(classData, isCanvasSelected ? AZ_CRC("CanvasUI", 0xe1e05605) : AZ_CRC("UI", 0x27ff46b0));
+        return componentClassData.m_editData
+            ? componentClassData.m_editData->m_name
+            : componentClassData.m_name;
     }
 
-    bool IsAddableByUser(const AZ::SerializeContext::ClassData* classData)
+    AZStd::string GetFriendlyComponentNameFromType(const AZ::TypeId& componentType)
     {
-        if (classData->m_editData)
+        const AZ::SerializeContext::ClassData* componentClassData = GetSerializeContext()->FindClassData(componentType);
+        AZStd::string componentName(componentClassData ? GetFriendlyComponentName(*componentClassData) : "<unknown>");
+
+        return componentName;
+    }
+
+    AzToolsFramework::Components::EditorComponentBase* GetEditorComponent(AZ::Component* component)
+    {
+        auto editorComponentBaseComponent = azrtti_cast<AzToolsFramework::Components::EditorComponentBase*>(component);
+        return editorComponentBaseComponent;
+    }
+
+    bool AppearsInUIComponentMenu(const AZ::SerializeContext::ClassData& componentClassData, bool forCanvasEntity)
+    {
+        return AzToolsFramework::AppearsInAddComponentMenu(componentClassData, forCanvasEntity ? AZ_CRC("CanvasUI", 0xe1e05605) : AZ_CRC("UI", 0x27ff46b0));
+    }
+
+    bool IsAddableByUser(const AZ::SerializeContext::ClassData& componentClassData)
+    {
+        if (componentClassData.m_editData)
         {
-            if (auto editorDataElement = classData->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData))
+            if (auto editorDataElement = componentClassData.m_editData->FindElementData(AZ::Edit::ClassElements::EditorData))
             {
                 if (auto addableAttribute = editorDataElement->FindAttribute(AZ::Edit::Attributes::AddableByUser))
                 {
@@ -90,15 +112,21 @@ namespace ComponentHelpers
         return true;
     }
 
-    bool CanCreateComponentOnEntity(const AZ::SerializeContext::ClassData& componentClassData, AZ::Entity* entity)
+    bool IsAddableByUserAndCompatibleWithEntityType(const AZ::SerializeContext::ClassData& componentClassData, bool forCanvasEntity)
+    {
+        return IsAddableByUser(componentClassData) && AppearsInUIComponentMenu(componentClassData, forCanvasEntity);
+    }
+
+    bool IsComponentServiceCompatibleWithOtherServices(const AZ::TypeId& componentType,
+        const AZStd::vector<AZ::TypeId>& otherComponentTypes)
     {
         // Get the componentDescriptor from the componentClassData
         AZ::ComponentDescriptor* componentDescriptor = nullptr;
-        EBUS_EVENT_ID_RESULT(componentDescriptor, componentClassData.m_typeId, AZ::ComponentDescriptorBus, GetDescriptor);
+        EBUS_EVENT_ID_RESULT(componentDescriptor, componentType, AZ::ComponentDescriptorBus, GetDescriptor);
         if (!componentDescriptor)
         {
-            AZStd::string message = AZStd::string::format("ComponentDescriptor not found for %s", GetFriendlyComponentName(componentClassData));
-            AZ_Assert(false, message.c_str());
+            AZStd::string message = AZStd::string::format("ComponentDescriptor not found for component %s.", GetFriendlyComponentNameFromType(componentType).c_str());
+            AZ_Error("UI Editor", false, message.c_str());
             return false;
         }
 
@@ -112,21 +140,21 @@ namespace ComponentHelpers
         AZ::ComponentDescriptor::DependencyArrayType requiredServices;
         componentDescriptor->GetRequiredServices(requiredServices, nullptr);
 
-        // Check if component can be added to this entity
+        // Check if component is compatible with other components
         AZ::ComponentDescriptor::DependencyArrayType services;
-        for (const AZ::Component* component : entity->GetComponents())
+        for (const AZ::TypeId& otherComponentType : otherComponentTypes)
         {
-            const AZ::Uuid& existingComponentTypeId = AzToolsFramework::GetUnderlyingComponentType(*component);
-
-            AZ::ComponentDescriptor* existingComponentDescriptor = nullptr;
-            EBUS_EVENT_ID_RESULT(existingComponentDescriptor, existingComponentTypeId, AZ::ComponentDescriptorBus, GetDescriptor);
-            if (!componentDescriptor)
+            AZ::ComponentDescriptor* otherComponentDescriptor = nullptr;
+            EBUS_EVENT_ID_RESULT(otherComponentDescriptor, otherComponentType, AZ::ComponentDescriptorBus, GetDescriptor);
+            if (!otherComponentDescriptor)
             {
+                AZStd::string message = AZStd::string::format("ComponentDescriptor not found for component %s.", GetFriendlyComponentNameFromType(otherComponentType).c_str());
+                AZ_Error("UI Editor", false, message.c_str());
                 return false;
             }
 
             services.clear();
-            existingComponentDescriptor->GetProvidedServices(services, nullptr);
+            otherComponentDescriptor->GetProvidedServices(services, nullptr);
 
             // Check that none of the services currently provided by the entity are incompatible services
             // for the new component.
@@ -155,7 +183,7 @@ namespace ComponentHelpers
             }
 
             services.clear();
-            existingComponentDescriptor->GetIncompatibleServices(services, nullptr);
+            otherComponentDescriptor->GetIncompatibleServices(services, nullptr);
 
             // Check that none of the services provided by the component are incompatible with any
             // of the services currently provided by the entity
@@ -180,24 +208,127 @@ namespace ComponentHelpers
         return true;
     }
 
-    bool CanRemoveComponentFromEntity(AZ::SerializeContext* serializeContext, const AZ::Component* componentToRemove, AZ::Entity* entity)
+    bool AreComponentServicesCompatibleWithEntity(const AZStd::vector<AZ::TypeId>& componentTypes,
+        const AZ::EntityId& entityId,
+        ComponentHelpers::EntityComponentPair* firstIncompatibleComponentType = nullptr)
     {
-        const AZ::Uuid& componentToRemoveTypeId = AzToolsFramework::GetUnderlyingComponentType(*componentToRemove);
-        const AZ::SerializeContext::ClassData* classData = serializeContext->FindClassData(componentToRemoveTypeId);
+        AZ::Entity* entity = AzToolsFramework::GetEntityById(entityId);
+        if (!entity)
+        {
+            AZ_Error("UI Editor", false, "Can't find entity by Id.");
+            return false;
+        }
 
-        if (!IsAddableByUser(classData))
+        // Make a list of the entity's existing component types
+        AZStd::vector<AZ::TypeId> entityComponentTypes;
+        entityComponentTypes.reserve(entity->GetComponents().size());
+        for (const AZ::Component* component : entity->GetComponents())
+        {
+            const AZ::Uuid& componentTypeId = AzToolsFramework::GetUnderlyingComponentType(*component);
+            entityComponentTypes.push_back(componentTypeId);
+        }
+
+        if (componentTypes.size() == 1)
+        {
+            if (!IsComponentServiceCompatibleWithOtherServices(componentTypes[0], entityComponentTypes))
+            {
+                if (firstIncompatibleComponentType)
+                {
+                    *firstIncompatibleComponentType = AZStd::make_pair(entityId, componentTypes[0]);
+                }
+                return false;
+            }
+        }
+        else
+        {
+            for (int i = 0; i < componentTypes.size(); i++)
+            {
+                // Add all but this component type
+                AZStd::vector<AZ::TypeId> otherComponentTypes = entityComponentTypes;
+                if (i > 0)
+                {
+                    otherComponentTypes.insert(otherComponentTypes.end(), componentTypes.begin(), componentTypes.begin() + i);
+                }
+                if (i < componentTypes.size() - 1)
+                {
+                    otherComponentTypes.insert(otherComponentTypes.end(), componentTypes.begin() + (i + 1), componentTypes.end());
+                }
+
+                if (!IsComponentServiceCompatibleWithOtherServices(componentTypes[i], otherComponentTypes))
+                {
+                    if (firstIncompatibleComponentType)
+                    {
+                        *firstIncompatibleComponentType = AZStd::make_pair(entityId, componentTypes[i]);
+                    }
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    bool IsComponentServiceCompatibleWithEntity(const AZ::TypeId& componentType, const AZ::EntityId& entityId)
+    {
+        AZStd::vector<AZ::TypeId> componentTypes;
+        componentTypes.push_back(componentType);
+        return AreComponentServicesCompatibleWithEntity(componentTypes, entityId);
+    }
+    
+    bool CanAddComponentsToEntities(const AzToolsFramework::ClassDataList& classDataForComponentsToAdd,
+        const AzToolsFramework::EntityIdList& entities,
+        bool isCanvasEntity,
+        ComponentHelpers::EntityComponentPair* firstIncompatibleComponentType = nullptr)
+    {
+        if (classDataForComponentsToAdd.empty() || entities.empty())
         {
             return false;
         }
 
-        // Go through all the components on the entity (except this one) and collect all the required services
+        for (auto componentClassData : classDataForComponentsToAdd)
+        {
+            if (!IsAddableByUserAndCompatibleWithEntityType(*componentClassData, isCanvasEntity))
+            {
+                return false;
+            }
+        }
+
+        // Make a list of component types from component class data
+        AZStd::vector<AZ::TypeId> componentTypes;
+        componentTypes.reserve(classDataForComponentsToAdd.size());
+        for (auto componentClassData : classDataForComponentsToAdd)
+        {
+            componentTypes.push_back(componentClassData->m_typeId);
+        }
+
+        for (const AZ::EntityId& entityId : entities)
+        {
+            if (!AreComponentServicesCompatibleWithEntity(componentTypes, entityId, firstIncompatibleComponentType))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool CanComponentServicesBeRemovedFromEntity(const AZ::Entity::ComponentArrayType& componentsToRemove, const AZ::EntityId& entityId)
+    {
+        AZ::Entity* entity = AzToolsFramework::GetEntityById(entityId);
+        if (!entity)
+        {
+            AZ_Error("UI Editor", false, "Can't find entity by Id.");
+            return false;
+        }
+
+        // Go through all the components on the entity (except the ones to remove) and collect all the required services
         // and all the provided services
         AZ::ComponentDescriptor::DependencyArrayType allRequiredServices;
         AZ::ComponentDescriptor::DependencyArrayType allProvidedServices;
         AZ::ComponentDescriptor::DependencyArrayType services;
         for (const AZ::Component* component : entity->GetComponents())
         {
-            if (component == componentToRemove)
+            if (AZStd::find(componentsToRemove.begin(), componentsToRemove.end(), component) != componentsToRemove.end())
             {
                 continue;
             }
@@ -208,6 +339,8 @@ namespace ComponentHelpers
             EBUS_EVENT_ID_RESULT(componentDescriptor, componentTypeId, AZ::ComponentDescriptorBus, GetDescriptor);
             if (!componentDescriptor)
             {
+                AZStd::string message = AZStd::string::format("ComponentDescriptor not found for component %s.", GetFriendlyComponentNameFromType(componentTypeId).c_str());
+                AZ_Error("UI Editor", false, message.c_str());
                 return false;
             }
 
@@ -228,7 +361,7 @@ namespace ComponentHelpers
             }
         }
 
-        // remove all the satisfied services from the required services lits
+        // remove all the satisfied services from the required services list
         for (auto providedService : allProvidedServices)
         {
             for (auto iter = allRequiredServices.begin(); iter != allRequiredServices.end(); ++iter)
@@ -247,26 +380,33 @@ namespace ComponentHelpers
         // provides any of those services, if so we cannot remove it
         if (allRequiredServices.size() > 0)
         {
-            AZ::ComponentDescriptor* componentDescriptor = nullptr;
-            EBUS_EVENT_ID_RESULT(componentDescriptor, componentToRemoveTypeId, AZ::ComponentDescriptorBus, GetDescriptor);
-            if (!componentDescriptor)
+            for (const AZ::Component* componentToRemove : componentsToRemove)
             {
-                return false;
-            }
+                const AZ::Uuid& componentToRemoveTypeId = AzToolsFramework::GetUnderlyingComponentType(*componentToRemove);
 
-            // Get the services provided by the component to be deleted
-            AZ::ComponentDescriptor::DependencyArrayType providedServices;
-            componentDescriptor->GetProvidedServices(providedServices, nullptr);
-
-            for (auto requiredService: allRequiredServices)
-            {
-                // Check that none of the services currently still by the entity are the any of the ones we want to remove
-                for (auto providedService : providedServices)
+                AZ::ComponentDescriptor* componentDescriptor = nullptr;
+                EBUS_EVENT_ID_RESULT(componentDescriptor, componentToRemoveTypeId, AZ::ComponentDescriptorBus, GetDescriptor);
+                if (!componentDescriptor)
                 {
-                    if (requiredService == providedService)
+                    AZStd::string message = AZStd::string::format("ComponentDescriptor not found for component %s.", GetFriendlyComponentNameFromType(componentToRemoveTypeId).c_str());
+                    AZ_Error("UI Editor", false, message.c_str());
+                    return false;
+                }
+
+                // Get the services provided by the component to be deleted
+                AZ::ComponentDescriptor::DependencyArrayType providedServices;
+                componentDescriptor->GetProvidedServices(providedServices, nullptr);
+
+                for (auto requiredService : allRequiredServices)
+                {
+                    // Check that none of the services currently still by the entity are the any of the ones we want to remove
+                    for (auto providedService : providedServices)
                     {
-                        // this required service is being provided by the component we want to remove
-                        return false;
+                        if (requiredService == providedService)
+                        {
+                            // this required service is being provided by the component we want to remove
+                            return false;
+                        }
                     }
                 }
             }
@@ -275,85 +415,79 @@ namespace ComponentHelpers
         return true;
     }
 
-    bool CanComponentsBeRemoved(const AZ::Entity::ComponentArrayType& components)
+    bool CanComponentServicesBeRemoved(const AZ::Entity::ComponentArrayType& componentsToRemove)
     {
-        // Get the serialize context.
-        AZ::SerializeContext* serializeContext;
-        EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
-        AZ_Assert(serializeContext, "We should have a valid context!");
-
-        bool canRemove = true;
-        for (auto component : components)
+        // Group components by entityId
+        AZStd::unordered_map<AZ::EntityId, AZ::Entity::ComponentArrayType> m_componentsByEntityId;
+        for (auto component : componentsToRemove)
         {
-            AZ::Entity* entity = component->GetEntity();
+            m_componentsByEntityId[component->GetEntityId()].push_back(component);
+        }
 
-            if (!entity || !CanRemoveComponentFromEntity(serializeContext, component, entity))
+        for (auto componentsByEntityIdItr : m_componentsByEntityId)
+        {
+            const AZ::EntityId& entityId = componentsByEntityIdItr.first;
+            const AZ::Entity::ComponentArrayType& componentsToRemoveFromEntity = componentsByEntityIdItr.second;
+            if (!CanComponentServicesBeRemovedFromEntity(componentsToRemoveFromEntity, entityId))
             {
-                canRemove = false;
-                break;
+                return false;
             }
         }
 
-        return canRemove;
+        return true;
     }
 
     bool AreComponentsAddableByUser(const AZ::Entity::ComponentArrayType& components)
     {
         // Get the serialize context.
-        AZ::SerializeContext* serializeContext;
-        EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
-        AZ_Assert(serializeContext, "We should have a valid context!");
+        AZ::SerializeContext* serializeContext = GetSerializeContext();
 
-        bool canAdd = true;
         for (auto component : components)
         {
             const AZ::Uuid& componentToAddTypeId = AzToolsFramework::GetUnderlyingComponentType(*component);
-            const AZ::SerializeContext::ClassData* classData = serializeContext->FindClassData(componentToAddTypeId);
-
-            if (!IsAddableByUser(classData))
+            const AZ::SerializeContext::ClassData* componentClassData = serializeContext->FindClassData(componentToAddTypeId);
+            if (!componentClassData)
             {
-                canAdd = false;
-                break;
+                AZ_Error("UI Editor", false, "Can't find class data for class Id %s", componentToAddTypeId.ToString<AZStd::string>().c_str());
+                return false;
+            }
+
+            if (!IsAddableByUser(*componentClassData))
+            {
+                return false;
             }
         }
 
-        return canAdd;
+        return true;
     }
 
-    bool CanPasteComponents(const AzToolsFramework::EntityIdList& entities, bool isCanvasSelected)
+    bool CanComponentsBeRemoved(const AZ::Entity::ComponentArrayType& componentsToRemove)
+    {
+        if (!AreComponentsAddableByUser(componentsToRemove))
+        {
+            return false;
+        }
+
+        return CanComponentServicesBeRemoved(componentsToRemove);
+    }
+
+    bool CanPasteComponentsToEntities(const AzToolsFramework::EntityIdList& entities, bool isCanvasEntity)
     {
         const QMimeData* mimeData = AzToolsFramework::ComponentMimeData::GetComponentMimeDataFromClipboard();
 
-        // Check that there are components on the clipboard and that they can all be pasted onto the selected elements
+        // Check that there are components on the clipboard and that they can all be pasted onto the entities
         bool canPasteAll = true;
-
         if (entities.empty() || !mimeData)
         {
             canPasteAll = false;
         }
         else
         {
+            // Create class data from mime data
             AzToolsFramework::ComponentTypeMimeData::ClassDataContainer classDataForComponentsToAdd;
             AzToolsFramework::ComponentTypeMimeData::Get(mimeData, classDataForComponentsToAdd);
 
-            // Create class data from mime data
-            for (const AZ::EntityId& entityId : entities)
-            {
-                for (auto classData : classDataForComponentsToAdd)
-                {
-                    auto entity = AzToolsFramework::GetEntityById(entityId);
-
-                    // Check if this component can be added
-                    if (!entity
-                        || !AppearsInUIComponentMenu(*classData, isCanvasSelected)
-                        || !IsAddableByUser(classData)
-                        || !CanCreateComponentOnEntity(*classData, entity))
-                    {
-                        canPasteAll = false;
-                        break;
-                    }
-                }
-            }
+            canPasteAll = CanAddComponentsToEntities(classDataForComponentsToAdd, entities, isCanvasEntity);
         }
 
         return canPasteAll;
@@ -382,18 +516,18 @@ namespace ComponentHelpers
         return selectedEntities;
     }
 
-    AZ::Entity::ComponentArrayType GetCopyableComponents(const AZ::Entity::ComponentArrayType componentsToCopy)
+    AZ::Entity::ComponentArrayType GetCopyableComponents(const AZ::Entity::ComponentArrayType& componentsToCopy)
     {
         AzToolsFramework::EntityIdList selectedEntities = GetSelectedEntities();
+        AZ::EntityId firstSelectedEntity = selectedEntities.front();
 
         // Copyable components are the components that belong to the first selected entity
         AZ::Entity::ComponentArrayType copyableComponents;
         copyableComponents.reserve(componentsToCopy.size());
         for (auto component : componentsToCopy)
         {
-            const AZ::Entity* entity = component ? component->GetEntity() : nullptr;
-            const AZ::EntityId entityId = entity ? entity->GetId() : AZ::EntityId();
-            if (entityId == selectedEntities.front())
+            const AZ::EntityId entityId = component ? component->GetEntityId() : AZ::EntityId();
+            if (entityId == firstSelectedEntity)
             {
                 copyableComponents.push_back(component);
             }
@@ -409,56 +543,76 @@ namespace ComponentHelpers
 
     void RemoveComponents(const AZ::Entity::ComponentArrayType& componentsToRemove)
     {
+        // Group components by entityId
+        AZStd::unordered_map<AZ::EntityId, AZ::Entity::ComponentArrayType> m_componentsByEntityId;
+        for (auto component : componentsToRemove)
+        {
+            m_componentsByEntityId[component->GetEntityId()].push_back(component);
+        }
+
         // Since the undo commands use the selected entities, make sure that the components being removed belong to selected entities
         AzToolsFramework::EntityIdList selectedEntities = GetSelectedEntities();
         bool foundUnselectedEntities = false;
-        for (auto componentToRemove : componentsToRemove)
+        for (auto componentsByEntityIdItr : m_componentsByEntityId)
         {
-            AZ::Entity* entity = componentToRemove->GetEntity();
-            if (AZStd::find(selectedEntities.begin(), selectedEntities.end(), entity->GetId()) == selectedEntities.end())
+            const AZ::EntityId& entityId = componentsByEntityIdItr.first;
+            if (!entityId.IsValid() || AZStd::find(selectedEntities.begin(), selectedEntities.end(), entityId) == selectedEntities.end())
             {
                 foundUnselectedEntities = true;
                 break;
             }
         }
-        AZ_Assert(!foundUnselectedEntities, "Attempting to remove components from an unselected element");
         if (foundUnselectedEntities)
         {
+            AZ_Error("UI Editor", false, "Attempting to remove components from an unselected element.");
             return;
         }
 
         EBUS_EVENT(UiEditorInternalNotificationBus, OnBeginUndoableEntitiesChange);
 
-        // Remove all the components requested
-        for (auto componentToRemove : componentsToRemove)
+        for (auto componentsByEntityIdItr : m_componentsByEntityId)
         {
-            AZ::Entity* entity = componentToRemove->GetEntity();
+            const AZ::EntityId& entityId = componentsByEntityIdItr.first;
+            const AZ::Entity::ComponentArrayType& componentsToRemoveFromEntity = componentsByEntityIdItr.second;
 
+            AZ::Entity* entity = AzToolsFramework::GetEntityById(entityId);
+            if (!entity)
+            {
+                AZ_Error("UI Editor", false, "Can't find entity by Id.");
+                continue;
+            }
+
+            // We must deactivate the entity to remove components
             bool reactivate = false;
-            // We must deactivate entities to remove components
             if (entity->GetState() == AZ::Entity::ES_ACTIVE)
             {
                 reactivate = true;
                 entity->Deactivate();
             }
 
-            // See if the component is on the entity
-            const auto& entityComponents = entity->GetComponents();
-            if (AZStd::find(entityComponents.begin(), entityComponents.end(), componentToRemove) != entityComponents.end())
+            // Remove all the components requested
+            for (auto componentToRemove : componentsToRemoveFromEntity)
             {
-                entity->RemoveComponent(componentToRemove);
+                // See if the component is on the entity
+                const auto& entityComponents = entity->GetComponents();
+                if (AZStd::find(entityComponents.begin(), entityComponents.end(), componentToRemove) != entityComponents.end())
+                {
+                    entity->RemoveComponent(componentToRemove);
 
-                delete componentToRemove;
+                    delete componentToRemove;
+                }
             }
 
-            // Attempt to re-activate if we were previously active
+            // Reactivate if we were previously active
             if (reactivate)
             {
                 entity->Activate();
             }
         }
 
-        EBUS_EVENT(UiEditorInternalNotificationBus, OnEndUndoableEntitiesChange, "delete component");
+        EBUS_EVENT(UiEditorInternalNotificationBus, OnEndUndoableEntitiesChange, componentsToRemove.size() > 1 ? "delete components" : "delete component");
+
+        HandleSelectedEntitiesPropertiesChanged();
     }
 
     void CopyComponents(const AZ::Entity::ComponentArrayType& copyableComponents)
@@ -470,12 +624,43 @@ namespace ComponentHelpers
         AzToolsFramework::ComponentMimeData::PutComponentMimeDataOnClipboard(AZStd::move(mimeData));
     }
 
+    void AddComponentsWithAssetToEntities(const ComponentAssetHelpers::ComponentAssetPairs& componentAssetPairs, const AzToolsFramework::EntityIdList& entities)
+    {
+        for (const AZ::EntityId& entityId : entities)
+        {
+            ComponentHelpers::AddComponentsWithAssetToEntity(componentAssetPairs, entityId);
+        }
+    }
+
+    bool GetClassDataForComponentsFromType(const AZStd::vector<AZ::TypeId>& componentTypes,
+        AzToolsFramework::ClassDataList& classDataForComponentsToAdd)
+    {
+        // Make a list of component class data from the component types
+        classDataForComponentsToAdd.reserve(componentTypes.size());
+        AZ::SerializeContext* serializeContext = GetSerializeContext();
+        for (const AZ::TypeId& componentType : componentTypes)
+        {
+            const AZ::SerializeContext::ClassData* componentClassData = serializeContext->FindClassData(componentType);
+            if (!componentClassData)
+            {
+                AZ_Error("UI Editor", false, "Can't find class data for class Id %s", componentType.ToString<AZStd::string>().c_str());
+                return false;
+            }
+            classDataForComponentsToAdd.push_back(componentClassData);
+        }
+
+        return true;
+    }
+}   // namespace
+
+namespace ComponentHelpers
+{
     QList<QAction*> CreateAddComponentActions(HierarchyWidget* hierarchy,
         QTreeWidgetItemRawPtrQList& selectedItems,
         QWidget* parent)
     {
         HierarchyItemRawPtrList items = SelectionHelpers::GetSelectedHierarchyItems(hierarchy,
-                selectedItems);
+            selectedItems);
 
         AzToolsFramework::EntityIdList entitiesSelected;
 
@@ -497,42 +682,40 @@ namespace ComponentHelpers
         ComponentsList componentsList;
 
         // Get the serialize context.
-        AZ::SerializeContext* serializeContext;
-        EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
-        AZ_Assert(serializeContext, "We should have a valid context!");
+        AZ::SerializeContext* serializeContext = Internal::GetSerializeContext();
 
         // Gather all components that match our filter and group by category.
         serializeContext->EnumerateDerived<AZ::Component>(
-            [ &componentsList, isCanvasSelected ](const AZ::SerializeContext::ClassData* classData, const AZ::Uuid& knownType) -> bool
+            [&componentsList, isCanvasSelected](const AZ::SerializeContext::ClassData* componentClassData, const AZ::Uuid& knownType) -> bool
+        {
+            (void)knownType;
+
+            if (Internal::AppearsInUIComponentMenu(*componentClassData, isCanvasSelected))
             {
-                (void)knownType;
-
-                if (AppearsInUIComponentMenu(*classData, isCanvasSelected))
+                if (!Internal::IsAddableByUser(*componentClassData))
                 {
-                    if (!IsAddableByUser(classData))
-                    {
-                        return true;
-                    }
-
-                    componentsList.push_back(classData);
+                    return true;
                 }
 
-                return true;
+                componentsList.push_back(componentClassData);
             }
-            );
+
+            return true;
+        }
+        );
 
         // Create a component list that is in the same order that the components were registered in
         const AZStd::vector<AZ::Uuid>* componentOrderList;
         ComponentsList orderedComponentsList;
         EBUS_EVENT_RESULT(componentOrderList, UiSystemBus, GetComponentTypesForMenuOrdering);
-        for (auto& componentType : * componentOrderList)
+        for (auto& componentType : *componentOrderList)
         {
             auto iter = AZStd::find_if(componentsList.begin(), componentsList.end(),
-                    [componentType](const AZ::SerializeContext::ClassData* classData) -> bool
-                    {
-                        return (classData->m_typeId == componentType);
-                    }
-                    );
+                [componentType](const AZ::SerializeContext::ClassData* componentClassData) -> bool
+            {
+                return (componentClassData->m_typeId == componentType);
+            }
+            );
 
             if (iter != componentsList.end())
             {
@@ -554,22 +737,22 @@ namespace ComponentHelpers
             {
                 const char* typeName = componentClass->m_editData->m_name;
 
-                AZStd::string iconPath = GetComponentIconPath(componentClass);
+                AZStd::string iconPath = Internal::GetComponentIconPath(*componentClass);
 
                 QString iconUrl = QString(iconPath.c_str());
 
                 bool isEnabled = false;
                 if (items.empty())
                 {
-                    auto canvasEntity = AzToolsFramework::GetEntityById(hierarchy->GetEditorWindow()->GetCanvas());
-                    isEnabled = CanCreateComponentOnEntity(*componentClass, canvasEntity);
+                    AZ::EntityId canvasEntityId = hierarchy->GetEditorWindow()->GetCanvas();
+                    isEnabled = Internal::IsComponentServiceCompatibleWithEntity(componentClass->m_typeId, canvasEntityId);
                 }
                 else
                 {
                     for (auto i : items)
                     {
-                        AZ::Entity* entity = i->GetElement();
-                        if (CanCreateComponentOnEntity(*componentClass, entity))
+                        AZ::EntityId entityId = i->GetEntityId();
+                        if (Internal::IsComponentServiceCompatibleWithEntity(componentClass->m_typeId, entityId))
                         {
                             isEnabled = true;
 
@@ -584,40 +767,46 @@ namespace ComponentHelpers
                 QObject::connect(action,
                     &QAction::triggered,
                     hierarchy,
-                    [ serializeContext, hierarchy, componentClass, items ](bool checked)
+                    [serializeContext, hierarchy, componentClass, items](bool checked)
+                {
+                    EBUS_EVENT(UiEditorInternalNotificationBus, OnBeginUndoableEntitiesChange);
+
+                    AzToolsFramework::EntityIdList entitiesSelected;
+                    if (items.empty())
                     {
-                        EBUS_EVENT(UiEditorInternalNotificationBus, OnBeginUndoableEntitiesChange);
-
-                        AzToolsFramework::EntityIdList entitiesSelected;
-                        if (items.empty())
+                        entitiesSelected.push_back(hierarchy->GetEditorWindow()->GetCanvas());
+                    }
+                    else
+                    {
+                        for (auto item : items)
                         {
-                            entitiesSelected.push_back(hierarchy->GetEditorWindow()->GetCanvas());
+                            entitiesSelected.push_back(item->GetEntityId());
                         }
-                        else
+                    }
+
+                    for (auto entityId : entitiesSelected)
+                    {
+                        if (Internal::IsComponentServiceCompatibleWithEntity(componentClass->m_typeId, entityId))
                         {
-                            for (auto item : items)
+                            AZ::Entity* entity = AzToolsFramework::GetEntityById(entityId);
+                            if (!entity)
                             {
-                                entitiesSelected.push_back(item->GetEntityId());
+                                AZ_Error("UI Editor", false, "Can't find entity by Id.");
+                                continue;
                             }
+
+                            entity->Deactivate();
+                            AZ::Component* component;
+                            EBUS_EVENT_ID_RESULT(component, componentClass->m_typeId, AZ::ComponentDescriptorBus, CreateComponent);
+                            entity->AddComponent(component);
+                            entity->Activate();
                         }
+                    }
 
-                        for (auto i : entitiesSelected)
-                        {
-                            AZ::Entity* entity = AzToolsFramework::GetEntityById(i);
-                            if (CanCreateComponentOnEntity(*componentClass, entity))
-                            {
-                                entity->Deactivate();
-                                AZ::Component* component;
-                                EBUS_EVENT_ID_RESULT(component, componentClass->m_typeId, AZ::ComponentDescriptorBus, CreateComponent);
-                                entity->AddComponent(component);
-                                entity->Activate();
-                            }
-                        }
+                    EBUS_EVENT(UiEditorInternalNotificationBus, OnEndUndoableEntitiesChange, "add component");
 
-                        EBUS_EVENT(UiEditorInternalNotificationBus, OnEndUndoableEntitiesChange, "add component");
-
-                        HandleSelectedEntitiesPropertiesChanged();
-                    });
+                    Internal::HandleSelectedEntitiesPropertiesChanged();
+                });
 
                 result.push_back(action);
             }
@@ -638,9 +827,9 @@ namespace ComponentHelpers
             AZ::Entity::ComponentArrayType componentsToRemove;
             EBUS_EVENT_RESULT(componentsToRemove, UiEditorInternalRequestBus, GetSelectedComponents);
 
-            RemoveComponents(componentsToRemove);
+            Internal::RemoveComponents(componentsToRemove);
 
-            HandleSelectedEntitiesPropertiesChanged();
+            Internal::HandleSelectedEntitiesPropertiesChanged();
         });
 
         return action;
@@ -655,7 +844,7 @@ namespace ComponentHelpers
 
         // Check if we can remove every component from every element
         bool canRemove = true;
-        if (componentsToRemove.empty() || !CanComponentsBeRemoved(componentsToRemove))
+        if (componentsToRemove.empty() || !Internal::CanComponentsBeRemoved(componentsToRemove))
         {
             canRemove = false;
         }
@@ -676,14 +865,12 @@ namespace ComponentHelpers
             AZ::Entity::ComponentArrayType componentsToCut;
             EBUS_EVENT_RESULT(componentsToCut, UiEditorInternalRequestBus, GetSelectedComponents);
 
-            AZ::Entity::ComponentArrayType copyableComponents = GetCopyableComponents(componentsToCut);
+            AZ::Entity::ComponentArrayType copyableComponents = Internal::GetCopyableComponents(componentsToCut);
 
             // Copy components
-            CopyComponents(copyableComponents);
+            Internal::CopyComponents(copyableComponents);
             // Delete components
-            RemoveComponents(componentsToCut);
-
-            HandleSelectedEntitiesPropertiesChanged();
+            Internal::RemoveComponents(componentsToCut);
         });
 
         return action;
@@ -694,13 +881,16 @@ namespace ComponentHelpers
         AZ::Entity::ComponentArrayType componentsToCut;
         EBUS_EVENT_RESULT(componentsToCut, UiEditorInternalRequestBus, GetSelectedComponents);
 
-        AZ::Entity::ComponentArrayType copyableComponents = GetCopyableComponents(componentsToCut);
+        AZ::Entity::ComponentArrayType copyableComponents = Internal::GetCopyableComponents(componentsToCut);
 
         action->setText(componentsToCut.size() > 1 ? "Cut components" : "Cut component");
 
         // Check that all components can be deleted and that all copyable components can be pasted
         bool canCut = true;
-        if (copyableComponents.empty() || componentsToCut.empty() || !AreComponentsAddableByUser(copyableComponents) || !CanComponentsBeRemoved(componentsToCut))
+        if (copyableComponents.empty()
+            || componentsToCut.empty()
+            || !Internal::AreComponentsAddableByUser(copyableComponents)
+            || !Internal::CanComponentsBeRemoved(componentsToCut))
         {
             canCut = false;
         }
@@ -722,9 +912,9 @@ namespace ComponentHelpers
             EBUS_EVENT_RESULT(componentsToCopy, UiEditorInternalRequestBus, GetSelectedComponents);
 
             // Get the components of the first selected elements to copy onto the clipboard
-            AZ::Entity::ComponentArrayType copyableComponents = GetCopyableComponents(componentsToCopy);
+            AZ::Entity::ComponentArrayType copyableComponents = Internal::GetCopyableComponents(componentsToCopy);
 
-            CopyComponents(copyableComponents);
+            Internal::CopyComponents(copyableComponents);
         });
 
         return action;
@@ -736,13 +926,13 @@ namespace ComponentHelpers
         EBUS_EVENT_RESULT(componentsToCopy, UiEditorInternalRequestBus, GetSelectedComponents);
 
         // Get the components of the first selected elements to copy onto the clipboard
-        AZ::Entity::ComponentArrayType copyableComponents = GetCopyableComponents(componentsToCopy);
+        AZ::Entity::ComponentArrayType copyableComponents = Internal::GetCopyableComponents(componentsToCopy);
 
         action->setText(copyableComponents.size() > 1 ? "Copy components" : "Copy component");
 
         // Check that all copyable components can be added by the user
         bool canCopy = true;
-        if (copyableComponents.empty() || !AreComponentsAddableByUser(copyableComponents))
+        if (copyableComponents.empty() || !Internal::AreComponentsAddableByUser(copyableComponents))
         {
             canCopy = false;
         }
@@ -761,81 +951,66 @@ namespace ComponentHelpers
             []()
         {
             bool isCanvasSelected = false;
-            AzToolsFramework::EntityIdList selectedEntities = GetSelectedEntities(&isCanvasSelected);
+            AzToolsFramework::EntityIdList selectedEntities = Internal::GetSelectedEntities(&isCanvasSelected);
 
-            if (CanPasteComponents(selectedEntities, isCanvasSelected))
+            if (Internal::CanPasteComponentsToEntities(selectedEntities, isCanvasSelected))
             {
-                EBUS_EVENT(UiEditorInternalNotificationBus, OnBeginUndoableEntitiesChange);
+                // Create components from mime data
+                const QMimeData* mimeData = AzToolsFramework::ComponentMimeData::GetComponentMimeDataFromClipboard();
+                AzToolsFramework::ComponentMimeData::ComponentDataContainer componentsToAdd;
+                AzToolsFramework::ComponentMimeData::GetComponentDataFromMimeData(mimeData, componentsToAdd);
 
-                // Paste to all selected entities
-                for (const AZ::EntityId& entityId : selectedEntities)
+                // Create class data from mime data
+                AzToolsFramework::ComponentTypeMimeData::ClassDataContainer classDataForComponentsToAdd;
+                AzToolsFramework::ComponentTypeMimeData::Get(mimeData, classDataForComponentsToAdd);
+                AZ_Error("UI Editor", componentsToAdd.size() == classDataForComponentsToAdd.size(), "Component mime data's components list size is different from class data list size.");
+                if (componentsToAdd.size() == classDataForComponentsToAdd.size())
                 {
-                    auto entity = AzToolsFramework::GetEntityById(entityId);
-                    if (!entity)
+                    EBUS_EVENT(UiEditorInternalNotificationBus, OnBeginUndoableEntitiesChange);
+
+                    // Paste to all selected entities
+                    for (const AZ::EntityId& entityId : selectedEntities)
                     {
-                        continue;
-                    }
+                        AZ::Entity* entity = AzToolsFramework::GetEntityById(entityId);
+                        if (!entity)
+                        {
+                            AZ_Error("UI Editor", false, "Can't find entity by Id.");
+                            continue;
+                        }
 
-                    // Create components from mime data
-                    const QMimeData* mimeData = AzToolsFramework::ComponentMimeData::GetComponentMimeDataFromClipboard();
-                    AzToolsFramework::ComponentMimeData::ComponentDataContainer componentsToAdd;
-                    AzToolsFramework::ComponentMimeData::GetComponentDataFromMimeData(mimeData, componentsToAdd);
+                        // We must deactivate the entity to add components
+                        bool reactivate = false;
+                        if (entity->GetState() == AZ::Entity::ES_ACTIVE)
+                        {
+                            reactivate = true;
+                            entity->Deactivate();
+                        }
 
-                    // Create class data from mime data
-                    AzToolsFramework::ComponentTypeMimeData::ClassDataContainer classDataForComponentsToAdd;
-                    AzToolsFramework::ComponentTypeMimeData::Get(mimeData, classDataForComponentsToAdd);
-
-                    AZ_Assert(componentsToAdd.size() == classDataForComponentsToAdd.size(), "Component mime data's components list size is different from class data list size");
-                    if (componentsToAdd.size() == classDataForComponentsToAdd.size())
-                    {
                         // Add components
                         for (int componentIndex = 0; componentIndex < componentsToAdd.size(); ++componentIndex)
                         {
                             AZ::Component* component = componentsToAdd[componentIndex];
-                            AZ_Assert(component, "Null component provided");
                             if (!component)
                             {
-                                // Just skip null components
+                                AZ_Error("UI Editor", false, "Null component provided by mime data.");
                                 continue;
                             }
 
-                            // Check if this component can be added
-                            const AZ::SerializeContext::ClassData& classData = *classDataForComponentsToAdd[componentIndex];
-                            bool isCanvas = (UiCanvasBus::FindFirstHandler(entityId));
-                            if (AppearsInUIComponentMenu(classData, isCanvas)
-                                && IsAddableByUser(&classData)
-                                && CanCreateComponentOnEntity(classData, entity))
-                            {
-                                // Add the component
+                            // Add the component
+                            entity->AddComponent(component);
+                        }
 
-                                bool reactivate = false;
-                                // We must deactivate entities to add components
-                                if (entity->GetState() == AZ::Entity::ES_ACTIVE)
-                                {
-                                    reactivate = true;
-                                    entity->Deactivate();
-                                }
-
-                                entity->AddComponent(component);
-
-                                // Attempt to re-activate if we were previously active
-                                if (reactivate)
-                                {
-                                    entity->Activate();
-                                }
-                            }
-                            else
-                            {
-                                // Delete the component
-                                delete component;
-                            }
+                        // Reactivate if we were previously active
+                        if (reactivate)
+                        {
+                            entity->Activate();
                         }
                     }
+
+                    EBUS_EVENT(UiEditorInternalNotificationBus, OnEndUndoableEntitiesChange, "paste component");
+
+                    Internal::HandleSelectedEntitiesPropertiesChanged();
                 }
-
-                EBUS_EVENT(UiEditorInternalNotificationBus, OnEndUndoableEntitiesChange, "paste component");
-
-                HandleSelectedEntitiesPropertiesChanged();
             }
         });
 
@@ -851,13 +1026,124 @@ namespace ComponentHelpers
         action->setText(classDataForComponentsToAdd.size() > 1 ? "Paste components" : "Paste component");
 
         bool isCanvasSelected = false;
-        AzToolsFramework::EntityIdList selectedEntities = GetSelectedEntities(&isCanvasSelected);
+        AzToolsFramework::EntityIdList selectedEntities = Internal::GetSelectedEntities(&isCanvasSelected);
 
         // Check that there are components on the clipboard and that they can all be pasted onto the selected elements
-        bool canPasteAll = CanPasteComponents(selectedEntities, isCanvasSelected);
+        bool canPasteAll = Internal::CanPasteComponentsToEntities(selectedEntities, isCanvasSelected);
 
         // Disable the action if not every component can be pasted onto every element
         action->setEnabled(canPasteAll);
+    }
+
+    bool CanAddComponentsToSelectedEntities(const AZStd::vector<AZ::TypeId>& componentTypes, EntityComponentPair* firstIncompatibleComponentType)
+    {
+        bool isCanvasSelected = false;
+        AzToolsFramework::EntityIdList selectedEntities = Internal::GetSelectedEntities(&isCanvasSelected);
+        if (selectedEntities.empty())
+        {
+            return false;
+        }
+
+        // Make a list of component class data for all the components to add
+        AzToolsFramework::ClassDataList classDataForComponentsToAdd;
+        if (!Internal::GetClassDataForComponentsFromType(componentTypes, classDataForComponentsToAdd))
+        {
+            return false;
+        }
+
+        return Internal::CanAddComponentsToEntities(classDataForComponentsToAdd, selectedEntities, isCanvasSelected, firstIncompatibleComponentType);
+    }
+
+    void AddComponentsWithAssetToSelectedEntities(const ComponentAssetHelpers::ComponentAssetPairs& componentAssetPairs)
+    {
+        EBUS_EVENT(UiEditorInternalNotificationBus, OnBeginUndoableEntitiesChange);
+
+        AzToolsFramework::EntityIdList selectedEntities = Internal::GetSelectedEntities();
+        Internal::AddComponentsWithAssetToEntities(componentAssetPairs, selectedEntities);
+
+        EBUS_EVENT(UiEditorInternalNotificationBus, OnEndUndoableEntitiesChange, "add component");
+
+        Internal::HandleSelectedEntitiesPropertiesChanged();
+    }
+
+    bool CanAddComponentsToEntity(const AZStd::vector<AZ::TypeId>& componentTypes,
+        const AZ::EntityId& entityId,
+        EntityComponentPair* firstIncompatibleComponentType)
+    {
+        // Make a list of component class data for all the components to add
+        AzToolsFramework::ClassDataList classDataForComponentsToAdd;
+        if (!Internal::GetClassDataForComponentsFromType(componentTypes, classDataForComponentsToAdd))
+        {
+            return false;
+        }
+
+        AzToolsFramework::EntityIdList entities;
+        entities.push_back(entityId);
+        bool isCanvasEntity = (UiCanvasBus::FindFirstHandler(entityId));
+        return Internal::CanAddComponentsToEntities(classDataForComponentsToAdd, entities, isCanvasEntity, firstIncompatibleComponentType);
+    }
+
+    void AddComponentsWithAssetToEntity(const ComponentAssetHelpers::ComponentAssetPairs& componentAssetPairs, const AZ::EntityId& entityId)
+    {
+        if (!entityId.IsValid())
+        {
+            AZ_Error("UI Editor", false, "Attempting to add components to an invalid entityId.");
+            return;
+        }
+
+        if (componentAssetPairs.empty())
+        {
+            AZ_Error("UI Editor", false, "Attempting to add an empty list of components to and entity.");
+            return;
+        }
+
+        AZ::Entity* entity = AzToolsFramework::GetEntityById(entityId);
+        if (!entity)
+        {
+            AZ_Error("UI Editor", false, "Can't find entity by Id.");
+            return;
+        }
+
+        // We must deactivate the entity to add components
+        bool reactivate = false;
+        if (entity->GetState() == AZ::Entity::ES_ACTIVE)
+        {
+            reactivate = true;
+            entity->Deactivate();
+        }
+
+        // Add all components and remember the assets that will be assigned to them after the element is reactivated
+        AZStd::vector<AZStd::pair<AZ::Component*, AZ::Data::AssetId>> newComponentAssetPairs;
+        for (const ComponentAssetHelpers::ComponentAssetPair& pair : componentAssetPairs)
+        {
+            const AZ::TypeId& componentType = pair.first;
+            const AZ::Data::AssetId& assetId = pair.second;
+            
+            AZ::Component* component;
+            EBUS_EVENT_ID_RESULT(component, componentType, AZ::ComponentDescriptorBus, CreateComponent);
+            entity->AddComponent(component);
+
+            newComponentAssetPairs.push_back(AZStd::make_pair(component, assetId));
+        }
+
+        // Reactivate if we were previously active
+        if (reactivate)
+        {
+            entity->Activate();
+        }
+
+        // Assign assets to components after the entity has been reactivated
+        for (AZStd::pair<AZ::Component*, AZ::Data::AssetId>& pair : newComponentAssetPairs)
+        {
+            AZ::Component* component = pair.first;
+            const AZ::Data::AssetId& assetId = pair.second;
+
+            auto editorComponent = Internal::GetEditorComponent(component);
+            if (editorComponent)
+            {
+                editorComponent->SetPrimaryAsset(assetId);
+            }
+        }
     }
 
     AZStd::vector<ComponentTypeData> GetAllComponentTypesThatCanAppearInAddComponentMenu()
@@ -866,9 +1152,7 @@ namespace ComponentHelpers
         ComponentsList componentsList;
 
         // Get the serialize context.
-        AZ::SerializeContext* serializeContext;
-        EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
-        AZ_Assert(serializeContext, "We should have a valid context!");
+        AZ::SerializeContext* serializeContext = Internal::GetSerializeContext();
 
         const AZStd::list<AZ::ComponentDescriptor*>* lyShineComponentDescriptors;
         EBUS_EVENT_RESULT(lyShineComponentDescriptors, UiSystemBus, GetLyShineComponentDescriptors);
@@ -879,9 +1163,9 @@ namespace ComponentHelpers
             {
                 (void)knownType;
 
-                if (AppearsInUIComponentMenu(*classData, false))
+                if (Internal::AppearsInUIComponentMenu(*classData, false))
                 {
-                    if (!IsAddableByUser(classData))
+                    if (!Internal::IsAddableByUser(*classData))
                     {
                         // skip this component (return early) if user is not allowed to add it directly
                         return true;

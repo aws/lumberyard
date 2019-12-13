@@ -384,8 +384,7 @@ namespace CryMT
         T*    pop();
 
     private:
-        typedef typename Alloc::template rebind<T*> Alloc_rebind;
-        queue<T*, typename Alloc_rebind::other> m_lockFreeQueue;
+        queue<T*, typename std::allocator_traits<Alloc>::template rebind_alloc<T*>> m_lockFreeQueue;
     };
 
     //////////////////////////////////////////////////////////////////////////

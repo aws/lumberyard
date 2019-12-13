@@ -266,23 +266,37 @@ namespace AzToolsFramework
             }
         }
 
-        bool ComponentModeDelegate::ComponentModeButtonInactive() const
+        bool CouldBeginComponentModeWithEntity(const AZ::EntityId entityId)
         {
             EntityIdList selectedEntityIds;
             ToolsApplicationRequests::Bus::BroadcastResult(
                 selectedEntityIds, &ToolsApplicationRequests::GetSelectedEntities);
 
-            bool selectable = true;
-            for (const AZ::EntityId entityId : selectedEntityIds)
+            // handles both having no entities selected and when an entity inspector is
+            // pinned on an entity that's not selected and a different entity is selected
+            bool canBegin = AZStd::find(
+                selectedEntityIds.cbegin(), selectedEntityIds.cend(), entityId) != selectedEntityIds.cend();
+
+            if (canBegin)
             {
-                if (!IsSelectableInViewport(entityId))
+                for (const AZ::EntityId selectedEntityId : selectedEntityIds)
                 {
-                    selectable = false;
-                    break;
+                    // if any entities in the selection are not selectable (invisible/locked)
+                    // then still make it impossible to enter begin ComponentMode
+                    if (!IsSelectableInViewport(selectedEntityId))
+                    {
+                        canBegin = false;
+                        break;
+                    }
                 }
             }
 
-            return !selectable;
+            return canBegin;
+        }
+
+        bool ComponentModeDelegate::ComponentModeButtonInactive() const
+        {
+            return !CouldBeginComponentModeWithEntity(m_entityComponentIdPair.GetEntityId());
         }
 
         void ComponentModeDelegate::OnEntityVisibilityChanged(bool /*visibility*/)

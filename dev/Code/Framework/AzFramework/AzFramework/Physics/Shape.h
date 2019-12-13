@@ -33,7 +33,8 @@ namespace Physics
             CollisionLayer = 1 << 0,
             MaterialSelection = 1 << 1,
             IsTrigger = 1 << 2,
-            IsVisible = 1 << 3 ///< @deprecated This property will be removed in a future release
+            IsVisible = 1 << 3, ///< @deprecated This property will be removed in a future release.
+            Offset = 1 << 4 ///< Whether the rotation and position offsets should be visible.
         };
 
         ColliderConfiguration() = default;
@@ -47,6 +48,7 @@ namespace Physics
         AZ::Crc32 GetCollisionLayerVisibility() const;
         AZ::Crc32 GetMaterialSelectionVisibility() const;
         AZ_DEPRECATED(AZ::Crc32 GetIsVisibleVisibility() const, "This function will be removed in a future version");
+        AZ::Crc32 GetOffsetVisibility() const;
 
         Physics::CollisionLayer m_collisionLayer; ///< Which collision layer is this collider on.
         Physics::CollisionGroups::Id m_collisionGroupId; ///< Which layers does this collider collide with.

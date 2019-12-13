@@ -101,6 +101,66 @@ namespace
         }
     }
 
+    inline float GetAverageHeight(const std::vector<t_hmap>& heightmap, int hmWidth, int x, int y, int width, int height)
+    {
+        AZ_Error("GetAverageHeight", width > 0 && height > 0, "Width and height must be greater than zero!");
+
+        float average = 0.0f;
+        int numPoints = 0;
+        int x2 = x + width;
+        int y2 = y + height;
+        int row_offset = hmWidth * y;
+
+        for (int i = y; i < y2; ++i)
+        {
+            for (int j = x; j < x2; ++j)
+            {
+                average = average + ((heightmap[row_offset + j] - average) / ++numPoints);
+            }
+
+            row_offset += hmWidth;
+        }
+
+        return average;
+    }
+
+    // Use random sampling to reduce number of points that need to be checked.
+    inline float ApproximateAverageHeight(const std::vector<t_hmap>& heightmap, int hmWidth, int x, int y, int width, int height, int samples)
+    {
+        AZ_Error("ApproximateAverageHeight", width > 0 && height > 0, "Width and height must be greater than zero!");
+
+        float average = 0.0f;
+        int x2 = x + width;
+        int y2 = y + height;
+
+        for (int i = 0; i < samples;)
+        {
+            average = average + ((heightmap[(cry_random(y, y2 - 1) * hmWidth) + cry_random(x, x2 - 1)] - average) / ++i);
+        }
+
+        return average;
+    }
+
+    template <typename Op>
+    inline void ForEachPixel(std::vector<t_hmap>& heightmap, int hmWidth, int x, int y, int width, int height, const Op& op)
+    {
+        AZ_Error("ForEachPixel", width > 0 && height > 0, "Width and height must be greater than zero!");
+
+        int x2 = x + width;
+        int y2 = y + height;
+        int row_offset = hmWidth * y;
+
+        for (int i = y; i < y2; ++i)
+        {
+            for (int j = x; j < x2; ++j)
+            {
+                op(heightmap[row_offset + j]);
+            }
+
+            row_offset += hmWidth;
+        }
+    }
+
     inline void Smooth3x3(std::vector<t_hmap>& heightmap, int width, int x, int y, float maxHeight)
     {
         int iCurPos = (y * width) + x;
@@ -109,7 +169,7 @@ namespace
                 heightmap[iCurPos] + heightmap[iCurPos + 1] + heightmap[iCurPos + width] +
                 heightmap[iCurPos + width + 1] + heightmap[iCurPos - 1] + heightmap[iCurPos - width] +
                 heightmap[iCurPos - width - 1] + heightmap[iCurPos - width + 1] + heightmap[iCurPos + width - 1])
-            * 0.11111111111f;
+            * 0.11111111111f; // average by dividing by 9
 
         // Clamp the surrounding values to the given level
         ClampToAverage(&heightmap[iCurPos], fAverage, maxHeight);
@@ -251,6 +311,7 @@ private:
 CHeightmap::CHeightmap()
     : m_fOceanLevel(AZ::OceanConstants::s_DefaultHeight)
     , m_fMaxHeight(HEIGHTMAP_MAX_HEIGHT)
+    , m_defaultHeight(0)
     , m_iWidth(0)
     , m_iHeight(0)
     , m_textureSize(DEFAULT_HEIGHTMAP_SIZE)
@@ -272,6 +333,7 @@ CHeightmap::CHeightmap()
 CHeightmap::CHeightmap(const CHeightmap& h)
     : m_fOceanLevel(h.GetOceanLevel())
     , m_fMaxHeight(h.m_fMaxHeight)
+    , m_defaultHeight(h.m_defaultHeight)
     , m_pHeightmap(h.m_pHeightmap)
     , m_Weightmap() // no copy ctor for this
     , m_iWidth(h.m_iWidth)
@@ -630,16 +692,13 @@ void CHeightmap::Clear(bool bClearLayerBitmap)
 
 void CHeightmap::InitHeight(float fHeight)
 {
-    if (fHeight > m_fMaxHeight)
-    {
-        fHeight = m_fMaxHeight;
-    }
+    m_defaultHeight = AZStd::min(fHeight, m_fMaxHeight);
 
     for (int i = 0; i < m_iWidth; ++i)
     {
         for (int j = 0; j < m_iHeight; ++j)
         {
-            SetXY(i, j, fHeight);
+            SetXY(i, j, m_defaultHeight);
         }
     }
 }
@@ -647,6 +706,8 @@ void CHeightmap::InitHeight(float fHeight)
 
 void CHeightmap::SetMaxHeight(float fMaxHeight, bool scaleHeightmap)
 {
+    m_defaultHeight = AZStd::min(m_defaultHeight, fMaxHeight);
+
     float prevHeight = m_fMaxHeight;
 
     m_fMaxHeight = fMaxHeight;
@@ -1814,58 +1875,17 @@ void CHeightmap::MakeIsle()
 void CHeightmap::Flatten(float fFactor)
 {
     ////////////////////////////////////////////////////////////////////////
-    // Increase the number of flat areas on the heightmap (TODO: Fix !)
+    // Increase the number of flat areas on the heightmap
     ////////////////////////////////////////////////////////////////////////
-
-    auto pHeightmapData = m_pHeightmap.begin();
-    auto pHeightmapDataEnd = m_pHeightmap.end();
-    float fRes;
 
     CLogFile::WriteLine("Flattening heightmap...");
 
-    // Perform the conversion
-    while (pHeightmapData != pHeightmapDataEnd)
+    AZStd::transform(std::begin(m_pHeightmap), std::end(m_pHeightmap), std::begin(m_pHeightmap), [fFactor, defaultHeight = m_defaultHeight](auto heightValue)
     {
-        // Get the exponential value for this height value
-        fRes = ExpCurve(*pHeightmapData, 128.0f, 0.985f);
-
-        // Is this part of the landscape a potential flat area ?
-        // Only modify parts of the landscape that are above the ocean level
-        if (fRes < 100 && *pHeightmapData > GetOceanLevel())
-        {
-            // Yes, apply the factor to it
-            *pHeightmapData = *pHeightmapData * fFactor;
-
-            // When we use a factor greater than 0.5, we don't want to drop below
-            // the ocean level
-            *pHeightmapData++ = __max(GetOceanLevel(), *pHeightmapData);
-        }
-        else
-        {
-            // No, use the exponential function to make smooth transitions
-            *pHeightmapData++ = fRes;
-        }
-    }
+        return AZ::Lerp(defaultHeight, heightValue, fFactor);
+    });
 
     NotifyModified();
-}
-
-float CHeightmap::ExpCurve(float v, float fCover, float fSharpness)
-{
-    //////////////////////////////////////////////////////////////////////
-    // Exponential function
-    //////////////////////////////////////////////////////////////////////
-
-    float c;
-
-    c = v - fCover;
-
-    if (c < 0)
-    {
-        c = 0;
-    }
-
-    return m_fMaxHeight - (float)((pow(fSharpness, c)) * m_fMaxHeight);
 }
 
 void CHeightmap::LowerRange(float fFactor)
@@ -2708,6 +2728,10 @@ void CHeightmap::Serialize(CXmlArchive& xmlAr)
             uint16* pTrg = hdata.GetData();
             float fPrecisionScale = GetShortPrecisionScale();
             for (int i = 0; i < m_iWidth * m_iHeight; i++)
+         
+            
+            
+            
             {
                 float val = m_pHeightmap[i];
 
@@ -2740,18 +2764,22 @@ void CHeightmap::SerializeTerrain(CXmlArchive& xmlAr)
         if (xmlAr.pNamedData->GetDataBlock("TerrainCompiledData", pData, nSize))
         {
             STerrainChunkHeader* pHeader = (STerrainChunkHeader*)pData;
-            if ((pHeader->nVersion == TERRAIN_CHUNK_VERSION) && (pHeader->TerrainInfo.nSectorSize_InMeters == pHeader->TerrainInfo.nUnitSize_InMeters * SECTOR_SIZE_IN_UNITS))
+            if ((pHeader->nVersion == OCTREE_CHUNK_VERSION) && (pHeader->TerrainInfo.nSectorSize_InMeters == pHeader->TerrainInfo.nUnitSize_InMeters * SECTOR_SIZE_IN_UNITS))
             {
                 SSectorInfo si;
                 GetSectorsInfo(si);
 
-                ITerrain* pTerrain = GetIEditor()->Get3DEngine()->CreateTerrain(pHeader->TerrainInfo);
-                // check if size of terrain in compile data match
-                if (pHeader->TerrainInfo.nUnitSize_InMeters)
+                if (ITerrain* pTerrain = GetIEditor()->Get3DEngine()->CreateTerrain(pHeader->TerrainInfo))
                 {
-                    if (!pTerrain->SetCompiledData((uint8*)pData, nSize, nullptr, nullptr))
+                    GetIEditor()->Get3DEngine()->ChangeOceanWaterLevel(pHeader->TerrainInfo.fOceanWaterLevel);
+                    // check if size of terrain in compile data match
+                    if (pHeader->TerrainInfo.nUnitSize_InMeters)
                     {
-                        GetIEditor()->Get3DEngine()->DeleteTerrain();
+                        const bool loadTerrainMacroTexture = false;
+                        if (!GetIEditor()->Get3DEngine()->SetOctreeCompiledData((uint8*)pData, nSize, nullptr, nullptr, loadTerrainMacroTexture))
+                        {
+                            GetIEditor()->Get3DEngine()->DeleteTerrain();
+                        }
                     }
                 }
             }
@@ -2759,16 +2787,13 @@ void CHeightmap::SerializeTerrain(CXmlArchive& xmlAr)
     }
     else
     {
-        if (ITerrain* pTerrain = GetIEditor()->Get3DEngine()->GetITerrain())
-        {
-            int nSize = pTerrain->GetCompiledDataSize();
-            if (nSize > 0)
-            { // Storing
-                uint8* pData = new uint8[nSize];
-                GetIEditor()->Get3DEngine()->GetITerrain()->GetCompiledData(pData, nSize, nullptr, nullptr, nullptr, GetPlatformEndian());
-                xmlAr.pNamedData->AddDataBlock("TerrainCompiledData", pData, nSize, true);
-                delete[] pData;
-            }
+        int nSize = GetIEditor()->Get3DEngine()->GetOctreeCompiledDataSize();
+        if (nSize > 0)
+        { // Storing
+            uint8* pData = new uint8[nSize];
+            GetIEditor()->Get3DEngine()->GetOctreeCompiledData(pData, nSize, nullptr, nullptr, nullptr, GetPlatformEndian());
+            xmlAr.pNamedData->AddDataBlock("TerrainCompiledData", pData, nSize, true);
+            delete[] pData;
         }
     }
 }
@@ -2789,9 +2814,9 @@ void CHeightmap::SetOceanLevel(float oceanLevel)
     if (!m_standaloneMode)
     {
         I3DEngine* i3d = GetIEditor()->GetSystem()->GetI3DEngine();
-        if (i3d && i3d->GetITerrain())
+        if (i3d)
         {
-            i3d->GetITerrain()->SetOceanWaterLevel(oceanLevel);
+            i3d->ChangeOceanWaterLevel(oceanLevel);
         }
     }
 
@@ -3284,11 +3309,16 @@ void CHeightmap::CopyFromInterpolate(t_hmap* prevHeightmap, LayerWeight* prevWei
                         }
                     }
                 }
-                LayerWeight val = prevWeightmap[x2 + y2 * resolution];
+
+                // Clamping is necessary in cases where x2/y2 can exceed the old heightmap resolution.
+                int clampedX2 = AZStd::min(x2, resolution - 1);
+                int clampedY2 = AZStd::min(y2, resolution - 1);
+
+                LayerWeight val = prevWeightmap[clampedX2 + clampedY2 * resolution];
 
                 if (y2 < resolution - 1)
                 {
-                    LayerWeight val1 = prevWeightmap[x2 + (y2 + 1) * resolution];
+                    LayerWeight val1 = prevWeightmap[clampedX2 + (y2 + 1) * resolution];
                     if (val1.PrimaryId() > val.PrimaryId())
                     {
                         m_Weightmap.ValueAt(x, y + kof - 1) = val1;
@@ -3297,7 +3327,7 @@ void CHeightmap::CopyFromInterpolate(t_hmap* prevHeightmap, LayerWeight* prevWei
 
                 if (x2 < resolution - 1)
                 {
-                    LayerWeight val1 = prevWeightmap[x2 + 1 + y2 * resolution];
+                    LayerWeight val1 = prevWeightmap[x2 + 1 + clampedY2 * resolution];
                     if (val1.PrimaryId() > val.PrimaryId())
                     {
                         m_Weightmap.ValueAt(x + kof - 1, y) = val1;
@@ -3762,10 +3792,10 @@ void CHeightmap::InitTerrain()
     if (bCreateTerrain)
     {
         pTerrain = gEnv->p3DEngine->CreateTerrain(TerrainInfo);
-
         // pass heightmap data to the 3dengine
         UpdateEngineTerrain(false);
     }
+    gEnv->p3DEngine->ChangeOceanWaterLevel(TerrainInfo.fOceanWaterLevel);
 }
 
 

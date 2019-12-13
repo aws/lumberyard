@@ -17,14 +17,19 @@
 #include <AzCore/std/containers/map.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #include <AzCore/std/chrono/chrono.h>
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+
 #include <IAudioSystem.h>
 #include <ATLCommon.h>
+#include <ATLEntityData.h>
 #include <ATLUtils.h>
-#include <CryFlags.h>
+#include <AudioAllocators.h>
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-    #include <TimeValue.h>
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+#include <platform.h>
+#include <IMemory.h>
+
 
 // external forward declaration
 struct EventPhys;
@@ -33,9 +38,6 @@ namespace Audio
 {
     template <typename KeyType, typename ValueType>
     using ATLMapLookupType = AZStd::map<KeyType, ValueType, AZStd::less<KeyType>, Audio::AudioSystemStdAllocator>;
-
-    // Initializes the static audio control IDs...
-    void InitATLControlIDs();
 
     // Forward declarations.
     struct IAudioSystemImplementation;
@@ -53,7 +55,7 @@ namespace Audio
     enum EATLObjectFlags : TATLEnumFlagsType
     {
         eAOF_NONE = 0,
-        eAOF_TRACK_VELOCITY = BIT(0),
+        eAOF_TRACK_VELOCITY = AUDIO_BIT(0),
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -67,14 +69,14 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     enum EAudioFileFlags : TATLEnumFlagsType
     {
-        eAFF_NOTFOUND                       = BIT(0),
-        eAFF_CACHED                         = BIT(1),
-        eAFF_MEMALLOCFAIL                   = BIT(2),
-        eAFF_REMOVABLE                      = BIT(3),
-        eAFF_LOADING                        = BIT(4),
-        eAFF_USE_COUNTED                    = BIT(5),
-        eAFF_NEEDS_RESET_TO_MANUAL_LOADING  = BIT(6),
-        eAFF_LOCALIZED                      = BIT(7),
+        eAFF_NOTFOUND                       = AUDIO_BIT(0),
+        eAFF_CACHED                         = AUDIO_BIT(1),
+        eAFF_MEMALLOCFAIL                   = AUDIO_BIT(2),
+        eAFF_REMOVABLE                      = AUDIO_BIT(3),
+        eAFF_LOADING                        = AUDIO_BIT(4),
+        eAFF_USE_COUNTED                    = AUDIO_BIT(5),
+        eAFF_NEEDS_RESET_TO_MANUAL_LOADING  = AUDIO_BIT(6),
+        eAFF_LOCALIZED                      = AUDIO_BIT(7),
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -169,7 +171,7 @@ namespace Audio
             const TAudioTriggerImplID nID,
             const TAudioControlID nTriggerID,
             const EATLSubsystem eReceiver,
-            const IATLTriggerImplData* const pImplData = nullptr)
+            IATLTriggerImplData* const pImplData = nullptr)
             : CATLControlImpl(eReceiver)
             , m_nATLID(nID)
             , m_nATLTriggerID(nTriggerID)
@@ -180,7 +182,7 @@ namespace Audio
 
         const TAudioTriggerImplID m_nATLID;
         const TAudioControlID m_nATLTriggerID;
-        const IATLTriggerImplData* const m_pImplData;
+        IATLTriggerImplData* const m_pImplData;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -188,7 +190,7 @@ namespace Audio
         : public CATLEntity<TAudioControlID>
     {
     public:
-        using TImplPtrVec = AZStd::vector<const CATLTriggerImpl*, Audio::AudioSystemStdAllocator>;
+        using TImplPtrVec = AZStd::vector<CATLTriggerImpl*, Audio::AudioSystemStdAllocator>;
 
         CATLTrigger(const TAudioControlID nID, const EATLDataScope eDataScope, const TImplPtrVec& rImplPtrs)
             : CATLEntity<TAudioControlID>(nID, eDataScope)
@@ -197,7 +199,7 @@ namespace Audio
 
         ~CATLTrigger() override {}
 
-        const TImplPtrVec m_cImplPtrs;
+        TImplPtrVec m_cImplPtrs;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -205,14 +207,14 @@ namespace Audio
         : public CATLControlImpl
     {
     public:
-        CATLRtpcImpl(const EATLSubsystem eReceiver, const IATLRtpcImplData* const pImplData = nullptr)
+        CATLRtpcImpl(const EATLSubsystem eReceiver, IATLRtpcImplData* const pImplData = nullptr)
             : CATLControlImpl(eReceiver)
             , m_pImplData(pImplData)
         {}
 
         ~CATLRtpcImpl() override {}
 
-        const IATLRtpcImplData* const m_pImplData;
+        IATLRtpcImplData* const m_pImplData;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -220,7 +222,7 @@ namespace Audio
         : public CATLEntity<TAudioControlID>
     {
     public:
-        using TImplPtrVec = AZStd::vector<const CATLRtpcImpl*, Audio::AudioSystemStdAllocator>;
+        using TImplPtrVec = AZStd::vector<CATLRtpcImpl*, Audio::AudioSystemStdAllocator>;
 
         CATLRtpc(const TAudioControlID nID, const EATLDataScope eDataScope, const TImplPtrVec& cImplPtrs)
             : CATLEntity<TAudioControlID>(nID, eDataScope)
@@ -229,7 +231,7 @@ namespace Audio
 
         ~CATLRtpc() override {}
 
-        const TImplPtrVec m_cImplPtrs;
+        TImplPtrVec m_cImplPtrs;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -237,21 +239,21 @@ namespace Audio
         : public CATLControlImpl
     {
     public:
-        explicit CATLSwitchStateImpl(const EATLSubsystem eReceiver, const IATLSwitchStateImplData* const pImplData = nullptr)
+        explicit CATLSwitchStateImpl(const EATLSubsystem eReceiver, IATLSwitchStateImplData* const pImplData = nullptr)
             : CATLControlImpl(eReceiver)
             , m_pImplData(pImplData)
         {}
 
         ~CATLSwitchStateImpl() override {}
 
-        const IATLSwitchStateImplData* const m_pImplData;
+        IATLSwitchStateImplData* const m_pImplData;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     class CATLSwitchState
     {
     public:
-        using TImplPtrVec = AZStd::vector<const CATLSwitchStateImpl*, Audio::AudioSystemStdAllocator>;
+        using TImplPtrVec = AZStd::vector<CATLSwitchStateImpl*, Audio::AudioSystemStdAllocator>;
 
         CATLSwitchState(
             const TAudioControlID nSwitchID,
@@ -274,7 +276,7 @@ namespace Audio
             return m_nSwitchID;
         }
 
-        const TImplPtrVec m_cImplPtrs;
+        TImplPtrVec m_cImplPtrs;
 
     private:
         const TAudioSwitchStateID m_nID;
@@ -292,7 +294,7 @@ namespace Audio
 
         ~CATLSwitch() override {}
 
-        using TStateMap = ATLMapLookupType<TAudioSwitchStateID, const CATLSwitchState*>;
+        using TStateMap = ATLMapLookupType<TAudioSwitchStateID, CATLSwitchState*>;
         TStateMap cStates;
     };
 
@@ -301,14 +303,14 @@ namespace Audio
         : public CATLControlImpl
     {
     public:
-        explicit CATLEnvironmentImpl(const EATLSubsystem eReceiver, const IATLEnvironmentImplData* const pImplData = nullptr)
+        explicit CATLEnvironmentImpl(const EATLSubsystem eReceiver, IATLEnvironmentImplData* const pImplData = nullptr)
             : CATLControlImpl(eReceiver)
             , m_pImplData(pImplData)
         {}
 
         ~CATLEnvironmentImpl() override {}
 
-        const IATLEnvironmentImplData* const m_pImplData;
+        IATLEnvironmentImplData* const m_pImplData;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -316,7 +318,7 @@ namespace Audio
         : public CATLEntity<TAudioEnvironmentID>
     {
     public:
-        using TImplPtrVec = AZStd::vector<const CATLEnvironmentImpl*, Audio::AudioSystemStdAllocator>;
+        using TImplPtrVec = AZStd::vector<CATLEnvironmentImpl*, Audio::AudioSystemStdAllocator>;
 
         explicit CATLAudioEnvironment(const TAudioEnvironmentID nID, const EATLDataScope eDataScope, const TImplPtrVec& rImplPtrs)
             : CATLEntity<TAudioEnvironmentID>(nID, eDataScope)
@@ -325,7 +327,7 @@ namespace Audio
 
         ~CATLAudioEnvironment() override {}
 
-        const TImplPtrVec m_cImplPtrs;
+        TImplPtrVec m_cImplPtrs;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -392,18 +394,15 @@ namespace Audio
             , m_memoryBlock(nullptr)
             , m_implData(implData)
         {
-    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-            m_timeCached.SetValue(0);
-    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
         }
 
         ~CATLAudioFileEntry() = default;
 
-        CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> m_filePath;
+        AZStd::string m_filePath;
         size_t m_fileSize;
         size_t m_useCount;
         size_t m_memoryBlockAlignment;
-        CCryFlags<TATLEnumFlagsType> m_flags;
+        Flags<TATLEnumFlagsType> m_flags;
         EATLDataScope m_dataScope;
         AZStd::unique_ptr<ICustomMemoryBlock> m_memoryBlock;
 
@@ -412,7 +411,7 @@ namespace Audio
         IATLAudioFileEntryData* m_implData;
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-        CTimeValue m_timeCached;
+        AZStd::chrono::system_clock::time_point m_timeCached;
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     };
 
@@ -442,11 +441,11 @@ namespace Audio
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    using TATLTriggerLookup = ATLMapLookupType<TAudioControlID, const CATLTrigger*>;
-    using TATLRtpcLookup = ATLMapLookupType<TAudioControlID, const CATLRtpc*>;
-    using TATLSwitchLookup = ATLMapLookupType<TAudioControlID, const CATLSwitch*>;
+    using TATLTriggerLookup = ATLMapLookupType<TAudioControlID, CATLTrigger*>;
+    using TATLRtpcLookup = ATLMapLookupType<TAudioControlID, CATLRtpc*>;
+    using TATLSwitchLookup = ATLMapLookupType<TAudioControlID, CATLSwitch*>;
     using TATLPreloadRequestLookup = ATLMapLookupType<TAudioPreloadRequestID, CATLPreloadRequest*>;
-    using TATLEnvironmentLookup = ATLMapLookupType<TAudioEnvironmentID, const CATLAudioEnvironment*>;
+    using TATLEnvironmentLookup = ATLMapLookupType<TAudioEnvironmentID, CATLAudioEnvironment*>;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct SATLSwitchStateImplData_internal
@@ -505,12 +504,12 @@ namespace Audio
         const char* LookupAudioEnvironmentName(const TAudioEnvironmentID nEnvironmentID) const;
 
     private:
-        using TAudioObjectMap = ATLMapLookupType<TAudioObjectID, CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH>>;
-        using TAudioControlMap = ATLMapLookupType<TAudioControlID, CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH>>;
-        using TAudioSwitchStateMap = ATLMapLookupType<TAudioSwitchStateID, CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH>>;
-        using TAudioSwitchMap = ATLMapLookupType<TAudioControlID, AZStd::pair<CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH>, TAudioSwitchStateMap>>;
-        using TAudioPreloadRequestsMap = ATLMapLookupType<TAudioPreloadRequestID, CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH>>;
-        using TAudioEnvironmentMap = ATLMapLookupType<TAudioEnvironmentID, CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH>>;
+        using TAudioObjectMap = ATLMapLookupType<TAudioObjectID, AZStd::string>;
+        using TAudioControlMap = ATLMapLookupType<TAudioControlID, AZStd::string>;
+        using TAudioSwitchStateMap = ATLMapLookupType<TAudioSwitchStateID, AZStd::string>;
+        using TAudioSwitchMap = ATLMapLookupType<TAudioControlID, AZStd::pair<AZStd::string, TAudioSwitchStateMap>>;
+        using TAudioPreloadRequestsMap = ATLMapLookupType<TAudioPreloadRequestID, AZStd::string>;
+        using TAudioEnvironmentMap = ATLMapLookupType<TAudioEnvironmentID, AZStd::string>;
 
         TAudioObjectMap m_cATLObjectNames;
         TAudioControlMap m_cATLTriggerNames;

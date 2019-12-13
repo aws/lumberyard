@@ -48,11 +48,13 @@ size_t ComponentFactoryCreationNode::sm_size = 0;
 
 // Traits
 #if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION BITFIDDLING_H_SECTION_TRAITS
+#define AZ_RESTRICTED_SECTION PLATFORM_IMPL_H_SECTION_TRAITS
     #if defined(AZ_PLATFORM_XENIA)
         #include "Xenia/platform_impl_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_impl_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_impl_h_salem.inl"
     #endif
 #elif defined(LINUX) || defined(APPLE)
 #define PLATFORM_IMPL_H_TRAIT_DEFINE_GLOBAL_SREGFACTORYNODE 1
@@ -123,6 +125,7 @@ extern "C" AZ_DLL_EXPORT void ModuleInitISystem(ISystem* pSystem, const char* mo
         if (!AZ::Environment::IsReady() || (AZ::Environment::GetInstance() != gEnv->pSharedEnvironment))
         {
             AZ::Environment::Attach(gEnv->pSharedEnvironment);
+            AZ::AllocatorManager::Instance();  // Force the AllocatorManager to instantiate and register any allocators defined in data sections
         }
         AZ::Debug::ProfileModuleInit();
 
@@ -150,6 +153,7 @@ extern "C" AZ_DLL_EXPORT void InjectEnvironment(void* env)
     if (!injected)
     {
         AZ::Environment::Attach(reinterpret_cast<AZ::EnvironmentInstance>(env));
+        AZ::AllocatorManager::Instance();  // Force the AllocatorManager to instantiate and register any allocators defined in data sections
         injected = true;
     }
 }
@@ -225,6 +229,8 @@ void __stl_debug_message(const char* format_str, ...)
 #include "Xenia/platform_impl_h_xenia.inl"
 #elif defined(AZ_PLATFORM_PROVO)
 #include "Provo/platform_impl_h_provo.inl"
+#elif defined(AZ_PLATFORM_SALEM)
+#include "Salem/platform_impl_h_salem.inl"
 #endif
 #endif
 
@@ -260,6 +266,8 @@ void CryLowLatencySleep(unsigned int dwMilliseconds)
         #include "Xenia/platform_impl_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_impl_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_impl_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -302,7 +310,7 @@ void CryGetCurrentDirectory(unsigned int nBufferLength, char* lpBuffer)
     // Get directory in UTF-16
     std::vector<wchar_t> buffer;
     {
-        const size_t requiredLength = ::GetCurrentDirectoryW(0, 0);
+        const DWORD requiredLength = ::GetCurrentDirectoryW(0, 0);
 
         if (requiredLength <= 0)
         {
@@ -491,6 +499,8 @@ uint32 CryGetFileAttributes(const char* lpFileName)
         #include "Xenia/platform_impl_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_impl_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_impl_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -510,6 +520,8 @@ bool CrySetFileAttributes(const char* lpFileName, uint32 dwFileAttributes)
         #include "Xenia/platform_impl_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_impl_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_impl_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -533,6 +545,8 @@ threadID CryGetCurrentThreadId()
         #include "Xenia/platform_impl_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_impl_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_impl_h_salem.inl"
     #endif
 #endif
 
@@ -660,6 +674,8 @@ _MS_ALIGN(64) uint32  BoxSides[0x40 * 8] = {
         #include "Xenia/platform_impl_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_impl_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_impl_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

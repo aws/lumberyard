@@ -37,7 +37,7 @@ namespace Lightning
         : public LightningConfiguration
     {
     public:
-        AZ_TYPE_INFO(EditorLightningConfiguration, "{7D8B140F-D2C9-573A-94CE-A7884079BF09}", LightningConfiguration);
+        AZ_TYPE_INFO_LEGACY(EditorLightningConfiguration, "{7D8B140F-D2C9-573A-94CE-A7884079BF09}", LightningConfiguration);
         AZ_CLASS_ALLOCATOR(EditorLightningConfiguration, AZ::SystemAllocator,0);
 
         static void Reflect(AZ::ReflectContext* context);

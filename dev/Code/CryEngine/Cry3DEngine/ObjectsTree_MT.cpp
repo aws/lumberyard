@@ -63,17 +63,19 @@ void CObjManager::EndOcclusionCulling()
 //////////////////////////////////////////////////////////////////////////
 void CObjManager::RenderBufferedRenderMeshes(const SRenderingPassInfo& passInfo)
 {
-    FUNCTION_PROFILER_3DENGINE_LEGACYONLY;
-    AZ_TRACE_METHOD();
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Renderer);
 
     CRYPROFILE_SCOPE_PROFILE_MARKER("RenderBufferedRenderMeshes");
     SCheckOcclusionOutput outputData;
     while (1)
     {
-        // process till we know that no more procers are working
-        if (!GetObjManager()->PopFromCullOutputQueue(&outputData))
         {
-            break;
+            AZ_PROFILE_SCOPE_STALL(AZ::Debug::ProfileCategory::Renderer, "PopFromCullOutputQueue");
+            // process till we know that no more procers are working
+            if (!GetObjManager()->PopFromCullOutputQueue(&outputData))
+            {
+                break;
+            }
         }
 
         switch (outputData.type)
@@ -103,9 +105,13 @@ void CObjManager::RenderBufferedRenderMeshes(const SRenderingPassInfo& passInfo)
                 passInfo,
                 outputData.rendItemSorter);
             break;
+
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
         case SCheckOcclusionOutput::TERRAIN:
             GetTerrain()->AddVisSector(outputData.terrain.pTerrainNode);
             break;
+#endif
+
         case SCheckOcclusionOutput::DEFORMABLE_BRUSH:
             outputData.deformable_brush.pBrush->m_pDeform->RenderInternalDeform(outputData.deformable_brush.pRenderObject,
                 outputData.deformable_brush.nLod,
@@ -119,6 +125,15 @@ void CObjManager::RenderBufferedRenderMeshes(const SRenderingPassInfo& passInfo)
                 passInfo,
                 outputData.rendItemSorter);
             break;
+#ifdef LY_TERRAIN_RUNTIME
+        case SCheckOcclusionOutput::TERRAIN_SYSTEM:
+            {
+                SRendParams rParams;
+                rParams.rendItemSorter = outputData.rendItemSorter.GetValue();
+                outputData.terrain_system.pTerrainNode->Render(rParams, passInfo);
+            }
+            break;
+#endif
         default:
             CryFatalError("Got Unknown Output type from CheckOcclusion");
             break;

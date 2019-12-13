@@ -1,0 +1,60 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "aws_gamelift_server_shared/defines": [
+                "AWS_CUSTOM_MEMORY_MANAGEMENT",
+                "USE_IMPORT_EXPORT",
+                "BUILD_GAMELIFT_SERVER",
+                "GAMELIFT_USE_STD"
+            ],
+            "aws_gamelift_server_shared/libpath_debug": [
+                "bin/windows/intel64/vs2017/Debug"
+            ],
+            "aws_gamelift_server_shared/libpath_release": [
+                "bin/windows/intel64/vs2017/Release"
+            ],
+            "aws_gamelift_server_shared/lib": [
+                "aws-cpp-sdk-gamelift-server.lib"
+            ],
+            "aws_gamelift_server_shared/sharedlibpath_debug": [
+                "bin/windows/intel64/vs2017/Debug"
+            ],
+            "aws_gamelift_server_shared/sharedlibpath_release": [
+                "bin/windows/intel64/vs2017/Release"
+            ],
+            "aws_gamelift_server_shared/shared": [
+                "aws-cpp-sdk-gamelift-server.dll"
+            ],
+            "aws_gamelift_server_shared/pdb": [
+                "aws-cpp-sdk-gamelift-server.pdb"
+            ],
+            "aws_gamelift_server_static/defines": [
+                "AWS_CUSTOM_MEMORY_MANAGEMENT",
+                "BUILD_GAMELIFT_SERVER",
+                "GAMELIFT_USE_STD"
+            ],
+            "aws_gamelift_server_static/libpath_debug": [
+                "lib/windows/intel64/vs2017/Debug"
+            ],
+            "aws_gamelift_server_static/libpath_release": [
+                "lib/windows/intel64/vs2017/Release"
+            ],
+            "aws_gamelift_server_static/lib_debug": [
+                "aws-cpp-sdk-gamelift-server.lib",
+                "sioclient.lib",
+                "libboost_date_time.lib",
+                "libboost_random.lib",
+                "libboost_system.lib",
+                "libprotobufd.lib"
+            ],
+            "aws_gamelift_server_static/lib_release": [
+                "aws-cpp-sdk-gamelift-server.lib",
+                "sioclient.lib",
+                "libboost_date_time.lib",
+                "libboost_random.lib",
+                "libboost_system.lib",
+                "libprotobuf.lib"
+            ]
+        }
+    }
+}

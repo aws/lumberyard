@@ -1,0 +1,15 @@
+{
+    "platform": {
+        "darwin_x64": {
+            "libpath_debug": [
+                "build/osx/darwin-clang-703.0.31/debug"
+            ],
+            "libpath_release": [
+                "build/osx/darwin-clang-703.0.31/release"
+            ],
+            "lib": [
+                "liblua.a"
+            ]
+        }
+    }
+}

@@ -20,9 +20,7 @@
 
 #include "CCryDXMETALDeviceChild.hpp"
 
-//  Confetti BEGIN: Igor Lobanchikov
 @protocol MTLDepthStencilState;
-//  Confetti End: Igor Lobanchikov
 
 namespace NCryMetal
 {
@@ -45,9 +43,7 @@ public:
     void GetDesc(D3D11_DEPTH_STENCIL_DESC* pDesc);
 protected:
     D3D11_DEPTH_STENCIL_DESC m_kDesc;
-    //  Confetti BEGIN: Igor Lobanchikov
     id<MTLDepthStencilState>        m_MetalDepthStencilState;
-    //  Confetti End: Igor Lobanchikov
 };
 
 #endif //__CRYMETALGLDEPTHSTENCILSTATE__

@@ -39,8 +39,13 @@ namespace AZ
 
         unsigned int GetRandom()
         {
+            return static_cast<unsigned int>(Getu64Random() >> 16);
+        }
+
+        u64 Getu64Random()
+        {
             m_seed = (m_seed * 0x5DEECE66DLL + 0xBLL) & ((1LL << 48) - 1);
-            return static_cast<unsigned int>(m_seed >> 16);
+            return m_seed;
         }
 
         //Gets a random float in the range [0,1)

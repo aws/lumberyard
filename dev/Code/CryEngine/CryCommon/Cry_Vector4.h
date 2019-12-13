@@ -249,6 +249,8 @@ typedef Vec4_tpl<f32> Vec4A;
         #include "Xenia/Cry_Vector4_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/Cry_Vector4_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/Cry_Vector4_h_salem.inl"
     #endif
 #endif
 

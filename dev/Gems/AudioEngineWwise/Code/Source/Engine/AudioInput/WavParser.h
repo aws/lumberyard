@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "AudioInputFile.h"
+#include <AudioInput/AudioInputFile.h>
 
 namespace Audio
 {
@@ -49,7 +49,7 @@ namespace Audio
         FmtChunk fmt;
         ChunkHeader data;
 
-        static const AZStd::size_t MinSize = 44;
+        static const size_t MinSize = 44;
     };
 
     AZ_STATIC_ASSERT(sizeof(WavHeader) == WavHeader::MinSize, "WavHeader struct size is not 44 bytes!");
@@ -68,7 +68,7 @@ namespace Audio
         WavFileParser();
         ~WavFileParser() override;
 
-        AZStd::size_t ParseHeader(AZ::IO::FileIOStream& fileStream) override;
+        size_t ParseHeader(AZ::IO::FileIOStream& fileStream) override;
 
         bool IsHeaderValid() const override;
 

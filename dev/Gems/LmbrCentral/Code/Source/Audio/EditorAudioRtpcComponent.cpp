@@ -32,7 +32,7 @@ namespace LmbrCentral
 
             if (auto editContext = serializeContext->GetEditContext())
             {
-                editContext->Class<EditorAudioRtpcComponent>("Audio Rtpc", "The Audio RTPC component provides basic Real-Time Parameter Control (RTPC) functionality allowing you to tweak sounds in realtime")
+                editContext->Class<EditorAudioRtpcComponent>("Audio Rtpc", "The Audio Rtpc component provides basic Real-Time Parameter Control (RTPC) functionality allowing you to tweak sounds in real time")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Audio")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/AudioRtpc.svg")

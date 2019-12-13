@@ -47,6 +47,7 @@ namespace UnitTest
 {
     bool TestWidget::eventFilter(QObject* watched, QEvent* event)
     {
+        AZ_UNUSED(watched);
         switch (event->type())
         {
         case QEvent::ShortcutOverride:
@@ -147,15 +148,20 @@ namespace UnitTest
     AZ::EntityId CreateDefaultEditorEntity(const char* name, AZ::Entity** outEntity /*= nullptr*/)
     {
         AZ::Entity* entity = nullptr;
-        AzFramework::EntityContextRequestBus::BroadcastResult(
-            entity, &AzFramework::EntityContextRequests::CreateEntity, name);
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            entity, &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateEditorEntity, name);
 
-        entity->Init();
+        entity->Deactivate();
 
         // add required components for the Editor entity
         entity->CreateComponent<Components::TransformComponent>();
         entity->CreateComponent<Components::EditorLockComponent>();
         entity->CreateComponent<Components::EditorVisibilityComponent>();
+
+        // This is necessary to prevent a warning in the undo system.
+        AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(
+            &AzToolsFramework::ToolsApplicationRequests::Bus::Events::AddDirtyEntity,
+            entity->GetId());
 
         entity->Activate();
 

@@ -65,19 +65,29 @@ namespace AzToolsFramework
             virtual QColor GetLayerColor() = 0;
 
             /**
+             * Retrieves the save format.
+             */
+            virtual bool IsSaveFormatBinary() = 0;
+
+            /**
              * Returns true if the layer name is valid for saving to disk.
              */
             virtual bool IsLayerNameValid() = 0;
 
             /*
-             * If successful, returns the layer's file name without an extension. If not successful, returns an error code.
+             * If successful, returns the layer's file name without an extension. If not successful, returns an error message.
              */
             virtual AZ::Outcome<AZStd::string, AZStd::string> GetLayerBaseFileName() = 0;
 
             /**
-             *If successful, returns the layer's file name with an extension. If not successful, returns an error code.
+             *If successful, returns the layer's file name with an extension. If not successful, returns an error message.
              */
             virtual AZ::Outcome<AZStd::string, AZStd::string> GetLayerFullFileName() = 0;
+
+            /**
+             *If successful, returns the layer's full file path. If not successful, returns an error message.
+             */
+            virtual AZ::Outcome<AZStd::string, AZStd::string> GetLayerFullFilePath(const QString& levelAbsoluteFolder) = 0;
 
             /**
              * Returns true if this layer has unsaved changes, false if not.
@@ -88,6 +98,17 @@ namespace AzToolsFramework
              * Tells the layer to mark itself as having unsaved changes.
              */
             virtual void MarkLayerWithUnsavedChanges() = 0;
+
+            /**
+            * Tells the layer to mark itself as needing overwrite check.
+            * When a new layer is created, mark it as requiring an overwrite check, this will also be set when
+            * rename is called and reset when the layer is succesfully saved or just loaded
+            */
+            virtual void SetOverwriteFlag(bool set) = 0;
+            /**
+            * Returns the value of the overwrite check.
+            */
+            virtual bool GetOverwriteFlag() = 0;
 
             /**
              * Returns true if the layer is saved on disk.
@@ -167,12 +188,12 @@ namespace AzToolsFramework
             /**
              * Called when a new layer is created. Run custom logic you need for new layers on this bus, including
              * adding components to the list of components to add to your layer, if you need custom layer components.
-             * \param entity A reference to the new layer entity.
+             * \param entityId The EntityId of the new layer entity.
              * \param componentsToAdd An output list of components to add to the entity. Gathered this way to
              *                        allow all components to be added at once, instead of deactivating and re-activating
              *                        the layer for each listener on this bus adding components.
              */
-            virtual void OnNewLayerEntity(AZ::Entity& entity, AZStd::vector<AZ::Component*>& componentsToAdd) = 0;
+            virtual void OnNewLayerEntity(const AZ::EntityId& entityId, AZStd::vector<AZ::Component*>& componentsToAdd) = 0;
         };
         using EditorLayerCreationBus = AZ::EBus<EditorLayerCreationNotification>;
     }

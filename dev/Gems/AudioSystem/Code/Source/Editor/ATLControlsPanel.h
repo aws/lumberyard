@@ -13,14 +13,15 @@
 
 #pragma once
 
+#include <AudioControl.h>
+#include <AudioControlFilters.h>
+#include <IAudioInterfacesCommonData.h>
+#include <QTreeWidgetFilter.h>
+
 #include <QWidget>
 #include <QMenu>
 
-#include <ui_ATLControlsPanel.h>
-#include "AudioControl.h"
-#include "QTreeWidgetFilter.h"
-#include "AudioControlFilters.h"
-#include <IAudioInterfacesCommonData.h>
+#include <Source/Editor/ui_ATLControlsPanel.h>
 
 // Forward declarations
 namespace Audio

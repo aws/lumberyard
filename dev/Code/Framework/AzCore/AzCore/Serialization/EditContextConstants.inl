@@ -92,6 +92,10 @@ namespace AZ
 
             const static AZ::Crc32 PrimaryAssetType = AZ_CRC("PrimaryAssetType", 0xa400a5ce);
             const static AZ::Crc32 DynamicElementType = AZ_CRC("DynamicElementType", 0x7c0b82f9);
+            // Asset to show when the selection is empty
+            const static AZ::Crc32 DefaultAsset = AZ_CRC("DefaultAsset", 0x1a7b1141);
+            // Allow or disallow clearing the asset
+            const static AZ::Crc32 AllowClearAsset = AZ_CRC("AllowClearAsset", 0x24827182);
 
             //! Component icon attributes
             const static AZ::Crc32 Icon = AZ_CRC("Icon", 0x659429db);
@@ -174,7 +178,7 @@ namespace AZ
             // Attribute for tagging a System Component for use in certain contexts
             const static AZ::Crc32 SystemComponentTags = AZ_CRC("SystemComponentTags", 0x2d8bebc9);
             
-        // Attribute for providing a custom UI Handler - can be used with Attribute() (or with ElementAttribute() for containers such as vectors, to specify the handler for container elements (i.e. vectors))
+            // Attribute for providing a custom UI Handler - can be used with Attribute() (or with ElementAttribute() for containers such as vectors, to specify the handler for container elements (i.e. vectors))
             const static AZ::Crc32 Handler = AZ_CRC("Handler", 0x939715cd);
 
             // Attribute for skipping a set amount of descendant elements which are not leaves when calculating property visibility

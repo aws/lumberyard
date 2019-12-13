@@ -32,8 +32,7 @@
 #include <AzCore/UnitTest/TestTypes.h>
 
 #include <AzCore/std/parallel/containers/concurrent_unordered_set.h>
-
-#include "Utils.h"
+#include <AZTestShared/Utils/Utils.h>
 
 #if defined(HAVE_BENCHMARK)
 #include <benchmark/benchmark.h>
@@ -59,7 +58,6 @@ TEST(ComponentApplication, Test)
     systemEntity->CreateComponent<StreamerComponent>();
     systemEntity->CreateComponent("{CAE3A025-FAC9-4537-B39E-0A800A2326DF}"); // JobManager component
     systemEntity->CreateComponent("{D5A73BCC-0098-4d1e-8FE4-C86101E374AC}"); // AssetDatabase component
-    systemEntity->CreateComponent("{22FC6380-C34F-4a59-86B4-21C0276BCEE3}"); // ObjectStream component
 
     systemEntity->Init();
     systemEntity->Activate();

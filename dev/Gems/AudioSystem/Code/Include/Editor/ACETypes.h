@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include <vector>
-#include <memory>
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
 
 namespace AudioControls
 {
@@ -29,14 +29,14 @@ namespace AudioControls
         eACET_NUM_TYPES
     };
 
-    typedef unsigned int TImplControlType;
-    static const TImplControlType AUDIO_IMPL_INVALID_TYPE = 0;
-
-    typedef unsigned int CID;
-    static const CID ACE_INVALID_CID = 0;
-
-    typedef std::vector<CID> ControlList;
+    using TImplControlType = unsigned int;
+    using CID = unsigned int;
+    using ControlList = AZStd::vector<CID>;
 
     class IAudioConnection;
-    typedef std::shared_ptr<IAudioConnection> TConnectionPtr;
+    using TConnectionPtr = AZStd::shared_ptr<IAudioConnection>;
+
+    static const CID ACE_INVALID_CID = 0;
+    static const TImplControlType AUDIO_IMPL_INVALID_TYPE = 0;
+
 } // namespace AudioControls

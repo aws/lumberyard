@@ -31,6 +31,8 @@
 #include <ITerrain.h>
 #include <QVBoxLayout>
 
+#include <AzCore/RTTI/BehaviorContext.h>
+
 #ifdef LoadCursor
 #undef LoadCursor
 #endif
@@ -44,6 +46,27 @@ enum EPaintMode
     ePaintMode_Ready,
     ePaintMode_InProgress,
 };
+
+namespace AzToolsFramework
+{
+    void TerrainModifyPythonFuncsHandler::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            // this will put these methods into the 'azlmbr.legacy.terrain' module
+            auto addLegacyTerrain = [](AZ::BehaviorContext::GlobalMethodBuilder methodBuilder)
+            {
+                methodBuilder->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Category, "Legacy/Terrain")
+                    ->Attribute(AZ::Script::Attributes::Module, "legacy.terrain");
+            };
+            addLegacyTerrain(behaviorContext->Method("set_tool_flatten", CTerrainModifyTool::Command_Flatten, nullptr, "Sets the terrain flatten tool."));
+            addLegacyTerrain(behaviorContext->Method("set_tool_smooth", CTerrainModifyTool::Command_Smooth, nullptr, "Sets the terrain smooth tool."));
+            addLegacyTerrain(behaviorContext->Method("set_tool_riselower", CTerrainModifyTool::Command_RiseLower, nullptr, "Sets the terrain rise/lower tool."));
+            addLegacyTerrain(behaviorContext->Method("get_current_tool_id", CTerrainModifyTool::Debug_GetCurrentBrushType, nullptr, "Gets the current tool Id."));
+        }
+    }
+}
 
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainModifyTool::Command_Flatten, terrain, set_tool_flatten,
     "Sets the terrain flatten tool.",
@@ -672,6 +695,19 @@ void CTerrainModifyTool::Command_RiseLower()
         CTerrainModifyTool* pModTool = (CTerrainModifyTool*)pTool;
         pModTool->SetCurBrushType(eBrushRiseLower);
     }
+}
+
+int CTerrainModifyTool::Debug_GetCurrentBrushType()
+{
+    Command_Activate();
+    CEditTool* pTool = GetIEditor()->GetEditTool();
+    if (pTool && qobject_cast<CTerrainModifyTool*>(pTool))
+    {
+        CTerrainModifyTool* pModTool = (CTerrainModifyTool*)pTool;
+        return static_cast<int>(pModTool->GetCurBrushType());
+    }
+
+    return 0;
 }
 
 const GUID& CTerrainModifyTool::GetClassID()

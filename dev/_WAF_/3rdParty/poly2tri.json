@@ -1,0 +1,14 @@
+{
+    "name": "poly2tri_lib",
+    "source": "@3P:poly2tri@",
+    "description": "2d constrained Delaunay triangulation library.",
+    "defines": [],
+    "non_release_only": "False",
+    "lib_required": "True",
+    "includes": ["poly2tri"],
+    "aliases": {
+        "lib_names": [
+            "poly2tri"
+        ]
+    }
+}

@@ -13,11 +13,13 @@
 
 // Description : Material support for Python
 
-
 #include "StdAfx.h"
 #include "Material/MaterialManager.h"
 #include "Util/BoostPythonHelpers.h"
 #include "ShaderEnum.h"
+
+#include "MaterialPythonFuncs.h"
+#include <AzCore/RTTI/BehaviorContext.h>
 
 namespace
 {
@@ -73,7 +75,7 @@ namespace
         GetIEditor()->GetMaterialManager()->Command_SelectFromObject();
     }
 
-    std::vector<std::string> PyGetSubMaterial(const char* pMaterialPath)
+    std::vector<std::string> PyLegacyGetSubMaterial(const char* pMaterialPath)
     {
         QString materialPath = pMaterialPath;
         CMaterial* pMaterial = GetIEditor()->GetMaterialManager()->LoadMaterial(pMaterialPath, false);
@@ -83,6 +85,26 @@ namespace
         }
 
         std::vector<std::string> result;
+        for (int i = 0; i < pMaterial->GetSubMaterialCount(); i++)
+        {
+            if (pMaterial->GetSubMaterial(i))
+            {
+                result.push_back((materialPath + "\\" + pMaterial->GetSubMaterial(i)->GetName()).toUtf8().data());
+            }
+        }
+        return result;
+    }
+
+    AZStd::vector<AZStd::string> PyGetSubMaterial(const char* pMaterialPath)
+    {
+        QString materialPath = pMaterialPath;
+        CMaterial* pMaterial = GetIEditor()->GetMaterialManager()->LoadMaterial(pMaterialPath, false);
+        if (!pMaterial)
+        {
+            throw std::runtime_error("Invalid multi material.");
+        }
+
+        AZStd::vector<AZStd::string> result;
         for (int i = 0; i < pMaterial->GetSubMaterialCount(); i++)
         {
             if (pMaterial->GetSubMaterial(i))
@@ -1114,7 +1136,7 @@ namespace
 
     //////////////////////////////////////////////////////////////////////////
 
-    SPyWrappedProperty PyGetProperty(const char* pPathAndMaterialName, const char* pPathAndPropertyName)
+    SPyWrappedProperty PyLegacyGetProperty(const char* pPathAndMaterialName, const char* pPathAndPropertyName)
     {
         CMaterial* pMaterial = TryLoadingMaterial(pPathAndMaterialName);
         std::deque<QString> splittedPropertyPath = PreparePropertyPath(pPathAndPropertyName);
@@ -1213,9 +1235,8 @@ namespace
             }
             else if (propertyName == "Glossiness")
             {
-                value.type = SPyWrappedProperty::eType_Int;
+                value.type = SPyWrappedProperty::eType_Float;
                 value.property.floatValue = pMaterial->GetShaderResources().m_LMaterial.m_Smoothness;
-                value.property.intValue = (int)value.property.floatValue;
             }
             else if (propertyName == "Specular Level")
             {
@@ -1764,7 +1785,199 @@ namespace
         return value;
     }
 
-    void PySetProperty(const char* pPathAndMaterialName, const char* pPathAndPropertyName, const SPyWrappedProperty& value)
+    bool PyGetPropertyAsBool(const char* pPathAndMaterialName, const char* pPathAndPropertyName)
+    {
+        SPyWrappedProperty result = PyLegacyGetProperty(pPathAndMaterialName, pPathAndPropertyName);
+
+        switch (result.type)
+        {
+        case SPyWrappedProperty::eType_Bool:
+            return result.property.boolValue;
+        case SPyWrappedProperty::eType_Float:
+        case SPyWrappedProperty::eType_Int:
+        case SPyWrappedProperty::eType_Color:
+        case SPyWrappedProperty::eType_String:
+        case SPyWrappedProperty::eType_Time:
+        case SPyWrappedProperty::eType_Vec3:
+        case SPyWrappedProperty::eType_Vec4:
+        default:
+            AZ_Warning("PyGetPropertyAsBool", false, "Type mismatch while getting property '%s' of material '%s' as a bool.", pPathAndPropertyName, pPathAndPropertyName);
+            return bool();
+        }
+    }
+
+    AZ::Color PyGetPropertyAsColor(const char* pPathAndMaterialName, const char* pPathAndPropertyName)
+    {
+        SPyWrappedProperty result = PyLegacyGetProperty(pPathAndMaterialName, pPathAndPropertyName);
+
+        switch (result.type)
+        {
+        case SPyWrappedProperty::eType_Color:
+            return AZ::Color(
+                result.property.colorValue.r,
+                result.property.colorValue.g,
+                result.property.colorValue.b,
+                1.0f
+            );
+        case SPyWrappedProperty::eType_Bool:
+        case SPyWrappedProperty::eType_Float:
+        case SPyWrappedProperty::eType_Int:
+        case SPyWrappedProperty::eType_String:
+        case SPyWrappedProperty::eType_Time:
+        case SPyWrappedProperty::eType_Vec3:
+        case SPyWrappedProperty::eType_Vec4:
+        default:
+            AZ_Warning("PyGetPropertyAsColor", false, "Type mismatch while getting property '%s' of material '%s' as an AZ::Color.", pPathAndPropertyName, pPathAndPropertyName);
+            return AZ::Color();
+        }
+    }
+
+    float PyGetPropertyAsFloat(const char* pPathAndMaterialName, const char* pPathAndPropertyName)
+    {
+        SPyWrappedProperty result = PyLegacyGetProperty(pPathAndMaterialName, pPathAndPropertyName);
+
+        switch (result.type)
+        {
+        case SPyWrappedProperty::eType_Float:
+            return result.property.floatValue;
+        case SPyWrappedProperty::eType_Int:
+            return static_cast<float>(result.property.intValue);
+        case SPyWrappedProperty::eType_Bool:
+        case SPyWrappedProperty::eType_Color:
+        case SPyWrappedProperty::eType_String:
+        case SPyWrappedProperty::eType_Time:
+        case SPyWrappedProperty::eType_Vec3:
+        case SPyWrappedProperty::eType_Vec4:
+        default:
+            AZ_Warning("PyGetPropertyAsFloat", false, "Type mismatch while getting property '%s' of material '%s' as a float.", pPathAndPropertyName, pPathAndPropertyName);
+            return float();
+        }
+    }
+
+    int PyGetPropertyAsInt(const char* pPathAndMaterialName, const char* pPathAndPropertyName)
+    {
+        SPyWrappedProperty result = PyLegacyGetProperty(pPathAndMaterialName, pPathAndPropertyName);
+
+        switch (result.type)
+        {
+        case SPyWrappedProperty::eType_Float:
+            return static_cast<int>(result.property.floatValue);
+        case SPyWrappedProperty::eType_Int:
+            return result.property.intValue;
+        case SPyWrappedProperty::eType_Bool:
+        case SPyWrappedProperty::eType_Color:
+        case SPyWrappedProperty::eType_String:
+        case SPyWrappedProperty::eType_Time:
+        case SPyWrappedProperty::eType_Vec3:
+        case SPyWrappedProperty::eType_Vec4:
+        default:
+            AZ_Warning("PyGetPropertyAsInt", false, "Type mismatch while getting property '%s' of material '%s' as an int.", pPathAndPropertyName, pPathAndPropertyName);
+            return int();
+        }
+    }
+
+    AZStd::string PyGetPropertyAsString(const char* pPathAndMaterialName, const char* pPathAndPropertyName)
+    {
+        SPyWrappedProperty result = PyLegacyGetProperty(pPathAndMaterialName, pPathAndPropertyName);
+
+        switch (result.type)
+        {
+            case SPyWrappedProperty::eType_Bool:
+                return AZStd::to_string(result.property.boolValue);
+            case SPyWrappedProperty::eType_Color:
+                return "rgb(" +
+                    AZStd::to_string(result.property.colorValue.r) + ", " +
+                    AZStd::to_string(result.property.colorValue.g) + ", " +
+                    AZStd::to_string(result.property.colorValue.b) +
+                    ")";
+            case SPyWrappedProperty::eType_Float:
+                return AZStd::to_string(result.property.floatValue);
+            case SPyWrappedProperty::eType_Int:
+                return AZStd::to_string(result.property.intValue);
+            case SPyWrappedProperty::eType_String:
+                return AZStd::string(result.stringValue.toUtf8().data());
+            case SPyWrappedProperty::eType_Time:
+                return AZStd::to_string(result.property.timeValue.hour) + ":" + AZStd::to_string(result.property.timeValue.hour);
+            case SPyWrappedProperty::eType_Vec3:
+                return "vec3(" +
+                    AZStd::to_string(result.property.vecValue.x) + ", " +
+                    AZStd::to_string(result.property.vecValue.y) + ", " +
+                    AZStd::to_string(result.property.vecValue.z) +
+                    ")";
+            case SPyWrappedProperty::eType_Vec4:
+                return "vec4(" +
+                    AZStd::to_string(result.property.vecValue.x) + ", " +
+                    AZStd::to_string(result.property.vecValue.y) + ", " +
+                    AZStd::to_string(result.property.vecValue.z) + ", " +
+                    AZStd::to_string(result.property.vecValue.w) +
+                    ")";
+            default:
+            {
+                AZ_Warning("PyGetPropertyAsString", false, "Type mismatch while getting property '%s' of material '%s' as an AZStd::Vector3.", pPathAndPropertyName, pPathAndPropertyName);
+                break;
+            }
+        }
+        return AZStd::string();
+    }
+
+    AZ::Vector3 PyGetPropertyAsVector3(const char* pPathAndMaterialName, const char* pPathAndPropertyName)
+    {
+        SPyWrappedProperty result = PyLegacyGetProperty(pPathAndMaterialName, pPathAndPropertyName);
+
+        switch (result.type)
+        {
+        case SPyWrappedProperty::eType_Vec3:
+        case SPyWrappedProperty::eType_Vec4:
+            return AZ::Vector3(
+                result.property.vecValue.x,
+                result.property.vecValue.y,
+                result.property.vecValue.z
+            );
+        case SPyWrappedProperty::eType_Bool:
+        case SPyWrappedProperty::eType_Color:
+        case SPyWrappedProperty::eType_Float:
+        case SPyWrappedProperty::eType_Int:
+        case SPyWrappedProperty::eType_String:
+        case SPyWrappedProperty::eType_Time:
+        default:
+            AZ_Warning("PyGetPropertyAsVector3", false, "Type mismatch while getting property '%s' of material '%s' as an AZ::Vector3.", pPathAndPropertyName, pPathAndPropertyName);
+            return AZ::Vector3();
+        }
+    }
+
+    AZ::Vector4 PyGetPropertyAsVector4(const char* pPathAndMaterialName, const char* pPathAndPropertyName)
+    {
+        SPyWrappedProperty result = PyLegacyGetProperty(pPathAndMaterialName, pPathAndPropertyName);
+
+        switch (result.type)
+        {
+        case SPyWrappedProperty::eType_Vec3:
+            return AZ::Vector4(
+                result.property.vecValue.x,
+                result.property.vecValue.y,
+                result.property.vecValue.z,
+                0.0f
+            );
+        case SPyWrappedProperty::eType_Vec4:
+            return AZ::Vector4(
+                result.property.vecValue.x,
+                result.property.vecValue.y,
+                result.property.vecValue.z,
+                result.property.vecValue.w
+            );
+        case SPyWrappedProperty::eType_Bool:
+        case SPyWrappedProperty::eType_Color:
+        case SPyWrappedProperty::eType_Float:
+        case SPyWrappedProperty::eType_Int:
+        case SPyWrappedProperty::eType_String:
+        case SPyWrappedProperty::eType_Time:
+        default:
+            AZ_Warning("PyGetPropertyAsVector4", false, "Type mismatch while getting property '%s' of material '%s' as an AZ::Vector4.", pPathAndPropertyName, pPathAndPropertyName);
+            return AZ::Vector4();
+        }
+    }
+
+    void PyLegacySetProperty(const char* pPathAndMaterialName, const char* pPathAndPropertyName, const SPyWrappedProperty& value)
     {
         CMaterial* pMaterial = TryLoadingMaterial(pPathAndMaterialName);
         std::deque<QString> splittedPropertyPath = PreparePropertyPath(pPathAndPropertyName);
@@ -1871,7 +2084,7 @@ namespace
                 colorFloat.b *= colorFloat.a;
                 pMaterial->GetShaderResources().m_LMaterial.m_Specular = colorFloat;
             }
-            else if (propertyName == "Glossiness")
+            else if (propertyName == "Glossiness" || propertyName == "Smoothness")
             {
                 pMaterial->GetShaderResources().m_LMaterial.m_Smoothness = static_cast<float>(value.property.intValue);
             }
@@ -2286,6 +2499,117 @@ namespace
         pMaterial->Save();
         GetIEditor()->GetMaterialManager()->OnUpdateProperties(pMaterial, true);
     }
+
+    void PySetPropertyFromBool(const char* pPathAndMaterialName, const char* pPathAndPropertyName, bool value)
+    {
+        SPyWrappedProperty valueWrapper;
+        valueWrapper.type = SPyWrappedProperty::eType_Bool;
+        valueWrapper.property.boolValue = value;
+
+        PyLegacySetProperty(pPathAndMaterialName, pPathAndPropertyName, valueWrapper);
+    }
+
+    void PySetPropertyFromColor(const char* pPathAndMaterialName, const char* pPathAndPropertyName, AZ::Color value)
+    {
+        SPyWrappedProperty valueWrapper;
+        valueWrapper.type = SPyWrappedProperty::eType_Color;
+        valueWrapper.property.colorValue.r = value.GetR();
+        valueWrapper.property.colorValue.g = value.GetG();
+        valueWrapper.property.colorValue.b = value.GetB();
+
+        PyLegacySetProperty(pPathAndMaterialName, pPathAndPropertyName, valueWrapper);
+    }
+
+    void PySetPropertyFromFloat(const char* pPathAndMaterialName, const char* pPathAndPropertyName, float value)
+    {
+        SPyWrappedProperty valueWrapper;
+        valueWrapper.type = SPyWrappedProperty::eType_Float;
+        valueWrapper.property.floatValue = value;
+
+        PyLegacySetProperty(pPathAndMaterialName, pPathAndPropertyName, valueWrapper);
+    }
+
+    void PySetPropertyFromInt(const char* pPathAndMaterialName, const char* pPathAndPropertyName, int value)
+    {
+        SPyWrappedProperty valueWrapper;
+        valueWrapper.type = SPyWrappedProperty::eType_Int;
+        valueWrapper.property.intValue = value;
+
+        PyLegacySetProperty(pPathAndMaterialName, pPathAndPropertyName, valueWrapper);
+    }
+
+    void PySetPropertyFromString(const char* pPathAndMaterialName, const char* pPathAndPropertyName, AZStd::string value)
+    {
+        SPyWrappedProperty valueWrapper;
+        valueWrapper.type = SPyWrappedProperty::eType_String;
+        valueWrapper.stringValue = value.data();
+
+        PyLegacySetProperty(pPathAndMaterialName, pPathAndPropertyName, valueWrapper);
+    }
+
+    void PySetPropertyFromVector3(const char* pPathAndMaterialName, const char* pPathAndPropertyName, AZ::Vector3 value)
+    {
+        SPyWrappedProperty valueWrapper;
+        valueWrapper.type = SPyWrappedProperty::eType_Vec3;
+        valueWrapper.property.vecValue.x = value.GetX();
+        valueWrapper.property.vecValue.y = value.GetY();
+        valueWrapper.property.vecValue.z = value.GetZ();
+
+        PyLegacySetProperty(pPathAndMaterialName, pPathAndPropertyName, valueWrapper);
+    }
+
+    void PySetPropertyFromVector4(const char* pPathAndMaterialName, const char* pPathAndPropertyName, AZ::Vector4 value)
+    {
+        SPyWrappedProperty valueWrapper;
+        valueWrapper.type = SPyWrappedProperty::eType_Vec4;
+        valueWrapper.property.vecValue.x = value.GetX();
+        valueWrapper.property.vecValue.y = value.GetY();
+        valueWrapper.property.vecValue.z = value.GetZ();
+        valueWrapper.property.vecValue.w = value.GetW();
+
+        PyLegacySetProperty(pPathAndMaterialName, pPathAndPropertyName, valueWrapper);
+    }
+}
+
+namespace AzToolsFramework
+{
+    void MaterialPythonFuncsHandler::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            // this will put these methods into the 'azlmbr.legacy.material' module
+            auto addLegacyMaterial = [](AZ::BehaviorContext::GlobalMethodBuilder methodBuilder)
+            {
+                methodBuilder->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Category, "Legacy/Material")
+                    ->Attribute(AZ::Script::Attributes::Module, "legacy.material");
+            };
+            addLegacyMaterial(behaviorContext->Method("create", PyMaterialCreate, nullptr, "Creates a material."));
+            addLegacyMaterial(behaviorContext->Method("create_multi", PyMaterialCreateMulti, nullptr, "Creates a multi-material."));
+            addLegacyMaterial(behaviorContext->Method("convert_to_multi", PyMaterialConvertToMulti, nullptr, "Converts the selected material to a multi-material."));
+            addLegacyMaterial(behaviorContext->Method("duplicate_current", PyMaterialDuplicateCurrent, nullptr, "Duplicates the current material."));
+            addLegacyMaterial(behaviorContext->Method("merge_selection", PyMaterialMergeSelection, nullptr, "Merges the selected materials."));
+            addLegacyMaterial(behaviorContext->Method("delete_current", PyMaterialDeleteCurrent, nullptr, "Deletes the current material."));
+            addLegacyMaterial(behaviorContext->Method("get_submaterial", PyGetSubMaterial, nullptr, "Gets sub materials of a material."));
+            //addLegacyMaterial(behaviorContext->Method("get_property", PyGetProperty, nullptr, "Gets a property of a material."));
+            addLegacyMaterial(behaviorContext->Method("get_property_as_bool", PyGetPropertyAsBool, nullptr, "Gets a bool property of a material."));
+            addLegacyMaterial(behaviorContext->Method("get_property_as_color", PyGetPropertyAsColor, nullptr, "Gets a color property of a material."));
+            addLegacyMaterial(behaviorContext->Method("get_property_as_float", PyGetPropertyAsFloat, nullptr, "Gets a float property of a material."));
+            addLegacyMaterial(behaviorContext->Method("get_property_as_int", PyGetPropertyAsInt, nullptr, "Gets an int property of a material."));
+            addLegacyMaterial(behaviorContext->Method("get_property_as_string", PyGetPropertyAsString, nullptr, "Gets a string property of a material."));
+            addLegacyMaterial(behaviorContext->Method("get_property_as_vector3", PyGetPropertyAsVector3, nullptr, "Gets a vector3 property of a material."));
+            addLegacyMaterial(behaviorContext->Method("get_property_as_vector4", PyGetPropertyAsVector4, nullptr, "Gets a vector4 property of a material."));
+            //addLegacyMaterial(behaviorContext->Method("set_property", PySetProperty, nullptr, "Sets a property of a material."));
+            addLegacyMaterial(behaviorContext->Method("set_property_from_bool", PySetPropertyFromBool, nullptr, "Sets a bool property of a material."));
+            addLegacyMaterial(behaviorContext->Method("set_property_from_color", PySetPropertyFromColor, nullptr, "Sets a color property of a material."));
+            addLegacyMaterial(behaviorContext->Method("set_property_from_float", PySetPropertyFromFloat, nullptr, "Sets a float property of a material."));
+            addLegacyMaterial(behaviorContext->Method("set_property_from_int", PySetPropertyFromInt, nullptr, "Sets an int property of a material."));
+            addLegacyMaterial(behaviorContext->Method("set_property_from_string", PySetPropertyFromString, nullptr, "Sets a string property of a material."));
+            addLegacyMaterial(behaviorContext->Method("set_property_from_vector3", PySetPropertyFromVector3, nullptr, "Sets a vector3 property of a material."));
+            addLegacyMaterial(behaviorContext->Method("set_property_from_vector4", PySetPropertyFromVector4, nullptr, "Sets a vector4 property of a material."));
+
+        }
+    }
 }
 
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyMaterialCreate, material, create,
@@ -2318,12 +2642,12 @@ REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyMaterialSelectObjectsWithCurrent, materia
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyMaterialSetCurrentFromObject, material, set_current_from_object,
     "Sets the current material to the material of a selected object.",
     "material.set_current_from_object()");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetSubMaterial, material, get_submaterial,
+REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetSubMaterial, material, get_submaterial,
     "Gets sub materials of an material.",
     "material.get_submaterial()");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetProperty, material, get_property,
+REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetProperty, material, get_property,
     "Gets a property of a material.",
     "material.get_property(str materialPath/materialName, str propertyPath/propertyName)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PySetProperty, material, set_property,
+REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacySetProperty, material, set_property,
     "Sets a property of a material.",
     "material.set_property(str materialPath/materialName, str propertyPath/propertyName, [ str | (int, int, int) | (float, float, float) | int | float | bool ] value)");

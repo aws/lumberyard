@@ -180,16 +180,16 @@
                                     </widget>
                                 </item>
                                 <item>
-                                    <widget class="QCheckBox" name="PLATFORM_XBOXONE">
+                                    <widget class="QCheckBox" name="PLATFORM_XENIA">
                                         <property name="text">
-                                            <string>XBox One</string>
+                                            <string>Xenia</string>
                                         </property>
                                     </widget>
                                 </item>
                                 <item>
-                                    <widget class="QCheckBox" name="PLATFORM_PS4">
+                                    <widget class="QCheckBox" name="PLATFORM_PROVO">
                                         <property name="text">
-                                            <string>PS4</string>
+                                            <string>Provo</string>
                                         </property>
                                     </widget>
                                 </item>

@@ -14,19 +14,16 @@
 #pragma once
 
 #include <IAudioSystem.h>
-#include <TimeValue.h>
-
-struct ICVar;
 
 namespace Audio
 {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    class CNULLAudioProxy
+    class NullAudioProxy
         : public IAudioProxy
     {
     public:
-        CNULLAudioProxy() {}
-        ~CNULLAudioProxy() override {}
+        NullAudioProxy() {}
+        ~NullAudioProxy() override {}
 
         void Initialize(const char* const, const bool = true) override {}
         void Release() override {}
@@ -39,7 +36,7 @@ namespace Audio
         void SetRtpcValue(const TAudioControlID, const float) override {}
         void SetObstructionCalcType(const EAudioObjectObstructionCalcType) override {}
         void SetPosition(const SATLWorldPosition&) override {}
-        void SetPosition(const Vec3&) override {}
+        void SetPosition(const AZ::Vector3&) override {}
         void SetMultiplePositions(const MultiPositionParams& positions) override {}
         void SetEnvironmentAmount(const TAudioEnvironmentID, const float) override {}
         void SetCurrentEnvironments(const EntityId nEntityToIgnore = 0) override {}
@@ -49,27 +46,26 @@ namespace Audio
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    class CNULLAudioSystem
+    class NullAudioSystem
         : public IAudioSystem
     {
     public:
-        CNULLAudioSystem()
+        AZ_CLASS_ALLOCATOR(Audio::NullAudioSystem, AZ::SystemAllocator, 0)
+
+        NullAudioSystem()
         {
             AudioSystemRequestBus::Handler::BusConnect();
             AudioSystemThreadSafeRequestBus::Handler::BusConnect();
+            AZ_TracePrintf(AZ::Debug::Trace::GetDefaultSystemWindow(), "<Audio>: Running with Null Audio System!\n");
         }
-        ~CNULLAudioSystem() override
+        ~NullAudioSystem() override
         {
             AudioSystemRequestBus::Handler::BusDisconnect();
             AudioSystemThreadSafeRequestBus::Handler::BusDisconnect();
         }
 
         bool Initialize() override { return true; }
-        void Release() override { delete this; }
-
-        void Activate() override {}
-        void Deactivate() override {}
-
+        void Release() override {}
         void ExternalUpdate() override {}
 
         void PushRequest(const SAudioRequest&) override {}
@@ -89,13 +85,12 @@ namespace Audio
         bool ReleaseAudioListenerID(const TAudioObjectID) override { return true; }
         bool SetAudioListenerOverrideID(const TAudioObjectID) override { return true; }
 
-        void OnCVarChanged(ICVar* const) override {}
         void GetInfo(SAudioSystemInfo&) override {}
         const char* GetControlsPath() const override { return ""; }
         void UpdateControlsPath() override {}
         void RefreshAudioSystem(const char* const) override {}
 
-        IAudioProxy* GetFreeAudioProxy() override { return static_cast<IAudioProxy*>(&m_oNULLAudioProxy); }
+        IAudioProxy* GetFreeAudioProxy() override { return static_cast<IAudioProxy*>(&m_nullAudioProxy); }
         void FreeAudioProxy(IAudioProxy* const) override {}
 
         TAudioSourceId CreateAudioSource(const SAudioInputConfig& sourceConfig) override { return INVALID_AUDIO_SOURCE_ID; }
@@ -105,7 +100,7 @@ namespace Audio
         const char* GetAudioSwitchStateName(const TAudioControlID switchID, const TAudioSwitchStateID stateID) const override { return nullptr; }
 
     private:
-        CNULLAudioProxy m_oNULLAudioProxy;
+        NullAudioProxy m_nullAudioProxy;
     };
 
 } // namespace Audio

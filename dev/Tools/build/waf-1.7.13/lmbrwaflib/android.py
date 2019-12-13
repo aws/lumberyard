@@ -41,6 +41,7 @@ from waflib.Tools import ccroot
 ccroot.USELIB_VARS['android'] = set([ 'AAPT', 'AAPT_RESOURCES', 'AAPT_INCLUDES', 'AAPT_PACKAGE_FLAGS' ])
 
 import packaging
+import lumberyard
 
 
 ################################################################
@@ -91,6 +92,7 @@ SUPPORTED_APIS = [
     'android-26',
     'android-27',
     'android-28',
+    'android-29',
 ]
 
 MIN_NDK_REV = 15
@@ -98,7 +100,7 @@ MIN_ARMv8_API = 'android-21'
 SUPPORTED_NDK_PLATFORMS = sorted(SUPPORTED_APIS)
 
 # changes to the app submission process requires apps to target new APIs for the SDK (Java) version
-MIN_SDK_VERSION = 'android-26'
+MIN_SDK_VERSION = 'android-28'
 SUPPORTED_SDK_VERSIONS = sorted([ api for api in SUPPORTED_APIS if api >= MIN_SDK_VERSION ])
 
 # keep the minimum build tools version in sync with the min supported SDK version
@@ -2438,25 +2440,35 @@ def construct_assets_path_for_game_project(ctx, game_project):
     return 'Android/data/{}/files'.format(ctx.get_android_package_name(game_project))
 
 
-def build_shader_paks(ctx, game, assets_type, layout_node):
+def build_shaders(ctx, game, assets_type, layout_node, assets_cache, generate_pak):
 
-    shaders_pak_dir = packaging.generate_shaders_pak(ctx, game, assets_type, 'GLES3')
+    if not generate_pak:
+        packaging.generate_shaders(ctx, game, assets_type, 'GLES3')
+        shader_cache_path = os.path.join(assets_cache.abspath(), game.lower(), 'shaders', 'cache')
+        shutil.rmtree(shader_cache_path, ignore_errors=True)
+        generated_shaders_path = os.path.join(assets_cache.abspath(), 'user', 'cache', 'shaders', 'cache')
+        shutil.move(generated_shaders_path, shader_cache_path)
+    else:
+        Logs.info('[INFO] Generating the shader pak files...')
+        shaders_pak_dir = packaging.generate_shaders_pak(ctx, game, assets_type, 'GLES3')
+        shader_paks = shaders_pak_dir.ant_glob('*.pak')
+        if not shader_paks:
+            ctx.fatal('[ERROR] No shader pak files were found after running the pak_shaders command')
 
-    shader_paks = shaders_pak_dir.ant_glob('*.pak')
-    if not shader_paks:
-        ctx.fatal('[ERROR] No shader pak files were found after running the pak_shaders command')
+        # copy the shader paks into the layout directory
+        shader_pak_dest = layout_node.make_node(game.lower())
+        if not os.path.exists(shader_pak_dest.abspath()):
+            shader_pak_dest.mkdir()
 
-    # copy the shader paks into the layout directory
-    shader_pak_dest = layout_node.make_node(game.lower())
-    for pak in shader_paks:
-        dest_node = shader_pak_dest.make_node(pak.name)
-
-        # Make sure there is no existing shader pak first
-        if os.path.isfile(dest_node.abspath()):
-            dest_node.delete()
-
-        Logs.debug('android_deploy: Copying {} => {}'.format(pak.relpath(), dest_node.relpath()))
-        shutil.copy2(pak.abspath(), dest_node.abspath())
+        for pak in shader_paks:
+            dest_node = shader_pak_dest.make_node(pak.name)
+        
+            # Make sure there is no existing shader pak first
+            if os.path.isfile(dest_node.abspath()):
+                dest_node.delete()
+        
+            Logs.debug('android_deploy: Copying {} => {}'.format(pak.relpath(), dest_node.relpath()))
+            shutil.copy2(pak.abspath(), dest_node.abspath())
 
 
 class pack_apk(Task):
@@ -2481,7 +2493,7 @@ class pack_apk(Task):
 
     def runnable_status(self):
         if not self.inputs:
-            self.source_apk.sig = Utils.h_file(self.source_apk.abspath())
+            self.source_apk.cache_sig = Utils.h_file(self.source_apk.abspath())
 
             self.inputs  = [
                 self.source_apk
@@ -2700,7 +2712,7 @@ def wrap_android_install_context(ctx):
     return ctx
 
 
-@feature('package_android_armv7_clang', 'package_android_armv8_clang')
+@feature('package_android_armv8_clang')
 def package_android(tsk_gen):
     '''
     Prepare the deploy process by generating the necessary asset layout
@@ -2742,21 +2754,32 @@ def package_android(tsk_gen):
     # clear all stale transient files (e.g. logs, shader source, etc.) from the source asset cache
     bld.clear_user_cache(assets_cache)
 
+    # clear all stale transient files (e.g. logs, shader source/paks, etc.) from the pak file cache
+    bld.clear_user_cache(layout_node)
+    bld.clear_shader_cache(layout_node)
+
+    is_obb = bld.use_obb()
+
+    # generate shaders for release builds
+    should_generate_shaders = ((asset_mode == ASSET_MODE.project_settings) or (asset_mode == ASSET_MODE.apk_files and configuration == 'release'))
+    if should_generate_shaders:
+        # don't generate pak files for obb or apk_files mode.
+        generate_pak = False
+        if not (is_obb or asset_mode == ASSET_MODE.apk_files):
+            generate_pak = True
+
+        build_shaders(bld, game, assets_platform, layout_node, assets_cache, generate_pak)
+
     # handle the asset pre-processing
     if asset_mode in (ASSET_MODE.loose_paks, ASSET_MODE.apk_paks, ASSET_MODE.project_settings):
         if bld.use_vfs():
             bld.fatal('[ERROR] Cannot use VFS when the --android-asset-mode is set to "{}".  Please set remote_filesystem=0 in bootstrap.cfg'.format(ASSET_MODE[asset_mode]))
 
-        is_obb = bld.use_obb()
         use_project_settings = (asset_mode == ASSET_MODE.project_settings)
 
         if is_obb and not use_project_settings:
             bld.fatal('[ERROR] Cannot use OBBs when the --android-asset-mode is set to "{}".  Either change --android-asset-mode to '
                 '"configuration_default" or update the "use_main_obb"|"use_patch_obb" settings the game\'s project.json file.'.format(ASSET_MODE[asset_mode]))
-
-        # clear all stale transient files (e.g. logs, shader source/paks, etc.) from the pak file cache
-        bld.clear_user_cache(layout_node)
-        bld.clear_shader_cache(layout_node)
 
         # generate the pak/obb files
         rc_job_file = bld.get_android_rc_obb_job(game) if is_obb else bld.get_android_rc_pak_job(game)
@@ -2771,11 +2794,6 @@ def package_android(tsk_gen):
             target_path=layout_node.relpath(),
             is_obb = is_obb
         )
-
-        # generate the shader paks
-        if use_project_settings:
-            bld.user_message('Generating the shader pak files...')
-            build_shader_paks(bld, game, assets_platform, layout_node)
 
     # pack the assets into the apk
     if asset_mode in (ASSET_MODE.apk_files, ASSET_MODE.apk_paks, ASSET_MODE.project_settings):
@@ -2813,7 +2831,7 @@ def package_android(tsk_gen):
         tsk_gen.jarsign_task.set_run_after(pack_apk_task)
 
 
-@feature('deploy_android_armv7_clang', 'deploy_android_armv8_clang')
+@feature('deploy_android_armv8_clang')
 def deploy_android(tsk_gen):
     '''
     Installs the project APK and copies the layout directory to all the
@@ -3122,3 +3140,15 @@ def inject_android_studio_command(conf):
                 Options.commands.insert(build_cmd_idx, 'android_studio')
             else:
                 Options.commands.append('android_studio')
+
+
+@lumberyard.multi_conf
+def check_ib_flag(ctx, bld_cmd, ib_result, dev_tool_accelerated):
+    # Android builds need the Dev Tools Acceleration Package in order to use the profile.xml to specify how tasks are distributed
+    if 'android' in bld_cmd:
+        if not dev_tool_accelerated:
+            Logs.warn('Dev Tool Acceleration Package not found! This is required in order to use Incredibuild for Android.  Build will not be accelerated through Incredibuild.')
+            return False
+    return True
+
+

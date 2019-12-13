@@ -11,15 +11,15 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "AudioControl.h"
-#include "ATLControlsModel.h"
-#include "AudioControlsEditorUndo.h"
-#include "IEditor.h"
-#include <IAudioSystemControl.h>
+#include <AudioControl.h>
+
 #include <ACETypes.h>
-#include "AudioControlsEditorPlugin.h"
-#include "ImplementationManager.h"
+#include <ATLControlsModel.h>
+#include <AudioControlsEditorPlugin.h>
+#include <AudioControlsEditorUndo.h>
+#include <IAudioSystemControl.h>
+#include <IEditor.h>
+#include <ImplementationManager.h>
 
 namespace AudioControls
 {
@@ -40,7 +40,7 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    CATLControl::CATLControl(const string& sControlName, CID nID, EACEControlType eType, CATLControlsModel* pModel)
+    CATLControl::CATLControl(const AZStd::string& sControlName, CID nID, EACEControlType eType, CATLControlsModel* pModel)
         : m_sName(sControlName)
         , m_nID(nID)
         , m_eType(eType)
@@ -86,7 +86,7 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    string CATLControl::GetName() const
+    AZStd::string CATLControl::GetName() const
     {
         return m_sName;
     }
@@ -114,7 +114,7 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControl::SetName(const string& name)
+    void CATLControl::SetName(const AZStd::string_view name)
     {
         if (name != m_sName)
         {
@@ -125,13 +125,13 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    string CATLControl::GetScope() const
+    AZStd::string CATLControl::GetScope() const
     {
         return m_sScope;
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControl::SetScope(const string& sScope)
+    void CATLControl::SetScope(const AZStd::string_view sScope)
     {
         if (m_sScope != sScope)
         {
@@ -164,7 +164,7 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    int CATLControl::GetGroupForPlatform(const string& platform) const
+    int CATLControl::GetGroupForPlatform(const AZStd::string_view platform) const
     {
         auto it = m_groupPerPlatform.find(platform);
         if (it == m_groupPerPlatform.end())
@@ -175,7 +175,7 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControl::SetGroupForPlatform(const string& platform, int connectionGroupId)
+    void CATLControl::SetGroupForPlatform(const AZStd::string_view platform, int connectionGroupId)
     {
         if (m_groupPerPlatform[platform] != connectionGroupId)
         {
@@ -202,12 +202,12 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    TConnectionPtr CATLControl::GetConnection(CID id, const string& group)
+    TConnectionPtr CATLControl::GetConnection(CID id, const AZStd::string_view group)
     {
         if (id != ACE_INVALID_CID)
         {
             const size_t size = m_connectedControls.size();
-            for (int i = 0; i < size; ++i)
+            for (size_t i = 0; i < size; ++i)
             {
                 TConnectionPtr pConnection = m_connectedControls[i];
                 if (pConnection && pConnection->GetID() == id && pConnection->GetGroup() == group)
@@ -220,7 +220,7 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    TConnectionPtr CATLControl::GetConnection(IAudioSystemControl* m_pAudioSystemControl, const string& group /*= ""*/)
+    TConnectionPtr CATLControl::GetConnection(IAudioSystemControl* m_pAudioSystemControl, const AZStd::string_view group)
     {
         return GetConnection(m_pAudioSystemControl->GetId(), group);
     }
@@ -249,7 +249,7 @@ namespace AudioControls
     {
         if (pConnection)
         {
-            auto it = std::find(m_connectedControls.begin(), m_connectedControls.end(), pConnection);
+            auto it = AZStd::find(m_connectedControls.begin(), m_connectedControls.end(), pConnection);
             if (it != m_connectedControls.end())
             {
                 SignalControlAboutToBeModified();
@@ -392,18 +392,18 @@ namespace AudioControls
             TConnectionPerGroup::iterator end = m_connectionNodes.end();
             for (; it != end; ++it)
             {
-                TXMLNodeList& nodeList = it->second;
+                TXmlNodeList& nodeList = it->second;
                 const size_t size = nodeList.size();
                 for (size_t i = 0; i < size; ++i)
                 {
-                    if (TConnectionPtr pConnection = pAudioSystemImpl->CreateConnectionFromXMLNode(nodeList[i].xmlNode, m_eType))
+                    if (TConnectionPtr pConnection = pAudioSystemImpl->CreateConnectionFromXMLNode(nodeList[i].m_xmlNode, m_eType))
                     {
                         AddConnection(pConnection);
-                        nodeList[i].bValid = true;
+                        nodeList[i].m_isValid = true;
                     }
                     else
                     {
-                        nodeList[i].bValid = false;
+                        nodeList[i].m_isValid = false;
                     }
                 }
             }

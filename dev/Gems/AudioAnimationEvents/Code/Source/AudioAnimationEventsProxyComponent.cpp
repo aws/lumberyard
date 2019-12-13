@@ -71,11 +71,10 @@ namespace AudioAnimationEvents
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {
-                ec->Class<AudioAnimationEventsProxyComponent>("AudioAnimationEventsProxy", "Provides an audio proxy to play audio_trigger animation events.")
+                ec->Class<AudioAnimationEventsProxyComponent>("Audio Animation Events Proxy", "Provides an audio proxy to play audio_trigger animation events.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Audio")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game"))
-                    ->Attribute(AZ::Edit::Attributes::HideIcon, true)
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
                     ->DataElement(0, &AudioAnimationEventsProxyComponent::m_tracksEntityPosition, "Tracks Entity Position", "Should the audio source position update as the entity moves.")
                     ->DataElement(0, &AudioAnimationEventsProxyComponent::m_audioEventName, "Audio Event Name", "Defaults to audio_trigger")
@@ -101,7 +100,7 @@ namespace AudioAnimationEvents
                 Audio::IAudioProxy* audioProxy = proxy->GetAudioProxy();
                 if (audioProxy != nullptr)
                 {
-                    audioProxy->SetPosition(AZTransformToLYTransform(m_transform * proxy->GetTransform()));
+                    audioProxy->SetPosition(m_transform * proxy->GetTransform());
                 }
             }
         }
@@ -161,7 +160,7 @@ namespace AudioAnimationEvents
                 AZ_Assert(audioProxy, "AudioAnimationEventsProxyComponent::OnAnimationEvent - joint has invalid audio proxy.");
                 if (audioProxy != nullptr)
                 {
-                    audioProxy->SetPosition(AZTransformToLYTransform(m_transform * proxy->GetTransform()));
+                    audioProxy->SetPosition(m_transform * proxy->GetTransform());
                     audioProxy->ExecuteTrigger(triggerId, eLSM_None);
                 }
             }

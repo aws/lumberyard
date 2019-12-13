@@ -99,6 +99,8 @@ namespace AssetProcessor
         //! All jobs which match this source will be cancelled or removed.  Note that relSourceFile should have any applicable output prefixes!
         void RemoveJobsBySource(QString relSourceFileDatabaseName);
 
+        void OnFinishedProcessingJob(JobEntry jobEntry);
+
     private:
         void FinishJob(AssetProcessor::RCJob* rcJob);
         void CheckCompileAssetsGroup(const AssetProcessor::QueueElementID& queuedElement, AssetProcessor::RCJob::JobState state);

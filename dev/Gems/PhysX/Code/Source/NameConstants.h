@@ -15,6 +15,11 @@
 
 namespace PhysX
 {
+    namespace UXNameConstants
+    {
+        const AZStd::string& GetPhysXDocsRoot();
+    }
+        
     /// Constants for naming such as unit suffixes for physics properties.
     namespace NameConstants
     {

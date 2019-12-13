@@ -14,7 +14,7 @@
 
 #include <AzCore/std/base.h>
 
-#if defined(AZ_COMPILER_MSVC) || defined(AZ_COMPILER_MWERKS)
+#if defined(AZ_COMPILER_MSVC)
 // Some compilers have the type info even with rtti off. By default
 // we don't expect people to run with rtti.
 #define AZSTD_TYPE_ID_SUPPORT

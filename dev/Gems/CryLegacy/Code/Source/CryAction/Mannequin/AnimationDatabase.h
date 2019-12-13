@@ -432,7 +432,6 @@ private:
     static const SSubADB* FindSubADB(const TSubADBList& subAdbList, const char* szSubADBFilename, bool recursive);
 
     struct SCompareBlendVariantFunctor
-        : public std::binary_function<const SFragmentBlendVariant&, const SFragmentBlendVariant&, bool>
     {
         SCompareBlendVariantFunctor(const CTagDefinition& tagDefs, const CTagDefinition* pFragTagDefsFrom, const CTagDefinition* pFragTagDefsTo)
             : m_tagDefs(tagDefs)

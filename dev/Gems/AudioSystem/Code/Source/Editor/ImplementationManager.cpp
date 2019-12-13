@@ -11,31 +11,17 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "ImplementationManager.h"
-#include <IConsole.h>
-#include <IAudioSystemEditor.h>
-#include <IEditor.h>
-#include "ATLControlsModel.h"
-#include "AudioControlsEditorPlugin.h"
+#include <ImplementationManager.h>
+
 #include <AzFramework/Application/Application.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
-#include <QLibrary>
+#include <ATLControlsModel.h>
+#include <AudioControlsEditorPlugin.h>
+#include <IAudioSystemEditor.h>
+#include <IConsole.h>
+#include <IEditor.h>
 
-using namespace AudioControls;
-
-#if defined(AZ_PLATFORM_WINDOWS)
-#define WWISE_IMPL_DLL      "EditorWwise.dll"
-#define NOSOUND_IMPL_DLL    "EditorNoSound.dll"
-#else
-#define WWISE_IMPL_DLL      "libEditorWwise.dylib"
-#define NOSOUND_IMPL_DLL    "libEditorNoSound.dylib"
-#endif
-
-static const char* g_sImplementationCVarName = "s_AudioSystemImplementationName";
-
-typedef IAudioSystemEditor* (* TPfnGetAudioInterface)(IEditor*);
 
 //-----------------------------------------------------------------------------------------------//
 CImplementationManager::CImplementationManager()
@@ -45,9 +31,8 @@ CImplementationManager::CImplementationManager()
 //-----------------------------------------------------------------------------------------------//
 bool CImplementationManager::LoadImplementation()
 {
-    CATLControlsModel* pATLModel = CAudioControlsEditorPlugin::GetATLModel();
-    ICVar* pCVar = gEnv->pConsole->GetCVar(g_sImplementationCVarName);
-    if (pCVar && pATLModel)
+    AudioControls::CATLControlsModel* pATLModel = CAudioControlsEditorPlugin::GetATLModel();
+    if (pATLModel)
     {
         pATLModel->ClearAllConnections();
 
@@ -57,59 +42,14 @@ bool CImplementationManager::LoadImplementation()
         const char* engineRoot = nullptr;
         AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
         AZ_Assert(engineRoot != nullptr, "Unable to communicate with AzFramework::ApplicationRequests::Bus");
-        string sDLLName(engineRoot);
 
-        AZStd::string_view binFolderName;
-        AZ::ComponentApplicationBus::BroadcastResult(binFolderName, &AZ::ComponentApplicationRequests::GetBinFolder);
-
-        AZStd::string middlewareDllPath = AZStd::string::format("%s" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING "EditorPlugins" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING, binFolderName.data());
-
-        sDLLName += middlewareDllPath.c_str();
-        string middlewareName(pCVar->GetString());
-
-        if (middlewareName == "CryAudioImplWwise")
-        {
-            sDLLName += WWISE_IMPL_DLL;
-        }
-        // else if (other implementations...)
-        else
-        {
-            sDLLName += NOSOUND_IMPL_DLL;
-        }
-
-        m_middlewarePlugin = AZ::DynamicModuleHandle::Create(sDLLName.c_str());
-        if (!m_middlewarePlugin->Load(false))
-        {
-            CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "(Audio Controls Editor) Couldn't load the middleware specific editor dll (%s).", sDLLName.c_str());
-            return false;
-        }
-
-        TPfnGetAudioInterface pfnAudioInterface = m_middlewarePlugin->GetFunction<TPfnGetAudioInterface>("GetAudioInterface");
-        if (!pfnAudioInterface)
-        {
-            CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "(Audio Controls Editor) Couldn't get middleware interface from loaded dll (%s).", sDLLName.c_str());
-            m_middlewarePlugin->Unload();
-            m_middlewarePlugin.reset();
-            return false;
-        }
-
-        ms_pAudioSystemImpl = pfnAudioInterface(GetIEditor());
-        if (ms_pAudioSystemImpl)
-        {
-            ms_pAudioSystemImpl->Reload();
-            pATLModel->ReloadAllConnections();
-            pATLModel->ClearDirtyFlags();
-        }
-        else
-        {
-            CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "(Audio Controls Editor) Data from middleware is empty.");
-        }
+        AudioControlsEditor::EditorImplPluginEventBus::Broadcast(&AudioControlsEditor::EditorImplPluginEventBus::Events::InitializeEditorImplPlugin);
     }
     else
     {
-        CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "(Audio Controls Editor) CVar %s not defined. Needed to derive the Editor plugin name.", g_sImplementationCVarName);
         return false;
     }
+
     ImplementationChanged();
     return true;
 }
@@ -117,24 +57,15 @@ bool CImplementationManager::LoadImplementation()
 //-----------------------------------------------------------------------------------------------//
 void CImplementationManager::Release()
 {
-    if ((m_middlewarePlugin) && (m_middlewarePlugin->IsLoaded()))
-    {
-        typedef void(* TPfnOnPluginRelease)();
-        auto fnOnPluginRelease = m_middlewarePlugin->GetFunction<TPfnOnPluginRelease>("OnPluginRelease");
-        if (fnOnPluginRelease)
-        {
-            fnOnPluginRelease();
-        }
-        m_middlewarePlugin->Unload();
-        m_middlewarePlugin.reset();
-        ms_pAudioSystemImpl = nullptr;
-    }
+    AudioControlsEditor::EditorImplPluginEventBus::Broadcast(&AudioControlsEditor::EditorImplPluginEventBus::Events::ReleaseEditorImplPlugin);
 }
 
 //-----------------------------------------------------------------------------------------------//
 AudioControls::IAudioSystemEditor* CImplementationManager::GetImplementation()
 {
-    return ms_pAudioSystemImpl;
+    AudioControls::IAudioSystemEditor* editor = nullptr;
+    AudioControlsEditor::EditorImplPluginEventBus::BroadcastResult(editor, &AudioControlsEditor::EditorImplPluginEventBus::Events::GetEditorImplPlugin);
+    return editor;
 }
 
-#include <ImplementationManager.moc>
+#include <Source/Editor/ImplementationManager.moc>

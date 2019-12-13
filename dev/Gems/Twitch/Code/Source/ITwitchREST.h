@@ -13,7 +13,7 @@
 #pragma once
 
 #include <AzCore/std/smart_ptr/shared_ptr.h>
-#include <IFuelInterface.h>
+#include <HttpRequestor/HttpRequestorBus.h>
 
 namespace Twitch
 {
@@ -23,7 +23,7 @@ namespace Twitch
     class ITwitchREST
     {
     public:
-        static ITwitchRESTPtr Alloc(const IFuelInterfacePtr& fuelInterface);
+        static ITwitchRESTPtr Alloc();
 
         virtual ~ITwitchREST() = default;
 
@@ -73,14 +73,13 @@ namespace Twitch
         virtual void GetChannelVideos(ReceiptID& receipt, const AZStd::string& channelID, BroadCastType boradcastType, const AZStd::string& language, AZ::u64 offset) = 0;
         virtual void StartChannelCommercial(ReceiptID& receipt, const AZStd::string& channelID, CommercialLength length) = 0;
         virtual void ResetChannelStreamKey(ReceiptID& receipt, const AZStd::string& channelID) = 0;
-        virtual void GetChannelCommunity(ReceiptID& receipt, const AZStd::string& channelID) = 0;
-        virtual void SetChannelCommunity(ReceiptID& receipt, const AZStd::string& channelID, const AZStd::string& communityID) = 0;
-        virtual void DeleteChannelfromCommunity(ReceiptID& receipt, const AZStd::string& channelID) = 0;
 
         /*
         ** Helper functions
         */
 
         virtual bool IsValidGameContext(const AZStd::string& gameContext) const = 0;
+        virtual void AddHTTPRequest(const AZStd::string& URI, Aws::Http::HttpMethod method, const HttpRequestor::Headers & headers, const HttpRequestor::Callback & callback) = 0;
+        virtual void AddHTTPRequest(const AZStd::string& URI, Aws::Http::HttpMethod method, const HttpRequestor::Headers & headers, const AZStd::string& body, const HttpRequestor::Callback& callback) = 0;
     };
 }

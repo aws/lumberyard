@@ -32,7 +32,26 @@ namespace PhysX
 {
     namespace Utils
     {
-        bool CreatePxGeometryFromConfig(const Physics::ShapeConfiguration& shapeConfiguration, physx::PxGeometryHolder& pxGeometry, bool warnForNullAsset)
+        physx::PxBase* CreateNativeMeshObjectFromCookedData(const AZStd::vector<AZ::u8>& cookedData, 
+            Physics::CookedMeshShapeConfiguration::MeshType meshType)
+        {
+            // PxDefaultMemoryInputData only accepts a non-const U8* pointer however keeps it as const U8* inside.
+            // Hence we do const_cast here but it's safe to assume the data won't be modifed.
+            physx::PxDefaultMemoryInputData inpStream(
+                const_cast<physx::PxU8*>(cookedData.data()),
+                static_cast<physx::PxU32>(cookedData.size()));
+
+            if (meshType == Physics::CookedMeshShapeConfiguration::MeshType::Convex)
+            {
+                return PxGetPhysics().createConvexMesh(inpStream);
+            }
+            else
+            {
+                return PxGetPhysics().createTriangleMesh(inpStream);
+            }
+        }
+
+        bool CreatePxGeometryFromConfig(const Physics::ShapeConfiguration& shapeConfiguration, physx::PxGeometryHolder& pxGeometry)
         {
             if (!shapeConfiguration.m_scale.IsGreaterThan(AZ::Vector3::CreateZero()))
             {
@@ -84,7 +103,7 @@ namespace PhysX
                 float halfHeight = 0.5f * height - radius;
                 if (halfHeight <= 0.0f)
                 {
-                    AZ_Warning("PhysX", false, "Height must exceed twice the radius in capsule configuration (height: %f, radius: %f)",
+                    AZ_Warning("PhysX", halfHeight < 0.0f, "Height must exceed twice the radius in capsule configuration (height: %f, radius: %f)",
                         capsuleConfig.m_height, capsuleConfig.m_radius);
                     halfHeight = std::numeric_limits<float>::epsilon();
                 }
@@ -99,10 +118,7 @@ namespace PhysX
                 Pipeline::MeshAsset* physXMeshAsset = assetShapeConfig.m_asset.GetAs<Pipeline::MeshAsset>();
                 if (!physXMeshAsset)
                 {
-                    if (warnForNullAsset)
-                    {
-                        AZ_Error("PhysX Rigid Body", false, "PhysXUtils::CreatePxGeometryFromConfig. Mesh asset is null.");
-                    }
+                    AZ_Error("PhysX Rigid Body", false, "PhysXUtils::CreatePxGeometryFromConfig. Mesh asset is null.");
                     return false;
                 }
 
@@ -116,6 +132,39 @@ namespace PhysX
                 AZ::Vector3 scale = nativeShapeConfig.m_nativeShapeScale * nativeShapeConfig.m_scale;
                 physx::PxBase* meshData = reinterpret_cast<physx::PxBase*>(nativeShapeConfig.m_nativeShapePtr);
                 return MeshDataToPxGeometry(meshData, pxGeometry, scale);
+            }
+            case Physics::ShapeType::CookedMesh:
+            {
+                const Physics::CookedMeshShapeConfiguration& cookedMeshShapeConfig = 
+                    static_cast<const Physics::CookedMeshShapeConfiguration&>(shapeConfiguration);
+
+                physx::PxBase* nativeMeshObject = nullptr;
+
+                // Use the cached mesh object if it is there, otherwise create one and save in the shape configuration
+                if (cookedMeshShapeConfig.GetCachedNativeMesh())
+                {
+                    nativeMeshObject = static_cast<physx::PxBase*>(cookedMeshShapeConfig.GetCachedNativeMesh());
+                }
+                else
+                {
+                    nativeMeshObject = CreateNativeMeshObjectFromCookedData(
+                        cookedMeshShapeConfig.GetCookedMeshData(),
+                        cookedMeshShapeConfig.GetMeshType());
+
+                    if (nativeMeshObject)
+                    {
+                        cookedMeshShapeConfig.SetCachedNativeMesh(nativeMeshObject);
+                    }
+                    else
+                    {
+                        AZ_Warning("PhysX Rigid Body", false,
+                            "Unable to create a mesh object from the CookedMeshShapeConfiguration buffer. "
+                            "Please check if the data was cooked correctly.");
+                        return false;
+                    }
+                }
+
+                return MeshDataToPxGeometry(nativeMeshObject, pxGeometry, cookedMeshShapeConfig.m_scale);
             }
             default:
                 AZ_Warning("PhysX Rigid Body", false, "Shape not supported in PhysX. Shape Type: %d", shapeType);
@@ -132,8 +181,14 @@ namespace PhysX
 
             if (materials.empty())
             {
-                AZ_Error("PhysX", false, "Material array can't be empty!");
-                return nullptr;
+                AZStd::shared_ptr<Material> defaultMaterial = nullptr;
+                MaterialManagerRequestsBus::BroadcastResult(defaultMaterial, &MaterialManagerRequestsBus::Events::GetDefaultMaterial);
+                if (!defaultMaterial)
+                {
+                    AZ_Error("PhysX", false, "Material array can't be empty!");
+                    return nullptr;
+                }
+                materials.push_back(defaultMaterial->GetPxMaterial());
             }
 
             physx::PxGeometryHolder pxGeomHolder;
@@ -221,6 +276,57 @@ namespace PhysX
             AZ::SerializeContext* serializeContext = nullptr;
             AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
             return AZ::Utils::SaveObjectToFile(filePath, AZ::DataStream::ST_BINARY, &cookedMesh, serializeContext);
+        }
+
+        bool CookConvexToPxOutputStream(const AZ::Vector3* vertices, AZ::u32 vertexCount, physx::PxOutputStream& stream)
+        {
+            physx::PxCooking* cooking = nullptr;
+            SystemRequestsBus::BroadcastResult(cooking, &SystemRequests::GetCooking);
+
+            physx::PxConvexMeshDesc convexDesc;
+            convexDesc.points.count = vertexCount;
+            convexDesc.points.stride = sizeof(AZ::Vector3);
+            convexDesc.points.data = vertices;
+            convexDesc.flags = physx::PxConvexFlag::eCOMPUTE_CONVEX;
+
+            physx::PxConvexMeshCookingResult::Enum resultCode = physx::PxConvexMeshCookingResult::eSUCCESS;
+
+            bool result = cooking->cookConvexMesh(convexDesc, stream, &resultCode);
+
+            AZ_Error("PhysX", result,
+                "CookConvexToPxOutputStream: Failed to cook convex mesh. Please check the data is correct. Error: %s",
+                Utils::ConvexCookingResultToString(resultCode));
+
+            return result;
+        }
+
+        bool CookTriangleMeshToToPxOutputStream(const AZ::Vector3* vertices, AZ::u32 vertexCount, 
+            const AZ::u32* indices, AZ::u32 indexCount, physx::PxOutputStream& stream)
+        {
+            physx::PxCooking* cooking = nullptr;
+            SystemRequestsBus::BroadcastResult(cooking, &SystemRequests::GetCooking);
+
+            // Validate indices size
+            AZ_Error("PhysX", indexCount % 3 == 0, "Number of indices must be a multiple of 3.");
+
+            physx::PxTriangleMeshDesc meshDesc;
+            meshDesc.points.count = vertexCount;
+            meshDesc.points.stride = sizeof(AZ::Vector3);
+            meshDesc.points.data = vertices;
+
+            meshDesc.triangles.count = indexCount / 3;
+            meshDesc.triangles.stride = sizeof(AZ::u32) * 3;
+            meshDesc.triangles.data = indices;
+
+            physx::PxTriangleMeshCookingResult::Enum resultCode = physx::PxTriangleMeshCookingResult::eSUCCESS;
+
+            bool result = cooking->cookTriangleMesh(meshDesc, stream, &resultCode);
+
+            AZ_Error("PhysX", result,
+                "CookTriangleMeshToToPxOutputStream: Failed to cook triangle mesh. Please check the data is correct. Error: %s.",
+                Utils::TriMeshCookingResultToString(resultCode));
+
+            return result;
         }
 
         bool MeshDataToPxGeometry(physx::PxBase* meshData, physx::PxGeometryHolder& pxGeometry, const AZ::Vector3& scale)
@@ -464,7 +570,7 @@ namespace PhysX
         {
             AZ::Aabb aabb;
             physx::PxGeometryHolder geometryHolder;
-            if (CreatePxGeometryFromConfig(shapeConfiguration, geometryHolder, false))
+            if (CreatePxGeometryFromConfig(shapeConfiguration, geometryHolder))
             {
                 physx::PxBounds3 bounds = physx::PxGeometryQuery::getWorldBounds(geometryHolder.any()
                     , physx::PxTransform(PxMathConvert(PhysX::Utils::GetColliderWorldTransform(worldTransform
@@ -489,6 +595,7 @@ namespace PhysX
                 , &PhysX::ColliderShapeRequestBus::Events::IsTrigger);
             return response.value;
         }
+
     }
 
     namespace ReflectionUtils

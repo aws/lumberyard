@@ -1,0 +1,774 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "includes": [
+                "msvc2015_64/include"
+            ],
+            "importlibpath": [
+                "msvc2015_64/lib"
+            ],
+            "sharedlibpath": [
+                "msvc2015_64/bin"
+            ],
+            "qtmain/defines": [
+                "QT_MAIN_LIB"
+            ],
+            "qtmain/includes": [
+                "msvc2015_64/include"
+            ],
+            "qtmain/import_release": [
+                "qtmain.lib"
+            ],
+            "qtmain/import_debug": [
+                "qtmaind.lib"
+            ],
+            "ActiveQt/includes": [
+                "msvc2015_64/include/ActiveQt"
+            ],
+            "qtangle/includes": [
+                "msvc2015_64/include/QtANGLE"
+            ],
+            "Qt5Bluetooth/defines": [
+                "QT_BLUETOOTH_LIB"
+            ],
+            "Qt5Bluetooth/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtBluetooth"
+            ],
+            "Qt5Bluetooth/import_release": [
+                "Qt5Bluetooth.lib"
+            ],
+            "Qt5Bluetooth/import_debug": [
+                "Qt5Bluetoothd.lib"
+            ],
+            "Qt5Bluetooth/shared_release": [
+                "Qt5Bluetooth.dll"
+            ],
+            "Qt5Bluetooth/shared_debug": [
+                "Qt5Bluetoothd.dll"
+            ],
+            "Qt5Bluetooth/pdb_debug": [
+                "Qt5Bluetoothd.pdb"
+            ],
+            "Qt5CLucene/defines": [
+                "QT_CLUCENE_LIB"
+            ],
+            "Qt5CLucene/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtCLucene"
+            ],
+            "Qt5CLucene/import_release": [
+                "Qt5CLucene.lib"
+            ],
+            "Qt5CLucene/import_debug": [
+                "Qt5CLucened.lib"
+            ],
+            "Qt5CLucene/shared_release": [
+                "Qt5CLucene.dll"
+            ],
+            "Qt5CLucene/shared_debug": [
+                "Qt5CLucened.dll"
+            ],
+            "Qt5CLucene/pdb_debug": [
+                "Qt5CLucened.pdb"
+            ],
+            "Qt5Concurrent/defines": [
+                "QT_CONCURRENT_LIB"
+            ],
+            "Qt5Concurrent/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtConcurrent"
+            ],
+            "Qt5Concurrent/import_release": [
+                "Qt5Concurrent.lib"
+            ],
+            "Qt5Concurrent/import_debug": [
+                "Qt5Concurrentd.lib"
+            ],
+            "Qt5Concurrent/shared_release": [
+                "Qt5Concurrent.dll"
+            ],
+            "Qt5Concurrent/shared_debug": [
+                "Qt5Concurrentd.dll"
+            ],
+            "Qt5Concurrent/pdb_debug": [
+                "Qt5Concurrentd.pdb"
+            ],
+            "Qt5Core/defines": [
+                "QT_CORE_LIB",
+                "QT_NO_EXCEPTIONS"
+            ],
+            "Qt5Core/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtCore",
+                "msvc2015_64/include/QtCore/5.6.2",
+                "msvc2015_64/include/QtCore/5.6.2/QtCore"
+            ],
+            "Qt5Core/import_release": [
+                "Qt5Core.lib"
+            ],
+            "Qt5Core/import_debug": [
+                "Qt5Cored.lib"
+            ],
+            "Qt5Core/shared_release": [
+                "Qt5Core.dll"
+            ],
+            "Qt5Core/shared_debug": [
+                "Qt5Cored.dll"
+            ],
+            "Qt5Core/pdb_debug": [
+                "Qt5Cored.pdb"
+            ],
+            "Qt5DBus/defines": [
+                "QT_DBUS_LIB"
+            ],
+            "Qt5DBus/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtDBus"
+            ],
+            "Qt5DBus/import_release": [
+                "Qt5DBus.lib"
+            ],
+            "Qt5DBus/import_debug": [
+                "Qt5DBusd.lib"
+            ],
+            "Qt5DBus/shared_release": [
+                "Qt5DBus.dll"
+            ],
+            "Qt5DBus/shared_debug": [
+                "Qt5DBusd.dll"
+            ],
+            "Qt5DBus/pdb_debug": [
+                "Qt5DBusd.pdb"
+            ],
+            "Qt5Declarative/defines": [
+                "QT_DECLARATIVE_LIB"
+            ],
+            "Qt5Declarative/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtDeclarative"
+            ],
+            "Qt5Declarative/import_release": [
+                "Qt5Declarative.lib"
+            ],
+            "Qt5Declarative/import_debug": [
+                "Qt5Declaratived.lib"
+            ],
+            "Qt5Designer/defines": [
+                "QT_DESIGNER_LIB"
+            ],
+            "Qt5Designer/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtDesigner"
+            ],
+            "Qt5Designer/import_release": [
+                "Qt5Designer.lib"
+            ],
+            "Qt5Designer/import_debug": [
+                "Qt5Designerd.lib"
+            ],
+            "Qt5Designer/shared_release": [
+                "Qt5Designer.dll"
+            ],
+            "Qt5Designer/shared_debug": [
+                "Qt5Designerd.dll"
+            ],
+            "Qt5Designer/pdb_debug": [
+                "Qt5Designerd.pdb"
+            ],
+            "Qt5DesignerComponents/defines": [
+                "QT_DESIGNERCOMPONENTS_LIB"
+            ],
+            "Qt5DesignerComponents/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtDesignerComponents"
+            ],
+            "Qt5DesignerComponents/import_release": [
+                "Qt5DesignerComponents.lib"
+            ],
+            "Qt5DesignerComponents/import_debug": [
+                "Qt5DesignerComponentsd.lib"
+            ],
+            "Qt5DesignerComponents/shared_release": [
+                "Qt5DesignerComponents.dll"
+            ],
+            "Qt5DesignerComponents/shared_debug": [
+                "Qt5DesignerComponentsd.dll"
+            ],
+            "Qt5DesignerComponents/pdb_debug": [
+                "Qt5DesignerComponentsd.pdb"
+            ],
+            "Qt5Gui/defines": [
+                "QT_GUI_LIB"
+            ],
+            "Qt5Gui/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtGui",
+                "msvc2015_64/include/QtGui/5.6.2",
+                "msvc2015_64/include/QtGui/5.6.2/QtGui"
+            ],
+            "Qt5Gui/import_release": [
+                "Qt5Gui.lib"
+            ],
+            "Qt5Gui/import_debug": [
+                "Qt5Guid.lib"
+            ],
+            "Qt5Gui/shared_release": [
+                "Qt5Gui.dll"
+            ],
+            "Qt5Gui/shared_debug": [
+                "Qt5Guid.dll"
+            ],
+            "Qt5Gui/pdb_debug": [
+                "Qt5Guid.pdb"
+            ],
+            "Qt5Help/defines": [
+                "QT_HELP_LIB"
+            ],
+            "Qt5Help/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtHelp"
+            ],
+            "Qt5Help/import_release": [
+                "Qt5Help.lib"
+            ],
+            "Qt5Help/import_debug": [
+                "Qt5Helpd.lib"
+            ],
+            "Qt5Help/shared_release": [
+                "Qt5Help.dll"
+            ],
+            "Qt5Help/shared_debug": [
+                "Qt5Helpd.dll"
+            ],
+            "Qt5Help/pdb_debug": [
+                "Qt5Helpd.pdb"
+            ],
+            "Qt5Multimedia/defines": [
+                "QT_MULTIMEDIA_LIB"
+            ],
+            "Qt5Multimedia/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtMultimedia"
+            ],
+            "Qt5Multimedia/import_release": [
+                "Qt5Multimedia.lib"
+            ],
+            "Qt5Multimedia/import_debug": [
+                "Qt5Multimediad.lib"
+            ],
+            "Qt5Multimedia/shared_release": [
+                "Qt5Multimedia.dll"
+            ],
+            "Qt5Multimedia/shared_debug": [
+                "Qt5Multimediad.dll"
+            ],
+            "Qt5Multimedia/pdb_debug": [
+                "Qt5Multimediad.pdb"
+            ],
+            "Qt5MultimediaWidgets/defines": [
+                "QT_MULTIMEDIAWIDGETS_LIB"
+            ],
+            "Qt5MultimediaWidgets/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtMultimediaWidgets"
+            ],
+            "Qt5MultimediaWidgets/import_release": [
+                "Qt5MultimediaWidgets.lib"
+            ],
+            "Qt5MultimediaWidgets/import_debug": [
+                "Qt5MultimediaWidgetsd.lib"
+            ],
+            "Qt5MultimediaWidgets/shared_release": [
+                "Qt5MultimediaWidgets.dll"
+            ],
+            "Qt5MultimediaWidgets/shared_debug": [
+                "Qt5MultimediaWidgetsd.dll"
+            ],
+            "Qt5MultimediaWidgets/pdb_debug": [
+                "Qt5MultimediaWidgetsd.pdb"
+            ],
+            "Qt5Network/defines": [
+                "QT_NETWORK_LIB"
+            ],
+            "Qt5Network/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtNetwork"
+            ],
+            "Qt5Network/import_release": [
+                "Qt5Network.lib"
+            ],
+            "Qt5Network/import_debug": [
+                "Qt5Networkd.lib"
+            ],
+            "Qt5Network/shared_release": [
+                "Qt5Network.dll"
+            ],
+            "Qt5Network/shared_debug": [
+                "Qt5Networkd.dll"
+            ],
+            "Qt5Network/pdb_debug": [
+                "Qt5Networkd.pdb"
+            ],
+            "Qt5Nfc/defines": [
+                "QT_NFC_LIB"
+            ],
+            "Qt5Nfc/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtNfc"
+            ],
+            "Qt5Nfc/import_release": [
+                "Qt5Nfc.lib"
+            ],
+            "Qt5Nfc/import_debug": [
+                "Qt5Nfcd.lib"
+            ],
+            "Qt5Nfc/shared_release": [
+                "Qt5Nfc.dll"
+            ],
+            "Qt5Nfc/shared_debug": [
+                "Qt5Nfcd.dll"
+            ],
+            "Qt5Nfc/pdb_debug": [
+                "Qt5Nfcd.pdb"
+            ],
+            "Qt5OpenGL/defines": [
+                "QT_OPENGL_LIB"
+            ],
+            "Qt5OpenGL/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtOpenGL"
+            ],
+            "Qt5OpenGL/import_release": [
+                "Qt5OpenGL.lib"
+            ],
+            "Qt5OpenGL/import_debug": [
+                "Qt5OpenGLd.lib"
+            ],
+            "Qt5OpenGL/shared_release": [
+                "Qt5OpenGL.dll"
+            ],
+            "Qt5OpenGL/shared_debug": [
+                "Qt5OpenGLd.dll"
+            ],
+            "Qt5OpenGL/pdb_debug": [
+                "Qt5OpenGLd.pdb"
+            ],
+            "Qt5Positioning/defines": [
+                "QT_POSITIONING_LIB"
+            ],
+            "Qt5Positioning/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtPositioning"
+            ],
+            "Qt5Positioning/import_release": [
+                "Qt5Positioning.lib"
+            ],
+            "Qt5Positioning/import_debug": [
+                "Qt5Positioningd.lib"
+            ],
+            "Qt5Positioning/shared_release": [
+                "Qt5Positioning.dll"
+            ],
+            "Qt5Positioning/shared_debug": [
+                "Qt5Positioningd.dll"
+            ],
+            "Qt5Positioning/pdb_debug": [
+                "Qt5Positioningd.pdb"
+            ],
+            "Qt5PrintSupport/defines": [
+                "QT_PRINTSUPPORT_LIB"
+            ],
+            "Qt5PrintSupport/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtPrintSupport"
+            ],
+            "Qt5PrintSupport/import_release": [
+                "Qt5PrintSupport.lib"
+            ],
+            "Qt5PrintSupport/import_debug": [
+                "Qt5PrintSupportd.lib"
+            ],
+            "Qt5PrintSupport/shared_release": [
+                "Qt5PrintSupport.dll"
+            ],
+            "Qt5PrintSupport/shared_debug": [
+                "Qt5PrintSupportd.dll"
+            ],
+            "Qt5PrintSupport/pdb_debug": [
+                "Qt5PrintSupportd.pdb"
+            ],
+            "Qt5Qml/defines": [
+                "QT_QML_LIB"
+            ],
+            "Qt5Qml/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtQml"
+            ],
+            "Qt5Qml/import_release": [
+                "Qt5Qml.lib"
+            ],
+            "Qt5Qml/import_debug": [
+                "Qt5Qmld.lib"
+            ],
+            "Qt5Qml/shared_release": [
+                "Qt5Qml.dll"
+            ],
+            "Qt5Qml/shared_debug": [
+                "Qt5Qmld.dll"
+            ],
+            "Qt5Qml/pdb_debug": [
+                "Qt5Qmld.pdb"
+            ],
+            "Qt5Quick/defines": [
+                "QT_QUICK_LIB"
+            ],
+            "Qt5Quick/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtQuick"
+            ],
+            "Qt5Quick/import_release": [
+                "Qt5Quick.lib"
+            ],
+            "Qt5Quick/import_debug": [
+                "Qt5Quickd.lib"
+            ],
+            "Qt5Quick/shared_release": [
+                "Qt5Quick.dll"
+            ],
+            "Qt5Quick/shared_debug": [
+                "Qt5Quickd.dll"
+            ],
+            "Qt5Quick/pdb_debug": [
+                "Qt5Quickd.pdb"
+            ],
+            "Qt5QuickParticles/defines": [
+                "QT_QUICKPARTICLES_LIB"
+            ],
+            "Qt5QuickParticles/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtQuickParticles"
+            ],
+            "Qt5QuickParticles/import_release": [
+                "Qt5QuickParticles.lib"
+            ],
+            "Qt5QuickParticles/import_debug": [
+                "Qt5QuickParticlesd.lib"
+            ],
+            "Qt5QuickParticles/shared_release": [
+                "Qt5QuickParticles.dll"
+            ],
+            "Qt5QuickParticles/shared_debug": [
+                "Qt5QuickParticlesd.dll"
+            ],
+            "Qt5QuickParticles/pdb_debug": [
+                "Qt5QuickParticlesd.pdb"
+            ],
+            "Qt5QuickTest/defines": [
+                "QT_QUICKTEST_LIB"
+            ],
+            "Qt5QuickTest/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtQuickTest"
+            ],
+            "Qt5QuickTest/import_release": [
+                "Qt5QuickTest.lib"
+            ],
+            "Qt5QuickTest/import_debug": [
+                "Qt5QuickTestd.lib"
+            ],
+            "Qt5QuickTest/shared_release": [
+                "Qt5QuickTest.dll"
+            ],
+            "Qt5QuickTest/shared_debug": [
+                "Qt5QuickTestd.dll"
+            ],
+            "Qt5QuickTest/pdb_debug": [
+                "Qt5QuickTestd.pdb"
+            ],
+            "QtSensors/defines": [
+                "QT_SENSORS_LIB"
+            ],
+            "QtSensors/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtSensors"
+            ],
+            "Qt5Sensors/import_release": [
+                "Qt5Sensors.lib"
+            ],
+            "Qt5Sensors/import_debug": [
+                "Qt5Sensorsd.lib"
+            ],
+            "Qt5Sensors/shared_release": [
+                "Qt5Sensors.dll"
+            ],
+            "Qt5Sensors/shared_debug": [
+                "Qt5Sensorsd.dll"
+            ],
+            "Qt5Sensors/pdb_debug": [
+                "Qt5Sensorsd.pdb"
+            ],
+            "Qt5SerialPort/defines": [
+                "QT_SERIALPORT_LIB"
+            ],
+            "Qt5SerialPort/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtSerialPort"
+            ],
+            "Qt5SerialPort/import_release": [
+                "Qt5SerialPort.lib"
+            ],
+            "Qt5SerialPort/import_debug": [
+                "Qt5SerialPortd.lib"
+            ],
+            "Qt5SerialPort/shared_release": [
+                "Qt5SerialPort.dll"
+            ],
+            "Qt5SerialPort/shared_debug": [
+                "Qt5SerialPortd.dll"
+            ],
+            "Qt5SerialPort/pdb_debug": [
+                "Qt5SerialPortd.pdb"
+            ],
+            "Qt5Sql/defines": [
+                "QT_SQL_LIB"
+            ],
+            "Qt5Sql/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtSql"
+            ],
+            "Qt5Sql/import_release": [
+                "Qt5Sql.lib"
+            ],
+            "Qt5Sql/import_debug": [
+                "Qt5Sqld.lib"
+            ],
+            "Qt5Sql/shared_release": [
+                "Qt5Sql.dll"
+            ],
+            "Qt5Sql/shared_debug": [
+                "Qt5Sqld.dll"
+            ],
+            "Qt5Sql/pdb_debug": [
+                "Qt5Sqld.pdb"
+            ],
+            "Qt5Svg/defines": [
+                "QT_SVG_LIB"
+            ],
+            "Qt5Svg/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtSvg"
+            ],
+            "Qt5Svg/import_release": [
+                "Qt5Svg.lib"
+            ],
+            "Qt5Svg/import_debug": [
+                "Qt5Svgd.lib"
+            ],
+            "Qt5Svg/shared_release": [
+                "Qt5Svg.dll"
+            ],
+            "Qt5Svg/shared_debug": [
+                "Qt5Svgd.dll"
+            ],
+            "Qt5Svg/pdb_debug": [
+                "Qt5Svgd.pdb"
+            ],
+            "Qt5Test/defines": [
+                "QT_TEST_LIB"
+            ],
+            "Qt5Test/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtTest"
+            ],
+            "Qt5Test/import_release": [
+                "Qt5Test.lib"
+            ],
+            "Qt5Test/import_debug": [
+                "Qt5Testd.lib"
+            ],
+            "Qt5Test/shared_release": [
+                "Qt5Test.dll"
+            ],
+            "Qt5Test/shared_debug": [
+                "Qt5Testd.dll"
+            ],
+            "Qt5Test/pdb_debug": [
+                "Qt5Testd.pdb"
+            ],
+            "Qt5WebKit/defines": [
+                "QT_WEBKIT_LIB"
+            ],
+            "Qt5WebKit/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtWebKit"
+            ],
+            "Qt5WebKit/import_release": [
+                "Qt5WebKit.lib"
+            ],
+            "Qt5WebKit/import_debug": [
+                "Qt5WebKitd.lib"
+            ],
+            "Qt5WebKit/shared_release": [
+                "Qt5WebKit.dll",
+                "Qt5Sensors.dll",
+                "Qt5Positioning.dll",
+                "Qt5WebChannel.dll",
+                "Qt5Multimedia.dll",
+                "Qt5Sql.dll",
+                "icudt54.dll",
+                "icuin54.dll",
+                "icuuc54.dll"
+            ],
+            "Qt5WebKit/shared_debug": [
+                "Qt5WebKitd.dll",
+                "Qt5Sensorsd.dll",
+                "Qt5Positioningd.dll",
+                "Qt5WebChanneld.dll",
+                "Qt5Multimediad.dll",
+                "Qt5Sqld.dll",
+                "icudt54.dll",
+                "icuin54.dll",
+                "icuuc54.dll"
+            ],
+            "Qt5WebKit/pdb_debug": [
+                "Qt5WebKitd.pdb",
+                "Qt5Sensorsd.pdb",
+                "Qt5Positioningd.pdb",
+                "Qt5WebChanneld.pdb",
+                "Qt5Multimediad.pdb",
+                "Qt5Sqld.pdb"
+            ],
+            "Qt5WebKitWidgets/defines": [
+                "QT_WEBKITWIDGETS_LIB"
+            ],
+            "Qt5WebKitWidgets/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtWebKitWidgets"
+            ],
+            "Qt5WebKitWidgets/import_release": [
+                "Qt5WebKitWidgets.lib"
+            ],
+            "Qt5WebKitWidgets/import_debug": [
+                "Qt5WebKitWidgetsd.lib"
+            ],
+            "Qt5WebKitWidgets/shared_release": [
+                "Qt5WebKitWidgets.dll",
+                "Qt5Sensors.dll",
+                "Qt5MultimediaWidgets.dll",
+                "Qt5Multimedia.dll",
+                "Qt5PrintSupport.dll",
+                "icudt54.dll",
+                "icuin54.dll",
+                "icuuc54.dll"
+            ],
+            "Qt5WebKitWidgets/shared_debug": [
+                "Qt5WebKitWidgetsd.dll",
+                "Qt5Sensorsd.dll",
+                "Qt5MultimediaWidgetsd.dll",
+                "Qt5Multimediad.dll",
+                "Qt5PrintSupportd.dll",
+                "icudt54.dll",
+                "icuin54.dll",
+                "icuuc54.dll"
+            ],
+            "Qt5WebKitWidgets/pdb_debug": [
+                "Qt5WebKitWidgetsd.pdb",
+                "Qt5Sensors.pdb",
+                "Qt5MultimediaWidgetsd.pdb",
+                "Qt5Multimediad.pdb",
+                "Qt5PrintSupportd.pdb"
+            ],
+            "Qt5Widgets/defines": [
+                "QT_WIDGETS_LIB"
+            ],
+            "Qt5Widgets/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtWidgets",
+                "msvc2015_64/include/QtWidgets/5.6.2",
+                "msvc2015_64/include/QtWidgets/5.6.2/QtWidgets"
+            ],
+            "Qt5Widgets/import_release": [
+                "Qt5Widgets.lib"
+            ],
+            "Qt5Widgets/import_debug": [
+                "Qt5Widgetsd.lib"
+            ],
+            "Qt5Widgets/shared_release": [
+                "Qt5Widgets.dll"
+            ],
+            "Qt5Widgets/shared_debug": [
+                "Qt5Widgetsd.dll"
+            ],
+            "Qt5Widgets/pdb_debug": [
+                "Qt5Widgetsd.pdb"
+            ],
+            "Qt5WinExtras/defines": [
+                "QT_WINEXTRAS_LIB"
+            ],
+            "Qt5WinExtras/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtWinExtras"
+            ],
+            "Qt5WinExtras/import_release": [
+                "Qt5WinExtras.lib"
+            ],
+            "Qt5WinExtras/import_debug": [
+                "Qt5WinExtrasd.lib"
+            ],
+            "Qt5WinExtras/shared_release": [
+                "Qt5WinExtras.dll"
+            ],
+            "Qt5WinExtras/shared_debug": [
+                "Qt5WinExtrasd.dll"
+            ],
+            "Qt5WinExtras/pdb_debug": [
+                "Qt5WinExtrasd.pdb"
+            ],
+            "Qt5XmlPatterns/defines": [
+                "QT_XMLPATTERNS_LIB"
+            ],
+            "Qt5XmlPatterns/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtXmlPatterns"
+            ],
+            "Qt5XmlPatterns/import_release": [
+                "Qt5XmlPatterns.lib"
+            ],
+            "Qt5XmlPatterns/import_debug": [
+                "Qt5XmlPatternsd.lib"
+            ],
+            "Qt5XmlPatterns/shared_release": [
+                "Qt5XmlPatterns.dll"
+            ],
+            "Qt5XmlPatterns/shared_debug": [
+                "Qt5XmlPatternsd.dll"
+            ],
+            "Qt5XmlPatterns/pdb_debug": [
+                "Qt5XmlPatternsd.pdb"
+            ],
+            "Qt5Xml/defines": [
+                "QT_XML_LIB"
+            ],
+            "Qt5Xml/includes": [
+                "msvc2015_64/include",
+                "msvc2015_64/include/QtXml"
+            ],
+            "Qt5Xml/import_release": [
+                "Qt5Xml.lib"
+            ],
+            "Qt5Xml/import_debug": [
+                "Qt5Xmld.lib"
+            ],
+            "Qt5Xml/shared_release": [
+                "Qt5Xml.dll"
+            ],
+            "Qt5Xml/shared_debug": [
+                "Qt5Xmld.dll"
+            ],
+            "Qt5Xml/pdb_debug": [
+                "Qt5Xmld.pdb"
+            ]
+        }
+    }
+}

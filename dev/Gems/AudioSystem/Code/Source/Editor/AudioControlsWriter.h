@@ -13,13 +13,18 @@
 
 #pragma once
 
-#include <CryString.h>
-#include <IAudioConnection.h>
-#include <AudioControl.h>
+#include <AzCore/std/containers/map.h>
+#include <AzCore/std/containers/set.h>
+#include <AzCore/std/string/string_view.h>
+
+#include <ACETypes.h>
 #include <ATLCommon.h>
-#include <IXml.h>
-#include <QModelIndex>
+#include <AudioControl.h>
+#include <IAudioConnection.h>
 #include <ISystem.h>
+#include <QModelIndex>
+
+#include <IXml.h>
 
 class QStandardItemModel;
 
@@ -32,44 +37,42 @@ namespace AudioControls
     struct SLibraryScope
     {
         SLibraryScope()
-            : bDirty(false)
+            : m_isDirty(false)
         {
-            pNodes[eACET_TRIGGER] = GetISystem()->CreateXmlNode(Audio::SATLXmlTags::sTriggersNodeTag);
-            pNodes[eACET_RTPC] = GetISystem()->CreateXmlNode(Audio::SATLXmlTags::sRtpcsNodeTag);
-            pNodes[eACET_SWITCH] = GetISystem()->CreateXmlNode(Audio::SATLXmlTags::sSwitchesNodeTag);
-            pNodes[eACET_ENVIRONMENT] = GetISystem()->CreateXmlNode(Audio::SATLXmlTags::sEnvironmentsNodeTag);
-            pNodes[eACET_PRELOAD] = GetISystem()->CreateXmlNode(Audio::SATLXmlTags::sPreloadsNodeTag);
+            m_nodes[eACET_TRIGGER] = GetISystem()->CreateXmlNode(Audio::ATLXmlTags::TriggersNodeTag);
+            m_nodes[eACET_RTPC] = GetISystem()->CreateXmlNode(Audio::ATLXmlTags::RtpcsNodeTag);
+            m_nodes[eACET_SWITCH] = GetISystem()->CreateXmlNode(Audio::ATLXmlTags::SwitchesNodeTag);
+            m_nodes[eACET_ENVIRONMENT] = GetISystem()->CreateXmlNode(Audio::ATLXmlTags::EnvironmentsNodeTag);
+            m_nodes[eACET_PRELOAD] = GetISystem()->CreateXmlNode(Audio::ATLXmlTags::PreloadsNodeTag);
         }
-        XmlNodeRef pNodes[eACET_NUM_TYPES];
-        bool bDirty;
+        XmlNodeRef m_nodes[eACET_NUM_TYPES];
+        bool m_isDirty;
     };
 
-    typedef std::map<string, SLibraryScope> TLibraryStorage;
+    typedef AZStd::map<AZStd::string, SLibraryScope> TLibraryStorage;
 
     //-------------------------------------------------------------------------------------------//
     class CAudioControlsWriter
     {
     public:
-        CAudioControlsWriter(CATLControlsModel* pATLModel, QStandardItemModel* pLayoutModel, IAudioSystemEditor* pAudioSystemImpl, std::set<string>& previousLibraryPaths);
+        CAudioControlsWriter(CATLControlsModel* pATLModel, QStandardItemModel* pLayoutModel, IAudioSystemEditor* pAudioSystemImpl, AZStd::set<AZStd::string>& previousLibraryPaths);
 
     private:
-        void WriteLibrary(const string& sLibraryName, QModelIndex root);
-        void WriteItem(QModelIndex index, const string& sPath, TLibraryStorage& library, bool bParentModified);
-        void WriteControlToXML(XmlNodeRef pNode, CATLControl* pControl, const string& sPath);
-        void WriteConnectionsToXML(XmlNodeRef pNode, CATLControl* pControl, const string& sGroup = "");
-        void WritePlatformsToXML(XmlNodeRef pNode, CATLControl* pControl);
+        void WriteLibrary(const AZStd::string_view sLibraryName, QModelIndex root);
+        void WriteItem(QModelIndex index, const AZStd::string& sPath, TLibraryStorage& library, bool bParentModified);
+        void WriteControlToXml(XmlNodeRef pNode, CATLControl* pControl, const AZStd::string_view sPath);
+        void WriteConnectionsToXml(XmlNodeRef pNode, CATLControl* pControl, const AZStd::string& sGroup = "");
+        void WritePlatformsToXml(XmlNodeRef pNode, CATLControl* pControl);
         bool IsItemModified(QModelIndex index);
 
-        void CheckOutFile(const string& filepath);
-        void DeleteLibraryFile(const string& filepath);
+        void CheckOutFile(const AZStd::string& filepath);
+        void DeleteLibraryFile(const AZStd::string& filepath);
 
         CATLControlsModel* m_pATLModel;
         QStandardItemModel* m_pLayoutModel;
         IAudioSystemEditor* m_pAudioSystemImpl;
 
-        std::set<string> m_foundLibraryPaths;
-
-        static const char* ms_sLevelsFolder;
-        static const char* ms_sLibraryExtension;
+        AZStd::set<AZStd::string> m_foundLibraryPaths;
     };
+
 } // namespace AudioControls

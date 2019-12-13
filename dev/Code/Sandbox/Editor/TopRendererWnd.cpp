@@ -13,13 +13,19 @@
 
 #include "StdAfx.h"
 #include "TopRendererWnd.h"
+
+#ifdef LY_TERRAIN_EDITOR
 #include "./Terrain/Heightmap.h"
+#endif //#ifdef LY_TERRAIN_EDITOR
+
 #include "VegetationMap.h"
 #include "DisplaySettings.h"
 #include "ViewManager.h"
 
+#ifdef LY_TERRAIN_EDITOR
 #include "./Terrain/TerrainTexGen.h"
 #include "TerrainModifyTool.h"
+#endif //#ifdef LY_TERRAIN_EDITOR
 
 // Size of the surface texture
 #define SURFACE_TEXTURE_WIDTH 512
@@ -153,6 +159,7 @@ void QTopRendererWnd::UpdateContent(int flags)
         return;
     }
 
+#ifdef LY_TERRAIN_EDITOR
     CHeightmap* heightmap = GetIEditor()->GetHeightmap();
     if (!heightmap)
     {
@@ -176,11 +183,13 @@ void QTopRendererWnd::UpdateContent(int flags)
         InitHeightmapAlignment();
     }
     m_bFirstTerrainUpdate = false;
+#endif //#ifdef LY_TERRAIN_EDITOR
 }
 
 //////////////////////////////////////////////////////////////////////////
 void QTopRendererWnd::InitHeightmapAlignment()
 {
+#ifdef LY_TERRAIN_EDITOR
     CHeightmap* heightmap = GetIEditor()->GetHeightmap();
     if (heightmap)
     {
@@ -194,11 +203,13 @@ void QTopRendererWnd::InitHeightmapAlignment()
             SetScrollOffset(-10, -10);
         }
     }
+#endif //#ifdef LY_TERRAIN_EDITOR
 }
 
 //////////////////////////////////////////////////////////////////////////
 void QTopRendererWnd::UpdateSurfaceTexture(int flags)
 {
+#ifdef LY_TERRAIN_EDITOR
     ////////////////////////////////////////////////////////////////////////
     // Generate a new surface texture
     ////////////////////////////////////////////////////////////////////////
@@ -268,6 +279,7 @@ void QTopRendererWnd::UpdateSurfaceTexture(int flags)
         }
     }
     m_bContentValid = false;
+#endif //#ifdef LY_TERRAIN_EDITOR
 }
 
 //////////////////////////////////////////////////////////////////////////

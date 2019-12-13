@@ -97,11 +97,19 @@ namespace PhysX
         /// Enable Global Collision Debug Draw
         enum class GlobalCollisionDebugState
         {
-            AlwaysOn,         // Collision draw debug all entites 
-            AlwaysOff,        // Collision debug draw disabled
-            Manual            // Set up in the entity
+            AlwaysOn,         ///< Collision draw debug all entities.
+            AlwaysOff,        ///< Collision debug draw disabled.
+            Manual            ///< Set up in the entity.
         };
         GlobalCollisionDebugState m_globalCollisionDebugDraw = GlobalCollisionDebugState::Manual;
+
+        /// Color scheme for debug collision
+        enum class GlobalCollisionDebugColorMode
+        {
+            MaterialColor,   ///< Use debug color specified in the material library
+            ErrorColor       ///< Show default color and flashing red for colliders with errors.
+        };
+        GlobalCollisionDebugColorMode m_globalCollisionDebugDrawColorMode = GlobalCollisionDebugColorMode::MaterialColor;
     };
 
     /// Configuration structure for PhysX.
@@ -122,7 +130,7 @@ namespace PhysX
         // Configuration is loaded very early on when the asset system is not yet initialized
         // We have to set the NoLoad rule here to avoid having a dummy asset with no valid data
         AZ::Data::Asset<Physics::MaterialLibraryAsset> m_materialLibrary 
-            = AZ::Data::AssetLoadBehavior::NoLoad;  ///< Project-wide Physics Material library.
+            = AZ::Data::AssetLoadBehavior::NoLoad;  ///< Project-wide Default Physics Material library.
     };
 
     /// Configuration requests.
@@ -152,6 +160,9 @@ namespace PhysX
 
         /// Raised when the PhysX configuration has been refreshed.
         virtual void OnConfigurationRefreshed(const Configuration&) {};
+
+        /// Raised when the PhysX default material library has changed
+        virtual void OnDefaultMaterialLibraryChanged(const AZ::Data::AssetId&) {}
 
     protected:
         ~ConfigurationNotifications() = default;

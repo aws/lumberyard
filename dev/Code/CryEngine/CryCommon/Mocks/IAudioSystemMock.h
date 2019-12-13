@@ -31,7 +31,7 @@ namespace Audio
         MOCK_METHOD2(SetRtpcValue, void(const TAudioControlID nRtpcID, const float fValue));
         MOCK_METHOD1(SetObstructionCalcType, void(const EAudioObjectObstructionCalcType eObstructionType));
         MOCK_METHOD1(SetPosition, void(const SATLWorldPosition& rPosition));
-        MOCK_METHOD1(SetPosition, void(const Vec3& rPosition));
+        MOCK_METHOD1(SetPosition, void(const AZ::Vector3& rPosition));
         MOCK_METHOD2(SetEnvironmentAmount, void(const TAudioEnvironmentID nEnvironmentID, const float fAmount));
         MOCK_METHOD1(SetCurrentEnvironments, void(const EntityId nEntityToIgnore /* = 0 */));
         MOCK_METHOD1(SetLipSyncProvider, void(ILipSyncProvider* const pILipSyncProvider));

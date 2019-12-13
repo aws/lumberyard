@@ -11,105 +11,10 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "ATLEntities.h"
-
-#include <AzCore/AzCore_Traits_Platform.h>
+#include <ATLEntities.h>
 
 namespace Audio
 {
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    const char* const SATLXmlTags::sPlatform = AZ_TRAIT_OS_PLATFORM_NAME;
-
-    const char* const SATLXmlTags::sRootNodeTag = "ATLConfig";
-    const char* const SATLXmlTags::sTriggersNodeTag = "AudioTriggers";
-    const char* const SATLXmlTags::sRtpcsNodeTag = "AudioRtpcs";
-    const char* const SATLXmlTags::sSwitchesNodeTag = "AudioSwitches";
-    const char* const SATLXmlTags::sPreloadsNodeTag = "AudioPreloads";
-    const char* const SATLXmlTags::sEnvironmentsNodeTag = "AudioEnvironments";
-
-    const char* const SATLXmlTags::sATLTriggerTag = "ATLTrigger";
-    const char* const SATLXmlTags::sATLSwitchTag = "ATLSwitch";
-    const char* const SATLXmlTags::sATLRtpcTag = "ATLRtpc";
-    const char* const SATLXmlTags::sATLSwitchStateTag = "ATLSwitchState";
-    const char* const SATLXmlTags::sATLEnvironmentTag = "ATLEnvironment";
-    const char* const SATLXmlTags::sATLPlatformsTag = "ATLPlatforms";
-    const char* const SATLXmlTags::sATLConfigGroupTag = "ATLConfigGroup";
-
-    const char* const SATLXmlTags::sATLTriggerRequestTag = "ATLTriggerRequest";
-    const char* const SATLXmlTags::sATLSwitchRequestTag = "ATLSwitchRequest";
-    const char* const SATLXmlTags::sATLRtpcRequestTag = "ATLRtpcRequest";
-    const char* const SATLXmlTags::sATLPreloadRequestTag = "ATLPreloadRequest";
-    const char* const SATLXmlTags::sATLEnvironmentRequestTag = "ATLEnvironmentRequest";
-    const char* const SATLXmlTags::sATLValueTag = "ATLValue";
-
-    const char* const SATLXmlTags::sATLNameAttribute = "atl_name";
-    const char* const SATLXmlTags::sATLInternalNameAttribute = "atl_internal_name";
-    const char* const SATLXmlTags::sATLTypeAttribute = "atl_type";
-    const char* const SATLXmlTags::sATLConfigGroupAttribute = "atl_config_group_name";
-
-    const char* const SATLXmlTags::sATLDataLoadType = "AutoLoad";
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    const char* const SATLInternalControlNames::sLoseFocusName = "lose_focus";
-    const char* const SATLInternalControlNames::sGetFocusName = "get_focus";
-    const char* const SATLInternalControlNames::sMuteAllName = "mute_all";
-    const char* const SATLInternalControlNames::sUnmuteAllName = "unmute_all";
-    const char* const SATLInternalControlNames::sDoNothingName = "do_nothing";
-    const char* const SATLInternalControlNames::sObjectSpeedName = "object_speed";
-    const char* const SATLInternalControlNames::sObstructionOcclusionCalcName = "ObstructionOcclusionCalculationType";
-    const char* const SATLInternalControlNames::sOOCIgnoreStateName = "Ignore";
-    const char* const SATLInternalControlNames::sOOCSingleRayStateName = "SingleRay";
-    const char* const SATLInternalControlNames::sOOCMultiRayStateName = "MultiRay";
-    const char* const SATLInternalControlNames::sObjectVelocityTrackingName = "object_velocity_tracking";
-    const char* const SATLInternalControlNames::sOVTOnStateName = "on";
-    const char* const SATLInternalControlNames::sOVTOffStateName = "off";
-    const char* const SATLInternalControlNames::sGlobalPreloadRequestName = "global_atl_preloads";
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    TAudioControlID SATLInternalControlIDs::nLoseFocusTriggerID = INVALID_AUDIO_CONTROL_ID;
-    TAudioControlID SATLInternalControlIDs::nGetFocusTriggerID = INVALID_AUDIO_CONTROL_ID;
-    TAudioControlID SATLInternalControlIDs::nMuteAllTriggerID = INVALID_AUDIO_CONTROL_ID;
-    TAudioControlID SATLInternalControlIDs::nUnmuteAllTriggerID = INVALID_AUDIO_CONTROL_ID;
-    TAudioControlID SATLInternalControlIDs::nDoNothingTriggerID = INVALID_AUDIO_CONTROL_ID;
-    TAudioControlID SATLInternalControlIDs::nObjectSpeedRtpcID = INVALID_AUDIO_CONTROL_ID;
-    TAudioControlID SATLInternalControlIDs::nObstructionOcclusionCalcSwitchID = INVALID_AUDIO_CONTROL_ID;
-    TAudioSwitchStateID SATLInternalControlIDs::nOOCStateIDs[eAOOCT_COUNT] =
-    {
-        INVALID_AUDIO_SWITCH_STATE_ID,
-        INVALID_AUDIO_SWITCH_STATE_ID,
-        INVALID_AUDIO_SWITCH_STATE_ID,
-        INVALID_AUDIO_SWITCH_STATE_ID,
-    };
-    TAudioControlID SATLInternalControlIDs::nObjectVelocityTrackingSwitchID = INVALID_AUDIO_CONTROL_ID;
-    TAudioSwitchStateID SATLInternalControlIDs::nOVTOnStateID = INVALID_AUDIO_SWITCH_STATE_ID;
-    TAudioSwitchStateID SATLInternalControlIDs::nOVTOffStateID = INVALID_AUDIO_SWITCH_STATE_ID;
-    TAudioPreloadRequestID SATLInternalControlIDs::nGlobalPreloadRequestID = INVALID_AUDIO_PRELOAD_REQUEST_ID;
-
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void InitATLControlIDs()
-    {
-        // initializes the values in SATLInternalControlIDs
-        SATLInternalControlIDs::nLoseFocusTriggerID = AudioStringToID<TAudioControlID>(SATLInternalControlNames::sLoseFocusName);
-        SATLInternalControlIDs::nGetFocusTriggerID = AudioStringToID<TAudioControlID>(SATLInternalControlNames::sGetFocusName);
-        SATLInternalControlIDs::nMuteAllTriggerID = AudioStringToID<TAudioControlID>(SATLInternalControlNames::sMuteAllName);
-        SATLInternalControlIDs::nUnmuteAllTriggerID = AudioStringToID<TAudioControlID>(SATLInternalControlNames::sUnmuteAllName);
-        SATLInternalControlIDs::nDoNothingTriggerID = AudioStringToID<TAudioControlID>(SATLInternalControlNames::sDoNothingName);
-        SATLInternalControlIDs::nObjectSpeedRtpcID = AudioStringToID<TAudioControlID>(SATLInternalControlNames::sObjectSpeedName);
-
-        SATLInternalControlIDs::nObstructionOcclusionCalcSwitchID = AudioStringToID<TAudioControlID>(SATLInternalControlNames::sObstructionOcclusionCalcName);
-        SATLInternalControlIDs::nOOCStateIDs[eAOOCT_IGNORE] = AudioStringToID<TAudioSwitchStateID>(SATLInternalControlNames::sOOCIgnoreStateName);
-        SATLInternalControlIDs::nOOCStateIDs[eAOOCT_SINGLE_RAY] = AudioStringToID<TAudioSwitchStateID>(SATLInternalControlNames::sOOCSingleRayStateName);
-        SATLInternalControlIDs::nOOCStateIDs[eAOOCT_MULTI_RAY] = AudioStringToID<TAudioSwitchStateID>(SATLInternalControlNames::sOOCMultiRayStateName);
-
-        SATLInternalControlIDs::nObjectVelocityTrackingSwitchID = AudioStringToID<TAudioControlID>(SATLInternalControlNames::sObjectVelocityTrackingName);
-        SATLInternalControlIDs::nOVTOnStateID = AudioStringToID<TAudioSwitchStateID>(SATLInternalControlNames::sOVTOnStateName);
-        SATLInternalControlIDs::nOVTOffStateID = AudioStringToID<TAudioSwitchStateID>(SATLInternalControlNames::sOVTOffStateName);
-
-        SATLInternalControlIDs::nGlobalPreloadRequestID = AudioStringToID<TAudioPreloadRequestID>(SATLInternalControlNames::sGlobalPreloadRequestName);
-    }
-
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     CATLDebugNameStore::CATLDebugNameStore()
@@ -127,12 +32,6 @@ namespace Audio
     {
         // the containers only hold numbers and strings, no ATL specific objects,
         // so there is no need to call the implementation to do the cleanup
-        stl::free_container(m_cATLObjectNames);
-        stl::free_container(m_cATLTriggerNames);
-        stl::free_container(m_cATLSwitchNames);
-        stl::free_container(m_cATLRtpcNames);
-        stl::free_container(m_cATLPreloadRequestNames);
-        stl::free_container(m_cATLEnvironmentNames);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

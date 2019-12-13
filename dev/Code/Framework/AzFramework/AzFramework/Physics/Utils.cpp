@@ -140,6 +140,7 @@ namespace Physics
             SphereShapeConfiguration::Reflect(context);
             PhysicsAssetShapeConfiguration::Reflect(context);
             NativeShapeConfiguration::Reflect(context);
+            CookedMeshShapeConfiguration::Reflect(context);
             CollisionLayer::Reflect(context);
             CollisionGroup::Reflect(context);
             CollisionLayers::Reflect(context);
@@ -148,6 +149,7 @@ namespace Physics
             MaterialConfiguration::Reflect(context);
             MaterialLibraryAsset::Reflect(context);
             MaterialLibraryAssetReflectionWrapper::Reflect(context);
+            DefaultMaterialLibraryAssetReflectionWrapper::Reflect(context);
             JointLimitConfiguration::Reflect(context);
             WorldBodyConfiguration::Reflect(context);
             RigidBodyConfiguration::Reflect(context);
@@ -161,6 +163,7 @@ namespace Physics
             TriggerNotificationBusBehaviorHandler::Reflect(context);
             CollisionNotificationBusBehaviorHandler::Reflect(context);
             RayCastHit::Reflect(context);
+            WorldNotificationBusBehaviorHandler::Reflect(context);
         }
     }
 

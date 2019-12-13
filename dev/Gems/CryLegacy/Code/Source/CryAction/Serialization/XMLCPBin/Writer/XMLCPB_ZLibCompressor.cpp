@@ -135,6 +135,8 @@ namespace XMLCPB
         #include "Xenia/XMLCPB_ZLibCompressor_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/XMLCPB_ZLibCompressor_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/XMLCPB_ZLibCompressor_cpp_salem.inl"
     #endif
 #endif
 

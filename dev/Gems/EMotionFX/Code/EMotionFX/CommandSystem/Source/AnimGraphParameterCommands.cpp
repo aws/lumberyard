@@ -764,6 +764,16 @@ namespace CommandSystem
             return true;
         }
 
+        // Remove the parameter from all corresponding anim graph instances if it is a value parameter
+        const size_t numInstances = animGraph->GetNumAnimGraphInstances();
+        for (size_t i = 0; i < numInstances; ++i)
+        {
+            EMotionFX::AnimGraphInstance* animGraphInstance = animGraph->GetAnimGraphInstance(i);
+            // Remove the parameter and add it to the new position
+            animGraphInstance->RemoveParameterValue(static_cast<uint32>(valueIndexBeforeMove.GetValue()));
+            animGraphInstance->InsertParameterValue(static_cast<uint32>(valueIndexAfterMove.GetValue()));
+        }
+
         EMotionFX::ValueParameterVector valueParametersAfterChange = animGraph->RecursivelyGetValueParameters();
 
         AZStd::vector<EMotionFX::AnimGraphObject*> affectedObjects;
@@ -774,16 +784,6 @@ namespace CommandSystem
         {
             EMotionFX::ObjectAffectedByParameterChanges* affectedObjectByParameterChanges = azdynamic_cast<EMotionFX::ObjectAffectedByParameterChanges*>(affectedObject);
             affectedObjectByParameterChanges->ParameterOrderChanged(valueParametersBeforeChange, valueParametersAfterChange);
-        }
-
-        // Remove the parameter from all corresponding anim graph instances if it is a value parameter
-        const size_t numInstances = animGraph->GetNumAnimGraphInstances();
-        for (size_t i = 0; i < numInstances; ++i)
-        {
-            EMotionFX::AnimGraphInstance* animGraphInstance = animGraph->GetAnimGraphInstance(i);
-            // Remove the parameter and add it to the new position
-            animGraphInstance->RemoveParameterValue(static_cast<uint32>(valueIndexBeforeMove.GetValue()));
-            animGraphInstance->InsertParameterValue(static_cast<uint32>(valueIndexAfterMove.GetValue()));
         }
 
         // Save the current dirty flag and tell the anim graph that something got changed.

@@ -752,7 +752,7 @@ inline AZ::IO::HandleType fxopen(const char* file, const char* mode, bool bGameR
         char path[_MAX_PATH];
         const char* szAdjustedPath = gEnv->pCryPak->AdjustFileName(file, path, AZ_ARRAY_SIZE(path), nAdjustFlags);
 
-#if !defined(LINUX) && !defined(APPLE)
+#if !AZ_TRAIT_LEGACY_CRYPAK_UNIX_LIKE_FILE_SYSTEM
         if (bWriteAccess)
         {
             // Make sure folder is created.

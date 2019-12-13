@@ -25,7 +25,7 @@
 //////////////////////////////////////////////////////////////////////////
 // PowerVR PVRTexLib
 
-//  Igor: this is required by the latest PTRTexTool
+//  this is required by the latest PTRTexTool
 #if defined(AZ_PLATFORM_WINDOWS)
 #define _WINDLL_IMPORT
 #endif
@@ -269,9 +269,9 @@ ImageToProcess::EResult ImageToProcess::ConvertFormatWithPVRTCCompressor(const C
         bool isNonOpaqueAlpha = get()->HasNonOpaqueAlpha();
         bool isNormalGlossTexture = SuffixUtil::HasSuffix(pProps->GetSourceFileName(), '_', "ddna");
         const EPixelFormat destinationAlphaFormat = pProps->GetDestAlphaPixelFormat();       
-
-        std::auto_ptr<ImageObject> pRet(get()->AllocateImage(0, fmtDst));
-        
+        AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+        std::unique_ptr<ImageObject> pRet(get()->AllocateImage(0, fmtDst));
+        AZ_POP_DISABLE_WARNING
         //Create a new texture and copy the alpha channel to it. This will be used to create the smoothness texture for m_pAttachedImage.
         ImageToProcess tempAlphaImageToProcess(
             get()->GetPixelFormat() == ePixelFormat_A32B32G32R32F && destinationAlphaFormat != ePixelFormat_A8
@@ -303,8 +303,9 @@ ImageToProcess::EResult ImageToProcess::ConvertFormatWithPVRTCCompressor(const C
                     //For pvrtc compression format do it right away instead of calling ConvertFormat as we do not know when to stop the recursion.
                     if (FindPvrPixelFormat(destinationAlphaFormat) != ePVRTPF_NumCompressedPFs)
                     {
-                        std::auto_ptr<ImageObject> smoothnesAttachedImage(tempAlphaImageToProcess.get()->AllocateImage(0, destinationAlphaFormat));
-
+                        AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+                        std::unique_ptr<ImageObject> smoothnesAttachedImage(tempAlphaImageToProcess.get()->AllocateImage(0, destinationAlphaFormat));
+                        AZ_POP_DISABLE_WARNING
                         //Convert to ePixelFormat_A8R8G8B8 before being compressed
                         tempAlphaImageToProcess.ConvertFromA8ToARGB8();
                         tempAlphaImageToProcess.get()->SetConstantAlpha(255); //Mask out the alpha for better compression
@@ -366,7 +367,9 @@ ImageToProcess::EResult ImageToProcess::ConvertFormatWithPVRTCCompressor(const C
     if (FindPvrPixelFormat(get()->GetPixelFormat()) != ePVRTPF_NumCompressedPFs)
     {
         //Decompress the pvrtc texture so that it can be viewed through imagedialog
-        std::auto_ptr<ImageObject> finalDecompressedImg(get()->AllocateImage(0, ePixelFormat_A8R8G8B8));
+        AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+        std::unique_ptr<ImageObject> finalDecompressedImg(get()->AllocateImage(0, ePixelFormat_A8R8G8B8));
+        AZ_POP_DISABLE_WARNING
         EResult decompressionResult = DecompressPVRTCTexture(pProps, fmtDst, finalDecompressedImg.get());
         assert(decompressionResult == eResult_Success);
         
@@ -375,8 +378,10 @@ ImageToProcess::EResult ImageToProcess::ConvertFormatWithPVRTCCompressor(const C
         //Since we blanked out the alpha during the compression phase we will need to recreate the alpha which holds smoothness data. 
         //Check if an attached image exists as it represents the smoothness data. This will then need to be decompressed and copied into the alpha channel of finalDecompressedImg
         if (smoothnesAttachedImage )
-        {            
-            std::auto_ptr<ImageObject> decompressedSmoothnessImgObj(smoothnesAttachedImage->AllocateImage(0, ePixelFormat_A8R8G8B8));            
+        {
+            AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+            std::unique_ptr<ImageObject> decompressedSmoothnessImgObj(smoothnesAttachedImage->AllocateImage(0, ePixelFormat_A8R8G8B8));            
+            AZ_POP_DISABLE_WARNING
             bool isCompressed = smoothnesAttachedImage->GetPixelFormat() != ePixelFormat_A8;
             if (isCompressed)
             {                

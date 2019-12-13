@@ -16,7 +16,6 @@
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include "SliceBuilderWorker.h"
-#include "UiSliceBuilderWorker.h"
 
 namespace SliceBuilder
 {
@@ -41,6 +40,5 @@ namespace SliceBuilder
         BuilderPluginComponent(const BuilderPluginComponent&) = delete;
 
         AZStd::unique_ptr<SliceBuilderWorker> m_sliceBuilder;
-        UiSliceBuilderWorker m_uiSliceBuilder;
     };
 }

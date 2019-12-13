@@ -13,6 +13,8 @@
 #pragma once
 
 #include <FileCacheManager.h>
+
+#include <AzTest/AzTest.h>
 #include <IRenderAuxGeom.h>
 
 namespace Audio
@@ -25,7 +27,7 @@ namespace Audio
         MOCK_METHOD0(Release, void());
         MOCK_METHOD0(Update, void());
 
-        MOCK_METHOD3(TryAddFileCacheEntry, TAudioFileEntryID(const XmlNodeRef, const EATLDataScope, const bool));
+        MOCK_METHOD3(TryAddFileCacheEntry, TAudioFileEntryID(const AZ::rapidxml::xml_node<char>*, const EATLDataScope, const bool));
         MOCK_METHOD2(TryRemoveFileCacheEntry, bool(const TAudioFileEntryID, const EATLDataScope));
 
         MOCK_METHOD0(UpdateLocalizedFileCacheEntries, void());
@@ -42,11 +44,12 @@ namespace Audio
         MOCK_METHOD3(UncacheFileCacheEntryInternal, bool(CATLAudioFileEntry* const, const bool, const bool));
         MOCK_METHOD1(DoesRequestFitInternal, bool(const size_t));
         MOCK_METHOD3(FinishCachingFileInternal, bool(CATLAudioFileEntry* const, AZ::IO::SizeType, AZ::IO::Request::StateType));
+        MOCK_METHOD0(UpdatePreloadRequestStatus, void());
 
-        MOCK_METHOD1(FinishAsyncStreamRequest, void(FileStreamCompletionState));
+        MOCK_METHOD1(FinishAsyncStreamRequest, void(AsyncStreamCompletionState));
         MOCK_METHOD4(OnAsyncStreamFinished, void(AZ::IO::RequestHandle, AZ::IO::SizeType, void*, AZ::IO::Request::StateType));
 
-        MOCK_METHOD1(AllocateMemoryBlockInternal, bool(CATLAudioFileEntry* const __restrict));
+        MOCK_METHOD1(AllocateMemoryBlockInternal, bool(CATLAudioFileEntry* const));
         MOCK_METHOD1(UncacheFile, void(CATLAudioFileEntry* const));
         MOCK_METHOD0(TryToUncacheFiles, void());
 

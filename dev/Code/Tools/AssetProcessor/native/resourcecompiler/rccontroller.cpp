@@ -77,17 +77,13 @@ namespace AssetProcessor
         Q_ASSERT(rcJob);
         // request to be notified when job is done
         QObject::connect(rcJob, &RCJob::Finished, this, [this, rcJob]()
-            {
-            FinishJob(rcJob);
-            }, Qt::QueuedConnection);
-
-        QObject::connect(rcJob, &RCJob::BeginWork, this, [this, rcJob]()
         {
-            m_RCJobListModel.markAsStarted(rcJob);
+            FinishJob(rcJob);
         }, Qt::QueuedConnection);
 
         // Mark as "being processed" by moving to Processing list
         m_RCJobListModel.markAsProcessing(rcJob);
+        m_RCJobListModel.markAsStarted(rcJob);
         Q_EMIT JobStatusChanged(rcJob->GetJobEntry(), AzToolsFramework::AssetSystem::JobStatus::InProgress);
         rcJob->Start();
         Q_EMIT JobStarted(rcJob->GetJobEntry().m_pathRelativeToWatchFolder, QString::fromUtf8(rcJob->GetPlatformInfo().m_identifier.c_str()));
@@ -154,7 +150,7 @@ namespace AssetProcessor
             Q_EMIT FileCompiled(rcJob->GetJobEntry(), AZStd::move(rcJob->GetProcessJobResponse()));
             Q_EMIT JobStatusChanged(rcJob->GetJobEntry(), AzToolsFramework::AssetSystem::JobStatus::Completed);
         }
-
+        
         // Move to Completed list which will mark as "completed"
         // unless a different state has been set.
         m_RCJobListModel.markAsCompleted(rcJob);
@@ -199,25 +195,39 @@ namespace AssetProcessor
             if (existingJobIndex != -1)
             {
                 RCJob* job = m_RCJobListModel.getItem(existingJobIndex);
+                bool cancelJob = false;
 
                 if (job->GetJobEntry().m_computedFingerprint != details.m_jobEntry.m_computedFingerprint)
                 {
                     AZ_TracePrintf(AssetProcessor::DebugChannel, "Cancelling Job [%s, %s, %s] with old FP %u, replacing with new FP %u \n", checkFile.GetInputAssetName().toUtf8().data(), checkFile.GetPlatform().toUtf8().data(), checkFile.GetJobDescriptor().toUtf8().data(), job->GetJobEntry().m_computedFingerprint, details.m_jobEntry.m_computedFingerprint);
-                    job->SetState(RCJob::JobState::cancelled);
-                    AssetBuilderSDK::JobCommandBus::Event(job->GetJobEntry().m_jobRunKey, &AssetBuilderSDK::JobCommandBus::Events::Cancel);
-                    m_RCJobListModel.UpdateRow(existingJobIndex);
+                    cancelJob = true;
+                }
+                else if(!job->GetJobDependencies().empty())
+                {
+                    // If a job has dependencies, it's very likely it was re-queued as a result of a dependency being changed
+                    // The in-flight job is probably going to fail at best, or use old data at worst, so cancel the in-flight job
+
+                    AZ_TracePrintf(AssetProcessor::DebugChannel, "Cancelling Job with dependencies [%s, %s, %s], replacing with re-queued job\n", 
+                        checkFile.GetInputAssetName().toUtf8().data(), checkFile.GetPlatform().toUtf8().data(), checkFile.GetJobDescriptor().toUtf8().data());
+                    cancelJob = true;
                 }
                 else
                 {
                     AZ_TracePrintf(AssetProcessor::DebugChannel, "Job is already in progress but has the same computed fingerprint (%u) - ignored [%s, %s, %s]\n", details.m_jobEntry.m_computedFingerprint,  checkFile.GetInputAssetName().toUtf8().data(), checkFile.GetPlatform().toUtf8().data(), checkFile.GetJobDescriptor().toUtf8().data());
                     return;
                 }
+
+                if(cancelJob)
+                {
+                    job->SetState(RCJob::JobState::cancelled);
+                    AssetBuilderSDK::JobCommandBus::Event(job->GetJobEntry().m_jobRunKey, &AssetBuilderSDK::JobCommandBus::Events::Cancel);
+                    m_RCJobListModel.UpdateRow(existingJobIndex);
+                }
             }
         }
 
         RCJob* rcJob = new RCJob(&m_RCJobListModel);
         rcJob->Init(details); // note - move operation.  From this point on you must use the job details to refer to it.
-
         m_RCQueueSortModel.AddJobIdEntry(rcJob);
         m_RCJobListModel.addNewJob(rcJob);
         QString platformName = rcJob->GetPlatformInfo().m_identifier.c_str();// we need to get the actual platform from the rcJob
@@ -357,7 +367,7 @@ namespace AssetProcessor
     void RCController::RemoveJobsBySource(QString relSourceFileDatabaseName)
     {
         // some jobs may have not been started yet, these need to be removed manually
-        QVector<RCJob*> pendingJobs;
+        AZStd::vector<RCJob*> pendingJobs;
 
         m_RCJobListModel.EraseJobs(relSourceFileDatabaseName, pendingJobs);
 
@@ -366,6 +376,15 @@ namespace AssetProcessor
         {
             FinishJob(rcJob);
         }
+    }
+
+    void RCController::OnFinishedProcessingJob(JobEntry jobEntry)
+    {
+        AssetProcessor::QueueElementID checkFile(jobEntry.m_databaseSourceName, jobEntry.m_platformInfo.m_identifier.c_str(), jobEntry.m_jobKey);
+
+        m_RCJobListModel.markAsCataloged(checkFile);
+
+        DispatchJobs();
     }
 
 } // Namespace AssetProcessor

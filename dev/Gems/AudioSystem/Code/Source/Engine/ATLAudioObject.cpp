@@ -11,25 +11,30 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
 #include <ATLAudioObject.h>
 
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #include <AzCore/std/string/conversions.h>
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+
+#include <AzCore/Math/Random.h>
+#include <AzCore/std/chrono/clocks.h>
+#include <MathConversion.h>
+
+#include <AudioInternalInterfaces.h>
 #include <SoundCVars.h>
 #include <ATLUtils.h>
 
-#include <Random.h>
 #include <IEntitySystem.h>
 #include <I3DEngine.h>
 #include <IRenderer.h>
 #include <IRenderAuxGeom.h>
 #include <ISurfaceType.h>
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-    #include <AzCore/std/string/conversions.h>
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
-
 namespace Audio
 {
+    extern CAudioLogger g_audioLogger;
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CATLAudioObjectBase::ReportStartingTriggerInstance(const TAudioTriggerInstanceID audioTriggerInstanceID, const TAudioControlID audioControlID)
     {
@@ -414,7 +419,7 @@ namespace Audio
             }
         }
 
-        fTotalOcclusion = clamp_tpl(fTotalOcclusion, 0.0f, 1.0f);
+        fTotalOcclusion = AZ::GetClamp(fTotalOcclusion, 0.0f, 1.0f);
 
         // If the num hits differs too much from the last ray, reduce the change in TotalOcclusion in inverse proportion.
         // This reduces thrashing at the boundaries of occluding entities.
@@ -541,9 +546,12 @@ namespace Audio
         rPropagationData.fOcclusion = m_oOcclusionValue.GetCurrent();
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
     static inline float frand_symm()
     {
-        return cry_random(-1.0f, 1.0f);
+        static AZ::SimpleLcgRandom rand(AZStd::GetTimeNowMicroSecond());
+        // return random float [-1.f, 1.f)
+        return rand.GetRandomFloat() * 2.f - 1.f;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -554,7 +562,7 @@ namespace Audio
     {
         if (m_nRemainingRays == 0)
         {
-            static const Vec3 vUp(0.0f, 0.0f, 1.0f);
+            static const AZ::Vector3 vUp(0.0f, 0.0f, 1.0f);
             static const float fMinPeripheralRayOffset = 0.3f;
             static const float fMaxPeripheralRayOffset = 1.0f;
             static const float fMinRandomOffset = 0.05f;
@@ -563,9 +571,9 @@ namespace Audio
             static const float fMaxOffsetDistance = 20.0f;
 
             // the previous query has already been processed
-            const Vec3& vListener = rListenerPosition.GetPositionVec();
-            const Vec3& vObject = m_rPosition.GetPositionVec();
-            const Vec3 vDiff = vObject - vListener;
+            const AZ::Vector3& vListener = rListenerPosition.GetPositionVec();
+            const AZ::Vector3& vObject = m_rPosition.GetPositionVec();
+            const AZ::Vector3 vDiff = vObject - vListener;
 
             const float fDistance = vDiff.GetLength();
 
@@ -573,17 +581,17 @@ namespace Audio
 
             m_nTotalRays = NumRaysFromCalcType(m_eObstOcclCalcType);
 
-            const float fOffsetParam = clamp_tpl((fDistance - fMinOffsetDistance) / (fMaxOffsetDistance - fMinOffsetDistance), 0.0f, 1.0f);
+            const float fOffsetParam = AZ::GetClamp((fDistance - fMinOffsetDistance) / (fMaxOffsetDistance - fMinOffsetDistance), 0.0f, 1.0f);
             const float fOffsetScale = fMaxPeripheralRayOffset * fOffsetParam + fMinPeripheralRayOffset * (1.0f - fOffsetParam);
-            const float fRndOffsetScale = fMaxRandomOffset * fOffsetParam + fMinRandomOffset * (1.0f - fOffsetParam);
+            const float fRandOffsetScale = fMaxRandomOffset * fOffsetParam + fMinRandomOffset * (1.0f - fOffsetParam);
 
-            const Vec3 vSide = vDiff.GetNormalized() % vUp;
+            const AZ::Vector3 vSide = vDiff.GetNormalized().Cross(vUp);
 
             // the 0th ray is always shot from the listener to the center of the source
             // the 0th ray only gets 1/2 of the random variation
             CastObstructionRay(
                 vListener,
-                (vUp * frand_symm() + vSide * frand_symm()) * fRndOffsetScale * 0.5f,
+                (vUp * frand_symm() + vSide * frand_symm()) * fRandOffsetScale * 0.5f,
                 vDiff,
                 0,
                 bSyncCall,
@@ -594,7 +602,7 @@ namespace Audio
                 // rays 1 and 2 start below and above the listener and go towards the source
                 CastObstructionRay(
                     vListener - (vUp * fOffsetScale),
-                    (vUp * frand_symm() + vSide * frand_symm()) * fRndOffsetScale,
+                    (vUp * frand_symm() + vSide * frand_symm()) * fRandOffsetScale,
                     vDiff,
                     1,
                     bSyncCall,
@@ -602,7 +610,7 @@ namespace Audio
 
                 CastObstructionRay(
                     vListener + (vUp * fOffsetScale),
-                    (vUp * frand_symm() + vSide * frand_symm()) * fRndOffsetScale,
+                    (vUp * frand_symm() + vSide * frand_symm()) * fRandOffsetScale,
                     vDiff,
                     2,
                     bSyncCall,
@@ -611,7 +619,7 @@ namespace Audio
                 // rays 3 and 4 start left and right of the listener and go towards the source
                 CastObstructionRay(
                     vListener - (vSide * fOffsetScale),
-                    (vUp * frand_symm() + vSide * frand_symm()) * fRndOffsetScale,
+                    (vUp * frand_symm() + vSide * frand_symm()) * fRandOffsetScale,
                     vDiff,
                     3,
                     bSyncCall,
@@ -619,7 +627,7 @@ namespace Audio
 
                 CastObstructionRay(
                     vListener + (vSide * fOffsetScale),
-                    (vUp * frand_symm() + vSide * frand_symm()) * fRndOffsetScale,
+                    (vUp * frand_symm() + vSide * frand_symm()) * fRandOffsetScale,
                     vDiff,
                     4,
                     bSyncCall,
@@ -655,7 +663,7 @@ namespace Audio
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         if (m_nRemainingRays == 0 || m_rRefCounter == 0)
         {
-            g_audioLogger.Log(eALT_FATAL, "Negative ref or ray count on audio object %u", m_vRayInfos[nRayID].nAudioObjectID);
+            g_audioLogger.Log(eALT_ASSERT, "Negative ref or ray count on audio object %u", m_vRayInfos[nRayID].nAudioObjectID);
         }
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
@@ -704,10 +712,10 @@ namespace Audio
                 }
 
                 //the obstruction effect gets less pronounced when the distance between the object and the listener increases
-                fObstruction *= min(g_audioCVars.m_fFullObstructionMaxDistance / m_fCurrListenerDist, 1.0f);
+                fObstruction *= AZ::GetMin(g_audioCVars.m_fFullObstructionMaxDistance / m_fCurrListenerDist, 1.0f);
 
                 // since the Obstruction filter is applied on top of Occlusion, make sure we only apply what's exceeding the occlusion value
-                fObstruction = max(fObstruction - fOcclusion, 0.0f);
+                fObstruction = AZ::GetMax(fObstruction - fOcclusion, 0.0f);
             }
             else
             {
@@ -732,7 +740,7 @@ namespace Audio
                     rRayDebugInfo.vBegin = rRayInfo.vStartPosition + rRayInfo.vRndOffset;
                     rRayDebugInfo.vEnd = rRayInfo.vStartPosition + rRayInfo.vRndOffset + rRayInfo.vDirection;
 
-                    if (rRayDebugInfo.vStableEnd.IsZeroFast())
+                    if (rRayDebugInfo.vStableEnd.IsZero())
                     {
                         // to be moved to the PropagationProcessor Reset method
                         rRayDebugInfo.vStableEnd = rRayDebugInfo.vEnd;
@@ -754,9 +762,9 @@ namespace Audio
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CATLAudioObject::CPropagationProcessor::CastObstructionRay(
-        const Vec3& rOrigin,
-        const Vec3& rRndOffset,
-        const Vec3& rDirection,
+        const AZ::Vector3& rOrigin,
+        const AZ::Vector3& rRndOffset,
+        const AZ::Vector3& rDirection,
         const size_t nRayIdx,
         const bool bSyncCall,
         const bool bReset)
@@ -765,8 +773,8 @@ namespace Audio
         SRayInfo& rRayInfo = m_vRayInfos[nRayIdx];
 
         const int nNumHits = gEnv->pPhysicalWorld->RayWorldIntersection(
-                rOrigin + rRndOffset,
-                rDirection,
+                AZVec3ToLYVec3(rOrigin + rRndOffset),
+                AZVec3ToLYVec3(rDirection),
                 nPhysicsFlags,
                 bSyncCall ? rwi_pierceability0 : (rwi_pierceability0 | rwi_queue),
                 rRayInfo.aHits,
@@ -824,14 +832,14 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CATLAudioObject::UpdateVelocity(float const fUpdateIntervalMS)
     {
-        Vec3 const cPositionDelta = m_oPosition.GetPositionVec() - m_oPreviousPosition.GetPositionVec();
-        float const fCurrentVelocity = (1000.0f * cPositionDelta.GetLength()) / fUpdateIntervalMS; // fCurrentVelocity is given in units per second
+        const AZ::Vector3 cPositionDelta = m_oPosition.GetPositionVec() - m_oPreviousPosition.GetPositionVec();
+        const float fCurrentVelocity = (1000.0f * cPositionDelta.GetLength()) / fUpdateIntervalMS; // fCurrentVelocity is given in units per second
 
-        if (fabs(fCurrentVelocity - m_fPreviousVelocity) > g_audioCVars.m_fVelocityTrackingThreshold)
+        if (std::fabsf(fCurrentVelocity - m_fPreviousVelocity) > g_audioCVars.m_fVelocityTrackingThreshold)
         {
             m_fPreviousVelocity = fCurrentVelocity;
             SAudioRequest oRequest;
-            SAudioObjectRequestData<eAORT_SET_RTPC_VALUE> oRequestData(SATLInternalControlIDs::nObjectSpeedRtpcID, fCurrentVelocity);
+            SAudioObjectRequestData<eAORT_SET_RTPC_VALUE> oRequestData(ATLInternalControlIDs::ObjectSpeedRtpcID, fCurrentVelocity);
 
             oRequest.nAudioObjectID = GetID();
             oRequest.nFlags = eARF_THREAD_SAFE_PUSH;
@@ -926,9 +934,9 @@ namespace Audio
     using TTriggerCountMap = ATLMapLookupType<TAudioControlID, size_t>;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH> CATLAudioObjectBase::GetTriggerNames(const char* const sSeparator, const CATLDebugNameStore* const pDebugNameStore)
+    AZStd::string CATLAudioObjectBase::GetTriggerNames(const char* const sSeparator, const CATLDebugNameStore* const pDebugNameStore)
     {
-        CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH> sTriggerString;
+        AZStd::string triggersString;
 
         TTriggerCountMap cTriggerCounts;
 
@@ -947,28 +955,28 @@ namespace Audio
 
                 if (nInstances == 1)
                 {
-                    sTriggerString.Format("%s%s%s", sTriggerString.c_str(), pName, sSeparator);
+                    triggersString = AZStd::string::format("%s%s%s", triggersString.c_str(), pName, sSeparator);
                 }
                 else
                 {
-                    sTriggerString.Format("%s%s(%d inst.)%s", sTriggerString.c_str(), pName, nInstances, sSeparator);
+                    triggersString = AZStd::string::format("%s%s(%d inst.)%s", triggersString.c_str(), pName, nInstances, sSeparator);
                 }
             }
         }
 
-        return sTriggerString;
+        return triggersString;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH> CATLAudioObjectBase::GetEventIDs(const char* const sSeparator)
+    AZStd::string CATLAudioObjectBase::GetEventIDs(const char* const sSeparator)
     {
-        CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH> sEventString;
-        for (auto& activeEvent : m_cActiveEvents)
+        AZStd::string eventsString;
+        for (auto activeEvent : m_cActiveEvents)
         {
-            sEventString.Format("%s%u%s", sEventString.c_str(), activeEvent, sSeparator);
+            eventsString = AZStd::string::format("%s%u%s", eventsString.c_str(), activeEvent, sSeparator);
         }
 
-        return sEventString;
+        return eventsString;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1003,7 +1011,7 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLAudioObject::DrawDebugInfo(IRenderAuxGeom& auxGeom, const Vec3& vListenerPos, const CATLDebugNameStore* const pDebugNameStore) const
+    void CATLAudioObject::DrawDebugInfo(IRenderAuxGeom& auxGeom, const AZ::Vector3& vListenerPos, const CATLDebugNameStore* const pDebugNameStore) const
     {
         m_oPropagationProcessor.DrawObstructionRays(auxGeom);
 
@@ -1012,7 +1020,6 @@ namespace Audio
             // Inspect triggers and apply filter (if set)...
             TTriggerCountMap cTriggerCounts;
 
-            // Should use a fixed string once available in AZStd...
             AZStd::string triggerFilter(g_audioCVars.m_pAudioTriggersDebugFilter->GetString());
             AZStd::to_lower(triggerFilter.begin(), triggerFilter.end());
 
@@ -1033,22 +1040,24 @@ namespace Audio
                 return;
             }
 
-            const Vec3 vPos(m_oPosition.GetPositionVec());
-            Vec3 vScreenPos(ZERO);
+            const AZ::Vector3 vPos(m_oPosition.GetPositionVec());
+            AZ::Vector3 vScreenPos(0.f);
 
             if (IRenderer* pRenderer = gEnv->pRenderer)
             {
-                pRenderer->ProjectToScreen(vPos.x, vPos.y, vPos.z, &vScreenPos.x, &vScreenPos.y, &vScreenPos.z);
+                float screenProj[3];
+                pRenderer->ProjectToScreen(vPos.GetX(), vPos.GetY(), vPos.GetZ(), &screenProj[0], &screenProj[1], &screenProj[2]);
 
-                vScreenPos.x = vScreenPos.x * 0.01f * pRenderer->GetWidth();
-                vScreenPos.y = vScreenPos.y * 0.01f * pRenderer->GetHeight();
+                screenProj[0] *= 0.01f * static_cast<float>(pRenderer->GetWidth());
+                screenProj[1] *= 0.01f * static_cast<float>(pRenderer->GetHeight());
+                vScreenPos.Set(screenProj);
             }
             else
             {
-                vScreenPos.z = -1.0f;
+                vScreenPos.SetZ(-1.0f);
             }
 
-            if ((0.0f <= vScreenPos.z) && (vScreenPos.z <= 1.0f))
+            if ((0.0f <= vScreenPos.GetZ()) && (vScreenPos.GetZ() <= 1.0f))
             {
                 const float fDist = vPos.GetDistance(vListenerPos);
 
@@ -1059,7 +1068,8 @@ namespace Audio
                     nNewRenderFlags.SetCullMode(e_CullModeNone);
                     auxGeom.SetRenderFlags(nNewRenderFlags);
                     const float fRadius = 0.15f;
-                    auxGeom.DrawSphere(vPos, fRadius, ColorB(255, 1, 1, 255));
+                    const AZ::Color sphereColor(1.f, 0.1f, 0.1f, 1.f);
+                    auxGeom.DrawSphere(AZVec3ToLYVec3(vPos), fRadius, AZColorToLYColorB(sphereColor));
                     auxGeom.SetRenderFlags(nPreviousRenderFlags);
                 }
 
@@ -1068,7 +1078,7 @@ namespace Audio
 
                 if ((g_audioCVars.m_nDrawAudioDebug & eADDF_SHOW_OBJECT_STATES) != 0)
                 {
-                    Vec3 vSwitchPos(vScreenPos);
+                    AZ::Vector3 vSwitchPos(vScreenPos);
 
                     for (auto& switchState : m_cSwitchStates)
                     {
@@ -1082,14 +1092,14 @@ namespace Audio
                         {
                             CStateDebugDrawData& oDrawData = m_cStateDrawInfoMap[nSwitchID];
                             oDrawData.Update(nStateID);
-                            const float fSwitchTextColor[4] = { 0.8f, 0.8f, 0.8f, oDrawData.fCurrentAlpha };
+                            const AZ::Color switchTextColor(0.8f, 0.8f, 0.8f, oDrawData.fCurrentAlpha);
 
-                            vSwitchPos.y -= fLineHeight;
+                            vSwitchPos -= AZ::Vector3(0.f, fLineHeight, 0.f);
                             auxGeom.Draw2dLabel(
-                                vSwitchPos.x,
-                                vSwitchPos.y,
+                                vSwitchPos.GetX(),
+                                vSwitchPos.GetY(),
                                 fFontSize,
-                                fSwitchTextColor,
+                                AZColorToLYColorF(switchTextColor),
                                 false,
                                 "%s: %s\n",
                                 pSwitchName,
@@ -1098,35 +1108,36 @@ namespace Audio
                     }
                 }
 
+                const AZ::Color brightTextColor(0.9f, 0.9f, 0.9f, 1.f);
+                const AZ::Color normalTextColor(0.75f, 0.75f, 0.75f, 1.f);
+                const AZ::Color dimmedTextColor(0.5f, 0.5f, 0.5f, 1.f);
+
                 if ((g_audioCVars.m_nDrawAudioDebug & eADDF_SHOW_OBJECT_LABEL) != 0)
                 {
-                    static const float fObjectTextColor[4] = { 0.90f, 0.90f, 0.90f, 1.0f };
-                    static const float fObjectGrayTextColor[4] = { 0.50f, 0.50f, 0.50f, 1.0f };
-
                     const size_t nNumRays = m_oPropagationProcessor.GetNumRays();
                     SATLSoundPropagationData oPropagationData;
                     m_oPropagationProcessor.GetPropagationData(oPropagationData);
 
                     const TAudioObjectID nObjectID = GetID();
                     auxGeom.Draw2dLabel(
-                        vScreenPos.x,
-                        vScreenPos.y,
+                        vScreenPos.GetX(),
+                        vScreenPos.GetY(),
                         fFontSize,
-                        fObjectTextColor,
+                        AZColorToLYColorF(brightTextColor),
                         false,
-                        "%s  ID: %llu  RefCnt: %2" PRISIZE_T "  Dist: %4.1fm",
+                        "%s  ID: %llu  RefCnt: %2zu  Dist: %4.1fm",
                         pDebugNameStore->LookupAudioObjectName(nObjectID),
                         nObjectID,
                         GetRefCount(),
                         fDist);
 
                     auxGeom.Draw2dLabel(
-                        vScreenPos.x,
-                        vScreenPos.y + fLineHeight,
+                        vScreenPos.GetX(),
+                        vScreenPos.GetY() + fLineHeight,
                         fFontSize,
-                        nNumRays > 0 ? fObjectTextColor : fObjectGrayTextColor,
+                        AZColorToLYColorF(nNumRays > 0 ? brightTextColor : dimmedTextColor),
                         false,
-                        "Obst: %3.2f  Occl: %3.2f  #Rays: %1" PRISIZE_T,
+                        "Obst: %3.2f  Occl: %3.2f  #Rays: %1zu",
                         oPropagationData.fObstruction,
                         oPropagationData.fOcclusion,
                         nNumRays);
@@ -1134,7 +1145,6 @@ namespace Audio
 
                 if ((g_audioCVars.m_nDrawAudioDebug & eADDF_SHOW_OBJECT_TRIGGERS) != 0)
                 {
-                    const float fTriggerTextColor[4] = { 0.8f, 0.8f, 0.8f, 1.0f };
                     AZStd::string triggerStringFormatted;
 
                     for (auto& triggerCount : cTriggerCounts)
@@ -1150,16 +1160,16 @@ namespace Audio
                             }
                             else
                             {
-                                triggerStringFormatted += AZStd::string::format("%s: %" PRISIZE_T "\n", pName, nInstances);
+                                triggerStringFormatted += AZStd::string::format("%s: %zu\n", pName, nInstances);
                             }
                         }
                     }
 
                     auxGeom.Draw2dLabel(
-                        vScreenPos.x,
-                        vScreenPos.y + 2.0f * fLineHeight,
+                        vScreenPos.GetX(),
+                        vScreenPos.GetY() + (2.0f * fLineHeight),
                         fFontSize,
-                        fTriggerTextColor,
+                        AZColorToLYColorF(normalTextColor),
                         false,
                         "%s",
                         triggerStringFormatted.c_str());
@@ -1167,27 +1177,24 @@ namespace Audio
 
                 if ((g_audioCVars.m_nDrawAudioDebug & eADDF_SHOW_OBJECT_RTPCS) != 0)
                 {
-                    const float fRtpcTextColor[4] = { 0.8f, 0.8f, 0.8f, 1.0f };
-                    Vec3 vRtpcPos(vScreenPos);
+                    AZ::Vector3 vRtpcPos(vScreenPos);
 
                     for (auto& rtpc : m_cRtpcs)
                     {
-                        const TAudioControlID nRtpcID = rtpc.first;
                         const float fRtpcValue = rtpc.second;
-
-                        const char* const pRtpcName = pDebugNameStore->LookupAudioRtpcName(nRtpcID);
+                        const char* const pRtpcName = pDebugNameStore->LookupAudioRtpcName(rtpc.first);
 
                         if (pRtpcName)
                         {
                             const float xOffset = 5.f;
 
-                            vRtpcPos.y -= fLineHeight;	// list grows up
+                            vRtpcPos -= AZ::Vector3(0.f, fLineHeight, 0.f);     // list grows up
                             auxGeom.Draw2dLabelCustom(
-                            vRtpcPos.x - xOffset,
-                                vRtpcPos.y,
+                                vRtpcPos.GetX() - xOffset,
+                                vRtpcPos.GetY(),
                                 fFontSize,
-                                fRtpcTextColor,
-                                eDrawText_Right,		// right-justified
+                                AZColorToLYColorF(normalTextColor),
+                                eDrawText_Right,        // right-justified
                                 "%s: %2.2f\n",
                                 pRtpcName,
                                 fRtpcValue);
@@ -1197,27 +1204,24 @@ namespace Audio
 
                 if ((g_audioCVars.m_nDrawAudioDebug & eADDF_SHOW_OBJECT_ENVIRONMENTS) != 0)
                 {
-                    const float fEnvTextColor[4] = { 0.8f, 0.8f, 0.8f, 1.0f };
-                    Vec3 vEnvPos(vScreenPos);
+                    AZ::Vector3 vEnvPos(vScreenPos);
 
                     for (auto& environment : m_cEnvironments)
                     {
-                        const TAudioControlID nEnvID = environment.first;
                         const float fEnvValue = environment.second;
-
-                        const char* const pEnvName = pDebugNameStore->LookupAudioEnvironmentName(nEnvID);
+                        const char* const pEnvName = pDebugNameStore->LookupAudioEnvironmentName(environment.first);
 
                         if (pEnvName)
                         {
                             const float xOffset = 5.f;
 
-                            vEnvPos.y += fLineHeight;	// list grows down
+                            vEnvPos += AZ::Vector3(0.f, fLineHeight, 0.f);      // list grows down
                             auxGeom.Draw2dLabelCustom(
-                                vEnvPos.x - xOffset,
-                                vEnvPos.y,
+                                vEnvPos.GetX() - xOffset,
+                                vEnvPos.GetY(),
                                 fFontSize,
-                                fEnvTextColor,
-                                eDrawText_Right,		// right-justified
+                                AZColorToLYColorF(normalTextColor),
+                                eDrawText_Right,        // right-justified
                                 "%s: %.2f\n",
                                 pEnvName,
                                 fEnvValue);
@@ -1235,11 +1239,12 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CATLAudioObject::CPropagationProcessor::DrawObstructionRays(IRenderAuxGeom& auxGeom) const
     {
-        static const ColorB cObstructedRayColor(200, 20, 1, 255);
-        static const ColorB cFreeRayColor(20, 200, 1, 255);
-        static const ColorB cIntersectionSphereColor(250, 200, 1, 240);
-        static const float aObstructedRayLabelColor[4] = { 1.0f, 0.0f, 0.02f, 0.9f };
-        static const float aFreeRayLabelColor[4] = { 0.0f, 1.0f, 0.02f, 0.9f };
+        static const AZ::Color cObstructedRayColor(0.8f, 0.08f, 0.f, 1.f);
+        static const AZ::Color cFreeRayColor(0.08f, 0.8f, 0.f, 1.f);
+        static const AZ::Color cIntersectionSphereColor(0.9f, 0.8f, 0.f, 0.9f);
+        static const AZ::Color cObstructedRayLabelColor(1.f, 0.f, 0.02f, 0.9f);
+        static const AZ::Color cFreeRayLabelColor(0.f, 1.f, 0.02f, 0.9f);
+
         static const float fCollisionPtSphereRadius = 0.01f;
 
         if (CanRunObstructionOcclusion())
@@ -1251,51 +1256,45 @@ namespace Audio
             for (size_t i = 0; i < m_nTotalRays; ++i)
             {
                 const bool bRayObstructed = (m_vRayDebugInfos[i].nNumHits > 0);
-                const Vec3 vRayEnd = bRayObstructed
+                const AZ::Vector3 vRayEnd = bRayObstructed
                     ? m_vRayDebugInfos[i].vBegin + (m_vRayDebugInfos[i].vEnd - m_vRayDebugInfos[i].vBegin).GetNormalized() * m_vRayDebugInfos[i].fDistToNearestObstacle
                     : m_vRayDebugInfos[i].vEnd;// only draw the ray to the first collision point
 
                 if ((g_audioCVars.m_nDrawAudioDebug & eADDF_DRAW_OBSTRUCTION_RAYS) != 0)
                 {
-                    const ColorB& rRayColor = bRayObstructed ? cObstructedRayColor : cFreeRayColor;
+                    const AZ::Color& rRayColor = bRayObstructed ? cObstructedRayColor : cFreeRayColor;
 
                     auxGeom.SetRenderFlags(nNewRenderFlags);
 
                     if (bRayObstructed)
                     {
                         // mark the nearest collision with a small sphere
-                        auxGeom.DrawSphere(vRayEnd, fCollisionPtSphereRadius, cIntersectionSphereColor);
+                        auxGeom.DrawSphere(AZVec3ToLYVec3(vRayEnd), fCollisionPtSphereRadius, AZColorToLYColorB(cIntersectionSphereColor));
                     }
 
-                    auxGeom.DrawLine(m_vRayDebugInfos[i].vBegin, rRayColor, vRayEnd, rRayColor, 1.0f);
+                    auxGeom.DrawLine(AZVec3ToLYVec3(m_vRayDebugInfos[i].vBegin), AZColorToLYColorB(rRayColor), AZVec3ToLYVec3(vRayEnd), AZColorToLYColorB(rRayColor), 1.0f);
                     auxGeom.SetRenderFlags(nPreviousRenderFlags);
                 }
 
                 if (IRenderer* pRenderer = (g_audioCVars.m_nDrawAudioDebug & eADDF_SHOW_OBSTRUCTION_RAY_LABELS) != 0 ? gEnv->pRenderer : nullptr)
                 {
-                    Vec3 vScreenPos(ZERO);
+                    float screenProj[3];
+                    pRenderer->ProjectToScreen(m_vRayDebugInfos[i].vStableEnd.GetX(), m_vRayDebugInfos[i].vStableEnd.GetY(), m_vRayDebugInfos[i].vStableEnd.GetZ(), &screenProj[0], &screenProj[1], &screenProj[2]);
 
-                    pRenderer->ProjectToScreen(m_vRayDebugInfos[i].vStableEnd.x, m_vRayDebugInfos[i].vStableEnd.y, m_vRayDebugInfos[i].vStableEnd.z, &vScreenPos.x, &vScreenPos.y, &vScreenPos.z);
+                    screenProj[0] *= 0.01f * static_cast<float>(pRenderer->GetWidth());
+                    screenProj[1] *= 0.01f * static_cast<float>(pRenderer->GetHeight());
+                    AZ::Vector3 vScreenPos = AZ::Vector3::CreateFromFloat3(screenProj);
 
-                    vScreenPos.x = vScreenPos.x * 0.01f * pRenderer->GetWidth();
-                    vScreenPos.y = vScreenPos.y * 0.01f * pRenderer->GetHeight();
-
-                    if ((0.0f <= vScreenPos.z) && (vScreenPos.z <= 1.0f))
+                    if ((0.0f <= vScreenPos.GetZ()) && (vScreenPos.GetZ() <= 1.0f))
                     {
-                        const float fColorLerp = clamp_tpl(m_vRayInfos[i].fAvgHits, 0.0f, 1.0f);
-                        const float aLabelColor[4] =
-                        {
-                            aObstructedRayLabelColor[0] * fColorLerp + aFreeRayLabelColor[0] * (1.0f - fColorLerp),
-                            aObstructedRayLabelColor[1] * fColorLerp + aFreeRayLabelColor[1] * (1.0f - fColorLerp),
-                            aObstructedRayLabelColor[2] * fColorLerp + aFreeRayLabelColor[2] * (1.0f - fColorLerp),
-                            aObstructedRayLabelColor[3] * fColorLerp + aFreeRayLabelColor[3] * (1.0f - fColorLerp)
-                        };
+                        const float colorLerpValue = AZ::GetClamp(m_vRayInfos[i].fAvgHits, 0.0f, 1.0f);
+                        const AZ::Color cLabelColor = cFreeRayLabelColor.Lerp(cObstructedRayLabelColor, colorLerpValue);
 
                         auxGeom.Draw2dLabel(
-                            vScreenPos.x,
-                            vScreenPos.y - 12.0f,
+                            vScreenPos.GetX(),
+                            vScreenPos.GetY() - 12.0f,
                             1.2f,
-                            aLabelColor,
+                            AZColorToLYColorF(cLabelColor),
                             true,
                             "ObjID: %llu\n#Hits: %2.1f\nOccl: %3.2f",
                             m_vRayInfos[i].nAudioObjectID, // a const member, will not be overwritten by a thread filling the obstruction data in
@@ -1306,6 +1305,6 @@ namespace Audio
             }
         }
     }
-
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+
 } // namespace Audio

@@ -85,7 +85,7 @@ public:
     bool                m_useTerrain;
     int                 m_terrainResolution;
     int                 m_ilevelFolders;
-    int                 m_terrainUnits;
+    int                 m_terrainUnitsIndex;
     bool                m_bIsResize;
     bool                m_bUpdate;
 

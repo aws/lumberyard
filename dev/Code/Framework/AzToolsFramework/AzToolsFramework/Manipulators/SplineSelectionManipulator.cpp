@@ -32,6 +32,11 @@ namespace AzToolsFramework
         return action;
     }
 
+    AZStd::shared_ptr<SplineSelectionManipulator> SplineSelectionManipulator::MakeShared()
+    {
+        return AZStd::shared_ptr<SplineSelectionManipulator>(aznew SplineSelectionManipulator());
+    }
+
     SplineSelectionManipulator::SplineSelectionManipulator()
     {
         AttachLeftMouseDownImpl();

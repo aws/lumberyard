@@ -11,13 +11,12 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "QSimpleAudioControlListWidget.h"
-#include "QtUtil.h"
-#include "QAudioControlEditorIcons.h"
-#include "common/IAudioSystemEditor.h"
-#include "common/IAudioSystemControl.h"
-#include "AudioControlsEditorPlugin.h"
+#include <QSimpleAudioControlListWidget.h>
+
+#include <ACEEnums.h>
+#include <AudioControlsEditorPlugin.h>
+#include <IAudioSystemEditor.h>
+#include <QAudioControlEditorIcons.h>
 
 #include <QApplication>
 #include <QMimeData>
@@ -129,7 +128,7 @@ namespace AudioControls
         if (pRoot && pControl)
         {
             QTreeWidgetItem* pItem = new QMiddlewareControlItem();
-            pItem->setText(0, QString(pControl->GetName()));
+            pItem->setText(0, QString(pControl->GetName().c_str()));
             InitItemData(pItem, pControl);
             pRoot->addChild(pItem);
             return pItem;
@@ -198,7 +197,7 @@ namespace AudioControls
             TImplControlType type = GetControlType(pItem);
             EACEControlType compatibleType = pAudioSystemEditorImpl->ImplTypeToATLType(type);
 
-            pItem->setIcon(0, QIcon(QtUtil::ToQString(pAudioSystemEditorImpl->GetTypeIcon(type))));
+            pItem->setIcon(0, QIcon(QString(pAudioSystemEditorImpl->GetTypeIcon(type).data())));
             pItem->setFlags(pItem->flags() & ~Qt::ItemIsDropEnabled);
 
             if (compatibleType != eACET_NUM_TYPES)
@@ -246,9 +245,9 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    std::vector<AudioControls::CID> QSimpleAudioControlListWidget::GetSelectedIds()
+    ControlList QSimpleAudioControlListWidget::GetSelectedIds()
     {
-        std::vector<AudioControls::CID> ids;
+        ControlList ids;
         QList<QTreeWidgetItem*> selected = selectedItems();
         int size = selected.length();
         for (int i = 0; i < size; ++i)
@@ -265,7 +264,7 @@ namespace AudioControls
         if (pAudioSystemEditorImpl)
         {
             // store the currently selected control to select it again
-            std::vector<AudioControls::CID> ids = GetSelectedIds();
+            ControlList ids = GetSelectedIds();
 
             if (reload)
             {
@@ -307,4 +306,4 @@ namespace AudioControls
     }
 } // namespace AudioControls
 
-#include <QSimpleAudioControlListWidget.moc>
+#include <Source/Editor/QSimpleAudioControlListWidget.moc>

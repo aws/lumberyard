@@ -15,7 +15,7 @@ from waflib.Build import BuildContext
 from waflib.Utils import unversioned_sys_platform
 
 from cry_utils import append_to_unique_list, read_game_name_from_bootstrap
-from mscv_helper import find_valid_wsdk_version
+from msvc_helper import find_valid_wsdk_version
 
 import utils
 import copy

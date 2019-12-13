@@ -10,8 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
-
+#include <AzCore/base.h>
 #include <AudioSystemImplCVars.h>
 
 namespace Audio

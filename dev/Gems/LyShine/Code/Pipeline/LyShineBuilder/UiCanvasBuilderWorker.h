@@ -15,15 +15,17 @@
 #include <AzCore/Component/Component.h>
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
+#include <LyShine/Bus/Tools/UiSystemToolsBus.h>
+#include <AzToolsFramework/Slice/SliceCompilation.h>
 
-namespace SliceBuilder
+namespace LyShine
 {
-    class UiSliceBuilderWorker
+    class UiCanvasBuilderWorker
         : public AssetBuilderSDK::AssetBuilderCommandBus::Handler
     {
     public:
-        UiSliceBuilderWorker() = default;
-        ~UiSliceBuilderWorker() = default;
+        UiCanvasBuilderWorker() = default;
+        ~UiCanvasBuilderWorker() = default;
 
         //! Asset Builder Callback Functions
         void CreateJobs(const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response);
@@ -36,9 +38,16 @@ namespace SliceBuilder
 
         static AZ::Uuid GetUUID();
 
+        bool ProcessUiCanvasAndGetDependencies(AZ::IO::GenericStream& stream,
+            AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
+            AssetBuilderSDK::ProductPathDependencySet& productPathDependencySet,
+            UiSystemToolsInterface::CanvasAssetHandle*& canvasAsset,
+            AZ::Entity*& sourceCanvasEntity,
+            AZ::Entity& exportCanvasEntity) const;
+
     private:
 
-        UiSliceBuilderWorker(const UiSliceBuilderWorker&) = delete;
+        UiCanvasBuilderWorker(const UiCanvasBuilderWorker&) = delete;
 
         bool m_isShuttingDown = false;
 

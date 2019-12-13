@@ -11,23 +11,23 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "AudioControlsEditorWindow.h"
-#include "AudioControlsEditorPlugin.h"
-#include "QAudioControlEditorIcons.h"
-#include "ATLControlsModel.h"
-#include <IAudioSystem.h>
-#include "AudioControlsEditorUndo.h"
-#include "ATLControlsPanel.h"
-#include "InspectorPanel.h"
-#include "AudioSystemPanel.h"
-#include <DockTitleBarWidget.h>
-#include <CryFile.h>
-#include <ISystem.h>
-#include <CryPath.h>
-#include "Util/PathUtil.h"
-#include "ImplementationManager.h"
+#include <AudioControlsEditorWindow.h>
 
+#include <AzFramework/StringFunc/StringFunc.h>
+#include <ATLControlsModel.h>
+#include <ATLControlsPanel.h>
+#include <AudioControlsEditorPlugin.h>
+#include <AudioControlsEditorUndo.h>
+#include <AudioSystemPanel.h>
+#include <CryFile.h>
+#include <CryPath.h>
+#include <DockTitleBarWidget.h>
+#include <IAudioSystem.h>
+#include <ImplementationManager.h>
+#include <InspectorPanel.h>
+#include <ISystem.h>
+#include <QAudioControlEditorIcons.h>
+#include <Util/PathUtil.h>
 
 #include <QPaintEvent>
 #include <QPushButton>
@@ -37,6 +37,10 @@
 
 namespace AudioControls
 {
+    //-------------------------------------------------------------------------------------------//
+    // static
+    bool CAudioControlsEditorWindow::m_wasClosed = false;
+
     //-------------------------------------------------------------------------------------------//
     CAudioControlsEditorWindow::CAudioControlsEditorWindow()
     {
@@ -50,19 +54,24 @@ namespace AudioControls
             m_pInspectorPanel = new CInspectorPanel(m_pATLModel);
             m_pAudioSystemPanel = new CAudioSystemPanel();
 
-            CDockTitleBarWidget* pTitleBar = new CDockTitleBarWidget(m_pInspectorDockWidget);
+            CDockTitleBarWidget* pTitleBar = new CDockTitleBarWidget(m_pATLControlsDockWidget);
+            m_pATLControlsDockWidget->setTitleBarWidget(pTitleBar);
+
+            pTitleBar = new CDockTitleBarWidget(m_pInspectorDockWidget);
             m_pInspectorDockWidget->setTitleBarWidget(pTitleBar);
 
             pTitleBar = new CDockTitleBarWidget(m_pMiddlewareDockWidget);
             m_pMiddlewareDockWidget->setTitleBarWidget(pTitleBar);
-            m_pMiddlewareDockWidget->setWindowTitle(QtUtil::ToQString(pAudioSystemImpl->GetName()) + " Controls");
 
-            splitDockWidget(m_pInspectorDockWidget, m_pMiddlewareDockWidget, Qt::Orientation::Horizontal);
-            m_pCentralWidgetLayout->addWidget(m_pATLControlsPanel);
+            // Custom title based on Middleware name
+            m_pMiddlewareDockWidget->setWindowTitle(QString(pAudioSystemImpl->GetName().c_str()) + " Controls");
+
+            m_pATLControlsDockLayout->addWidget(m_pATLControlsPanel);
             m_pInspectorDockLayout->addWidget(m_pInspectorPanel);
             m_pMiddlewareDockLayout->addWidget(m_pAudioSystemPanel);
 
             Update();
+
             connect(m_pATLControlsPanel, SIGNAL(SelectedControlChanged()), this, SLOT(UpdateInspector()));
             connect(m_pATLControlsPanel, SIGNAL(SelectedControlChanged()), this, SLOT(UpdateFilterFromSelection()));
             connect(m_pATLControlsPanel, SIGNAL(ControlTypeFiltered(EACEControlType, bool)), this, SLOT(FilterControlType(EACEControlType, bool)));
@@ -75,7 +84,10 @@ namespace AudioControls
 
             // LY-11309: this call to reload middleware data will force refresh of the data when
             // making changes to the middleware project while the AudioControlsEditor window is closed.
-            ReloadMiddlewareData();
+            if (m_wasClosed)
+            {
+                ReloadMiddlewareData();
+            }
         }
     }
 
@@ -86,23 +98,26 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CAudioControlsEditorWindow::StartWatchingFolder(const string& folder)
+    void CAudioControlsEditorWindow::StartWatchingFolder(const AZStd::string_view folder)
     {
-        m_fileSystemWatcher.addPath(folder.c_str());
+        m_fileSystemWatcher.addPath(folder.data());
 
+        AZStd::string search;
+        AzFramework::StringFunc::Path::Join(folder.data(), "*.*", search, false, true, false);
         _finddata_t fd;
         ICryPak* pCryPak = gEnv->pCryPak;
-        intptr_t handle = pCryPak->FindFirst(folder + "/*.*", &fd);
+        intptr_t handle = pCryPak->FindFirst(search.c_str(), &fd);
         if (handle != -1)
         {
             do
             {
-                string sName = fd.name;
+                AZStd::string sName = fd.name;
                 if (!sName.empty() && sName[0] != '.')
                 {
                     if (fd.attrib & _A_SUBDIR)
                     {
-                        StartWatchingFolder(PathUtil::AddSlash(folder) + sName);
+                        AzFramework::StringFunc::Path::Join(folder.data(), sName.c_str(), sName);
+                        StartWatchingFolder(sName);
                     }
                 }
             }
@@ -153,18 +168,20 @@ namespace AudioControls
                 pEvent->accept();
                 break;
             case QMessageBox::Discard:
-                CAudioControlsEditorPlugin::ReloadModels();
                 pEvent->accept();
                 break;
             default:
                 pEvent->ignore();
-                break;
+                return;
             }
         }
         else
         {
             pEvent->accept();
         }
+
+        // If the close event was accepted, set this flag so next time the window opens it will refresh the middleware data.
+        m_wasClosed = true;
     }
 
     //-------------------------------------------------------------------------------------------//
@@ -193,7 +210,9 @@ namespace AudioControls
     void CAudioControlsEditorWindow::Update()
     {
         if (!m_pATLControlsPanel)
+        {
             return;
+        }
 
         m_pATLControlsPanel->Reload();
         m_pAudioSystemPanel->Reload();
@@ -202,7 +221,7 @@ namespace AudioControls
         if (pAudioSystemImpl)
         {
             StartWatchingFolder(pAudioSystemImpl->GetDataPath());
-            m_pMiddlewareDockWidget->setWindowTitle(QtUtil::ToQString(pAudioSystemImpl->GetName()) + " Controls");
+            m_pMiddlewareDockWidget->setWindowTitle(QString(pAudioSystemImpl->GetName().c_str()) + " Controls");
         }
     }
 
@@ -231,7 +250,8 @@ namespace AudioControls
                     sLevelName = QString();
                 }
 
-                Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::RefreshAudioSystem, sLevelName.toUtf8().data());            }
+                Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::RefreshAudioSystem, sLevelName.toUtf8().data());
+            }
         }
         m_pATLModel->ClearDirtyFlags();
     }
@@ -247,7 +267,7 @@ namespace AudioControls
     {
         bool bAllSameType = true;
         EACEControlType selectedType = eACET_NUM_TYPES;
-        std::vector<AudioControls::CID> ids = m_pATLControlsPanel->GetSelectedControls();
+        ControlList ids = m_pATLControlsPanel->GetSelectedControls();
         size_t size = ids.size();
         for (size_t i = 0; i < size; ++i)
         {
@@ -291,14 +311,16 @@ namespace AudioControls
         // once we can listen to delete messages from Asset system, this can be changed to an EBus handler.
         const char* controlsPath = nullptr;
         Audio::AudioSystemRequestBus::BroadcastResult(controlsPath, &Audio::AudioSystemRequestBus::Events::GetControlsPath);
-        string sControlsPath = string(Path::GetEditingGameDataFolder().c_str()) + PathUtil::GetSlash() + controlsPath;
+        AZStd::string sControlsPath(Path::GetEditingGameDataFolder());
+        AzFramework::StringFunc::Path::Join(sControlsPath.c_str(), controlsPath, sControlsPath);
         Audio::SAudioManagerRequestData<Audio::eAMRT_PARSE_CONTROLS_DATA> oParseGlobalRequestData(sControlsPath.c_str(), Audio::eADS_GLOBAL);
         oConfigDataRequest.pData = &oParseGlobalRequestData;
         Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequest, oConfigDataRequest);
 
         //parse the AudioSystem level-specific config data
-        string sLevelName = GetIEditor()->GetLevelName().toUtf8().data();
-        sControlsPath += "levels/" + sLevelName;
+        const char* levelName = GetIEditor()->GetLevelName().toUtf8().data();
+        AzFramework::StringFunc::Path::Join(sControlsPath.c_str(), "levels", sControlsPath);
+        AzFramework::StringFunc::Path::Join(sControlsPath.c_str(), levelName, sControlsPath);
         Audio::SAudioManagerRequestData<Audio::eAMRT_PARSE_CONTROLS_DATA> oParseLevelRequestData(sControlsPath.c_str(), Audio::eADS_LEVEL_SPECIFIC);
         oConfigDataRequest.pData = &oParseLevelRequestData;
         Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequest, oConfigDataRequest);
@@ -337,4 +359,4 @@ namespace AudioControls
     }
 } // namespace AudioControls
 
-#include <AudioControlsEditorWindow.moc>
+#include <Source/Editor/AudioControlsEditorWindow.moc>

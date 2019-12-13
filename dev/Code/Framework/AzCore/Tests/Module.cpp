@@ -390,7 +390,7 @@ namespace UnitTest
 #elif AZ_TRAIT_TEST_SUPPORT_DLOPEN
                 void* pHandle = dlopen(finalPath.c_str(), RTLD_NOW);
                 ASSERT_NE(nullptr, pHandle);
-#endif // platform switch statement (windows, mac, linux)
+#endif 
 
                 // now that the operating system has an open handle to it, we load it using the 
                 // AZ functions, and make sure that the AZ library correctly attaches even though
@@ -417,7 +417,7 @@ namespace UnitTest
                 ::FreeLibrary(mod);
 #elif AZ_TRAIT_TEST_SUPPORT_DLOPEN
                 dlclose(pHandle);
-#endif // platform switch statement (windows, mac, linux)
+#endif // platform switch statement 
             }
         }
         
@@ -431,7 +431,7 @@ namespace UnitTest
         TestCalculateBinFolderClass(const char* testExePath) :
             ComponentApplication()
         {
-            azstrcpy(this->m_exeDirectory, AZ_MAX_PATH_LEN, testExePath);
+            azstrcpy(this->m_exeDirectory, AZ_ARRAY_SIZE(this->m_exeDirectory), testExePath);
         }
 
         void TestCalculateBinFolder()
@@ -445,7 +445,7 @@ namespace UnitTest
     };
 
 
-#define TEST_BINFOLDER  "bin64vc140"
+#define TEST_BINFOLDER  "bin64vc141"
 
     TEST(ModuleManager, TestCalculateBinFolder)
     {

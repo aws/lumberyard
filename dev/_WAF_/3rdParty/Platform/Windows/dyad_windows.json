@@ -1,0 +1,15 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "libpath_debug": [
+                "lib/x64_v140_Debug"
+            ],
+            "libpath_release": [
+                "lib/x64_v140_Release"
+            ],
+            "lib": [
+                "libdyad.lib"
+            ]
+        }
+    }
+}

@@ -15,6 +15,7 @@
             "CryArchive.cpp",
             "CryAsyncMemcpy.cpp",
             "CryPak.cpp",
+            "MissingFileReport.cpp",
             "CrySizerStats.cpp",
             "CryTomcrypt.cpp",
             "DebugCallStack.cpp",
@@ -91,6 +92,7 @@
             "ConsoleBatchFile.h",
             "ConsoleHelpGen.h",
             "CryPak.h",
+            "MissingFileReport.h",
             "CryPakHandleCache.h",
             "CrySizerStats.h",
             "CryTomcrypt.h",
@@ -227,7 +229,6 @@
             "SystemThreading.cpp"
         ],
         "NullImplementation": [
-            "NullImplementation/NULLAudioSystems.h",
             "NullImplementation/NullInput.h",
             "NullImplementation/NullResponseSystem.h"
         ],

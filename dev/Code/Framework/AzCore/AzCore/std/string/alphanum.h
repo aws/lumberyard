@@ -59,7 +59,6 @@ namespace AZStd
     /// Functor class to compare two objects with the "Alphanum Algorithm".
     template<class T>
     struct alphanum_less
-        : public AZStd::binary_function<T, T, bool>
     {
         bool operator()(const T& left, const T& right) const
         {

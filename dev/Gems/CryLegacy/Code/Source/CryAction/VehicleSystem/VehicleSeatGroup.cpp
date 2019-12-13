@@ -68,7 +68,7 @@ void CVehicleSeatGroup::Reset()
 //------------------------------------------------------------------------
 CVehicleSeat* CVehicleSeatGroup::GetSeatByIndex(unsigned int index)
 {
-    if (index >= 0 && index <= m_seats.size())
+    if (index < m_seats.size())
     {
         return m_seats[index];
     }

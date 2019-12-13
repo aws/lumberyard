@@ -63,11 +63,6 @@ namespace AZ
                     AZStd::shared_ptr<const FbxSDKWrapper::FbxSkinWrapper> m_fbxSkin;
                     AZStd::shared_ptr<SceneData::GraphData::SkinWeightData> m_skinWeightData;
                 };
-#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
-                // Workaround for VS2013 - Delete the copy constructor and make it private
-                // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-                FbxSkinWeightsImporter(const FbxSkinWeightsImporter&) = delete;
-#endif
                 AZStd::shared_ptr<SceneData::GraphData::SkinWeightData> BuildSkinWeightData(
                     const std::shared_ptr<const FbxSDKWrapper::FbxMeshWrapper>& fbxMesh, int skinIndex);
 

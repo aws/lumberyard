@@ -107,6 +107,14 @@ namespace AZ
                 AZStd::visit(AZStd::move(enumElementsVisitor), *variantInst);
             }
 
+            void EnumTypes(const ElementTypeCB& cb) override
+            {
+                for (const SerializeContext::ClassElement& alternativeClassElement : m_alternativeClassElements)
+                {
+                    cb(alternativeClassElement.m_typeId, &alternativeClassElement);
+                }
+            }
+
             /// Return number of elements in the container.
             size_t  Size(void*) const override
             {
@@ -418,8 +426,8 @@ namespace AZ
         public:
             AZ_TYPE_INFO(GenericClassVariant, AZ::s_variantTypeId);
             GenericClassVariant()
+                : m_classData{ SerializeContext::ClassData::Create<VariantType>("variant", GetSpecializedTypeId(), &m_variantInstanceFactory, nullptr, &m_variantContainer) }
             {
-                m_classData = SerializeContext::ClassData::Create<VariantType>("variant", GetSpecializedTypeId(), &m_variantInstanceFactory, nullptr, &m_variantContainer);
                 m_classData.m_dataConverter = &m_dataConverter;
                 // As the SerializeGenericTypeInfo is created on demand when a variant is reflected(in static memory)
                 // the serialize context dll module allocator has to be used to manage the lifetime of the ClassData attributes within a module

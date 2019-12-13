@@ -1,0 +1,28 @@
+{
+    "aliases": {
+        "lib_paths_linux_x64": ["${lib_paths}/linux.clang.shared/"]
+    },
+    "platform": {
+        "linux_x64": {
+            "importlibpath_debug": ["${lib_paths_linux_x64}/debug"],
+            "importlibpath_profile": ["${lib_paths_linux_x64}/profile"],
+            "importlibpath_release": ["${lib_paths_linux_x64}/release"],
+            "importlibpath_performance": ["${lib_paths_linux_x64}/release"],
+
+            "sharedlibpath_debug": ["${lib_paths_linux_x64}/debug"],
+            "sharedlibpath_profile": ["${lib_paths_linux_x64}/profile"],
+            "sharedlibpath_release": ["${lib_paths_linux_x64}/release"],
+            "sharedlibpath_performance": ["${lib_paths_linux_x64}/release"],
+
+            "import": [
+                "lib${lib_names}_64.so",
+                "lib${lib_names_ext}_static_64.a"
+            ],
+            
+            "shared": [
+                "lib${lib_names}_64.so",
+                "libPhysXGpu_64.so"
+            ]
+        }
+    }
+}

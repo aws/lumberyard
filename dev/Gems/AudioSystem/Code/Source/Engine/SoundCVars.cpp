@@ -11,21 +11,20 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "SoundCVars.h"
+#include <SoundCVars.h>
+#include <AudioLogger.h>
+#include <AudioSystem_Traits_Platform.h>
+
+#include <AzFramework/StringFunc/StringFunc.h>
+
 #include <ISystem.h>
 #include <IConsole.h>
 #include <MicrophoneBus.h>
 
-#include <CrySoundSystem_Traits_Platform.h>
 
 namespace Audio
 {
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void OnCVarChangedAudioSystemCallback(ICVar* pCVar)
-    {
-        AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::OnCVarChanged, pCVar);
-    }
+    extern CAudioLogger g_audioLogger;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     CSoundCVars::CSoundCVars()
@@ -62,10 +61,10 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CSoundCVars::RegisterVariables()
     {
-        m_nATLPoolSize          = AZ_TRAIT_CRYSOUNDSYSTEM_ATL_POOL_SIZE;
-        m_nAudioEventPoolSize   = AZ_TRAIT_CRYSOUNDSYSTEM_AUDIO_EVENT_POOL_SIZE;
-        m_nAudioObjectPoolSize  = AZ_TRAIT_CRYSOUNDSYSTEM_AUDIO_OBJECT_POOL_SIZE;
-        m_nFileCacheManagerSize = AZ_TRAIT_CRYSOUNDSYSTEM_FILE_CACHE_MANAGER_SIZE;     
+        m_nATLPoolSize          = AZ_TRAIT_AUDIOSYSTEM_ATL_POOL_SIZE;
+        m_nAudioEventPoolSize   = AZ_TRAIT_AUDIOSYSTEM_AUDIO_EVENT_POOL_SIZE;
+        m_nAudioObjectPoolSize  = AZ_TRAIT_AUDIOSYSTEM_AUDIO_OBJECT_POOL_SIZE;
+        m_nFileCacheManagerSize = AZ_TRAIT_AUDIOSYSTEM_FILE_CACHE_MANAGER_SIZE;
 
         // Common Cross-Platform Defaults
         m_nAudioProxiesInitType         = 0;
@@ -78,22 +77,22 @@ namespace Audio
         REGISTER_CVAR2("s_ATLPoolSize", &m_nATLPoolSize, m_nATLPoolSize, VF_REQUIRE_APP_RESTART,
             "Specifies the size (in KiB) of the memory pool to be used by the ATL.\n"
             "Usage: s_ATLPoolSize [0/...]\n"
-            "Default: " AZ_TRAIT_CRYSOUNDSYSTEM_ATL_POOL_SIZE_DEFAULT_TEXT "\n");
+            "Default: " AZ_TRAIT_AUDIOSYSTEM_ATL_POOL_SIZE_DEFAULT_TEXT "\n");
 
         REGISTER_CVAR2("s_AudioEventPoolSize", &m_nAudioEventPoolSize, m_nAudioEventPoolSize, VF_REQUIRE_APP_RESTART,
             "Sets the number of preallocated audio events.\n"
             "Usage: s_AudioEventPoolSize [0/...]\n"
-            "Default: " AZ_TRAIT_CRYSOUNDSYSTEM_AUDIO_EVENT_POOL_SIZE_DEFAULT_TEXT "\n");
+            "Default: " AZ_TRAIT_AUDIOSYSTEM_AUDIO_EVENT_POOL_SIZE_DEFAULT_TEXT "\n");
 
         REGISTER_CVAR2("s_AudioObjectPoolSize", &m_nAudioObjectPoolSize, m_nAudioObjectPoolSize, VF_REQUIRE_APP_RESTART,
             "Sets the number of preallocated audio objects and corresponding audio proxies.\n"
             "Usage: s_AudioObjectPoolSize [0/...]\n"
-            "Default: " AZ_TRAIT_CRYSOUNDSYSTEM_AUDIO_OBJECT_POOL_SIZE_DEFAULT_TEXT "\n");
+            "Default: " AZ_TRAIT_AUDIOSYSTEM_AUDIO_OBJECT_POOL_SIZE_DEFAULT_TEXT "\n");
 
         REGISTER_CVAR2("s_FileCacheManagerSize", &m_nFileCacheManagerSize, m_nFileCacheManagerSize, VF_REQUIRE_APP_RESTART,
             "Sets the size in KiB the AFCM will allocate on the heap.\n"
             "Usage: s_FileCacheManagerSize [0/...]\n"
-            "Default: " AZ_TRAIT_CRYSOUNDSYSTEM_FILE_CACHE_MANAGER_SIZE_DEFAULT_TEXT "\n");
+            "Default: " AZ_TRAIT_AUDIOSYSTEM_FILE_CACHE_MANAGER_SIZE_DEFAULT_TEXT "\n");
 
         REGISTER_CVAR2("s_OcclusionMaxDistance", &m_fOcclusionMaxDistance, m_fOcclusionMaxDistance, VF_CHEAT | VF_CHEAT_NOCHECK,
             "Obstruction/Occlusion is not calculated for the sounds whose distance to the listener is greater than this value.\n"
@@ -273,39 +272,45 @@ namespace Audio
     void CSoundCVars::UnregisterVariables()
     {
         IConsole* const pConsole = gEnv->pConsole;
-        AZ_Assert(pConsole, "SoundCVars::UnregisterVariables - IConsole is already null!");
+        if (pConsole)
+        {
+            pConsole->UnregisterVariable("s_ATLPoolSize");
+            pConsole->UnregisterVariable("s_OcclusionMaxDistance");
+            pConsole->UnregisterVariable("s_OcclusionMaxSyncDistance");
+            pConsole->UnregisterVariable("s_FullObstructionMaxDistance");
+            pConsole->UnregisterVariable("s_PositionUpdateThreshold");
+            pConsole->UnregisterVariable("s_VelocityTrackingThreshold");
+            pConsole->UnregisterVariable("s_FileCacheManagerSize");
+            pConsole->UnregisterVariable("s_AudioObjectPoolSize");
+            pConsole->UnregisterVariable("s_AudioEventPoolSize");
+            pConsole->UnregisterVariable("s_AudioProxiesInitType");
 
-        pConsole->UnregisterVariable("s_ATLPoolSize");
-        pConsole->UnregisterVariable("s_OcclusionMaxDistance");
-        pConsole->UnregisterVariable("s_OcclusionMaxSyncDistance");
-        pConsole->UnregisterVariable("s_FullObstructionMaxDistance");
-        pConsole->UnregisterVariable("s_PositionUpdateThreshold");
-        pConsole->UnregisterVariable("s_VelocityTrackingThreshold");
-        pConsole->UnregisterVariable("s_FileCacheManagerSize");
-        pConsole->UnregisterVariable("s_AudioObjectPoolSize");
-        pConsole->UnregisterVariable("s_AudioEventPoolSize");
-        pConsole->UnregisterVariable("s_AudioProxiesInitType");
-
-        pConsole->UnregisterVariable("s_AudioListenerTranslationYOffset");
-        pConsole->UnregisterVariable("s_AudioListenerTranslationPercentage");
+            pConsole->UnregisterVariable("s_AudioListenerTranslationYOffset");
+            pConsole->UnregisterVariable("s_AudioListenerTranslationPercentage");
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-        pConsole->UnregisterVariable("s_ExecuteTrigger");
-        pConsole->UnregisterVariable("s_StopTrigger");
-        pConsole->UnregisterVariable("s_SetRtpc");
-        pConsole->UnregisterVariable("s_SetSwitchState");
-        pConsole->UnregisterVariable("s_PlayFile");
-        pConsole->UnregisterVariable("s_PlayExternalSource");
-        pConsole->UnregisterVariable("s_SetPanningMode");
+            pConsole->UnregisterVariable("s_ExecuteTrigger");
+            pConsole->UnregisterVariable("s_StopTrigger");
+            pConsole->UnregisterVariable("s_SetRtpc");
+            pConsole->UnregisterVariable("s_SetSwitchState");
+            pConsole->UnregisterVariable("s_PlayFile");
+            pConsole->UnregisterVariable("s_PlayExternalSource");
+            pConsole->UnregisterVariable("s_SetPanningMode");
 
-        pConsole->UnregisterVariable("s_IgnoreWindowFocus");
-        pConsole->UnregisterVariable("s_DrawAudioDebug");
-        pConsole->UnregisterVariable("s_FileCacheManagerDebugFilter");
-        pConsole->UnregisterVariable("s_AudioLoggingOptions");
-        pConsole->UnregisterVariable("s_ShowActiveAudioObjectsOnly");
-        pConsole->UnregisterVariable("s_AudioTriggersDebugFilter");
-        pConsole->UnregisterVariable("s_AudioObjectsDebugFilter");
+            pConsole->UnregisterVariable("s_IgnoreWindowFocus");
+            pConsole->UnregisterVariable("s_DrawAudioDebug");
+            pConsole->UnregisterVariable("s_FileCacheManagerDebugFilter");
+            pConsole->UnregisterVariable("s_AudioLoggingOptions");
+            pConsole->UnregisterVariable("s_ShowActiveAudioObjectsOnly");
+            pConsole->UnregisterVariable("s_AudioTriggersDebugFilter");
+            pConsole->UnregisterVariable("s_AudioObjectsDebugFilter");
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+        }
+        else
+        {
+            AZ_Warning("CSoundCVars", false, 
+                "Wwise Impl CVar Unregistration - IConsole is already null or was never initialized.");
+        }
     }
 
 
@@ -517,7 +522,8 @@ namespace Audio
         {
             const char* filename = cmdArgs->GetArg(1);
 
-            AZStd::string fileext(PathUtil::GetExt(filename));
+            AZStd::string fileext;
+            AzFramework::StringFunc::Path::GetExtension(filename, fileext, false);
 
             AudioInputSourceType audioInputType = AudioInputSourceType::Unsupported;
 

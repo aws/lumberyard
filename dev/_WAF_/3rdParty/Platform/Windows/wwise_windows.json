@@ -1,0 +1,40 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "libpath_debug": [
+                "SDK/x64_vc150/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/x64_vc150/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/x64_vc150/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/x64_vc150/Release/lib"
+            ],
+            "lib_debug": [
+                "${non_release_libs}.lib",
+                "${common_libs}.lib",
+                "${win_libs}.lib",
+                "${common_extra_libs}.lib"
+            ],
+            "lib_profile": [
+                "${non_release_libs}.lib",
+                "${common_libs}.lib",
+                "${win_libs}.lib",
+                "${common_extra_libs}.lib"
+            ],
+            "lib_performance": [
+                "${common_libs}.lib",
+                "${win_libs}.lib",
+                "${common_extra_libs}.lib"
+            ],
+            "lib_release": [
+                "${common_libs}.lib",
+                "${win_libs}.lib",
+                "${common_extra_libs}.lib"
+            ]
+        }
+    }
+}

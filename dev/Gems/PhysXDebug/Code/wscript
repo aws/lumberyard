@@ -9,7 +9,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 ########################################################################################
+
+from waflib import Configure
+
 def build(bld):
+    import lumberyard_sdks
+
     # PhysX has global pointers for referencing the PhysX SDK. These pointers need to exist in a single memory
     # space so different Gems can get copies of them. Monolithic builds will use the static version of PhysX SDK libraries,
     # which results in a single memory space. Non-monolithic builds will use the dynamic version of PhysX SDK libraries,
@@ -19,10 +24,23 @@ def build(bld):
     else:
         physx_sdk_lib = 'PHYSX_SDK_SHARED'
 
+    physxdebug_file_list = []
+    pch_file = "Source/PhysXDebug_precompiled.cpp"
+    if bld.env['PLATFORM'] == 'project_generator' or isinstance(bld,Configure.ConfigurationContext):
+        physxdebug_file_list.extend(['physxdebug.waf_files',
+                                     'physxdebug_unsupported.waf_files'])
+    else:
+        if bld.check_platform_uselib_compatibility(physx_sdk_lib):
+            physxdebug_file_list.extend(['physxdebug.waf_files'])
+        else:
+            physxdebug_file_list.extend(['physxdebug_unsupported.waf_files'])
+            pch_file = "Source/PhysXDebugUnsupported_precompiled.cpp"
+
     bld.DefineGem(
-        file_list         = ['physxdebug.waf_files'],
+        file_list         = physxdebug_file_list,
         defines           = ['IMGUI_ENABLED'],
-        pch               = "Source/PhysXDebug_precompiled.cpp",
+        platforms         = ['all'],
+        pch               = pch_file,
         use               = ['ImGui'],
         includes          = [bld.Path('Code/CryEngine/CryCommon')
                             ],

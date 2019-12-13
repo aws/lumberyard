@@ -22,12 +22,15 @@
 #include <Source/Components/MeshBlockerComponent.h>
 #include <Source/Components/SpawnerComponent.h>
 #include <Source/Components/StaticVegetationBlockerComponent.h>
+#include <Source/InstanceSystemComponent.h>
+#include <Source/DebugSystemComponent.h>
+#include <Source/Debugger/AreaDebugComponent.h>
 
 #include <AzCore/Component/TickBus.h>
 
 namespace UnitTest
 {
-    struct MockDescriptorProvider 
+    struct MockDescriptorProvider
         : public Vegetation::DescriptorProviderRequestBus::Handler
     {
         AZStd::vector<Vegetation::DescriptorPtr> m_descriptors;
@@ -48,18 +51,20 @@ namespace UnitTest
             descriptor.m_meshAsset = AZ::Data::Asset<MockMeshAsset>(&mockMeshAssetData);
             descriptor.m_meshLoaded = true;
 
-            return AZStd::make_shared<Vegetation::Descriptor>(descriptor);
+            Vegetation::DescriptorPtr descriptorPtr;
+            Vegetation::InstanceSystemRequestBus::BroadcastResult(descriptorPtr, &Vegetation::InstanceSystemRequestBus::Events::RegisterUniqueDescriptor, descriptor);
+            return descriptorPtr;
         }
 
         void Clear()
         {
-            for (auto& descriptor : m_descriptors)
+            for (auto& descriptorPtr : m_descriptors)
             {
-                descriptor->m_meshAsset = nullptr;
+                Vegetation::InstanceSystemRequestBus::Broadcast(&Vegetation::InstanceSystemRequestBus::Events::ReleaseUniqueDescriptor, descriptorPtr);
             }
             m_descriptors.clear();
         }
-       
+
         void GetDescriptors(Vegetation::DescriptorPtrVec& descriptors) const override
         {
             descriptors = m_descriptors;
@@ -74,16 +79,24 @@ namespace UnitTest
             m_app.RegisterComponentDescriptor(MockShapeServiceComponent::CreateDescriptor());
             m_app.RegisterComponentDescriptor(MockVegetationAreaServiceComponent::CreateDescriptor());
             m_app.RegisterComponentDescriptor(MockMeshServiceComponent::CreateDescriptor());
+            m_app.RegisterComponentDescriptor(Vegetation::InstanceSystemComponent::CreateDescriptor());
+            m_app.RegisterComponentDescriptor(Vegetation::DebugSystemComponent::CreateDescriptor());
+            m_app.RegisterComponentDescriptor(Vegetation::AreaDebugComponent::CreateDescriptor());
         }
 
         void BasicAreaTests(const AZ::EntityId& areaId)
         {
-            float priority = -1.0f;
+            AZ::u32 priority = std::numeric_limits<AZ::u32>::max();
             Vegetation::AreaInfoBus::EventResult(priority, areaId, &Vegetation::AreaInfoBus::Events::GetPriority);
 
-            EXPECT_NE(-1.0f, priority);
+            EXPECT_NE(priority, std::numeric_limits<AZ::u32>::max());
 
-            auto aabb =  AZ::Aabb::CreateNull();
+            AZ::u32 layer = std::numeric_limits<AZ::u32>::max();
+            Vegetation::AreaInfoBus::EventResult(layer, areaId, &Vegetation::AreaInfoBus::Events::GetLayer);
+
+            EXPECT_NE(layer, std::numeric_limits<AZ::u32>::max());
+
+            auto aabb = AZ::Aabb::CreateNull();
             Vegetation::AreaInfoBus::EventResult(aabb, areaId, &Vegetation::AreaInfoBus::Events::GetEncompassingAabb);
 
             EXPECT_TRUE(aabb.IsValid());
@@ -146,8 +159,8 @@ namespace UnitTest
             mockAsset.Release();
         }
 
-        AZStd::unique_ptr<AZ::Entity> CreateMockMeshEntity(const AZ::Data::Asset<MockMeshAsset>& mockAsset, AZ::Vector3 position, 
-                                                           AZ::Vector3 aabbMin, AZ::Vector3 aabbMax, float meshPercentMin, float meshPercentMax)
+        AZStd::unique_ptr<AZ::Entity> CreateMockMeshEntity(const AZ::Data::Asset<MockMeshAsset>& mockAsset, AZ::Vector3 position,
+            AZ::Vector3 aabbMin, AZ::Vector3 aabbMax, float meshPercentMin, float meshPercentMax)
         {
             m_mockMeshRequestBus.m_GetMeshAssetOutput = mockAsset;
             m_mockMeshRequestBus.m_GetWorldBoundsOutput = AZ::Aabb::CreateFromMinMax(aabbMin, aabbMax);
@@ -192,7 +205,7 @@ namespace UnitTest
         {
             VegetationComponentOperationTests& m_block;
 
-            AreaBusScope(VegetationComponentOperationTests& block, AZ::Entity& entity) 
+            AreaBusScope(VegetationComponentOperationTests& block, AZ::Entity& entity)
                 : m_block(block)
             {
                 m_block.ConnectToAreaBuses(entity);
@@ -215,8 +228,8 @@ namespace UnitTest
     {
         // Create a mock mesh blocker at (0, 0, 0) that extends from (-1, -1, -1) to (1, 1, 1)
         auto mockAsset = CreateMockMeshAsset();
-        auto entity = CreateMockMeshEntity(mockAsset, AZ::Vector3::CreateZero(), 
-                                           AZ::Vector3(-1.0f), AZ::Vector3(1.0f), 0.0f, 1.0f);
+        auto entity = CreateMockMeshEntity(mockAsset, AZ::Vector3::CreateZero(),
+            AZ::Vector3(-1.0f), AZ::Vector3(1.0f), 0.0f, 1.0f);
 
         // Test the point at (0, 0, 0).  It should be blocked.
         const int numPointsBlocked = 1;
@@ -230,8 +243,8 @@ namespace UnitTest
         // Create a mock mesh blocker at (0, 0, 0) that extends from (-1, -1, -1) to (1, 10, 1)
         auto mockAsset = CreateMockMeshAsset();
         auto entity = CreateMockMeshEntity(mockAsset, AZ::Vector3::CreateZero(),
-                                           AZ::Vector3(-1.0f, -1.0f, -1.0f), AZ::Vector3(1.0f, 10.0f, 1.0f),
-                                           0.0f, 1.0f);
+            AZ::Vector3(-1.0f, -1.0f, -1.0f), AZ::Vector3(1.0f, 10.0f, 1.0f),
+            0.0f, 1.0f);
 
         // Test the point at (0.5, 0.5, 2.0).  It should *not* be blocked.  
         // Bug LY96037 was that the Y axis is used for height instead of Z, which would cause the point to be blocked.
@@ -247,8 +260,8 @@ namespace UnitTest
         // Create a mock mesh blocker at (0, 0, 0) that extends from (-1, -1, -1) to (1, 1, 1)
         auto mockAsset = CreateMockMeshAsset();
         auto entity = CreateMockMeshEntity(mockAsset, AZ::Vector3::CreateZero(),
-                                           AZ::Vector3(-1.0f, -1.0f, -1.0f), AZ::Vector3(1.0f, 1.0f, 1.0f),
-                                           0.0f, 1.0f);
+            AZ::Vector3(-1.0f, -1.0f, -1.0f), AZ::Vector3(1.0f, 1.0f, 1.0f),
+            0.0f, 1.0f);
 
         AreaBusScope scope(*this, *entity.get());
 
@@ -268,7 +281,7 @@ namespace UnitTest
         Vegetation::ClaimContext context = CreateContext<1>({ claimPosition1 });
         Vegetation::ClaimContext contextWithReusedHandle = CreateContext<1>({ claimPosition2 });
         contextWithReusedHandle.m_availablePoints[0].m_handle = context.m_availablePoints[0].m_handle;
-            
+
         // The first time we try with this claim handler, the point should be claimed by the MeshBlocker.
         Vegetation::AreaRequestBus::Event(entity->GetId(), &Vegetation::AreaRequestBus::Events::ClaimPositions, idStack, context);
         EXPECT_EQ(1, m_createdCallbackCount);
@@ -277,8 +290,8 @@ namespace UnitTest
         m_createdCallbackCount = 0;
 
         // Send out a "surface changed" notification, as will as a tick bus tick, to give our mesh blocker a chance to refresh.
-        SurfaceData::SurfaceDataSystemNotificationBus::Broadcast(&SurfaceData::SurfaceDataSystemNotificationBus::Events::OnSurfaceChanged, entity->GetId(), 
-                                                                 AZ::Aabb::CreateFromMinMax(claimPosition1, claimPosition2));
+        SurfaceData::SurfaceDataSystemNotificationBus::Broadcast(&SurfaceData::SurfaceDataSystemNotificationBus::Events::OnSurfaceChanged, entity->GetId(),
+            AZ::Aabb::CreateFromMinMax(claimPosition1, claimPosition2));
         AZ::TickBus::Broadcast(&AZ::TickBus::Events::OnTick, 0.f, AZ::ScriptTimePoint{});
 
         // Try claiming again, this time with the same claim handle, but a different location.
@@ -293,7 +306,7 @@ namespace UnitTest
 
     TEST_F(VegetationComponentOperationTests, StaticVegetationBlockerComponent)
     {
-        struct MockStaticVegetationBus 
+        struct MockStaticVegetationBus
             : public Vegetation::StaticVegetationRequestBus::Handler
         {
             Vegetation::StaticVegetationMap m_map;// = AZStd::unordered_map<IRenderNode*, StaticVegetationData>;
@@ -304,10 +317,10 @@ namespace UnitTest
             {
                 Vegetation::StaticVegetationRequestBus::Handler::BusConnect();
 
-                for(size_t i = 0; i < m_renderNodes.size(); ++i)
+                for (size_t i = 0; i < m_renderNodes.size(); ++i)
                 {
                     m_renderNodes[i] = reinterpret_cast<IRenderNode*>(i);
-                    m_map[m_renderNodes[i]] = { AZ::Vector3(0.0f,0.0f,0.0f), AZ::Aabb::CreateCenterRadius(AZ::Vector3(0.0f,0.0f,0.0f), 10) };
+                    m_map[m_renderNodes[i]] = { AZ::Vector3::CreateZero(), AZ::Aabb::CreateCenterRadius(AZ::Vector3::CreateZero(), 10) };
                 }
             }
 
@@ -322,7 +335,7 @@ namespace UnitTest
             }
         };
         MockStaticVegetationBus mockStaticVegetationBus;
-        m_mockShapeBus.m_aabb = AZ::Aabb::CreateCenterRadius(AZ::Vector3(0.0f, 0.0f, 0.0f), 100);
+        m_mockShapeBus.m_aabb = AZ::Aabb::CreateCenterRadius(AZ::Vector3::CreateZero(), 100);
 
         Vegetation::StaticVegetationBlockerConfig config;
 
@@ -351,12 +364,18 @@ namespace UnitTest
 
     TEST_F(VegetationComponentOperationTests, SpawnerComponent)
     {
-        m_mockShapeBus.m_aabb = AZ::Aabb::CreateCenterRadius(AZ::Vector3(0.0f, 0.0f, 0.0f), AZ_FLT_MAX);
-        MockDescriptorProvider mockDescriptorProviderBus(8);
-        MockInstanceSystemRequestBus mockInstanceSystemRequestBus;
+        m_mockShapeBus.m_aabb = AZ::Aabb::CreateCenterRadius(AZ::Vector3::CreateZero(), AZ_FLT_MAX);
 
+        //need dummy system component to track instance and task stats
+        Vegetation::InstanceSystemConfig instanceSystemConfig;
+        Vegetation::InstanceSystemComponent* instanceSystemComponent = nullptr;
+        auto instanceSystemEntity = CreateEntity(instanceSystemConfig, &instanceSystemComponent, [](AZ::Entity* e)
+        {
+            e->CreateComponent<Vegetation::DebugSystemComponent>();
+        });
+
+        //need spawner to generate instances
         Vegetation::SpawnerConfig config;
-
         Vegetation::SpawnerComponent* component = nullptr;
         auto entity = CreateEntity(config, &component, [](AZ::Entity* e)
         {
@@ -364,8 +383,12 @@ namespace UnitTest
         });
 
         AreaBusScope scope(*this, *entity.get());
+
+        //need mock descriptor provider to give spawner content to generate
+        MockDescriptorProvider mockDescriptorProviderBus(8);
         mockDescriptorProviderBus.BusConnect(entity->GetId());
 
+        //connect the spawner for claim requests
         Vegetation::AreaNotificationBus::Event(entity->GetId(), &Vegetation::AreaNotificationBus::Events::OnAreaConnect);
 
         bool prepared = false;
@@ -373,16 +396,39 @@ namespace UnitTest
         Vegetation::AreaRequestBus::EventResult(prepared, entity->GetId(), &Vegetation::AreaRequestBus::Events::PrepareToClaim, idStack);
         EXPECT_TRUE(prepared);
 
+        //spawn 32 instances
         Vegetation::ClaimContext context = CreateContext<32>({ AZ::Vector3(0, 0, 0) });
         const Vegetation::ClaimHandle theClaimHandle = context.m_availablePoints[0].m_handle;
         Vegetation::AreaRequestBus::Event(entity->GetId(), &Vegetation::AreaRequestBus::Events::ClaimPositions, idStack, context);
-        EXPECT_EQ(32, m_createdCallbackCount);
-        EXPECT_EQ(32, mockInstanceSystemRequestBus.m_created);
 
+        AZ::u32 createTaskCount = 0;
+        Vegetation::InstanceSystemStatsRequestBus::BroadcastResult(createTaskCount, &Vegetation::InstanceSystemStatsRequestBus::Events::GetCreateTaskCount);
+        EXPECT_EQ(createTaskCount, 32);
+
+        //destroy the first instance
         Vegetation::AreaRequestBus::Event(entity->GetId(), &Vegetation::AreaRequestBus::Events::UnclaimPosition, theClaimHandle);
-        EXPECT_EQ(33, mockInstanceSystemRequestBus.m_count);
 
+        AZ::u32 destroyTaskCount = 0;
+        Vegetation::InstanceSystemStatsRequestBus::BroadcastResult(destroyTaskCount, &Vegetation::InstanceSystemStatsRequestBus::Events::GetDestroyTaskCount);
+        EXPECT_EQ(destroyTaskCount, 1);
+
+        //disconnect the spawner from claim requests
         Vegetation::AreaNotificationBus::Event(entity->GetId(), &Vegetation::AreaNotificationBus::Events::OnAreaDisconnect);
+
+        //destroy all instances and queued tasks
+        Vegetation::InstanceSystemRequestBus::Broadcast(&Vegetation::InstanceSystemRequestBus::Events::DestroyAllInstances);
+
+        //verify tasks amd instances are cleared
+        Vegetation::InstanceSystemStatsRequestBus::BroadcastResult(createTaskCount, &Vegetation::InstanceSystemStatsRequestBus::Events::GetCreateTaskCount);
+        EXPECT_EQ(createTaskCount, 0);
+
+        Vegetation::InstanceSystemStatsRequestBus::BroadcastResult(destroyTaskCount, &Vegetation::InstanceSystemStatsRequestBus::Events::GetDestroyTaskCount);
+        EXPECT_EQ(destroyTaskCount, 0);
+
+        //note: no instances were created because the tick bus did not execute and the test does not setup required engine and renderer systems
+        AZ::u32 instanceCount = 0;
+        Vegetation::InstanceSystemStatsRequestBus::BroadcastResult(instanceCount, &Vegetation::InstanceSystemStatsRequestBus::Events::GetInstanceCount);
+        EXPECT_EQ(instanceCount, 0);
 
         mockDescriptorProviderBus.Clear();
         mockDescriptorProviderBus.BusDisconnect();
@@ -396,18 +442,18 @@ namespace UnitTest
         });
 
         MockMeshRequestBus mockMeshRequestBusForBlocker;
-        mockMeshRequestBusForBlocker.m_GetWorldBoundsOutput = AZ::Aabb::CreateCenterRadius(AZ::Vector3(0.0f, 0.0f, 0.0f), AZ_FLT_MAX);
+        mockMeshRequestBusForBlocker.m_GetWorldBoundsOutput = AZ::Aabb::CreateCenterRadius(AZ::Vector3::CreateZero(), AZ_FLT_MAX);
         mockMeshRequestBusForBlocker.m_GetVisibilityOutput = true;
         mockMeshRequestBusForBlocker.BusConnect(entityBlocker->GetId());
 
         MockTransformBus mockTransformBusForBlocker;
-        mockTransformBusForBlocker.m_GetWorldTMOutput = AZ::Transform::CreateTranslation(AZ::Vector3(0.0f, 0.0f, 0.0f));
+        mockTransformBusForBlocker.m_GetWorldTMOutput = AZ::Transform::CreateTranslation(AZ::Vector3::CreateZero());
         mockMeshRequestBusForBlocker.BusConnect(entityBlocker->GetId());
 
         MockShapeComponentNotificationsBus mockShapeBusForBlocker;
-        mockShapeBusForBlocker.m_aabb = AZ::Aabb::CreateCenterRadius(AZ::Vector3(0.0f, 0.0f, 0.0f), AZ_FLT_MAX);
+        mockShapeBusForBlocker.m_aabb = AZ::Aabb::CreateCenterRadius(AZ::Vector3::CreateZero(), AZ_FLT_MAX);
         mockMeshRequestBusForBlocker.BusConnect(entityBlocker->GetId());
-        
+
         Vegetation::AreaBlenderConfig config;
         config.m_vegetationAreaIds.push_back(entityBlocker->GetId());
 
@@ -440,12 +486,12 @@ namespace UnitTest
 
     TEST_F(VegetationComponentOperationTests, BlockerComponent)
     {
-        m_mockMeshRequestBus.m_GetWorldBoundsOutput = AZ::Aabb::CreateCenterRadius(AZ::Vector3(0.0f, 0.0f, 0.0f), AZ_FLT_MAX);
+        m_mockMeshRequestBus.m_GetWorldBoundsOutput = AZ::Aabb::CreateCenterRadius(AZ::Vector3::CreateZero(), AZ_FLT_MAX);
         m_mockMeshRequestBus.m_GetVisibilityOutput = true;
 
-        m_mockTransformBus.m_GetWorldTMOutput = AZ::Transform::CreateTranslation(AZ::Vector3(0.0f, 0.0f, 0.0f));
+        m_mockTransformBus.m_GetWorldTMOutput = AZ::Transform::CreateTranslation(AZ::Vector3::CreateZero());
 
-        m_mockShapeBus.m_aabb = AZ::Aabb::CreateCenterRadius(AZ::Vector3(0.0f, 0.0f, 0.0f), AZ_FLT_MAX);
+        m_mockShapeBus.m_aabb = AZ::Aabb::CreateCenterRadius(AZ::Vector3::CreateZero(), AZ_FLT_MAX);
 
         Vegetation::BlockerConfig config;
         config.m_inheritBehavior = false;
@@ -473,4 +519,67 @@ namespace UnitTest
 
         Vegetation::AreaNotificationBus::Event(entity->GetId(), &Vegetation::AreaNotificationBus::Events::OnAreaDisconnect);
     }
+
+    TEST_F(VegetationComponentOperationTests, AreaDebugComponent)
+    {
+        m_mockShapeBus.m_aabb = AZ::Aabb::CreateCenterRadius(AZ::Vector3::CreateZero(), AZ_FLT_MAX);
+
+        //define input and expected output colors
+        const AZ::Color debugColor1(0.1f, 0.2f, 0.3f, 0.4f);
+        const AZ::Color debugColor2(0.5f, 0.6f, 0.7f, 0.8f);
+        const AZ::Color debugColorProduct(debugColor1 * debugColor2);
+
+        //create spawner with debug component
+        Vegetation::SpawnerConfig spawnerConfig;
+        Vegetation::SpawnerComponent* spawnerComponent = nullptr;
+        auto spawnerEntity = CreateEntity(spawnerConfig, &spawnerComponent, [&debugColor1](AZ::Entity* e)
+        {
+            Vegetation::AreaDebugConfig areaDebugConfig;
+            areaDebugConfig.m_debugColor = debugColor1;
+            e->CreateComponent<Vegetation::AreaDebugComponent>(areaDebugConfig);
+            e->CreateComponent<MockShapeServiceComponent>();
+        });
+
+        AreaBusScope scope(*this, *spawnerEntity.get());
+
+        //need mock descriptpor provider to give spawner content to generate
+        MockDescriptorProvider mockDescriptorProviderBus(8);
+        mockDescriptorProviderBus.BusConnect(spawnerEntity->GetId());
+
+        //create blender that references spawner with debug component
+        Vegetation::AreaBlenderConfig blenderConfig;
+        blenderConfig.m_vegetationAreaIds.push_back(spawnerEntity->GetId());
+        Vegetation::AreaBlenderComponent* blenderComponent = nullptr;
+        auto blenderEntity = CreateEntity(blenderConfig, &blenderComponent, [&debugColor2](AZ::Entity* e)
+        {
+            Vegetation::AreaDebugConfig areaDebugConfig;
+            areaDebugConfig.m_debugColor = debugColor2;
+            e->CreateComponent<Vegetation::AreaDebugComponent>(areaDebugConfig);
+            e->CreateComponent<MockShapeServiceComponent>();
+        });
+
+        //force blender and referenced spawner to prepare for placement, which recomputes blended debug color
+        bool prepared = false;
+        Vegetation::EntityIdStack idStack;
+        Vegetation::AreaNotificationBus::Event(blenderEntity->GetId(), &Vegetation::AreaNotificationBus::Events::OnAreaConnect);
+        Vegetation::AreaRequestBus::EventResult(prepared, blenderEntity->GetId(), &Vegetation::AreaRequestBus::Events::PrepareToClaim, idStack);
+        Vegetation::AreaNotificationBus::Event(blenderEntity->GetId(), &Vegetation::AreaNotificationBus::Events::OnAreaDisconnect);
+        EXPECT_TRUE(prepared);
+
+        //verify expected debug data
+        Vegetation::AreaDebugDisplayData areaDebugDisplayData;
+        Vegetation::AreaDebugBus::EventResult(areaDebugDisplayData, spawnerEntity->GetId(), &Vegetation::AreaDebugBus::Events::GetBaseDebugDisplayData);
+        EXPECT_EQ(areaDebugDisplayData.m_instanceColor, debugColor1);
+        Vegetation::AreaDebugBus::EventResult(areaDebugDisplayData, spawnerEntity->GetId(), &Vegetation::AreaDebugBus::Events::GetBlendedDebugDisplayData);
+        EXPECT_EQ(areaDebugDisplayData.m_instanceColor, debugColorProduct);
+
+        Vegetation::AreaDebugBus::EventResult(areaDebugDisplayData, blenderEntity->GetId(), &Vegetation::AreaDebugBus::Events::GetBaseDebugDisplayData);
+        EXPECT_EQ(areaDebugDisplayData.m_instanceColor, debugColor2);
+        Vegetation::AreaDebugBus::EventResult(areaDebugDisplayData, blenderEntity->GetId(), &Vegetation::AreaDebugBus::Events::GetBlendedDebugDisplayData);
+        EXPECT_EQ(areaDebugDisplayData.m_instanceColor, debugColor2);
+
+        mockDescriptorProviderBus.Clear();
+        mockDescriptorProviderBus.BusDisconnect();
+    }
+
 }

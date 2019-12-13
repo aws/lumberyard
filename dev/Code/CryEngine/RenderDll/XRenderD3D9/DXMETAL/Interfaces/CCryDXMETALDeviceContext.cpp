@@ -741,7 +741,7 @@ HRESULT CCryDXGLDeviceContext::GetData(ID3D11Asynchronous* pAsync, void* pData, 
         //  Igor: this slows down everything if not used wisely.
         if (!(GetDataFlags & D3D11_ASYNC_GETDATA_DONOTFLUSH) && !pQuery->IsBufferSubmitted())
         {
-            PROFILE_LABEL_GPU("WARNING: DXMETAL: Flushing pipeline because event or query wants flush.");
+            PROFILE_LABEL("WARNING: DXMETAL: Flushing pipeline because event or query wants flush.");
             m_pContext->Flush();
         }
         return pQuery->GetData(pData, DataSize, (GetDataFlags & D3D11_ASYNC_GETDATA_DONOTFLUSH) == 0 ? true : false) ? S_OK : E_FAIL;

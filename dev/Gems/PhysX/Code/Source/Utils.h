@@ -51,7 +51,7 @@ namespace PhysX
 
     namespace Utils
     {
-        bool CreatePxGeometryFromConfig(const Physics::ShapeConfiguration& shapeConfiguration, physx::PxGeometryHolder& pxGeometry, bool warnForNullAsset = true);
+        bool CreatePxGeometryFromConfig(const Physics::ShapeConfiguration& shapeConfiguration, physx::PxGeometryHolder& pxGeometry);
 
         physx::PxShape* CreatePxShapeFromConfig(
             const Physics::ColliderConfiguration& colliderConfiguration, 
@@ -65,6 +65,11 @@ namespace PhysX
         AZStd::string TriMeshCookingResultToString(physx::PxTriangleMeshCookingResult::Enum triangleCookingResultCode);
 
         bool WriteCookedMeshToFile(const AZStd::string& filePath, const Pipeline::MeshAssetCookedData& cookedMesh);
+
+        bool CookConvexToPxOutputStream(const AZ::Vector3* vertices, AZ::u32 vertexCount, physx::PxOutputStream& stream);
+
+        bool CookTriangleMeshToToPxOutputStream(const AZ::Vector3* vertices, AZ::u32 vertexCount,
+            const AZ::u32* indices, AZ::u32 indexCount, physx::PxOutputStream& stream);
 
         bool MeshDataToPxGeometry(physx::PxBase* meshData, physx::PxGeometryHolder &pxGeometry, const AZ::Vector3& scale);
 

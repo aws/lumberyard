@@ -54,6 +54,9 @@ public:
     byte  m_ucAngleX;
     byte  m_ucAngleY;
     byte m_bApplyPhys;
+    // Keep track of whether this is a static instance (created at level load) or dynamic
+    // instance (created/destroyed during game execution)
+    bool m_isDynamic;
 
     static float g_scBoxDecomprTable[256] _ALIGN(128);
 
@@ -104,6 +107,10 @@ public:
     StatInstGroup& GetStatObjGroup() const;
     void SetPosition(const Vec3& pos) override { m_vPos = pos; }
     void PrepareBBox() override;
+
+    // Query or set whether this is a static or a dynamic vegetation instance
+    bool IsDynamic() const override { return m_isDynamic; }
+    void SetDynamic(bool isDynamicInstance) override { m_isDynamic = isDynamicInstance; }
 
     IStatObj* GetStatObj();
 

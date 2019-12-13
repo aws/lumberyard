@@ -44,6 +44,7 @@ def list(context, args):
 
     context.view.show_manifest_file(filesList)
 
+
 def gui_is_stack_configured(context):
     try:
         stack_id = context.config.get_resource_group_stack_id(context.config.default_deployment,
@@ -540,6 +541,7 @@ def _update_file_hash_section(context, manifest_path, manifest, section):
         if not os.path.isfile(this_file_path):
             show_manifest.invalid_file(this_file_path)
             thisFile['hash'] = ''
+            thisFile['size'] = None
             continue
         hex_return = hashlib.md5(open(this_file_path,'rb').read()).hexdigest()
         manifestHash = thisFile.get('hash','')
@@ -548,6 +550,8 @@ def _update_file_hash_section(context, manifest_path, manifest, section):
             
         show_manifest.hash_comparison_disk(this_file_path, manifestHash, hex_return)
         thisFile['hash'] = hex_return
+        file_stat = os.stat(this_file_path)
+        thisFile['size'] = file_stat.st_size
     manifest[section] = filesList
     return files_updated
     
@@ -648,30 +652,36 @@ def _create_bucket_key(fileEntry):
     return fileKey
 
 
-def get_standalone_manifest_key(context, manifest_path):
+def get_standalone_manifest_pak_key(context, manifest_path):
 
     return os.path.split(_get_path_for_standalone_manifest_pak(context, manifest_path))[1]
 
+def get_standalone_manifest_key(context, manifest_path):
+
+    return os.path.split(manifest_path)[1]
 
 # When uploading all of the changed content within a top level manifest we're going to need to pak up the manifest itself and upload that as well
 # This method lets us simply append an entry about that manifest pak to the list of "changed content" so it all goes up in one pass
-def add_manifest_pak_entry(context, manifest, manifest_path, filesList):  
+def add_manifest_pak_entry(context, manifest, manifest_path, filesList):
     manifest_object = {}
-    manifest_object['keyName'] = get_standalone_manifest_key(context, manifest_path)
+    manifest_object['keyName'] = get_standalone_manifest_pak_key(context, manifest_path)
     manifest_object['localFolder'] = dynamic_content_settings.get_pak_folder()
     manifest_object['hash'] = hashlib.md5(open(manifest_path,'rb').read()).hexdigest()
+    file_stat = os.stat(manifest_path)
+    manifest_object['size'] = file_stat.st_size
     filesList.append(manifest_object)
     
 def _create_manifest_bucket_key_map(context, manifest, manifest_path):
     filesList = _get_files_list(context, manifest, 'Paks')
-    
+
     add_manifest_pak_entry(context, manifest, manifest_path, filesList)
-    
+
     returnMap = {}
     thisFile = {}
     for thisFile in filesList:
         fileKey = _create_bucket_key(thisFile)
         returnMap[fileKey] = thisFile.get('hash','')
+
     return returnMap
 
 def list_bucket_content(context, args):
@@ -703,6 +713,22 @@ def compare_bucket_content(context, args):
             show_manifest.key_not_found(thisKey)
             continue
         show_manifest.hash_comparison_bucket(thisKey, thisHash, _get_bucket_item_hash(headResponse))
+
+def check_matched_bucket_entry(context, localFile, localHash, bucketKey):
+    s3 = context.aws.client('s3')
+    bucketName = _get_content_bucket(context)
+
+    try:
+        headResponse = s3.head_object(
+            Bucket = bucketName,
+            Key = bucketKey
+        )
+    except Exception as e:
+        print("Didn't find entry {}".format(bucketKey))
+        return False
+    bucket_hash = _get_bucket_item_hash(headResponse)
+    print("Comparing {} vs Bucket {}".format(localHash, bucket_hash))
+    return bucket_hash == localHash
 
 def _get_bucket_item_hash(bucketItem):
     return bucketItem.get('Metadata',{}).get(_get_meta_hash_name(),{})
@@ -748,11 +774,20 @@ def command_upload_manifest_content(context, args):
     staging_args = staging.parse_staging_arguments(args)
     upload_manifest_content(context, args.manifest_path, args.deployment_name, staging_args, args.all, args.signing)
 
+def _append_loose_manifest(context, filesList, manifest_path):
+    manifest_object = {}
+    manifest_object['keyName'] = os.path.split(manifest_path)[1]
+    manifest_object['localFolder'] = dynamic_content_settings.get_manifest_folder()
+    manifest_object['hash'] = hashlib.md5(open(manifest_path,'rb').read()).hexdigest()
+    file_stat = os.stat(manifest_path)
+    manifest_object['size'] = file_stat.st_size
+    filesList.append(manifest_object)
+
 # 1 - Build new paks to ensure our paks are up to date and our manifest reflects the latest changes
 # 2 - Update our manifest hashes to match our current content
 # 3 - Check each item in our manifest against a HEAD call to get the metadata with our saved local hash values
 # 4 - Upload each unmatched pak file
-# 5 - Upload the manifest
+# 5 - Upload the manifest (In pak and loose)
 def upload_manifest_content(context, manifest_path, deployment_name, staging_args, upload_all = False, do_signing = False):
     build_new_paks(context, manifest_path, upload_all)
     manifest_path, manifest = _get_path_and_manifest(context, manifest_path)
@@ -760,11 +795,10 @@ def upload_manifest_content(context, manifest_path, deployment_name, staging_arg
     remainingContent = _get_unmatched_content(context, manifest, manifest_path, deployment_name, do_signing)
     bucketName = _get_content_bucket_by_name(context, deployment_name)
     filesList = _get_files_list(context, manifest, 'Paks')
+    _append_loose_manifest(context, filesList, manifest_path)
     thisFile = {}
-    base_content_path = os.path.join(context.config.root_directory_path, context.config.game_directory_name)
     did_upload = False
-    uploaded_files = []
-    uploaded_signatures = {}
+    uploaded_files = {}
     for thisFile in filesList:
         thisKey = _create_bucket_key(thisFile)
         if thisKey in remainingContent or upload_all:
@@ -776,31 +810,27 @@ def upload_manifest_content(context, manifest_path, deployment_name, staging_arg
             context.view.found_updated_item(thisKey)
             _do_file_upload(context, this_file_path, bucketName, thisKey, thisFile['hash'])
             did_upload = True
-            uploaded_files.append(thisKey)
-            
+            upload_info = {}
+
             if do_signing:
                 this_signature = signing.get_file_signature(context, _get_path_for_file_entry(context, thisFile, context.config.game_directory_name))
-                uploaded_signatures[thisKey] = this_signature
-    
+                upload_info['Signature'] = this_signature
+            upload_info['Size'] = thisFile.get('size')
+            upload_info['Hash'] = thisFile.get('hash')
+            uploaded_files[thisKey] = upload_info
 
-    parent_key = get_standalone_manifest_key(context, manifest_path)
-
+    parent_pak_key = get_standalone_manifest_pak_key(context, manifest_path)
+    parent_loose_key = get_standalone_manifest_key(context, manifest_path)
     
     if staging_args != None:
-        for thisFile in uploaded_files:
-            staging_args['Signature'] = uploaded_signatures.get(thisFile)
-
-            
-
-            if parent_key == thisFile:
-
+        for thisFile, fileInfo in uploaded_files.iteritems():
+            staging_args['Signature'] = fileInfo.get('Signature')
+            staging_args['Size'] = fileInfo.get('Size')
+            staging_args['Hash'] = fileInfo.get('Hash')
+            if thisFile in [parent_pak_key, parent_loose_key]:
                 staging_args['Parent'] = ''
-
             else:
-
-                staging_args['Parent'] = parent_key
-
-            
+                staging_args['Parent'] = parent_pak_key
 
             staging.set_staging_status(thisFile, context, staging_args, deployment_name)
 
@@ -911,6 +941,7 @@ def _get_updated_local_content(context, manifest_path, manifest, pak_all):
         if not os.path.isfile(this_file_path):
             context.view.invalid_file(this_file_path)
             thisFile['hash'] = ''
+            thisFile['size'] = None
             continue
 
         relative_pak_folder = _get_pak_for_entry(context, thisFile, manifest_path)
@@ -1009,3 +1040,57 @@ def build_new_paks(context, manifest_path, pak_All = False):
 
 def get_list_objects_limit():
     return 1000 # This is an AWS internal limit on list_objects
+
+def upload_folder_command(context, args):
+    staging_args = staging.parse_staging_arguments(args)
+    upload_folder(context, args.folder, args.bundle_type, args.deployment_name, staging_args, args.signing)
+
+## Upload all of the bundles in a specific folder - no manifest necessary
+def upload_folder(context, folder, bundle_type, deployment_name, staging_args, do_signing = False):
+    folder_path = folder if os.path.isabs(folder) else os.path.abspath(folder)
+    bundles = glob.glob(os.path.join(folder_path, '*' + os.path.extsep + bundle_type))
+
+    if len(bundles) == 0:
+        print('No bundles of type {} found at {}'.format(bundle_type, folder_path))
+        return
+
+    print('Found {} potential {} bundles at {}'.format(len(bundles), bundle_type, folder_path))
+    bucketName = _get_content_bucket(context)
+
+    uploaded_files = {}
+    print('Comparing against bucket {}:'.format(bucketName))
+    for thisBundle in bundles:
+        thisKey = os.path.split(thisBundle)[1]
+        thisHash = hashlib.md5(open(thisBundle, 'rb').read()).hexdigest()
+        file_stat = os.stat(thisBundle)
+        thisSize = file_stat.st_size
+        print('Found bundle {}'.format(thisBundle))
+        print('Size {} Hash {}'.format(thisSize, thisHash))
+        if check_matched_bucket_entry(context, thisBundle,thisHash, thisKey):
+            print('Bucket entry matches, skipping')
+            continue
+
+        print('Uploading {} as {}'.format(thisBundle, thisKey))
+        _do_file_upload(context, thisBundle, bucketName, thisKey, thisHash)
+        did_upload = True
+        upload_info = {}
+
+        if do_signing:
+            this_signature = signing.get_file_signature(context, _get_path_for_file_entry(context, thisBundle,
+                                                                                          context.config.game_directory_name))
+            upload_info['Signature'] = this_signature
+        upload_info['Size'] = thisSize
+        upload_info['Hash'] = thisHash
+        uploaded_files[thisKey] = upload_info
+
+
+    if staging_args != None:
+        for thisFile, fileInfo in uploaded_files.iteritems():
+            staging_args['Signature'] = fileInfo.get('Signature')
+            staging_args['Size'] = fileInfo.get('Size')
+            staging_args['Hash'] = fileInfo.get('Hash')
+            staging_args['Parent'] = ''
+
+            staging.set_staging_status(thisFile, context, staging_args, deployment_name)
+
+

@@ -20,7 +20,6 @@
 #include "UiGameEntityContext.h"
 
 #include <IRenderer.h>
-#include <CryPath.h>
 #include <LyShine/Bus/UiInteractableBus.h>
 #include <LyShine/Bus/UiInitializationBus.h>
 #include <LyShine/Bus/UiNavigationBus.h>
@@ -28,6 +27,7 @@
 #include <LyShine/Bus/UiEntityContextBus.h>
 #include <LyShine/UiSerializeHelpers.h>
 
+#include <AzCore/Debug/AssetTracking.h>
 #include <AzCore/Math/Crc.h>
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -45,6 +45,7 @@
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/Input/Channels/InputChannel.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 
 #include "Animation/UiAnimationSystem.h"
 
@@ -71,11 +72,50 @@ namespace
     ////////////////////////////////////////////////////////////////////////////////////////////////
     // Transform the pathname so that a) it works for opening a file that could be in a Gem or in
     // a pak file, and b) so that it is in a consistent form that can be used for string comparison
-    string NormalizePath(const string& pathname)
+    AZStd::string GetAssePathFromUserDefinedPath(const AZStd::string& userPath)
     {
-        AZStd::string normalizedPath(pathname.c_str());
-        EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePath, normalizedPath);
-        return normalizedPath.c_str();
+        if (userPath.empty())
+        {
+            AZ_Warning("UI", false, "Given UI canvas path is empty.")
+            return userPath;
+        }
+
+        AZStd::string assetPath = userPath;
+
+        // Check if extension needs to be fixed up
+        const AZStd::string canvasExtension("uicanvas");
+        bool validExtension = AzFramework::StringFunc::Path::IsExtension(assetPath.c_str(), canvasExtension.c_str(), true);        
+        if (!validExtension)
+        {
+            // Fix extension
+            AZ_Warning("UI", !AzFramework::StringFunc::Path::HasExtension(assetPath.c_str()), "Given UI canvas path \"%s\" has an invalid extension. Replacing extension with \"%s\".",
+                userPath.c_str(), canvasExtension.c_str());
+            AzFramework::StringFunc::Path::ReplaceExtension(assetPath, canvasExtension.c_str());
+        }
+
+        // Normalize path
+        EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePath, assetPath);
+
+        // Check for any leading slashes as the specified path should be a relative path to the @assets@ alias.
+        // This eliminates inconsistencies between lower level file opens on different platforms
+        int numCharsToErase = 0;
+        for (; numCharsToErase < assetPath.length(); ++numCharsToErase)
+        {
+            if (assetPath[numCharsToErase] != '/')
+            {
+                break;
+            }
+        }
+
+        if (numCharsToErase > 0)
+        {
+            // Remove leading slashes
+            AZ_Warning("UI", false, "Given UI canvas path \"%s\" has invalid leading slashes that make the path not relative. "
+                "Removing the invalid leading slashes.", userPath.c_str());
+            assetPath.erase(0, numCharsToErase);
+        }
+
+        return assetPath;
     }
 }
 
@@ -157,10 +197,11 @@ AZ::EntityId UiCanvasManager::LoadCanvas(const AZStd::string& assetIdPathname)
         return AZ::EntityId();
     }
 
+    AZ_ASSET_NAMED_SCOPE(assetIdPathname.c_str());
+
     UiGameEntityContext* entityContext = new UiGameEntityContext();
 
-    string pathname(assetIdPathname.c_str());
-    AZ::EntityId canvasEntityId = LoadCanvasInternal(pathname, false, "", entityContext);
+    AZ::EntityId canvasEntityId = LoadCanvasInternal(assetIdPathname, false, "", entityContext);
 
     if (!canvasEntityId.IsValid())
     {
@@ -294,13 +335,11 @@ void UiCanvasManager::OnCatalogAssetChanged(const AZ::Data::AssetId& assetId)
 
     // loop over all canvases loaded in game and reload any canvases loaded from this canvas asset
     // NOTE: this could be improved by using AssetId for the comparison rather than pathnames
-    string adjustedSearchName = NormalizePath(assetPath.c_str());
     auto iter = m_loadedCanvases.begin();
     while (iter != m_loadedCanvases.end())
     {
         UiCanvasComponent* canvasComponent = *iter;
-        string adjustedName = NormalizePath(canvasComponent->GetPathname());
-        if (adjustedSearchName == adjustedName)
+        if (assetPath == canvasComponent->GetPathname())
         {
             AZ::EntityId existingCanvasEntityId = canvasComponent->GetEntityId();
 
@@ -317,7 +356,7 @@ void UiCanvasManager::OnCatalogAssetChanged(const AZ::Data::AssetId& assetId)
             // reload canvas with the same entity IDs (except for new entities, deleted entities etc)
             UiGameEntityContext* entityContext = new UiGameEntityContext();
             string pathname(assetPath.c_str());
-            UiCanvasComponent* newCanvasComponent = UiCanvasComponent::LoadCanvasInternal(pathname, false, pathname, entityContext, &existingRemapTable, existingCanvasEntityId);
+            UiCanvasComponent* newCanvasComponent = UiCanvasComponent::LoadCanvasInternal(pathname, false, "", entityContext, &existingRemapTable, existingCanvasEntityId);
 
             if (!newCanvasComponent)
             {
@@ -369,7 +408,7 @@ AZ::EntityId UiCanvasManager::CreateCanvasInEditor(UiEntityContext* entityContex
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AZ::EntityId UiCanvasManager::LoadCanvasInEditor(const string& assetIdPathname, const string& sourceAssetPathname, UiEntityContext* entityContext)
 {
-    return LoadCanvasInternal(assetIdPathname, true, sourceAssetPathname, entityContext);
+    return LoadCanvasInternal(assetIdPathname.c_str(), true, sourceAssetPathname.c_str(), entityContext);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -396,7 +435,7 @@ AZ::EntityId UiCanvasManager::ReloadCanvasFromXml(const AZStd::string& xmlString
         if (oldCanvasComponent)
         {
             LyShine::CanvasId oldCanvasId = oldCanvasComponent->GetCanvasId();
-            string oldPathname = oldCanvasComponent->GetPathname();
+            const AZStd::string oldPathname = oldCanvasComponent->GetPathname();
             AZ::Matrix4x4 oldCanvasToViewportMatrix = oldCanvasComponent->GetCanvasToViewportMatrix();
 
             // Delete the old canvas. We assume this is for editor
@@ -748,14 +787,13 @@ void UiCanvasManager::SortCanvasesByDrawOrder()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-UiCanvasComponent* UiCanvasManager::FindCanvasComponentByPathname(const string& name)
+UiCanvasComponent* UiCanvasManager::FindCanvasComponentByPathname(const AZStd::string& name)
 {
     UiCanvasComponent* match = nullptr;
-    string adjustedSearchName = NormalizePath(name);
+    AZStd::string adjustedSearchName = GetAssePathFromUserDefinedPath(name);
     for (auto canvas : (m_loadedCanvases))
     {
-        string adjustedName = NormalizePath(canvas->GetPathname());
-        if (adjustedSearchName == adjustedName)
+        if (adjustedSearchName == canvas->GetPathname())
         {
             return canvas;
         }
@@ -765,14 +803,12 @@ UiCanvasComponent* UiCanvasManager::FindCanvasComponentByPathname(const string& 
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-UiCanvasComponent* UiCanvasManager::FindEditorCanvasComponentByPathname(const string& name)
+UiCanvasComponent* UiCanvasManager::FindEditorCanvasComponentByPathname(const AZStd::string& name)
 {
     UiCanvasComponent* match = nullptr;
-    string adjustedSearchName = NormalizePath(name);
     for (auto canvas : (m_loadedCanvasesInEditor))
     {
-        string adjustedName = NormalizePath(canvas->GetPathname());
-        if (adjustedSearchName == adjustedName)
+        if (name == canvas->GetPathname())
         {
             return canvas;
         }
@@ -858,102 +894,76 @@ bool UiCanvasManager::HandleInputEventForInWorldCanvases(const AzFramework::Inpu
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-AZ::EntityId UiCanvasManager::LoadCanvasInternal(const string& assetIdPathname, bool forEditor, const string& sourceAssetPathname, UiEntityContext* entityContext,
+AZ::EntityId UiCanvasManager::LoadCanvasInternal(const AZStd::string& assetIdPathname, bool forEditor, const AZStd::string& fullSourceAssetPathname, UiEntityContext* entityContext,
     const AZ::SliceComponent::EntityIdToEntityIdMap* previousRemapTable, AZ::EntityId previousCanvasId)
 {
-    string pathToOpen;
-    if (forEditor)
-    {
-        // If loading from the editor we load the source asset path (just in case it is not in the cache)
-        // Eventually we may refactor so the LyShine never accesses the source assets and perhaps pass
-        // in a buffer from the editor.
-        pathToOpen = sourceAssetPathname;
-    }
-    else
-    {
-        // If loading in game this could be a path that a developer typed into a flow graph node.
-        // However, it has to be a valid asset ID path. E.g. it can be resolved from the asset root
-        // since at runtime we cannot convert from an arbitrary dev asset path to an asset ID
-        pathToOpen = assetIdPathname;
-    }
+    // Fix up user defined asset path for runtime. For editor, the asset path should already be valid
+    AZStd::string assetIdPath = forEditor ? assetIdPathname : GetAssePathFromUserDefinedPath(assetIdPathname);
 
-    string assetIdPath = assetIdPathname;
-
-    const string canvasExtension("uicanvas");
-
-    const char* extension = PathUtil::GetExt(pathToOpen.c_str());
-    if (!extension || extension[0] == '\0')
-    {
-        // empty path - add the uicanvas extension
-        pathToOpen = PathUtil::ReplaceExtension(pathToOpen, canvasExtension);
-        assetIdPath = PathUtil::ReplaceExtension(assetIdPath, canvasExtension);
-    }
-    else
-    {
-        string lowerCaseExt = PathUtil::ToLower(extension);
-        if (lowerCaseExt != "uicanvas")
-        {
-            // Invalid extension
-            AZ_Warning("UI", false, "Given UI canvas path \"%s\" has an invalid extension. Replacing extension with \"%s\".",
-                pathToOpen.c_str(), canvasExtension.c_str());
-            pathToOpen = PathUtil::ReplaceExtension(pathToOpen, canvasExtension);
-            assetIdPath = PathUtil::ReplaceExtension(assetIdPath, canvasExtension);
-        }
-    }
+    // If loading from the editor we load the source asset path.
+    // If loading in game this could be a path that a developer typed into a script.
+    // However, it has to be a valid asset ID path. E.g. it can be resolved from the asset root
+    // since at runtime we cannot convert from an arbitrary dev asset path to an asset ID
+    const AZStd::string& pathToOpen = forEditor ? fullSourceAssetPathname : assetIdPath;
 
     // if the canvas is already loaded in the editor and we are running in game then we clone the
     // editor version so that the user can test their canvas without saving it
     UiCanvasComponent* canvasComponent = FindEditorCanvasComponentByPathname(assetIdPath);
-    if (canvasComponent)
-    {
-        // this canvas is already loaded in the editor
-        if (forEditor)
-        {
-            // should never load a canvas in Editor if it is already loaded. The Editor should avoid loading the
-            // same canvas twice in Editor. If the game is running it is not possible to load a canvas
-            // from the editor.
-            gEnv->pSystem->Warning(VALIDATOR_MODULE_SHINE, VALIDATOR_WARNING, VALIDATOR_FLAG_FILE,
-                pathToOpen.c_str(),
-                "UI canvas file: %s is already loaded",
-                pathToOpen.c_str());
-            return AZ::EntityId();
-        }
-        else
-        {
-            // we are loading from the game, the canvas is already open in the editor, so
-            // we clone the canvas that is open in the editor.
-            canvasComponent = canvasComponent->CloneAndInitializeCanvas(entityContext, assetIdPath);
-        }
-    }
-    else
-    {
-        // not already loaded in editor, attempt to load...
-        canvasComponent = UiCanvasComponent::LoadCanvasInternal(pathToOpen, forEditor, assetIdPath, entityContext, previousRemapTable, previousCanvasId);
-    }
 
-    if (canvasComponent)
+    // This scope opened here intentionally to control the lifetime of the AZ_ASSET_NAMED_SCOPE
     {
-        // canvas loaded OK (or cloned from Editor canvas OK)
-
-        // add to the list of loaded canvases
-        if (forEditor)
+        AZ_ASSET_NAMED_SCOPE(pathToOpen.c_str());
+        if (canvasComponent)
         {
-            m_loadedCanvasesInEditor.push_back(canvasComponent);
-        }
-        else
-        {
-            if (canvasComponent->GetEnabled() && canvasComponent->GetIsConsumingAllInputEvents())
+            // this canvas is already loaded in the editor
+            if (forEditor)
             {
-                AzFramework::InputChannelRequestBus::Broadcast(&AzFramework::InputChannelRequests::ResetState);
-                EBUS_EVENT(UiCanvasBus, ClearAllInteractables);
+                // should never load a canvas in Editor if it is already loaded. The Editor should avoid loading the
+                // same canvas twice in Editor. If the game is running it is not possible to load a canvas
+                // from the editor.
+                gEnv->pSystem->Warning(VALIDATOR_MODULE_SHINE, VALIDATOR_WARNING, VALIDATOR_FLAG_FILE,
+                    pathToOpen.c_str(),
+                    "UI canvas file: %s is already loaded",
+                    pathToOpen.c_str());
+                return AZ::EntityId();
             }
-            m_loadedCanvases.push_back(canvasComponent);
-            SortCanvasesByDrawOrder();
-
-            // Update hover state for loaded canvases
-            m_generateMousePositionInputEvent = true;
+            else
+            {
+                // we are loading from the game, the canvas is already open in the editor, so
+                // we clone the canvas that is open in the editor.
+                canvasComponent = canvasComponent->CloneAndInitializeCanvas(entityContext, assetIdPath);
+            }
         }
-        canvasComponent->SetLocalUserIdInputFilter(m_localUserIdInputFilter);
+        else
+        {
+            // not already loaded in editor, attempt to load...
+            canvasComponent = UiCanvasComponent::LoadCanvasInternal(pathToOpen.c_str(), forEditor, assetIdPath.c_str(), entityContext, previousRemapTable, previousCanvasId);
+        }
+
+        if (canvasComponent)
+        {
+            // canvas loaded OK (or cloned from Editor canvas OK)
+
+            // add to the list of loaded canvases
+            if (forEditor)
+            {
+                m_loadedCanvasesInEditor.push_back(canvasComponent);
+            }
+            else
+            {
+                if (canvasComponent->GetEnabled() && canvasComponent->GetIsConsumingAllInputEvents())
+                {
+                    AzFramework::InputChannelRequestBus::Broadcast(&AzFramework::InputChannelRequests::ResetState);
+                    EBUS_EVENT(UiCanvasBus, ClearAllInteractables);
+                }
+                m_loadedCanvases.push_back(canvasComponent);
+                SortCanvasesByDrawOrder();
+
+                // Update hover state for loaded canvases
+                m_generateMousePositionInputEvent = true;
+            }
+            canvasComponent->SetLocalUserIdInputFilter(m_localUserIdInputFilter);
+        }
     }
 
     return (canvasComponent) ? canvasComponent->GetEntityId() : AZ::EntityId();
@@ -1057,7 +1067,7 @@ void UiCanvasManager::DebugDisplayCanvasData(int setting) const
     for (auto canvas : m_loadedCanvases)
     {
         // Name
-        const string& pathname = canvas->GetPathname();
+        const string pathname = canvas->GetPathname().c_str();
         size_t lastDot = pathname.find_last_of(".");
         size_t lastSlash = pathname.find_last_of("/");
         string leafName = pathname;
@@ -1209,7 +1219,7 @@ void UiCanvasManager::DebugDisplayDrawCallData() const
     for (auto canvas : m_loadedCanvases)
     {
         // Name
-        const string& pathname = canvas->GetPathname();
+        const string pathname = canvas->GetPathname().c_str();
         size_t lastDot = pathname.find_last_of(".");
         size_t lastSlash = pathname.find_last_of("/");
         string leafName = pathname;
@@ -1375,7 +1385,7 @@ void UiCanvasManager::DebugReportDrawCalls(const AZStd::string& name) const
         }
 
         // Name of canvas
-        const string& pathname = canvas->GetPathname();
+        const string pathname = canvas->GetPathname().c_str();
         logLine = "\r\n=====================================================================================\r\n";
         AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
         logLine = AZStd::string::format("Canvas: %s\r\n", pathname.c_str());
@@ -1461,7 +1471,7 @@ void UiCanvasManager::DebugReportDrawCalls(const AZStd::string& name) const
                 {
                     if (!loggedCanvasHeader)
                     {
-                        const string& pathname = canvas->GetPathname();
+                        const string pathname = canvas->GetPathname().c_str();
                         logLine = AZStd::string::format("\r\nCanvas: %s\r\n\r\n", pathname.c_str());
                         AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
                         loggedCanvasHeader = true;

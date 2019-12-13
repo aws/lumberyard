@@ -13,8 +13,8 @@
 
 #pragma once
 
+#include <ATLControlsModel.h>
 #include <QStandardItemModel>
-#include "ATLControlsModel.h"
 
 class QStandardItem;
 
@@ -33,10 +33,10 @@ namespace AudioControls
         void Initialize(CATLControlsModel* pControlsModel);
         QStandardItem* GetItemFromControlID(CID nID);
 
-        CATLControl* CreateControl(EACEControlType eControlType, const string& sName, CATLControl* pParent = nullptr);
+        CATLControl* CreateControl(EACEControlType eControlType, const AZStd::string_view sName, CATLControl* pParent = nullptr);
         QStandardItem* AddControl(CATLControl* pControl, QStandardItem* pParent, int nRow = 0);
 
-        QStandardItem* CreateFolder(QStandardItem* pParent, const string& sName, int nRow = 0);
+        QStandardItem* CreateFolder(QStandardItem* pParent, const AZStd::string_view sName, int nRow = 0);
 
         void RemoveItem(QModelIndex index);
         void RemoveItems(QModelIndexList indexList);

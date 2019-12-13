@@ -194,14 +194,7 @@ int main(int argc, char** argv)
 #endif // AZCG_PLATFORM_DARWIN
 
                 // Platform-agnostic default settings
-                if (Configuration::isAndroidBuild)
-                {
-                    settings += "-std=c++1y"; // Enable C++14 support
-                }
-                else
-                {
-                    settings += "-std=c++14"; // Enable C++14 support
-                }
+                settings += "-std=c++1z"; // Enable C++14 support
                 settings += "-w";  // Inhibit all warning messages.
                 settings += "-DAZ_CODE_GENERATOR"; // Used to toggle code gen macros
                 if (Configuration::annotationErrorChecking)

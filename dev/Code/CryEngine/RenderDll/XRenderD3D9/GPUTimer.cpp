@@ -145,6 +145,8 @@ void CD3DGPUTimer::Start(const char* name)
         #include "Xenia/GPUTimer_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/GPUTimer_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GPUTimer_cpp_salem.inl"
     #endif
 #endif
     }
@@ -167,6 +169,8 @@ void CD3DGPUTimer::Stop()
         #include "Xenia/GPUTimer_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/GPUTimer_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GPUTimer_cpp_salem.inl"
     #endif
 #endif
     }
@@ -205,6 +209,8 @@ void CD3DGPUTimer::UpdateTime()
         #include "Xenia/GPUTimer_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/GPUTimer_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GPUTimer_cpp_salem.inl"
     #endif
 #endif
 
@@ -247,6 +253,8 @@ void CD3DGPUTimer::Release()
         #include "Xenia/GPUTimer_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/GPUTimer_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GPUTimer_cpp_salem.inl"
     #endif
 #endif
     m_bInitialized = false;
@@ -276,6 +284,8 @@ bool CD3DGPUTimer::Init()
         #include "Xenia/GPUTimer_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/GPUTimer_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GPUTimer_cpp_salem.inl"
     #endif
 #endif
 

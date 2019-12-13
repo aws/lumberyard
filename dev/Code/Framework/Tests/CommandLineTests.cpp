@@ -130,4 +130,203 @@ namespace UnitTest
         EXPECT_EQ(cmd.GetSwitchValue("switch1", 4), "abc");
         EXPECT_EQ(cmd.GetSwitchValue("switch1", 5), "def");
     }
+
+
+    TEST_F(CommandLineTests, CommandLineParser_QuoteBoundNoEqualWithComma_Success)
+    {
+        CommandLine cmd;
+
+        const char* argValues[] = {
+            "programname.exe", " /switch1 " ,"\"acb,def\""
+        };
+
+        cmd.Parse(3, const_cast<char**>(argValues));
+
+        EXPECT_TRUE(cmd.HasSwitch("switch1"));
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 0), "acb,def");
+
+    }
+
+    TEST_F(CommandLineTests, CommandLineParser_QuoteBoundEqualWithCommaNoSpace_Success)
+    {
+        CommandLine cmd;
+
+        const char* argValues[] = {
+            "programname.exe", " /switch1=\"abc,fde\""
+        };
+
+        cmd.Parse(2, const_cast<char**>(argValues));
+
+        EXPECT_TRUE(cmd.HasSwitch("switch1"));
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 0), "abc,fde");
+    }
+
+    TEST_F(CommandLineTests, CommandLineParser_QuoteBoundEqualWithCommaSpace_Success)
+    {
+        CommandLine cmd;
+
+        const char* argValues[] = {
+            "programname.exe", " /switch1=\"abc, def\""
+        };
+
+        cmd.Parse(2, const_cast<char**>(argValues));
+
+        EXPECT_TRUE(cmd.HasSwitch("switch1"));
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 0), "abc, def");
+    }
+
+    TEST_F(CommandLineTests, CommandLineParser_SingleQuoteEqualWithCommaSpace_Tokenized)
+    {
+        CommandLine cmd;
+
+        const char* argValues[] = {
+            "programname.exe", " /switch1=\"abc, def"
+        };
+
+        cmd.Parse(2, const_cast<char**>(argValues));
+
+        EXPECT_TRUE(cmd.HasSwitch("switch1"));
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 0), "\"abc");
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 1), "def");
+
+    }
+
+    TEST_F(CommandLineTests, CommandLineParser_SingleQuoteEqualWithCommaNoSpace_Tokenized)
+    {
+        CommandLine cmd;
+
+        const char* argValues[] = {
+            "programname.exe", " /switch1=\"abc,def"
+        };
+
+        cmd.Parse(2, const_cast<char**>(argValues));
+
+        EXPECT_TRUE(cmd.HasSwitch("switch1"));
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 0), "\"abc");
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 1), "def");
+
+    }
+
+
+    TEST_F(CommandLineTests, CommandLineParser_SingleQuoteNoEqualWithCommaNoSpace_Tokenized)
+    {
+        CommandLine cmd;
+
+        const char* argValues[] = {
+            "programname.exe", " /switch1", " \"abc,def" 
+        };
+
+        cmd.Parse(3, const_cast<char**>(argValues));
+
+        EXPECT_TRUE(cmd.HasSwitch("switch1"));
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 0), "\"abc");
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 1), "def");
+
+    }
+
+
+    TEST_F(CommandLineTests, CommandLineParser_SingleQuoteNoEqualWithCommaSpace_Tokenized)
+    {
+        CommandLine cmd;
+
+        const char* argValues[] = {
+            "programname.exe", " /switch1", "\"abc, def"
+        };
+
+        cmd.Parse(3, const_cast<char**>(argValues));
+
+        EXPECT_TRUE(cmd.HasSwitch("switch1"));
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 0), "\"abc");
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 1), "def");
+
+    }
+
+    TEST_F(CommandLineTests, CommandLineParser_DoubleQuoteNoEqual_Blank)
+    {
+        CommandLine cmd;
+
+        const char* argValues[] = {
+            "programname.exe", "/switch1", "\"\""
+        };
+
+        cmd.Parse(3, const_cast<char**>(argValues));
+
+        EXPECT_TRUE(cmd.HasSwitch("switch1"));
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 0), "");
+
+    }
+
+    TEST_F(CommandLineTests, CommandLineParser_DoubleQuote_Blank)
+    {
+        CommandLine cmd;
+
+        const char* argValues[] = {
+            "programname.exe", " /switch1=\"\"", " /switch2", "\"\""
+        };
+
+        cmd.Parse(4, const_cast<char**>(argValues));
+
+        EXPECT_TRUE(cmd.HasSwitch("switch1"));
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 0), "");
+
+        EXPECT_TRUE(cmd.HasSwitch("switch2"));
+        EXPECT_EQ(cmd.GetSwitchValue("switch2", 0), "");
+    }
+
+    TEST_F(CommandLineTests, CommandLineParser_DoubleQuoteEqualComma_Comma)
+    {
+        CommandLine cmd;
+
+        const char* argValues[] = {
+            "programname.exe", " /switch1=\",\""
+        };
+
+        cmd.Parse(2, const_cast<char**>(argValues));
+
+        EXPECT_TRUE(cmd.HasSwitch("switch1"));
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 0), ",");
+
+    }
+
+    TEST_F(CommandLineTests, CommandLineParser_SingleDoubleQuote_Success)
+    {
+        CommandLine cmd;
+
+        const char* argValues[] = {
+            "programname.exe", " /switch1=\"", " /switch2", "\""
+        };
+
+        cmd.Parse(4, const_cast<char**>(argValues));
+
+        EXPECT_TRUE(cmd.HasSwitch("switch1"));
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 0), "\"");
+
+        EXPECT_TRUE(cmd.HasSwitch("switch2"));
+        EXPECT_EQ(cmd.GetSwitchValue("switch2", 0), "\"");
+    }
+
+    // Verify things can "work the previous way" - what if my desired parameter starts and ends with quotes?
+    // -- You can simply start or end with the token and things will work
+    TEST_F(CommandLineTests, CommandLineParser_QuoteCommaStartOrEndWithCommaNoSpace_Tokenized)
+    {
+        CommandLine cmd;
+
+        const char* argValues[] = {
+            "programname.exe", " /switch1=\"abc,fde\",", "/switch2", " ,\"cba, edf\""
+        };
+
+        cmd.Parse(4, const_cast<char**>(argValues));
+
+        EXPECT_TRUE(cmd.HasSwitch("switch1"));
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 0), "\"abc");
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 1), "fde\"");
+
+        EXPECT_TRUE(cmd.HasSwitch("switch1"));
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 0), "\"abc");
+        EXPECT_EQ(cmd.GetSwitchValue("switch1", 1), "fde\"");
+
+        EXPECT_TRUE(cmd.HasSwitch("switch2"));
+        EXPECT_EQ(cmd.GetSwitchValue("switch2", 0), "\"cba");
+        EXPECT_EQ(cmd.GetSwitchValue("switch2", 1), "edf\"");
+    }
 }   // namespace UnitTest

@@ -18,9 +18,11 @@
 #include <stdarg.h>
 
 #if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
+AZ_PUSH_DISABLE_WARNING(4251 4996, "-Wunknown-warning-option")
 #include <aws/core/utils/logging/AWSLogging.h>
 #include <aws/core/utils/logging/DefaultLogSystem.h>
 #include <aws/core/utils/logging/ConsoleLogSystem.h>
+AZ_POP_DISABLE_WARNING
 #endif
 
 namespace AWSNativeSDKInit
@@ -148,6 +150,13 @@ namespace AWSNativeSDKInit
             break;
 
         }
+#endif
+    }
+
+    void AWSLogSystemInterface::Flush()
+    {
+#if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
+        // No-op AZ Debug Trace doesn't have a flush API
 #endif
     }
 }

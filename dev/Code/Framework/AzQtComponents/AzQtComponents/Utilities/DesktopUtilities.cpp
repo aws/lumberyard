@@ -22,12 +22,12 @@ namespace AzQtComponents
         if (QFileInfo(path).isDir())
         {
             // Launch explorer with the directory open and it's contents displayed
-            QProcess::startDetached(QStringLiteral("explorer \"%1\"").arg(QDir::toNativeSeparators(path)));
+            QProcess::startDetached(QStringLiteral("explorer \"\"%1\"\"").arg(QDir::toNativeSeparators(path)));
         }
         else
         {
             // Launch explorer with the path itself selected and shown
-            QProcess::startDetached(QStringLiteral("explorer /select,\"%1\"").arg(QDir::toNativeSeparators(path)));
+            QProcess::startDetached(QStringLiteral("explorer /select,\"\"%1\"\"").arg(QDir::toNativeSeparators(path)));
         }
 #else
         if (QFileInfo(path).isDir())

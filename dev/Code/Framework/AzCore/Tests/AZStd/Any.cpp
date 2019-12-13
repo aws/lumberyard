@@ -13,6 +13,8 @@
 // Written with help from libcxx's any tests
 // https://github.com/llvm-mirror/libcxx/tree/7175a079211ec78c8232d9d55fa4c1f9eeae803d/test/std/experimental/any
 
+#pragma push_macro("AZ_NUMERICCAST_ENABLED")
+#undef AZ_NUMERICCAST_ENABLED
 #define AZ_NUMERICCAST_ENABLED 1
 
 #include <AzCore/std/any.h>
@@ -936,3 +938,5 @@ namespace UnitTest
         }
     }
 }
+
+#pragma pop_macro("AZ_NUMERICCAST_ENABLED")

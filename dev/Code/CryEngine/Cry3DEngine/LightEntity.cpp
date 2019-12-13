@@ -15,7 +15,6 @@
 #include "3dEngine.h"
 #include "ObjMan.h"
 #include "VisAreas.h"
-#include "terrain.h"
 #include "LightEntity.h"
 #include "CullBuffer.h"
 #include "ICryAnimation.h"
@@ -1401,10 +1400,16 @@ void CLightEntity::FillFrustumCastersList_SUN(ShadowMapFrustum* pFr, int dwAllow
         pFr->bBlendFrustum = true;
     }
 
-    Vec3 vMapCenter = Vec3(CTerrain::GetTerrainSize() * 0.5f, CTerrain::GetTerrainSize() * 0.5f, CTerrain::GetTerrainSize() * 0.25f);
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
+    const float terrainSize = static_cast<float>(CTerrain::GetTerrainSize());
+#else
+    const float terrainSize = 0.0f;
+#endif
+
+    Vec3 vMapCenter = Vec3(terrainSize * 0.5f, terrainSize * 0.5f, terrainSize * 0.25f);
 
     // prevent crash in qhull
-    if (!dwAllowedTypes || !((passInfo.GetCamera().GetPosition() - vMapCenter).GetLength() < CTerrain::GetTerrainSize() * 4))
+    if (!dwAllowedTypes || !((passInfo.GetCamera().GetPosition() - vMapCenter).GetLength() < terrainSize * 4))
     {
         return;
     }

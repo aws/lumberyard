@@ -770,7 +770,7 @@ class IntegrationTest_CloudGemPlayerAccount_EndToEnd(base_stack_test.BaseStackTe
                 # '--wait-for-debugger', # uncomment if the tests are failing and you want to debug them.
                 '--integ',
                 '--only', 'Gem.CloudGemPlayerAccount.fd4ea4ff80a64bb9a90e55b46e9539ef.v0.1.0.dll',
-                '--dir', os.environ.get("TEST_BUILD_DIR", "Bin64vc140.Debug.Test")
+                '--dir', os.environ.get("TEST_BUILD_DIR", "Bin64vc141.Debug.Test")
             ]
             print 'EXECUTING', ' '.join(args)
 

@@ -28,7 +28,7 @@ namespace PhysXCharacters
         friend class RagdollComponent;
 
         AZ_CLASS_ALLOCATOR(Ragdoll, AZ::SystemAllocator, 0);
-        AZ_TYPE_INFO(Ragdoll, "{55D477B5-B922-4D3E-89FE-7FB7B9FDD635}", Physics::Ragdoll);
+        AZ_TYPE_INFO_LEGACY(Ragdoll, "{55D477B5-B922-4D3E-89FE-7FB7B9FDD635}", Physics::Ragdoll);
         static void Reflect(AZ::ReflectContext* context);
 
         Ragdoll();
@@ -51,6 +51,7 @@ namespace PhysXCharacters
         void SetNodeState(size_t nodeIndex, const Physics::RagdollNodeState& nodeState) override;
         Physics::RagdollNode* GetNode(size_t nodeIndex) const override;
         size_t GetNumNodes() const override;
+        AZ::Crc32 GetWorldId() const override;
 
         // Physics::WorldBody
         AZ::EntityId GetEntityId() const override;

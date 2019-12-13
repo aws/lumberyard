@@ -1162,33 +1162,25 @@ void SEditorSettings::LoadDefaultGamePaths()
 //////////////////////////////////////////////////////////////////////////
 bool SEditorSettings::BrowseTerrainTexture(bool bIsSave)
 {
-    char path[MAX_PATH] = "";
-    QString fileName;
+    QString path;
+
     if (!terrainTextureExport.isEmpty())
     {
-        fileName = terrainTextureExport;
+        path = Path::GetPath(terrainTextureExport);
     }
     else
     {
-        fileName = "terraintex.bmp";
-        azstrcpy(path, MAX_PATH, Path::GamePathToFullPath("").toUtf8().data());
+        path = Path::GetEditingGameDataFolder().c_str();
     }
 
     if (bIsSave)
     {
-        if (CFileUtil::SelectSaveFile("Bitmap Image File (*.bmp)", "bmp", path, fileName))
-        {
-            terrainTextureExport = fileName;
-            return true;
-        }
+        return CFileUtil::SelectSaveFile("Bitmap Image File (*.bmp)", "bmp", path, terrainTextureExport);
     }
     else
-    if (CFileUtil::SelectFile("Bitmap Image File (*.bmp)", path, fileName))
     {
-        terrainTextureExport = fileName;
-        return true;
+        return CFileUtil::SelectFile("Bitmap Image File (*.bmp)", path, terrainTextureExport);
     }
-    return false;
 }
 
 void EnableSourceControl(bool enable)

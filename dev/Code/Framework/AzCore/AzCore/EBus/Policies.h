@@ -416,4 +416,24 @@ namespace AZ
 
     /// @endcond
     //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+
+    struct EBusEventProcessingPolicy
+    {
+        template<class Results, class Function, class Interface, class... InputArgs>
+        static void CallResult(Results& results, Function&& func, Interface&& iface, InputArgs&&... args)
+        {
+            results = AZStd::invoke(AZStd::forward<Function>(func), AZStd::forward<Interface>(iface), AZStd::forward<InputArgs>(args)...);
+        }
+
+        template<class Function, class Interface, class... InputArgs>
+        static void Call(Function&& func, Interface&& iface, InputArgs&&... args)
+        {
+            AZStd::invoke(AZStd::forward<Function>(func), AZStd::forward<Interface>(iface), AZStd::forward<InputArgs>(args)...);
+        }
+    };
+
+
 } // namespace AZ

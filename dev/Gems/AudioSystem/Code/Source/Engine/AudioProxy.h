@@ -13,7 +13,10 @@
 
 #pragma once
 
+#include <AudioAllocators.h>
 #include <IAudioSystem.h>
+
+#include <AzCore/std/containers/deque.h>
 
 namespace Audio
 {
@@ -33,14 +36,14 @@ namespace Audio
             TAudioControlID nTriggerID,
             const SAudioSourceInfo& rSourceInfo,
             const SAudioCallBackInfos& rCallbackInfos = SAudioCallBackInfos::GetEmptyObject()) override;
-        void ExecuteTrigger(TAudioControlID const nTriggerID, ELipSyncMethod const eLipSyncMethod, SAudioCallBackInfos const& rCallbackInfos = SAudioCallBackInfos::GetEmptyObject()) override;
+        void ExecuteTrigger(const TAudioControlID nTriggerID, const ELipSyncMethod eLipSyncMethod, const SAudioCallBackInfos& rCallbackInfos = SAudioCallBackInfos::GetEmptyObject()) override;
         void StopAllTriggers() override;
         void StopTrigger(const TAudioControlID nTriggerID) override;
         void SetSwitchState(const TAudioControlID nSwitchID, const TAudioSwitchStateID nStateID) override;
         void SetRtpcValue(const TAudioControlID nRtpcID, const float fValue) override;
         void SetObstructionCalcType(const EAudioObjectObstructionCalcType eObstructionType) override;
         void SetPosition(const SATLWorldPosition& refPosition) override;
-        void SetPosition(const Vec3& refPosition) override;
+        void SetPosition(const AZ::Vector3& refPosition) override;
         void SetMultiplePositions(const MultiPositionParams& params) override;
         void SetEnvironmentAmount(const TAudioEnvironmentID nEnvironmentID, const float fValue) override;
         void SetCurrentEnvironments(const EntityId nEntityToIgnore) override;
@@ -154,7 +157,7 @@ namespace Audio
         enum EAudioProxyFlags : TATLEnumFlagsType
         {
             eAPF_NONE           = 0,
-            eAPF_WAITING_FOR_ID = BIT(0),
+            eAPF_WAITING_FOR_ID = AUDIO_BIT(0),
         };
 
         using TQueuedAudioCommands = AZStd::deque<SQueuedAudioCommand, Audio::AudioSystemStdAllocator>;

@@ -10,7 +10,6 @@
 *
 */
 
-#include "StdAfx.h"
 #include <AzTest/AzTest.h>
 #include <IAudioSystem.h>
 
@@ -21,7 +20,7 @@ using namespace Audio;
 // Defines the following:
 //   WaveTable::g_sineTable[]
 //   WaveTable::TABLE_SIZE
-const AZStd::size_t SAMPLE_RATE = WaveTable::TABLE_SIZE;
+const size_t SAMPLE_RATE = WaveTable::TABLE_SIZE;
 
 
 //                         //
@@ -36,7 +35,7 @@ public:
         // Speaker channel ordering is laid out to match Audiokinetic's.
         // See AkSpeakerConfig.h - #define AK_IDX_SETUP_5_*
 
-        AZStd::size_t trackSizeBytes = SAMPLE_RATE * sizeof(float);
+        size_t trackSizeBytes = SAMPLE_RATE * sizeof(float);
         m_frontLeft = static_cast<float*>(azmalloc(trackSizeBytes));
         m_frontRight = static_cast<float*>(azmalloc(trackSizeBytes));
         m_center = static_cast<float*>(azmalloc(trackSizeBytes));
@@ -94,9 +93,9 @@ public:
             {
                 currPhase = 0.f;
                 phaseIncr = static_cast<float>(freqs[channel]);
-                for (AZStd::size_t sample = 0; sample < SAMPLE_RATE; ++sample)
+                for (size_t sample = 0; sample < SAMPLE_RATE; ++sample)
                 {
-                    tracks[channel][sample] = gain * WaveTable::g_sineTable[static_cast<AZStd::size_t>(currPhase)];
+                    tracks[channel][sample] = gain * WaveTable::g_sineTable[static_cast<size_t>(currPhase)];
                     currPhase += phaseIncr;
                     if (currPhase >= SAMPLE_RATE)
                     {
@@ -128,7 +127,7 @@ protected:
 };
 
 
-INTEG_TEST_F(MultiChannelAudio51Test, PlayMultiChannelAudio51)
+INTEG_TEST_F(MultiChannelAudio51Test, DISABLED_PlayMultiChannelAudio51)
 {
     const char* triggerName = "Play_AudioInput2D";
     TAudioControlID triggerId = INVALID_AUDIO_CONTROL_ID;
@@ -160,7 +159,7 @@ INTEG_TEST_F(MultiChannelAudio51Test, PlayMultiChannelAudio51)
     AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(sleep_ms));
 
     // Read the data into the streaming buffer (to be consumed by wwise)
-    AZStd::size_t framesPushed = 0;
+    size_t framesPushed = 0;
     AudioStreamingRequestBus::BroadcastResult(framesPushed, &AudioStreamingRequestBus::Events::ReadStreamingMultiTrackInput, m_multiTrackData);
     EXPECT_EQ(framesPushed, m_multiTrackData.m_sizeBytes / sizeof(float));
 

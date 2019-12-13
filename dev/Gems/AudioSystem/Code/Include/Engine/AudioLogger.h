@@ -13,35 +13,100 @@
 
 #pragma once
 
-#include <platform.h>
-#include <IConsole.h>
-#include <ISystem.h>
-#include <ITimer.h>
+#include <AzCore/Module/Environment.h>
+#include <IAudioInterfacesCommonData.h>
 
 namespace Audio
 {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     enum EAudioLogType
     {
-        eALT_ERROR = 0,
+        eALT_ASSERT,
+        eALT_ERROR,
         eALT_WARNING,
         eALT_COMMENT,
         eALT_ALWAYS,
-        eALT_FATAL,
     };
 
     enum EAudioLoggingOptions
     {
         eALO_NONE     = 0,
-        eALO_ERRORS   = BIT(6), // a
-        eALO_WARNINGS = BIT(7), // b
-        eALO_COMMENTS = BIT(8), // c
+        eALO_ERRORS   = AUDIO_BIT(6), // a
+        eALO_WARNINGS = AUDIO_BIT(7), // b
+        eALO_COMMENTS = AUDIO_BIT(8), // c
     };
+
+    namespace Log
+    {
+        // Eventually will get rid of the CAudioLogger class and objects and convert
+        // all audio log calls to use Audio::Log::Print.
+        // Audio::Log::Print will take variadic arguments, but for now format the
+        // arguments in CAudioLogger::Log and call this PrintMsg.
+        static void PrintMsg(const EAudioLogType type, const char* const message)
+        {
+            EAudioLoggingOptions logLevel = eALO_NONE;
+
+            auto verbosityVar = AZ::Environment::FindVariable<int*>("AudioLogVerbosity");
+            if (verbosityVar.IsConstructed())
+            {
+                logLevel = static_cast<EAudioLoggingOptions>(*(verbosityVar.Get()));
+            }
+
+            if (logLevel == eALO_NONE)
+            {
+                return;
+            }
+
+            static constexpr const char* AudioWindow = "Audio";
+
+            switch (type)
+            {
+                case eALT_ASSERT:
+                {
+                    AZ_Assert(false, message);
+                    break;
+                }
+                case eALT_ERROR:
+                {
+                    if (logLevel & eALO_ERRORS)
+                    {
+                        AZ_Error(AudioWindow, false, message);
+                    }
+                    break;
+                }
+                case eALT_WARNING:
+                {
+                    if (logLevel & eALO_WARNINGS)
+                    {
+                        AZ_Warning(AudioWindow, false, message);
+                    }
+                    break;
+                }
+                case eALT_COMMENT:
+                {
+                    if (logLevel & eALO_COMMENTS)
+                    {
+                        AZ_TracePrintf(AudioWindow, message);
+                    }
+                    break;
+                }
+                case eALT_ALWAYS:
+                {
+                    AZ_Printf(AudioWindow, message);
+                    break;
+                }
+                default:
+                {
+                    break;
+                }
+            }
+        }
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // <title CAudioLogger>
     // Summary:
-    //      A simpler logger wrapper that adds and audio tag and a timestamp
+    //      A simple logger wrapper that uses independent verbosity
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     class CAudioLogger
     {
@@ -49,95 +114,36 @@ namespace Audio
         CAudioLogger() = default;
         ~CAudioLogger() = default;
 
-        CAudioLogger(const CAudioLogger&) = delete;         // Copy protection
-        CAudioLogger& operator=(const CAudioLogger&) = delete; // Copy protection
+        CAudioLogger(const CAudioLogger&) = delete;
+        CAudioLogger& operator=(const CAudioLogger&) = delete;
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
         // <title Log>
         // Summary:
         //      Log a message
         // Arguments:
-        //      eType        - log message type (eALT_COMMENT, eALT_WARNING, eALT_ERROR or eALT_ALWAYS)
-        //      sFormat, ... - printf-style format string and its arguments
+        //      type        - log message type (e.g. eALT_ERROR, eALT_WARNING, eALT_COMMENT, etc)
+        //      format, ... - printf-style format string and its arguments
         ///////////////////////////////////////////////////////////////////////////////////////////////
-        void Log(const EAudioLogType eType, const char* const sFormat, ...) const
+        void Log(const EAudioLogType type, const char* const format, ...) const
         {
         #if defined(ENABLE_AUDIO_LOGGING)
-            if (!gEnv->pConsole || !gEnv->pTimer || !gEnv->pLog)
+            if (format && format[0] != '\0')
             {
-                return;
-            }
+                const size_t BUFFER_LEN = 1024;
+                char buffer[BUFFER_LEN];
 
-            const ICVar* cVar = gEnv->pConsole->GetCVar("s_AudioLoggingOptions");
-            if (!cVar)
-            {
-                return;
-            }
+                va_list argList;
+                va_start(argList, format);
+                azvsnprintf(buffer, BUFFER_LEN, format, argList);
+                va_end(argList);
 
-            if (sFormat && sFormat[0] != '\0' && gEnv->pLog->GetVerbosityLevel() != -1)
-            {
-                FRAME_PROFILER("CAudioLogger::Log", GetISystem(), PROFILE_AUDIO);
+                buffer[BUFFER_LEN - 1] = '\0';
 
-                char sBuffer[MAX_PATH];
-                va_list ArgList;
-                va_start(ArgList, sFormat);
-                azvsnprintf(sBuffer, sizeof(sBuffer), sFormat, ArgList);
-                sBuffer[sizeof(sBuffer) - 1] = '\0';
-                va_end(ArgList);
-
-                float fCurrTime = gEnv->pTimer->GetAsyncCurTime();
-
-                const auto audioLoggingVerbosity = static_cast<EAudioLoggingOptions>(cVar->GetIVal());
-
-                #define AUDIO_LOG_FORMAT    "<Audio:%.3f> %s"
-
-                switch (eType)
-                {
-                    case eALT_ERROR:
-                    {
-                        if (audioLoggingVerbosity & eALO_ERRORS)
-                        {
-                            gEnv->pSystem->Warning(VALIDATOR_MODULE_AUDIO, VALIDATOR_ERROR, (VALIDATOR_FLAG_AUDIO | VALIDATOR_FLAG_IGNORE_IN_EDITOR), nullptr,
-                                AUDIO_LOG_FORMAT, fCurrTime, sBuffer);
-                        }
-                        break;
-                    }
-                    case eALT_WARNING:
-                    {
-                        if (audioLoggingVerbosity & eALO_WARNINGS)
-                        {
-                            gEnv->pSystem->Warning(VALIDATOR_MODULE_AUDIO, VALIDATOR_WARNING, (VALIDATOR_FLAG_AUDIO | VALIDATOR_FLAG_IGNORE_IN_EDITOR), nullptr,
-                                AUDIO_LOG_FORMAT, fCurrTime, sBuffer);
-                        }
-                        break;
-                    }
-                    case eALT_COMMENT:
-                    {
-                        if (audioLoggingVerbosity & eALO_COMMENTS)
-                        {
-                            // Use CryLog, which is tied to System verbosity level 3 (Messages)
-                            CryLog(AUDIO_LOG_FORMAT, fCurrTime, sBuffer);
-                        }
-                        break;
-                    }
-                    case eALT_ALWAYS:
-                    {
-                        CryLogAlways(AUDIO_LOG_FORMAT, fCurrTime, sBuffer);
-                        break;
-                    }
-                    case eALT_FATAL:
-                    {
-                        CryFatalError(AUDIO_LOG_FORMAT, fCurrTime, sBuffer);
-                        break;
-                    }
-                    default:
-                    {
-                        AZ_ErrorOnce("AudioLogger", false, "Attempted to use Audio Logger with an invalid log type!");
-                        break;
-                    }
-                }
+                Audio::Log::PrintMsg(type, buffer);
             }
         #endif // ENABLE_AUDIO_LOGGING
         }
     };
+
 } // namespace Audio

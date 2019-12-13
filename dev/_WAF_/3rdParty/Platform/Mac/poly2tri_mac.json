@@ -1,0 +1,9 @@
+{
+    "platform": {
+        "darwin_x64": {
+            "libpath_debug": ["lib/osx/Debug"],
+            "libpath_release": ["lib/osx/Release"],
+            "lib": ["lib${lib_names}.a"]
+        }
+    }
+}

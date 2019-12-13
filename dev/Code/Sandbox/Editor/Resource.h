@@ -71,11 +71,12 @@
 #define IDC_POINTER_SO_SELECT_MINUS                2000
 #define IDC_SELECTION                              2634
 #define IDC_SELECTION_MASK                         2637
-#define IDC_PLATFORM_XBOXONE                       2757 // ACCEPTED_USE
-#define IDC_PLATFORM_PS4                           2758 // ACCEPTED_USE
-#define IDC_GROUPBOX_GLOBALTAGS                     2916
-#define IDC_GROUPBOX_FRAGMENTTAGS                   2917
-#define ID_PARTICLE_EDITOR              2922
+#define IDC_PLATFORM_XENIA                         2757
+#define IDC_PLATFORM_PROVO                         2758
+#define IDC_PLATFORM_SALEM                         2759
+#define IDC_GROUPBOX_GLOBALTAGS                    2916
+#define IDC_GROUPBOX_FRAGMENTTAGS                  2917
+#define ID_PARTICLE_EDITOR                         2922
 #define ID_RESOURCES_GENERATECGFTHUMBNAILS         32894
 #define ID_AI_GENERATETRIANGULATION                32895
 #define ID_RESOURCES_REDUCEWORKINGSET              32896
@@ -498,16 +499,19 @@
 #define ID_EDIT_RESET_LOCAL                          36205
 #define ID_EDIT_RESET_WORLD                          36206
 #define ID_EDIT_RESET_MANIPULATOR                    36207
-#define ID_GAME_XBONE_ENABLELOWSPEC                 34600 // ACCEPTED_USE
-#define ID_GAME_XBONE_ENABLEMEDIUMSPEC              34601 // ACCEPTED_USE
-#define ID_GAME_XBONE_ENABLEHIGHSPEC                34602 // ACCEPTED_USE
-#define ID_GAME_PS4_ENABLELOWSPEC                   34603 // ACCEPTED_USE
-#define ID_GAME_PS4_ENABLEMEDIUMSPEC                34604 // ACCEPTED_USE
-#define ID_GAME_PS4_ENABLEHIGHSPEC                  34605 // ACCEPTED_USE
+#define ID_GAME_XENIA_ENABLELOWSPEC                 34600
+#define ID_GAME_XENIA_ENABLEMEDIUMSPEC              34601
+#define ID_GAME_XENIA_ENABLEHIGHSPEC                34602
+#define ID_GAME_PROVO_ENABLELOWSPEC                   34603
+#define ID_GAME_PROVO_ENABLEMEDIUMSPEC                34604
+#define ID_GAME_PROVO_ENABLEHIGHSPEC                  34605
 #define ID_GAME_OSXMETAL_ENABLELOWSPEC              34606
 #define ID_GAME_OSXMETAL_ENABLEMEDIUMSPEC           34607
 #define ID_GAME_OSXMETAL_ENABLEHIGHSPEC             34608
 #define ID_GAME_OSXMETAL_ENABLEVERYHIGHSPEC         34609
+#define ID_GAME_SALEM_ENABLELOWSPEC                 34610
+#define ID_GAME_SALEM_ENABLEMEDIUMSPEC              34611
+#define ID_GAME_SALEM_ENABLEHIGHSPEC                34612
 #define ID_FILE_RESAVESLICES                        36210
 #define FIRST_QT_ACTION                      50000
 #define ID_VIEW_ROLLUPBAR                    50000

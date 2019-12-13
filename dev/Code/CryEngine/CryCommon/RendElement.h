@@ -66,6 +66,9 @@ enum EDataType
     eDATA_BreakableGlass,
     eDATA_GeomCache,
     eDATA_Gem,
+#ifdef LY_TERRAIN_RUNTIME
+    eDATA_TerrainSystem,
+#endif
 };
 
 #include <Cry_Color.h>

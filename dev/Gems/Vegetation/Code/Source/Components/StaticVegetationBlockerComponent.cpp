@@ -475,23 +475,23 @@ namespace Vegetation
         LmbrCentral::DependencyNotificationBus::Event(GetEntityId(), &LmbrCentral::DependencyNotificationBus::Events::OnCompositionChanged);
     }
 
-    float StaticVegetationBlockerComponent::GetAreaPriority() const
+    AZ::u32 StaticVegetationBlockerComponent::GetAreaPriority() const
     {
         return m_configuration.m_priority;
     }
 
-    void StaticVegetationBlockerComponent::SetAreaPriority(float priority)
+    void StaticVegetationBlockerComponent::SetAreaPriority(AZ::u32 priority)
     {
         m_configuration.m_priority = priority;
         LmbrCentral::DependencyNotificationBus::Event(GetEntityId(), &LmbrCentral::DependencyNotificationBus::Events::OnCompositionChanged);
     }
 
-    AreaLayer StaticVegetationBlockerComponent::GetAreaLayer() const
+    AZ::u32 StaticVegetationBlockerComponent::GetAreaLayer() const
     {
         return m_configuration.m_layer;
     }
 
-    void StaticVegetationBlockerComponent::SetAreaLayer(AreaLayer layer)
+    void StaticVegetationBlockerComponent::SetAreaLayer(AZ::u32 layer)
     {
         m_configuration.m_layer = layer;
         LmbrCentral::DependencyNotificationBus::Event(GetEntityId(), &LmbrCentral::DependencyNotificationBus::Events::OnCompositionChanged);

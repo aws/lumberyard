@@ -24,10 +24,11 @@
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
+                                                               // 4251: class '...' needs to have dll-interface to be used by clients of class '...'
 #include <QAction>
-AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
+#include <QAbstractItemView>
 #include <QHBoxLayout>
-AZ_POP_DISABLE_WARNING
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QPushButton>
@@ -37,8 +38,6 @@ AZ_POP_DISABLE_WARNING
 #include <QTimer>
 #include <QTreeView>
 #include <QVBoxLayout>
-AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
-                                                               // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
 #include <QKeyEvent>
 AZ_POP_DISABLE_WARNING
 
@@ -84,6 +83,7 @@ namespace AzToolsFramework
         m_componentTree = new QTreeView(this);
         m_componentTree->setObjectName("Tree");
         m_componentTree->setModel(m_componentModel);
+        m_componentTree->setEditTriggers(QAbstractItemView::NoEditTriggers);
         outerLayout->addWidget(m_componentTree);
 
         //hide header for dropdown-style, single-column, tree
@@ -212,7 +212,7 @@ namespace AzToolsFramework
                 {
                     //count the number of components on selected entities that match this type
                     auto componentCount = AZStd::count_if(allComponentsOnSelectedEntities.begin(), allComponentsOnSelectedEntities.end(), [componentClass](const AZ::Component* component) {
-                        return componentClass->m_typeId == component->RTTI_GetType();
+                        return componentClass->m_typeId == component->GetUnderlyingComponentType();
                     });
 
                     //generate the display name for the component, appending a count if this component exists

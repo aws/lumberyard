@@ -48,6 +48,7 @@ public:
     // Implementation
 protected:
     void OnHoleMake(bool v);
+    void OnHoleRemove(bool v);
     void OnReleasedcaptureRadius(int value);
 
     QSlider*    m_radius;

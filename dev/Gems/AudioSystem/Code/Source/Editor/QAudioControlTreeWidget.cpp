@@ -11,11 +11,11 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "QAudioControlTreeWidget.h"
-#include "QAudioControlEditorIcons.h"
-#include "QtUtil.h"
-#include "common/ACETypes.h"
+#include <QAudioControlTreeWidget.h>
+
+#include <ACEEnums.h>
+#include <ACETypes.h>
+#include <QAudioControlEditorIcons.h>
 
 using namespace AudioControls;
 

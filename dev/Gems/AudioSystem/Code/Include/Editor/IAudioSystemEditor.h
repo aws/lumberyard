@@ -13,25 +13,57 @@
 
 #pragma once
 
-#include "ACETypes.h"
+#include <AzCore/EBus/EBus.h>
+#include <AzCore/std/string/string.h>
+#include <AzCore/std/string/string_view.h>
+
+#include <ACETypes.h>
+
+#include <platform.h>
 #include <IXml.h>
+
+namespace AudioControls
+{
+    class IAudioSystemEditor;
+}
+
+namespace AudioControlsEditor
+{
+    class EditorImplPluginEvents
+        : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+
+        virtual void InitializeEditorImplPlugin() = 0;
+        virtual void ReleaseEditorImplPlugin() = 0;
+
+        virtual AudioControls::IAudioSystemEditor* GetEditorImplPlugin() = 0;
+    };
+
+    using EditorImplPluginEventBus = AZ::EBus<EditorImplPluginEvents>;
+
+} // namespace
+
 
 namespace AudioControls
 {
     class IAudioSystemControl;
     class IAudioConnection;
 
-    typedef uint TImplControlTypeMask;
+    typedef AZ::u32 TImplControlTypeMask;
 
     //-------------------------------------------------------------------------------------------//
     struct SControlDef
     {
         TImplControlType eType;           // middleware type of the control
-        string sName;                     // name of the control
-        string sPath;                     // subfolder/path of the control
+        AZStd::string sName;              // name of the control
+        AZStd::string sPath;              // subfolder/path of the control
         bool bLocalised;                  // true if the control is localised.
         IAudioSystemControl* pParent;     // pointer to the parent
-        SControlDef(const string& name, TImplControlType type, bool localised = false, IAudioSystemControl* parent = nullptr, const string& path = "")
+
+        SControlDef(const AZStd::string& name, TImplControlType type, bool localised = false, IAudioSystemControl* parent = nullptr, const AZStd::string& path = "")
             : eType(type)
             , sName(name)
             , bLocalised(localised)
@@ -165,14 +197,14 @@ namespace AudioControls
         //      A string with the path to the icon corresponding to the control type
         // See Also:
         //
-        virtual string GetTypeIcon(TImplControlType type) const = 0;
+        virtual const AZStd::string_view GetTypeIcon(TImplControlType type) const = 0;
 
         // <title GetName>
         // Description:
         //      Gets the name of the implementation which might be used in the ACE UI.
         // Returns:
         //      String with the name of the implementation.
-        virtual string GetName() const = 0;
+        virtual AZStd::string GetName() const = 0;
 
         // <title GetDataPath>
         // Description:
@@ -180,11 +212,12 @@ namespace AudioControls
         //      This is used by the ACE to update if controls are changed while the editor is open.
         // Returns:
         //      String with the path to the folder where the implementation specific controls are stored.
-        virtual string GetDataPath() const = 0;
+        virtual AZStd::string GetDataPath() const = 0;
 
         // <title DataSaved>
         // Description:
         //      Informs the plugin that the ACE has saved the data in case it needs to do any clean up
         virtual void DataSaved() = 0;
     };
+
 } // namespace AudioControls

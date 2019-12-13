@@ -15,7 +15,9 @@
 
 #include <IAudioSystem.h>
 #include <IAudioSystemImplementation.h>
-#include <CryName.h>
+
+#include <platform.h>
+#include <smartptr.h>
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
     #include <sstream>
@@ -35,8 +37,8 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     enum EAudioRequestInfoFlags : TATLEnumFlagsType
     {
-        eARIF_NONE                      = 0,
-        eARIF_WAITING_FOR_REMOVAL       = BIT(0),
+        eARIF_NONE                  = 0,
+        eARIF_WAITING_FOR_REMOVAL   = AUDIO_BIT(0),
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -171,7 +173,7 @@ namespace Audio
         TAudioObjectID* const pObjectID;
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-        CryFixedStringT<MAX_AUDIO_OBJECT_NAME_LENGTH> sObjectName;
+        AZStd::string sObjectName;
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     };
 
@@ -218,7 +220,7 @@ namespace Audio
 
         ~SAudioManagerRequestDataInternal<eAMRT_PARSE_CONTROLS_DATA>()override {}
 
-        const CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> sControlsPath;
+        const AZStd::string sControlsPath;
         const EATLDataScope eDataScope;
     };
 
@@ -235,7 +237,7 @@ namespace Audio
 
         ~SAudioManagerRequestDataInternal<eAMRT_PARSE_PRELOADS_DATA>()override {}
 
-        const CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> sControlsPath;
+        const AZStd::string sControlsPath;
         const EATLDataScope eDataScope;
     };
 
@@ -330,8 +332,8 @@ namespace Audio
 
         ~SAudioManagerRequestDataInternal<eAMRT_REFRESH_AUDIO_SYSTEM>()override {}
 
-        const CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> m_controlsPath;
-        const CryFixedStringT<MAX_AUDIO_FILE_NAME_LENGTH> m_levelName;
+        const AZStd::string m_controlsPath;
+        const AZStd::string m_levelName;
         const TAudioPreloadRequestID m_levelPreloadId = INVALID_AUDIO_PRELOAD_REQUEST_ID;
     };
 
@@ -623,21 +625,6 @@ namespace Audio
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     template<>
-    struct SAudioObjectRequestDataInternal<eAORT_SET_VOLUME>
-        : public SAudioObjectRequestDataInternalBase
-    {
-        explicit SAudioObjectRequestDataInternal(const SAudioObjectRequestData<eAORT_SET_VOLUME>* const pAORData)
-            : SAudioObjectRequestDataInternalBase(pAORData->eType)
-            , fVolume(pAORData->fVolume)
-        {}
-
-        ~SAudioObjectRequestDataInternal<eAORT_SET_VOLUME>()override {}
-
-        const float fVolume;
-    };
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    template<>
     struct SAudioObjectRequestDataInternal<eAORT_SET_ENVIRONMENT_AMOUNT>
         : public SAudioObjectRequestDataInternalBase
     {
@@ -812,13 +799,9 @@ namespace Audio
             {
                 { eAMRT_INIT_AUDIO_IMPL, "INIT IMPL" },
                 { eAMRT_RELEASE_AUDIO_IMPL, "RELEASE IMPL" },
-                { eAMRT_REFRESH_AUDIO_SYSTEM, "REFRESH AUDIO SYSTEM" },
                 { eAMRT_RESERVE_AUDIO_OBJECT_ID, "RESERVE OBJECT ID" },
-                { eAMRT_LOSE_FOCUS, "LOSE FOCUS" },
-                { eAMRT_GET_FOCUS, "GET FOCUS" },
-                { eAMRT_MUTE_ALL, "MUTE" },
-                { eAMRT_UNMUTE_ALL, "UNMUTE" },
-                { eAMRT_STOP_ALL_SOUNDS, "STOP ALL" },
+                { eAMRT_CREATE_SOURCE, "CREATE SOURCE" },
+                { eAMRT_DESTROY_SOURCE, "DESTROY SOURCE" },
                 { eAMRT_PARSE_CONTROLS_DATA, "PARSE CONTROLS" },
                 { eAMRT_PARSE_PRELOADS_DATA, "PARSE PRELOADS" },
                 { eAMRT_CLEAR_CONTROLS_DATA, "CLEAR CONTROLS" },
@@ -826,8 +809,15 @@ namespace Audio
                 { eAMRT_PRELOAD_SINGLE_REQUEST, "PRELOAD SINGLE" },
                 { eAMRT_UNLOAD_SINGLE_REQUEST, "UNLOAD SINGLE" },
                 { eAMRT_UNLOAD_AFCM_DATA_BY_SCOPE, "UNLOAD SCOPE" },
+                { eAMRT_REFRESH_AUDIO_SYSTEM, "REFRESH AUDIO SYSTEM" },
+                { eAMRT_LOSE_FOCUS, "LOSE FOCUS" },
+                { eAMRT_GET_FOCUS, "GET FOCUS" },
+                { eAMRT_MUTE_ALL, "MUTE" },
+                { eAMRT_UNMUTE_ALL, "UNMUTE" },
+                { eAMRT_STOP_ALL_SOUNDS, "STOP ALL" },
                 { eAMRT_DRAW_DEBUG_INFO, "DRAW DEBUG" },
                 { eAMRT_CHANGE_LANGUAGE, "CHANGE LANGUAGE" },
+                { eAMRT_SET_AUDIO_PANNING_MODE, "SET PANNING MODE" },
             };
             static const AZStd::unordered_map<const EAudioCallbackManagerRequestType, const AZStd::string> callbackRequests
             {
@@ -855,6 +845,7 @@ namespace Audio
                 { eAORT_RESET_RTPCS, "RESET RTPCS" },
                 { eAORT_RELEASE_OBJECT, "RELEASE OBJECT" },
                 { eAORT_EXECUTE_SOURCE_TRIGGER, "EXECUTE SOURCE TRIGGER" },
+                { eAORT_SET_MULTI_POSITIONS, "SET MULTI POSITIONS" },
             };
 
             std::stringstream ss;
@@ -934,22 +925,22 @@ namespace Audio
     // Filter for drawing debug info to the screen
     enum EAudioDebugDrawFilter : TATLEnumFlagsType
     {
-        eADDF_ALL                           = 0,
-        eADDF_DRAW_SPHERES                  = BIT(6),// a
-        eADDF_SHOW_OBJECT_LABEL             = BIT(7),// b
-        eADDF_SHOW_OBJECT_TRIGGERS          = BIT(8),// c
-        eADDF_SHOW_OBJECT_STATES            = BIT(9),// d
-        eADDF_SHOW_OBJECT_RTPCS             = BIT(10),// e
-        eADDF_SHOW_OBJECT_ENVIRONMENTS      = BIT(11),// f
-        eADDF_DRAW_OBSTRUCTION_RAYS         = BIT(12),// g
-        eADDF_SHOW_OBSTRUCTION_RAY_LABELS   = BIT(13),// h
-        eADDF_DRAW_LISTENER_SPHERE          = BIT(14),// i
+        eADDF_NONE                          = 0,
+        eADDF_DRAW_SPHERES                  = AUDIO_BIT(6),// a
+        eADDF_SHOW_OBJECT_LABEL             = AUDIO_BIT(7),// b
+        eADDF_SHOW_OBJECT_TRIGGERS          = AUDIO_BIT(8),// c
+        eADDF_SHOW_OBJECT_STATES            = AUDIO_BIT(9),// d
+        eADDF_SHOW_OBJECT_RTPCS             = AUDIO_BIT(10),// e
+        eADDF_SHOW_OBJECT_ENVIRONMENTS      = AUDIO_BIT(11),// f
+        eADDF_DRAW_OBSTRUCTION_RAYS         = AUDIO_BIT(12),// g
+        eADDF_SHOW_OBSTRUCTION_RAY_LABELS   = AUDIO_BIT(13),// h
+        eADDF_DRAW_LISTENER_SPHERE          = AUDIO_BIT(14),// i
 
-        eADDF_SHOW_ACTIVE_EVENTS            = BIT(27),// v
-        eADDF_SHOW_ACTIVE_OBJECTS           = BIT(28),// w
-        eADDF_SHOW_FILECACHE_MANAGER_INFO   = BIT(29),// x
+        eADDF_SHOW_ACTIVE_EVENTS            = AUDIO_BIT(27),// v
+        eADDF_SHOW_ACTIVE_OBJECTS           = AUDIO_BIT(28),// w
+        eADDF_SHOW_FILECACHE_MANAGER_INFO   = AUDIO_BIT(29),// x
 
-        eADDF_SHOW_IMPL_MEMORY_POOL_USAGE   = BIT(30),// y
+        eADDF_SHOW_IMPL_MEMORY_POOL_USAGE   = AUDIO_BIT(30),// y
     };
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 

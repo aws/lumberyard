@@ -475,7 +475,6 @@ namespace UnitTest
         systemEntity->CreateComponent<AZ::StreamerComponent>();
         systemEntity->CreateComponent<AZ::AssetManagerComponent>();
         systemEntity->CreateComponent("{A316662A-6C3E-43E6-BC61-4B375D0D83B4}"); // Usersettings component
-        systemEntity->CreateComponent("{22FC6380-C34F-4a59-86B4-21C0276BCEE3}"); // ObjectStream component
         systemEntity->CreateComponent<AZ::ScriptSystemComponent>();
 
         systemEntity->Init();
@@ -632,7 +631,6 @@ return testlua;
         systemEntity->CreateComponent<AZ::StreamerComponent>();
         systemEntity->CreateComponent<AZ::AssetManagerComponent>();
         systemEntity->CreateComponent("{A316662A-6C3E-43E6-BC61-4B375D0D83B4}"); // Usersettings component
-        systemEntity->CreateComponent("{22FC6380-C34F-4a59-86B4-21C0276BCEE3}"); // ObjectStream component
         systemEntity->CreateComponent<AZ::ScriptSystemComponent>();
 
         systemEntity->Init();

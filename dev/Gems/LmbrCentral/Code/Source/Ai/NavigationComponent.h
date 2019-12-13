@@ -27,6 +27,7 @@
 // Other buses used
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Component/EntityBus.h>
+#include <AzFramework/Physics/World.h>
 
 // Data and containers
 #include <AzCore/Math/Crc.h>
@@ -180,6 +181,7 @@ namespace LmbrCentral
         , public NavigationComponentRequestBus::Handler
         , public IAIPathAgent
         , public AZ::TickBus::Handler
+        , public Physics::WorldNotificationBus::Handler
         , public AZ::TransformNotificationBus::Handler
     {
     public:
@@ -206,7 +208,12 @@ namespace LmbrCentral
 
         //////////////////////////////////////////////////////////////////////////
         // TickBus
-        virtual void OnTick(float deltaTime, AZ::ScriptTimePoint time);
+        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        // Physics::WorldNotificationBus
+        void OnPrePhysicsUpdate(float fixedDeltaTime) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////////////
@@ -252,6 +259,12 @@ namespace LmbrCentral
         //! Indicates whether the entity moves under physics or by modifying the Entity Transform
         bool m_movesPhysically;
 
+        //! Indicates whether the entity uses legacy physics
+        bool m_usesLegacyPhysics;
+
+        //! Indicates whether the entity being moved is a character
+        bool m_usesCharacterPhysics;
+
         // Runtime data
 
         //! Stores the transform of the entity this component is attached to
@@ -269,6 +282,11 @@ namespace LmbrCentral
         PathfindResponse::PathfinderRequestId RequestPath();
 
         /**
+         * Compute required entity velocity and move by setting the position or applying an impulse
+         */
+        void MoveEntity(float deltaTime);
+
+        /**
         * Resets the Navigation Component and prepares it to process a new pathfinding request
         * Also cancels any pathfinding operations in progress
         */
@@ -277,6 +295,12 @@ namespace LmbrCentral
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("NavigationService", 0xf31e77fe));
+        }
+
+        static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
+        {
+            dependent.push_back(AZ_CRC("PhysicsService", 0xa7350d22));
+            dependent.push_back(AZ_CRC("PhysXRigidBodyService", 0x1d4c64a8));
         }
 
         //////////////////////////////////////////////////////////////////////////

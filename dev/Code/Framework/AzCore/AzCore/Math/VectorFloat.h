@@ -226,12 +226,6 @@ namespace AZ
 
 }
 
-
-#ifndef AZ_PLATFORM_WINDOWS // Remove this once all compilers support POD (MSVC already does)
-#   include <AzCore/std/typetraits/is_pod.h>
-AZSTD_DECLARE_POD_TYPE(AZ::VectorFloat);
-#endif
-
 #if AZ_TRAIT_USE_PLATFORM_SIMD
     #include <AzCore/Math/Internal/VectorFloatWin32.inl>
 #else

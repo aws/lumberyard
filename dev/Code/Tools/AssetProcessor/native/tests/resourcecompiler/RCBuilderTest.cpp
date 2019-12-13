@@ -100,7 +100,7 @@ TEST_F(RCBuilderTest, Initialize_StandardInitializationWithDuplicateAndInvalidRe
     no_platform.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.ccc", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
 
     // Duplicate
-    AssetRecognizer     duplicate(good.m_name, good.m_testLockSource, good.m_priority, good.m_isCritical, good.m_supportsCreateJobs, good.m_patternMatcher, good.m_version, good.m_productAssetType);
+    AssetRecognizer     duplicate(good.m_name, good.m_testLockSource, good.m_priority, good.m_isCritical, good.m_supportsCreateJobs, good.m_patternMatcher, good.m_version, good.m_productAssetType, good.m_outputProductDependencies);
     duplicate.m_platformSpecs["pc"] = good_spec;
 
     configuration.m_recognizerContainer["good"] = good;

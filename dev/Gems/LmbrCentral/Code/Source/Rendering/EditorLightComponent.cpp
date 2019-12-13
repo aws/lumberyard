@@ -755,6 +755,7 @@ namespace LmbrCentral
         , m_cubemapClear(false)
     {
         m_configuration.m_projectorTexture.SetAssetPath("engineassets/textures/defaults/spot_default.dds");
+        m_configuration.SetComponent(nullptr);
     }
 
     EditorLightComponent::~EditorLightComponent()

@@ -11,8 +11,10 @@
 */
 
 #ifdef _DEBUG
+#pragma push_macro("AZ_NUMERICCAST_ENABLED")
+#undef AZ_NUMERICCAST_ENABLED
 #define AZ_NUMERICCAST_ENABLED 1
-#endif
+#endif // #ifdef _DEBUG
 
 #include <EMotionFX_precompiled.h>
 
@@ -1195,3 +1197,7 @@ namespace EMotionFX
         }
     } //namespace Integration
 } // namespace EMotionFX
+
+#ifdef _DEBUG
+#pragma pop_macro("AZ_NUMERICCAST_ENABLED")
+#endif // #ifdef _DEBUG

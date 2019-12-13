@@ -37,6 +37,11 @@ namespace AzToolsFramework
         return { localFromWorldNormalized * worldClosestPositionLineSegment * scale.GetReciprocal() };
     }
 
+    AZStd::shared_ptr<LineSegmentSelectionManipulator> LineSegmentSelectionManipulator::MakeShared()
+    {
+        return AZStd::shared_ptr<LineSegmentSelectionManipulator>(aznew LineSegmentSelectionManipulator());
+    }
+
     LineSegmentSelectionManipulator::LineSegmentSelectionManipulator()
     {
         AttachLeftMouseDownImpl();

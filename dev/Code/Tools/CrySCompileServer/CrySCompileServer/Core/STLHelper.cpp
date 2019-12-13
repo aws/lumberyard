@@ -127,7 +127,9 @@ void CSTLHelper::Trim(std::string& rStr, const std::string& charsToTrim)
 void CSTLHelper::Remove(std::string& rTokenDst, const std::string& rTokenSrc, const char C)
 {
     using namespace std;
-    remove_copy_if(rTokenSrc.begin(), rTokenSrc.end(), back_inserter(rTokenDst), bind2nd(equal_to<char>(), C));
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+    remove_copy_if(rTokenSrc.begin(), rTokenSrc.end(), back_inserter(rTokenDst), [C](char token) { return token == C; });
+    AZ_POP_DISABLE_WARNING
 }
 
 

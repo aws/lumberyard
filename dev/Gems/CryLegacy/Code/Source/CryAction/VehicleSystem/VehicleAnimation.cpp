@@ -303,7 +303,7 @@ TVehicleAnimStateId CVehicleAnimation::GetState()
 //------------------------------------------------------------------------
 bool CVehicleAnimation::ChangeState(TVehicleAnimStateId stateId)
 {
-    if (stateId <= InvalidVehicleAnimStateId || stateId > m_animationStates.size())
+    if (stateId <= InvalidVehicleAnimStateId || stateId >= m_animationStates.size())
     {
         return false;
     }
@@ -346,7 +346,7 @@ bool CVehicleAnimation::ChangeState(TVehicleAnimStateId stateId)
 //------------------------------------------------------------------------
 string CVehicleAnimation::GetStateName(TVehicleAnimStateId stateId)
 {
-    if (stateId <= InvalidVehicleAnimStateId || stateId > m_animationStates.size())
+    if (stateId <= InvalidVehicleAnimStateId || stateId >= m_animationStates.size())
     {
         return "";
     }

@@ -351,7 +351,7 @@ bool GetRCFolder(wchar_t* pathBuffer, const wchar_t* binFolderFromRegistry, wcha
 #if defined(__APPLE__)
     const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"BinMac64/rc" };
 #elif defined(_WIN32)
-    const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"Bin64vc141/rc", L"Bin64vc140/rc", L"Bin64vc120/rc"};
+    const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"Bin64vc141/rc"};
 #elif defined(LINUX64)
     const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"BinLinux64/rc"};
 #else
@@ -467,7 +467,7 @@ IResourceCompilerHelper::ERcCallResult CResourceCompilerHelper::CallResourceComp
             }
             else
             {
-                swprintf(szRcDirectory, 512, L"%s/Bin64vc120/rc", pathBuffer);
+                swprintf(szRcDirectory, 512, L"%s/Bin64vc141/rc", pathBuffer);
             }
         }
 

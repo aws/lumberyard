@@ -145,6 +145,11 @@ namespace PhysX
         /// Returns default material
         /// @return default PhysX::Material instance
         const AZStd::shared_ptr<Material>& GetDefaultMaterial() override;
+
+        /// Return default material
+        /// @return default Physics::Material instance
+        AZStd::shared_ptr<Physics::Material> GetGenericDefaultMaterial() override;
+
         /// Releases ownership of all materials created before.
         void ReleaseAllMaterials() override;
 

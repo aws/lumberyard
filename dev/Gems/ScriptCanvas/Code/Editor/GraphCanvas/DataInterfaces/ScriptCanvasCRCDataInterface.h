@@ -38,7 +38,7 @@ namespace ScriptCanvasEditor
 
             const ScriptCanvas::Datum* object = GetSlotObject();
 
-            if (object)
+            if (object && object->GetAs<AZ::Crc32>())
             {
                 AZ::Crc32 crcValue = (*object->GetAs<AZ::Crc32>());
                 EditorGraphRequestBus::EventResult(retVal, GetScriptCanvasGraphEntityId(), &EditorGraphRequests::DecodeCrc, crcValue);

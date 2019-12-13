@@ -390,7 +390,6 @@ class pch_msvc(waflib.Task.Task):
     run_str = '${CXX} ${PCH_CREATE_ST:PCH_NAME} ${CXXFLAGS} ${CPPPATH_ST:INCPATHS} ${DEFINES_ST:DEFINES} ${SRC} ${CXX_TGT_F}${PCH_OBJ} ${PCH_FILE}'
     scan    = c_preproc.scan
     color   = 'BLUE'
-    nocache = True
     
     def exec_command(self, *k, **kw):   
         return exec_command_msvc(self, *k, **kw)
@@ -800,7 +799,10 @@ def gather_msvc_2017_versions(conf, windows_kit, versions):
                     version_arg_index = vs_where_args.index('-version')
                     Logs.warn('[WARN] VSWhere could not find an installed version of Visual Studio matching the version requirements provided (-version {}). Attempting to fall back on any available installed version.'.format(vs_where_args[version_arg_index + 1]))
                     Logs.warn('[WARN] Lumberyard defaults the version range to the maximum version tested against before each release. You can modify the version range in the WAF user_settings\' option win_vs2017_vswhere_args under [Windows Options].')
-                    del vs_where_args[version_arg_index : version_arg_index + 2]
+
+                    # We could not find a min version of vs2017 based on the vswhere args for vswhere, so try to find any version of 2017
+                    vs_where_args = ['-version', '[15.0,16.0)']
+
                     version_string = subprocess.check_output([vswhere_exe, '-property', 'installationVersion'] + vs_where_args)
                 except ValueError:
                     pass

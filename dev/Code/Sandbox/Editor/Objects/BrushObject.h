@@ -107,10 +107,6 @@ public:
 
     void GetVerticesInWorld(std::vector<Vec3>& vertices) const;
 
-    // edit tags
-    virtual void EditTags(bool alwaysTag);
-    bool SupportsEditTags() const override { return true; }
-
 protected:
 
     //////////////////////////////////////////////////////////////////////////

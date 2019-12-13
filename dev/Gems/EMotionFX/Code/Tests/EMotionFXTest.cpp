@@ -12,6 +12,5 @@
 
 #include <AzTest/AzTest.h>
 
-// The fuzz testing causes errors inside the object stream handlers, so we are disabling the default environment for now
-AZ_UNIT_TEST_HOOK(nullptr);
+AZ_UNIT_TEST_HOOK(/*nullptr*/); // The nullptr would disable the default environment, which will fail the test on errors etc.
 AZ_INTEG_TEST_HOOK();

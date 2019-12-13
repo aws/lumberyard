@@ -13,14 +13,14 @@
 
 #pragma once
 
+#include <qnamespace.h>
+
 enum EItemType
 {
     eIT_FOLDER = 0,
     eIT_AUDIO_CONTROL,
     eIT_INVALID,
 };
-
-#include <qnamespace.h>
 
 enum EDataRole
 {

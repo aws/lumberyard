@@ -42,15 +42,15 @@ namespace Audio
         void OnActivated() override;
 
         // AudioStreamingRequestBus::Handler Interface
-        AZStd::size_t ReadStreamingInput(const AudioStreamData& data) override;
-        AZStd::size_t ReadStreamingMultiTrackInput(AudioStreamMultiTrackData& data) override;
+        size_t ReadStreamingInput(const AudioStreamData& data) override;
+        size_t ReadStreamingMultiTrackInput(AudioStreamMultiTrackData& data) override;
 
         void FlushStreamingInput();
-        AZStd::size_t GetStreamingInputNumFramesReady() const;
+        size_t GetStreamingInputNumFramesReady() const;
 
     private:
         AZStd::unique_ptr<RingBufferBase> m_buffer = nullptr;
-        AZStd::size_t m_framesReady;
+        size_t m_framesReady;
     };
 
 } // namespace Audio

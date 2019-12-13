@@ -13,12 +13,13 @@
 
 #pragma once
 
-#include "ATLEntities.h"
-#include <ATLEntityData.h>
-#include <IPhysics.h>
-#include <TimeValue.h>
-
+#include <AzCore/Math/Vector3.h>
 #include <AzCore/std/containers/set.h>
+
+#include <ATLEntities.h>
+#include <ATLEntityData.h>
+
+#include <IPhysics.h>
 
 struct IRenderAuxGeom;
 
@@ -28,13 +29,13 @@ namespace Audio
     enum EATLTriggerStatus : TATLEnumFlagsType
     {
         eATS_NONE                       = 0,
-        eATS_PLAYING                    = BIT(0),
-        eATS_PREPARED                   = BIT(1),
-        eATS_LOADING                    = BIT(2),
-        eATS_UNLOADING                  = BIT(3),
-        eATS_STARTING                   = BIT(4),
-        eATS_WAITING_FOR_REMOVAL        = BIT(5),
-        eATS_CALLBACK_ON_AUDIO_THREAD   = BIT(6),
+        eATS_PLAYING                    = AUDIO_BIT(0),
+        eATS_PREPARED                   = AUDIO_BIT(1),
+        eATS_LOADING                    = AUDIO_BIT(2),
+        eATS_UNLOADING                  = AUDIO_BIT(3),
+        eATS_STARTING                   = AUDIO_BIT(4),
+        eATS_WAITING_FOR_REMOVAL        = AUDIO_BIT(5),
+        eATS_CALLBACK_ON_AUDIO_THREAD   = AUDIO_BIT(6),
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -192,8 +193,8 @@ namespace Audio
 
         using TStateDrawInfoMap = ATLMapLookupType<TAudioControlID, CStateDebugDrawData>;
 
-        CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH> GetTriggerNames(const char* const sSeparator, const CATLDebugNameStore* const pDebugNameStore);
-        CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH> GetEventIDs(const char* const sSeparator);
+        AZStd::string GetTriggerNames(const char* const sSeparator, const CATLDebugNameStore* const pDebugNameStore);
+        AZStd::string GetEventIDs(const char* const sSeparator);
 
         mutable TStateDrawInfoMap m_cStateDrawInfoMap;
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
@@ -244,9 +245,9 @@ namespace Audio
                     , fTotalSoundOcclusion(0.0f)
                     , nNumHits(0)
             #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-                    , vStartPosition(ZERO)
-                    , vDirection(ZERO)
-                    , vRndOffset(ZERO)
+                    , vStartPosition(0.f)
+                    , vDirection(0.f)
+                    , vRndOffset(0.f)
                     , fAvgHits(0.0f)
                     , fDistToFirstObstacle(FLT_MAX)
             #endif // INCLUDE_AUDIO_PRODUCTION_CODE
@@ -254,8 +255,8 @@ namespace Audio
 
                 SRayInfo& operator=(const SRayInfo& rOther)
                 {
-                    const_cast<size_t&>(nRayID) = rOther.nRayID;
-                    const_cast<TAudioObjectID&>(nAudioObjectID) = rOther.nAudioObjectID;
+                    nRayID = rOther.nRayID;
+                    nAudioObjectID = rOther.nAudioObjectID;
                     fTotalSoundOcclusion = rOther.fTotalSoundOcclusion;
                     nNumHits = rOther.nNumHits;
                     for (size_t i = 0; i < s_maxObstructionRayHits; ++i)
@@ -278,16 +279,16 @@ namespace Audio
 
                 void Reset();
 
-                const size_t nRayID;
-                const TAudioObjectID nAudioObjectID;
+                size_t nRayID;
+                TAudioObjectID nAudioObjectID;
                 float fTotalSoundOcclusion;
                 int nNumHits;
                 ray_hit aHits[s_maxObstructionRayHits];
 
         #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-                Vec3 vStartPosition;
-                Vec3 vDirection;
-                Vec3 vRndOffset;
+                AZ::Vector3 vStartPosition;
+                AZ::Vector3 vDirection;
+                AZ::Vector3 vRndOffset;
                 float fAvgHits;
                 float fDistToFirstObstacle;
         #endif // INCLUDE_AUDIO_PRODUCTION_CODE
@@ -319,9 +320,9 @@ namespace Audio
 
         private:
             void ProcessObstructionOcclusion(const bool bReset = false);
-            void CastObstructionRay(const Vec3& rOrigin,
-                const Vec3& rRndOffset,
-                const Vec3& rDirection,
+            void CastObstructionRay(const AZ::Vector3& rOrigin,
+                const AZ::Vector3& rRndOffset,
+                const AZ::Vector3& rDirection,
                 const size_t nRayIdx,
                 const bool bSyncCall,
                 const bool bReset = false);
@@ -359,24 +360,24 @@ namespace Audio
             struct SRayDebugInfo
             {
                 SRayDebugInfo()
-                    : vBegin(ZERO)
-                    , vEnd(ZERO)
-                    , vStableEnd(ZERO)
+                    : vBegin(0.f)
+                    , vEnd(0.f)
+                    , vStableEnd(0.f)
                     , fOcclusionValue(0.0f)
                     , fDistToNearestObstacle(FLT_MAX)
-                    , nNumHits(0)
                     , fAvgHits(0.0f)
+                    , nNumHits(0)
                 {}
 
                 ~SRayDebugInfo() {}
 
-                Vec3 vBegin;
-                Vec3 vEnd;
-                Vec3 vStableEnd;
+                AZ::Vector3 vBegin;
+                AZ::Vector3 vEnd;
+                AZ::Vector3 vStableEnd;
                 float fOcclusionValue;
                 float fDistToNearestObstacle;
-                int nNumHits;
                 float fAvgHits;
+                int nNumHits;
             }; // end struct SRayDebugInfo
 
             using TRayDebugInfoVec = AZStd::vector<SRayDebugInfo, Audio::AudioSystemStdAllocator>;
@@ -434,11 +435,12 @@ namespace Audio
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
     public:
-        void DrawDebugInfo(IRenderAuxGeom& auxGeom, const Vec3& vListenerPos, const CATLDebugNameStore* const pDebugNameStore) const;
+        void DrawDebugInfo(IRenderAuxGeom& auxGeom, const AZ::Vector3& vListenerPos, const CATLDebugNameStore* const pDebugNameStore) const;
         const SATLWorldPosition& GetPosition() const
         {
             return m_oPosition;
         }
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     };
+
 } // namespace Audio

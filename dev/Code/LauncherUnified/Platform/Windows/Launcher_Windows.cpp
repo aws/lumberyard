@@ -13,7 +13,7 @@
 #include <Launcher.h>
 
 #include <CryLibrary.h>
-
+#include <string.h>
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <ShellAPI.h>
@@ -88,6 +88,29 @@
 // of the platform specific versions.
 extern void InitRootDir(char szExeFileName[] = 0, uint nExeSize = 0, char szExeRootName[] = 0, uint nRootSize = 0);
 
+#if AZ_TESTS_ENABLED
+
+int main(int argv, char **argc)
+{
+    InitRootDir();
+
+    // Calculate the running executable's full path
+    // https://msdn.microsoft.com/en-us/library/windows/desktop/ms683197(v=vs.85).aspx
+    char executablePath[AZ_MAX_PATH_LEN] = {'\0'};
+    DWORD pathLen = GetModuleFileNameA(nullptr, executablePath, AZ_ARRAY_SIZE(executablePath));
+
+    // Remove the last trailing windows path separator so we end up with just the folder path
+    char* lastPathSeparator = strrchr(executablePath, '\\');
+    if (lastPathSeparator)
+    {
+        lastPathSeparator[1] = '\0';
+    }
+
+    LumberyardLauncher::ReturnCode status = LumberyardLauncher::RunUnitTests(executablePath, argv, argc);
+    return static_cast<int>(status);
+}
+
+#else
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -167,3 +190,4 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
     return static_cast<int>(status);
 }
+#endif // AZ_TESTS_ENABLED

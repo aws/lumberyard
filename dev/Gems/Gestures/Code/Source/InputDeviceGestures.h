@@ -71,11 +71,7 @@ namespace Gestures
         //! \param[in] gestureConfigsByName Map of gesture name/config pairs used to create channels
         explicit InputDeviceGestures(const ConfigsByNameMap& gestureConfigsByName);
 
-        ////////////////////////////////////////////////////////////////////////////////////////////
-        // Disable copying (protected to workaround a VS2013 bug in std::is_copy_constructible)
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-    protected:
-        AZ_DISABLE_COPY_MOVE(InputDeviceGestures);
+        InputDeviceGestures(const InputDeviceGestures&) = delete;
     public:
 
         ////////////////////////////////////////////////////////////////////////////////////////////

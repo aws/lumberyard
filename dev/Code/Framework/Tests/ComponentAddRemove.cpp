@@ -1092,6 +1092,7 @@ namespace UnitTest
         Entity* FindEntity(const EntityId&) override { return nullptr; }
         SerializeContext* GetSerializeContext() override { return m_serializeContext.get(); }
         BehaviorContext*  GetBehaviorContext() override { return nullptr; }
+        JsonRegistrationContext* GetJsonRegistrationContext() override { return nullptr; }
         const char* GetExecutableFolder() const override { return nullptr; }
         const char* GetAppRoot() override { return nullptr; }
         const char* GetBinFolder() const override { return nullptr; }

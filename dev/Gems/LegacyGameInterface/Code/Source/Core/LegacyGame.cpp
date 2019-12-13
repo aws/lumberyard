@@ -175,14 +175,14 @@ namespace LegacyGameInterface
                         actionMapManager->AddInputDeviceMapping(eAID_KeyboardMouse, "keyboard");
                     }
 
-                    if (strcmp(platform->getAttr("xboxpad"), "0")) // ACCEPTED_USE
+                    if (strcmp(platform->getAttr("xeniapad"), "0"))
                     {
-                        actionMapManager->AddInputDeviceMapping(eAID_XboxPad, "xboxpad"); // ACCEPTED_USE
+                        actionMapManager->AddInputDeviceMapping(eAID_XeniaPad, "xeniapad");
                     }
 
-                    if (strcmp(platform->getAttr("ps4pad"), "0")) // ACCEPTED_USE
+                    if (strcmp(platform->getAttr("provopad"), "0"))
                     {
-                        actionMapManager->AddInputDeviceMapping(eAID_PS4Pad, "ps4pad"); // ACCEPTED_USE
+                        actionMapManager->AddInputDeviceMapping(eAID_ProvoPad, "provopad");
                     }
 
                     if (strcmp(platform->getAttr("androidkey"), "0"))

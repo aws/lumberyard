@@ -371,8 +371,8 @@
 		<tooltip path="Configuration.Config_Max" title="Config Max" content="Maximum config spec this effect runs in"/>
 		<tooltip path="Configuration.Platforms" title="Platforms" content="Platforms this effect runs on"/>
 		<tooltip path="Configuration.Platforms.PCDX11" title="PCDX11"/>
-		<tooltip path="Configuration.Platforms.PS4" title="PS4"/>
-		<tooltip path="Configuration.Platforms.XBox_One" title="XBox One"/>
+		<tooltip path="Configuration.Platforms.Provo" title="Provo"/>
+		<tooltip path="Configuration.Platforms.Xenia" title="Xenia"/>
 		<tooltip path="Configuration.Platforms.OS" title="OS"/>
 		<tooltip path="LevelOfDetail.Blend_In" title="Level of Detail Blend in value"/>
 		<tooltip path="LevelOfDetail.Blend_Out" title="Level of Detail Blend out value"/>

@@ -15,7 +15,7 @@
 #include <AzCore/base.h>
 #include <AzCore/Component/Component.h>
 #include <AzCore/std/parallel/thread.h>
-#include <AzCore/std/parallel/condition_variable.h>
+#include <AzCore/std/parallel/conditional_variable.h>
 #include <AzCore/std/containers/set.h>
 #include <AzCore/std/containers/unordered_set.h>
 
@@ -33,17 +33,17 @@ namespace AzToolsFramework
         UserStoppedProcess = 255
     };
 
-    // the SevenZip's job is to execute 7z commands
-    // it parses the status of 7z commands and returns results.
-    class SevenZipComponent
+    // the ArchiveComponent's job is to execute zip commands.
+    // it parses the status of zip commands and returns results.
+    class ArchiveComponent
         : public AZ::Component
         , private ArchiveCommands::Bus::Handler
     {
     public:
-        AZ_COMPONENT(SevenZipComponent, "{A19EEA33-3736-447F-ACF7-DAA4B6A179AA}")
+        AZ_COMPONENT(ArchiveComponent, "{A19EEA33-3736-447F-ACF7-DAA4B6A179AA}")
 
-        SevenZipComponent() = default;
-        ~SevenZipComponent() override = default;
+        ArchiveComponent() = default;
+        ~ArchiveComponent() override = default;
 
         //////////////////////////////////////////////////////////////////////////
         // AZ::Component overrides
@@ -51,11 +51,6 @@ namespace AzToolsFramework
         void Deactivate() override;
         //////////////////////////////////////////////////////////////////////////
     private:
-#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
-        // Workaround for VS2013 - Delete the copy constructor and make it private
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-        SevenZipComponent(const SevenZipComponent &) = delete;
-#endif
         static void Reflect(AZ::ReflectContext* context);
 
         //////////////////////////////////////////////////////////////////////////
@@ -66,14 +61,23 @@ namespace AzToolsFramework
         void ExtractArchive(const AZStd::string& archivePath, const AZStd::string& destinationPath, AZ::Uuid taskHandle, const ArchiveResponseCallback& respCallback) override;
         void ExtractArchiveOutput(const AZStd::string& archivePath, const AZStd::string& destinationPath, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback) override;
         void ExtractArchiveWithoutRoot(const AZStd::string& archivePath, const AZStd::string& destinationPath, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback) override;
+        void ExtractFile(const AZStd::string& archivePath, const AZStd::string& fileInArchive, const AZStd::string& destinationPath, bool overWrite, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback) override;
+        bool ExtractFileBlocking(const AZStd::string& archivePath, const AZStd::string& fileInArchive, const AZStd::string& destinationPath, bool overWrite) override;
+        void ListFilesInArchive(const AZStd::string& archivePath, AZStd::vector<AZStd::string>& fileEntries, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback) override;
+        bool ListFilesInArchiveBlocking(const AZStd::string& archivePath, AZStd::vector<AZStd::string>& fileEntries) override;
+        void AddFileToArchive(const AZStd::string& archivePath, const AZStd::string& workingDirectory, const AZStd::string& fileToAdd, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback) override;
+        bool AddFileToArchiveBlocking(const AZStd::string& archivePath, const AZStd::string& workingDirectory, const AZStd::string& fileToAdd) override;
+        bool AddFilesToArchiveBlocking(const AZStd::string& archivePath, const AZStd::string& workingDirectory, const AZStd::string& listFilePath) override;
+        void AddFilesToArchive(const AZStd::string& archivePath, const AZStd::string& workingDirectory, const AZStd::string& listFilePath, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback) override;
         void CancelTasks(AZ::Uuid taskHandle) override;
         //////////////////////////////////////////////////////////////////////////
-
-        // Launches the 7za.exe as a background child process in a detached background thread, if the task handle is not null 
-        // otherwise launches 7za.exe in the calling thread.
-        void Launch7z(const AZStd::string& commandLineArgs, const ArchiveResponseOutputCallback& respCallback, AZ::Uuid taskHandle = AZ::Uuid::CreateNull(), const AZStd::string& workingDir = "", bool captureOutput = false);
         
-        AZStd::string m_7zPath; // Path to Dev/Tools/7za.exe
+        // Launches the input zip exe as a background child process in a detached background thread, if the task handle is not null 
+        // otherwise launches input zip exe in the calling thread.
+        void LaunchZipExe(const AZStd::string& exePath, const AZStd::string& commandLineArgs, const ArchiveResponseOutputCallback& respCallback, AZ::Uuid taskHandle = AZ::Uuid::CreateNull(), const AZStd::string& workingDir = "", bool captureOutput = false);
+
+        AZStd::string m_zipExePath;
+        AZStd::string m_unzipExePath;
 
         // Struct for tracking background threads/tasks
         struct ThreadInfo

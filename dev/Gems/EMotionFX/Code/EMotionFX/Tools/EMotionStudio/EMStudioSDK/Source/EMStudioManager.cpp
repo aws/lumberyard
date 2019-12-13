@@ -87,12 +87,8 @@ namespace EMStudio
             MainWindow::Reflect(serializeContext);
         }
 
-
-        // create and setup a log file
-        MCore::GetLogManager().CreateLogFile(AZStd::string(GetAppDataFolder() + "EMStudioLog.txt").c_str());
-        //#ifdef MCORE_DEBUG
+        MCore::GetLogManager().AddLogCallback(new MCore::AzLogCallback());
         MCore::GetLogManager().SetLogLevels(MCore::LogCallback::LOGLEVEL_ALL);
-        //#endif
 
         // Register editor specific commands.
         mCommandManager = new CommandSystem::CommandManager();

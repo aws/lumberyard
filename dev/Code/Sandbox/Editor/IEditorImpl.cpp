@@ -62,23 +62,34 @@
 #include "RenderHelpers/AxisHelper.h"
 #include "PickObjectTool.h"
 #include "ObjectCreateTool.h"
+
+#ifdef LY_TERRAIN_EDITOR
 #include "TerrainModifyTool.h"
+#endif //#ifdef LY_TERRAIN_EDITOR
+
 #include "RotateTool.h"
 #include "NullEditTool.h"
 #include "VegetationMap.h"
 #include "VegetationTool.h"
+
+#ifdef LY_TERRAIN_EDITOR
 #include "TerrainTexturePainter.h"
+#endif //#ifdef LY_TERRAIN_EDITOR
+
 #include "EditMode/ObjectMode.h"
 #include "EditMode/VertexMode.h"
 #include "Modelling/ModellingMode.h"
+
+#ifdef LY_TERRAIN_EDITOR
 #include "Terrain/TerrainManager.h"
 #include "Terrain/SurfaceType.h"
+#endif //#ifdef LY_TERRAIN_EDITOR
+
 #include <I3DEngine.h>
 #include <IConsole.h>
 #include <IEntitySystem.h>
 #include <IMovieSystem.h>
 #include <ISourceControl.h>
-#include <IAssetTagging.h>
 #include "Util/BoostPythonHelpers.h"
 #include "Objects/ObjectLayerManager.h"
 #include "BackgroundTaskManager.h"
@@ -90,8 +101,10 @@
 #include "Mission.h"
 #include "MainStatusBar.h"
 #include <LyMetricsProducer/LyMetricsAPI.h>
+AZ_PUSH_DISABLE_WARNING(4251 4355 4996, "-Wunknown-warning-option")
 #include <aws/core/utils/memory/stl/AWSString.h>
 #include <aws/core/platform/FileSystem.h>
+AZ_POP_DISABLE_WARNING
 #include <WinWidget/WinWidgetManager.h>
 #include <AWSNativeSDKInit/AWSNativeSDKInit.h>
 
@@ -233,7 +246,6 @@ CEditorImpl::CEditorImpl()
     , m_pLasLoadedLevelErrorReport(nullptr)
     , m_pErrorsDlg(nullptr)
     , m_pSourceControl(nullptr)
-    , m_pAssetTagging(nullptr)
     , m_pFlowGraphManager(nullptr)
     , m_pSelectionTreeManager(nullptr)
     , m_pUIEnumsDatabase(nullptr)
@@ -289,7 +301,11 @@ CEditorImpl::CEditorImpl()
     m_pShaderEnum = new CShaderEnum;
     m_pDisplaySettings->LoadRegistry();
     m_pPluginManager = new CPluginManager;
+
+#ifdef LY_TERRAIN_EDITOR
     m_pTerrainManager = new CTerrainManager();
+#endif //#ifdef LY_TERRAIN_EDITOR
+
     m_pVegetationMap = new CVegetationMap();
     m_pObjectManager = new CObjectManager;
     m_pViewManager = new CViewManager;
@@ -406,7 +422,6 @@ void CEditorImpl::UnloadPlugins(bool shuttingDown/* = false*/)
     // first, stop anyone from accessing plugins that provide things like source control.
     // note that m_psSourceControl is re-queried
     m_pSourceControl = nullptr;
-    m_pAssetTagging = nullptr;
 
     // Send this message to ensure that any widgets queued for deletion will get deleted before their
     // plugin containing their vtable is unloaded. If not, access violations can occur
@@ -520,7 +535,11 @@ CEditorImpl::~CEditorImpl()
     SAFE_DELETE(m_pPrefabManager); // relies on flowgraphmanager
     SAFE_DELETE(m_pFlowGraphManager);
     SAFE_DELETE(m_pVegetationMap);
+
+#ifdef LY_TERRAIN_EDITOR
     SAFE_DELETE(m_pTerrainManager);
+#endif //#ifdef LY_TERRAIN_EDITOR
+
     // AI should be destroyed after the object manager, as the objects may
     // refer to AI components.
     SAFE_DELETE(m_pAIManager)
@@ -625,9 +644,16 @@ void CEditorImpl::RegisterTools()
 
     rc.pCommandManager = m_pCommandManager;
     rc.pClassFactory = m_pClassFactory;
+#ifdef LY_TERRAIN_EDITOR
     CTerrainModifyTool::RegisterTool(rc);
+#endif //#ifdef LY_TERRAIN_EDITOR
+
     CVegetationTool::RegisterTool(rc);
+
+#ifdef LY_TERRAIN_EDITOR
     CTerrainTexturePainter::RegisterTool(rc);
+#endif //#ifdef LY_TERRAIN_EDITOR
+
     CObjectMode::RegisterTool(rc);
     CSubObjectModeTool::RegisterTool(rc);
     CMaterialPickTool::RegisterTool(rc);
@@ -839,6 +865,17 @@ QString CEditorImpl::GetResolvedUserFolder()
 {
     m_userFolder = Path::GetResolvedUserSandboxFolder();
     return m_userFolder;
+}
+
+QString CEditorImpl::GetProjectName()
+{
+    ICVar* pCVar = (gEnv && gEnv->pConsole) ? gEnv->pConsole->GetCVar("sys_game_folder") : nullptr;
+    if (pCVar && pCVar->GetString())
+    {
+        return QString(pCVar->GetString());
+    }
+
+    return tr("unknown");
 }
 
 void CEditorImpl::SetDataModified()
@@ -1523,8 +1560,13 @@ float CEditorImpl::GetTerrainElevation(float x, float y)
 
 CHeightmap* CEditorImpl::GetHeightmap()
 {
+#ifdef LY_TERRAIN_EDITOR
     assert(m_pTerrainManager);
     return m_pTerrainManager->GetHeightmap();
+#else
+    AZ_Assert(false, "The Height Map doesn't exist in this build.");
+    return nullptr;
+#endif //#ifdef LY_TERRAIN_EDITOR
 }
 
 CVegetationMap* CEditorImpl::GetVegetationMap()
@@ -1836,7 +1878,8 @@ void CEditorImpl::InitMetrics()
     static char statusFilePath[_MAX_PATH + 1];
     {
         azstrcpy(statusFilePath, _MAX_PATH, AZ::IO::FileIOBase::GetInstance()->GetAlias("@devroot@"));
-        azstrcat(statusFilePath, _MAX_PATH, &(Aws::FileSystem::PATH_DELIM));
+        const char delim[] = { Aws::FileSystem::PATH_DELIM, 0 };
+        azstrcat(statusFilePath, _MAX_PATH, delim);
         azstrcat(statusFilePath, _MAX_PATH, m_crashLogFileName);
     }
 
@@ -2277,32 +2320,6 @@ bool CEditorImpl::IsSourceControlConnected()
     }
 
     return false;
-}
-
-IAssetTagging* CEditorImpl::GetAssetTagging()
-{
-    CryAutoLock<CryMutex> lock(m_pluginMutex);
-
-    if (m_pAssetTagging)
-    {
-        return m_pAssetTagging;
-    }
-
-    std::vector<IClassDesc*> classes;
-    GetIEditor()->GetClassFactory()->GetClassesBySystemID(ESYSTEM_CLASS_ASSET_TAGGING, classes);
-    for (int i = 0; i < classes.size(); i++)
-    {
-        IClassDesc* pClass = classes[i];
-        IAssetTagging* pAssetTagging = NULL;
-        HRESULT hRes = pClass->QueryInterface(__uuidof(IAssetTagging), (void**)&pAssetTagging);
-        if (!FAILED(hRes) && pAssetTagging)
-        {
-            m_pAssetTagging = pAssetTagging;
-            return m_pAssetTagging;
-        }
-    }
-
-    return 0;
 }
 
 void CEditorImpl::SetMatEditMode(bool bIsMatEditMode)

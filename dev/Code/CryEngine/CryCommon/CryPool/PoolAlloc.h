@@ -25,6 +25,8 @@
         #include "Xenia/PoolAlloc_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/PoolAlloc_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/PoolAlloc_h_salem.inl"
     #endif
 #elif defined(APPLE) || defined(LINUX)
 #define POOLALLOC_H_TRAIT_USE_MEMALIGN 1

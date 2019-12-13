@@ -22,6 +22,7 @@ namespace AzToolsFramework
     {
         AZ_CLASS_ALLOCATOR_IMPL(PlaceHolderComponentMode, AZ::SystemAllocator, 0)
         AZ_CLASS_ALLOCATOR_IMPL(AnotherPlaceHolderComponentMode, AZ::SystemAllocator, 0)
+        AZ_CLASS_ALLOCATOR_IMPL(OverrideMouseInteractionComponentMode, AZ::SystemAllocator, 0)
 
         void PlaceholderEditorComponent::Reflect(AZ::ReflectContext* context)
         {
@@ -178,6 +179,10 @@ namespace AzToolsFramework
         }
 
         AnotherPlaceHolderComponentMode::AnotherPlaceHolderComponentMode(
+            const AZ::EntityComponentIdPair& entityComponentIdPair, AZ::Uuid componentType)
+            : EditorBaseComponentMode(entityComponentIdPair, componentType) {}
+
+        OverrideMouseInteractionComponentMode::OverrideMouseInteractionComponentMode(
             const AZ::EntityComponentIdPair& entityComponentIdPair, AZ::Uuid componentType)
             : EditorBaseComponentMode(entityComponentIdPair, componentType) {}
 

@@ -44,12 +44,7 @@ namespace GridMate
                     , m_userData(kSessionEndian, 0)
                 {}
 
-                NewConnection(NewConnection&& nc) // VS2013 compiler doesn't generate default move ctors
-                    : m_id(nc.m_id)
-                    , m_isInvited(nc.m_isInvited)
-                    , m_peerModeRequested(nc.m_peerModeRequested)
-                    , m_userData(AZStd::forward<WriteBufferDynamic>(nc.m_userData))
-                {}
+                NewConnection(NewConnection&& nc) = default;
 
                 NewConnection& operator=(NewConnection&& nc)
                 {

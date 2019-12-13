@@ -13,8 +13,9 @@
 
 #pragma once
 
-#include "FileIOHandler_wwise.h"
-#include "ATLEntities_wwise.h"
+#include <AudioAllocators.h>
+#include <FileIOHandler_wwise.h>
+#include <ATLEntities_wwise.h>
 #include <IAudioSystemImplementation.h>
 
 
@@ -22,17 +23,13 @@ namespace Audio
 {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     class CAudioSystemImpl_wwise
-        : public AudioSystemImplementationComponent
+        : public AudioSystemImplementation
     {
     public:
+        AUDIO_IMPL_CLASS_ALLOCATOR(CAudioSystemImpl_wwise)
+
         CAudioSystemImpl_wwise();
         ~CAudioSystemImpl_wwise() override;
-
-        // AZ::Component
-        void Init() override;
-        void Activate() override;
-        void Deactivate() override;
-        // ~AZ::Component
 
         // AudioSystemImplementationNotificationBus
         void OnAudioSystemLoseFocus() override;
@@ -113,21 +110,21 @@ namespace Audio
         EAudioRequestStatus RegisterInMemoryFile(SATLAudioFileEntryInfo* const pAudioFileEntry) override;
         EAudioRequestStatus UnregisterInMemoryFile(SATLAudioFileEntryInfo* const pAudioFileEntry) override;
 
-        EAudioRequestStatus ParseAudioFileEntry(const XmlNodeRef pAudioFileEntryNode, SATLAudioFileEntryInfo* const pFileEntryInfo) override;
-        void DeleteAudioFileEntryData(IATLAudioFileEntryData* const pOldAudioFileEntryData) override;
+        EAudioRequestStatus ParseAudioFileEntry(const AZ::rapidxml::xml_node<char>* audioFileEntryNode, SATLAudioFileEntryInfo* const fileEntryInfo) override;
+        void DeleteAudioFileEntryData(IATLAudioFileEntryData* const oldAudioFileEntryData) override;
         const char* const GetAudioFileLocation(SATLAudioFileEntryInfo* const pFileEntryInfo) override;
 
-        const SATLTriggerImplData_wwise* NewAudioTriggerImplData(const XmlNodeRef pAudioTriggerNode) override;
-        void DeleteAudioTriggerImplData(const IATLTriggerImplData* const pOldTriggerImplData) override;
+        IATLTriggerImplData* NewAudioTriggerImplData(const AZ::rapidxml::xml_node<char>* audioTriggerNode) override;
+        void DeleteAudioTriggerImplData(IATLTriggerImplData* const oldTriggerImplData) override;
 
-        const SATLRtpcImplData_wwise* NewAudioRtpcImplData(const XmlNodeRef pAudioRtpcNode) override;
-        void DeleteAudioRtpcImplData(const IATLRtpcImplData* const pOldRtpcImplData) override;
+        IATLRtpcImplData* NewAudioRtpcImplData(const AZ::rapidxml::xml_node<char>* audioRtpcNode) override;
+        void DeleteAudioRtpcImplData(IATLRtpcImplData* const oldRtpcImplData) override;
 
-        const SATLSwitchStateImplData_wwise* NewAudioSwitchStateImplData(const XmlNodeRef pAudioSwitchStateImplNode) override;
-        void DeleteAudioSwitchStateImplData(const IATLSwitchStateImplData* const pOldAudioSwitchStateImplData) override;
+        IATLSwitchStateImplData* NewAudioSwitchStateImplData(const AZ::rapidxml::xml_node<char>* audioSwitchStateNode) override;
+        void DeleteAudioSwitchStateImplData(IATLSwitchStateImplData* const oldSwitchStateImplData) override;
 
-        const SATLEnvironmentImplData_wwise* NewAudioEnvironmentImplData(const XmlNodeRef pAudioEnvironmentNode) override;
-        void DeleteAudioEnvironmentImplData(const IATLEnvironmentImplData* const pOldEnvironmentImplData) override;
+        IATLEnvironmentImplData* NewAudioEnvironmentImplData(const AZ::rapidxml::xml_node<char>* audioEnvironmentNode) override;
+        void DeleteAudioEnvironmentImplData(IATLEnvironmentImplData* const oldEnvironmentImplData) override;
 
         SATLAudioObjectData_wwise* NewGlobalAudioObjectData(const TAudioObjectID nObjectID) override;
         SATLAudioObjectData_wwise* NewAudioObjectData(const TAudioObjectID nObjectID) override;
@@ -157,22 +154,7 @@ namespace Audio
 
     private:
         static const char* const sWwiseImplSubPath;
-        static const char* const sWwiseEventTag;
-        static const char* const sWwiseRtpcTag;
-        static const char* const sWwiseSwitchTag;
-        static const char* const sWwiseStateTag;
-        static const char* const sWwiseRtpcSwitchTag;
-        static const char* const sWwiseFileTag;
-        static const char* const sWwiseAuxBusTag;
-        static const char* const sWwiseValueTag;
-
-        static const char* const sWwiseNameAttribute;
-        static const char* const sWwiseValueAttribute;
-        static const char* const sWwiseMutiplierAttribute;
-        static const char* const sWwiseShiftAttribute;
-        static const char* const sWwiseLocalisedAttribute;
         static const char* const sWwiseGlobalAudioObjectName;
-
         static const float sObstructionOcclusionMin;
         static const float sObstructionOcclusionMax;
 
@@ -181,9 +163,10 @@ namespace Audio
             bool operator()(const AZStd::pair<const AkAuxBusID, float>& pair1, const AZStd::pair<const AkAuxBusID, float>& pair2) const;
         };
 
-        const SATLSwitchStateImplData_wwise* ParseWwiseSwitchOrState(XmlNodeRef pNode, EWwiseSwitchType eType);
-        const SATLSwitchStateImplData_wwise* ParseWwiseRtpcSwitch(XmlNodeRef pNode);
-        void ParseRtpcImpl(XmlNodeRef pNode, AkRtpcID& rAkRtpcID, float& rMult, float& rShift);
+        SATLSwitchStateImplData_wwise* ParseWwiseSwitchOrState(const AZ::rapidxml::xml_node<char>* node, EWwiseSwitchType type);
+        SATLSwitchStateImplData_wwise* ParseWwiseRtpcSwitch(const AZ::rapidxml::xml_node<char>* node);
+        void ParseRtpcImpl(const AZ::rapidxml::xml_node<char>* node, AkRtpcID& rAkRtpcId, float& rMult, float& rShift);
+
         EAudioRequestStatus PrepUnprepTriggerSync(
             const IATLTriggerImplData* const pTriggerData,
             bool bPrepare);
@@ -199,8 +182,8 @@ namespace Audio
         AkBankID m_nInitBankID;
         CFileIOHandler_wwise m_oFileIOHandler;
 
-        CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> m_sRegularSoundBankFolder;
-        CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> m_sLocalizedSoundBankFolder;
+        AZStd::string m_soundbankFolder;
+        AZStd::string m_localizedSoundbankFolder;
 
 #if !defined(WWISE_FOR_RELEASE)
         bool m_bCommSystemInitialized;

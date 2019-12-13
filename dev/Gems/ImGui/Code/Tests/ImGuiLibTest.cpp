@@ -32,3 +32,4 @@ TEST_F(ImGuiLibTest, ExampleTest)
 }
 
 AZ_UNIT_TEST_HOOK();
+

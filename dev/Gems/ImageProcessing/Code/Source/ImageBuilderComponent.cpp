@@ -26,6 +26,8 @@
 #include <QFile>
 
 #include <AzQtComponents/Utilities/QtPluginPaths.h>
+#include <AzFramework/StringFunc/StringFunc.h>
+
 
 namespace ImageProcessing
 {
@@ -58,7 +60,8 @@ namespace ImageProcessing
         // Since we want to register our builder, we do that here:
         AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
         builderDescriptor.m_name = "Image Worker Builder";
-        builderDescriptor.m_version = ImageProcessing::BuilderSettingManager::Instance()->BuilderSettingsVersion();
+        builderDescriptor.m_version = 1;
+        builderDescriptor.m_analysisFingerprint = AZStd::string::format("%d", ImageProcessing::BuilderSettingManager::Instance()->BuilderSettingsVersion());
 
         for (int i = 0; i < s_TotalSupportedImageExtensions; i++)
         {
@@ -67,7 +70,6 @@ namespace ImageProcessing
 
         //add ".dds" here separately since we only apply copy operation for this type of file. and there won't be export option for dds files. 
         builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.dds", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
-
         builderDescriptor.m_busId = azrtti_typeid<ImageBuilderWorker>();
         builderDescriptor.m_createJobFunction = AZStd::bind(&ImageBuilderWorker::CreateJobs, &m_imageBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
         builderDescriptor.m_processJobFunction = AZStd::bind(&ImageBuilderWorker::ProcessJob, &m_imageBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
@@ -142,6 +144,7 @@ namespace ImageProcessing
                 descriptor.m_jobKey = ext + " Compile";
                 descriptor.SetPlatformIdentifier(platformInfo.m_identifier.c_str());
                 descriptor.m_critical = false;
+                descriptor.m_additionalFingerprintInfo = AZStd::string::format("%d", ImageProcessing::BuilderSettingManager::Instance()->BuilderSettingsVersion());
                 response.m_createJobOutputs.push_back(descriptor);
             }
         }
@@ -198,13 +201,16 @@ namespace ImageProcessing
 
         if (imageProcessingSuccessful)
         {
-            // Report the image-import result (filepath to one or many '.dds') 
-            for (const auto& product : productFilepaths)
+            AZ::Outcome<void, AZStd::string> result = PopulateProducts(request, productFilepaths, response.m_outputProducts);
+            if (result.IsSuccess())
             {
-                AssetBuilderSDK::JobProduct jobProduct(product);
-                response.m_outputProducts.push_back(jobProduct);
+                response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
             }
-            response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
+            else
+            {
+                AZ_Error(AssetBuilderSDK::ErrorWindow, false, result.GetError().c_str());
+                response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+            }
         }
         else
         {
@@ -224,5 +230,98 @@ namespace ImageProcessing
                 response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
             }
         }
+    }
+
+    AZ::Outcome<void, AZStd::string> ImageBuilderWorker::PopulateProducts(const AssetBuilderSDK::ProcessJobRequest& request, const AZStd::vector<AZStd::string>& productFilepaths, AZStd::vector<AssetBuilderSDK::JobProduct>& jobProducts)
+    {
+        AssetBuilderSDK::JobProduct* rgbBaseJobProduct = nullptr;
+        AssetBuilderSDK::JobProduct* diffBaseJobProduct = nullptr;
+        AssetBuilderSDK::JobProduct* baseJobProduct = nullptr;
+        AssetBuilderSDK::JobProduct* alphaBaseJobProduct = nullptr;
+        // Report the image-import result (filepath to one or many '.dds')
+
+        // This reserve is critically important to prevent resizing the vector and invalidating the pointers we need to save off
+        jobProducts.reserve(productFilepaths.size());
+
+        for (const auto& product : productFilepaths)
+        {
+            AssetBuilderSDK::JobProduct jobProduct(product);
+            jobProducts.push_back(jobProduct);
+
+            AZ::u32 lodLevel = AssetBuilderSDK::GetSubID_LOD(jobProduct.m_productSubID);
+
+            if(jobProduct.m_productSubID == 0)
+            {
+                rgbBaseJobProduct = &jobProducts.back();
+            }
+            else if((jobProduct.m_productSubID & AssetBuilderSDK::SUBID_FLAG_DIFF) && lodLevel == 0)
+            {
+                diffBaseJobProduct = &jobProducts.back();
+            }
+            else if((jobProduct.m_productSubID & AssetBuilderSDK::SUBID_FLAG_ALPHA) && lodLevel == 0)
+            {
+                alphaBaseJobProduct = &jobProducts.back();
+            }
+        }
+
+        //We can have a diff and/or a rgb base.  The rgb base always takes precedence when present
+        baseJobProduct = rgbBaseJobProduct;
+
+        if(!baseJobProduct)
+        {
+            baseJobProduct = diffBaseJobProduct;
+        }
+
+        for (AssetBuilderSDK::JobProduct& jobProduct : jobProducts)
+        {
+            AssetBuilderSDK::ProductDependency productDependency(AZ::Data::AssetId(request.m_sourceFileUUID, jobProduct.m_productSubID), 0);
+
+            AZ::u32 lodLevel = AssetBuilderSDK::GetSubID_LOD(jobProduct.m_productSubID);
+            bool isAlpha = jobProduct.m_productSubID & AssetBuilderSDK::SUBID_FLAG_ALPHA;
+
+            if (lodLevel > 0)
+            {
+                if (isAlpha)
+                {
+                    if (alphaBaseJobProduct)
+                    {
+                        // add all alpha mips to the base alpha texture as product dependency
+                        alphaBaseJobProduct->m_dependencies.push_back(productDependency);
+                    }
+                    else
+                    {
+                        return AZ::Failure(AZStd::string::format("Unable to add (%s) file as a product dependency of the base alpha texture file. Base alpha texture file is missing from the products list.\n", jobProduct.m_productFileName.c_str()));
+                    }
+                }
+                else
+                {
+                    if (baseJobProduct)
+                    {
+                        // add all rgb mips to the base rgb texture as product dependency
+                        baseJobProduct->m_dependencies.push_back(productDependency);
+                    }
+                    else
+                    {
+                        return AZ::Failure(AZStd::string::format("Unable to add (%s) file as a product dependency of the base rgb texture file. Base rgb texture file is missing from the products list.\n", jobProduct.m_productFileName.c_str()));
+                    }
+                }
+            }
+        }
+
+        // Diffuse (_diff) is required by the base (typically for cubemaps)
+        if (rgbBaseJobProduct && diffBaseJobProduct)
+        {
+            AssetBuilderSDK::ProductDependency productDependency(AZ::Data::AssetId(request.m_sourceFileUUID, diffBaseJobProduct->m_productSubID), 0);
+            rgbBaseJobProduct->m_dependencies.push_back(productDependency);
+        }
+
+        if (alphaBaseJobProduct && baseJobProduct)
+        {
+            // Add the alphaBaseTexture as a product dependency for baseTexture 
+            AssetBuilderSDK::ProductDependency productDependency(AZ::Data::AssetId(request.m_sourceFileUUID, alphaBaseJobProduct->m_productSubID), 0);
+            baseJobProduct->m_dependencies.push_back(productDependency);
+        }
+
+        return AZ::Success();
     }
 } // namespace ImageProcessing

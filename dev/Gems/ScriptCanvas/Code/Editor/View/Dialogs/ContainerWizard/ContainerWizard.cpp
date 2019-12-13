@@ -15,7 +15,9 @@
 #include <AzCore/ScriptCanvas/ScriptCanvasOnDemandNames.h>
 
 #include <Editor/View/Dialogs/ContainerWizard/ContainerWizard.h>
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option")
 #include <Editor/View/Dialogs/ContainerWizard/ui_ContainerWizard.h>
+AZ_POP_DISABLE_WARNING
 
 #include <Editor/Include/ScriptCanvas/GraphCanvas/NodeDescriptorBus.h>
 #include <AzCore/UserSettings/UserSettings.h>

@@ -346,7 +346,7 @@ class IntegrationTest_CloudGemFramework_ServiceApi(base_stack_test.BaseStackTest
                 '--include-gems',
                 '--integ',
                 '--only', 'Gem.CloudGemFramework.6fc787a982184217a5a553ca24676cfa.v0.1.0.dll',
-                '--dir', os.environ.get("TEST_BUILD_DIR", "Bin64vc140.Debug.Test")
+                '--dir', os.environ.get("TEST_BUILD_DIR", "Bin64vc141.Debug.Test")
             ]
             print 'EXECUTING', ' '.join(args)
 

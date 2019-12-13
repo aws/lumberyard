@@ -18,7 +18,9 @@
 #include <AzCore/Jobs/JobManagerComponent.h>
 #include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/UnitTest/UnitTest.h>
+#include <AzCore/Serialization/Utils.h>
 #include <AzTest/AzTest.h>
+#include <AzTest/GemTestEnvironment.h>
 #include <AzFramework/Application/Application.h>
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzFramework/IO/LocalFileIO.h>
@@ -31,20 +33,21 @@
 #include <PhysX/SystemComponentBus.h>
 #include <Source/Components/CharacterControllerComponent.h>
 #include <AzFramework/Physics/WorldEventhandler.h>
+#include <System/SystemComponent.h>
+#include <Components/RagdollComponent.h>
 
 #ifdef AZ_TESTS_ENABLED
-
-static const char* PVD_HOST = "127.0.0.1";
 
 namespace PhysXCharacters
 {
     class PhysXCharactersTestEnvironment
-        : public Physics::PhysicsTestEnvironment
+        : public AZ::Test::GemTestEnvironment
         , protected Physics::DefaultWorldBus::Handler
     {
     protected:
         void SetupEnvironment() override;
         void TeardownEnvironment() override;
+        void AddGemsAndComponents() override;
 
         // DefaultWorldBus
         AZStd::shared_ptr<Physics::World> GetDefaultWorld() override
@@ -55,64 +58,38 @@ namespace PhysXCharacters
         // Flag to enable pvd in tests
         static const bool s_enablePvd = true;
 
-        AZ::ComponentApplication* m_application;
-        AZ::Entity* m_systemEntity;
-        AZStd::unique_ptr<AZ::ComponentDescriptor> m_transformComponentDescriptor;
-        AZStd::unique_ptr<AZ::SerializeContext> m_serializeContext;
-        physx::PxPvdTransport* m_pvdTransport = nullptr;
-        physx::PxPvd* m_pvd = nullptr;
         AZ::IO::LocalFileIO m_fileIo;
         AZStd::shared_ptr<Physics::World> m_defaultWorld;
     };
 
     void PhysXCharactersTestEnvironment::SetupEnvironment()
     {
-        Physics::PhysicsTestEnvironment::SetupEnvironment();
-
         AZ::IO::FileIOBase::SetInstance(&m_fileIo);
 
-        // Create application and descriptor
-        m_application = aznew AZ::ComponentApplication;
-        AZ::ComponentApplication::Descriptor appDesc;
-        appDesc.m_useExistingAllocator = true;
-
-        // Set up gems for loading
-        AZ::DynamicModuleDescriptor dynamicModuleDescriptor;
-        dynamicModuleDescriptor.m_dynamicLibraryPath = "Gem.PhysX.4e08125824434932a0fe3717259caa47.v0.1.0";
-        appDesc.m_modules.push_back(dynamicModuleDescriptor);
-
-        dynamicModuleDescriptor = AZ::DynamicModuleDescriptor();
-        dynamicModuleDescriptor.m_dynamicLibraryPath = "Gem.PhysXCharacters.50f9ae1e09ac471bbd9d86ca8063ddf9.v0.1.0";
-        appDesc.m_modules.push_back(dynamicModuleDescriptor);
-
-        // Create system entity
-        AZ::ComponentApplication::StartupParameters startupParams;
-        m_systemEntity = m_application->Create(appDesc, startupParams);
-        AZ_TEST_ASSERT(m_systemEntity);
-        m_systemEntity->AddComponent(aznew AZ::MemoryComponent());
-        m_systemEntity->AddComponent(aznew AZ::AssetManagerComponent());
-        m_systemEntity->AddComponent(aznew AZ::JobManagerComponent());
-        m_systemEntity->Init();
-        m_systemEntity->Activate();
-
-        // Set up transform component descriptor
-        m_serializeContext = AZStd::make_unique<AZ::SerializeContext>();
-        m_transformComponentDescriptor = AZStd::unique_ptr<AZ::ComponentDescriptor>(AzFramework::TransformComponent::CreateDescriptor());
-        m_transformComponentDescriptor->Reflect(&(*m_serializeContext));
+        AZ::Test::GemTestEnvironment::SetupEnvironment();
 
         if (s_enablePvd)
         {
-            // set up visual debugger
-            m_pvdTransport = physx::PxDefaultPvdSocketTransportCreate(PVD_HOST, 5425, 10);
-            m_pvd = PxCreatePvd(PxGetFoundation());
-            m_pvd->connect(*m_pvdTransport, physx::PxPvdInstrumentationFlag::eALL);
+            bool pvdConnectionSuccessful = false;
+            PhysX::SystemRequestsBus::BroadcastResult(pvdConnectionSuccessful, &PhysX::SystemRequests::ConnectToPvd);
         }
 
         Physics::SystemRequestBus::BroadcastResult(m_defaultWorld,
-            &Physics::SystemRequests::CreateWorld, AZ_CRC("UnitTestWorld", 0x39d5e465));
+            &Physics::SystemRequests::CreateWorld, Physics::DefaultPhysicsWorldId);
 
         Physics::DefaultWorldBus::Handler::BusConnect();
+    }
 
+    void PhysXCharactersTestEnvironment::AddGemsAndComponents()
+    {
+        AddDynamicModulePaths({ "Gem.PhysX.4e08125824434932a0fe3717259caa47.v0.1.0" });
+        AddComponentDescriptors({
+            SystemComponent::CreateDescriptor(),
+            RagdollComponent::CreateDescriptor(),
+            CharacterControllerComponent::CreateDescriptor(),
+            AzFramework::TransformComponent::CreateDescriptor()
+            });
+        AddRequiredComponents({ SystemComponent::TYPEINFO_Uuid() });
     }
 
     void PhysXCharactersTestEnvironment::TeardownEnvironment()
@@ -120,20 +97,10 @@ namespace PhysXCharacters
         Physics::DefaultWorldBus::Handler::BusDisconnect();
         m_defaultWorld = nullptr;
 
-        if (m_pvd)
-        {
-            m_pvd->disconnect();
-            m_pvd->release();
-        }
+        // it's safe to call this even if we're not connected
+        PhysX::SystemRequestsBus::Broadcast(&PhysX::SystemRequests::DisconnectFromPvd);
 
-        if (m_pvdTransport)
-        {
-            m_pvdTransport->release();
-        }
-        m_transformComponentDescriptor.release();
-        m_serializeContext.release();
-        delete m_application;
-        Physics::PhysicsTestEnvironment::TeardownEnvironment();
+        AZ::Test::GemTestEnvironment::TeardownEnvironment();
     }
 
     class PhysXCharactersTest
@@ -463,6 +430,28 @@ namespace PhysXCharacters
 
         EXPECT_TRUE(m_triggerEnterEvents.size() == 1);
         EXPECT_TRUE(m_triggerExitEvents.size() == 1);
+    }
+
+    TEST_F(PhysXCharactersTest, RagdollComponentSerialization_SharedPointerVersion1_NotRegisteredErrorDoesNotOccur)
+    {
+        // A stream buffer corresponding to a ragdoll component that was serialized before the "PhysXRagdoll" element
+        // was changed from a shared pointer to a unique pointer.  Without a valid converter, deserializing this will
+        // cause an error.
+        const char* objectStreamBuffer =
+            R"DELIMITER(<ObjectStream version="1">
+            <Class name="RagdollComponent" field="m_template" version="1" type="{B89498F8-4718-42FE-A457-A377DD0D61A0}">
+                <Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+                    <Class name="AZ::u64" field="Id" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+                </Class>
+                <Class name="AZStd::shared_ptr" field="PhysXRagdoll" type="{A3E470C6-D6E0-5A32-9E83-96C379D9E7FA}"/>
+            </Class>
+            </ObjectStream>)DELIMITER";
+
+        Physics::ErrorHandler errorHandler("not registered with the serializer");
+        AZ::Utils::LoadObjectFromBuffer<RagdollComponent>(objectStreamBuffer, strlen(objectStreamBuffer) + 1);
+
+        // Check that there were no errors during deserialization.
+        EXPECT_EQ(errorHandler.GetErrorCount(), 0);
     }
 
     AZ_UNIT_TEST_HOOK(new PhysXCharactersTestEnvironment);

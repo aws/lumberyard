@@ -28,8 +28,8 @@ public:
     {
         eOutPort_Pc = 0,
         eOutPort_Mac,
-        eOutPort_PS4, // ACCEPTED_USE
-        eOutPort_XboxOne, // ACCEPTED_USE
+        eOutPort_Provo,
+        eOutPort_Xenia,
         eOutPort_Android,
         eOutPort_iOS,
         eOutPort_AppleTV
@@ -46,8 +46,8 @@ public:
         {
             OutputPortConfig_AnyType("PC", _HELP("Outputs the signal from Check input if the game runs on PC")),
             OutputPortConfig_AnyType("Mac", _HELP("Outputs the signal from Check input if the game runs on Mac")),
-            OutputPortConfig_AnyType("PS4", _HELP("Outputs the signal from Check input if the game runs on PS4")), // ACCEPTED_USE
-            OutputPortConfig_AnyType("XboxOne", _HELP("Outputs the signal from Check input if the game runs on Xbox One")), // ACCEPTED_USE
+            OutputPortConfig_AnyType("Provo", _HELP("Outputs the signal from Check input if the game runs on Provo")),
+            OutputPortConfig_AnyType("Xenia", _HELP("Outputs the signal from Check input if the game runs on Xenia")),
             OutputPortConfig_AnyType("Android", _HELP("Outputs the signal from Check input if the game runs on Android")),
             OutputPortConfig_AnyType("iOS", _HELP("Outputs the signal from Check input if the game runs on iOS")),
             OutputPortConfig_AnyType("AppleTV", _HELP("Outputs the signal from Check input if the game runs on AppleTV")),
@@ -82,6 +82,8 @@ public:
         #include "Xenia/FlowPlatformNode_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/FlowPlatformNode_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/FlowPlatformNode_cpp_salem.inl"
     #endif
 #endif
         }

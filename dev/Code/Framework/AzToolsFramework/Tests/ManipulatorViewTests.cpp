@@ -17,7 +17,7 @@
 #include <AzToolsFramework/Manipulators/ManipulatorView.h>
 #include <AzCore/UnitTest/TestTypes.h>
 
-#include "AzToolsFrameworkTestHelpers.h"
+#include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
 
 namespace UnitTest
 {

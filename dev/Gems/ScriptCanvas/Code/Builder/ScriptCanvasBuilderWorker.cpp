@@ -12,6 +12,8 @@
 
 #include "precompiled.h"
 
+#include <AssetBuilderSDK/SerializationDependencies.h>
+
 #include <AzCore/Math/Uuid.h>
 
 #include <Builder/ScriptCanvasBuilderWorker.h>
@@ -49,7 +51,7 @@ namespace ScriptCanvasBuilder
 
     int Worker::GetVersionNumber() const
     {
-        return 1;
+        return 2;
     }
 
     const char* Worker::GetFingerprintString() const
@@ -211,13 +213,9 @@ namespace ScriptCanvasBuilder
         AZ::SerializeContext* context{};
         AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
 
-        AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
-
         // Asset filter is used to record dependencies.  Only returns true for editor script canvas assets
-        auto assetFilter = [&productDependencies](const AZ::Data::Asset<AZ::Data::AssetData>& filterAsset)
+        auto assetFilter = [](const AZ::Data::Asset<AZ::Data::AssetData>& filterAsset)
         {
-            productDependencies.emplace_back(filterAsset.GetId(), 0);
-
             return filterAsset.GetType() == azrtti_typeid<ScriptCanvasEditor::ScriptCanvasAsset>();
         };
 
@@ -278,6 +276,12 @@ namespace ScriptCanvasBuilder
         }
         AZ_TracePrintf(s_scriptCanvasBuilder, "Script Canvas Asset has been saved to the object stream successfully\n");
 
+
+        AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
+        AssetBuilderSDK::ProductPathDependencySet productPathDependencySet;
+        // Gather product dependencies from the compiled asset, not the source asset. In some cases asset references can change during asset compliation.
+        GatherProductDependencies(*context, runtimeAsset, productDependencies, productPathDependencySet);
+
         AZ::IO::FileIOStream outFileStream(runtimeScriptCanvasOutputPath.data(), AZ::IO::OpenMode::ModeWrite);
         if (!outFileStream.IsOpen())
         {
@@ -306,11 +310,21 @@ namespace ScriptCanvasBuilder
         jobProduct.m_productAssetType = azrtti_typeid<ScriptCanvas::RuntimeAsset>();
         jobProduct.m_productSubID = AZ_CRC("RuntimeData", 0x163310ae);
         jobProduct.m_dependencies = AZStd::move(productDependencies);
+        jobProduct.m_pathDependencies = AZStd::move(productPathDependencySet);
         response.m_outputProducts.push_back(AZStd::move(jobProduct));
 
         response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
 
         AZ_TracePrintf(s_scriptCanvasBuilder, "Finished processing script canvas %s\n", fullPath.c_str());
+    }
+
+    bool Worker::GatherProductDependencies(
+        AZ::SerializeContext& serializeContext,
+        AZ::Data::Asset<ScriptCanvas::RuntimeAsset>& runtimeAsset,
+        AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
+        AssetBuilderSDK::ProductPathDependencySet& productPathDependencySet)
+    {
+        return AssetBuilderSDK::GatherProductDependencies(serializeContext, &runtimeAsset.Get()->GetData(), productDependencies, productPathDependencySet);
     }
 
     AZ::Data::Asset<ScriptCanvas::RuntimeAsset> Worker::ProcessEditorAsset(AZ::Data::AssetHandler& editorAssetHandler, AZ::IO::GenericStream& stream)

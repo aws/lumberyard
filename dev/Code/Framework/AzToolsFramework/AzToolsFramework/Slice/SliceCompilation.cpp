@@ -386,13 +386,10 @@ namespace AzToolsFramework
                     {
                         const size_t oldComponentCount = exportEntity->GetComponents().size();
                         asEditorComponent->BuildGameEntity(exportEntity);
-                        if (exportEntity->GetComponents().size() > oldComponentCount)
+                        AZ::ComponentId newID = asEditorComponent->GetId();
+                        for (auto i = oldComponentCount ; i < exportEntity->GetComponents().size(); ++i)
                         {
-                            // The logic below only works if exactly 1 component was added, because it tries to set
-                            // the new component's ID to match the previous one.
-                            AZ_Assert(exportEntity->GetComponents().size() == (oldComponentCount + 1), "BuildGameEntity() unexpectedly added more than one runtime component.");
-
-                            AZ::Component* exportComponent = exportEntity->GetComponents().back();
+                            AZ::Component* exportComponent = exportEntity->GetComponents()[i];
 
                             // Verify that the result of BuildGameEntity() wasn't an editor component.
                             auto* exportAsEditorComponent = azrtti_cast<Components::EditorComponentBase*>(exportComponent);
@@ -412,7 +409,14 @@ namespace AzToolsFramework
                                     asEditorComponent->RTTI_GetType().ToString<AZStd::string>().c_str()));
                             }
 
-                            exportComponent->SetId(asEditorComponent->GetId());
+                            exportComponent->SetId(newID++);
+                            // The first time round set the new componet the same as the ditors one. This will change in a seperate ticket
+                            // when 8 bit runtime Ids are implemented.
+                            // Make sure the newID isn't already on the source Entity. If it is increment the ID and try again.
+                            while (sourceEntity->FindComponent(newID))
+                            {
+                                ++newID;
+                            }
                         }
 
                         // Since this is an editor component, we very specifically do *not* want to clone and add it as a runtime

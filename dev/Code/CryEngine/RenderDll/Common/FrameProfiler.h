@@ -53,18 +53,18 @@
         ~CProfilePSTimeScope()                                                                                                                      \
         {                                                                                                                                           \
             if (m_bCondition) {                                                                                                                     \
-                gcpRendD3D->m_RP.m_PS[gcpRendD3D->m_RP.m_nProcessThreadID].m_##EXT += iTimer->GetAsyncTime().GetDifferenceInSeconds(m_startTime); } \
+                gRenDev->m_RP.m_PS[gRenDev->m_RP.m_nProcessThreadID].m_##EXT += iTimer->GetAsyncTime().GetDifferenceInSeconds(m_startTime); } \
         }                                                                                                                                           \
     } PP_CONCAT(profilePSTimeScope, __LINE__)(CONDITION);
 #define PROFILE_DIPS_START                       \
     CTimeValue TimeDIP = iTimer->GetAsyncTime(); \
 
 #define PROFILE_DIPS_END(id)                                                                                                              \
-    gcpRendD3D->m_RP.m_PS[gcpRendD3D->m_RP.m_nProcessThreadID].m_fTimeDIPs[id] += iTimer->GetAsyncTime().GetDifferenceInSeconds(TimeDIP); \
+    gRenDev->m_RP.m_PS[gRenDev->m_RP.m_nProcessThreadID].m_fTimeDIPs[id] += iTimer->GetAsyncTime().GetDifferenceInSeconds(TimeDIP); \
 
 // to get around a stupid compiler bug (Win32 debug with Edit and Continue enabled) where assert can't be used
 #if defined(_DEBUG)
-#define FP_CHECK_SHADER      if (!gcpRendD3D->m_RP.m_pShader) {__debugbreak(); }
+#define FP_CHECK_SHADER      if (!gRenDev->m_RP.m_pShader) {__debugbreak(); }
 #else
 #define FP_CHECK_SHADER
 #endif
@@ -84,13 +84,13 @@
             time0 = 0;                                                                                                                                                                           \
             nNumDips = 0;                                                                                                                                                                        \
             nNumPolys = 0;                                                                                                                                                                       \
-            if (CRenderer::CV_r_profileshaders == 1 || (CRenderer::CV_r_profileshaders == 2 && gcpRendD3D->m_RP.m_pCurObject && (gcpRendD3D->m_RP.m_pCurObject->m_ObjFlags & FOB_SELECTED)))     \
+            if (CRenderer::CV_r_profileshaders == 1 || (CRenderer::CV_r_profileshaders == 2 && gRenDev->m_RP.m_pCurObject && (gRenDev->m_RP.m_pCurObject->m_ObjFlags & FOB_SELECTED)))     \
             {                                                                                                                                                                                    \
                 bProfile = true;                                                                                                                                                                 \
                 time0 = iTimer->GetAsyncCurTime();                                                                                                                                               \
-                gcpRendD3D->m_RP.m_fProfileTime = time0;                                                                                                                                         \
-                nNumPolys = gcpRendD3D->m_RP.m_PS[gcpRendD3D->m_RP.m_nProcessThreadID].m_nPolygons[gcpRendD3D->m_RP.m_nPassGroupDIP];                                                            \
-                nNumDips = gcpRendD3D->m_RP.m_PS[gcpRendD3D->m_RP.m_nProcessThreadID].m_nDIPs[gcpRendD3D->m_RP.m_nPassGroupDIP];                                                                 \
+                gRenDev->m_RP.m_fProfileTime = time0;                                                                                                                                         \
+                nNumPolys = gRenDev->m_RP.m_PS[gRenDev->m_RP.m_nProcessThreadID].m_nPolygons[gRenDev->m_RP.m_nPassGroupDIP];                                                            \
+                nNumDips = gRenDev->m_RP.m_PS[gRenDev->m_RP.m_nProcessThreadID].m_nDIPs[gRenDev->m_RP.m_nPassGroupDIP];                                                                 \
             }                                                                                                                                                                                    \
             else                                                                                                                                                                                 \
             {                                                                                                                                                                                    \
@@ -111,21 +111,21 @@
                 fTime = time1 - time0;                                                                                                                                                           \
             }                                                                                                                                                                                    \
                                                                                                                                                                                                  \
-            if (gcpRendD3D->m_RP.m_pShader && gcpRendD3D->m_RP.m_pCurTechnique)                                                                                                                  \
+            if (gRenDev->m_RP.m_pShader && gRenDev->m_RP.m_pCurTechnique)                                                                                                                  \
             {                                                                                                                                                                                    \
-                if (CRenderer::CV_r_profileshaders == 1 || (CRenderer::CV_r_profileshaders == 2 && gcpRendD3D->m_RP.m_pCurObject && (gcpRendD3D->m_RP.m_pCurObject->m_ObjFlags & FOB_SELECTED))) \
+                if (CRenderer::CV_r_profileshaders == 1 || (CRenderer::CV_r_profileshaders == 2 && gRenDev->m_RP.m_pCurObject && (gRenDev->m_RP.m_pCurObject->m_ObjFlags & FOB_SELECTED))) \
                 {                                                                                                                                                                                \
-                    if (time0 == gcpRendD3D->m_RP.m_fProfileTime)                                                                                                                                \
+                    if (time0 == gRenDev->m_RP.m_fProfileTime)                                                                                                                                \
                     {                                                                                                                                                                            \
                         SProfInfo pi;                                                                                                                                                            \
                         pi.Time = fTime;                                                                                                                                                         \
-                        pi.NumPolys = gcpRendD3D->m_RP.m_PS[gcpRendD3D->m_RP.m_nProcessThreadID].m_nPolygons[gcpRendD3D->m_RP.m_nPassGroupDIP] - nNumPolys;                                      \
-                        pi.NumDips = gcpRendD3D->m_RP.m_PS[gcpRendD3D->m_RP.m_nProcessThreadID].m_nDIPs[gcpRendD3D->m_RP.m_nPassGroupDIP] - nNumDips;                                            \
+                        pi.NumPolys = gRenDev->m_RP.m_PS[gRenDev->m_RP.m_nProcessThreadID].m_nPolygons[gRenDev->m_RP.m_nPassGroupDIP] - nNumPolys;                                      \
+                        pi.NumDips = gRenDev->m_RP.m_PS[gRenDev->m_RP.m_nProcessThreadID].m_nDIPs[gRenDev->m_RP.m_nPassGroupDIP] - nNumDips;                                            \
                         FP_CHECK_SHADER;                                                                                                                                                         \
-                        pi.pShader = gcpRendD3D->m_RP.m_pShader;                                                                                                                                 \
-                        pi.pTechnique = gcpRendD3D->m_RP.m_pCurTechnique;                                                                                                                        \
+                        pi.pShader = gRenDev->m_RP.m_pShader;                                                                                                                                 \
+                        pi.pTechnique = gRenDev->m_RP.m_pCurTechnique;                                                                                                                        \
                         pi.m_nItems = 0;                                                                                                                                                         \
-                        gcpRendD3D->m_RP.m_Profile.AddElem(pi);                                                                                                                                  \
+                        gRenDev->m_RP.m_Profile.AddElem(pi);                                                                                                                                  \
                     }                                                                                                                                                                            \
                 }                                                                                                                                                                                \
             }                                                                                                                                                                                    \
@@ -151,39 +151,10 @@
 
 #if defined(ENABLE_FRAME_PROFILER_LABELS)
 
-// marcos to implement the platform differences for pushing GPU Markers
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/FrameProfiler_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/FrameProfiler_h_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-    #elif defined(OPENGL)
-        #define PROFILE_LABEL_GPU(_NAME) DXGLProfileLabel(_NAME);
-        #define PROFILE_LABEL_PUSH_GPU(_NAME) DXGLProfileLabelPush(_NAME);
-        #define PROFILE_LABEL_POP_GPU(_NAME) DXGLProfileLabelPop(_NAME);
-    #elif defined(CRY_USE_DX12)
-        #define PROFILE_LABEL_GPU(_NAME) do { } while (0)
-        #define PROFILE_LABEL_PUSH_GPU(_NAME) do { gcpRendD3D->GetDeviceContext().PushMarker(_NAME); } while (0)
-        #define PROFILE_LABEL_POP_GPU(_NAME) do { gcpRendD3D->GetDeviceContext().PopMarker(); } while (0)
-    #else
-
-        #define PROFILE_LABEL_GPU(X) do { wchar_t buf[256]; Unicode::Convert(buf, X); D3DPERF_SetMarker(0xffffffff, buf); } while (0)
-        #define PROFILE_LABEL_PUSH_GPU(X) do { wchar_t buf[128]; Unicode::Convert(buf, X); D3DPERF_BeginEvent(0xff00ff00, buf); } while (0)
-        #define PROFILE_LABEL_POP_GPU(X) do { D3DPERF_EndEvent(); } while (0)
-
-
-    #endif
-
 // real push/pop marker for GPU, also add to the internal profiler and CPU Markers
-    #define PROFILE_LABEL(X)  do { CryProfile::SetProfilingEvent(X); PROFILE_LABEL_GPU(X); } while (0)
-    #define PROFILE_LABEL_PUSH(X) do { CryProfile::PushProfilingMarker(X); PROFILE_LABEL_PUSH_GPU(X); if (gcpRendD3D->m_pPipelineProfiler) {gcpRendD3D->m_pPipelineProfiler->BeginSection(X); } \
-} while (0)
-    #define PROFILE_LABEL_POP(X) do { CryProfile::PopProfilingMarker(); PROFILE_LABEL_POP_GPU(X); if (gcpRendD3D->m_pPipelineProfiler) {gcpRendD3D->m_pPipelineProfiler->EndSection(X); } \
-} while (0)
+    #define PROFILE_LABEL(X)  do { CryProfile::SetProfilingEvent(X); gRenDev->AddProfilerLabel(X); } while (0)
+    #define PROFILE_LABEL_PUSH(X) do { CryProfile::PushProfilingMarker(X); gRenDev->BeginProfilerSection(X); } while (0)
+    #define PROFILE_LABEL_POP(X) do { CryProfile::PopProfilingMarker(); gRenDev->EndProfilerSection(X); } while (0)
 
 // scope util class for GPU profiling Marker
     #define PROFILE_LABEL_SCOPE(X)            \
@@ -218,10 +189,6 @@
     } PP_CONCAT(profileLabelScope, __LINE__)(X);
 
 #else
-    #define PROFILE_LABEL_GPU(_NAME)
-    #define PROFILE_LABEL_PUSH_GPU(_NAME)
-    #define PROFILE_LABEL_POP_GPU(_NAME)
-
     #define PROFILE_LABEL(X)
     #define PROFILE_LABEL_PUSH(X)
     #define PROFILE_LABEL_PUSH_W_FLAGS(X, Y) PROFILE_LABEL_PUSH(X)

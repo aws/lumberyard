@@ -54,7 +54,7 @@ namespace HierarchyHelpers
 
     //-------------------------------------------------------------------------------
 
-    QTreeWidgetItem* ElementToItem(HierarchyWidget* widget, AZ::Entity* element, bool defaultToInvisibleRootItem);
+    QTreeWidgetItem* ElementToItem(HierarchyWidget* widget, const AZ::Entity* element, bool defaultToInvisibleRootItem);
     QTreeWidgetItem* ElementToItem(HierarchyWidget* widget, AZ::EntityId elementId, bool defaultToInvisibleRootItem);
 
     //-------------------------------------------------------------------------------

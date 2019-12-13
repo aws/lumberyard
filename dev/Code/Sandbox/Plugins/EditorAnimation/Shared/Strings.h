@@ -24,7 +24,6 @@ typedef CryStringT<wchar_t> wstring;
 
 template <class Type>
 struct less_stricmp
-    : public std::binary_function<Type, Type, bool>
 {
     bool operator()(const string& left, const string& right) const
     {

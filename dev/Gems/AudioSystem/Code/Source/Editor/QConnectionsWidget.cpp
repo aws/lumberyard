@@ -10,15 +10,16 @@
 *
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
-#include "StdAfx.h"
-#include "QConnectionsWidget.h"
-#include <IAudioSystemEditor.h>
+
+#include <QConnectionsWidget.h>
+
+#include <ACEEnums.h>
+#include <AudioControl.h>
+#include <AudioControlsEditorPlugin.h>
 #include <IAudioSystemControl.h>
-#include "AudioControl.h"
-#include "AudioControlsEditorPlugin.h"
-#include "IEditor.h"
-#include "QtUtil.h"
-#include "ImplementationManager.h"
+#include <IAudioSystemEditor.h>
+#include <IEditor.h>
+#include <ImplementationManager.h>
 
 #include <QDropEvent>
 #include <QEvent>
@@ -31,7 +32,7 @@
 namespace AudioControls
 {
     //-------------------------------------------------------------------------------------------//
-    QConnectionsWidget::QConnectionsWidget(QWidget* pParent, const string& sGroup)
+    QConnectionsWidget::QConnectionsWidget(QWidget* pParent, const AZStd::string& sGroup)
         : QWidget(pParent)
         , m_sGroup(sGroup)
         , m_notFoundColor(QColor(0xf3, 0x81, 0x1d))
@@ -51,7 +52,7 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    void QConnectionsWidget::Init(const string& sGroup)
+    void QConnectionsWidget::Init(const AZStd::string& sGroup)
     {
         m_sGroup = sGroup;
         connect(m_pConnectionList, SIGNAL(itemSelectionChanged()), this, SLOT(SelectedConnectionChanged()));
@@ -204,7 +205,7 @@ namespace AudioControls
             {
                 if (size == 1)
                 {
-                    messageBox.setText("Are you sure you want to delete the connection between \"" + QtUtil::ToQString(m_pControl->GetName()) + "\" and \"" + selected[0]->text() + "\"?");
+                    messageBox.setText("Are you sure you want to delete the connection between \"" + QString(m_pControl->GetName().c_str()) + "\" and \"" + selected[0]->text() + "\"?");
                 }
                 else
                 {
@@ -214,7 +215,7 @@ namespace AudioControls
                 {
                     if (IAudioSystemEditor* pAudioSystemEditorImpl = CAudioControlsEditorPlugin::GetAudioSystemEditorImpl())
                     {
-                        std::vector<IAudioSystemControl*> connectedMiddlewareControls;
+                        AZStd::vector<IAudioSystemControl*> connectedMiddlewareControls;
                         connectedMiddlewareControls.reserve(selected.size());
                         for (int i = 0; i < size; ++i)
                         {
@@ -270,7 +271,7 @@ namespace AudioControls
         {
             const TImplControlType nType = pAudioSystemControl->GetType();
 
-            QListWidgetItem* pListItem = new QListWidgetItem(QIcon(QtUtil::ToQString(pAudioSystemEditorImpl->GetTypeIcon(nType))), QString(pAudioSystemControl->GetName()));
+            QListWidgetItem* pListItem = new QListWidgetItem(QIcon(QString(pAudioSystemEditorImpl->GetTypeIcon(nType).data())), QString(pAudioSystemControl->GetName().c_str()));
             pListItem->setData(eMDR_ID, pAudioSystemControl->GetId());
             pListItem->setData(eMDR_LOCALISED, pAudioSystemControl->IsLocalised());
             if (pAudioSystemControl->IsPlaceholder())
@@ -303,4 +304,4 @@ namespace AudioControls
 
 } // namespace AudioControls
 
-#include <QConnectionsWidget.moc>
+#include <Source/Editor/QConnectionsWidget.moc>

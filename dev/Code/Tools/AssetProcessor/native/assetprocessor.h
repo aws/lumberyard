@@ -18,6 +18,7 @@
 #include <AzCore/Math/Crc.h>
 #include <QString>
 #include <QList>
+#include <QSet>
 
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
@@ -28,6 +29,7 @@
 #include <AzFramework/Asset/AssetRegistry.h>
 #include <AzCore/Math/Crc.h>
 #include <native/AssetManager/assetScanFolderInfo.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 
 namespace AssetProcessor
 {
@@ -37,7 +39,9 @@ namespace AssetProcessor
     const char* const AutoFailReasonKey = "failreason"; // the key to look in for auto-fail reason.
     const char* const AutoFailLogFile = "faillogfile"; // if this is provided, this is a complete log of the failure and will be added after the failreason.
     const char* const AutoFailOmitFromDatabaseKey = "failreason_omitFromDatabase"; // if set in your job info hash, your job will not be tracked by the database.
+    const char* const JobWarningKey = "ap_warningmessage"; // key used to store a warning message to be shown in the job log
     const unsigned int g_RetriesForFenceFile = 5; // number of retries for fencing
+    const int RetriesForJobNetworkError = 1; // number of times to retry a job when a network error is determined to have caused a job failure
     // Even though AP can handle files with path length greater than window's legacy path length limit, we have some 3rdparty sdk's
     // which do not handle this case ,therefore we will make AP fail any jobs whose either source file or output file name exceeds the windows legacy path length limit
 #define AP_MAX_PATH_LEN 260
@@ -256,7 +260,7 @@ namespace AssetProcessor
 
         bool operator==(const JobDesc& rhs) const
         {
-            return m_databaseSourceName == rhs.m_databaseSourceName 
+            return AzFramework::StringFunc::Equal(m_databaseSourceName.c_str(), rhs.m_databaseSourceName.c_str())
                 && m_platformIdentifier == rhs.m_platformIdentifier
                 && m_jobKey == rhs.m_jobKey;
         }
@@ -270,7 +274,10 @@ namespace AssetProcessor
 
         AZStd::string ToString() const
         {
-            return AZStd::string::format("%s %s %s", m_databaseSourceName.c_str(), m_platformIdentifier.c_str(), m_jobKey.c_str());
+            AZStd::string lowerSourceName = m_databaseSourceName;
+            AZStd::to_lower(lowerSourceName.begin(), lowerSourceName.end());
+
+            return AZStd::string::format("%s %s %s", lowerSourceName.c_str(), m_platformIdentifier.c_str(), m_jobKey.c_str());
         }
     };
 

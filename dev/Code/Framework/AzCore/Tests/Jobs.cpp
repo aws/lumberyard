@@ -13,6 +13,7 @@
 #include <AzCore/Jobs/Job.h>
 #include <AzCore/Jobs/JobCompletion.h>
 #include <AzCore/Jobs/JobCompletionSpin.h>
+#include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Jobs/JobManager.h>
 #include <AzCore/Jobs/task_group.h>
 #include <AzCore/Jobs/Algorithms.h>
@@ -1196,10 +1197,8 @@ namespace UnitTest
             nonParallelMS = AZStd::GetTimeNowMicroSecond() - tStart;
             nonParallelProcessMS = m_processElementsTime;
 
-            //AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100));
 
             // parallel_for test
-
             {
 #ifdef AZ_JOBS_PRINT_CALL_ORDER
                 m_callOrder.clear();
@@ -1214,9 +1213,7 @@ namespace UnitTest
                 parallelForProcessMS = m_processElementsTime;
             }
 
-            //AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100));
 
-            //
 #if defined(AZ_COMPARE_TO_PPL)
             // compare to MS Concurrency::parallel_for
             {
@@ -1233,8 +1230,6 @@ namespace UnitTest
                 parallelForPPLMS = AZStd::GetTimeNowMicroSecond() - tStart;
                 parallelForProcessPPLMS = m_processElementsTime;
             }
-
-            //AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100));
 #endif // AZ_COMPARE_TO_PPL
 
             AZ_Printf("UnitTest", "\n\nJob overhead test. Serial %lld (%lld) Parallel %lld (%lld) PPL %lld (%lld) Total: %lld\n\n", nonParallelMS, nonParallelProcessMS, parallelForMS, parallelForProcessMS, parallelForPPLMS, parallelForProcessPPLMS, s_totalJobsTime);
@@ -1277,7 +1272,7 @@ namespace UnitTest
             printf("\nTotal Elements %d\n", totalProcessedElements);
 
             m_jobManager->PrintStats();
-#endif // #ifdef AZ_JOBS_PRINT_CALL_ORDER
+#endif
         }
 
         void ProcessElement(size_t index)
@@ -1289,10 +1284,9 @@ namespace UnitTest
             }
             //int numIterations = m_random.GetRandom() % 100;
 
-            //AZStd::sys_time_t tStart = AZStd::GetTimeNowMicroSecond();
 #ifdef AZ_JOBS_PRINT_CALL_ORDER
             m_callOrder.push_back(AZStd::make_pair(index, AZStd::this_thread::get_id().m_id));
-#endif // #ifdef AZ_JOBS_PRINT_CALL_ORDER
+#endif
             for (int i = 0; i < numIterations; ++i)
             {
                 Transform tm = m_transforms[index].GetInverseFull();
@@ -1301,7 +1295,6 @@ namespace UnitTest
                 Vector3 v = m_vectors[index] * m_vectors1[index].GetLength();
                 m_results[index] = v * tm;
             }
-            //m_processElementsTime += AZStd::GetTimeNowMicroSecond() - tStart;
         }
 
     private:
@@ -1319,5 +1312,89 @@ namespace UnitTest
     {
         run();
     }
-#endif // ENABLE_PERFORMANCE_TEST
+#endif
+
+    class JobFunctionTestWithoutCurrentJobArg
+        : public DefaultJobManagerSetupFixture
+    {
+    public:
+        void run()
+        {
+            constexpr size_t JobCount = 32;
+            size_t jobData[JobCount] = { 0 };
+
+            AZ::JobCompletion completion;
+            for (size_t i = 0; i < JobCount; ++i)
+            {
+                AZ::Job* job = AZ::CreateJobFunction([i, &jobData]() // NOT passing the current job as an argument
+                    {
+                        jobData[i] = i + 1;
+                    },
+                    true
+                );
+                job->SetDependent(&completion);
+                job->Start();
+            }
+            completion.StartAndWaitForCompletion();
+
+            for (size_t i = 0; i < JobCount; ++i)
+            {
+                EXPECT_EQ(jobData[i], i + 1);
+            }
+        }
+    };
+
+    TEST_F(JobFunctionTestWithoutCurrentJobArg, Test)
+    {
+        run();
+    }
+
+    class JobFunctionTestWithCurrentJobArg
+        : public DefaultJobManagerSetupFixture
+    {
+    public:
+        void run()
+        {
+            constexpr size_t JobCount = 32;
+            size_t jobData[JobCount] = { 0 };
+
+            AZ::JobCompletion completion;
+
+            // Push a parent job that pushes the work as child jobs (requires the current job, so this is a real world test of "functor with current job as param")
+            AZ::Job* parentJob = AZ::CreateJobFunction([this, &jobData, JobCount](AZ::Job& thisJob)
+                {
+                    EXPECT_EQ(m_jobManager->GetCurrentJob(), &thisJob);
+
+                    for (size_t i = 0; i < JobCount; ++i)
+                    {
+                        AZ::Job* childJob = AZ::CreateJobFunction([this, i, &jobData](AZ::Job& thisJob)
+                            {
+                                EXPECT_EQ(m_jobManager->GetCurrentJob(), &thisJob);
+                                jobData[i] = i + 1;
+                            },
+                            true
+                        );
+                        thisJob.StartAsChild(childJob);
+                    }
+
+                    thisJob.WaitForChildren(); // Note: this is required before the parent job returns
+                },
+                true
+            );
+            parentJob->SetDependent(&completion);
+            parentJob->Start();
+
+            completion.StartAndWaitForCompletion();
+
+            for (size_t i = 0; i < JobCount; ++i)
+            {
+                EXPECT_EQ(jobData[i], i + 1);
+            }
+        }
+    };
+
+    TEST_F(JobFunctionTestWithCurrentJobArg, Test)
+    {
+        run();
+    }
 }

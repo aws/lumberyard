@@ -18,9 +18,7 @@ from runpy import run_path
 
 SUBFOLDERS = [
     '3rdParty',
-    'DBAPI',
     'AssetProcessor',
-    'AssetTagging',
     'AZInstaller',
     'CryXML',
     'MaxCryExport',
@@ -41,6 +39,9 @@ SUBFOLDERS = [
     'SharedQMLResource',
     'AWSNativeSDKInit',
     'RemoteConsole',
+    'SerializeContextTools',
+    'DeltaCataloger',
+    'AssetBundler'
 ]
 
 def build(bld):
@@ -74,7 +75,15 @@ def build(bld):
         restricted_script_filename = os.path.join(script_dir, p0, '{0}_{1}'.format(script_base, p1))
         if os.path.exists(restricted_script_filename):
             restricted_script = run_path(restricted_script_filename)
+            
+            if 'targets_to_add' in restricted_script:
+                targets_to_add = restricted_script['targets_to_add'](bld)
+                if targets_to_add:
+                    for target_to_add in targets_to_add:
+                        bld.add_target_to_spec(target_to_add, 'all')
+                        
             if 'restricted_subfolders' in restricted_script:
                 restricted_subfolders = restricted_script['restricted_subfolders']()
                 for subfolder in restricted_subfolders:
                     bld.recurse([subfolder], mandatory=False)
+

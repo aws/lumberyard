@@ -110,8 +110,8 @@ enum EActionInputDevice
 {
     eAID_Unknown                = 0,
     eAID_KeyboardMouse      = BIT(0),
-    eAID_XboxPad                = BIT(1),
-    eAID_PS4Pad                     = BIT(2),
+    eAID_XeniaPad                = BIT(1),
+    eAID_ProvoPad                     = BIT(2),
     eAID_AndroidKey         = BIT(3),
 };
 

@@ -1,0 +1,12 @@
+{
+    "platform": {
+        "darwin_x64": {
+            "libpath": [
+                "libtiff/macosx_clang"
+            ],
+            "lib": [
+                "libtiff.a"
+            ]     
+        }
+    }
+}

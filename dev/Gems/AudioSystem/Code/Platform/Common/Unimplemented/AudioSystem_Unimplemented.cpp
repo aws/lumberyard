@@ -10,9 +10,8 @@
 *
 */
 
-#include "StdAfx.h"
-
 #include <SoundCVars.h>
+#include <AudioLogger.h>
 
 namespace Audio
 {

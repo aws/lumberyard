@@ -26,8 +26,14 @@
 #include "MergedMeshRenderNode.h"
 #include "MergedMeshGeometry.h"
 #include "ShadowCache.h"
+#include "Ocean.h"
+#include <PakLoadDataUtils.h>
 
 #include <AzCore/Component/TransformBus.h>
+
+#ifdef LY_TERRAIN_RUNTIME
+#include <Terrain/Bus/TerrainProviderBus.h>
+#endif
 
 #define MAX_NODE_NUM 7
 
@@ -67,7 +73,10 @@ COctreeNode::~COctreeNode()
 
     m_arrEmptyNodes.Delete(this);
 
-    GetObjManager()->GetArrStreamingNodeStack().Delete(this);
+    if (GetObjManager())
+    {
+        GetObjManager()->GetArrStreamingNodeStack().Delete(this);
+    }
 
     if (m_pRNTmpData)
     {
@@ -919,9 +928,29 @@ void COctreeNode::MoveObjectsIntoList(PodArray<SRNInfo>* plstResultEntities, con
                         continue;
                     }
                 }
+                else if (eRType == eERType_Vegetation)
+                {
+                    // Procedural "static" vegetation and dynamic vegetation are both considered dynamic objects
+                    // because they're spawned / despawned at runtime
+                    CVegetation* vegNode = static_cast<CVegetation*>(pObj);
+                    if ((pObj->GetRndFlags() & ERF_PROCEDURAL) || (vegNode->IsDynamic()))
+                    {
+                        continue;
+                    }
+                }
+                else if (eRType == eERType_MergedMesh)
+                {
+                    // Dynamic merged mesh nodes are considered dynamic objects because they're spawned / despawned at
+                    // runtime.  "Static" merged mesh nodes are *not* considered dynamic because they exist for the lifetime
+                    // of the level, even though they spawn / despawn instances within themselves at runtime.
+                    CMergedMeshRenderNode* mergedMeshNode = static_cast<CMergedMeshRenderNode*>(pObj);
+                    if (mergedMeshNode->HasDynamicInstances())
+                    {
+                        continue;
+                    }
+                }
                 else if (
                     eRType != eERType_Brush &&
-                    eRType != eERType_Vegetation &&
                     eRType != eERType_StaticMeshRenderComponent)
                 {
                     continue;
@@ -1114,6 +1143,7 @@ void COctreeNode::GetMemoryUsage(ICrySizer* pSizer) const
     }
 }
 
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
 void COctreeNode::UpdateTerrainNodes(CTerrainNode* pParentNode)
 {
     if (pParentNode != 0)
@@ -1137,12 +1167,13 @@ void COctreeNode::UpdateTerrainNodes(CTerrainNode* pParentNode)
         }
     }
 }
+#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
 
-void C3DEngine::GetObjectsByTypeGlobal(PodArray<IRenderNode*>& lstObjects, EERType objType, const AABB* pBBox)
+void C3DEngine::GetObjectsByTypeGlobal(PodArray<IRenderNode*>& lstObjects, EERType objType, const AABB* pBBox, ObjectTreeQueryFilterCallback filterCallback)
 {
     if (Get3DEngine()->IsObjectTreeReady())
     {
-        Get3DEngine()->GetObjectTree()->GetObjectsByType(lstObjects, objType, pBBox);
+        Get3DEngine()->GetObjectTree()->GetObjectsByType(lstObjects, objType, pBBox, filterCallback);
     }
 }
 
@@ -1541,7 +1572,15 @@ bool COctreeNode::RayObjectsIntersection2D(Vec3 vStart, Vec3 vEnd, Vec3& vCloses
     }
 
     const bool oceanEnabled = OceanToggle::IsActive() ? OceanRequest::OceanIsEnabled() : true;
-    const float fOceanLevel = OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : GetTerrain()->GetWaterLevel();
+    float fOceanLevel = WATER_LEVEL_UNKNOWN;
+    if (OceanToggle::IsActive())
+    {
+        fOceanLevel = OceanRequest::GetOceanLevel();
+    }
+    else
+    {
+        fOceanLevel = m_pOcean ? m_pOcean->GetWaterLevel() : WATER_LEVEL_UNKNOWN;
+    }
 
     ERNListType eListType = IRenderNode::GetRenderNodeListId(eERType);
 
@@ -1635,7 +1674,9 @@ bool COctreeNode::RayObjectsIntersection2D(Vec3 vStart, Vec3 vEnd, Vec3& vCloses
 
 void COctreeNode::GenerateStatObjAndMatTables(std::vector<IStatObj*>* pStatObjTable, std::vector<_smart_ptr<IMaterial> >* pMatTable, std::vector<IStatInstGroup*>* pStatInstGroupTable, SHotUpdateInfo* pExportInfo)
 {
-    COMPILE_TIME_ASSERT(eERType_TypesNum == 28);//if eERType number is changed, have to check this code.
+    //if eERType number is changed, have to check this code.
+    COMPILE_TIME_ASSERT(eERType_TypesNum == 28);
+
     AABB* pBox = (pExportInfo && !pExportInfo->areaBox.IsReset()) ? &pExportInfo->areaBox : NULL;
 
     if (pBox && !Overlap::AABB_AABB(GetNodeBox(), *pBox))
@@ -2064,7 +2105,7 @@ int COctreeNode::Load_T(T& f, int& nDataSize, std::vector<IStatObj*>* pStatObjTa
     }
 
     SOcTreeNodeChunk chunk;
-    if (!CTerrain::LoadDataFromFile(&chunk, 1, f, nDataSize, eEndian))
+    if (!PakLoadDataUtils::LoadDataFromFile(&chunk, 1, f, nDataSize, eEndian))
     {
         return 0;
     }
@@ -2087,7 +2128,7 @@ int COctreeNode::Load_T(T& f, int& nDataSize, std::vector<IStatObj*>* pStatObjTa
             pPtr++;
         }
 
-        if (!CTerrain::LoadDataFromFile(pPtr, chunk.nObjectsBlockSize, f, nDataSize, eEndian))
+        if (!PakLoadDataUtils::LoadDataFromFile(pPtr, chunk.nObjectsBlockSize, f, nDataSize, eEndian))
         {
             return 0;
         }
@@ -2269,9 +2310,17 @@ bool COctreeNode::HasAnyRenderableCandidates(const SRenderingPassInfo& passInfo)
     // This checks if anything will be rendered, assuming we pass occlusion checks
     // This is based on COctreeNode::RenderContentJobEntry's implementation,
     // if that would do nothing, we can skip the running of occlusion and rendering jobs for this node
+    const bool newTerrain = 
+#ifdef LY_TERRAIN_RUNTIME
+    Terrain::TerrainProviderRequestBus::HasHandlers() &&
+                              passInfo.RenderTerrain() && 
+                              m_arrObjects[eRNListType_TerrainSystem].m_pFirstNode != NULL;
+#else
+    false;
+#endif
     const bool bVegetation = passInfo.RenderVegetation() && m_arrObjects[eRNListType_Vegetation].m_pFirstNode != NULL;
     const bool bBrushes = passInfo.RenderBrushes() && m_arrObjects[eRNListType_Brush].m_pFirstNode != NULL;
     const bool bDecalsAndRoads = (passInfo.RenderDecals() || passInfo.RenderRoads()) && m_arrObjects[eRNListType_DecalsAndRoads].m_pFirstNode != NULL;
     const bool bUnknown = m_arrObjects[eRNListType_Unknown].m_pFirstNode != NULL;
-    return bVegetation || bBrushes || bDecalsAndRoads || bUnknown;
+    return newTerrain || bVegetation || bBrushes || bDecalsAndRoads || bUnknown;
 }

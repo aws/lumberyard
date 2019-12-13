@@ -35,7 +35,7 @@ namespace PhysX
         ~World() override;
 
         physx::PxScene* GetNativeWorld() const { return m_world; }
-        AZ::Crc32 GetWorldId() const { return m_worldId; }
+        AZ::Crc32 GetWorldId() const override { return m_worldId; }
 
         // Physics::World
         Physics::RayCastHit RayCast(const Physics::RayCastRequest& request) override;

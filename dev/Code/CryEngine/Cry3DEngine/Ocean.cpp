@@ -11,12 +11,12 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-// Description : Create and draw terrain water geometry (screen space grid, cycle buffers)
+// Description : Create and draw ocean water geometry (screen space grid, cycle buffers)
 
 
 #include "StdAfx.h"
 
-#include "terrain_water.h"
+#include "Ocean.h"
 #include "CullBuffer.h"
 #include "3dEngine.h"
 #include "ObjMan.h"
@@ -28,14 +28,22 @@
 ITimer* COcean::m_pTimer = 0;
 CREWaterOcean* COcean::m_pOceanRE = 0;
 uint32 COcean::m_nVisiblePixelsCount = ~0;
+float COcean::m_fWaterLevelInfo = WATER_LEVEL_UNKNOWN;
 
-COcean::COcean(_smart_ptr<IMaterial> pMat)
+// defined in CryEngine\Cry3DEngine\3dEngine.cpp
+namespace OceanGlobals
+{
+    extern float g_oceanStep;
+}
+
+COcean::COcean(_smart_ptr<IMaterial> pMat, float fWaterLevel)
 {
     m_pRenderMesh = 0;
     m_pBottomCapRenderMesh = 0;
     m_swathWidth = 0;
     m_bUsingFFT = false;
     m_bUseTessHW = false;
+    m_fWaterLevel = fWaterLevel;
 
     memset(m_fRECustomData, 0, sizeof(m_fRECustomData));
     memset(m_fREOceanBottomCustomData, 0, sizeof(m_fREOceanBottomCustomData));
@@ -417,7 +425,7 @@ void COcean::Create()
             }
             else
             {
-                AZ_TracePrintf("terrain_water_quad", "e_WaterTessellationSwathWidth cannot be 0.")
+                AZ_TracePrintf("Ocean", "e_WaterTessellationSwathWidth cannot be 0.")
             }
         }
 
@@ -545,7 +553,11 @@ void COcean::Render(const SRenderingPassInfo& passInfo)
 
     {
         CMatInfo* pMatInfo = (CMatInfo*)m_pMaterial.get();
-        float fInstanceDistance = GetTerrain()->GetDistanceToSectorWithWater();
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
+        const float fInstanceDistance = GetTerrain()->GetDistanceToSectorWithWater();
+#else
+        const float fInstanceDistance = OCEAN_IS_VERY_FAR_AWAY;
+#endif
         pMatInfo->PrecacheMaterial(fInstanceDistance, 0, false);
     }
 
@@ -992,4 +1004,16 @@ void COcean::GetOceanGridSize(int& outX, int& outY) const
             outX = outY = 20 * 10; // for hi/very specs - use maximum tessellation
         }
     }
+}
+
+void COcean::SetWaterLevel(float fWaterLevel)
+{
+    m_fWaterLevel = fWaterLevel;
+    pe_params_buoyancy pb;
+    pb.waterPlane.origin.Set(0, 0, fWaterLevel);
+    if (gEnv->pPhysicalWorld)
+    {
+        gEnv->pPhysicalWorld->AddGlobalArea()->SetParams(&pb);
+    }
+    OceanGlobals::g_oceanStep = -1; // if e_PhysOceanCell is used, make it re-apply the params on Update
 }

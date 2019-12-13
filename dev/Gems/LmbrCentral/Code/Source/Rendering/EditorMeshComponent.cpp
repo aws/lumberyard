@@ -22,6 +22,8 @@
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/std/string/string_view.h>
 
+#include <AzToolsFramework/API/EntityCompositionRequestBus.h>
+
 #include <MathConversion.h>
 
 #include <INavigationSystem.h> // For updating nav tiles on creation of editor physics.
@@ -286,6 +288,7 @@ namespace LmbrCentral
             }
 
             Matrix34 transform = AZTransformToLYTransform(world);
+            transform.OrthonormalizeFast();
 
             pe_params_pos par_pos;
             par_pos.pMtx3x4 = &transform;
@@ -446,9 +449,11 @@ namespace LmbrCentral
             pe_geomparams params;
             geometry->Physicalize(m_physicalEntity, &params);
 
-            // Immediately set transform, otherwise physics doesn't propgate the world change.
+            // Immediately set transform, otherwise physics doesn't propagate the world change.
             const AZ::Transform& transform = transformInterface->GetWorldTM();
             Matrix34 cryTransform = AZTransformToLYTransform(transform);
+            cryTransform.OrthonormalizeFast();
+
             pe_params_pos par_pos;
             par_pos.pMtx3x4 = &cryTransform;
             m_physicalEntity->SetParams(&par_pos);
@@ -465,7 +470,7 @@ namespace LmbrCentral
     {
         // If physics is completely torn down, all physical entities are by extension completely invalid (dangling pointers).
         // It doesn't matter that we held a reference.
-        if (gEnv->pPhysicalWorld)
+        if (gEnv && gEnv->pPhysicalWorld)
         {
             if (m_physicalEntity)
             {
@@ -578,5 +583,37 @@ namespace LmbrCentral
     void EditorMeshComponent::OnAccentTypeChanged(AzToolsFramework::EntityAccentType accent)
     {
         m_accentType = accent;
+    }
+
+    bool AddMeshComponentWithMesh(const AZ::EntityId& targetEntity, const AZ::Uuid& meshAssetId)
+    {
+        // Error handling for failures should be done at the call site, this function can be invoked from Python.
+        if (!targetEntity.IsValid())
+        {
+            return false;
+        }
+        AZ::ComponentTypeList componentsToAdd;
+        componentsToAdd.push_back(AZ::AzTypeInfo<LmbrCentral::EditorMeshComponent>::Uuid());
+
+        AZStd::vector<AZ::EntityId> entityList;
+        entityList.push_back(targetEntity);
+
+        AzToolsFramework::EntityCompositionRequests::AddComponentsOutcome outcome =
+            AZ::Failure(AZStd::string("Failed to call AddComponentsToEntities on EntityCompositionRequestBus"));
+        AzToolsFramework::EntityCompositionRequestBus::BroadcastResult(outcome, &AzToolsFramework::EntityCompositionRequests::AddComponentsToEntities, entityList, componentsToAdd);
+
+        if (!outcome.IsSuccess())
+        {
+            return false;
+        }
+
+        AZ::Data::AssetId meshAsset(meshAssetId);
+
+        // If necessary, the call site can verify if the mesh was actually set.
+        LmbrCentral::MeshComponentRequestBus::Event(
+            targetEntity,
+            &LmbrCentral::MeshComponentRequestBus::Events::SetMeshAsset,
+            meshAsset);
+        return true;
     }
 } // namespace LmbrCentral

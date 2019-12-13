@@ -124,11 +124,11 @@ namespace awsiotsdk {
 		public:
 			// Ensure Default move and copy constructors and assignment operators are created
 			// Default virtual destructor
-			DisconnectPacket(const DisconnectPacket &) = default;
+			DisconnectPacket(const DisconnectPacket &) = delete;
 			// Default Move constructor
             // LY 2013 Fix
 			// Default Copy assignment operator
-			DisconnectPacket& operator=(const DisconnectPacket &) = default;
+			DisconnectPacket& operator=(const DisconnectPacket &) = delete;
 			// Default Move assignment operator
             // LY 2013 Fix
 			// Default destructor
@@ -158,11 +158,11 @@ namespace awsiotsdk {
 			// Ensure Default move and copy constructors and assignment operators are created
 			// Default virtual destructor
 			// Default Copy constructor
-			PingreqPacket(const PingreqPacket &) = default;
+			PingreqPacket(const PingreqPacket &) = delete;
 			// Default Move constructor
             // LY 2013 Fix
 			// Default Copy assignment operator
-			PingreqPacket& operator=(const PingreqPacket &) = default;
+			PingreqPacket& operator=(const PingreqPacket &) = delete;
 			// Default Move assignment operator
             // LY 2013 Fix
 			// Default destructor

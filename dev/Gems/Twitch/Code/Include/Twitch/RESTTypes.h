@@ -540,4 +540,18 @@ namespace Twitch
     };
 
     CreateReturnTypeClass(CommunityInfoValue, CommunityInfo, "{E4DB9162-620B-435D-A174-266C5A58AE84}");
+
+    using CommunityInfoList = AZStd::list<CommunityInfo>;
+
+    struct CommunityInfoReturn
+    {
+        AZ_TYPE_INFO(CommunityInfoReturn, "{33FC4C7E-34F2-4E71-9B48-933728843E6B}");
+
+        CommunityInfoReturn() : Total(0) {}
+
+        AZ::u64             Total;
+        CommunityInfoList       Communities;
+    }; 
+
+    CreateReturnTypeClass(CommunityInfoReturnValue, CommunityInfoReturn, "{2CA085B8-1141-4E4A-A515-93FE48487E04}");
 }

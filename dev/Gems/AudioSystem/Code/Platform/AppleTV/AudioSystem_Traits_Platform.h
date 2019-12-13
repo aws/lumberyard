@@ -11,4 +11,4 @@
 */
 #pragma once
 
-#include <CrySoundSystem_Traits_AppleTV.h>
+#include <AudioSystem_Traits_AppleTV.h>

@@ -11,10 +11,12 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "ATLControlsModel.h"
-#include <StringUtils.h>
-#include "AudioControlsEditorUndo.h"
+#include <ATLControlsModel.h>
+
+#include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/std/string/conversions.h>
+#include <AzFramework/StringFunc/StringFunc.h>
+#include <AudioControlsEditorUndo.h>
 #include <IEditor.h>
 
 namespace AudioControls
@@ -36,9 +38,9 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    CATLControl* CATLControlsModel::CreateControl(const string& sControlName, EACEControlType eType, CATLControl* pParent)
+    CATLControl* CATLControlsModel::CreateControl(const AZStd::string& sControlName, EACEControlType eType, CATLControl* pParent)
     {
-        std::shared_ptr<CATLControl> pControl = std::make_shared<CATLControl>(sControlName, GenerateUniqueId(), eType, this);
+        AZStd::shared_ptr<CATLControl> pControl = AZStd::make_shared<CATLControl>(sControlName, GenerateUniqueId(), eType, this);
         if (pControl)
         {
             if (pParent)
@@ -62,11 +64,11 @@ namespace AudioControls
     {
         if (id != ACE_INVALID_CID)
         {
-            std::vector<CID> children;
+            ControlList children;
             size_t size = m_controls.size();
             for (auto it = m_controls.begin(); it != m_controls.end(); ++it)
             {
-                std::shared_ptr<CATLControl>& pControl = *it;
+                AZStd::shared_ptr<CATLControl>& pControl = *it;
                 if (pControl && pControl->GetId() == id)
                 {
                     pControl->ClearConnections();
@@ -108,14 +110,14 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    bool CATLControlsModel::IsNameValid(const string& name, EACEControlType type, const string& scope, const CATLControl* const pParent) const
+    bool CATLControlsModel::IsNameValid(const AZStd::string_view name, EACEControlType type, const AZStd::string_view scope, const CATLControl* const pParent) const
     {
         const size_t size = m_controls.size();
         for (size_t i = 0; i < size; ++i)
         {
             if (m_controls[i]
                 && m_controls[i]->GetType() == type
-                && (m_controls[i]->GetName().compareNoCase(name) == 0)
+                && (AzFramework::StringFunc::Equal(m_controls[i]->GetName().c_str(), name.data()))
                 && (m_controls[i]->GetScope().empty() || m_controls[i]->GetScope() == scope)
                 && (m_controls[i]->GetParent() == pParent))
             {
@@ -126,24 +128,22 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    string CATLControlsModel::GenerateUniqueName(const string& sRootName, EACEControlType eType, const string& sScope, const CATLControl* const pParent) const
+    AZStd::string CATLControlsModel::GenerateUniqueName(const AZStd::string_view sRootName, EACEControlType eType, const AZStd::string_view sScope, const CATLControl* const pParent) const
     {
-        string sFinalName = sRootName;
-        int nNumber = 1;
-        while (!IsNameValid(sFinalName, eType, sScope, pParent))
+        AZStd::string uniqueName = sRootName;
+        AZ::u32 number = 1;
+        while (!IsNameValid(uniqueName, eType, sScope, pParent))
         {
-            sFinalName = sRootName + "_" + CryStringUtils::ToString(nNumber);
-            ++nNumber;
+            uniqueName = AZStd::string::format("%s_%u", sRootName.data(), number++);
         }
 
-        return sFinalName;
+        return uniqueName;
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControlsModel::AddScope(const string& name, bool bLocalOnly)
+    void CATLControlsModel::AddScope(AZStd::string scopeName, bool bLocalOnly)
     {
-        string scopeName = name;
-        scopeName.MakeLower();
+        AZStd::to_lower(scopeName.begin(), scopeName.end());
         const size_t size = m_scopes.size();
         for (int i = 0; i < size; ++i)
         {
@@ -162,14 +162,13 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    bool CATLControlsModel::ScopeExists(const string& name) const
+    bool CATLControlsModel::ScopeExists(AZStd::string scopeName) const
     {
-        string scopeName = name;
-        scopeName.MakeLower();
+        AZStd::to_lower(scopeName.begin(), scopeName.end());
         const size_t size = m_scopes.size();
         for (int i = 0; i < size; ++i)
         {
-            if (m_scopes[i].name == name)
+            if (m_scopes[i].name == scopeName)
             {
                 return true;
             }
@@ -194,7 +193,7 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    string CATLControlsModel::GetPlatformAt(uint index)
+    AZStd::string CATLControlsModel::GetPlatformAt(AZ::u32 index)
     {
         if (index < m_platforms.size())
         {
@@ -204,18 +203,18 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    uint CATLControlsModel::GetPlatformCount()
+    AZ::u32 CATLControlsModel::GetPlatformCount()
     {
         return m_platforms.size();
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControlsModel::AddPlatform(const string& name)
+    void CATLControlsModel::AddPlatform(AZStd::string platformName)
     {
-        string lowercaseName = CryStringUtils::ToLower(name);
-        if (std::find(m_platforms.begin(), m_platforms.end(), lowercaseName) == m_platforms.end())
+        AZStd::to_lower(platformName.begin(), platformName.end());
+        if (AZStd::find(m_platforms.begin(), m_platforms.end(), platformName) == m_platforms.end())
         {
-            m_platforms.push_back(lowercaseName);
+            m_platforms.push_back(platformName);
         }
     }
 
@@ -230,16 +229,16 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControlsModel::AddConnectionGroup(const string& name)
+    void CATLControlsModel::AddConnectionGroup(const AZStd::string_view name)
     {
-        if (std::find(m_connectionGroups.begin(), m_connectionGroups.end(), name) == m_connectionGroups.end())
+        if (AZStd::find(m_connectionGroups.begin(), m_connectionGroups.end(), name) == m_connectionGroups.end())
         {
             m_connectionGroups.push_back(name);
         }
     }
 
     //-------------------------------------------------------------------------------------------//
-    int CATLControlsModel::GetConnectionGroupId(const string& name)
+    int CATLControlsModel::GetConnectionGroupId(const AZStd::string_view name)
     {
         size_t size = m_connectionGroups.size();
         for (int i = 0; i < size; ++i)
@@ -259,7 +258,7 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    string CATLControlsModel::GetConnectionGroupAt(int index) const
+    AZStd::string CATLControlsModel::GetConnectionGroupAt(int index) const
     {
         if (index < m_connectionGroups.size())
         {
@@ -271,13 +270,20 @@ namespace AudioControls
     //-------------------------------------------------------------------------------------------//
     void CATLControlsModel::AddListener(IATLControlModelListener* pListener)
     {
-        stl::push_back_unique(m_listeners, pListener);
+        if (AZStd::find(m_listeners.begin(), m_listeners.end(), pListener) == m_listeners.end())
+        {
+            m_listeners.push_back(pListener);
+        }
     }
 
     //-------------------------------------------------------------------------------------------//
     void CATLControlsModel::RemoveListener(IATLControlModelListener* pListener)
     {
-        stl::find_and_erase(m_listeners, pListener);
+        auto it = AZStd::find(m_listeners.begin(), m_listeners.end(), pListener);
+        if (it != m_listeners.end())
+        {
+            m_listeners.erase(it);
+        }
     }
 
     //-------------------------------------------------------------------------------------------//
@@ -285,9 +291,9 @@ namespace AudioControls
     {
         if (!m_bSuppressMessages)
         {
-            for (auto iter = m_listeners.begin(); iter != m_listeners.end(); ++iter)
+            for (auto listener : m_listeners)
             {
-                (*iter)->OnControlAdded(pControl);
+                listener->OnControlAdded(pControl);
             }
             m_bControlTypeModified[pControl->GetType()] = true;
         }
@@ -298,9 +304,9 @@ namespace AudioControls
     {
         if (!m_bSuppressMessages)
         {
-            for (auto iter = m_listeners.begin(); iter != m_listeners.end(); ++iter)
+            for (auto listener : m_listeners)
             {
-                (*iter)->OnControlRemoved(pControl);
+                listener->OnControlRemoved(pControl);
             }
             m_bControlTypeModified[pControl->GetType()] = true;
         }
@@ -311,9 +317,9 @@ namespace AudioControls
     {
         if (!m_bSuppressMessages)
         {
-            for (auto iter = m_listeners.begin(); iter != m_listeners.end(); ++iter)
+            for (auto listener : m_listeners)
             {
-                (*iter)->OnConnectionAdded(pControl, pMiddlewareControl);
+                listener->OnConnectionAdded(pControl, pMiddlewareControl);
             }
         }
     }
@@ -323,9 +329,9 @@ namespace AudioControls
     {
         if (!m_bSuppressMessages)
         {
-            for (auto iter = m_listeners.begin(); iter != m_listeners.end(); ++iter)
+            for (auto listener : m_listeners)
             {
-                (*iter)->OnConnectionRemoved(pControl, pMiddlewareControl);
+                listener->OnConnectionRemoved(pControl, pMiddlewareControl);
             }
         }
     }
@@ -335,9 +341,9 @@ namespace AudioControls
     {
         if (!m_bSuppressMessages)
         {
-            for (auto iter = m_listeners.begin(); iter != m_listeners.end(); ++iter)
+            for (auto listener : m_listeners)
             {
-                (*iter)->OnControlModified(pControl);
+                listener->OnControlModified(pControl);
             }
             m_bControlTypeModified[pControl->GetType()] = true;
         }
@@ -382,7 +388,7 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    CATLControl* CATLControlsModel::FindControl(const string& sControlName, EACEControlType eType, const string& sScope, CATLControl* pParent) const
+    CATLControl* CATLControlsModel::FindControl(const AZStd::string_view sControlName, EACEControlType eType, const AZStd::string_view sScope, CATLControl* pParent) const
     {
         if (pParent)
         {
@@ -418,14 +424,14 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    std::shared_ptr<CATLControl> CATLControlsModel::TakeControl(CID nID)
+    AZStd::shared_ptr<CATLControl> CATLControlsModel::TakeControl(CID nID)
     {
         const size_t size = m_controls.size();
         for (size_t i = 0; i < size; ++i)
         {
             if (m_controls[i]->GetId() == nID)
             {
-                std::shared_ptr<CATLControl> pControl = m_controls[i];
+                AZStd::shared_ptr<CATLControl> pControl = m_controls[i];
                 RemoveControl(nID);
                 return pControl;
             }
@@ -434,7 +440,7 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CATLControlsModel::InsertControl(std::shared_ptr<CATLControl> pControl)
+    void CATLControlsModel::InsertControl(AZStd::shared_ptr<CATLControl> pControl)
     {
         if (pControl)
         {

@@ -33,9 +33,12 @@ namespace SandboxEditor
     {
         // Asserts are more fatal than errors, and need to be displayed right away.
         // After the assert occurs, nothing else may be functional enough to collect and display messages.
+
+        // Only use Cry message boxes if we aren't using native dialog boxes
+#ifndef USE_AZ_ASSERT
         OnMessage(message, nullptr, MessageDisplayBehavior::AlwaysShow);
-        // Return false so other listeners can handle this. The StartupTraceHandler won't report messages 
-        // until the next time the main thread updates the system tick bus function queue. The editor 
+#endif // !USE_AZ_ASSERT
+        // Return false so other listeners can handle this. The StartupTraceHandler won't report messages
         // will probably crash before that occurs, because this is an assert.
         return false;
     }

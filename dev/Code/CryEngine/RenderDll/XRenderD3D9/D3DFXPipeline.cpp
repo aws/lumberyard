@@ -63,6 +63,8 @@ long CD3D9Renderer::FX_SetVertexDeclaration(int StreamMask, const AZ::Vertex::Fo
         #include "Xenia/D3DFXPipeline_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DFXPipeline_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DFXPipeline_cpp_salem.inl"
     #endif
 #endif
 #endif
@@ -1636,7 +1638,16 @@ void CD3D9Renderer::FX_CommitStates(const SShaderTechnique* pTech, const SShader
 
     if (bUseMaterialState && (rRP.m_pCurObject->m_fAlpha < 1.0f) && !rRP.m_bIgnoreObjectAlpha)
     {
-        State = (State & ~(GS_BLEND_MASK | GS_DEPTHWRITE)) | (GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA);
+        if (pTech && pTech->m_NameCRC == m_techShadowGen)
+        {
+            // If rendering to a shadow map:
+            State = (State | GS_DEPTHWRITE);
+        }
+        else
+        {
+            // If not rendering to a shadow map:
+            State = (State & ~(GS_BLEND_MASK | GS_DEPTHWRITE)) | (GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA);
+        }
     }
 
     State &= ~rRP.m_ForceStateAnd;
@@ -1994,11 +2005,9 @@ void CD3D9Renderer::FX_SetColorDontCareActions(int const nTarget,
 #ifdef CRY_USE_METAL
         DXMETALSetColorDontCareActions(srt->m_pTarget, loadDontCare, storeDontCare);
 #endif
-        //  Confetti BEGIN: Igor Lobanchikov
 #if defined(ANDROID)
         DXGLSetColorDontCareActions(srt->m_pTarget, loadDontCare, storeDontCare);
 #endif
-        //  Confetti End: Igor Lobanchikov
     }
 }
 
@@ -2017,11 +2026,9 @@ void CD3D9Renderer::FX_SetDepthDontCareActions(int const nTarget,
 #ifdef CRY_USE_METAL
         DXMETALSetDepthDontCareActions(srt->m_pDepth, loadDontCare, storeDontCare);
 #endif
-        //  Confetti BEGIN: Igor Lobanchikov
 #if defined(ANDROID)
         DXGLSetDepthDontCareActions(srt->m_pDepth, loadDontCare, storeDontCare);
 #endif
-        //  Confetti End: Igor Lobanchikov
     }
 }
 
@@ -2040,11 +2047,9 @@ void CD3D9Renderer::FX_SetStencilDontCareActions(int const nTarget,
 #ifdef CRY_USE_METAL
         DXMETALSetStencilDontCareActions(srt->m_pDepth, loadDontCare, storeDontCare);
 #endif
-        //  Confetti BEGIN: Igor Lobanchikov
 #if defined(ANDROID)
         DXGLSetStencilDontCareActions(srt->m_pDepth, loadDontCare, storeDontCare);
 #endif
-        //  Confetti End: Igor Lobanchikov
     }
 }
 
@@ -4558,6 +4563,11 @@ void CD3D9Renderer::FX_FlushShader_General()
             }
         }
 #endif
+
+        if (CRenderer::CV_r_DeferredShadingLBuffersFmt == 2)
+        {
+            rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_DEFERRED_RENDER_TARGET_OPTIMIZATION];
+        }
         // If the object is transparent and if the object has the UAV bound.
         bool multilayerUAVBound = (rRP.m_ObjFlags & FOB_AFTER_WATER) != 0;
         if (rRP.m_pShaderResources && rRP.m_pShaderResources->IsTransparent() && multilayerUAVBound)

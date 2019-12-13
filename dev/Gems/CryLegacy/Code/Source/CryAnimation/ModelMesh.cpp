@@ -171,7 +171,7 @@ ClosestTri CModelMesh::GetAttachmentTriangle(const Vec3& RMWPosition, const Join
         Vec3 v1 = *(Vec3*)(pPositions + pIndices[d + 1] * nPositionStride);
         Vec3 v2 = *(Vec3*)(pPositions + pIndices[d + 2] * nPositionStride);
         Vec3 TriMiddle = (v0 + v1 + v2) / 3.0f + m_vRenderMeshOffset;
-        f32 sqdist = (TriMiddle - RMWPosition) | (TriMiddle - RMWPosition);
+        f32 sqdist = (TriMiddle - RMWPosition).len2();
         if  (distance > sqdist)
         {
             distance = sqdist, foundPos = d;

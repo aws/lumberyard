@@ -11,16 +11,16 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "AudioSystemPanel.h"
-#include "AudioControl.h"
-#include "ATLControlsModel.h"
-#include "QAudioControlEditorIcons.h"
-#include <IEditor.h>
+#include <AudioSystemPanel.h>
+
+#include <ATLControlsModel.h>
+#include <AudioControl.h>
+#include <AudioControlsEditorPlugin.h>
 #include <CryFile.h>
 #include <CryPath.h>
-#include "common/IAudioSystemEditor.h"
-#include "AudioControlsEditorPlugin.h"
+#include <IAudioSystemEditor.h>
+#include <IEditor.h>
+#include <QAudioControlEditorIcons.h>
 
 #include <QWidgetAction>
 #include <QPushButton>
@@ -90,4 +90,4 @@ namespace AudioControls
     }
 } // namespace AudioControls
 
-#include <AudioSystemPanel.moc>
+#include <Source/Editor/AudioSystemPanel.moc>

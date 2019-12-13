@@ -12,57 +12,79 @@
 
 
 def build(bld):
-
-    config_based_defines = []
-    platform_defines=[]
+    # Set Config Based Defines (not including IMGUI_ENABLED turns ImGui off and no-ops much of the code.)
+    configBaseDefines=[]
+    configBaseDefinesEditor=[]
     if bld.env['CONFIGURATION'] == 'profile' or bld.env['CONFIGURATION'] == 'debug':
-        config_based_defines=['IMGUI_ENABLED']
-    if bld.env['PLATFORM'] != 'win':
-        platform_defines=['IMGUI_DISABLE_WIN32_DEFAULT_CLIPBOARD_FUNCTIONS', 'IMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS']
+        configBaseDefines.append('IMGUI_ENABLED')
+        configBaseDefinesEditor.append('IMGUI_ENABLED')
+    configBaseDefinesEditor.append('IMGUI_GEM_EDITOR')
 
-    kw_shared_lib = dict(
+    # ImGui has a few win32 specific functions to turn off when not on that platform.
+    win32Platform=[x for x in ['win'] if x in bld.env['PLATFORM']] != []
+    if win32Platform == False:
+        configBaseDefines += ['IMGUI_DISABLE_WIN32_DEFAULT_CLIPBOARD_FUNCTIONS', 'IMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS']
+    
+    bld.CryEngineSharedLibrary(
         target='imguilib',
         vs_filter='Gems/ImguiLib',
-        platforms=['all'],
-        configurations=['all'],
-        file_list=['imgui_lib.waf_files'],
-        defines=list(config_based_defines) + list(platform_defines) + ['IMGUI_INCLUDE_IMGUI_USER_INL'],
-        export_includes=[bld.Path('Gems/ImGui/External/ImGui/v1.53')],
+        platforms = ['all'],
+        configurations = ['all'],
+        file_list = ['imgui_lib.waf_files'],
+        use = ['AzCore'],
+        defines = configBaseDefines,
+        export_includes=[bld.Path('Gems/ImGui/External/ImGui/v1.70')],
         export_defines=['IMGUI_API_IMPORT', 'IMGUI_INCLUDE_IMGUI_USER_H'],
         platform_roots=[bld.PlatformRoot('Source/Platform', export_includes=False)]
     )
+    
+    bld.CryEngineStaticLibrary(
+        target      = 'ImGuiLYUtils',
+        vs_filter   = 'Gems/ImguiLib',
+        includes    = ['.',
+                       'Include',
+                       'Source',
+                       bld.Path('Code/CryEngine/CryCommon'),
+                       bld.Path('Gems/ImGui/External/ImGui/v1.70')],
+        use         = ['imguilib', 'AzToolsFramework', 'AzQtComponents', 'AzCore', 'AzFramework'],
+        file_list   = ['imgui_lyutils_static.waf_files'],
+        defines     = configBaseDefines,
+        platform_roots=[bld.PlatformRoot('Source/Platform', export_includes=False)]
+    )
 
-    bld.CryEngineSharedLibrary(**kw_shared_lib)
+    #Common Editor and Game Includes
+    COMMON_INCLUDES = [
+        bld.Path('Code/CryEngine/CryCommon'),
+        bld.Path('Code/CryEngine/CryAction'),
+        bld.Path('Gems/LmbrCentral/Code/include')
+    ]
+    COMMON_USE = ['imguilib', 'AzFramework', 'LmbrCentral']
 
-    kw_gem = dict(
-        includes=[bld.Path('Code/CryEngine/CryCommon'),
-                  bld.Path('Code/CryEngine/CryAction')
-                  ],
-        use=['imguilib'],
-        file_list=['imgui_common.waf_files', 'imgui_game.waf_files'],
-        test_all_file_list=['imgui_test.waf_files'],
-        defines=list(config_based_defines),
+    bld.DefineGem(
+        includes = COMMON_INCLUDES,
+        use = COMMON_USE,
+        file_list = [ 'imgui_common.waf_files', 'imgui_lyutils_static.waf_files' ],
+        defines     = configBaseDefines,
         linux_rpath = ['$ORIGIN'],
         platform_roots=[bld.PlatformRoot('Source/Platform', export_includes=False)],
 
-        # Editor Gem configuration
-        editor=dict(
-            includes=[
-                bld.Path('Code/CryEngine/CryCommon'),
-                bld.Path('Code/CryEngine/CryAction'),
-                bld.Path('Code/Sandbox/Plugins/EditorCommon'),
-                bld.Path('Code/Sandbox/Editor')
-                ],
-            use=['imguilib', 'AzToolsFramework', 'AzQtComponents'],
-            file_list=['imgui_common.waf_files', 'imgui_editor.waf_files'],
-            test_all_file_list=['imgui_test.waf_files'],
-            defines=list(config_based_defines),
+        ########################################
+        # Editor Module configuration
+        editor = dict(
+            includes = COMMON_INCLUDES + ['Editor',
+                  'Source',
+                   bld.Path('Gems/ImGui/External/ImGui/v1.70'),
+                   bld.Path('Code/Sandbox/Plugins/EditorCommon'),
+                   bld.Path('Code/Sandbox/Editor')
+            ],
+            # Editor requires QT Components for the ImGui Edtior Panel.
+            use = COMMON_USE + [ 'AzQtComponents' ],
+            file_list = [ 'imgui_common.waf_files', 'imgui_editor.waf_files', 'imgui_lyutils_static.waf_files' ],
+            defines     = configBaseDefinesEditor,
             platform_roots=[bld.PlatformRoot('Source/Platform', export_includes=False)],
 
-            uselib=['QT5CORE', 'QT5GUI', 'QT5WIDGETS'],
+            uselib=['QT5CORE','QT5GUI','QT5WIDGETS'],
 
             features=['qt5']
         )
     )
-
-    bld.DefineGem(**kw_gem)

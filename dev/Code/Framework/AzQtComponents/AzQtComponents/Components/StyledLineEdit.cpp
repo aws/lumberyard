@@ -53,6 +53,7 @@ namespace AzQtComponents
     void StyledLineEdit::focusOutEvent(QFocusEvent* event)
     {
         adaptColorText();
+        emit(onFocusOut());
         QLineEdit::focusOutEvent(event);
     }
 

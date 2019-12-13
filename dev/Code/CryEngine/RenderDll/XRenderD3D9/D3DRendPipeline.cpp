@@ -958,6 +958,8 @@ void CD3D9Renderer::EF_SetSrgbWrite(bool sRGBWrite)
         #include "Xenia/D3DRendPipeline_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DRendPipeline_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DRendPipeline_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1112,6 +1114,8 @@ void CD3D9Renderer::FX_ScreenStretchRect(CTexture* pDst, CTexture* pHDRSrc)
         #include "Xenia/D3DRendPipeline_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DRendPipeline_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DRendPipeline_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1156,6 +1160,8 @@ void CD3D9Renderer::FX_ScreenStretchRect(CTexture* pDst, CTexture* pHDRSrc)
         #include "Xenia/D3DRendPipeline_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DRendPipeline_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DRendPipeline_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1486,11 +1492,9 @@ bool CD3D9Renderer::FX_ZScene(bool bEnable, bool bClearZBuffer, bool bRenderNorm
         FX_SetColorDontCareActions(0, false, false);
         // CONFETTI END
 
-        //  Confetti BEGIN: Igor Lobanchikov
 #ifndef CRY_USE_METAL
         if (!bZPrePass)
 #endif
-        //  Confetti End: Igor Lobanchikov
         {
             FX_PushRenderTarget(nDiffuseTargetID, CTexture::s_ptexSceneDiffuse, NULL);
 
@@ -1501,6 +1505,8 @@ bool CD3D9Renderer::FX_ZScene(bool bEnable, bool bClearZBuffer, bool bRenderNorm
         #include "Xenia/D3DRendPipeline_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DRendPipeline_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DRendPipeline_cpp_salem.inl"
     #endif
 #endif
             FX_PushRenderTarget(nDiffuseTargetID + 1, pSceneSpecular, NULL);
@@ -1540,11 +1546,9 @@ bool CD3D9Renderer::FX_ZScene(bool bEnable, bool bClearZBuffer, bool bRenderNorm
 
         FX_PopRenderTarget(0);
 
-        //  Confetti BEGIN: Igor Lobanchikov
 #ifndef CRY_USE_METAL
         if (!bZPrePass)
 #endif
-        //  Confetti End: Igor Lobanchikov
         {
             FX_PopRenderTarget(nDiffuseTargetID);
             FX_PopRenderTarget(nDiffuseTargetID + 1);
@@ -3023,7 +3027,6 @@ void CD3D9Renderer::FX_WaterVolumesPreprocess()
         int nWidth = int(pCurrWaterVolRefl->GetWidth() * m_RP.m_CurDownscaleFactor.x);
         int nHeight = int(pCurrWaterVolRefl->GetHeight() * m_RP.m_CurDownscaleFactor.y);
 
-        //  Confetti BEGIN: Igor Lobanchikov :END
         PostProcessUtils().StretchRect(CTexture::s_ptexCurrSceneTarget, CTexture::s_ptexHDRTargetPrev, false, bRgbkSrc, false, false, SPostEffectsUtils::eDepthDownsample_None, false, &gcpRendD3D->m_FullResRect);
 
         RECT rect = { 0, pCurrWaterVolRefl->GetHeight() - nHeight, nWidth, nHeight };
@@ -3184,14 +3187,12 @@ void CD3D9Renderer::FX_LinearizeDepth(CTexture* ptexZ)
 
         m_DevMan.BindSRV(eHWSC_Pixel, &m_pZBufferDepthReadOnlySRV, 15, 1);
 
-        //  Confetti BEGIN: Igor Lobanchikov
         RECT rect;
         rect.left = rect.top = 0;
         rect.right = LONG(ptexZ->GetWidth() * m_RP.m_CurDownscaleFactor.x);
         rect.bottom = LONG(ptexZ->GetHeight() * m_RP.m_CurDownscaleFactor.y);
 
         PostProcessUtils().DrawFullScreenTri(ptexZ->GetWidth(), ptexZ->GetHeight(), 0, &rect);
-        //  Confetti End: Igor Lobanchikov
 
         D3DShaderResourceView* pNullSRV[1] = { NULL };
         m_DevMan.BindSRV(eHWSC_Pixel, pNullSRV, 15, 1);
@@ -5076,6 +5077,8 @@ void CD3D9Renderer::FX_ProcessZPassRenderLists()
         #include "Xenia/D3DRendPipeline_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DRendPipeline_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DRendPipeline_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -5846,6 +5849,12 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
         CRenderMesh::UpdateModified();
     }
 
+    // Once per frame, notify that the start of the render thread scene rendering has begun.
+    if (nCurrentRecurseLvl == 0)
+    {
+        AZ::RenderThreadEventsBus::Broadcast(&AZ::RenderThreadEventsBus::Events::OnRenderThreadRenderSceneBegin);
+    }
+
     ////////////////////////////////////////////////
 #ifdef CRY_INTEGRATE_DX12
     GetGraphicsPipeline().Prepare();
@@ -6307,7 +6316,6 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
             FX_ProcessRenderList(EFSLIST_POSTPROCESS, BEFORE_WATER, RenderFunc, false);       // Sorted list without preprocess of all fog passes and screen shaders
             FX_ProcessRenderList(EFSLIST_POSTPROCESS, AFTER_WATER , RenderFunc, false);       // Sorted list without preprocess of all fog passes and screen shaders
 
-            //  Confetti BEGIN: Igor Lobanchikov
 #if defined(CRY_USE_METAL) || defined(ANDROID)
             //  If need upscale do it here.
             {
@@ -6321,9 +6329,9 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
                     CTexture* pCurrRT = CTexture::s_ptexSceneDiffuse;
                     GetUtils().CopyScreenToTexture(pCurrRT);
 
-                    //  Igor: copy osm-guaided viewport rect. It will be destroyed soon.
+                    //  copy osm-guaided viewport rect. It will be destroyed soon.
                     RECT rcSrcRegion = gcpRendD3D->m_FullResRect;
-                    //  Igor: Since now we render to a full RT.
+                    //  Since now we render to a full RT.
                     gcpRendD3D->SetCurDownscaleFactor(Vec2(1, 1));
                     gcpRendD3D->RT_SetViewport(0, 0, gcpRendD3D->GetWidth(), gcpRendD3D->GetHeight());
 
@@ -6331,7 +6339,6 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
                 }
             }
 #endif
-            //  Confetti End: Igor Lobanchikov
             bool bDrawAfterPostProcess = !(gcpRendD3D->m_RP.m_PersFlags1 & RBPF1_SKIP_AFTER_POST_PROCESS);
 
             RT_SetViewport(0, 0, GetWidth(), GetHeight());
@@ -6534,6 +6541,28 @@ void CD3D9Renderer::EF_EndEf3D(const int nFlags, const int nPrecacheUpdateIdSlow
     if (CV_r_nodrawshaders == 1)
     {
         EF_ClearTargetsLater(FRT_CLEAR, Clr_Transparent);
+        if (SRendItem::m_RecurseLevel[nThreadID] == 0)
+        {
+
+            if(m_generateRendItemPreProcessJobExecutor.IsRunning())
+            {
+                m_generateRendItemPreProcessJobExecutor.PopCompletionFence();
+            }
+
+            bool bIsMultiThreadedRenderer = false;
+            gEnv->pRenderer->EF_Query(EFQ_RenderMultithreaded, bIsMultiThreadedRenderer);
+            // Because of EndSpawningGeneratingRendItemJobs we need to skip this one while in multi-threaded renderer.
+            if (!bIsMultiThreadedRenderer && m_generateRendItemJobExecutor.IsRunning())
+            {
+                m_generateRendItemJobExecutor.PopCompletionFence();
+            }
+
+            // The m_generateShadowRendItemJobExecutor was started in EF_PrepareShadowGenRenderList, need to end it.
+            if (m_generateShadowRendItemJobExecutor.IsRunning())
+            {
+                m_generateShadowRendItemJobExecutor.PopCompletionFence();
+            }
+        }
         SRendItem::m_RecurseLevel[nThreadID]--;
         return;
     }

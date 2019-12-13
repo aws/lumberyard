@@ -1,0 +1,16 @@
+{
+    "platform": {
+        "ios": {
+            "libpath": [
+                "lib/ios"
+            ],
+            "lib": [
+                "libtomcrypt.a"
+            ],
+            "linkflags": [
+                "-force_load",
+                "%LIBPATH(libtomcrypt.a)"
+            ]
+        }
+    }
+}

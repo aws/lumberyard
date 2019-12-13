@@ -4,9 +4,9 @@
         "Platform/Linux":
         [
             "../Common/Unimplemented/AudioSystemImpl_wwise_Unimplemented.cpp",
-            "../Common/Unimplemented/CryAudioImplWwise_Unimplemented.cpp",
-            "CryAudioImplWwise_Traits_Linux.h",
-            "CryAudioImplWwise_Traits_Platform.h"
+            "../Common/Unimplemented/AudioEngineWwise_Unimplemented.cpp",
+            "AudioEngineWwise_Traits_Linux.h",
+            "AudioEngineWwise_Traits_Platform.h"
         ]
     }
 }

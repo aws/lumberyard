@@ -59,7 +59,7 @@ namespace LmbrAWS
                     return;
                 }
 
-                const auto& jsonArray = jsonValue.AsArray();
+                const auto& jsonArray = jsonValue.View().AsArray();
                 if (!jsonArray.GetUnderlyingData())
                 {
                     SFlowAddress addr(pActInfo->myID, EOP_Error, true);
@@ -69,7 +69,7 @@ namespace LmbrAWS
 
                 for (int x = 0; x < jsonArray.GetLength(); x++)
                 {
-                    m_jsonArray.push(jsonArray.GetItem(x));
+                    m_jsonArray.push(jsonArray.GetItem(x).Materialize());
                 }
             }
 
@@ -84,11 +84,10 @@ namespace LmbrAWS
 
                 auto& jsonValue = m_jsonArray.front();
 
-                Aws::StringStream sstream;
-                jsonValue.WriteCompact(sstream);
+                Aws::String jsonString = jsonValue.View().WriteCompact();
 
                 SFlowAddress addr(pActInfo->myID, EOP_NextValue, true);
-                pActInfo->pGraph->ActivatePort(addr, string(sstream.str().c_str()));
+                pActInfo->pGraph->ActivatePort(addr, string(jsonString.c_str()));
 
                 m_jsonArray.pop();
 

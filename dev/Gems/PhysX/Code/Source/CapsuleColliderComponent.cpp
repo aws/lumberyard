@@ -23,21 +23,20 @@ namespace PhysX
         {
             serializeContext->Class<CapsuleColliderComponent, BaseColliderComponent>()
                 ->Version(1)
-                ->Field("Configuration", &CapsuleColliderComponent::m_shapeConfiguration)
                 ;
         }
     }
 
-    CapsuleColliderComponent::CapsuleColliderComponent(const Physics::ColliderConfiguration& colliderConfiguration, const Physics::CapsuleShapeConfiguration& configuration)
-        : BaseColliderComponent(colliderConfiguration)
-        , m_shapeConfiguration(configuration)
+    // BaseColliderComponent
+    void CapsuleColliderComponent::UpdateScaleForShapeConfigs()
     {
-    }
+        if (m_shapeConfigList.size() != 1)
+        {
+            AZ_Error("PhysX Capsule Collider Component", false,
+                "Expected exactly one collider/shape configuration for entity \"%s\".", GetEntity()->GetName().c_str());
+            return;
+        }
 
-    AZStd::shared_ptr<Physics::ShapeConfiguration> CapsuleColliderComponent::CreateScaledShapeConfig()
-    {
-        auto shapeConfig = AZStd::make_shared<Physics::CapsuleShapeConfiguration>(m_shapeConfiguration);
-        shapeConfig->m_scale = GetNonUniformScale();
-        return shapeConfig;
+        m_shapeConfigList[0].second->m_scale = GetNonUniformScale();
     }
 }

@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/Memory/AllocatorBase.h>
+#include <AzCore/Memory/HphaSchema.h>
 
 #ifdef LEGACYALLOCATOR_MODULE_STATIC
 #include <AzCore/std/typetraits/static_storage.h>
@@ -53,30 +54,17 @@ namespace AZ
     };
 
     class LegacyAllocator
-        : public AllocatorBase<LegacyAllocatorSchema, LegacyAllocatorDescriptor>
+        : public SimpleSchemaAllocator<AZ::HphaSchema, LegacyAllocatorDescriptor>
     {
     public:
         AZ_TYPE_INFO(LegacyAllocator, "{17FC25A4-92D9-48C5-BB85-7F860FCA2C6F}");
 
         using Descriptor = LegacyAllocatorDescriptor;
-        using Base = AllocatorBase<LegacyAllocatorSchema, LegacyAllocatorDescriptor>;
-
+        using Base = SimpleSchemaAllocator<AZ::HphaSchema, LegacyAllocatorDescriptor>;
+        
         LegacyAllocator()
             : Base("LegacyAllocator", "Allocator for Legacy CryEngine systems")
         {
-            // unlike most allocators, this allocator is lazily created when it's used
-            // and unfortunately that's at static init time, so we have no choice
-            // but to force creation now
-            Create(Descriptor());
-        }
-
-        LegacyAllocator(const char* name, const char* desc)
-            : Base(name, desc)
-        {
-            // unlike most allocators, this allocator is lazily created when it's used
-            // and unfortunately that's at static init time, so we have no choice
-            // but to force creation now
-            Create(Descriptor());
         }
 
         pointer_type Allocate(size_type byteSize, size_type alignment, int flags = 0, const char* name = 0, const char* fileName = 0, int lineNum = 0, unsigned int suppressStackRecord = 0) override
@@ -87,19 +75,20 @@ namespace AZ
                 // Take a look at _Allocate_manually_vector_aligned in xmemory0
                 alignment = sizeof(void*) * 2; 
             }
-            return Base::Allocate(byteSize, alignment, flags, name, fileName, lineNum, suppressStackRecord);
+
+            pointer_type ptr = m_schema->Allocate(byteSize, alignment, flags, name, fileName, lineNum, suppressStackRecord);
+            AZ_PROFILE_MEMORY_ALLOC_EX(AZ::Debug::ProfileCategory::MemoryReserved, fileName, lineNum, ptr, byteSize, name ? name : GetName());
+            AZ_MEMORY_PROFILE(ProfileAllocation(ptr, byteSize, alignment, name, fileName, lineNum, suppressStackRecord));
+            AZ_Assert(ptr || byteSize == 0, "OOM - Failed to allocate %zu bytes from LegacyAllocator", byteSize);
+            return ptr;
         }
 
         // DeAllocate with file/line, to track when allocs were freed from Cry
         void DeAllocate(pointer_type ptr, const char* file, const int line, size_type byteSize = 0, size_type alignment = 0)
         {
             AZ_PROFILE_MEMORY_FREE_EX(AZ::Debug::ProfileCategory::MemoryReserved, file, line, ptr);
+            AZ_MEMORY_PROFILE(ProfileDeallocation(ptr, byteSize, alignment, nullptr));
             m_schema->DeAllocate(ptr, byteSize, alignment);
-        }
-
-        void DeAllocate(pointer_type ptr, size_type byteSize = 0, size_type alignment = 0) override
-        {
-            Base::DeAllocate(ptr, byteSize, alignment);
         }
 
         // Realloc with file/line, because Cry uses realloc(nullptr) and realloc(ptr, 0) to mimic malloc/free
@@ -111,10 +100,19 @@ namespace AZ
                 // Take a look at _Allocate_manually_vector_aligned in xmemory0
                 newAlignment = sizeof(void*) * 2;
             }
+
             AZ_PROFILE_MEMORY_FREE_EX(AZ::Debug::ProfileCategory::MemoryReserved, file, line, ptr);
             pointer_type newPtr = m_schema->ReAllocate(ptr, newSize, newAlignment);
             AZ_PROFILE_MEMORY_ALLOC_EX(AZ::Debug::ProfileCategory::MemoryReserved, file, line, newPtr, newSize, "LegacyAllocator Realloc");
+            AZ_MEMORY_PROFILE(ProfileReallocation(ptr, newPtr, newSize, newAlignment));
+            AZ_Assert(newPtr || newSize == 0, "OOM - Failed to reallocate %zu bytes from LegacyAllocator", newSize);
             return newPtr;
+        }
+
+        void DeAllocate(pointer_type ptr, size_type byteSize = 0, size_type alignment = 0) override
+        {
+            AZ_MEMORY_PROFILE(ProfileDeallocation(ptr, 0, 0, nullptr));
+            Base::DeAllocate(ptr, byteSize, alignment);
         }
 
         pointer_type ReAllocate(pointer_type ptr, size_type newSize, size_type newAlignment) override
@@ -125,45 +123,80 @@ namespace AZ
                 // Take a look at _Allocate_manually_vector_aligned in xmemory0
                 newAlignment = sizeof(void*) * 2;
             }
-            return Base::ReAllocate(ptr, newSize, newAlignment);
+
+            pointer_type newPtr = Base::ReAllocate(ptr, newSize, newAlignment);
+            AZ_MEMORY_PROFILE(ProfileReallocation(ptr, newPtr, newSize, newAlignment));
+            AZ_Assert(newPtr || newSize == 0, "OOM - Failed to reallocate %zu bytes from LegacyAllocator", newSize);
+            return newPtr;
         }
     };
 
     using StdLegacyAllocator = AZStdAlloc<LegacyAllocator>;
 
+#if defined(AZ_TESTS_ENABLED) && !defined(LEGACYALLOCATOR_MODULE_STATIC)
+    // Tests should always use static module mode for the LegacyAllocator
+#   define LEGACYALLOCATOR_MODULE_STATIC
+#endif
+
 #ifdef LEGACYALLOCATOR_MODULE_STATIC
     // Specialize for the LegacyAllocator to provide one per module that does not use the
     // environment for its storage
     template <>
-    class AllocatorInstance<LegacyAllocator>
+    class AllocatorInstance<LegacyAllocator> : public Internal::AllocatorInstanceBase<LegacyAllocator, AllocatorStorage::ModuleStoragePolicy<LegacyAllocator>>
     {
-    public:
-        using Descriptor = LegacyAllocator::Descriptor;
-
-        static LegacyAllocator& Get()
-        {
-#if AZ_TRAIT_COMPILER_USE_STATIC_STORAGE_FOR_NON_POD_STATICS
-            static AZStd::static_storage<LegacyAllocator> s_legacyAllocator;
-#else
-            static LegacyAllocator s_legacyAllocator;
-#endif
-            return s_legacyAllocator;
-        }
-
-        static void Create(const Descriptor& desc = Descriptor())
-        {
-            Get().Create(desc);
-        }
-
-        static void Destroy()
-        {
-            Get().Destroy();
-        }
-
-        AZ_FORCE_INLINE static bool IsReady()
-        {
-            return true;
-        }        
     };
 #endif // LEGACYALLOCATOR_MODULE_STATIC
+
+#if defined(AZ_PLATFORM_PROVO) || defined(AZ_PLATFORM_XENIA)
+    struct GlobalAllocatorDescriptor
+        : public AZ::HphaSchema::Descriptor
+    {
+        GlobalAllocatorDescriptor()
+        {
+            // pull 1MB from the OS at a time
+            m_systemChunkSize = 1024 * 1024;
+        }
+    };
+
+    class GlobalAllocator
+        : public SimpleSchemaAllocator<AZ::HphaSchema, GlobalAllocatorDescriptor>
+    {
+    public:
+        AZ_TYPE_INFO(GlobalAllocator, "{BC7861DA-AF7F-4FFD-A2F5-BAD89BDD77FD}");
+
+        using Descriptor = GlobalAllocatorDescriptor;
+        using Base = SimpleSchemaAllocator<AZ::HphaSchema, GlobalAllocatorDescriptor>;
+        
+        GlobalAllocator()
+            : Base("GlobalAllocator", "Allocator for untracked new/delete/malloc/free")
+        {
+        }
+
+        //---------------------------------------------------------------------
+        // IAllocatorAllocate
+        //---------------------------------------------------------------------
+        pointer_type Allocate(size_type byteSize, size_type alignment, int flags = 0, const char* name = 0, const char* fileName = 0, int lineNum = 0, unsigned int suppressStackRecord = 0) override
+        {
+            // Note: We cannot put the asserts in the AllocateBase class because various allocators depend on allocations failing from some heap classes.
+            pointer_type ptr = Base::Allocate(byteSize, alignment, flags, name, fileName, lineNum, suppressStackRecord);
+            AZ_Assert(ptr, "OOM - Failed to allocate %zu bytes from GlobalAllocator", byteSize);
+            return ptr;
+        }
+
+        pointer_type ReAllocate(pointer_type ptr, size_type newSize, size_type newAlignment) override
+        {
+            pointer_type newPtr = Base::ReAllocate(ptr, newSize, newAlignment);
+            AZ_Assert(newPtr, "OOM - Failed to reallocate %zu bytes from GlobalAllocator", newSize);
+            return newPtr;
+        }
+
+    };
+
+    // Specialize for the GlobalAllocator to provide one per module that does not use the
+    // environment for its storage
+    template <>
+    class AllocatorInstance<GlobalAllocator> : public Internal::AllocatorInstanceBase<GlobalAllocator, AllocatorStorage::ModuleStoragePolicy<GlobalAllocator, false>>
+    {
+    };
+#endif
 }

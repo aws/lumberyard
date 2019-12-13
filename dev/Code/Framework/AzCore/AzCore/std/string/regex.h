@@ -40,9 +40,9 @@
  #endif /* AZ_REGEX_MAX_STACK_COUNT */
 
 /**
- * Cx11 Regular expressions based on STL from (MS,Sony,etc.). All allocations are piped trough the system allocator by default.
+ * Cx11 Regular expressions based on STL from manufacturers. All allocations are piped through the system allocator by default.
  * we don't use std::locale/std::facet/std::collate/etc. as the facets do allocate global memory which is freed atexit(). This of course
- * is not complaint with our allocation schema.
+ * is not compliant with our allocation schema.
  */
 namespace AZStd
 {

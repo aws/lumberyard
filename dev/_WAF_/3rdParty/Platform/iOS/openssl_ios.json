@@ -1,0 +1,16 @@
+{
+    "platform": {
+        "ios": {
+            "libpath_debug": [
+                "lib/ios_arm64_debug"
+            ],
+            "libpath_release": [
+                "lib/ios_arm64_release"
+            ],
+            "lib": [
+                "libssl.a",
+                "libcrypto.a"
+            ]
+        }
+    }
+}

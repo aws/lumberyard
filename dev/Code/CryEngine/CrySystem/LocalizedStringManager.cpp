@@ -376,6 +376,8 @@ ILocalizationManager::EPlatformIndependentLanguageID CLocalizedStringsManager::P
         #include "Xenia/LocalizedStringManager_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/LocalizedStringManager_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/LocalizedStringManager_cpp_salem.inl"
     #endif
 #else
 //////////////////////////////////////////////////////////////////////////
@@ -1559,15 +1561,7 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
                     compressedTotal += compBufSize;
 
                     uint8* szCompressedString = new uint8[compBufSize];
-#ifdef AZ_PLATFORM_WINDOWS
-                    if (pStringToCompress->TranslatedText.szCompressed)
-                    {
-                        AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().DeAllocate(pStringToCompress->TranslatedText.szCompressed, __FILE__, __LINE__);
-                        pStringToCompress->TranslatedText.szCompressed = nullptr;
-                    }
-#else
                     SAFE_DELETE_ARRAY(pStringToCompress->TranslatedText.szCompressed);
-#endif
 
                     memcpy(szCompressedString, compressionBuffer, compBufSize);
                     pStringToCompress->TranslatedText.szCompressed = szCompressedString;

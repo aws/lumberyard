@@ -11,13 +11,12 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "AudioSystemControl_wwise.h"
+#include <AudioSystemControl_wwise.h>
 
 namespace AudioControls
 {
     //-------------------------------------------------------------------------------------------//
-    IAudioSystemControl_wwise::IAudioSystemControl_wwise(const string& name, CID id, TImplControlType type)
+    IAudioSystemControl_wwise::IAudioSystemControl_wwise(const AZStd::string& name, CID id, TImplControlType type)
         : IAudioSystemControl(name, id, type)
     {
     }

@@ -14,8 +14,13 @@
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
+#include <AzCore/IO/GenericStreams.h>
+#include <AzCore/IO/StreamerRequest.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/XML/rapidxml.h>
 
+#include <IAudioInterfacesCommonData.h>
 #include <ATLEntities.h>
 
 // Forward declarations
@@ -76,7 +81,8 @@ namespace Audio
         void Initialize();
         void Release();
         void Update();
-        TAudioFileEntryID TryAddFileCacheEntry(const XmlNodeRef fileXmlNode, const EATLDataScope dataScope, const bool autoLoad);
+
+        TAudioFileEntryID TryAddFileCacheEntry(const AZ::rapidxml::xml_node<char>* fileXmlNode, const EATLDataScope dataScope, bool autoLoad);
         bool TryRemoveFileCacheEntry(const TAudioFileEntryID audioFileID, const EATLDataScope dataScope);
         void UpdateLocalizedFileCacheEntries();
 
@@ -109,7 +115,7 @@ namespace Audio
         void OnAsyncStreamFinished(const AZStd::shared_ptr<AZ::IO::Request>& request, AZ::IO::SizeType bytesRead, void* buffer, AZ::IO::Request::StateType requestState);
         ///////////////////////////////////////////////////////////////////////////////////////////
 
-        bool AllocateMemoryBlockInternal(CATLAudioFileEntry* const __restrict audioFileEntry);
+        bool AllocateMemoryBlockInternal(CATLAudioFileEntry* const audioFileEntry);
         void UncacheFile(CATLAudioFileEntry* const audioFileEntry);
         void TryToUncacheFiles();
         void UpdateLocalizedFileEntryData(CATLAudioFileEntry* const audioFileEntry);
@@ -129,10 +135,10 @@ namespace Audio
     enum EAudioFileCacheManagerDebugFilter
     {
         eAFCMDF_ALL = 0,
-        eAFCMDF_GLOBALS         = BIT(6),   // a
-        eAFCMDF_LEVEL_SPECIFICS = BIT(7),   // b
-        eAFCMDF_USE_COUNTED     = BIT(8),   // c
-        eAFCMDF_LOADED           = BIT(9),  // d
+        eAFCMDF_GLOBALS         = AUDIO_BIT(6),   // a
+        eAFCMDF_LEVEL_SPECIFICS = AUDIO_BIT(7),   // b
+        eAFCMDF_USE_COUNTED     = AUDIO_BIT(8),   // c
+        eAFCMDF_LOADED          = AUDIO_BIT(9),   // d
     };
 
 } // namespace Audio

@@ -23,8 +23,8 @@ namespace SerializationOrder
     static const uint32 Audio           = 3;
     static const uint32 AI              = 4;
     static const uint32 Area            = 5;
-    static const uint32 Boids           = 6;
-    static const uint32 BoidObject      = 7;
+    static const uint32 Reserved1       = 6; // formerly Boids
+    static const uint32 Reserved2       = 7; // formerly BoidObject
     static const uint32 Camera          = 8;
     static const uint32 FlowGraph       = 9;
     static const uint32 Substitution    = 10;

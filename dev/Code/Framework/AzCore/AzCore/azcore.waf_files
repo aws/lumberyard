@@ -89,6 +89,10 @@
         ],
         "Debug":
         [
+            "Debug/AssetTracking.cpp",
+            "Debug/AssetTracking.h",
+            "Debug/AssetTrackingTypesImpl.h",
+            "Debug/AssetTrackingTypes.h",
             "Debug/FrameProfiler.h",
             "Debug/FrameProfilerBus.h",
             "Debug/FrameProfilerComponent.cpp",
@@ -142,6 +146,10 @@
             "EBus/Internal/Debug.h",
             "EBus/Internal/Handlers.h",
             "EBus/Internal/StoragePolicies.h"
+        ],
+        "Interface":
+        [
+            "Interface/Interface.h"
         ],
         "IO":
         [
@@ -274,6 +282,8 @@
             "Math/MathReflection.cpp",
             "Math/MathReflection.h",
             "Math/MathUtils.h",
+            "Math/MathVectorSerializer.h",
+            "Math/MathVectorSerializer.cpp",
             "Math/Matrix3x3.cpp",
             "Math/Matrix3x3.h",
             "Math/Matrix4x4.cpp",
@@ -295,6 +305,8 @@
             "Math/Transform.h",
             "Math/Uuid.cpp",
             "Math/Uuid.h",
+            "Math/UuidSerializer.h",
+            "Math/UuidSerializer.cpp",
             "Math/Vector2.cpp",
             "Math/Vector2.h",
             "Math/Vector3.cpp",
@@ -306,6 +318,9 @@
             "Math/VertexContainerInterface.h",
             "Math/PackedVector3.h",
             "Math/Color.h",
+            "Math/Color.cpp",
+            "Math/ColorSerializer.h",
+            "Math/ColorSerializer.cpp",
             "Math/VectorFloat.cpp",
             "Math/VectorFloat.h",
             "Math/ToString.h",
@@ -318,15 +333,21 @@
             "Memory/AllocatorBase.h",
             "Memory/AllocatorManager.cpp",
             "Memory/AllocatorManager.h",
+            "Memory/AllocatorOverrideShim.cpp",
+            "Memory/AllocatorOverrideShim.h",
+            "Memory/AllocatorWrapper.h",
             "Memory/AllocatorScope.h",
             "Memory/BestFitExternalMapAllocator.cpp",
             "Memory/BestFitExternalMapAllocator.h",
             "Memory/BestFitExternalMapSchema.cpp",
             "Memory/BestFitExternalMapSchema.h",
+            "Memory/Config.h",
             "Memory/dlmalloc.inl",
             "Memory/HeapSchema.h",
             "Memory/HphaSchema.cpp",
             "Memory/HphaSchema.h",
+            "Memory/IAllocator.cpp",
+            "Memory/IAllocator.h",
             "Memory/MallocSchema.cpp",
             "Memory/MallocSchema.h",
             "Memory/Memory.cpp",
@@ -340,9 +361,12 @@
             "Memory/NewAndDelete.inl",
             "Memory/OSAllocator.cpp",
             "Memory/OSAllocator.h",
+            "Memory/OverrunDetectionAllocator.cpp",
+            "Memory/OverrunDetectionAllocator.h",
             "Memory/PoolAllocator.h",
             "Memory/PoolSchema.cpp",
             "Memory/PoolSchema.h",
+            "Memory/SimpleSchemaAllocator.h",
             "Memory/SystemAllocator.cpp",
             "Memory/SystemAllocator.h"
         ],
@@ -441,12 +465,50 @@
             "Serialization/Utils.cpp",
             "Serialization/ObjectStream.cpp",
             "Serialization/ObjectStream.h",
-            "Serialization/ObjectStreamComponent.cpp",
-            "Serialization/ObjectStreamComponent.h",
             "Serialization/SerializeContext.cpp",
             "Serialization/SerializeContext.h",
+            "Serialization/SerializeContextEnum.cpp",
+            "Serialization/SerializeContextEnum.inl",
             "Serialization/DataPatch.h",
             "Serialization/DataPatch.cpp"
+        ],
+        "Serialization/Json": [
+            "Serialization/Json/BaseJsonSerializer.h",
+            "Serialization/Json/BaseJsonSerializer.cpp",
+            "Serialization/Json/BasicContainerSerializer.h",
+            "Serialization/Json/BasicContainerSerializer.cpp",
+            "Serialization/Json/BoolSerializer.h",
+            "Serialization/Json/BoolSerializer.cpp",
+            "Serialization/Json/CastingHelpers.h",
+            "Serialization/Json/DoubleSerializer.h",
+            "Serialization/Json/DoubleSerializer.cpp",
+            "Serialization/Json/EnumSerializer.h",
+            "Serialization/Json/EnumSerializer.cpp",
+            "Serialization/Json/IntSerializer.h",
+            "Serialization/Json/IntSerializer.cpp",
+            "Serialization/Json/JsonDeserializer.h",
+            "Serialization/Json/JsonDeserializer.cpp",
+            "Serialization/Json/JsonSerialization.h",
+            "Serialization/Json/JsonSerialization.cpp",
+            "Serialization/Json/JsonSerializationResult.h",
+            "Serialization/Json/JsonSerializationResult.cpp",
+            "Serialization/Json/JsonSerializer.h",
+            "Serialization/Json/JsonSerializer.cpp",
+            "Serialization/Json/JsonStringConversionUtils.h",
+            "Serialization/Json/JsonSystemComponent.h",
+            "Serialization/Json/JsonSystemComponent.cpp",
+            "Serialization/Json/MapSerializer.h",
+            "Serialization/Json/MapSerializer.cpp",
+            "Serialization/Json/RegistrationContext.h",
+            "Serialization/Json/RegistrationContext.cpp",
+            "Serialization/Json/StackedString.h",
+            "Serialization/Json/StackedString.cpp",
+            "Serialization/Json/StringSerializer.h",
+            "Serialization/Json/StringSerializer.cpp",
+            "Serialization/Json/TupleSerializer.h",
+            "Serialization/Json/TupleSerializer.cpp",
+            "Serialization/Json/UnorderedSetSerializer.h",
+            "Serialization/Json/UnorderedSetSerializer.cpp"
         ],
         "Serialization/std":
         [
@@ -456,11 +518,6 @@
         [
             "State/HSM.cpp",
             "State/HSM.h"
-        ],
-        "UnitTest":
-        [
-            "UnitTest/UnitTest.h",
-            "UnitTest/TestTypes.h"
         ],
         "UserSettings":
         [

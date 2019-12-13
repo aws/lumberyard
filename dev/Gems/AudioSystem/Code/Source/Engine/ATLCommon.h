@@ -13,102 +13,93 @@
 #pragma once
 
 #include <IAudioSystem.h>
+#include <AzCore/AzCore_Traits_Platform.h>
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_MAC) || defined(SUPPORT_WINDOWS_DLL_DECLSPEC)
-    #ifdef CRYSOUND_EXPORTS
-        #define CRYSOUND_API AZ_DLL_EXPORT
-    #else
-        #define CRYSOUND_API AZ_DLL_IMPORT
-    #endif
-#else
-    #define CRYSOUND_API
-#endif
-
-#ifdef AZ_PLATFORM_PROVO
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdllexport-hidden-visibility"
-#endif
 
 namespace Audio
 {
-    // Definitions can be found in ATLEntities.cpp
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    namespace ATLXmlTags
+    {
+        static constexpr const char* PlatformName = AZ_TRAIT_OS_PLATFORM_NAME;
+
+        static constexpr const char* RootNodeTag = "ATLConfig";
+        static constexpr const char* TriggersNodeTag = "AudioTriggers";
+        static constexpr const char* RtpcsNodeTag = "AudioRtpcs";
+        static constexpr const char* SwitchesNodeTag = "AudioSwitches";
+        static constexpr const char* PreloadsNodeTag = "AudioPreloads";
+        static constexpr const char* EnvironmentsNodeTag = "AudioEnvironments";
+
+        static constexpr const char* ATLTriggerTag = "ATLTrigger";
+        static constexpr const char* ATLSwitchTag = "ATLSwitch";
+        static constexpr const char* ATLRtpcTag = "ATLRtpc";
+        static constexpr const char* ATLSwitchStateTag = "ATLSwitchState";
+        static constexpr const char* ATLEnvironmentTag = "ATLEnvironment";
+        static constexpr const char* ATLPlatformsTag = "ATLPlatforms";
+        static constexpr const char* ATLConfigGroupTag = "ATLConfigGroup";
+        static constexpr const char* PlatformNodeTag = "Platform";
+
+        static constexpr const char* ATLTriggerRequestTag = "ATLTriggerRequest";
+        static constexpr const char* ATLSwitchRequestTag = "ATLSwitchRequest";
+        static constexpr const char* ATLRtpcRequestTag = "ATLRtpcRequest";
+        static constexpr const char* ATLPreloadRequestTag = "ATLPreloadRequest";
+        static constexpr const char* ATLEnvironmentRequestTag = "ATLEnvironmentRequest";
+        static constexpr const char* ATLValueTag = "ATLValue";
+
+        static constexpr const char* ATLNameAttribute = "atl_name";
+        static constexpr const char* ATLInternalNameAttribute = "atl_internal_name";
+        static constexpr const char* ATLTypeAttribute = "atl_type";
+        static constexpr const char* ATLConfigGroupAttribute = "atl_config_group_name";
+
+        static constexpr const char* ATLDataLoadType = "AutoLoad";
+
+    } // namespace ATLXmlTags
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
-    struct CRYSOUND_API SATLXmlTags
+    namespace ATLInternalControlNames
     {
-        static const char* const sPlatform;
+        static constexpr const char* LoseFocusName = "lose_focus";
+        static constexpr const char* GetFocusName = "get_focus";
+        static constexpr const char* MuteAllName = "mute_all";
+        static constexpr const char* UnmuteAllName = "unmute_all";
+        static constexpr const char* DoNothingName = "do_nothing";
+        static constexpr const char* ObjectSpeedName = "object_speed";
+        static constexpr const char* ObstructionOcclusionCalcName = "ObstructionOcclusionCalculationType";
+        static constexpr const char* OOCIgnoreStateName = "Ignore";
+        static constexpr const char* OOCSingleRayStateName = "SingleRay";
+        static constexpr const char* OOCMultiRayStateName = "MultiRay";
+        static constexpr const char* ObjectVelocityTrackingName = "object_velocity_tracking";
+        static constexpr const char* OVTOnStateName = "on";
+        static constexpr const char* OVTOffStateName = "off";
+        static constexpr const char* GlobalPreloadRequestName = "global_atl_preloads";
 
-        static const char* const sRootNodeTag;
-        static const char* const sTriggersNodeTag;
-        static const char* const sRtpcsNodeTag;
-        static const char* const sSwitchesNodeTag;
-        static const char* const sPreloadsNodeTag;
-        static const char* const sEnvironmentsNodeTag;
-
-        static const char* const sATLTriggerTag;
-        static const char* const sATLSwitchTag;
-        static const char* const sATLRtpcTag;
-        static const char* const sATLSwitchStateTag;
-        static const char* const sATLEnvironmentTag;
-        static const char* const sATLPlatformsTag;
-        static const char* const sATLConfigGroupTag;
-
-        static const char* const sATLTriggerRequestTag;
-        static const char* const sATLSwitchRequestTag;
-        static const char* const sATLRtpcRequestTag;
-        static const char* const sATLPreloadRequestTag;
-        static const char* const sATLEnvironmentRequestTag;
-        static const char* const sATLValueTag;
-
-        static const char* const sATLNameAttribute;
-        static const char* const sATLInternalNameAttribute;
-        static const char* const sATLTypeAttribute;
-        static const char* const sATLConfigGroupAttribute;
-
-        static const char* const sATLDataLoadType;
-    };
+    } // namespace ATLInternalControlNames
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
-    struct CRYSOUND_API SATLInternalControlNames
+    namespace ATLInternalControlIDs
     {
-        static const char* const sLoseFocusName;
-        static const char* const sGetFocusName;
-        static const char* const sMuteAllName;
-        static const char* const sUnmuteAllName;
-        static const char* const sDoNothingName;
-        static const char* const sObjectSpeedName;
-        static const char* const sObstructionOcclusionCalcName;
-        static const char* const sOOCIgnoreStateName;
-        static const char* const sOOCSingleRayStateName;
-        static const char* const sOOCMultiRayStateName;
-        static const char* const sObjectVelocityTrackingName;
-        static const char* const sOVTOnStateName;
-        static const char* const sOVTOffStateName;
-        static const char* const sGlobalPreloadRequestName;
-    };
+        static TAudioControlID LoseFocusTriggerID = static_cast<TAudioControlID>(AZ_CRC(ATLInternalControlNames::LoseFocusName));
+        static TAudioControlID GetFocusTriggerID = static_cast<TAudioControlID>(AZ_CRC(ATLInternalControlNames::GetFocusName));
+        static TAudioControlID MuteAllTriggerID = static_cast<TAudioControlID>(AZ_CRC(ATLInternalControlNames::MuteAllName));
+        static TAudioControlID UnmuteAllTriggerID = static_cast<TAudioControlID>(AZ_CRC(ATLInternalControlNames::UnmuteAllName));
+        static TAudioControlID DoNothingTriggerID = static_cast<TAudioControlID>(AZ_CRC(ATLInternalControlNames::DoNothingName));
+        static TAudioControlID ObjectSpeedRtpcID = static_cast<TAudioControlID>(AZ_CRC(ATLInternalControlNames::ObjectSpeedName));
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-    struct CRYSOUND_API SATLInternalControlIDs
-    {
-        static TAudioControlID nLoseFocusTriggerID;
-        static TAudioControlID nGetFocusTriggerID;
-        static TAudioControlID nMuteAllTriggerID;
-        static TAudioControlID nUnmuteAllTriggerID;
-        static TAudioControlID nDoNothingTriggerID;
-        static TAudioControlID nObjectSpeedRtpcID;
+        static TAudioControlID ObstructionOcclusionCalcSwitchID = static_cast<TAudioControlID>(AZ_CRC(ATLInternalControlNames::ObstructionOcclusionCalcName));
+        static TAudioSwitchStateID OOCStateIDs[eAOOCT_COUNT] =
+        {
+            static_cast<TAudioSwitchStateID>(AZ_CRC(ATLInternalControlNames::OOCIgnoreStateName)),
+            static_cast<TAudioSwitchStateID>(AZ_CRC(ATLInternalControlNames::OOCSingleRayStateName)),
+            static_cast<TAudioSwitchStateID>(AZ_CRC(ATLInternalControlNames::OOCMultiRayStateName)),
+            INVALID_AUDIO_SWITCH_STATE_ID,
+        };
 
-        static TAudioControlID nObstructionOcclusionCalcSwitchID;
-        static TAudioSwitchStateID nOOCStateIDs[eAOOCT_COUNT];
+        static TAudioControlID ObjectVelocityTrackingSwitchID = static_cast<TAudioControlID>(AZ_CRC(ATLInternalControlNames::ObjectVelocityTrackingName));
+        static TAudioSwitchStateID OVTOnStateID = static_cast<TAudioSwitchStateID>(AZ_CRC(ATLInternalControlNames::OVTOnStateName));
+        static TAudioSwitchStateID OVTOffStateID = static_cast<TAudioSwitchStateID>(AZ_CRC(ATLInternalControlNames::OVTOffStateName));
 
-        static TAudioControlID nObjectVelocityTrackingSwitchID;
-        static TAudioSwitchStateID nOVTOnStateID;
-        static TAudioSwitchStateID nOVTOffStateID;
+        static TAudioPreloadRequestID GlobalPreloadRequestID = static_cast<TAudioPreloadRequestID>(AZ_CRC(ATLInternalControlNames::GlobalPreloadRequestName));
 
-        static TAudioPreloadRequestID nGlobalPreloadRequestID;
-    };
+    } // namespace ATLInternalControlIDs
 
 } // namespace Audio
-
-#ifdef AZ_PLATFORM_PROVO
-#pragma clang diagnostic pop
-#endif

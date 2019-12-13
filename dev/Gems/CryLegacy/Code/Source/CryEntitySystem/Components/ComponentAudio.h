@@ -14,6 +14,7 @@
 #pragma once
 
 #include <IAudioSystem.h>
+#include <MathConversion.h>
 #include <STLPoolAllocator.h>
 #include "Components/IComponentAudio.h"
 
@@ -84,8 +85,8 @@ private:
 
         ~SAudioProxyWrapper() {}
 
-        Audio::IAudioProxy* const pIAudioProxy;
         Audio::SATLWorldPosition oOffset;
+        Audio::IAudioProxy* const pIAudioProxy;
         Audio::TATLEnumFlagsType mFlags;
 
     private:
@@ -93,9 +94,12 @@ private:
             : pIAudioProxy(nullptr)
         {}
     };
+    static_assert(alignof(SAudioProxyWrapper) >= 16, "SAudioProxyWrapper needs to be 16-byte aligned (or greater).");
 
-    using TAudioProxyPair = std::pair<const Audio::TAudioProxyID, SAudioProxyWrapper>;
-    using TAuxAudioProxies = std::map<const Audio::TAudioProxyID, SAudioProxyWrapper, std::less<Audio::TAudioProxyID>, stl::STLPoolAllocator<TAudioProxyPair> >;
+    using TAudioProxyPair = AZStd::pair<const Audio::TAudioProxyID, SAudioProxyWrapper>;
+    static_assert(alignof(TAudioProxyPair) >= 16, "TAudioProxyPair needs to be 16-byte aligned (or greater).");
+
+    using TAuxAudioProxies = AZStd::map<const Audio::TAudioProxyID, SAudioProxyWrapper, AZStd::less<Audio::TAudioProxyID>>;
 
     static TAudioProxyPair s_oNULLAudioProxyPair;
     static const Audio::SATLWorldPosition s_oNULLOffset;
@@ -163,7 +167,7 @@ private:
         {
             if (rPair.second.mFlags & eEACF_CAN_MOVE_WITH_ENTITY || bForceUpdate)
             {
-                rPair.second.pIAudioProxy->SetPosition(Audio::SATLWorldPosition(rPosition.mPosition * rPair.second.oOffset.mPosition));
+                rPair.second.pIAudioProxy->SetPosition(Audio::SATLWorldPosition(rPosition.m_transform * rPair.second.oOffset.m_transform));
             }
         }
 
@@ -325,7 +329,7 @@ private:
         {
             rPair.second.oOffset = rOffset;
             rPair.second.oOffset.NormalizeForwardVec();
-            const Audio::SATLWorldPosition oPosition(rEntityPosition);
+            const Audio::SATLWorldPosition oPosition(LYTransformToAZTransform(rEntityPosition));
             (SRepositionAudioProxy(oPosition, true))(rPair);
         }
 

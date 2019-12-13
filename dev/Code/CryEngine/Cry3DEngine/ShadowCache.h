@@ -42,7 +42,10 @@ private:
     Matrix44 GetViewMatrix(const SRenderingPassInfo& passInfo);
 
     ILINE uint64 HashValue(uint64 value);
+
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
     ILINE uint64 HashTerrainNode(const CTerrainNode* pNode, int lod);
+#endif
 
     CLightEntity* m_pLightEntity;
     ShadowMapFrustum::ShadowCacheData::eUpdateStrategy m_nUpdateStrategy;

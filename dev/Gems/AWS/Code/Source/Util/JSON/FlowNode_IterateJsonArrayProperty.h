@@ -11,7 +11,16 @@
 */
 #pragma once
 #include <FlowSystem/Nodes/FlowBaseNode.h>
+// The AWS Native SDK AWSAllocator triggers a warning due to accessing members of std::allocator directly.
+// AWSAllocator.h(70): warning C4996: 'std::allocator<T>::pointer': warning STL4010: Various members of std::allocator are deprecated in C++17.
+// Use std::allocator_traits instead of accessing these members directly.
+// You can define _SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING or _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS to acknowledge that you have received this warning.
+
+#include <AzCore/PlatformDef.h>
+
+AZ_PUSH_DISABLE_WARNING(4251 4996, "-Wunknown-warning-option")
 #include <aws/core/utils/json/JsonSerializer.h>
+AZ_POP_DISABLE_WARNING
 
 namespace LmbrAWS
 {
@@ -48,7 +57,7 @@ namespace LmbrAWS
     private:
 
         int m_index;
-        Aws::Utils::Array<Aws::Utils::Json::JsonValue> m_array;
+        Aws::Utils::Array<Aws::Utils::Json::JsonView> m_array;
     };
 } // namespace Amazon
 

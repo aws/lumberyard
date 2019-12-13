@@ -188,11 +188,6 @@ namespace AZStd
             AZ_FORCE_INLINE reference operator[] (difference_type n) const  { return *(*this + n); }
         };
 
-#if defined(AZ_COMPILER_GCC) && (AZ_COMPILER_GCC < 4)
-        friend class iterator_impl;
-        friend class const_iterator_impl;
-#endif
-
 #ifdef AZSTD_HAS_CHECKED_ITERATORS
         typedef Debug::checked_randomaccess_iterator<iterator_impl, this_type>       iterator;
         typedef Debug::checked_randomaccess_iterator<const_iterator_impl, this_type> const_iterator;

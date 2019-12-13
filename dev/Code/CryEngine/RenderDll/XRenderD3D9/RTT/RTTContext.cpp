@@ -326,12 +326,12 @@ namespace AzRTT
         // swap resource views
         if (m_zBufferDepthReadOnlySRV)
         {
-            AZStd::swap<D3DShaderResourceView*>(gcpRendD3D->m_pZBufferDepthReadOnlySRV, m_zBufferDepthReadOnlySRV);
+            AZStd::swap(gcpRendD3D->m_pZBufferDepthReadOnlySRV, m_zBufferDepthReadOnlySRV);
         }
 
         if (m_zBufferStencilReadOnlySRV)
         {
-            AZStd::swap<D3DShaderResourceView*>(gcpRendD3D->m_pZBufferStencilReadOnlySRV, m_zBufferStencilReadOnlySRV);
+            AZStd::swap(gcpRendD3D->m_pZBufferStencilReadOnlySRV, m_zBufferStencilReadOnlySRV);
         }
     }
 

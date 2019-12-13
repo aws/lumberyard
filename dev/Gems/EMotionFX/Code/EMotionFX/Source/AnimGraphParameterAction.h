@@ -20,6 +20,7 @@ namespace EMotionFX
 {
     // forward declarations
     class AnimGraphInstance;
+    class ValueParameter;
 
     /**
      * AnimGraphParameterAction is a specific type of trigger action that modifies the parameter.
@@ -47,6 +48,9 @@ namespace EMotionFX
         void SetParameterName(const AZStd::string& parameterName);
         const AZStd::string& GetParameterName() const;
         AZ::TypeId GetParameterType() const;
+
+        void SetTriggerValue(float value) { m_triggerValue = value; }
+        float GetTriggerValue(float value) const { return m_triggerValue; }
 
         static void Reflect(AZ::ReflectContext* context);
 

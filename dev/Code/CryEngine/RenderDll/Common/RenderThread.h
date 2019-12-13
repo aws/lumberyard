@@ -42,6 +42,8 @@
         #include "Xenia/RenderThread_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RenderThread_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RenderThread_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -270,15 +272,15 @@ struct SRenderThread
         #include "Xenia/RenderThread_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RenderThread_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RenderThread_h_salem.inl"
     #endif
 #endif
     HRESULT m_hResult;
-    //  Confetti BEGIN: Igor Lobanchikov
 #if defined(OPENGL) && !DXGL_FULL_EMULATION && !defined(CRY_USE_METAL)
     SDXGLContextThreadLocalHandle m_kDXGLContextHandle;
     SDXGLDeviceContextThreadLocalHandle m_kDXGLDeviceContextHandle;
 #endif //defined(OPENGL) && !DXGL_FULL_EMULATION
-    //  Confetti End: Igor Lobanchikov
     float m_fTimeIdleDuringLoading;
     float m_fTimeBusyDuringLoading;
     TArray<byte> m_Commands[RT_COMMAND_BUF_COUNT]; // m_nCurThreadFill shows which commands are filled by main thread
@@ -607,6 +609,8 @@ struct SRenderThread
         #include "Xenia/RenderThread_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RenderThread_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RenderThread_h_salem.inl"
     #endif
 #endif
     void    RC_PreloadTextures();

@@ -19,7 +19,6 @@ namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeVector4DecomposeNode, AnimGraphAllocator, 0)
 
-
     BlendTreeVector4DecomposeNode::BlendTreeVector4DecomposeNode()
         : AnimGraphNode()
     {
@@ -35,11 +34,9 @@ namespace EMotionFX
         SetupOutputPort("w", OUTPUTPORT_W, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_W);
     }
 
-
     BlendTreeVector4DecomposeNode::~BlendTreeVector4DecomposeNode()
     {
     }
-
 
     bool BlendTreeVector4DecomposeNode::InitAfterLoading(AnimGraph* animGraph)
     {
@@ -54,28 +51,31 @@ namespace EMotionFX
         return true;
     }
 
-
-    // get the palette name
     const char* BlendTreeVector4DecomposeNode::GetPaletteName() const
     {
         return "Vector4 Decompose";
     }
 
-
-    // get the category
     AnimGraphObject::ECategory BlendTreeVector4DecomposeNode::GetPaletteCategory() const
     {
         return AnimGraphObject::CATEGORY_MATH;
     }
 
-
-    // the update function
     void BlendTreeVector4DecomposeNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        // update all inputs
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
+        UpdateOutputPortValues(animGraphInstance);
+    }
 
-        // if there are no incoming connections, there is nothing to do
+    void BlendTreeVector4DecomposeNode::Output(AnimGraphInstance* animGraphInstance)
+    {
+        OutputAllIncomingNodes(animGraphInstance);
+        UpdateOutputPortValues(animGraphInstance);
+    }
+
+    void BlendTreeVector4DecomposeNode::UpdateOutputPortValues(AnimGraphInstance* animGraphInstance)
+    {
+        // If there are no incoming connections, there is nothing to do.
         if (mConnections.size() == 0)
         {
             return;
@@ -88,7 +88,6 @@ namespace EMotionFX
         GetOutputFloat(animGraphInstance, OUTPUTPORT_Z)->SetValue(value.GetZ());
         GetOutputFloat(animGraphInstance, OUTPUTPORT_W)->SetValue(value.GetW());
     }
-
 
     void BlendTreeVector4DecomposeNode::Reflect(AZ::ReflectContext* context)
     {

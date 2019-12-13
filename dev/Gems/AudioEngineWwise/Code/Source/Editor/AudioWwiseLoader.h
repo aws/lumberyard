@@ -13,9 +13,12 @@
 
 #pragma once
 
+#include <ACETypes.h>
+#include <AzCore/std/string/string.h>
+#include <AzCore/std/string/string_view.h>
+#include <AudioSystemControl_wwise.h>
+
 #include <IXml.h>
-#include "ACETypes.h"
-#include "AudioSystemControl_wwise.h"
 
 namespace AudioControls
 {
@@ -30,23 +33,16 @@ namespace AudioControls
         {
         }
         void Load(CAudioSystemEditor_wwise* pAudioSystemImpl);
-        string GetLocalizationFolder() const;
+        const AZStd::string& GetLocalizationFolder() const;
 
     private:
-        void LoadSoundBanks(const string& sRootFolder, const string& sSubPath, bool bLocalised);
-        void LoadControlsInFolder(const string& sFolderPath);
+        void LoadSoundBanks(const AZStd::string_view sRootFolder, const AZStd::string_view sSubPath, bool bLocalised);
+        void LoadControlsInFolder(const AZStd::string_view sFolderPath);
         void LoadControl(XmlNodeRef root);
-        void ExtractControlsFromXML(XmlNodeRef root, EWwiseControlTypes type, const string& controlTag, const string& controlNameAttribute);
+        void ExtractControlsFromXML(XmlNodeRef root, EWwiseControlTypes type, const AZStd::string_view controlTag, const AZStd::string_view controlNameAttribute);
 
     private:
-        static const char* ms_sGameParametersFolder;
-        static const char* ms_sGameStatesPath;
-        static const char* ms_sSwitchesFolder;
-        static const char* ms_sEventsFolder;
-        static const char* ms_sEnvironmentsFolder;
-        static const char* ms_sSoundBanksPath;
-
-        string m_sLocalizationFolder;
+        AZStd::string m_sLocalizationFolder;
 
         CAudioSystemEditor_wwise* m_pAudioSystemImpl;
     };

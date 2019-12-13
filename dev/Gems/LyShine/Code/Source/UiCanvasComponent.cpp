@@ -251,6 +251,28 @@ namespace
         CLyShine* lyShine = static_cast<CLyShine*>(gEnv->pLyShine);
         return lyShine->GetUiRenderer();
     }
+
+    bool IsValidInteractable(const AZ::EntityId& entityId)
+    {
+        if (!entityId.IsValid())
+        {
+            return false;
+        }
+
+        // Check if element is enabled
+        bool isEnabled = false;
+        EBUS_EVENT_ID_RESULT(isEnabled, entityId, UiElementBus, IsEnabled);
+        if (!isEnabled)
+        {
+            return false;
+        }
+
+        // Check if element is handling events and therefore also an interactable
+        bool canHandleEvents = false;
+        EBUS_EVENT_ID_RESULT(canHandleEvents, entityId, UiInteractableBus, IsHandlingEvents);
+
+        return canHandleEvents;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -333,7 +355,7 @@ UiCanvasComponent::~UiCanvasComponent()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-const string& UiCanvasComponent::GetPathname()
+const AZStd::string& UiCanvasComponent::GetPathname()
 {
     return m_pathname;
 }
@@ -1374,6 +1396,28 @@ AZ::EntityId UiCanvasComponent::GetHoverInteractable()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasComponent::ForceHoverInteractable(AZ::EntityId newHoverInteractable)
 {
+    if (!m_isNavigationSupported)
+    {
+        AZ_Warning("UI", false, "This UI canvas does not support keyboard/gamepad input events");
+        return;
+    }
+
+    if (newHoverInteractable.IsValid())
+    {
+        // Make sure the element is an interactable that is handling events
+        if (!IsValidInteractable(newHoverInteractable))
+        {
+            AZ_Warning("UI", false, "Entity is either not an interactable, not enabled or is not accepting events");
+            return;
+        }
+
+        // Make sure the active interactable and the hover interactible are the same
+        if (m_activeInteractable.IsValid() && (m_activeInteractable != newHoverInteractable))
+        {
+            ClearActiveInteractable();
+        }
+    }
+
     SetHoverInteractable(newHoverInteractable);
 
     if (m_hoverInteractable.IsValid())
@@ -1403,6 +1447,45 @@ void UiCanvasComponent::ClearAllInteractables()
     {
         ClearHoverInteractable();
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::ForceEnterInputEventOnInteractable(AZ::EntityId interactableId)
+{
+    if (!m_isNavigationSupported)
+    {
+        AZ_Warning("UI", false, "This UI canvas does not support keyboard/gamepad input events");
+        return;
+    }
+
+    if (!interactableId.IsValid())
+    {
+        AZ_Warning("UI", false, "EntityId is not valid");
+        return;
+    }
+
+    // Make sure the element is an interactable that is handling events
+    if (!IsValidInteractable(interactableId))
+    {
+        AZ_Warning("UI", false, "Entity is either not an interactable, not enabled or is not accepting events");
+        return;
+    }
+
+    // Set the hover interactable to accept the events
+    if (m_hoverInteractable != interactableId)
+    {
+        ForceHoverInteractable(interactableId);
+    }
+
+    // Generate Enter key pressed input event
+    AzFramework::InputChannel::Snapshot snapshot(AzFramework::InputDeviceKeyboard::Key::EditEnter,
+        AzFramework::InputDeviceKeyboard::Id,
+        AzFramework::InputChannel::State::Began);
+    HandleEnterInputEvent(UiNavigationHelpers::Command::Enter, snapshot);
+
+    // Generate Enter key released input event
+    snapshot.m_state = AzFramework::InputChannel::State::Ended;
+    HandleEnterInputEvent(UiNavigationHelpers::Command::Enter, snapshot);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2248,7 +2331,8 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
             ->Event("GetTooltipDisplayElement", &UiCanvasBus::Events::GetTooltipDisplayElement)
             ->Event("SetTooltipDisplayElement", &UiCanvasBus::Events::SetTooltipDisplayElement)
             ->Event("GetHoverInteractable", &UiCanvasBus::Events::GetHoverInteractable)
-            ->Event("ForceHoverInteractable", &UiCanvasBus::Events::ForceHoverInteractable);
+            ->Event("ForceHoverInteractable", &UiCanvasBus::Events::ForceHoverInteractable)
+            ->Event("ForceEnterInputEventOnInteractable", &UiCanvasBus::Events::ForceEnterInputEventOnInteractable);
 
         behaviorContext->EBus<UiCanvasNotificationBus>("UiCanvasNotificationBus")
             ->Handler<UiCanvasNotificationBusBehaviorHandler>();
@@ -2705,22 +2789,8 @@ bool UiCanvasComponent::HandleNavigationInputEvent(UiNavigationHelpers::Command 
                     LyShine::EntityArray navigableElements;
                     UiNavigationHelpers::FindNavigableInteractables(ancestorInteractable.IsValid() ? ancestorInteractable : m_rootElement, curInteractable, navigableElements);
 
-                    auto isValidInteractable = [](AZ::EntityId entityId)
-                        {
-                            bool isEnabled = false;
-                            EBUS_EVENT_ID_RESULT(isEnabled, entityId, UiElementBus, IsEnabled);
-
-                            bool canHandleEvents = false;
-                            if (isEnabled)
-                            {
-                                EBUS_EVENT_ID_RESULT(canHandleEvents, entityId, UiInteractableBus, IsHandlingEvents);
-                            }
-
-                            return canHandleEvents;
-                        };
-
                     AZ::EntityId nextEntityId = UiNavigationHelpers::GetNextElement(curInteractable, command,
-                            navigableElements, firstHoverInteractable, isValidInteractable, ancestorInteractable);
+                            navigableElements, firstHoverInteractable, IsValidInteractable, ancestorInteractable);
 
                     if (nextEntityId.IsValid())
                     {
@@ -3280,7 +3350,7 @@ void UiCanvasComponent::RestoreAnimationSystemAfterCanvasLoad(bool remapIds, UiE
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-UiCanvasComponent* UiCanvasComponent::CloneAndInitializeCanvas(UiEntityContext* entityContext, const string& assetIdPathname, const AZ::Vector2* canvasSize)
+UiCanvasComponent* UiCanvasComponent::CloneAndInitializeCanvas(UiEntityContext* entityContext, const AZStd::string& assetIdPathname, const AZ::Vector2* canvasSize)
 {
     UiCanvasComponent* canvasComponent = nullptr;
 
@@ -3945,7 +4015,7 @@ UiCanvasComponent*  UiCanvasComponent::LoadCanvasInternal(const string& pathname
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 UiCanvasComponent* UiCanvasComponent::FixupReloadedCanvasForEditorInternal(AZ::Entity* newCanvasEntity,
     AZ::Entity* rootSliceEntity, UiEntityContext* entityContext,
-    LyShine::CanvasId existingId, const string& existingPathname)
+    LyShine::CanvasId existingId, const AZStd::string& existingPathname)
 {
     UiCanvasComponent* newCanvasComponent = FixupPostLoad(newCanvasEntity, rootSliceEntity, true, entityContext);
     if (newCanvasComponent)

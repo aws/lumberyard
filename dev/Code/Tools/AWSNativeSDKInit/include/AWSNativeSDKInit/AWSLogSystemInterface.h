@@ -12,7 +12,12 @@
 #pragma once
 
 #if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
+
+#include <AzCore/PlatformDef.h>
+
+AZ_PUSH_DISABLE_WARNING(4251 4996, "-Wunknown-warning-option")
 #include <aws/core/utils/logging/LogSystemInterface.h>
+AZ_POP_DISABLE_WARNING
 #else
 #include <sstream>
 namespace Aws
@@ -61,6 +66,8 @@ namespace AWSNativeSDKInit
         * Writes the stream to the output stream.
         */
         void LogStream(Aws::Utils::Logging::LogLevel logLevel, const char* tag, const Aws::OStringStream &messageStream);
+
+        void Flush();
 
     private:
         bool ShouldLog(Aws::Utils::Logging::LogLevel logLevel);

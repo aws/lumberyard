@@ -11,4 +11,4 @@
 */
 #pragma once
 
-#include <CrySoundSystem_Traits_Windows.h>
+#include <AudioSystem_Traits_Windows.h>

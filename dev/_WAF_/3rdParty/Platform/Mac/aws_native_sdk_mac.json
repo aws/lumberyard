@@ -1,0 +1,131 @@
+{
+    "platform": {
+        "darwin_x64": {
+            "system_lib": [
+                "curl"
+            ],
+            "libpath_debug": [
+                "lib/mac/Debug"
+            ],
+            "libpath_release": [
+                "lib/mac/Release"
+            ],
+            "aws_cpp_sdk_all/lib": [
+                "lib${aws_cpp_sdk_all}.a",
+                "lib${aws_dependencies}.a"
+            ],
+            "aws_cpp_sdk_core/lib": [
+                "lib${aws_cpp_sdk_core}.a",
+                "lib${aws_dependencies}.a"
+            ],
+            "aws_cpp_sdk_devicefarm/lib": [
+                "lib${aws_cpp_sdk_devicefarm}.a",
+                "lib${aws_dependencies}.a"
+            ],
+            "aws_cpp_sdk_gamelift/lib": [
+                "lib${aws_cpp_sdk_gamelift}.a"
+            ],
+            "aws_cpp_sdk_s3/lib": [
+                "lib${aws_cpp_sdk_s3}.a"
+            ],
+            "aws_cpp_sdk_sts/lib": [
+                "lib${aws_cpp_sdk_sts}.a"
+            ],
+            "aws_cpp_sdk_mobileanalytics/lib": [
+                "lib${aws_cpp_sdk_mobileanalytics}.a"
+            ],
+            "aws_cpp_sdk_identity_management/lib": [
+                "lib${aws_cpp_sdk_identity_management}.a"
+            ],
+            "aws_cpp_sdk_cognito_identity/lib": [
+                "lib${aws_cpp_sdk_cognito_identity}.a"
+            ],
+            "aws_cpp_sdk_cognito_idp/lib": [
+                "lib${aws_cpp_sdk_cognito_idp}.a"
+            ],
+             "aws_cpp_sdk_kinesis/lib": [
+                "lib${aws_cpp_sdk_kinesis}.a"
+            ],
+            "aws_cpp_sdk_lambda/lib": [
+                "lib${aws_cpp_sdk_lambda}.a"
+            ],
+            "aws_cpp_sdk_identity_lambda/lib": [
+                "lib${aws_cpp_sdk_identity_lambda}.a",
+                "lib${aws_dependencies}.a"
+            ],
+            "aws_cpp_sdk_identity_metrics/lib": [
+                "lib${aws_cpp_sdk_identity_metrics}.a",
+                "lib${aws_dependencies}.a"
+            ],
+
+            "sharedlibpath_debug": [
+                "bin/mac/Debug"
+            ],
+            "sharedlibpath_release": [
+                "bin/mac/Release"
+            ],
+            "aws_cpp_sdk_all/shared": [
+                "lib${aws_cpp_sdk_all}.dylib",
+                "lib${aws_c_dependencies}.dylib",
+                "lib${aws_c_dependencies}.0unstable.dylib",
+                "lib${aws_c_dependencies}.1.0.0.dylib",
+                "libaws-checksums.dylib"
+            ],
+            "aws_cpp_sdk_core/shared": [
+                "lib${aws_cpp_sdk_core}.dylib",
+                "lib${aws_c_dependencies}.dylib",
+                "lib${aws_c_dependencies}.0unstable.dylib",
+                "lib${aws_c_dependencies}.1.0.0.dylib",
+                "libaws-checksums.dylib"
+            ],
+            "aws_cpp_sdk_devicefarm/shared": [
+                "lib${aws_cpp_sdk_devicefarm}.dylib",
+                "lib${aws_c_dependencies}.dylib",
+                "lib${aws_c_dependencies}.0unstable.dylib",
+                "lib${aws_c_dependencies}.1.0.0.dylib",
+                "libaws-checksums.dylib"
+            ],
+            "aws_cpp_sdk_gamelift/shared": [
+                "lib${aws_cpp_sdk_gamelift}.dylib"
+            ],
+            "aws_cpp_sdk_s3/shared": [
+                "lib${aws_cpp_sdk_s3}.dylib"
+            ],
+            "aws_cpp_sdk_sts/shared": [
+                "lib${aws_cpp_sdk_sts}.dylib"
+            ],
+            "aws_cpp_sdk_mobileanalytics/shared": [
+                "lib${aws_cpp_sdk_mobileanalytics}.dylib"
+            ],
+            "aws_cpp_sdk_identity_management/shared": [
+                "lib${aws_cpp_sdk_identity_management}.dylib"
+            ],
+            "aws_cpp_sdk_cognito_identity/shared": [
+                "lib${aws_cpp_sdk_cognito_identity}.dylib"
+            ],
+            "aws_cpp_sdk_cognito_idp/shared": [
+                "lib${aws_cpp_sdk_cognito_idp}.dylib"
+            ],
+            "aws_cpp_sdk_kinesis/shared": [
+                "lib${aws_cpp_sdk_kinesis}.dylib"
+            ],
+            "aws_cpp_sdk_lambda/shared": [
+                "lib${aws_cpp_sdk_lambda}.dylib"
+            ],
+            "aws_cpp_sdk_identity_lambda/shared": [
+                "lib${aws_cpp_sdk_identity_lambda}.dylib",
+                "lib${aws_c_dependencies}.dylib",
+                "lib${aws_c_dependencies}.0unstable.dylib",
+                "lib${aws_c_dependencies}.1.0.0.dylib",
+                "libaws-checksums.dylib"
+            ],
+            "aws_cpp_sdk_identity_metrics/shared": [
+                "lib${aws_cpp_sdk_identity_metrics}.dylib",
+                "lib${aws_c_dependencies}.dylib",
+                "lib${aws_c_dependencies}.0unstable.dylib",
+                "lib${aws_c_dependencies}.1.0.0.dylib",
+                "libaws-checksums.dylib"
+            ]
+        }
+    }
+}

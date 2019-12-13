@@ -67,6 +67,8 @@
         #include "Xenia/RendererDefs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RendererDefs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RendererDefs_h_salem.inl"
     #endif
 #else
 #if defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(APPLE)
@@ -233,6 +235,8 @@ namespace detail
         #include "Xenia/RendererDefs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RendererDefs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RendererDefs_h_salem.inl"
     #endif
 #endif
 
@@ -260,6 +264,8 @@ namespace Lumberyard
         #include "Xenia/RendererDefs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RendererDefs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RendererDefs_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -294,6 +300,8 @@ namespace Lumberyard
         #include "Xenia/RendererDefs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RendererDefs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RendererDefs_h_salem.inl"
     #endif
 #endif
 
@@ -353,7 +361,7 @@ enum EVerifyType
 //#define ASSERT_IN_SHADER( expr ) assert( expr );
 #define ASSERT_IN_SHADER(expr)
 
-// TODO: linux clang doesn't behave like orbis clang and linux gcc doesn't behave like darwin gcc, all linux instanced can't manage squish-template overloading // ACCEPTED_USE
+// TODO: linux clang doesn't behave like orbis clang and linux gcc doesn't behave like darwin gcc, all linux instanced can't manage squish-template overloading
 #if defined (NULL_RENDERER)
     #define EXCLUDE_SQUISH_SDK
 #elif defined(LINUX)
@@ -364,6 +372,8 @@ enum EVerifyType
         #include "Xenia/RendererDefs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RendererDefs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RendererDefs_h_salem.inl"
     #endif
 #elif defined(IOS)
     #define EXCLUDE_SQUISH_SDK
@@ -398,6 +408,8 @@ enum EVerifyType
         #include "Xenia/RendererDefs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RendererDefs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RendererDefs_h_salem.inl"
     #endif
 #endif
 
@@ -414,14 +426,15 @@ enum EVerifyType
         #include "Xenia/RendererDefs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RendererDefs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RendererDefs_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(OPENGL)
 #include "CryLibrary.h"
-//  Confetti BEGIN: Igor Lobanchikov
-//  Igor: enable metal for ios device only. Emulator is not supported for now.
+//  enable metal for ios device only. Emulator is not supported for now.
 #if TARGET_OS_IPHONE || TARGET_OS_TV
 #ifndef __IPHONE_9_0
 #define __IPHONE_9_0    90000
@@ -433,7 +446,6 @@ enum EVerifyType
 #else
 #include "XRenderD3D9/DXGL/CryDXGL.hpp"
 #endif
-//  Confetti END: Igor Lobanchikov
 #elif defined(CRY_USE_DX12)
 #include "CryLibrary.h"
 typedef uintptr_t SOCKET;
@@ -445,6 +457,8 @@ typedef uintptr_t SOCKET;
         #include "Xenia/RendererDefs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RendererDefs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RendererDefs_h_salem.inl"
     #endif
 #elif defined(WIN32) || defined(WIN64)
 #include "d3d11.h"
@@ -475,6 +489,8 @@ typedef uintptr_t SOCKET;
         #include "Xenia/RendererDefs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RendererDefs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RendererDefs_h_salem.inl"
     #endif
 #endif
 
@@ -498,6 +514,8 @@ typedef uintptr_t SOCKET;
         #include "Xenia/RendererDefs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RendererDefs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RendererDefs_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -510,7 +528,7 @@ typedef uintptr_t SOCKET;
 // On platforms that support staging buffers, special buffers are allocated that act as a staging area
 // for updating buffer contents on the fly.
 
-// Confetti Igor: when staged updates are disabled CPU will have direct access to the pool's buffers' content
+// when staged updates are disabled CPU will have direct access to the pool's buffers' content
 //  and update data directly. This cuts memory consumption and reduces the number of copies.
 //  GPU won't be used to update buffer content but it will be used to perform defragmentation.
 #if defined(AZ_RESTRICTED_PLATFORM)
@@ -519,6 +537,8 @@ typedef uintptr_t SOCKET;
         #include "Xenia/RendererDefs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RendererDefs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RendererDefs_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -568,6 +588,8 @@ typedef uintptr_t SOCKET;
         #include "Xenia/RendererDefs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RendererDefs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RendererDefs_h_salem.inl"
     #endif
 #elif defined(LINUX)
 # define FEATURE_SILHOUETTE_POM
@@ -581,6 +603,8 @@ typedef uintptr_t SOCKET;
         #include "Xenia/RendererDefs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RendererDefs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RendererDefs_h_salem.inl"
     #endif
 #endif
 
@@ -596,6 +620,8 @@ typedef uintptr_t SOCKET;
         #include "Xenia/RendererDefs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RendererDefs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RendererDefs_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -621,6 +647,8 @@ typedef uintptr_t SOCKET;
                 #include "Xenia/RendererDefs_h_xenia.inl"
             #elif defined(AZ_PLATFORM_PROVO)
                 #include "Provo/RendererDefs_h_provo.inl"
+            #elif defined(AZ_PLATFORM_SALEM)
+                #include "Salem/RendererDefs_h_salem.inl"
             #endif
 #       endif
 #       if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -636,7 +664,7 @@ typedef uintptr_t SOCKET;
 #       endif
 #   else
         typedef IDXGIFactory1           DXGIFactory;
-#       if !defined(ANDROID) && !defined(APPLE) && !defined(LINUX)
+#       if !defined(ANDROID) && !defined(APPLE) && !defined(LINUX) && !defined(SKIP_TYPEDEF_OF_IDXGIDEVICE1)
             typedef IDXGIDevice1        DXGIDevice;
 #       endif
         typedef IDXGIAdapter1           DXGIAdapter;
@@ -657,6 +685,8 @@ typedef ID3D11Resource          D3DResource;
         #include "Xenia/RendererDefs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RendererDefs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RendererDefs_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -705,6 +735,8 @@ typedef interface ID3DXConstTable*  LPD3DXCONSTANTTABLE;
         #include "Xenia/RendererDefs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RendererDefs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RendererDefs_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -847,6 +879,8 @@ inline eRenderPrimitiveType GetInternalPrimitiveType(PublicRenderPrimitiveType t
 #           include "Xenia/RendererDefs_h_xenia.inl"
 #       elif defined(AZ_PLATFORM_PROVO)
 #           include "Provo/RendererDefs_h_provo.inl"
+#       elif defined(AZ_PLATFORM_SALEM)
+#           include "Salem/RendererDefs_h_salem.inl"
 #       endif
 #   elif defined(LINUX)
 #       define SUPPORT_FLEXIBLE_INDEXBUFFER // supports 16 as well as 32 bit indices AND index buffer bind offset
@@ -888,6 +922,8 @@ extern ISystem* iSystem;
         #include "Xenia/RendererDefs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RendererDefs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RendererDefs_h_salem.inl"
     #endif
 #endif
 
@@ -913,6 +949,8 @@ extern ISystem* iSystem;
         #include "Xenia/RendererDefs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RendererDefs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RendererDefs_h_salem.inl"
     #endif
 #endif
 

@@ -1,0 +1,12 @@
+{
+    "platform": {
+        "linux_x64": {
+            "libpath": [
+                 "libtiff/linux_gcc"
+            ],
+            "lib": [
+                "libtiff.a"
+            ]
+        }
+    }
+}

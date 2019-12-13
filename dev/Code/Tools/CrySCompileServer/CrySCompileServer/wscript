@@ -49,12 +49,9 @@ def build(bld):
         use             = ['AzCore', 'AzFramework'],
         uselib          = ['ZLIB','DIRECTXSHADERCOMPILER'],
 
-        output_folder   = bld.Path('Tools/CrySCompileServer/{}/{}'.format(os_sub_path, w_configuration)),
+        output_folder   = 'Tools/CrySCompileServer/{}/{}'.format(os_sub_path, w_configuration),
 
         # Platform Specific
-        win_x64_vs2013_output_file_name = 'CrySCompileServer_vc120x64',
-        win_x64_vs2015_output_file_name = 'CrySCompileServer_vc140x64',
-        win_x64_vs2017_output_file_name = 'CrySCompileServer_vc141x64',
         win_x64_lib                     = ['wsock32'],
         win_defines                     = ['_CRT_SECURE_NO_WARNINGS', '_CONSOLE'],
         msvc_cxxflags                   = ['/EHsc'],

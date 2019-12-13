@@ -215,11 +215,6 @@ def search_maven_repos(ctx, name, group, version):
             base_version = version.split('+')[0]
             valid_versions = [ ver for ver in versions_list if ver.startswith(base_version) ]
 
-        # the support lib versions are based on API built against
-        elif group == 'com.android.support' and 'multidex' not in name:
-            android_api_level = str(ctx.env['ANDROID_SDK_VERSION_NUMBER'])
-            valid_versions = [ ver for ver in versions_list if ver.startswith(android_api_level) ]
-
         # try to elimiate the alpha, beta and rc versions
         stable_versions = []
         for ver in valid_versions:
@@ -360,7 +355,7 @@ class fake_jar(Task):
                 return ASK_LATER
 
         for output in self.outputs:
-            output.sig = Utils.h_file(output.abspath())
+            output.cache_sig = Utils.h_file(output.abspath())
 
         return SKIP_ME
 
@@ -375,7 +370,7 @@ class fake_aar(Task):
                 return ASK_LATER
 
         for output in self.outputs:
-            output.sig = Utils.h_file(output.abspath())
+            output.cache_sig = Utils.h_file(output.abspath())
 
         return SKIP_ME
 
@@ -489,7 +484,7 @@ def process_aar(self):
     aar_cache = android_cache.make_node('aar')
     aar_cache.mkdir()
 
-    Logs.debug('android_library: Processing Android library %s', self.name)
+    Logs.debug('android_library: Processing Android library {}'.format(self.name))
     lib_node = None
 
     if search_paths:
@@ -545,7 +540,7 @@ def process_aar(self):
 
         self.android_studio_name = '{}:{}:{}'.format(group, self.name, version)
 
-    lib_node.sig = Utils.h_file(lib_node.abspath())
+    lib_node.cache_sig = Utils.h_file(lib_node.abspath())
 
     folder_name = os.path.splitext(aar_filename)[0]
     extraction_node = aar_cache.make_node(folder_name)

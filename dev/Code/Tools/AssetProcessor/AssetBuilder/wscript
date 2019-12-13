@@ -31,6 +31,9 @@ def build(bld):
         win_features    = ['crcfix'],
         features        = ['link_running_program'],
 
+        # Compiler Specific
+        msvc_cxxflags       = ['/W4'],
+
         win_file_list   = ['asset_builder_win.waf_files'],
         darwin_file_list = ['asset_builder_darwin.waf_files']
     )

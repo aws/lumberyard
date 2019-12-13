@@ -26,6 +26,11 @@ def load_win_x64_vs2017_common_settings(ctx):
     
     restricted_tool_list_macro_header = 'AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS='
     restricted_tool_list_macro = restricted_tool_list_macro_header
+    
+    tool_list_macro_parts = ctx.update_host_tool_env_for_restricted_platforms(PLATFORM, env)
+    if tool_list_macro_parts:
+        restricted_tool_list_macro += ''.join(tool_list_macro_parts)
+
     if len(restricted_tool_list_macro) > len(restricted_tool_list_macro_header):
         env['DEFINES'] += [restricted_tool_list_macro]
 
@@ -53,6 +58,8 @@ def load_win_x64_vs2017_common_settings(ctx):
         raise Errors.WafError('[Error] AZ Code Generator path not set for target platform {}'.format(PLATFORM))
     
     ctx.find_dx12(windows_kit)
+    
+    ctx.setup_copy_hosttools()
 
     ctx.load_cryengine_common_settings()
     

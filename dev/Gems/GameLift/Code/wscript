@@ -23,6 +23,9 @@ def build(bld):
         pch             = '',
         file_list       = ['GameLift.waf_files'],
 
+        # Platform Roots
+        platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=True)],
+
         # Platform Specific
         win_use         = ['AWS_CPP_SDK_GAMELIFT_SHARED',
                            'AWS_CPP_SDK_CORE'],
@@ -39,9 +42,14 @@ def build(bld):
         linux_release_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
         linux_file_list   = ['gridmate_gamelift.waf_files'],
 
-        restricted_script   = 'update_restricted_parameters',
+        android_use = ['AWS_CPP_SDK_GAMELIFT_SHARED',
+                        'AWS_CPP_SDK_CORE'],
+        android_file_list = ['gridmate_gamelift.waf_files'],
+
+        ios_use = ['AWS_CPP_SDK_GAMELIFT_SHARED',
+                    'AWS_CPP_SDK_CORE'],
+        ios_file_list = ['gridmate_gamelift.waf_files'],
 
         # Testing
         test_all_file_list = ['gamelift_test.waf_files'],
-
     )

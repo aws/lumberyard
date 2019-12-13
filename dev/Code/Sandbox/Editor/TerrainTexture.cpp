@@ -50,6 +50,8 @@
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
 #include <AzFramework/Physics/Material.h>
 
+#include "Util/BoostPythonHelpers.h"
+
 enum Columns
 {
     ColumnLayerName = 0,
@@ -644,6 +646,52 @@ private:
     static const int s_contentMargin = 3;
 };
 
+//////////////////////////////////////////////////////////////////////////
+class BoolGuard
+{
+public:
+    BoolGuard(bool& guarded) noexcept : m_guarded{guarded}
+    {
+        m_guarded = true;
+    }
+
+    ~BoolGuard() noexcept
+    {
+        m_guarded = false;
+    }
+
+private:
+    bool& m_guarded;
+};
+//////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////
+AZStd::unique_ptr<CLayer> CreateDefaultLayer()
+{
+    IEditor* editor = GetIEditor();
+
+    if (!editor)
+    {
+        return {};
+    }
+
+    CTerrainManager* terrainManager = editor->GetTerrainManager();
+
+    if (!terrainManager)
+    {
+        return {};
+    }
+
+    auto newLayer = AZStd::make_unique<CLayer>();
+    newLayer->SetLayerName(terrainManager->GenerateUniqueLayerName(QStringLiteral("NewLayer")));
+    newLayer->LoadTexture("engineassets/textures/grey.dds");
+    newLayer->AssignMaterial("Materials/material_terrain_default");
+    newLayer->GetOrRequestLayerId();
+
+    return newLayer;
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CTerrainTextureDialog::RegisterViewClass()
 {
     AzToolsFramework::ViewPaneOptions opts;
@@ -682,25 +730,25 @@ CTerrainTextureDialog::CTerrainTextureDialog(QWidget* parent /* = nullptr */)
 
     setContextMenuPolicy(Qt::NoContextMenu);
 
-    m_bIgnoreNotify = false;
+    m_ignoreNotify = false;
     GetIEditor()->RegisterNotifyListener(this);
     GetIEditor()->GetMaterialManager()->AddListener(this);
 
     OnInitDialog();
+
+    Physics::EditorTerrainComponentNotificationBus::Handler::BusConnect();
 }
 
 //////////////////////////////////////////////////////////////////////////
 CTerrainTextureDialog::~CTerrainTextureDialog()
 {
+    Physics::EditorTerrainComponentNotificationBus::Handler::BusDisconnect();
     m_alive = false;
 
+    
     GetIEditor()->GetMaterialManager()->RemoveListener(this);
     GetIEditor()->UnregisterNotifyListener(this);
     ClearData();
-
-    //GetIEditor()->GetHeightmap()->UpdateEngineTerrain(0,0,
-    //  GetIEditor()->GetHeightmap()->GetWidth(),
-    //  GetIEditor()->GetHeightmap()->GetHeight(),false,true);
 
     GetIEditor()->UpdateViews(eUpdateHeightmap);
 }
@@ -714,8 +762,6 @@ void CTerrainTextureDialog::ClearData()
     {
         GetIEditor()->GetTerrainManager()->GetLayer(i)->ReleaseTempResources();
     }
-
-    //m_pCurrentLayer = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -769,8 +815,10 @@ void CTerrainTextureDialog::OnInitDialog()
     m_propertyEditor->Setup(m_serializeContext, this, false, 150);
     m_propertyEditor->show();
     m_ui->materialSelection->addWidget(m_propertyEditor);
+    m_ui->terrainNotFoundMessage->setText("No terrain component found");
+    m_ui->terrainNotFoundMessage->setStyleSheet("color: red;");
 
-    m_selection = AZStd::make_unique<Physics::MaterialSelection>();
+    m_physicsMaterialSelection = AZStd::make_unique<Physics::MaterialSelection>();
 
     // Load the layer list from the document
     ReloadLayerList();
@@ -828,6 +876,19 @@ void CTerrainTextureDialog::EnableControls()
         blockSignals(false);
     }
 
+    if (Physics::EditorTerrainMaterialRequestsBus::HasHandlers())
+    {
+        m_propertyEditor->ExpandAll();
+        m_propertyEditor->setVisible(true);
+        m_ui->terrainNotFoundMessage->setVisible(false);
+    }
+    else
+    {
+        m_propertyEditor->CollapseAll();
+        m_propertyEditor->setVisible(false);
+        m_ui->terrainNotFoundMessage->setVisible(true);
+    }
+    
     m_ui->exportLayersAction->setEnabled(m_model->size() > 0);
     m_ui->showLargePreviewAction->setEnabled(m_model->size() > 0);
 
@@ -880,14 +941,15 @@ void CTerrainTextureDialog::UpdateControlData()
 
         bool materialFound = false;
         Physics::MaterialSelection selection;
+        selection.SetMaterialSlots({});
         int surfaceId = pSelLayer->GetEngineSurfaceTypeId();
         Physics::EditorTerrainMaterialRequestsBus::BroadcastResult(
             materialFound, &Physics::EditorTerrainMaterialRequests::GetMaterialSelectionForSurfaceId, surfaceId, selection);
-        *m_selection.get() = selection;
+        *m_physicsMaterialSelection.get() = selection;
 
         blockSignals(true);
         m_propertyEditor->ClearInstances();
-        m_propertyEditor->AddInstance(m_selection.get());
+        m_propertyEditor->AddInstance(m_physicsMaterialSelection.get());
         m_propertyEditor->InvalidateAll();
         blockSignals(false);
     }
@@ -934,6 +996,9 @@ void CTerrainTextureDialog::OnLoadTexture()
 
     // Regenerate the preview
     OnGeneratePreview();
+
+    // Update the controls
+    EnableControls();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1045,9 +1110,8 @@ void CTerrainTextureDialog::OnImport()
     }
 
     // Notify terrain painter panel to update layers
-    m_bIgnoreNotify = true;
+    BoolGuard guard{m_ignoreNotify};
     GetIEditor()->Notify(eNotify_OnInvalidateControls);
-    m_bIgnoreNotify = false;
 }
 
 
@@ -1182,21 +1246,24 @@ void CTerrainTextureDialog::OnLayersNewItem()
     GetIEditor()->RecordUndo(new CTerrainLayersUndoObject());
 
     // Add the layer
-    auto pTerrainManager = GetIEditor()->GetTerrainManager();
+    auto terrainManager = GetIEditor()->GetTerrainManager();
 
-    CLayer* pNewLayer = new CLayer;
-    pNewLayer->SetLayerName(pTerrainManager->GenerateUniqueLayerName(QStringLiteral("NewLayer")));
-    pNewLayer->LoadTexture("engineassets/textures/grey.dds");
-    pNewLayer->AssignMaterial("Materials/material_terrain_default");
-    pNewLayer->GetOrRequestLayerId();
+    auto newLayer = CreateDefaultLayer();
 
-    pTerrainManager->AddLayer(pNewLayer);
+    if (!newLayer)
+    {
+        return;
+    }
 
-    QModelIndex newIndex = m_model->add(pNewLayer);
+    CLayer* newLayerRaw = newLayer.get();
+
+    terrainManager->AddLayer(newLayer.release());
+
+    QModelIndex newIndex = m_model->add(newLayerRaw);
     m_ui->layerTableView->scrollTo(newIndex);
     m_ui->layerTableView->resizeColumnToContents(0);
 
-    SelectLayer(pNewLayer);
+    SelectLayer(newLayerRaw);
 
     // Update the controls with the data from the layer
     UpdateControlData();
@@ -1204,10 +1271,9 @@ void CTerrainTextureDialog::OnLayersNewItem()
     // Regenerate the preview
     OnGeneratePreview();
 
-    m_bIgnoreNotify = true;
+    BoolGuard guard{m_ignoreNotify};
     GetIEditor()->Notify(eNotify_OnInvalidateControls);
     GetIEditor()->Notify(eNotify_OnTextureLayerChange);
-    m_bIgnoreNotify = false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1215,7 +1281,7 @@ void CTerrainTextureDialog::OnLayersDeleteItem()
 {
     Layers selected = GetSelectedLayers();
 
-    if (selected.size() == 0)
+    if (selected.empty())
     {
         QMessageBox::warning(this, "Can't Delete Layers", "No target layers selected");
         return;
@@ -1228,109 +1294,122 @@ void CTerrainTextureDialog::OnLayersDeleteItem()
         return;
     }
 
-    CLayer* layer = selected[0];
+    CLayer* layer = selected.front();
 
-    QString message = QString("Are you sure you want to delete layer %1?").arg(layer->GetLayerName());
-    auto answer = QMessageBox::question(this, "Confirm Delete Layer", message);
-    if (answer == QMessageBox::Yes)
+    if (layer)
     {
-        CUndo undo("Delete Terrain Layer");
-        GetIEditor()->RecordUndo(new CTerrainLayersUndoObject());
-
-        // Find the layer inside the layer list in the document and remove it.
-        m_model->remove(layer);
-        GetIEditor()->GetTerrainManager()->RemoveLayer(layer);
-
-        // Regenerate the preview
-        OnGeneratePreview();
+        QString message = QString("Are you sure you want to delete layer %1?").arg(layer->GetLayerName());
+        auto answer = QMessageBox::question(this, "Confirm Delete Layer", message);
+        if (answer == QMessageBox::Yes)
+        {
+            DeleteLayerItem(layer);
+        }
     }
-
-    m_bIgnoreNotify = true;
-    GetIEditor()->Notify(eNotify_OnInvalidateControls);
-    GetIEditor()->Notify(eNotify_OnTextureLayerChange);
-    m_bIgnoreNotify = false;
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CTerrainTextureDialog::OnLayersMoveItemUp()
 {
-    CUndo undo("Move Terrain Layer Up");
-    GetIEditor()->RecordUndo(new CTerrainLayersUndoObject());
+    IEditor* editor = GetIEditor();
 
-    Layers selected = GetSelectedLayers();
-
-    if (selected.size() == 0)
+    if (!editor)
     {
         return;
     }
 
-    CLayer* pLayer = selected[0];
+    CTerrainManager* terrainManager = editor->GetTerrainManager();
 
-    int nIndexCur = -1;
-    for (int i = 0; i < GetIEditor()->GetTerrainManager()->GetLayerCount(); i++)
+    if (!terrainManager)
     {
-        if (GetIEditor()->GetTerrainManager()->GetLayer(i) == pLayer)
+        return;
+    }
+
+    CUndo undo("Move Terrain Layer Up");
+
+    editor->RecordUndo(new CTerrainLayersUndoObject());
+
+    Layers selected = GetSelectedLayers();
+
+    if (selected.empty())
+    {
+        return;
+    }
+
+    CLayer* layer = selected.front();
+
+    int indexCur = -1;
+    for (int i = 0; i < terrainManager->GetLayerCount(); i++)
+    {
+        if (terrainManager->GetLayer(i) == layer)
         {
-            nIndexCur = i;
+            indexCur = i;
             break;
         }
     }
 
-    if (nIndexCur < 1)
+    if (indexCur < 1)
     {
         return;
     }
+    
+    terrainManager->SwapLayers(indexCur, indexCur - 1);
+    m_model->moveUp(layer);
+    SelectLayer(layer);
 
-    GetIEditor()->GetTerrainManager()->SwapLayers(nIndexCur, nIndexCur - 1);
-
-    m_model->moveUp(pLayer);
-
-    SelectLayer(pLayer);
-
-    m_bIgnoreNotify = true;
-    GetIEditor()->Notify(eNotify_OnTextureLayerChange);
-    m_bIgnoreNotify = false;
+    BoolGuard guard{m_ignoreNotify};
+    editor->Notify(eNotify_OnTextureLayerChange);
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CTerrainTextureDialog::OnLayersMoveItemDown()
 {
-    CUndo undo("Move Terrain Layer Down");
-    GetIEditor()->RecordUndo(new CTerrainLayersUndoObject());
+    IEditor* editor = GetIEditor();
 
-    Layers selected = GetSelectedLayers();
-
-    if (selected.size() == 0)
+    if (!editor)
     {
         return;
     }
 
-    CLayer* pLayer = selected[0];
+    CTerrainManager* terrainManager = editor->GetTerrainManager();
 
-    int nIndexCur = -1;
-    for (int i = 0; i < GetIEditor()->GetTerrainManager()->GetLayerCount(); i++)
+    if (!terrainManager)
     {
-        if (GetIEditor()->GetTerrainManager()->GetLayer(i) == pLayer)
+        return;
+    }
+
+    CUndo undo("Move Terrain Layer Down");
+    editor->RecordUndo(new CTerrainLayersUndoObject());
+
+    Layers selected = GetSelectedLayers();
+
+    if (selected.empty())
+    {
+        return;
+    }
+
+    CLayer* layer = selected.front();
+
+    int indexCur = -1;
+    for (int i = 0; i < terrainManager->GetLayerCount(); i++)
+    {
+        if (terrainManager->GetLayer(i) == layer)
         {
-            nIndexCur = i;
+            indexCur = i;
             break;
         }
     }
 
-    if (nIndexCur < 0 || nIndexCur >= GetIEditor()->GetTerrainManager()->GetLayerCount() - 1)
+    if (indexCur < 0 || indexCur >= terrainManager->GetLayerCount() - 1)
     {
         return;
     }
 
-    GetIEditor()->GetTerrainManager()->SwapLayers(nIndexCur, nIndexCur + 1);
+    terrainManager->SwapLayers(indexCur, indexCur + 1);
+    m_model->moveDown(layer);
+    SelectLayer(layer);
 
-    m_model->moveDown(pLayer);
-
-    SelectLayer(pLayer);
-
-    m_bIgnoreNotify = true;
-    GetIEditor()->Notify(eNotify_OnTextureLayerChange);
-    m_bIgnoreNotify = false;
+    BoolGuard guard{m_ignoreNotify};
+    editor->Notify(eNotify_OnTextureLayerChange);
 }
 
 
@@ -1381,30 +1460,30 @@ void CTerrainTextureDialog::OnReportSelChange(const QItemSelection& selected, co
 void CTerrainTextureDialog::OnReportHyperlink(CLayer* layer)
 {
     QString mtlName;
-    CSurfaceType* pSurfaceType = layer->GetSurfaceType();
-    if (pSurfaceType)
+    CSurfaceType* surfaceType = layer->GetSurfaceType();
+    if (surfaceType)
     {
-        mtlName = pSurfaceType->GetMaterial();
+        mtlName = surfaceType->GetMaterial();
     }
 
-    _smart_ptr<IMaterial> pMtl = gEnv->p3DEngine->GetMaterialManager()->LoadMaterial(mtlName.toUtf8().data(), false);
-    if (pMtl)
+    _smart_ptr<IMaterial> mtl = gEnv->p3DEngine->GetMaterialManager()->LoadMaterial(mtlName.toUtf8().data(), false);
+    if (mtl)
     {
-        GetIEditor()->GetMaterialManager()->GotoMaterial(pMtl);
+        GetIEditor()->GetMaterialManager()->GotoMaterial(mtl);
     }
 }
 
-void CTerrainTextureDialog::BeforePropertyModified(AzToolsFramework::InstanceDataNode *)
+void CTerrainTextureDialog::BeforePropertyModified(AzToolsFramework::InstanceDataNode*)
 {
 }
 
-void CTerrainTextureDialog::AfterPropertyModified(AzToolsFramework::InstanceDataNode *)
+void CTerrainTextureDialog::AfterPropertyModified(AzToolsFramework::InstanceDataNode*)
 {
     Layers layers = GetSelectedLayers();
     if (layers.size())
     {
-        CLayer* pSelLayer = layers[0];
-        if (pSelLayer)
+        CLayer* selLayer = layers.front();
+        if (selLayer)
         {
             AZ_Warning("Physics", Physics::EditorTerrainMaterialRequestsBus::HasHandlers(),
                 "There is no Handler attached to the EditorTerrainMaterialRequestsBus - This is"
@@ -1413,16 +1492,16 @@ void CTerrainTextureDialog::AfterPropertyModified(AzToolsFramework::InstanceData
 
             Physics::EditorTerrainMaterialRequestsBus::Broadcast(
                 &Physics::EditorTerrainMaterialRequests::SetMaterialSelectionForSurfaceId,
-                pSelLayer->GetEngineSurfaceTypeId(), *m_selection);
+                selLayer->GetEngineSurfaceTypeId(), *m_physicsMaterialSelection);
         }
     }
 }
 
-void CTerrainTextureDialog::SetPropertyEditingActive(AzToolsFramework::InstanceDataNode *)
+void CTerrainTextureDialog::SetPropertyEditingActive(AzToolsFramework::InstanceDataNode*)
 {
 }
 
-void CTerrainTextureDialog::SetPropertyEditingComplete(AzToolsFramework::InstanceDataNode *)
+void CTerrainTextureDialog::SetPropertyEditingComplete(AzToolsFramework::InstanceDataNode*)
 {
 }
 
@@ -1431,26 +1510,47 @@ void CTerrainTextureDialog::SealUndoStack()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CTerrainTextureDialog::SelectLayer(CLayer* pLayer)
+void CTerrainTextureDialog::DeleteLayerItem(CLayer* layer)
+{
+    if (layer)
+    {
+        CUndo undo("Delete Terrain Layer");
+        GetIEditor()->RecordUndo(new CTerrainLayersUndoObject());
+
+        // Find the layer inside the layer list in the document and remove it.
+        m_model->remove(layer);
+
+        GetIEditor()->GetTerrainManager()->RemoveLayer(layer);
+
+        // Regenerate the preview
+        OnGeneratePreview();
+
+        BoolGuard guard{m_ignoreNotify};
+        GetIEditor()->Notify(eNotify_OnInvalidateControls);
+        GetIEditor()->Notify(eNotify_OnTextureLayerChange);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTerrainTextureDialog::SelectLayer(CLayer* layer)
 {
     // Unselect all layers.
     for (int i = 0; i < GetIEditor()->GetTerrainManager()->GetLayerCount(); i++)
     {
         GetIEditor()->GetTerrainManager()->GetLayer(i)->SetSelected(false);
     }
-    pLayer->SetSelected(true);
+    layer->SetSelected(true);
 
     //  m_bMaskPreviewValid = false;
 
     auto selection = m_ui->layerTableView->selectionModel();
-    selection->select(m_model->selectionForRow(pLayer), QItemSelectionModel::ClearAndSelect);
+    selection->select(m_model->selectionForRow(layer), QItemSelectionModel::ClearAndSelect);
 
     // Update the controls with the data from the layer
     UpdateControlData();
 
-    m_bIgnoreNotify = true;
+    BoolGuard guard{m_ignoreNotify};
     GetIEditor()->Notify(eNotify_OnSelectionChange);
-    m_bIgnoreNotify = false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1461,8 +1561,8 @@ void CTerrainTextureDialog::OnAssignMaterial()
     GetIEditor()->RecordUndo(new CTerrainLayersUndoObject());
 
     CMaterial* pMaterial = GetIEditor()->GetMaterialManager()->GetCurrentMaterial();
-    assert(pMaterial != NULL);
-    if (pMaterial == NULL)
+    assert(pMaterial != nullptr);
+    if (pMaterial == nullptr)
     {
         return;
     }
@@ -1471,6 +1571,7 @@ void CTerrainTextureDialog::OnAssignMaterial()
     {
         layers[i]->AssignMaterial(pMaterial->GetName());
     }
+
     ReloadLayerList();
 
     GetIEditor()->GetTerrainManager()->ReloadSurfaceTypes();
@@ -1493,12 +1594,14 @@ void CTerrainTextureDialog::OnAssignSplatMap()
 
     CLayer* layer = layers[0];
     QString filePath = layer->GetSplatMapPath();
+
     if (!filePath.isEmpty())
     {
         filePath = Path::GamePathToFullPath(filePath);
     }
 
     QString selectedFile = filePath;
+
     if (CFileUtil::SelectFile(QStringLiteral("Bitmap Image File (*.bmp)"), filePath, selectedFile))
     {
         QString newPath = Path::FullPathToGamePath(selectedFile);
@@ -1507,7 +1610,7 @@ void CTerrainTextureDialog::OnAssignSplatMap()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CTerrainTextureDialog::OnDataBaseItemEvent(IDataBaseItem* pItem, EDataBaseItemEvent event)
+void CTerrainTextureDialog::OnDataBaseItemEvent(IDataBaseItem* item, EDataBaseItemEvent event)
 {
     if (event == EDB_ITEM_EVENT_SELECTED)
     {
@@ -1516,12 +1619,17 @@ void CTerrainTextureDialog::OnDataBaseItemEvent(IDataBaseItem* pItem, EDataBaseI
     }
 }
 
+void CTerrainTextureDialog::OnTerrainComponentActive()
+{
+    UpdateControlData();
+}
+
 //////////////////////////////////////////////////////////////////////////
 void CTerrainTextureDialog::UpdateAssignMaterialItem()
 {
     bool layerSelected = m_ui->layerTableView->selectionModel()->selectedIndexes().size() > 0;
-    CMaterial* pMaterial = GetIEditor()->GetMaterialManager()->GetCurrentMaterial();
-    bool materialSelected = (pMaterial != NULL);
+    CMaterial* material = GetIEditor()->GetMaterialManager()->GetCurrentMaterial();
+    bool materialSelected = (material != nullptr);
 
     m_ui->assignMaterialClickable->setEnabled(layerSelected && materialSelected);
 }
@@ -1540,17 +1648,19 @@ void CTerrainTextureDialog::OnImportSplatMaps()
 {
     // Make sure we have an allocated heightmap and at least one masked layer before we import
     auto editor = GetIEditor();
-    CHeightmap* pHeightmap = editor->GetHeightmap();
-    if (!pHeightmap->IsAllocated())
+    CHeightmap* heightMap = editor->GetHeightmap();
+    if (!heightMap->IsAllocated())
     {
         return;
     }
-    assert(pHeightmap->GetHeight() > 0 && pHeightmap->GetWidth() > 0);
+
+    assert(heightMap->GetHeight() > 0 && heightMap->GetWidth() > 0);
 
     auto terrainManager = editor->GetTerrainManager();
     auto layerCount = terrainManager->GetLayerCount();
     bool foundOne = false;
-    for (decltype(layerCount)i = 0; i < layerCount; ++i)
+
+    for (int i = 0; i < layerCount; ++i)
     {
         auto layer = terrainManager->GetLayer(i);
         if (!layer->GetSplatMapPath().isEmpty())
@@ -1559,6 +1669,7 @@ void CTerrainTextureDialog::OnImportSplatMaps()
             break;
         }
     }
+
     if (!foundOne)
     {
         return;
@@ -1566,6 +1677,7 @@ void CTerrainTextureDialog::OnImportSplatMaps()
 
     // Import our data and mark things as modified
     ImportSplatMaps();
+
     editor->SetModifiedFlag();
     editor->SetModifiedModule(eModifiedTerrain);
 }
@@ -1580,8 +1692,9 @@ void CTerrainTextureDialog::ImportSplatMaps()
 
     // Walk through the layers, skipping any non-mask layers
     AZStd::vector<uint8> layerIds;
-    auto splatMaps = new CImageEx[layerCount];
-    for (decltype(layerCount)i = 0; i < layerCount; ++i)
+    AZStd::vector<CImageEx> splatMaps(layerCount);
+
+    for (int i = 0; i < layerCount; ++i)
     {
         auto layer = terrainManager->GetLayer(i);
         if (layer->GetSplatMapPath().isEmpty())
@@ -1592,12 +1705,13 @@ void CTerrainTextureDialog::ImportSplatMaps()
         // Load the mask's BMP and rotate by 270-degrees to match loaded PGM heightmap and orientation of the image in content creation tools
         auto path = Path::GamePathToFullPath(layer->GetSplatMapPath());
         CImageEx splat;
+
         if (!CImageUtil::LoadBmp(path, splat))
         {
             QMessageBox::critical(this, QString(), tr("Error: Can't load BMP file. Probably out of memory."));
-            delete[] splatMaps;
             return;
         }
+
         splatMaps[layerIds.size()].RotateOrt(splat, ImageRotationDegrees::Rotate270);
 
         // Remember this layer because it is real
@@ -1605,14 +1719,13 @@ void CTerrainTextureDialog::ImportSplatMaps()
     }
 
     // Now build the weight map using the masked layers
-    heightMap->SetLayerWeights(layerIds, splatMaps, layerIds.size());
-    delete[] splatMaps;
+    heightMap->SetLayerWeights(layerIds, splatMaps.data(), layerIds.size());
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CTerrainTextureDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
 {
-    if (m_bIgnoreNotify)
+    if (m_ignoreNotify)
     {
         return;
     }
@@ -1620,6 +1733,7 @@ void CTerrainTextureDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
     {
     case eNotify_OnBeginNewScene:
     case eNotify_OnBeginSceneOpen:
+    case eNotify_OnCloseScene:
         ClearData();
         break;
     case eNotify_OnEndNewScene:
@@ -1631,10 +1745,10 @@ void CTerrainTextureDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
     {
         for (int i = 0, cnt = GetIEditor()->GetTerrainManager()->GetLayerCount(); i < cnt; ++i)
         {
-            CLayer* pLayer = GetIEditor()->GetTerrainManager()->GetLayer(i);
-            if (pLayer && pLayer->IsSelected())
+            CLayer* layer = GetIEditor()->GetTerrainManager()->GetLayer(i);
+            if (layer && layer->IsSelected())
             {
-                SelectLayer(pLayer);
+                SelectLayer(layer);
                 break;
             }
         }
@@ -1643,23 +1757,305 @@ void CTerrainTextureDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
 
     case eNotify_OnInvalidateControls:
     {
-        CLayer* pLayer = 0;
+        CLayer* layer = 0;
         for (int i = 0; i < GetIEditor()->GetTerrainManager()->GetLayerCount(); i++)
         {
             if (GetIEditor()->GetTerrainManager()->GetLayer(i)->IsSelected())
             {
-                pLayer = GetIEditor()->GetTerrainManager()->GetLayer(i);
+                layer = GetIEditor()->GetTerrainManager()->GetLayer(i);
                 break;
             }
         }
 
-        if (pLayer)
+        if (layer)
         {
-            SelectLayer(pLayer);
+            SelectLayer(layer);
         }
     }
     break;
+
+    case eNotify_OnTextureLayerChange:
+        ReloadLayerList();
+        break;
+
+    case eNotify_OnSplatmapImport:
+        OnImportSplatMaps();
+        break;
     }
 }
+
+//////////////////////////////////////////////////////////////////////////
+class TextureScriptBindings
+{
+public:
+    //////////////////////////////////////////////////////////////////////////
+    static void OpenTool()
+    {
+        QtViewPaneManager::instance()->OpenPane(LyViewPane::TerrainTextureLayers);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void CreateLayer(int index, const char* layerName)
+    {
+        if (!layerName)
+        {
+            return;
+        }
+
+        IEditor* editor = GetIEditor();
+
+        if (!editor)
+        {
+            return;
+        }
+
+        CTerrainManager* terrainManager = editor->GetTerrainManager();
+
+        if (!terrainManager)
+        {
+            return;
+        }
+
+        if (index < 0 || index > terrainManager->GetLayerCount())
+        {
+            return;
+        }
+
+        auto newLayer = CreateDefaultLayer();
+
+        if (!newLayer)
+        {
+            return;
+        }
+
+        newLayer->SetLayerName(layerName);
+        terrainManager->AddLayer(newLayer.release());
+        terrainManager->MoveLayer(terrainManager->GetLayerCount() - 1, index);
+        editor->Notify(eNotify_OnTextureLayerChange);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void DeleteLayer(int index)
+    {
+        IEditor* editor = GetIEditor();
+
+        if (!editor)
+        {
+            return;
+        }
+
+        CTerrainManager* terrainManager = editor->GetTerrainManager();
+
+        if (terrainManager)
+        {
+            terrainManager->RemoveLayer(GetLayer(index));
+            editor->Notify(eNotify_OnTextureLayerChange);
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void MoveLayer(int oldIndex, int newIndex)
+    {
+        if (oldIndex == newIndex)
+        {
+            return;
+        }
+
+        IEditor* editor = GetIEditor();
+
+        if (!editor)
+        {
+            return;
+        }
+
+        CTerrainManager* terrainManager = editor->GetTerrainManager();
+
+        if (terrainManager)
+        {
+            terrainManager->MoveLayer(oldIndex, newIndex);
+            editor->Notify(eNotify_OnTextureLayerChange);
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static int GetTextureLayerIndex(const char* layerName)
+    {
+        constexpr int error_index = -1;
+
+        if (!layerName)
+        {
+            return error_index;
+        }
+
+        IEditor* editor = GetIEditor();
+
+        if (!editor)
+        {
+            return error_index;
+        }
+
+        CTerrainManager* terrainManager = editor->GetTerrainManager();
+
+        if (!terrainManager)
+        {
+            return error_index;
+        }
+
+        for (int i = 0; i < terrainManager->GetLayerCount(); ++i)
+        {
+            if (terrainManager->GetLayer(i)->GetLayerName() == layerName)
+            {
+                return i;
+            }
+        }
+
+        return error_index;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void SetMaterial(int index, const char* materialName)
+    {
+        if (!materialName)
+        {
+            return;
+        }
+
+        CLayer* layer = GetLayer(index);
+
+        if (!layer)
+        {
+            return;
+        }
+
+        IEditor* editor = GetIEditor();
+
+        if (!editor)
+        {
+            return;
+        }
+
+        CTerrainManager* terrainManager = editor->GetTerrainManager();
+
+        if (!terrainManager)
+        {
+            return;
+        }
+
+        layer->AssignMaterial(materialName);
+        editor->Notify(eNotify_OnTextureLayerChange);
+        terrainManager->ReloadSurfaceTypes();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void SetSplatMap(int index, const char* splatMapPath)
+    {
+        IEditor* editor = GetIEditor();
+
+        if (!editor)
+        {
+            return;
+        }
+
+        if (splatMapPath)
+        {
+            CLayer* layer = GetLayer(index);
+
+            if (layer)
+            {
+                layer->SetSplatMapPath(splatMapPath);
+                editor->Notify(eNotify_OnTextureLayerChange);
+            }
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void ImportSplatMaps()
+    {
+        IEditor* editor = GetIEditor();
+
+        if (!editor)
+        {
+            return;
+        }
+
+        editor->Notify(eNotify_OnSplatmapImport);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void SetTextureLayerName(int index, const char* newName)
+    {
+        if (!newName)
+        {
+            return;
+        }
+
+        IEditor* editor = GetIEditor();
+
+        if (!editor)
+        {
+            return;
+        }
+
+        CLayer* layer = GetLayer(index);
+
+        if (layer)
+        {
+            layer->SetLayerName(newName);
+            editor->Notify(eNotify_OnTextureLayerChange);
+        }
+    }
+
+private:
+    //////////////////////////////////////////////////////////////////////////
+    static CLayer* GetLayer(int index)
+    {
+        IEditor* editor = GetIEditor();
+
+        if (!editor)
+        {
+            return nullptr;
+        }
+
+        CTerrainManager* terrainManager = editor->GetTerrainManager();
+
+        if (terrainManager)
+        {
+            return terrainManager->GetLayer(index);
+        }
+        else
+        {
+            return nullptr;
+        }
+    }
+};
+
+//////////////////////////////////////////////////////////////////////////
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(TextureScriptBindings::OpenTool, terrain, open_layers,
+    "Opens the texture layers tool.", "void terrain.open_layers()");
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(TextureScriptBindings::CreateLayer, terrain, create_layer,
+    "Creates a new texture layer with the given index and name.", "void terrain.create_layer(int index, string layer_name)");
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(TextureScriptBindings::DeleteLayer, terrain, delete_layer,
+    "Deletes the texture layer matching the index provided.", "void terrain.delete_layer(int index)");
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(TextureScriptBindings::MoveLayer, terrain, move_layer,
+    "Moves the texture layer matching the index provided to a new index.", "void terrain.move_layer(int old_index, int new_index)");
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(TextureScriptBindings::GetTextureLayerIndex, terrain, get_layer_index,
+    "Returns the index of a named texture layer.", "int terrain.get_layer_index(string layer_name)");
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(TextureScriptBindings::SetMaterial, terrain, set_layer_material,
+    "Sets a material to the texture layer matching the index provided.", "void terrain.set_layer_material(int index, string material_name)");
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(TextureScriptBindings::SetSplatMap, terrain, set_layer_splatmap,
+    "Sets a splatmap to the texture layer matching the index provided.", "void terrain.set_layer_splatmap(int index, string splatmap_path)");
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(TextureScriptBindings::ImportSplatMaps, terrain, import_layer_splatmaps,
+    "Imports splatmaps.", "void terrain.import_layer_splatmaps()");
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(TextureScriptBindings::SetTextureLayerName, terrain, set_layer_name,
+    "Renames the texture layer matching the index provided.", "void terrain.set_layer_name(int index, string layer_name)");
 
 #include <TerrainTexture.moc>

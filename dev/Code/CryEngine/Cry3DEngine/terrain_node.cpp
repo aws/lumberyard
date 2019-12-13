@@ -23,9 +23,8 @@
 #include <AABBSV.h>
 #include "LightEntity.h"
 #include "MTPseudoRandom.h"
-
-CProcVegetPoolMan* CTerrainNode::s_pProcObjPoolMan = NULL;
-SProcObjChunkPool* CTerrainNode::s_pProcObjChunkPool = NULL;
+#include <IVegetationPoolManager.h>
+#include <Terrain/Bus/TerrainProviderBus.h>
 
 void CTerrainNode::PropagateChangesToRoot()
 {
@@ -387,11 +386,10 @@ void CTerrainNode::RemoveProcObjects(bool bRecursive)
     // remove procedurally placed objects
     if (m_bProcObjectsReady)
     {
-        if (m_pProcObjPoolPtr)
+        if (m_vegetationSectorPtr)
         {
-            m_pProcObjPoolPtr->ReleaseAllObjects();
-            s_pProcObjPoolMan->ReleaseObject(m_pProcObjPoolPtr);
-            m_pProcObjPoolPtr = NULL;
+            Get3DEngine()->GetIVegetationPoolManager().ReleaseVegetationSector(m_vegetationSectorPtr);
+            m_vegetationSectorPtr = nullptr;
         }
 
         m_bProcObjectsReady = false;
@@ -577,6 +575,9 @@ bool CTerrainNode::CheckUpdateProcObjects(const SRenderingPassInfo& passInfo)
 
     CMTRand_int32 rndGen(gEnv->bNoRandomSeed ? 0 : m_nOriginX + m_nOriginY);
 
+    LegacyProceduralVegetation::IVegetationPoolManager& vegPoolManager = Get3DEngine()->GetIVegetationPoolManager();
+    const int maxVegetationInstancesPerSector = vegPoolManager.GetMaxVegetationInstancesPerSector();
+
     float nSectorSize = (float)(CTerrain::GetSectorSize() << m_nTreeLevel);
     for (int nLayer = 0; nLayer < m_DetailLayers.Count(); nLayer++)
     {
@@ -689,26 +690,20 @@ bool CTerrainNode::CheckUpdateProcObjects(const SRenderingPassInfo& passInfo)
                         {
                             continue; // skip creation of very small objects
                         }
-                        if (!m_pProcObjPoolPtr)
+
+                        if (!m_vegetationSectorPtr)
                         {
-                            m_pProcObjPoolPtr = s_pProcObjPoolMan->GetObject();
+                            m_vegetationSectorPtr = vegPoolManager.GetNextAvailableVegetationSector();
                         }
-
-                        CVegetation* pEnt = m_pProcObjPoolPtr->AllocateProcObject();
-                        assert(pEnt);
-
-                        pEnt->SetScale(fScale);
-                        pEnt->m_vPos = vWPos;
-
-                        pEnt->SetStatObjGroupIndex(nGroupId);
 
                         const uint32 nRnd = cry_random_uint32(); // keep fixed amount of cry_random() calls
                         const bool bRandomRotation = pGroup->bRandomRotation;
                         const int32 nRotationRange = pGroup->nRotationRangeToTerrainNormal;
+                        byte instanceAngle = 0;
 
                         if (bRandomRotation || nRotationRange >= 360)
                         {
-                            pEnt->m_ucAngle = static_cast<byte>(nRnd);
+                            instanceAngle = static_cast<byte>(nRnd);
                         }
                         else if (nRotationRange > 0)
                         {
@@ -716,39 +711,21 @@ bool CTerrainNode::CheckUpdateProcObjects(const SRenderingPassInfo& passInfo)
 
                             if (abs(vTerrainNormal.x) == 0.f && abs(vTerrainNormal.y) == 0.f)
                             {
-                                pEnt->m_ucAngle = static_cast<byte>(nRnd);
+                                instanceAngle = static_cast<byte>(nRnd);
                             }
                             else
                             {
                                 const float rndDegree = (float)-nRotationRange * 0.5f + (float)(nRnd % (uint32)nRotationRange);
                                 const float finaleDegree = RAD2DEG(atan2f(vTerrainNormal.y, vTerrainNormal.x)) + rndDegree;
-                                pEnt->m_ucAngle = (byte)((finaleDegree / 360.0f) * 255.0f);
+                                instanceAngle = (byte)((finaleDegree / 360.0f) * 255.0f);
                             }
                         }
 
-                        AABB aabb = pEnt->CalcBBox();
-
-                        pEnt->SetRndFlags(ERF_PROCEDURAL, true);
-
-                        pEnt->m_fWSMaxViewDist = pEnt->GetMaxViewDist(); // note: duplicated
-
-                        pEnt->UpdateRndFlags();
-
-                        pEnt->Physicalize(true);
-
-                        float fObjRadius = aabb.GetRadius();
-                        if (fObjRadius > MAX_VALID_OBJECT_VOLUME || !_finite(fObjRadius) || fObjRadius <= 0)
-                        {
-                            Warning("CTerrainNode::CheckUpdateProcObjects: Object has invalid bbox: %s,%s, GetRadius() = %.2f",
-                                pEnt->GetName(), pEnt->GetEntityClassName(), fObjRadius);
-                        }
-                        if (Get3DEngine()->IsObjectTreeReady())
-                        {
-                            Get3DEngine()->GetObjectTree()->InsertObject(pEnt, aabb, fObjRadius, aabb.GetCenter());
-                        }
+                        bool instanceAddedSuccess = vegPoolManager.AddVegetationInstanceToSector(m_vegetationSectorPtr, fScale, vWPos, nGroupId, instanceAngle);
+                        AZ_Assert(instanceAddedSuccess, "Failed to add a vegetation instance");
 
                         nInstancesCounter++;
-                        if (nInstancesCounter >= (MAX_PROC_OBJ_CHUNKS_NUM / GetCVars()->e_ProcVegetationMaxSectorsInCache) * GetCVars()->e_ProcVegetationMaxObjectsInChunk)
+                        if (nInstancesCounter >= maxVegetationInstancesPerSector)
                         {
                             m_bProcObjectsReady = true;
                             AZ_Warning("ProcVegetation", GetCVars()->e_ProcVegetation < 2, "Exceeded maximum procedural vegetation count for terrain node: %d.", nInstancesCounter);
@@ -762,75 +739,6 @@ bool CTerrainNode::CheckUpdateProcObjects(const SRenderingPassInfo& passInfo)
 
     m_bProcObjectsReady = true;
     return true;
-}
-
-CVegetation* CProcObjSector::AllocateProcObject()
-{
-    FUNCTION_PROFILER_3DENGINE;
-
-    // find pool id
-    int nLastPoolId = m_nProcVegetNum / GetCVars()->e_ProcVegetationMaxObjectsInChunk;
-    if (nLastPoolId >= m_ProcVegetChunks.Count())
-    {
-        m_ProcVegetChunks.PreAllocate(nLastPoolId + 1, nLastPoolId + 1);
-        SProcObjChunk* pChunk = m_ProcVegetChunks[nLastPoolId] = CTerrainNode::GetProcObjChunkPool()->GetObject();
-
-        // init objects
-        for (int o = 0; o < GetCVars()->e_ProcVegetationMaxObjectsInChunk; o++)
-        {
-            pChunk->m_pInstances[o].Init();
-        }
-    }
-
-    // find empty slot id and return pointer to it
-    int nNextSlotInPool = m_nProcVegetNum - nLastPoolId * GetCVars()->e_ProcVegetationMaxObjectsInChunk;
-    CVegetation* pObj = &(m_ProcVegetChunks[nLastPoolId]->m_pInstances)[nNextSlotInPool];
-    m_nProcVegetNum++;
-    return pObj;
-}
-
-void CProcObjSector::ReleaseAllObjects()
-{
-    for (int i = 0; i < m_ProcVegetChunks.Count(); i++)
-    {
-        SProcObjChunk* pChunk = m_ProcVegetChunks[i];
-        for (int o = 0; o < GetCVars()->e_ProcVegetationMaxObjectsInChunk; o++)
-        {
-            pChunk->m_pInstances[o].ShutDown();
-        }
-        CTerrainNode::GetProcObjChunkPool()->ReleaseObject(m_ProcVegetChunks[i]);
-    }
-    m_ProcVegetChunks.Clear();
-    m_nProcVegetNum = 0;
-}
-
-void CProcObjSector::GetMemoryUsage(ICrySizer* pSizer) const
-{
-    pSizer->AddObject(this, sizeof(*this));
-
-    pSizer->AddObject(m_ProcVegetChunks);
-
-    for (int i = 0; i < m_ProcVegetChunks.Count(); i++)
-    {
-        pSizer->AddObject(m_ProcVegetChunks[i], sizeof(CVegetation) * GetCVars()->e_ProcVegetationMaxObjectsInChunk);
-    }
-}
-
-CProcObjSector::~CProcObjSector()
-{
-    FUNCTION_PROFILER_3DENGINE;
-
-    ReleaseAllObjects();
-}
-
-void SProcObjChunk::GetMemoryUsage(class ICrySizer* pSizer) const
-{
-    pSizer->AddObject(this, sizeof(*this));
-
-    if (m_pInstances)
-    {
-        pSizer->AddObject(m_pInstances, sizeof(CVegetation) * GetCVars()->e_ProcVegetationMaxObjectsInChunk);
-    }
 }
 
 void CTerrainNode::IntersectTerrainAABB(const AABB& aabbBox, PodArray<CTerrainNode*>& lstResult)
@@ -1139,6 +1047,13 @@ void CTerrainNode::Render(const SRendParams& RendParams, const SRenderingPassInf
 {
     FUNCTION_PROFILER_3DENGINE;
 
+    // Disable legacy terrain shadow rendering if new terrain is active.
+    // NEW-TERRAIN LY-101543:  Need to replace specific terrain calls with abstracted API
+    if (Terrain::TerrainProviderRequestBus::HasHandlers())
+    {
+        return;
+    }
+
     // render only prepared nodes for now
     if (!GetLeafData() || !GetLeafData()->m_pRenderMesh)
     {
@@ -1202,17 +1117,6 @@ int CTerrainNode::GetSectorSizeInHeightmapUnits() const
     int nSectorSize = CTerrain::GetSectorSize() << m_nTreeLevel;
     return nSectorSize / CTerrain::GetHeightMapUnitSize();
 }
-
-SProcObjChunk::SProcObjChunk()
-{
-    m_pInstances = new CVegetation[GetCVars()->e_ProcVegetationMaxObjectsInChunk];
-}
-
-SProcObjChunk::~SProcObjChunk()
-{
-    delete[] m_pInstances;
-}
-
 
 CTerrainNode* CTerrain::FindMinNodeContainingBox(const AABB& someBox)
 {

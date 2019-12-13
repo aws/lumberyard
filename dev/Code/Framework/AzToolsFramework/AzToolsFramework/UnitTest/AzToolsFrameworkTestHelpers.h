@@ -26,7 +26,9 @@
 
 #include <ostream>
 
+AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") // warning suppressed: constant used in conditional expression
 #include <QtTest/QtTest>
+AZ_POP_DISABLE_WARNING
 
 namespace AZ
 {
@@ -42,8 +44,10 @@ namespace AZ
 
 namespace UnitTest
 {
+    AZ_PUSH_DISABLE_WARNING(4100,"-Wno-unused-parameter")
     // matcher to make tests easier to read and failures more useful (more information is included in the output)
     MATCHER_P(IsClose, v, "") { return arg.IsClose(v); }
+    AZ_POP_DISABLE_WARNING
 
     /// Base fixture for ToolsApplication editor tests.
     class ToolsApplicationFixture
@@ -104,7 +108,7 @@ namespace UnitTest
         void RemoveActionViaBus(QAction* action) override;
         void EnableDefaultActions() override {}
         void DisableDefaultActions() override {}
-        void AttachOverride(QWidget* object) override {}
+        void AttachOverride(QWidget* object) override { AZ_UNUSED(object); }
         void DetachOverride() override {}
 
     public:

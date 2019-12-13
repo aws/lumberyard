@@ -284,6 +284,8 @@ void CD3D9Renderer::RT_Draw2dImageInternal(C2dImage* images, uint32 numImages, b
         #include "Xenia/D3DRenderThread_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DRenderThread_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DRenderThread_cpp_salem.inl"
     #endif
 #endif
         }

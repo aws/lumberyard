@@ -225,6 +225,23 @@ namespace AzToolsFramework
             return QColor::fromRgb(m_editableLayerProperties.m_color.GetR8(), m_editableLayerProperties.m_color.GetG8(), m_editableLayerProperties.m_color.GetB8());
         }
 
+        AzToolsFramework::Layers::LayerProperties::SaveFormat EditorLayerComponent::GetSaveFormat()
+        {
+            if (m_editableLayerProperties.m_saveAsBinary)
+            {
+                return LayerProperties::SaveFormat::Binary;
+            } 
+            else 
+            {
+                return LayerProperties::SaveFormat::Xml;
+            }
+        }
+
+        bool EditorLayerComponent::IsSaveFormatBinary()
+        {
+            return m_editableLayerProperties.m_saveAsBinary;
+        }
+
         bool EditorLayerComponent::IsLayerNameValid()
         {
             LayerResult fileNameGenerationResult = GenerateLayerFileName();
@@ -261,6 +278,11 @@ namespace AzToolsFramework
                 return;
             }
             SetUnsavedChanges(true);
+        }
+
+        void EditorLayerComponent::SetOverwriteFlag(bool set)
+        {
+            m_overwriteCheck = set;
         }
 
         void EditorLayerComponent::SetUnsavedChanges(bool unsavedChanges)
@@ -372,6 +394,8 @@ namespace AzToolsFramework
             // so users can change these without checking out the level file.
             m_cachedLayerProperties = loadedLayer.m_layerProperties;
             m_editableLayerProperties = m_cachedLayerProperties;
+            // We need to set the overwrite check to false as we know the layer is the same as the disk file
+            m_overwriteCheck = false;
 
             AddUniqueEntitiesAndInstancesFromEditorLayer(loadedLayer, sliceInstances, uniqueEntities);
 
@@ -445,6 +469,11 @@ namespace AzToolsFramework
         {
             delete m_loadedLayer;
             m_loadedLayer = nullptr;
+        }
+
+        void EditorLayerComponent::SetSaveFormat(LayerProperties::SaveFormat saveFormat) 
+        { 
+            m_editableLayerProperties.m_saveAsBinary = saveFormat == LayerProperties::SaveFormat::Binary;
         }
 
         LayerResult EditorLayerComponent::PrepareLayerForSaving(
@@ -716,6 +745,25 @@ namespace AzToolsFramework
 
             if (fileIO->Exists(layerFullPath.toUtf8().data()))
             {
+                if (m_overwriteCheck)
+                {
+                    QWidget* mainWindow = nullptr;
+                    AzToolsFramework::EditorRequestBus::BroadcastResult(
+                        mainWindow,
+                        &AzToolsFramework::EditorRequestBus::Events::GetMainWindow);
+                    AZStd::string levelName;
+                    AzToolsFramework::EditorRequestBus::BroadcastResult(levelName, &AzToolsFramework::EditorRequests::GetLevelName);
+                    int overwriteMessageResult = QMessageBox::warning(mainWindow,
+                        QObject::tr("Overwrite existing layer"),
+                        QObject::tr("A layer named %1 already exists in the %2/layers folder. Do you want to overwrite this layer?").arg(layerBaseFileName.c_str()).arg(levelName.c_str()),
+                        QMessageBox::Ok | QMessageBox::Cancel,
+                        QMessageBox::Ok);
+                    if (overwriteMessageResult  == QMessageBox::Cancel)
+                    {
+                       // The user chose to cancel this operation.
+                        return CleanupTempFileAndFolder(tempLayerFullPath, layerTempFolder, nullptr);
+                    }
+                }
                 AZ::IO::Result removeResult = fileIO->Remove(layerFullPath.toUtf8().data());
                 if (!removeResult)
                 {
@@ -734,6 +782,7 @@ namespace AzToolsFramework
                 return CleanupTempFileAndFolder(tempLayerFullPath, layerTempFolder, &failure);
             }
             SetUnsavedChanges(false);
+            m_overwriteCheck = false;
             return CleanupTempFolder(layerTempFolder, nullptr);
         }
 
@@ -834,6 +883,29 @@ namespace AzToolsFramework
             return AZ::Success(layerFullFileName);
         }
 
+        AZ::Outcome<AZStd::string, AZStd::string> EditorLayerComponent::GetLayerFullFilePath(const QString& levelAbsoluteFolder)
+        {
+            AZ::Outcome<AZStd::string, AZStd::string> layerFullNameResult = GetLayerFullFileName();
+            if (!layerFullNameResult.IsSuccess())
+            {
+                return layerFullNameResult;
+            }
+
+            AZStd::string layerFullFileName = layerFullNameResult.GetValue();
+            QDir layerFolder(levelAbsoluteFolder);
+            QString layerDirectory = GetLayerDirectory();
+
+            if (!layerFolder.cd(layerDirectory) || !layerFolder.exists(layerFullFileName.c_str()))
+            {
+                return AZ::Failure(AZStd::string());
+            }
+
+            AZStd::string fullFilePath;
+            AzFramework::StringFunc::Path::Join(levelAbsoluteFolder.toUtf8().data(), layerDirectory.toUtf8().data(), fullFilePath);
+            AzFramework::StringFunc::Path::Join(fullFilePath.c_str(), layerFullFileName.c_str(), fullFilePath);
+            return AZ::Success(fullFilePath);
+        }
+
         bool EditorLayerComponent::HasUnsavedChanges()
         {
             return m_hasUnsavedChanges;
@@ -919,12 +991,14 @@ namespace AzToolsFramework
                 return cleanupFailureResult;
             }
             AZ::IO::Result removeResult = fileIO->Remove(tempFile.toUtf8().data());
-if (!removeResult)
-{
-    return cleanupFailureResult;
-}
+            if (!removeResult)
+            {
+                return cleanupFailureResult;
+            }
 
-return CleanupTempFolder(layerTempFolder, &cleanupFailureResult);
+            // Any errors would have already been handled so we don't need to pass on an error.
+            LayerResult cleanupSuccessResult = LayerResult::CreateSuccess();
+            return CleanupTempFolder(layerTempFolder, &cleanupSuccessResult);
         }
 
         LayerResult EditorLayerComponent::CleanupTempFolder(const QDir& layerTempFolder, const LayerResult* currentFailure)
@@ -942,7 +1016,7 @@ return CleanupTempFolder(layerTempFolder, &cleanupFailureResult);
                 {
                     if (currentFailure)
                     {
-                        return cleanupFailureResult;
+                        return *currentFailure;
                     }
                     else
                     {
@@ -1135,8 +1209,7 @@ return CleanupTempFolder(layerTempFolder, &cleanupFailureResult);
             // The standard default color for layers is defined in a Qt JSON file that can't be accessed from here.
             AZ::Color missingLayerColor(0.5f, 0.5f, 0.5f, 1.0f);
             // Create a single layer matching the passed in ancestory.
-            AZ::Entity* newEntity = CreateLayerEntity(nearestLayerAcenstorName, missingLayerColor);
-            return newEntity->GetId();
+            return CreateLayerEntity(nearestLayerAcenstorName, missingLayerColor, LayerProperties::SaveFormat::Xml);
         }
 
         LayerResult EditorLayerComponent::UpdateListOfDiscoveredEntityIds(AZStd::unordered_set<AZ::EntityId> &discoveredEntityIds, const AZ::EntityId& newEntity)
@@ -1229,43 +1302,43 @@ return CleanupTempFolder(layerTempFolder, &cleanupFailureResult);
             return LayerResult::CreateSuccess();
         }
 
-        AZ::Entity* EditorLayerComponent::CreateLayerEntity(const AZStd::string& name, const AZ::Color& layerColor, const AZ::EntityId& optionalEntityId)
+        AZ::EntityId EditorLayerComponent::CreateLayerEntity(const AZStd::string& name, const AZ::Color& layerColor, const LayerProperties::SaveFormat& saveFormat, const AZ::EntityId& optionalEntityId)
         {
             AzToolsFramework::ScopedUndoBatch undo("New Layer");
-            AZ::Entity* newEntity = nullptr;
+            AZ::EntityId newEntityId;
             if (optionalEntityId.IsValid())
             {
                 AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
-                    newEntity,
-                    &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateEditorEntityWithId,
+                    newEntityId,
+                    &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateNewEditorEntityWithId,
                     name.c_str(),
                     optionalEntityId);
             }
             else
             {
                 AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
-                    newEntity,
-                    &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateEditorEntity,
+                    newEntityId,
+                    &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateNewEditorEntity,
                     name.c_str());
             }
 
-            if (!newEntity)
+            if (!newEntityId.IsValid())
             {
                 AZ_Error("Editor", false, "Unable to create a layer entity.");
-                return nullptr;
+                return newEntityId;
             }
 
             // Layers are not visible in the 3D viewport, turn them off.
             // The outliner won't allow anyone to turn them back on.
             AzToolsFramework::EditorVisibilityRequestBus::Event(
-                newEntity->GetId(),
+                newEntityId,
                 &AzToolsFramework::EditorVisibilityRequests::SetVisibilityFlag,
                 false);
 
             AzToolsFramework::EditorMetricsEventsBus::Broadcast(
                 &AzToolsFramework::EditorMetricsEventsBus::Events::EntityCreated,
-                newEntity->GetId());
-            AzToolsFramework::EntityIdList selection = { newEntity->GetId() };
+                newEntityId);
+            AzToolsFramework::EntityIdList selection = { newEntityId };
             AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(
                 &AzToolsFramework::ToolsApplicationRequests::Bus::Events::SetSelectedEntities,
                 selection);
@@ -1273,21 +1346,22 @@ return CleanupTempFolder(layerTempFolder, &cleanupFailureResult);
             AzToolsFramework::Layers::EditorLayerComponent* newLayer = aznew AzToolsFramework::Layers::EditorLayerComponent();
 
             newLayer->SetLayerColor(layerColor);
+            newLayer->SetSaveFormat(saveFormat);
 
             AZStd::vector<AZ::Component*> newComponents;
             newComponents.push_back(newLayer);
 
             AzToolsFramework::Layers::EditorLayerCreationBus::Broadcast(
                 &AzToolsFramework::Layers::EditorLayerCreationBus::Events::OnNewLayerEntity,
-                *newEntity,
+                newEntityId,
                 newComponents);
 
             AzToolsFramework::EntityCompositionRequestBus::Broadcast(
-                &AzToolsFramework::EntityCompositionRequests::AddExistingComponentsToEntity,
-                newEntity,
+                &AzToolsFramework::EntityCompositionRequests::AddExistingComponentsToEntityById,
+                newEntityId,
                 newComponents);
 
-            return newEntity;
+            return newEntityId;
         }
 
         void EditorLayerComponent::RecoverLayer(const AZStd::string& fullFilePath)
@@ -1350,9 +1424,17 @@ return CleanupTempFolder(layerTempFolder, &cleanupFailureResult);
             }
 
             AzToolsFramework::ScopedUndoBatch undo("RecoverLayer");
-            AZ::Entity* newLayerEntity = CreateLayerEntity(newLayerName, editorLayer->m_layerProperties.m_color, editorLayer->m_layerEntityId);
 
-            if (newLayerEntity == nullptr)
+            LayerProperties::SaveFormat saveFormat = LayerProperties::SaveFormat::Xml;
+            
+            if (editorLayer->m_layerProperties.m_saveAsBinary)
+            {
+                saveFormat = LayerProperties::SaveFormat::Binary;
+            }
+
+            AZ::EntityId newLayerEntityId = CreateLayerEntity(newLayerName, editorLayer->m_layerProperties.m_color, saveFormat, editorLayer->m_layerEntityId);
+
+            if (!newLayerEntityId.IsValid())
             {
                 return LayerResult(LayerResultStatus::Error, "Lumberyard was unable to create a layer entity.");
             }
@@ -1361,7 +1443,7 @@ return CleanupTempFolder(layerTempFolder, &cleanupFailureResult);
             if (layerParentId.IsValid())
             {
                 AZ::TransformBus::Event(
-                    newLayerEntity->GetId(),
+                    newLayerEntityId,
                     &AZ::TransformBus::Events::SetParent,
                     layerParentId);
             }

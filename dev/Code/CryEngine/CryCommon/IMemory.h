@@ -15,8 +15,10 @@
 #define CRYINCLUDE_CRYCOMMON_IMEMORY_H
 #pragma once
 
+#include <smartptr.h>
 #include <IDefragAllocator.h> // <> required for Interfuscator
 #include <IGeneralMemoryHeap.h> // <> required for Interfuscator
+#include <smartptr.h>
 
 struct IMemoryBlock
     : public CMultiThreadRefCount

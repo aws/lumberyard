@@ -14,13 +14,17 @@
 #include "ImGuiManager.h"
 
 #ifdef IMGUI_ENABLED
+#include <AzCore/Component/TickBus.h>
 #include "ImGuiBus.h"
+#include "ImGuiLYAssetExplorer.h"
+#include "ImGuiLYCameraMonitor.h"
 #include "ImGuiLYEntityOutliner.h"
 
 namespace ImGui
 {
     class ImGuiLYCommonMenu
         : public ImGuiUpdateListenerBus::Handler
+        , public AZ::TickBus::Handler
     {
     public:
         ImGuiLYCommonMenu();
@@ -29,12 +33,26 @@ namespace ImGui
         void Initialize();
         void Shutdown();
 
-        ////////////////////////////////////////////////////////////////////////
-        // ImGuiUpdateListenerBus interface implementation
+        // -- ImGuiUpdateListenerBus::Handler Interface ----------------------------
         void OnImGuiUpdate() override;
-        ////////////////////////////////////////////////////////////////////////
+        // -- ImGuiUpdateListenerBus::Handler Interface ----------------------------
+
+        // -- AZ::TickBus::Handler Interface ---------------------------------------
+        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+        // -- AZ::TickBus::Handler Interface ---------------------------------------
 
     private:
+        void StartTelemetryCapture();
+        void StopTelemetryCapture();
+        void OnImGuiUpdate_DrawControllerLegend();
+
+        float m_telemetryCaptureTime;
+        float m_telemetryCaptureTimeRemaining;
+        DisplayState m_telemetryCapturePreCaptureState;
+        bool m_controllerLegendWindowVisible;
+
+        ImGuiLYAssetExplorer m_assetExplorer;
+        ImGuiLYCameraMonitor m_cameraMonitor;
         ImGuiLYEntityOutliner m_entityOutliner;
     };
 }

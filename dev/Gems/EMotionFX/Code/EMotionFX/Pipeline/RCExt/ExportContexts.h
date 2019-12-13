@@ -116,7 +116,7 @@ namespace EMotionFX
             AZ_RTTI(ActorBuilderContext, "{92048988-F567-4E6C-B6BD-3EFD2A5B6AA1}", AZ::SceneAPI::Events::ICallContext);
 
             ActorBuilderContext(const AZ::SceneAPI::Containers::Scene& scene, const AZStd::string& outputDirectory,
-                const Group::IActorGroup& actorGroup, EMotionFX::Actor* actor, AZ::RC::Phase phase);
+                const Group::IActorGroup& actorGroup, EMotionFX::Actor* actor, AZStd::vector<AZStd::string>& materialReferences, AZ::RC::Phase phase);
             ActorBuilderContext(const ActorBuilderContext& copyContext, AZ::RC::Phase phase);
             ActorBuilderContext(const ActorBuilderContext& copyContext) = delete;
             ~ActorBuilderContext() override = default;
@@ -127,6 +127,7 @@ namespace EMotionFX
             const AZStd::string&                            m_outputDirectory;
             EMotionFX::Actor*                               m_actor;
             const Group::IActorGroup&                       m_group;
+            AZStd::vector<AZStd::string>&                   m_materialReferences;
             const AZ::RC::Phase                             m_phase;
         };
         

@@ -24,23 +24,27 @@ namespace stl
 {
     template <size_t Alignment>
     class AlignedAllocator
-        : public AZ::AllocatorBase<AZ::ChildAllocatorSchema<AZ::LegacyAllocator>>
+        : public AZ::SimpleSchemaAllocator<AZ::ChildAllocatorSchema<AZ::LegacyAllocator>>
     {
     public:
         AZ_TYPE_INFO(AlignedAllocator, "{DF152D8A-36ED-4A2A-9FA6-734F212716C6}");
-        using Base = AZ::AllocatorBase<AZ::ChildAllocatorSchema<AZ::LegacyAllocator>>;
+        using Base = AZ::SimpleSchemaAllocator<AZ::ChildAllocatorSchema<AZ::LegacyAllocator>>;
         using Descriptor = Base::Descriptor;
         using Schema = AZ::ChildAllocatorSchema<AZ::LegacyAllocator>;
 
         AlignedAllocator()
             : Base("AlignedAllocator", "Legacy Cry Aligned Allocator")
         {
-            m_schema = new (&m_schemaStorage) Schema(Descriptor());
         }
 
-        pointer_type Allocate(size_type byteSize, size_type /*alignment*/, int flags /* = 0 */, const char* name /* = 0 */, const char* fileName /* = 0 */, int lineNum /* = 0 */, unsigned int suppressStackRecord /* = 0 */)
+        pointer_type Allocate(size_type byteSize, size_type /*alignment*/, int flags /* = 0 */, const char* name /* = 0 */, const char* fileName /* = 0 */, int lineNum /* = 0 */, unsigned int suppressStackRecord /* = 0 */) override
         {
             return Base::Allocate(byteSize, Alignment, flags, name, fileName, lineNum, suppressStackRecord);
+        }
+
+        void DeAllocate(pointer_type ptr, size_type byteSize, size_type alignment) override
+        {
+            return Base::DeAllocate(ptr, byteSize, Alignment);
         }
 
         pointer_type ReAllocate(pointer_type ptr, size_type newSize, size_type /*newAlignment*/) override
@@ -105,31 +109,7 @@ namespace stl
 namespace AZ
 {
     template <size_t Alignment>
-    class AllocatorInstance<stl::AlignedAllocator<Alignment>>
+    class AllocatorInstance<stl::AlignedAllocator<Alignment>> : public Internal::AllocatorInstanceBase<stl::AlignedAllocator<Alignment>, AllocatorStorage::ModuleStoragePolicy<stl::AlignedAllocator<Alignment>>>
     {
-    public:
-        using AllocatorType = stl::AlignedAllocator<Alignment>;
-        using Descriptor = typename AllocatorType::Descriptor;
-
-        static AllocatorType& Get()
-        {
-            static AllocatorType s_allocator;
-            return s_allocator;
-        }
-
-        static void Create(const Descriptor& desc = Descriptor())
-        {
-
-        }
-
-        static void Destroy()
-        {
-            Get().Destroy();
-        }
-
-        AZ_FORCE_INLINE static bool IsReady()
-        {
-            return true;
-        }
     };
 }

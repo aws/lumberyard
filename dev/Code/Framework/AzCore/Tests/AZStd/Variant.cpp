@@ -340,13 +340,8 @@ namespace UnitTest
     {
         TEST_F(VariantTest, DefaultConstructorVariantSetsIndexZero)
         {
-            // VS2015 cannot initialize a variant as a constexpr using the default constructor
-#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC > 1900
             constexpr AZStd::variant<AZStd::monostate> monostateVariant;
             static_assert(monostateVariant.index() == 0U, "Default Constructed variant should be constructed to first alternative");
-#else
-            AZStd::variant<AZStd::monostate> monostateVariant;
-#endif
             EXPECT_EQ(0U, monostateVariant.index());
         }
         TEST_F(VariantTest, DefaultConstructorSucceedsWhenOnlyFirstAlternativeIsDefaultConstructible)
@@ -669,7 +664,7 @@ namespace UnitTest
         TEST_F(VariantTest, IndexGetLValueVariantConstAlternativeSucceeds)
         {
             // Set const alternative on construct
-            AZStd::variant<int32_t, const int64_t> testVariant(23LL);
+            AZStd::variant<int32_t, const int64_t> testVariant(static_cast<int64_t>(23LL));
             ASSERT_EQ(1, testVariant.index());
             EXPECT_EQ(23LL, AZStd::get<1>(testVariant));
             static_assert(AZStd::is_same<decltype(AZStd::get<1>(testVariant)), const int64_t&>::value,
@@ -688,7 +683,7 @@ namespace UnitTest
         TEST_F(VariantTest, IndexGetConstLValueVariantConstAlternativeSucceeds)
         {
             // Set const alternative on construct
-            const AZStd::variant<int32_t, const int64_t> testVariant(23LL);
+            const AZStd::variant<int32_t, const int64_t> testVariant(static_cast<int64_t>(23LL));
             ASSERT_EQ(1, testVariant.index());
             EXPECT_EQ(23LL, AZStd::get<1>(testVariant));
             static_assert(AZStd::is_same<decltype(AZStd::get<1>(testVariant)), const int64_t&>::value,
@@ -707,7 +702,7 @@ namespace UnitTest
         TEST_F(VariantTest, IndexGetRValueVariantConstAlternativeSucceeds)
         {
             // Set const alternative on construct
-            AZStd::variant<int32_t, const int64_t> testVariant(23LL);
+            AZStd::variant<int32_t, const int64_t> testVariant(static_cast<int64_t>(23LL));
             ASSERT_EQ(1, testVariant.index());
             
             static_assert(AZStd::is_same<decltype(AZStd::get<1>(AZStd::move(testVariant))), const int64_t&&>::value,
@@ -728,7 +723,7 @@ namespace UnitTest
         TEST_F(VariantTest, IndexGetConstRValueVariantConstAlternativeSucceeds)
         {
             // Set const alternative on construct
-            const AZStd::variant<int32_t, const int64_t> testVariant(23LL);
+            const AZStd::variant<int32_t, const int64_t> testVariant(static_cast<int64_t>(23LL));
             ASSERT_EQ(1, testVariant.index());
             
             static_assert(AZStd::is_same<decltype(AZStd::get<1>(AZStd::move(testVariant))), const int64_t&&>::value,
@@ -749,7 +744,7 @@ namespace UnitTest
         TEST_F(VariantTest, TypeGetLValueVariantConstAlternativeSucceeds)
         {
             // Set const alternative on construct
-            AZStd::variant<int32_t, const int64_t> testVariant(23LL);
+            AZStd::variant<int32_t, const int64_t> testVariant(static_cast<int64_t>(23LL));
             ASSERT_EQ(1, testVariant.index());
             EXPECT_EQ(23LL, AZStd::get<const int64_t>(testVariant));
             static_assert(AZStd::is_same<decltype(AZStd::get<const int64_t>(testVariant)), const int64_t&>::value,
@@ -768,7 +763,7 @@ namespace UnitTest
         TEST_F(VariantTest, TypeGetConstLValueVariantConstAlternativeSucceeds)
         {
             // Set const alternative on construct
-            const AZStd::variant<int32_t, const int64_t> testVariant(23LL);
+            const AZStd::variant<int32_t, const int64_t> testVariant(static_cast<int64_t>(23LL));
             ASSERT_EQ(1, testVariant.index());
             EXPECT_EQ(23LL, AZStd::get<const int64_t>(testVariant));
             static_assert(AZStd::is_same<decltype(AZStd::get<const int64_t>(testVariant)), const int64_t&>::value,
@@ -787,7 +782,7 @@ namespace UnitTest
         TEST_F(VariantTest, TypeGetRValueVariantConstAlternativeSucceeds)
         {
             // Set const alternative on construct
-            AZStd::variant<int32_t, const int64_t> testVariant(23LL);
+            AZStd::variant<int32_t, const int64_t> testVariant(static_cast<int64_t>(23LL));
             ASSERT_EQ(1, testVariant.index());
 
             static_assert(AZStd::is_same<decltype(AZStd::get<const int64_t>(AZStd::move(testVariant))), const int64_t&&>::value,
@@ -808,7 +803,7 @@ namespace UnitTest
         TEST_F(VariantTest, TypeGetConstRValueVariantConstAlternativeSucceeds)
         {
             // Set const alternative on construct
-            const AZStd::variant<int32_t, const int64_t> testVariant(23LL);
+            const AZStd::variant<int32_t, const int64_t> testVariant(static_cast<int64_t>(23LL));
             ASSERT_EQ(1, testVariant.index());
 
             static_assert(AZStd::is_same<decltype(AZStd::get<const int64_t>(AZStd::move(testVariant))), const int64_t&&>::value,
@@ -1033,24 +1028,18 @@ namespace UnitTest
     {
         constexpr VariantTestInternal::ConstexprVisitorHelper constexprHelper{};
         using TestVariant = AZStd::variant<uint32_t>;
-#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC > 1900
+        // variant visiting ends up calling array operator [] which is constexpr but calls AZ_Assert which is not constexpr, so it cannot be solved in a static_assert
         constexpr TestVariant testVariant(21);
         static_assert(AZStd::visit(constexprHelper, testVariant) == 21, "Constexpr Variant not equal to expected result");
-#else
-        TestVariant testVariant(21);
-#endif
         EXPECT_EQ(21, AZStd::visit(constexprHelper, testVariant));
     }
     TEST_F(VariantTest, VisitWithMultipleAlternativeEvaluatedInConstexprContextSucceeds)
     {
         constexpr VariantTestInternal::ConstexprVisitorHelper constexprHelper{};
         using TestVariant = AZStd::variant<int16_t, int64_t, char>;
-#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC > 1900
-        constexpr TestVariant testVariant(42LL);
+        // variant visiting ends up calling array operator [] which is constexpr but calls AZ_Assert which is not constexpr, so it cannot be solved in a static_assert
+        constexpr TestVariant testVariant(static_cast<int64_t>(42LL));
         static_assert(AZStd::visit(constexprHelper, testVariant) == 42, "Constexpr Variant not equal to expected result");
-#else
-        TestVariant testVariant(42LL);
-#endif
         EXPECT_EQ(42, AZStd::visit(constexprHelper, testVariant));
     }
     TEST_F(VariantTest, VisitWithMultipleVariantEvaluatedInConstexprContextSucceeds)
@@ -1058,17 +1047,12 @@ namespace UnitTest
             using TestVariant1 = AZStd::variant<int32_t>;
             using TestVariant2 = AZStd::variant<int32_t, char*, int64_t>;
             using TestVariant3 = AZStd::variant<bool, uint32_t, int32_t>;
-#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC > 1900
+            // variant visiting ends up calling array operator [] which is constexpr but calls AZ_Assert which is not constexpr, so it cannot be solved in a static_assert
             constexpr TestVariant1 testVariant1;
             constexpr TestVariant2 testVariant2(nullptr);
             constexpr TestVariant3 testVariant3;
             static_assert(AZStd::visit(VariantTestInternal::VariadicVariantSizeof{}, testVariant1, testVariant2, testVariant3) == 3,
                 "Sizeof visitor should return the same number of variants supplied to it");
-#else
-            TestVariant1 testVariant1;
-            TestVariant2 testVariant2(nullptr);
-            TestVariant3 testVariant3;
-#endif
             EXPECT_EQ(3, AZStd::visit(VariantTestInternal::VariadicVariantSizeof{}, testVariant1, testVariant2, testVariant3));
     }
 
@@ -1098,7 +1082,7 @@ namespace UnitTest
         {
             AZStd::monostate testMonostate1;
             size_t resultHash1 = AZStd::hash<AZStd::monostate>{}(testMonostate1);
-            const AZStd::monostate testMonostate2;
+            const AZStd::monostate testMonostate2 {};
             size_t resultHash2 = AZStd::hash<AZStd::monostate>{}(testMonostate2);
 
             EXPECT_EQ(resultHash1, resultHash2);

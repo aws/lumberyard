@@ -10,7 +10,7 @@
 *
 */
 
-#include "SevenZipComponent.h"
+#include "ArchiveComponent.h"
 
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -20,13 +20,28 @@
 
 #include <AzToolsFramework/Process/ProcessCommunicator.h>
 #include <AzToolsFramework/Process/ProcessWatcher.h>
+#include <AzFramework/FileFunc/FileFunc.h>
 
 namespace AzToolsFramework
 {
-    static const char* s_traceName = "7z";
+    // Forward declare platform specific functions
+    namespace Platform
+    {
+        AZStd::string GetZipExePath();
+        AZStd::string GetUnzipExePath();
+
+        AZStd::string GetCreateArchiveCommand(const AZStd::string& archivePath, const AZStd::string& dirToArchive);
+        AZStd::string GetExtractArchiveCommand(const AZStd::string& archivePath, const AZStd::string& destinationPath, bool includeRoot);
+        AZStd::string GetAddFileToArchiveCommand(const AZStd::string& archivePath, const AZStd::string& file);
+        AZStd::string GetAddFilesToArchiveCommand(const AZStd::string& archivePath, const AZStd::string& listFilePath);
+        AZStd::string GetExtractFileCommand(const AZStd::string& archivePath, const AZStd::string& fileInArchive, const AZStd::string& destinationPath, bool overWrite);
+        AZStd::string GetListFilesInArchiveCommand(const AZStd::string& archivePath);
+        void ParseConsoleOutputFromListFilesInArchive(const AZStd::string& consoleOutput, AZStd::vector<AZStd::string>& fileEntries);
+        bool IsAddFilesToArchiveCommandSupported();
+    }
+
+    const char s_traceName[] = "ArchiveComponent";
     const unsigned int g_sleepDuration = 1;
-    const char extractArchiveCmd[] = R"(x -mmt=off "%s" -o"%s\*" -aos)";
-    const char extractArchiveWithoutRootCmd[] = R"(x -mmt=off "%s" -o"%s" -aos)";
 
     // Echoes all results of stdout and stderr to console and never blocks
     class ConsoleEchoCommunicator
@@ -92,16 +107,15 @@ namespace AzToolsFramework
         AzToolsFramework::ProcessCommunicator* m_communicator = nullptr;
     };
 
-    void SevenZipComponent::Activate()
+    void ArchiveComponent::Activate()
     {
-        const char* rootPath = nullptr;
-        EBUS_EVENT_RESULT(rootPath, AZ::ComponentApplicationBus, GetAppRoot);
-        AzFramework::StringFunc::Path::ConstructFull(rootPath, "Tools", "7za", ".exe", m_7zPath);
+        m_zipExePath = Platform::GetZipExePath();
+        m_unzipExePath = Platform::GetUnzipExePath();
 
         ArchiveCommands::Bus::Handler::BusConnect();
     }
 
-    void SevenZipComponent::Deactivate()
+    void ArchiveComponent::Deactivate()
     {
         ArchiveCommands::Bus::Handler::BusDisconnect();
 
@@ -117,17 +131,19 @@ namespace AzToolsFramework
         m_threadInfoMap.clear();
     }
 
-    void SevenZipComponent::Reflect(AZ::ReflectContext * context)
+    void ArchiveComponent::Reflect(AZ::ReflectContext * context)
     {
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
-            serializeContext->Class<SevenZipComponent, AZ::Component>()
+            serializeContext->Class<ArchiveComponent, AZ::Component>()
+                ->Version(2)
+                ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AZ_CRC("AssetBuilder", 0xc739c7d7) }))
                 ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
-                editContext->Class<SevenZipComponent>(
-                    "Seven Zip", "Handles creation and extraction of zip archives.")
+                editContext->Class<ArchiveComponent>(
+                    "Archive", "Handles creation and extraction of zip archives.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Editor")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
@@ -136,66 +152,227 @@ namespace AzToolsFramework
         }
     }
 
-    void SevenZipComponent::CreateArchive(const AZStd::string& archivePath, const AZStd::string& dirToArchive, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback)
+    void ArchiveComponent::CreateArchive(const AZStd::string& archivePath, const AZStd::string& dirToArchive, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback)
     {
         AZStd::string commandLineArgs = AZStd::string::format(R"(a -tzip -mx=1 "%s" -r "%s\*")", archivePath.c_str(), dirToArchive.c_str());
-        Launch7z(commandLineArgs, respCallback, taskHandle);
+        LaunchZipExe(m_zipExePath, commandLineArgs, respCallback, taskHandle);
     }
 
-    bool SevenZipComponent::CreateArchiveBlocking(const AZStd::string& archivePath, const AZStd::string& dirToArchive)
+    bool ArchiveComponent::CreateArchiveBlocking(const AZStd::string& archivePath, const AZStd::string& dirToArchive)
     {
-        AZStd::string commandLineArgs = AZStd::string::format(R"(a -tzip -mx=1 "%s" -r "%s\*")", archivePath.c_str(), dirToArchive.c_str());
         bool success = false;
         auto createArchiveCallback = [&success](bool result, AZStd::string consoleOutput) {
             success = result;
         };
-        Launch7z(commandLineArgs, createArchiveCallback);
+
+        AZStd::string commandLineArgs = Platform::GetCreateArchiveCommand(archivePath, dirToArchive);
+
+        if (commandLineArgs.empty())
+        {
+            // The platform-specific implementation has already thrown its own error, no need to throw another one
+            return false;
+        }
+
+        LaunchZipExe(m_zipExePath, commandLineArgs, createArchiveCallback, AZ::Uuid::CreateNull(), dirToArchive, false);
         return success;
     }
 
-    void SevenZipComponent::ExtractArchive(const AZStd::string& archivePath, const AZStd::string& destinationPath, AZ::Uuid taskHandle, const ArchiveResponseCallback& respCallback)
+    void ArchiveComponent::ExtractArchive(const AZStd::string& archivePath, const AZStd::string& destinationPath, AZ::Uuid taskHandle, const ArchiveResponseCallback& respCallback)
     {
         ArchiveResponseOutputCallback responseHandler = [respCallback](bool result, AZStd::string /*outputStr*/) { respCallback(result); };
         ExtractArchiveOutput(archivePath, destinationPath, taskHandle, responseHandler);
     }
 
-    void SevenZipComponent::ExtractArchiveOutput(const AZStd::string& archivePath, const AZStd::string& destinationPath, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback)
+    void ArchiveComponent::ExtractArchiveOutput(const AZStd::string& archivePath, const AZStd::string& destinationPath, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback)
     {
-        // Extract archive path to destionationPath\<archiveFileName> and skipping extracting of existing files (aos)
-        AZStd::string commandLineArgs = AZStd::string::format(extractArchiveCmd, archivePath.c_str(), destinationPath.c_str());
-        Launch7z(commandLineArgs, respCallback, taskHandle);
-    }
+        AZStd::string commandLineArgs = Platform::GetExtractArchiveCommand(archivePath, destinationPath, true);
 
-    void SevenZipComponent::ExtractArchiveWithoutRoot(const AZStd::string& archivePath, const AZStd::string& destinationPath, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback)
-    {
-        AZStd::string commandLineArgs;
-        // Extract archive path to destionationPath\<archiveFileName> and skipping extracting of existing files (aos)
-        commandLineArgs = AZStd::string::format(extractArchiveWithoutRootCmd, archivePath.c_str(), destinationPath.c_str());
-        Launch7z(commandLineArgs, respCallback, taskHandle);
-    }
-
-    bool SevenZipComponent::ExtractArchiveBlocking(const AZStd::string& archivePath, const AZStd::string& destinationPath, bool extractWithRootDirectory)
-    {
-        AZStd::string commandLineArgs;
-        if (extractWithRootDirectory)
+        if (commandLineArgs.empty())
         {
-            // Extract archive path to destionationPath\<archiveFileName> and skipping extracting of existing files (aos)
-            commandLineArgs = AZStd::string::format(extractArchiveCmd, archivePath.c_str(), destinationPath.c_str());
+            // The platform-specific implementation has already thrown its own error, no need to throw another one
+            return;
+        }
+
+        LaunchZipExe(m_unzipExePath, commandLineArgs, respCallback, taskHandle);
+    }
+
+    void ArchiveComponent::ExtractArchiveWithoutRoot(const AZStd::string& archivePath, const AZStd::string& destinationPath, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback)
+    {
+        AZStd::string commandLineArgs = Platform::GetExtractArchiveCommand(archivePath, destinationPath, false);
+
+        if (commandLineArgs.empty())
+        {
+            // The platform-specific implementation has already thrown its own error, no need to throw another one
+            return;
+        }
+
+        LaunchZipExe(m_unzipExePath, commandLineArgs, respCallback, taskHandle);
+    }
+
+    void ArchiveComponent::ExtractFile(const AZStd::string& archivePath, const AZStd::string& fileInArchive, const AZStd::string& destinationPath, bool overWrite, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback)
+    {
+        AZStd::string commandLineArgs = AzToolsFramework::Platform::GetExtractFileCommand(archivePath, fileInArchive, destinationPath, overWrite);
+        if (commandLineArgs.empty())
+        {
+            // The platform-specific implementation has already thrown its own error, no need to throw another one
+            return;
+        }
+        LaunchZipExe(m_unzipExePath, commandLineArgs, respCallback, taskHandle);
+    }
+
+    bool ArchiveComponent::ExtractFileBlocking(const AZStd::string& archivePath, const AZStd::string& fileInArchive, const AZStd::string& destinationPath, bool overWrite)
+    {
+        AZStd::string commandLineArgs = AzToolsFramework::Platform::GetExtractFileCommand(archivePath, fileInArchive, destinationPath, overWrite);
+        if (commandLineArgs.empty())
+        {
+            // The platform-specific implementation has already thrown its own error, no need to throw another one
+            return false;
+        }
+
+        bool success = false;
+        auto createArchiveCallback = [&success](bool result, AZStd::string consoleOutput) {
+            success = result;
+        };
+        LaunchZipExe(m_unzipExePath, commandLineArgs, createArchiveCallback);
+        return success;
+    }
+
+    void ArchiveComponent::ListFilesInArchive(const AZStd::string& archivePath, AZStd::vector<AZStd::string>& fileEntries, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback)
+    {
+        AZStd::string commandLineArgs = Platform::GetListFilesInArchiveCommand(archivePath);
+        
+        auto parseOutput = [respCallback, taskHandle, &fileEntries](bool exitCode, AZStd::string consoleOutput)
+        {
+            Platform::ParseConsoleOutputFromListFilesInArchive(consoleOutput, fileEntries);
+            AZ::TickBus::QueueFunction(respCallback, exitCode, AZStd::move(consoleOutput));
+        };
+        LaunchZipExe(m_unzipExePath, commandLineArgs, parseOutput, taskHandle, "", true);
+    }
+
+    bool ArchiveComponent::ListFilesInArchiveBlocking(const AZStd::string& archivePath, AZStd::vector<AZStd::string>& fileEntries)
+    {
+        AZStd::string listOutput;
+        AZStd::string commandLineArgs = Platform::GetListFilesInArchiveCommand(archivePath.c_str());
+        bool success = false;
+
+        auto parseOutput = [&success, &fileEntries](bool result, AZStd::string consoleOutput)
+        {
+            Platform::ParseConsoleOutputFromListFilesInArchive(consoleOutput, fileEntries);
+            success = result;
+        };
+        LaunchZipExe(m_unzipExePath, commandLineArgs, parseOutput, AZ::Uuid::CreateNull(), "", true);
+        return success;
+    }
+
+    void ArchiveComponent::AddFileToArchive(const AZStd::string& archivePath, const AZStd::string& workingDirectory, const AZStd::string& fileToAdd, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback)
+    {
+        AZStd::string commandLineArgs = Platform::GetAddFileToArchiveCommand(archivePath, fileToAdd);
+        if (commandLineArgs.empty())
+        {
+            // The platform-specific implementation has already thrown its own error, no need to throw another one
+            return;
+        }
+
+        LaunchZipExe(m_zipExePath, commandLineArgs, respCallback, taskHandle, workingDirectory);
+    }
+
+    bool ArchiveComponent::AddFileToArchiveBlocking(const AZStd::string& archivePath, const AZStd::string& workingDirectory, const AZStd::string& fileToAdd)
+    {
+        AZStd::string commandLineArgs = Platform::GetAddFileToArchiveCommand(archivePath, fileToAdd);
+        if (commandLineArgs.empty())
+        {
+            // The platform-specific implementation has already thrown its own error, no need to throw another one
+            return false;
+        }
+        bool success = false;
+        auto addFileToArchiveCallback = [&success](bool result, AZStd::string consoleOutput) {
+            success = result;
+        };
+
+        LaunchZipExe(m_zipExePath, commandLineArgs, addFileToArchiveCallback, AZ::Uuid::CreateNull(), workingDirectory);
+        return success;
+    }
+
+    bool ArchiveComponent::AddFilesToArchiveBlocking(const AZStd::string& archivePath, const AZStd::string& workingDirectory, const AZStd::string& listFilePath)
+    {
+        bool operationSupported = Platform::IsAddFilesToArchiveCommandSupported();
+        bool success = false;
+        if (operationSupported)
+        {   
+            auto addFileToArchiveCallback = [&success](bool result, AZStd::string consoleOutput) {
+                success = result;
+            };
+
+            AZStd::string commandLineArgs = Platform::GetAddFilesToArchiveCommand(archivePath.c_str(), listFilePath.c_str());
+
+            if (commandLineArgs.empty())
+            {
+                // The platform-specific implementation has already thrown its own error, no need to throw another one
+                return false;
+            }
+            LaunchZipExe(m_zipExePath, commandLineArgs, addFileToArchiveCallback, AZ::Uuid::CreateNull(), workingDirectory);
+            return success;
         }
         else
         {
-            // Extract archive path to destionationPath and skipping extracting of existing files (aos)
-            commandLineArgs = AZStd::string::format(extractArchiveWithoutRootCmd, archivePath.c_str(), destinationPath.c_str());
+            // read all list files and add it to the archive one by one
+            auto listFileResult = AzFramework::FileFunc::ReadTextFileByLine(listFilePath, [&](const char* line)
+            {
+                AZStd::string fileName(line);
+                success|= AddFileToArchiveBlocking(archivePath, workingDirectory, AzFramework::StringFunc::TrimWhiteSpace(fileName, true, true));
+                return true;
+            });
+
+            return success;
         }
+    }
+
+    void ArchiveComponent::AddFilesToArchive(const AZStd::string& archivePath, const AZStd::string& workingDirectory, const AZStd::string& listFilePath, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback)
+    {
+        bool operationSupported = Platform::IsAddFilesToArchiveCommandSupported();
+        if (operationSupported)
+        {
+            AZStd::string commandLineArgs = Platform::GetAddFilesToArchiveCommand(archivePath, listFilePath);
+            if (commandLineArgs.empty())
+            {
+                // The platform-specific implementation has already thrown its own error, no need to throw another one
+                return;
+            }
+            LaunchZipExe(m_zipExePath, commandLineArgs, respCallback, taskHandle, workingDirectory);
+        }
+        else
+        {
+            // read all list files and add it to the archive one by one
+            auto listFileResult = AzFramework::FileFunc::ReadTextFileByLine(listFilePath, [&](const char* line)
+            {
+                AZStd::string fileName(line);
+                AddFileToArchive(archivePath, workingDirectory, AzFramework::StringFunc::TrimWhiteSpace(fileName, true, true), taskHandle, respCallback);
+                return true;
+            });
+        }
+    }
+
+
+    bool ArchiveComponent::ExtractArchiveBlocking(const AZStd::string& archivePath, const AZStd::string& destinationPath, bool extractWithRootDirectory)
+    {
+        AZStd::string commandLineArgs = Platform::GetExtractArchiveCommand(archivePath, destinationPath, extractWithRootDirectory);
+
+        if (commandLineArgs.empty())
+        {
+            // The platform-specific implementation has already thrown its own error, no need to throw another one
+            return false;
+        }
+
         bool success = false;
         auto extractArchiveCallback = [&success](bool result, AZStd::string consoleOutput) {
             success = result;
         };
-        Launch7z(commandLineArgs, extractArchiveCallback);
+
+        LaunchZipExe(m_unzipExePath, commandLineArgs, extractArchiveCallback);
         return success;
     }
 
-    void SevenZipComponent::CancelTasks(AZ::Uuid taskHandle)
+    void ArchiveComponent::CancelTasks(AZ::Uuid taskHandle)
     {
         AZStd::unique_lock<AZStd::mutex> lock(m_threadControlMutex);
 
@@ -212,8 +389,8 @@ namespace AzToolsFramework
         });
         m_threadInfoMap.erase(it);
     }
-
-    void SevenZipComponent::Launch7z(const AZStd::string& commandLineArgs, const ArchiveResponseOutputCallback& respCallback, AZ::Uuid taskHandle, const AZStd::string& workingDir, bool captureOutput)
+    
+    void ArchiveComponent::LaunchZipExe(const AZStd::string& exePath, const AZStd::string& commandLineArgs, const ArchiveResponseOutputCallback& respCallback, AZ::Uuid taskHandle, const AZStd::string& workingDir, bool captureOutput)
     {
         auto sevenZJob = [=]()
         {
@@ -225,7 +402,8 @@ namespace AzToolsFramework
             }
 
             ProcessLauncher::ProcessLaunchInfo info;
-            info.m_commandlineParameters = m_7zPath + " " + commandLineArgs;
+            info.m_commandlineParameters = exePath + " " + commandLineArgs;
+            
             info.m_showWindow = false;
             if (!workingDir.empty())
             {
@@ -241,7 +419,7 @@ namespace AzToolsFramework
                 if (captureOutput)
                 {
                     AZStd::string consoleBuffer;
-                    while (watcher->IsProcessRunning())
+                    while (watcher->IsProcessRunning(&exitCode))
                     {
                         if (!taskHandle.IsNull())
                         {

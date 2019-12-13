@@ -30,6 +30,7 @@ namespace EMotionFX
         void (*eventFactory)(MotionEventTrack* track);
         float startTime;
         float endTime;
+        EPlayMode playMode;
         std::vector<EventInfo> expectedEvents;
     };
 
@@ -85,6 +86,7 @@ namespace EMotionFX
         }
         *os << " Start time: " << object.startTime
             << " End time: " << object.endTime
+            << " Play mode: " << ((object.playMode == EPlayMode::PLAYMODE_FORWARD) ? "Forward" : "Backward")
             << " Expected events: ["
             ;
         for (const auto& entry : object.expectedEvents)
@@ -158,12 +160,15 @@ namespace EMotionFX
 
             m_buffer = new AnimGraphEventBuffer();
 
-            GetEMotionFX().GetEventManager()->AddEventHandler(aznew TestProcessEventsEventHandler(m_buffer));
+            m_eventHandler = aznew TestProcessEventsEventHandler(m_buffer);
+            GetEMotionFX().GetEventManager()->AddEventHandler(m_eventHandler);
         }
 
         void TearDown() override
         {
+            GetEMotionFX().GetEventManager()->RemoveEventHandler(m_eventHandler);
             delete m_buffer;
+            delete m_eventHandler;
             m_motionInstance->Destroy();
             m_motion->Destroy();
             m_actorInstance->Destroy();
@@ -171,12 +176,12 @@ namespace EMotionFX
             SystemComponentFixture::TearDown();
         }
 
-        void TestEvents(AZStd::function<void(float, float, MotionInstance*)> func)
+        void TestEvents(AZStd::function<void(float, float, EPlayMode playMode, MotionInstance*)> func)
         {
             const ExtractEventsParams& params = GetParam();
 
             // Call the function being tested
-            func(params.startTime, params.endTime, m_motionInstance);
+            func(params.startTime, params.endTime, params.playMode, m_motionInstance);
 
             // ProcessEvents filters out the ACTIVE events, remove those from our expected results
             AZStd::vector<EventInfo> expectedEvents;
@@ -199,12 +204,13 @@ namespace EMotionFX
         }
 
     protected:
-        AnimGraphEventBuffer* m_buffer;
-        SkeletalMotion* m_motion;
-        MotionInstance* m_motionInstance;
-        MotionEventTrack* m_track;
-        Actor* m_actor;
-        ActorInstance* m_actorInstance;
+        AnimGraphEventBuffer* m_buffer = nullptr;
+        SkeletalMotion* m_motion = nullptr;
+        MotionInstance* m_motionInstance = nullptr;
+        MotionEventTrack* m_track = nullptr;
+        Actor* m_actor = nullptr;
+        ActorInstance* m_actorInstance = nullptr;
+        TestProcessEventsEventHandler* m_eventHandler = nullptr;
 
         // ProcessEvents filters out ACTIVE events. For the ProcessEvents
         // tests, this will be set to false.
@@ -214,8 +220,9 @@ namespace EMotionFX
     TEST_P(TestExtractProcessEventsFixture, TestExtractEvents)
     {
         m_shouldContainActiveEvents = true;
-        TestEvents([this](float startTime, float endTime, MotionInstance* motionInstance)
+        TestEvents([this](float startTime, float endTime, EPlayMode playMode, MotionInstance* motionInstance)
         {
+            motionInstance->SetPlayMode(playMode);
             return this->m_track->ExtractEvents(startTime, endTime, motionInstance, m_buffer);
         });
     }
@@ -223,8 +230,9 @@ namespace EMotionFX
     TEST_P(TestExtractProcessEventsFixture, TestProcessEvents)
     {
         m_shouldContainActiveEvents = false;
-        TestEvents([this](float startTime, float endTime, MotionInstance* motionInstance)
+        TestEvents([this](float startTime, float endTime, EPlayMode playMode, MotionInstance* motionInstance)
         {
+            motionInstance->SetPlayMode(playMode);
             return this->m_track->ProcessEvents(startTime, endTime, motionInstance);
         });
     }
@@ -234,6 +242,7 @@ namespace EMotionFX
             MakeThreeEvents,
             0.0f,
             1.0f,
+            EPlayMode::PLAYMODE_FORWARD,
             std::vector<EventInfo> {
                 EventInfo {
                     0.25f,
@@ -251,6 +260,7 @@ namespace EMotionFX
             MakeThreeEvents,
             0.0f,
             1.5f,
+            EPlayMode::PLAYMODE_FORWARD,
             std::vector<EventInfo> {
                 EventInfo {
                     0.25f,
@@ -275,16 +285,12 @@ namespace EMotionFX
             MakeThreeRangedEvents,
             0.0f,
             0.3f,
+            EPlayMode::PLAYMODE_FORWARD,
             std::vector<EventInfo> {
                 EventInfo {
                     0.25f,
                     nullptr, nullptr, nullptr,
                     EMotionFX::EventInfo::EventState::START
-                },
-                EventInfo {
-                    0.3f, // This will be equal to the end time parameter passed to the method
-                    nullptr, nullptr, nullptr,
-                    EMotionFX::EventInfo::EventState::ACTIVE
                 }
             }
         },
@@ -294,6 +300,7 @@ namespace EMotionFX
             MakeThreeRangedEvents,
             0.0f,
             0.6f,
+            EPlayMode::PLAYMODE_FORWARD,
             std::vector<EventInfo> {
                 EventInfo {
                     0.25f,
@@ -313,6 +320,7 @@ namespace EMotionFX
             MakeThreeRangedEvents,
             0.3f,
             0.6f,
+            EPlayMode::PLAYMODE_FORWARD,
             std::vector<EventInfo> {
                 EventInfo {
                     0.5f,
@@ -327,6 +335,7 @@ namespace EMotionFX
             MakeThreeRangedEvents,
             0.0f,
             0.9f,
+            EPlayMode::PLAYMODE_FORWARD,
             std::vector<EventInfo> {
                 EventInfo {
                     0.25f,
@@ -342,20 +351,15 @@ namespace EMotionFX
                     0.75f,
                     nullptr, nullptr, nullptr,
                     EMotionFX::EventInfo::EventState::START
-                },
-                EventInfo {
-                    0.9f,
-                    nullptr, nullptr, nullptr,
-                    EMotionFX::EventInfo::EventState::ACTIVE
                 }
             }
         },
-
         // Now the backwards playback cases
         {
             MakeThreeEvents,
             1.0f,
             0.0f,
+            EPlayMode::PLAYMODE_BACKWARD,
             std::vector<EventInfo> {
                 EventInfo {
                     0.75f,
@@ -373,6 +377,7 @@ namespace EMotionFX
             MakeThreeEvents,
             1.5f,
             0.0f,
+            EPlayMode::PLAYMODE_BACKWARD,
             std::vector<EventInfo> {
                 EventInfo {
                     1.25f,
@@ -397,6 +402,7 @@ namespace EMotionFX
             MakeThreeRangedEvents,
             0.3f,
             0.0f,
+            EPlayMode::PLAYMODE_BACKWARD,
             std::vector<EventInfo> {
                 EventInfo {
                     0.25f,
@@ -412,6 +418,7 @@ namespace EMotionFX
             MakeThreeRangedEvents,
             0.6f,
             0.0f,
+            EPlayMode::PLAYMODE_BACKWARD,
             std::vector<EventInfo> {
                 EventInfo {
                     0.5f,
@@ -431,16 +438,12 @@ namespace EMotionFX
             MakeThreeRangedEvents,
             0.6f,
             0.3f,
+            EPlayMode::PLAYMODE_BACKWARD,
             std::vector<EventInfo> {
                 EventInfo {
                     0.5f,
                     nullptr, nullptr, nullptr,
                     EMotionFX::EventInfo::EventState::START
-                },
-                EventInfo {
-                    0.3f,
-                    nullptr, nullptr, nullptr,
-                    EMotionFX::EventInfo::EventState::ACTIVE
                 }
             }
         },
@@ -449,6 +452,7 @@ namespace EMotionFX
             MakeThreeRangedEvents,
             0.9f,
             0.0f,
+            EPlayMode::PLAYMODE_BACKWARD,
             std::vector<EventInfo> {
                 EventInfo {
                     0.75f,
@@ -464,6 +468,397 @@ namespace EMotionFX
                     0.25f,
                     nullptr, nullptr, nullptr,
                     EMotionFX::EventInfo::EventState::END
+                }
+            }
+        },
+        {
+            // Loop, but in a way where no events should be triggered.
+            MakeTwoEvents,
+            1.9f,
+            0.1f,
+            EPlayMode::PLAYMODE_FORWARD,
+            {
+            }
+        },
+        {
+            // Loop, but in a way where no events should be triggered, but play backward.
+            MakeTwoEvents,
+            0.1f,
+            1.9f,
+            EPlayMode::PLAYMODE_BACKWARD,
+            {
+            }
+        },
+        {
+            // Loop, forward, and overlap one event.
+            MakeTwoEvents,
+            1.9f,
+            0.5f,
+            EPlayMode::PLAYMODE_FORWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START
+                }
+            }
+        },
+        {
+            // Loop, backwards, and overlap one event.
+            MakeTwoEvents,
+            0.5f,
+            1.9f,
+            EPlayMode::PLAYMODE_BACKWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START
+                }
+            }
+        },
+        {
+            // Loop, forward, and overlap two events.
+            MakeTwoEvents,
+            1.9f,
+            1.0f,
+            EPlayMode::PLAYMODE_FORWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START
+                },
+                EventInfo {
+                    0.75f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START
+                }
+            }
+        },
+        {
+            // Loop, backwards, and overlap two events.
+            MakeTwoEvents,
+            1.0f,
+            1.9f,
+            EPlayMode::PLAYMODE_BACKWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.75f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START
+                },
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START
+                }
+            }
+        },
+        {
+            // Start exactly at a given motion event's time value.
+            MakeTwoEvents,
+            0.25f,
+            0.3f,
+            EPlayMode::PLAYMODE_FORWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START
+                }
+            }
+        },
+        {
+            // End exactly at a given motion event's time value.
+            MakeTwoEvents,
+            0.0f,
+            0.25f,
+            EPlayMode::PLAYMODE_FORWARD,
+            {
+            }
+        },
+        {
+            // Double check both cases at the same time.
+            MakeTwoEvents,
+            0.25f,
+            0.75f,
+            EPlayMode::PLAYMODE_FORWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START
+                }
+            }
+        },
+        {
+            // Start exactly at a given motion event's time value.
+            // Playing backward.
+            MakeTwoEvents,
+            0.25f,
+            0.0f,
+            EPlayMode::PLAYMODE_BACKWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START
+                }
+            }
+        },
+        {
+            // End exactly at a given motion event's time value.
+            // Playing backward.
+            MakeTwoEvents,
+            0.5f,
+            0.25f,
+            EPlayMode::PLAYMODE_BACKWARD,
+            {
+            }
+        },
+        {
+            // Double check both cases at the same time.
+            // Playing backward.
+            MakeTwoEvents,
+            0.75f,
+            0.25f,
+            EPlayMode::PLAYMODE_BACKWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.75f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START
+                }
+            }
+        },
+        {
+            // Start exactly at a given motion event's time value.
+            MakeOneRangedEvent,
+            0.25f,
+            0.75f,
+            EPlayMode::PLAYMODE_FORWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START
+                }
+            }
+        },
+        {
+            // End exactly at a given motion event's time value.
+            MakeOneRangedEvent,
+            0.0f,
+            0.25f,
+            EPlayMode::PLAYMODE_FORWARD,
+            {
+            }
+        },
+        {
+            // Double check both cases at the same time.
+            MakeOneRangedEvent,
+            0.25f,
+            0.75f,
+            EPlayMode::PLAYMODE_FORWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START
+                }
+            }
+        },
+        {
+            // Start exactly at a given motion event's time value.
+            // Playing backward.
+            MakeOneRangedEvent,
+            0.25f,
+            0.0f,
+            EPlayMode::PLAYMODE_BACKWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::END // Originally the start, but in backward it turns into end.
+                }
+            }
+        },
+        {
+            // End exactly at a given motion event's time value.
+            // Playing backward.
+            MakeOneRangedEvent,
+            0.5f,
+            0.25f,
+            EPlayMode::PLAYMODE_BACKWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::ACTIVE
+                }
+            },
+        },
+        {
+            // Double check both cases at the same time.
+            // Playing backward.
+            MakeOneRangedEvent,
+            0.75f,
+            0.25f,
+            EPlayMode::PLAYMODE_BACKWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.75f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START // End became start in backward playback.
+                }
+            }
+        },
+        {
+            // Process the full motion in one go.
+            MakeOneRangedEvent,
+            0.0f,
+            2.0f,
+            EPlayMode::PLAYMODE_FORWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START
+                },
+                EventInfo {
+                    0.75f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::END
+                }
+            }
+        },
+        {
+            // Reverse it, processin the whole motion.
+            MakeOneRangedEvent,
+            2.0f,
+            0.0f,
+            EPlayMode::PLAYMODE_BACKWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.75f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START // Event end became start, because of backward playback.
+                },
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::END // Start became end, because of backward playback.
+                }
+            }
+        },
+        {
+            // Use a time delta that is 5x as large as the motion.
+            // NOTE: wrapping isn't supported at this time, so we expect it to just act like all events will be emitted once.
+            MakeOneRangedEvent,
+            0.0f,
+            10.0f,
+            EPlayMode::PLAYMODE_FORWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START
+                },
+                EventInfo {
+                    0.75f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::END
+                }
+            }
+        },
+        {
+            // Use some negative time delta, fitting the motion 5x, in reverse.
+            // NOTE: wrapping isn't supported at this time, so we expect it to just act like all events will be emitted once.
+            MakeOneRangedEvent,
+            2.0f,
+            -10.0f,
+            EPlayMode::PLAYMODE_BACKWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.75f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START // Event end became start, because of backward playback.
+                },
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::END // Start became end, because of backward playback.
+                }
+            }
+        },
+        {
+            // Play longer than the motion duration and if wrapping is supported, end up half way in the range event.
+            // NOTE: wrapping isn't supported at this time, so we expect it to just act like all events will be emitted once.
+            MakeOneRangedEvent,
+            0.0f,
+            2.5f,
+            EPlayMode::PLAYMODE_FORWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START
+                },
+                EventInfo {
+                    0.75f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::END
+                }
+            }
+        },
+        {
+            // Use some negative time delta, fitting the motion 5x, in reverse.
+            // NOTE: wrapping isn't supported at this time, so we expect it to just act like all events will be emitted once.
+            MakeOneRangedEvent,
+            2.0f,
+            -1.5f,
+            EPlayMode::PLAYMODE_BACKWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.75f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::START // Event end became start, because of backward playback.
+                },
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::END // Start became end, because of backward playback.
+                }
+            }
+        },
+        {
+            // Play longer than the motion duration and if wrapping is supported, end up half way in the range event.
+            // NOTE: wrapping isn't supported at this time, so we expect it to just act like all events will be emitted once.
+            MakeOneRangedEvent,
+            0.5f,
+            2.5f,
+            EPlayMode::PLAYMODE_FORWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.75f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::END
+                }
+            }
+        },
+        {
+            // Use some negative time delta, fitting the motion 5x, in reverse.
+            // NOTE: wrapping isn't supported at this time, so we expect it to just act like all events will be emitted once.
+            MakeOneRangedEvent,
+            0.5f,
+            -1.5f,
+            EPlayMode::PLAYMODE_BACKWARD,
+            std::vector<EventInfo> {
+                EventInfo {
+                    0.25f,
+                    nullptr, nullptr, nullptr,
+                    EMotionFX::EventInfo::EventState::END // Start became end, because of backward playback.
                 }
             }
         }

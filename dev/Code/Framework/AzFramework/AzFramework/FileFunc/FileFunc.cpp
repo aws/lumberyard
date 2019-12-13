@@ -22,6 +22,7 @@
 #include <AzCore/JSON/error/error.h>
 #include <AzCore/JSON/error/en.h>
 #include <AzCore/JSON/prettywriter.h>
+#include <AzCore/std/containers/deque.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
 
@@ -371,6 +372,43 @@ namespace AzFramework
 
         AZ::Outcome<AZStd::string, AZStd::string> GetValueForKeyInCfgFile(const AZStd::string& filePath, const char* key)
         {
+            AZ::Outcome<AZStd::string, AZStd::string> subCommandResult = GetCfgFileContents(filePath);
+            if (!subCommandResult.IsSuccess())
+            {
+                return subCommandResult;
+            }
+
+            subCommandResult = GetValueForKeyInCfgFileContents(subCommandResult.GetValue(), key);
+            if (!subCommandResult.IsSuccess())
+            {
+                return AZ::Failure(AZStd::string::format("%s in file %s", subCommandResult.GetError().c_str(), filePath.c_str()));
+            }
+            return subCommandResult;
+        }
+
+        AZ::Outcome<AZStd::string, AZStd::string> GetValueForKeyInCfgFileContents(const AZStd::string& configFileContents, const char* key)
+        {
+            // Generate regex str and replacement str
+            AZStd::string lhsStr = key;
+            AZStd::string regexStr = Internal::BuildConfigKeyValueRegex(lhsStr);
+
+            std::regex sysGameRegex(regexStr.c_str());
+            std::cmatch matchResult;
+            if (!std::regex_search(configFileContents.c_str(), matchResult, sysGameRegex))
+            {
+                return AZ::Failure(AZStd::string::format("Could not find key %s", key));
+            }
+
+            if (matchResult.size() <= 4)
+            {
+                return AZ::Failure(AZStd::string::format("No results for key %s", key));
+            }
+
+            return AZ::Success(AZStd::string(matchResult[4].str().c_str()));
+        }
+
+        AZ::Outcome<AZStd::string, AZStd::string> GetCfgFileContents(const AZStd::string& filePath)
+        {
             if (!AZ::IO::SystemFile::Exists(filePath.c_str()))
             {
                 return AZ::Failure(AZStd::string::format("Cfg file '%s' does not exist.", filePath.c_str()));
@@ -386,24 +424,45 @@ namespace AzFramework
             AZStd::string settingsFileContents(settingsFile.Length(), '\0');
             settingsFile.Read(settingsFileContents.size(), settingsFileContents.data());
             settingsFile.Close();
+            return AZ::Success(settingsFileContents);
 
-            // Generate regex str and replacement str
-            AZStd::string lhsStr = key;
-            AZStd::string regexStr = Internal::BuildConfigKeyValueRegex(lhsStr);
+        }
 
-            std::regex sysGameRegex(regexStr.c_str());
-            std::cmatch matchResult;
-            if (!std::regex_search(settingsFileContents.c_str(), matchResult, sysGameRegex))
+        AZ::Outcome < AZStd::list<AZStd::string>, AZStd::string> FindFileList(const AZStd::string& pathToStart, const char* pattern, bool recurse)
+        {
+            auto fileIO = AZ::IO::FileIOBase::GetInstance();
+            if (!fileIO)
             {
-                return AZ::Failure(AZStd::string::format("Could not find key %s in config file %s", key, filePath.c_str()));
+                AZ_Error("FindFilesList", false, "Couldn't get fileIO Instance");
+                return AZ::Failure(AZStd::string("Couldn't get FileIO"));
             }
 
-            if (matchResult.size() <= 4)
-            {
-                return AZ::Failure(AZStd::string::format("No results for key %s in config file %s", key, filePath.c_str()));
-            }
+            AZStd::deque<AZStd::string> foldersToSearch;
+            foldersToSearch.push_back(pathToStart);
+            AZ::IO::Result searchResult = AZ::IO::ResultCode::Success;
 
-            return AZ::Success(AZStd::string(matchResult[4].str().c_str()));
+            AZStd::list<AZStd::string> filesFound;
+            while (foldersToSearch.size() && searchResult == AZ::IO::ResultCode::Success)
+            {
+                AZStd::string folderName = foldersToSearch.front();
+                foldersToSearch.pop_front();
+
+                searchResult = fileIO->FindFiles(folderName.c_str(), "*.*",
+                    [&](const char* fileName)
+                {
+                    if (recurse && fileIO->IsDirectory(fileName))
+                    {
+                        foldersToSearch.push_back(fileName);
+                    }
+                    else if (AZ::IO::NameMatchesFilter(fileName, pattern))
+                    {
+                        filesFound.emplace_back(fileName);
+                    }
+                    return true;
+                }
+                );
+            }
+            return AZ::Success(filesFound);
         }
     } // namespace FileFunc
 } // namespace AzFramework

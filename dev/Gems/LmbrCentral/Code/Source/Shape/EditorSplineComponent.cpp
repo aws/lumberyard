@@ -97,13 +97,9 @@ namespace LmbrCentral
         AZ::TransformBus::EventResult(m_cachedUniformScaleTransform, entityId, &AZ::TransformBus::Events::GetWorldTM);
         m_cachedUniformScaleTransform = AzToolsFramework::TransformUniformScale(m_cachedUniformScaleTransform);
 
-        bool selected = false;
-        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(
-            selected, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSelected);
-
         // placeholder - create initial spline if empty
         AZ::VertexContainer<AZ::Vector3>& vertexContainer = m_splineCommon.m_spline->m_vertexContainer;
-        if (selected && vertexContainer.Empty())
+        if (vertexContainer.Empty())
         {
             vertexContainer.AddVertex(AZ::Vector3(-3.0f, 0.0f, 0.0f));
             vertexContainer.AddVertex(AZ::Vector3(-1.0f, 0.0f, 0.0f));

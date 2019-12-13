@@ -704,10 +704,20 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         resource_group = mock.MagicMock()
         resource_group.resource_group_name = resource_group_name
         resource_group.deployment.deployment_name = deployment_name
-        expected_policy_name = deployment_name + '.' + resource_group_name + '-AccessControl'
+        resource_group.project = mock.MagicMock()
+        resource_group.project.project_uuid = '1234'
+
+        # Test with a project uuid
+        expected_policy_name = "{}.{}.{}-AccessControl".format(
+            resource_group.project.project_uuid, deployment_name, resource_group_name)
         actual_policy_name = Custom_AccessControl._get_resource_group_policy_name(resource_group)
         self.assertEquals(actual_policy_name, expected_policy_name)
 
+        # Test without a project uuid
+        resource_group.project.project_uuid = ""
+        expected_policy_name = "{}.{}-AccessControl".format(deployment_name, resource_group_name)
+        actual_policy_name = Custom_AccessControl._get_resource_group_policy_name(resource_group)
+        self.assertEquals(actual_policy_name, expected_policy_name)
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_permissions(Custom_AccessControlTestCase):
 
@@ -1368,24 +1378,31 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         role_resource_a.get_cloud_canvas_metadata.assert_called_with('RoleMappings')
         role_resource_b.get_cloud_canvas_metadata.assert_called_with('RoleMappings')
 
-        stack.resources.get_by_type.assert_called_with('AWS::IAM::Role')
-
+        stack.resources.get_by_type.assert_any_call('AWS::IAM::Role')
+        stack.resources.get_by_type.assert_called_with('Custom::CognitoIdPoolSharedRole')
 
     @mock.patch('resource_types.Custom_AccessControl._get_role_mapping_list')
     def test_with_metadata(self, 
             mock_get_role_mapping_list):
-        
+
+        role_resource_metadata_list_a = [mock.MagicMock(name='role_resource_metadata_list_a')]
+
         role_resource_a = mock.MagicMock(name='resource_a')
+        role_resource_a.get_cloud_canvas_metadata.return_value = role_resource_metadata_list_a
         metadata_a = role_resource_a.get_cloud_canvas_metadata.return_value
-        
+
+        role_resource_metadata_list_b = [mock.MagicMock(name='role_resource_metadata_list_b')]
+
         role_resource_b = mock.MagicMock(name='resource_b')
+        role_resource_b.get_cloud_canvas_metadata.return_value = role_resource_metadata_list_b
         metadata_b = role_resource_b.get_cloud_canvas_metadata.return_value
         
         stack = mock.MagicMock(name='resource-group')
-        stack.resources.get_by_type.return_value = [ role_resource_a, role_resource_b ]
+        # Only provide shared role resources
+        stack.resources.get_by_type.side_effect = [ [role_resource_a, role_resource_b], [] ]
 
-        role_mapping_list_a = mock.MagicMock(name='role_mapping_list_a')
-        role_mapping_list_b = mock.MagicMock(name='role_mapping_list_b')
+        role_mapping_list_a = [mock.MagicMock(name='role_mapping_list_a')]
+        role_mapping_list_b = [mock.MagicMock(name='role_mapping_list_b')]
         mock_get_role_mapping_list.side_effect = [ role_mapping_list_a, role_mapping_list_b ]
 
         actual_problems = Custom_AccessControl.ProblemList()
@@ -1403,8 +1420,9 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         role_resource_a.get_cloud_canvas_metadata.assert_called_with('RoleMappings')
         role_resource_b.get_cloud_canvas_metadata.assert_called_with('RoleMappings')
-        
-        stack.resources.get_by_type.assert_called_with('AWS::IAM::Role')
+
+        stack.resources.get_by_type.assert_any_call('AWS::IAM::Role')
+        stack.resources.get_by_type.assert_called_with('Custom::CognitoIdPoolSharedRole')
 
         mock_get_role_mapping_list.assert_has_calls([
             mock.call(metadata_a, actual_problems),
@@ -1416,9 +1434,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
             mock_get_role_mapping_list):
         
         role_resource_a = mock.MagicMock(name='resource_a')
+        role_resource_a.physical_id = "0"
         metadata_a = role_resource_a.get_cloud_canvas_metadata.return_value
         
         role_resource_b = mock.MagicMock(name='resource_b')
+        role_resource_b.physical_id = "1"
         metadata_b = role_resource_b.get_cloud_canvas_metadata.return_value
         
         stack = mock.MagicMock(name='resource-group')
@@ -1428,8 +1448,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
         problem_b_1 = mock.MagicMock(name='problem_b_1')
 
         mock_get_role_mapping_list.side_effect = self.make_problem_reporting_side_effect(
-            [ problem_a_1, problem_b_1 ],
-            [ [], [] ])
+            [ problem_a_1, problem_b_1 ], [[], [], [], []])
 
         actual_problems = Custom_AccessControl.ProblemList()
 
@@ -1447,8 +1466,9 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get
 
         role_resource_a.get_cloud_canvas_metadata.assert_called_with('RoleMappings')
         role_resource_b.get_cloud_canvas_metadata.assert_called_with('RoleMappings')
-        
-        stack.resources.get_by_type.assert_called_with('AWS::IAM::Role')
+
+        stack.resources.get_by_type.assert_any_call('AWS::IAM::Role')
+        stack.resources.get_by_type.assert_called_with('Custom::CognitoIdPoolSharedRole')
 
         mock_get_role_mapping_list.assert_has_calls([
             mock.call(metadata_a, actual_problems),

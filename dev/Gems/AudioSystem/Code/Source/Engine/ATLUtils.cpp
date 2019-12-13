@@ -10,8 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
-#include "ATLUtils.h"
+#include <ATLUtils.h>
 
 namespace Audio
 {
@@ -25,4 +24,5 @@ namespace Audio
         return result;
     }
 #endif //INCLUDE_AUDIO_PRODUCTION_CODE
+
 } // namespace Audio

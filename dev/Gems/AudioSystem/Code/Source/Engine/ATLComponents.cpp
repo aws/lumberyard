@@ -11,21 +11,34 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "ATLComponents.h"
-#include "SoundCVars.h"
-#include <IAudioSystemImplementation.h>
-#include <IPhysics.h>
-#include <ISurfaceType.h>
-#include <I3DEngine.h>
-#include <IRenderAuxGeom.h>
+#include <ATLComponents.h>
+
+#include <AzCore/IO/FileIO.h>
+#include <AzCore/std/functional.h>
+#include <AzCore/std/string/string_view.h>
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
     #include <AzCore/std/string/conversions.h>
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
+#include <AzFramework/FileFunc/FileFunc.h>
+#include <AzFramework/StringFunc/StringFunc.h>
+
+#include <AudioFileUtils.h>
+#include <ATLCommon.h>
+#include <SoundCVars.h>
+#include <IAudioSystemImplementation.h>
+
+#include <MathConversion.h>
+#include <IPhysics.h>
+#include <ISurfaceType.h>
+#include <I3DEngine.h>
+#include <IRenderAuxGeom.h>
+
 namespace Audio
 {
+    extern CAudioLogger g_audioLogger;
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // AudioObjectIDFactory
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -61,15 +74,12 @@ namespace Audio
     CAudioEventManager::~CAudioEventManager()
     {
         Release();
-
-        stl::free_container(m_oAudioEventPool.m_cReserved);
-        stl::free_container(m_cActiveAudioEvents);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioEventManager::Initialize()
     {
-        size_t const numActiveAudioEvents = m_cActiveAudioEvents.size();
+        const size_t numActiveAudioEvents = m_cActiveAudioEvents.size();
 
         for (size_t i = 0; i < m_oAudioEventPool.m_nReserveSize - numActiveAudioEvents; ++i)
         {
@@ -290,8 +300,6 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     CAudioObjectManager::~CAudioObjectManager()
     {
-        stl::free_container(m_cObjectPool.m_cReserved);
-        stl::free_container(m_cAudioObjects);
     }
 
 
@@ -489,7 +497,7 @@ namespace Audio
         {
             g_audioLogger.Log(
                 eALT_WARNING,
-                "Reporting Ray %" PRISIZE_T " from Object %s: Object no longer exists!",
+                "Reporting Ray %zu from Object %s: Object no longer exists!",
                 nRayID,
                 m_pDebugNameStore->LookupAudioObjectName(nAudioObjectID));
         }
@@ -537,7 +545,7 @@ namespace Audio
                     "If this limit was reached from legitimate content creation and not a scripting error, "
                     "try increasing the Capacity of Audio::AudioSystemAllocator.";
 
-                g_audioLogger.Log(eALT_FATAL, msg);
+                g_audioLogger.Log(eALT_ASSERT, msg);
                 //failed to get a new instance from the implementation
             }
         }
@@ -720,8 +728,6 @@ namespace Audio
     CAudioListenerManager::~CAudioListenerManager()
     {
         Release();
-
-        stl::free_container(m_cListenerPool);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -880,7 +886,6 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     CAudioEventListenerManager::~CAudioEventListenerManager()
     {
-        stl::free_container(m_cListeners);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -923,7 +928,7 @@ namespace Audio
     void CAudioEventListenerManager::NotifyListener(const SAudioRequestInfo* const pResultInfo)
     {
         // This should always be on the main thread!
-        FUNCTION_PROFILER_ALWAYS(gEnv->pSystem, PROFILE_AUDIO);
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Audio);
 
         auto found = AZStd::find_if(m_cListeners.begin(), m_cListeners.end(),
             [pResultInfo](const SAudioEventListener& currentListener)
@@ -964,6 +969,7 @@ namespace Audio
         , m_rPreloadRequests(rPreloadRequests)
         , m_nTriggerImplIDCounter(AUDIO_TRIGGER_IMPL_ID_NUM_RESERVED)
         , m_rFileCacheMgr(rFileCacheMgr)
+        , m_rootPath("@assets@")
     #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         , m_pDebugNameStore(nullptr)
     #endif // INCLUDE_AUDIO_PRODUCTION_CODE
@@ -986,146 +992,93 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLXmlProcessor::ParseControlsData(const char* const sFolderPath, const EATLDataScope eDataScope)
+    void CATLXmlProcessor::ParseControlsData(const char* const folderPath, const EATLDataScope dataScope)
     {
-        CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> sRootFolderPath(sFolderPath);
+        AZStd::string searchPath;
+        AzFramework::StringFunc::Path::Join(m_rootPath.c_str(), folderPath, searchPath);
 
-        sRootFolderPath.TrimRight("/\\");
-        CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH + MAX_AUDIO_FILE_NAME_LENGTH> sSearch(sRootFolderPath + "/*.xml");
-        _finddata_t fd;
-        ZeroStruct(fd);
-        intptr_t handle = gEnv->pCryPak->FindFirst(sSearch.c_str(), &fd);
+        AZStd::vector<AZStd::string> foundFiles = Audio::FindFilesInPath(searchPath, "*.xml");
 
-        if (handle != -1)
+        for (const auto& file : foundFiles)
         {
-            CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH + MAX_AUDIO_FILE_NAME_LENGTH> sFileName;
+            AZ_Assert(AZ::IO::FileIOBase::GetInstance()->Exists(file.c_str()), "FindFiles found file '%s' but FileIO says it doesn't exist!", file.c_str());
+            g_audioLogger.Log(eALT_ALWAYS, "Loading Audio Controls Library: '%s'", file.c_str());
 
-            do
+            Audio::ScopedXmlLoader xmlFileLoader(file);
+            if (xmlFileLoader.HasError())
             {
-                sFileName = sRootFolderPath.c_str();
-                sFileName += PathUtil::GetSlash();
-                sFileName += fd.name;
+                continue;
+            }
 
-                const XmlNodeRef pATLConfigRoot(GetISystem()->LoadXmlFromFile(sFileName));
-
-                if (pATLConfigRoot)
+            const AZ::rapidxml::xml_node<char>* xmlRootNode = xmlFileLoader.GetRootNode();
+            if (xmlRootNode)
+            {
+                auto childNode = xmlRootNode->first_node(nullptr, 0, false);
+                while (childNode)
                 {
-                    if (azstricmp(pATLConfigRoot->getTag(), SATLXmlTags::sRootNodeTag) == 0)
+                    if (azstricmp(childNode->name(), ATLXmlTags::TriggersNodeTag) == 0)
                     {
-                        const size_t nATLConfigChildrenCount = static_cast<size_t>(pATLConfigRoot->getChildCount());
-
-                        for (size_t i = 0; i < nATLConfigChildrenCount; ++i)
-                        {
-                            const XmlNodeRef pAudioConfigNode(pATLConfigRoot->getChild(i));
-
-                            if (pAudioConfigNode)
-                            {
-                                const char* const sAudioConfigNodeTag = pAudioConfigNode->getTag();
-
-                                if (azstricmp(sAudioConfigNodeTag, SATLXmlTags::sTriggersNodeTag) == 0)
-                                {
-                                    ParseAudioTriggers(pAudioConfigNode, eDataScope);
-                                }
-                                else if (azstricmp(sAudioConfigNodeTag, SATLXmlTags::sRtpcsNodeTag) == 0)
-                                {
-                                    ParseAudioRtpcs(pAudioConfigNode, eDataScope);
-                                }
-                                else if (azstricmp(sAudioConfigNodeTag, SATLXmlTags::sSwitchesNodeTag) == 0)
-                                {
-                                    ParseAudioSwitches(pAudioConfigNode, eDataScope);
-                                }
-                                else if (azstricmp(sAudioConfigNodeTag, SATLXmlTags::sEnvironmentsNodeTag) == 0)
-                                {
-                                    ParseAudioEnvironments(pAudioConfigNode, eDataScope);
-                                }
-                                else if (azstricmp(sAudioConfigNodeTag, SATLXmlTags::sPreloadsNodeTag) == 0)
-                                {
-                                    // This tag is valid but ignored here.
-                                }
-                                else
-                                {
-                                    g_audioLogger.Log(eALT_ERROR, "ParseControlsData - Unknown xml node '%s'", sAudioConfigNodeTag);
-                                }
-                            }
-                        }
+                        ParseAudioTriggers(childNode, dataScope);
                     }
-                }
-            } while (gEnv->pCryPak->FindNext(handle, &fd) >= 0);
+                    else if (azstricmp(childNode->name(), ATLXmlTags::RtpcsNodeTag) == 0)
+                    {
+                        ParseAudioRtpcs(childNode, dataScope);
+                    }
+                    else if (azstricmp(childNode->name(), ATLXmlTags::SwitchesNodeTag) == 0)
+                    {
+                        ParseAudioSwitches(childNode, dataScope);
+                    }
+                    else if (azstricmp(childNode->name(), ATLXmlTags::EnvironmentsNodeTag) == 0)
+                    {
+                        ParseAudioEnvironments(childNode, dataScope);
+                    }
 
-            gEnv->pCryPak->FindClose(handle);
+                    childNode = childNode->next_sibling(nullptr, 0, false);
+                }
+            }
         }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLXmlProcessor::ParsePreloadsData(const char* const sFolderPath, const EATLDataScope eDataScope)
+    void CATLXmlProcessor::ParsePreloadsData(const char* const folderPath, const EATLDataScope dataScope)
     {
-        CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> sRootFolderPath(sFolderPath);
+        AZStd::string searchPath;
+        AzFramework::StringFunc::Path::Join(m_rootPath.c_str(), folderPath, searchPath);
 
-        sRootFolderPath.TrimRight("/\\");
-        CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH + MAX_AUDIO_FILE_NAME_LENGTH> sSearch(sRootFolderPath + "/*.xml");
-        _finddata_t fd;
-        ZeroStruct(fd);
-        intptr_t handle = gEnv->pCryPak->FindFirst(sSearch.c_str(), &fd);
+        AZStd::vector<AZStd::string> foundFiles = Audio::FindFilesInPath(searchPath, "*.xml");
 
-        if (handle != -1)
+        for (const auto& file : foundFiles)
         {
-            CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH + MAX_AUDIO_FILE_NAME_LENGTH> sFileName;
+            AZ_Assert(AZ::IO::FileIOBase::GetInstance()->Exists(file.c_str()), "FindFiles found file '%s' but FileIO says it doesn't exist!", file.c_str());
+            g_audioLogger.Log(eALT_ALWAYS, "Loading Audio Preloads Library: '%s'", file.c_str());
 
-            do
+            Audio::ScopedXmlLoader xmlFileLoader(file);
+            if (xmlFileLoader.HasError())
             {
-                sFileName = sRootFolderPath.c_str();
-                sFileName += PathUtil::GetSlash();
-                sFileName += fd.name;
+                continue;
+            }
 
-                const XmlNodeRef pATLConfigRoot(GetISystem()->LoadXmlFromFile(sFileName));
-
-                if (pATLConfigRoot)
+            const AZ::rapidxml::xml_node<char>* xmlRootNode = xmlFileLoader.GetRootNode();
+            if (xmlRootNode)
+            {
+                auto childNode = xmlRootNode->first_node(ATLXmlTags::PreloadsNodeTag, 0, false);
+                while (childNode)
                 {
-                    if (azstricmp(pATLConfigRoot->getTag(), SATLXmlTags::sRootNodeTag) == 0)
+                    if (dataScope == eADS_LEVEL_SPECIFIC)
                     {
-                        const size_t nATLConfigChildrenCount = static_cast<size_t>(pATLConfigRoot->getChildCount());
-
-                        for (size_t i = 0; i < nATLConfigChildrenCount; ++i)
-                        {
-                            const XmlNodeRef pAudioConfigNode(pATLConfigRoot->getChild(i));
-
-                            if (pAudioConfigNode)
-                            {
-                                const char* const sAudioConfigNodeTag = pAudioConfigNode->getTag();
-
-                                if (azstricmp(sAudioConfigNodeTag, SATLXmlTags::sPreloadsNodeTag) == 0)
-                                {
-                                    const size_t nLastSlashIndex = sRootFolderPath.rfind('/');
-
-                                    if (sRootFolderPath.npos != nLastSlashIndex)
-                                    {
-                                        const CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> sFolderName(sRootFolderPath.substr(nLastSlashIndex + 1, sRootFolderPath.size()));
-                                        ParseAudioPreloads(pAudioConfigNode, eDataScope, sFolderName.c_str());
-                                    }
-                                    else
-                                    {
-                                        ParseAudioPreloads(pAudioConfigNode, eDataScope, nullptr);
-                                    }
-                                }
-                                else if (azstricmp(sAudioConfigNodeTag, SATLXmlTags::sTriggersNodeTag) == 0
-                                    || azstricmp(sAudioConfigNodeTag, SATLXmlTags::sRtpcsNodeTag) == 0
-                                    || azstricmp(sAudioConfigNodeTag, SATLXmlTags::sSwitchesNodeTag) == 0
-                                    || azstricmp(sAudioConfigNodeTag, SATLXmlTags::sEnvironmentsNodeTag) == 0
-                                    )
-                                {
-                                    // These tags are valid but ignored here.
-                                }
-                                else
-                                {
-                                    g_audioLogger.Log(eALT_ERROR, "ParsePreloadsData - Unknown xml node '%s'", sAudioConfigNodeTag);
-                                }
-                            }
-                        }
+                        AZStd::string_view relativePath(folderPath);
+                        AZStd::string levelName;
+                        AzFramework::StringFunc::Path::GetFileName(relativePath.data(), levelName);
+                        ParseAudioPreloads(childNode, dataScope, levelName.data());
                     }
-                }
-            } while (gEnv->pCryPak->FindNext(handle, &fd) >= 0);
+                    else
+                    {
+                        ParseAudioPreloads(childNode, dataScope, nullptr);
+                    }
 
-            gEnv->pCryPak->FindClose(handle);
+                    childNode = childNode->next_sibling(ATLXmlTags::PreloadsNodeTag, 0, false);
+                }
+            }
         }
     }
 
@@ -1210,124 +1163,106 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLXmlProcessor::ParseAudioPreloads(const XmlNodeRef pPreloadDataRoot, const EATLDataScope eDataScope, const char* const sFolderName)
+    void CATLXmlProcessor::ParseAudioPreloads(const AZ::rapidxml::xml_node<char>* preloadsXmlRoot, const EATLDataScope dataScope, const char* const folderName)
     {
-        LOADING_TIME_PROFILE_SECTION;
-
-        const size_t nPreloadRequestCount = static_cast<size_t>(pPreloadDataRoot->getChildCount());
-
-        for (size_t i = 0; i < nPreloadRequestCount; ++i)
+        auto preloadNode = preloadsXmlRoot->first_node(ATLXmlTags::ATLPreloadRequestTag, 0, false);
+        while (preloadNode)
         {
-            const XmlNodeRef pPreloadRequestNode(pPreloadDataRoot->getChild(i));
+            TAudioPreloadRequestID preloadRequestId = ATLInternalControlIDs::GlobalPreloadRequestID;
+            const char* preloadRequestName = ATLInternalControlNames::GlobalPreloadRequestName;
 
-            if (pPreloadRequestNode && azstricmp(pPreloadRequestNode->getTag(), SATLXmlTags::sATLPreloadRequestTag) == 0)
+            bool autoLoad = false;
+            auto loadTypeAttr = preloadNode->first_attribute(ATLXmlTags::ATLTypeAttribute, 0, false);
+            auto nameAttr = preloadNode->first_attribute(ATLXmlTags::ATLNameAttribute, 0, false);
+
+            if (loadTypeAttr && azstricmp(loadTypeAttr->value(), ATLXmlTags::ATLDataLoadType) == 0)
             {
-                TAudioPreloadRequestID nAudioPreloadRequestID = SATLInternalControlIDs::nGlobalPreloadRequestID;
-                const char* sAudioPreloadRequestName = SATLInternalControlNames::sGlobalPreloadRequestName;
-                const bool bAutoLoad = (azstricmp(pPreloadRequestNode->getAttr(SATLXmlTags::sATLTypeAttribute), SATLXmlTags::sATLDataLoadType) == 0);
-
-                if (!bAutoLoad)
+                autoLoad = true;
+                if (dataScope == eADS_LEVEL_SPECIFIC)
                 {
-                    sAudioPreloadRequestName = pPreloadRequestNode->getAttr(SATLXmlTags::sATLNameAttribute);
-                    nAudioPreloadRequestID = AudioStringToID<TAudioPreloadRequestID>(sAudioPreloadRequestName);
+                    preloadRequestName = folderName;
+                    preloadRequestId = AudioStringToID<TAudioPreloadRequestID>(preloadRequestName);
                 }
-                else if (eDataScope == eADS_LEVEL_SPECIFIC)
-                {
-                    sAudioPreloadRequestName = sFolderName;
-                    nAudioPreloadRequestID = AudioStringToID<TAudioPreloadRequestID>(sAudioPreloadRequestName);
-                }
+            }
+            else if (nameAttr)
+            {
+                preloadRequestName = nameAttr->value();
+                preloadRequestId = AudioStringToID<TAudioPreloadRequestID>(preloadRequestName);
+            }
 
-                if (nAudioPreloadRequestID != INVALID_AUDIO_PRELOAD_REQUEST_ID)
+            if (preloadRequestId != INVALID_AUDIO_PRELOAD_REQUEST_ID)
+            {
+                // Needs to have at least two child nodes: <ATLPlatforms> and one or more <ATLConfigGroup>.
+                auto platformsNode = preloadNode->first_node(ATLXmlTags::ATLPlatformsTag, 0, false);
+                auto configGroupNode = preloadNode->first_node(ATLXmlTags::ATLConfigGroupTag, 0, false);
+                if (platformsNode && configGroupNode)
                 {
-                    const size_t nPreloadRequestChidrenCount = static_cast<size_t>(pPreloadRequestNode->getChildCount());
-
-                    if (nPreloadRequestChidrenCount > 1)
+                    const char* configGroupName = nullptr;
+                    auto platformNode = platformsNode->first_node(ATLXmlTags::PlatformNodeTag, 0, false);
+                    while (platformNode)
                     {
-                        // We need to have at least two children: ATLPlatforms and at least one ATLConfigGroup
-                        const XmlNodeRef pPlatformsNode(pPreloadRequestNode->getChild(0));
-                        const char* sATLConfigGroupName = nullptr;
-
-                        if (pPlatformsNode && azstricmp(pPlatformsNode->getTag(), SATLXmlTags::sATLPlatformsTag) == 0)
+                        auto platformAttr = platformNode->first_attribute(ATLXmlTags::ATLNameAttribute, 0, false);
+                        if (platformAttr && azstricmp(platformAttr->value(), ATLXmlTags::PlatformName) == 0)
                         {
-                            const size_t nPlatformCount = pPlatformsNode->getChildCount();
-
-                            for (size_t j = 0; j < nPlatformCount; ++j)
+                            auto configGroupAttr = platformNode->first_attribute(ATLXmlTags::ATLConfigGroupAttribute, 0, false);
+                            if (configGroupAttr)
                             {
-                                const XmlNodeRef pPlatformNode(pPlatformsNode->getChild(j));
-
-                                if (pPlatformNode && azstricmp(pPlatformNode->getAttr(SATLXmlTags::sATLNameAttribute), SATLXmlTags::sPlatform) == 0)
-                                {
-                                    sATLConfigGroupName = pPlatformNode->getAttr(SATLXmlTags::sATLConfigGroupAttribute);
-                                    break;
-                                }
+                                configGroupName = configGroupAttr->value();
+                                break;
                             }
                         }
 
-                        if (sATLConfigGroupName)
+                        platformNode = platformNode->next_sibling(ATLXmlTags::PlatformNodeTag, 0, false);
+                    }
+
+                    if (configGroupName)
+                    {
+                        while (configGroupNode)
                         {
-                            for (size_t j = 1; j < nPreloadRequestChidrenCount; ++j)
+                            auto configGroupAttr = configGroupNode->first_attribute(ATLXmlTags::ATLNameAttribute, 0, false);
+                            if (configGroupAttr && azstricmp(configGroupAttr->value(), configGroupName) == 0)
                             {
-                                const XmlNodeRef pConfigGroupNode(pPreloadRequestNode->getChild(j));
+                                // Found a config group associated with this platform...
+                                CATLPreloadRequest::TFileEntryIDs fileEntryIds;
 
-                                if (pConfigGroupNode && azstricmp(pConfigGroupNode->getAttr(SATLXmlTags::sATLNameAttribute), sATLConfigGroupName) == 0)
+                                auto fileNode = configGroupNode->first_node(nullptr, 0, false);
+                                while (fileNode)
                                 {
-                                    // Found the config group corresponding to the specified platform.
-                                    const size_t nFileCount = static_cast<size_t>(pConfigGroupNode->getChildCount());
-
-                                    CATLPreloadRequest::TFileEntryIDs cFileEntryIDs;
-                                    cFileEntryIDs.reserve(nFileCount);
-
-                                    for (size_t k = 0; k < nFileCount; ++k)
+                                    TAudioFileEntryID fileEntryId = m_rFileCacheMgr.TryAddFileCacheEntry(fileNode, dataScope, autoLoad);
+                                    if (fileEntryId != INVALID_AUDIO_FILE_ENTRY_ID)
                                     {
-                                        const TAudioFileEntryID nID = m_rFileCacheMgr.TryAddFileCacheEntry(pConfigGroupNode->getChild(k), eDataScope, bAutoLoad);
-
-                                        if (nID != INVALID_AUDIO_FILE_ENTRY_ID)
-                                        {
-                                            cFileEntryIDs.push_back(nID);
-                                        }
-                                        else
-                                        {
-                                            g_audioLogger.Log(eALT_WARNING, "Preload request \"%s\" could not create file entry from tag \"%s\"!", sAudioPreloadRequestName, pConfigGroupNode->getChild(k)->getTag());
-                                        }
+                                        fileEntryIds.push_back(fileEntryId);
                                     }
 
-                                    CATLPreloadRequest* pPreloadRequest = stl::find_in_map(m_rPreloadRequests, nAudioPreloadRequestID, nullptr);
-
-                                    if (!pPreloadRequest)
-                                    {
-                                        pPreloadRequest = azcreate(CATLPreloadRequest, (nAudioPreloadRequestID, eDataScope, bAutoLoad, cFileEntryIDs), Audio::AudioSystemAllocator, "ATLPreloadRequest");
-
-                                        if (pPreloadRequest)
-                                        {
-                                            m_rPreloadRequests[nAudioPreloadRequestID] = pPreloadRequest;
-
-                                        #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-                                            m_pDebugNameStore->AddAudioPreloadRequest(nAudioPreloadRequestID, sAudioPreloadRequestName);
-                                        #endif // INCLUDE_AUDIO_PRODUCTION_CODE
-                                        }
-                                        else
-                                        {
-                                            g_audioLogger.Log(eALT_FATAL, "Failed to allocate CATLPreloadRequest");
-                                        }
-                                    }
-                                    else
-                                    {
-                                        // Add to existing preload request.
-                                        pPreloadRequest->m_cFileEntryIDs.insert(pPreloadRequest->m_cFileEntryIDs.end(), cFileEntryIDs.begin(), cFileEntryIDs.end());
-                                    }
-
-                                    // no need to look through the rest of the ConfigGroups
-                                    break;
+                                    fileNode = fileNode->next_sibling(nullptr, 0, false);
                                 }
+
+                                auto it = m_rPreloadRequests.find(preloadRequestId);
+                                if (it == m_rPreloadRequests.end())
+                                {
+                                    auto preloadRequest = azcreate(CATLPreloadRequest, (preloadRequestId, dataScope, autoLoad, fileEntryIds), Audio::AudioSystemAllocator, "ATLPreloadRequest");
+                                    m_rPreloadRequests[preloadRequestId] = preloadRequest;
+
+                                #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+                                    m_pDebugNameStore->AddAudioPreloadRequest(preloadRequestId, preloadRequestName);
+                                #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+                                }
+                                else
+                                {
+                                    it->second->m_cFileEntryIDs.insert(it->second->m_cFileEntryIDs.end(), fileEntryIds.begin(), fileEntryIds.end());
+                                }
+
+                                // No need to continue looking through the config groups...
+                                break;
                             }
+
+                            configGroupNode = configGroupNode->next_sibling(ATLXmlTags::ATLConfigGroupTag, 0, false);
                         }
                     }
                 }
-                else
-                {
-                    g_audioLogger.Log(eALT_WARNING, "Preload request '%s' already exists! Skipping this entry!", sAudioPreloadRequestName);
-                }
             }
+
+            preloadNode = preloadNode->next_sibling(ATLXmlTags::ATLPreloadRequestTag, 0, false);
         }
     }
 
@@ -1354,366 +1289,309 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLXmlProcessor::ParseAudioEnvironments(const XmlNodeRef pAudioEnvironmentRoot, const EATLDataScope eDataScope)
+    void CATLXmlProcessor::ParseAudioEnvironments(const AZ::rapidxml::xml_node<char>* environmentsXmlRoot, const EATLDataScope dataScope)
     {
-        const size_t nAudioEnvironmentCount = static_cast<size_t>(pAudioEnvironmentRoot->getChildCount());
-
-        for (size_t i = 0; i < nAudioEnvironmentCount; ++i)
+        auto environmentNode = environmentsXmlRoot->first_node(ATLXmlTags::ATLEnvironmentTag, 0, false);
+        while (environmentNode)
         {
-            const XmlNodeRef pAudioEnvironmentNode(pAudioEnvironmentRoot->getChild(i));
-
-            if (pAudioEnvironmentNode && azstricmp(pAudioEnvironmentNode->getTag(), SATLXmlTags::sATLEnvironmentTag) == 0)
+            auto environmentAttr = environmentNode->first_attribute(ATLXmlTags::ATLNameAttribute, 0, false);
+            const char* atlEnvironmentName = nullptr;
+            if (environmentAttr)
             {
-                const char* const sATLEnvironmentName = pAudioEnvironmentNode->getAttr(SATLXmlTags::sATLNameAttribute);
-                const auto nATLEnvironmentID = AudioStringToID<TAudioEnvironmentID>(sATLEnvironmentName);
-
-                if ((nATLEnvironmentID != INVALID_AUDIO_ENVIRONMENT_ID) && (stl::find_in_map(m_rEnvironments, nATLEnvironmentID, nullptr) == nullptr))
-                {
-                    //there is no entry yet with this ID in the container
-                    const size_t nAudioEnvironmentChildrenCount = static_cast<size_t>(pAudioEnvironmentNode->getChildCount());
-
-                    CATLAudioEnvironment::TImplPtrVec cImplPtrs;
-                    cImplPtrs.reserve(nAudioEnvironmentChildrenCount);
-
-                    for (size_t j = 0; j < nAudioEnvironmentChildrenCount; ++j)
-                    {
-                        const XmlNodeRef pEnvironmentImplNode(pAudioEnvironmentNode->getChild(j));
-
-                        if (pEnvironmentImplNode)
-                        {
-                            const IATLEnvironmentImplData* pEnvironmentImplData = nullptr;
-                            EATLSubsystem eReceiver = eAS_NONE;
-
-                            if (azstricmp(pEnvironmentImplNode->getTag(), SATLXmlTags::sATLEnvironmentRequestTag) == 0)
-                            {
-                                pEnvironmentImplData = NewAudioEnvironmentImplDataInternal(pEnvironmentImplNode);
-                                eReceiver = eAS_ATL_INTERNAL;
-                            }
-                            else
-                            {
-                                AudioSystemImplementationRequestBus::BroadcastResult(pEnvironmentImplData, &AudioSystemImplementationRequestBus::Events::NewAudioEnvironmentImplData, pEnvironmentImplNode);
-                                eReceiver = eAS_AUDIO_SYSTEM_IMPLEMENTATION;
-                            }
-
-                            if (pEnvironmentImplData)
-                            {
-                                auto pEnvironmentImpl = azcreate(CATLEnvironmentImpl, (eReceiver, pEnvironmentImplData), Audio::AudioSystemAllocator, "ATLEnvironmentImpl");
-                                cImplPtrs.push_back(pEnvironmentImpl);
-                            }
-                            else
-                            {
-                                g_audioLogger.Log(eALT_WARNING, "Could not parse an Environment Implementation with XML tag %s", pEnvironmentImplNode->getTag());
-                            }
-                        }
-                    }
-
-                    if (!cImplPtrs.empty())
-                    {
-                        auto pNewEnvironment = azcreate(CATLAudioEnvironment, (nATLEnvironmentID, eDataScope, cImplPtrs), Audio::AudioSystemAllocator, "ATLAudioEnvironment");
-
-                        if (pNewEnvironment)
-                        {
-                            m_rEnvironments[nATLEnvironmentID] = pNewEnvironment;
-
-                        #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-                            m_pDebugNameStore->AddAudioEnvironment(nATLEnvironmentID, sATLEnvironmentName);
-                        #endif // INCLUDE_AUDIO_PRODUCTION_CODE
-                        }
-                    }
-                }
-                else
-                {
-                    g_audioLogger.Log(eALT_ERROR, "ParseAudioEnvironments - Environment '%s' already exists!", sATLEnvironmentName);
-                }
+                atlEnvironmentName = environmentAttr->value();
             }
-        }
-    }
+            const auto atlEnvironmentId = AudioStringToID<TAudioEnvironmentID>(atlEnvironmentName);
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLXmlProcessor::ParseAudioTriggers(const XmlNodeRef pXMLTriggerRoot, const EATLDataScope eDataScope)
-    {
-        const size_t nAudioTriggersChildrenCount = static_cast<size_t>(pXMLTriggerRoot->getChildCount());
-
-        for (size_t i = 0; i < nAudioTriggersChildrenCount; ++i)
-        {
-            const XmlNodeRef pAudioTriggerNode(pXMLTriggerRoot->getChild(i));
-
-            if (pAudioTriggerNode && azstricmp(pAudioTriggerNode->getTag(), SATLXmlTags::sATLTriggerTag) == 0)
+            if ((atlEnvironmentId != INVALID_AUDIO_ENVIRONMENT_ID) && (m_rEnvironments.find(atlEnvironmentId) == m_rEnvironments.end()))
             {
-                const char* const sATLTriggerName = pAudioTriggerNode->getAttr(SATLXmlTags::sATLNameAttribute);
-                const auto nATLTriggerID = AudioStringToID<TAudioControlID>(sATLTriggerName);
+                CATLAudioEnvironment::TImplPtrVec envImpls;
 
-                if ((nATLTriggerID != INVALID_AUDIO_CONTROL_ID) && (stl::find_in_map(m_rTriggers, nATLTriggerID, nullptr) == nullptr))
+                auto environmentImplNode = environmentNode->first_node(nullptr, 0, false);
+                while (environmentImplNode)
                 {
-                    //there is no entry yet with this ID in the container
-                    const size_t nAudioTriggerChildrenCount = static_cast<size_t>(pAudioTriggerNode->getChildCount());
+                    IATLEnvironmentImplData* environmentImplData = nullptr;
+                    EATLSubsystem receiver = eAS_NONE;
 
-                    CATLTrigger::TImplPtrVec cImplPtrs;
-                    cImplPtrs.reserve(nAudioTriggerChildrenCount);
-
-                    for (size_t m = 0; m < nAudioTriggerChildrenCount; ++m)
+                    if (azstricmp(environmentImplNode->name(), ATLXmlTags::ATLEnvironmentRequestTag) == 0)
                     {
-                        const XmlNodeRef pTriggerImplNode(pAudioTriggerNode->getChild(m));
-
-                        if (pTriggerImplNode)
-                        {
-                            const IATLTriggerImplData* pTriggerImplData = nullptr;
-                            EATLSubsystem eReceiver = eAS_NONE;
-
-                            if (azstricmp(pTriggerImplNode->getTag(), SATLXmlTags::sATLTriggerRequestTag) == 0)
-                            {
-                                pTriggerImplData = NewAudioTriggerImplDataInternal(pTriggerImplNode);
-                                eReceiver = eAS_ATL_INTERNAL;
-                            }
-                            else
-                            {
-                                AudioSystemImplementationRequestBus::BroadcastResult(pTriggerImplData, &AudioSystemImplementationRequestBus::Events::NewAudioTriggerImplData, pTriggerImplNode);
-                                eReceiver = eAS_AUDIO_SYSTEM_IMPLEMENTATION;
-                            }
-
-                            if (pTriggerImplData)
-                            {
-                                auto pTriggerImpl = azcreate(CATLTriggerImpl, (++m_nTriggerImplIDCounter, nATLTriggerID, eReceiver, pTriggerImplData), Audio::AudioSystemAllocator, "ATLTriggerImpl");
-                                cImplPtrs.push_back(pTriggerImpl);
-                            }
-                            else
-                            {
-                                g_audioLogger.Log(eALT_WARNING, "Could not parse a Trigger Implementation with XML tag %s", pTriggerImplNode->getTag());
-                            }
-                        }
+                        environmentImplData = NewAudioEnvironmentImplDataInternal(environmentImplNode);
+                        receiver = eAS_ATL_INTERNAL;
+                    }
+                    else
+                    {
+                        AudioSystemImplementationRequestBus::BroadcastResult(environmentImplData, &AudioSystemImplementationRequestBus::Events::NewAudioEnvironmentImplData, environmentImplNode);
+                        receiver = eAS_AUDIO_SYSTEM_IMPLEMENTATION;
                     }
 
-                    auto pNewTrigger = azcreate(CATLTrigger, (nATLTriggerID, eDataScope, cImplPtrs), Audio::AudioSystemAllocator, "ATLTrigger");
-
-                    if (pNewTrigger)
+                    if (environmentImplData)
                     {
-                        m_rTriggers[nATLTriggerID] = pNewTrigger;
-
-                    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-                        m_pDebugNameStore->AddAudioTrigger(nATLTriggerID, sATLTriggerName);
-                    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+                        auto environmentImpl = azcreate(CATLEnvironmentImpl, (receiver, environmentImplData), Audio::AudioSystemAllocator, "ATLEnvironmentImpl");
+                        envImpls.push_back(environmentImpl);
                     }
+
+                    environmentImplNode = environmentImplNode->next_sibling(nullptr, 0, false);
                 }
-                else
+
+                if (!envImpls.empty())
                 {
-                    g_audioLogger.Log(eALT_ERROR, "ParseAudioTriggers - Trigger '%s' already exists!", sATLTriggerName);
-                }
-            }
-        }
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLXmlProcessor::ParseAudioSwitches(const XmlNodeRef pXMLSwitchRoot, const EATLDataScope eDataScope)
-    {
-        const size_t nAudioSwitchesChildrenCount = static_cast<size_t>(pXMLSwitchRoot->getChildCount());
-
-        for (size_t i = 0; i < nAudioSwitchesChildrenCount; ++i)
-        {
-            const XmlNodeRef pATLSwitchNode(pXMLSwitchRoot->getChild(i));
-
-            if (pATLSwitchNode && azstricmp(pATLSwitchNode->getTag(), SATLXmlTags::sATLSwitchTag) == 0)
-            {
-                const char* const sATLSwitchName = pATLSwitchNode->getAttr(SATLXmlTags::sATLNameAttribute);
-                const auto nATLSwitchID = AudioStringToID<TAudioControlID>(sATLSwitchName);
-
-                if ((nATLSwitchID != INVALID_AUDIO_CONTROL_ID) && (stl::find_in_map(m_rSwitches, nATLSwitchID, nullptr) == nullptr))
-                {
-                    auto pNewSwitch = azcreate(CATLSwitch, (nATLSwitchID, eDataScope), Audio::AudioSystemAllocator, "ATLSwitch");
+                    auto newEnvironment = azcreate(CATLAudioEnvironment, (atlEnvironmentId, dataScope, envImpls), Audio::AudioSystemAllocator, "ATLAudioEnvironment");
+                    m_rEnvironments[atlEnvironmentId] = newEnvironment;
 
                 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-                    m_pDebugNameStore->AddAudioSwitch(nATLSwitchID, sATLSwitchName);
+                    m_pDebugNameStore->AddAudioEnvironment(atlEnvironmentId, atlEnvironmentName);
                 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
-
-                    const size_t nATLSwitchStatesCount = static_cast<size_t>(pATLSwitchNode->getChildCount());
-
-                    for (size_t j = 0; j < nATLSwitchStatesCount; ++j)
-                    {
-                        const XmlNodeRef pATLSwitchStateNode(pATLSwitchNode->getChild(j));
-
-                        if (pATLSwitchStateNode && azstricmp(pATLSwitchStateNode->getTag(), SATLXmlTags::sATLSwitchStateTag) == 0)
-                        {
-                            const char* const sATLSwitchStateName = pATLSwitchStateNode->getAttr(SATLXmlTags::sATLNameAttribute);
-                            const auto nATLSwitchStateID = AudioStringToID<TAudioSwitchStateID>(sATLSwitchStateName);
-
-                            if (nATLSwitchStateID != INVALID_AUDIO_SWITCH_STATE_ID)
-                            {
-                                const size_t nSwitchStateImplCount = static_cast<size_t>(pATLSwitchStateNode->getChildCount());
-
-                                CATLSwitchState::TImplPtrVec cSwitchStateImplVec;
-                                cSwitchStateImplVec.reserve(nSwitchStateImplCount);
-
-                                for (size_t k = 0; k < nSwitchStateImplCount; ++k)
-                                {
-                                    const XmlNodeRef pStateImplNode(pATLSwitchStateNode->getChild(k));
-                                    if (pStateImplNode)
-                                    {
-                                        const char* const sStateImplNodeTag = pStateImplNode->getTag();
-                                        const IATLSwitchStateImplData* pNewSwitchStateImplData = nullptr;
-                                        EATLSubsystem eReceiver = eAS_NONE;
-
-                                        if (azstricmp(sStateImplNodeTag, SATLXmlTags::sATLSwitchRequestTag) == 0)
-                                        {
-                                            pNewSwitchStateImplData = NewAudioSwitchStateImplDataInternal(pStateImplNode);
-                                            eReceiver = eAS_ATL_INTERNAL;
-                                        }
-                                        else
-                                        {
-                                            AudioSystemImplementationRequestBus::BroadcastResult(pNewSwitchStateImplData, &AudioSystemImplementationRequestBus::Events::NewAudioSwitchStateImplData, pStateImplNode);
-                                            eReceiver = eAS_AUDIO_SYSTEM_IMPLEMENTATION;
-                                        }
-
-                                        if (pNewSwitchStateImplData)
-                                        {
-                                            auto pSwitchStateImpl = azcreate(CATLSwitchStateImpl, (eReceiver, pNewSwitchStateImplData), Audio::AudioSystemAllocator, "ATLSwitchStateImpl");
-                                            cSwitchStateImplVec.push_back(pSwitchStateImpl);
-                                        }
-                                    }
-                                }
-
-                                auto pNewState = azcreate(CATLSwitchState, (nATLSwitchID, nATLSwitchStateID, cSwitchStateImplVec), Audio::AudioSystemAllocator, "ATLSwitchState");
-                                pNewSwitch->cStates[nATLSwitchStateID] = pNewState;
-
-                            #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-                                m_pDebugNameStore->AddAudioSwitchState(nATLSwitchID, nATLSwitchStateID, sATLSwitchStateName);
-                            #endif // INCLUDE_AUDIO_PRODUCTION_CODE
-                            }
-                        }
-                    }
-                    m_rSwitches[nATLSwitchID] = pNewSwitch;
-                }
-                else
-                {
-                    g_audioLogger.Log(eALT_ERROR, "ParseAudioSwitches - Switch '%s' already exists!", sATLSwitchName);
                 }
             }
+
+            environmentNode = environmentNode->next_sibling(ATLXmlTags::ATLEnvironmentTag, 0, false);
         }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLXmlProcessor::ParseAudioRtpcs(const XmlNodeRef pXMLRtpcRoot, const EATLDataScope eDataScope)
+    void CATLXmlProcessor::ParseAudioTriggers(const AZ::rapidxml::xml_node<char>* triggersXmlRoot, const EATLDataScope dataScope)
     {
-        const size_t nAudioRtpcChildrenCount = static_cast<size_t>(pXMLRtpcRoot->getChildCount());
-
-        for (size_t i = 0; i < nAudioRtpcChildrenCount; ++i)
+        auto triggerNode = triggersXmlRoot->first_node(ATLXmlTags::ATLTriggerTag, 0, false);
+        while (triggerNode)
         {
-            const XmlNodeRef pAudioRtpcNode(pXMLRtpcRoot->getChild(i));
-
-            if (pAudioRtpcNode && azstricmp(pAudioRtpcNode->getTag(), SATLXmlTags::sATLRtpcTag) == 0)
+            auto triggerAttr = triggerNode->first_attribute(ATLXmlTags::ATLNameAttribute, 0, false);
+            const char* atlTriggerName = nullptr;
+            if (triggerAttr)
             {
-                const char* const sATLRtpcName = pAudioRtpcNode->getAttr(SATLXmlTags::sATLNameAttribute);
-                const auto nATLRtpcID = AudioStringToID<TAudioControlID>(sATLRtpcName);
+                atlTriggerName = triggerAttr->value();
+            }
+            const auto atlTriggerId = AudioStringToID<TAudioControlID>(atlTriggerName);
 
-                if ((nATLRtpcID != INVALID_AUDIO_CONTROL_ID) && (stl::find_in_map(m_rRtpcs, nATLRtpcID, nullptr) == nullptr))
+            if ((atlTriggerId != INVALID_AUDIO_CONTROL_ID) && (m_rTriggers.find(atlTriggerId) == m_rTriggers.end()))
+            {
+                CATLTrigger::TImplPtrVec triggerImpls;
+
+                auto triggerImplNode = triggerNode->first_node(nullptr, 0, false);
+                while (triggerImplNode)
                 {
-                    const size_t nRtpcNodeChildrenCount = static_cast<size_t>(pAudioRtpcNode->getChildCount());
-                    CATLRtpc::TImplPtrVec cImplPtrs;
-                    cImplPtrs.reserve(nRtpcNodeChildrenCount);
+                    IATLTriggerImplData* triggerImplData = nullptr;
+                    EATLSubsystem receiver = eAS_NONE;
 
-                    for (size_t j = 0; j < nRtpcNodeChildrenCount; ++j)
+                    if (azstricmp(triggerImplNode->name(), ATLXmlTags::ATLTriggerRequestTag) == 0)
                     {
-                        const XmlNodeRef pRtpcImplNode(pAudioRtpcNode->getChild(j));
+                        triggerImplData = NewAudioTriggerImplDataInternal(triggerImplNode);
+                        receiver = eAS_ATL_INTERNAL;
+                    }
+                    else
+                    {
+                        AudioSystemImplementationRequestBus::BroadcastResult(triggerImplData, &AudioSystemImplementationRequestBus::Events::NewAudioTriggerImplData, triggerImplNode);
+                        receiver = eAS_AUDIO_SYSTEM_IMPLEMENTATION;
+                    }
 
-                        if (pRtpcImplNode)
+                    if (triggerImplData)
+                    {
+                        auto triggerImpl = azcreate(CATLTriggerImpl, (++m_nTriggerImplIDCounter, atlTriggerId, receiver, triggerImplData), Audio::AudioSystemAllocator, "ATLTriggerImpl");
+                        triggerImpls.push_back(triggerImpl);
+                    }
+
+                    triggerImplNode = triggerImplNode->next_sibling(nullptr, 0, false);
+                }
+
+                if (!triggerImpls.empty())
+                {
+                    auto newTrigger = azcreate(CATLTrigger, (atlTriggerId, dataScope, triggerImpls), Audio::AudioSystemAllocator, "ATLTrigger");
+                    m_rTriggers[atlTriggerId] = newTrigger;
+
+                #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+                    m_pDebugNameStore->AddAudioTrigger(atlTriggerId, atlTriggerName);
+                #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+                }
+            }
+
+            triggerNode = triggerNode->next_sibling(ATLXmlTags::ATLTriggerTag, 0, false);
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CATLXmlProcessor::ParseAudioSwitches(const AZ::rapidxml::xml_node<char>* switchesXmlRoot, const EATLDataScope dataScope)
+    {
+        auto switchNode = switchesXmlRoot->first_node(ATLXmlTags::ATLSwitchTag, 0, false);
+        while (switchNode)
+        {
+            auto switchAttr = switchNode->first_attribute(ATLXmlTags::ATLNameAttribute, 0, false);
+            const char* atlSwitchName = nullptr;
+            if (switchAttr)
+            {
+                atlSwitchName = switchAttr->value();
+            }
+            const auto atlSwitchId = AudioStringToID<TAudioControlID>(atlSwitchName);
+
+            if ((atlSwitchId != INVALID_AUDIO_CONTROL_ID) && (m_rSwitches.find(atlSwitchId) == m_rSwitches.end()))
+            {
+                auto newSwitch = azcreate(CATLSwitch, (atlSwitchId, dataScope), Audio::AudioSystemAllocator, "ATLSwitch");
+
+            #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+                m_pDebugNameStore->AddAudioSwitch(atlSwitchId, atlSwitchName);
+            #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+
+                auto stateNode = switchNode->first_node(ATLXmlTags::ATLSwitchStateTag, 0, false);
+                while (stateNode)
+                {
+                    auto stateAttr = stateNode->first_attribute(ATLXmlTags::ATLNameAttribute, 0, false);
+                    const char* atlStateName = nullptr;
+                    if (stateAttr)
+                    {
+                        atlStateName = stateAttr->value();
+                    }
+                    const auto atlStateId = AudioStringToID<TAudioSwitchStateID>(atlStateName);
+
+                    if (atlStateId != INVALID_AUDIO_SWITCH_STATE_ID)
+                    {
+                        CATLSwitchState::TImplPtrVec switchStateImplVec;
+                        auto stateImplNode = stateNode->first_node(nullptr, 0, false);
+                        while (stateImplNode)
                         {
-                            const char* const sRtpcImplNodeTag = pRtpcImplNode->getTag();
-                            const IATLRtpcImplData* pNewRtpcImplData = nullptr;
-                            EATLSubsystem eReceiver = eAS_NONE;
-
-                            if (azstricmp(sRtpcImplNodeTag, SATLXmlTags::sATLRtpcRequestTag) == 0)
+                            IATLSwitchStateImplData* newSwitchStateImplData = nullptr;
+                            EATLSubsystem receiver = eAS_NONE;
+                            const char* stateImplTag = stateImplNode->name();
+                            if (azstricmp(stateImplTag, ATLXmlTags::ATLSwitchRequestTag) == 0)
                             {
-                                pNewRtpcImplData = NewAudioRtpcImplDataInternal(pRtpcImplNode);
-                                eReceiver = eAS_ATL_INTERNAL;
+                                newSwitchStateImplData = NewAudioSwitchStateImplDataInternal(stateImplNode);
+                                receiver = eAS_ATL_INTERNAL;
                             }
                             else
                             {
-                                AudioSystemImplementationRequestBus::BroadcastResult(pNewRtpcImplData, &AudioSystemImplementationRequestBus::Events::NewAudioRtpcImplData, pRtpcImplNode);
-                                eReceiver = eAS_AUDIO_SYSTEM_IMPLEMENTATION;
+                                AudioSystemImplementationRequestBus::BroadcastResult(newSwitchStateImplData, &AudioSystemImplementationRequestBus::Events::NewAudioSwitchStateImplData, stateImplNode);
+                                receiver = eAS_AUDIO_SYSTEM_IMPLEMENTATION;
                             }
 
-                            if (pNewRtpcImplData)
+                            if (newSwitchStateImplData)
                             {
-                                auto pRtpcImpl = azcreate(CATLRtpcImpl, (eReceiver, pNewRtpcImplData), Audio::AudioSystemAllocator, "ATLRtpcImpl");
-                                cImplPtrs.push_back(pRtpcImpl);
+                                auto switchStateImpl = azcreate(CATLSwitchStateImpl, (receiver, newSwitchStateImplData), Audio::AudioSystemAllocator, "ATLSwitchStateImpl");
+                                switchStateImplVec.push_back(switchStateImpl);
                             }
+
+                            stateImplNode = stateImplNode->next_sibling(nullptr, 0, false);
                         }
-                    }
 
-                    auto pNewRtpc = azcreate(CATLRtpc, (nATLRtpcID, eDataScope, cImplPtrs), Audio::AudioSystemAllocator, "ATLRtpc");
-
-                    if (pNewRtpc)
-                    {
-                        m_rRtpcs[nATLRtpcID] = pNewRtpc;
+                        auto newState = azcreate(CATLSwitchState, (atlSwitchId, atlStateId, switchStateImplVec), Audio::AudioSystemAllocator, "ATLSwitchState");
+                        newSwitch->cStates[atlStateId] = newState;
 
                     #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-                        m_pDebugNameStore->AddAudioRtpc(nATLRtpcID, sATLRtpcName);
+                        m_pDebugNameStore->AddAudioSwitchState(atlSwitchId, atlStateId, atlStateName);
                     #endif // INCLUDE_AUDIO_PRODUCTION_CODE
                     }
+
+                    stateNode = stateNode->next_sibling(ATLXmlTags::ATLSwitchStateTag, 0, false);
                 }
-                else
-                {
-                    g_audioLogger.Log(eALT_ERROR, "ParseAudioRtpcs - Rtpc '%s' already exists!", sATLRtpcName);
-                }
+
+                m_rSwitches[atlSwitchId] = newSwitch;
             }
+
+            switchNode = switchNode->next_sibling(ATLXmlTags::ATLSwitchTag, 0, false);
         }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    const IATLTriggerImplData* CATLXmlProcessor::NewAudioTriggerImplDataInternal(const XmlNodeRef pXMLTriggerRoot)
+    void CATLXmlProcessor::ParseAudioRtpcs(const AZ::rapidxml::xml_node<char>* rtpcsXmlRoot, const EATLDataScope dataScope)
     {
-        //TODO: implement
-        return nullptr;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    const IATLRtpcImplData* CATLXmlProcessor::NewAudioRtpcImplDataInternal(const XmlNodeRef pXMLRtpcRoot)
-    {
-        //TODO: implement
-        return nullptr;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    const IATLSwitchStateImplData* CATLXmlProcessor::NewAudioSwitchStateImplDataInternal(const XmlNodeRef pXMLSwitchRoot)
-    {
-        SATLSwitchStateImplData_internal* pSwitchStateImpl = nullptr;
-
-        const char* const sInternalSwitchNodeName = pXMLSwitchRoot->getAttr(SATLXmlTags::sATLNameAttribute);
-
-        if (sInternalSwitchNodeName && (sInternalSwitchNodeName[0] != '\0') && (pXMLSwitchRoot->getChildCount() == 1))
+        auto rtpcNode = rtpcsXmlRoot->first_node(ATLXmlTags::ATLRtpcTag, 0, false);
+        while (rtpcNode)
         {
-            const XmlNodeRef pValueNode(pXMLSwitchRoot->getChild(0));
+            auto rtpcAttr = rtpcNode->first_attribute(ATLXmlTags::ATLNameAttribute, 0, false);
+            const char* atlRtpcName = rtpcAttr->value();
+            const auto atlRtpcId = AudioStringToID<TAudioControlID>(atlRtpcName);
 
-            if (pValueNode && azstricmp(pValueNode->getTag(), SATLXmlTags::sATLValueTag) == 0)
+            if ((atlRtpcId != INVALID_AUDIO_CONTROL_ID) && (m_rRtpcs.find(atlRtpcId) == m_rRtpcs.end()))
             {
-                const char* sInternalSwitchStateName = pValueNode->getAttr(SATLXmlTags::sATLNameAttribute);
+                CATLRtpc::TImplPtrVec rtpcImpls;
 
-                if (sInternalSwitchStateName && (sInternalSwitchStateName[0] != '\0'))
+                auto rtpcImplNode = rtpcNode->first_node(nullptr, 0, false);
+                while (rtpcImplNode)
                 {
-                    const auto nATLInternalSwitchID = AudioStringToID<TAudioControlID>(sInternalSwitchNodeName);
-                    const auto nATLInternalStateID = AudioStringToID<TAudioSwitchStateID>(sInternalSwitchStateName);
-                    pSwitchStateImpl = azcreate(SATLSwitchStateImplData_internal, (nATLInternalSwitchID, nATLInternalStateID), Audio::AudioSystemAllocator, "ATLSwitchDataImplData_internal");
+                    IATLRtpcImplData* rtpcImplData = nullptr;
+                    EATLSubsystem receiver = eAS_NONE;
+
+                    if (azstricmp(rtpcImplNode->name(), ATLXmlTags::ATLRtpcRequestTag) == 0)
+                    {
+                        rtpcImplData = NewAudioRtpcImplDataInternal(rtpcImplNode);
+                        receiver = eAS_ATL_INTERNAL;
+                    }
+                    else
+                    {
+                        AudioSystemImplementationRequestBus::BroadcastResult(rtpcImplData, &AudioSystemImplementationRequestBus::Events::NewAudioRtpcImplData, rtpcImplNode);
+                        receiver = eAS_AUDIO_SYSTEM_IMPLEMENTATION;
+                    }
+
+                    if (rtpcImplData)
+                    {
+                        auto rtpcImpl = azcreate(CATLRtpcImpl, (receiver, rtpcImplData), Audio::AudioSystemAllocator, "ATLRtpcImpl");
+                        rtpcImpls.push_back(rtpcImpl);
+                    }
+
+                    rtpcImplNode = rtpcImplNode->next_sibling(nullptr, 0, false);
+                }
+
+                if (!rtpcImpls.empty())
+                {
+                    auto newRtpc = azcreate(CATLRtpc, (atlRtpcId, dataScope, rtpcImpls), Audio::AudioSystemAllocator, "ATLRtpc");
+                    m_rRtpcs[atlRtpcId] = newRtpc;
+
+                #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+                    m_pDebugNameStore->AddAudioRtpc(atlRtpcId, atlRtpcName);
+                #endif // INCLUDE_AUDIO_PRODUCTION_CODE
                 }
             }
-        }
-        else
-        {
-            g_audioLogger.Log(
-                eALT_WARNING,
-                "An ATLSwitchRequest %s inside ATLSwitchState needs to have exactly one ATLValue.",
-                sInternalSwitchNodeName);
-        }
 
-        return pSwitchStateImpl;
+            rtpcNode = rtpcNode->next_sibling(ATLXmlTags::ATLRtpcTag, 0, false);
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    const IATLEnvironmentImplData* CATLXmlProcessor::NewAudioEnvironmentImplDataInternal(const XmlNodeRef pXMLEnvironmentRoot)
+    IATLTriggerImplData* CATLXmlProcessor::NewAudioTriggerImplDataInternal(const AZ::rapidxml::xml_node<char>* triggerXmlRoot)
     {
-        // TODO: implement
         return nullptr;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLXmlProcessor::DeleteAudioTrigger(const CATLTrigger* const pOldTrigger)
+    IATLRtpcImplData* CATLXmlProcessor::NewAudioRtpcImplDataInternal(const AZ::rapidxml::xml_node<char>* rtpcXmlRoot)
+    {
+        return nullptr;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    IATLSwitchStateImplData* CATLXmlProcessor::NewAudioSwitchStateImplDataInternal(const AZ::rapidxml::xml_node<char>* switchXmlRoot)
+    {
+        SATLSwitchStateImplData_internal* switchStateImpl = nullptr;
+        auto switchNameAttr = switchXmlRoot->first_attribute(ATLXmlTags::ATLNameAttribute, 0, false);
+        if (switchNameAttr)
+        {
+            const char* internalSwitchName = switchNameAttr->value();
+
+            auto valueNode = switchXmlRoot->first_node(ATLXmlTags::ATLValueTag, 0, false);
+            if (valueNode)
+            {
+                auto stateNameAttr = valueNode->first_attribute(ATLXmlTags::ATLNameAttribute, 0, false);
+                if (stateNameAttr)
+                {
+                    const char* internalStateName = stateNameAttr->value();
+
+                    const auto internalSwitchId = AudioStringToID<TAudioControlID>(internalSwitchName);
+                    const auto internalStateId = AudioStringToID<TAudioSwitchStateID>(internalStateName);
+
+                    if (internalSwitchId != INVALID_AUDIO_CONTROL_ID && internalStateId != INVALID_AUDIO_SWITCH_STATE_ID)
+                    {
+                        switchStateImpl = azcreate(SATLSwitchStateImplData_internal, (internalSwitchId, internalStateId), Audio::AudioSystemAllocator, "ATLSwitchStateImplData_internal");
+                    }
+                }
+            }
+        }
+
+        return switchStateImpl;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    IATLEnvironmentImplData* CATLXmlProcessor::NewAudioEnvironmentImplDataInternal(const AZ::rapidxml::xml_node<char>* environmentXmlRoot)
+    {
+        return nullptr;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CATLXmlProcessor::DeleteAudioTrigger(CATLTrigger* const pOldTrigger)
     {
         if (pOldTrigger)
         {
@@ -1721,22 +1599,22 @@ namespace Audio
             {
                 if (triggerImpl->GetReceiver() == eAS_ATL_INTERNAL)
                 {
-                    azdestroy(const_cast<IATLTriggerImplData*>(triggerImpl->m_pImplData), Audio::AudioSystemAllocator);
+                    azdestroy(triggerImpl->m_pImplData, Audio::AudioSystemAllocator);
                 }
                 else
                 {
                     AudioSystemImplementationRequestBus::Broadcast(&AudioSystemImplementationRequestBus::Events::DeleteAudioTriggerImplData, triggerImpl->m_pImplData);
                 }
 
-                azdestroy(const_cast<CATLTriggerImpl*>(triggerImpl), Audio::AudioSystemAllocator);
+                azdestroy(triggerImpl, Audio::AudioSystemAllocator);
             }
 
-            azdestroy(const_cast<CATLTrigger*>(pOldTrigger), Audio::AudioSystemAllocator);
+            azdestroy(pOldTrigger, Audio::AudioSystemAllocator);
         }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLXmlProcessor::DeleteAudioRtpc(const CATLRtpc* const pOldRtpc)
+    void CATLXmlProcessor::DeleteAudioRtpc(CATLRtpc* const pOldRtpc)
     {
         if (pOldRtpc)
         {
@@ -1744,54 +1622,54 @@ namespace Audio
             {
                 if (rtpcImpl->GetReceiver() == eAS_ATL_INTERNAL)
                 {
-                    azdestroy(const_cast<IATLRtpcImplData*>(rtpcImpl->m_pImplData), Audio::AudioSystemAllocator);
+                    azdestroy(rtpcImpl->m_pImplData, Audio::AudioSystemAllocator);
                 }
                 else
                 {
                     AudioSystemImplementationRequestBus::Broadcast(&AudioSystemImplementationRequestBus::Events::DeleteAudioRtpcImplData, rtpcImpl->m_pImplData);
                 }
 
-                azdestroy(const_cast<CATLRtpcImpl*>(rtpcImpl), Audio::AudioSystemAllocator);
+                azdestroy(rtpcImpl, Audio::AudioSystemAllocator);
             }
 
-            azdestroy(const_cast<CATLRtpc*>(pOldRtpc), Audio::AudioSystemAllocator);
+            azdestroy(pOldRtpc, Audio::AudioSystemAllocator);
         }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLXmlProcessor::DeleteAudioSwitch(const CATLSwitch* const pOldSwitch)
+    void CATLXmlProcessor::DeleteAudioSwitch(CATLSwitch* const pOldSwitch)
     {
         if (pOldSwitch)
         {
             for (auto& statePair : pOldSwitch->cStates)
             {
-                auto const switchState = statePair.second;
+                auto switchState = statePair.second;
                 if (switchState)
                 {
                     for (auto const stateImpl : switchState->m_cImplPtrs)
                     {
                         if (stateImpl->GetReceiver() == eAS_ATL_INTERNAL)
                         {
-                            azdestroy(const_cast<IATLSwitchStateImplData*>(stateImpl->m_pImplData), Audio::AudioSystemAllocator);
+                            azdestroy(stateImpl->m_pImplData, Audio::AudioSystemAllocator);
                         }
                         else
                         {
                             AudioSystemImplementationRequestBus::Broadcast(&AudioSystemImplementationRequestBus::Events::DeleteAudioSwitchStateImplData, stateImpl->m_pImplData);
                         }
 
-                        azdestroy(const_cast<CATLSwitchStateImpl*>(stateImpl), Audio::AudioSystemAllocator);
+                        azdestroy(stateImpl, Audio::AudioSystemAllocator);
                     }
 
-                    azdestroy(const_cast<CATLSwitchState*>(switchState), Audio::AudioSystemAllocator);
+                    azdestroy(switchState, Audio::AudioSystemAllocator);
                 }
             }
 
-            azdestroy(const_cast<CATLSwitch*>(pOldSwitch), Audio::AudioSystemAllocator);
+            azdestroy(pOldSwitch, Audio::AudioSystemAllocator);
         }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLXmlProcessor::DeleteAudioPreloadRequest(const CATLPreloadRequest* const pOldPreloadRequest)
+    void CATLXmlProcessor::DeleteAudioPreloadRequest(CATLPreloadRequest* const pOldPreloadRequest)
     {
         if (pOldPreloadRequest)
         {
@@ -1801,12 +1679,12 @@ namespace Audio
                 m_rFileCacheMgr.TryRemoveFileCacheEntry(preloadFileId, eScope);
             }
 
-            azdestroy(const_cast<CATLPreloadRequest*>(pOldPreloadRequest), Audio::AudioSystemAllocator);
+            azdestroy(pOldPreloadRequest, Audio::AudioSystemAllocator);
         }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CATLXmlProcessor::DeleteAudioEnvironment(const CATLAudioEnvironment* const pOldEnvironment)
+    void CATLXmlProcessor::DeleteAudioEnvironment(CATLAudioEnvironment* const pOldEnvironment)
     {
         if (pOldEnvironment)
         {
@@ -1814,17 +1692,17 @@ namespace Audio
             {
                 if (environmentImpl->GetReceiver() == eAS_ATL_INTERNAL)
                 {
-                    azdestroy(const_cast<IATLEnvironmentImplData*>(environmentImpl->m_pImplData), Audio::AudioSystemAllocator);
+                    azdestroy(environmentImpl->m_pImplData, Audio::AudioSystemAllocator);
                 }
                 else
                 {
                     AudioSystemImplementationRequestBus::Broadcast(&AudioSystemImplementationRequestBus::Events::DeleteAudioEnvironmentImplData, environmentImpl->m_pImplData);
                 }
 
-                azdestroy(const_cast<CATLEnvironmentImpl*>(environmentImpl), Audio::AudioSystemAllocator);
+                azdestroy(environmentImpl, Audio::AudioSystemAllocator);
             }
 
-            azdestroy(const_cast<CATLAudioEnvironment*>(pOldEnvironment), Audio::AudioSystemAllocator);
+            azdestroy(pOldEnvironment, Audio::AudioSystemAllocator);
         }
     }
 
@@ -1857,7 +1735,7 @@ namespace Audio
         static float const fItemOtherColor[4] = { 0.8f, 0.8f, 0.8f, 0.9f };
         static float const fNoImplColor[4] = { 1.0f, 0.6f, 0.6f, 0.9f };
 
-        rAuxGeom.Draw2dLabel(fPosX, fPosY, 1.6f, fHeaderColor, false, "Audio Events [%" PRISIZE_T "]", m_cActiveAudioEvents.size());
+        rAuxGeom.Draw2dLabel(fPosX, fPosY, 1.6f, fHeaderColor, false, "Audio Events [%zu]", m_cActiveAudioEvents.size());
         fPosX += 20.0f;
         fPosY += 17.0f;
 
@@ -1959,7 +1837,7 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioObjectManager::DrawPerObjectDebugInfo(IRenderAuxGeom& rAuxGeom, const Vec3& rListenerPos) const
+    void CAudioObjectManager::DrawPerObjectDebugInfo(IRenderAuxGeom& rAuxGeom, const AZ::Vector3& rListenerPos) const
     {
         AZStd::string audioObjectFilter(g_audioCVars.m_pAudioObjectsDebugFilter->GetString());
         AZStd::to_lower(audioObjectFilter.begin(), audioObjectFilter.end());
@@ -2014,13 +1892,15 @@ namespace Audio
 
             if (bDraw)
             {
+                const AZ::Vector3 position(audioObject->GetPosition().GetPositionVec());
+
                 rAuxGeom.Draw2dLabel(fPosX, fPosY, 1.6f,
                     hasActiveEvents ? fItemActiveColor : fItemInactiveColor,
                     false,
                     "[%.2f  %.2f  %.2f] (%llu): %s",
-                    audioObject->GetPosition().mPosition.GetColumn3().x,
-                    audioObject->GetPosition().mPosition.GetColumn3().y,
-                    audioObject->GetPosition().mPosition.GetColumn3().z,
+                    static_cast<float>(position.GetX()),
+                    static_cast<float>(position.GetY()),
+                    static_cast<float>(position.GetZ()),
                     audioObject->GetID(),
                     audioObjectName.c_str());
 
@@ -2033,7 +1913,7 @@ namespace Audio
             }
         }
 
-        static const char* headerFormat = "Audio Objects [Active : %3" PRISIZE_T " | Alive: %3" PRISIZE_T " | Pool: %3" PRISIZE_T " | Remaining: %3" PRISIZE_T "]";
+        static const char* headerFormat = "Audio Objects [Active : %3zu | Alive: %3zu | Pool: %3zu | Remaining: %3zu]";
         const bool overloaded = (m_cAudioObjects.size() > m_cObjectPool.m_nReserveSize);
 
         rAuxGeom.Draw2dLabel(
@@ -2062,16 +1942,25 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CATLXmlProcessor::SetRootPath(const char* path)
+    {
+        if (path && path[0] != '\0')
+        {
+            m_rootPath = path;
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioListenerManager::DrawDebugInfo(IRenderAuxGeom& rAuxGeom) const
     {
-        static const ColorB audioListenerColor(55, 155, 225, 230);
-        static const ColorB xAxisColor(255, 0, 0, 230);
-        static const ColorB yAxisColor(0, 255, 0, 230);
-        static const ColorB zAxisColor(0, 0, 255, 230);
+        static const AZ::Color audioListenerColor(0.2f, 0.6f, 0.9f, 0.9f);
+        static const AZ::Color xAxisColor(1.f, 0.f, 0.f, 0.9f);
+        static const AZ::Color yAxisColor(0.f, 1.f, 0.f, 0.9f);
+        static const AZ::Color zAxisColor(0.f, 0.f, 1.f, 0.9f);
 
         if (m_pDefaultListenerObject)
         {
-            Vec3 vListenerPos = m_pDefaultListenerObject->oPosition.GetPositionVec();
+            AZ::Vector3 vListenerPos = m_pDefaultListenerObject->oPosition.GetPositionVec();
 
             const SAuxGeomRenderFlags previousAuxGeomRenderFlags = rAuxGeom.GetRenderFlags();
             SAuxGeomRenderFlags newAuxGeomRenderFlags(e_Def3DPublicRenderflags | e_AlphaBlended);
@@ -2079,16 +1968,16 @@ namespace Audio
             rAuxGeom.SetRenderFlags(newAuxGeomRenderFlags);
 
             // Draw Axes...
-            rAuxGeom.DrawLine(vListenerPos, xAxisColor,
-                vListenerPos + m_pDefaultListenerObject->oPosition.mPosition.GetColumn0(), xAxisColor);
-            rAuxGeom.DrawLine(vListenerPos, yAxisColor,
-                vListenerPos + m_pDefaultListenerObject->oPosition.mPosition.GetColumn1(), yAxisColor);
-            rAuxGeom.DrawLine(vListenerPos, zAxisColor,
-                vListenerPos + m_pDefaultListenerObject->oPosition.mPosition.GetColumn2(), zAxisColor);
+            rAuxGeom.DrawLine(AZVec3ToLYVec3(vListenerPos), AZColorToLYColorB(xAxisColor),
+                AZVec3ToLYVec3(vListenerPos + m_pDefaultListenerObject->oPosition.m_transform.GetColumn(0)), AZColorToLYColorB(xAxisColor));
+            rAuxGeom.DrawLine(AZVec3ToLYVec3(vListenerPos), AZColorToLYColorB(yAxisColor),
+                AZVec3ToLYVec3(vListenerPos + m_pDefaultListenerObject->oPosition.m_transform.GetColumn(1)), AZColorToLYColorB(yAxisColor));
+            rAuxGeom.DrawLine(AZVec3ToLYVec3(vListenerPos), AZColorToLYColorB(zAxisColor),
+                AZVec3ToLYVec3(vListenerPos + m_pDefaultListenerObject->oPosition.m_transform.GetColumn(2)), AZColorToLYColorB(zAxisColor));
 
             // Draw Sphere...
             const float radius = 0.15f; // 0.15 meters
-            rAuxGeom.DrawSphere(vListenerPos, radius, audioListenerColor);
+            rAuxGeom.DrawSphere(AZVec3ToLYVec3(vListenerPos), radius, AZColorToLYColorB(audioListenerColor));
 
             rAuxGeom.SetRenderFlags(previousAuxGeomRenderFlags);
         }

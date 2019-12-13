@@ -18,21 +18,6 @@
 #include "TwitchSystemComponent.h"
 #include "TwitchReflection.h"
 #include <Twitch_Traits_Platform.h>
-
-#if defined(_WIN32)
-#pragma warning (push) 
-#pragma warning (disable:4355)
-#endif
-
-// there are warnings within the include chain in future, these will present
-// as errors, so we need to disable them for "#include <future>" only.
-
-#include <future>
-
-#if defined(_WIN32)
-#pragma warning (pop)
-#endif
-
 namespace Twitch
 {
     TwitchSystemComponent::TwitchSystemComponent() 
@@ -72,14 +57,78 @@ namespace Twitch
 
     void TwitchSystemComponent::SetApplicationID(const AZStd::string& twitchApplicationID)
     {
-        if(m_fuelInterface != nullptr)
+        bool success = false;
+
+        /*
+        ** THIS CAN ONLY BE SET ONCE!!!!!!
+        */
+
+        if (m_applicationID.empty())
         {
-            m_fuelInterface->SetApplicationID(twitchApplicationID);
+            if (IsValidTwitchAppID(twitchApplicationID))
+            {
+                m_applicationID = twitchApplicationID;
+                success = true;
+            }
+            else
+            {
+                AZ_Warning("TwitchSystemComponent::SetApplicationID", false, "Invalid Twitch Application ID! Request ignored!");
+            }
         }
         else
         {
-            AZ_Warning("TwitchSystemComponent::SetApplicationID", false, "Fuel is not initlized! Request ignored!");
+            AZ_Warning("TwitchSystemComponent::SetApplicationID", false, "Twitch Application ID is already set! Request ignored!");
         }
+    }
+
+    AZStd::string TwitchSystemComponent::GetApplicationID() const
+    {
+        return m_applicationID;
+    }
+
+    AZStd::string TwitchSystemComponent::GetSessionID() const
+    {
+        return m_cachedSessionID;
+    }
+
+    AZStd::string TwitchSystemComponent::GetUserID() const
+    {
+        return m_cachedClientID;
+    }
+
+    AZStd::string TwitchSystemComponent::GetOAuthToken() const
+    {
+        return m_cachedOAuthToken;
+    }
+
+    void TwitchSystemComponent::SetUserID(ReceiptID& receipt, const AZStd::string& userId)
+    {
+        // always return a receipt.
+        receipt.SetID(GetReceipt());
+
+        ResultCode rc(ResultCode::InvalidParam);
+        if (IsValidFriendID(userId))
+        {
+            m_cachedClientID = userId;
+            rc = ResultCode::Success;
+        }
+
+        TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::UserIDNotify, StringValue(userId, receipt, rc));
+    }
+
+    void TwitchSystemComponent::SetOAuthToken(ReceiptID& receipt, const AZStd::string& token)
+    {
+        // always return a receipt.
+        receipt.SetID(GetReceipt());
+
+        ResultCode rc(ResultCode::InvalidParam);
+        if (IsValidOAuthToken(token))
+        {
+            m_cachedOAuthToken = token;
+            rc = ResultCode::Success;
+        }
+
+        TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::OAuthTokenNotify, StringValue(token, receipt, rc));
     }
 
     void TwitchSystemComponent::RequestUserID(ReceiptID& receipt)
@@ -87,23 +136,7 @@ namespace Twitch
         // always return a receipt.
         receipt.SetID(GetReceipt());
 
-        std::async(std::launch::async, [receipt, this]()
-        {
-            AZStd::string id;
-            ResultCode result = ResultCode::Unknown;
-
-            if (m_fuelInterface == nullptr)
-            {
-                // not ready yet....
-                result = ResultCode::FuelSDKNotInitialized;
-            }
-            else
-            {
-                result = m_fuelInterface->GetClientID(id);
-            }
-
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, UserIDNotify, StringValue(id, receipt, result));
-        });
+        TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::UserIDNotify, StringValue(m_cachedClientID, receipt, ResultCode::Success));
     }
 
     void TwitchSystemComponent::RequestOAuthToken(ReceiptID& receipt)
@@ -111,132 +144,16 @@ namespace Twitch
         // always return a receipt.
         receipt.SetID(GetReceipt());
 
-        std::async(std::launch::async, [receipt, this]()
-        {
-            AZStd::string token;
-            ResultCode result = ResultCode::Unknown;
-
-            if (m_fuelInterface == nullptr)
-            {
-                result = ResultCode::FuelSDKNotInitialized;
-            }
-            else
-            {
-                result = m_fuelInterface->GetOAuthToken(token);
-            }
-
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, OAuthTokenNotify, StringValue(token, receipt, result));
-        });
+        TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::OAuthTokenNotify, StringValue(m_cachedOAuthToken, receipt, ResultCode::Success));
     }
-
-    void TwitchSystemComponent::RequestEntitlement(ReceiptID& receipt)
-    {
-        // always return a receipt.
-        receipt.SetID(GetReceipt());
-
-        std::async(std::launch::async, [receipt, this]()
-        {
-            AZStd::string token;
-            ResultCode result = ResultCode::Unknown;
-
-            if (m_fuelInterface == nullptr)
-            {
-                result = ResultCode::FuelSDKNotInitialized;
-            }
-            else
-            {
-                result = m_fuelInterface->RequestEntitlement(token);
-            }
-
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, EntitlementNotify, StringValue(token, receipt, result));
-        });
-    }
-
-    void TwitchSystemComponent::RequestProductCatalog(ReceiptID& receipt)
-    {
-        // always return a receipt.
-        receipt.SetID(GetReceipt());
-
-        std::async(std::launch::async, [receipt, this]()
-        {
-            ProductData productData;
-            ResultCode result = ResultCode::Unknown;
-
-            if (m_fuelInterface == nullptr)
-            {
-                result = ResultCode::FuelSDKNotInitialized;
-            }
-            else
-            {
-                result = m_fuelInterface->RequestProductCatalog(productData);
-            }
-
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, RequestProductCatalog, ProductDataReturnValue(productData, receipt, result));
-        });
-    }
-
-    void TwitchSystemComponent::PurchaseProduct(ReceiptID& receipt, const Twitch::FuelSku& sku)
-    {
-        // always return a receipt.
-        receipt.SetID(GetReceipt());
-
-        std::async(std::launch::async, [receipt, sku, this]()
-        {
-            PurchaseReceipt purchaseReceipt;
-            ResultCode result = ResultCode::Unknown;
-
-            if (m_fuelInterface == nullptr)
-            {
-                result = ResultCode::FuelSDKNotInitialized;
-            }
-            else if( !IsValidSku(sku) )
-            {
-                result = ResultCode::FuelIllformedSku;
-            }
-            else
-            {
-                result = m_fuelInterface->PurchaseProduct(sku, purchaseReceipt);
-            }
-
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, PurchaseProduct, PurchaseReceiptReturnValue(purchaseReceipt, receipt, result));
-        });
-    }
-
-    void TwitchSystemComponent::GetPurchaseUpdates(ReceiptID& receipt, const AZStd::string& syncToken)
-    {
-        // always return a receipt.
-        receipt.SetID(GetReceipt());
-
-        std::async(std::launch::async, [receipt, syncToken, this]()
-        {
-            PurchaseUpdate purchaseUpdate;
-            ResultCode result = ResultCode::Unknown;
-
-            if (m_fuelInterface == nullptr)
-            {
-                result = ResultCode::FuelSDKNotInitialized;
-            }
-            else if (!IsValidSyncToken(syncToken))
-            {
-                result = ResultCode::InvalidParam;
-            }
-            else
-            {
-                result = m_fuelInterface->GetPurchaseUpdates(syncToken, purchaseUpdate);
-            }
-
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetPurchaseUpdates, PurchaseUpdateReturnValue(purchaseUpdate, receipt, result));
-        });
-    }
-
 
     void TwitchSystemComponent::GetUser(ReceiptID& receipt)
     {
         receipt.SetID(GetReceipt());
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
+        if (m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetUser, UserInfoValue(UserInfo(), receipt, ResultCode::FuelSDKNotInitialized));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetUser, UserInfoValue(UserInfo(), receipt, ResultCode::TwitchRESTError));
         }
         else
         {
@@ -249,14 +166,18 @@ namespace Twitch
         receipt.SetID(GetReceipt());
         ResultCode rc(ResultCode::Success);
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidFriendID(friendID) )
+        if (m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
+        {
+            rc = ResultCode::TwitchRESTError;
+        }
+        else if (!IsValidFriendID(friendID))
+        {
             rc = ResultCode::InvalidParam;
+        }
 
         if (rc != ResultCode::Success)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, ResetFriendsNotificationCountNotify, Int64Value(0, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::ResetFriendsNotificationCountNotify, Int64Value(0, receipt, rc));
         }
         else
         {
@@ -269,14 +190,18 @@ namespace Twitch
         receipt.SetID(GetReceipt());
         ResultCode rc(ResultCode::Success);
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidFriendID(friendID) )
+        if (m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
+        {
+            rc = ResultCode::TwitchRESTError;
+        }
+        else if (!IsValidFriendID(friendID))
+        {
             rc = ResultCode::InvalidParam;
+        }
 
         if (rc != ResultCode::Success)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetFriendNotificationCount, Int64Value(0, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetFriendNotificationCount, Int64Value(0, receipt, rc));
         }
         else
         {
@@ -289,14 +214,18 @@ namespace Twitch
         receipt.SetID(GetReceipt());
         ResultCode rc(ResultCode::Success);
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidFriendID(friendID) )
+        if (m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
+        {
+            rc = ResultCode::TwitchRESTError;
+        }
+        else if (!IsValidFriendID(friendID))
+        {
             rc = ResultCode::InvalidParam;
+        }
 
         if (rc != ResultCode::Success)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetFriendRecommendations, FriendRecommendationValue(FriendRecommendationList(), receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetFriendRecommendations, FriendRecommendationValue(FriendRecommendationList(), receipt, rc));
         }
         else
         {
@@ -309,14 +238,18 @@ namespace Twitch
         receipt.SetID(GetReceipt());
         ResultCode rc(ResultCode::Success);
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidFriendID(friendID) )
+        if (m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
+        {
+            rc = ResultCode::TwitchRESTError;
+        }
+        else if (!IsValidFriendID(friendID))
+        {
             rc = ResultCode::InvalidParam;
+        }
 
         if (rc != ResultCode::Success)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetFriends, GetFriendValue(GetFriendReturn(), receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetFriends, GetFriendValue(GetFriendReturn(), receipt, rc));
         }
         else
         {
@@ -329,14 +262,18 @@ namespace Twitch
         receipt.SetID(GetReceipt());
         ResultCode rc(ResultCode::Success);
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( (!sourceFriendID.empty() && !IsValidFriendID(sourceFriendID) ) || !IsValidFriendID(targetFriendID) )
+        if (m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
+        {
+            rc = ResultCode::TwitchRESTError;
+        }
+        else if ((!sourceFriendID.empty() && !IsValidFriendID(sourceFriendID)) || !IsValidFriendID(targetFriendID))
+        {
             rc = ResultCode::InvalidParam;
+        }
 
         if(rc != ResultCode::Success)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetFriendStatus, FriendStatusValue(FriendStatus(), receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetFriendStatus, FriendStatusValue(FriendStatus(), receipt, rc));
         }
         else
         {
@@ -349,14 +286,18 @@ namespace Twitch
         receipt.SetID(GetReceipt());
         ResultCode rc(ResultCode::Success);
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidFriendID(friendID) )
+        if (m_cachedClientID.empty() || m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
+        {
+            rc = ResultCode::TwitchRESTError;
+        }
+        else if (!IsValidFriendID(friendID))
+        {
             rc = ResultCode::InvalidParam;
+        }
 
         if (rc != ResultCode::Success)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, AcceptFriendRequest, Int64Value(0, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::AcceptFriendRequest, Int64Value(0, receipt, rc));
         }
         else
         {
@@ -368,9 +309,9 @@ namespace Twitch
     {
         receipt.SetID(GetReceipt());
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
+        if (m_cachedClientID.empty() || m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetFriendRequests, FriendRequestValue(FriendRequestResult(), receipt, ResultCode::FuelSDKNotInitialized));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetFriendRequests, FriendRequestValue(FriendRequestResult(), receipt, ResultCode::TwitchRESTError));
         }
         else
         {
@@ -383,14 +324,18 @@ namespace Twitch
         receipt.SetID(GetReceipt());
         ResultCode rc(ResultCode::Success);
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidFriendID(friendID) )
+        if (m_cachedClientID.empty() || m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
+        {
+            rc = ResultCode::TwitchRESTError;
+        }
+        else if (!IsValidFriendID(friendID))
+        {
             rc = ResultCode::InvalidParam;
+        }
 
         if (rc != ResultCode::Success)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, CreateFriendRequest, Int64Value(0, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::CreateFriendRequest, Int64Value(0, receipt, rc));
         }
         else
         {
@@ -403,14 +348,18 @@ namespace Twitch
         receipt.SetID(GetReceipt());
         ResultCode rc(ResultCode::Success);
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidFriendID(friendID) )
+        if (m_cachedClientID.empty() || m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
+        {
+            rc = ResultCode::TwitchRESTError;
+        }
+        else if (!IsValidFriendID(friendID))
+        {
             rc = ResultCode::InvalidParam;
+        }
 
         if (rc != ResultCode::Success)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, DeclineFriendRequest, Int64Value(0, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::DeclineFriendRequest, Int64Value(0, receipt, rc));
         }
         else
         {
@@ -424,9 +373,9 @@ namespace Twitch
 
         ResultCode rc(ResultCode::Success);
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
+        if (m_cachedClientID.empty() || m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
         {
-            rc = ResultCode::FuelSDKNotInitialized;
+            rc = ResultCode::TwitchRESTError;
         }
         else if ((activityType == PresenceActivityType::Playing) && !m_twitchREST->IsValidGameContext(gameContext) )
         {
@@ -435,7 +384,7 @@ namespace Twitch
 
         if (rc != ResultCode::Success)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, UpdatePresenceStatus, Int64Value(0, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::UpdatePresenceStatus, Int64Value(0, receipt, rc));
         }
         else
         {
@@ -447,9 +396,9 @@ namespace Twitch
     {
         receipt.SetID(GetReceipt());
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
+        if (m_cachedClientID.empty() || m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetPresenceStatusofFriends, PresenceStatusValue(PresenceStatusList(), receipt, ResultCode::FuelSDKNotInitialized));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetPresenceStatusofFriends, PresenceStatusValue(PresenceStatusList(), receipt, ResultCode::TwitchRESTError));
         }
         else
         {
@@ -461,9 +410,9 @@ namespace Twitch
     {
         receipt.SetID(GetReceipt());
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
+        if (m_cachedClientID.empty() || m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetPresenceSettings, PresenceSettingsValue(PresenceSettings(), receipt, ResultCode::FuelSDKNotInitialized));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetPresenceSettings, PresenceSettingsValue(PresenceSettings(), receipt, ResultCode::TwitchRESTError));
         }
         else
         {
@@ -475,9 +424,9 @@ namespace Twitch
     {
         receipt.SetID(GetReceipt());
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
+        if (m_cachedClientID.empty() || m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, UpdatePresenceSettings, PresenceSettingsValue(PresenceSettings(), receipt, ResultCode::FuelSDKNotInitialized));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::UpdatePresenceSettings, PresenceSettingsValue(PresenceSettings(), receipt, ResultCode::TwitchRESTError));
         }
         else
         {
@@ -489,9 +438,9 @@ namespace Twitch
     {
         receipt.SetID(GetReceipt());
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
+        if (m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetChannel, ChannelInfoValue(ChannelInfo(), receipt, ResultCode::FuelSDKNotInitialized));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetChannel, ChannelInfoValue(ChannelInfo(), receipt, ResultCode::TwitchRESTError));
         }
         else
         {
@@ -504,14 +453,18 @@ namespace Twitch
         receipt.SetID(GetReceipt());
         ResultCode rc(ResultCode::Success);
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidChannelID(channelID) )
+        if (m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
+        {
+            rc = ResultCode::TwitchRESTError;
+        }
+        else if (!IsValidChannelID(channelID))
+        {
             rc = ResultCode::InvalidParam;
+        }
 
         if (rc != ResultCode::Success)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetChannelbyID, ChannelInfoValue(ChannelInfo(), receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetChannelbyID, ChannelInfoValue(ChannelInfo(), receipt, rc));
         }
         else
         {
@@ -523,9 +476,9 @@ namespace Twitch
     {
         receipt.SetID(GetReceipt());
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
+        if (m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, UpdateChannel, ChannelInfoValue(ChannelInfo(), receipt, ResultCode::FuelSDKNotInitialized));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::UpdateChannel, ChannelInfoValue(ChannelInfo(), receipt, ResultCode::TwitchRESTError));
         }
         else
         {
@@ -538,14 +491,18 @@ namespace Twitch
         receipt.SetID(GetReceipt());
         ResultCode rc(ResultCode::Success);
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidChannelID(channelID) )
+        if (m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
+        {
+            rc = ResultCode::TwitchRESTError;
+        }
+        else if (!IsValidChannelID(channelID))
+        {
             rc = ResultCode::InvalidParam;
+        }
 
         if (rc != ResultCode::Success)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetChannelEditors, UserInfoListValue(UserInfoList(), receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetChannelEditors, UserInfoListValue(UserInfoList(), receipt, rc));
         }
         else
         {
@@ -558,14 +515,18 @@ namespace Twitch
         receipt.SetID(GetReceipt());
         ResultCode rc(ResultCode::Success);
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidChannelID(channelID) )
+        if (m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
+        {
+            rc = ResultCode::TwitchRESTError;
+        }
+        else if (!IsValidChannelID(channelID))
+        {
             rc = ResultCode::InvalidParam;
+        }
 
         if (rc != ResultCode::Success)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetChannelFollowers, FollowerResultValue(FollowerResult(), receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetChannelFollowers, FollowerResultValue(FollowerResult(), receipt, rc));
         }
         else
         {
@@ -578,14 +539,18 @@ namespace Twitch
         receipt.SetID(GetReceipt());
         ResultCode rc(ResultCode::Success);
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidChannelID(channelID) )
+        if (m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
+        {
+            rc = ResultCode::TwitchRESTError;
+        }
+        else if (!IsValidChannelID(channelID))
+        {
             rc = ResultCode::InvalidParam;
+        }
 
         if (rc != ResultCode::Success)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetChannelTeams, ChannelTeamValue(TeamInfoList(), receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetChannelTeams, ChannelTeamValue(TeamInfoList(), receipt, rc));
         }
         else
         {
@@ -598,14 +563,18 @@ namespace Twitch
         receipt.SetID(GetReceipt());
         ResultCode rc(ResultCode::Success);
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidChannelID(channelID) )
+        if (m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
+        {
+            rc = ResultCode::TwitchRESTError;
+        }
+        else if (!IsValidChannelID(channelID))
+        {
             rc = ResultCode::InvalidParam;
+        }
 
         if (rc != ResultCode::Success)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetChannelSubscribers, SubscriberValue(Subscription(), receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetChannelSubscribers, SubscriberValue(Subscription(), receipt, rc));
         }
         else
         {
@@ -618,14 +587,18 @@ namespace Twitch
         receipt.SetID(GetReceipt());
         ResultCode rc(ResultCode::Success);
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidChannelID(channelID) || !IsValidFriendID(userID) )
+        if (m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
+        {
+            rc = ResultCode::TwitchRESTError;
+        }
+        else if (!IsValidChannelID(channelID) || !IsValidFriendID(userID))
+        {
             rc = ResultCode::InvalidParam;
+        }
 
         if (rc != ResultCode::Success)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, CheckChannelSubscriptionbyUser, SubscriberbyUserValue(SubscriberInfo(), receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::CheckChannelSubscriptionbyUser, SubscriberbyUserValue(SubscriberInfo(), receipt, rc));
         }
         else
         {
@@ -638,14 +611,18 @@ namespace Twitch
         receipt.SetID(GetReceipt());
         ResultCode rc(ResultCode::Success);
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidChannelID(channelID) )
+        if (m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
+        {
+            rc = ResultCode::TwitchRESTError;
+        }
+        else if (!IsValidChannelID(channelID))
+        {
             rc = ResultCode::InvalidParam;
+        }
 
         if (rc != ResultCode::Success)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetChannelVideos, VideoReturnValue(VideoReturn(), receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetChannelVideos, VideoReturnValue(VideoReturn(), receipt, rc));
         }
         else
         {
@@ -658,14 +635,18 @@ namespace Twitch
         receipt.SetID(GetReceipt());
         ResultCode rc(ResultCode::Success);
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidChannelID(channelID) )
+        if (m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
+        {
+            rc = ResultCode::TwitchRESTError;
+        }
+        else if (!IsValidChannelID(channelID))
+        {
             rc = ResultCode::InvalidParam;
+        }
 
         if (rc != ResultCode::Success)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, StartChannelCommercial, StartChannelCommercialValue(StartChannelCommercialResult(), receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::StartChannelCommercial, StartChannelCommercialValue(StartChannelCommercialResult(), receipt, rc));
         }
         else
         {
@@ -678,78 +659,22 @@ namespace Twitch
         receipt.SetID(GetReceipt());
         ResultCode rc(ResultCode::Success);
 
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidChannelID(channelID) )
+        if (m_cachedOAuthToken.empty() ||  m_twitchREST == nullptr)
+        {
+            rc = ResultCode::TwitchRESTError;
+        }
+        else if (!IsValidChannelID(channelID))
+        {
             rc = ResultCode::InvalidParam;
+        }
 
         if (rc != ResultCode::Success)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, ResetChannelStreamKey, ChannelInfoValue(ChannelInfo(), receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::ResetChannelStreamKey, ChannelInfoValue(ChannelInfo(), receipt, rc));
         }
         else
         {
             m_twitchREST->ResetChannelStreamKey(receipt, channelID);
-        }
-    }
-
-    void TwitchSystemComponent::GetChannelCommunity(ReceiptID& receipt, const AZStd::string& channelID)
-    {
-        receipt.SetID(GetReceipt());
-        ResultCode rc(ResultCode::Success);
-
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidChannelID(channelID) )
-            rc = ResultCode::InvalidParam;
-
-        if (rc != ResultCode::Success)
-        {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetChannelCommunity, CommunityInfoValue(CommunityInfo(), receipt, rc));
-        }
-        else
-        {
-            m_twitchREST->GetChannelCommunity(receipt, channelID);
-        }
-    }
-
-    void TwitchSystemComponent::SetChannelCommunity(ReceiptID& receipt, const AZStd::string& channelID, const AZStd::string& communityID)
-    {
-        receipt.SetID(GetReceipt());
-        ResultCode rc(ResultCode::Success);
-
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidChannelID(channelID) || !IsValidCommunityID(communityID) )
-            rc = ResultCode::InvalidParam;
-
-        if (rc != ResultCode::Success)
-        {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, SetChannelCommunity, Int64Value(0, receipt, rc));
-        }
-        else
-        {
-            m_twitchREST->SetChannelCommunity(receipt, channelID, communityID);
-        }
-    }
-
-    void TwitchSystemComponent::DeleteChannelfromCommunity(ReceiptID& receipt, const AZStd::string& channelID)
-    {
-        receipt.SetID(GetReceipt());
-        ResultCode rc(ResultCode::Success);
-
-        if ((m_fuelInterface == nullptr) || (m_twitchREST == nullptr))
-            rc = ResultCode::FuelSDKNotInitialized;
-        else if ( !IsValidChannelID(channelID) )
-            rc = ResultCode::InvalidParam;
-
-        if (rc != ResultCode::Success)
-        {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, DeleteChannelfromCommunity, Int64Value(0, receipt, rc));
-        }
-        else
-        {
-            m_twitchREST->DeleteChannelfromCommunity(receipt, channelID);
         }
     }
 
@@ -777,8 +702,15 @@ namespace Twitch
     {
 #if AZ_TRAIT_TWITCH_INITIALIZE_SDK
         // You must define the Twitch Application Client ID
-        m_fuelInterface = IFuelInterface::Alloc();
-        m_twitchREST    = ITwitchREST::Alloc(m_fuelInterface);
+        m_twitchREST    = ITwitchREST::Alloc();
+
+        // each time we create a interface we need a new session id, however this should not change during the life span of this object.
+        AZ::Uuid sessionid(AZ::Uuid::Create());
+        char temp[128];
+
+        sessionid.ToString(temp, 128, false, false);
+
+        m_cachedSessionID = AZStd::string(temp);
 #endif // AZ_TRAIT_TWITCH_INITIALIZE_SDK
     }
 
@@ -822,6 +754,25 @@ namespace Twitch
 
         return isValid;
     }
+
+    bool TwitchSystemComponent::IsValidTwitchAppID(const AZStd::string& twitchAppID) const
+    {
+        static const AZStd::size_t kMinIDLength = 24;   // min id length
+        static const AZStd::size_t kMaxIDLength = 64;   // max id length
+        bool isValid = false;
+
+        if ((twitchAppID.size() >= kMinIDLength) && (twitchAppID.size() < kMaxIDLength))
+        {
+            AZStd::size_t found = twitchAppID.find_first_not_of("0123456789abcdefghijklmnopqrstuvwxyz");
+
+            if (found == AZStd::string::npos)
+            {
+                isValid = true;
+            }
+        }
+
+        return isValid;
+    }
         
     bool TwitchSystemComponent::IsValidFriendID(const AZStd::string& friendID) const
     {
@@ -829,6 +780,23 @@ namespace Twitch
         // The max id length will be huge, since there is no official max length, this will allow for a large id.
 
         return IsValidString(friendID, 1, 256);
+    }
+
+    bool TwitchSystemComponent::IsValidOAuthToken(const AZStd::string& oAuthToken) const
+    {
+        // Twitch OAuth tokens are exactly length 30
+
+        if (oAuthToken.size() == 30)
+        {
+            AZStd::size_t found = oAuthToken.find_first_not_of("0123456789abcdefghijklmnopqrstuvwxyz");
+
+            if (found == AZStd::string::npos)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     bool TwitchSystemComponent::IsValidSyncToken(const AZStd::string& syncToken) const

@@ -1,0 +1,9 @@
+{
+    "auto":
+    {
+        "Platform/Common/FileOffsetType":
+        [
+            "../Common/FileOffsetType/MCore/Source/DiskFile_FileOffsetType.cpp"
+        ]
+    }
+}

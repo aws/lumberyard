@@ -45,16 +45,7 @@ namespace GridMate
     class InterestMatchResult : public unordered_map<ReplicaId, InterestPeerSet>
     {
     public:
-#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
-        // VS 2013 doesn't support inheriting constructors :(
-        template <typename... Args>
-        explicit InterestMatchResult(Args&&... args)
-            : unordered_map(std::forward<Args>(args)...)
-        { }
-#else
-        // VS 2015 does support inheriting constructors :)
         using unordered_map::unordered_map;
-#endif
 
         /*
         * An expensive debug trace helper, prints sorted mapping between replica id's and associated peers.

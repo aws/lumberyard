@@ -120,6 +120,7 @@ namespace ScriptCanvas
 
                 static const char* c_busIdName;
                 static const char* c_busIdTooltip;
+                bool m_deferDisconnect = false;
 
                 struct EventHookUserData
                 {

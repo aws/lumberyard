@@ -73,7 +73,6 @@ class CFlowGraphManager;
 class CConsoleSynchronization;
 class CUIEnumsDatabase;
 struct ISourceControl;
-struct IAssetTagging;
 struct IEditorClassFactory;
 struct IDataBaseItem;
 struct ITransformManipulator;
@@ -240,6 +239,8 @@ enum EEditorNotifyEvent
     eNotify_OnExportBrushes, // For Designer objects, or objects using the Designer Tool.
 
     eNotify_OnTextureLayerChange,      // Sent when texture layer was added, removed or moved
+
+    eNotify_OnSplatmapImport, // Sent when splatmaps get imported
 
 #ifdef DEPRECATED_QML_SUPPORT
     eNotify_BeforeQMLDestroyed, // called before QML is destroyed so you can kill your resources (if any)
@@ -562,6 +563,8 @@ struct IEditor
     virtual QString GetSearchPath(EEditorPathName path) = 0;
     //! This folder is supposed to store Sandbox user settings and state
     virtual QString GetResolvedUserFolder() = 0;
+    //! Returns the name of the sys_game_folder
+    virtual QString GetProjectName() = 0;
     //! Execute application and get console output.
     virtual bool ExecuteConsoleApp(
         const QString& CommandLine,
@@ -876,8 +879,6 @@ struct IEditor
     virtual void UnregisterDocListener(IDocListener* listener) = 0;
     //! Retrieve interface to the source control.
     virtual ISourceControl* GetSourceControl() = 0;
-    //! Retrieve interface to the asset tagging api.
-    virtual IAssetTagging* GetAssetTagging() = 0;
     //! Retrieve true if source control is provided and enabled in settings
     virtual bool IsSourceControlAvailable() = 0;
     //! Only returns true if source control is both available AND currently connected and functioning

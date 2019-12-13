@@ -20,6 +20,7 @@
 #include <QTemporaryDir>
 #include "native/assetprocessor.h"
 #include "native/utilities/assetUtils.h"
+#include <QMetaObject>
 
 using namespace AssetProcessor;
 using namespace AzFramework::AssetSystem;
@@ -615,6 +616,29 @@ void RCcontrollerUnitTests::RunRCControllerTests()
         allJobsCompleted = true;
     }
     );
+
+    JobEntry completedJob;
+
+    QObject::connect(&m_rcController, &RCController::FileCompiled, this, [&completedJob](JobEntry entry, AssetBuilderSDK::ProcessJobResponse response)
+    {
+        completedJob = entry;
+    });
+
+    QObject::connect(&m_rcController, &RCController::FileCancelled, this, [&completedJob](JobEntry entry)
+    {
+        completedJob = entry;
+    });
+
+    QObject::connect(&m_rcController, &RCController::FileFailed, this, [&completedJob](JobEntry entry)
+    {
+        completedJob = entry;
+    });
+
+    QObject::connect(&m_rcController, &RCController::ActiveJobsCountChanged, this, [this, &completedJob](unsigned int /*count*/)
+    {
+        m_rcController.OnFinishedProcessingJob(completedJob);
+        completedJob = {};
+    });
 
     m_rcController.SetDispatchPaused(false);
 

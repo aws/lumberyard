@@ -78,7 +78,9 @@ def set_staging_status(file_path, context, staging_args, deployment_name):
     staging_end = staging_args.get('StagingEnd')
     signature = staging_args.get('Signature')
     parentPak = staging_args.get('Parent')
-    
+    fileSize = staging_args.get('Size')
+    fileHash = staging_args.get('Hash')
+
     if not staging_status:
         staging_status = 'PRIVATE'
         
@@ -109,7 +111,7 @@ def set_staging_status(file_path, context, staging_args, deployment_name):
             }
         }
         
-    if signature is not None:
+    if signature:
         attributeUpdate['Signature'] = {
             'Value': {
                 'S': signature
@@ -119,7 +121,29 @@ def set_staging_status(file_path, context, staging_args, deployment_name):
         attributeUpdate['Signature'] = {
             'Action': 'DELETE'
         }
-        
+
+    if fileSize is not None:
+        attributeUpdate['Size'] = {
+            'Value': {
+                'S': str(fileSize)
+            }
+        }
+    else:
+        attributeUpdate['Size'] = {
+            'Action': 'DELETE'
+        }
+
+    if fileHash is not None and len(fileHash) > 0:
+        attributeUpdate['Hash'] = {
+            'Value': {
+                'S': str(fileHash)
+            }
+        }
+    else:
+        attributeUpdate['Hash'] = {
+            'Action': 'DELETE'
+        }
+
     if staging_status == 'WINDOW':
         time_start = None
         if staging_start.lower() == 'now':

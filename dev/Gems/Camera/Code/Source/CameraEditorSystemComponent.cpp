@@ -98,21 +98,21 @@ namespace Camera
         AzToolsFramework::ScopedUndoBatch undoBatch("Create Camera Entity");
 
         // Create new entity
-        AZ::Entity* newEntity;
+        AZ::EntityId newEntityId;
         AZ::EBusAggregateResults<AZ::EntityId> cameras;
         Camera::CameraBus::BroadcastResult(cameras, &CameraBus::Events::GetCameras);
         AZStd::string newCameraName = AZStd::string::format("Camera%d", cameras.values.size() + 1);
-        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(newEntity, &AzToolsFramework::EditorEntityContextRequests::CreateEditorEntity, newCameraName.c_str());
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(newEntityId, &AzToolsFramework::EditorEntityContextRequests::CreateNewEditorEntity, newCameraName.c_str());
 
         // Add CameraComponent
-        AzToolsFramework::AddComponents<EditorCameraComponent>::ToEntities(newEntity);
+        AzToolsFramework::AddComponents<EditorCameraComponent>::ToEntities(newEntityId);
 
         // Set transform to that of the viewport, otherwise default to Identity matrix and 60 degree FOV
         const Matrix34 matrix = viewport ? viewport->GetViewTM() : Matrix34::CreateIdentity();
         const float fov = viewport ? viewport->GetFOV() : 60.0f;
-        AZ::TransformBus::Event(newEntity->GetId(), &AZ::TransformInterface::SetWorldTM, LYTransformToAZTransform(matrix));
-        CameraRequestBus::Event(newEntity->GetId(), &CameraComponentRequests::SetFov, AZ::RadToDeg(fov));
-        undoBatch.MarkEntityDirty(newEntity->GetId());
+        AZ::TransformBus::Event(newEntityId, &AZ::TransformInterface::SetWorldTM, LYTransformToAZTransform(matrix));
+        CameraRequestBus::Event(newEntityId, &CameraComponentRequests::SetFov, AZ::RadToDeg(fov));
+        undoBatch.MarkEntityDirty(newEntityId);
     }
 
     void CameraEditorSystemComponent::NotifyRegisterViews()

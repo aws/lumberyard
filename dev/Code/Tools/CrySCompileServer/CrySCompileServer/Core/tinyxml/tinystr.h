@@ -36,7 +36,7 @@ distribution.
 	required - it is used to check that the TiXmlString class isn't incorrectly
 	used. Be nice to old compilers and macro it here:
 */
-#if defined(_MSC_VER) && (_MSC_VER >= 1200 )
+#if defined(_MSC_VER)
 	// Microsoft visual studio, version 6 and higher.
 	#define TIXML_EXPLICIT explicit
 #elif defined(__GNUC__) && (__GNUC__ >= 3 )

@@ -29,7 +29,8 @@ namespace AZ
      * But the allocator utility system will use the system allocator.
      */
     class SystemAllocator
-        : public IAllocator
+        : public AllocatorBase
+        , public IAllocatorAllocate
     {
     public:
         AZ_TYPE_INFO(SystemAllocator, "{424C94D8-85CF-4E89-8CD6-AB5EC173E875}")
@@ -89,9 +90,11 @@ namespace AZ
 
         //////////////////////////////////////////////////////////////////////////
         // IAllocator
+        AllocatorDebugConfig GetDebugConfig() override;
+        IAllocatorAllocate* GetSchema() override;
 
-        virtual const char*     GetName() const                 { return "SystemAllocator"; }
-        virtual const char*     GetDescription() const          { return "Fundamental generic memory allocator"; }
+        //////////////////////////////////////////////////////////////////////////
+        // IAllocatorAllocate
 
         virtual pointer_type    Allocate(size_type byteSize, size_type alignment, int flags = 0, const char* name = 0, const char* fileName = 0, int lineNum = 0, unsigned int suppressStackRecord = 0);
         virtual void            DeAllocate(pointer_type ptr, size_type byteSize = 0, size_type alignment = 0);
@@ -106,12 +109,14 @@ namespace AZ
         virtual size_type       GetMaxAllocationSize() const    { return m_allocator->GetMaxAllocationSize(); }
         virtual size_type       GetUnAllocatedMemory(bool isPrint = false) const    { return m_allocator->GetUnAllocatedMemory(isPrint); }
         virtual IAllocatorAllocate*  GetSubAllocator()          { return m_isCustom ? m_allocator : m_allocator->GetSubAllocator(); }
+
         //////////////////////////////////////////////////////////////////////////
 
     protected:
         SystemAllocator(const SystemAllocator&);
         SystemAllocator& operator=(const SystemAllocator&);
 
+        Descriptor                  m_desc;
         bool                        m_isCustom;
         IAllocatorAllocate*         m_allocator;
         bool                        m_ownsOSAllocator;

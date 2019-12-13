@@ -17,6 +17,11 @@
 
 namespace AzToolsFramework
 {
+    AZStd::shared_ptr<SelectionManipulator> SelectionManipulator::MakeShared(const AZ::Transform& worldFromLocal)
+    {
+        return AZStd::shared_ptr<SelectionManipulator>(aznew SelectionManipulator(worldFromLocal));
+    }
+
     SelectionManipulator::SelectionManipulator(const AZ::Transform& worldFromLocal)
         : m_worldFromLocal(worldFromLocal)
     {

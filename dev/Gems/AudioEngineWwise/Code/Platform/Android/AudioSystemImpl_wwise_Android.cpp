@@ -10,10 +10,9 @@
 *
 */
 
-#include "StdAfx.h"
-#include "AudioSystemImpl_wwise.h"
+#include <AudioSystemImpl_wwise.h>
 
-#include <AK/SoundEngine/Common/AkSoundEngine.h>        // Sound engine
+#include <AK/SoundEngine/Common/AkSoundEngine.h>
 #include <AzCore/Android/AndroidEnv.h>
 
 namespace Audio

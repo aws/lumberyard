@@ -4,9 +4,9 @@
         "Platform/AppleTV":
         [
             "../Common/Unimplemented/AudioSystemImpl_wwise_Unimplemented.cpp",
-            "../Common/Unimplemented/CryAudioImplWwise_Unimplemented.cpp",
-            "CryAudioImplWwise_Traits_AppleTV.h",
-            "CryAudioImplWwise_Traits_Platform.h"
+            "../Common/Unimplemented/AudioEngineWwise_Unimplemented.cpp",
+            "AudioEngineWwise_Traits_AppleTV.h",
+            "AudioEngineWwise_Traits_Platform.h"
         ]
     }
 }

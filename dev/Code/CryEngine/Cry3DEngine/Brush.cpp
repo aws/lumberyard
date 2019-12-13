@@ -334,8 +334,10 @@ CBrush::~CBrush()
 {
     INDENT_LOG_DURING_SCOPE(true, "Destroying brush \"%s\"", this->GetName());
 
+    I3DEngine* p3DEngine = GetISystem()->GetI3DEngine();
+
     Dephysicalize();
-    Get3DEngine()->FreeRenderNodeState(this);
+    p3DEngine->FreeRenderNodeState(this);
 
     m_pStatObj = NULL;
     if (m_pDeform)
@@ -345,7 +347,7 @@ CBrush::~CBrush()
 
     if (m_pRNTmpData)
     {
-        Get3DEngine()->FreeRNTmpData(&m_pRNTmpData);
+        p3DEngine->FreeRNTmpData(&m_pRNTmpData);
     }
     assert(!m_pRNTmpData);
 

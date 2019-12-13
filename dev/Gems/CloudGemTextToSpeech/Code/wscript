@@ -26,7 +26,7 @@ def build(bld):
     bld.DefineGem(
         includes    = [bld.Path('Code/CryEngine/CryCommon'),
                        bld.Path('Code/CryEngine/CryAction'),
-                       bld.Path('Code/CryEngine/CrySoundSystem')
+                       bld.Path('Gems/AudioSystem/Code/Source/Engine')
                       ],
 
         file_list = file_list,

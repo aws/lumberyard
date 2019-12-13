@@ -12,10 +12,9 @@
 
 #pragma once
 
-#include "EMotionFXConfig.h"
 #include "Attachment.h"
+#include "EMotionFXConfig.h"
 #include <AzCore/std/containers/vector.h>
-
 
 namespace EMotionFX
 {
@@ -42,8 +41,14 @@ namespace EMotionFX
          */
         struct EMFX_API JointMapping
         {
-            AZ::u32 m_sourceJoint;   /**< The source joint in the actor where this is attached to. */
-            AZ::u32 m_targetJoint;   /**< The target joint in the attachment actor instance. */
+            AZ::u32 m_sourceJoint; /**< The source joint in the actor where this is attached to. */
+            AZ::u32 m_targetJoint; /**< The target joint in the attachment actor instance. */
+        };
+
+        struct EMFX_API MorphMapping
+        {
+            AZ::u32 m_sourceMorphIndex; /**< The source morph target index. The source is the actor instance we are attaching to. */
+            AZ::u32 m_targetMorphIndex; /**< The target morph target index. The target is the attachment actor instance. */
         };
 
         /**
@@ -58,21 +63,21 @@ namespace EMotionFX
          * Every class inherited from this base class should have some TYPE ID.
          * @return The type ID of this attachment class.
          */
-        uint32 GetType() const override                                 { return TYPE_ID; }
+        uint32 GetType() const override { return TYPE_ID; }
 
         /**
          * Get the attachment type string.
          * Every class inherited from this base class should have some type ID string, which should be equal to the class name really.
          * @return The type string of this attachment class, which should be the class name.
          */
-        const char* GetTypeString() const override                      { return "AttachmentSkin"; }
+        const char* GetTypeString() const override { return "AttachmentSkin"; }
 
         /**
          * Check if this attachment is being influenced by multiple joints or not.
          * This is the case for attachments such as clothing items which get influenced by multiple joints inside the actor instance they are attached to.
          * @result Returns true if it is influenced by multiple joints, otherwise false is returned.
          */
-        bool GetIsInfluencedByMultipleJoints() const override final     { return true; }
+        bool GetIsInfluencedByMultipleJoints() const override final { return true; }
 
         /**
          * Update the joint transforms of the attachment.
@@ -91,17 +96,18 @@ namespace EMotionFX
          * @param nodeIndex The joint index inside the actor instance that represents the attachment.
          * @result A reference to the mapping information for this joint.
          */
-        MCORE_INLINE JointMapping& GetJointMapping(uint32 nodeIndex)                      { return m_jointMap[nodeIndex]; }
+        MCORE_INLINE JointMapping& GetJointMapping(uint32 nodeIndex) { return m_jointMap[nodeIndex]; }
 
         /**
          * Get the mapping for a given joint.
          * @param nodeIndex The joint index inside the actor instance that represents the attachment.
          * @result A reference to the mapping information for this joint.
          */
-        MCORE_INLINE const JointMapping& GetJointMapping(uint32 nodeIndex) const          { return m_jointMap[nodeIndex]; }
+        MCORE_INLINE const JointMapping& GetJointMapping(uint32 nodeIndex) const { return m_jointMap[nodeIndex]; }
 
     protected:
-        AZStd::vector<JointMapping> m_jointMap;   /**< Specifies which joints we need to copy transforms from and to. */
+        AZStd::vector<JointMapping> m_jointMap; /**< Specifies which joints we need to copy transforms from and to. */
+        AZStd::vector<MorphMapping> m_morphMap; /**< Maps morph targets of the actor instance we attach to with morphs in the attachment actor instance. */
 
         /**
          * The constructor for a skin attachment.
@@ -121,5 +127,7 @@ namespace EMotionFX
          * It is used to copy over the transformations from the main parent actor, to the actor instance representing the attachment object.
          */
         void InitJointMap();
+
+        void InitMorphMap();
     };
-}   // namespace EMotionFX
+} // namespace EMotionFX

@@ -11,54 +11,76 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "AudioWwiseLoader.h"
-#include "CryFile.h"
-#include "ISystem.h"
-#include "CryPath.h"
-#include "Util/PathUtil.h"
-#include "IAudioSystemEditor.h"
+#include <AudioWwiseLoader.h>
+
+#include <AzFramework/StringFunc/StringFunc.h>
+
 #include <IAudioSystemControl.h>
-#include "AudioSystemEditor_wwise.h"
+#include <IAudioSystemEditor.h>
+#include <AudioSystemEditor_wwise.h>
+
+#include <ISystem.h>
+#include <CryFile.h>
+#include <CryPath.h>
+#include <Util/PathUtil.h>
 
 using namespace PathUtil;
 
 namespace AudioControls
 {
-    const char* CAudioWwiseLoader::ms_sGameParametersFolder = "Game Parameters";
-    const char* CAudioWwiseLoader::ms_sGameStatesPath = "States";
-    const char* CAudioWwiseLoader::ms_sSwitchesFolder = "Switches";
-    const char* CAudioWwiseLoader::ms_sEventsFolder = "Events";
-    const char* CAudioWwiseLoader::ms_sEnvironmentsFolder = "Master-Mixer Hierarchy";
-    const char* CAudioWwiseLoader::ms_sSoundBanksPath = "sounds/wwise";
+    namespace WwiseStrings
+    {
+        // Files / Folders
+        static constexpr const char* GameParametersFolder = "Game Parameters";
+        static constexpr const char* GameStatesFolder = "States";
+        static constexpr const char* SwitchesFolder = "Switches";
+        static constexpr const char* EventsFolder = "Events";
+        static constexpr const char* EnvironmentsFolder = "Master-Mixer Hierarchy";
+        static constexpr const char* SoundBanksFolder = "sounds/wwise";
+        static constexpr const char* SoundBankExt = ".bnk";
+        static constexpr const char* InitBankName = "init.bnk";
+
+        // Xml
+        static constexpr const char* GameParameterTag = "GameParameter";
+        static constexpr const char* EventTag = "Event";
+        static constexpr const char* AuxBusTag = "AuxBus";
+        static constexpr const char* SwitchGroupTag = "SwitchGroup";
+        static constexpr const char* StateGroupTag = "StateGroup";
+        static constexpr const char* ChildrenListTag = "ChildrenList";
+        static constexpr const char* NameAttribute = "Name";
+
+    } // namespace WwiseStrings
 
     //-------------------------------------------------------------------------------------------//
     void CAudioWwiseLoader::Load(CAudioSystemEditor_wwise* pAudioSystemImpl)
     {
         m_pAudioSystemImpl = pAudioSystemImpl;
-        const string wwiseProjectFullPath(m_pAudioSystemImpl->GetDataPath());
-        LoadControlsInFolder(wwiseProjectFullPath + ms_sGameParametersFolder);
-        LoadControlsInFolder(wwiseProjectFullPath + ms_sGameStatesPath);
-        LoadControlsInFolder(wwiseProjectFullPath + ms_sSwitchesFolder);
-        LoadControlsInFolder(wwiseProjectFullPath + ms_sEventsFolder);
-        LoadControlsInFolder(wwiseProjectFullPath + ms_sEnvironmentsFolder);
-        LoadSoundBanks(ms_sSoundBanksPath, "", false);
+        const AZStd::string wwiseProjectFullPath(m_pAudioSystemImpl->GetDataPath());
+        LoadControlsInFolder(wwiseProjectFullPath + WwiseStrings::GameParametersFolder);
+        LoadControlsInFolder(wwiseProjectFullPath + WwiseStrings::GameStatesFolder);
+        LoadControlsInFolder(wwiseProjectFullPath + WwiseStrings::SwitchesFolder);
+        LoadControlsInFolder(wwiseProjectFullPath + WwiseStrings::EventsFolder);
+        LoadControlsInFolder(wwiseProjectFullPath + WwiseStrings::EnvironmentsFolder);
+        LoadSoundBanks(WwiseStrings::SoundBanksFolder, "", false);
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CAudioWwiseLoader::LoadSoundBanks(const string& sRootFolder, const string& sSubPath, bool bLocalised)
+    void CAudioWwiseLoader::LoadSoundBanks(const AZStd::string_view sRootFolder, const AZStd::string_view sSubPath, bool bLocalized)
     {
         _finddata_t fd;
         ICryPak* pCryPak = gEnv->pCryPak;
-        intptr_t handle = pCryPak->FindFirst(sRootFolder + "/" + sSubPath + "/*.*", &fd);
+        AZStd::string search;
+        AzFramework::StringFunc::Path::Join(sRootFolder.data(), sSubPath.data(), search);
+        AzFramework::StringFunc::Path::Join(search.c_str(), "*.*", search, false, true, false);
+        intptr_t handle = pCryPak->FindFirst(search.c_str(), &fd);
         if (handle != -1)
         {
-            bool bLocalisedLoaded = bLocalised;
-            const string ignoreFilename = "Init.bnk";
+            bool bLocalisedLoaded = bLocalized;
+            const AZStd::string ignoreFilename = "init.bnk";
             do
             {
-                string sName = fd.name;
-                if (sName != "." && sName != ".." && !sName.empty())
+                AZStd::string sName = fd.name;
+                if (!sName.empty() && sName != "." && sName != "..")
                 {
                     if (fd.attrib & _A_SUBDIR)
                     {
@@ -73,9 +95,10 @@ namespace AudioControls
                             bLocalisedLoaded = true;
                         }
                     }
-                    else if (sName.find(".bnk") != string::npos && sName.compareNoCase(ignoreFilename) != 0)
+                    else if (AzFramework::StringFunc::Find(sName.c_str(), ".bnk") != AZStd::string::npos
+                        && !AzFramework::StringFunc::Equal(sName.c_str(), ignoreFilename.c_str()))
                     {
-                        m_pAudioSystemImpl->CreateControl(SControlDef(sName, eWCT_WWISE_SOUND_BANK, bLocalised, nullptr, sSubPath));
+                        m_pAudioSystemImpl->CreateControl(SControlDef(sName, eWCT_WWISE_SOUND_BANK, bLocalized, nullptr, sSubPath));
                     }
                 }
             }
@@ -85,26 +108,30 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CAudioWwiseLoader::LoadControlsInFolder(const string& sFolderPath)
+    void CAudioWwiseLoader::LoadControlsInFolder(const AZStd::string_view sFolderPath)
     {
         _finddata_t fd;
         ICryPak* pCryPak = gEnv->pCryPak;
-        intptr_t handle = pCryPak->FindFirst(sFolderPath + "/*.*", &fd);
+        AZStd::string search;
+        AzFramework::StringFunc::Path::Join(sFolderPath.data(), "*.*", search, false, true, false);
+        intptr_t handle = pCryPak->FindFirst(search.c_str(), &fd);
         if (handle != -1)
         {
             do
             {
-                string sName = fd.name;
-                if (sName != "." && sName != ".." && !sName.empty())
+                AZStd::string sName = fd.name;
+                if (!sName.empty() && sName != "." && sName != "..")
                 {
+                    AZStd::string nextSearch;
+                    AzFramework::StringFunc::Path::Join(sFolderPath.data(), sName.c_str(), nextSearch);
+
                     if (fd.attrib & _A_SUBDIR)
                     {
-                        LoadControlsInFolder(sFolderPath + "/" + sName);
+                        LoadControlsInFolder(nextSearch);
                     }
                     else
                     {
-                        string sFilename = sFolderPath + "/" + sName;
-                        XmlNodeRef pRoot = GetISystem()->LoadXmlFromFile(sFilename);
+                        XmlNodeRef pRoot = GetISystem()->LoadXmlFromFile(nextSearch.c_str());
                         if (pRoot)
                         {
                             LoadControl(pRoot);
@@ -118,12 +145,12 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    void CAudioWwiseLoader::ExtractControlsFromXML(XmlNodeRef root, EWwiseControlTypes type, const string& controlTag, const string& controlNameAttribute)
+    void CAudioWwiseLoader::ExtractControlsFromXML(XmlNodeRef root, EWwiseControlTypes type, const AZStd::string_view controlTag, const AZStd::string_view controlNameAttribute)
     {
-        string xmlTag = root->getTag();
+        AZStd::string_view xmlTag(root->getTag());
         if (xmlTag.compare(controlTag) == 0)
         {
-            string name = root->getAttr(controlNameAttribute);
+            AZStd::string name = root->getAttr(controlNameAttribute.data());
             m_pAudioSystemImpl->CreateControl(SControlDef(name, type));
         }
     }
@@ -138,12 +165,12 @@ namespace AudioControls
             ExtractControlsFromXML(pRoot, eWCT_WWISE_AUX_BUS, "AuxBus", "Name");
 
             // special case for switches
-            string tag = pRoot->getTag();
+            AZStd::string_view tag(pRoot->getTag());
             bool bIsSwitch = tag.compare("SwitchGroup") == 0;
             bool bIsState = tag.compare("StateGroup") == 0;
             if (bIsSwitch || bIsState)
             {
-                const string sParent = pRoot->getAttr("Name");
+                const AZStd::string sParent(pRoot->getAttr("Name"));
                 IAudioSystemControl* pGroup = m_pAudioSystemImpl->GetControlByName(sParent);
                 if (!pGroup)
                 {
@@ -174,7 +201,7 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    string CAudioWwiseLoader::GetLocalizationFolder() const
+    const AZStd::string& CAudioWwiseLoader::GetLocalizationFolder() const
     {
         return m_sLocalizationFolder;
     }

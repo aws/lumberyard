@@ -406,7 +406,6 @@ bool Cry3DEngineBase::IsEscapePressed()
 
 // 3DEngine types
 #include "SkyLightNishita_info.h"
-#include "terrain_sector_info.h"
 
 STRUCT_INFO_BEGIN(SImageSubInfo)
 VAR_INFO(nDummy)

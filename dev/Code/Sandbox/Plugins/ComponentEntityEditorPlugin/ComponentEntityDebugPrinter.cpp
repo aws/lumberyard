@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "ComponentEntityEditorPlugin_precompiled.h"
 #include "ComponentEntityDebugPrinter.h"
 
 #include <AzFramework/Entity/GameEntityContextBus.h>

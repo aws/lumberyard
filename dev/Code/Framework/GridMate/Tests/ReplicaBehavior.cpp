@@ -832,8 +832,8 @@ namespace UnitTest {
             {
                 ReplicaPtr replica = m_sessions[sHost].GetReplicaMgr().FindReplica(m_replicaId);
                 auto chunk = replica->FindReplicaChunk<LargeChunkWithDefaults>();
-
-                auto touch = [](DataSet<int>& dataSet) { dataSet.Set(NonDefaultValue); };
+                int nonDefaultValue = NonDefaultValue;
+                auto touch = [nonDefaultValue](DataSet<int>& dataSet) { dataSet.Set(nonDefaultValue); };
                 touch(chunk->Data1);
                 touch(chunk->Data2);
                 touch(chunk->Data3);
@@ -874,6 +874,8 @@ namespace UnitTest {
         ReplicaDrillerHook m_driller;
         ReplicaId m_replicaId;
     };
+    
+    const int Integ_ReplicaDefaultDataSetDriller::NonDefaultValue;
 
     /*
     * This test checks the actual size of the replica as marshalled in the binary payload.

@@ -33,6 +33,8 @@
         #include "Xenia/DllMain_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DllMain_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DllMain_cpp_salem.inl"
     #endif
 #endif
 
@@ -136,6 +138,8 @@ CRYSYSTEM_API ISystem* CreateSystemInterface(const SSystemInitParams& startupPar
         #include "Xenia/DllMain_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DllMain_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DllMain_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_MONOLITHIC_BUILD)
@@ -163,6 +167,8 @@ CRYSYSTEM_API ISystem* CreateSystemInterface(const SSystemInitParams& startupPar
         #include "Xenia/DllMain_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DllMain_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DllMain_cpp_salem.inl"
     #endif
 #endif
     }
@@ -197,6 +203,8 @@ CRYSYSTEM_API void WINAPI CryInstallUnhandledExceptionHandler()
         #include "Xenia/DllMain_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DllMain_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DllMain_cpp_salem.inl"
     #endif
 #endif
 }

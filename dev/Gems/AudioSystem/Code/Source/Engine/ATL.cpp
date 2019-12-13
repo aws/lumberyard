@@ -11,8 +11,11 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "ATL.h"
+#include <ATL.h>
+
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #include <AzCore/Math/Color.h>
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
 #include <AzFramework/StringFunc/StringFunc.h>
 
@@ -20,16 +23,15 @@
 #include <AudioProxy.h>
 #include <ATLAudioObject.h>
 #include <IAudioSystemImplementation.h>
+
 #include <ISystem.h>
 #include <IPhysics.h>
 #include <IRenderAuxGeom.h>
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-    #include <AzCore/Math/Color.h>
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
-
 namespace Audio
 {
+    extern CAudioLogger g_audioLogger;
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     inline EAudioRequestResult ConvertToRequestResult(const EAudioRequestStatus eAudioRequestStatus)
     {
@@ -78,8 +80,6 @@ namespace Audio
         , m_nFlags(eAIS_NONE)
     {
         gEnv->pSystem->GetISystemEventDispatcher()->RegisterListener(this);
-
-        InitATLControlIDs();
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         m_oAudioEventMgr.SetDebugNameStore(&m_oDebugNameStore);
@@ -175,84 +175,85 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    TAudioControlID CAudioTranslationLayer::GetAudioTriggerID(const char* const sAudioTriggerName) const
+    TAudioControlID CAudioTranslationLayer::GetAudioTriggerID(const char* const audioTriggerName) const
     {
-        auto nTriggerID = AudioStringToID<TAudioControlID>(sAudioTriggerName);
-
-        if (!stl::find_in_map(m_cTriggers, nTriggerID, nullptr))
+        auto triggerId = AudioStringToID<TAudioControlID>(audioTriggerName);
+        auto it = m_cTriggers.find(triggerId);
+        if (it == m_cTriggers.end())
         {
-            nTriggerID = INVALID_AUDIO_CONTROL_ID;
+            return INVALID_AUDIO_CONTROL_ID;
         }
 
-        return nTriggerID;
+        return triggerId;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    TAudioControlID CAudioTranslationLayer::GetAudioRtpcID(const char* const sAudioRtpcName) const
+    TAudioControlID CAudioTranslationLayer::GetAudioRtpcID(const char* const audioRtpcName) const
     {
-        auto nRtpcID = AudioStringToID<TAudioControlID>(sAudioRtpcName);
-
-        if (!stl::find_in_map(m_cRtpcs, nRtpcID, nullptr))
+        auto rtpcId = AudioStringToID<TAudioControlID>(audioRtpcName);
+        auto it = m_cRtpcs.find(rtpcId);
+        if (it == m_cRtpcs.end())
         {
-            nRtpcID = INVALID_AUDIO_CONTROL_ID;
+            return INVALID_AUDIO_CONTROL_ID;
         }
 
-        return nRtpcID;
+        return rtpcId;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    TAudioControlID CAudioTranslationLayer::GetAudioSwitchID(const char* const sAudioStateName) const
+    TAudioControlID CAudioTranslationLayer::GetAudioSwitchID(const char* const audioStateName) const
     {
-        auto nSwitchID = AudioStringToID<TAudioControlID>(sAudioStateName);
-
-        if (!stl::find_in_map(m_cSwitches, nSwitchID, nullptr))
+        auto switchId = AudioStringToID<TAudioControlID>(audioStateName);
+        auto it = m_cSwitches.find(switchId);
+        if (it == m_cSwitches.end())
         {
-            nSwitchID = INVALID_AUDIO_CONTROL_ID;
+            return INVALID_AUDIO_CONTROL_ID;
         }
 
-        return nSwitchID;
+        return switchId;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    TAudioSwitchStateID CAudioTranslationLayer::GetAudioSwitchStateID(const TAudioControlID nSwitchID, const char * const sAudioSwitchStateName) const
+    TAudioSwitchStateID CAudioTranslationLayer::GetAudioSwitchStateID(const TAudioControlID switchId, const char* const audioSwitchStateName) const
     {
-        TAudioSwitchStateID nStateID = AudioStringToID<TAudioSwitchStateID>(sAudioSwitchStateName);
-
-        if (const auto pSwitch = stl::find_in_map(m_cSwitches, nSwitchID, nullptr))
+        auto stateId = AudioStringToID<TAudioSwitchStateID>(audioSwitchStateName);
+        auto itSwitch = m_cSwitches.find(switchId);
+        if (itSwitch != m_cSwitches.end())
         {
-            if (!stl::find_in_map(pSwitch->cStates, nStateID, nullptr))
+            auto itState = itSwitch->second->cStates.find(stateId);
+            if (itState == itSwitch->second->cStates.end())
             {
-                nStateID = INVALID_AUDIO_SWITCH_STATE_ID;
+                return INVALID_AUDIO_SWITCH_STATE_ID;
             }
         }
 
-        return nStateID;
+        return stateId;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    TAudioPreloadRequestID CAudioTranslationLayer::GetAudioPreloadRequestID(const char* const sAudioPreloadRequestName) const
+    TAudioPreloadRequestID CAudioTranslationLayer::GetAudioPreloadRequestID(const char* const audioPreloadRequestName) const
     {
-        auto nAudioPreloadRequestID = AudioStringToID<TAudioPreloadRequestID>(sAudioPreloadRequestName);
-
-        if (!stl::find_in_map(m_cPreloadRequests, nAudioPreloadRequestID, nullptr))
+        auto preloadRequestId = AudioStringToID<TAudioPreloadRequestID>(audioPreloadRequestName);
+        auto it = m_cPreloadRequests.find(preloadRequestId);
+        if (it == m_cPreloadRequests.end())
         {
-            nAudioPreloadRequestID = INVALID_AUDIO_PRELOAD_REQUEST_ID;
+            return INVALID_AUDIO_PRELOAD_REQUEST_ID;
         }
 
-        return nAudioPreloadRequestID;
+        return preloadRequestId;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    TAudioEnvironmentID CAudioTranslationLayer::GetAudioEnvironmentID(const char* const sAudioEnvironmentName) const
+    TAudioEnvironmentID CAudioTranslationLayer::GetAudioEnvironmentID(const char* const audioEnvironmentName) const
     {
-        auto nEnvironmentID = AudioStringToID<TAudioEnvironmentID>(sAudioEnvironmentName);
-
-        if (!stl::find_in_map(m_cEnvironments, nEnvironmentID, nullptr))
+        auto environmentId = AudioStringToID<TAudioEnvironmentID>(audioEnvironmentName);
+        auto it = m_cEnvironments.find(environmentId);
+        if (it == m_cEnvironments.end())
         {
-            nEnvironmentID = INVALID_AUDIO_CONTROL_ID;
+            return INVALID_AUDIO_ENVIRONMENT_ID;
         }
 
-        return nEnvironmentID;
+        return environmentId;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -428,7 +429,7 @@ namespace Audio
             }
             default:
             {
-                g_audioLogger.Log(eALT_FATAL, "Unknown request type during CAudioTranslationLayer::NotifyListener!");
+                g_audioLogger.Log(eALT_ASSERT, "Unknown request type during CAudioTranslationLayer::NotifyListener!");
                 break;
             }
         }
@@ -517,15 +518,14 @@ namespace Audio
                     if (g_audioCVars.m_nIgnoreWindowFocus == 0 && (m_nFlags & eAIS_IS_MUTED) == 0)
                 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
                     {
-                        const CATLTrigger* const pTrigger = stl::find_in_map(m_cTriggers, SATLInternalControlIDs::nLoseFocusTriggerID, nullptr);
-
-                        if (pTrigger)
+                        auto it = m_cTriggers.find(ATLInternalControlIDs::LoseFocusTriggerID);
+                        if (it != m_cTriggers.end())
                         {
-                            eResult = ActivateTrigger(m_pGlobalAudioObject, pTrigger, 0.0f);
+                            eResult = ActivateTrigger(m_pGlobalAudioObject, it->second, 0.0f);
                         }
                         else
                         {
-                            g_audioLogger.Log(eALT_WARNING, "ATL - Trigger not found for: SATLInternalControlIDs::nLoseFocusTriggerID");
+                            g_audioLogger.Log(eALT_WARNING, "ATL - Trigger not found for: ATLInternalControlIDs::LoseFocusTriggerID");
                         }
 
                         AudioSystemImplementationNotificationBus::Broadcast(&AudioSystemImplementationNotificationBus::Events::OnAudioSystemLoseFocus);
@@ -540,59 +540,26 @@ namespace Audio
                     {
                         AudioSystemImplementationNotificationBus::Broadcast(&AudioSystemImplementationNotificationBus::Events::OnAudioSystemGetFocus);
 
-                        const CATLTrigger* const pTrigger = stl::find_in_map(m_cTriggers, SATLInternalControlIDs::nGetFocusTriggerID, nullptr);
-
-                        if (pTrigger)
+                        auto it = m_cTriggers.find(ATLInternalControlIDs::GetFocusTriggerID);
+                        if (it != m_cTriggers.end())
                         {
-                            eResult = ActivateTrigger(m_pGlobalAudioObject, pTrigger, 0.0f);
+                            eResult = ActivateTrigger(m_pGlobalAudioObject, it->second, 0.0f);
                         }
                         else
                         {
-                            g_audioLogger.Log(eALT_WARNING, "ATL - Trigger not found for: SATLInternalControlIDs::nGetFocusTriggerID");
+                            g_audioLogger.Log(eALT_WARNING, "ATL - Trigger not found for: ATLInternalControlIDs::GetFocusTriggerID");
                         }
                     }
                     break;
                 }
                 case eAMRT_MUTE_ALL:
                 {
-                    const CATLTrigger* const pTrigger = stl::find_in_map(m_cTriggers, SATLInternalControlIDs::nMuteAllTriggerID, nullptr);
-
-                    if (pTrigger)
-                    {
-                        eResult = ActivateTrigger(m_pGlobalAudioObject, pTrigger, 0.0f);
-                    }
-                    else
-                    {
-                        g_audioLogger.Log(eALT_WARNING, "ATL - Trigger not found for: SATLInternalControlIDs::nMuteAllTriggerID");
-                    }
-
-                    if (eResult == eARS_SUCCESS)
-                    {
-                        m_nFlags |= eAIS_IS_MUTED;
-                    }
-
-                    AudioSystemImplementationNotificationBus::Broadcast(&AudioSystemImplementationNotificationBus::Events::OnAudioSystemMuteAll);
+                    eResult = MuteAll();
                     break;
                 }
                 case eAMRT_UNMUTE_ALL:
                 {
-                    const CATLTrigger* const pTrigger = stl::find_in_map(m_cTriggers, SATLInternalControlIDs::nUnmuteAllTriggerID, nullptr);
-
-                    if (pTrigger)
-                    {
-                        eResult = ActivateTrigger(m_pGlobalAudioObject, pTrigger, 0.0f);
-                    }
-                    else
-                    {
-                        g_audioLogger.Log(eALT_WARNING, "ATL - Trigger not found for: SATLInternalControlIDs::nUnmuteAllTriggerID");
-                    }
-
-                    if (eResult == eARS_SUCCESS)
-                    {
-                        m_nFlags &= ~eAIS_IS_MUTED;
-                    }
-
-                    AudioSystemImplementationNotificationBus::Broadcast(&AudioSystemImplementationNotificationBus::Events::OnAudioSystemUnmuteAll);
+                    eResult = UnmuteAll();
                     break;
                 }
                 case eAMRT_STOP_ALL_SOUNDS:
@@ -788,11 +755,10 @@ namespace Audio
                     {
                         auto const pRequestData = static_cast<const SAudioObjectRequestDataInternal<eAORT_PREPARE_TRIGGER>*>(pPassedRequestData);
 
-                        const CATLTrigger* const pTrigger = stl::find_in_map(m_cTriggers, pRequestData->nTriggerID, nullptr);
-
-                        if (pTrigger)
+                        auto it = m_cTriggers.find(pRequestData->nTriggerID);
+                        if (it != m_cTriggers.end())
                         {
-                            eResult = PrepUnprepTriggerAsync(pObject, pTrigger, true);
+                            eResult = PrepUnprepTriggerAsync(pObject, it->second, true);
                         }
                         else
                         {
@@ -804,11 +770,10 @@ namespace Audio
                     {
                         auto const pRequestData = static_cast<const SAudioObjectRequestDataInternal<eAORT_UNPREPARE_TRIGGER>*>(pPassedRequestData);
 
-                        const CATLTrigger* const pTrigger = stl::find_in_map(m_cTriggers, pRequestData->nTriggerID, nullptr);
-
-                        if (pTrigger)
+                        auto it = m_cTriggers.find(pRequestData->nTriggerID);
+                        if (it != m_cTriggers.end())
                         {
-                            eResult = PrepUnprepTriggerAsync(pObject, pTrigger, false);
+                            eResult = PrepUnprepTriggerAsync(pObject, it->second, false);
                         }
                         else
                         {
@@ -820,13 +785,12 @@ namespace Audio
                     {
                         auto const pRequestData = static_cast<const SAudioObjectRequestDataInternal<eAORT_EXECUTE_TRIGGER>*>(pPassedRequestData);
 
-                        const CATLTrigger* const pTrigger = stl::find_in_map(m_cTriggers, pRequestData->nTriggerID, nullptr);
-
-                        if (pTrigger)
+                        auto it = m_cTriggers.find(pRequestData->nTriggerID);
+                        if (it != m_cTriggers.end())
                         {
                             eResult = ActivateTrigger(
                                 pObject,
-                                pTrigger,
+                                it->second,
                                 pRequestData->fTimeUntilRemovalInMS,
                                 rRequest.pOwner,
                                 rRequest.pUserData,
@@ -843,11 +807,10 @@ namespace Audio
                     {
                         auto const pRequestData = static_cast<const SAudioObjectRequestDataInternal<eAORT_STOP_TRIGGER>*>(pPassedRequestData);
 
-                        const CATLTrigger* const pTrigger = stl::find_in_map(m_cTriggers, pRequestData->nTriggerID, nullptr);
-
-                        if (pTrigger)
+                        auto it = m_cTriggers.find(pRequestData->nTriggerID);
+                        if (it != m_cTriggers.end())
                         {
-                            eResult = StopTrigger(pObject, pTrigger);
+                            eResult = StopTrigger(pObject, it->second);
                         }
                         else
                         {
@@ -901,11 +864,10 @@ namespace Audio
 
                         auto const pRequestData = static_cast<const SAudioObjectRequestDataInternal<eAORT_SET_RTPC_VALUE>*>(pPassedRequestData);
 
-                        const CATLRtpc* const pRtpc = stl::find_in_map(m_cRtpcs, pRequestData->nControlID, nullptr);
-
-                        if (pRtpc)
+                        auto it = m_cRtpcs.find(pRequestData->nControlID);
+                        if (it != m_cRtpcs.end())
                         {
-                            eResult = SetRtpc(pObject, pRtpc, pRequestData->fValue);
+                            eResult = SetRtpc(pObject, it->second, pRequestData->fValue);
                         }
                         break;
                     }
@@ -914,23 +876,15 @@ namespace Audio
                         eResult = eARS_FAILURE_INVALID_CONTROL_ID;
                         auto const pRequestData = static_cast<const SAudioObjectRequestDataInternal<eAORT_SET_SWITCH_STATE>*>(pPassedRequestData);
 
-                        const CATLSwitch* const pSwitch = stl::find_in_map(m_cSwitches, pRequestData->nSwitchID, nullptr);
-
-                        if (pSwitch)
+                        auto itSwitch = m_cSwitches.find(pRequestData->nSwitchID);
+                        if (itSwitch != m_cSwitches.end())
                         {
-                            const CATLSwitchState* const pState = stl::find_in_map(pSwitch->cStates, pRequestData->nStateID, nullptr);
-
-                            if (pState)
+                            auto itState = itSwitch->second->cStates.find(pRequestData->nStateID);
+                            if (itState != itSwitch->second->cStates.end())
                             {
-                                eResult = SetSwitchState(pObject, pState);
+                                eResult = SetSwitchState(pObject, itState->second);
                             }
                         }
-                        break;
-                    }
-                    case eAORT_SET_VOLUME:
-                    {
-                        eResult = eARS_FAILURE_INVALID_CONTROL_ID;
-                        //TODO
                         break;
                     }
                     case eAORT_SET_ENVIRONMENT_AMOUNT:
@@ -940,11 +894,10 @@ namespace Audio
                             eResult = eARS_FAILURE_INVALID_CONTROL_ID;
                             auto const pRequestData = static_cast<const SAudioObjectRequestDataInternal<eAORT_SET_ENVIRONMENT_AMOUNT>*>(pPassedRequestData);
 
-                            const CATLAudioEnvironment* const pEnvironment = stl::find_in_map(m_cEnvironments, pRequestData->nEnvironmentID, nullptr);
-
-                            if (pEnvironment)
+                            auto it = m_cEnvironments.find(pRequestData->nEnvironmentID);
+                            if (it != m_cEnvironments.end())
                             {
-                                eResult = SetEnvironment(pObject, pEnvironment, pRequestData->fAmount);
+                                eResult = SetEnvironment(pObject, it->second, pRequestData->fAmount);
                             }
                         }
                         else
@@ -987,13 +940,13 @@ namespace Audio
                         eResult = eARS_FAILURE;
                         auto const requestData = static_cast<const SAudioObjectRequestDataInternal<eAORT_EXECUTE_SOURCE_TRIGGER>*>(pPassedRequestData);
 
-                        const CATLTrigger* const pTrigger = stl::find_in_map(m_cTriggers, requestData->m_triggerId, nullptr);
-                        if (pTrigger)
+                        auto it = m_cTriggers.find(requestData->m_triggerId);
+                        if (it != m_cTriggers.end())
                         {
                             SATLSourceData sourceData(requestData->m_sourceInfo);
                             eResult = ActivateTrigger(
                                 pObject,
-                                pTrigger,
+                                it->second,
                                 0.f,
                                 rRequest.pOwner,
                                 rRequest.pUserData,
@@ -1131,7 +1084,7 @@ namespace Audio
         }
         else
         {
-            g_audioLogger.Log(eALT_ERROR, "Could not find listener with ID: %u", listenerID);
+            g_audioLogger.Log(eALT_COMMENT, "Could not find listener with ID: %u", listenerID);
         }
 
         return eResult;
@@ -1639,11 +1592,10 @@ namespace Audio
 
         for (auto& rtpcPair : rRtpcs)
         {
-            const CATLRtpc* const pRtpc = stl::find_in_map(m_cRtpcs, rtpcPair.first, nullptr);
-
-            if (pRtpc)
+            auto it = m_cRtpcs.find(rtpcPair.first);
+            if (it != m_cRtpcs.end())
             {
-                for (auto rtpcImpl : pRtpc->m_cImplPtrs)
+                for (auto rtpcImpl : it->second->m_cImplPtrs)
                 {
                     EAudioRequestStatus eResetRtpcResult = eARS_FAILURE;
                     switch (rtpcImpl->GetReceiver())
@@ -1764,11 +1716,10 @@ namespace Audio
 
         for (auto& environmentAmountPair : rEnvironments)
         {
-            const CATLAudioEnvironment* const pEnvironment = stl::find_in_map(m_cEnvironments, environmentAmountPair.first, nullptr);
-
-            if (pEnvironment)
+            auto it = m_cEnvironments.find(environmentAmountPair.first);
+            if (it != m_cEnvironments.end())
             {
-                const EAudioRequestStatus eSetEnvResult = SetEnvironment(pAudioObject, pEnvironment, 0.0f);
+                const EAudioRequestStatus eSetEnvResult = SetEnvironment(pAudioObject, it->second, 0.0f);
 
                 if (eSetEnvResult != eARS_SUCCESS)
                 {
@@ -1842,13 +1793,13 @@ namespace Audio
         auto const pInternalStateData = static_cast<const SATLSwitchStateImplData_internal*>(pSwitchStateData);
 
         //TODO: once there is more than one internal switch, a more sensible approach needs to be developed
-        if (pInternalStateData->nATLInternalSwitchID == SATLInternalControlIDs::nObstructionOcclusionCalcSwitchID)
+        if (pInternalStateData->nATLInternalSwitchID == ATLInternalControlIDs::ObstructionOcclusionCalcSwitchID)
         {
             if (pAudioObject->HasPosition())
             {
                 auto const pPositionedAudioObject = static_cast<CATLAudioObject*>(pAudioObject);
 
-                if (pInternalStateData->nATLInternalStateID == SATLInternalControlIDs::nOOCStateIDs[eAOOCT_IGNORE])
+                if (pInternalStateData->nATLInternalStateID == ATLInternalControlIDs::OOCStateIDs[eAOOCT_IGNORE])
                 {
                     pPositionedAudioObject->SetObstructionOcclusionCalc(eAOOCT_IGNORE);
                     SATLSoundPropagationData oPropagationData;
@@ -1858,11 +1809,11 @@ namespace Audio
                         oPropagationData.fObstruction,
                         oPropagationData.fOcclusion);
                 }
-                else if (pInternalStateData->nATLInternalStateID == SATLInternalControlIDs::nOOCStateIDs[eAOOCT_SINGLE_RAY])
+                else if (pInternalStateData->nATLInternalStateID == ATLInternalControlIDs::OOCStateIDs[eAOOCT_SINGLE_RAY])
                 {
                     pPositionedAudioObject->SetObstructionOcclusionCalc(eAOOCT_SINGLE_RAY);
                 }
-                else if (pInternalStateData->nATLInternalStateID == SATLInternalControlIDs::nOOCStateIDs[eAOOCT_MULTI_RAY])
+                else if (pInternalStateData->nATLInternalStateID == ATLInternalControlIDs::OOCStateIDs[eAOOCT_MULTI_RAY])
                 {
                     pPositionedAudioObject->SetObstructionOcclusionCalc(eAOOCT_MULTI_RAY);
                 }
@@ -1872,16 +1823,16 @@ namespace Audio
                 }
             }
         }
-        else if (pInternalStateData->nATLInternalSwitchID == SATLInternalControlIDs::nObjectVelocityTrackingSwitchID)
+        else if (pInternalStateData->nATLInternalSwitchID == ATLInternalControlIDs::ObjectVelocityTrackingSwitchID)
         {
             if (pAudioObject->HasPosition())
             {
                 auto const pPositionedAudioObject = static_cast<CATLAudioObject*>(pAudioObject);
-                if (pInternalStateData->nATLInternalStateID == SATLInternalControlIDs::nOVTOnStateID)
+                if (pInternalStateData->nATLInternalStateID == ATLInternalControlIDs::OVTOnStateID)
                 {
                     pPositionedAudioObject->SetVelocityTracking(true);
                 }
-                else if (pInternalStateData->nATLInternalStateID == SATLInternalControlIDs::nOVTOffStateID)
+                else if (pInternalStateData->nATLInternalStateID == ATLInternalControlIDs::OVTOffStateID)
                 {
                     pPositionedAudioObject->SetVelocityTracking(false);
                 }
@@ -1903,6 +1854,54 @@ namespace Audio
     {
         // TODO: implement
         return eARS_FAILURE;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    EAudioRequestStatus CAudioTranslationLayer::MuteAll()
+    {
+        EAudioRequestStatus result = eARS_FAILURE;
+        const CATLTrigger* const trigger = stl::find_in_map(m_cTriggers, ATLInternalControlIDs::MuteAllTriggerID, nullptr);
+
+        if (trigger)
+        {
+            result = ActivateTrigger(m_pGlobalAudioObject, trigger, 0.0f);
+        }
+        else
+        {
+            g_audioLogger.Log(eALT_WARNING, "ATL - Trigger not found for: ATLInternalControlIDs::MuteAllTriggerID");
+        }
+
+        if (result == eARS_SUCCESS)
+        {
+            m_nFlags |= eAIS_IS_MUTED;
+        }
+
+        AudioSystemImplementationNotificationBus::Broadcast(&AudioSystemImplementationNotificationBus::Events::OnAudioSystemMuteAll);
+        return result;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    EAudioRequestStatus CAudioTranslationLayer::UnmuteAll()
+    {
+        EAudioRequestStatus result = eARS_FAILURE;
+        const CATLTrigger* const trigger = stl::find_in_map(m_cTriggers, ATLInternalControlIDs::UnmuteAllTriggerID, nullptr);
+
+        if (trigger)
+        {
+            result = ActivateTrigger(m_pGlobalAudioObject, trigger, 0.0f);
+        }
+        else
+        {
+            g_audioLogger.Log(eALT_WARNING, "ATL - Trigger not found for: ATLInternalControlIDs::UnmuteAllTriggerID");
+        }
+
+        if (result == eARS_SUCCESS)
+        {
+            m_nFlags &= ~eAIS_IS_MUTED;
+        }
+
+        AudioSystemImplementationNotificationBus::Broadcast(&AudioSystemImplementationNotificationBus::Events::OnAudioSystemUnmuteAll);
+        return result;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2007,7 +2006,7 @@ namespace Audio
         eResult = ParsePreloadsData(controlsPath, eADS_GLOBAL);
         AZ_Error("AudioTranslationLayer", eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to parse fresh global preloads data!");
 
-        eResult = m_oFileCacheMgr.TryLoadRequest(SATLInternalControlIDs::nGlobalPreloadRequestID, true, true);
+        eResult = m_oFileCacheMgr.TryLoadRequest(ATLInternalControlIDs::GlobalPreloadRequestID, true, true);
         AZ_Error("AudioTranslationLayer", eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to load fresh global preloads!");
 
         if (levelName && levelName[0] != '\0')
@@ -2028,6 +2027,12 @@ namespace Audio
                 eResult = m_oFileCacheMgr.TryLoadRequest(levelPreloadId, true, true);
                 AZ_Error("AudioTranslationLayer", eResult == eARS_SUCCESS, "ATL RefreshAudioSystem - Failed to load fresh level preloads!");
             }
+        }
+
+        if (m_nFlags & eAIS_IS_MUTED)
+        {
+            // restore the muted state...
+            MuteAll();
         }
 
         g_audioLogger.Log(eALT_ALWAYS, "$3Done refreshing the AudioSystem!");
@@ -2051,7 +2056,7 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioTranslationLayer::DrawAudioSystemDebugInfo()
     {
-        FUNCTION_PROFILER_ALWAYS(gEnv->pSystem, PROFILE_AUDIO);
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Audio);
 
         if (IRenderAuxGeom* pAuxGeom = (g_audioCVars.m_nDrawAudioDebug > 0 && gEnv->pRenderer) ? gEnv->pRenderer->GetIRenderAuxGeom() : nullptr)
         {
@@ -2059,7 +2064,7 @@ namespace Audio
             // on top (Draw2dLabel doesn't provide a way set which labels are printed on top)
 
             const size_t nPrimaryPoolSize = AZ::AllocatorInstance<Audio::AudioSystemAllocator>::Get().Capacity();
-            const size_t nPrimaryPoolUsedSize = AZ::AllocatorInstance<Audio::AudioSystemAllocator>::Get().NumAllocatedBytes();
+            const size_t nPrimaryPoolUsedSize = nPrimaryPoolSize - AZ::AllocatorInstance<Audio::AudioSystemAllocator>::Get().GetUnAllocatedMemory();
 
             float fPosX = 0.0f;
             float fPosY = 4.0f;
@@ -2099,8 +2104,8 @@ namespace Audio
             static float fSyncRays = 0;
             static float fAsyncRays = 0;
 
-            const Vec3 vPos = m_oSharedData.m_oActiveListenerPosition.GetPositionVec();
-            const Vec3 vFwd = m_oSharedData.m_oActiveListenerPosition.GetForwardVec();
+            const AZ::Vector3 vPos = m_oSharedData.m_oActiveListenerPosition.GetPositionVec();
+            const AZ::Vector3 vFwd = m_oSharedData.m_oActiveListenerPosition.GetForwardVec();
             const size_t nNumAudioObjects = m_oAudioObjectMgr.GetNumAudioObjects();
             const size_t nNumActiveAudioObjects = m_oAudioObjectMgr.GetNumActiveAudioObjects();
             const size_t nEvents = m_oAudioEventMgr.GetNumActive();
@@ -2134,12 +2139,12 @@ namespace Audio
             pAuxGeom->Draw2dLabel(fPosX, fPosY, 1.35f, fColorListener, false,
                 "Listener <%llu> PosXYZ: %.2f %.2f %.2f FwdXYZ: %.2f %.2f %.2f",
                 activeListenerID,
-                vPos.x, vPos.y, vPos.z,
-                vFwd.x, vFwd.y, vFwd.z);
+                static_cast<float>(vPos.GetX()), static_cast<float>(vPos.GetY()), static_cast<float>(vPos.GetZ()),
+                static_cast<float>(vFwd.GetX()), static_cast<float>(vFwd.GetY()), static_cast<float>(vFwd.GetZ()));
 
             fPosY += fLineHeight;
             pAuxGeom->Draw2dLabel(fPosX, fPosY, 1.35f, fColorNumbers, false,
-                "Objects: %3" PRISIZE_T "/%3" PRISIZE_T " | Events: %3" PRISIZE_T "  EventListeners %3" PRISIZE_T " | Listeners: %" PRISIZE_T " | SyncRays: %3.1f  AsyncRays: %3.1f",
+                "Objects: %3zu/%3zu | Events: %3zu  EventListeners %3zu | Listeners: %zu | SyncRays: %3.1f  AsyncRays: %3.1f",
                 nNumActiveAudioObjects, nNumAudioObjects, nEvents, nNumEventListeners, nListeners, fSyncRays, fAsyncRays);
 
             fPosY += fLineHeight;
@@ -2177,7 +2182,7 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void BytesToString(AZ::u32 bytes, char* buffer, AZStd::size_t bufLength)
+    void BytesToString(AZ::u32 bytes, char* buffer, size_t bufLength)
     {
         if (bytes < (1 << 10))
         {
@@ -2231,7 +2236,7 @@ namespace Audio
 
         if (!poolInfos.empty())
         {
-            const AZStd::size_t bufferSize = 32;
+            const size_t bufferSize = 32;
             char buffer[bufferSize] = { 0 };
 
             for (auto& poolInfo : poolInfos)

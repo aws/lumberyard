@@ -125,7 +125,6 @@ def build(bld):
         test_all_defines            = list(development_defines),
 
         win_x64_clang_test_all_enable_rtti = True,
-        platform_roots = [bld.PlatformRoot('Platform', export_includes=False)],
 
         # Editor module - Includes pulls in EmotionFX tools code, and has a dependencies on AzToolsFramework and the EMotionFXStaticLib gem shared library.
         editor = dict(
@@ -141,14 +140,16 @@ def build(bld):
                                'EMotionFX/Tools/EMotionStudio/Plugins/RenderPlugins/renderplugins.waf_files',
                                'EMotionFX/Rendering/rendering.waf_files',
                                'EMotionFX/Pipeline/SceneAPIExt/sceneapi_ext.waf_files',
-                               'EMotionFX/Pipeline/RCExt/rc_ext.waf_files'
+                               'EMotionFX/Pipeline/RCExt/rc_ext.waf_files',
+                               'EMotionFX/Pipeline/EMotionFXBuilder/emotionfxbuilder.waf_files'
                               ],
             use             = ['AzToolsFramework',
                                'AzQtComponents',
                                'EMotionFXStaticLib',
                                'SceneCore',
                                'SceneData',
-                               'SceneUI'
+                               'SceneUI',
+                               'AssetBuilderSDK'
                               ] + bld.make_aws_library_task_list(['LyMetricsShared', 'LyIdentity', 'LyMetricsProducer']), #Do not change the order of 'LyMetricsShared', 'LyIdentity', 'LyMetricsProducer'
             features        = ['ExternalLyMetrics', 'ExternalLyIdentity'],
             uselib          = ['QT5OPENGL',
@@ -179,7 +180,7 @@ def build(bld):
 
             win_lib         = ['opengl32', 'dxguid', 'dinput8'],
             #msvc_cxxflags   = msvc_cxx_flags,,
-            platform_roots = [bld.PlatformRoot('Platform', export_includes=False)]
+            platform_roots = [bld.PlatformRoot('Editor/Platform', export_includes=False)]
         )
     )
 

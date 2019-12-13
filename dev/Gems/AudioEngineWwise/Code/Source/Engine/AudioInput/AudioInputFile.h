@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "AudioSourceManager.h"
+#include <AudioSourceManager.h>
 
 namespace Audio
 {
@@ -38,7 +38,7 @@ namespace Audio
          * @param fileStream An opened file stream on the audio file.
          * @return Byte-offset into the file where audio data begins.
          */
-        virtual AZStd::size_t ParseHeader(AZ::IO::FileIOStream& fileStream) = 0;
+        virtual size_t ParseHeader(AZ::IO::FileIOStream& fileStream) = 0;
 
         /**
          * Check validity of the header info.
@@ -98,7 +98,7 @@ namespace Audio
          * @param toBuffer Output buffer to copy to.
          * @return Number of sample frames actually copied.
          */
-        AZStd::size_t CopyData(AZStd::size_t numSampleFrames, void* toBuffer);     // frames, not bytes!
+        size_t CopyData(size_t numSampleFrames, void* toBuffer);     // frames, not bytes!
 
     private:
         /**
@@ -116,12 +116,12 @@ namespace Audio
 
         AZStd::unique_ptr<AudioFileParser> m_parser = nullptr;
 
-        AZ::u8* m_dataPtr = nullptr;                ///< The internal data buffer.
-        AZStd::size_t m_dataSize = 0;               ///< The internal data size.
+        AZ::u8* m_dataPtr = nullptr;    ///< The internal data buffer.
+        size_t m_dataSize = 0;          ///< The internal data size.
 
         // Bookmarks
-        AZ::u8* m_dataCurrentPtr = nullptr;         ///< The internal bookmark pointer.
-        AZStd::size_t m_dataCurrentReadSize = 0;    ///< The internal bookmark indicating how much data has been read so far.
+        AZ::u8* m_dataCurrentPtr = nullptr; ///< The internal bookmark pointer.
+        size_t m_dataCurrentReadSize = 0;   ///< The internal bookmark indicating how much data has been read so far.
     };
 
 } // namespace Audio

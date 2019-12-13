@@ -19,9 +19,11 @@ namespace AZ
     // [9/2/2009]
     //=========================================================================
     OSAllocator::OSAllocator()
-        : m_custom(nullptr)
+        : AllocatorBase(this, "OSAllocator", "OS allocator, allocating memory directly from the OS (C heap)!")
+        , m_custom(nullptr)
         , m_numAllocatedBytes(0)
     {
+        DisableOverriding();
     }
 
     //=========================================================================
@@ -30,11 +32,6 @@ namespace AZ
     //=========================================================================
     OSAllocator::~OSAllocator()
     {
-        // Debug allocator can be destroyed even after we exit the application and this is fine.
-        if (IsReady())
-        {
-            OnDestroy();
-        }
     }
 
     //=========================================================================
@@ -45,7 +42,6 @@ namespace AZ
     {
         m_custom = desc.m_custom;
         m_numAllocatedBytes = 0;
-        OnCreated();
         return true;
     }
 
@@ -55,7 +51,15 @@ namespace AZ
     //=========================================================================
     void OSAllocator::Destroy()
     {
-        OnDestroy();
+    }
+
+    //=========================================================================
+    // GetDebugConfig
+    // [10/14/2018]
+    //=========================================================================
+    AllocatorDebugConfig OSAllocator::GetDebugConfig()
+    {
+        return AllocatorDebugConfig().ExcludeFromDebugging();
     }
 
     //=========================================================================
@@ -75,7 +79,7 @@ namespace AZ
             address = AZ_OS_MALLOC(byteSize, alignment);
         }
 
-        if (address == 0)
+        if (address == 0 && byteSize > 0)
         {
             AZ_Printf("Memory", "======================================================\n");
             AZ_Printf("Memory", "OSAllocator run out of system memory!\nWe can't track the debug allocator, since it's used for tracking and pipes trought the OS... here are the other allocator status:\n");

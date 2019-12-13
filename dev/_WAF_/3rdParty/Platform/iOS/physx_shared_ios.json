@@ -1,0 +1,40 @@
+{
+    "aliases": {
+        "lib_paths_ios": ["${lib_paths}/ios.arm_64.shared/"]
+    },
+    "platform": {
+        "ios": {
+            "importlibpath_debug": [
+                "${lib_paths_ios}/debug"
+            ],
+            "importlibpath_profile": [
+                "${lib_paths_ios}/profile"
+            ],
+            "importlibpath_release": [
+                "${lib_paths_ios}/release"
+            ],
+            "importlibpath_performance": [
+                "${lib_paths_ios}/release"
+            ],
+            "sharedlibpath_debug": [
+                "${lib_paths_ios}/debug"
+            ],
+            "sharedlibpath_profile": [
+                "${lib_paths_ios}/profile"
+            ],
+            "sharedlibpath_release": [
+                "${lib_paths_ios}/release"
+            ],
+            "sharedlibpath_performance": [
+                "${lib_paths_ios}/release"
+            ],
+            "import": [
+                "lib${lib_names}_64.dylib",
+                "lib${lib_names_ext}_static_64.a"
+            ],
+            "shared": [
+                "lib${lib_names}_64.dylib"
+            ]
+        }
+    }
+}

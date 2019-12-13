@@ -54,9 +54,15 @@
             "description": "Upload artifacts to cache"
         }, 
         {
+            "long_form": "--artifacts-cache-pch", 
+            "attribute": "artifacts_cache_pch", 
+            "default_value": "False", 
+            "description": "Cache precompiled headers, only enable this when using the same workspace to upload/restore"
+        }, 
+        {
             "long_form": "--force-version", 
             "attribute": "version", 
-            "default_value": "1.21.2.0", 
+            "default_value": "1.22.0.0", 
             "description": "Version to embed in final build outputs"
         }, 
         {
@@ -257,12 +263,6 @@
             "attribute": "product_sku", 
             "default_value": "default", 
             "description": "Enables a project wide define PRODUCT_SKU_<this value>, alters where the paks are built to and read from, and which platform resources are used in the gem\\resources\\  Ex. For a demo version of the game you could set product_sku = demo  then PRODUCT_SKU_demo would be defined, and then you could disable systems based on that."
-        }, 
-        {
-            "long_form": "--use-unified-launcher", 
-            "attribute": "use_unified_launcher", 
-            "default_value": "True", 
-            "description": "Use the new unified launcher system"
         }
     ], 
     "Misc Options": [
@@ -295,6 +295,12 @@
             "attribute": "has_server_configs", 
             "default_value": "True", 
             "description": "Optional parameter enable the _dedicated_server configurations"
+        }, 
+        {
+            "long_form": "--enable-experimental-features", 
+            "attribute": "enable_experimental_features", 
+            "default_value": "False", 
+            "description": "Optional parameter to enabled experimental features outside of the dev environment"
         }
     ], 
     "Packaging Options": [
@@ -323,6 +329,20 @@
             "attribute": "deploy_projects_automatically", 
             "default_value": "True", 
             "description": "Automatically run the deploy command after each build."
+        }
+    ], 
+    "Test Launch Options": [
+        {
+            "long_form": "--auto-launch-unit-test", 
+            "attribute": "auto_launch_unit_test", 
+            "default_value": "False", 
+            "description": "For platforms that support unit test builds, automatically run the unit test launcher based on the active game in bootstrap.cfg"
+        }, 
+        {
+            "long_form": "--auto-launch-unit-test-arguments", 
+            "attribute": "auto_launch_unit_test_arguments", 
+            "default_value": "", 
+            "description": "Optional arguments to pass into the unit test launcher when unit tests are ran for the game project through WAF."
         }
     ], 
     "Visual Studio Project Generator": [
@@ -359,7 +379,7 @@
         {
             "long_form": "--msvs-version", 
             "attribute": "msvs_version", 
-            "default_value": "14", 
+            "default_value": "15", 
             "description": "Version of the MS Visual Studio Solution to generate"
         }
     ]

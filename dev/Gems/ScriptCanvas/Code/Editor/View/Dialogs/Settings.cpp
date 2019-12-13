@@ -12,10 +12,12 @@
 
 #include "precompiled.h"
 #include "Settings.h"
-
+// qtextformat.h(365): warning C4251: 'QTextFormat::d': class 'QSharedDataPointer<QTextFormatPrivate>' needs to have dll-interface to be used by clients of class 'QTextFormat'
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option")
 #include <QLineEdit>
 #include <QPushButton>
 #include <QKeyEvent>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/UserSettings/UserSettingsComponent.h>
 #include <AzCore/Component/ComponentApplicationBus.h>

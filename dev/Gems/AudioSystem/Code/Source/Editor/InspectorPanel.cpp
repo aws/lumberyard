@@ -11,21 +11,19 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "InspectorPanel.h"
-#include "QtUtil.h"
-#include "QAudioControlEditorIcons.h"
-#include "common/ACETypes.h"
+#include <InspectorPanel.h>
+
+#include <ACETypes.h>
+#include <AudioControlsEditorPlugin.h>
+#include <IAudioSystemControl.h>
 #include <IEditor.h>
-#include "AudioControlsEditorPlugin.h"
-#include "common/IAudioSystemControl.h"
+#include <QAudioControlEditorIcons.h>
 
 #include <QMessageBox>
 #include <QMimeData>
 #include <QDropEvent>
 #include <QKeyEvent>
 
-using namespace QtUtil;
 
 namespace AudioControls
 {
@@ -51,7 +49,7 @@ namespace AudioControls
         for (uint i = 0; i < size; ++i)
         {
             QLabel* pLabel = new QLabel(m_pPlatformsWidget);
-            pLabel->setText(QtUtil::ToQString(m_pATLModel->GetPlatformAt(i)));
+            pLabel->setText(QString(m_pATLModel->GetPlatformAt(i).c_str()));
             pLabel->setAlignment(Qt::AlignLeading | Qt::AlignLeft | Qt::AlignVCenter);
             pLabel->setIndent(3);
             QComboBox* pPlatformComboBox = new QComboBox(this);
@@ -187,7 +185,7 @@ namespace AudioControls
                     }
                     else
                     {
-                        QString scope = QtUtil::ToQString(pControl->GetScope());
+                        QString scope = QString(pControl->GetScope().c_str());
                         if (scope.isEmpty())
                         {
                             m_pScopeDropDown->setCurrentIndex(0);
@@ -204,13 +202,13 @@ namespace AudioControls
             else
             {
                 bool bSameScope = true;
-                string sScope = "";
+                AZStd::string sScope;
                 for (int i = 0; i < size; ++i)
                 {
                     CATLControl* pControl = m_selectedControls[i];
                     if (pControl)
                     {
-                        string sControlScope = pControl->GetScope();
+                        AZStd::string sControlScope = pControl->GetScope();
                         if (sControlScope.empty())
                         {
                             sControlScope = "Global";
@@ -225,7 +223,7 @@ namespace AudioControls
                 }
                 if (bSameScope)
                 {
-                    int index = m_pScopeDropDown->findText(QtUtil::ToQString(sScope));
+                    int index = m_pScopeDropDown->findText(QString(sScope.c_str()));
                     m_pScopeDropDown->setCurrentIndex(index);
                 }
                 else
@@ -251,7 +249,7 @@ namespace AudioControls
                 CATLControl* pControl = m_selectedControls[0];
                 if (pControl)
                 {
-                    m_pNameLineEditor->setText(ToQString(pControl->GetName()));
+                    m_pNameLineEditor->setText(QString(pControl->GetName().c_str()));
                     m_pNameLineEditor->setEnabled(true);
                 }
             }
@@ -363,7 +361,7 @@ namespace AudioControls
         for (int j = 0; j < m_pATLModel->GetScopeCount(); ++j)
         {
             SControlScope scope = m_pATLModel->GetScopeAt(j);
-            m_pScopeDropDown->insertItem(0, QString(scope.name));
+            m_pScopeDropDown->insertItem(0, QString(scope.name.c_str()));
             if (scope.bOnlyLocal)
             {
                 m_pScopeDropDown->setItemData(0, m_notFoundColor, Qt::ForegroundRole);
@@ -385,7 +383,7 @@ namespace AudioControls
             if (!sName.isEmpty())
             {
                 CUndo undo("Audio Control Name Changed");
-                string newName = QtUtil::ToString(sName);
+                AZStd::string newName = sName.toUtf8().data();
                 CATLControl* pControl = m_selectedControls[0];
                 if (pControl && pControl->GetName() != newName)
                 {
@@ -413,7 +411,7 @@ namespace AudioControls
             CATLControl* pControl = m_selectedControls[i];
             if (pControl)
             {
-                QString currentScope = QtUtil::ToQString(pControl->GetScope());
+                QString currentScope = QString(pControl->GetScope().c_str());
                 if (currentScope != scope && (scope != tr("Global") || currentScope != ""))
                 {
                     if (scope == tr("Global"))
@@ -422,7 +420,7 @@ namespace AudioControls
                     }
                     else
                     {
-                        pControl->SetScope(QtUtil::ToString(scope));
+                        pControl->SetScope(scope.toUtf8().data());
                     }
                 }
             }
@@ -503,4 +501,4 @@ namespace AudioControls
     }
 } // namespace AudioControls
 
-#include <InspectorPanel.moc>
+#include <Source/Editor/InspectorPanel.moc>

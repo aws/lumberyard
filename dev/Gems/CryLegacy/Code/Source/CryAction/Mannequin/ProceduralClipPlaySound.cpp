@@ -16,6 +16,7 @@
 #include <AzCore/std/containers/vector.h>
 
 #include <ICryMannequin.h>
+#include <MathConversion.h>
 #include <Mannequin/Serialization.h>
 #include <CryExtension/Impl/ClassWeaver.h>
 
@@ -95,11 +96,11 @@ public:
     {
         if (m_pAudioComponent)
         {
-            m_pAudioComponent->SetAuxAudioProxyOffset(Audio::SATLWorldPosition(rOffset.t));
+            m_pAudioComponent->SetAuxAudioProxyOffset(Audio::SATLWorldPosition(LYVec3ToAZVec3(rOffset.t)));
         }
         else
         {
-            AudioProxyComponentRequestBus::Event(m_entityId, &AudioProxyComponentRequests::SetPosition, Audio::SATLWorldPosition(rOffset.t));
+            AudioProxyComponentRequestBus::Event(m_entityId, &AudioProxyComponentRequests::SetPosition, Audio::SATLWorldPosition(LYVec3ToAZVec3(rOffset.t)));
         }
     }
 

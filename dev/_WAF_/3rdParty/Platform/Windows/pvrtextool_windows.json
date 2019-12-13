@@ -1,0 +1,27 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "importlibpath": [
+                "Windows_x86_64"
+            ],
+            "sharedlibpath": [
+                "Windows_x86_64"
+            ],
+            "import": [
+                "PVRTexLib.lib"
+            ],
+            "shared": [
+                "PVRTexLib.dll"
+            ],
+            "copy_extra": [
+                "PVRTexLib_License.txt:."
+            ]
+        }
+    }
+}
+
+
+
+
+
+

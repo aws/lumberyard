@@ -1,0 +1,37 @@
+{
+    "configuration_settings": {
+        "linux_rpath": ["$ORIGIN"]
+    },
+    "platform": {
+        "linux_x64": {
+            "libpath_debug": [
+                "lib/linux/Debug"
+            ],
+            "libpath_release": [
+                "lib/linux/Release"
+            ],
+            "aws_cpp_sdk_core_static/lib": [
+                "lib${aws_cpp_sdk_core}.a",
+                "lib${aws_dependencies}.a",
+                "libcurl.a"
+            ],
+            "aws_cpp_sdk_gamelift_static/lib": [
+                "lib${aws_cpp_sdk_gamelift}.a"
+            ],
+            "aws_cpp_sdk_cognito_identity_static/lib": [
+                "lib${aws_cpp_sdk_cognito_identity}.a"
+            ],
+            "aws_cpp_sdk_lambda_static/lib": [
+                "lib${aws_cpp_sdk_lambda}.a"
+            ],
+            "aws_cpp_sdk_identity_lambda_static/lib": [
+                "lib${aws_cpp_sdk_identity_lambda}.a",
+                "lib${aws_dependencies}.a"
+            ],
+            "aws_cpp_sdk_identity_metrics_static/lib": [
+                "lib${aws_cpp_sdk_identity_metrics}.a",
+                "lib${aws_dependencies}.a"
+            ]
+        }
+    }
+}

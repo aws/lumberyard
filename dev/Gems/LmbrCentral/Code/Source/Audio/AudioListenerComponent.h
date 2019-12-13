@@ -34,6 +34,7 @@ namespace LmbrCentral
      *  This feature is not yet available in Wwise middleware, but it is on their
      *  roadmap (WG-21449).
      */
+
     class AudioListenerComponent
         : public AZ::Component
         , private AZ::TransformNotificationBus::MultiHandler

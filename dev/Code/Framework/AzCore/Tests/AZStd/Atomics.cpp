@@ -22,10 +22,6 @@
 
 #include <AzCore/std/parallel/atomic.h>
 
-#if !defined(AZ_COMPILER_MSVC) || _MSC_VER >= 1900
-#define AZ_TEST_ALIGNED_ATOMIC
-#endif
-
 namespace UnitTest
 {
     class Atomics
@@ -822,7 +818,6 @@ namespace UnitTest
         }
     }
 
-#if defined(AZ_TEST_ALIGNED_ATOMIC)
     TEST_F(Atomics, AtomicFlagDefault)
     {
         AZStd::atomic_flag f;
@@ -836,7 +831,6 @@ namespace UnitTest
             zero.~A();
         }
     }
-#endif
 
     TEST_F(Atomics, AtomicFlagInit)
     {
@@ -1022,14 +1016,12 @@ namespace UnitTest
         EXPECT_TRUE((obj -= AZStd::ptrdiff_t(3)) == T(2 * sizeof(X)));
         EXPECT_TRUE(obj == T(2 * sizeof(X)));
 
-#if defined(AZ_TEST_ALIGNED_ATOMIC)
         {
             alignas(A) char storage[sizeof(A)] = { 23 };
             A& zero = *new (storage) A();
             EXPECT_TRUE(zero == T(0));
             zero.~A();
         }
-#endif
     }
 
     template <class A, class T>
@@ -1211,7 +1203,6 @@ namespace UnitTest
             EXPECT_TRUE((obj = true) == true);
             EXPECT_TRUE(obj == true);
         }
-#if defined(AZ_TEST_ALIGNED_ATOMIC)
         {
             typedef AZStd::atomic<bool> A;
             alignas(A) char storage[sizeof(A)] = { 1 };
@@ -1219,7 +1210,6 @@ namespace UnitTest
             EXPECT_TRUE(zero == false);
             zero.~A();
         }
-#endif
     }
 
     template <class A, class T>
@@ -1279,14 +1269,12 @@ namespace UnitTest
         EXPECT_TRUE((obj ^= T(0xF)) == T(8));
         EXPECT_TRUE(obj == T(8));
 
-#if defined(AZ_TEST_ALIGNED_ATOMIC)
         {
             alignas(A) char storage[sizeof(A)] = { 23 };
             A& zero = *new (storage) A();
             EXPECT_TRUE(zero == 0);
             zero.~A();
         }
-#endif
     }
 
     template <class A, class T>

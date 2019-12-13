@@ -13,9 +13,12 @@
 
 #pragma once
 
-#include "CryString.h"
-#include "common/IAudioConnection.h"
-#include "common/ACETypes.h"
+#include <ACETypes.h>
+#include <AzCore/std/containers/map.h>
+#include <AzCore/std/string/string.h>
+#include <AzCore/std/string/string_view.h>
+#include <IAudioConnection.h>
+
 #include <IXml.h>
 
 namespace AudioControls
@@ -28,16 +31,18 @@ namespace AudioControls
     struct SRawConnectionData
     {
         SRawConnectionData(XmlNodeRef node, bool bIsValid)
-            : xmlNode(node)
-            , bValid(bIsValid) {}
-        XmlNodeRef xmlNode;
+            : m_xmlNode(node)
+            , m_isValid(bIsValid)
+        {}
+
+        XmlNodeRef m_xmlNode;
 
         // indicates if the connection is valid for the currently loaded middle-ware
-        bool bValid;
+        bool m_isValid;
     };
 
-    typedef std::vector<SRawConnectionData> TXMLNodeList;
-    typedef std::map<string, TXMLNodeList> TConnectionPerGroup;
+    using TXmlNodeList = AZStd::vector<SRawConnectionData>;
+    using TConnectionPerGroup = AZStd::map<AZStd::string, TXmlNodeList>;
 
     //-------------------------------------------------------------------------------------------//
     class CATLControl
@@ -48,19 +53,19 @@ namespace AudioControls
 
     public:
         CATLControl();
-        CATLControl(const string& sControlName, CID nID, EACEControlType eType, CATLControlsModel* pModel);
+        CATLControl(const AZStd::string& sControlName, CID nID, EACEControlType eType, CATLControlsModel* pModel);
         ~CATLControl();
 
         CID GetId() const;
 
         EACEControlType GetType() const;
 
-        string GetName() const;
-        void SetName(const string& name);
+        AZStd::string GetName() const;
+        void SetName(const AZStd::string_view name);
 
         bool HasScope() const;
-        string GetScope() const;
-        void SetScope(const string& sScope);
+        AZStd::string GetScope() const;
+        void SetScope(const AZStd::string_view sScope);
 
         bool IsAutoLoad() const;
         void SetAutoLoad(bool bAutoLoad);
@@ -76,7 +81,7 @@ namespace AudioControls
             return m_children.size();
         }
 
-        CATLControl* GetChild(uint index) const
+        CATLControl* GetChild(AZ::u32 index) const
         {
             return m_children[index];
         }
@@ -88,13 +93,13 @@ namespace AudioControls
 
         void RemoveChild(CATLControl* pChildControl)
         {
-            m_children.erase(std::remove(m_children.begin(), m_children.end(), pChildControl), m_children.end());
+            m_children.erase(AZStd::remove(m_children.begin(), m_children.end(), pChildControl), m_children.end());
         }
 
         // Controls can group connection according to a platform
         // This is used primarily for the Preload Requests
-        int GetGroupForPlatform(const string& platform) const;
-        void SetGroupForPlatform(const string& platform, int connectionGroupId);
+        int GetGroupForPlatform(const AZStd::string_view platform) const;
+        void SetGroupForPlatform(const AZStd::string_view platform, int connectionGroupId);
 
         size_t ConnectionCount() const;
         void AddConnection(TConnectionPtr pConnection);
@@ -102,8 +107,8 @@ namespace AudioControls
         void RemoveConnection(IAudioSystemControl* pAudioSystemControl);
         void ClearConnections();
         TConnectionPtr GetConnectionAt(int index);
-        TConnectionPtr GetConnection(CID id, const string& group = g_sDefaultGroup);
-        TConnectionPtr GetConnection(IAudioSystemControl* m_pAudioSystemControl, const string& group = g_sDefaultGroup);
+        TConnectionPtr GetConnection(CID id, const AZStd::string_view group = g_sDefaultGroup);
+        TConnectionPtr GetConnection(IAudioSystemControl* m_pAudioSystemControl, const AZStd::string_view group = g_sDefaultGroup);
         void ReloadConnections();
         bool IsFullyConnected() const;
 
@@ -117,11 +122,13 @@ namespace AudioControls
         void SetType(EACEControlType type);
         CID m_nID;
         EACEControlType m_eType;
-        string m_sName;
-        string m_sScope;
-        std::map<string, int> m_groupPerPlatform;
-        std::vector<TConnectionPtr> m_connectedControls;
-        std::vector<CATLControl*> m_children;
+        AZStd::string m_sName;
+        AZStd::string m_sScope;
+
+        AZStd::map<AZStd::string, int> m_groupPerPlatform;
+        AZStd::vector<TConnectionPtr> m_connectedControls;
+        AZStd::vector<CATLControl*> m_children;
+
         CATLControl* m_pParent;
         bool m_bAutoLoad;
 

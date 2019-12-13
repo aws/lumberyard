@@ -134,7 +134,7 @@ namespace AZStd
     }
 
     template <class... Types>
-    template <enable_if_t<conjunction<bool_constant<is_swappable<Types>::value && is_move_constructible<Types>::value>...>::value, bool>>
+    template <bool Placeholder, enable_if_t<conjunction<bool_constant<Placeholder && is_swappable<Types>::value && is_move_constructible<Types>::value>...>::value, bool>>
     inline void variant<Types...>::swap(variant& other)
     {
         m_impl.swap(other.m_impl);
@@ -296,7 +296,6 @@ namespace AZStd
     template <class Visitor, class... VariantTypes>
     inline constexpr decltype(auto) visit(Visitor&& visitor, VariantTypes&&... variants)
     {
-        // VS2015 C++14 constexpr support is incomplete and does not support variable declarations
         // The following code validates that a variant that is valueless due to an exception
         // being thrown in one of the alternative constructor is not being supplied to Visit
         return variant_detail::visitor::variant::visit_value(AZStd::forward<Visitor>(visitor), AZStd::forward<VariantTypes>(variants)...);
@@ -305,7 +304,6 @@ namespace AZStd
     template <class R, class Visitor, class... VariantTypes>
     inline constexpr R visit(Visitor&& visitor, VariantTypes&&... variants)
     {
-        // VS2015 C++14 constexpr support is incomplete and does not support variable declarations
         // The following code validates that a variant that is valueless due to an exception
         // being thrown in one of the alternative constructor is not being supplied to Visit
         return variant_detail::visitor::variant::visit_value_r<R>(AZStd::forward<Visitor>(visitor), AZStd::forward<VariantTypes>(variants)...);

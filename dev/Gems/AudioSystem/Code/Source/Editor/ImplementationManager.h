@@ -15,8 +15,8 @@
 
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
-#include <QObject>
 
+#include <QObject>
 
 namespace AudioControls
 {
@@ -38,8 +38,4 @@ public:
 
 signals:
     void ImplementationChanged();
-
-private:
-    AudioControls::IAudioSystemEditor* ms_pAudioSystemImpl;
-    AZStd::unique_ptr<AZ::DynamicModuleHandle>  m_middlewarePlugin;
 };

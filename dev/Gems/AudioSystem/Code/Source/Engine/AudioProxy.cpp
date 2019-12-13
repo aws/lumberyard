@@ -11,17 +11,20 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
 #include "AudioProxy.h"
 
 #include <ATLCommon.h>
 #include <SoundCVars.h>
 #include <AudioLogger.h>
+#include <MathConversion.h>
+
 #include <ISystem.h>
 #include <IEntitySystem.h>
 
 namespace Audio
 {
+    extern CAudioLogger g_audioLogger;
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct AreaInfoCompare
     {
@@ -62,7 +65,6 @@ namespace Audio
         }
 
         AZ_Assert(m_nAudioObjectID == INVALID_AUDIO_OBJECT_ID, "Expected AudioObjectID [%d] to be invalid when the audio proxy is destructed.", m_nAudioObjectID);
-        stl::free_container(m_aQueuedAudioCommands);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -104,7 +106,7 @@ namespace Audio
     #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
             if (m_nAudioObjectID == INVALID_AUDIO_OBJECT_ID)
             {
-                g_audioLogger.Log(eALT_FATAL, "Failed to reserve audio object ID on AudioProxy (%s)!", sObjectName);
+                g_audioLogger.Log(eALT_ASSERT, "Failed to reserve audio object ID on AudioProxy (%s)!", sObjectName);
             }
     #endif // INCLUDE_AUDIO_PRODUCTION_CODE
         }
@@ -276,7 +278,7 @@ namespace Audio
 
         if (nObstructionCalcIndex < eAOOCT_COUNT)
         {
-            SetSwitchState(SATLInternalControlIDs::nObstructionOcclusionCalcSwitchID, SATLInternalControlIDs::nOOCStateIDs[eObstructionType]);
+            SetSwitchState(ATLInternalControlIDs::ObstructionOcclusionCalcSwitchID, ATLInternalControlIDs::OOCStateIDs[eObstructionType]);
         }
     }
 
@@ -286,14 +288,14 @@ namespace Audio
         if ((m_nFlags & eAPF_WAITING_FOR_ID) == 0)
         {
             // Update position only if the delta exceeds a given value.
-            // Ideally this should be done on the caller's side!
-            if (g_audioCVars.m_fPositionUpdateThreshold <= 0.f
-                || !refPosition.mPosition.GetTranslation().IsEquivalent(m_oPosition.mPosition.GetTranslation(), g_audioCVars.m_fPositionUpdateThreshold))
+            if (g_audioCVars.m_fPositionUpdateThreshold <= 0.f      // <-- no gating
+                || !refPosition.GetPositionVec().IsClose(m_oPosition.GetPositionVec(), g_audioCVars.m_fPositionUpdateThreshold))
             {
                 m_oPosition = refPosition;
 
-                // Make sure the forward direction is normalized
+                // Make sure the forward/up directions are normalized
                 m_oPosition.NormalizeForwardVec();
+                m_oPosition.NormalizeUpVec();
 
                 SAudioRequest oRequest;
                 SAudioObjectRequestData<eAORT_SET_POSITION> oRequestData(m_oPosition);
@@ -314,7 +316,7 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioProxy::SetPosition(const Vec3& refPosition)
+    void CAudioProxy::SetPosition(const AZ::Vector3& refPosition)
     {
         SetPosition(SATLWorldPosition(refPosition));
     }
@@ -376,7 +378,7 @@ namespace Audio
 
             ClearEnvironments();
 
-            if (!pAreaManager->QueryAudioAreas(m_oPosition.GetPositionVec(), m_aAreaQueries, sMaxAreas, nAreaCount))
+            if (!pAreaManager->QueryAudioAreas(AZVec3ToLYVec3(m_oPosition.GetPositionVec()), m_aAreaQueries, sMaxAreas, nAreaCount))
             {
                 g_audioLogger.Log(eALT_WARNING, "QueryAreas failed for AudioObjectID %u", m_nAudioObjectID);
             }
@@ -648,7 +650,7 @@ namespace Audio
                     }
                     default:
                     {
-                        g_audioLogger.Log(eALT_FATAL, "Unknown command type in CAudioProxy::ExecuteQueuedCommands!");
+                        g_audioLogger.Log(eALT_ASSERT, "Unknown command type in CAudioProxy::ExecuteQueuedCommands!");
                         break;
                     }
                 }

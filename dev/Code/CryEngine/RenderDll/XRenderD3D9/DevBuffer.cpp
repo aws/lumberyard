@@ -125,6 +125,8 @@ namespace
         #include "Xenia/DevBuffer_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DevBuffer_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DevBuffer_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1555,6 +1557,8 @@ namespace
         #include "Xenia/DevBuffer_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DevBuffer_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DevBuffer_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -3649,6 +3653,8 @@ void WrappedDX11Buffer::Create(uint32 numElements, uint32 elementSize, DXGI_FORM
         #include "Xenia/DevBuffer_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DevBuffer_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DevBuffer_cpp_salem.inl"
     #endif
 #endif
 

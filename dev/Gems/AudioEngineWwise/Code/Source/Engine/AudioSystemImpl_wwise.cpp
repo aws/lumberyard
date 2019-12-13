@@ -1,4 +1,4 @@
-/*
+﻿/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -11,13 +11,16 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "AudioSystemImpl_wwise.h"
+#include <AudioSystemImpl_wwise.h>
+
+#include <platform.h>
 
 #include <AzCore/std/containers/set.h>
+#include <AzCore/std/string/conversions.h>
 
 #include <IAudioSystem.h>
-
+#include <AudioAllocators.h>
+#include <AudioLogger.h>
 #include <AudioSourceManager.h>
 #include <AudioSystemImplCVars.h>
 #include <Common_wwise.h>
@@ -29,6 +32,7 @@
 #include <AK/SoundEngine/Common/AkModule.h>             // Default memory and stream managers
 
 #include <PluginRegistration_wwise.h>                   // Registration of default set of plugins, customize this header to your needs.
+
 
 #if !defined(WWISE_FOR_RELEASE)
     #include <AK/Comm/AkCommunication.h>    // Communication between Wwise and the game (excluded in release build)
@@ -43,13 +47,15 @@
 #endif
 
 
+
 /////////////////////////////////////////////////////////////////////////////////
-//                              MEMORY HOOKS SETUP
+//                          AK MEMORY HOOKS SETUP
 //
-//                             ##### IMPORTANT #####
+//                          ##### REQUIRED ######
 //
-// These custom alloc/free functions are declared as "extern" in AkMemoryMgr.h
-// and MUST be defined by the game developer.
+// AK declares these hooks as "extern" functions in AkTypes.h.
+// Client code is required to give them definitions.
+//
 /////////////////////////////////////////////////////////////////////////////////
 
 namespace AK
@@ -78,6 +84,7 @@ namespace AK
 }
 
 
+
 namespace Audio
 {
     namespace Platform
@@ -85,20 +92,10 @@ namespace Audio
         void SetupAkSoundEngine(AkPlatformInitSettings& platformInitSettings);
     }
 
+    extern CAudioLogger g_audioImplLogger_wwise;
+    extern CAudioWwiseImplCVars g_audioImplCVars_wwise;
+
     const char* const CAudioSystemImpl_wwise::sWwiseImplSubPath = "wwise/";
-    const char* const CAudioSystemImpl_wwise::sWwiseEventTag = "WwiseEvent";
-    const char* const CAudioSystemImpl_wwise::sWwiseRtpcTag = "WwiseRtpc";
-    const char* const CAudioSystemImpl_wwise::sWwiseSwitchTag = "WwiseSwitch";
-    const char* const CAudioSystemImpl_wwise::sWwiseStateTag = "WwiseState";
-    const char* const CAudioSystemImpl_wwise::sWwiseRtpcSwitchTag = "WwiseRtpc";
-    const char* const CAudioSystemImpl_wwise::sWwiseFileTag = "WwiseFile";
-    const char* const CAudioSystemImpl_wwise::sWwiseAuxBusTag = "WwiseAuxBus";
-    const char* const CAudioSystemImpl_wwise::sWwiseValueTag = "WwiseValue";
-    const char* const CAudioSystemImpl_wwise::sWwiseNameAttribute = "wwise_name";
-    const char* const CAudioSystemImpl_wwise::sWwiseValueAttribute = "wwise_value";
-    const char* const CAudioSystemImpl_wwise::sWwiseMutiplierAttribute = "atl_mult";
-    const char* const CAudioSystemImpl_wwise::sWwiseShiftAttribute = "atl_shift";
-    const char* const CAudioSystemImpl_wwise::sWwiseLocalisedAttribute = "wwise_localised";
     const char* const CAudioSystemImpl_wwise::sWwiseGlobalAudioObjectName = "LY-GlobalAudioObject";
     const float CAudioSystemImpl_wwise::sObstructionOcclusionMin = 0.0f;
     const float CAudioSystemImpl_wwise::sObstructionOcclusionMax = 1.0f;
@@ -191,10 +188,11 @@ namespace Audio
         CONVERT_OSCHAR_TO_CHAR(in_pszError, sTemp);
         g_audioImplLogger_wwise.Log(
             ((in_eErrorLevel & AK::Monitor::ErrorLevel_Error) != 0) ? eALT_ERROR : eALT_COMMENT,
-            "<Wwise> %s ErrorCode: %d PlayingID: %u GameObjID: %" PRISIZE_T, sTemp, in_eErrorCode, in_playingID, in_gameObjID);
+            "<Wwise> %s ErrorCode: %d PlayingID: %u GameObjID: %llu", sTemp, in_eErrorCode, in_playingID, in_gameObjID);
     }
 #endif // WWISE_FOR_RELEASE
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
     static int GetAssetType(const SATLSourceData* sourceData)
     {
         if (!sourceData)
@@ -207,6 +205,7 @@ namespace Audio
                : eAAT_SOURCE;
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
     static int GetAkCodecID(EAudioCodecType codecType)
     {
         switch (codecType)
@@ -239,12 +238,12 @@ namespace Audio
         , m_bCommSystemInitialized(false)
 #endif // !WWISE_FOR_RELEASE
     {
-        m_sRegularSoundBankFolder = WWISE_IMPL_BANK_FULL_PATH;
+        m_soundbankFolder = WWISE_IMPL_BANK_FULL_PATH;
 
-        m_sLocalizedSoundBankFolder = m_sRegularSoundBankFolder;
+        m_localizedSoundbankFolder = m_soundbankFolder;
 
 #if defined(INCLUDE_WWISE_IMPL_PRODUCTION_CODE)
-        m_fullImplString = AZStd::string::format("%s (%s)", WWISE_IMPL_VERSION_STRING, m_sRegularSoundBankFolder.c_str());
+        m_fullImplString = AZStd::string::format("%s (%s)", WWISE_IMPL_VERSION_STRING, m_soundbankFolder.c_str());
 #endif // INCLUDE_WWISE_IMPL_PRODUCTION_CODE
 
         AudioSystemImplementationRequestBus::Handler::BusConnect();
@@ -261,51 +260,31 @@ namespace Audio
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    // AZ::Component
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioSystemImpl_wwise::Init()
-    {
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioSystemImpl_wwise::Activate()
-    {
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioSystemImpl_wwise::Deactivate()
-    {
-    }
-
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
     // AudioSystemImplementationNotificationBus
     ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioSystemImpl_wwise::OnAudioSystemLoseFocus()
     {
-    #if AZ_TRAIT_CRYAUDIOIMPLWWISE_AUDIOSYSTEMIMPL_USE_SUSPEND
+    #if AZ_TRAIT_AUDIOENGINEWWISE_AUDIOSYSTEMIMPL_USE_SUSPEND
         AKRESULT akResult = AK::SoundEngine::Suspend();
         if (!IS_WWISE_OK(akResult))
         {
             g_audioImplLogger_wwise.Log(eALT_ERROR, "Wwise failed to Suspend, AKRESULT = %d\n", akResult);
         }
-    #endif // AZ_TRAIT_CRYAUDIOIMPLWWISE_AUDIOSYSTEMIMPL_USE_SUSPEND
+    #endif // AZ_TRAIT_AUDIOENGINEWWISE_AUDIOSYSTEMIMPL_USE_SUSPEND
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioSystemImpl_wwise::OnAudioSystemGetFocus()
     {
-    #if AZ_TRAIT_CRYAUDIOIMPLWWISE_AUDIOSYSTEMIMPL_USE_SUSPEND
+    #if AZ_TRAIT_AUDIOENGINEWWISE_AUDIOSYSTEMIMPL_USE_SUSPEND
         AKRESULT akResult = AK::SoundEngine::WakeupFromSuspend();
         if (!IS_WWISE_OK(akResult))
         {
             g_audioImplLogger_wwise.Log(eALT_ERROR, "Wwise failed to WakeupFromSuspend, AKRESULT = %d\n", akResult);
         }
-    #endif // AZ_TRAIT_CRYAUDIOIMPLWWISE_AUDIOSYSTEMIMPL_USE_SUSPEND
+    #endif // AZ_TRAIT_AUDIOENGINEWWISE_AUDIOSYSTEMIMPL_USE_SUSPEND
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -387,7 +366,7 @@ namespace Audio
                     ++lfeSpeakers;
                 }
                 m_speakerConfigString = AZStd::string::format("Output: %d.%d", surroundSpeakers, lfeSpeakers);
-                m_fullImplString = AZStd::string::format("%s (%s)  %s", WWISE_IMPL_VERSION_STRING, m_sRegularSoundBankFolder.c_str(), m_speakerConfigString.c_str());
+                m_fullImplString = AZStd::string::format("%s (%s)  %s", WWISE_IMPL_VERSION_STRING, m_soundbankFolder.c_str(), m_speakerConfigString.c_str());
 
                 audioDeviceInitializationEvent = false;
             }
@@ -440,7 +419,7 @@ namespace Audio
 
         AkStreamMgrSettings oStreamSettings;
         AK::StreamMgr::GetDefaultSettings(oStreamSettings);
-        oStreamSettings.uMemorySize = g_audioImplCVars_wwise.m_nStreamManagerMemoryPoolSize << 10; // 64 KiB is the default value!
+        oStreamSettings.uMemorySize = g_audioImplCVars_wwise.m_nStreamManagerMemoryPoolSize << 10;
 
         if (AK::StreamMgr::Create(oStreamSettings) == nullptr)
         {
@@ -449,8 +428,7 @@ namespace Audio
             return eARS_FAILURE;
         }
 
-        eResult = m_oFileIOHandler.Init(g_audioImplCVars_wwise.m_nStreamDeviceMemoryPoolSize << 10); // 2 MiB is the default value!
-
+        eResult = m_oFileIOHandler.Init(g_audioImplCVars_wwise.m_nStreamDeviceMemoryPoolSize << 10);
 
         if (!IS_WWISE_OK(eResult))
         {
@@ -459,10 +437,9 @@ namespace Audio
             return eARS_FAILURE;
         }
 
-        CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> sTemp(WWISE_IMPL_BASE_PATH);
-        const AkOSChar* pTemp = nullptr;
-        CONVERT_CHAR_TO_OSCHAR(sTemp.c_str(), pTemp);
-        m_oFileIOHandler.SetBankPath(pTemp);
+        const AkOSChar* akSoundbankPath = nullptr;
+        CONVERT_CHAR_TO_OSCHAR(m_soundbankFolder.c_str(), akSoundbankPath);
+        m_oFileIOHandler.SetBankPath(akSoundbankPath);
 
         AkInitSettings oInitSettings;
         AK::SoundEngine::GetDefaultInitSettings(oInitSettings);
@@ -502,7 +479,7 @@ namespace Audio
             return eARS_FAILURE;
         }
 
-#if !defined(WWISE_FOR_RELEASE)
+#if defined(INCLUDE_WWISE_IMPL_PRODUCTION_CODE)
         if (g_audioImplCVars_wwise.m_nEnableCommSystem == 1)
         {
             m_bCommSystemInitialized = true;
@@ -526,7 +503,7 @@ namespace Audio
                 m_bCommSystemInitialized = false;
             }
         }
-#endif // !WWISE_FOR_RELEASE
+#endif // INCLUDE_WWISE_IMPL_PRODUCTION_CODE
 
         // Initialize the AudioSourceManager
         AudioSourceManager::Get().Initialize();
@@ -654,15 +631,7 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     EAudioRequestStatus CAudioSystemImpl_wwise::Release()
     {
-        azdestroy(this, Audio::AudioImplAllocator, CAudioSystemImpl_wwise);
-
-        if (AZ::AllocatorInstance<Audio::AudioImplAllocator>::IsReady())
-        {
-            AZ::AllocatorInstance<Audio::AudioImplAllocator>::Destroy();
-        }
-
-        g_audioImplCVars_wwise.UnregisterVariables();
-
+        // Deleting this object and destroying the allocator has been moved to AudioEngineWwiseSystemComponent
         return eARS_SUCCESS;
     }
 
@@ -1064,12 +1033,14 @@ namespace Audio
             {
                 case eWAET_AUX_BUS:
                 {
-                    const float fCurrentAmount = stl::find_in_map(
-                            pAKObjectData->cEnvironmentImplAmounts,
-                            pAKEnvironmentData->nAKBusID,
-                            -1.0f);
+                    float fCurrentAmount = -1.f;
+                    auto it = pAKObjectData->cEnvironmentImplAmounts.find(pAKEnvironmentData->nAKBusID);
+                    if (it != pAKObjectData->cEnvironmentImplAmounts.end())
+                    {
+                        fCurrentAmount = it->second;
+                    }
 
-                    if ((fCurrentAmount == -1.0f) || (fabs(fCurrentAmount - fAmount) > sEnvEpsilon))
+                    if (fCurrentAmount == -1.f || !AZ::IsClose(fCurrentAmount, fAmount, sEnvEpsilon))
                     {
                         pAKObjectData->cEnvironmentImplAmounts[pAKEnvironmentData->nAKBusID] = fAmount;
                         pAKObjectData->bNeedsToUpdateEnvironments = true;
@@ -1138,7 +1109,7 @@ namespace Audio
             {
                 g_audioImplLogger_wwise.Log(
                     eALT_WARNING,
-                    "Wwise failed to set the Rtpc %" PRISIZE_T " to value %f on object %" PRISIZE_T,
+                    "Wwise failed to set the Rtpc %llu to value %f on object %llu",
                     pAKRtpcData->nAKID,
                     static_cast<AkRtpcValue>(fValue),
                     pAKObjectData->nAKID);
@@ -1183,7 +1154,7 @@ namespace Audio
                     {
                         g_audioImplLogger_wwise.Log(
                             eALT_WARNING,
-                            "Wwise failed to set the switch group %" PRISIZE_T " to state %" PRISIZE_T " on object %" PRISIZE_T,
+                            "Wwise failed to set the switch group %u to state %u on object %llu",
                             pAKSwitchStateData->nAKSwitchID,
                             pAKSwitchStateData->nAKStateID,
                             nAKObjectID);
@@ -1204,7 +1175,7 @@ namespace Audio
                     {
                         g_audioImplLogger_wwise.Log(
                             eALT_WARNING,
-                            "Wwise failed to set the state group %" PRISIZE_T "to state %" PRISIZE_T,
+                            "Wwise failed to set the state group %u to state %u",
                             pAKSwitchStateData->nAKSwitchID,
                             pAKSwitchStateData->nAKStateID);
                     }
@@ -1227,7 +1198,7 @@ namespace Audio
                     {
                         g_audioImplLogger_wwise.Log(
                             eALT_WARNING,
-                            "Wwise failed to set the Rtpc %" PRISIZE_T " to value %f on object %" PRISIZE_T,
+                            "Wwise failed to set the Rtpc %u to value %f on object %llu",
                             pAKSwitchStateData->nAKSwitchID,
                             static_cast<AkRtpcValue>(pAKSwitchStateData->fRtpcValue),
                             nAKObjectID);
@@ -1240,7 +1211,7 @@ namespace Audio
                 }
                 default:
                 {
-                    g_audioImplLogger_wwise.Log(eALT_WARNING, "Unknown EWwiseSwitchType: %" PRISIZE_T, pAKSwitchStateData->eType);
+                    g_audioImplLogger_wwise.Log(eALT_WARNING, "Unknown EWwiseSwitchType: %u", pAKSwitchStateData->eType);
                     AZ_Assert(false, "<Wwise> Unknown EWwiseSwitchType");
                     break;
                 }
@@ -1264,7 +1235,7 @@ namespace Audio
         {
             g_audioImplLogger_wwise.Log(
                 eALT_WARNING,
-                "Obstruction value %f is out of range, fObstruction should be between %f and %f.",
+                "Obstruction value %f is out of range, Obstruction should be between %f and %f.",
                 fObstruction, sObstructionOcclusionMin, sObstructionOcclusionMax);
         }
 
@@ -1272,7 +1243,7 @@ namespace Audio
         {
             g_audioImplLogger_wwise.Log(
                 eALT_WARNING,
-                "Occlusion value %f is out of range, fOcclusion should be between %f and %f " PRISIZE_T,
+                "Occlusion value %f is out of range, Occlusion should be between %f and %f.",
                 fOcclusion, sObstructionOcclusionMin, sObstructionOcclusionMax);
         }
 
@@ -1296,7 +1267,7 @@ namespace Audio
             {
                 g_audioImplLogger_wwise.Log(
                     eALT_WARNING,
-                    "Wwise failed to set Obstruction %f and Occlusion %f on object %" PRISIZE_T,
+                    "Wwise failed to set Obstruction %f and Occlusion %f on object %llu",
                     fObstruction,
                     fOcclusion,
                     pAKObjectData->nAKID);
@@ -1332,7 +1303,7 @@ namespace Audio
             }
             else
             {
-                g_audioImplLogger_wwise.Log(eALT_WARNING, "Wwise SetListenerPosition failed with AKRESULT: %" PRISIZE_T, eAKResult);
+                g_audioImplLogger_wwise.Log(eALT_WARNING, "Wwise SetListenerPosition failed with AKRESULT: %u", eAKResult);
             }
         }
         else
@@ -1363,7 +1334,7 @@ namespace Audio
             {
                 g_audioImplLogger_wwise.Log(
                     eALT_WARNING,
-                    "Wwise failed to reset the Rtpc %" PRISIZE_T " on object %" PRISIZE_T,
+                    "Wwise failed to reset the Rtpc %u on object %llu",
                     pAKRtpcData->nAKID,
                     pAKObjectData->nAKID);
             }
@@ -1446,44 +1417,52 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    EAudioRequestStatus CAudioSystemImpl_wwise::ParseAudioFileEntry(const XmlNodeRef pAudioFileEntryNode, SATLAudioFileEntryInfo* const pFileEntryInfo)
+    EAudioRequestStatus CAudioSystemImpl_wwise::ParseAudioFileEntry(const AZ::rapidxml::xml_node<char>* audioFileEntryNode, SATLAudioFileEntryInfo* const fileEntryInfo)
     {
-        static CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> sPath;
+        EAudioRequestStatus result = eARS_FAILURE;
 
-        EAudioRequestStatus eResult = eARS_FAILURE;
-
-        if (pFileEntryInfo && azstricmp(pAudioFileEntryNode->getTag(), sWwiseFileTag) == 0)
+        if (audioFileEntryNode && azstricmp(audioFileEntryNode->name(), WwiseXmlTags::WwiseFileTag) == 0 && fileEntryInfo)
         {
-            const char* const sWwiseAudioFileEntryName = pAudioFileEntryNode->getAttr(sWwiseNameAttribute);
-
-            if (sWwiseAudioFileEntryName && sWwiseAudioFileEntryName[0] != '\0')
+            const char* audioFileEntryName = nullptr;
+            auto fileEntryNameAttr = audioFileEntryNode->first_attribute(WwiseXmlTags::WwiseNameAttribute, 0, false);
+            if (fileEntryNameAttr)
             {
-                const char* const sWwiseLocalised = pAudioFileEntryNode->getAttr(sWwiseLocalisedAttribute);
-                pFileEntryInfo->bLocalized = (sWwiseLocalised != nullptr) && (azstricmp(sWwiseLocalised, "true") == 0);
+                audioFileEntryName = fileEntryNameAttr->value();
+            }
 
-                pFileEntryInfo->sFileName = sWwiseAudioFileEntryName;
+            bool isLocalized = false;
+            auto localizedAttr = audioFileEntryNode->first_attribute(WwiseXmlTags::WwiseLocalizedAttribute, 0, false);
+            if (localizedAttr)
+            {
+                if (azstricmp(localizedAttr->value(), "true") == 0)
+                {
+                    isLocalized = true;
+                }
+            }
 
-                pFileEntryInfo->nMemoryBlockAlignment = AK_BANK_PLATFORM_DATA_ALIGNMENT;
-
-                pFileEntryInfo->pImplData = azcreate(SATLAudioFileEntryData_wwise, (), Audio::AudioImplAllocator, "ATLAudioFileEntryData_wwise");
-
-                eResult = eARS_SUCCESS;
+            if (audioFileEntryName && audioFileEntryName[0] != '\0')
+            {
+                fileEntryInfo->bLocalized = isLocalized;
+                fileEntryInfo->sFileName = audioFileEntryName;
+                fileEntryInfo->nMemoryBlockAlignment = AK_BANK_PLATFORM_DATA_ALIGNMENT;
+                fileEntryInfo->pImplData = azcreate(SATLAudioFileEntryData_wwise, (), Audio::AudioImplAllocator, "ATLAudioFileEntryData_wwise");
+                result = eARS_SUCCESS;
             }
             else
             {
-                pFileEntryInfo->sFileName = nullptr;
-                pFileEntryInfo->nMemoryBlockAlignment = 0;
-                pFileEntryInfo->pImplData = nullptr;
+                fileEntryInfo->sFileName = nullptr;
+                fileEntryInfo->nMemoryBlockAlignment = 0;
+                fileEntryInfo->pImplData = nullptr;
             }
         }
 
-        return eResult;
+        return result;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioSystemImpl_wwise::DeleteAudioFileEntryData(IATLAudioFileEntryData* const pOldAudioFileEntry)
+    void CAudioSystemImpl_wwise::DeleteAudioFileEntryData(IATLAudioFileEntryData* const oldAudioFileEntry)
     {
-        azdestroy(pOldAudioFileEntry, Audio::AudioImplAllocator, SATLAudioFileEntryData_wwise);
+        azdestroy(oldAudioFileEntry, Audio::AudioImplAllocator, SATLAudioFileEntryData_wwise);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1493,7 +1472,7 @@ namespace Audio
 
         if (pFileEntryInfo)
         {
-            sResult = pFileEntryInfo->bLocalized ? m_sLocalizedSoundBankFolder.c_str() : m_sRegularSoundBankFolder.c_str();
+            sResult = pFileEntryInfo->bLocalized ? m_localizedSoundbankFolder.c_str() : m_soundbankFolder.c_str();
         }
 
         return sResult;
@@ -1525,7 +1504,7 @@ namespace Audio
         auto pNewObject = azcreate(SATLListenerData_wwise, (static_cast<AkGameObjectID>(nListenerID)), Audio::AudioImplAllocator, "ATLListenerData_wwise-Default");
         if (pNewObject)
         {
-            auto listenerName = AZStd::string::format("DefaultAudioListener(%" PRISIZE_T ")", pNewObject->nAKListenerObjectId);
+            auto listenerName = AZStd::string::format("DefaultAudioListener(%llu)", pNewObject->nAKListenerObjectId);
             AKRESULT eAKResult = AK::SoundEngine::RegisterGameObj(pNewObject->nAKListenerObjectId, listenerName.c_str());
             if (IS_WWISE_OK(eAKResult))
             {
@@ -1536,12 +1515,12 @@ namespace Audio
                 }
                 else
                 {
-                    g_audioImplLogger_wwise.Log(eALT_WARNING, "Wwise failed in SetDefaultListeners to set AkGameObjectID %" PRISIZE_T " as default with AKRESULT: %d", pNewObject->nAKListenerObjectId, eAKResult);
+                    g_audioImplLogger_wwise.Log(eALT_WARNING, "Wwise failed in SetDefaultListeners to set AkGameObjectID %llu as default with AKRESULT: %u", pNewObject->nAKListenerObjectId, eAKResult);
                 }
             }
             else
             {
-                g_audioImplLogger_wwise.Log(eALT_WARNING, "Wwise failed in RegisterGameObj registering a DefaultAudioListener with AKRESULT: %d", eAKResult);
+                g_audioImplLogger_wwise.Log(eALT_WARNING, "Wwise failed in RegisterGameObj registering a DefaultAudioListener with AKRESULT: %u", eAKResult);
             }
         }
 
@@ -1554,11 +1533,11 @@ namespace Audio
         auto pNewObject = azcreate(SATLListenerData_wwise, (static_cast<AkGameObjectID>(nListenerID)), Audio::AudioImplAllocator, "ATLListenerData_wwise");
         if (pNewObject)
         {
-            auto listenerName = AZStd::string::format("AudioListener(%" PRISIZE_T ")", pNewObject->nAKListenerObjectId);
+            auto listenerName = AZStd::string::format("AudioListener(%llu)", pNewObject->nAKListenerObjectId);
             AKRESULT eAKResult = AK::SoundEngine::RegisterGameObj(pNewObject->nAKListenerObjectId, listenerName.c_str());
             if (!IS_WWISE_OK(eAKResult))
             {
-                g_audioImplLogger_wwise.Log(eALT_WARNING, "Wwise failed in RegisterGameObj registering an AudioListener with AKRESULT: %d", eAKResult);
+                g_audioImplLogger_wwise.Log(eALT_WARNING, "Wwise failed in RegisterGameObj registering an AudioListener with AKRESULT: %u", eAKResult);
             }
         }
 
@@ -1581,7 +1560,7 @@ namespace Audio
             }
             else
             {
-                g_audioImplLogger_wwise.Log(eALT_WARNING, "Wwise failed in UnregisterGameObj unregistering an AudioListener(%" PRISIZE_T ") with AKRESULT: %d", listenerData->nAKListenerObjectId, eAKResult);
+                g_audioImplLogger_wwise.Log(eALT_WARNING, "Wwise failed in UnregisterGameObj unregistering an AudioListener(%llu) with AKRESULT: %u", listenerData->nAKListenerObjectId, eAKResult);
             }
         }
 
@@ -1615,137 +1594,126 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    const SATLTriggerImplData_wwise* CAudioSystemImpl_wwise::NewAudioTriggerImplData(const XmlNodeRef pAudioTriggerImplNode)
+    IATLTriggerImplData* CAudioSystemImpl_wwise::NewAudioTriggerImplData(const AZ::rapidxml::xml_node<char>* audioTriggerNode)
     {
-        SATLTriggerImplData_wwise* pNewTriggerImpl = nullptr;
+        SATLTriggerImplData_wwise* newTriggerImpl = nullptr;
 
-        if (azstricmp(pAudioTriggerImplNode->getTag(), sWwiseEventTag) == 0)
+        if (audioTriggerNode && azstricmp(audioTriggerNode->name(), WwiseXmlTags::WwiseEventTag) == 0)
         {
-            const char* const sWwiseEventName = pAudioTriggerImplNode->getAttr(sWwiseNameAttribute);
-            const AkUniqueID nAKID = AK::SoundEngine::GetIDFromString(sWwiseEventName);//Does not check if the string represents an event!!!!
-
-            if (nAKID != AK_INVALID_UNIQUE_ID)
+            auto eventNameAttr = audioTriggerNode->first_attribute(WwiseXmlTags::WwiseNameAttribute, 0, false);
+            if (eventNameAttr)
             {
-                pNewTriggerImpl = azcreate(SATLTriggerImplData_wwise, (nAKID), Audio::AudioImplAllocator, "ATLTriggerImplData_wwise");
-            }
-            else
-            {
-                AZ_Assert(false, "<Wwise> Failed to get a unique ID from string '%s'.", sWwiseEventName);
-            }
-        }
+                const char* eventName = eventNameAttr->value();
+                const AkUniqueID akId = AK::SoundEngine::GetIDFromString(eventName);
 
-        return pNewTriggerImpl;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioSystemImpl_wwise::DeleteAudioTriggerImplData(const IATLTriggerImplData* const pOldTriggerImplData)
-    {
-        azdestroy(const_cast<IATLTriggerImplData*>(pOldTriggerImplData), Audio::AudioImplAllocator, SATLTriggerImplData_wwise);
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    const SATLRtpcImplData_wwise* CAudioSystemImpl_wwise::NewAudioRtpcImplData(const XmlNodeRef pAudioRtpcNode)
-    {
-        SATLRtpcImplData_wwise* pNewRtpcImpl = nullptr;
-
-        AkRtpcID nAKRtpcID = AK_INVALID_RTPC_ID;
-        float fMult = 1.0f;
-        float fShift = 0.0f;
-
-        ParseRtpcImpl(pAudioRtpcNode, nAKRtpcID, fMult, fShift);
-
-        if (nAKRtpcID != AK_INVALID_RTPC_ID)
-        {
-            pNewRtpcImpl = azcreate(SATLRtpcImplData_wwise, (nAKRtpcID, fMult, fShift), Audio::AudioImplAllocator, "ATLRtpcImplData_wwise");
-        }
-
-        return pNewRtpcImpl;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioSystemImpl_wwise::DeleteAudioRtpcImplData(const IATLRtpcImplData* const pOldRtpcImplData)
-    {
-        azdestroy(const_cast<IATLRtpcImplData*>(pOldRtpcImplData), Audio::AudioImplAllocator, SATLRtpcImplData_wwise);
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    const SATLSwitchStateImplData_wwise* CAudioSystemImpl_wwise::NewAudioSwitchStateImplData(const XmlNodeRef pAudioSwitchNode)
-    {
-        const char* const sWwiseSwitchNodeTag = pAudioSwitchNode->getTag();
-        const SATLSwitchStateImplData_wwise* pNewSwitchImpl = nullptr;
-
-        if (azstricmp(sWwiseSwitchNodeTag, sWwiseSwitchTag) == 0)
-        {
-            pNewSwitchImpl = ParseWwiseSwitchOrState(pAudioSwitchNode, eWST_SWITCH);
-        }
-        else if (azstricmp(sWwiseSwitchNodeTag, sWwiseStateTag) == 0)
-        {
-            pNewSwitchImpl = ParseWwiseSwitchOrState(pAudioSwitchNode, eWST_STATE);
-        }
-        else if (azstricmp(sWwiseSwitchNodeTag, sWwiseRtpcSwitchTag) == 0)
-        {
-            pNewSwitchImpl = ParseWwiseRtpcSwitch(pAudioSwitchNode);
-        }
-        else
-        {
-            // Unknown Wwise switch tag!
-            g_audioImplLogger_wwise.Log(eALT_WARNING, "Unknown Wwise Switch Tag: %s" PRISIZE_T, sWwiseSwitchNodeTag);
-            AZ_Assert(false, "<Wwise> Unknown Wwise Switch Tag.");
-        }
-
-        return pNewSwitchImpl;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioSystemImpl_wwise::DeleteAudioSwitchStateImplData(const IATLSwitchStateImplData* const pOldAudioSwitchStateImplData)
-    {
-        azdestroy(const_cast<IATLSwitchStateImplData*>(pOldAudioSwitchStateImplData), Audio::AudioImplAllocator, SATLSwitchStateImplData_wwise);
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    const SATLEnvironmentImplData_wwise* CAudioSystemImpl_wwise::NewAudioEnvironmentImplData(const XmlNodeRef pAudioEnvironmentNode)
-    {
-        SATLEnvironmentImplData_wwise* pNewEnvironmentImpl = nullptr;
-
-        if (azstricmp(pAudioEnvironmentNode->getTag(), sWwiseAuxBusTag) == 0)
-        {
-            const char* const sWwiseAuxBusName = pAudioEnvironmentNode->getAttr(sWwiseNameAttribute);
-            const AkUniqueID nAKBusID = AK::SoundEngine::GetIDFromString(sWwiseAuxBusName); //Does not check if the string represents an event!!!!
-
-            if (nAKBusID != AK_INVALID_AUX_ID)
-            {
-                pNewEnvironmentImpl = azcreate(SATLEnvironmentImplData_wwise, (eWAET_AUX_BUS, static_cast<AkAuxBusID>(nAKBusID)), Audio::AudioImplAllocator, "ATLEnvironmentImplData_wwise");
-            }
-            else
-            {
-                AZ_Assert(false, "<Wwise> Unknown Aux Bus ID.");
-            }
-        }
-        else if (azstricmp(pAudioEnvironmentNode->getTag(), sWwiseRtpcTag) == 0)
-        {
-            AkRtpcID nAKRtpcID = AK_INVALID_RTPC_ID;
-            float fMult = 1.0f;
-            float fShift = 0.0f;
-
-            ParseRtpcImpl(pAudioEnvironmentNode, nAKRtpcID, fMult, fShift);
-
-            if (nAKRtpcID != AK_INVALID_RTPC_ID)
-            {
-                pNewEnvironmentImpl = azcreate(SATLEnvironmentImplData_wwise, (eWAET_RTPC, nAKRtpcID, fMult, fShift), Audio::AudioImplAllocator, "ATLEnvironmentImplData_wwise");
-            }
-            else
-            {
-                AZ_Assert(false, "<Wwise> Unknown RTPC ID.");
+                if (akId != AK_INVALID_UNIQUE_ID)
+                {
+                    newTriggerImpl = azcreate(SATLTriggerImplData_wwise, (akId), Audio::AudioImplAllocator, "ATLTriggerImplData_wwise");
+                }
             }
         }
 
-        return pNewEnvironmentImpl;
+        return newTriggerImpl;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioSystemImpl_wwise::DeleteAudioEnvironmentImplData(const IATLEnvironmentImplData* const pOldEnvironmentImplData)
+    void CAudioSystemImpl_wwise::DeleteAudioTriggerImplData(IATLTriggerImplData* const oldTriggerImplData)
     {
-        azdestroy(const_cast<IATLEnvironmentImplData*>(pOldEnvironmentImplData), Audio::AudioImplAllocator, SATLEnvironmentImplData_wwise);
+        azdestroy(oldTriggerImplData, Audio::AudioImplAllocator, SATLTriggerImplData_wwise);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    IATLRtpcImplData* CAudioSystemImpl_wwise::NewAudioRtpcImplData(const AZ::rapidxml::xml_node<char>* audioRtpcNode)
+    {
+        SATLRtpcImplData_wwise* newRtpcImpl = nullptr;
+
+        AkRtpcID akRtpcId = AK_INVALID_RTPC_ID;
+        float mult = 1.f;
+        float shift = 0.f;
+
+        ParseRtpcImpl(audioRtpcNode, akRtpcId, mult, shift);
+
+        if (akRtpcId != AK_INVALID_RTPC_ID)
+        {
+            newRtpcImpl = azcreate(SATLRtpcImplData_wwise, (akRtpcId, mult, shift), Audio::AudioImplAllocator, "ATLRtpcImplData_wwise");
+        }
+
+        return newRtpcImpl;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CAudioSystemImpl_wwise::DeleteAudioRtpcImplData(IATLRtpcImplData* const oldRtpcImplData)
+    {
+        azdestroy(oldRtpcImplData, Audio::AudioImplAllocator, SATLRtpcImplData_wwise);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    IATLSwitchStateImplData* CAudioSystemImpl_wwise::NewAudioSwitchStateImplData(const AZ::rapidxml::xml_node<char>* audioSwitchNode)
+    {
+        SATLSwitchStateImplData_wwise* newSwitchImpl = nullptr;
+        const char* nodeName = audioSwitchNode->name();
+
+        if (azstricmp(nodeName, WwiseXmlTags::WwiseSwitchTag) == 0)
+        {
+            newSwitchImpl = ParseWwiseSwitchOrState(audioSwitchNode, eWST_SWITCH);
+        }
+        else if (azstricmp(nodeName, WwiseXmlTags::WwiseStateTag) == 0)
+        {
+            newSwitchImpl = ParseWwiseSwitchOrState(audioSwitchNode, eWST_STATE);
+        }
+        else if (azstricmp(nodeName, WwiseXmlTags::WwiseRtpcSwitchTag) == 0)
+        {
+            newSwitchImpl = ParseWwiseRtpcSwitch(audioSwitchNode);
+        }
+
+        return newSwitchImpl;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CAudioSystemImpl_wwise::DeleteAudioSwitchStateImplData(IATLSwitchStateImplData* const oldSwitchStateImplData)
+    {
+        azdestroy(oldSwitchStateImplData, Audio::AudioImplAllocator, SATLSwitchStateImplData_wwise);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    IATLEnvironmentImplData* CAudioSystemImpl_wwise::NewAudioEnvironmentImplData(const AZ::rapidxml::xml_node<char>* audioEnvironmentNode)
+    {
+        SATLEnvironmentImplData_wwise* newEnvironmentImpl = nullptr;
+
+        if (azstricmp(audioEnvironmentNode->name(), WwiseXmlTags::WwiseAuxBusTag) == 0)
+        {
+            auto auxBusNameAttr = audioEnvironmentNode->first_attribute(WwiseXmlTags::WwiseNameAttribute, 0, false);
+            if (auxBusNameAttr)
+            {
+                const char* auxBusName = auxBusNameAttr->value();
+                const AkUniqueID akBusId = AK::SoundEngine::GetIDFromString(auxBusName);
+
+                if (akBusId != AK_INVALID_AUX_ID)
+                {
+                    newEnvironmentImpl = azcreate(SATLEnvironmentImplData_wwise, (eWAET_AUX_BUS, static_cast<AkAuxBusID>(akBusId)), Audio::AudioImplAllocator, "ATLEnvironmentImplData_wwise");
+                }
+            }
+        }
+        else if (azstricmp(audioEnvironmentNode->name(), WwiseXmlTags::WwiseRtpcTag) == 0)
+        {
+            AkRtpcID akRtpcId = AK_INVALID_RTPC_ID;
+            float mult = 1.f;
+            float shift = 0.f;
+            ParseRtpcImpl(audioEnvironmentNode, akRtpcId, mult, shift);
+
+            if (akRtpcId != AK_INVALID_RTPC_ID)
+            {
+                newEnvironmentImpl = azcreate(SATLEnvironmentImplData_wwise, (eWAET_RTPC, akRtpcId, mult, shift), Audio::AudioImplAllocator, "ATLEnvironmentImplData_wwise");
+            }
+        }
+
+        return newEnvironmentImpl;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CAudioSystemImpl_wwise::DeleteAudioEnvironmentImplData(IATLEnvironmentImplData* const oldEnvironmentImplData)
+    {
+        azdestroy(oldEnvironmentImplData, Audio::AudioImplAllocator, SATLEnvironmentImplData_wwise);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1762,10 +1730,10 @@ namespace Audio
     void CAudioSystemImpl_wwise::GetMemoryInfo(SAudioImplMemoryInfo& oMemoryInfo) const
     {
         oMemoryInfo.nPrimaryPoolSize = AZ::AllocatorInstance<Audio::AudioImplAllocator>::Get().Capacity();
-        oMemoryInfo.nPrimaryPoolUsedSize = AZ::AllocatorInstance<Audio::AudioImplAllocator>::Get().NumAllocatedBytes();
+        oMemoryInfo.nPrimaryPoolUsedSize = oMemoryInfo.nPrimaryPoolSize - AZ::AllocatorInstance<Audio::AudioImplAllocator>::Get().GetUnAllocatedMemory();
         oMemoryInfo.nPrimaryPoolAllocations = 0;
 
-    #if AZ_TRAIT_CRYAUDIOIMPLWWISE_PROVIDE_IMPL_SECONDARY_POOL
+    #if AZ_TRAIT_AUDIOENGINEWWISE_PROVIDE_IMPL_SECONDARY_POOL
         oMemoryInfo.nSecondaryPoolSize = g_audioImplMemoryPoolSecondary_wwise.MemSize();
         oMemoryInfo.nSecondaryPoolUsedSize = oMemoryInfo.nSecondaryPoolSize - g_audioImplMemoryPoolSecondary_wwise.MemFree();
         oMemoryInfo.nSecondaryPoolAllocations = g_audioImplMemoryPoolSecondary_wwise.FragmentCount();
@@ -1773,7 +1741,7 @@ namespace Audio
         oMemoryInfo.nSecondaryPoolSize = 0;
         oMemoryInfo.nSecondaryPoolUsedSize = 0;
         oMemoryInfo.nSecondaryPoolAllocations = 0;
-    #endif // AZ_TRAIT_CRYAUDIOIMPLWWISE_PROVIDE_IMPL_SECONDARY_POOL
+    #endif // AZ_TRAIT_AUDIOENGINEWWISE_PROVIDE_IMPL_SECONDARY_POOL
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1842,92 +1810,95 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    const SATLSwitchStateImplData_wwise* CAudioSystemImpl_wwise::ParseWwiseSwitchOrState(
-        XmlNodeRef pNode,
-        EWwiseSwitchType eType)
+    SATLSwitchStateImplData_wwise* CAudioSystemImpl_wwise::ParseWwiseSwitchOrState(const AZ::rapidxml::xml_node<char>* node, EWwiseSwitchType type)
     {
-        SATLSwitchStateImplData_wwise* pSwitchStateImpl = nullptr;
+        SATLSwitchStateImplData_wwise* switchStateImpl = nullptr;
 
-        const char* const sWwiseSwitchNodeName = pNode->getAttr(sWwiseNameAttribute);
-        if (sWwiseSwitchNodeName && (sWwiseSwitchNodeName[0] != '\0') && (pNode->getChildCount() == 1))
+        auto switchNameAttr = node->first_attribute(WwiseXmlTags::WwiseNameAttribute, 0, false);
+        if (switchNameAttr)
         {
-            const XmlNodeRef pValueNode(pNode->getChild(0));
+            const char* switchName = switchNameAttr->value();
 
-            if (pValueNode && azstricmp(pValueNode->getTag(), sWwiseValueTag) == 0)
+            auto valueNode = node->first_node(WwiseXmlTags::WwiseValueTag, 0, false);
+            if (valueNode)
             {
-                const char* sWwiseSwitchStateName = pValueNode->getAttr(sWwiseNameAttribute);
-
-                if (sWwiseSwitchStateName && (sWwiseSwitchStateName[0] != '\0'))
+                auto valueNameAttr = valueNode->first_attribute(WwiseXmlTags::WwiseNameAttribute, 0, false);
+                if (valueNameAttr)
                 {
-                    const AkUniqueID nAKSwitchID = AK::SoundEngine::GetIDFromString(sWwiseSwitchNodeName);
-                    const AkUniqueID nAKSwitchStateID = AK::SoundEngine::GetIDFromString(sWwiseSwitchStateName);
-                    pSwitchStateImpl = azcreate(SATLSwitchStateImplData_wwise, (eType, nAKSwitchID, nAKSwitchStateID), Audio::AudioImplAllocator, "ATLSwitchStateImplData_wwise");
+                    const char* stateName = valueNameAttr->value();
+
+                    const AkUniqueID akSGroupId = AK::SoundEngine::GetIDFromString(switchName);
+                    const AkUniqueID akSNameId = AK::SoundEngine::GetIDFromString(stateName);
+
+                    if (akSGroupId != AK_INVALID_UNIQUE_ID && akSNameId != AK_INVALID_UNIQUE_ID)
+                    {
+                        switchStateImpl = azcreate(SATLSwitchStateImplData_wwise, (type, akSGroupId, akSNameId), Audio::AudioImplAllocator, "ATLSwitchStateImplData_wwise");
+                    }
                 }
             }
         }
-        else
-        {
-            g_audioImplLogger_wwise.Log(
-                eALT_WARNING,
-                "A Wwise Switch or State %s inside ATLSwitchState needs to have exactly one WwiseValue.",
-                sWwiseSwitchNodeName);
-        }
 
-        return pSwitchStateImpl;
+        return switchStateImpl;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    const SATLSwitchStateImplData_wwise* CAudioSystemImpl_wwise::ParseWwiseRtpcSwitch(XmlNodeRef pNode)
+    SATLSwitchStateImplData_wwise* CAudioSystemImpl_wwise::ParseWwiseRtpcSwitch(const AZ::rapidxml::xml_node<char>* node)
     {
-        SATLSwitchStateImplData_wwise* pSwitchStateImpl = nullptr;
+        SATLSwitchStateImplData_wwise* switchStateImpl = nullptr;
 
-        const char* const sWwiseRtpcNodeName = pNode->getAttr(sWwiseNameAttribute);
-        if (sWwiseRtpcNodeName && sWwiseRtpcNodeName[0] != '\0' && pNode->getChildCount() == 0)
+        if (node && azstricmp(node->name(), WwiseXmlTags::WwiseRtpcSwitchTag) == 0)
         {
-            float fRtpcValue = 0.f;
-            if (pNode->getAttr(sWwiseValueAttribute, fRtpcValue))
+            auto rtpcNameAttr = node->first_attribute(WwiseXmlTags::WwiseNameAttribute, 0, false);
+            if (rtpcNameAttr)
             {
-                const AkUniqueID nAKRtpcID = AK::SoundEngine::GetIDFromString(sWwiseRtpcNodeName);
-                pSwitchStateImpl = azcreate(SATLSwitchStateImplData_wwise, (eWST_RTPC, nAKRtpcID, nAKRtpcID, fRtpcValue), Audio::AudioImplAllocator, "ATLSwitchStateImplData_wwise");
+                const char* rtpcName = rtpcNameAttr->value();
+                float rtpcValue = 0.f;
+
+                auto rtpcValueAttr = node->first_attribute(WwiseXmlTags::WwiseValueAttribute, 0, false);
+                if (rtpcValueAttr)
+                {
+                    rtpcValue = AZStd::stof(AZStd::string(rtpcValueAttr->value()));
+
+                    const AkUniqueID akRtpcId = AK::SoundEngine::GetIDFromString(rtpcName);
+                    if (akRtpcId != AK_INVALID_RTPC_ID)
+                    {
+                        switchStateImpl = azcreate(SATLSwitchStateImplData_wwise, (eWST_RTPC, akRtpcId, akRtpcId, rtpcValue), Audio::AudioImplAllocator, "ATLSwitchStateImplData_wwise");
+                    }
+                }
             }
         }
-        else
-        {
-            g_audioImplLogger_wwise.Log(
-                eALT_WARNING,
-                "A Wwise Rtpc '%s' inside ATLSwitchState shouldn't have any children.",
-                sWwiseRtpcNodeName);
-        }
 
-        return pSwitchStateImpl;
+        return switchStateImpl;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioSystemImpl_wwise::ParseRtpcImpl(XmlNodeRef pNode, AkRtpcID& rAkRtpcID, float& rMult, float& rShift)
+    void CAudioSystemImpl_wwise::ParseRtpcImpl(const AZ::rapidxml::xml_node<char>* node, AkRtpcID& rAkRtpcId, float& rMult, float& rShift)
     {
-        SATLRtpcImplData_wwise* pNewRtpcImpl = nullptr;
+        SATLRtpcImplData_wwise* newRtpcImpl = nullptr;
 
-        if (azstricmp(pNode->getTag(), sWwiseRtpcTag) == 0)
+        if (node && azstricmp(node->name(), WwiseXmlTags::WwiseRtpcTag) == 0)
         {
-            const char* const sWwiseRtpcName = pNode->getAttr(sWwiseNameAttribute);
-            rAkRtpcID = static_cast<AkRtpcID>(AK::SoundEngine::GetIDFromString(sWwiseRtpcName));
+            auto rtpcAttr = node->first_attribute(WwiseXmlTags::WwiseNameAttribute, 0, false);
+            if (rtpcAttr)
+            {
+                const char* rtpcName = rtpcAttr->value();
+                rAkRtpcId = static_cast<AkRtpcID>(AK::SoundEngine::GetIDFromString(rtpcName));
 
-            if (rAkRtpcID != AK_INVALID_RTPC_ID)
-            {
-                //the Wwise name is supplied
-                pNode->getAttr(sWwiseMutiplierAttribute, rMult);
-                pNode->getAttr(sWwiseShiftAttribute, rShift);
+                if (rAkRtpcId != AK_INVALID_RTPC_ID)
+                {
+                    auto multAttr = node->first_attribute(WwiseXmlTags::WwiseMutiplierAttribute, 0, false);
+                    if (multAttr)
+                    {
+                        rMult = AZStd::stof(AZStd::string(multAttr->value()));
+                    }
+
+                    auto shiftAttr = node->first_attribute(WwiseXmlTags::WwiseShiftAttribute, 0, false);
+                    if (shiftAttr)
+                    {
+                        rShift = AZStd::stof(AZStd::string(shiftAttr->value()));
+                    }
+                }
             }
-            else
-            {
-                // Invalid Wwise RTPC name!
-                AZ_Assert(false, "<Wwise> Invalid RTPC name: '%s'", sWwiseRtpcName);
-            }
-        }
-        else
-        {
-            // Unknown Wwise RTPC tag!
-            AZ_Assert(false, "<Wwise> Unknown RTPC tag: '%s'", sWwiseRtpcTag);
         }
     }
 
@@ -1957,7 +1928,7 @@ namespace Audio
             {
                 g_audioImplLogger_wwise.Log(
                     eALT_WARNING,
-                    "Wwise PrepareEvent with %s failed for Wwise event %" PRISIZE_T " with AKRESULT: %" PRISIZE_T,
+                    "Wwise PrepareEvent with %s failed for Wwise event %u with AKRESULT: %u",
                     bPrepare ? "Preparation_Load" : "Preparation_Unload",
                     nImplAKID,
                     eAKResult);
@@ -2006,7 +1977,7 @@ namespace Audio
             {
                 g_audioImplLogger_wwise.Log(
                     eALT_WARNING,
-                    "Wwise PrepareEvent with %s failed for Wwise event %" PRISIZE_T " with AKRESULT: %d",
+                    "Wwise PrepareEvent with %s failed for Wwise event %u with AKRESULT: %u",
                     bPrepare ? "Preparation_Load" : "Preparation_Unload",
                     nImplAKID,
                     eAKResult);
@@ -2037,7 +2008,7 @@ namespace Audio
         if (pAKObjectData)
         {
             AkAuxSendValue aAuxValues[LY_MAX_AUX_PER_OBJ];
-            uint32 nAuxCount = 0;
+            AZ::u32 nAuxCount = 0;
 
             SATLAudioObjectData_wwise::TEnvironmentImplMap::iterator iEnvPair = pAKObjectData->cEnvironmentImplAmounts.begin();
             const SATLAudioObjectData_wwise::TEnvironmentImplMap::const_iterator iEnvStart = pAKObjectData->cEnvironmentImplAmounts.begin();
@@ -2105,7 +2076,7 @@ namespace Audio
             else
             {
                 g_audioImplLogger_wwise.Log(eALT_WARNING,
-                    "Wwise SetGameObjectAuxSendValues failed on object %" PRISIZE_T " with AKRESULT: %d",
+                    "Wwise SetGameObjectAuxSendValues failed on object %llu with AKRESULT: %u",
                     pAKObjectData->nAKID,
                     eAKResult);
             }
@@ -2127,25 +2098,25 @@ namespace Audio
     {
         if (sLanguage)
         {
-            CryFixedStringT<MAX_AUDIO_FILE_NAME_LENGTH> sLanguageFolder;
+            AZStd::string languageSubfolder;
 
             if (azstricmp(sLanguage, "english") == 0)
             {
-                sLanguageFolder = "english(us)";
+                languageSubfolder = "english(us)";
             }
             else
             {
-                sLanguageFolder = sLanguage;// TODO: handle the other possible language variations
+                languageSubfolder = sLanguage;
             }
 
-            sLanguageFolder += "/";
+            languageSubfolder += "/";
 
-            m_sLocalizedSoundBankFolder = m_sRegularSoundBankFolder;
-            m_sLocalizedSoundBankFolder += sLanguageFolder.c_str();
+            m_localizedSoundbankFolder = m_soundbankFolder;
+            m_localizedSoundbankFolder.append(languageSubfolder);
 
-            const AkOSChar* pTemp = nullptr;
-            CONVERT_CHAR_TO_OSCHAR(sLanguageFolder.c_str(), pTemp);
-            m_oFileIOHandler.SetLanguageFolder(pTemp);
+            const AkOSChar* akLanguageFolder = nullptr;
+            CONVERT_CHAR_TO_OSCHAR(languageSubfolder.c_str(), akLanguageFolder);
+            m_oFileIOHandler.SetLanguageFolder(akLanguageFolder);
         }
     }
 } // namespace Audio

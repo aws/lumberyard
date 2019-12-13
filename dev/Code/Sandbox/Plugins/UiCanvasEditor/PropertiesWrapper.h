@@ -33,6 +33,13 @@ public:
 
 private:
 
+    void dragEnterEvent(QDragEnterEvent* event) override;
+    void dropEvent(QDropEvent* event) override;
+
+    // Drag/drop assets from asset browser
+    bool AcceptsMimeData(const QMimeData* mimeData) const;
+    void DropMimeDataAssets(const QMimeData* mimeData);
+
     PropertiesWidget* m_properties;
     ComponentButton* m_componentButton;
     EditorWindow* m_editorWindow;

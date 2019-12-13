@@ -13,7 +13,17 @@
         },
         {
             "Name": "Editor",
-            "Type": "EditorModule"
+            "Type": "EditorModule",
+            "Extends": "GameModule"
+        }
+    ],
+    "Dependencies": [
+        {
+            "Uuid": "ff06785f7145416b9d46fde39098cb0c",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "LmbrCentral"
         }
     ]
 }

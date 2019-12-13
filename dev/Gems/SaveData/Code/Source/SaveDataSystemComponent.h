@@ -12,6 +12,7 @@
 #pragma once
 
 #include <SaveData/SaveDataRequestBus.h>
+#include <SaveData_Traits_Platform.h>
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TickBus.h>

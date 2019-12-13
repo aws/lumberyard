@@ -13,15 +13,16 @@
 
 #pragma once
 
+#include <ATLControlsModel.h>
+#include <AudioControl.h>
+#include <IAudioSystemEditor.h>
+#include <QConnectionsWidget.h>
+
 #include <QWidget>
 #include <QMenu>
 #include <QListWidget>
 
-#include <ui_InspectorPanel.h>
-#include "ATLControlsModel.h"
-#include "AudioControl.h"
-#include "common/IAudioSystemEditor.h"
-#include "QConnectionsWidget.h"
+#include <Source/Editor/ui_InspectorPanel.h>
 
 namespace AudioControls
 {
@@ -71,12 +72,12 @@ namespace AudioControls
         CATLControlsModel* m_pATLModel;
 
         EACEControlType m_selectedType;
-        std::vector<CATLControl*> m_selectedControls;
+        AZStd::vector<CATLControl*> m_selectedControls;
         bool m_bAllControlsSameType;
 
         QColor m_notFoundColor;
 
-        std::vector<QConnectionsWidget*> m_connectionLists;
-        std::vector<QComboBox*> m_platforms;
+        AZStd::vector<QConnectionsWidget*> m_connectionLists;
+        AZStd::vector<QComboBox*> m_platforms;
     };
 } // namespace AudioControls

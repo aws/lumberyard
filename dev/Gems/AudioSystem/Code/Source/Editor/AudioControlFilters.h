@@ -13,9 +13,10 @@
 
 #pragma once
 
-#include "QTreeWidgetFilter.h"
-#include <QString>
+#include <AzCore/base.h>
+#include <QTreeWidgetFilter.h>
 
+#include <QString>
 
 //-----------------------------------------------------------------------------------------------//
 struct SImplNameFilter
@@ -35,10 +36,11 @@ struct SImplTypeFilter
     : public ITreeWidgetItemFilter
 {
     SImplTypeFilter()
-        : m_nAllowedControlsMask(std::numeric_limits<uint>::max()) {}
+        : m_nAllowedControlsMask(std::numeric_limits<AZ::u32>::max())
+    {}
     bool IsItemValid(QTreeWidgetItem* pItem) override;
-    void SetAllowedControlsMask(uint nAllowedControlsMask) { m_nAllowedControlsMask = nAllowedControlsMask; }
-    uint m_nAllowedControlsMask;
+    void SetAllowedControlsMask(AZ::u32 nAllowedControlsMask) { m_nAllowedControlsMask = nAllowedControlsMask; }
+    AZ::u32 m_nAllowedControlsMask;
 };
 
 //-----------------------------------------------------------------------------------------------//

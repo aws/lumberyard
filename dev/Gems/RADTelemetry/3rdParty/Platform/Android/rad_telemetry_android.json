@@ -1,0 +1,12 @@
+{
+  "platform": {
+    "android_armv8_clang": {
+      "libpath": [
+        "External/Lib"
+      ],
+      "lib": [
+        "librad_tm_android_arm64.a"
+      ]
+    }
+  }
+}

@@ -24,6 +24,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 
+
 namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(MotionEventTrack, MotionEventAllocator, 0)
@@ -188,119 +189,148 @@ namespace EMotionFX
     }
 
     template <typename Functor>
-    void MotionEventTrack::ExtractEvents(float startTime, float endTime, MotionInstance* motionInstance, const Functor& processFunc) const
+    void MotionEventTrack::ExtractEvents(float startTime, float endTime, MotionInstance* motionInstance, const Functor& processFunc, bool handleLoops) const
     {
-        // Please note: if startTime is equal to endTime the events will not be triggered (pause)
-
-        // TODO: optimize with hierarchical search like keyframe finder
-        // if we are playing forward
-        if (startTime < endTime)
+        const bool playForward = (motionInstance->GetPlayMode() == PLAYMODE_FORWARD);
+        if (handleLoops)
         {
-            // for all events
-            for (const EMotionFX::MotionEvent& event : m_events)
+            const bool looped = playForward ? (startTime > endTime) : (startTime < endTime);
+            if (!looped)
             {
-                // get the event start time
-                const float eventStartTime  = event.GetStartTime();
-                const float eventEndTime    = event.GetEndTime();
-
-                // we can quit processing events if its impossible that they execute
-                if (eventStartTime > endTime)
+                ExtractEvents(startTime, endTime, motionInstance, processFunc, false);
+            }
+            else
+            {
+                if (playForward)
                 {
-                    break;
+                    AZ_Assert(startTime > endTime, "Expecting start time to be after the end time when looping in forward play mode.");
+                    ExtractEvents(startTime, motionInstance->GetDuration(), motionInstance, processFunc, false);
+                    ExtractEvents(0.0f, endTime, motionInstance, processFunc, false);
                 }
-
-                // if we need to execute the event
-                if (eventStartTime >= startTime && eventStartTime < endTime)
+                else
                 {
-                    processFunc(
-                        eventStartTime,
-                        motionInstance->GetActorInstance(),
-                        motionInstance,
-                        const_cast<MotionEvent*>(&event),
-                        EventInfo::EventState::START
-                    );
+                    AZ_Assert(startTime < endTime, "Expecting start time to be before the end time when looping in backward play mode.");
+                    ExtractEvents(startTime, 0.0f, motionInstance, processFunc, false);
+                    ExtractEvents(motionInstance->GetDuration(), endTime, motionInstance, processFunc, false);
                 }
-
-                if (!event.GetIsTickEvent())
-                {
-                    // trigger the event end
-                    if (eventEndTime >= startTime && eventEndTime < endTime)
-                    {
-                        processFunc(
-                            eventEndTime,
-                            motionInstance->GetActorInstance(),
-                            motionInstance,
-                            const_cast<MotionEvent*>(&event),
-                            EventInfo::EventState::END
-                        );
-                    }
-                    else if (eventEndTime > endTime)
-                    {
-                        processFunc(
-                            endTime,
-                            motionInstance->GetActorInstance(),
-                            motionInstance,
-                            const_cast<MotionEvent*>(&event),
-                            EventInfo::EventState::ACTIVE
-                        );
-                    }
-                }
-            } // for all events
+            }
         }
-        else if (startTime > endTime) // playing backward
+        else
         {
-            for (auto i = m_events.crbegin(); i != m_events.crend(); ++i)
+            if (playForward)
             {
-                const EMotionFX::MotionEvent& event = *i;
-
-                // get the event time
-                const float eventStartTime  = event.GetStartTime();
-                const float eventEndTime    = event.GetEndTime();
-
-                // we can quit processing events if its impossible that they execute
-                if (eventEndTime < endTime)
+                AZ_Assert(startTime <= endTime, "Expecting start time to smaller or equal to the end time in forward play mode.");
+                for (const EMotionFX::MotionEvent& event : m_events)
                 {
-                    break;
-                }
+                    const float eventStartTime = event.GetStartTime();
+                    const float eventEndTime = event.GetEndTime();
 
-                // if we need to execute the event
-                if (eventEndTime >= endTime && eventEndTime < startTime)
-                {
-                    processFunc(
-                        eventEndTime,
-                        motionInstance->GetActorInstance(),
-                        motionInstance,
-                        const_cast<MotionEvent*>(&event),
-                        EventInfo::EventState::START
-                    );
-                }
+                    // We can quit processing events if it's impossible that they execute.
+                    // All events are stored in a time sorted order.
+                    if (eventStartTime >= endTime)
+                    {
+                        break;
+                    }
 
-
-                if (!event.GetIsTickEvent())
-                {
-                    // trigger the event end
-                    if (eventStartTime >= endTime && eventStartTime < startTime)
+                    // Trigger the event start.
+                    bool triggeredStart = false;
+                    if (eventStartTime >= startTime && eventStartTime < endTime)
                     {
                         processFunc(
                             eventStartTime,
                             motionInstance->GetActorInstance(),
                             motionInstance,
                             const_cast<MotionEvent*>(&event),
-                            EventInfo::EventState::END
+                            EventInfo::EventState::START
                         );
+                        triggeredStart = true;
                     }
-                    else if (eventStartTime < endTime)
+
+                    // In case we deal with a range based event.
+                    if (!event.GetIsTickEvent())
+                    {
+                        // Trigger the event end.
+                        if (eventEndTime >= startTime && eventEndTime < endTime)
+                        {
+                            processFunc(
+                                eventEndTime,
+                                motionInstance->GetActorInstance(),
+                                motionInstance,
+                                const_cast<MotionEvent*>(&event),
+                                EventInfo::EventState::END
+                            );
+                        }
+                        else if (!triggeredStart && eventEndTime >= endTime) // We're somewhere inside the range based event.
+                        {
+                            processFunc(
+                                endTime,
+                                motionInstance->GetActorInstance(),
+                                motionInstance,
+                                const_cast<MotionEvent*>(&event),
+                                EventInfo::EventState::ACTIVE
+                            );
+                        }
+                    }
+                } // For all events.
+            }
+            else // Playing backward.
+            {
+                AZ_Assert(startTime > endTime, "Expecting start time to be larger than then end time in backward mode.");
+                for (auto i = m_events.crbegin(); i != m_events.crend(); ++i)
+                {
+                    const EMotionFX::MotionEvent& event = *i;
+                    const float eventStartTime = event.GetStartTime();
+                    const float eventEndTime = event.GetEndTime();
+
+                    // We can quit processing events if it's impossible that they execute.
+                    // All events are stored in a time sorted order.
+                    if (eventEndTime < endTime)
+                    {
+                        break;
+                    }
+
+                    // Trigger the event start.
+                    bool triggeredStart = false;
+                    if (eventEndTime > endTime && eventEndTime <= startTime)
                     {
                         processFunc(
-                            endTime,
+                            eventEndTime,
                             motionInstance->GetActorInstance(),
                             motionInstance,
                             const_cast<MotionEvent*>(&event),
-                            EventInfo::EventState::ACTIVE
+                            EventInfo::EventState::START
                         );
+
+                        triggeredStart = true;
                     }
-                }
-            } // for all events
+
+                    // If we're dealing with a range based event.
+                    if (!event.GetIsTickEvent())
+                    {
+                        // Trigger the event end.
+                        if (eventStartTime > endTime && eventStartTime <= startTime)
+                        {
+                            processFunc(
+                                eventStartTime,
+                                motionInstance->GetActorInstance(),
+                                motionInstance,
+                                const_cast<MotionEvent*>(&event),
+                                EventInfo::EventState::END
+                            );
+                        }
+                        else if (!triggeredStart && eventStartTime <= endTime) // We're somewhere inside the range based event.
+                        {
+                            processFunc(
+                                endTime,
+                                motionInstance->GetActorInstance(),
+                                motionInstance,
+                                const_cast<MotionEvent*>(&event),
+                                EventInfo::EventState::ACTIVE
+                            );
+                        }
+                    }
+                } // for all events
+            } // If (playforward)
         }
     }
 

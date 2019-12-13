@@ -12,21 +12,24 @@
 
 #include "AssetCatalog.h"
 
+#include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/IO/Streamer.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Serialization/ObjectStream.h>
-#include <AzCore/Asset/AssetManager.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/parallel/mutex.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/Asset/AssetRegistry.h>
+#include <AzFramework/Asset/AssetBundleManifest.h>
 
 // uncomment to have the catalog be dumped to stdout:
 //#define DEBUG_DUMP_CATALOG
+
 
 namespace AzFramework
 {
@@ -40,11 +43,26 @@ namespace AzFramework
         AZ::Data::AssetCatalogRequestBus::Handler::BusConnect();
     }
 
+    AssetCatalog::AssetCatalog(bool useRequestBus)
+        : m_shutdownThreadSignal(false)
+        , m_registry(aznew AssetRegistry())
+        , m_useRequestBus(useRequestBus)
+    {
+        if (m_useRequestBus)
+        {
+            AZ::Data::AssetCatalogRequestBus::Handler::BusConnect();
+        }
+    }
+
     //=========================================================================
     // AssetCatalog dtor
     //=========================================================================
     AssetCatalog::~AssetCatalog()
     {
+        if (m_useRequestBus)
+        {
+            AZ::Data::AssetCatalogRequestBus::Handler::BusDisconnect();
+        }
         DisableCatalog();
         Reset();
     }
@@ -56,8 +74,7 @@ namespace AzFramework
     {
         StopMonitoringAssets();
 
-        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_registryMutex);
-        m_registry->Clear();
+        ClearCatalog();
     }
 
     //=========================================================================
@@ -233,8 +250,23 @@ namespace AzFramework
         return AZ::Data::AssetId();
     }
 
+
+    AZStd::vector<AZStd::string> AssetCatalog::GetRegisteredAssetPaths()
+    {
+        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_registryMutex);
+
+        AZStd::vector<AZStd::string> registeredAssetPaths;
+        for (auto assetIdToInfoPair : m_registry->m_assetIdToInfo)
+        {
+            registeredAssetPaths.emplace_back(assetIdToInfoPair.second.m_relativePath);
+        }
+
+        return registeredAssetPaths;
+    }
+
     AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> AssetCatalog::GetDirectProductDependencies(const AZ::Data::AssetId& id)
     {
+        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_registryMutex);
         auto itr = m_registry->m_assetDependencies.find(id);
 
         if (itr == m_registry->m_assetDependencies.end())
@@ -264,6 +296,7 @@ namespace AzFramework
     void AssetCatalog::AddAssetDependencies(const AZ::Data::AssetId& searchAssetId, AZStd::unordered_set<AZ::Data::AssetId>& assetSet, AZStd::vector<AZ::Data::ProductDependency>& dependencyList)
     {
         using namespace AZ::Data;
+        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_registryMutex);
         auto itr = m_registry->m_assetDependencies.find(searchAssetId);
 
         if (itr != m_registry->m_assetDependencies.end())
@@ -272,8 +305,10 @@ namespace AzFramework
 
             for (const ProductDependency& dependency : assetDependencyList)
             {
-                // Only proceed if we haven't encountered this assetId before
-                if (assetSet.find(dependency.m_assetId) == assetSet.end())
+                // Only proceed if this ID is valid and we haven't encountered this assetId before.
+                // Invalid IDs usually come from unmet path product dependencies.
+                if (dependency.m_assetId.IsValid() &&
+                    assetSet.find(dependency.m_assetId) == assetSet.end())
                 {
                     assetSet.insert(dependency.m_assetId); // add to the set of already-encountered assets
                     dependencyList.push_back(dependency); // put it in the flat list of dependencies we've found
@@ -329,8 +364,6 @@ namespace AzFramework
     {
         AZStd::lock_guard<AZStd::recursive_mutex> lock(m_registryMutex);
 
-        AZ_Warning("AssetCatalog", m_registry->m_assetIdToInfo.size() == 0, "Catalog reset will erase %u assets", m_registry->m_assetIdToInfo.size());
-
         // Get asset root from application.
         EBUS_EVENT_RESULT(m_assetRoot, AzFramework::ApplicationRequests::Bus, GetAssetRoot);
 
@@ -343,11 +376,7 @@ namespace AzFramework
             AssetRegistry::ReflectSerialize(serializeContext);
         }
 
-        AZ_TracePrintf("AssetCatalog",
-            "\n========================================================\n"
-            "Initializing asset catalog with root \"%s\"."
-            "\n========================================================\n",
-            m_assetRoot.c_str());
+        AZ_TracePrintf("AssetCatalog","Initializing asset catalog with root \"%s\"",m_assetRoot.c_str());
 
         // even though this could be a chunk of memory to allocate and deallocate, this is many times faster and more efficient
         // in terms of memory AND fragmentation than allowing it to perform thousands of reads on physical media.
@@ -390,11 +419,7 @@ namespace AzFramework
             AZ::Utils::LoadObjectFromStreamInPlace<AzFramework::AssetRegistry>(catalogStream, *m_registry.get(), serializeContext, AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading));
         #endif // (AZ_TRAIT_PUMP_SYSTEM_EVENTS_WHILE_LOADING)
 
-            AZ_TracePrintf("AssetCatalog",
-                "\n========================================================\n"
-                "Loaded registry containing %u assets.\n"
-                "========================================================\n",
-                m_registry->m_assetIdToInfo.size());
+            AZ_TracePrintf("AssetCatalog", "Loaded registry containing %u assets.\n", m_registry->m_assetIdToInfo.size());
 
             AssetCatalogEventBus::Broadcast(&AssetCatalogEventBus::Events::OnCatalogLoaded, catalogRegistryFile);
         }
@@ -553,33 +578,36 @@ namespace AzFramework
         AzFramework::StringFunc::Path::GetExtension(relativePath.c_str(), extension, false);
         if (assetId.IsValid())
         {
-            // is it an add or a change?
-            auto assetInfoPair = m_registry->m_assetIdToInfo.find(assetId);
-            const bool isNewAsset = (assetInfoPair == m_registry->m_assetIdToInfo.end());
-
-#if defined(AZ_ENABLE_TRACING)
-            if (message.m_assetType == AZ::Data::s_invalidAssetType)
+            bool isNewAsset = false;
             {
-                AZ_TracePrintf("AssetCatalog", "Registering asset \"%s\" via AssetSystem message, but type is not set.", relativePath.c_str());
+                AZStd::lock_guard<AZStd::recursive_mutex> lock(m_registryMutex);
+                // is it an add or a change?
+                auto assetInfoPair = m_registry->m_assetIdToInfo.find(assetId);
+                isNewAsset = (assetInfoPair == m_registry->m_assetIdToInfo.end());
+
+    #if defined(AZ_ENABLE_TRACING)
+                if (message.m_assetType == AZ::Data::s_invalidAssetType)
+                {
+                    AZ_TracePrintf("AssetCatalog", "Registering asset \"%s\" via AssetSystem message, but type is not set.", relativePath.c_str());
+                }
+    #endif
+
+                const AZ::Data::AssetType& assetType = isNewAsset ? message.m_assetType : assetInfoPair->second.m_assetType;
+
+                AZ::Data::AssetInfo newData;
+                newData.m_assetId = assetId;
+                newData.m_assetType = assetType;
+                newData.m_relativePath = message.m_data;
+                newData.m_sizeBytes = message.m_sizeBytes;
+
+                m_registry->RegisterAsset(assetId, newData);
+                m_registry->SetAssetDependencies(assetId, message.m_dependencies);
+
+                for (const auto& mapping : message.m_legacyAssetIds)
+                {
+                    m_registry->RegisterLegacyAssetMapping(mapping, assetId);
+                }
             }
-#endif
-
-            const AZ::Data::AssetType& assetType = isNewAsset ? message.m_assetType : assetInfoPair->second.m_assetType;
-
-            AZ::Data::AssetInfo newData;
-            newData.m_assetId = assetId;
-            newData.m_assetType = assetType;
-            newData.m_relativePath = message.m_data;
-            newData.m_sizeBytes = message.m_sizeBytes;
-
-            m_registry->RegisterAsset(assetId, newData);
-            m_registry->SetAssetDependencies(assetId, message.m_dependencies);
-
-            for (const auto& mapping : message.m_legacyAssetIds)
-            {
-                m_registry->RegisterLegacyAssetMapping(mapping, assetId);
-            }
-
             if (!isNewAsset)
             {
                 EBUS_EVENT(AzFramework::AssetCatalogEventBus, OnCatalogAssetChanged, assetId);
@@ -624,6 +652,7 @@ namespace AzFramework
             AzFramework::StringFunc::Path::GetExtension(relativePath.c_str(), extension, false);
             EBUS_QUEUE_EVENT_ID(AZ::Crc32(extension.c_str()), AzFramework::LegacyAssetEventBus, OnFileRemoved, relativePath);
             UnregisterAsset(assetId);
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_registryMutex);
             for (const auto& mapping : message.m_legacyAssetIds)
             {
                 m_registry->UnregisterLegacyAssetMapping(mapping);
@@ -636,26 +665,24 @@ namespace AzFramework
     }
 
     //=========================================================================
-    // LoadCatalog
+    // LoadBaseCatalogInternal
     //=========================================================================
-    bool AssetCatalog::LoadCatalog(const char* catalogRegistryFile)
+    bool AssetCatalog::LoadBaseCatalogInternal()
     {
-        // right before we load the catalog, make sure you are listening for update events, so that you don't miss any in the gap 
-        // that happens AFTER the catalog is saved but BEFORE you start monitoring them:
-        StartMonitoringAssets();
-
         // it does not matter if this call fails - it will succeed if it can.  In release builds or builds where the user has turned off the
         // asset processing system because they have precompiled all assets, the call will fail but there will still be a valid catalog.
-        // for this reason, we use AZ_Warning, as that is removed automatically from release builds.  We still show it as it may aid debugging
-        // in the general case.
         bool catalogSavedOK = false;
         AzFramework::AssetSystemRequestBus::BroadcastResult(catalogSavedOK, &AzFramework::AssetSystem::AssetSystemRequests::SaveCatalog);
-        AZ_WarningOnce("AssetCatalog", catalogSavedOK, "Asset catalog was not saved.  This is only okay if running with pre-built assets.");
 
         AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
-        if (fileIO && fileIO->Exists(catalogRegistryFile))
+        AZStd::string baseCatalogName;
         {
-            InitializeCatalog(catalogRegistryFile);
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_baseCatalogNameMutex);
+            baseCatalogName = m_baseCatalogName;
+        }
+        if (fileIO && fileIO->Exists(baseCatalogName.c_str()))
+        {
+            InitializeCatalog(baseCatalogName.c_str());
 
 #if defined(DEBUG_DUMP_CATALOG)
             AZStd::lock_guard<AZStd::recursive_mutex> lock(m_registryMutex);
@@ -671,4 +698,322 @@ namespace AzFramework
 
         return false;
     }
+
+    //=========================================================================
+    // LoadCatalog
+    //=========================================================================
+    bool AssetCatalog::LoadCatalog(const char* catalogRegistryFile)
+    {
+        // right before we load the catalog, make sure you are listening for update events, so that you don't miss any in the gap 
+        // that happens AFTER the catalog is saved but BEFORE you start monitoring them:
+        StartMonitoringAssets();
+        {
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_baseCatalogNameMutex);
+            m_baseCatalogName = catalogRegistryFile;
+        }
+        return LoadBaseCatalogInternal();
+    }
+
+    //=========================================================================
+    // ClearCatalog
+    //=========================================================================
+    void AssetCatalog::ClearCatalog()
+    {   
+        {
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_deltaCatalogMutex);
+            m_deltaCatalogList.clear();
+        }
+
+        ResetRegistry();
+    }
+
+    //=========================================================================
+    // ResetRegistry
+    //=========================================================================
+    void AssetCatalog::ResetRegistry()
+    {
+        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_registryMutex);
+
+        m_registry->Clear();
+    }
+
+
+    //=========================================================================
+    // AddCatalogEntry
+    //=========================================================================
+    void AssetCatalog::AddCatalogEntry(AZStd::shared_ptr<AzFramework::AssetRegistry> deltaCatalog)
+    {
+        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_deltaCatalogMutex);
+#if defined(PERFORMANCE_BUILD) || !defined(_RELEASE)
+        for (const auto& thisElement : m_deltaCatalogList)
+        {
+            if (thisElement == deltaCatalog)
+            {
+                AZ_Warning("AssetCatalog", false, "Catalog %p already in catalog list!", deltaCatalog.get());
+            }
+        }
+#endif
+        m_deltaCatalogList.push_back(deltaCatalog);
+    }
+
+    //=========================================================================
+    // InsertCatalogEntry
+    //=========================================================================
+    void AssetCatalog::InsertCatalogEntry(AZStd::shared_ptr<AssetRegistry> deltaCatalog, size_t catalogIndex)
+    {
+        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_deltaCatalogMutex);
+        if (catalogIndex > m_deltaCatalogList.size())
+        {
+            AZ_Warning("AssetCatalog", false, "Catalog name %p can't be inserted at slot %u", deltaCatalog.get(), catalogIndex);
+            return;
+        }
+#if defined(PERFORMANCE_BUILD) || !defined(_RELEASE)
+        for (const auto& thisElement : m_deltaCatalogList)
+        {
+            if (thisElement == deltaCatalog)
+            {
+                AZ_Warning("AssetCatalog", false, "Catalog %p already in catalog list!", deltaCatalog.get());
+            }
+        }
+#endif
+        m_deltaCatalogList.insert(m_deltaCatalogList.begin() + catalogIndex, deltaCatalog);
+    }
+
+    AZStd::shared_ptr<AzFramework::AssetRegistry> AssetCatalog::LoadCatalogFromFile(const char* catalogFile) 
+    {
+        AZStd::shared_ptr<AzFramework::AssetRegistry> deltaCatalog;
+        deltaCatalog.reset(AZ::Utils::LoadObjectFromFile<AzFramework::AssetRegistry>(catalogFile));
+        if (!deltaCatalog)
+        {
+            AZ_Error("AssetCatalog", false, "Failed to load catalog %s", catalogFile);
+            return {};
+        }
+        return deltaCatalog;
+    }
+
+
+    //=========================================================================
+    // AddDeltaCatalog
+    //=========================================================================
+    bool AssetCatalog::AddDeltaCatalog(AZStd::shared_ptr<AzFramework::AssetRegistry> deltaCatalog)
+    {
+        if (!deltaCatalog)
+        {
+            return false;
+        }
+        AddCatalogEntry(deltaCatalog);
+        ApplyDeltaCatalog(deltaCatalog);
+        return true;
+    }
+
+    //=========================================================================
+    // InsertDeltaCatalog
+    //=========================================================================
+    bool AssetCatalog::InsertDeltaCatalogBefore(AZStd::shared_ptr<AzFramework::AssetRegistry> deltaCatalog, AZStd::shared_ptr<AzFramework::AssetRegistry> nextCatalog)
+    { 
+        if (!nextCatalog)
+        {
+            AddDeltaCatalog(deltaCatalog);
+        }
+        else
+        {
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_deltaCatalogMutex);
+
+            for (size_t slotNum = 0; slotNum < m_deltaCatalogList.size(); ++slotNum)
+            {
+                if (m_deltaCatalogList[slotNum] == nextCatalog)
+                {
+                    return InsertDeltaCatalog(deltaCatalog, slotNum);
+                }
+            }
+            AZ_Warning("AssetCatalog", false, "Failed to find catalog %p to insert %p in front of", nextCatalog.get(), deltaCatalog.get());
+            return false;
+
+        }
+        return true;
+    }
+
+    //=========================================================================
+    // ApplyDeltaCatalog
+    //=========================================================================
+    bool AssetCatalog::ApplyDeltaCatalog(AZStd::shared_ptr<AssetRegistry> deltaCatalog)
+    {
+        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_registryMutex);
+
+        m_registry->AddRegistry(deltaCatalog);
+        return true;
+    }
+
+    //=========================================================================
+    // InsertDeltaCatalog
+    //=========================================================================
+    bool AssetCatalog::InsertDeltaCatalog(AZStd::shared_ptr<AssetRegistry> deltaCatalog, size_t slotIndex)
+    {
+        InsertCatalogEntry(deltaCatalog, slotIndex);
+        ReloadCatalogs();
+        return true;
+    }
+
+    //=========================================================================
+    // ReloadCatalogs
+    //=========================================================================
+    bool AssetCatalog::ReloadCatalogs()
+    {
+        {
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_baseCatalogNameMutex);
+            // Currently only called by RemoveDeltaCatalog which holds ownership of the mutex
+            if (!m_deltaCatalogList.size() && !m_baseCatalogName.length())
+            {
+                AZ_Warning("AssetCatalog", false, "CatalogList is empty - Failed to reload catalog list");
+                return false;
+            }
+        }
+
+        ResetRegistry();
+        LoadBaseCatalogInternal();
+
+        for (size_t catalogSlot = 0; catalogSlot < m_deltaCatalogList.size(); ++catalogSlot)
+        {
+            ApplyDeltaCatalog(m_deltaCatalogList[catalogSlot]);
+        }
+        return true;
+    }
+
+    //=========================================================================
+    // RemoveDeltaCatalog
+    //=========================================================================
+    bool AssetCatalog::RemoveDeltaCatalog(AZStd::shared_ptr<AssetRegistry> deltaCatalog)
+    {
+
+        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_deltaCatalogMutex);
+        for (auto thisElement = m_deltaCatalogList.begin(); thisElement != m_deltaCatalogList.end(); ++thisElement)
+        {
+            if (*thisElement == deltaCatalog)
+            {
+                m_deltaCatalogList.erase(thisElement);
+                return ReloadCatalogs();
+            }
+        }
+        AZ_Warning("AssetCatalog", false, "Failed to remove delta catalog %p (Not found)", deltaCatalog.get());
+        return false;
+    }
+
+    //=========================================================================
+    // SaveCatalog
+    //=========================================================================
+    bool AssetCatalog::SaveCatalog(const char* catalogRegistryFile)
+    {
+        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_registryMutex);
+        return SaveCatalog(catalogRegistryFile, m_registry.get());
+    }
+
+    //=========================================================================
+    // SaveCatalog
+    //=========================================================================
+    bool AssetCatalog::SaveCatalog(const char* catalogRegistryFile, AzFramework::AssetRegistry* catalogRegistry)
+    {
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+        AZ_Assert(serializeContext, "Unable to retrieve serialize context.");
+
+        if(!AZ::Utils::SaveObjectToFile(catalogRegistryFile, AZ::DataStream::ST_BINARY, catalogRegistry, serializeContext))
+        {
+            AZ_Warning("AssetCatalog", false, "Failed to save catalog file %s", catalogRegistryFile);
+            return false;
+        }
+        return true;
+    }
+
+    //=========================================================================
+    // SaveAssetBundleManifest
+    //=========================================================================
+    bool AssetCatalog::SaveAssetBundleManifest(const char* assetBundleManifestFile, AzFramework::AssetBundleManifest* bundleManifest)
+    {
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+        AZ_Assert(serializeContext, "Unable to retrieve serialize context.");
+
+        if (!AZ::Utils::SaveObjectToFile(assetBundleManifestFile, AZ::DataStream::ST_XML, bundleManifest, serializeContext))
+        {
+            AZ_Warning("AssetCatalog", false, "Failed to save manifest file %s", assetBundleManifestFile);
+            return false;
+        }
+        return true;
+    }
+
+
+    bool AssetCatalog::CreateBundleManifest(const AZStd::string& deltaCatalogPath, const AZStd::vector<AZStd::string>& dependentBundleNames, const AZStd::string& fileDirectory, int bundleVersion)
+    {
+        if (bundleVersion > AzFramework::AssetBundleManifest::CurrentBundleVersion || bundleVersion < 0)
+        {
+            AZ_Error("Asset Catalog", false, "Invalid bundle version (%d), Current bundle version is (%d).", bundleVersion, AzFramework::AssetBundleManifest::CurrentBundleVersion);
+            return false;
+        }
+        AzFramework::AssetBundleManifest manifest;
+        manifest.SetBundleVersion(bundleVersion);
+
+        if (bundleVersion >= 1)
+        {
+            manifest.SetCatalogName(deltaCatalogPath);
+            manifest.SetDependentBundleNames(dependentBundleNames);
+        }
+
+        AZStd::string manifestFilePath;
+        AzFramework::StringFunc::Path::ConstructFull(fileDirectory.c_str(), AzFramework::AssetBundleManifest::s_manifestFileName, manifestFilePath, true);
+
+        if (!AssetCatalog::SaveAssetBundleManifest(manifestFilePath.c_str(), &manifest))
+        {
+            AZ_Error("Asset Catalog", false, "Failed to serialize bundle manifest %s.", deltaCatalogPath.c_str());
+            return false;
+        }
+        return true;
+    }
+
+    //=========================================================================
+    // CreateDeltaCatalog
+    //=========================================================================
+    bool AssetCatalog::CreateDeltaCatalog(const AZStd::vector<AZStd::string>& files, const AZStd::string& filePath)
+    {
+        AzFramework::AssetRegistry deltaRegistry;
+        AZStd::vector<AZ::Data::AssetId> deltaPakAssetIds;
+        for (const AZStd::string& file : files)
+        {
+            AZ::Data::AssetId asset = m_registry->GetAssetIdByPath(file.c_str());
+            if (!asset.IsValid())
+            {
+                // Asset is not listed in the registry, we can early out and fail as there should never be an asset that isn't in the registry.
+                // Catalog and manifest files should have been trimmed from the list of files passed in prior to  this function
+                AZ_Error("Asset Catalog", false, "Asset Catalog::CreateDeltaCatalog - Failed to add asset \"%s\" to the delta asset registry. Couldn't determine Asset ID for the given asset. This likely means that it is not in the source asset catalog. Rerun asset processor and regenerate pak files to remove old assets.", file.c_str());
+                return false;
+            }
+            AZ::Data::AssetInfo assetInfo = GetAssetInfoById(asset);
+            deltaRegistry.RegisterAsset(asset, assetInfo);
+            deltaPakAssetIds.push_back(asset);
+
+            AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> dependencyResult = GetDirectProductDependencies(asset);
+            if (!dependencyResult.IsSuccess())
+            {
+                // This asset has no dependencies registered, so continue.
+                continue;
+            }
+            for (const AZ::Data::ProductDependency& dependency : dependencyResult.GetValue())
+            {
+                deltaRegistry.RegisterAssetDependency(asset, dependency);
+            }            
+        }
+        for (auto legacyToRealPair : m_registry->GetLegacyMappingSubsetFromRealIds(deltaPakAssetIds))
+        {
+            deltaRegistry.RegisterLegacyAssetMapping(legacyToRealPair.first, legacyToRealPair.second);
+        }
+
+        // serialize the registry
+        if (!AssetCatalog::SaveCatalog(filePath.c_str(), &deltaRegistry))
+        {
+            AZ_Error("Asset Catalog", false, "Failed to serialize delta catalog %s.", filePath.c_str());
+            return false;
+        }
+
+        return true;
+    }
+
 } // namespace AzFramework

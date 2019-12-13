@@ -131,7 +131,7 @@ void CVisAreaManager::GetNearestCubeProbe(float& fMinDistance, int& nMaxPriority
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void CVisAreaManager::GetObjectsByType(PodArray<IRenderNode*>& lstObjects, EERType objType, const AABB* pBBox)
+void CVisAreaManager::GetObjectsByType(PodArray<IRenderNode*>& lstObjects, EERType objType, const AABB* pBBox, ObjectTreeQueryFilterCallback filterCallback)
 {
     {
         uint32 dwSize = m_lstVisAreas.Count();
@@ -142,7 +142,7 @@ void CVisAreaManager::GetObjectsByType(PodArray<IRenderNode*>& lstObjects, EERTy
             {
                 if (!pBBox || Overlap::AABB_AABB(*m_lstVisAreas[dwI]->GetAABBox(), *pBBox))
                 {
-                    m_lstVisAreas[dwI]->m_pObjectsTree->GetObjectsByType(lstObjects, objType, pBBox);
+                    m_lstVisAreas[dwI]->m_pObjectsTree->GetObjectsByType(lstObjects, objType, pBBox, filterCallback);
                 }
             }
         }
@@ -157,7 +157,7 @@ void CVisAreaManager::GetObjectsByType(PodArray<IRenderNode*>& lstObjects, EERTy
             {
                 if (!pBBox || Overlap::AABB_AABB(*m_lstPortals[dwI]->GetAABBox(), *pBBox))
                 {
-                    m_lstPortals[dwI]->m_pObjectsTree->GetObjectsByType(lstObjects, objType, pBBox);
+                    m_lstPortals[dwI]->m_pObjectsTree->GetObjectsByType(lstObjects, objType, pBBox, filterCallback);
                 }
             }
         }

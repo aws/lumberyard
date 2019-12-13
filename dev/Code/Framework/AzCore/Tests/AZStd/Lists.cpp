@@ -45,13 +45,11 @@ namespace UnitTest
     public:
         // ListContainerTest-Begin
         struct RemoveLessThan401
-            : public unary_function<int, bool>
         {
             AZ_FORCE_INLINE bool operator()(int element) const { return element < 401; }
         };
 
         struct UniqueForLessThan401
-            : public binary_function<int, int, bool>
         {
             AZ_FORCE_INLINE bool operator()(int el1, int el2) const { return (el1 == el2 && el1 < 401); }
         };
@@ -536,6 +534,7 @@ namespace UnitTest
         forward_list<int> int_slist1;
         forward_list<int> int_slist2;
         forward_list<int> int_slist3;
+        forward_list<int> int_slist4;
 
         // default ctor
         AZ_TEST_VALIDATE_EMPTY_LIST(int_slist);
@@ -559,6 +558,10 @@ namespace UnitTest
         // copy construct
         int_slist3 = forward_list<int>(int_slist1);
         AZ_TEST_ASSERT(int_slist1 == int_slist3);
+
+        // initializer_list construct
+        int_slist4 = { 33, 33, 33, 33, 33, 33, 33, 33, 33, 33 };
+        AZ_TEST_ASSERT(int_slist1 == int_slist4);
 
         // assign
         int_slist = int_slist1;

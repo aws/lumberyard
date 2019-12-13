@@ -1,0 +1,6 @@
+<EngineDependencies versionnumber="1.0.0">
+    <Dependency path="ttscache/*.pcm" optional="false" />
+    <Dependency path="ttscache/*.wav" optional="false" />
+    <Dependency path="ttscache/*.txt" optional="false" />
+    <Dependency path="ttscache/character_mapping.json" optional="true" />
+</EngineDependencies>

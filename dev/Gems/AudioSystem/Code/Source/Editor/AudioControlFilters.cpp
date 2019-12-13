@@ -11,8 +11,9 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "AudioControlFilters.h"
+#include <AudioControlFilters.h>
+
+#include <ACEEnums.h>
 #include <QTreeWidget>
 
 

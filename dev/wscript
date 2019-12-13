@@ -310,6 +310,29 @@ def deploy(ctx):
     recurse_subfolders(ctx)
 
 
+def run_unit_test(ctx):
+    
+    ctx.calculate_engine_path()
+    ctx.load_user_settings()
+    ctx.initialize_third_party_settings()
+    ctx.prepare_build_environment()
+
+    # Perform a pre-validation on the platforms availability
+    ctx.update_platform_availability_from_options()
+
+    ctx.add_gems_to_specs()
+    ctx.add_game_projects_to_specs()
+    
+    ctx.game_project = ctx.project
+
+    ctx.check_module_load_options()
+
+    ctx.process_gems()
+    ctx.setup_game_projects()
+
+    recurse_subfolders(ctx)
+
+
 ###############################################################################
 def show_option_dialog(ctx):
     ctx.gui_modify_user_options()

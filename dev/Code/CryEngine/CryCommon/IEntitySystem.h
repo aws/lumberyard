@@ -133,8 +133,8 @@ struct IEntityPoolManager;
 enum ESpecType
 {
     eSpecType_PC = BIT(0),
-    eSpecType_XBoxOne = BIT(1),
-    eSpecType_PS4 = BIT(2),
+    eSpecType_Xenia = BIT(1),
+    eSpecType_Provo = BIT(2),
     eSpecType_All   = -1
 };
 

@@ -27,10 +27,6 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #undef AZ_RESTRICTED_SECTION
-#define BASEINPUT_CPP_SECTION_1 1
-#define BASEINPUT_CPP_SECTION_2 2
-#define BASEINPUT_CPP_SECTION_3 3
-#define BASEINPUT_CPP_SECTION_4 4
 #define BASEINPUT_CPP_SECTION_5 5
 #endif
 
@@ -64,14 +60,6 @@ CBaseInput::CBaseInput()
     , m_pCVars(new CInputCVars())
     , m_platformFlags(0)
     , m_forceFeedbackDeviceIndex(EFF_INVALID_DEVICE_INDEX)
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION BASEINPUT_CPP_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/BaseInput_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/BaseInput_cpp_provo.inl"
-    #endif
-#endif
 {
     GetISystem()->GetISystemEventDispatcher()->RegisterListener(this);
 
@@ -87,30 +75,11 @@ CBaseInput::~CBaseInput()
 
     SAFE_DELETE(m_pCVars);
     g_pInputCVars = NULL;
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION BASEINPUT_CPP_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/BaseInput_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/BaseInput_cpp_provo.inl"
-    #endif
-#endif
 }
 
 bool CBaseInput::Init()
 {
     m_modifiers = 0;
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION BASEINPUT_CPP_SECTION_3
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/BaseInput_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/BaseInput_cpp_provo.inl"
-    #endif
-#endif
-
     return true;
 }
 
@@ -150,15 +119,6 @@ void CBaseInput::Update(bool bFocus)
     event.keyName = "commit";
     event.keyId = eKI_SYS_Commit;
     PostInputEvent(event);
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION BASEINPUT_CPP_SECTION_4
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/BaseInput_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/BaseInput_cpp_provo.inl"
-    #endif
-#endif
 }
 
 void CBaseInput::ShutDown()
@@ -711,6 +671,8 @@ bool CBaseInput::ShouldBlockInputEventPosting(const EKeyId keyId, const EInputDe
         #include "Xenia/BaseInput_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/BaseInput_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/BaseInput_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

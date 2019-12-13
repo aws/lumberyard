@@ -11,7 +11,9 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include <AudioAllocators.h>
+#include <AudioInternalInterfaces.h>
+#include <AudioLogger.h>
 
 #define REQUEST_CASE_BLOCK(CLASS, ENUM, P_SOURCE, P_RESULT)                                        \
 case ENUM:                                                                                         \
@@ -28,6 +30,8 @@ case ENUM:                                                                      
 
 namespace Audio
 {
+    extern CAudioLogger g_audioLogger;
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     SAudioRequestDataInternal* ConvertToInternal(const SAudioRequestDataBase* const pExternalData)
     {
@@ -108,7 +112,6 @@ namespace Audio
                     AO_REQUEST_BLOCK(eAORT_SET_POSITION)
                     AO_REQUEST_BLOCK(eAORT_SET_SWITCH_STATE)
                     AO_REQUEST_BLOCK(eAORT_SET_RTPC_VALUE)
-                    AO_REQUEST_BLOCK(eAORT_SET_VOLUME)
                     AO_REQUEST_BLOCK(eAORT_SET_ENVIRONMENT_AMOUNT)
                     AO_REQUEST_BLOCK(eAORT_RESET_ENVIRONMENTS)
                     AO_REQUEST_BLOCK(eAORT_RESET_RTPCS)
@@ -164,7 +167,7 @@ namespace Audio
         }
         else if (nCount < 0)
         {
-            g_audioLogger.Log(eALT_FATAL, "Deleting Reference Counted Object Twice!");
+            g_audioLogger.Log(eALT_ASSERT, "Deleting Reference Counted Object Twice!");
         }
     }
 } // namespace Audio

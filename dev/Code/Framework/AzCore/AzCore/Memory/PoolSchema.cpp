@@ -587,9 +587,10 @@ PoolAllocation<Allocator>::GarbageCollect(bool isForceFreeAllPages)
 // PoolSchema
 // [9/15/2009]
 //=========================================================================
-PoolSchema::PoolSchema()
+PoolSchema::PoolSchema(const Descriptor& desc)
     : m_impl(NULL)
 {
+    (void)desc;  // ignored here, applied in Create()
 }
 
 //=========================================================================
@@ -632,9 +633,13 @@ bool PoolSchema::Destroy()
 // [9/15/2009]
 //=========================================================================
 PoolSchema::pointer_type
-PoolSchema::Allocate(size_type byteSize, size_type alignment, int flags)
+PoolSchema::Allocate(size_type byteSize, size_type alignment, int flags, const char* name, const char* fileName, int lineNum, unsigned int suppressStackRecord)
 {
     (void)flags;
+    (void)name;
+    (void)fileName;
+    (void)lineNum;
+    (void)suppressStackRecord;
     return m_impl->Allocate(byteSize, alignment);
 }
 
@@ -643,9 +648,38 @@ PoolSchema::Allocate(size_type byteSize, size_type alignment, int flags)
 // [9/15/2009]
 //=========================================================================
 void
-PoolSchema::DeAllocate(pointer_type ptr)
+PoolSchema::DeAllocate(pointer_type ptr, size_type byteSize, size_type alignment)
 {
+    (void)byteSize;
+    (void)alignment;
     m_impl->DeAllocate(ptr);
+}
+
+//=========================================================================
+// Resize
+// [10/14/2018]
+//=========================================================================
+PoolSchema::size_type
+PoolSchema::Resize(pointer_type ptr, size_type newSize)
+{
+    (void)ptr;
+    (void)newSize;
+    return 0;  // unsupported
+}
+
+//=========================================================================
+// ReAllocate
+// [10/14/2018]
+//=========================================================================
+PoolSchema::pointer_type 
+PoolSchema::ReAllocate(pointer_type ptr, size_type newSize, size_type newAlignment)
+{
+    (void)ptr;
+    (void)newSize;
+    (void)newAlignment;
+    AZ_Assert(false, "unsupported");
+
+    return ptr;
 }
 
 //=========================================================================
@@ -665,7 +699,16 @@ PoolSchema::AllocationSize(pointer_type ptr)
 void
 PoolSchema::GarbageCollect()
 {
-    m_impl->GarbageCollect();
+    // External requests for garbage collection may come from any thread, and the
+    // garbage collection operation isn't threadsafe, which can lead to crashes.
+    //
+    // Due to the low memory consumption of this allocator in practice on Dragonfly
+    // (~3kb) it makes sense to not bother with garbage collection and leave it to
+    // occur exclusively in the destruction of the allocator.
+    //
+    // TODO: A better solution needs to be found for integrating back into mainline 
+    // Lumberyard.
+    //m_impl->GarbageCollect();
 }
 
 //=========================================================================
@@ -693,7 +736,7 @@ PoolSchema::Capacity() const
 // [11/17/2010]
 //=========================================================================
 IAllocatorAllocate*
-PoolSchema::GetPageAllocator()
+PoolSchema::GetSubAllocator()
 {
     return m_impl->m_pageAllocator;
 }
@@ -944,9 +987,13 @@ bool ThreadPoolSchema::Destroy()
 // [9/15/2009]
 //=========================================================================
 ThreadPoolSchema::pointer_type
-ThreadPoolSchema::Allocate(size_type byteSize, size_type alignment, int flags)
+ThreadPoolSchema::Allocate(size_type byteSize, size_type alignment, int flags, const char* name, const char* fileName, int lineNum, unsigned int suppressStackRecord)
 {
     (void)flags;
+    (void)name;
+    (void)fileName;
+    (void)lineNum;
+    (void)suppressStackRecord;
     return m_impl->Allocate(byteSize, alignment);
 }
 
@@ -955,9 +1002,38 @@ ThreadPoolSchema::Allocate(size_type byteSize, size_type alignment, int flags)
 // [9/15/2009]
 //=========================================================================
 void
-ThreadPoolSchema::DeAllocate(pointer_type ptr)
+ThreadPoolSchema::DeAllocate(pointer_type ptr, size_type byteSize, size_type alignment)
 {
+    (void)byteSize;
+    (void)alignment;
     m_impl->DeAllocate(ptr);
+}
+
+//=========================================================================
+// Resize
+// [10/14/2018]
+//=========================================================================
+ThreadPoolSchema::size_type
+ThreadPoolSchema::Resize(pointer_type ptr, size_type newSize)
+{
+    (void)ptr;
+    (void)newSize;
+    return 0;  // unsupported
+}
+
+//=========================================================================
+// ReAllocate
+// [10/14/2018]
+//=========================================================================
+ThreadPoolSchema::pointer_type
+ThreadPoolSchema::ReAllocate(pointer_type ptr, size_type newSize, size_type newAlignment)
+{
+    (void)ptr;
+    (void)newSize;
+    (void)newAlignment;
+    AZ_Assert(false, "unsupported");
+    
+    return ptr;
 }
 
 //=========================================================================
@@ -1013,7 +1089,7 @@ ThreadPoolSchema::Capacity() const
 // [11/17/2010]
 //=========================================================================
 IAllocatorAllocate*
-ThreadPoolSchema::GetPageAllocator()
+ThreadPoolSchema::GetSubAllocator()
 {
     return m_impl->m_pageAllocator;
 }

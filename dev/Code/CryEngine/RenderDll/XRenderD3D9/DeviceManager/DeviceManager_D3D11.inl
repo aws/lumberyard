@@ -31,11 +31,17 @@ D3DResource* CDeviceManager::AllocateStagingResource(D3DResource* pForTex, bool 
 {
     D3D11_TEXTURE2D_DESC Desc;
     memset(&Desc, 0, sizeof(Desc));
-
     ((D3DTexture*)pForTex)->GetDesc(&Desc);
-    Desc.Usage          = bUpload ? D3D11_USAGE_DYNAMIC        : D3D11_USAGE_STAGING;
-    Desc.CPUAccessFlags = bUpload ? D3D11_CPU_ACCESS_WRITE     : D3D11_CPU_ACCESS_READ;
-    Desc.BindFlags      = bUpload ? D3D11_BIND_SHADER_RESOURCE : 0;
+
+    // If we're creating download resources or have multiple mips where we'll need to write to one mip at a time,
+    // we'll need a resource that we can read back to the CPU.  We can only use write-only for upload resources
+    // with a single mip level.
+    bool canUseWriteOnly = bUpload && (Desc.MipLevels == 1);
+    
+    Desc.Usage          = canUseWriteOnly ? D3D11_USAGE_DYNAMIC        : D3D11_USAGE_STAGING;
+    Desc.CPUAccessFlags = bUpload         ? D3D11_CPU_ACCESS_WRITE     : D3D11_CPU_ACCESS_READ;
+    Desc.BindFlags      = canUseWriteOnly ? D3D11_BIND_SHADER_RESOURCE : 0;
+
 
 #if defined(AZ_PLATFORM_MAC)
     // For metal when we do a subresource copy we render to the texture so need to set the render target flag
@@ -59,9 +65,9 @@ D3DResource* CDeviceManager::AllocateStagingResource(D3DResource* pForTex, bool 
             memset(&stagingDesc, 0, sizeof(stagingDesc));
 
             pStagingTexture->GetDesc(&stagingDesc);
-            stagingDesc.Usage          = bUpload ? D3D11_USAGE_DYNAMIC        : D3D11_USAGE_STAGING;
-            stagingDesc.CPUAccessFlags = bUpload ? D3D11_CPU_ACCESS_WRITE     : D3D11_CPU_ACCESS_READ;
-            stagingDesc.BindFlags      = bUpload ? D3D11_BIND_SHADER_RESOURCE : 0;
+            stagingDesc.Usage          = canUseWriteOnly ? D3D11_USAGE_DYNAMIC        : D3D11_USAGE_STAGING;
+            stagingDesc.CPUAccessFlags = bUpload         ? D3D11_CPU_ACCESS_WRITE     : D3D11_CPU_ACCESS_READ;
+            stagingDesc.BindFlags      = canUseWriteOnly ? D3D11_BIND_SHADER_RESOURCE : 0;
 
 #if defined(AZ_PLATFORM_MAC)
             // For metal when we do a subresource copy we render to the texture so need to set the render target flag
@@ -132,13 +138,14 @@ void CDeviceTexture::Unbind()
 
 void CDeviceTexture::DownloadToStagingResource(uint32 nSubRes, StagingHook cbTransfer)
 {
+    AZ_Assert(nSubRes < m_numSubResources, "Invalid SubResource ID %d, (should be < %d)", nSubRes, m_numSubResources);
     D3DResource* pStagingResource;
-    if (!(pStagingResource = m_pStagingResource[0]))
+    if (!(pStagingResource = GetCurrDownloadStagingResource()))
     {
         pStagingResource = gcpRendD3D->m_DevMan.AllocateStagingResource(m_pD3DTexture, FALSE);
     }
 
-    assert(pStagingResource);
+    AZ_Assert(pStagingResource, "Null download staging resource");
 
 #if defined(DEVICE_SUPPORTS_D3D11_1)
     gcpRendD3D->GetDeviceContext().CopySubresourceRegion1(pStagingResource, nSubRes, 0, 0, 0, m_pD3DTexture, nSubRes, NULL, D3D11_COPY_NO_OVERWRITE);
@@ -155,7 +162,7 @@ void CDeviceTexture::DownloadToStagingResource(uint32 nSubRes, StagingHook cbTra
         gcpRendD3D->GetDeviceContext().Unmap(pStagingResource, nSubRes);
     }
 
-    if (!(m_pStagingResource[0]))
+    if (!(GetCurrDownloadStagingResource()))
     {
         gcpRendD3D->m_DevMan.ReleaseStagingResource(pStagingResource);
     }
@@ -163,32 +170,41 @@ void CDeviceTexture::DownloadToStagingResource(uint32 nSubRes, StagingHook cbTra
 
 void CDeviceTexture::DownloadToStagingResource(uint32 nSubRes)
 {
-    assert(m_pStagingResource[0]);
+    AZ_Assert(nSubRes < m_numSubResources, "Invalid SubResource ID %d, (should be < %d)", nSubRes, m_numSubResources);
+    AZ_Assert(GetCurrDownloadStagingResource(), "Null download staging resource");
 
 #if defined(DEVICE_SUPPORTS_D3D11_1)
-    gcpRendD3D->GetDeviceContext().CopySubresourceRegion1(m_pStagingResource[0], nSubRes, 0, 0, 0, m_pD3DTexture, nSubRes, NULL, D3D11_COPY_NO_OVERWRITE);
+    gcpRendD3D->GetDeviceContext().CopySubresourceRegion1(GetCurrDownloadStagingResource(), nSubRes, 0, 0, 0, m_pD3DTexture, nSubRes, NULL, D3D11_COPY_NO_OVERWRITE);
 #else
-    gcpRendD3D->GetDeviceContext().CopySubresourceRegion (m_pStagingResource[0], nSubRes, 0, 0, 0, m_pD3DTexture, nSubRes, NULL);
+    gcpRendD3D->GetDeviceContext().CopySubresourceRegion(GetCurrDownloadStagingResource(), nSubRes, 0, 0, 0, m_pD3DTexture, nSubRes, NULL);
 #endif
+}
+
+void CDeviceTexture::DownloadToStagingResource()
+{
+    AZ_Assert(GetCurrDownloadStagingResource(), "Null download staging resource");
+    gcpRendD3D->GetDeviceContext().CopyResource(GetCurrDownloadStagingResource(), Get2DTexture());
 }
 
 void CDeviceTexture::UploadFromStagingResource(const uint32 nSubRes, StagingHook cbTransfer)
 {
+    AZ_Assert(nSubRes < m_numSubResources, "Invalid SubResource ID %d, (should be < %d)", nSubRes, m_numSubResources);
     D3DResource* pStagingResource;
-    if (!(pStagingResource = m_pStagingResource[1]))
+    if (!(pStagingResource = GetCurrUploadStagingResource()))
     {
         pStagingResource = gcpRendD3D->m_DevMan.AllocateStagingResource(m_pD3DTexture, TRUE);
     }
 
-    assert(pStagingResource);
+    AZ_Assert(pStagingResource, "Null upload staging resource");
 
+    // If we have more than one mip, we'll need to do partial writes, so we can't just discard the previous GPU data.
     D3D11_MAPPED_SUBRESOURCE lrct;
-    HRESULT hr = gcpRendD3D->GetDeviceContext().Map(pStagingResource, nSubRes, D3D11_MAP_WRITE_DISCARD, 0, &lrct);
+    HRESULT hr = gcpRendD3D->GetDeviceContext().Map(pStagingResource, nSubRes, (m_numSubResources > 1) ? D3D11_MAP_WRITE : D3D11_MAP_WRITE_DISCARD, 0, &lrct);
 
     if (S_OK == hr)
     {
         const bool update = cbTransfer(lrct.pData, lrct.RowPitch, lrct.DepthPitch);
-        gcpRendD3D->GetDeviceContext().Unmap(pStagingResource, 0);
+        gcpRendD3D->GetDeviceContext().Unmap(pStagingResource, nSubRes);
         if (update)
         {
 #if defined(DEVICE_SUPPORTS_D3D11_1)
@@ -199,7 +215,7 @@ void CDeviceTexture::UploadFromStagingResource(const uint32 nSubRes, StagingHook
         }
     }
 
-    if (!(m_pStagingResource[1]))
+    if (!GetCurrUploadStagingResource())
     {
         gcpRendD3D->m_DevMan.ReleaseStagingResource(pStagingResource);
     }
@@ -207,26 +223,36 @@ void CDeviceTexture::UploadFromStagingResource(const uint32 nSubRes, StagingHook
 
 void CDeviceTexture::UploadFromStagingResource(const uint32 nSubRes)
 {
-    assert(m_pStagingResource[1]);
+    AZ_Assert(nSubRes < m_numSubResources, "Invalid SubResource ID %d, (should be < %d)", nSubRes, m_numSubResources);
+    AZ_Assert(GetCurrUploadStagingResource(), "Null upload staging resource");
 
 #if defined(DEVICE_SUPPORTS_D3D11_1)
-    gcpRendD3D->GetDeviceContext().CopySubresourceRegion1(m_pD3DTexture, nSubRes, 0, 0, 0, m_pStagingResource[1], nSubRes, NULL, D3D11_COPY_NO_OVERWRITE);
+    gcpRendD3D->GetDeviceContext().CopySubresourceRegion1(m_pD3DTexture, nSubRes, 0, 0, 0, GetCurrUploadStagingResource(), nSubRes, NULL, D3D11_COPY_NO_OVERWRITE);
 #else
-    gcpRendD3D->GetDeviceContext().CopySubresourceRegion (m_pD3DTexture, nSubRes, 0, 0, 0, m_pStagingResource[1], nSubRes, NULL);
+    gcpRendD3D->GetDeviceContext().CopySubresourceRegion(m_pD3DTexture, nSubRes, 0, 0, 0, GetCurrUploadStagingResource(), nSubRes, NULL);
 #endif
+}
+
+void CDeviceTexture::UploadFromStagingResource()
+{
+    AZ_Assert(GetCurrUploadStagingResource(), "Null upload staging resource");
+    gcpRendD3D->GetDeviceContext().CopyResource(Get2DTexture(), GetCurrUploadStagingResource());
 }
 
 void CDeviceTexture::AccessCurrStagingResource(uint32 nSubRes, bool forUpload, StagingHook cbTransfer)
 {
+    AZ_Assert(nSubRes < m_numSubResources, "Invalid SubResource ID %d, (should be < %d)", nSubRes, m_numSubResources);
+
     D3D11_MAPPED_SUBRESOURCE lrct;
-    HRESULT hr = gcpRendD3D->GetDeviceContext().Map(m_pStagingResource[forUpload], nSubRes, forUpload ? D3D11_MAP_WRITE : D3D11_MAP_READ, 0, &lrct);
+    HRESULT hr = gcpRendD3D->GetDeviceContext().Map(GetCurrStagingResource(forUpload), nSubRes, forUpload ? D3D11_MAP_WRITE : D3D11_MAP_READ, D3D11_MAP_FLAG_DO_NOT_WAIT, &lrct);
 
     if (S_OK == hr)
     {
         const bool update = cbTransfer(lrct.pData, lrct.RowPitch, lrct.DepthPitch);
-        gcpRendD3D->GetDeviceContext().Unmap(m_pStagingResource[forUpload], nSubRes);
+        gcpRendD3D->GetDeviceContext().Unmap(GetCurrStagingResource(forUpload), nSubRes);
     }
 }
+
 
 //=============================================================================
 
@@ -297,6 +323,8 @@ HRESULT CDeviceManager::Create2DTexture(const string& textureName, uint32 nWidth
         #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DeviceManager_D3D11_inl_salem.inl"
     #endif
 #endif
 
@@ -317,6 +345,8 @@ HRESULT CDeviceManager::Create2DTexture(const string& textureName, uint32 nWidth
         #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DeviceManager_D3D11_inl_salem.inl"
     #endif
 #endif
         }
@@ -328,6 +358,8 @@ HRESULT CDeviceManager::Create2DTexture(const string& textureName, uint32 nWidth
         #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DeviceManager_D3D11_inl_salem.inl"
     #endif
 #endif
 
@@ -341,6 +373,7 @@ HRESULT CDeviceManager::Create2DTexture(const string& textureName, uint32 nWidth
     if (SUCCEEDED(hr) && pD3DTex)
     {
         pDeviceTexture->m_pD3DTexture = pD3DTex;
+        pDeviceTexture->m_numSubResources = nMips * nArraySize;
         if (!pDeviceTexture->m_nBaseAllocatedSize)
         {
             pDeviceTexture->m_nBaseAllocatedSize = CDeviceTexture::TextureDataSize(nWidth, nHeight, 1, nMips, 1, CTexture::TexFormatFromDeviceFormat(Format));
@@ -353,11 +386,14 @@ HRESULT CDeviceManager::Create2DTexture(const string& textureName, uint32 nWidth
         {
             if (nUsage & USAGE_CPU_READ)
             {
-                pDeviceTexture->m_pStagingResource[0] = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, FALSE);
+                pDeviceTexture->m_pStagingResourceDownload = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, FALSE);
             }
             if (nUsage & USAGE_CPU_WRITE)
             {
-                pDeviceTexture->m_pStagingResource[1] = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, TRUE);
+                for (int i = 0; i < CDeviceTexture::NUM_UPLOAD_STAGING_RES; i++)
+                {
+                    pDeviceTexture->m_pStagingResourceUpload[i] = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, TRUE);
+                }
             }
         }
     }
@@ -438,6 +474,8 @@ HRESULT CDeviceManager::CreateCubeTexture(const string& textureName, uint32 nSiz
         #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DeviceManager_D3D11_inl_salem.inl"
     #endif
 #endif
             }
@@ -450,6 +488,8 @@ HRESULT CDeviceManager::CreateCubeTexture(const string& textureName, uint32 nSiz
         #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DeviceManager_D3D11_inl_salem.inl"
     #endif
 #endif
 
@@ -464,6 +504,7 @@ HRESULT CDeviceManager::CreateCubeTexture(const string& textureName, uint32 nSiz
     {
         pDeviceTexture->m_pD3DTexture = pD3DTex;
         pDeviceTexture->m_bCube = true;
+        pDeviceTexture->m_numSubResources = nMips * nArraySize;
         if (!pDeviceTexture->m_nBaseAllocatedSize)
         {
             pDeviceTexture->m_nBaseAllocatedSize = CDeviceTexture::TextureDataSize(nSize, nSize, 1, nMips, 1, CTexture::TexFormatFromDeviceFormat(Format)) * 6;
@@ -476,11 +517,14 @@ HRESULT CDeviceManager::CreateCubeTexture(const string& textureName, uint32 nSiz
         {
             if (nUsage & USAGE_CPU_READ)
             {
-                pDeviceTexture->m_pStagingResource[0] = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, FALSE);
+                pDeviceTexture->m_pStagingResourceDownload = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, FALSE);
             }
             if (nUsage & USAGE_CPU_WRITE)
             {
-                pDeviceTexture->m_pStagingResource[1] = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, TRUE);
+                for (int i = 0; i < CDeviceTexture::NUM_UPLOAD_STAGING_RES; i++)
+                {
+                    pDeviceTexture->m_pStagingResourceUpload[i] = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, TRUE);
+                }
             }
         }
     }
@@ -550,6 +594,8 @@ HRESULT CDeviceManager::CreateVolumeTexture(const string& textureName, uint32 nW
         #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DeviceManager_D3D11_inl_salem.inl"
     #endif
 #endif
         }
@@ -559,6 +605,7 @@ HRESULT CDeviceManager::CreateVolumeTexture(const string& textureName, uint32 nW
     if (SUCCEEDED(hr) && pD3DTex)
     {
         pDeviceTexture->m_pD3DTexture = pD3DTex;
+        pDeviceTexture->m_numSubResources = nMips;
 
         if (!pDeviceTexture->m_nBaseAllocatedSize)
         {
@@ -572,11 +619,14 @@ HRESULT CDeviceManager::CreateVolumeTexture(const string& textureName, uint32 nW
         {
             if (nUsage & USAGE_CPU_READ)
             {
-                pDeviceTexture->m_pStagingResource[0] = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, FALSE);
+                pDeviceTexture->m_pStagingResourceDownload = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, FALSE);
             }
             if (nUsage & USAGE_CPU_WRITE)
             {
-                pDeviceTexture->m_pStagingResource[1] = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, TRUE);
+                for (int i = 0; i < CDeviceTexture::NUM_UPLOAD_STAGING_RES; i++)
+                {
+                    pDeviceTexture->m_pStagingResourceUpload[i] = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, TRUE);
+                }
             }
         }
     }
@@ -613,6 +663,8 @@ HRESULT CDeviceManager::CreateBuffer(
         #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DeviceManager_D3D11_inl_salem.inl"
     #endif
 #endif
 
@@ -625,7 +677,7 @@ HRESULT CDeviceManager::CreateBuffer(
 #if defined(CRY_USE_METAL)
     nD3DUsage = (nUsage & USAGE_TRANSIENT) ? D3D11_USAGE_TRANSIENT : nD3DUsage;
 #if BUFFER_USE_STAGED_UPDATES == 0
-    //  Igor: direct access usage is allowed only if staged updates logic is off.
+    //  direct access usage is allowed only if staged updates logic is off.
     CRY_ASSERT(!(nUsage & USAGE_DIRECT_ACCESS) || !(nUsage & USAGE_STAGING));
     nD3DUsage = (nUsage & USAGE_DIRECT_ACCESS) ? D3D11_USAGE_DIRECT_ACCESS : nD3DUsage;
     
@@ -724,7 +776,6 @@ HRESULT CDeviceManager::CreateBuffer(
 
 void CDeviceManager::ExtractBasePointer(D3DBuffer* buffer, uint8*& base_ptr)
 {
-    //  Confetti BEGIN: Igor Lobanchikov
 #if defined(CRY_USE_METAL) && (BUFFER_USE_STAGED_UPDATES == 0)
     base_ptr = (uint8*)DXMETALGetBufferStorage(buffer);
 #else
@@ -735,11 +786,12 @@ void CDeviceManager::ExtractBasePointer(D3DBuffer* buffer, uint8*& base_ptr)
         #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DeviceManager_D3D11_inl_salem.inl"
     #endif
 #       endif
 #   else
     base_ptr = NULL;
 #   endif
 #endif
-    //  Confetti End: Igor Lobanchikov
 }

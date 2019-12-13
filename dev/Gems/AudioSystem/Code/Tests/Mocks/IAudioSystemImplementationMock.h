@@ -12,7 +12,8 @@
 
 #pragma once
 
-#include <Common/IAudioSystemImplementation.h>
+#include <IAudioSystemImplementation.h>
+#include <AzTest/AzTest.h>
 
 #pragma warning(push)
 #pragma warning(disable:4373)
@@ -20,7 +21,7 @@
 namespace Audio
 {
     struct AudioSystemImplementationMock
-        : public AudioSystemImplementationComponent
+        : public AudioSystemImplementation
     {
     public:
         MOCK_METHOD1(Update, void(const float));
@@ -85,27 +86,27 @@ namespace Audio
 
         MOCK_METHOD1(UnregisterInMemoryFile, EAudioRequestStatus(SATLAudioFileEntryInfo* const));
 
-        MOCK_METHOD2(ParseAudioFileEntry, EAudioRequestStatus(const XmlNodeRef, SATLAudioFileEntryInfo* const));
+        MOCK_METHOD2(ParseAudioFileEntry, EAudioRequestStatus(const AZ::rapidxml::xml_node<char>*, SATLAudioFileEntryInfo* const));
 
         MOCK_METHOD1(DeleteAudioFileEntryData, void(IATLAudioFileEntryData* const));
 
         MOCK_METHOD1(GetAudioFileLocation, const char* const(SATLAudioFileEntryInfo* const));
 
-        MOCK_METHOD1(NewAudioTriggerImplData, const IATLTriggerImplData*(const XmlNodeRef));
+        MOCK_METHOD1(NewAudioTriggerImplData, IATLTriggerImplData*(const AZ::rapidxml::xml_node<char>*));
 
-        MOCK_METHOD1(DeleteAudioTriggerImplData, void(const IATLTriggerImplData* const));
+        MOCK_METHOD1(DeleteAudioTriggerImplData, void(IATLTriggerImplData* const));
 
-        MOCK_METHOD1(NewAudioRtpcImplData, const IATLRtpcImplData*(const XmlNodeRef));
+        MOCK_METHOD1(NewAudioRtpcImplData, IATLRtpcImplData*(const AZ::rapidxml::xml_node<char>*));
 
-        MOCK_METHOD1(DeleteAudioRtpcImplData, void(const IATLRtpcImplData* const));
+        MOCK_METHOD1(DeleteAudioRtpcImplData, void(IATLRtpcImplData* const));
 
-        MOCK_METHOD1(NewAudioSwitchStateImplData, const IATLSwitchStateImplData*(const XmlNodeRef));
+        MOCK_METHOD1(NewAudioSwitchStateImplData, IATLSwitchStateImplData*(const AZ::rapidxml::xml_node<char>*));
 
-        MOCK_METHOD1(DeleteAudioSwitchStateImplData, void(const IATLSwitchStateImplData* const));
+        MOCK_METHOD1(DeleteAudioSwitchStateImplData, void(IATLSwitchStateImplData* const));
 
-        MOCK_METHOD1(NewAudioEnvironmentImplData, const IATLEnvironmentImplData*(const XmlNodeRef));
+        MOCK_METHOD1(NewAudioEnvironmentImplData, IATLEnvironmentImplData*(const AZ::rapidxml::xml_node<char>*));
 
-        MOCK_METHOD1(DeleteAudioEnvironmentImplData, void(const IATLEnvironmentImplData* const));
+        MOCK_METHOD1(DeleteAudioEnvironmentImplData, void(IATLEnvironmentImplData* const));
 
         MOCK_METHOD1(NewGlobalAudioObjectData, IATLAudioObjectData*(const TAudioObjectID));
 

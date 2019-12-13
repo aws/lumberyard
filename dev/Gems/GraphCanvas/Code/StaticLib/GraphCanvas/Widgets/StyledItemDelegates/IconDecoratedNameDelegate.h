@@ -11,9 +11,12 @@
 */
 #pragma once
 
+#include <AzCore/PlatformDef.h>
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option")
 #include <QApplication>
 #include <QPainter>
 #include <QStyledItemDelegate>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Memory/SystemAllocator.h>
 

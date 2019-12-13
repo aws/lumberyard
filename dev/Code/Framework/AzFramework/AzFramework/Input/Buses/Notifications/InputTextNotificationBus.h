@@ -61,7 +61,4 @@ namespace AzFramework
         }
     };
     using InputTextNotificationBus = AZ::EBus<InputTextNotifications>;
-
-    AZ_DEPRECATED(typedef InputTextNotificationBus InputTextEventNotificationBus, "Renamed to InputTextNotificationBus");
-    AZ_DEPRECATED(typedef InputTextNotifications InputTextEventNotifications, "Renamed to InputTextNotifications");
 } // namespace AzFramework

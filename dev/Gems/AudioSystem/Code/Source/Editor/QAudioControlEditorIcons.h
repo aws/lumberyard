@@ -14,7 +14,7 @@
 #pragma once
 
 #include <QIcon>
-#include "AudioControl.h"
+#include <AudioControl.h>
 
 namespace AudioControls
 {
@@ -24,33 +24,33 @@ namespace AudioControls
         switch (type)
         {
         case AudioControls::eACET_TRIGGER:
-            return QIcon(":/AudioControlsEditor/Icons/Trigger_Icon.png");
+            return QIcon(":/Editor/Icons/Trigger_Icon.png");
         case AudioControls::eACET_RTPC:
-            return QIcon(":/AudioControlsEditor/Icons/RTPC_Icon.png");
+            return QIcon(":/Editor/Icons/RTPC_Icon.png");
         case AudioControls::eACET_SWITCH:
-            return QIcon(":/AudioControlsEditor/Icons/Switch_Icon.png");
+            return QIcon(":/Editor/Icons/Switch_Icon.png");
         case AudioControls::eACET_SWITCH_STATE:
-            return QIcon(":/AudioControlsEditor/Icons/Property_Icon.png");
+            return QIcon(":/Editor/Icons/Property_Icon.png");
         case AudioControls::eACET_ENVIRONMENT:
-            return QIcon(":/AudioControlsEditor/Icons/Environment_Icon.png");
+            return QIcon(":/Editor/Icons/Environment_Icon.png");
         case AudioControls::eACET_PRELOAD:
-            return QIcon(":/AudioControlsEditor/Icons/Bank_Icon.png");
+            return QIcon(":/Editor/Icons/Bank_Icon.png");
         default:
             // should make a "default"/empty icon...
-            return QIcon(":/AudioControlsEditor/Icons/RTPC_Icon.png");
+            return QIcon(":/Editor/Icons/RTPC_Icon.png");
         }
     }
 
     //-------------------------------------------------------------------------------------------//
     inline QIcon GetFolderIcon()
     {
-        return QIcon(":/AudioControlsEditor/Icons/Folder_Icon.png");
+        return QIcon(":/Editor/Icons/Folder_Icon.png");
     }
 
     //-------------------------------------------------------------------------------------------//
     inline QIcon GetSoundBankIcon()
     {
-        return QIcon(":/AudioControlsEditor/Icons/Preload_Icon.png");
+        return QIcon(":/Editor/Icons/Preload_Icon.png");
     }
 
     //-------------------------------------------------------------------------------------------//
@@ -61,17 +61,17 @@ namespace AudioControls
         switch (group)
         {
         case 0:
-            return QIcon(":/AudioControlsEditor/Icons/Config_Red_Icon.png");
+            return QIcon(":/Editor/Icons/Config_Red_Icon.png");
         case 1:
-            return QIcon(":/AudioControlsEditor/Icons/Config_Blue_Icon.png");
+            return QIcon(":/Editor/Icons/Config_Blue_Icon.png");
         case 2:
-            return QIcon(":/AudioControlsEditor/Icons/Config_Green_Icon.png");
+            return QIcon(":/Editor/Icons/Config_Green_Icon.png");
         case 3:
-            return QIcon(":/AudioControlsEditor/Icons/Config_Purple_Icon.png");
+            return QIcon(":/Editor/Icons/Config_Purple_Icon.png");
         case 4:
-            return QIcon(":/AudioControlsEditor/Icons/Config_Yellow_Icon.png");
+            return QIcon(":/Editor/Icons/Config_Yellow_Icon.png");
         default:
-            return QIcon(":/AudioControlsEditor/Icons/Config_Red_Icon.png");
+            return QIcon(":/Editor/Icons/Config_Red_Icon.png");
         }
     }
 } // namespace AudioControls

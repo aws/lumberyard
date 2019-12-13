@@ -19,7 +19,6 @@ namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeVector3DecomposeNode, AnimGraphAllocator, 0)
 
-
     BlendTreeVector3DecomposeNode::BlendTreeVector3DecomposeNode()
         : AnimGraphNode()
     {
@@ -34,11 +33,9 @@ namespace EMotionFX
         SetupOutputPort("z", OUTPUTPORT_Z, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_Z);
     }
 
-    
     BlendTreeVector3DecomposeNode::~BlendTreeVector3DecomposeNode()
     {
     }
-
 
     bool BlendTreeVector3DecomposeNode::InitAfterLoading(AnimGraph* animGraph)
     {
@@ -53,37 +50,40 @@ namespace EMotionFX
         return true;
     }
 
-
-    // get the palette name
     const char* BlendTreeVector3DecomposeNode::GetPaletteName() const
     {
         return "Vector3 Decompose";
     }
 
-
-    // get the category
     AnimGraphObject::ECategory BlendTreeVector3DecomposeNode::GetPaletteCategory() const
     {
         return AnimGraphObject::CATEGORY_MATH;
     }
 
-
-    // the update function
     void BlendTreeVector3DecomposeNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        // update all inputs
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
+        UpdateOutputPortValues(animGraphInstance);
+    }
 
+    void BlendTreeVector3DecomposeNode::Output(AnimGraphInstance* animGraphInstance)
+    {
+        OutputAllIncomingNodes(animGraphInstance);
+        UpdateOutputPortValues(animGraphInstance);
+    }
+
+    void BlendTreeVector3DecomposeNode::UpdateOutputPortValues(AnimGraphInstance* animGraphInstance)
+    {
         AZ::Vector3 value;
         if (!TryGetInputVector3(animGraphInstance, INPUTPORT_VECTOR, value))
         {
             return;
         }
+
         GetOutputFloat(animGraphInstance, OUTPUTPORT_X)->SetValue(value.GetX());
         GetOutputFloat(animGraphInstance, OUTPUTPORT_Y)->SetValue(value.GetY());
         GetOutputFloat(animGraphInstance, OUTPUTPORT_Z)->SetValue(value.GetZ());
     }
-
 
     void BlendTreeVector3DecomposeNode::Reflect(AZ::ReflectContext* context)
     {

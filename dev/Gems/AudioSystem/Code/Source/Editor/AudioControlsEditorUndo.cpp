@@ -11,11 +11,10 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "AudioControlsEditorUndo.h"
-#include "ATLControlsModel.h"
-#include "AudioControlsEditorPlugin.h"
-#include "QtUtil.h"
+#include <AudioControlsEditorUndo.h>
+
+#include <ATLControlsModel.h>
+#include <AudioControlsEditorPlugin.h>
 
 #include <QStandardItemModel>
 #include <QList>
@@ -124,7 +123,7 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    CUndoControlRemove::CUndoControlRemove(std::shared_ptr<CATLControl>& pControl)
+    CUndoControlRemove::CUndoControlRemove(AZStd::shared_ptr<CATLControl>& pControl)
     {
         CUndoSuspend suspendUndo;
         m_pStoredControl = pControl;
@@ -171,7 +170,7 @@ namespace AudioControls
             QStandardItem* pParent = GetParent(pTree, m_path);
             if (pParent && m_path.size() > 0)
             {
-                pTree->CreateFolder(pParent, QtUtil::ToString(m_sName), m_path[0]);
+                pTree->CreateFolder(pParent, m_sName.toUtf8().data(), m_path[0]);
             }
         }
     }
@@ -268,11 +267,11 @@ namespace AudioControls
             CATLControl* pControl = pModel->GetControlByID(m_id);
             if (pControl)
             {
-                string name = pControl->GetName();
-                string scope = pControl->GetScope();
+                AZStd::string name = pControl->GetName();
+                AZStd::string scope = pControl->GetScope();
                 bool bAutoLoad = pControl->IsAutoLoad();
-                std::map<string, int> groupPerPlatform = pControl->m_groupPerPlatform;
-                std::vector<TConnectionPtr> connectedControls = pControl->m_connectedControls;
+                AZStd::map<AZStd::string, int> groupPerPlatform = pControl->m_groupPerPlatform;
+                AZStd::vector<TConnectionPtr> connectedControls = pControl->m_connectedControls;
 
                 pControl->SetName(m_name);
                 pControl->SetScope(m_scope);

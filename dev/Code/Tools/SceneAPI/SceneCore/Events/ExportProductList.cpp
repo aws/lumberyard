@@ -43,6 +43,8 @@ namespace AZ
                 m_id = rhs.m_id;
                 m_assetType = rhs.m_assetType;
                 m_lod = rhs.m_lod;
+                m_legacyPathDependencies = rhs.m_legacyPathDependencies;
+                m_productDependencies = rhs.m_productDependencies;
                 return *this;
             }
 
@@ -66,6 +68,19 @@ namespace AZ
             {
                 return m_products;
             }
+
+            void ExportProductList::AddDependencyToProduct(const AZStd::string& productName, ExportProduct& dependency)
+            {
+                for (ExportProduct& product : m_products)
+                {
+                    if (product.m_filename == productName)
+                    {
+                        product.m_productDependencies.push_back(dependency);
+                        break;
+                    }
+                }
+            }
+
         } // namespace Events
     } // namespace SceneAPI
 } // namespace AZ

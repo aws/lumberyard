@@ -98,7 +98,7 @@ namespace ApplicationDescriptors
         : public IFlavorBase
     {
     public:
-        AZ_TYPE_INFO(IFlavor, "{97F600E1-1208-4C9D-B7DB-9C043340D8CF}", IFlavorBase);
+        AZ_TYPE_INFO_LEGACY(IFlavor, "{97F600E1-1208-4C9D-B7DB-9C043340D8CF}", IFlavorBase);
         ~IFlavor() override = default;
 
         /// The Application Descriptor used to initialize allocators on startup
@@ -133,7 +133,7 @@ namespace ApplicationDescriptors
         : public IFlavorBase
     {
     public:
-        AZ_TYPE_INFO(IFlavorXml, "{FE173F5C-6908-4192-BA5D-455E05BA9B4D}", IFlavorBase);
+        AZ_TYPE_INFO_LEGACY(IFlavorXml, "{FE173F5C-6908-4192-BA5D-455E05BA9B4D}", IFlavorBase);
 
         virtual const AZ::rapidxml::xml_document<char>* GetXmlDocument() const = 0;
         virtual AZ::rapidxml::xml_document<char>* GetXmlDocument() = 0;

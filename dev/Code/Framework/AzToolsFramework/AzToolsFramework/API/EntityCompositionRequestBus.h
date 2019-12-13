@@ -77,13 +77,15 @@ namespace AzToolsFramework
         /*!
         * Add the specified existing components to the specified entity.
         *
-        * \param entity The AZ::Entity* to add the existing components to, with full editor-level checking with pending component support
+        * \param entityId The AZ::EntityId to add the existing components to, with full editor-level checking with pending component support
         * \param componentsToAdd A list of AZ::Component* containing existing components to add. (Note: These components must not already be tied to another entity!)
         *
         * \return  Returns a successful outcome if components were added to entities.
         *          If the operation could not be completed then the failed
         *          outcome contains a string describing what went wrong.
         */
+        virtual AddExistingComponentsOutcome AddExistingComponentsToEntityById(const AZ::EntityId& entityId, const AZStd::vector<AZ::Component*>& componentsToAdd) = 0;
+        //! LUMBERYARD_DEPRECATED(LY-103316)
         virtual AddExistingComponentsOutcome AddExistingComponentsToEntity(AZ::Entity* entity, const AZStd::vector<AZ::Component*>& componentsToAdd) = 0;
 
         // Removing a component can only cause the following to occur:

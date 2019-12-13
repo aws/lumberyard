@@ -775,7 +775,7 @@ const char* CShaderMan::mfTemplateTexIdToName(int Id)
     return "Unknown";
 }
 
-STexAnim* CShaderMan::mfReadTexSequence(const char* na, int Flags, bool bFindOnly)
+CTexAnim* CShaderMan::mfReadTexSequence(const char* na, int Flags, bool bFindOnly)
 {
     char prefix[_MAX_PATH];
     char postfix[_MAX_PATH];
@@ -893,7 +893,7 @@ STexAnim* CShaderMan::mfReadTexSequence(const char* na, int Flags, bool bFindOnl
     cry_strcpy(frm, "%s%.");
     cry_strcat(frm, frd);
     cry_strcat(frm, "d%s%s");
-    STexAnim* ta = NULL;
+    CTexAnim* ta = NULL;
     for (i = 0; i < nums; i++)
     {
         sprintf_s(nam, frm, prefix, startn + i, postfix, ext);
@@ -908,7 +908,7 @@ STexAnim* CShaderMan::mfReadTexSequence(const char* na, int Flags, bool bFindOnl
         }
         if (!ta)
         {
-            ta = new STexAnim;
+            ta = new CTexAnim;
             ta->m_bLoop = true;
             ta->m_Time = fSpeed;
         }
@@ -934,7 +934,7 @@ int CShaderMan::mfReadTexSequence(STexSamplerRT *smp, const char *na, int Flags,
         return 0;
     }
 
-    STexAnim* ta = mfReadTexSequence(na, Flags, bFindOnly);
+    CTexAnim* ta = mfReadTexSequence(na, Flags, bFindOnly);
     if (ta)
     {
         smp->m_pAnimInfo = ta;

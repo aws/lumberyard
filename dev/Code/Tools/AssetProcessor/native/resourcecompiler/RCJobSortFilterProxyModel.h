@@ -12,6 +12,7 @@
 #pragma once
 
 #include <QSortFilterProxyModel>
+#include <AzCore/base.h>
 
 namespace AzQtComponents
 {
@@ -29,6 +30,25 @@ namespace AzToolsFramework
 
 namespace AssetProcessor
 {
+    struct CustomJobStatusFilter
+    {
+        CustomJobStatusFilter() = default;
+        CustomJobStatusFilter(bool completeWithWarnings)
+            : m_completedWithWarnings(completeWithWarnings)
+        {
+
+        }
+
+        bool m_completedWithWarnings = false;
+    };
+
+    struct JobStatusInfo
+    {
+        AzToolsFramework::AssetSystem::JobStatus m_status;
+        AZ::u32 m_warningCount;
+        AZ::u32 m_errorCount;
+    };
+
     class JobSortFilterProxyModel
         : public QSortFilterProxyModel
     {
@@ -40,9 +60,13 @@ namespace AssetProcessor
 
     protected:
         bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
+        bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
+
     private:
         QList<AzToolsFramework::AssetSystem::JobStatus> m_activeTypeFilters = {};
+        bool m_completedWithWarningsFilter = false;
     };
 } // namespace AssetProcessor
 
-
+Q_DECLARE_METATYPE(AssetProcessor::CustomJobStatusFilter);
+Q_DECLARE_METATYPE(AssetProcessor::JobStatusInfo);

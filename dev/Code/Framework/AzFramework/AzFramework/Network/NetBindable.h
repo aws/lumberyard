@@ -24,6 +24,18 @@
 #include <GridMate/Replica/DataSet.h>
 #include <GridMate/Replica/RemoteProcedureCall.h>
 
+/*
+ * Including common GridMate marshallers.
+ * Otherwise, users of NetBindable/NetworkContext have to find and include them themselves.
+ */
+#include <AzFramework/Network/EntityIdMarshaler.h>
+#include <GridMate/Serialize/MathMarshal.h>
+#include <GridMate/Serialize/CompressionMarshal.h>
+#include <GridMate/Serialize/ContainerMarshal.h>
+#include <GridMate/Serialize/DataMarshal.h>
+#include <GridMate/Serialize/UtilityMarshal.h>
+#include <GridMate/Serialize/UuidMarshal.h>
+
 namespace AZ
 {
     class ReflectContext;
@@ -45,11 +57,34 @@ namespace AzFramework
     using GridMate::RpcContext;
     using GridMate::RpcDefaultTraits;
 
+    enum class NetworkContextBindMode
+    {
+        Authoritative,
+        NonAuthoritative
+    };
+
     /**
     * Components that want to be synchronized over the network should implement NetBindable.
     * The NetBindable interface is obtained via AZ_RTTI so components need to make sure to
     * declare NetBindable as a base class in their AZ_RTTI declaration (or AZ_COMPONENT declaration),
     * as well as to declare both AZ::Component and NetBindable as base classes in the reflection.
+    *
+    * For example, here is how to mark a component for network replication in its class declaration:
+    *
+    *    class TestFieldComponent
+    *       : public AZ::Component
+    *       , public AzFramework::NetBindable
+    *    {
+    *    public:
+    *        AZ_COMPONENT(TestFieldComponent, "{DD02A926-F6B3-4820-9587-62EED9EEBB3F}", NetBindable);
+    *
+    *        static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
+    *        {
+    *            required.push_back(AZ_CRC("ReplicaChunkService"));
+    *        }
+    *
+    * Note, you should declare a dependency on NetBindingComponent as it is done above with "ReplicaChunkService."
+    * NetBindingComponent is required for an entity to be considered for network replication and replicate your NetBindable-components.
     */
     class NetBindable
         : public GridMate::ReplicaChunkInterface
@@ -58,19 +93,19 @@ namespace AzFramework
         AZ_RTTI(NetBindable, "{80206665-D429-4703-B42E-94434F82F381}");
 
         NetBindable();
-        virtual ~NetBindable() {}
+        virtual ~NetBindable();
 
-        void NetInit();        
+        void NetInit();
 
         //! Called during network binding on the master. The default implementation will use the
         //! NetworkContext to create a chunk. User implementations should create and return a new binding.
         virtual GridMate::ReplicaChunkPtr GetNetworkBinding();
 
         //! Called during network binding on proxies.
-        virtual void SetNetworkBinding(GridMate::ReplicaChunkPtr chunk) = 0;
+        virtual void SetNetworkBinding(GridMate::ReplicaChunkPtr chunk);
 
-        //! Called when network is unbound. Implementations should release their references to the binding.
-        virtual void UnbindFromNetwork() = 0;
+        //! Called when network is unbound. Implementations should release their references to the binding, if they held a reference.
+        virtual void UnbindFromNetwork();
 
         static void Reflect(AZ::ReflectContext* reflection);
 
@@ -88,42 +123,95 @@ namespace AzFramework
         inline void SetSyncEnabled(bool enabled) { m_isSyncEnabled = enabled; }
     protected:
         bool m_isSyncEnabled;
+        GridMate::ReplicaChunkPtr m_chunk = nullptr;
     };
 
     class NetBindableFieldBase
     {
     public:
         virtual ~NetBindableFieldBase() = default;
-        virtual void Bind(DataSetBase* dataSet) = 0;
+        virtual void Bind(DataSetBase* dataSet, NetworkContextBindMode mode) = 0;
     };
 
-    ///////////////////////////////////////////////////////////////////////////
-    /// NetBindable::Field should be used for any field in a NetBindable that you want
-    /// to be able to replicate
-    ///////////////////////////////////////////////////////////////////////////
+    /**
+     * \brief NetBindable provides a simplified network interface to mark a member variable inside AZ::Component
+     * as a network field that will be replicated by GridMate.
+     *
+     * \tparam DataType data type of the field, can be either a common C++ type or a custom type
+     * \tparam MarshalerType optional, marshaler type that provides custom marshal and unmarshal logic, i.e. how to write @DataType to the network and back, see @GridMate::Marshaler
+     * \tparam ThrottlerType optional, throttler provides the ability to detect if a value is to be considered changed significantly enough for GridMate to replicate its state, see @GridMate::BasicThrottle
+     *
+     * Example:
+     *
+     *  class TestFieldComponent : public AZ::Component , public AzFramework::NetBindable
+     *  {
+     *  public:
+     *      Field<int> m_testInt;
+     *
+     * And it must be reflected to SerializeContext _and_ NetworkContext:
+     *
+     *   void TestFieldComponent::Reflect(AZ::ReflectContext* context)
+     *   {
+     *       if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
+     *       {
+     *           serialize->Class<TestFieldComponent, AZ::Component, AzFramework::NetBindable>()
+     *               ->Field("Test Int", &TestFieldComponent::m_testInt)
+     *               ->Version(1);
+     *       }
+     *
+     *       if (AzFramework::NetworkContext* net = azrtti_cast<AzFramework::NetworkContext*>(context))
+     *       {
+     *           net->Class<TestFieldComponent>()
+     *              ->Field("Test Int", &TestFieldComponent::m_testInt);
+     *       }
+     *   }
+     *
+     * Then you can simply write to it as it was an integer:
+     *
+     *      m_testInt = 3;
+     *      // or
+     *      m_testInt = *m_testInt + 1;
+     */
     template <class DataType, typename MarshalerType, typename ThrottlerType>
     class NetBindable::Field
         : public NetBindableFieldBase
     {
         friend class AZ::Internal::AzFrameworkNetBindableFieldContainer<NetBindable::Field<DataType, MarshalerType, ThrottlerType> >;
     public:
-        AZ_TYPE_INFO(Field, "{00D56FA7-F8BD-402B-97FB-0E2599897056}", DataType, MarshalerType, ThrottlerType);
         using DataSetType = DataSet<DataType, MarshalerType, ThrottlerType>;
         using ValueType = DataType;
 
-    public:
-        Field(const DataType& value = DataType())
+        explicit Field(const DataType& value = DataType())
             : m_dataSet(nullptr)
             , m_value(value)
         {}
         ~Field() override = default;
 
-        operator const DataType&() const
+        /*
+         * Disabling copy and move constructors in order to allow for a common use of fields, for example:
+         * m_field = m_field + 1;
+         */
+        Field (const Field& other) = delete;
+        Field (Field&& other) = delete;
+        Field& operator= (const Field& other) = delete;
+        Field& operator= (Field&& other) = delete;
+
+        const DataType& Get() const
         {
             return m_dataSet ? m_dataSet->Get() : m_value;
         }
 
-        Field& operator=(const DataType& val)
+        virtual operator const DataType&() const
+        {
+            return Get();
+        }
+
+        virtual const DataType& operator*() const
+        {
+            return Get();
+        }
+
+        virtual Field& operator=(const DataType& val)
         {
             if (m_dataSet)
             {
@@ -136,7 +224,7 @@ namespace AzFramework
             return *this;
         }
 
-        Field& operator=(const DataType&& val)
+        virtual Field& operator=(const DataType&& val)
         {
             if (m_dataSet)
             {
@@ -149,9 +237,9 @@ namespace AzFramework
             return *this;
         }
 
-        void Bind(DataSetBase* dataSet) override
+        void Bind(DataSetBase* dataSet, NetworkContextBindMode mode) override
         {
-            BindDataSet(static_cast<DataSetType*>(dataSet));
+            BindDataSet(static_cast<DataSetType*>(dataSet), mode);
         }
 
         static void ConstructDataSet(void* mem, const char* name)
@@ -167,7 +255,7 @@ namespace AzFramework
 
     protected:
         template <class DST>
-        void BindDataSet(DST* dataSet)
+        void BindDataSet(DST* dataSet, NetworkContextBindMode mode)
         {
             if (m_dataSet)
             {
@@ -176,7 +264,17 @@ namespace AzFramework
             m_dataSet = dataSet;
             if (m_dataSet)
             {
-                m_dataSet->Set(AZStd::move(m_value));
+                if (mode == NetworkContextBindMode::Authoritative)
+                {
+                    /*
+                     * If we are binding Field<> or BoundField<> on a component of an authoritative entity,
+                     * then we want to bring over the value of the field in the component. This occurs during GetNetworkBinding().
+                     *
+                     * Whereas on a client's (non-authoritative entities and their components) dataSet already has the desired value
+                     * and should not be overwritten here.
+                     */
+                    m_dataSet->Set(AZStd::move(m_value));
+                }
                 m_value = DataType();
             }
         }
@@ -200,24 +298,87 @@ namespace AzFramework
         DataType m_value;
     };
 
+    /**
+     * \brief An extension of @NetBindable::Field with an ability to invoke a callback whenever the value changes on both authoritative and non-authoritative components.
+     * Or in other terms, on both the server and clients (when GridMate is setup to run in server-authoritative mode).
+     *
+     * \tparam DataType data type, same as @NetBindable::Field
+     * \tparam InterfaceType Component type class that holds this @BoundField
+     * \tparam FuncPtr member function pointer to the callback to invoke when this value is updated on non-authoritative components.
+     * \tparam MarshalerType optional, same as @NetBindable::Field
+     * \tparam ThrottlerType optional, same as @NetBindable::Field
+     *
+     * Example:
+     *
+     *  BoundField<int, TestBoundFieldComponent, &TestBoundFieldComponent::OnBoundFieldChanged> m_testInt;
+     *
+     * And it must be reflected to SerializeContext _and_ NetworkContext just like @NetBindable::Field
+     *
+     *   void TestFieldComponent::Reflect(AZ::ReflectContext* context)
+     *   {
+     *       if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
+     *       {
+     *           serialize->Class<TestFieldComponent, AZ::Component, AzFramework::NetBindable>()
+     *               ->Field("Test Int", &TestFieldComponent::m_testInt)
+     *               ->Version(1);
+     *       }
+     *
+     *       if (AzFramework::NetworkContext* net = azrtti_cast<AzFramework::NetworkContext*>(context))
+     *       {
+     *           net->Class<TestFieldComponent>()
+     *              ->Field("Test Int", &TestFieldComponent::m_testInt);
+     *       }
+     *   }
+     */
     template <class DataType, class InterfaceType, void (InterfaceType::* FuncPtr)(const DataType&, const TimeContext&), typename MarshalerType, typename ThrottlerType>
     class NetBindable::BoundField
         : public NetBindable::Field<DataType, MarshalerType, ThrottlerType>
     {
+        using BaseClass = NetBindable::Field<DataType, MarshalerType, ThrottlerType>;
         friend class AZ::Internal::AzFrameworkNetBindableFieldContainer<NetBindable::BoundField<DataType, InterfaceType, FuncPtr, MarshalerType, ThrottlerType> >;
     public:
-        AZ_TYPE_INFO(BoundField, "{5151CEAF-6AC0-45D7-AEDF-8B6C46CE07B9}", DataType, InterfaceType, MarshalerType, ThrottlerType);
-        using DataSetType = typename DataSet<DataType, MarshalerType, ThrottlerType>::template BindInterface<InterfaceType, FuncPtr>;
+        AZ_TYPE_INFO_LEGACY(BoundField, "{5151CEAF-6AC0-45D7-AEDF-8B6C46CE07B9}", DataType, InterfaceType, MarshalerType, ThrottlerType);
+        using DataSetType = typename DataSet<DataType, MarshalerType, ThrottlerType>::template BindInterface<InterfaceType, FuncPtr, GridMate::DataSetInvokeEverywhereTraits>;
 
-    public:
-        BoundField(const DataType& value = DataType())
-            : NetBindable::Field<DataType, MarshalerType, ThrottlerType>(value)
+        explicit BoundField(const DataType& value = DataType())
+            : BaseClass(value)
         {}
         ~BoundField() override = default;
 
-        void Bind(DataSetBase* dataSet) override
+        /*
+         * Disabling copy and move constructors in order to allow for a common use of fields, for example:
+         * m_field = m_field + 1;
+         */
+        BoundField (const BoundField& other) = delete;
+        BoundField (BoundField&& other) = delete;
+        BoundField& operator= (const BoundField& other) = delete;
+        BoundField& operator= (BoundField&& other) = delete;
+
+        operator DataType() const
         {
-            this->BindDataSet(static_cast<DataSetType*>(dataSet));
+            return BaseClass::Get();
+        }
+
+        const DataType& operator*() const override
+        {
+            return BaseClass::Get();
+        }
+
+        BaseClass& operator=(const DataType& val) override
+        {
+            BaseClass::operator=(val);
+            return *this;
+        }
+
+        BaseClass& operator=(const DataType&& val) override
+        {
+            BaseClass::operator=(val);
+            return *this;
+        }
+
+        void Bind(DataSetBase* dataSet, NetworkContextBindMode mode) override
+        {
+            BaseClass::BindDataSet(static_cast<DataSetType*>(dataSet), mode);
         }
 
         static void ConstructDataSet(void* mem, const char* name)
@@ -240,15 +401,50 @@ namespace AzFramework
         virtual void Bind(NetBindable* handler) = 0;
     };
 
-    ///////////////////////////////////////////////////////////////////////////
-    /// NetBindable::Rpc::Binder should be used for any RPC in a NetBindable that you want
-    /// to be able to call remotely. If the object is not network bound, RPC
-    /// calls will dispatch directly, as if the object were authoritative
-    ///////////////////////////////////////////////////////////////////////////
+    /**
+     * \brief NetBindable::Rpc::Binder should be used for any RPC in a NetBindable that you want
+     * to be able to call remotely. If the object is not network bound, RPC
+     * calls will dispatch directly, as if the object was authoritative.
+     *
+     * \tparam Args any custom parameters for the remote procedure calls.
+     *
+     * Here is an example:
+     *
+     *      // callback
+     *      bool OnRpc(float value, const GridMate::RpcContext& rc);
+     *
+     *      // Rpc declaration
+     *      Rpc<float>::Binder<TestRPCComponent, &TestRPCComponent::OnRpc> m_testRpc;
+     *
+     * Rpc needs to be reflected in NetworkContext like this:
+     *
+     *  void TestRPCComponent::Reflect(AZ::ReflectContext* context)
+     *  {
+     *      if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
+     *      {
+     *          serialize->Class<TestRPCComponent, AZ::Component, AzFramework::NetBindable>()
+     *              ->Version(1);
+     *      }
+     *
+     *      if (AzFramework::NetworkContext* net = azrtti_cast<AzFramework::NetworkContext*>(context))
+     *      {
+     *          net->Class<TestRPCComponent>()
+     *             ->RPC("Test RPC", &TestRPCComponent::m_testRpc);
+     *      }
+     *   }
+     *
+     * It can be invoked as if it was a method:
+     *
+     *      m_testRpc(deltaTime);
+     */
     template <typename ... Args>
     class NetBindable::Rpc
     {
     public:
+        /**
+         * \brief Binds rpc callback to a pointer to member function of AZ::Component derived from AzFramework::NetBindable
+         * See @NetBindable::Rpc
+         */
         template<class InterfaceType, bool (InterfaceType::* FuncPtr)(Args..., const RpcContext&), class Traits = RpcDefaultTraits>
         class Binder
             : public NetBindableRpcBase
@@ -268,7 +464,7 @@ namespace AzFramework
                 m_instance = nullptr;
             }
 
-            void Bind(NetBindable* bindable)
+            void Bind(NetBindable* bindable) override
             {
                 m_instance = static_cast<InterfaceType*>(bindable);
                 m_rpc = nullptr;
@@ -277,7 +473,7 @@ namespace AzFramework
             template <typename ... CallArgs>
             void operator()(CallArgs&& ... args)
             {
-                AZ_Assert(m_instance || m_rpc, "Cannot call an RPC without either a local instance or a network bound handler, did you forget to call NetBindable::NetInit()?");
+                AZ_Assert(m_instance || m_rpc, "Cannot call an RPC without either a local instance or a network bound handler, did you forget to register with NetworkContext()?");
                 if (m_rpc) // connected to network
                 {
                     (*m_rpc)(AZStd::forward<CallArgs>(args) ...);
@@ -307,6 +503,8 @@ namespace AzFramework
 
 namespace AZ
 {
+    AZ_TYPE_INFO_TEMPLATE_WITH_NAME(AzFramework::NetBindable::Field, "Field", "{00D56FA7-F8BD-402B-97FB-0E2599897056}", AZ_TYPE_INFO_CLASS, AZ_TYPE_INFO_TYPENAME, AZ_TYPE_INFO_TYPENAME);
+
     namespace Internal
     {
         template <class FieldType>
@@ -364,6 +562,11 @@ namespace AZ
                 cb(valPtr, m_classElement.m_typeId, m_classElement.m_genericClassInfo ? m_classElement.m_genericClassInfo->GetClassData() : nullptr, &m_classElement);
                 // Ensure that the dataset is updated if changes happened
                 *field = *valPtr;
+            }
+
+            void EnumTypes(const ElementTypeCB& cb) override
+            {
+                cb(m_classElement.m_typeId, &m_classElement);
             }
 
             /// Return number of elements in the container.
@@ -452,8 +655,8 @@ namespace AZ
         public:
             AZ_TYPE_INFO(GenericClassNetBindableField, "{C1D4DD97-5DD7-42ED-969C-7435F27F5D8C}");
             GenericClassNetBindableField()
+                : m_classData{ SerializeContext::ClassData::Create<ContainerType>("AzFramework::NetBindable::Field", GetSpecializedTypeId(), Internal::NullFactory::GetInstance(), nullptr, &m_containerStorage) }
             {
-                m_classData = SerializeContext::ClassData::Create<ContainerType>("AzFramework::NetBindable::Field", GetSpecializedTypeId(), Internal::NullFactory::GetInstance(), nullptr, &m_containerStorage);
             }
 
             SerializeContext::ClassData* GetClassData() override
@@ -527,8 +730,8 @@ namespace AZ
         public:
             AZ_TYPE_INFO(GenericClassNetBindableBoundField, "{EFD64FE7-9432-401A-B7A1-1767F4C5A7F0}");
             GenericClassNetBindableBoundField()
+                : m_classData{ SerializeContext::ClassData::Create<ContainerType>("AzFramework::NetBindable::BoundField", GetSpecializedTypeId(), Internal::NullFactory::GetInstance(), nullptr, &m_containerStorage) }
             {
-                m_classData = SerializeContext::ClassData::Create<ContainerType>("AzFramework::NetBindable::BoundField", GetSpecializedTypeId(), Internal::NullFactory::GetInstance(), nullptr, &m_containerStorage);
             }
 
             SerializeContext::ClassData* GetClassData() override

@@ -37,7 +37,7 @@ namespace LmbrCentral
                     ->Value("Manual", AudioPreloadComponent::LoadType::Manual)
                     ;
 
-                editContext->Class<EditorAudioPreloadComponent>("Audio Preload", "Loads and unloads ATL Preloads containing soundbanks")
+                editContext->Class<EditorAudioPreloadComponent>("Audio Preload", "The Audio Preload component is used to load and unload soundbanks contained in Audio Translation Layer (ATL) preloads")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Audio")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/AudioPreload.svg")

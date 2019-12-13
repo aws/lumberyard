@@ -342,6 +342,8 @@ namespace MCore
          */
         void Scale3x3(const AZ::Vector3& scale);
 
+        AZ::Vector3 ExtractScale();
+
         /**
          * Rotate this matrix around the x-axis.
          * @param angle The rotation in radians.

@@ -32,10 +32,13 @@
 #include "AI/NavDataGeneration/Navigation.h"
 
 #include "VegetationMap.h"
+
+#ifdef LY_TERRAIN_EDITOR
 #include "Terrain/TerrainManager.h"
 #include "Terrain/Heightmap.h"
 #include "Terrain/TerrainGrid.h"
 #include "Terrain/MacroTextureExporter.h"
+#endif //#ifdef LY_TERRAIN_EDITOR
 
 #include "Objects/ObjectLayerManager.h"
 #include "Objects/ObjectPhysicsManager.h"
@@ -57,6 +60,7 @@
 #include <qdir.h>
 #include <ScopeGuard.h>
 
+#include <AzCore/IO/Streamer.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 
 #include "QtUtil.h"
@@ -362,6 +366,7 @@ bool CGameExporter::Export(unsigned int flags, EEndian eExportEndian, const char
 
 bool CGameExporter::ExportMap(const char* pszGamePath, bool bSurfaceTexture, EEndian eExportEndian)
 {
+#ifdef LY_TERRAIN_EDITOR
     GetIEditor()->ShowConsole(true);
 
     QString ctcFilename;
@@ -415,7 +420,14 @@ bool CGameExporter::ExportMap(const char* pszGamePath, bool bSurfaceTexture, EEn
     pHeightMap->ClearModSectors();
 
     CLogFile::FormatLine("Terrain Texture Exported in %u seconds.", (GetTickCount() - startTime) / 1000);
+    
+    // Flush all streamer caches after export to ensure the exported data is read back in.
+    AZ::IO::Streamer::Instance().FlushCaches();
     return true;
+#else
+    //Return true so the other steps related to export to engine get executed.
+    return true;
+#endif //#ifdef LY_TERRAIN_EDITOR
 }
 
 
@@ -431,7 +443,7 @@ void CGameExporter::ExportHeightMap(const char* pszGamePath, EEndian eExportEndi
     pEditor->SetStatusText("Exporting terrain...");
 
     // remove old files
-    sprintf_s(szFileOutputPath, "%s%s", pszGamePath, COMPILED_HEIGHT_MAP_FILE_NAME);
+    sprintf_s(szFileOutputPath, "%s%s", pszGamePath, COMPILED_OCTREE_FILE_NAME);
     m_levelPak.m_pakFile.RemoveFile(szFileOutputPath);
     sprintf_s(szFileOutputPath, "%s%s", pszGamePath, COMPILED_VISAREA_MAP_FILE_NAME);
     m_levelPak.m_pakFile.RemoveFile(szFileOutputPath);
@@ -447,18 +459,15 @@ void CGameExporter::ExportHeightMap(const char* pszGamePath, EEndian eExportEndi
         std::vector<_smart_ptr<IMaterial>>* pTempMatsTable = NULL;
         std::vector<struct IStatInstGroup*>* pTempVegGroupTable = NULL;
 
-        if (ITerrain* pTerrain = p3DEngine->GetITerrain())
-        {
-            if (int nSize = pTerrain->GetCompiledDataSize(pExportInfo))
-            { // get terrain data from 3dengine and save it into file
-                uint8* pData = new uint8[nSize];
-                pTerrain->GetCompiledData(pData, nSize, &pTempBrushTable, &pTempMatsTable, &pTempVegGroupTable, eExportEndian, pExportInfo);
-                sprintf_s(szFileOutputPath, "%s%s", pszGamePath, COMPILED_HEIGHT_MAP_FILE_NAME);
-                CCryMemFile hmapCompiledFile;
-                hmapCompiledFile.Write(pData, nSize);
-                m_levelPak.m_pakFile.UpdateFile(szFileOutputPath, hmapCompiledFile);
-                delete[] pData;
-            }
+        if (int nSize = p3DEngine->GetOctreeCompiledDataSize(pExportInfo))
+        { // get terrain data from 3dengine and save it into file
+            uint8* pData = new uint8[nSize];
+            p3DEngine->GetOctreeCompiledData(pData, nSize, &pTempBrushTable, &pTempMatsTable, &pTempVegGroupTable, eExportEndian, pExportInfo);
+            sprintf_s(szFileOutputPath, "%s%s", pszGamePath, COMPILED_OCTREE_FILE_NAME);
+            CCryMemFile hmapCompiledFile;
+            hmapCompiledFile.Write(pData, nSize);
+            m_levelPak.m_pakFile.UpdateFile(szFileOutputPath, hmapCompiledFile);
+            delete[] pData;
         }
 
         ////////////////////////////////////////////////////////////////////////
@@ -697,25 +706,33 @@ void CGameExporter::ExportLevelInfo(const QString& path)
 
     QString levelName = pEditor->GetGameEngine()->GetLevelPath();
     root->setAttr("Name", levelName.toUtf8().data());
+#ifdef LY_TERRAIN_EDITOR
     root->setAttr("HeightmapSize", pEditor->GetHeightmap()->GetWidth());
+#else
+    const int compiledHeightmapSize = pEditor->Get3DEngine()->GetTerrainSize() / pEditor->Get3DEngine()->GetHeightMapUnitSize();
+    root->setAttr("HeightmapSize", compiledHeightmapSize);
+#endif //#ifdef LY_TERRAIN_EDITOR
 
-    if (gEnv->p3DEngine->GetITerrain())
-    {
-        int compiledDataSize = gEnv->p3DEngine->GetITerrain()->GetCompiledDataSize();
-        byte* pInfo = new byte[compiledDataSize];
-        gEnv->p3DEngine->GetITerrain()->GetCompiledData(pInfo, compiledDataSize, 0, 0, 0, false);
-        STerrainChunkHeader* pHeader = (STerrainChunkHeader*)pInfo;
-        XmlNodeRef terrainInfo = root->newChild("TerrainInfo");
-        int heightmapSize = GetIEditor()->GetHeightmap()->GetWidth();
-        terrainInfo->setAttr("HeightmapSize", heightmapSize);
-        terrainInfo->setAttr("UnitSize", pHeader->TerrainInfo.nUnitSize_InMeters);
-        terrainInfo->setAttr("SectorSize", pHeader->TerrainInfo.nSectorSize_InMeters);
-        terrainInfo->setAttr("SectorsTableSize", pHeader->TerrainInfo.nSectorsTableSize_InSectors);
-        terrainInfo->setAttr("HeightmapZRatio", pHeader->TerrainInfo.fHeightmapZRatio);
-        terrainInfo->setAttr("OceanWaterLevel", pHeader->TerrainInfo.fOceanWaterLevel);
+    int compiledDataSize = gEnv->p3DEngine->GetOctreeCompiledDataSize();
+    byte* pInfo = new byte[compiledDataSize];
+    gEnv->p3DEngine->GetOctreeCompiledData(pInfo, compiledDataSize, 0, 0, 0, false);
+    STerrainChunkHeader* pHeader = (STerrainChunkHeader*)pInfo;
+    XmlNodeRef terrainInfo = root->newChild("TerrainInfo");
 
-        delete[] pInfo;
-    }
+#ifdef LY_TERRAIN_EDITOR
+    int heightmapSize = GetIEditor()->GetHeightmap()->GetWidth();
+#else
+    int heightmapSize = compiledHeightmapSize;
+#endif //#ifdef LY_TERRAIN_EDITOR
+
+    terrainInfo->setAttr("HeightmapSize", heightmapSize);
+    terrainInfo->setAttr("UnitSize", pHeader->TerrainInfo.nUnitSize_InMeters);
+    terrainInfo->setAttr("SectorSize", pHeader->TerrainInfo.nSectorSize_InMeters);
+    terrainInfo->setAttr("SectorsTableSize", pHeader->TerrainInfo.nSectorsTableSize_InSectors);
+    terrainInfo->setAttr("HeightmapZRatio", pHeader->TerrainInfo.fHeightmapZRatio);
+    terrainInfo->setAttr("OceanWaterLevel", pHeader->TerrainInfo.fOceanWaterLevel);
+
+    delete[] pInfo;
 
     // Save all missions in this level.
     XmlNodeRef missionsNode = root->newChild("Missions");
@@ -748,6 +765,7 @@ void CGameExporter::ExportMapInfo(XmlNodeRef& node)
     IEditor* pEditor = GetIEditor();
     info->setAttr("Name", QFileInfo(pEditor->GetDocument()->GetTitle()).completeBaseName());
 
+#ifdef LY_TERRAIN_EDITOR
     CHeightmap* heightmap = pEditor->GetHeightmap();
     if (heightmap)
     {
@@ -761,12 +779,26 @@ void CGameExporter::ExportMapInfo(XmlNodeRef& node)
         int nTerrainSectorSizeInMeters = sectorInfo.sectorSize;
         info->setAttr("TerrainSectorSizeInMeters", nTerrainSectorSizeInMeters);
     }
+#else
+    const int terrainSizeInMeters = pEditor->Get3DEngine()->GetTerrainSize();
+    const int terrainUnitSizeInMeters = pEditor->Get3DEngine()->GetHeightMapUnitSize();
+    info->setAttr("HeightmapSize", terrainSizeInMeters / terrainUnitSizeInMeters);
+    info->setAttr("HeightmapUnitSize", terrainUnitSizeInMeters);
+    //! Default Max Height value.
+    constexpr int HEIGHTMAP_MAX_HEIGHT = 150; //This is the default max height in CHeightmap
+    info->setAttr("HeightmapMaxHeight", HEIGHTMAP_MAX_HEIGHT);
+    info->setAttr("WaterLevel", pEditor->Get3DEngine()->GetWaterLevel());
+    info->setAttr("TerrainSectorSizeInMeters", pEditor->Get3DEngine()->GetTerrainSectorSize());
+#endif //#ifdef LY_TERRAIN_EDITOR
 
     // Serialize surface types.
     CXmlArchive xmlAr;
     xmlAr.bLoading = false;
     xmlAr.root = node;
+
+#ifdef LY_TERRAIN_EDITOR
     GetIEditor()->GetTerrainManager()->SerializeSurfaceTypes(xmlAr);
+#endif
 
     GetIEditor()->GetObjectManager()->GetPhysicsManager()->SerializeCollisionClasses(xmlAr);
 
@@ -775,6 +807,7 @@ void CGameExporter::ExportMapInfo(XmlNodeRef& node)
 
 bool CGameExporter::ExportTerrainTexture(const char* ctcFilename)
 {
+#ifdef LY_TERRAIN_EDITOR
     MacroTextureExporter exporter(GetIEditor()->GetTerrainManager()->GetRGBLayer());
     exporter.SetMaximumTotalSize(m_settings.iExportTexWidth);
 
@@ -785,6 +818,9 @@ bool CGameExporter::ExportTerrainTexture(const char* ctcFilename)
         });
 
     return exporter.Export(ctcFilename);
+#else
+    return false;
+#endif //#ifdef LY_TERRAIN_EDITOR
 }
 
 //////////////////////////////////////////////////////////////////////////

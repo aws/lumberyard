@@ -439,6 +439,8 @@ bool CPlayerProfile::LoadAttributes(const XmlNodeRef& root, int requiredVersion)
         #include "Xenia/PlayerProfile_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/PlayerProfile_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/PlayerProfile_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

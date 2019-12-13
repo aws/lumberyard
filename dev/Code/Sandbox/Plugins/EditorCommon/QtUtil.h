@@ -84,7 +84,6 @@ namespace stl
     //! Case insensitive less key for QString
     template <>
     struct less_stricmp<QString>
-        : public std::binary_function<QString, QString, bool>
     {
         bool operator()(const QString& left, const QString& right) const
         {

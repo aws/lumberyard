@@ -509,7 +509,7 @@ namespace CloudGemFramework
 
         if (!response->IsSuccess())
         {
-            AZ_Error("CloudCanvas", false, "Unable to assume dedicated server role (%s) \n", response->GetError().GetMessage());
+            AZ_Error("CloudCanvas", false, "Unable to assume dedicated server role (%s) \n", response->GetError().GetMessage().c_str());
             return false;
         }
         AZ_Printf("CloudCanvas", "Assumed server role ARN: %s", response->GetResult().GetAssumedRoleUser().GetArn().c_str());

@@ -14,6 +14,9 @@
 
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/parallel/mutex.h>
+#include <AzCore/std/typetraits/is_arithmetic.h>
+
+#define AUDIO_ALLOCATION_ALIGNMENT 16
 
 namespace Audio
 {
@@ -28,7 +31,7 @@ namespace Audio
         RingBufferBase()
         {}
 
-        RingBufferBase(const AZStd::size_t numSamples)
+        RingBufferBase(const size_t numSamples)
         {}
 
         virtual ~RingBufferBase()
@@ -41,7 +44,7 @@ namespace Audio
          * @param numChannels Number of channels in the sample data, samples = numFrames * numChannels.
          * @return Number of sample frames copied.
          */
-        virtual AZStd::size_t AddData(const void* source, AZStd::size_t numFrames, AZStd::size_t numChannels) = 0;
+        virtual size_t AddData(const void* source, size_t numFrames, size_t numChannels) = 0;
 
         /**
          * Adds new multi-track/multi-channel data to the ringbuffer in interleaved format.
@@ -51,7 +54,7 @@ namespace Audio
          * @param numChannels Number of tracks/channels in the source data, numSamples = numFrames * numChannels.
          * @return Number of sample frames copied.
          */
-        virtual AZStd::size_t AddMultiTrackDataInterleaved(const void** source, AZStd::size_t numFrames, AZStd::size_t numChannels) { return 0; }
+        virtual size_t AddMultiTrackDataInterleaved(const void** source, size_t numFrames, size_t numChannels) { return 0; }
 
         /**
          * Consumes stored data from the ringbuffer.
@@ -61,7 +64,7 @@ namespace Audio
          * @param deinterleaveMultichannel In the case of multichannel data, if true do a deinterleaved copy into the dest array channels otherwise straight copy into dest[0].
          * @return Number of sample frames consumed.
          */
-        virtual AZStd::size_t ConsumeData(void** dest, AZStd::size_t numFrames, AZStd::size_t numChannels, bool deinterleaveMultichannel = false) = 0;
+        virtual size_t ConsumeData(void** dest, size_t numFrames, size_t numChannels, bool deinterleaveMultichannel = false) = 0;
 
         /**
          * Zeros the ringbuffer data and resets indices.
@@ -83,17 +86,17 @@ namespace Audio
      *
      *   <---------------------m_size---------------------->
      */
-    template <typename SampleType>
+    template <typename SampleType, typename = AZStd::enable_if_t<AZStd::is_arithmetic<SampleType>::value>>
     class RingBuffer
         : public RingBufferBase
     {
     public:
         AZ_CLASS_ALLOCATOR(RingBuffer<SampleType>, AZ::SystemAllocator, 0);
 
-        static const AZStd::size_t s_bytesPerSample = sizeof(SampleType);
+        static const size_t s_bytesPerSample = sizeof(SampleType);
 
         ///////////////////////////////////////////////////////////////////////////////////////////
-        RingBuffer(AZStd::size_t numSamples)
+        RingBuffer(size_t numSamples)
         {
             AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
             AllocateData(numSamples);
@@ -107,11 +110,11 @@ namespace Audio
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////
-        AZStd::size_t AddData(const void* source, AZStd::size_t numFrames, AZStd::size_t numChannels) override
+        size_t AddData(const void* source, size_t numFrames, size_t numChannels) override
         {
             AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
 
-            const AZStd::size_t numSamples = numFrames * numChannels;
+            const size_t numSamples = numFrames * numChannels;
             if (numSamples > SamplesUnused())
             {
                 // Writing this many samples will cross the read index, can't proceed.
@@ -124,7 +127,7 @@ namespace Audio
                 // write operation won't wrap the buffer
                 if (sourceBuffer)
                 {
-                    AZStd::size_t copySize = numSamples * s_bytesPerSample;
+                    size_t copySize = numSamples * s_bytesPerSample;
                     ::memcpy(&m_buffer[m_write], sourceBuffer, copySize);
                 }
                 else
@@ -136,8 +139,8 @@ namespace Audio
             else
             {
                 // Split the copy operations to handle wrap-around
-                AZStd::size_t currentToEndSamples = m_size - m_write;
-                AZStd::size_t wraparoundSamples = numSamples - currentToEndSamples;
+                size_t currentToEndSamples = m_size - m_write;
+                size_t wraparoundSamples = numSamples - currentToEndSamples;
 
                 if (sourceBuffer)
                 {
@@ -157,11 +160,11 @@ namespace Audio
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////
-        AZStd::size_t AddMultiTrackDataInterleaved(const void** source, AZStd::size_t numFrames, AZStd::size_t numChannels) override
+        size_t AddMultiTrackDataInterleaved(const void** source, size_t numFrames, size_t numChannels) override
         {
             AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
 
-            const AZStd::size_t numSamples = numFrames * numChannels;
+            const size_t numSamples = numFrames * numChannels;
             if (numSamples > SamplesUnused())
             {
                 // Writing this many samples will cross the read index, can't proceed.
@@ -177,21 +180,21 @@ namespace Audio
 
                 if (sourceBufferChannels)
                 {
-                    for (AZStd::size_t channel = 0; channel < numChannels; ++channel)
+                    for (size_t channel = 0; channel < numChannels; ++channel)
                     {
                         AZ_ErrorOnce("AudioRingBuffer", sourceBufferChannels[channel], "AudioRingBufffer - Multi-track source contains a null buffer at channel %zu!\n", channel);
                         const SampleType* sourceBuffer = sourceBufferChannels[channel];
 
                         if (sourceBuffer)
                         {
-                            for (AZStd::size_t frame = 0; frame < numFrames; ++frame)
+                            for (size_t frame = 0; frame < numFrames; ++frame)
                             {
                                 m_buffer[m_write + channel + (numChannels * frame)] = *sourceBuffer++;
                             }
                         }
                         else
                         {
-                            for (AZStd::size_t frame = 0; frame < numFrames; ++frame)
+                            for (size_t frame = 0; frame < numFrames; ++frame)
                             {
                                 m_buffer[m_write + channel + (numChannels * frame)] = 0;
                             }
@@ -208,42 +211,42 @@ namespace Audio
             else
             {
                 // split the copy operations to handle wrap-around
-                AZStd::size_t currentToEndSamples = m_size - m_write;
-                AZStd::size_t wraparoundSamples = numSamples - currentToEndSamples;
+                size_t currentToEndSamples = m_size - m_write;
+                size_t wraparoundSamples = numSamples - currentToEndSamples;
 
                 const SampleType** sourceBufferChannels = reinterpret_cast<const SampleType**>(source);
                 AZ_ErrorOnce("AudioRingBuffer", sourceBufferChannels, "AudioRingBuffer - Multi-track source buffers not found!\n");
 
                 if (sourceBufferChannels)
                 {
-                    AZStd::size_t currentToEndFrames = (currentToEndSamples) / numChannels;
-                    AZStd::size_t wraparoundFrames = (numFrames - currentToEndFrames);
+                    size_t currentToEndFrames = (currentToEndSamples) / numChannels;
+                    size_t wraparoundFrames = (numFrames - currentToEndFrames);
 
-                    for (AZStd::size_t channel = 0; channel < numChannels; ++channel)
+                    for (size_t channel = 0; channel < numChannels; ++channel)
                     {
                         AZ_ErrorOnce("AudioRingBuffer", sourceBufferChannels[channel], "AudioRingBufffer - Multi-track source contains a null buffer at channel %zu!\n", channel);
                         const SampleType* sourceBuffer = sourceBufferChannels[channel];
 
                         if (sourceBuffer)
                         {
-                            for (AZStd::size_t frame = 0; frame < currentToEndFrames; ++frame)
+                            for (size_t frame = 0; frame < currentToEndFrames; ++frame)
                             {
                                 m_buffer[m_write + channel + (numChannels * frame)] = *sourceBuffer++;
                             }
 
-                            for (AZStd::size_t frame = 0; frame < wraparoundFrames; ++frame)
+                            for (size_t frame = 0; frame < wraparoundFrames; ++frame)
                             {
                                 m_buffer[channel + (numChannels * frame)] = *sourceBuffer++;
                             }
                         }
                         else
                         {
-                            for (AZStd::size_t frame = 0; frame < currentToEndFrames; ++frame)
+                            for (size_t frame = 0; frame < currentToEndFrames; ++frame)
                             {
                                 m_buffer[m_write + channel + (numChannels * frame)] = 0;
                             }
 
-                            for (AZStd::size_t frame = 0; frame < wraparoundFrames; ++frame)
+                            for (size_t frame = 0; frame < wraparoundFrames; ++frame)
                             {
                                 m_buffer[channel + (numChannels * frame)] = 0;
                             }
@@ -263,7 +266,7 @@ namespace Audio
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////
-        AZStd::size_t ConsumeData(void** dest, AZStd::size_t numFrames, AZStd::size_t numChannels, bool deinterleaveMultichannel) override
+        size_t ConsumeData(void** dest, size_t numFrames, size_t numChannels, bool deinterleaveMultichannel) override
         {
             if (!dest)
             {
@@ -273,8 +276,8 @@ namespace Audio
             AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
             SampleType** destBuffers = reinterpret_cast<SampleType**>(dest);
 
-            AZStd::size_t numSamples = numFrames * numChannels;
-            AZStd::size_t samplesReady = SamplesReady();
+            size_t numSamples = numFrames * numChannels;
+            size_t samplesReady = SamplesReady();
 
             if (samplesReady == 0)
             {
@@ -300,7 +303,7 @@ namespace Audio
                 }
                 else
                 {
-                    AZStd::size_t currentToEndFrames = (m_size - m_read) / numChannels;
+                    size_t currentToEndFrames = (m_size - m_read) / numChannels;
                     if (currentToEndFrames > numFrames)
                     {
                         // do 2ch deinterleaved copy
@@ -347,7 +350,7 @@ namespace Audio
                 }
                 else
                 {
-                    AZStd::size_t currentToEndFrames = (m_size - m_read) / numChannels;
+                    size_t currentToEndFrames = (m_size - m_read) / numChannels;
                     if (currentToEndFrames > numFrames)
                     {
                         // do 6ch deinterleaved copy
@@ -399,7 +402,7 @@ namespace Audio
                 }
                 else
                 {
-                    AZStd::size_t currentToEndSamples = m_size - m_read;
+                    size_t currentToEndSamples = m_size - m_read;
                     if (currentToEndSamples > numSamples)
                     {
                         ::memcpy(destBuffers[0], &m_buffer[m_read], numSamples * s_bytesPerSample);
@@ -407,7 +410,7 @@ namespace Audio
                     }
                     else
                     {
-                        AZStd::size_t wraparoundSamples = numSamples - currentToEndSamples;
+                        size_t wraparoundSamples = numSamples - currentToEndSamples;
                         ::memcpy(destBuffers[0], &m_buffer[m_read], currentToEndSamples * s_bytesPerSample);
                         ::memcpy(&destBuffers[0][currentToEndSamples], m_buffer, wraparoundSamples * s_bytesPerSample);
                         m_read = wraparoundSamples;
@@ -431,7 +434,7 @@ namespace Audio
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////
-        void AllocateData(AZStd::size_t numSamples)
+        void AllocateData(size_t numSamples)
         {
             // no lock!  should only be called inside api that has already locked the buffer.
             if (m_buffer)
@@ -440,7 +443,7 @@ namespace Audio
             }
 
             m_size = numSamples;
-            m_buffer = static_cast<SampleType*>(azmalloc(numSamples * s_bytesPerSample, MEMORY_ALLOCATION_ALIGNMENT, AZ::SystemAllocator));
+            m_buffer = static_cast<SampleType*>(azmalloc(numSamples * s_bytesPerSample, AUDIO_ALLOCATION_ALIGNMENT, AZ::SystemAllocator));
             ResetBuffer();
         }
 
@@ -457,7 +460,7 @@ namespace Audio
 
         ///////////////////////////////////////////////////////////////////////////////////////////
         // Returns the number of samples in the ring buffer that are ready for consumption.
-        AZStd::size_t SamplesReady() const
+        size_t SamplesReady() const
         {
             // no lock!  should only be called inside api that has already locked the buffer.
             if (m_read > m_write)
@@ -472,18 +475,18 @@ namespace Audio
 
         ///////////////////////////////////////////////////////////////////////////////////////////
         // Returns the number of samples in the ring buffer that can be filled.
-        AZStd::size_t SamplesUnused() const
+        size_t SamplesUnused() const
         {
             // no lock!  should only be called inside api that has already locked the buffer.
             return m_size - SamplesReady();
         }
 
     private:
-        SampleType* m_buffer = nullptr;     // sample buffer
-        AZStd::size_t m_write = 0;          // write-head index into buffer
-        AZStd::size_t m_read = 0;           // read-head index into buffer
-        AZStd::size_t m_size = 0;           // total size of buffer in samples. bytes = (m_size * s_bytesPerSample)
-        AZStd::mutex m_mutex;               // protects buffer access
+        SampleType* m_buffer = nullptr; // sample buffer
+        size_t m_write = 0;             // write-head index into buffer
+        size_t m_read = 0;              // read-head index into buffer
+        size_t m_size = 0;              // total size of buffer in samples. bytes = (m_size * s_bytesPerSample)
+        AZStd::mutex m_mutex;           // protects buffer access
     };
 
 } // namespace Audio

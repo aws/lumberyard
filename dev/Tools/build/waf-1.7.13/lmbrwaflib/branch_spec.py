@@ -20,7 +20,6 @@ from cry_utils import append_to_unique_list, split_comma_delimited_string
 
 from waf_branch_spec import BINTEMP_FOLDER
 from waf_branch_spec import CACHE_FOLDER
-from waf_branch_spec import AVAILABLE_LAUNCHERS
 from waf_branch_spec import LUMBERYARD_VERSION
 from waf_branch_spec import LUMBERYARD_BUILD
 from waf_branch_spec import ADDITIONAL_COPYRIGHT_TABLE
@@ -38,7 +37,7 @@ DEFAULT_COPYRIGHT_TABLE = {
 for default_copyright_org in DEFAULT_COPYRIGHT_TABLE:
     COPYRIGHT_TABLE[default_copyright_org] = DEFAULT_COPYRIGHT_TABLE[default_copyright_org]
 for additional_copyright_org in ADDITIONAL_COPYRIGHT_TABLE:
-    COPYRIGHT_TABLE[additional_copyright_org] = COPYRIGHT_TABLE[additional_copyright_org]
+    COPYRIGHT_TABLE[additional_copyright_org] = ADDITIONAL_COPYRIGHT_TABLE[additional_copyright_org]
 
 
 @conf
@@ -91,10 +90,7 @@ def get_cache_folder_node(ctx):
 #############################################################################
 @conf
 def get_dep_proj_folder_name(self, msvs_ver):
-    if msvs_ver == "14":
-        return self.options.visual_studio_solution_name + '_vc' + msvs_ver + '0.depproj'
-    else:
-        return self.options.visual_studio_solution_name + '_vs' + msvs_ver + '.depproj'
+    return self.options.visual_studio_solution_name + '_vs' + msvs_ver + '.depproj'
 
 
 @conf
@@ -106,10 +102,7 @@ def get_project_output_folder(self, msvs_ver):
 #############################################################################
 @conf
 def get_solution_name(self, msvs_ver):
-    if msvs_ver == "14":
-        return self.options.visual_studio_solution_folder + '/' + self.options.visual_studio_solution_name + '_vc' + msvs_ver + '0.sln'
-    else:
-        return self.options.visual_studio_solution_folder + '/' + self.options.visual_studio_solution_name + '_vs' + msvs_ver + '.sln'
+    return self.options.visual_studio_solution_folder + '/' + self.options.visual_studio_solution_name + '_vs' + msvs_ver + '.sln'
 
 #############################################################################
 @conf
@@ -241,53 +234,6 @@ def check_cpp_platform_tools(toolsetVer, platform_tool_name, vs2017vswhereOption
     except Exception as err:
         Logs.warn("[WARN] Unable to determine toolset path for platform vetting : {}".format(err.message))
         return True
-
-
-@conf
-def get_available_launchers(self, project):
-
-    if self.is_option_true('use_unified_launcher'):
-        return {
-            'modules':
-            [
-                'ClientLauncher',
-                'ServerLauncher'
-            ]
-        }
-
-    launchers_to_exclude = set()
-    if not self.is_target_platform_enabled('android'):
-        # If android is disabled, remove add it to the launchers to exclude
-        launchers_to_exclude.add('AndroidLauncher')
-
-    # Get the dictionary for the launchers
-    available_launchers = { 'modules': [fl for fl in AVAILABLE_LAUNCHERS['modules'] if fl not in launchers_to_exclude] }
-
-    # Get the list of all the launchers
-    projects_settings = self.get_project_settings_map()
-    additional_launchers = projects_settings.get(project, {}).get('additional_launchers', [])
-    
-    for p0, _, _, _ in self.env['RESTRICTED_PLATFORMS']:
-        restricted_launcher_name = '{}Launcher'.format(p0)
-        append_to_unique_list(additional_launchers, restricted_launcher_name)
-        pass
-
-    # Update the modules in the dictionary to include the additional launchers
-    for additional_launcher in additional_launchers:
-        if additional_launcher not in available_launchers['modules']:
-            available_launchers['modules'].append(additional_launcher)
-
-    # Check if there is a list of restricted launchers
-    restricted_launchers = projects_settings.get(project, {}).get('restricted_launchers', [])
-
-    # Remove the modules in the dictionary if there is a restricted list
-    if len(restricted_launchers) > 0:
-        for key in available_launchers:
-            modules = available_launchers[key]
-            launchers = [launcher for launcher in modules if launcher in restricted_launchers]
-            available_launchers[key] = launchers
-
-    return available_launchers
 
 
 @conf
@@ -603,6 +549,42 @@ def is_target_enabled(ctx, target):
     else:
         # No spec means all projects are enabled
         return True
+
+
+@conf
+def add_target_to_spec(ctx, target, spec_name=None):
+    """
+    Forcibly add a target to a spec even if its not in spec file
+    
+    :param ctx:         Context
+    :param target:      The target to add to the spec
+    :param spec_name:   (optional) the name of a specific spec to add to. None means add to all specs
+    """
+
+    # Prepare the list of specs to add the target to
+    specs_to_add = []
+    if spec_name:
+        # A specific spec
+        specs_to_add.append(spec_name)
+    elif is_project_spec_specified(ctx):
+        # If a spec was specified through the command line
+        specs_to_add.append(ctx.options.project_spec)
+    else:
+        # No spec, load all of the loaded specs
+        specs_to_add.extend(ctx.self.loaded_specs_dict.keys())
+        
+    for spec_to_add in specs_to_add:
+        # For each spec, check if the target even needs to be added to the spec
+        spec_dict = ctx.loaded_specs_dict[spec_to_add]
+        spec_module_list = spec_dict.setdefault('modules', [])
+        if target not in spec_module_list:
+            # Add to the module list for the spec
+            spec_module_list.append(target)
+            # Update any cached module list for this spec with this target as well
+            cache_key_prefix = '{}_'.format(spec_to_add)
+            for cache_key, cache_key_values in spec_modules_cache.items():
+                if cache_key.startswith(cache_key_prefix):
+                    cache_key_values.append(target)
 
 
 @conf

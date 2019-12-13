@@ -10,12 +10,9 @@
 *
 */
 
-
-#include "StdAfx.h"
-
 #include <AudioInput/AudioInputStream.h>
 #include <Common_wwise.h>
-
+#include <AzCore/Casting/numeric_cast.h>
 #include <AK/SoundEngine/Common/AkStreamMgrModule.h>
 
 namespace Audio
@@ -30,10 +27,10 @@ namespace Audio
     {
         m_config = sourceConfig;
 
-        AZStd::size_t bytesPerSample = (m_config.m_bitsPerSample >> 3);
-        AZStd::size_t numSamples = m_config.m_sampleRate * m_config.m_numChannels;      // <-- This gives a 1 second buffer based on the configuration.
+        size_t bytesPerSample = (m_config.m_bitsPerSample >> 3);
+        size_t numSamples = m_config.m_sampleRate * m_config.m_numChannels;      // <-- This gives a 1 second buffer based on the configuration.
 
-        m_config.m_bufferSize = numSamples * bytesPerSample;
+        m_config.m_bufferSize = static_cast<AZ::u32>(numSamples * bytesPerSample);
 
         if (m_config.m_sampleType == AudioInputSampleType::Float && m_config.m_bitsPerSample == 32)
         {
@@ -56,19 +53,19 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
-    AZStd::size_t AudioInputStreaming::ReadStreamingInput(const AudioStreamData& data)
+    size_t AudioInputStreaming::ReadStreamingInput(const AudioStreamData& data)
     {
-        AZStd::size_t numFrames = data.m_sizeBytes / (m_config.m_bitsPerSample >> 3) / m_config.m_numChannels;
-        AZStd::size_t framesAdded = m_buffer->AddData(data.m_data, numFrames, m_config.m_numChannels);
+        size_t numFrames = data.m_sizeBytes / (m_config.m_bitsPerSample >> 3) / m_config.m_numChannels;
+        size_t framesAdded = m_buffer->AddData(data.m_data, numFrames, m_config.m_numChannels);
         m_framesReady += framesAdded;
         return framesAdded;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
-    AZStd::size_t AudioInputStreaming::ReadStreamingMultiTrackInput(AudioStreamMultiTrackData& data)
+    size_t AudioInputStreaming::ReadStreamingMultiTrackInput(AudioStreamMultiTrackData& data)
     {
-        AZStd::size_t numFrames = data.m_sizeBytes / (m_config.m_bitsPerSample >> 3);
-        AZStd::size_t framesAdded = m_buffer->AddMultiTrackDataInterleaved(data.m_data, numFrames, m_config.m_numChannels);
+        size_t numFrames = data.m_sizeBytes / (m_config.m_bitsPerSample >> 3);
+        size_t framesAdded = m_buffer->AddMultiTrackDataInterleaved(data.m_data, numFrames, m_config.m_numChannels);
         m_framesReady += framesAdded;
         return framesAdded;
     }
@@ -81,7 +78,7 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
-    AZStd::size_t AudioInputStreaming::GetStreamingInputNumFramesReady() const
+    size_t AudioInputStreaming::GetStreamingInputNumFramesReady() const
     {
         return m_framesReady;
     }
@@ -105,8 +102,8 @@ namespace Audio
         }
 
         bool deinterleave = (m_config.m_sampleType == AudioInputSampleType::Float);
-        AZStd::size_t numSampleFramesCopied = m_buffer->ConsumeData(reinterpret_cast<void**>(channelData), numSampleFramesRequested, akBuffer->NumChannels(), deinterleave);
-        akBuffer->uValidFrames += numSampleFramesCopied;
+        size_t numSampleFramesCopied = m_buffer->ConsumeData(reinterpret_cast<void**>(channelData), numSampleFramesRequested, akBuffer->NumChannels(), deinterleave);
+        akBuffer->uValidFrames += aznumeric_cast<AkUInt16>(numSampleFramesCopied);
         m_framesReady -= numSampleFramesCopied;
 
         akBuffer->eState = (numSampleFramesCopied > 0) ? AK_DataReady : AK_NoDataReady;

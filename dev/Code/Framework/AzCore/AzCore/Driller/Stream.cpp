@@ -191,7 +191,7 @@ namespace AZ
         DrillerOutputFileStream::DrillerOutputFileStream()
         {
 #if defined(AZ_FILE_STREAM_COMPRESSION)
-            m_zlib = azcreate(ZLib, (&AllocatorInstance<OSAllocator>::Get()), OSAllocator);
+            m_zlib = azcreate(ZLib, (&AllocatorInstance<OSAllocator>::GetAllocator()), OSAllocator);
             m_zlib->StartCompressor(2);
 #endif
         }
@@ -319,7 +319,7 @@ namespace AZ
         DrillerInputFileStream::DrillerInputFileStream()
         {
 #if defined(AZ_FILE_STREAM_COMPRESSION)
-            m_zlib = azcreate(ZLib, (&AllocatorInstance<OSAllocator>::Get()), OSAllocator);
+            m_zlib = azcreate(ZLib, (&AllocatorInstance<OSAllocator>::GetAllocator()), OSAllocator);
             m_zlib->StartDecompressor();
 #endif
         }

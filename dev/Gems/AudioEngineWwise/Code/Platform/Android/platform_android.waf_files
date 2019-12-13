@@ -3,10 +3,10 @@
     {
         "Platform/Android":
         [
-            "../Common/Unimplemented/CryAudioImplWwise_Unimplemented.cpp",
+            "../Common/Unimplemented/AudioEngineWwise_Unimplemented.cpp",
             "AudioSystemImpl_wwise_Android.cpp",
-            "CryAudioImplWwise_Traits_Android.h",
-            "CryAudioImplWwise_Traits_Platform.h"
+            "AudioEngineWwise_Traits_Android.h",
+            "AudioEngineWwise_Traits_Platform.h"
         ]
     }
 }

@@ -75,7 +75,7 @@ protected:
     virtual ~IDebugCallStack();
 
     static const char* TranslateExceptionCode(DWORD dwExcept);
-    static void PutVersion(char* str);
+    static void PutVersion(char* str, size_t length);
 
     static void Screenshot(const char* szFileName);
 

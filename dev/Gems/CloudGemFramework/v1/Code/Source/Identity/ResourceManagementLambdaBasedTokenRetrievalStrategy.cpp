@@ -11,14 +11,15 @@
 */
 #include <CloudGemFramework_precompiled.h>
 #include <Identity/ResourceManagementLambdaBasedTokenRetrievalStrategy.h>
-#pragma warning(disable: 4355) // <future> includes ppltasks.h which throws a C4355 warning: 'this' used in base member initializer list
+#include <AzCore/PlatformDef.h>
+AZ_PUSH_DISABLE_WARNING(4251 4355 4996, "-Wunknown-warning-option")
 #include <aws/lambda/model/InvokeRequest.h>
 #include <aws/lambda/LambdaClient.h>
 #include <aws/core/utils/Outcome.h>
 #include <aws/core/utils/memory/stl/AWSStringStream.h>
 #include <aws/core/utils/json/JsonSerializer.h>
 #include <aws/core/utils/logging/LogMacros.h>
-#pragma warning(default: 4355)
+AZ_POP_DISABLE_WARNING
 
 using namespace Aws::Lambda;
 using namespace Aws::Lambda::Model;
@@ -46,22 +47,22 @@ namespace CloudGemFramework
         {
             auto result(outcome.GetResultWithOwnership());
             JsonValue resultData(result.GetPayload());
-            AWS_LOGSTREAM_INFO(CLASS_TAG, "Payload for lambda is " << resultData.WriteReadable().c_str());
+            AWS_LOGSTREAM_INFO(CLASS_TAG, "Payload for lambda is " << resultData.View().WriteReadable().c_str());
             LoginAccessTokens accessTokens;
 
-            if (resultData.ValueExists(ACCESS_TOKEN))
+            if (resultData.View().ValueExists(ACCESS_TOKEN))
             {
-                accessTokens.accessToken = resultData.GetString(ACCESS_TOKEN);
+                accessTokens.accessToken = resultData.View().GetString(ACCESS_TOKEN);
             }
 
-            if (resultData.ValueExists(EXPIRES_IN))
+            if (resultData.View().ValueExists(EXPIRES_IN))
             {
-                accessTokens.longTermTokenExpiry = duration_cast<seconds>(timeStamp.time_since_epoch()).count() + resultData.GetInt64(EXPIRES_IN);
+                accessTokens.longTermTokenExpiry = duration_cast<seconds>(timeStamp.time_since_epoch()).count() + resultData.View().GetInt64(EXPIRES_IN);
             }
 
-            if (resultData.ValueExists(REFRESH_TOKEN))
+            if (resultData.View().ValueExists(REFRESH_TOKEN))
             {
-                accessTokens.longTermToken = resultData.GetString(REFRESH_TOKEN);
+                accessTokens.longTermToken = resultData.View().GetString(REFRESH_TOKEN);
             }
 
             return accessTokens;
@@ -79,7 +80,7 @@ namespace CloudGemFramework
         requestData.WithString(CODE, authToken);
 
         auto ss(Aws::MakeShared<Aws::StringStream>(CLASS_TAG));
-        *ss << requestData.WriteCompact();
+        *ss << requestData.View().WriteCompact();
 
         invokeRequest.SetFunctionName(m_lambdaToInvokeForAccessToken);
         invokeRequest.SetContentType(CONTENT_TYPE);
@@ -97,7 +98,7 @@ namespace CloudGemFramework
         requestData.WithString(REFRESH_TOKEN, accessTokens.longTermToken);
 
         auto ss(Aws::MakeShared<Aws::StringStream>(CLASS_TAG));
-        *ss << requestData.WriteCompact();
+        *ss << requestData.View().WriteCompact();
 
         invokeRequest.SetFunctionName(m_lambdaToInvokeForRefresh);
         invokeRequest.SetContentType(CONTENT_TYPE);

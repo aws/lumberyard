@@ -11,6 +11,8 @@
 */
 #pragma once
 
+#include <AzCore/base.h>
+
 /**
 * This file is to be included from UnixLike SystemFile implementations only. It should NOT be included by the user.
 */
@@ -21,7 +23,7 @@ namespace AZ
     {
         namespace Internal
         {
-            void FormatAndPeelOffWildCardExtension(const char* sourcePath, char* filePath, char* extensionPath);
+            bool FormatAndPeelOffWildCardExtension(const char* sourcePath, char* filePath, size_t filePathSize, char* extensionPath, size_t extensionSize, bool keepWildcard = false);
         }
     }
 }

@@ -11,6 +11,7 @@
 */
 
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/Component/EntityBus.h>
 
 namespace AZ
@@ -45,7 +46,7 @@ namespace AZ
         , m_setter(nullptr)
     {
     }
-    
+
     //=========================================================================
     // ~BehaviorProperty
     //=========================================================================
@@ -74,12 +75,13 @@ namespace AZ
         {
             // if the property is Write only we should have a setter and the setter last argument is the property type
             return m_setter->GetArgument(m_setter->GetNumArguments() - 1)->m_typeId;
-        }        
+        }
     }
 
     ScopedBehaviorOnDemandReflector::ScopedBehaviorOnDemandReflector(BehaviorContext& behaviorContext)
         : OnDemandReflectionOwner(behaviorContext)
-    {}
+    {
+    }
 
     //=========================================================================
     // BehaviorEBus
@@ -166,7 +168,7 @@ namespace AZ
     {
         return this;
     }
-    
+
     //=========================================================================
     // BehaviorContext::GlobalPropertyBuilder
     //=========================================================================
@@ -309,7 +311,7 @@ namespace AZ
     {
         return Create(Allocate());
     }
-    
+
     BehaviorObject BehaviorClass::Create(void* address) const
     {
         if (m_defaultConstructor && address)
@@ -323,7 +325,7 @@ namespace AZ
     //=========================================================================
     // Clone
     //=========================================================================
-    BehaviorObject BehaviorClass::Clone(const BehaviorObject& object) const 
+    BehaviorObject BehaviorClass::Clone(const BehaviorObject& object) const
     {
         BehaviorObject result;
         if (m_cloner && object.m_typeId == m_typeId)
@@ -383,7 +385,7 @@ namespace AZ
             return azmalloc(m_size, m_alignment, AZ::SystemAllocator, m_name.c_str());
         }
     }
-    
+
     //=========================================================================
     // Deallocate
     //=========================================================================
@@ -500,7 +502,7 @@ namespace AZ
             AZ_Assert(classIter->second, "BehaviorContext class by typeID %s is nullptr in the behavior context!", typeID.ToString<AZStd::string>().c_str());
             return classIter->second;
         }
-    
+
         AZ::TypeId GetClassType(const AZStd::string& classNameString)
         {
             const char* className = classNameString.c_str();
@@ -527,6 +529,27 @@ namespace AZ
         bool IsStringParameter(const BehaviorParameter& parameter)
         {
             return (parameter.m_traits & AZ::BehaviorParameter::TR_STRING) == AZ::BehaviorParameter::TR_STRING;
+        }
+    }
+
+    namespace Internal
+    {
+        bool IsInScope(const AttributeArray& attributes, const AZ::Script::Attributes::ScopeFlags scope)
+        {
+            // Scope defaults to Launcher
+            Script::Attributes::ScopeFlags scopeType = Script::Attributes::ScopeFlags::Launcher;
+
+            // If Scope is defined, read it
+            Attribute* scopeAttribute = FindAttribute(Script::Attributes::Scope, attributes);
+            if (scopeAttribute)
+            {
+                AZ::AttributeReader scopeAttributeReader(nullptr, scopeAttribute);
+                scopeAttributeReader.Read<Script::Attributes::ScopeFlags>(scopeType);
+            }
+
+            // Do a bitwise & - if the result is equal to scope, the scope is correct.
+            // This ensures that, for example, checking Common for Launcher returns true, but checking Launcher for Common does not.
+            return ((static_cast<AZ::u64>(scopeType) & static_cast<AZ::u64>(scope)) == static_cast<AZ::u64>(scope));
         }
     }
  

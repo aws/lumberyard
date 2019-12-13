@@ -15,6 +15,7 @@
 #include <EMotionFX/Source/AnimGraphNode.h>
 #include <EMotionFX/Source/EMotionFXConfig.h>
 #include <EMotionFX/Source/SpringSolver.h>
+#include <EMotionFX/Source/SimulatedObjectBus.h>
 
 namespace EMotionFX
 {
@@ -23,6 +24,7 @@ namespace EMotionFX
 
     class EMFX_API BlendTreeSimulatedObjectNode
         : public AnimGraphNode
+        , private EMotionFX::SimulatedObjectNotificationBus::Handler
     {
     public:
         AZ_RTTI(BlendTreeSimulatedObjectNode, "{89FF51DF-0CB0-4E7D-9F56-E305C8E94D90}", AnimGraphNode)
@@ -50,6 +52,7 @@ namespace EMotionFX
 
         struct EMFX_API Simulation
         {
+            AZ_CLASS_ALLOCATOR_DECL
             SpringSolver m_solver;
             const SimulatedObject* m_simulatedObject = nullptr;
         };
@@ -68,7 +71,7 @@ namespace EMotionFX
                 , m_timePassedInSeconds(0.0f)
             {
             }
-            ~UniqueData() override = default;
+            ~UniqueData() override;
 
         public:
             AZStd::vector<Simulation*> m_simulations;
@@ -78,6 +81,7 @@ namespace EMotionFX
         };
 
         BlendTreeSimulatedObjectNode();
+        ~BlendTreeSimulatedObjectNode();
 
         void Reinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
@@ -92,6 +96,10 @@ namespace EMotionFX
 
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
+
+        // SimulatedObjectNotifications
+        void OnSimulatedObjectChanged() override;
+        void SetSimulatedObjectNames(const AZStd::vector<AZStd::string>& simObjectNames);
 
         static void Reflect(AZ::ReflectContext* context);
 

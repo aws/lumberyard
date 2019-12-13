@@ -326,6 +326,10 @@ namespace AzToolsFramework
         bool AssetSystemComponent::GetAssetInfoById(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType, AZ::Data::AssetInfo& assetInfo, AZStd::string& rootFilePath)
         {
             AzFramework::SocketConnection* engineConnection = AzFramework::SocketConnection::GetInstance();
+
+            assetInfo.m_assetId.SetInvalid();
+            assetInfo.m_assetType = AZ::Data::s_invalidAssetType;
+
             if (!engineConnection || !engineConnection->IsConnected())
             {
                 return false;
@@ -340,14 +344,23 @@ namespace AzToolsFramework
                 return false;
             }
 
-            assetInfo = response.m_assetInfo;
-            rootFilePath = response.m_rootFolder;
-            return true;
+            if (response.m_found)
+            {
+                assetInfo = response.m_assetInfo;
+                rootFilePath = response.m_rootFolder;
+                return true;
+            }
+
+            return false;
         }
 
         bool AssetSystemComponent::GetSourceInfoBySourcePath(const char* sourcePath, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder)
         {
             AzFramework::SocketConnection* engineConnection = AzFramework::SocketConnection::GetInstance();
+
+            assetInfo.m_assetId.SetInvalid();
+            assetInfo.m_assetType = AZ::Data::s_invalidAssetType;
+
             if (!engineConnection || !engineConnection->IsConnected())
             {
                 return false;
@@ -373,6 +386,10 @@ namespace AzToolsFramework
         bool AssetSystemComponent::GetSourceInfoBySourceUUID(const AZ::Uuid& sourceUuid, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder)
         {
             AzFramework::SocketConnection* engineConnection = AzFramework::SocketConnection::GetInstance();
+
+            assetInfo.m_assetId.SetInvalid();
+            assetInfo.m_assetType = AZ::Data::s_invalidAssetType;
+
             if (!engineConnection || !engineConnection->IsConnected())
             {
                 return false;

@@ -292,7 +292,6 @@ namespace NCryOpenGL
         }
     };
 
-    //  Confetti BEGIN: Igor Lobanchikov :END
     struct STextureUnitCache;
 
     struct STextureState
@@ -305,10 +304,8 @@ namespace NCryOpenGL
         TSwizzleMask m_uSwizzleMask;
 
         void ApplyFormatMode(GLuint uTexture, GLenum eTarget);
-        //  Confetti BEGIN: Igor Lobanchikov
         void ApplyFormatMode(GLenum eTarget);
         void Apply(GLuint uTexture, GLenum eTarget, const STextureUnitCache& kCurrentUnitCache);
-        //  Confetti End: Igor Lobanchikov
 
         bool operator==(const STextureState& kOther) const
         {
@@ -416,13 +413,11 @@ namespace NCryOpenGL
         void SetMinLod(float minLod);
         float GetMinLod() const { return m_fMinLod; }
 
-        //  Confetti BEGIN: Igor Lobanchikov
 #if defined(ANDROID)
         void ResetDontCareActionFlags();
         void UpdateDontCareActionFlagsOnBound();
         void UpdateDontCareActionFlagsOnUnbound();
 #endif
-        //  Confetti End: Igor Lobanchikov
 
         typedef std::vector<SMappedSubTexture> TMappedSubTextures;
         typedef std::vector<SOutputMergerTextureViewPtr> TCopySubTextureViews;
@@ -458,7 +453,6 @@ namespace NCryOpenGL
         SOutputMergerTextureView* m_pOutputMergerViewsHead;
         SShaderTextureView* m_pBoundModifier; // NULL if no SRV for this texture has bound custom texture parameters
 
-        //  Confetti BEGIN: Igor Lobanchikov
 #if defined(DXGL_USE_LAZY_CLEAR)
         float                           m_ClearColor[4];
         _smart_ptr<SOutputMergerView>   m_spViewToClear;
@@ -482,7 +476,6 @@ namespace NCryOpenGL
         bool m_bDepthWasInvalidatedWhenUnbound;
         bool m_bStencilWasInvalidatedWhenUnbound;
 #endif
-        //  Confetti End: Igor Lobanchikov
     private:
         // Making this private so that users have to use the Set/Get since there
         // is a corresponding gl call that needs to be called when this variable

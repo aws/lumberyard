@@ -110,21 +110,21 @@ namespace Physics
                     ->DataElement(AZ::Edit::UIHandlers::Default, &CharacterConfiguration::m_collisionGroupId,
                     "Collides With", "The collision layers this character controller collides with")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &CharacterConfiguration::m_materialSelection,
-                    "Material", "Assign material library and select material")
+                    "Physics Material", "Assign physics material library and select materials to use for the character")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &CharacterConfiguration::m_maximumSlopeAngle,
                     "Maximum Slope Angle", "Maximum angle of slopes on which the controller can walk")
-                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->Attribute(AZ::Edit::Attributes::Step, 1.0f)
-                    ->Attribute(AZ::Edit::Attributes::Max, 89.0f)
-                    ->Attribute(AZ::Edit::Attributes::Suffix, " degrees")
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::Step, 1.0f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 89.0f)
+                        ->Attribute(AZ::Edit::Attributes::Suffix, " degrees")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &CharacterConfiguration::m_stepHeight,
                     "Step Height", "Affects the height of steps the character controller will be able to traverse")
-                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &CharacterConfiguration::m_minimumMovementDistance,
                     "Minimum Movement Distance", "To avoid jittering, the controller will not attempt to move distances below this")
-                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->Attribute(AZ::Edit::Attributes::Step, 0.001f)
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::Step, 0.001f)
                 ;
             }
         }

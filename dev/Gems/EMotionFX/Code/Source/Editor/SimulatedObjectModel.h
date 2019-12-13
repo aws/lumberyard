@@ -109,14 +109,10 @@ namespace EMotionFX
         SIMULATEDOBJECTMODEL_CALLBACK(CommandRemoveSimulatedJointsPreCallback);
         SIMULATEDOBJECTMODEL_CALLBACK(CommandRemoveSimulatedJointsPostCallback);
         SIMULATEDOBJECTMODEL_CALLBACK(CommandAdjustSimulatedJointPostCallback);
-        SIMULATEDOBJECTMODEL_CALLBACK(CommandAddColliderPostCallback);
-        SIMULATEDOBJECTMODEL_CALLBACK(CommandAdjustColliderPostCallback);
-        SIMULATEDOBJECTMODEL_CALLBACK(CommandRemoveColliderPostCallback);
 
         static int s_columnCount;
 
         void InitModel(Actor* actor);
-        void OnModelModified();
 
         AZStd::vector<MCore::Command::Callback*> m_commandCallbacks;
 
@@ -128,4 +124,3 @@ namespace EMotionFX
         QIcon m_objectIcon;
     };
 } // namespace EMotionFX
-

@@ -87,6 +87,9 @@ namespace EMotionFX
 
             AZ::SceneAPI::Events::ProcessingResult BuildActor(ActorBuilderContext& context);
 
+        protected:
+            virtual void InstantiateMaterialGroup();
+
         private:
             struct NodeIndexHasher
             {
@@ -106,11 +109,6 @@ namespace EMotionFX
             using NodeIndexSet = AZStd::unordered_set<AZ::SceneAPI::Containers::SceneGraph::NodeIndex, NodeIndexHasher, NodeIndexComparator>;
 
         private:
-#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
-            // Workaround for VS2013 - Delete the copy constructor and make it private
-            // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-            ActorBuilder(const ActorBuilder&) = delete;
-#endif
             void BuildPreExportStructure(ActorBuilderContext& context, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& rootBoneNodeIndex, const NodeIndexSet& selectedMeshNodeIndices,
                 AZStd::vector<AZ::SceneAPI::Containers::SceneGraph::NodeIndex>& outNodeIndices, BoneNameEmfxIndexMap& outBoneNameEmfxIndexMap);
 
@@ -125,7 +123,7 @@ namespace EMotionFX
 
             void ExtractActorSettings(const Group::IActorGroup& actorGroup, ActorSettings& outSettings);
 
-            bool GetMaterialInfoForActorGroup(const ActorBuilderContext& context);
+            bool GetMaterialInfoForActorGroup(ActorBuilderContext& context);
             void SetupMaterialDataForMesh(const ActorBuilderContext& context, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& meshNodeIndex);
 
             void GetNodeIndicesOfSelectedBaseMeshes(ActorBuilderContext& context, NodeIndexSet& meshNodeIndexSet) const;
@@ -133,8 +131,9 @@ namespace EMotionFX
 
             AZStd::string_view RemoveLODSuffix(const AZStd::string_view& lodName);
 
-        private:
+        protected:
             AZStd::shared_ptr<AZ::GFxFramework::IMaterialGroup> m_materialGroup;
+        private:
             AZStd::vector<AZ::u32> m_materialIndexMapForMesh;
         };
     } // namespace Pipeline

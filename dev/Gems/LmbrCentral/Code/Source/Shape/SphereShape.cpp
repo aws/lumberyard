@@ -139,16 +139,16 @@ namespace LmbrCentral
     }
 
     void DrawSphereShape(
-        const ShapeDrawParams& shapeDrawParams, const SphereShapeConfig& boxConfig,
+        const ShapeDrawParams& shapeDrawParams, const SphereShapeConfig& sphereConfig,
         AzFramework::DebugDisplayRequests& debugDisplay)
     {
         if (shapeDrawParams.m_filled)
         {
             debugDisplay.SetColor(shapeDrawParams.m_shapeColor.GetAsVector4());
-            debugDisplay.DrawBall(AZ::Vector3::CreateZero(), boxConfig.m_radius);
+            debugDisplay.DrawBall(AZ::Vector3::CreateZero(), sphereConfig.m_radius);
         }
 
         debugDisplay.SetColor(shapeDrawParams.m_wireColor.GetAsVector4());
-        debugDisplay.DrawWireSphere(AZ::Vector3::CreateZero(), boxConfig.m_radius);
+        debugDisplay.DrawWireSphere(AZ::Vector3::CreateZero(), sphereConfig.m_radius);
     }
 } // namespace LmbrCentral

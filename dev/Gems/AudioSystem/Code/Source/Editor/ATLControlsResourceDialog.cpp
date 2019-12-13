@@ -11,12 +11,14 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "ATLControlsResourceDialog.h"
-#include "AudioControlsEditorPlugin.h"
-#include "ATLControlsModel.h"
-#include "QAudioControlTreeWidget.h"
-#include "QtUtil.h"
+#include <ATLControlsResourceDialog.h>
+
+#include <AzFramework/StringFunc/StringFunc.h>
+
+#include <ACEEnums.h>
+#include <ATLControlsModel.h>
+#include <AudioControlsEditorPlugin.h>
+#include <QAudioControlTreeWidget.h>
 
 #include <QDialogButtonBox>
 #include <QBoxLayout>
@@ -213,8 +215,8 @@ namespace AudioControls
     {
         if (control)
         {
-            string sControlScope = control->GetScope();
-            if (control->GetType() == m_eType && (sControlScope.empty() || sControlScope.compareNoCase(m_sScope) == 0))
+            AZStd::string sControlScope = control->GetScope();
+            if (control->GetType() == m_eType && (sControlScope.empty() || AzFramework::StringFunc::Equal(sControlScope.c_str(), m_sScope.c_str())))
             {
                 // LY-22029 - Only allow selecting Preload controls that are non-AutoLoad.
                 // This change applies everywhere, to all Preload selectors, so if there's ever a need to select preloads
@@ -272,18 +274,18 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    void ATLControlsDialog::SetScope(string sScope)
+    void ATLControlsDialog::SetScope(const AZStd::string& sScope)
     {
         m_sScope = sScope;
         ApplyFilter();
     }
 
     //-------------------------------------------------------------------------------------------//
-    QModelIndex ATLControlsDialog::FindItem(const string& sControlName)
+    QModelIndex ATLControlsDialog::FindItem(const AZStd::string_view sControlName)
     {
         if (m_pTreeModel && m_pATLModel)
         {
-            QModelIndexList indexes = m_pTreeModel->match(m_pTreeModel->index(0, 0, QModelIndex()), Qt::DisplayRole, QtUtil::ToQString(sControlName), -1, Qt::MatchRecursive);
+            QModelIndexList indexes = m_pTreeModel->match(m_pTreeModel->index(0, 0, QModelIndex()), Qt::DisplayRole, QString(sControlName.data()), -1, Qt::MatchRecursive);
             if (!indexes.empty())
             {
                 const int size = indexes.size();
@@ -321,7 +323,7 @@ namespace AudioControls
                 QModelIndex index = m_pControlTree->currentIndex();
                 if (index.isValid() && index.data(eDR_TYPE) == eIT_AUDIO_CONTROL)
                 {
-                    CAudioControlsEditorPlugin::ExecuteTrigger(QtUtil::ToString(index.data(Qt::DisplayRole).toString()));
+                    CAudioControlsEditorPlugin::ExecuteTrigger(index.data(Qt::DisplayRole).toString().toUtf8().data());
                 }
             }
         }
@@ -358,4 +360,4 @@ namespace AudioControls
 
 } // namespace AudioControls
 
-#include <ATLControlsResourceDialog.moc>
+#include <Source/Editor/ATLControlsResourceDialog.moc>

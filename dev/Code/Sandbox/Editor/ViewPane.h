@@ -21,9 +21,11 @@
 #include "ViewportTitleDlg.h"
 
 #include <AzQtComponents/Components/ToolBarArea.h>
+#include <AzCore/Component/Component.h>
 
 class CViewport;
 class QToolBar;
+class QScrollArea;
 
 /////////////////////////////////////////////////////////////////////////////
 // CViewPane view
@@ -34,7 +36,7 @@ class CLayoutViewPane
     Q_OBJECT
 public:
     CLayoutViewPane(QWidget* parent = nullptr);
-    virtual ~CLayoutViewPane() { OnDestroy(); }
+    virtual ~CLayoutViewPane();
 
     // Operations
 public:
@@ -74,19 +76,46 @@ public:
     void SetViewportFOV(float fov);
     void OnFOVChanged(float fov);
 
+    enum class ViewportExpansionPolicy
+    {
+        AutoExpand,
+        FixedSize
+    };
+
+    ViewportExpansionPolicy GetViewportExpansionPolicy() { return m_viewportPolicy; }
+
+    //! Determine whether the viewport will be a fixed-size (scrollable if necessary) 
+    //! independent of the main window size, or auto-expanding based directly on the main window size.
+    void SetViewportExpansionPolicy(ViewportExpansionPolicy policy);
+
 protected:
     void OnMenuLayoutConfig();
     void OnMenuViewSelected(const QString& paneName);
     void OnMenuMaximized();
 
     void mouseDoubleClickEvent(QMouseEvent* event) override;
-    void resizeEvent(QResizeEvent* event) override;
     void OnDestroy();
     void focusInEvent(QFocusEvent* event) override;
 
     void DisconnectRenderViewportInteractionRequestBus();
 
 private:
+    static constexpr int MIN_VIEWPORT_RES = 64;
+    static constexpr int MAX_VIEWPORT_RES = 8192;
+    static constexpr int MAX_CLASSVIEWS = 100;
+    static constexpr int VIEW_BORDER = 0;
+
+    enum TitleMenuCommonCommands
+    {
+        ID_MAXIMIZED = 50000,
+        ID_LAYOUT_CONFIG,
+
+        FIRST_ID_CLASSVIEW,
+        LAST_ID_CLASSVIEW = FIRST_ID_CLASSVIEW + MAX_CLASSVIEWS - 1
+    };
+
+
+
     QString m_viewPaneClass;
     bool m_bFullscreen;
     CViewportTitleDlg m_viewportTitleDlg;
@@ -96,9 +125,29 @@ private:
     int m_titleHeight;
 
     QWidget* m_viewport;
+    QScrollArea* m_viewportScrollArea = nullptr;
+    ViewportExpansionPolicy m_viewportPolicy = ViewportExpansionPolicy::AutoExpand;
     bool m_active;
 };
 
 /////////////////////////////////////////////////////////////////////////////
+
+namespace AzToolsFramework
+{
+    //! A component to reflect scriptable commands for the Editor
+    class ViewPanePythonFuncsHandler
+        : public AZ::Component
+    {
+    public:
+        AZ_COMPONENT(ViewPanePythonFuncsHandler, "{25C99C8F-4440-4656-ABC4-32134F496CC1}")
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        // AZ::Component ...
+        void Activate() override {}
+        void Deactivate() override {}
+    };
+
+} // namespace AzToolsFramework
 
 #endif // CRYINCLUDE_EDITOR_VIEWPANE_H

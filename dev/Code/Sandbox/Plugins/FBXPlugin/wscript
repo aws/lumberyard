@@ -32,6 +32,9 @@ def build(bld):
                                    'QT5GUI',
                                    'QT5WIDGETS',
                                    'FBXSDK'],
+        includes                = [bld.Path('Code/CryEngine/CryCommon'),
+                                   bld.Path('Code/Sandbox/Editor'),
+                                   bld.Path('Code/Sandbox/Editor/Include')],
 
         # Platform Specific
         win_lib                 = ['Wininet'],

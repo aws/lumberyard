@@ -35,9 +35,8 @@ namespace HttpRequestor
         TextParameters(const TextParameters&) = default;
         TextParameters& operator=(const TextParameters&) = default;
 
-        // VS2013 won't default these
-        TextParameters(TextParameters&&);
-        TextParameters& operator=(TextParameters&&);
+        TextParameters(TextParameters&&) = default;
+        TextParameters& operator=(TextParameters&&) = default;
 
         //returns the URI in string form as an recipient of the HTTP connection
         const Aws::String& GetURI() const { return m_URI; }
@@ -84,24 +83,5 @@ namespace HttpRequestor
         , m_bodyStream( std::make_shared<std::stringstream>(body.c_str()) )
         , m_callback(callback)
     {
-    }
-
-    inline TextParameters::TextParameters(TextParameters&& rhs)
-        : m_URI(std::move(rhs.m_URI))
-        , m_method(std::move(rhs.m_method))
-        , m_headers(std::move(rhs.m_headers))
-        , m_bodyStream(rhs.m_bodyStream)
-        , m_callback(std::move(rhs.m_callback))
-    {
-    }
-
-    inline TextParameters& TextParameters::operator=(TextParameters&& rhs)
-    {
-        m_URI = std::move(rhs.m_URI);
-        m_method = std::move(rhs.m_method);
-        m_headers = std::move(rhs.m_headers);
-        m_bodyStream = rhs.m_bodyStream;
-        m_callback = std::move(rhs.m_callback);
-        return *this;
     }
 }

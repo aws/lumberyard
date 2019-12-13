@@ -10,14 +10,11 @@
 *
 */
 
-#include "StdAfx.h"
-
-#include "AudioInputFile.h"
-#include "Common_wwise.h"
-#include "WavParser.h"
+#include <AudioInput/AudioInputFile.h>
+#include <AudioInput/WavParser.h>
+#include <Common_wwise.h>
 
 #include <AzCore/IO/FileIO.h>
-
 
 #include <AK/SoundEngine/Common/AkStreamMgrModule.h>
 
@@ -72,7 +69,7 @@ namespace Audio
                 // the beginning of the real signal data.
                 if (m_parser)
                 {
-                    AZStd::size_t headerBytesRead = m_parser->ParseHeader(fileStream);
+                    size_t headerBytesRead = m_parser->ParseHeader(fileStream);
                     if (headerBytesRead > 0 && m_parser->IsHeaderValid())
                     {
                         // Update the size...
@@ -93,7 +90,7 @@ namespace Audio
                     m_dataPtr = new AZ::u8[m_dataSize];
 
                     // Read file into internal buffer...
-                    AZStd::size_t bytesRead = fileStream.Read(m_dataSize, m_dataPtr);
+                    size_t bytesRead = fileStream.Read(m_dataSize, m_dataPtr);
 
                     ResetBookmarks();
 
@@ -178,7 +175,7 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
-    AZStd::size_t AudioInputFile::CopyData(AZStd::size_t numSampleFrames, void* toBuffer)
+    size_t AudioInputFile::CopyData(size_t numSampleFrames, void* toBuffer)
     {
         // Copies data to an output buffer.
         // Size requested is in sample frames, not bytes!
@@ -190,13 +187,13 @@ namespace Audio
             return 0;
         }
 
-        const AZStd::size_t frameBytes = (m_config.m_numChannels * m_config.m_bitsPerSample) >> 3;  // bits --> bytes
-        AZStd::size_t copySize = numSampleFrames * frameBytes;
+        const size_t frameBytes = (m_config.m_numChannels * m_config.m_bitsPerSample) >> 3;  // bits --> bytes
+        size_t copySize = numSampleFrames * frameBytes;
 
         // Check if request is larger than remaining, trim off excess.
         if (m_dataCurrentReadSize + copySize > m_dataSize)
         {
-            AZStd::size_t excess = (m_dataCurrentReadSize + copySize) - m_dataSize;
+            size_t excess = (m_dataCurrentReadSize + copySize) - m_dataSize;
             copySize -= excess;
             numSampleFrames = (copySize / frameBytes);
         }

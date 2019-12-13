@@ -29,7 +29,7 @@ namespace GridMate
     class BasicThrottle
     {
     public:
-        AZ_TYPE_INFO(BasicThrottle, "{394E41BF-D60C-4917-8810-251E2E3D3EAF}", DataType);
+        AZ_TYPE_INFO_LEGACY(BasicThrottle, "{394E41BF-D60C-4917-8810-251E2E3D3EAF}", DataType);
         
         bool WithinThreshold(const DataType& newValue) const
         {
@@ -49,7 +49,7 @@ namespace GridMate
     class BasicThrottle<AZ::Quaternion>
     {
     public:
-        AZ_TYPE_INFO(BasicThrottle, "{6795C9AD-412F-4164-B025-0CBA82194A44}", AZ::Quaternion);
+        AZ_TYPE_INFO_LEGACY(BasicThrottle, "{6795C9AD-412F-4164-B025-0CBA82194A44}", AZ::Quaternion);
         
         bool WithinThreshold(const AZ::Quaternion& newValue) const
         {

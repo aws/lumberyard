@@ -59,14 +59,14 @@ namespace AssetBuilderSDK
         virtual ~AssetBuilderBusTraits() {}
 
         // Use this function to send AssetBuilderDesc info to the assetprocessor
-        virtual void RegisterBuilderInformation(const AssetBuilderDesc& builderDesc) {}
+        virtual void RegisterBuilderInformation(const AssetBuilderDesc& /*builderDesc*/) {}
 
         // Use this function to register all the component descriptors
-        virtual void RegisterComponentDescriptor(AZ::ComponentDescriptor* descriptor) {}
+        virtual void RegisterComponentDescriptor(AZ::ComponentDescriptor* /*descriptor*/) {}
 
         // Log functions to report general builder related messages/error.
-        virtual void BuilderLog(const AZ::Uuid& builderId, const char* message, ...) {}
-        virtual void BuilderLogV(const AZ::Uuid& builderId, const char* message, va_list list) {}
+        virtual void BuilderLog(const AZ::Uuid& /*builderId*/, const char* /*message*/, ...) {}
+        virtual void BuilderLogV(const AZ::Uuid& /*builderId*/, const char* /*message*/, va_list /*list*/) {}
     };
 
     typedef AZ::EBus<AssetBuilderBusTraits> AssetBuilderBus;

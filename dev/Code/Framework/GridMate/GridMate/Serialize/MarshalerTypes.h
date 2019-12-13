@@ -27,7 +27,7 @@ namespace GridMate
     class Marshaler
     {
     public:
-        AZ_TYPE_INFO(Marshaler, "{D9546741-8ABD-43C8-9790-499FCB1BA1E6}", Type);
+        AZ_TYPE_INFO_LEGACY(Marshaler, "{D9546741-8ABD-43C8-9790-499FCB1BA1E6}", Type);
         /// Defines the size that is written to the wire. This is only valid for fixed size marshalers, marshalers for dynamic objects don't define it.
         static const AZStd::size_t MarshalSize = 0;
 

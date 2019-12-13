@@ -1,0 +1,7 @@
+{
+  "auto": {
+    "Platform/Windows": [
+      "../../CAFile_Default.cpp"
+    ]
+  }
+}

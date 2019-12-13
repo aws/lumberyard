@@ -13,9 +13,14 @@
 
 #pragma once
 
-#include "AudioControl.h"
-#include "Undo/IUndoObject.h"
-#include "QATLControlsTreeModel.h"
+#include <AudioControl.h>
+
+#include <AzCore/std/containers/map.h>
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
+
+#include <QATLControlsTreeModel.h>
+#include <Undo/IUndoObject.h>
 
 #include <QAbstractItemModel>
 #include <QString>
@@ -24,7 +29,7 @@ class QStandardItem;
 
 namespace AudioControls
 {
-    typedef std::vector<int> TPath;
+    typedef AZStd::vector<int> TPath;
 
     //-------------------------------------------------------------------------------------------//
     class IUndoControlOperation
@@ -37,7 +42,7 @@ namespace AudioControls
 
         TPath m_path;
         CID m_id;
-        std::shared_ptr<CATLControl> m_pStoredControl;
+        AZStd::shared_ptr<CATLControl> m_pStoredControl;
     };
 
     //-------------------------------------------------------------------------------------------//
@@ -59,7 +64,7 @@ namespace AudioControls
         : public IUndoControlOperation
     {
     public:
-        explicit CUndoControlRemove(std::shared_ptr<CATLControl>& pControl);
+        explicit CUndoControlRemove(AZStd::shared_ptr<CATLControl>& pControl);
     protected:
         int GetSize() override { return sizeof(*this); }
         QString GetDescription() override { return "Undo ATL Control Remove"; }
@@ -124,11 +129,11 @@ namespace AudioControls
         void Redo() override;
 
         CID m_id;
-        string m_name;
-        string m_scope;
+        AZStd::string m_name;
+        AZStd::string m_scope;
         bool m_bAutoLoad;
-        std::map<string, int> m_groupPerPlatform;
-        std::vector<TConnectionPtr> m_connectedControls;
+        AZStd::map<AZStd::string, int> m_groupPerPlatform;
+        AZStd::vector<TConnectionPtr> m_connectedControls;
     };
 
     //-------------------------------------------------------------------------------------------//

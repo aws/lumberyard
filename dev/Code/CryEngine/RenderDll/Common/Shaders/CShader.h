@@ -22,6 +22,8 @@
 #include <unordered_map>
 #include <AzCore/std/parallel/mutex.h>
 
+#include <Terrain/Bus/TerrainBus.h>
+
 struct SRenderBuf;
 class CRendElementBase;
 struct SEmitter;
@@ -239,8 +241,8 @@ enum EShaderCacheMode
 enum EShaderLanguage
 {
     eSL_Unknown,
-    eSL_Orbis, // ACCEPTED_USE
-    eSL_Durango, // ACCEPTED_USE
+    eSL_Orbis,
+    eSL_Durango,
     eSL_D3D11,
     eSL_GL4_1,
     eSL_GL4_4,
@@ -265,6 +267,7 @@ class CShaderMan
 #if defined(SHADERS_SERIALIZING)
     , public CShaderSerialize
 #endif
+    , public Terrain::TerrainShaderRequestBus::Handler
 {
     friend class CShader;
     friend class CParserBin;
@@ -276,7 +279,7 @@ class CShaderMan
     //////////////////////////////////////////////////////////////////////////
 
 private:
-    STexAnim* mfReadTexSequence(const char *name, int Flags, bool bFindOnly);
+    CTexAnim* mfReadTexSequence(const char *name, int Flags, bool bFindOnly);
     int mfReadTexSequence(STexSamplerRT* smp, const char* name, int Flags, bool bFindOnly);
 
     CShader* mfNewShader(const char* szName);
@@ -501,6 +504,8 @@ public:
         memset(&m_RTRect, 0, sizeof(Vec4));
         m_eCacheMode = eSC_Normal;
         m_nFrameSubmit = 1;
+
+        Terrain::TerrainShaderRequestBus::Handler::BusConnect();
     }
 
     void ShutDown();
@@ -546,10 +551,17 @@ public:
     {
         if (!pSysShader)
         {
-            CryComment("Load System Shader '%s'...", szName);
+            CryComment("Load System Shader (refresh) '%s'...", szName);
 
             if (pSysShader = mfForName(szName, EF_SYSTEM))
             {
+                if (pSysShader->m_Flags & EF_NOTFOUND)
+                {
+                    pSysShader = NULL;
+                    CryComment("Load System Shader Failed %s", szName);
+                    return false;
+                }
+                CryComment("ok");
                 return true;
             }
         }
@@ -663,6 +675,16 @@ public:
         pSizer->AddObject(m_ShaderNames);
         pSizer->AddObject(m_ShaderCacheCombinations[0]);
         pSizer->AddObject(m_ShaderCacheCombinations[1]);
+    }
+
+    void RefreshShader(const AZStd::string_view name, CShader* shader) override
+    {
+        mfRefreshSystemShader(name.data(), shader);
+    }
+
+    void ReleaseShader(CShader* shader) const override
+    {
+        SAFE_RELEASE_FORCE(shader);
     }
 
     static float EvalWaveForm(SWaveForm* wf);

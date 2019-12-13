@@ -177,6 +177,45 @@ namespace AzToolsFramework
             return message.substr(index);
         }
 
+        static AZStd::string RemoveAssetBuilderFormatting(const AZStd::string& message)
+        {
+            if(message.size() < 2)
+            {
+                // A message shorter than 2 characters can't possibly have the characters we're looking to strip off
+                return message;
+            }
+
+            // We're looking for prefixes of the format [WES]:<optional space>.  The space will be missing if the prefix is the only thing on the line
+            // The prefixes exist so we can figure out the message severity/type, but they just add noise when displaying the log in the AP GUI
+            switch(message[0])
+            {
+                case 'W': // warning
+                case 'E': // error
+                case 'S': // summary
+                    break;
+                default:
+                    return message;
+            }
+
+            if (message[1] != ':')
+            {
+                return message;
+            }
+
+            if(message.size() == 2)
+            {
+                return "";
+            }
+
+            if(message[2] == ' ')
+            {
+                // Prefix matched, return the message without the prefix
+                return message.substr(3);
+            }
+
+            return message;
+        }
+
         LogLine::LogLine(const char* inMessage, const char* inWindow, LogType inType, AZ::u64 inTime, void* data, uintptr_t threadId)
             : m_message(inMessage)
             , m_window(inWindow)
@@ -299,6 +338,7 @@ namespace AzToolsFramework
             }
 
             m_message = RemoveRCFormatting(m_message);
+            m_message = RemoveAssetBuilderFormatting(m_message);
         }
 
         const AZStd::string& LogLine::GetLogMessage() const

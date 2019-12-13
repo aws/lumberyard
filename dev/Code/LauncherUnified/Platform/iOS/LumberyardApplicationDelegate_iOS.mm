@@ -53,6 +53,12 @@ namespace
 
 - (int)runLumberyardApplication
 {
+#if AZ_TESTS_ENABLED
+
+    // TODO: iOS needs to determine how to get around being able to run in monolithic mode (ie no dynamic modules)
+    return static_cast<int>(ReturnCode::ErrUnitTestNotSupported);
+
+#else
     using namespace LumberyardLauncher;
 
     PlatformMainInfo mainInfo;
@@ -74,6 +80,7 @@ namespace
 
     ReturnCode status = Run(mainInfo);
     return static_cast<int>(status);
+#endif // AZ_TESTS_ENABLED
 }
 
 - (void)launchLumberyardApplication

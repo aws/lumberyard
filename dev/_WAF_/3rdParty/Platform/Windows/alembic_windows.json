@@ -1,0 +1,29 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "libpath_debug": [
+                "lib/Windows/Debug",
+                "@3P:hdf5@/lib/Windows/Debug",
+                "@3P:ilmbase@/lib/Windows/Debug"
+            ],
+            "libpath_release": [
+                "lib/Windows/Release",
+                "@3P:hdf5@/lib/Windows/Release",
+                "@3P:ilmbase@/lib/Windows/Release"
+            ],
+            "lib_debug": [
+                "${alembic_libs}.lib",
+                "${ilmbase_libs}_d.lib",
+                "${hdf5_libs}_D.lib"
+            ],
+            "lib_release": [
+                "${alembic_libs}.lib",
+                "${ilmbase_libs}.lib",
+                "${hdf5_libs}.lib"
+            ],
+            "linkflags" : [
+                "/ignore:4099"
+            ]
+        }
+    }
+}

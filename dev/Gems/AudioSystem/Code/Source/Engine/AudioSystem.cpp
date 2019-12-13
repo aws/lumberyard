@@ -11,18 +11,20 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "AudioSystem.h"
-
-#include <SoundCVars.h>
+#include <AudioSystem.h>
 #include <AudioProxy.h>
+#include <SoundCVars.h>
+#include <AudioSystem_Traits_Platform.h>
 
+#include <AzCore/Debug/Profiler.h>
 #include <AzCore/std/bind/bind.h>
 #include <AzFramework/StringFunc/StringFunc.h>
-#include <CrySoundSystem_Traits_Platform.h>
+
 
 namespace Audio
 {
+    extern CAudioLogger g_audioLogger;
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // CAudioThread
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -51,7 +53,7 @@ namespace Audio
 
         AZStd::thread_desc threadDesc;
         threadDesc.m_name = "Audio Thread";
-        threadDesc.m_cpuId = AZ_TRAIT_CRYSOUNDSYSTEM_AUDIO_THREAD_AFFINITY;
+        threadDesc.m_cpuId = AZ_TRAIT_AUDIOSYSTEM_AUDIO_THREAD_AFFINITY;
 
         auto threadFunc = AZStd::bind(&CAudioThread::Run, this);
         m_thread = AZStd::thread(threadFunc, &threadDesc);
@@ -83,6 +85,7 @@ namespace Audio
     {
         m_apAudioProxies.reserve(g_audioCVars.m_nAudioObjectPoolSize);
         m_apAudioProxiesToBeFreed.reserve(16);
+
         AudioSystemRequestBus::Handler::BusConnect();
         AudioSystemThreadSafeRequestBus::Handler::BusConnect();
         AudioSystemInternalRequestBus::Handler::BusConnect();
@@ -94,24 +97,6 @@ namespace Audio
         AudioSystemRequestBus::Handler::BusDisconnect();
         AudioSystemThreadSafeRequestBus::Handler::BusDisconnect();
         AudioSystemInternalRequestBus::Handler::BusDisconnect();
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioSystem::Init()
-    {
-        CryLogAlways("AZ::Component - CAudioSystem::Init()");
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioSystem::Activate()
-    {
-        CryLogAlways("AZ::Component - CAudioSystem::Activate()");
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioSystem::Deactivate()
-    {
-        CryLogAlways("AZ::Component - CAudioSystem::Deactivate()");
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -130,7 +115,7 @@ namespace Audio
     void CAudioSystem::PushRequestBlocking(const SAudioRequest& audioRequestData)
     {
         // Main Thread!
-        FUNCTION_PROFILER_ALWAYS(GetISystem(), PROFILE_AUDIO);
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Audio);
 
         CAudioRequestInternal request(audioRequestData);
 
@@ -187,7 +172,7 @@ namespace Audio
     void CAudioSystem::ExternalUpdate()
     {
         // Main Thread!
-        FUNCTION_PROFILER_ALWAYS(GetISystem(), PROFILE_AUDIO);
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Audio);
         AZ_Assert(gEnv->mMainThreadId == CryGetCurrentThreadId(), "AudioSystem::ExternalUpdate - called from non-Main thread!");
 
         // Notify callbacks on the pending callbacks queue...
@@ -208,9 +193,9 @@ namespace Audio
 
         m_apAudioProxiesToBeFreed.clear();
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         DrawAudioDebugData();
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -226,7 +211,7 @@ namespace Audio
     void CAudioSystem::InternalUpdate()
     {
         // Audio Thread!
-        FUNCTION_PROFILER_ALWAYS(GetISystem(), PROFILE_AUDIO);
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Audio);
 
         UpdateTime();
 
@@ -252,12 +237,12 @@ namespace Audio
             m_updatePeriod = duration_ms::zero();
         }
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         {
             AZStd::lock_guard<AZStd::mutex> lock(m_debugNameStoreMutex);
             m_debugNameStore.SyncChanges(m_oATL.GetDebugStore());
         }
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
         if (!handledBlockingRequests)
         {
@@ -316,16 +301,6 @@ namespace Audio
         m_audioSystemThread.Deactivate();
         const bool bSuccess = m_oATL.ShutDown();
         m_bSystemInitialized = false;
-
-        // The AudioSystem must be the last object that is freed from the audio memory pool before the allocator is destroyed.
-        azdestroy(this, Audio::AudioSystemAllocator, CAudioSystem);
-
-        g_audioCVars.UnregisterVariables();
-
-        if (AZ::AllocatorInstance<Audio::AudioSystemAllocator>::IsReady())
-        {
-            AZ::AllocatorInstance<Audio::AudioSystemAllocator>::Destroy();
-        }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -394,8 +369,8 @@ namespace Audio
     const char* CAudioSystem::GetControlsPath() const
     {
         // this shouldn't get called before UpdateControlsPath has been called.
-        AZ_Assert(!m_sControlsPath.empty(), "AudioSystem::GetControlsPath - controls path has been requested before it has been set!");
-        return m_sControlsPath.c_str();
+        AZ_WarningOnce("AudioSystem", !m_controlsPath.empty(), "AudioSystem::GetControlsPath - controls path has been requested before it has been set!");
+        return m_controlsPath.c_str();
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -405,7 +380,7 @@ namespace Audio
         controlsPath += m_oATL.GetControlsImplSubPath();
         if (AzFramework::StringFunc::RelativePath::Normalize(controlsPath))
         {
-            m_sControlsPath = controlsPath.c_str();
+            m_controlsPath = controlsPath.c_str();
         }
         else
         {
@@ -454,12 +429,12 @@ namespace Audio
         {
             audioProxy = azcreate(CAudioProxy, (), Audio::AudioSystemAllocator, "AudioProxyEx");
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+        #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
             if (!audioProxy)
             {
-                g_audioLogger.Log(eALT_FATAL, "AudioSystem::GetFreeAudioProxy - failed to create new AudioProxy instance!");
+                g_audioLogger.Log(eALT_ASSERT, "AudioSystem::GetFreeAudioProxy - failed to create new AudioProxy instance!");
             }
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+        #endif // INCLUDE_AUDIO_PRODUCTION_CODE
         }
 
         return static_cast<IAudioProxy*>(audioProxy);
@@ -471,9 +446,9 @@ namespace Audio
         AZ_Assert(gEnv->mMainThreadId == CryGetCurrentThreadId(), "AudioSystem::FreeAudioProxy - called from a non-Main thread!");
         auto const audioProxy = static_cast<CAudioProxy*>(audioProxyI);
 
-        if (std::find(m_apAudioProxiesToBeFreed.begin(), m_apAudioProxiesToBeFreed.end(), audioProxy) != m_apAudioProxiesToBeFreed.end() || std::find(m_apAudioProxies.begin(), m_apAudioProxies.end(), audioProxy) != m_apAudioProxies.end())
+        if (AZStd::find(m_apAudioProxiesToBeFreed.begin(), m_apAudioProxiesToBeFreed.end(), audioProxy) != m_apAudioProxiesToBeFreed.end() || AZStd::find(m_apAudioProxies.begin(), m_apAudioProxies.end(), audioProxy) != m_apAudioProxies.end())
         {
-            AZ_Warning("CAudioSystem", false, "Attempting to free an already freed audio proxy");
+            AZ_Warning("AudioSystem", false, "Attempting to free an already freed audio proxy");
             return;
         }
 
@@ -505,7 +480,7 @@ namespace Audio
         AZ_Assert(gEnv->mMainThreadId == CryGetCurrentThreadId(), "AudioSystem::GetAudioControlName - called from non-Main thread!");
         const char* sResult = nullptr;
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         AZStd::lock_guard<AZStd::mutex> lock(m_debugNameStoreMutex);
         switch (controlType)
         {
@@ -547,7 +522,7 @@ namespace Audio
                 break;
             }
         }
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
         return sResult;
     }
@@ -558,10 +533,10 @@ namespace Audio
         AZ_Assert(gEnv->mMainThreadId == CryGetCurrentThreadId(), "AudioSystem::GetAudioSwitchStateName - called from non-Main thread!");
         const char* sResult = nullptr;
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         AZStd::lock_guard<AZStd::mutex> lock(m_debugNameStoreMutex);
         sResult = m_debugNameStore.LookupAudioSwitchStateName(switchID, stateID);
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
         return sResult;
     }
@@ -638,7 +613,7 @@ namespace Audio
     void CAudioSystem::ProcessRequestThreadSafe(CAudioRequestInternal request)
     {
         // Audio Thread!
-        FUNCTION_PROFILER_ALWAYS(GetISystem(), PROFILE_AUDIO);
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Audio);
 
         if (m_oATL.CanProcessRequests())
         {
@@ -663,7 +638,8 @@ namespace Audio
     {
         // Todo: This should handle request priority, use request priority as bus Address and process in priority order.
 
-        FUNCTION_PROFILER_ALWAYS(GetISystem(), PROFILE_AUDIO);
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Audio);
+
         AZ_Assert(gEnv->mMainThreadId != CryGetCurrentThreadId(), "AudioSystem::ProcessRequestByPriority - called from Main thread!");
 
         if (m_oATL.CanProcessRequests())
@@ -716,12 +692,6 @@ namespace Audio
         }
 
         return success;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioSystem::OnCVarChanged(ICVar* const pCvar)
-    {
-        // nothing?
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -215,6 +215,10 @@ const char* CRendElement::mfTypeString()
         return "GeomCache";
     case eDATA_Gem:
         return "Gem";
+#ifdef LY_TERRAIN_RUNTIME
+    case eDATA_TerrainSystem:
+        return "TerrainSystem";
+#endif
     default:
     {
         CRY_ASSERT(false);

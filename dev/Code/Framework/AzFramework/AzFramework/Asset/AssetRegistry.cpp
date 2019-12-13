@@ -166,6 +166,11 @@ namespace AzFramework
         m_assetDependencies[id].push_back(dependency);
     }
 
+    AZStd::vector<AZ::Data::ProductDependency> AssetRegistry::GetAssetDependencies(const AZ::Data::AssetId& id)
+    {
+        return m_assetDependencies[id];
+    }
+
     AZ::Data::AssetId AssetRegistry::GetAssetIdByLegacyAssetId(const AZ::Data::AssetId& legacyAssetId) const
     {
         auto found = m_legacyAssetIdToRealAssetId.find(legacyAssetId);
@@ -174,6 +179,21 @@ namespace AzFramework
             return found->second;
         }
         return AZ::Data::AssetId();
+    }
+
+    AzFramework::AssetRegistry::LegacyAssetIdToRealAssetIdMap AssetRegistry::GetLegacyMappingSubsetFromRealIds(const AZStd::vector<AZ::Data::AssetId>& realIds) const
+    {
+        LegacyAssetIdToRealAssetIdMap subset;
+        auto realIdsBeginItr = realIds.begin();
+        auto realIdsEndItr = realIds.end();
+        for (const auto& legacyToRealPair : m_legacyAssetIdToRealAssetId)
+        {
+            if (AZStd::find(realIdsBeginItr, realIdsEndItr, legacyToRealPair.second) != realIdsEndItr)
+            {
+                subset.insert(legacyToRealPair);
+            }
+        }
+        return subset;
     }
 
     AZ::Data::AssetId AssetRegistry::GetAssetIdByPath(const char* assetPath) const
@@ -202,6 +222,28 @@ namespace AzFramework
         }
         
         m_assetPathToId.insert_key(CreateUUIDForName(assetPath)).first->second = AZStd::move(id);
+    }
+
+    void AssetRegistry::AddRegistry(AZStd::shared_ptr<AssetRegistry> assetRegistry)
+    {
+        for (const auto& element : assetRegistry->m_assetIdToInfo)
+        {
+            m_assetIdToInfo[element.first] = element.second;
+            // remove dependency info that exists for this asset, as the change could have removed any dependenices this asset had.
+            m_assetDependencies.erase(element.first);   
+        }
+        for (const auto& element : assetRegistry->m_assetDependencies)
+        {
+            m_assetDependencies[element.first] = element.second;
+        }
+        for (const auto& element : assetRegistry->m_assetPathToId)
+        {
+            m_assetPathToId[element.first] = element.second;
+        }
+        for (const auto& element : assetRegistry->m_legacyAssetIdToRealAssetId)
+        {
+            m_legacyAssetIdToRealAssetId[element.first] = element.second;
+        }
     }
 
 } // namespace AzFramework

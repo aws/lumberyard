@@ -29,7 +29,7 @@
  * This is detail on the Visual Studio blog https://devblogs.microsoft.com/cppblog/optimizing-the-layout-of-empty-base-classes-in-vs2015-update-2-3/
  * Windows Clang also requires this attribute as by default it generates classes structs which are compatible with Microsoft C++ ABI
  */
-#if defined(AZ_PLATFORM_WINDOWS)
+#if defined(AZ_COMPILER_MSVC)
 #define AZSTD_VARIANT_EMPTY_BASE_OPTIMIZATION __declspec(empty_bases)
 #else
 #define AZSTD_VARIANT_EMPTY_BASE_OPTIMIZATION 
@@ -214,7 +214,7 @@ namespace AZStd
         constexpr size_t index() const;
 
         /// Overloads the std::swap algorithm for std::variant. Effectively calls lhs.swap(rhs).
-        template <enable_if_t<conjunction<bool_constant<is_swappable<Types>::value && is_move_constructible<Types>::value>...>::value, bool> = false>
+        template <bool Placeholder = true, enable_if_t<conjunction<bool_constant<Placeholder && is_swappable<Types>::value && is_move_constructible<Types>::value>...>::value, bool> = false>
         void swap(variant& other);
 
     private:

@@ -14,6 +14,7 @@
 
 namespace AWSNativeSDKInit
 {
+#if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
     const char* MemoryManager::AWS_API_ALLOC_TAG = "AwsApi";
 
     void MemoryManager::Begin() 
@@ -41,11 +42,12 @@ namespace AWSNativeSDKInit
 
     void* MemoryManager::AllocateMemory(std::size_t blockSize, std::size_t alignment, const char* allocationTag) 
     {
-        return m_allocator.Allocate(blockSize, alignment, 0, allocationTag);
+        return m_allocator->Allocate(blockSize, alignment, 0, allocationTag);
     }
 
     void MemoryManager::FreeMemory(void* memoryPtr) 
     {
-        m_allocator.DeAllocate(memoryPtr);
+        m_allocator->DeAllocate(memoryPtr);
     }
+#endif
 }

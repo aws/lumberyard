@@ -1,0 +1,15 @@
+{
+    "platform": {
+        "linux_x64": {
+            "libpath_debug": [
+                "build/linux/clang-3.4/debug"
+            ],
+            "libpath_release": [
+                "build/linux/clang-3.4/release"
+            ],
+            "lib": [
+                "liblz4.a"
+            ]
+        }
+    }
+}

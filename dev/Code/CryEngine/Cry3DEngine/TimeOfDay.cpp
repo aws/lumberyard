@@ -14,7 +14,7 @@
 #include "StdAfx.h"
 #include <AzCore/Debug/Trace.h>
 #include "TimeOfDay.h"
-#include "terrain_water.h"
+#include "Ocean.h"
 #include "IPostEffectGroup.h"
 #include <ISplines.h>
 #include <IRemoteCommand.h>

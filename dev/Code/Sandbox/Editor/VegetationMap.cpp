@@ -13,8 +13,12 @@
 
 #include "StdAfx.h"
 #include "VegetationMap.h"
+
+#ifdef LY_TERRAIN_EDITOR
 #include "Terrain/Heightmap.h"
 #include "Terrain/Layer.h"
+#endif //#ifdef LY_TERRAIN_EDITOR
+
 #include "VegetationBrush.h"
 #include "VegetationObject.h"
 
@@ -97,6 +101,36 @@ namespace
 
 
 #define SAFE_RELEASE_NODE(node)     if (node) { (node)->ReleaseNode(); node = 0; }
+
+class VegetationToolUtils
+{
+public:
+    static void RefreshVegetationTools(bool isReloadObjectsInPanel)
+    {
+        CEditTool* pTool = GetIEditor()->GetEditTool();
+        if (pTool && qobject_cast<CVegetationTool*>(pTool))
+        {
+            CVegetationTool* pVegetationTool = (CVegetationTool*)pTool;
+            pVegetationTool->RefreshPanel(isReloadObjectsInPanel);
+        }
+
+        auto pDatabaseDialog = FindViewPane<CDataBaseDialog>(LyViewPane::DatabaseView);
+        if (pDatabaseDialog)
+        {
+            if (auto pVegetationDatabase = qobject_cast<CVegetationDataBasePage*>(pDatabaseDialog->GetCurrent()))
+            {
+                pVegetationDatabase->ReloadObjects();
+            }
+        }
+
+        CVegetationDataBasePage* vegetationObjects = FindViewPane<CVegetationDataBasePage>(LyViewPane::VegetationEditor);
+        if (vegetationObjects)
+        {
+            vegetationObjects->ReloadObjects();
+        }
+    }
+};
+
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
@@ -326,27 +360,7 @@ protected:
 
     void NotifyListeners()
     {
-        CEditTool* pTool = GetIEditor()->GetEditTool();
-        if (pTool && qobject_cast<CVegetationTool*>(pTool))
-        {
-            CVegetationTool* pVegetationTool = (CVegetationTool*)pTool;
-            pVegetationTool->RefreshPanel(m_isReloadObjectsInPanel);
-        }
-
-        auto pDatabaseDialog = FindViewPane<CDataBaseDialog>(LyViewPane::DatabaseView);
-        if (pDatabaseDialog)
-        {
-            if (auto pVegetationDatabase = qobject_cast<CVegetationDataBasePage*>(pDatabaseDialog->GetCurrent()))
-            {
-                pVegetationDatabase->ReloadObjects();
-            }
-        }
-
-        CVegetationDataBasePage* vegetationObjects = FindViewPane<CVegetationDataBasePage>(LyViewPane::VegetationEditor);
-        if (vegetationObjects)
-        {
-            vegetationObjects->ReloadObjects();
-        }
+        VegetationToolUtils::RefreshVegetationTools(m_isReloadObjectsInPanel);
     }
 
 private:
@@ -497,6 +511,9 @@ void CVegetationMap::ClearObjects()
     }
     StatInstGroupEventBus::Broadcast(&StatInstGroupEventBus::Events::ReleaseStatInstGroupIdSet, groupIdSet);
     m_objects.clear();
+
+    // If any vegetation tools are open, tell them to refresh themselves
+    VegetationToolUtils::RefreshVegetationTools(true);
 }
 
 
@@ -537,7 +554,7 @@ void CVegetationMap::RegisterInstance(CVegetationInstance* obj)
 
     if (obj->object && !obj->object->IsHidden())
     {
-        obj->pRenderNode = p3DEngine->GetITerrain()->AddVegetationInstance(obj->object->GetId(), obj->pos, obj->scale, obj->brightness, RAD2BYTE(obj->angle), RAD2BYTE(obj->angleX), RAD2BYTE(obj->angleY));
+        obj->pRenderNode = p3DEngine->AddVegetationInstance(obj->object->GetId(), obj->pos, obj->scale, obj->brightness, RAD2BYTE(obj->angle), RAD2BYTE(obj->angleX), RAD2BYTE(obj->angleY));
     }
 
     if (obj->pRenderNode && !obj->object->IsAutoMerged())
@@ -651,7 +668,10 @@ void CVegetationMap::Allocate(int nMapSize, bool bKeepData)
 
     ClearAll();
 
-    m_mapSize = nMapSize;
+    // If we have a map size (terrain size) of 0, default to the max map size so that
+    // vegetation can still be placed on brushes.
+    m_mapSize = nMapSize ? nMapSize : kMaxMapSize;
+
     m_sectorSize = m_mapSize < kMaxMapSize ? 1 : m_mapSize / kMaxMapSize;
     m_numSectors = m_mapSize / m_sectorSize;
     m_worldToSector = 1.0f / m_sectorSize;
@@ -684,6 +704,11 @@ void CVegetationMap::PlaceObjectsOnTerrain()
         return;
     }
 
+    // We'll adjust object heights only if terrain exists.  However, we still need to do all the logic below
+    // regardless because it's used in some places to register the vegetation with the engine, not just to 
+    // adjust heights.
+    bool terrainExists = (p3DEngine->GetTerrainSize() > 0);
+
     // Clear all objects from 3d Engine.
     RemoveObjectsFromTerrain();
 
@@ -696,8 +721,8 @@ void CVegetationMap::PlaceObjectsOnTerrain()
         {
             if (!obj->object->IsHidden())
             {
-                // Stick vegetation to terrain.
-                if (!obj->object->IsAffectedByBrushes() && obj->object->IsAffectedByTerrain())
+                // Stick vegetation to terrain if it exists.
+                if (terrainExists && !obj->object->IsAffectedByBrushes() && obj->object->IsAffectedByTerrain())
                 {
                     obj->pos.z = p3DEngine->GetTerrainElevation(obj->pos.x, obj->pos.y);
                 }
@@ -1323,14 +1348,30 @@ bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
 {
     assert(object != 0);
 
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
+    // If there's no brush position, then we're performing a flood fill.
+    bool floodFill = (!pPos);
 
     GetIEditor()->SetModifiedFlag();
     GetIEditor()->SetModifiedModule(eModifiedTerrain);
 
     Vec3 p(0, 0, 0);
 
+#ifdef LY_TERRAIN_EDITOR
+    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
     int unitSize = pHeightmap->GetUnitSize();
+#else
+    int unitSize = GetIEditor()->Get3DEngine()->GetHeightMapUnitSize();
+
+    // If we're trying to flood fill and there's no terrain, just return.  There's no work for us to do.
+    // Note:  This is because we only allow painting on "brushes" (static meshes) in the non-flood-fill
+    // case.  If we ever change that, we'll need to short-circuit the "IsAffectedByTerrain()" case below
+    // instead.
+    if (floodFill)
+    {
+        return true;
+    }
+
+#endif //#ifdef LY_TERRAIN_EDITOR
 
     int mapSize = m_numSectors * m_sectorSize;
 
@@ -1409,7 +1450,11 @@ bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
 
         // Use the safe method for retrieving the height, or else the Editor
         // will crash if the x/y values are out of range
+#ifdef LY_TERRAIN_EDITOR
         float currHeight = pHeightmap->GetSafeXY(hx, hy);
+#else
+        float currHeight = GetIEditor()->Get3DEngine()->GetTerrainZ(hx, hy);
+#endif //#ifdef LY_TERRAIN_EDITOR
 
         // Check if height value is within brush min/max altitude.
         if (currHeight < AltMin || currHeight > AltMax)
@@ -1418,7 +1463,11 @@ bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
         }
 
         // Calculate the slope for this spot
+#ifdef LY_TERRAIN_EDITOR
         float slope = pHeightmap->GetSlope(hx, hy);
+#else
+        float slope = GetIEditor()->Get3DEngine()->GetTerrainSlope(x, y);
+#endif //#ifdef LY_TERRAIN_EDITOR
 
         // Check if slope is within brush min/max slope.
         if (slope < SlopeMin || slope > SlopeMax)
@@ -1436,7 +1485,7 @@ bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
             continue;
         }
 
-        if (pPos && object->IsAffectedByBrushes())
+        if ((!floodFill) && object->IsAffectedByBrushes())
         {
             p.z = pPos->z;
             float brushRadius = float(rc.right() - rc.left()) / 2;
@@ -1603,8 +1652,6 @@ void CVegetationMap::ClearBrush(QRect& rc, bool bCircle, CVegetationObject* pObj
     GetIEditor()->SetModifiedModule(eModifiedTerrain);
 
     Vec3 p(0, 0, 0);
-
-    int unitSize = GetIEditor()->GetHeightmap()->GetUnitSize();
 
     int mapSize = m_numSectors * m_sectorSize;
 
@@ -1984,6 +2031,10 @@ void CVegetationMap::Serialize(CXmlArchive& xmlAr)
 
         // Now display all objects on terrain.
         PlaceObjectsOnTerrain();
+
+        // If any vegetation tools are open, tell them to refresh themselves.
+        VegetationToolUtils::RefreshVegetationTools(true);
+
     }
     else
     {
@@ -2519,16 +2570,23 @@ void CVegetationMap::LoadOldStuff(CXmlArchive& xmlAr)
 //! Generate shadows from static objects and place them in shadow map bitarray.
 void CVegetationMap::GenerateShadowMap(CByteImage& shadowmap, float shadowAmmount, const Vec3& sunVector)
 {
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
-
     int width = shadowmap.GetWidth();
     int height = shadowmap.GetHeight();
 
-    //@FIXME: Hardcoded.
-    int sectorSizeInMeters = 64;
+#ifdef LY_TERRAIN_EDITOR
+    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
+    
+    SSectorInfo si;
+    pHeightmap->GetSectorsInfo(si);
+    int sectorSizeInMeters = si.sectorSize;
 
     int unitSize = pHeightmap->GetUnitSize();
     int numSectors = (pHeightmap->GetWidth() * unitSize) / sectorSizeInMeters;
+#else
+    int terrainSizeInMeters = GetIEditor()->Get3DEngine()->GetTerrainSize();
+    int sectorSizeInMeters = GetIEditor()->Get3DEngine()->GetTerrainSectorSize();
+    int numSectors = terrainSizeInMeters / sectorSizeInMeters;
+#endif //#ifdef LY_TERRAIN_EDITOR
 
     int sectorSize = shadowmap.GetWidth() / numSectors;
     int sectorSize2 = sectorSize * 2;

@@ -28,7 +28,7 @@ namespace AZ
     {
         //
         static const int MEXP = 19937;
-        static const int N    = MEXP / (128 + 1);
+        static const int N    = MEXP / 128 + 1;
 
 #if AZ_TRAIT_HARDWARE_HAS_M128I
         union W128_T
@@ -44,6 +44,7 @@ namespace AZ
 #endif
         /** 128-bit data type */
         typedef W128_T w128_t;
+        AZ_STATIC_ASSERT(N == MEXP / (sizeof(W128_T) * 8) + 1, "The m_smft member array must fit all iterations of the correct 128-bit size.");
 
         void gen_rand_all(Sfmt& g);
         void gen_rand_array(Sfmt& g, SfmtInternal::w128_t* array, int size);

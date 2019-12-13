@@ -66,11 +66,7 @@ namespace LmbrCentral
         ~LmbrCentralSystemComponent() override = default;
 
     private:
-
-        // Workaround for VS2013 - Delete the copy constructor and make it private
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
         LmbrCentralSystemComponent(const LmbrCentralSystemComponent&) = delete;
-
         ////////////////////////////////////////////////////////////////////////////
         // AZ::Component
         void Activate() override;

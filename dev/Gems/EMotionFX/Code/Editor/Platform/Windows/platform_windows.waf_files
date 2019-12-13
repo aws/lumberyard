@@ -6,9 +6,14 @@
             "EMotionFX_Traits_Platform.h",
             "EMotionFX_Traits_Windows.h"
         ],
-        "Platform/Common/WinAPI":
+        "EMotionFXTools/EMStudioSDK/Platform/Windows":
         [
-            "../Common/WinAPI/MCore/Source/DiskFile_WinAPI.cpp"
+            "EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MainWindowEventFilter_Windows.cpp"
+        ],
+        "EMotionFXTools/Rendering/OpenGL2/Platform/Windows":
+        [
+            "EMotionFX/Rendering/OpenGL2/Source/GLInclude_Platform.h",
+            "EMotionFX/Rendering/OpenGL2/Source/GLInclude_Windows.h"
         ]
     }
 }

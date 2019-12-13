@@ -61,7 +61,7 @@ namespace EMotionFX
         public:
             AZ_CLASS_ALLOCATOR_DECL
 
-            UniqueData() = default;
+            UniqueData() = delete;
             UniqueData(AnimGraphObject* object, AnimGraphInstance* animGraphInstance);
             ~UniqueData() override = default;
 

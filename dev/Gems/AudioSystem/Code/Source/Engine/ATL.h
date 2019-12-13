@@ -13,9 +13,10 @@
 
 #pragma once
 
-#include "ATLEntities.h"
-#include "ATLComponents.h"
-#include "FileCacheManager.h"
+#include <ATLEntities.h>
+#include <ATLComponents.h>
+#include <AudioInternalInterfaces.h>
+#include <FileCacheManager.h>
 
 namespace Audio
 {
@@ -131,14 +132,16 @@ namespace Audio
             const IATLEnvironmentImplData* const pEnvironmentImplData,
             const float fAmount);
 
+        EAudioRequestStatus MuteAll();
+        EAudioRequestStatus UnmuteAll();
         void UpdateSharedData();
         void SetImplLanguage();
 
         enum EATLInternalStates : TATLEnumFlagsType
         {
             eAIS_NONE                           = 0,
-            eAIS_IS_MUTED                       = BIT(0),
-            eAIS_AUDIO_MIDDLEWARE_SHUTTING_DOWN = BIT(1),
+            eAIS_IS_MUTED                       = AUDIO_BIT(0),
+            eAIS_AUDIO_MIDDLEWARE_SHUTTING_DOWN = AUDIO_BIT(1),
         };
 
         // Regularly updated common data to be referenced by all components.
@@ -183,7 +186,7 @@ namespace Audio
         void DrawImplMemoryPoolDebugInfo(IRenderAuxGeom& auxGeom, float fPosX, float fPosY);
 
         CATLDebugNameStore m_oDebugNameStore;
-        AZStd::string m_implementationNameString;
+        AZStd::string m_implementationName;
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     };
 } // namespace Audio

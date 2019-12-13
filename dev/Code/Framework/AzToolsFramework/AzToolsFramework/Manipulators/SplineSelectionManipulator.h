@@ -41,10 +41,7 @@ namespace AzToolsFramework
         ~SplineSelectionManipulator();
 
         /// A Manipulator must only be created and managed through a shared_ptr.
-        static AZStd::shared_ptr<SplineSelectionManipulator> MakeShared()
-        {
-            return AZStd::shared_ptr<SplineSelectionManipulator>(aznew SplineSelectionManipulator());
-        }
+        static AZStd::shared_ptr<SplineSelectionManipulator> MakeShared();
 
         /// Mouse action data used by MouseActionCallback.
         struct Action

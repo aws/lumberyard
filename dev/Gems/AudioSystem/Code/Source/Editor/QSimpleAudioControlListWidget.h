@@ -13,11 +13,12 @@
 
 #pragma once
 
+#include <ACETypes.h>
+#include <ATLControlsModel.h>
+#include <AudioControl.h>
+#include <IAudioSystemControl.h>
+
 #include <QTreeWidget>
-#include "AudioControl.h"
-#include "ATLControlsModel.h"
-#include "QtUtil.h"
-#include "common/ACETypes.h"
 
 namespace AudioControls
 {
@@ -39,7 +40,7 @@ namespace AudioControls
         TImplControlType GetControlType(QTreeWidgetItem* item);
         CID GetItemId(QTreeWidgetItem* item);
         bool IsLocalised(QTreeWidgetItem* item);
-        std::vector<CID> GetSelectedIds();
+        ControlList GetSelectedIds();
         bool IsConnected(QTreeWidgetItem* item);
 
     private:

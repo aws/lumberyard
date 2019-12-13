@@ -64,7 +64,7 @@
 #include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogComponent.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
 #include <LyShine/UiAssetTypes.h>
-#include <AzToolsFramework/Archive/SevenZipComponent.h>
+#include <AzToolsFramework/Archive/ArchiveComponent.h>
 
 namespace AssetProcessor
 {
@@ -156,7 +156,6 @@ AZ::ComponentTypeList AssetProcessorAZApplication::GetRequiredSystemComponents()
         }
     }
 
-    components.push_back(azrtti_typeid<AzToolsFramework::SevenZipComponent>());
     return components;
 }
 
@@ -264,7 +263,6 @@ void ApplicationManager::GetExternalBuilderFileList(QStringList& externalBuilder
     filter.append("*" AZ_DYNAMIC_LIBRARY_EXTENSION);
 
     QDir builderDir;
-    bool builderDirFound = false;
     for (auto builderPath : builderPaths)
     {
         builderDir.setPath(builderPath);
@@ -701,7 +699,7 @@ ApplicationManager::BeforeRunStatus ApplicationManager::BeforeRun()
 
     // Calculate the override app root path if provided and validate it before passing it along
     QString overrideAppRootPath = ParseOptionAppRootArgument();
-    bool invalidOverrideAppRoot = false;
+
     if (!overrideAppRootPath.isEmpty())
     {
         if (ValidateExternalAppRoot(overrideAppRootPath))
@@ -849,7 +847,7 @@ void ApplicationManager::RegisterComponentDescriptor(const AZ::ComponentDescript
     this->m_frameworkApp.RegisterComponentDescriptor(descriptor);
 }
 
-ApplicationManager::RegistryCheckInstructions ApplicationManager::CheckForRegistryProblems(QWidget* parentWidget, bool showPopupMessage)
+ApplicationManager::RegistryCheckInstructions ApplicationManager::CheckForRegistryProblems(QWidget* /*parentWidget*/, bool showPopupMessage)
 {
 #if defined(AZ_PLATFORM_WINDOWS)
     // There's a bug that prevents rc.exe from closing properly, making it appear

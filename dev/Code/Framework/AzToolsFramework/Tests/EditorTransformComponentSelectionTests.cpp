@@ -16,21 +16,164 @@
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzTest/AzTest.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
+#include <AzToolsFramework/Entity/EditorEntityActionComponent.h>
+#include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
+#include <AzToolsFramework/ToolsComponents/EditorLayerComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorLockComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityComponent.h>
 #include <AzToolsFramework/Viewport/ActionBus.h>
 #include <AzToolsFramework/ViewportSelection/EditorDefaultSelection.h>
 #include <AzToolsFramework/ViewportSelection/EditorInteractionSystemViewportSelectionRequestBus.h>
 #include <AzToolsFramework/ViewportSelection/EditorTransformComponentSelection.h>
+#include <AzToolsFramework/ViewportSelection/EditorVisibleEntityDataCache.h>
 #include <AzCore/UnitTest/TestTypes.h>
 
-#include "AzToolsFrameworkTestHelpers.h"
+#include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
 
 using namespace AzToolsFramework;
 
 namespace UnitTest
 {
+    AZ::Entity* CreateEditorEntity(const char* name)
+    {
+        AZ::Entity* entity = nullptr;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            entity, &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateEditorEntity, name);
+
+        if (entity)
+        {
+            entity->Deactivate();
+
+            // add required components for the Editor entity
+            entity->CreateComponent<Components::TransformComponent>();
+            entity->CreateComponent<Components::EditorLockComponent>();
+            entity->CreateComponent<Components::EditorVisibilityComponent>();
+
+            // This is necessary to prevent a warning in the undo system.
+            AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(
+                &AzToolsFramework::ToolsApplicationRequests::Bus::Events::AddDirtyEntity,
+                entity->GetId());
+
+            entity->Activate();
+        }
+        return entity;
+    }
+
+    AZ::Entity* CreateEditorReadyEntity(const char* entityName)     // EditorLayerComponentTest:132
+    {
+        AZ::Entity* createdEntity = nullptr;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            createdEntity,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateEditorEntity,
+            entityName);
+
+        createdEntity->Deactivate();
+
+        AzToolsFramework::EditorEntityContextRequestBus::Broadcast(
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::AddRequiredComponents,
+            *createdEntity);
+
+        createdEntity->Activate();
+        return createdEntity;
+    }
+   
+    AZ::Entity* CreateEntityWithLayer(const char* entityName)
+    {
+        AZ::Entity* entity = CreateEditorReadyEntity(entityName);
+        auto layer = aznew AzToolsFramework::Layers::EditorLayerComponent();
+        AZStd::vector<AZ::Component*> newComponents;
+
+        newComponents.push_back(layer);
+        Components::EditorEntityActionComponent::AddExistingComponentsOutcome componentAddResult(
+            AZ::Failure(AZStd::string("No listener on AddExistingComponentsToEntity bus.")));
+
+        AzToolsFramework::EntityCompositionRequestBus::BroadcastResult(
+            componentAddResult,
+            &AzToolsFramework::EntityCompositionRequests::AddExistingComponentsToEntity,
+            entity,
+            newComponents);
+
+        return entity;
+    }
+
+    class EditorEntityVisibilityCacheFixture
+        : public AllocatorsTestFixture
+    {
+    public:
+        void SetUp() override
+        {
+            m_app.Start(AzFramework::Application::Descriptor());
+        }
+
+        void TearDown() override
+        {
+            m_app.Stop();
+        }
+
+        void CreateLayerAndEntityHeirarchy()
+        {
+            // Given
+            // Set up entity layer hierarchy.
+            AZ::Entity* a = CreateEditorEntity("A");
+            AZ::Entity* b = CreateEditorEntity("B");
+            AZ::Entity* c = CreateEditorEntity("C");
+
+            m_layer = CreateEntityWithLayer("Layer");
+
+            AZ::TransformBus::Event(a->GetId(), &AZ::TransformBus::Events::SetParent, m_layer->GetId());
+            AZ::TransformBus::Event(b->GetId(), &AZ::TransformBus::Events::SetParent, a->GetId());
+            AZ::TransformBus::Event(c->GetId(), &AZ::TransformBus::Events::SetParent, b->GetId());
+
+            // Add entity ids we want to track, to the visibility cache.
+            m_entityIds.insert(m_entityIds.begin(), { a->GetId(), b->GetId(), c->GetId() });
+            m_cache.AddEntityIds(m_entityIds);
+        }
+
+        ToolsApplication m_app;
+        EntityIdList m_entityIds;
+        AZ::Entity* m_layer = nullptr;
+        EditorVisibleEntityDataCache m_cache;
+    };
+
+    TEST_F(EditorEntityVisibilityCacheFixture, LayerLockAffectsChildEntitiesInEditorEntityCache)
+    {
+        // Given
+        CreateLayerAndEntityHeirarchy();
+
+        // Check preconditions.
+        EXPECT_FALSE(m_cache.IsVisibleEntityLocked(m_cache.GetVisibleEntityIndexFromId(m_entityIds[0]).value()));
+        EXPECT_FALSE(m_cache.IsVisibleEntityLocked(m_cache.GetVisibleEntityIndexFromId(m_entityIds[1]).value()));
+        EXPECT_FALSE(m_cache.IsVisibleEntityLocked(m_cache.GetVisibleEntityIndexFromId(m_entityIds[2]).value()));
+
+        // When
+        AzToolsFramework::SetEntityLockState(m_layer->GetId(), true);
+
+        // Then
+        EXPECT_TRUE(m_cache.IsVisibleEntityLocked(m_cache.GetVisibleEntityIndexFromId(m_entityIds[0]).value()));
+        EXPECT_TRUE(m_cache.IsVisibleEntityLocked(m_cache.GetVisibleEntityIndexFromId(m_entityIds[1]).value()));
+        EXPECT_TRUE(m_cache.IsVisibleEntityLocked(m_cache.GetVisibleEntityIndexFromId(m_entityIds[2]).value()));
+    }
+
+    TEST_F(EditorEntityVisibilityCacheFixture, LayerVisibilityAffectsChildEntitiesInEditorEntityCache)
+    {
+        // Given
+        CreateLayerAndEntityHeirarchy();
+
+        // Check preconditions.
+        EXPECT_TRUE(m_cache.IsVisibleEntityVisible(m_cache.GetVisibleEntityIndexFromId(m_entityIds[0]).value()));
+        EXPECT_TRUE(m_cache.IsVisibleEntityVisible(m_cache.GetVisibleEntityIndexFromId(m_entityIds[1]).value()));
+        EXPECT_TRUE(m_cache.IsVisibleEntityVisible(m_cache.GetVisibleEntityIndexFromId(m_entityIds[2]).value()));
+
+        // When
+        AzToolsFramework::SetEntityVisibility(m_layer->GetId(), false);
+
+        // Then
+        EXPECT_FALSE(m_cache.IsVisibleEntityVisible(m_cache.GetVisibleEntityIndexFromId(m_entityIds[0]).value()));
+        EXPECT_FALSE(m_cache.IsVisibleEntityVisible(m_cache.GetVisibleEntityIndexFromId(m_entityIds[1]).value()));
+        EXPECT_FALSE(m_cache.IsVisibleEntityVisible(m_cache.GetVisibleEntityIndexFromId(m_entityIds[2]).value()));
+    }
+
     // Fixture to support testing EditorTransformComponentSelection functionality on an Entity selection.
     class EditorTransformComponentSelectionTest
         : public ToolsApplicationFixture

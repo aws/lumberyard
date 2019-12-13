@@ -3,7 +3,7 @@
     "visual_studio_name": "All",
     "comment" : "modules must contain only modules that are to be linked together for every platform and config. in release, these will be linked in statically to the executable",
 
-    "modules" :
+    "modules": 
     [
         "AmazonStyle",
         "AzCore",
@@ -23,14 +23,10 @@
         "Cry3DEngine",
         "CryAction",
         "CryAction_AutoFlowNode",
-        "CryAudioCommon",
-        "CryAudioImplNoSound",
-        "CryAudioImplWwise",
         "CryCommon",
         "CryFont",
         "CryNetwork",
         "CryPhysics",
-        "CrySoundSystem",
         "CrySystem",
         "CryRenderD3D11",
         "CryRenderD3D12",
@@ -40,18 +36,14 @@
         "Editor",
         "EditorAnimation",
         "EditorAssetImporter",
-        "EditorAudioControlsEditor",
-        "EditorAudioControlsEditorCommon",
-        "EditorWwise",
         "EditorCommon",
         "EditorCore",
         "EditorLib",
         "EditorModularBehaviorTree",
-        "EditorNoSound",
         "EditorUI_QT",
         "AssetTagging",
-        "AssetTaggingTools",
         "ComponentEntityEditorPlugin",
+        "EditorAudioControlsEditor",
         "CryDesigner",
         "CryPhysicsRC",
         "AssetBuilder",
@@ -59,18 +51,19 @@
         "AssetProcessorBatch",
         "AssetBuilderSDK",
         "ExampleBuilder",
+        "LevelBuilder",
         "LuaBuilder",
         "MaterialBuilder",
         "SceneBuilder",
         "SliceBuilder",
         "TranslationBuilder",
+        "CopyDependencyBuilder",
+        "WwiseBuilder",
         "UiCanvasEditor",
         "DeploymentTool",
         "ProjectSettingsTool",
         "CrySCompileServer",
         "CryXML",
-        "DBAPI",
-        
         "FBXPlugin",
         "FbxSceneBuilder",
         "FbxSDKWrapper",
@@ -105,6 +98,7 @@
         "ResourceCompilerSlice",
         "ResourceCompilerUiCanvas",
         "ResourceCompilerXML",
+        "ResourceCompilerLegacy",
         "SceneCore",
         "SceneData",
         "SceneUI",
@@ -114,6 +108,13 @@
         "PRT",
         "NewsBuilder",
         "NewsShared",
-        "ToolsCrashUploader"
+        "ToolsCrashUploader",
+        "SerializeContextTools",
+        "DeltaCataloger",
+        "AssetBundlerBatch",
+        "ProcessLaunchTest"
+    ],
+    "android_modules": [
+        "NativeActivityGlue"
     ]
 }

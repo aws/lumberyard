@@ -45,5 +45,4 @@ namespace Audio
 #endif // INCLUDE_WWISE_IMPL_PRODUCTION_CODE
     };
 
-    extern CAudioWwiseImplCVars g_audioImplCVars_wwise;
 } // namespace Audio

@@ -1,0 +1,28 @@
+{
+    "none": {
+        "Source": [
+            "Source/AssetMemoryAnalyzer_precompiled.cpp",
+            "Source/AssetMemoryAnalyzer_precompiled.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/AssetMemoryAnalyzer/AssetMemoryAnalyzerBus.h"
+        ],
+      "Source": [
+          "Source/AssetMemoryAnalyzer.cpp",
+          "Source/AssetMemoryAnalyzer.h",
+          "Source/AssetMemoryAnalyzerModule.cpp",
+          "Source/AssetMemoryAnalyzerSystemComponent.cpp",
+          "Source/AssetMemoryAnalyzerSystemComponent.h",
+          "Source/DebugImGUI.cpp",
+          "Source/DebugImGUI.h",
+          "Source/ExportCSV.cpp",
+          "Source/ExportCSV.h",
+          "Source/ExportJSON.cpp",
+          "Source/ExportJSON.h",
+          "Source/FormatUtils.cpp",
+          "Source/FormatUtils.h"
+      ]
+    }
+}

@@ -10,14 +10,15 @@
 *
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
-#include "StdAfx.h"
-#include "QATLControlsTreeModel.h"
-#include "AudioControl.h"
-#include "QAudioControlTreeWidget.h"
-#include "IEditor.h"
-#include "AudioControlsEditorUndo.h"
 
-#include <QtUtil.h>
+#include <QATLControlsTreeModel.h>
+
+#include <ACEEnums.h>
+#include <AudioControl.h>
+#include <AudioControlsEditorUndo.h>
+#include <IEditor.h>
+#include <QAudioControlTreeWidget.h>
+
 #include <QStandardItem>
 #include <QMessageBox>
 
@@ -61,7 +62,7 @@ namespace AudioControls
     {
         if (pControl && pParent)
         {
-            QStandardItem* pItem = new QAudioControlItem(QtUtil::ToQString(pControl->GetName()), pControl);
+            QStandardItem* pItem = new QAudioControlItem(QString(pControl->GetName().c_str()), pControl);
             if (pItem)
             {
                 pParent->insertRow(nRow, pItem);
@@ -73,13 +74,13 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    QStandardItem* QATLTreeModel::CreateFolder(QStandardItem* pParent, const string& sName, int nRow)
+    QStandardItem* QATLTreeModel::CreateFolder(QStandardItem* pParent, const AZStd::string_view sName, int nRow)
     {
         if (pParent)
         {
             // Make a valid name for the folder (avoid having folders with the same name under same root)
-            QString sRootName = QtUtil::ToQString(sName);
-            QString sFolderName = sRootName;
+            QString sRootName(sName.data());
+            QString sFolderName(sRootName);
             int number = 1;
             bool bFoundName = false;
             while (!bFoundName)
@@ -151,7 +152,7 @@ namespace AudioControls
             }
         };
 
-        std::vector<STreeIndex> sortedIndexList;
+        AZStd::vector<STreeIndex> sortedIndexList;
 
         const int size = indexList.length();
         for (int i = 0; i < size; ++i)
@@ -190,7 +191,7 @@ namespace AudioControls
     {
         // Delete children first and in reverse order
         // of their row (so that we can undo them in the same order)
-        std::vector<QModelIndex> childs;
+        AZStd::vector<QModelIndex> childs;
         QModelIndex child = root.child(0, 0);
         for (int i = 1; child.isValid(); ++i)
         {
@@ -234,7 +235,7 @@ namespace AudioControls
         {
             if (QStandardItem* pItem = GetItemFromControlID(pControl->GetId()))
             {
-                QString sNewName = QtUtil::ToQString(pControl->GetName());
+                QString sNewName(pControl->GetName().c_str());
                 if (pItem->text() != sNewName)
                 {
                     pItem->setText(sNewName);
@@ -258,9 +259,9 @@ namespace AudioControls
     }
 
     //-------------------------------------------------------------------------------------------//
-    CATLControl* QATLTreeModel::CreateControl(EACEControlType eControlType, const string& sName, CATLControl* pParent)
+    CATLControl* QATLTreeModel::CreateControl(EACEControlType eControlType, const AZStd::string_view sName, CATLControl* pParent)
     {
-        string sFinalName = m_pControlsModel->GenerateUniqueName(sName, eControlType, pParent ? pParent->GetScope() : "", pParent);
+        AZStd::string sFinalName = m_pControlsModel->GenerateUniqueName(sName, eControlType, pParent ? pParent->GetScope() : "", pParent);
         return m_pControlsModel->CreateControl(sFinalName, eControlType, pParent);
     }
 

@@ -13,9 +13,9 @@
 
 #pragma once
 
-#include "CryString.h"
-#include "AudioControl.h"
-#include "common/IAudioConnection.h"
+#include <AudioControl.h>
+#include <IAudioConnection.h>
+#include <AzCore/std/string/string_view.h>
 
 namespace AudioControls
 {
@@ -24,12 +24,12 @@ namespace AudioControls
     struct SControlScope
     {
         SControlScope() {}
-        SControlScope(const string& _name, bool _bOnlyLocal)
+        SControlScope(const AZStd::string& _name, bool _bOnlyLocal)
             : name(_name)
             , bOnlyLocal(_bOnlyLocal)
         {}
 
-        string name;
+        AZStd::string name;
 
         // if true, there is a level in the game audio
         // data that doesn't exist in the global list
@@ -60,33 +60,33 @@ namespace AudioControls
         ~CATLControlsModel();
 
         void Clear();
-        CATLControl* CreateControl(const string& sControlName, EACEControlType type, CATLControl* pParent = nullptr);
+        CATLControl* CreateControl(const AZStd::string& sControlName, EACEControlType type, CATLControl* pParent = nullptr);
         void RemoveControl(CID id);
 
         CATLControl* GetControlByID(CID id) const;
-        CATLControl* FindControl(const string& sControlName, EACEControlType eType, const string& sScope, CATLControl* pParent = nullptr) const;
+        CATLControl* FindControl(const AZStd::string_view sControlName, EACEControlType eType, const AZStd::string_view sScope, CATLControl* pParent = nullptr) const;
 
         // Platforms
-        string GetPlatformAt(uint index);
-        void AddPlatform(const string& name);
-        uint GetPlatformCount();
+        AZStd::string GetPlatformAt(AZ::u32 index);
+        void AddPlatform(AZStd::string platformName);
+        AZ::u32 GetPlatformCount();
 
         // Connection Groups
-        void AddConnectionGroup(const string& name);
-        int GetConnectionGroupId(const string& name);
+        void AddConnectionGroup(const AZStd::string_view name);
+        int GetConnectionGroupId(const AZStd::string_view name);
         int GetConnectionGroupCount() const;
-        string GetConnectionGroupAt(int index) const;
+        AZStd::string GetConnectionGroupAt(int index) const;
 
         // Scope
-        void AddScope(const string& name, bool bLocalOnly = false);
+        void AddScope(AZStd::string scopeName, bool bLocalOnly = false);
         void ClearScopes();
         int GetScopeCount() const;
         SControlScope GetScopeAt(int index) const;
-        bool ScopeExists(const string& name) const;
+        bool ScopeExists(AZStd::string scopeName) const;
 
         // Helper functions
-        bool IsNameValid(const string& name, EACEControlType type, const string& scope, const CATLControl* const pParent = nullptr) const;
-        string GenerateUniqueName(const string& sRootName, EACEControlType eType, const string& sScope, const CATLControl* const pParent = nullptr) const;
+        bool IsNameValid(const AZStd::string_view name, EACEControlType type, const AZStd::string_view scope, const CATLControl* const pParent = nullptr) const;
+        AZStd::string GenerateUniqueName(const AZStd::string_view sRootName, EACEControlType eType, const AZStd::string_view sScope, const CATLControl* const pParent = nullptr) const;
         void ClearAllConnections();
         void ReloadAllConnections();
 
@@ -106,16 +106,16 @@ namespace AudioControls
 
         CID GenerateUniqueId() { return ++m_nextId; }
 
-        std::shared_ptr<CATLControl> TakeControl(CID nID);
-        void InsertControl(std::shared_ptr<CATLControl> pControl);
+        AZStd::shared_ptr<CATLControl> TakeControl(CID nID);
+        void InsertControl(AZStd::shared_ptr<CATLControl> pControl);
 
         static CID m_nextId;
-        std::vector<std::shared_ptr<CATLControl> > m_controls;
-        std::vector<string> m_platforms;
-        std::vector<SControlScope> m_scopes;
-        std::vector<string> m_connectionGroups;
+        AZStd::vector<AZStd::shared_ptr<CATLControl> > m_controls;
+        AZStd::vector<AZStd::string> m_platforms;
+        AZStd::vector<SControlScope> m_scopes;
+        AZStd::vector<AZStd::string> m_connectionGroups;
 
-        std::vector<IATLControlModelListener*> m_listeners;
+        AZStd::vector<IATLControlModelListener*> m_listeners;
         bool m_bSuppressMessages;
         bool m_bControlTypeModified[eACET_NUM_TYPES];
     };

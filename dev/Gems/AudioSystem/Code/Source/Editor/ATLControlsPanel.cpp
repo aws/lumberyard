@@ -11,20 +11,22 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "ATLControlsPanel.h"
-#include "AudioControl.h"
-#include "ATLControlsModel.h"
-#include "QAudioControlEditorIcons.h"
-#include <IEditor.h>
+#include <ATLControlsPanel.h>
+
+#include <AzFramework/StringFunc/StringFunc.h>
+
+#include <ACEEnums.h>
+#include <ATLControlsModel.h>
+#include <AudioControl.h>
+#include <AudioControlsEditorPlugin.h>
 #include <CryFile.h>
 #include <CryPath.h>
 #include <Cry_Camera.h>
 #include <IAudioSystem.h>
-#include <IAudioSystemEditor.h>
 #include <IAudioSystemControl.h>
-#include "QtUtil.h"
-#include "AudioControlsEditorPlugin.h"
+#include <IAudioSystemEditor.h>
+#include <IEditor.h>
+#include <QAudioControlEditorIcons.h>
 
 #include <QWidgetAction>
 #include <QPushButton>
@@ -777,10 +779,10 @@ namespace AudioControls
                                 }
 
                                 // Create the new control and connect it to the one dragged in externally
-                                string sControlName = QtUtil::ToString(roleDataMap[Qt::DisplayRole].toString());
+                                AZStd::string sControlName(roleDataMap[Qt::DisplayRole].toString().toUtf8().data());
                                 if (eControlType  == eACET_PRELOAD)
                                 {
-                                    PathUtil::RemoveExtension(sControlName);
+                                    AzFramework::StringFunc::Path::StripExtension(sControlName);
                                 }
                                 CATLControl* pTargetControl = m_pTreeModel->CreateControl(eControlType, sControlName, pATLParent);
                                 if (pTargetControl)
@@ -788,6 +790,16 @@ namespace AudioControls
                                     TConnectionPtr pAudioConnection = pAudioSystemEditorImpl->CreateConnectionToControl(pTargetControl->GetType(), pAudioSystemControl);
                                     if (pAudioConnection)
                                     {
+                                        if (eControlType == eACET_PRELOAD)
+                                        {
+                                            // Try finding the "default" group, otherwise set the 0th group...
+                                            int defaultGroupIndex = m_pATLModel->GetConnectionGroupId("default");
+                                            if (defaultGroupIndex < 0)
+                                            {
+                                                defaultGroupIndex = 0;
+                                            }
+                                            pAudioConnection->SetGroup(m_pATLModel->GetConnectionGroupAt(defaultGroupIndex));
+                                        }
                                         pTargetControl->AddConnection(pAudioConnection);
                                     }
                                     pTargetItem = m_pTreeModel->AddControl(pTargetControl, pTargetItem);
@@ -827,20 +839,20 @@ namespace AudioControls
     {
         if (pItem)
         {
-            string sName = QtUtil::ToString(pItem->text());
+            AZStd::string sName(pItem->text().toUtf8().data());
             if (pItem->data(eDR_TYPE) == eIT_AUDIO_CONTROL)
             {
                 CATLControl* pControl = m_pATLModel->GetControlByID(pItem->data(eDR_ID).toUInt());
                 if (pControl)
                 {
-                    if (QtUtil::ToString(pItem->text()) != pControl->GetName())
+                    if (pControl->GetName().compare(pItem->text().toUtf8().data()) != 0)
                     {
                         sName = m_pATLModel->GenerateUniqueName(sName, pControl->GetType(), pControl->GetScope(), pControl->GetParent());
                         pControl->SetName(sName);
                     }
                 }
                 m_pTreeModel->blockSignals(true);
-                pItem->setText(QtUtil::ToQString(sName));
+                pItem->setText(QString(sName.c_str()));
                 m_pTreeModel->blockSignals(false);
             }
             m_pTreeModel->SetItemAsDirty(pItem);
@@ -848,4 +860,4 @@ namespace AudioControls
     }
 } // namespace AudioControls
 
-#include <ATLControlsPanel.moc>
+#include <Source/Editor/ATLControlsPanel.moc>

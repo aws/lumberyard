@@ -19,13 +19,18 @@
 
 #define CYCLE_BUFFERS_NUM    4
 
-class COcean
-    : public IRenderNode
+class COcean: public IRenderNode
     , public Cry3DEngineBase
 {
 public:
-    COcean(_smart_ptr<IMaterial> pMat);
+    COcean(_smart_ptr<IMaterial> pMat, float fWaterLevel);
     ~COcean();
+
+
+    void SetWaterLevel(float fWaterLevel);
+    //In the future when STerrainInfo doesn't keep record of the water level this can be deleted.
+    static void SetWaterLevelInfo(float fWaterLevelInfo) { m_fWaterLevelInfo = fWaterLevelInfo; }
+    static float GetWaterLevelInfo() { return m_fWaterLevelInfo; }
 
     void Create();
     void Update(const SRenderingPassInfo& passInfo);
@@ -36,6 +41,7 @@ public:
     void SetLastFov(float fLastFov) {m_fLastFov = fLastFov; }
     static void SetTimer(ITimer* pTimer);
 
+    float GetWaterLevel() { return m_fWaterLevel; }
     static float GetWave(const Vec3& pPosition, int32 nFrameID);
     static uint32 GetVisiblePixelsCount();
     int32 GetMemoryUsage();
@@ -97,6 +103,7 @@ private:
     float m_fLastVisibleFrameTime;
     int32 m_nLastVisibleFrameId;
     static uint32 m_nVisiblePixelsCount;
+    float m_fWaterLevel;
 
     float m_fRECustomData[12]; // used for passing data to renderer
     float m_fREOceanBottomCustomData[8]; // used for passing data to renderer
@@ -122,6 +129,7 @@ private:
 
     static ITimer* m_pTimer;
     static CREWaterOcean* m_pOceanRE;
+    static float m_fWaterLevelInfo;
 };
 
 #endif // CRYINCLUDE_CRY3DENGINE_TERRAIN_WATER_H

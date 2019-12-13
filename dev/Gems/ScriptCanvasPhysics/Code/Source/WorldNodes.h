@@ -41,9 +41,9 @@ namespace ScriptCanvasPhysics
             request.m_start = start;
             request.m_direction = direction.GetNormalized();
             request.m_distance = distance;
-            request.m_customFilterCallback = [ignore](const Physics::WorldBody* body, const Physics::Shape* shape) 
+            request.m_filterCallback = [ignore](const Physics::WorldBody* body, const Physics::Shape* shape) 
             {
-                return body->GetEntityId() != ignore;
+                return body->GetEntityId() != ignore ? Physics::QueryHitType::Block : Physics::QueryHitType::None;
             };
 
             Physics::RayCastHit hit;
@@ -78,9 +78,9 @@ namespace ScriptCanvasPhysics
             request.m_start = worldSpaceTransform.GetTranslation();
             request.m_direction = worldSpaceTransform.Multiply3x3(direction.GetNormalized());
             request.m_distance = distance;
-            request.m_customFilterCallback = [ignore](const Physics::WorldBody* body, const Physics::Shape* shape)
+            request.m_filterCallback = [ignore](const Physics::WorldBody* body, const Physics::Shape* shape)
             {
-                return body->GetEntityId() != ignore;
+                return body->GetEntityId() != ignore ? Physics::QueryHitType::Block : Physics::QueryHitType::None;
             };
 
             Physics::RayCastHit hit;
@@ -115,9 +115,9 @@ namespace ScriptCanvasPhysics
             request.m_start = worldSpaceTransform.GetTranslation();
             request.m_direction = worldSpaceTransform.Multiply3x3(direction.GetNormalized());
             request.m_distance = distance;
-            request.m_customFilterCallback = [ignore](const Physics::WorldBody* body, const Physics::Shape* shape)
+            request.m_filterCallback = [ignore](const Physics::WorldBody* body, const Physics::Shape* shape)
             {
-                return body->GetEntityId() != ignore;
+                return body->GetEntityId() != ignore ? Physics::QueryHitType::Touch : Physics::QueryHitType::None;
             };
 
             AZStd::vector<Physics::RayCastHit> hits;
@@ -139,7 +139,7 @@ namespace ScriptCanvasPhysics
             Physics::OverlapRequest request;
             request.m_pose = pose;
             request.m_shapeConfiguration = &shape;
-            request.m_customFilterCallback = [ignore](const Physics::WorldBody* body, const Physics::Shape* shape)
+            request.m_filterCallback = [ignore](const Physics::WorldBody* body, const Physics::Shape* shape)
             {
                 return body->GetEntityId() != ignore;
             };
@@ -201,13 +201,13 @@ namespace ScriptCanvasPhysics
         Result ShapecastQuery(float distance, const AZ::Transform& pose, const AZ::Vector3& direction, Physics::ShapeConfiguration& shape, AZ::EntityId ignore)
         {
             Physics::ShapeCastRequest request;
-            request.m_distance;
+            request.m_distance = distance;
             request.m_start = pose;
             request.m_direction = direction;
             request.m_shapeConfiguration = &shape;
-            request.m_customFilterCallback = [ignore](const Physics::WorldBody* body, const Physics::Shape* shape)
+            request.m_filterCallback = [ignore](const Physics::WorldBody* body, const Physics::Shape* shape)
             {
-                return body->GetEntityId() != ignore;
+                return body->GetEntityId() != ignore ? Physics::QueryHitType::Block : Physics::QueryHitType::None;
             };
 
             Physics::RayCastHit hit;

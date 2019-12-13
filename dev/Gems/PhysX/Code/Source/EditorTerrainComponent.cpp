@@ -149,7 +149,7 @@ namespace PhysX
                     ->Attribute(AZ::Edit::Attributes::Category, "PhysX")
                     ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/PhysXTerrain.svg")
                     ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/PhysXTerrain.svg")
-                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
+                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZStd::vector<AZ::Crc32>({ AZ_CRC("Level", 0x9aeacc13), AZ_CRC("Game", 0x232b318c) }))
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorTerrainComponent::m_configuration, "Configuration", "Terrain configuration")
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
@@ -186,6 +186,8 @@ namespace PhysX
         }
 
         RegisterForEditorEvents();
+
+        Physics::EditorTerrainComponentNotificationBus::Broadcast(&Physics::EditorTerrainComponentNotifications::OnTerrainComponentActive);
     }
 
     void EditorTerrainComponent::Deactivate()

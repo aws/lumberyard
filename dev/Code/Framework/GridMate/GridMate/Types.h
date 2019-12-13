@@ -70,6 +70,7 @@ namespace GridMate
         ST_LAN,
         ST_XENIA,
         ST_PROVO,
+        ST_SALEM,
         ST_STEAM,
         ST_MAX // MUST BE LAST
     };

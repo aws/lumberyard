@@ -44,6 +44,8 @@
         #include "Xenia/MultiThread_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/MultiThread_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/MultiThread_h_salem.inl"
     #endif
 #else
 #define MULTITHREAD_H_TRAIT_SLOCKFREESINGLELINKEDLISTENTRY_ATTRIBUTE_ALIGN_16 0
@@ -135,6 +137,8 @@ void   CryLeaveCriticalSection(void* cs);
         #include "Xenia/MultiThread_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/MultiThread_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/MultiThread_h_salem.inl"
     #endif
 #endif
 
@@ -175,6 +179,8 @@ Spin:
         #include "Xenia/MultiThread_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/MultiThread_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/MultiThread_h_salem.inl"
     #endif
 # endif
 # if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -284,6 +290,8 @@ ILINE void CryInterlockedAdd(volatile int* pVal, int iAdd)
         #include "Xenia/MultiThread_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/MultiThread_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/MultiThread_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -311,6 +319,8 @@ ILINE void CryInterlockedAddSize(volatile size_t* pVal, ptrdiff_t iAdd)
         #include "Xenia/MultiThread_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/MultiThread_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/MultiThread_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -353,7 +363,9 @@ struct SLockFreeSingleLinkedListEntry
 {
     SLockFreeSingleLinkedListEntry* volatile pNext;
 }
-#if defined(LINUX32)
+#if MULTITHREAD_H_TRAIT_SLOCKFREESINGLELINKEDLISTENTRY_ATTRIBUTE_ALIGN_16
+__attribute__ ((aligned(16)))
+#elif defined(LINUX32)
 _ALIGN(8)
 #elif defined(APPLE) || defined(LINUX64)
 _ALIGN(16)
@@ -418,7 +430,7 @@ ILINE void CryReadLock(volatile int* rw, bool yield)
     {
         if (yield)
         {
-#   if !defined(ANDROID) && !defined(IOS) && !defined(APPLETV)
+#   if !defined(ANDROID) && !defined(IOS) && !defined(APPLETV) && !defined(MULTITHREAD_H_TRAIT_NO_MM_PAUSE)
             _mm_pause();
 #   endif
 
@@ -431,6 +443,8 @@ ILINE void CryReadLock(volatile int* rw, bool yield)
         #include "Xenia/MultiThread_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/MultiThread_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/MultiThread_h_salem.inl"
     #endif
 #elif defined (LINUX)
                 usleep(1);
@@ -445,6 +459,8 @@ ILINE void CryReadLock(volatile int* rw, bool yield)
         #include "Xenia/MultiThread_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/MultiThread_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/MultiThread_h_salem.inl"
     #endif
 #elif defined (LINUX)
                 sched_yield();
@@ -609,6 +625,8 @@ ILINE int64 CryInterlockedCompareExchange64(volatile int64* addr, int64 exchange
         #include "Xenia/MultiThread_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/MultiThread_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/MultiThread_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

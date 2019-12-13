@@ -223,10 +223,12 @@ namespace Platform
     {
         if (handle != PlatformSpecificInvalidHandle)
         {
+        #if AZ_TRAIT_SYSTEMFILE_FSYNC_IS_DEFINED
             if (fsync(handle) != 0)
             {
                 EBUS_EVENT(FileIOEventBus, OnError, systemFile, nullptr, errno);
             }
+        #endif
         }
     }
 

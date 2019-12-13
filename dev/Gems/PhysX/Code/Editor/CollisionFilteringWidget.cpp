@@ -16,6 +16,7 @@
 #include <Editor/CollisionLayersWidget.h>
 #include <Editor/CollisionGroupsWidget.h>
 #include <Editor/DocumentationLinkWidget.h>
+#include <Source/NameConstants.h>
 #include <PhysX/ConfigurationBus.h>
 #include <QBoxLayout>
 
@@ -24,7 +25,7 @@ namespace PhysX
     namespace Editor
     {
         static const char* const s_collisionFilteringLink = "Learn more about <a href=%1>configuring collision filtering.</a>";
-        static const char* const s_collisionFilteringAddress = "https://docs-aws.amazon.com/console/lumberyard/physx/configuration/collision";
+        static const char* const s_collisionFilteringAddress = "configuration/collision";
 
         CollisionFilteringWidget::CollisionFilteringWidget(QWidget* parent)
             : QWidget(parent)
@@ -33,7 +34,7 @@ namespace PhysX
             verticalLayout->setContentsMargins(0, 0, 0, 0);
             verticalLayout->setSpacing(0);
 
-            m_documentationLinkWidget = new DocumentationLinkWidget(s_collisionFilteringLink, s_collisionFilteringAddress);
+            m_documentationLinkWidget = new DocumentationLinkWidget(s_collisionFilteringLink, (UXNameConstants::GetPhysXDocsRoot() + s_collisionFilteringAddress).c_str());
             m_collisionLayersWidget = new CollisionLayersWidget();
             m_collisionGroupsWidget = new CollisionGroupsWidget();
 

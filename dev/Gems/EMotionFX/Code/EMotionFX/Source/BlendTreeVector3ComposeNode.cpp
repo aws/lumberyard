@@ -19,7 +19,6 @@ namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeVector3ComposeNode, AnimGraphAllocator, 0)
 
-
     BlendTreeVector3ComposeNode::BlendTreeVector3ComposeNode()
         : AnimGraphNode()
     {
@@ -34,11 +33,9 @@ namespace EMotionFX
         SetupOutputPort("Vector", OUTPUTPORT_VECTOR, MCore::AttributeVector3::TYPE_ID, PORTID_OUTPUT_VECTOR);
     }
 
-
     BlendTreeVector3ComposeNode::~BlendTreeVector3ComposeNode()
     {
     }
-
 
     bool BlendTreeVector3ComposeNode::InitAfterLoading(AnimGraph* animGraph)
     {
@@ -53,33 +50,35 @@ namespace EMotionFX
         return true;
     }
 
-
-    // get the palette name
     const char* BlendTreeVector3ComposeNode::GetPaletteName() const
     {
         return "Vector3 Compose";
     }
 
-
-    // get the category
     AnimGraphObject::ECategory BlendTreeVector3ComposeNode::GetPaletteCategory() const
     {
         return AnimGraphObject::CATEGORY_MATH;
     }
 
-
-    // the update function
     void BlendTreeVector3ComposeNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        // update all inputs
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
+        UpdateOutputPortValues(animGraphInstance);
+    }
 
+    void BlendTreeVector3ComposeNode::Output(AnimGraphInstance* animGraphInstance)
+    {
+        OutputAllIncomingNodes(animGraphInstance);
+        UpdateOutputPortValues(animGraphInstance);
+    }
+
+    void BlendTreeVector3ComposeNode::UpdateOutputPortValues(AnimGraphInstance* animGraphInstance)
+    {
         const float x = GetInputNumberAsFloat(animGraphInstance, INPUTPORT_X);
         const float y = GetInputNumberAsFloat(animGraphInstance, INPUTPORT_Y);
         const float z = GetInputNumberAsFloat(animGraphInstance, INPUTPORT_Z);
         GetOutputVector3(animGraphInstance, OUTPUTPORT_VECTOR)->SetValue(AZ::PackedVector3f(x, y, z));
     }
-
 
     void BlendTreeVector3ComposeNode::Reflect(AZ::ReflectContext* context)
     {

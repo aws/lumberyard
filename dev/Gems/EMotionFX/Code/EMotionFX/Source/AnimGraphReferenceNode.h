@@ -130,6 +130,8 @@ namespace EMotionFX
 
         AnimGraph* GetReferencedAnimGraph() const;
         MotionSet* GetMotionSet() const;
+        AZ::Data::Asset<Integration::AnimGraphAsset> GetReferencedAnimGraphAsset() const;
+        AZ::Data::Asset<Integration::MotionSetAsset> GetReferencedMotionSetAsset() const;
         AnimGraphInstance* GetReferencedAnimGraphInstance(AnimGraphInstance* animGraphInstance) const;
 
         // ObjectAffectedByParameterChanges

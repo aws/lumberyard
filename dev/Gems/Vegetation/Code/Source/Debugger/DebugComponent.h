@@ -94,8 +94,6 @@ namespace Vegetation
         void MarkAreaRejectedByMask(AZ::EntityId areaId) override;
         void FillAreaEnd(AZ::EntityId areaId, TimePoint timePoint, AZ::u32 unusedClaimPointCount) override;
 
-        void SetAreaDebugColor(AZ::EntityId areaId, AZ::Color debugColor, bool render) override;
-
         void FilterInstance(AZ::EntityId areaId, AZStd::string_view filterReason) override;
         void CreateInstance(InstanceId instanceId, AZ::Vector3 position, AZ::EntityId areaId) override;
         void DeleteInstance(InstanceId instanceId) override;
@@ -184,13 +182,6 @@ namespace Vegetation
             AreaId m_areaId;
         };
         AZStd::unordered_map<InstanceId, DebugInstanceData> m_activeInstances;
-
-        struct DebugColorData
-        {
-            AZ::Color m_color = AZ::Color(1.0f, 0.0f, 1.0f, 1.0f);
-            bool m_render = true;
-        };
-        AZStd::unordered_map<AreaId, DebugColorData> m_areaDebugColors;
     };
 
 } // namespace Vegetation

@@ -1,0 +1,316 @@
+{
+    "platform": {
+        "darwin_x64": {
+            "includes": [
+                "clang_64/lib"
+            ],
+            "frameworkpath": [
+                "clang_64/lib"
+            ],
+            "Qt5Bluetooth/defines": [
+                "QT_BLUETOOTH_LIB"
+            ],
+            "Qt5Bluetooth/includes": [
+                "clang_64/lib/QtBluetooth.framework/Headers"
+            ],
+            "Qt5Bluetooth/framework": [
+                "QtBluetooth"
+            ],
+            "Qt5CLucene/defines": [
+                "QT_CLUCENE_LIB"
+            ],
+            "Qt5CLucene/includes": [
+                "clang_64/lib/QtCLucene.framework/Headers"
+            ],
+            "Qt5CLucene/framework": [
+                "QtCLucene"
+            ],
+            "Qt5Concurrent/defines": [
+                "QT_CONCURRENT_LIB"
+            ],
+            "Qt5Concurrent/includes": [
+                "clang_64/lib/QtConcurrent.framework/Headers"
+            ],
+            "Qt5Concurrent/framework": [
+                "QtConcurrent"
+            ],
+            "Qt5Core/defines": [
+                "QT_CORE_LIB",
+                "QT_NO_EXCEPTIONS"
+            ],
+            "Qt5Core/includes": [
+                "clang_64/lib/QtCore.framework/Headers",
+                "clang_64/lib/QtCore.framework/Headers/5.6.2",
+                "clang_64/lib/QtCore.framework/Headers/5.6.2/QtCore"
+            ],
+            "Qt5Core/framework": [
+                "QtCore"
+            ],
+            "Qt5DBus/defines": [
+                "QT_DBUS_LIB"
+            ],
+            "Qt5DBus/includes": [
+                "clang_64/lib/QtDBus.framework/Headers"
+            ],
+            "Qt5DBus/framework": [
+                "QtDBus"
+            ],
+            "Qt5Declarative/defines": [
+                "QT_DECLARATIVE_LIB"
+            ],
+            "Qt5Declarative/includes": [
+                "clang_64/lib/QtDeclarative.framework/Headers"
+            ],
+            "Qt5Declarative/framework": [
+                "QtDeclarative"
+            ],
+            "Qt5Designer/defines": [
+                "QT_DESIGNER_LIB"
+            ],
+            "Qt5Designer/includes": [
+                "clang_64/lib/QtDesigner.framework/Headers"
+            ],
+            "Qt5Designer/framework": [
+                "QtDesigner"
+            ],
+            "Qt5DesignerComponents/defines": [
+                "QT_DESIGNERCOMPONENTS_LIB"
+            ],
+            "Qt5DesignerComponents/includes": [
+                "clang_64/lib/QtDesignerComponents.framework/Headers"
+            ],
+            "Qt5DesignerComponents/framework": [
+                "QtDesignerComponents"
+            ],
+            "Qt5Gui/defines": [
+                "QT_GUI_LIB"
+            ],
+            "Qt5Gui/includes": [
+                "clang_64/lib/QtGui.framework/Headers",
+                "clang_64/lib/QtGui.framework/Headers/5.6.2",
+                "clang_64/lib/QtGui.framework/Headers/5.6.2/QtGui"
+            ],
+            "Qt5Gui/framework": [
+                "QtGui"
+            ],
+            "Qt5Help/defines": [
+                "QT_HELP_LIB"
+            ],
+            "Qt5Help/includes": [
+                "clang_64/lib/QtHelp.framework/Headers"
+            ],
+            "Qt5Help/framework": [
+                "QtHelp"
+            ],
+	    "Qt5MacExtras/defines": [
+                "QT_MACEXTRAS_LIB"
+            ],
+            "Qt5MacExtras/includes": [
+                "clang_64/lib/QtMacExtras.framework/Headers"
+            ],
+            "Qt5MacExtras/framework": [
+                "QtMacExtras"
+            ],
+            "Qt5Multimedia/defines": [
+                "QT_MULTIMEDIA_LIB"
+            ],
+            "Qt5Multimedia/includes": [
+                "clang_64/lib/QtMultimedia.framework/Headers"
+            ],
+            "Qt5Multimedia/framework": [
+                "QtMultimedia"
+            ],
+            "Qt5MultimediaQuick_p/defines": [
+                "QT_MULTIMEDIAQUICK_LIB"
+            ],
+            "Qt5MultimediaQuick_p/includes": [
+                "clang_64/lib/QtMultimediaQuick_p.framework/Headers"
+            ],
+            "Qt5MultimediaQuick_p/framework": [
+                "QtMultimediaQuick_p"
+            ],
+            "Qt5MultimediaWidgets/defines": [
+                "QT_MULTIMEDIAWIDGETS_LIB"
+            ],
+            "Qt5MultimediaWidgets/includes": [
+                "clang_64/lib/QtMultimediaWidgets.framework/Headers"
+            ],
+            "Qt5MultimediaWidgets/framework": [
+                "QtMultimediaWidgets"
+            ],
+            "Qt5Network/defines": [
+                "QT_NETWORK_LIB"
+            ],
+            "Qt5Network/includes": [
+                "clang_64/lib/QtNetwork.framework/Headers"
+            ],
+            "Qt5Network/framework": [
+                "QtNetwork"
+            ],
+            "Qt5Nfc/defines": [
+                "QT_NFC_LIB"
+            ],
+            "Qt5Nfc/includes": [
+                "clang_64/lib/QtNfc.framework/Headers"
+            ],
+            "Qt5Nfc/framework": [
+                "QtNfc"
+            ],
+            "Qt5OpenGL/defines": [
+                "QT_OPENGL_LIB"
+            ],
+            "Qt5OpenGL/includes": [
+                "clang_64/lib/QtOpenGL.framework/Headers"
+            ],
+            "Qt5OpenGL/framework": [
+                "QtOpenGL"
+            ],
+            "Qt5Positioning/defines": [
+                "QT_POSITIONING_LIB"
+            ],
+            "Qt5Positioning/includes": [
+                "clang_64/lib/QtPositioning.framework/Headers"
+            ],
+            "Qt5Positioning/framework": [
+                "QtPositioning"
+            ],
+            "Qt5PrintSupport/defines": [
+                "QT_PRINTSUPPORT_LIB"
+            ],
+            "Qt5PrintSupport/includes": [
+                "clang_64/lib/QtPrintSupport.framework/Headers"
+            ],
+            "Qt5PrintSupport/framework": [
+                "QtPrintSupport"
+            ],
+            "Qt5Qml/defines": [
+                "QT_QML_LIB"
+            ],
+            "Qt5Qml/includes": [
+                "clang_64/lib/QtQml.framework/Headers"
+            ],
+            "Qt5Qml/framework": [
+                "QtQml"
+            ],
+            "Qt5Quick/defines": [
+                "QT_QUICK_LIB"
+            ],
+            "Qt5Quick/includes": [
+                "clang_64/lib/QtQuick.framework/Headers"
+            ],
+            "Qt5Quick/framework": [
+                "QtQuick"
+            ],
+            "Qt5QuickParticles/defines": [
+                "QT_QUICKPARTICLES_LIB"
+            ],
+            "Qt5QuickParticles/includes": [
+                "clang_64/lib/QtQuickParticles.framework/Headers"
+            ],
+            "Qt5QuickParticles/framework": [
+                "QtQuickParticles"
+            ],
+            "Qt5QuickTest/defines": [
+                "QT_QUICKTEST_LIB"
+            ],
+            "Qt5QuickTest/includes": [
+                "clang_64/lib/QtQuickTest.framework/Headers"
+            ],
+            "Qt5QuickTest/framework": [
+                "QtQuickTest"
+            ],
+            "Qt5Sensors/defines": [
+                "QT_SENSORS_LIB"
+            ],
+            "Qt5Sensors/includes": [
+                "clang_64/lib/QtSensors.framework/Headers"
+            ],
+            "Qt5Sensors/framework": [
+                "QtSensors"
+            ],
+            "Qt5SerialPort/defines": [
+                "QT_SERIALPORT_LIB"
+            ],
+            "Qt5SerialPort/includes": [
+                "clang_64/lib/QtSerialPort.framework/Headers"
+            ],
+            "Qt5SerialPort/framework": [
+                "QtSerialPort"
+            ],
+            "Qt5Sql/defines": [
+                "QT_SQL_LIB"
+            ],
+            "Qt5Sql/includes": [
+                "clang_64/lib/QtSql.framework/Headers"
+            ],
+            "Qt5Sql/framework": [
+                "QtSql"
+            ],
+            "Qt5Svg/defines": [
+                "QT_SVG_LIB"
+            ],
+            "Qt5Svg/includes": [
+                "clang_64/lib/QtSvg.framework/Headers"
+            ],
+            "Qt5Svg/framework": [
+                "QtSvg"
+            ],
+            "Qt5Test/defines": [
+                "QT_TEST_LIB"
+            ],
+            "Qt5Test/includes": [
+                "clang_64/lib/QtTest.framework/Headers"
+            ],
+            "Qt5Test/framework": [
+                "QtTest"
+            ],
+            "Qt5WebKit/defines": [
+                "QT_WEBKIT_LIB"
+            ],
+            "Qt5WebKit/includes": [
+                "clang_64/lib/QtWebKit.framework/Headers"
+            ],
+            "Qt5WebKit/framework": [
+                "QtWebKit"
+            ],
+            "Qt5WebKitWidgets/defines": [
+                "QT_WEBKITWIDGETS_LIB"
+            ],
+            "Qt5WebKitWidgets/includes": [
+                "clang_64/lib/QtWebKitWidgets.framework/Headers"
+            ],
+            "Qt5WebKitWidgets/framework": [
+                "QtWebKitWidgets"
+            ],
+            "Qt5Widgets/defines": [
+                "QT_WIDGETS_LIB"
+            ],
+            "Qt5Widgets/includes": [
+                "clang_64/lib/QtWidgets.framework/Headers",
+                "clang_64/lib/QtWidgets.framework/Headers/5.6.2",
+                "clang_64/lib/QtWidgets.framework/Headers/5.6.2/QtWidgets"
+            ],
+            "Qt5Widgets/framework": [
+                "QtWidgets"
+            ],
+            "Qt5XmlPatterns/defines": [
+                "QT_XMLPATTERNS_LIB"
+            ],
+            "Qt5XmlPatterns/includes": [
+                "clang_64/lib/QtXmlPatterns.framework/Headers"
+            ],
+            "Qt5XmlPatterns/framework": [
+                "QtXmlPatterns"
+            ],
+            "Qt5Xml/defines": [
+                "QT_XML_LIB"
+            ],
+            "Qt5Xml/includes": [
+                "clang_64/lib/QtXml.framework/Headers"
+            ],
+            "Qt5Xml/framework": [
+                "QtXml"
+            ]
+        }
+    }
+}

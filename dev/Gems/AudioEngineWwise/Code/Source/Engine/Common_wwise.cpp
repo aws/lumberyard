@@ -11,5 +11,4 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "Common_wwise.h"
+#include <Common_wwise.h>

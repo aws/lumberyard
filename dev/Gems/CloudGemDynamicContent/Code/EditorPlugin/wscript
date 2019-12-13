@@ -31,7 +31,8 @@ def build(bld):
                            'QTANGLE',
                            'QT5CORE',
                            'QT5GUI',
-                           'QT5WIDGETS'],
+                           'QT5WIDGETS',
+                           'BOOSTPYTHON'],
         use             = ['AWS',
                            'MaglevControlPanel',
                            'AzQtComponents',
@@ -50,6 +51,7 @@ def build(bld):
         test_all_file_list = ['dynamiccontentplugin_test.waf_files'],
 
         includes        = [ bld.Path('Gems/CloudGemDynamicContent/Code/EditorPlugin'),
+                            bld.Path('Code/CryEngine/CryCommon'),
                             bld.Path('Code/CryEngine/CryAction'),
                             bld.Path('Code/CryEngine/CrySystem'),
                             bld.Path('Code/Sandbox/Plugins/EditorCommon'),

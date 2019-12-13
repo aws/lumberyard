@@ -16,6 +16,9 @@
 
 #include <AzCore/Android/AndroidEnv.h>
 #include <AzCore/Android/Utils.h>
+#include <AzCore/Android/JNI/JNI.h>
+#include <AzCore/Android/JNI/Object.h>
+#include <AzCore/Android/JNI/scoped_ref.h>
 
 #include <AzFramework/API/ApplicationAPI_Platform.h>
 #include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
@@ -292,7 +295,29 @@ namespace
     }
 }
 
+#if AZ_TESTS_ENABLED
 
+void android_main(android_app* appState)
+{
+    // TODO: Android needs the following data to be resolved amongst other things to support a target unit test Launcher:
+    //
+    // 1. The path to the running application on the device
+    // 2. A way to translate the appState into command line arguments (argv, argc) to pass along to the unit test launcher
+    // 3. Determine how to capture the stdout/stderr stream from the unit tests to the console of the android app
+    // 4. Update the Module Handler in AzTest to support Android modules
+    //
+
+    // LumberyardLauncher::ReturnCode status = LumberyardLauncher::RunUnitTests(executablePath, argv, argc);
+    //
+    // if (status != ReturnCode::Success)
+    // {
+    //    MAIN_EXIT_FAILURE(appState, GetReturnCodeString(status));
+    //}
+
+    MAIN_EXIT_FAILURE(appState,"The UnitTest Launcher is not support on android.");
+}
+
+#else
 // This is the main entry point of a native application that is using android_native_app_glue.
 // It runs in its own thread, with its own event loop for receiving input events
 void android_main(android_app* appState)
@@ -361,6 +386,54 @@ void android_main(android_app* appState)
     mainInfo.m_appResourcesPath = AZ::Android::Utils::FindAssetsDirectory();
     mainInfo.m_additionalVfsResolution = "\t- Make sure \'adb reverse\' is setup for the device when connecting to localhost";
 
+    // Always add the app as the first arg to mimic the way other platforms start with the executable name.
+    const char* packageName = AZ::Android::Utils::GetPackageName();
+    if (packageName)
+    {
+        mainInfo.AddArgument(packageName);
+    }
+
+    // Get the string extras and pass them along as cmd line params
+    AZ::Android::JNI::Internal::Object<AZ::OSAllocator> activityObject(AZ::Android::JNI::GetEnv()->GetObjectClass(appState->activity->clazz), appState->activity->clazz);
+
+    activityObject.RegisterMethod("getIntent", "()Landroid/content/Intent;");
+    jobject intent = activityObject.InvokeObjectMethod<jobject>("getIntent");
+
+    AZ::Android::JNI::Internal::Object<AZ::OSAllocator> intentObject(AZ::Android::JNI::GetEnv()->GetObjectClass(intent), intent);
+    intentObject.RegisterMethod("getStringExtra", "(Ljava/lang/String;)Ljava/lang/String;");
+    intentObject.RegisterMethod("getExtras", "()Landroid/os/Bundle;");
+    jobject extras = intentObject.InvokeObjectMethod<jobject>("getExtras");
+
+    if (extras)
+    {
+        // Get the set of keys
+        AZ::Android::JNI::Internal::Object<AZ::OSAllocator> extrasObject(AZ::Android::JNI::GetEnv()->GetObjectClass(extras), extras);
+        extrasObject.RegisterMethod("keySet", "()Ljava/util/Set;");
+        jobject extrasKeySet = extrasObject.InvokeObjectMethod<jobject>("keySet");
+
+        // get the array of string objects
+        AZ::Android::JNI::Internal::Object<AZ::OSAllocator> extrasKeySetObject(AZ::Android::JNI::GetEnv()->GetObjectClass(extrasKeySet), extrasKeySet);
+        extrasKeySetObject.RegisterMethod("toArray", "()[Ljava/lang/Object;");
+        jobjectArray extrasKeySetArray = extrasKeySetObject.InvokeObjectMethod<jobjectArray>("toArray");
+
+        int extrasKeySetArraySize = AZ::Android::JNI::GetEnv()->GetArrayLength(extrasKeySetArray);
+
+        for (int x = 0; x < extrasKeySetArraySize; x++)
+        {
+            jstring keyObject = static_cast<jstring>(AZ::Android::JNI::GetEnv()->GetObjectArrayElement(extrasKeySetArray, x));
+            AZ::OSString value = intentObject.InvokeStringMethod("getStringExtra", keyObject);
+
+            const char* keyChars = AZ::Android::JNI::GetEnv()->GetStringUTFChars(keyObject, 0);
+
+            char argName[AZ_COMMAND_LINE_LEN] = { 0 };
+            azsprintf(argName, "-%s", keyChars);
+            mainInfo.AddArgument(argName);
+            mainInfo.AddArgument(value.c_str());
+
+            AZ::Android::JNI::GetEnv()->ReleaseStringUTFChars(keyObject, keyChars);
+        }
+    }
+
 #if defined(_RELEASE)
     mainInfo.m_appWriteStoragePath = AZ::Android::Utils::GetAppPrivateStoragePath();
 #else
@@ -381,3 +454,5 @@ void android_main(android_app* appState)
         MAIN_EXIT_FAILURE(appState, GetReturnCodeString(status));
     }
 }
+
+#endif // AZ_TESTS_ENABLED

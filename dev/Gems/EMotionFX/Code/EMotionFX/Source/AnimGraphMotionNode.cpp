@@ -114,8 +114,6 @@ namespace EMotionFX
         return m_inPlace;
     }
 
-
-    // post sync update
     void AnimGraphMotionNode::PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         if (mDisabled)
@@ -210,6 +208,7 @@ namespace EMotionFX
         {
             if (uniqueData->mMotionInstance && uniqueData->GetLocalWeight() < MCore::Math::epsilon && m_rewindOnZeroWeight)
             {
+                uniqueData->mMotionInstance->SetCurrentTime(0.0f);
                 uniqueData->SetCurrentPlayTime(0.0f);
                 uniqueData->SetPreSyncTime(0.0f);
             }
@@ -277,7 +276,6 @@ namespace EMotionFX
         uniqueData->SetPlaySpeed(customSpeed);
         uniqueData->SetPreSyncTime(motionInstance->GetCurrentTime());
 
-        bool hasLooped = false;
         if (animGraphInstance->GetIsObjectFlagEnabled(mObjectIndex, AnimGraphInstance::OBJECTFLAGS_SYNCED) == false || animGraphInstance->GetIsObjectFlagEnabled(mObjectIndex, AnimGraphInstance::OBJECTFLAGS_IS_SYNCMASTER))
         {
             // calculate the new internal values when we would update with a given time delta
@@ -287,6 +285,7 @@ namespace EMotionFX
             // set the current time to the new calculated time
             uniqueData->ClearInheritFlags();
             uniqueData->SetCurrentPlayTime(newTime);
+            motionInstance->SetCurrentTime(newTime);
         }
 
         uniqueData->SetDuration(motionInstance->GetDuration());
@@ -302,17 +301,11 @@ namespace EMotionFX
         {
             uniqueData->SetBackwardFlag();
         }
-
-        if (hasLooped)
-        {
-            uniqueData->SetLoopedFlag();
-        }
     }
 
 
     void AnimGraphMotionNode::UpdatePlayBackInfo(AnimGraphInstance* animGraphInstance)
     {
-        // check if we need to play backwards
         m_playInfo.mPlayMode                 = (m_reverse) ? PLAYMODE_BACKWARD : PLAYMODE_FORWARD;
         m_playInfo.mNumLoops                 = (m_loop) ? EMFX_LOOPFOREVER : 1;
         m_playInfo.mFreezeAtLastFrame        = true;
@@ -339,7 +332,6 @@ namespace EMotionFX
         PlayBackInfo    playInfo    = m_playInfo;
 
         // reset playback properties
-        const float curPlayTime = uniqueData->GetCurrentPlayTime();
         const float curLocalWeight = uniqueData->GetLocalWeight();
         const float curGlobalWeight = uniqueData->GetGlobalWeight();
         uniqueData->Clear();
@@ -347,7 +339,6 @@ namespace EMotionFX
         // remove the motion instance if it already exists
         if (uniqueData->mMotionInstance && uniqueData->mReload)
         {
-            //delete uniqueData->mMotionInstance;
             GetMotionInstancePool().Free(uniqueData->mMotionInstance);
             uniqueData->mMotionInstance = nullptr;
             uniqueData->mMotionSetID    = MCORE_INVALIDINDEX32;
@@ -356,7 +347,7 @@ namespace EMotionFX
 
         // get the motion set
         MotionSet* motionSet = animGraphInstance->GetMotionSet();
-        if (motionSet == nullptr)
+        if (!motionSet)
         {
             if (GetEMotionFX().GetIsInEditorMode())
             {
@@ -371,7 +362,7 @@ namespace EMotionFX
             motion = motionSet->RecursiveFindMotionById(GetMotionId(uniqueData->mActiveMotionIndex));
         }
 
-        if (motion == nullptr)
+        if (!motion)
         {
             if (GetEMotionFX().GetIsInEditorMode())
             {
@@ -382,10 +373,6 @@ namespace EMotionFX
 
         uniqueData->mMotionSetID = motionSet->GetID();
 
-        // update the event track index and find the sync motion event track index by the event track name attribute string
-        //mLastEventTrackIndex = motion->GetEventTable().FindTrackIndexByName( mLastEventTrackName.AsChar() );
-        // TODO: actually use the mLastEventTrackIndex, maybe we add it to the motion instance and playback info, does that make sense?
-
         // create the motion instance
         MotionInstance* motionInstance = GetMotionInstancePool().RequestNew(motion, actorInstance, playInfo.mStartNodeIndex);
         motionInstance->InitFromPlayBackInfo(playInfo, true);
@@ -394,9 +381,7 @@ namespace EMotionFX
         uniqueData->SetSyncTrack(motionInstance->GetMotion()->GetEventTable()->GetSyncTrack());
         uniqueData->SetIsMirrorMotion(motionInstance->GetMirrorMotion());
 
-        // create the motion links
-        //motion->CreateMotionLinks( actorInstance->GetActor(), motionInstance );
-        if (motionInstance->GetIsReadyForSampling() == false && animGraphInstance->GetInitSettings().mPreInitMotionInstances)
+        if (!motionInstance->GetIsReadyForSampling() && animGraphInstance->GetInitSettings().mPreInitMotionInstances)
         {
             motionInstance->InitForSampling();
         }
@@ -409,8 +394,9 @@ namespace EMotionFX
         // update play info
         uniqueData->mMotionInstance = motionInstance;
         uniqueData->SetDuration(motionInstance->GetDuration());
+        const float curPlayTime = motionInstance->GetCurrentTime();
         uniqueData->SetCurrentPlayTime(curPlayTime);
-        motionInstance->SetCurrentTime(curPlayTime);
+        uniqueData->SetPreSyncTime(curPlayTime);
         uniqueData->SetGlobalWeight(curGlobalWeight);
         uniqueData->SetLocalWeight(curLocalWeight);
 
@@ -540,7 +526,7 @@ namespace EMotionFX
     void AnimGraphMotionNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
     {
         UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (uniqueData == nullptr)
+        if (!uniqueData)
         {
             uniqueData = aznew UniqueData(this, animGraphInstance, MCORE_INVALIDINDEX32, nullptr);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
@@ -569,9 +555,10 @@ namespace EMotionFX
         if (uniqueData->mMotionInstance)
         {
             MotionInstance* motionInstance = uniqueData->mMotionInstance;
+            const float currentTime = motionInstance->GetCurrentTime();
             uniqueData->SetDuration(motionInstance->GetDuration());
-            uniqueData->SetCurrentPlayTime(motionInstance->GetCurrentTime());
-
+            uniqueData->SetCurrentPlayTime(currentTime);
+            uniqueData->SetPreSyncTime(currentTime);
             uniqueData->SetSyncTrack(motionInstance->GetMotion()->GetEventTable()->GetSyncTrack());
             uniqueData->SetIsMirrorMotion(motionInstance->GetMirrorMotion());
         }
@@ -625,6 +612,7 @@ namespace EMotionFX
         mCurrentTime    = 0.0f;
         mDuration       = 0.0f;
         mActiveMotionIndex = MCORE_INVALIDINDEX32;
+        SetSyncTrack(nullptr);
 
         AnimGraphMotionNode* motionNode = static_cast<AnimGraphMotionNode*>(mObject);
         motionNode->PickNewActiveMotion(mAnimGraphInstance, this);
@@ -930,7 +918,7 @@ namespace EMotionFX
         m_rewindOnZeroWeight = rewindOnZeroWeight;
     }
 
-    void AnimGraphMotionNode::SetNextMotionAfterLooop(bool nextMotionAfterLoop)
+    void AnimGraphMotionNode::SetNextMotionAfterLoop(bool nextMotionAfterLoop)
     {
         m_nextMotionAfterLoop = nextMotionAfterLoop;
     }

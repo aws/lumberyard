@@ -13,11 +13,15 @@
 
 #pragma once
 
-#include "CryString.h"
-#include "common/IAudioConnection.h"
-#include "AudioControl.h"
+#include <AzCore/std/containers/set.h>
+
+#include <ACETypes.h>
+#include <AudioControl.h>
+#include <IAudioConnection.h>
+
 #include <IXml.h>
-#include "common/ACETypes.h"
+
+#include <QString>
 
 class QStandardItemModel;
 class QStandardItem;
@@ -32,15 +36,15 @@ namespace AudioControls
     {
     public:
         CAudioControlsLoader(CATLControlsModel* pATLModel, QStandardItemModel* pLayoutModel, IAudioSystemEditor* pAudioSystemImpl);
-        std::set<string> GetLoadedFilenamesList();
+        AZStd::set<AZStd::string> GetLoadedFilenamesList();
         void LoadAll();
         void LoadControls();
         void LoadScopes();
 
     private:
-        void LoadAllLibrariesInFolder(const string& folderPath, const string& level);
-        void LoadControlsLibrary(XmlNodeRef pRoot, const string& sFilepath, const string& sLevel, const string& sFilename);
-        CATLControl* LoadControl(XmlNodeRef pNode, QStandardItem* pFolder, const string& sScope);
+        void LoadAllLibrariesInFolder(const AZStd::string_view folderPath, const AZStd::string_view level);
+        void LoadControlsLibrary(XmlNodeRef pRoot, const AZStd::string_view sFilepath, const AZStd::string_view sLevel, const AZStd::string_view sFilename);
+        CATLControl* LoadControl(XmlNodeRef pNode, QStandardItem* pFolder, const AZStd::string_view sScope);
 
         void LoadPreloadConnections(XmlNodeRef pNode, CATLControl* pControl);
         void LoadConnections(XmlNodeRef root, CATLControl* pControl);
@@ -49,20 +53,16 @@ namespace AudioControls
         QStandardItem* AddControl(CATLControl* pControl, QStandardItem* pFolder);
 
         void LoadSettings();
-        void LoadScopesImpl(const string& path);
+        void LoadScopesImpl(const AZStd::string_view path);
 
         QStandardItem* AddUniqueFolderPath(QStandardItem* pParent, const QString& sPath);
         QStandardItem* AddFolder(QStandardItem* pParent, const QString& sName);
 
-        CATLControl* CreateInternalSwitchState(CATLControl* parentControl, const string& switchName, const string& stateName);
-
-        static const char* ms_sControlsLevelsFolder;
-        static const char* ms_sConfigFile;
-        static const char* ms_sLevelsFolder;
+        CATLControl* CreateInternalSwitchState(CATLControl* parentControl, const AZStd::string& switchName, const AZStd::string& stateName);
 
         CATLControlsModel* m_pModel;
         QStandardItemModel* m_pLayout;
         IAudioSystemEditor* m_pAudioSystemImpl;
-        std::set<string> m_loadedFilenames;
+        AZStd::set<AZStd::string> m_loadedFilenames;
     };
 } // namespace AudioControls

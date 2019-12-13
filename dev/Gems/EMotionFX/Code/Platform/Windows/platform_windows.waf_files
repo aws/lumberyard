@@ -1,0 +1,9 @@
+{
+    "auto":
+    {
+        "EMotionFXSDK/MCore/Platform/Windows":
+        [
+            "../Common/WinAPI/MCore/Source/DiskFile_WinAPI.cpp"
+        ]
+    }
+}

@@ -94,6 +94,8 @@ namespace detail
         #include "Xenia/DriverD3D_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -322,6 +324,7 @@ CD3D9Renderer::CD3D9Renderer()
 #endif // defined(WIN32)
 {
     m_bDraw2dImageStretchMode = false;
+    m_techShadowGen = CCryNameTSCRC("ShadowGen");
 
     CreateDeferredUnitBox(m_arrDeferredInds, m_arrDeferredVerts);
 }
@@ -350,6 +353,8 @@ void CD3D9Renderer::InitRenderer()
         #include "Xenia/DriverD3D_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_cpp_salem.inl"
     #endif
 #endif
 
@@ -648,6 +653,8 @@ void CD3D9Renderer::ChangeViewport(unsigned int x, unsigned int y, unsigned int 
         #include "Xenia/DriverD3D_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -668,6 +675,8 @@ void CD3D9Renderer::ChangeViewport(unsigned int x, unsigned int y, unsigned int 
         #include "Xenia/DriverD3D_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1122,6 +1131,8 @@ void CD3D9Renderer::DrawTexelsPerMeterInfo()
         #include "Xenia/DriverD3D_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_cpp_salem.inl"
     #endif
 #endif
 
@@ -1137,6 +1148,8 @@ void CD3D9Renderer::SwitchToNativeResolutionBackbuffer()
         #include "Xenia/DriverD3D_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_cpp_salem.inl"
     #endif
 #endif
 
@@ -1966,6 +1979,8 @@ bool CD3D9Renderer::CaptureFrameBufferToFile(const char* pFilePath, CTexture* pR
         #include "Xenia/DriverD3D_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -3416,6 +3431,8 @@ void CD3D9Renderer::DebugPrintShader(CHWShader_D3D* pSH, void* pI, int nX, int n
         #include "Xenia/DriverD3D_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -4678,6 +4695,8 @@ void CD3D9Renderer::RT_EndFrame(bool isLoading)
         #include "Xenia/DriverD3D_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -4872,6 +4891,8 @@ void CD3D9Renderer::RT_EndFrame(bool isLoading)
         #include "Xenia/DriverD3D_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -4916,6 +4937,8 @@ void CD3D9Renderer::RT_PresentFast()
         #include "Xenia/DriverD3D_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -4981,6 +5004,8 @@ bool CD3D9Renderer::ScreenShotInternal(const char* filename, int iPreWidth)
         #include "Xenia/DriverD3D_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -4998,6 +5023,8 @@ bool CD3D9Renderer::ScreenShotInternal(const char* filename, int iPreWidth)
         #include "Xenia/DriverD3D_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -5023,6 +5050,8 @@ bool CD3D9Renderer::ScreenShotInternal(const char* filename, int iPreWidth)
         #include "Xenia/DriverD3D_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -8134,6 +8163,8 @@ IHWMouseCursor* CD3D9Renderer::GetIHWMouseCursor()
         #include "Xenia/DriverD3D_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

@@ -16,24 +16,24 @@
 #include <AzCore/base.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/std/containers/vector.h>
+#include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzFramework/StringFunc/StringFunc.h>
-#include <AzQtComponents/Components/ConfigHelpers.h>
 
+#include <AzToolsFramework/Asset/AssetProcessorMessages.h>
+#include <AzToolsFramework/UI/Logging/LogLine.h>
+#include <AzToolsFramework/UI/Logging/LogTableItemDelegate.h>
+#include <AzToolsFramework/UI/Logging/LogTableModel.h>
+
+#include <AzQtComponents/Components/ConfigHelpers.h>
 #include <AzQtComponents/Components/Style.h>
 #include <AzQtComponents/Components/Widgets/Text.h>
 #include <AzQtComponents/Utilities/QtWindowUtilities.h>
 #include <AzQtComponents/Utilities/DesktopUtilities.h>
-#include <AzFramework/Asset/AssetSystemBus.h>
-#include <AzToolsFramework/UI/Logging/LogLine.h>
-#include <AzToolsFramework/UI/Logging/LogTableModel.h>
-#include <AzToolsFramework/UI/Logging/LogTableItemDelegate.h>
-#include <AzToolsFramework/Asset/AssetProcessorMessages.h>
 #include <AzQtComponents/Components/Widgets/SpinBox.h>
 
 #include <native/resourcecompiler/JobsModel.h>
 #include <native/ui/ui_MainWindow.h>
 #include <native/utilities/IniConfiguration.h>
-#include <native/resourcecompiler/JobsModel.h>
 
 #include "../utilities/GUIApplicationManager.h"
 #include "../utilities/ApplicationServer.h"
@@ -45,31 +45,31 @@
 
 #include <limits.h>
 
-#include <QDialog>
-#include <QTreeView>
-#include <QHeaderView>
 #include <QAction>
-#include <QLineEdit>
 #include <QCheckBox>
-#include <QListWidget>
-#include <QStackedWidget>
-#include <QPushButton>
-#include <QDesktopServices>
-#include <QUrl>
-#include <QNetworkInterface>
-#include <QGroupBox>
-#include <QHostInfo>
-#include <QWindow>
-#include <QHostAddress>
-#include <QRegExpValidator>
-#include <QMessageBox>
-#include <QFileSystemWatcher>
-#include <QMenu>
 #include <QClipboard>
-#include <QGuiApplication>
+#include <QDesktopServices>
+#include <QDialog>
 #include <QDialogButtonBox>
+#include <QFileSystemWatcher>
 #include <QGridLayout>
+#include <QGroupBox>
+#include <QGuiApplication>
+#include <QHostAddress>
+#include <QHostInfo>
 #include <QLabel>
+#include <QLineEdit>
+#include <QListWidget>
+#include <QMenu>
+#include <QMessageBox>
+#include <QNetworkInterface>
+#include <QPushButton>
+#include <QHeaderView>
+#include <QRegExpValidator>
+#include <QStackedWidget>
+#include <QTreeView>
+#include <QUrl>
+#include <QWindow>
 
 #ifdef Q_OS_WIN
 #include <Windows.h>
@@ -105,13 +105,14 @@ MainWindow::Config MainWindow::loadConfig(QSettings& settings)
 
 MainWindow::Config MainWindow::defaultConfig()
 {
+    // These are used if the values can't be read from AssetProcessorConfig.ini.
     Config config;
 
     config.jobStatusColumnWidth = 100;
     config.jobSourceColumnWidth = 160;
     config.jobPlatformColumnWidth = 100;
     config.jobKeyColumnWidth = 120;
-    config.jobCompletedColumnWidth = 80;
+    config.jobCompletedColumnWidth = 160;
 
     config.logTypeColumnWidth = 150;
 
@@ -134,6 +135,7 @@ MainWindow::MainWindow(GUIApplicationManager* guiApplicationManager, QWidget* pa
     // Don't show the "Filter by:" text on this filter widget
     ui->jobFilteredSearchWidget->clearLabelText();
     ui->detailsFilterWidget->clearLabelText();
+    ui->timerContainerWidget->setVisible(false);
 }
 
 void MainWindow::Activate()
@@ -229,7 +231,8 @@ void MainWindow::Activate()
     ui->jobTreeView->setToolTip(tr("Click to view Job Log"));
 
     ui->detailsFilterWidget->SetTypeFilterVisible(true);
-    connect(ui->detailsFilterWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, m_logSortFilterProxy, &QSortFilterProxyModel::setFilterFixedString);
+    connect(ui->detailsFilterWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, m_logSortFilterProxy,
+        static_cast<void (QSortFilterProxyModel::*)(const QString&)>(&LogSortFilterProxy::setFilterRegExp));
     connect(ui->detailsFilterWidget, &AzQtComponents::FilteredSearchWidget::TypeFilterChanged, m_logSortFilterProxy, &LogSortFilterProxy::onTypeFilterChanged);
 
     // add filters for each logging type
@@ -275,35 +278,43 @@ void MainWindow::Activate()
     connect(ui->jobContextLogDetails, &QCheckBox::toggled, this, [this](bool visible) {
         SetContextLogDetailsVisible(visible);
 
-        QSettings settings;
-        settings.setValue(g_showContextDetailsKey, visible);
+        QSettings settingsObj;
+        settingsObj.setValue(g_showContextDetailsKey, visible);
     });
 
     connect(ui->jobLogTableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &MainWindow::JobLogSelectionChanged);
 
-    const auto statuses = {AzToolsFramework::AssetSystem::JobStatus::Failed,
+    const auto statuses =
+    {
+        AzToolsFramework::AssetSystem::JobStatus::Failed,
         AzToolsFramework::AssetSystem::JobStatus::Completed,
         AzToolsFramework::AssetSystem::JobStatus::Queued,
-        AzToolsFramework::AssetSystem::JobStatus::InProgress};
+        AzToolsFramework::AssetSystem::JobStatus::InProgress
+    };
+
     const auto category = tr("Status");
     for (const auto status : statuses)
     {
-        ui->jobFilteredSearchWidget->AddTypeFilter(category, JobsModel::GetStatusInString(status),
+        ui->jobFilteredSearchWidget->AddTypeFilter(category, JobsModel::GetStatusInString(status, 0, 0),
             QVariant::fromValue(status));
     }
+
+    AssetProcessor::CustomJobStatusFilter customFilter{ true };
+    ui->jobFilteredSearchWidget->AddTypeFilter(category, "Completed w/ Warnings", QVariant::fromValue(customFilter));
+
     connect(ui->jobFilteredSearchWidget, &AzQtComponents::FilteredSearchWidget::TypeFilterChanged,
         m_jobSortFilterProxy, &AssetProcessor::JobSortFilterProxyModel::OnJobStatusFilterChanged);
     connect(ui->jobFilteredSearchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged,
         m_jobSortFilterProxy,
         static_cast<void (QSortFilterProxyModel::*)(const QString&)>(&AssetProcessor::JobSortFilterProxyModel::setFilterRegExp));
     {
-        QSettings settings(this);
-        ui->jobFilteredSearchWidget->readSettings(settings, g_jobFilteredSearchWidgetState);
+        QSettings settingsObj(this);
+        ui->jobFilteredSearchWidget->readSettings(settingsObj, g_jobFilteredSearchWidgetState);
     }
     auto writeJobFilterSettings = [this]()
     {
-        QSettings settings(this);
-        ui->jobFilteredSearchWidget->writeSettings(settings, g_jobFilteredSearchWidgetState);
+        QSettings settingsObj(this);
+        ui->jobFilteredSearchWidget->writeSettings(settingsObj, g_jobFilteredSearchWidgetState);
     };
     connect(ui->jobFilteredSearchWidget, &AzQtComponents::FilteredSearchWidget::TypeFilterChanged,
         this, writeJobFilterSettings);
@@ -372,7 +383,7 @@ void MainWindow::OnRescanButtonClicked()
     m_guiApplicationManager->Rescan();
 }
 
-void MainWindow::OnSupportClicked(bool checked)
+void MainWindow::OnSupportClicked(bool /*checked*/)
 {
     QDesktopServices::openUrl(
         QStringLiteral("https://docs.aws.amazon.com/lumberyard/latest/userguide/asset-pipeline-processor.html"));
@@ -404,7 +415,7 @@ void MainWindow::OnConnectionContextMenu(const QPoint& point)
     menu.exec(ui->connectionTreeView->viewport()->mapToGlobal(point));
 }
 
-void MainWindow::OnEditConnection(bool checked)
+void MainWindow::OnEditConnection(bool /*checked*/)
 {
     auto selectedIndices = ui->connectionTreeView->selectionModel()->selectedRows();
     Q_ASSERT(selectedIndices.count() > 0);
@@ -413,7 +424,7 @@ void MainWindow::OnEditConnection(bool checked)
     EditConnection(selectedIndices[0]);
 }
 
-void MainWindow::OnAddConnection(bool checked)
+void MainWindow::OnAddConnection(bool /*checked*/)
 {
     m_guiApplicationManager->GetConnectionManager()->addUserConnection();
 }
@@ -515,7 +526,7 @@ void MainWindow::OnToWhiteListButtonClicked()
     }
 }
 
-void MainWindow::OnRemoveConnection(bool checked)
+void MainWindow::OnRemoveConnection(bool /*checked*/)
 {
     ConnectionManager* manager = m_guiApplicationManager->GetConnectionManager();
 
@@ -526,7 +537,7 @@ void MainWindow::OnRemoveConnection(bool checked)
     }
 }
 
-void MainWindow::OnConnectionSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected)
+void MainWindow::OnConnectionSelectionChanged(const QItemSelection& /*selected*/, const QItemSelection& /*deselected*/)
 {
     auto selectedIndices = ui->connectionTreeView->selectionModel()->selectedRows();
     int selectionCount = selectedIndices.count();
@@ -587,6 +598,80 @@ void MainWindow::SaveLogPanelState()
     }
 }
 
+void MainWindow::ResetTimers()
+{
+    m_scanTime = m_analysisTime = m_processTime = 0;
+    m_scanTimer.restart();
+    m_analysisTimer.invalidate();
+    m_processTimer.invalidate();
+}
+
+void MainWindow::CheckStartAnalysisTimers()
+{
+    if (m_scanTimer.isValid())
+    {
+        m_scanTime = m_scanTimer.elapsed();
+        m_scanTimer.invalidate();
+    }
+    if (!m_analysisTimer.isValid() && !m_analysisTime)
+    {
+        m_analysisTimer.start();
+    }
+}
+
+void MainWindow::CheckStartProcessTimers()
+{
+    if (m_analysisTimer.isValid())
+    {
+        m_analysisTime = m_analysisTimer.restart();
+        m_analysisTimer.invalidate();
+    }
+
+    if (!m_processTimer.isValid() && !m_processTime)
+    {
+        m_processTimer.start();
+    }
+}
+
+void MainWindow::CheckEndAnalysisTimer()
+{
+    if (m_analysisTimer.isValid() && !m_analysisTime)
+    {
+        m_analysisTime = m_analysisTimer.elapsed();
+        m_analysisTimer.invalidate();
+    }
+}
+
+void MainWindow::CheckEndProcessTimer()
+{
+    if (m_processTimer.isValid() && !m_processTime)
+    {
+        m_processTime = m_processTimer.elapsed();
+        m_processTimer.invalidate();
+    }
+}
+
+QString MainWindow::FormatStringTime(qint64 msTime) const
+{
+    int msecInt{ static_cast<int>(msTime) };
+    int timeHrs{ msecInt / (1000 * 60 * 60) };
+    msecInt = msecInt % (1000 * 60 * 60);
+
+    int timeMins{ msecInt / (1000 * 60) };
+    msecInt = msecInt % (1000 * 60 );
+
+    int timeSecs{ msecInt / 1000 };
+    int timeMsec{ msecInt % 1000 };
+
+    QTime timeVal{ timeHrs, timeMins, timeSecs, timeMsec };
+
+    if (timeHrs)
+    {
+        return timeVal.toString("h:mm:ss.z");
+    }
+    return timeVal.toString("mm:ss.z");
+}
+
 void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProcessorStatusEntry entry)
 {
     using namespace AssetProcessor;
@@ -600,31 +685,40 @@ void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProces
         text = tr("Initializing Builders...");
         break;
     case AssetProcessorStatus::Scanning_Started:
+        ResetTimers();
         text = tr("Scanning...");
         break;
     case AssetProcessorStatus::Analyzing_Jobs:
+        CheckStartAnalysisTimers();
         m_createJobCount = entry.m_count;
 
         if (m_processJobsCount + m_createJobCount > 0)
         {
             text = tr("Working, analyzing jobs remaining %1, processing jobs remaining %2...").arg(m_createJobCount).arg(m_processJobsCount);
+            ui->timerContainerWidget->setVisible(false);
         }
         else
         {
+            CheckEndAnalysisTimer();
             text = tr("Idle...");
-            m_guiApplicationManager->RemoveOldTempFolders();  
+            ui->timerContainerWidget->setVisible(true);
+            m_guiApplicationManager->RemoveOldTempFolders();
         }
         break;
     case AssetProcessorStatus::Processing_Jobs:
-        m_processJobsCount = entry.m_count;
+        CheckStartProcessTimers();
+        m_processJobsCount = entry.m_count;  
 
         if (m_processJobsCount + m_createJobCount > 0)
         {
             text = tr("Working, analyzing jobs remaining %1, processing jobs remaining %2...").arg(m_createJobCount).arg(m_processJobsCount);
+            ui->timerContainerWidget->setVisible(false);
         }
         else
         {
+            CheckEndProcessTimer();
             text = tr("Idle...");
+            ui->timerContainerWidget->setVisible(true);
             m_guiApplicationManager->RemoveOldTempFolders();
         }
         break;
@@ -635,6 +729,10 @@ void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProces
     ui->APStatusValueLabel->setText(QStringLiteral("%1: %2")
         .arg(tr("Status"))
         .arg(text));
+
+    ui->lastScanTimer->setText(FormatStringTime(m_scanTime));
+    ui->analysisTimer->setText(FormatStringTime(m_analysisTime));
+    ui->processingTimer->setText(FormatStringTime(m_processTime));
 }
 
 void MainWindow::HighlightAsset(QString assetPath)
@@ -762,7 +860,7 @@ void MainWindow::ClearContextLogDetails()
     SetContextLogDetails({});
 }
 
-void MainWindow::JobSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected)
+void MainWindow::JobSelectionChanged(const QItemSelection& selected, const QItemSelection& /*deselected*/)
 {
     if (selected.indexes().length() != 0)
     {
@@ -790,7 +888,7 @@ void MainWindow::JobSelectionChanged(const QItemSelection& selected, const QItem
     ClearContextLogDetails();
 }
 
-void MainWindow::JobLogSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected)
+void MainWindow::JobLogSelectionChanged(const QItemSelection& selected, const QItemSelection& /*deselected*/)
 {
     if (selected.count() == 1)
     {
@@ -931,7 +1029,7 @@ void MainWindow::ShowJobViewContextMenu(const QPoint& pos)
     if (item)
     {
         QMenu menu;
-        QAction* action = menu.addAction("Show in Asset Browser", this, [&]()
+        menu.addAction("Show in Asset Browser", this, [&]()
         {
             ConnectionManager* connectionManager = m_guiApplicationManager->GetConnectionManager();
 
@@ -953,8 +1051,8 @@ void MainWindow::ShowJobViewContextMenu(const QPoint& pos)
                 if (connection->Identifier() == ConnectionIdentifiers::Editor)
                 {
                     unsigned int connectionId = connection->ConnectionId();
-                    connection->SendRequest(requestMessage, [connectionManager, connectionId, filePath](AZ::u32 type, QByteArray data) {
-                        SendShowInAssetBrowserResponse(filePath, connectionManager, connectionId, data);
+                    connection->SendRequest(requestMessage, [connectionManager, connectionId, filePath](AZ::u32 /*type*/, QByteArray callbackData) {
+                        SendShowInAssetBrowserResponse(filePath, connectionManager, connectionId, callbackData);
                     });
                 }
             }
@@ -963,6 +1061,11 @@ void MainWindow::ShowJobViewContextMenu(const QPoint& pos)
         menu.addAction(AzQtComponents::fileBrowserActionName(), this, [&]()
         {
             AzQtComponents::ShowFileOnDesktop(FindAbsoluteFilePath(item));
+        });
+
+        menu.addAction(tr("Open"), this, [&]()
+        {
+            QDesktopServices::openUrl(QUrl::fromLocalFile(FindAbsoluteFilePath(item)));
         });
 
         menu.addAction(tr("Copy"), this, [&]()

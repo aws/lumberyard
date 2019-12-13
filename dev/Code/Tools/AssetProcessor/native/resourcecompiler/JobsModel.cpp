@@ -15,6 +15,8 @@
 #include <AzToolsFramework/API/AssetDatabaseBus.h>
 #include <native/utilities/assetUtils.h>
 #include <native/AssetDatabase/AssetDatabase.h>
+#include <native/resourcecompiler/RCJobSortFilterProxyModel.h>
+#include <utilities/JobDiagnosticTracker.h>
 
 namespace AssetProcessor
 {
@@ -22,6 +24,7 @@ namespace AssetProcessor
         : QAbstractItemModel(parent)
         , m_pendingIcon(QStringLiteral(":/stylesheet/img/logging/pending.svg"))
         , m_errorIcon(QStringLiteral(":/stylesheet/img/logging/error.svg"))
+        , m_warningIcon(QStringLiteral(":/stylesheet/img/logging/warning-yellow.svg"))
         , m_okIcon(QStringLiteral(":/stylesheet/img/logging/valid.svg"))
         , m_processingIcon(QStringLiteral(":/stylesheet/img/logging/processing.svg"))
     {
@@ -105,7 +108,7 @@ namespace AssetProcessor
 
     int JobsModel::itemCount() const
     {
-        return m_cachedJobs.size();
+        return aznumeric_caster(m_cachedJobs.size());
     }
 
 
@@ -135,7 +138,17 @@ namespace AssetProcessor
                 case JobStatus::Failed:
                     return m_errorIcon;
                 case JobStatus::Completed:
+                {
+                    CachedJobInfo* jobInfo = getItem(index.row());
+
+                    if(jobInfo->m_warningCount > 0 || jobInfo->m_errorCount > 0)
+                    {
+                        // Warning icon is used for both warnings and errors.
+                        return m_warningIcon;
+                    }
+
                     return m_okIcon;
+                }
                 case JobStatus::InProgress:
                     return m_processingIcon;
                 }
@@ -144,10 +157,14 @@ namespace AssetProcessor
             break;
         }
         case Qt::DisplayRole:
+        case SortRole:
             switch (index.column())
             {
             case ColumnStatus:
-                return GetStatusInString(getItem(index.row())->m_jobState);
+            {
+                CachedJobInfo* jobInfo = getItem(index.row());
+                return GetStatusInString(jobInfo->m_jobState, jobInfo->m_warningCount, jobInfo->m_errorCount);
+            }
             case ColumnSource:
                 return getItem(index.row())->m_elementId.GetInputAssetName();
             case ColumnPlatform:
@@ -155,7 +172,14 @@ namespace AssetProcessor
             case ColumnJobKey:
                 return getItem(index.row())->m_elementId.GetJobDescriptor();
             case ColumnCompleted:
-                return getItem(index.row())->m_completedTime.toString("hh:mm:ss.zzz");
+                if (role == SortRole)
+                {
+                    return getItem(index.row())->m_completedTime;
+                }
+                else
+                {
+                    return getItem(index.row())->m_completedTime.toString("hh:mm:ss.zzz MMM dd, yyyy");
+                }
             default:
                 break;
             }
@@ -172,6 +196,8 @@ namespace AssetProcessor
             jobInfo.m_jobKey = cachedJobInfo->m_elementId.GetJobDescriptor().toUtf8().data();
             jobInfo.m_builderGuid = cachedJobInfo->m_builderGuid;
             jobInfo.m_jobRunKey = cachedJobInfo->m_jobRunKey;
+            jobInfo.m_warningCount = cachedJobInfo->m_warningCount;
+            jobInfo.m_errorCount = cachedJobInfo->m_errorCount;
 
             ReadJobLogResult readJobLogResult = ReadJobLog(jobInfo, jobLogResponse);
 
@@ -207,16 +233,20 @@ namespace AssetProcessor
         }
         case statusRole:
         {
-            return QVariant::fromValue(getItem(index.row())->m_jobState);
+            CachedJobInfo* jobInfo = getItem(index.row());
+            return QVariant::fromValue(JobStatusInfo{ jobInfo->m_jobState, jobInfo->m_warningCount, jobInfo->m_errorCount });
         }
         case logFileRole:
         {
             AzToolsFramework::AssetSystem::JobInfo jobInfo;
-            jobInfo.m_sourceFile = getItem(index.row())->m_elementId.GetInputAssetName().toUtf8().data();
-            jobInfo.m_platform = getItem(index.row())->m_elementId.GetPlatform().toUtf8().data();
-            jobInfo.m_jobKey = getItem(index.row())->m_elementId.GetJobDescriptor().toUtf8().data();
-            jobInfo.m_builderGuid = getItem(index.row())->m_builderGuid;
-            jobInfo.m_jobRunKey = getItem(index.row())->m_jobRunKey;
+            CachedJobInfo* cachedJobInfo = getItem(index.row());
+            jobInfo.m_sourceFile = cachedJobInfo->m_elementId.GetInputAssetName().toUtf8().data();
+            jobInfo.m_platform = cachedJobInfo->m_elementId.GetPlatform().toUtf8().data();
+            jobInfo.m_jobKey = cachedJobInfo->m_elementId.GetJobDescriptor().toUtf8().data();
+            jobInfo.m_builderGuid = cachedJobInfo->m_builderGuid;
+            jobInfo.m_jobRunKey = cachedJobInfo->m_jobRunKey;
+            jobInfo.m_warningCount = cachedJobInfo->m_warningCount;
+            jobInfo.m_errorCount = cachedJobInfo->m_errorCount;
 
             AZStd::string logFile = AssetUtilities::ComputeJobLogFolder() + "/" + AssetUtilities::ComputeJobLogFileName(jobInfo);
             return QVariant(logFile.c_str());
@@ -239,22 +269,55 @@ namespace AssetProcessor
         return nullptr; //invalid index
     }
 
-    QString JobsModel::GetStatusInString(const AzToolsFramework::AssetSystem::JobStatus& state)
+    void Append(QString& base, const QString& input, const QString& seperator = ", ")
+    {
+        if(input.isEmpty())
+        {
+            return;
+        }
+
+        if(!base.isEmpty())
+        {
+            base.append(seperator);
+        }
+
+        base.append(input);
+    }
+
+    QString JobsModel::GetStatusInString(const AzToolsFramework::AssetSystem::JobStatus& state, AZ::u32 warningCount, AZ::u32 errorCount)
     {
         using namespace AzToolsFramework::AssetSystem;
 
         switch (state)
         {
-        case JobStatus::Queued:
-            return tr("Pending");
-        case JobStatus::Failed_InvalidSourceNameExceedsMaxLimit:  // fall through intentional
-        case JobStatus::Failed:
-            return tr("Failed");
-        case JobStatus::Completed:
-            return tr("Completed");
-        case JobStatus::InProgress:
-            return tr("InProgress");
+            case JobStatus::Queued:
+                return tr("Pending");
+            case JobStatus::Failed_InvalidSourceNameExceedsMaxLimit:  // fall through intentional
+            case JobStatus::Failed:
+                return tr("Failed");
+            case JobStatus::Completed:
+            {
+                QString message = tr("Completed");
+                QString extra;
+
+                if (warningCount > 0)
+                {
+                    extra.append(QString("%1 %2").arg(warningCount).arg( warningCount == 1 ? tr("warning") : tr("warnings") ));
+                }
+
+                if (errorCount > 0)
+                {
+                    Append(extra, QString("%1 %2").arg(errorCount).arg( errorCount == 1 ? tr("error") : tr("errors") ));
+                }
+
+                Append(message, extra, ": ");
+
+                return message;
+            }
+            case JobStatus::InProgress:
+                return tr("InProgress");
         }
+
         return QString();
     }
 
@@ -281,8 +344,10 @@ namespace AssetProcessor
                 jobInfo->m_jobRunKey = entry.m_jobRunKey;
                 jobInfo->m_builderGuid = entry.m_builderGuid;
                 jobInfo->m_completedTime = QDateTime::fromMSecsSinceEpoch(entry.m_lastLogTime);
+                jobInfo->m_warningCount = entry.m_warningCount;
+                jobInfo->m_errorCount = entry.m_errorCount;
                 m_cachedJobs.push_back(jobInfo);
-                m_cachedJobsLookup.insert(jobInfo->m_elementId, m_cachedJobs.size() - 1);
+                m_cachedJobsLookup.insert(jobInfo->m_elementId, aznumeric_caster(m_cachedJobs.size() - 1));
                 return true;
             };
             assetDatabaseConnection.QueryJobsTable(jobsFunction);
@@ -296,6 +361,10 @@ namespace AssetProcessor
         QueueElementID elementId(entry.m_databaseSourceName, entry.m_platformInfo.m_identifier.c_str(), entry.m_jobKey);
         CachedJobInfo* jobInfo = nullptr;
         unsigned int jobIndex = 0;
+
+        JobDiagnosticInfo jobDiagnosticInfo{};
+        JobDiagnosticRequestBus::BroadcastResult(jobDiagnosticInfo, &JobDiagnosticRequestBus::Events::GetDiagnosticInfo, entry.m_jobRunKey);
+
         auto iter = m_cachedJobsLookup.find(elementId);
         if (iter == m_cachedJobsLookup.end())
         {
@@ -306,7 +375,9 @@ namespace AssetProcessor
             jobInfo->m_jobRunKey = entry.m_jobRunKey;
             jobInfo->m_builderGuid = entry.m_builderGuid;
             jobInfo->m_jobState = status;
-            jobIndex = m_cachedJobs.size();
+            jobInfo->m_warningCount = jobDiagnosticInfo.m_warningCount;
+            jobInfo->m_errorCount = jobDiagnosticInfo.m_errorCount;
+            jobIndex = aznumeric_caster(m_cachedJobs.size());
             beginInsertRows(QModelIndex(), jobIndex, jobIndex);
             m_cachedJobs.push_back(jobInfo);
             m_cachedJobsLookup.insert(jobInfo->m_elementId, jobIndex);
@@ -319,6 +390,8 @@ namespace AssetProcessor
             jobInfo->m_jobState = status;
             jobInfo->m_jobRunKey = entry.m_jobRunKey;
             jobInfo->m_builderGuid = entry.m_builderGuid;
+            jobInfo->m_warningCount = jobDiagnosticInfo.m_warningCount;
+            jobInfo->m_errorCount = jobDiagnosticInfo.m_errorCount;
             if (jobInfo->m_jobState == AzToolsFramework::AssetSystem::JobStatus::Completed || jobInfo->m_jobState == AzToolsFramework::AssetSystem::JobStatus::Failed)
             {
                 jobInfo->m_completedTime = QDateTime::currentDateTime();
@@ -335,7 +408,7 @@ namespace AssetProcessor
     {
         // when a source is removed, we need to eliminate all job entries for that source regardless of all other details of it.
         QList<AssetProcessor::QueueElementID> elementsToRemove;
-        for (int index = 0; index < m_cachedJobs.count(); ++index)
+        for (int index = 0; index < m_cachedJobs.size(); ++index)
         {
             if (QString::compare(m_cachedJobs[index]->m_elementId.GetInputAssetName(), sourceDatabasePath, Qt::CaseSensitive) == 0)
             {
@@ -354,7 +427,7 @@ namespace AssetProcessor
     void JobsModel::OnFolderRemoved(QString folderPath)
     {
         QList<AssetProcessor::QueueElementID> elementsToRemove;
-        for (int index = 0; index < m_cachedJobs.count(); ++index)
+        for (int index = 0; index < m_cachedJobs.size(); ++index)
         {
             if (m_cachedJobs[index]->m_elementId.GetInputAssetName().startsWith(folderPath, Qt::CaseSensitive))
             {
@@ -384,14 +457,14 @@ namespace AssetProcessor
             unsigned int jobIndex = iter.value();
             CachedJobInfo* jobInfo = m_cachedJobs[jobIndex];
             beginRemoveRows(QModelIndex(), jobIndex, jobIndex);
-            m_cachedJobs.remove(jobIndex);
+            m_cachedJobs.erase(m_cachedJobs.begin() + jobIndex);
             delete jobInfo;
             m_cachedJobsLookup.erase(iter);
             // Since we are storing the jobIndex for each job for faster lookup therefore 
             // we need to update the jobIndex for jobs that were after the removed job. 
             for (int idx = jobIndex; idx < m_cachedJobs.size(); idx++)
             {
-                CachedJobInfo* jobInfo = m_cachedJobs[idx];
+                jobInfo = m_cachedJobs[idx];
                 auto iterator = m_cachedJobsLookup.find(jobInfo->m_elementId);
                 if (iterator != m_cachedJobsLookup.end())
                 {

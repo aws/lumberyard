@@ -37,5 +37,17 @@ namespace AzFramework
         /// Color to use for hidden
         const AZ::Color HiddenColor(1.0f, 1.0f, 1.0f, 1.0f);
 
+        /// Color to use for x-axis
+        const AZ::Color XAxisColor(1.0f, 0.0f, 0.0f, 1.0f);
+
+        /// Color to use for y-axis
+        const AZ::Color YAxisColor(0.0f, 1.0f, 0.0f, 1.0f);
+
+        /// Color to use for z-axis
+        const AZ::Color ZAxisColor(0.0f, 0.0f, 1.0f, 1.0f);
+
+        /// Color used by QuadBillboard Manipulator View.
+        const AZ::Color DefaultManipulatorHandleColor(0.06275f, 0.1647f, 0.1647f, 1.0f);
+        
     } // namespace ViewportColors
 } // namespace AzFramework

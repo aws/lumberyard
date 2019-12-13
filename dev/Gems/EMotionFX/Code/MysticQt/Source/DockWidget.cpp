@@ -21,8 +21,7 @@ namespace MysticQt
     DockWidget::DockWidget(QWidget* parent, const QString& name)
         : QDockWidget(name, parent)
     {
-        QHBoxLayout* layout = new QHBoxLayout(this);
-        layout->setMargin(1);
+        layout()->setMargin(1);
     }
 
 

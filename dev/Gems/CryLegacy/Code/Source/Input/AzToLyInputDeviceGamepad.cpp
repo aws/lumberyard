@@ -21,7 +21,7 @@ using namespace AzFramework;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AzToLyInputDeviceGamepad::AzToLyInputDeviceGamepad(IInput& input, AZ::u32 index)
-    : AzToLyInputDevice(input, eIDT_Gamepad, "xbox 360 controller", InputDeviceGamepad::IdForIndexN(index))
+    : AzToLyInputDevice(input, eIDT_Gamepad, "gamepad", InputDeviceGamepad::IdForIndexN(index))
 {
     MapSymbol(InputDeviceGamepad::Button::A.GetNameCrc32(), eKI_XI_A, "xi_a");
     MapSymbol(InputDeviceGamepad::Button::B.GetNameCrc32(), eKI_XI_B, "xi_b");
@@ -88,6 +88,8 @@ void AzToLyInputDeviceGamepad::OnInputChannelEvent(const InputChannel& inputChan
         #include "Xenia/AzToLyInputDeviceGamepad_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/AzToLyInputDeviceGamepad_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/AzToLyInputDeviceGamepad_cpp_salem.inl"
     #endif
 #elif defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #if defined(TOOLS_SUPPORT_XENIA)
@@ -95,5 +97,8 @@ void AzToLyInputDeviceGamepad::OnInputChannelEvent(const InputChannel& inputChan
 #endif
 #if defined(TOOLS_SUPPORT_PROVO)
     #include "Provo/AzToLyInputDeviceGamepad_cpp_provo.inl"
+#endif
+#if defined(TOOLS_SUPPORT_SALEM)
+    #include "Salem/AzToLyInputDeviceGamepad_cpp_salem.inl"
 #endif
 #endif

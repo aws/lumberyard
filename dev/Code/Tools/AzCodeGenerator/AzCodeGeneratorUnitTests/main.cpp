@@ -13,7 +13,7 @@
 #include "Native.h"
 #include "Components.h"
 
-#include "TestTypes.h"
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/std/utils.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Component/Entity.h>

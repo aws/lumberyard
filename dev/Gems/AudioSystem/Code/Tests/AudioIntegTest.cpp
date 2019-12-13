@@ -10,14 +10,23 @@
 *
 */
 
-#include "StdAfx.h"
 #include <AzTest/AzTest.h>
-#include <IAudioSystem.h>
 
+#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/IO/FileIO.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzFramework/IO/LocalFileIO.h>
+#include <AzFramework/StringFunc/StringFunc.h>
+
+#include <ATLComponents.h>
+#include <ISystem.h>
 #include <LmbrCentral/Audio/AudioSystemComponentBus.h>
+
+#include <Mocks/ATLEntitiesMock.h>
 
 using namespace Audio;
 using namespace LmbrCentral;
+using ::testing::NiceMock;
 
 //
 // These tests are going to interact with audio content in a variety of ways, including playing sounds, 
@@ -46,6 +55,150 @@ using namespace LmbrCentral;
 //
 
 
+AZ_INTEG_TEST_HOOK()
+
+
+//-----------------------//
+// Test CATLXmlProcessor //
+//-----------------------//
+
+class ATLXmlProcessorTestFixture
+    : public ::testing::Test
+{
+public:
+    ATLXmlProcessorTestFixture()
+        : m_triggers()
+        , m_rtpcs()
+        , m_switches()
+        , m_environments()
+        , m_preloads()
+        , m_afcm(m_preloads)
+        , m_xmlProcessor(m_triggers, m_rtpcs, m_switches, m_environments, m_preloads, m_afcm)
+    {
+        m_xmlProcessor.SetDebugNameStore(&m_mockDebugNameStore);
+    }
+
+    void SetUp() override
+    {
+        // Store and remove the existing fileIO...
+        m_prevFileIO = AZ::IO::FileIOBase::GetInstance();
+        if (m_prevFileIO)
+        {
+            AZ::IO::FileIOBase::SetInstance(nullptr);
+        }
+
+        // Replace with a new LocalFileIO...
+        m_fileIO = AZStd::make_unique<AZ::IO::LocalFileIO>();
+        AZ::IO::FileIOBase::SetInstance(m_fileIO.get());
+
+        // Get exe folder from ComponentApplication...
+        AZStd::string rootFolder;
+        AZ::ComponentApplicationBus::BroadcastResult(rootFolder, &AZ::ComponentApplicationBus::Events::GetExecutableFolder);
+        AzFramework::StringFunc::Path::Join(rootFolder.c_str(), "..", rootFolder);
+
+        // Set up paths...
+        m_xmlProcessor.SetRootPath(m_audioTestAlias);
+        m_fileIO->SetAlias(m_audioTestAlias, rootFolder.c_str());
+    }
+
+    void TearDown() override
+    {
+        // Destroy our LocalFileIO...
+        m_fileIO->ClearAlias(m_audioTestAlias);
+        m_fileIO.reset();
+
+        // Replace the old fileIO (set instance to null first)...
+        AZ::IO::FileIOBase::SetInstance(nullptr);
+        if (m_prevFileIO)
+        {
+            AZ::IO::FileIOBase::SetInstance(m_prevFileIO);
+            m_prevFileIO = nullptr;
+        }
+    }
+
+protected:
+    TATLTriggerLookup m_triggers;
+    TATLRtpcLookup m_rtpcs;
+    TATLSwitchLookup m_switches;
+    TATLEnvironmentLookup m_environments;
+    TATLPreloadRequestLookup m_preloads;
+    CFileCacheManager m_afcm;
+
+    CATLXmlProcessor m_xmlProcessor;
+
+private:
+    NiceMock<ATLDebugNameStoreMock> m_mockDebugNameStore;
+
+    const char* m_audioTestAlias { "@audiotestroot@" };
+    AZ::IO::FileIOBase* m_prevFileIO { nullptr };
+    AZStd::unique_ptr<AZ::IO::LocalFileIO> m_fileIO;
+};
+
+INTEG_TEST_F(ATLXmlProcessorTestFixture, ParsePreloadsXml)
+{
+    m_xmlProcessor.ParsePreloadsData("TestAssets/Audio/ATLData", eADS_GLOBAL);
+
+    EXPECT_EQ(m_preloads.size(), 1);
+
+    auto it = m_preloads.find(AudioStringToID<TAudioPreloadRequestID>("content"));
+    EXPECT_NE(it, m_preloads.end());
+
+    m_xmlProcessor.ClearPreloadsData(eADS_GLOBAL);
+}
+
+INTEG_TEST_F(ATLXmlProcessorTestFixture, ParseControlsXml)
+{
+    m_xmlProcessor.ParseControlsData("TestAssets/Audio/ATLData", eADS_GLOBAL);
+
+    EXPECT_EQ(m_triggers.size(), 1);
+
+    auto itTrigger = m_triggers.find(AudioStringToID<TAudioControlID>("AssignedTriggerTest"));
+    EXPECT_NE(itTrigger, m_triggers.end());
+
+    EXPECT_EQ(m_rtpcs.size(), 1);
+
+    auto itRtpc = m_rtpcs.find(AudioStringToID<TAudioControlID>("AssignedRtpcTest"));
+    EXPECT_NE(itRtpc, m_rtpcs.end());
+
+    EXPECT_EQ(m_switches.size(), 2);
+
+    auto itSwitch = m_switches.find(AudioStringToID<TAudioControlID>("InternalSwitchTest"));
+    EXPECT_NE(itSwitch, m_switches.end());
+
+    if (itSwitch != m_switches.end())
+    {
+        EXPECT_EQ(itSwitch->second->cStates.size(), 2);
+
+        auto itState = itSwitch->second->cStates.find(AudioStringToID<TAudioSwitchStateID>("InternalSwitchState0"));
+        EXPECT_NE(itState, itSwitch->second->cStates.end());
+
+        itState = itSwitch->second->cStates.find(AudioStringToID<TAudioSwitchStateID>("InternalSwitchState1"));
+        EXPECT_NE(itState, itSwitch->second->cStates.end());
+    }
+
+    itSwitch = m_switches.find(AudioStringToID<TAudioControlID>("SwitchTest"));
+    EXPECT_NE(itSwitch, m_switches.end());
+
+    if (itSwitch != m_switches.end())
+    {
+        EXPECT_EQ(itSwitch->second->cStates.size(), 2);
+
+        auto itState = itSwitch->second->cStates.find(AudioStringToID<TAudioSwitchStateID>("SwitchState0"));
+        EXPECT_NE(itState, itSwitch->second->cStates.end());
+
+        itState = itSwitch->second->cStates.find(AudioStringToID<TAudioSwitchStateID>("SwitchState1"));
+        EXPECT_NE(itState, itSwitch->second->cStates.end());
+    }
+
+    EXPECT_EQ(m_environments.size(), 1);
+
+    auto itEnv = m_environments.find(AudioStringToID<TAudioEnvironmentID>("EnvironmentTest"));
+    EXPECT_NE(itEnv, m_environments.end());
+
+    m_xmlProcessor.ClearControlsData(eADS_GLOBAL);
+}
+
+
 //        //
 // Sanity //
 //        //
@@ -67,6 +220,11 @@ INTEG_TEST(AudioIntegrationTests, ExecuteTriggerTest_WaitTillFinished)
     TAudioControlID triggerId = INVALID_AUDIO_CONTROL_ID;
     AudioSystemRequestBus::BroadcastResult(triggerId, &AudioSystemRequestBus::Events::GetAudioTriggerID, triggerName);
     EXPECT_TRUE(triggerId != INVALID_AUDIO_CONTROL_ID);
+    if (triggerId == INVALID_AUDIO_CONTROL_ID)
+    {
+        // No need to continue this test
+        return;
+    }
 
     // Setup a sound-finished callback
     int callbackCookie = 666;
@@ -169,6 +327,10 @@ protected:
 
 INTEG_TEST_F(GetDurationTest, GetDuration)
 {
+    if (m_triggerId == INVALID_AUDIO_CONTROL_ID)
+    {
+        return;
+    }
     // Execute Trigger
     SAudioRequest request;
     SAudioObjectRequestData<eAORT_EXECUTE_TRIGGER> requestData(m_triggerId, 0.f);
@@ -302,12 +464,11 @@ INTEG_TEST(AudioIntegrationTests, GlobalExecuteTrigger)
     }
 }
 
-INTEG_TEST(AudioIntegrationTests, GlobalSetRtpc_QuarterVolume)
+INTEG_TEST(AudioIntegrationTests, DISABLED_GlobalSetRtpc_QuarterVolume)
 {
     AudioSystemComponentRequestBus::Broadcast(&AudioSystemComponentRequestBus::Events::GlobalExecuteAudioTrigger, "Play_AMZN_sfx_env_Tport_End", AZ::EntityId());
-    int time_chunk_ms = 3000;
-    int time = time_chunk_ms;
-    int sleep_ms = 10;
+    int time = 3000;
+    const int sleep_ms = 10;
 
     AudioSystemComponentRequestBus::Broadcast(&AudioSystemComponentRequestBus::Events::GlobalSetAudioRtpc, "rtpc_MasterVolume", 0.25f);
 
@@ -322,12 +483,11 @@ INTEG_TEST(AudioIntegrationTests, GlobalSetRtpc_QuarterVolume)
     AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::ExternalUpdate);
 }
 
-INTEG_TEST(AudioIntegrationTests, GlobalSetRtpc_FullVolume)
+INTEG_TEST(AudioIntegrationTests, DISABLED_GlobalSetRtpc_FullVolume)
 {
     AudioSystemComponentRequestBus::Broadcast(&AudioSystemComponentRequestBus::Events::GlobalExecuteAudioTrigger, "Play_AMZN_sfx_env_Tport_End", AZ::EntityId());
-    int time_chunk_ms = 3000;
-    int time = time_chunk_ms;
-    int sleep_ms = 10;
+    int time = 3000;
+    const int sleep_ms = 10;
 
     AudioSystemComponentRequestBus::Broadcast(&AudioSystemComponentRequestBus::Events::GlobalSetAudioRtpc, "rtpc_MasterVolume", 1.f);
 
@@ -342,14 +502,13 @@ INTEG_TEST(AudioIntegrationTests, GlobalSetRtpc_FullVolume)
     AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::ExternalUpdate);
 }
 
-INTEG_TEST(AudioIntegrationTests, GlobalSetSwitchState_HighPass)
+INTEG_TEST(AudioIntegrationTests, DISABLED_GlobalSetSwitchState_HighPass)
 {
     AudioSystemComponentRequestBus::Broadcast(&AudioSystemComponentRequestBus::Events::GlobalSetAudioSwitchState, "demo_state", "high_pass");
     AudioSystemComponentRequestBus::Broadcast(&AudioSystemComponentRequestBus::Events::GlobalExecuteAudioTrigger, "play_music_combat_entered", AZ::EntityId());
 
-    int time_chunk_ms = 4000;
-    int time = time_chunk_ms;
-    int sleep_ms = 16;
+    int time = 4000;
+    const int sleep_ms = 16;
     while (time >= 0)
     {
         AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::ExternalUpdate);
@@ -362,14 +521,13 @@ INTEG_TEST(AudioIntegrationTests, GlobalSetSwitchState_HighPass)
 }
 
 
-INTEG_TEST(AudioIntegrationTests, GlobalSetSwitchState_LowPass)
+INTEG_TEST(AudioIntegrationTests, DISABLED_GlobalSetSwitchState_LowPass)
 {
     AudioSystemComponentRequestBus::Broadcast(&AudioSystemComponentRequestBus::Events::GlobalSetAudioSwitchState, "demo_state", "low_pass");
     AudioSystemComponentRequestBus::Broadcast(&AudioSystemComponentRequestBus::Events::GlobalExecuteAudioTrigger, "play_music_combat_entered", AZ::EntityId());
 
-    int time_chunk_ms = 4000;
-    int time = time_chunk_ms;
-    int sleep_ms = 16;
+    int time = 4000;
+    const int sleep_ms = 16;
     while (time >= 0)
     {
         AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::ExternalUpdate);
@@ -381,14 +539,13 @@ INTEG_TEST(AudioIntegrationTests, GlobalSetSwitchState_LowPass)
     AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::ExternalUpdate);
 }
 
-INTEG_TEST(AudioIntegrationTests, GlobalSetSwitchState_HalfVolume)
+INTEG_TEST(AudioIntegrationTests, DISABLED_GlobalSetSwitchState_HalfVolume)
 {
     AudioSystemComponentRequestBus::Broadcast(&AudioSystemComponentRequestBus::Events::GlobalSetAudioSwitchState, "demo_state", "half_volume");
     AudioSystemComponentRequestBus::Broadcast(&AudioSystemComponentRequestBus::Events::GlobalExecuteAudioTrigger, "play_music_combat_entered", AZ::EntityId());
 
-    int time_chunk_ms = 4000;
-    int time = time_chunk_ms;
-    int sleep_ms = 16;
+    int time = 4000;
+    const int sleep_ms = 16;
     while (time >= 0)
     {
         AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::ExternalUpdate);
@@ -401,14 +558,13 @@ INTEG_TEST(AudioIntegrationTests, GlobalSetSwitchState_HalfVolume)
 }
 
 
-INTEG_TEST(AudioIntegrationTests, GlobalSetSwitchState_Normal)
+INTEG_TEST(AudioIntegrationTests, DISABLED_GlobalSetSwitchState_Normal)
 {
     AudioSystemComponentRequestBus::Broadcast(&AudioSystemComponentRequestBus::Events::GlobalSetAudioSwitchState, "demo_state", "none");
     AudioSystemComponentRequestBus::Broadcast(&AudioSystemComponentRequestBus::Events::GlobalExecuteAudioTrigger, "play_music_combat_entered", AZ::EntityId());
 
-    int time_chunk_ms = 4000;
-    int time = time_chunk_ms;
-    int sleep_ms = 16;
+    int time = 4000;
+    const int sleep_ms = 16;
     while (time >= 0)
     {
         AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::ExternalUpdate);
@@ -419,7 +575,3 @@ INTEG_TEST(AudioIntegrationTests, GlobalSetSwitchState_Normal)
     AudioSystemComponentRequestBus::Broadcast(&AudioSystemComponentRequestBus::Events::GlobalStopAllSounds);
     AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::ExternalUpdate);
 }
-
-
-AZ_INTEG_TEST_HOOK()
-

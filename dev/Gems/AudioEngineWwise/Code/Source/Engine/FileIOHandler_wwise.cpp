@@ -11,20 +11,22 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "FileIOHandler_wwise.h"
+#include <FileIOHandler_wwise.h>
 #include <AzCore/IO/Streamer.h>
 
 #include <IAudioInterfacesCommonData.h>
-#include <ICryPak.h>
 #include <AK/Tools/Common/AkPlatformFuncs.h>
-#include <CryAudioImplWwise_Traits_Platform.h>
+#include <AudioEngineWwise_Traits_Platform.h>
+
+#include <platform.h>
+#include <ICryPak.h>
 
 #define MAX_NUMBER_STRING_SIZE      (10)    // 4G
 #define ID_TO_STRING_FORMAT_BANK    AKTEXT("%u.bnk")
 #define ID_TO_STRING_FORMAT_WEM     AKTEXT("%u.wem")
 #define MAX_EXTENSION_SIZE          (4)     // .xxx
 #define MAX_FILETITLE_SIZE          (MAX_NUMBER_STRING_SIZE + MAX_EXTENSION_SIZE + 1)   // null-terminated
+
 
 namespace Audio
 {
@@ -38,6 +40,7 @@ namespace Audio
         {
             return AkFileHandle(INVALID_HANDLE_VALUE);
         }
+
         return (AkFileHandle)static_cast<uintptr_t>(realFileHandle);
     }
 
@@ -71,7 +74,7 @@ namespace Audio
         AK::StreamMgr::GetDefaultDeviceSettings(deviceSettings);
         deviceSettings.uIOMemorySize = poolSize;
         deviceSettings.uSchedulerTypeFlags = AK_SCHEDULER_BLOCKING;
-        deviceSettings.threadProperties.dwAffinityMask = AZ_TRAIT_CRYAUDIOIMPLWWISE_FILEIO_AKDEVICE_THREAD_AFFINITY_MASK;
+        deviceSettings.threadProperties.dwAffinityMask = AZ_TRAIT_AUDIOENGINEWWISE_FILEIO_AKDEVICE_THREAD_AFFINITY_MASK;
 
         m_deviceID = AK::StreamMgr::CreateDevice(deviceSettings, this);
         return m_deviceID != AK_INVALID_DEVICE_ID;
@@ -226,7 +229,7 @@ namespace Audio
         AK::StreamMgr::GetDefaultDeviceSettings(deviceSettings);
         deviceSettings.uIOMemorySize = poolSize;
         deviceSettings.uSchedulerTypeFlags = AK_SCHEDULER_DEFERRED_LINED_UP;
-        deviceSettings.threadProperties.dwAffinityMask = AZ_TRAIT_CRYAUDIOIMPLWWISE_FILEIO_AKDEVICE_THREAD_AFFINITY_MASK;
+        deviceSettings.threadProperties.dwAffinityMask = AZ_TRAIT_AUDIOENGINEWWISE_FILEIO_AKDEVICE_THREAD_AFFINITY_MASK;
 
         m_deviceID = AK::StreamMgr::CreateDevice(deviceSettings, this);
         return m_deviceID != AK_INVALID_DEVICE_ID;

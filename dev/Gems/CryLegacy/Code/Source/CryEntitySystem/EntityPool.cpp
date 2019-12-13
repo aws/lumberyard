@@ -179,17 +179,17 @@ bool CEntityPool::ConsumePool(CEntityPool& otherPool)
     {
         m_InactivePoolIds.insert(m_InactivePoolIds.end(), otherPool.m_InactivePoolIds.begin(), otherPool.m_InactivePoolIds.end());
         std::sort(m_InactivePoolIds.begin(), m_InactivePoolIds.end());
-        std::unique(m_InactivePoolIds.begin(), m_InactivePoolIds.end());
+        (void)std::unique(m_InactivePoolIds.begin(), m_InactivePoolIds.end());
         otherPool.m_InactivePoolIds.clear();
 
         m_ActivePoolIds.insert(m_ActivePoolIds.end(), otherPool.m_ActivePoolIds.begin(), otherPool.m_ActivePoolIds.end());
         std::sort(m_ActivePoolIds.begin(), m_ActivePoolIds.end());
-        std::unique(m_ActivePoolIds.begin(), m_ActivePoolIds.end());
+        (void)std::unique(m_ActivePoolIds.begin(), m_ActivePoolIds.end());
         otherPool.m_ActivePoolIds.clear();
 
         m_PoolDefinitionIds.insert(m_PoolDefinitionIds.end(), otherPool.m_PoolDefinitionIds.begin(), otherPool.m_PoolDefinitionIds.end());
         std::sort(m_PoolDefinitionIds.begin(), m_PoolDefinitionIds.end());
-        std::unique(m_PoolDefinitionIds.begin(), m_PoolDefinitionIds.end());
+        (void)std::unique(m_PoolDefinitionIds.begin(), m_PoolDefinitionIds.end());
         otherPool.m_PoolDefinitionIds.clear();
 
         m_sName.append(" + ");
@@ -330,21 +330,21 @@ void CEntityPool::ReturnAllActive(bool bSaveState)
 EntityId CEntityPool::GetPoolId(EntityId usingId) const
 {
     EntityId poolId = 0;
-
-    TPoolIdsVec::const_iterator itInactive = std::find_if(m_InactivePoolIds.begin(), m_InactivePoolIds.end(), std::bind2nd(SEntityIds::CompareUsingIds(), usingId));
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+    TPoolIdsVec::const_iterator itInactive = std::find_if(m_InactivePoolIds.begin(), m_InactivePoolIds.end(), [usingId](const SEntityIds& poolId) { return SEntityIds::CompareUsingIds()(poolId, usingId); });
     if (itInactive != m_InactivePoolIds.end())
     {
         poolId = itInactive->poolId;
     }
     else
     {
-        TPoolIdsVec::const_iterator itActive = std::find_if(m_ActivePoolIds.begin(), m_ActivePoolIds.end(), std::bind2nd(SEntityIds::CompareUsingIds(), usingId));
+        TPoolIdsVec::const_iterator itActive = std::find_if(m_ActivePoolIds.begin(), m_ActivePoolIds.end(), [usingId](const SEntityIds& poolId) { return SEntityIds::CompareUsingIds()(poolId, usingId); });
         if (itActive != m_ActivePoolIds.end())
         {
             poolId = itActive->poolId;
         }
     }
-
+    AZ_POP_DISABLE_WARNING
     return poolId;
 }
 
@@ -619,13 +619,17 @@ bool CEntityPool::ContainsEntity(EntityId entityId) const
 //////////////////////////////////////////////////////////////////////////
 bool CEntityPool::IsInInactiveList(EntityId entityId) const
 {
-    return std::find_if(m_InactivePoolIds.begin(), m_InactivePoolIds.end(), std::bind2nd(SEntityIds::CompareUsingIds(), entityId)) != m_InactivePoolIds.end();
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+    return std::find_if(m_InactivePoolIds.begin(), m_InactivePoolIds.end(), [entityId](const SEntityIds& poolId) { return SEntityIds::CompareUsingIds()(poolId, entityId); }) != m_InactivePoolIds.end();
+    AZ_POP_DISABLE_WARNING
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CEntityPool::IsInActiveList(EntityId entityId) const
 {
-    return std::find_if(m_ActivePoolIds.begin(), m_ActivePoolIds.end(), std::bind2nd(SEntityIds::CompareUsingIds(), entityId)) != m_ActivePoolIds.end();
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+    return std::find_if(m_ActivePoolIds.begin(), m_ActivePoolIds.end(), [entityId](const SEntityIds& poolId) { return SEntityIds::CompareUsingIds()(poolId, entityId); }) != m_ActivePoolIds.end();
+    AZ_POP_DISABLE_WARNING
 }
 
 //////////////////////////////////////////////////////////////////////////

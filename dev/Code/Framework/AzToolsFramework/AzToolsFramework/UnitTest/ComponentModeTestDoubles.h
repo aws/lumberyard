@@ -83,6 +83,47 @@ namespace AzToolsFramework
                                                            ///< and creating a concrete ComponentMode.
         };
 
+        // Simple component for testing that can be supplied a componentmode
+        // type via template argument.
+        template<typename ComponentModeT>
+        class TestComponentModeComponent
+            : public AzToolsFramework::Components::EditorComponentBase
+        {
+        public:
+            AZ_EDITOR_COMPONENT(
+                TestComponentModeComponent, "{57B53B5D-D51B-4CCB-A875-9CF630282667}",
+                AzToolsFramework::Components::EditorComponentBase);
+
+            static void Reflect(AZ::ReflectContext* context)
+            {
+                if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+                {
+                    serializeContext->Class<TestComponentModeComponent>()
+                        ->Version(0)
+                        ->Field("ComponentMode", &TestComponentModeComponent::m_componentModeDelegate);
+                }
+            }
+
+            // AZ::Component ...
+            void Activate() override
+            {
+                EditorComponentBase::Activate();
+                m_componentModeDelegate.ConnectWithSingleComponentMode<
+                    TestComponentModeComponent, ComponentModeT>(
+                        AZ::EntityComponentIdPair(GetEntityId(), GetId()), nullptr);
+            }
+
+            void Deactivate() override
+            {
+                EditorComponentBase::Deactivate();
+                m_componentModeDelegate.Disconnect();
+            }
+
+        private:
+            ComponentModeDelegate m_componentModeDelegate; ///< Responsible for detecting ComponentMode activation
+                                                           ///< and creating a concrete ComponentMode.
+        };
+
         /// A simple request bus to let us notify an entity component Id pair what address
         /// to listen on for ComponentModeActionSignalNotifications.
         class ComponentModeActionSignalRequests
@@ -170,6 +211,29 @@ namespace AzToolsFramework
 
             // EditorBaseComponentMode ...
             void Refresh() override {}
+        };
+
+        // ComponentMode which overrides mouse events
+        class OverrideMouseInteractionComponentMode
+            : public EditorBaseComponentMode
+            , public AzToolsFramework::ViewportInteraction::ViewportSelectionRequests
+        {
+        public:
+            AZ_CLASS_ALLOCATOR_DECL
+
+            OverrideMouseInteractionComponentMode(const AZ::EntityComponentIdPair& entityComponentIdPair, AZ::Uuid componentType);
+
+            // EditorBaseComponentMode ...
+            void Refresh() override {}
+
+        private:
+            /// AzToolsFramework::ViewportInteraction::ViewportSelectionRequests ...
+            bool HandleMouseInteraction(const AzToolsFramework::ViewportInteraction::MouseInteractionEvent& mouseInteraction) override
+            {
+                // Pretend like we are handling some mouse interaction 
+                AZ_UNUSED(mouseInteraction);
+                return true;
+            }
         };
 
     } // namespace ComponentModeFramework

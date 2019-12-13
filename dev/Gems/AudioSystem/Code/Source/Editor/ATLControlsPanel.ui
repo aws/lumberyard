@@ -61,7 +61,7 @@
        </property>
        <property name="maximumSize">
         <size>
-         <width>60</width>
+         <width>70</width>
          <height>16777215</height>
         </size>
        </property>
@@ -83,7 +83,7 @@
       <widget class="QPushButton" name="m_pAddButton">
        <property name="maximumSize">
         <size>
-         <width>60</width>
+         <width>70</width>
          <height>16777215</height>
         </size>
        </property>

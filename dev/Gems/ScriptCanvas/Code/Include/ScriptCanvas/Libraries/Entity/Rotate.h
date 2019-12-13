@@ -19,6 +19,14 @@
 
 #include <Include/ScriptCanvas/Libraries/Entity/Rotate.generated.h>
 
+// LY-103055 Temporary workaround to fix compile error when building Android NDK 19 and above due to AzCodeGenerator
+// not receiving the correct clang system includes
+namespace AZ
+{
+    class EntityId;
+    class Vector3;
+}
+
 namespace ScriptCanvas
 {
     namespace Nodes

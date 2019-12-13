@@ -50,11 +50,6 @@ namespace AZ
                 Events::ProcessingResult ImportUvMaps(SceneNodeAppendedContext& context);
 
             protected:
-#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
-                // Workaround for VS2013 - Delete the copy constructor and make it private
-                // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-                FbxUvMapImporter(const FbxUvMapImporter&) = delete;
-#endif
                 AZStd::shared_ptr<SceneData::GraphData::MeshVertexUVData> BuildVertexUVData(const FbxSDKWrapper::FbxUVWrapper& uvs,
                     size_t vertexCount, const std::shared_ptr<FbxSDKWrapper::FbxMeshWrapper>& fbxMesh);
             };

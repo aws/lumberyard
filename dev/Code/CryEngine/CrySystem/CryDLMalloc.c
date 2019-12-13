@@ -23,6 +23,8 @@
         #include "Xenia/CryDLMalloc_c_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CryDLMalloc_c_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryDLMalloc_c_salem.inl"
     #endif
 #elif defined(_WIN32) || defined(LINUX) || defined(APPLE)
 #define TRAIT_ENABLE_DLMALLOC 1
@@ -544,12 +546,10 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 #define mspace_mallopt dlmspace_mallopt
 
 // Avoid x64 warnings with size_t converted to int
-#if _MSC_VER >= 1600
 #pragma warning(disable : 4267)
 #pragma warning(disable : 6239)
 #pragma warning(disable : 6297)
 #pragma warning(disable : 28182)
-#endif
 
 #ifdef BUCKET_SIMULATOR
 
@@ -731,7 +731,7 @@ void* SimSBrk(ptrdiff_t size)
 #include <sys/types.h>  /* For size_t */
 #endif  /* LACKS_SYS_TYPES_H */
 
-#if (defined(__GNUC__) && ((defined(__i386__) || defined(__x86_64__)))) || (defined(_MSC_VER) && _MSC_VER >= 1310)
+#if (defined(__GNUC__) && ((defined(__i386__) || defined(__x86_64__)))) || (defined(_MSC_VER))
 #define SPIN_LOCKS_AVAILABLE 1
 #else
 #define SPIN_LOCKS_AVAILABLE 0
@@ -869,7 +869,7 @@ void* SimSBrk(ptrdiff_t size)
 // --------- Traits --------------
 
 #if !defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(_MSC_VER) && _MSC_VER >= 1300
+    #if defined(_MSC_VER)
         #define TRAIT_HAS_BITSCANFORWARD 1
         #define TRAIT_HAS_BITSCANREVERSE 1
     #endif
@@ -1574,6 +1574,8 @@ extern void*     sbrk(ptrdiff_t);
         #include "Xenia/CryDLMalloc_c_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CryDLMalloc_c_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryDLMalloc_c_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1620,7 +1622,7 @@ unsigned char _BitScanReverse(unsigned long* index, unsigned long mask);
 #pragma intrinsic(_BitScanForward)
 #pragma intrinsic(_BitScanReverse)
 #endif /* BitScanForward */
-#endif /* defined(_MSC_VER) && _MSC_VER>=1300 */
+#endif /* defined(_MSC_VER) */
 
 #ifndef WIN32
 #ifndef malloc_getpagesize

@@ -20,6 +20,7 @@
 #include "FileProcessor/FileProcessor.h"
 #include "utilities/PlatformConfiguration.h"
 #include <QCoreApplication>
+#include <utilities/AssetUtilEBusHelper.h>
 
 namespace UnitTests
 {
@@ -46,11 +47,34 @@ namespace UnitTests
         MOCK_METHOD1(GetAssetDatabaseLocation, bool(AZStd::string&));
     };
 
-    class FileProcessorTests : public AssetProcessorTest
+    class FileProcessorTests 
+        : public AssetProcessorTest,
+        public ConnectionBus::Handler
     {
     public:
         void SetUp() override;
         void TearDown() override;
+
+        //////////////////////////////////////////////////////////////////////////
+
+        // Sends an unsolicited message to the connection
+        size_t Send(unsigned int serial, const AzFramework::AssetSystem::BaseAssetProcessorMessage& message);
+        // Sends a raw buffer to the connection
+        size_t SendRaw(unsigned int type, unsigned int serial, const QByteArray& data) { return 0; };
+
+        // Sends a message to the connection if the platform match
+        size_t SendPerPlatform(unsigned int serial, const AzFramework::AssetSystem::BaseAssetProcessorMessage& message, const QString& platform){ return 0; };
+        // Sends a raw buffer to the connection if the platform match
+        size_t SendRawPerPlatform(unsigned int type, unsigned int serial, const QByteArray& data, const QString& platform){ return 0; };
+
+        // Sends a message to the connection which expects a response.
+        unsigned int SendRequest(const AzFramework::AssetSystem::BaseAssetProcessorMessage& message, const ResponseCallback& callback){ return 0; };
+
+        // Sends a response to the connection
+        size_t SendResponse(unsigned int serial, const AzFramework::AssetSystem::BaseAssetProcessorMessage& message){ return 0; };
+
+        // Removes a response handler that is no longer needed
+        void RemoveResponseHandler(unsigned int serial){};
 
     protected:
         struct StaticData
@@ -75,6 +99,7 @@ namespace UnitTests
             FileDatabaseEntryContainer m_fileEntries;
             QCoreApplication m_coreApp;
             int m_argc = 0;
+            int m_messagesSent = 0;
 
             StaticData() : m_coreApp(m_argc, nullptr)
             {

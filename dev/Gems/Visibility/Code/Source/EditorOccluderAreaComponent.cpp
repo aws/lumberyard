@@ -184,7 +184,10 @@ namespace Visibility
         // This means that dynamic slices cannot effectively contain vis areas until we fix
         // the core rendering system to allow that.
         const auto visGUID = static_cast<AZ::u64>(entityId);
-        m_area = GetIEditor()->Get3DEngine()->CreateVisArea(visGUID);
+        if(!m_area)
+        {
+            m_area = GetIEditor()->Get3DEngine()->CreateVisArea(visGUID);
+        }
 #endif
 
         m_componentModeDelegate.ConnectWithSingleComponentMode<

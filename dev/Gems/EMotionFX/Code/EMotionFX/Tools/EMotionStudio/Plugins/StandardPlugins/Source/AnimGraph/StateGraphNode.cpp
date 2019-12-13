@@ -42,7 +42,7 @@ namespace EMStudio
     }
 
 
-    void StateConnection::Render(QPainter& painter, QPen* pen, QBrush* brush, int32 stepSize, const QRect& visibleRect, float opacity, bool alwaysColor)
+    void StateConnection::Render(const QItemSelectionModel& selectionModel, QPainter& painter, QPen* pen, QBrush* brush, int32 stepSize, const QRect& visibleRect, float opacity, bool alwaysColor)
     {
         MCORE_UNUSED(stepSize);
         MCORE_UNUSED(visibleRect);
@@ -136,6 +136,7 @@ namespace EMStudio
 
         QColor color = mColor;
 
+        mIsSelected = selectionModel.isSelected(m_modelIndex);
         if (mIsSelected)
         {
             color = StateMachineColors::s_selectedColor;
@@ -436,6 +437,11 @@ namespace EMStudio
 
         outStart    = start;
         outEnd      = end;
+    }
+
+    void StateConnection::SetIsSelected(bool selected)
+    {
+        AZ_Assert(false, "Visual transition selection state is determined by the anim graph model and should not be manually overwritten.");
     }
 
     void StateConnection::RenderTransition(QPainter& painter, QBrush& brush, QPen& pen,

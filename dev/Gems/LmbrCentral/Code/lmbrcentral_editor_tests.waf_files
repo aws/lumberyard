@@ -7,11 +7,14 @@
             "Tests/LmbrCentralReflectionTest.h",
             "Tests/LmbrCentralReflectionTest.cpp",
             "Tests/EditorBoxShapeComponentTests.cpp",
+            "Tests/EditorLensFlareComponentTests.cpp",
+            "Tests/EditorParticleComponentTests.cpp",
             "Tests/EditorSphereShapeComponentTests.cpp",
             "Tests/EditorCapsuleShapeComponentTests.cpp",
             "Tests/EditorCompoundShapeComponentTests.cpp",
             "Tests/EditorCylinderShapeComponentTests.cpp",
-            "Tests/EditorPolygonPrismShapeComponentTests.cpp"
+            "Tests/EditorPolygonPrismShapeComponentTests.cpp",
+            "Tests/EditorMeshComponentTests.cpp"
         ]
     }
 }

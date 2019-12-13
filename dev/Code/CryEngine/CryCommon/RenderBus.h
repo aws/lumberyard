@@ -48,4 +48,32 @@ namespace AZ
     };
 
     using RenderNotificationsBus = AZ::EBus<RenderNotifications>;
+
+    /**
+    * This bus is used for renderer notifications that occur directly from the render thread
+    * while scene rendering is occurring.  (In contrast, the RenderNotificationsBus above runs on the
+    * main thread while the renderer is preparing the scene.)
+    */
+    class RenderThreadEvents
+        : public AZ::EBusTraits
+    {
+    public:
+        virtual ~RenderThreadEvents() = default;
+
+        //////////////////////////////////////////////////////////////////////////
+        // EBusTraits overrides
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+        //////////////////////////////////////////////////////////////////////////
+
+        /*
+        * This hook enables per-frame render work at the beginning of the frame.
+        *
+        * This event is triggered when RT_RenderScene is called at the beginning of a frame.
+        * The event will only be triggered on the render thread, if multithreaded rendering
+        * is enabled.  And, it will only be triggered on a non-recursive scene render.
+        */
+        virtual void OnRenderThreadRenderSceneBegin() {}
+    };
+
+    using RenderThreadEventsBus = AZ::EBus<RenderThreadEvents>;
 }

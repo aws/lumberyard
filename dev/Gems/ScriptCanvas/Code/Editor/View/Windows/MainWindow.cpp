@@ -2689,11 +2689,6 @@ namespace ScriptCanvasEditor
         QueuePropertyGridUpdate();
     }
 
-    void MainWindow::OnNodePositionChanged(const AZ::EntityId& nodeId, const AZ::Vector2&)
-    {
-        m_propertyGrid->OnNodeUpdate(nodeId);
-    }
-
     void MainWindow::OnVariableSelectionChanged(const AZStd::vector<AZ::EntityId>& variablePropertyIds)
     {
         m_selectedVariableIds = variablePropertyIds;

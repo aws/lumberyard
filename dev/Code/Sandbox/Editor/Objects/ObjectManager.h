@@ -522,4 +522,22 @@ private:
     int m_axisHelperHitRadius = 20;
 };
 
+namespace AzToolsFramework
+{
+    //! A component to reflect scriptable commands for the Editor
+    class ObjectManagerFuncsHandler
+        : public AZ::Component
+    {
+    public:
+        AZ_COMPONENT(ObjectManagerFuncsHandler, "{D79B69EE-A2CC-43C0-AA5C-47DCFCCBC955}")
+
+            static void Reflect(AZ::ReflectContext* context);
+
+        // AZ::Component ...
+        void Activate() override {}
+        void Deactivate() override {}
+    };
+
+} // namespace AzToolsFramework
+
 #endif // CRYINCLUDE_EDITOR_OBJECTS_OBJECTMANAGER_H

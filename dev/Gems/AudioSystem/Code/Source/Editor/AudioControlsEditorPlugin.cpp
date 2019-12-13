@@ -11,28 +11,32 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
-#include "AudioControlsEditorPlugin.h"
-#include "QtViewPaneManager.h"
-#include "AudioControlsEditorWindow.h"
-#include "IResourceSelectorHost.h"
-#include "AudioControlsLoader.h"
-#include "AudioControlsWriter.h"
-#include "AudioControl.h"
-#include "common/IAudioSystemEditor.h"
-#include <IAudioSystem.h>
-#include <Cry_Camera.h>
+#include <AudioControlsEditorPlugin.h>
+
+#include <AudioControl.h>
+#include <AudioControlsEditorWindow.h>
+#include <AudioControlsLoader.h>
+#include <AudioControlsWriter.h>
 
 #include <CryFile.h>
 #include <CryPath.h>
-#include "ImplementationManager.h"
+#include <Cry_Camera.h>
+#include <Include/IResourceSelectorHost.h>
+
+#include <IAudioSystem.h>
+#include <IAudioSystemEditor.h>
+#include <ImplementationManager.h>
+
+#include <MathConversion.h>
+#include <QtViewPaneManager.h>
+
 
 using namespace AudioControls;
 using namespace PathUtil;
 
 CATLControlsModel CAudioControlsEditorPlugin::ms_ATLModel;
 QATLTreeModel CAudioControlsEditorPlugin::ms_layoutModel;
-std::set<string> CAudioControlsEditorPlugin::ms_currentFilenames;
+AZStd::set<AZStd::string> CAudioControlsEditorPlugin::ms_currentFilenames;
 Audio::IAudioProxy* CAudioControlsEditorPlugin::ms_pIAudioProxy = nullptr;
 Audio::TAudioControlID CAudioControlsEditorPlugin::ms_nAudioTriggerID = INVALID_AUDIO_CONTROL_ID;
 CImplementationManager CAudioControlsEditorPlugin::ms_implementationManager;
@@ -50,7 +54,7 @@ CAudioControlsEditorPlugin::CAudioControlsEditorPlugin(IEditor* editor)
 
     if (ms_pIAudioProxy)
     {
-        ms_pIAudioProxy->Initialize("Audio trigger preview");
+        ms_pIAudioProxy->Initialize("AudioControlsEditor-Preview");
         ms_pIAudioProxy->SetObstructionCalcType(Audio::eAOOCT_IGNORE);
     }
 
@@ -58,6 +62,12 @@ CAudioControlsEditorPlugin::CAudioControlsEditorPlugin(IEditor* editor)
     ReloadModels();
     ms_layoutModel.Initialize(&ms_ATLModel);
     GetISystem()->GetISystemEventDispatcher()->RegisterListener(this);
+}
+
+//-----------------------------------------------------------------------------------------------//
+CAudioControlsEditorPlugin::~CAudioControlsEditorPlugin()
+{
+    Release();
 }
 
 //-----------------------------------------------------------------------------------------------//
@@ -75,7 +85,6 @@ void CAudioControlsEditorPlugin::Release()
         ms_pIAudioProxy->Release();
     }
     GetISystem()->GetISystemEventDispatcher()->RemoveListener(this);
-    delete this;
 }
 
 //-----------------------------------------------------------------------------------------------//
@@ -140,12 +149,12 @@ QATLTreeModel* CAudioControlsEditorPlugin::GetControlsTree()
 }
 
 //-----------------------------------------------------------------------------------------------//
-void CAudioControlsEditorPlugin::ExecuteTrigger(const string& sTriggerName)
+void CAudioControlsEditorPlugin::ExecuteTrigger(const AZStd::string_view sTriggerName)
 {
     if (!sTriggerName.empty() && ms_pIAudioProxy)
     {
         StopTriggerExecution();
-        Audio::AudioSystemRequestBus::BroadcastResult(ms_nAudioTriggerID, &Audio::AudioSystemRequestBus::Events::GetAudioTriggerID, sTriggerName.c_str());
+        Audio::AudioSystemRequestBus::BroadcastResult(ms_nAudioTriggerID, &Audio::AudioSystemRequestBus::Events::GetAudioTriggerID, sTriggerName.data());
         if (ms_nAudioTriggerID != INVALID_AUDIO_CONTROL_ID)
         {
             const CCamera& camera = GetIEditor()->GetSystem()->GetViewCamera();
@@ -153,7 +162,7 @@ void CAudioControlsEditorPlugin::ExecuteTrigger(const string& sTriggerName)
             Audio::SAudioRequest request;
             request.nFlags = Audio::eARF_PRIORITY_NORMAL;
 
-            const Matrix34& cameraMatrix = camera.GetMatrix();
+            const AZ::Transform cameraMatrix = LYTransformToAZTransform(camera.GetMatrix());
 
             Audio::SAudioListenerRequestData<Audio::eALRT_SET_POSITION> requestData(cameraMatrix);
             requestData.oNewPosition.NormalizeForwardVec();
@@ -161,7 +170,7 @@ void CAudioControlsEditorPlugin::ExecuteTrigger(const string& sTriggerName)
             request.pData = &requestData;
             Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequest, request);
 
-            ms_pIAudioProxy->SetPosition(Audio::SATLWorldPosition(cameraMatrix));
+            ms_pIAudioProxy->SetPosition(cameraMatrix);
             ms_pIAudioProxy->ExecuteTrigger(ms_nAudioTriggerID, eLSM_None);
         }
     }

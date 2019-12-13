@@ -105,7 +105,11 @@ namespace Platform
         char filePath[AZ_MAX_PATH_LEN];
         char extensionPath[AZ_MAX_PATH_LEN];
 
-        Internal::FormatAndPeelOffWildCardExtension(filter, filePath, extensionPath);
+        if (!AZ::IO::Internal::FormatAndPeelOffWildCardExtension(filter, filePath, sizeof(filePath), extensionPath, sizeof(extensionPath), true))
+        {
+            // FormatAndPeelOffWildCardExtension emits an error when it returns false
+            return;
+        }
 
         DIR* dir = opendir(filePath);
 
@@ -191,10 +195,12 @@ namespace Platform
         return true;
     }
 
+#if !(AZ_TRAIT_SYSTEMFILE_UNIX_LIKE_PLATFORM_IS_WRITEABLE_DEFINED_ELSEWHERE)
     bool IsWritable(const char* sourceFileName)
     {
         return (access(sourceFileName, W_OK) == 0);
     }
+#endif // !(AZ_TRAIT_SYSTEMFILE_UNIX_LIKE_PLATFORM_IS_WRITEABLE_DEFINED_ELSEWHERE)
 
     bool SetWritable(const char* sourceFileName, bool writable)
     {

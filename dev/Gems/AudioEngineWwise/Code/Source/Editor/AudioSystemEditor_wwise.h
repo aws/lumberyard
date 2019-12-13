@@ -13,10 +13,10 @@
 
 #pragma once
 
-#include "IAudioSystemEditor.h"
-#include "IAudioConnection.h"
-#include "IAudioSystemControl.h"
-#include "AudioWwiseLoader.h"
+#include <IAudioSystemEditor.h>
+#include <IAudioConnection.h>
+#include <IAudioSystemControl.h>
+#include <AudioWwiseLoader.h>
 
 namespace AudioControls
 {
@@ -47,7 +47,7 @@ namespace AudioControls
         float fShift;
     };
 
-    typedef std::shared_ptr<CRtpcConnection> TRtpcConnectionPtr;
+    using TRtpcConnectionPtr = AZStd::shared_ptr<CRtpcConnection>;
 
     //-------------------------------------------------------------------------------------------//
     class CStateToRtpcConnection
@@ -71,7 +71,7 @@ namespace AudioControls
         float fValue;
     };
 
-    typedef std::shared_ptr<CStateToRtpcConnection> TStateConnectionPtr;
+    using TStateConnectionPtr = AZStd::shared_ptr<CStateToRtpcConnection>;
 
 
     //-------------------------------------------------------------------------------------------//
@@ -96,29 +96,31 @@ namespace AudioControls
         TConnectionPtr CreateConnectionToControl(EACEControlType eATLControlType, IAudioSystemControl* pMiddlewareControl) override;
         TConnectionPtr CreateConnectionFromXMLNode(XmlNodeRef pNode, EACEControlType eATLControlType) override;
         XmlNodeRef CreateXMLNodeFromConnection(const TConnectionPtr pConnection, const EACEControlType eATLControlType) override;
-        string GetTypeIcon(TImplControlType type) const override;
-        string GetName() const override;
-        string GetDataPath() const;
+        const AZStd::string_view GetTypeIcon(TImplControlType type) const override;
+        AZStd::string GetName() const override;
+        AZStd::string GetDataPath() const;
         void DataSaved() override {}
         void ConnectionRemoved(IAudioSystemControl* pControl) override;
         //////////////////////////////////////////////////////////
 
     private:
-        IAudioSystemControl* GetControlByName(const string& sName, bool bIsLocalised = false, IAudioSystemControl* pParent = nullptr) const;
+        IAudioSystemControl* GetControlByName(AZStd::string sName, bool bIsLocalised = false, IAudioSystemControl* pParent = nullptr) const;
 
         // Gets the ID of the control given its name. As controls can have the same name
         // if they're under different parents, the name of the parent is also needed (if there is one)
-        CID GetID(const string& sName) const;
+        CID GetID(const AZStd::string_view sName) const;
+
         void UpdateConnectedStatus();
 
         IAudioSystemControl m_rootControl;
 
-        typedef std::shared_ptr<IAudioSystemControl> TControlPtr;
-        typedef std::map<CID, TControlPtr> TControlMap;
+        using TControlPtr = AZStd::shared_ptr<IAudioSystemControl>;
+        using TControlMap = AZStd::unordered_map<CID, TControlPtr>;
         TControlMap m_controls;
 
-        typedef std::map<CID, int> TConnectionsMap;
+        using TConnectionsMap = AZStd::unordered_map<CID, int>;
         TConnectionsMap m_connectionsByID;
         AudioControls::CAudioWwiseLoader m_loader;
     };
+
 } // namespace AudioControls

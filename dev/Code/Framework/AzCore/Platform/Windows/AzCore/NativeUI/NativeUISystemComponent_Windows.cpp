@@ -292,8 +292,8 @@ namespace AZ
             // Create the template with the computed dimensions.
             DlgTemplate dlgTemplate;
 
-            dlgTemplate.m_dlgTemplate.style = DS_CENTER | WS_POPUP | WS_CAPTION | WS_VISIBLE | WS_SYSMENU;
-            dlgTemplate.m_dlgTemplate.dwExtendedStyle = 0;
+            dlgTemplate.m_dlgTemplate.style = DS_CENTER | WS_POPUP | WS_CAPTION | WS_VISIBLE | WS_SYSMENU | WS_THICKFRAME;
+            dlgTemplate.m_dlgTemplate.dwExtendedStyle = WS_EX_TOPMOST;
             dlgTemplate.m_dlgTemplate.cdit = static_cast<WORD>(options.size() + 1);
             dlgTemplate.m_dlgTemplate.x = dlgTemplate.m_dlgTemplate.y = 0;
             dlgTemplate.m_dlgTemplate.cx = static_cast<short>(dialogWidth);

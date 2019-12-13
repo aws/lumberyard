@@ -21,7 +21,6 @@
 
 //! Case insensetive less key for any type convertable to const char*.
 struct qstring_icmp
-    : public std::binary_function < QString, QString, bool >
 {
     bool operator()(const QString& left, const QString& right) const
     {

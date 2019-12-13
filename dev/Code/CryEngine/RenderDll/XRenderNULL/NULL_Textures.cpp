@@ -227,6 +227,11 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
 void CTexture::UpdateTextureRegion(const uint8_t* data, int X, int Y, int Z, int USize, int VSize, int ZSize, ETEX_Format eTFSrc)
 {
 }
+
+void CTexture::Unbind()
+{
+}
+
 void CTexture::RT_UpdateTextureRegion(const uint8_t* data, int X, int Y, int Z, int USize, int VSize, int ZSize, ETEX_Format eTFSrc)
 {
 }

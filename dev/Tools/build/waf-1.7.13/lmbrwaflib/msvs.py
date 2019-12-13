@@ -90,7 +90,7 @@ except ImportError:
 
 
 from lumberyard_modules import apply_project_settings_for_input
-import mscv_helper, cry_utils
+import msvc_helper, cry_utils
 
 HEADERS_GLOB = '**/(*.h|*.hpp|*.H|*.inl|*.hxx)'
 
@@ -114,6 +114,7 @@ PROJECT_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
 		<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}|${b.platform.split()[0]}'" Label="Configuration">
 			<ConfigurationType>Makefile</ConfigurationType>
 			<OutDir>${b.outdir}</OutDir>
+			<BinDir>${b.bindir}</BinDir>
 			${if b.platform == 'ARM'}
 				<Keyword>Android</Keyword>
 				<PlatformToolset>Gcc_4_9</PlatformToolset>
@@ -152,15 +153,13 @@ PROJECT_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
 			${if getattr(b, 'deploy_dir', None)}
 				<RemoteRoot>${xml:b.deploy_dir}</RemoteRoot>
 			${endif}
-
 			${if b.platform == 'Linux X64 GCC'}
 				${if 'Debug' in b.configuration_name}
 					<OutDir>${xml:project.get_output_folder('linux_x64_gcc','Debug')}</OutDir>
 				${else}
 					<OutDir>${xml:project.get_output_folder('linux_x64_gcc','')}</OutDir>
 				${endif}
-            <!--
-            -->
+			%s
             ${endif}
 		</PropertyGroup>
 	${endfor}
@@ -187,10 +186,7 @@ PROJECT_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
 PROJECT_USER_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 	${for b in project.build_properties}
-		<!--
-		-->
-		<!--
-		-->
+		%s
 	${endfor}
 </Project>
 '''
@@ -275,7 +271,7 @@ PROPERTY_SHEET_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
 				<WAF_TargetFile>${xml:b.output_file}</WAF_TargetFile>
 				<TargetPath Condition="'$(WAF_TargetFile)' != ''">$(WAF_TargetFile)</TargetPath>
 				<LocalDebuggerCommand>$(TargetPath)</LocalDebuggerCommand>
-				<LocalDebuggerCommand Condition="$(TargetPath.EndsWith('.dll')) And  $(Configuration.EndsWith('_test'))">$(OutDir)/AzTestRunner</LocalDebuggerCommand>
+				<LocalDebuggerCommand Condition="$(TargetPath.EndsWith('.dll')) And  $(Configuration.EndsWith('_test'))">$(BinDir)/AzTestRunner</LocalDebuggerCommand>
 				<LocalDebuggerCommandArguments Condition="$(TargetPath.EndsWith('.dll')) And$(Configuration.EndsWith('_test'))">"${xml:b.output_file}" AzRunUnitTests --pause-on-completion --gtest_break_on_failure</LocalDebuggerCommandArguments>
 				<LocalDebuggerWorkingDirectory>$(OutDir)</LocalDebuggerWorkingDirectory>
 			</PropertyGroup>
@@ -354,23 +350,6 @@ COMPILE_TEMPLATE = '''def f(project):
 
 
 SUPPORTED_MSVS_VALUE_TABLE = {
-    "12": {
-        "name": "Visual Studio 2013",
-        "formatver": "12.00",
-        "vsver": "2013",
-        "defaultPlatformToolSet": "v120",
-        "product_name": "2013"
-    },
-    "14": {
-        "name": "Visual Studio 2015",
-        "formatver": "12.00",
-        "vsver": "14",
-        "defaultPlatformToolSet": "v140",
-#        "platforms": [
-#            "win_x64_vs2015",
-#        ],
-        "product_name": "2015"
-    },
     "15": {
         "name": "Visual Studio 2017",
         "formatver": "12.00",
@@ -378,6 +357,8 @@ SUPPORTED_MSVS_VALUE_TABLE = {
         "defaultPlatformToolSet": "v141",
 #        "platforms": [
 #            "win_x64_vs2017",
+#            "xenia_vs2017",
+#            "provo_vs2017"
 #        ],
         "product_name": "2017"
     }
@@ -393,6 +374,16 @@ class VS_Configuration(object):
 
     def __str__(self):
         return '[{}] {}'.format(self.vs_spec, self.waf_configuration)
+
+    def __hash__(self):
+        return hash((self.vs_spec, self.waf_spec, self.waf_configuration))
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)): return NotImplemented
+        return self.vs_spec == other.vs_spec and self.waf_spec == other.waf_spec and self.waf_configuration == other.waf_configuration
+
+    def __lt__(self, other):
+         return self.__str__() < other.__str__()
 
 
 @conf
@@ -476,7 +467,10 @@ def check_cpp_platform_tools(toolsetVer, platform_tool_name, vs2017vswhereOption
                     version_arg_index = vs2017vswhereOptions.index('-version')
                     Logs.warn('[WARN] VSWhere could not find an installed version of Visual Studio matching the version requirements provided (-version {}). Attempting to fall back on any available installed version.'.format(vs2017vswhereOptions[version_arg_index + 1]))
                     Logs.warn('[WARN] Lumberyard defaults the version range to the maximum version tested against before each release. You can modify the version range in the WAF user_settings\' option win_vs2017_vswhere_args under [Windows Options].')
-                    del vs2017vswhereOptions[version_arg_index : version_arg_index + 2]
+                    
+                    # We could not find a min version of vs2017 based on the vswhere args (vs2017vswhereOptions) for vswhere, so try to find any version of 2017
+                    vs2017vswhereOptions = ['-version', '[15.0,16.0)']
+                    
                     installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptions)
                 except ValueError:
                     pass
@@ -788,10 +782,16 @@ class vsnode_project(vsnode):
             template_str = template(self)
             template_str = rm_blank_lines(template_str)
             output_node.stealth_write(template_str)
+            
+        restricted_property_group_sections = self.ctx.msvs_restricted_property_group_section()
+        restricted_property_group_section_str = '\n'.join(restricted_property_group_sections).strip()
 
-        _write(PROJECT_TEMPLATE, self.path)
+        restricted_user_template_sections = self.ctx.msvs_restricted_user_template_section()
+        restricted_user_template_sections_str = '\n'.join(restricted_user_template_sections).strip()
+
+        _write(PROJECT_TEMPLATE % (restricted_property_group_section_str), self.path)
         _write(FILTER_TEMPLATE, self.path.parent.make_node(self.path.name + '.filters'))
-        _write(PROJECT_USER_TEMPLATE, self.path.parent.make_node(self.path.name + '.user'))
+        _write(PROJECT_USER_TEMPLATE % (restricted_user_template_sections_str), self.path.parent.make_node(self.path.name + '.user'))
         _write(PROPERTY_SHEET_TEMPLATE, self.path.parent.make_node(self.path.name + '.default.props'))
 
     def get_key(self, node):
@@ -815,6 +815,7 @@ class vsnode_project(vsnode):
 
                 x = build_property()
                 x.outdir = ''
+                x.bindir = ''
                 x.configuration = vs_configuration
                 x.configuration_name = str(vs_configuration)
                 x.platform = vs_platform
@@ -914,6 +915,7 @@ class vsnode_build_all(vsnode_alias):
 
         for x in self.build_properties:
             x.outdir = self.path.parent.abspath()
+            x.bindir = self.path.parent.abspath()
             x.preprocessor_definitions = ''
             x.includes_search_path = ''
             x.c_flags = ''
@@ -1315,6 +1317,7 @@ class vsnode_target(vsnode_project):
         super(vsnode_target, self).collect_properties()
         for x in self.build_properties:
             x.outdir = self.path.parent.abspath()
+            x.bindir = self.path.parent.abspath()
             x.preprocessor_definitions = ''
             x.includes_search_path = ''
             x.c_flags = ''
@@ -1342,11 +1345,17 @@ class vsnode_target(vsnode_project):
                 include_project = False
             elif waf_configuration not in module_configurations:
                 include_project = False
-            elif self.tg.target not in spec_modules and \
-                self.tg.target not in self.ctx.get_all_module_uses(current_spec_name, waf_platform, waf_configuration):
-                include_project = False
             elif waf_platform_config_key not in  self.ctx.all_envs:
                 include_project = False
+            else:
+                target_name = self.tg.target
+                all_module_uses = self.ctx.get_all_module_uses(current_spec_name, waf_platform, waf_configuration)
+                unit_test_target = getattr(self.tg, 'unit_test_target', '')
+                if (target_name not in spec_modules) and \
+                        (target_name not in all_module_uses) and \
+                        (unit_test_target not in spec_modules) and \
+                        (unit_test_target not in all_module_uses):
+                    include_project = False
 
             # Check if this project is supported for the current spec
             if not include_project:
@@ -1364,7 +1373,7 @@ class vsnode_target(vsnode_project):
                 continue
 
             current_env = self.ctx.all_envs[waf_platform_config_key]
-            mscv_helper.verify_options_common(current_env)
+            msvc_helper.verify_options_common(current_env)
             x.c_flags = " ".join(current_env['CFLAGS']) # convert list to space separated string
             x.cxx_flags = " ".join(current_env['CXXFLAGS']) # convert list to space separated string
             x.link_flags = " ".join(current_env['LINKFLAGS']) # convert list to space separated string
@@ -1420,6 +1429,7 @@ class vsnode_target(vsnode_project):
             x.output_file_name = output_file_name
             x.output_path = os.path.dirname(x.output_file)
             x.outdir = x.output_path
+            x.bindir = os.path.join(self.tg.bld.path.abspath(), self.tg.bld.get_output_target_folder(waf_platform, waf_configuration))
             x.assembly_name = output_file_name
             x.output_type = os.path.splitext(x.output_file)[1][1:] # e.g. ".dll" to "dll"
 
@@ -1632,7 +1642,11 @@ class msvs_generator(BuildContext):
             if 'msvs' in supported_platform.attributes:
                 msvs_attributes = supported_platform.attributes['msvs']
                 try:
-                    if msvs_attributes['msvs_ver'] != msvs_version:
+                    supported_msvs_versions = msvs_attributes['msvs_ver']
+                    if not isinstance(supported_msvs_versions, list):
+                        supported_msvs_versions = [supported_msvs_versions]
+
+                    if msvs_version not in supported_msvs_versions:
                         continue
 
                     msvs_toolset_name = msvs_attributes['toolset_name']
@@ -1707,7 +1721,7 @@ class msvs_generator(BuildContext):
         platform_configurations_list = list(platform_configurations_set)
         platform_configurations_list.sort()
 
-        vs_configuration_list = []
+        vs_configurations = set()
 
         # Each VS configuration is based on the spec at the top level
         for waf_spec in enabled_specs:
@@ -1729,9 +1743,9 @@ class msvs_generator(BuildContext):
                 vs_config = VS_Configuration(vs_spec_name, waf_spec, platform_config[0])
 
                 # TODO: Make sure that there is at least one module that is defined for the platform and configuration
-                vs_configuration_list.append(vs_config)
+                vs_configurations.add(vs_config)
 
-        return vs_configuration_list
+        return list(sorted(vs_configurations))
 
     def execute(self):
 
@@ -1852,6 +1866,7 @@ class msvs_generator(BuildContext):
 
         # Prepare a whitelisted list of targets that are eligible due to use lib dependencies
         whitelisted_targets = set()
+        qualified_taskgens_targetnames = set()
 
         # First pass is to identify the eligible modules based on the spec/platform/configuration rule
         for taskgen in taskgen_list:
@@ -1871,13 +1886,14 @@ class msvs_generator(BuildContext):
             # Check if implied through the enabled game project
             if skip_module:
                 skip_module = not self.check_against_enabled_game_projects(target)
-
+                
             if skip_module:
                 Logs.debug('msvs: Unqualifying %s' % taskgen.target)
                 unqualified_taskgens.append(taskgen)
                 continue
 
             qualified_taskgens.append(taskgen)
+            qualified_taskgens_targetnames.add(target)
 
             module_uses = self.get_module_uses_for_taskgen(taskgen, target_to_taskgen)
             for module_use in module_uses:
@@ -1887,6 +1903,10 @@ class msvs_generator(BuildContext):
         for taskgen in unqualified_taskgens:
             if taskgen.target in whitelisted_targets:
                 qualified_taskgens.append(taskgen)
+            else:
+                unit_test_target = getattr(taskgen, 'unit_test_target', None)
+                if unit_test_target and unit_test_target in qualified_taskgens_targetnames:
+                    qualified_taskgens.append(taskgen)
 
         # Iterate through the qualified taskgens and create project nodes for them
         for taskgen in qualified_taskgens:
@@ -1952,7 +1972,12 @@ class msvs_generator(BuildContext):
                 return module_uses
 
             visited.add(taskgen.target)
-            taskgen_uses = getattr(taskgen,'use',[])
+
+            use_related_keywords = self.get_all_eligible_use_keywords()
+            taskgen_uses = []
+            for use_keyword in use_related_keywords:
+                append_to_unique_list(taskgen_uses, getattr(taskgen, use_keyword, []))
+
             for  taskgen_use in taskgen_uses:
                 module_uses.append(taskgen_use)
                 if taskgen_use in target_to_taskgen:

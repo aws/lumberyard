@@ -14,6 +14,9 @@
 
 #include <SceneAPI/SceneCore/Components/SceneSystemComponent.h>
 #include <EMotionFX/CommandSystem/Source/CommandManager.h>
+#include <EMotionFX/Source/EMotionFXAllocatorInitializer.h>
+
+#include <AzCore/Module/Environment.h>
 
 namespace EMotionFX
 {
@@ -37,11 +40,9 @@ namespace EMotionFX
             bool                                                m_EMotionFXInited;
             AZStd::unique_ptr<CommandSystem::CommandManager>    m_commandManager;
 
-#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
-            // Workaround for VS2013 - Delete the copy constructor and make it private
-            // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-            PipelineComponent(const PipelineComponent&) = delete;
-#endif
+            // Creates a static shared pointer using the AZ EnvironmentVariable system.
+            // This will prevent the EMotionFXAllocator from destroying too early by the other component
+            static AZ::EnvironmentVariable<EMotionFXAllocatorInitializer> s_eMotionFXAllocatorInitializer;
         };
     } // Pipeline
 } // EMotionFX

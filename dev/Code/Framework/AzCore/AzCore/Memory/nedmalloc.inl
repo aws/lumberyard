@@ -54,7 +54,7 @@ DEALINGS IN THE SOFTWARE.
 #define EXTSPEC /*extern*/
 #endif
 
-#if defined(_MSC_VER) && _MSC_VER >= 1400
+#if defined(_MSC_VER)
 #define MALLOCATTR __declspec(restrict)
 #endif
 #ifdef __GNUC__

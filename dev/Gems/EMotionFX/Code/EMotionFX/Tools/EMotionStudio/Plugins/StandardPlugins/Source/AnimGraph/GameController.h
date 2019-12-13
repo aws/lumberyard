@@ -19,7 +19,7 @@
 #include <MCore/Source/StandardHeaders.h>
 #include "../StandardPluginsConfig.h"
 
-#ifdef HAS_GAME_CONTROLLER
+#if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
 
 //#define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>

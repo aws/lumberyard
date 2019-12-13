@@ -764,14 +764,14 @@ bool CTextureSplitter::Process()
 
     m_currentEndian = pPlatformInfo->bBigEndian ? eBigEndian : eLittleEndian;
 
-    if (pPlatformInfo->HasName("orbis")) // ACCEPTED_USE
+    if (pPlatformInfo->HasName("orbis"))
     {
-        m_targetType = eTT_Orbis; // ACCEPTED_USE
+        m_targetType = eTT_Orbis;
         m_bTile = true;
     }
-    else if (pPlatformInfo->HasName("durango")) // ACCEPTED_USE
+    else if (pPlatformInfo->HasName("durango"))
     {
-        m_targetType = eTT_Durango; // ACCEPTED_USE
+        m_targetType = eTT_Durango;
         m_bTile = true;
     }
     else
@@ -960,26 +960,27 @@ void CTextureSplitter::ProcessPlatformSpecificConversions(std::vector<STexture>&
 
     // check if this texture already native-converted
     // mark this texture as native for current platform
+#if defined(AZ_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
     switch (m_targetType)
     {
-    case eTT_Orbis: // ACCEPTED_USE
-        if (imageFlags & CImageExtensionHelper::EIF_OrbisNative) // ACCEPTED_USE
-        {
-            return;
-        }
-        imageFlags |= CImageExtensionHelper::EIF_OrbisNative; // ACCEPTED_USE
-        bNeedsProcess = true;
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+    case eTT_##PrivateName:\
+        if (imageFlags & CImageExtensionHelper::EIF_##PrivateName##Native)\
+        {\
+            return;\
+        }\
+        imageFlags |= CImageExtensionHelper::EIF_##PrivateName##Native;\
+        bNeedsProcess = true;\
         break;
-
-    case eTT_Durango: // ACCEPTED_USE
-        if (imageFlags & CImageExtensionHelper::EIF_DurangoNative) // ACCEPTED_USE
-        {
-            return;
-        }
-        imageFlags |= CImageExtensionHelper::EIF_DurangoNative; // ACCEPTED_USE
-        bNeedsProcess = true;
-        break;
+#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM)
+        AZ_EXPAND_FOR_RESTRICTED_PLATFORM
+#else
+        AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
+#endif
     }
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
+#endif
+
 
     if (bNeedsProcess)
     {

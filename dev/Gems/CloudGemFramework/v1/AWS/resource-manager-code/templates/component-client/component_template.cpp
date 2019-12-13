@@ -18,7 +18,7 @@
 
 {% if json_object.HasStdAfx %}
 #include "StdAfx.h"
-{% else %}
+{% elif json_object.DisabledPCH == False %}
 #include "{{ json_object.namespace }}_precompiled.h"
 {% endif %}
 

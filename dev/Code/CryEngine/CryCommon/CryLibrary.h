@@ -66,6 +66,8 @@ using DetachEnvironmentFunction = void(*)();
         #include "Xenia/CryLibrary_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CryLibrary_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryLibrary_h_salem.inl"
     #endif
 #elif defined(WIN32)
     #if !defined(WIN32_LEAN_AND_MEAN)

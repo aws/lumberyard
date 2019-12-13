@@ -189,7 +189,8 @@ namespace Vegetation
 
             AZ::EntityId m_id;
             AZ::Aabb m_bounds = {};
-            float m_priority = {};
+            AZ::u32 m_layer = {};
+            AZ::u32 m_priority = {};
         };
         using VegetationAreaMap = AZStd::unordered_map<AZ::EntityId, VegetationAreaInfo>;
         using VegetationAreaSet = AZStd::unordered_set<AZ::EntityId>;

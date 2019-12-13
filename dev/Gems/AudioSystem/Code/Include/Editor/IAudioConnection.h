@@ -13,8 +13,7 @@
 
 #pragma once
 
-#include "CryString.h"
-#include "ACETypes.h"
+#include <ACETypes.h>
 #include <Serialization/IArchive.h>
 #include <Serialization/STL.h>
 
@@ -45,11 +44,11 @@ namespace AudioControls
             return m_nID;
         }
 
-        const string& GetGroup() const
+        const AZStd::string& GetGroup() const
         {
             return m_sGroup;
         }
-        void SetGroup(const string& group)
+        void SetGroup(const AZStd::string& group)
         {
             m_sGroup = group;
         }
@@ -65,6 +64,6 @@ namespace AudioControls
 
     private:
         CID m_nID;
-        string m_sGroup;
+        AZStd::string m_sGroup;
     };
 } // namespace AudioControls

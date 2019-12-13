@@ -207,17 +207,17 @@ namespace AssetProcessor
         int portNumber = 0;
         ApplicationServerBus::BroadcastResult(portNumber, &ApplicationServerBus::Events::GetServerListeningPort);
 
-        auto params = AZStd::string::format(R"(-task=%s -id="%s" -gamename="%s" -gamecache="%s" -gameroot="%s" -port %d)",
+        auto params = AZStd::string::format(R"(-task=%s -id="%s" -gamename="\"%s\"" -gamecache="\"%s\"" -gameroot="\"%s\"" -port %d)",
                 task, builderGuid.c_str(), gameName.toUtf8().constData(), projectCacheRoot.absolutePath().toUtf8().constData(), gameRoot.toUtf8().constData(), portNumber);
 
         if (moduleFilePath && moduleFilePath[0])
         {
-            params.append(AZStd::string::format(R"( -module="%s")", moduleFilePath).c_str());
+            params.append(AZStd::string::format(R"( -module="\"%s\"")", moduleFilePath).c_str());
         }
 
         if (!jobDescriptionFile.empty() && !jobResponseFile.empty())
         {
-            params = AZStd::string::format(R"(%s -input="%s" -output="%s")", params.c_str(), jobDescriptionFile.c_str(), jobResponseFile.c_str());
+            params = AZStd::string::format(R"(%s -input="\"%s\"" -output="\"%s\"")", params.c_str(), jobDescriptionFile.c_str(), jobResponseFile.c_str());
         }
 
         return params;
@@ -240,7 +240,7 @@ namespace AssetProcessor
         return processWatcher;
     }
 
-    bool Builder::WaitForBuilderResponse(AssetBuilderSDK::JobCancelListener* jobCancelListener, AZ::u32 processTimeoutLimitInSeconds, AZStd::binary_semaphore* waitEvent) const
+    BuilderRunJobOutcome Builder::WaitForBuilderResponse(AssetBuilderSDK::JobCancelListener* jobCancelListener, AZ::u32 processTimeoutLimitInSeconds, AZStd::binary_semaphore* waitEvent) const
     {
         AZ::u32 exitCode = 0;
         bool finishedOK = false;
@@ -266,31 +266,31 @@ namespace AssetProcessor
 
         if (finishedOK)
         {
-            return true;
+            return BuilderRunJobOutcome::Ok;
         }
         else if (!IsConnected())
         {
             AZ_Error(AssetProcessor::DebugChannel, false, "Lost connection to asset builder");
-            return false;
+            return BuilderRunJobOutcome::LostConnection;
         }
         else if (!IsRunning(&exitCode))
         {
             // these are written to the debug channel because other messages are given for when asset builders die
             // that are more appropriate
             AZ_Error(AssetProcessor::DebugChannel, false, "AssetBuilder terminated with exit code %d", exitCode);
-            return false;
+            return BuilderRunJobOutcome::ProcessTerminated;
         }
         else if (jobCancelListener && jobCancelListener->IsCancelled())
         {
             AZ_Error(AssetProcessor::DebugChannel, false, "Job request was cancelled\n");
-            TerminateProcess(-1); // Terminate the builder. Even if it isn't deadlocked, we can't put it back in the pool while it's busy.
-            return false;
+            TerminateProcess(AZ::u32(-1)); // Terminate the builder. Even if it isn't deadlocked, we can't put it back in the pool while it's busy.
+            return BuilderRunJobOutcome::JobCancelled;
         }
         else
         {
             AZ_Error(AssetProcessor::DebugChannel, false, "AssetBuilder failed to respond within %d seconds", processTimeoutLimitInSeconds);
-            TerminateProcess(-1); // Terminate the builder. Even if it isn't deadlocked, we can't put it back in the pool while it's busy.
-            return false;
+            TerminateProcess(AZ::u32(-1)); // Terminate the builder. Even if it isn't deadlocked, we can't put it back in the pool while it's busy.
+            return BuilderRunJobOutcome::ResponseFailure;
         }
     }
 
@@ -389,7 +389,7 @@ namespace AssetProcessor
         }
     }
 
-    void BuilderManager::IncomingBuilderPing(AZ::u32 connId, AZ::u32 type, AZ::u32 serial, QByteArray payload, QString platform)
+    void BuilderManager::IncomingBuilderPing(AZ::u32 connId, AZ::u32 /*type*/, AZ::u32 serial, QByteArray payload, QString platform)
     {
         AssetBuilderSDK::BuilderHelloRequest requestPing;
         AssetBuilderSDK::BuilderHelloResponse responsePing;

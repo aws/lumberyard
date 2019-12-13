@@ -3,9 +3,9 @@
     {
         "Platform/Windows":
         [
-            "CrySoundSystem_Traits_Platform.h",
-            "CrySoundSystem_Traits_Windows.h",
-            "../Common/Unimplemented/CrySoundSystem_Unimplemented.cpp"
+            "AudioSystem_Traits_Platform.h",
+            "AudioSystem_Traits_Windows.h",
+            "../Common/Unimplemented/AudioSystem_Unimplemented.cpp"
         ]
     }
 }

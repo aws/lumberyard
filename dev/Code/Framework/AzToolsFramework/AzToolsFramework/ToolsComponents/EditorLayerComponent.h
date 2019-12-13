@@ -39,6 +39,12 @@ namespace AzToolsFramework
             AZ_CLASS_ALLOCATOR(LayerProperties, AZ::SystemAllocator, 0);
             AZ_TYPE_INFO(LayerProperties, "{FA61BD6E-769D-4856-BFB5-B535E0FC57B4}");
 
+            enum class SaveFormat 
+            {
+                Xml,
+                Binary
+            };
+
             static void Reflect(AZ::ReflectContext* context);
 
             void Clear()
@@ -111,16 +117,21 @@ namespace AzToolsFramework
 
             QColor GetLayerColor() override;
 
+            bool IsSaveFormatBinary() override;
+
             bool IsLayerNameValid() override;
 
             AZ::Outcome<AZStd::string, AZStd::string> GetLayerBaseFileName() override;
             AZ::Outcome<AZStd::string, AZStd::string> GetLayerFullFileName() override;
+            AZ::Outcome<AZStd::string, AZStd::string> GetLayerFullFilePath(const QString& levelAbsoluteFolder) override;
 
             void SetLayerChildrenVisibility(bool visible) override { m_editableLayerProperties.m_isLayerVisible = visible; }
             bool AreLayerChildrenVisible() override { return m_editableLayerProperties.m_isLayerVisible; }
 
             bool HasUnsavedChanges() override;
             void MarkLayerWithUnsavedChanges() override;
+            void SetOverwriteFlag(bool set) override;
+            bool GetOverwriteFlag() override { return m_overwriteCheck; }
 
             bool DoesLayerFileExistOnDisk(const QString& levelAbsoluteFolder) override;
 
@@ -160,6 +171,9 @@ namespace AzToolsFramework
             // Sets the layer to the passed in color.
             void SetLayerColor(AZ::Color newColor) { m_editableLayerProperties.m_color = newColor; }
 
+            // Sets the save format.
+            void SetSaveFormat(LayerProperties::SaveFormat saveFormat);
+
             /**
             * Creates the right click context menu for layers in the asset browser.
             * \param menu The menu to parent this to.
@@ -195,10 +209,13 @@ namespace AzToolsFramework
             static AZStd::string GetLayerExtensionWithDot() { return AZStd::string::format(".%s", GetLayerExtension()); }
 
             /**
-            * Creates a layer entity with the given name, and returns the pointer to the layer entity.
+            * Creates a layer entity with the given name, and returns the EntityId of the layer entity.
             * \param name Name to use for the new layer.
             */
-            static AZ::Entity* CreateLayerEntity(const AZStd::string& name, const AZ::Color& layerColor, const AZ::EntityId& optionalEntityId=AZ::EntityId());
+            static AZ::EntityId CreateLayerEntity(const AZStd::string& name, const AZ::Color& layerColor, const LayerProperties::SaveFormat& saveAsBinary, const AZ::EntityId& optionalEntityId=AZ::EntityId());
+        
+            // Returns the format the save is currently set to.
+            AzToolsFramework::Layers::LayerProperties::SaveFormat GetSaveFormat();
         protected:
             ////////////////////////////////////////////////////////////////////
             // AZ::Entity
@@ -320,6 +337,9 @@ namespace AzToolsFramework
             // When a new layer is created, mark it as needing to save the level the next time it saves. Existing layers
             // will set this flag to false when they load.
             bool m_mustSaveLevelWhenLayerSaves = true;
+            // When a new layer is created, mark it as requiring an overwrite check, this will also be set when
+            // rename is called and reset when the layer is succesfully saved or just loaded
+            bool m_overwriteCheck = true;
         };
     }
 }

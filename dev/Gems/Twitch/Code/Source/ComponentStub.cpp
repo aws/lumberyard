@@ -11,8 +11,7 @@
 */
 
 #include "Twitch_precompiled.h"
-#include <platform_impl.h>
 
-#include <IGem.h>
+#include <AzCore/Module/Module.h>
 
 AZ_DECLARE_MODULE_CLASS(Twitch_b63e64141fab40b791211ba257632e84, AZ::Module)

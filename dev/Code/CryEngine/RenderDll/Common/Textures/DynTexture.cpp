@@ -443,7 +443,7 @@ void SDynTexture::ReleaseDynamicRT(bool bForce)
         pSubset = m_eTT == eTT_2D ? &s_checkedOutTexturePool2D_R16G16B16A16F : &s_checkedOutTexturePoolCube_R16G16B16A16F;
     }
     else
-#if defined(WIN32)    || defined(APPLE) || defined(LINUX)
+#if defined(WIN32) || defined(APPLE) || defined(LINUX) || defined(SUPPORTS_DEFERRED_SHADING_L_BUFFERS_FORMAT)
     if (m_eTF == eTF_R11G11B10F)
     {
         pSubset = m_eTT == eTT_2D ? &s_checkedOutTexturePool2D_R11G11B10F : &s_checkedOutTexturePoolCube_R11G11B10F;

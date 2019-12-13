@@ -14,7 +14,7 @@
 
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/Memory/SystemAllocator.h>
-#define AUDIO_MEMORY_ALIGNMENT MEMORY_ALLOCATION_ALIGNMENT
+#define AUDIO_MEMORY_ALIGNMENT  AZCORE_GLOBAL_NEW_ALIGNMENT
 
 namespace Audio
 {

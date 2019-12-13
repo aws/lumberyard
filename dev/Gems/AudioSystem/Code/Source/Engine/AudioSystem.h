@@ -13,7 +13,8 @@
 
 #pragma once
 
-#include "ATL.h"
+#include <ATL.h>
+#include <AudioAllocators.h>
 #include <AudioInternalInterfaces.h>
 
 #include <AzCore/std/containers/deque.h>
@@ -76,17 +77,13 @@ namespace Audio
         friend class CAudioThread;
 
     public:
+        AUDIO_SYSTEM_CLASS_ALLOCATOR(Audio::CAudioSystem)
+
         CAudioSystem();
         ~CAudioSystem() override;
 
         CAudioSystem(const CAudioSystem&) = delete;
         CAudioSystem& operator=(const CAudioSystem&) = delete;
-
-        // AZ::Component
-        void Init() override;
-        void Activate() override;
-        void Deactivate() override;
-        //~AZ::Component
 
         bool Initialize() override;
         void Release() override;
@@ -126,8 +123,6 @@ namespace Audio
         // If INCLUDE_AUDIO_PRODUCTION_CODE is not defined, these two functions always return nullptr
         const char* GetAudioControlName(const EAudioControlType controlType, const TATLIDType atlID) const override;
         const char* GetAudioSwitchStateName(const TAudioControlID switchID, const TAudioSwitchStateID stateID) const override;
-
-        void OnCVarChanged(ICVar* const pCvar) override;
 
     protected:
         void ProcessRequestThreadSafe(CAudioRequestInternal audioRequestInternalData);
@@ -172,14 +167,14 @@ namespace Audio
         TAudioProxies m_apAudioProxies;
         TAudioProxies m_apAudioProxiesToBeFreed;
 
-        CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> m_sControlsPath;
+        AZStd::string m_controlsPath;
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         mutable AZStd::mutex m_debugNameStoreMutex;
         CATLDebugNameStore m_debugNameStore;
 
         void DrawAudioDebugData();
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     };
 
 } // namespace Audio

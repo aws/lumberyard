@@ -15,13 +15,26 @@
 
 def build(bld):
 
+    #By default the engine builds the legacy terrain runtime.
+    #Setting enableLegacyTerrainRuntime to false, will completely remove code and symbols
+    #required by the legacy terrain runtime.
+    #This is useful for customers who don't need Terrain in their games or choose
+    #to write their own terrain runtime.
+    enableLegacyTerrainRuntime = getattr(bld, 'enable_legacy_terrain', True)
+
+    fileList = ['cry3dengine.waf_files']
+    defines = []
+    if enableLegacyTerrainRuntime:
+        defines.append('LY_TERRAIN_LEGACY_RUNTIME')
+        fileList.append('cry3dengine_terrain.waf_files')
+
     bld.CryEngineModule(
 
         # Settings
         target             = 'Cry3DEngine',
         vs_filter          = 'CryEngine',
         copyright_org      = 'Amazon-CryTek',
-        file_list          = ['cry3dengine.waf_files'],
+        file_list          = fileList,
         pch                = 'StdAfx.cpp',
         platforms          = ['all'],
         configurations     = ['all'],
@@ -30,6 +43,7 @@ def build(bld):
         includes           = [bld.Path('Code/CryEngine/CryCommon'),
                               bld.ThirdPartyPath('mikkt')
                              ],
+        defines            = defines,
 
         # Testing
         test_all_file_list = ['cry3dengine_test.waf_files'],

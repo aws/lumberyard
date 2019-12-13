@@ -19,7 +19,6 @@ namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeVector4ComposeNode, AnimGraphAllocator, 0)
 
-
     BlendTreeVector4ComposeNode::BlendTreeVector4ComposeNode()
         : AnimGraphNode()
     {
@@ -35,11 +34,9 @@ namespace EMotionFX
         SetupOutputPort("Vector", OUTPUTPORT_VECTOR, MCore::AttributeVector4::TYPE_ID, PORTID_OUTPUT_VECTOR);
     }
 
-
     BlendTreeVector4ComposeNode::~BlendTreeVector4ComposeNode()
     {
     }
-
 
     bool BlendTreeVector4ComposeNode::InitAfterLoading(AnimGraph* animGraph)
     {
@@ -54,34 +51,36 @@ namespace EMotionFX
         return true;
     }
 
-
-    // get the palette name
     const char* BlendTreeVector4ComposeNode::GetPaletteName() const
     {
         return "Vector4 Compose";
     }
 
-
-    // get the category
     AnimGraphObject::ECategory BlendTreeVector4ComposeNode::GetPaletteCategory() const
     {
         return AnimGraphObject::CATEGORY_MATH;
     }
 
-
-    // the update function
     void BlendTreeVector4ComposeNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        // update all inputs
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
+        UpdateOutputPortValues(animGraphInstance);
+    }
 
+    void BlendTreeVector4ComposeNode::Output(AnimGraphInstance* animGraphInstance)
+    {
+        OutputAllIncomingNodes(animGraphInstance);
+        UpdateOutputPortValues(animGraphInstance);
+    }
+
+    void BlendTreeVector4ComposeNode::UpdateOutputPortValues(AnimGraphInstance* animGraphInstance)
+    {
         const float x = GetInputNumberAsFloat(animGraphInstance, INPUTPORT_X);
         const float y = GetInputNumberAsFloat(animGraphInstance, INPUTPORT_Y);
         const float z = GetInputNumberAsFloat(animGraphInstance, INPUTPORT_Z);
         const float w = GetInputNumberAsFloat(animGraphInstance, INPUTPORT_W);
         GetOutputVector4(animGraphInstance, OUTPUTPORT_VECTOR)->SetValue(AZ::Vector4(x, y, z, w));
     }
-
 
     void BlendTreeVector4ComposeNode::Reflect(AZ::ReflectContext* context)
     {

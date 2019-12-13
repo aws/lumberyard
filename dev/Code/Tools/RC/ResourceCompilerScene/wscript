@@ -29,6 +29,7 @@ def build(bld):
         client_only             = True,
         exclude_monolithic      = True,
         includes                = ['.',
+                                   bld.Path('Code/CryEngine/CryCommon'),
                                    bld.Path('Code/CryEngine/Cry3DEngine'),
                                    bld.Path('Code/Tools'),
                                    bld.Path('Code/Tools/RC/ResourceCompiler'),

@@ -113,6 +113,8 @@
 
 #include "ObjectManagerLegacyUndo.h"
 
+#include <AzCore/RTTI/BehaviorContext.h>
+
 /*!
  *  Class Description used for object templates.
  *  This description filled from Xml template files.
@@ -3930,7 +3932,7 @@ void CObjectManager::LeftComponentMode(const AZStd::vector<AZ::Uuid>& /*componen
 //////////////////////////////////////////////////////////////////////////
 namespace
 {
-    std::vector<std::string> PyGetAllObjects(const QString& className, const QString& layerName)
+    std::vector<std::string> PyLegacyGetAllObjects(const QString& className, const QString& layerName)
     {
         IObjectManager* pObjMgr = GetIEditor()->GetObjectManager();
         CObjectLayer* pLayer = NULL;
@@ -3952,6 +3954,22 @@ namespace
         return result;
     }
 
+    AZStd::vector<AZStd::string> PyGetAllObjects()
+    {
+        IObjectManager* pObjMgr = GetIEditor()->GetObjectManager();
+        CObjectLayer* pLayer = NULL;
+        CBaseObjectsArray objects;
+        pObjMgr->GetObjects(objects, pLayer);
+        int count = pObjMgr->GetObjectCount();
+        AZStd::vector<AZStd::string> result;
+        for (int i = 0; i < count; ++i)
+        {
+            result.push_back(objects[i]->GetName().toUtf8().data());
+        }
+
+        return result;
+    }
+
     std::vector<std::string> PyGetAllLayers()
     {
         CObjectLayerManager* pLayerMgr = GetIEditor()->GetObjectManager()->GetLayersManager();
@@ -3965,7 +3983,7 @@ namespace
         return result;
     }
 
-    std::vector<std::string> PyGetNamesOfSelectedObjects()
+    std::vector<std::string> PyLegacyGetNamesOfSelectedObjects()
     {
         CSelectionGroup* pSel = GetIEditor()->GetSelection();
         std::vector<std::string> result;
@@ -3975,6 +3993,21 @@ namespace
         {
             result.push_back(pSel->GetObject(i)->GetName().toUtf8().data());
         }
+        return result;
+    }
+
+    AZStd::vector<AZStd::string> PyGetNamesOfSelectedObjects()
+    {
+        CSelectionGroup* pSel = GetIEditor()->GetSelection();
+        AZStd::vector<AZStd::string> result;
+        const int selectionCount = pSel->GetCount();
+        result.reserve(selectionCount);
+
+        for (int i = 0; i < selectionCount; i++)
+        {
+            result.push_back(pSel->GetObject(i)->GetName().toUtf8().data());
+        }
+
         return result;
     }
 
@@ -3989,7 +4022,7 @@ namespace
         }
     }
 
-    void PyUnselectObjects(const std::vector<std::string>& names)
+    void PyLegacyUnselectObjects(const std::vector<std::string>& names)
     {
         CUndo undo("Unselect Objects");
 
@@ -4009,7 +4042,42 @@ namespace
         }
     }
 
-    void PySelectObjects(const std::vector<std::string>& names)
+    void PyUnselectObjects(const AZStd::vector<AZStd::string>& names)
+    {
+        CUndo undo("Unselect Objects");
+
+        std::vector<CBaseObject*> pBaseObjects;
+        for (int i = 0; i < names.size(); i++)
+        {
+            if (!GetIEditor()->GetObjectManager()->FindObject(names[i].c_str()))
+            {
+                throw std::logic_error((QString("\"") + names[i].c_str() + "\" is an invalid entity.").toUtf8().data());
+            }
+            pBaseObjects.push_back(GetIEditor()->GetObjectManager()->FindObject(names[i].c_str()));
+        }
+
+        for (int i = 0; i < pBaseObjects.size(); i++)
+        {
+            GetIEditor()->GetObjectManager()->UnselectObject(pBaseObjects[i]);
+        }
+    }
+
+    void PyLegacySelectObjects(const std::vector<std::string>& names)
+    {
+        CUndo undo("Select Objects");
+        CBaseObject* pObject;
+        for (size_t i = 0; i < names.size(); ++i)
+        {
+            pObject = GetIEditor()->GetObjectManager()->FindObject(names[i].c_str());
+            if (!pObject)
+            {
+                throw std::logic_error((QString("\"") + names[i].c_str() + "\" is an invalid entity.").toUtf8().data());
+            }
+            GetIEditor()->GetObjectManager()->SelectObject(pObject);
+        }
+    }
+
+    void PySelectObjects(const AZStd::vector<AZStd::string>& names)
     {
         CUndo undo("Select Objects");
         CBaseObject* pObject;
@@ -4101,6 +4169,16 @@ namespace
         }
     }
 
+    bool PyIsObjectFrozen(const char* objName)
+    {
+        CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(objName);
+        if (!pObject)
+        {
+            throw std::logic_error((QString("\"") + objName + "\" is an invalid object name.").toUtf8().data());
+        }
+        return pObject->IsFrozen();
+    }
+
     void PyDeleteObject(const char* objName)
     {
         CUndo undo("Delete Object");
@@ -4134,7 +4212,7 @@ namespace
         return 0;
     }
 
-    boost::python::tuple PyGetSelectionCenter()
+    boost::python::tuple PyLegacyGetSelectionCenter()
     {
         if (CSelectionGroup* pGroup = GetIEditor()->GetObjectManager()->GetSelection())
         {
@@ -4150,7 +4228,23 @@ namespace
         throw std::runtime_error("Nothing selected");
     }
 
-    boost::python::tuple PyGetSelectionAABB()
+    AZ::Vector3 PyGetSelectionCenter()
+    {
+        if (CSelectionGroup* pGroup = GetIEditor()->GetObjectManager()->GetSelection())
+        {
+            if (pGroup->GetCount() == 0)
+            {
+                throw std::runtime_error("Nothing selected");
+            }
+
+            const Vec3 center = pGroup->GetCenter();
+            return AZ::Vector3(center.x, center.y, center.z);
+        }
+
+        throw std::runtime_error("Nothing selected");
+    }
+
+    boost::python::tuple PyLegacyGetSelectionAABB()
     {
         if (CSelectionGroup* pGroup = GetIEditor()->GetObjectManager()->GetSelection())
         {
@@ -4161,6 +4255,35 @@ namespace
 
             const AABB aabb = pGroup->GetBounds();
             return boost::python::make_tuple(aabb.min.x, aabb.min.y, aabb.min.z, aabb.max.x, aabb.max.y, aabb.max.z);
+        }
+
+        throw std::runtime_error("Nothing selected");
+    }
+
+    AZ::Aabb PyGetSelectionAABB()
+    {
+        if (CSelectionGroup* pGroup = GetIEditor()->GetObjectManager()->GetSelection())
+        {
+            if (pGroup->GetCount() == 0)
+            {
+                throw std::runtime_error("Nothing selected");
+            }
+
+            const AABB aabb = pGroup->GetBounds();
+            AZ::Aabb result;
+            result.Set(
+                AZ::Vector3(
+                    aabb.min.x,
+                    aabb.min.y,
+                    aabb.min.z
+                ), 
+                AZ::Vector3(
+                    aabb.max.x,
+                    aabb.max.y,
+                    aabb.max.z
+                )
+            );
+            return result;
         }
 
         throw std::runtime_error("Nothing selected");
@@ -4366,7 +4489,7 @@ namespace
         return list;
     }
 
-    boost::python::tuple PyGetObjectPosition(const char* pName)
+    boost::python::tuple PyLegacyGetObjectPosition(const char* pName)
     {
         CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
         if (!pObject)
@@ -4377,7 +4500,18 @@ namespace
         return boost::python::make_tuple(position.x, position.y, position.z);
     }
 
-    boost::python::tuple PyGetWorldObjectPosition(const char* pName)
+    AZ::Vector3 PyGetObjectPosition(const char* pName)
+    {
+        CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
+        if (!pObject)
+        {
+            throw std::logic_error((QString("\"") + pName + "\" is an invalid object.").toUtf8().data());
+        }
+        Vec3 position = pObject->GetPos();
+        return AZ::Vector3(position.x, position.y, position.z);
+    }
+
+    boost::python::tuple PyLegacyGetWorldObjectPosition(const char* pName)
     {
         CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
         if (!pObject)
@@ -4386,6 +4520,17 @@ namespace
         }
         Vec3 position = pObject->GetWorldPos();
         return boost::python::make_tuple(position.x, position.y, position.z);
+    }
+
+    AZ::Vector3 PyGetWorldObjectPosition(const char* pName)
+    {
+        CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
+        if (!pObject)
+        {
+            throw std::logic_error((QString("\"") + pName + "\" is an invalid object.").toUtf8().data());
+        }
+        Vec3 position = pObject->GetWorldPos();
+        return AZ::Vector3(position.x, position.y, position.z);
     }
 
     void PySetObjectPosition(const char* pName, float fValueX, float fValueY, float fValueZ)
@@ -4399,7 +4544,7 @@ namespace
         pObject->SetPos(Vec3(fValueX, fValueY, fValueZ));
     }
 
-    boost::python::tuple PyGetObjectRotation(const char* pName)
+    boost::python::tuple PyLegacyGetObjectRotation(const char* pName)
     {
         CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
         if (!pObject)
@@ -4408,6 +4553,17 @@ namespace
         }
         Ang3 ang = RAD2DEG(Ang3(pObject->GetRotation()));
         return boost::python::make_tuple(ang.x, ang.y, ang.z);
+    }
+
+    AZ::Vector3 PyGetObjectRotation(const char* pName)
+    {
+        CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
+        if (!pObject)
+        {
+            throw std::logic_error((QString("\"") + pName + "\" is an invalid object.").toUtf8().data());
+        }
+        Ang3 ang = RAD2DEG(Ang3(pObject->GetRotation()));
+        return AZ::Vector3(ang.x, ang.y, ang.z);
     }
 
     void PySetObjectRotation(const char* pName, float fValueX, float fValueY, float fValueZ)
@@ -4421,7 +4577,7 @@ namespace
         pObject->SetRotation(Quat(DEG2RAD(Ang3(fValueX, fValueY, fValueZ))));
     }
 
-    boost::python::tuple PyGetObjectScale(const char* pName)
+    boost::python::tuple PyLegacyGetObjectScale(const char* pName)
     {
         CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
         if (!pObject)
@@ -4430,6 +4586,17 @@ namespace
         }
         Vec3 scaleVec3 = pObject->GetScale();
         return boost::python::make_tuple(scaleVec3.x, scaleVec3.y, scaleVec3.z);
+    }
+
+    AZ::Vector3 PyGetObjectScale(const char* pName)
+    {
+        CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
+        if (!pObject)
+        {
+            throw std::logic_error((QString("\"") + pName + "\" is an invalid object.").toUtf8().data());
+        }
+        Vec3 scaleVec3 = pObject->GetScale();
+        return AZ::Vector3(scaleVec3.x, scaleVec3.y, scaleVec3.z);
     }
 
     void PySetObjectScale(const char* pName, float fValueX, float fValueY, float fValueZ)
@@ -4521,7 +4688,7 @@ namespace
         return vectorObjects;
     }
 
-    QString PyGetObjectParent(const char* pName)
+    QString PyLegacyGetObjectParent(const char* pName)
     {
         CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
         if (!pObject)
@@ -4537,7 +4704,23 @@ namespace
         return pParentObject->GetName();
     }
 
-    std::vector<std::string> PyGetObjectChildren(const char* pName)
+    AZStd::string_view PyGetObjectParent(const char* pName)
+    {
+        CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
+        if (!pObject)
+        {
+            throw std::runtime_error((QString("\"") + pName + "\" is an invalid object.").toUtf8().data());
+        }
+
+        CBaseObject* pParentObject = pObject->GetParent();
+        if (!pParentObject)
+        {
+            return "";
+        }
+        return pParentObject->GetName().toUtf8().constData();
+    }
+
+    std::vector<std::string> PyLegacyGetObjectChildren(const char* pName)
     {
         CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
         if (!pObject)
@@ -4555,6 +4738,28 @@ namespace
         for (std::vector<_smart_ptr<CBaseObject> >::iterator it = objectVector.begin(); it != objectVector.end(); it++)
         {
             result.push_back(static_cast<std::string>(it->get()->GetName().toUtf8().data()));
+        }
+        return result;
+    }
+
+    AZStd::vector<AZStd::string> PyGetObjectChildren(const char* pName)
+    {
+        CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
+        if (!pObject)
+        {
+            throw std::runtime_error((QString("\"") + pName + "\" is an invalid object.").toUtf8().data());
+        }
+        std::vector<_smart_ptr<CBaseObject> > objectVector;
+        AZStd::vector<AZStd::string> result;
+        pObject->GetAllChildren(objectVector);
+        if (objectVector.empty())
+        {
+            return result;
+        }
+
+        for (std::vector<_smart_ptr<CBaseObject> >::iterator it = objectVector.begin(); it != objectVector.end(); it++)
+        {
+            result.push_back(it->get()->GetName().toUtf8().constData());
         }
         return result;
     }
@@ -4723,22 +4928,76 @@ namespace
     }
 }
 
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetAllObjects, general, get_all_objects,
+namespace AzToolsFramework
+{
+    void ObjectManagerFuncsHandler::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            // this will put these methods into the 'azlmbr.legacy.general' module
+            auto addLegacyGeneral = [](AZ::BehaviorContext::GlobalMethodBuilder methodBuilder)
+            {
+                methodBuilder->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Category, "Legacy/Editor")
+                    ->Attribute(AZ::Script::Attributes::Module, "legacy.general");
+            };
+            addLegacyGeneral(behaviorContext->Method("get_all_objects", PyGetAllObjects, nullptr, "Gets the list of names of all objects in the whole level."));
+            addLegacyGeneral(behaviorContext->Method("get_names_of_selected_objects", PyGetNamesOfSelectedObjects, nullptr, "Get the name from selected object/objects."));
+
+            addLegacyGeneral(behaviorContext->Method("select_object", PySelectObject, nullptr, "Selects a specified object."));
+            addLegacyGeneral(behaviorContext->Method("unselect_objects", PyUnselectObjects, nullptr, "Unselects a list of objects."));
+            addLegacyGeneral(behaviorContext->Method("select_objects", PySelectObjects, nullptr, "Selects a list of objects."));
+            addLegacyGeneral(behaviorContext->Method("get_num_selected", PyGetNumSelectedObjects, nullptr, "Returns the number of selected objects."));
+            addLegacyGeneral(behaviorContext->Method("clear_selection", PyClearSelection, nullptr, "Clears selection."));
+
+            addLegacyGeneral(behaviorContext->Method("get_selection_center", PyGetSelectionCenter, nullptr, "Returns the center point of the selection group."));
+            addLegacyGeneral(behaviorContext->Method("get_selection_aabb", PyGetSelectionAABB, nullptr, "Returns the aabb of the selection group."));
+
+            addLegacyGeneral(behaviorContext->Method("hide_object", PyHideObject, nullptr, "Hides a specified object."));
+            addLegacyGeneral(behaviorContext->Method("is_object_hidden", PyIsObjectHidden, nullptr, "Checks if object is hidden and returns a bool value."));
+            addLegacyGeneral(behaviorContext->Method("unhide_object", PyUnhideObject, nullptr, "Unhides a specified object."));
+            addLegacyGeneral(behaviorContext->Method("hide_all_objects", PyHideAllObjects, nullptr, "Hides all objects."));
+            addLegacyGeneral(behaviorContext->Method("unhide_all_objects", PyUnHideAllObjects, nullptr, "Unhides all objects."));
+
+            addLegacyGeneral(behaviorContext->Method("freeze_object", PyFreezeObject, nullptr, "Freezes a specified object."));
+            addLegacyGeneral(behaviorContext->Method("is_object_frozen", PyIsObjectFrozen, nullptr, "Checks if object is frozen and returns a bool value."));
+            addLegacyGeneral(behaviorContext->Method("unfreeze_object", PyUnfreezeObject, nullptr, "Unfreezes a specified object."));
+
+            addLegacyGeneral(behaviorContext->Method("delete_object", PyDeleteObject, nullptr, "Deletes a specified object."));
+            addLegacyGeneral(behaviorContext->Method("delete_selected", PyDeleteSelected, nullptr, "Deletes selected object(s)."));
+
+            addLegacyGeneral(behaviorContext->Method("get_position", PyGetObjectPosition, nullptr, "Gets the position of an object."));
+            addLegacyGeneral(behaviorContext->Method("set_position", PySetObjectPosition, nullptr, "Sets the position of an object."));
+
+            addLegacyGeneral(behaviorContext->Method("get_rotation", PyGetObjectRotation, nullptr, "Gets the rotation of an object."));
+            addLegacyGeneral(behaviorContext->Method("set_rotation", PySetObjectRotation, nullptr, "Sets the rotation of an object."));
+
+            addLegacyGeneral(behaviorContext->Method("get_scale", PyGetObjectScale, nullptr, "Gets the scale of an object."));
+            addLegacyGeneral(behaviorContext->Method("set_scale", PySetObjectScale, nullptr, "Sets the scale of an object."));
+
+            addLegacyGeneral(behaviorContext->Method("rename_object", PyRenameObject, nullptr, "Renames object with oldObjectName to newObjectName."));
+
+
+        }
+    }
+}
+
+REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetAllObjects, general, get_all_objects,
     "Gets the name list of all objects of a certain type in a specific layer or in the whole level if an invalid layer name given.",
     "general.get_all_objects(str className, str layerName)");
 REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetAllLayers, general, get_all_layers,
     "Gets the list of all layer names in the level.",
     "general.get_all_layers()");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetNamesOfSelectedObjects, general, get_names_of_selected_objects,
+REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetNamesOfSelectedObjects, general, get_names_of_selected_objects,
     "Get the name from selected object/objects.",
     "general.get_names_of_selected_objects()");
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySelectObject, general, select_object,
     "Selects a specified object.",
     "general.select_object(str objectName)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyUnselectObjects, general, unselect_objects,
+REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyUnselectObjects, general, unselect_objects,
     "Unselects a list of objects.",
     "general.unselect_objects(list [str objectName,])");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PySelectObjects, general, select_objects,
+REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacySelectObjects, general, select_objects,
     "Selects a list of objects.",
     "general.select_objects(list [str objectName,])");
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyIsObjectHidden, general, is_object_hidden,
@@ -4774,10 +5033,10 @@ REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyDeleteSelected, general, delete_selected,
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetNumSelectedObjects, general, get_num_selected,
     "Returns the number of selected objects",
     "general.get_num_selected()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetSelectionCenter, general, get_selection_center,
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetSelectionCenter, general, get_selection_center,
     "Returns the center point of the selection group",
     "general.get_selection_center()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetSelectionAABB, general, get_selection_aabb,
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetSelectionAABB, general, get_selection_aabb,
     "Returns the aabb of the selection group",
     "general.selection_aabb()");
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetEntityGeometryFile, general, get_entity_geometry_file,
@@ -4801,22 +5060,22 @@ REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetSequencesUsingThis, general, get_
 REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetFlowGraphsUsingThis, general, get_flowgraphs_using_this,
     "Gets the name list of all flow graphs which control this object.",
     "general.get_flowgraphs_using_this");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetObjectPosition, general, get_position,
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetObjectPosition, general, get_position,
     "Gets the position of an object.",
     "general.get_position(str objectName)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetWorldObjectPosition, general, get_world_position,
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetWorldObjectPosition, general, get_world_position,
     "Gets the world position of an object.",
     "general.get_world_position(str objectName)");
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySetObjectPosition, general, set_position,
     "Sets the position of an object.",
     "general.set_position(str objectName, float xValue, float yValue, float zValue)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetObjectRotation, general, get_rotation,
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetObjectRotation, general, get_rotation,
     "Gets the rotation of an object.",
     "general.get_rotation(str objectName)");
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySetObjectRotation, general, set_rotation,
     "Sets the rotation of the object.",
     "general.set_rotation(str objectName, float xValue, float yValue, float zValue)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetObjectScale, general, get_scale,
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetObjectScale, general, get_scale,
     "Gets the scale of an object.",
     "general.get_scale(str objectName)");
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySetObjectScale, general, set_scale,
@@ -4831,10 +5090,10 @@ REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PySetObjectLayer, general, set_object_
 REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetAllObjectsOnLayer, general, get_all_objects_of_layer,
     "Gets all objects of a layer.",
     "general.get_all_objects_of_layer(str layerName)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetObjectParent, general, get_object_parent,
+REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetObjectParent, general, get_object_parent,
     "Gets parent name of an object.",
     "general.get_object_parent(str objectName)");
-REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetObjectChildren, general, get_object_children,
+REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyGetObjectChildren, general, get_object_children,
     "Gets children names of an object.",
     "general.get_object_children(str objectName)");
 REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGenerateCubemap, general, generate_cubemap,

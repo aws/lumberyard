@@ -177,7 +177,9 @@ void MacroTexture::GetMemoryUsage(ICrySizer* sizer) const
 {
     sizer->AddObject(this, sizeof(*this));
     sizer->AddObject(&m_TexturePool, sizeof(m_TexturePool));
-    sizer->AddObject(m_Nodes.data(), sizeof(Node) * m_Nodes.size());
+    sizer->AddObject(m_Nodes.data(), sizeof(Node) * m_Nodes.capacity());
+    sizer->AddObject(m_ActiveNodes.data(), sizeof(Node*) * m_ActiveNodes.capacity());
+    sizer->AddContainer(m_NodeMortonLookup);
 }
 
 MacroTexture::Node* MacroTexture::HashTableLookup(Morton::Key key)

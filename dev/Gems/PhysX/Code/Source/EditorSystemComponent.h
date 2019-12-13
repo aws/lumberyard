@@ -31,6 +31,7 @@ namespace PhysX
         , private CrySystemEventBus::Handler
         , private AzToolsFramework::EditorEvents::Bus::Handler
         , private IEditorNotifyListener
+        , private AzToolsFramework::EditorEntityContextNotificationBus::Handler
     {
     public:
         AZ_COMPONENT(EditorSystemComponent, "{560F08DC-94F5-4D29-9AD4-CDFB3B57C654}");
@@ -68,6 +69,10 @@ namespace PhysX
 
         // AzToolsFramework::EditorEvents
         void NotifyRegisterViews() override;
+
+        // AzToolsFramework::EditorEntityContextNotificationBus
+        void OnStartPlayInEditorBegin() override;
+        void OnStopPlayInEditor() override;
 
         /// Register for Cry Editor events.
         void RegisterForEditorEvents();

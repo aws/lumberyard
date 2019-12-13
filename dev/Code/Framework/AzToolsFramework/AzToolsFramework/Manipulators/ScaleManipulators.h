@@ -24,7 +24,7 @@ namespace AzToolsFramework
         : public Manipulators
     {
     public:
-        AZ_RTTI(ScaleManipulators, "{5D1F1D47-1D5B-4E42-B47E-23F108F8BF7D}")
+        AZ_RTTI(ScaleManipulators, "{C6350CE0-7B7A-46F8-B65F-D4A54DD9A7D9}")
         AZ_CLASS_ALLOCATOR(ScaleManipulators, AZ::SystemAllocator, 0)
 
         explicit ScaleManipulators(const AZ::Transform& worldFromLocal);

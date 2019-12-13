@@ -136,6 +136,8 @@ namespace LmbrCentral
             typeIds.emplace_back(descriptor->GetUuid());
         }
         EBUS_EVENT(AzFramework::MetricsPlainTextNameRegistrationBus, RegisterForNameSending, typeIds);
+
+        EditorMeshBus::Handler::BusConnect();
     }
 
     LmbrCentralEditorModule::~LmbrCentralEditorModule()
@@ -152,6 +154,11 @@ namespace LmbrCentral
         requiredComponents.push_back(azrtti_typeid<AzToolsFramework::Components::EditorSelectionAccentSystemComponent>());
 
         return requiredComponents;
+    }
+
+    bool LmbrCentralEditorModule::AddMeshComponentWithAssetId(const AZ::EntityId& targetEntity, const AZ::Uuid& meshAssetId)
+    {
+        return AddMeshComponentWithMesh(targetEntity, meshAssetId);
     }
 } // namespace LmbrCentral
 

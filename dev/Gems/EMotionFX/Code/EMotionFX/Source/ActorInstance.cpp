@@ -1351,16 +1351,17 @@ namespace EMotionFX
     {
         m_requestedLODLevel = level;
     }
+
     void ActorInstance::UpdateLODLevel()
     {
         // Switch LOD level in case a change was requested.
         if (mLODLevel != m_requestedLODLevel)
         {
+            // Enable and disable all nodes accordingly (do not call this after setting the new mLODLevel)
+            SetSkeletalLODLevelNodeFlags(m_requestedLODLevel);
+
             // Make sure the LOD level is valid and update it.
             mLODLevel = MCore::Clamp<uint32>(m_requestedLODLevel, 0, mActor->GetNumLODLevels() - 1);
-
-            // Enable and disable all nodes accordingly (do not call this after setting the new mLODLevel)
-            SetSkeletalLODLevelNodeFlags(mLODLevel);
 
             /*// update the transform data
                 MorphSetup* morphSetup = mActor->GetMorphSetup(mLODLevel);
@@ -1492,11 +1493,8 @@ namespace EMotionFX
         drawData->Unlock();
     }
 
-    // Remove the trajectory transform from the input transformation.
-    void ActorInstance::MotionExtractionCompensate(Transform& inOutMotionExtractionNodeTransform, EMotionExtractionFlags motionExtractionFlags)
+    void ActorInstance::MotionExtractionCompensate(Transform& inOutMotionExtractionNodeTransform, const Transform& localSpaceBindPoseTransform, EMotionExtractionFlags motionExtractionFlags)
     {
-        MCORE_ASSERT(mActor->GetMotionExtractionNodeIndex() != MCORE_INVALIDINDEX32);
-
         Transform trajectoryTransform = inOutMotionExtractionNodeTransform;
 
         // Make sure the z axis is really pointing up and project it onto the ground plane.
@@ -1512,13 +1510,21 @@ namespace EMotionFX
         trajectoryTransform.ApplyMotionExtractionFlags(motionExtractionFlags);
 
         // Get the projected bind pose transform.
-        Transform bindTransformProjected = mTransformData->GetBindPose()->GetLocalSpaceTransform(mActor->GetMotionExtractionNodeIndex());
+        Transform bindTransformProjected = localSpaceBindPoseTransform;
         bindTransformProjected.ApplyMotionExtractionFlags(motionExtractionFlags);
 
         // Remove the projected rotation and translation from the transform to prevent the double transform.
         inOutMotionExtractionNodeTransform.mRotation = (bindTransformProjected.mRotation.Conjugated() * trajectoryTransform.mRotation).Conjugated() * inOutMotionExtractionNodeTransform.mRotation;
         inOutMotionExtractionNodeTransform.mPosition = inOutMotionExtractionNodeTransform.mPosition - (trajectoryTransform.mPosition - bindTransformProjected.mPosition);
         inOutMotionExtractionNodeTransform.mRotation.Normalize();
+    }
+
+    void ActorInstance::MotionExtractionCompensate(Transform& inOutMotionExtractionNodeTransform, EMotionExtractionFlags motionExtractionFlags)
+    {
+        MCORE_ASSERT(mActor->GetMotionExtractionNodeIndex() != MCORE_INVALIDINDEX32);
+        Transform bindPoseTransform = mTransformData->GetBindPose()->GetLocalSpaceTransform(mActor->GetMotionExtractionNodeIndex());
+
+        MotionExtractionCompensate(inOutMotionExtractionNodeTransform, bindPoseTransform, motionExtractionFlags);
     }
 
     // Remove the trajectory transform from the motion extraction node to prevent double transformation.
@@ -1537,15 +1543,9 @@ namespace EMotionFX
         currentPose->SetLocalSpaceTransform(motionExtractIndex, transform);
     }
 
-    // Apply the motion extraction delta transform to the actor instance.
-    void ActorInstance::ApplyMotionExtractionDelta(const Transform& trajectoryDelta)
+    void ActorInstance::ApplyMotionExtractionDelta(Transform& inOutTransform, const Transform& trajectoryDelta)
     {
-        if (mActor->GetMotionExtractionNodeIndex() == MCORE_INVALIDINDEX32)
-        {
-            return;
-        }
-
-        Transform curTransform = mLocalTransform;
+        Transform curTransform = inOutTransform;
 #ifndef EMFX_SCALE_DISABLED
         curTransform.mPosition += trajectoryDelta.mPosition * curTransform.mScale;
 #else
@@ -1555,7 +1555,18 @@ namespace EMotionFX
         curTransform.mRotation *= trajectoryDelta.mRotation;
         curTransform.mRotation.Normalize();
 
-        mLocalTransform = curTransform;
+        inOutTransform = curTransform;
+    }
+
+    // Apply the motion extraction delta transform to the actor instance.
+    void ActorInstance::ApplyMotionExtractionDelta(const Transform& trajectoryDelta)
+    {
+        if (mActor->GetMotionExtractionNodeIndex() == MCORE_INVALIDINDEX32)
+        {
+            return;
+        }
+
+        ApplyMotionExtractionDelta(mLocalTransform, trajectoryDelta);
     }
 
     // apply the currently set motion extraction delta transform to the actor instance

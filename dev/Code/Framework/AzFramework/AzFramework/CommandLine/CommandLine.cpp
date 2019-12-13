@@ -40,6 +40,7 @@ namespace AzFramework
         m_miscValues.clear();
 
         AZStd::string currentSwitch;
+        AZStd::size_t foundPos;
         for (int i = 1; i < argc; ++i)
         {
             if (argv[i])
@@ -59,9 +60,20 @@ namespace AzFramework
                             currentArg = currentArg.substr(1);
                         }
 
-                        AZStd::size_t foundPos = StringFunc::Find(currentArg.c_str(), '=');
+                        foundPos = StringFunc::Find(currentArg.c_str(), '=');
                         if (foundPos != AZStd::string::npos)
                         {
+                            // Allow argument values wrapped in quotes at both ends to become the value within the quotes 
+                            if (currentArg.length() > (foundPos + 2) && currentArg[foundPos + 1] == '"' && currentArg[currentArg.length() - 1] == '"')
+                            {
+                                AZStd::string argName = currentArg.substr(0, foundPos);
+                                argName = ToLower(argName);
+                                StringFunc::Strip(argName, " ", false, true, true);
+                                m_switches[argName].emplace_back(currentArg.substr(foundPos + 2, currentArg.length() - (foundPos + 2) - 1));
+                                currentSwitch.clear();
+                                continue;
+                            }
+
                             // its in '=' format
                             AZStd::vector<AZStd::string> tokens;
                             StringFunc::Tokenize(currentArg.substr(foundPos + 1).c_str(), tokens, ',');
@@ -96,8 +108,18 @@ namespace AzFramework
                         }
                         else
                         {
+                            // Allow argument values wrapped in quotes at both ends to become the value within the quotes 
+                            if (currentArg[0] == '"' && currentArg.length() >= 2 && currentArg[currentArg.length() - 1] == '"')
+                            {
+                                m_switches[currentSwitch].emplace_back(currentArg.substr(1, currentArg.length() - 2));
+                                currentSwitch.clear();
+                                continue;
+                            }
+
                             AZStd::vector<AZStd::string> tokens;
+
                             StringFunc::Tokenize(currentArg.c_str(), tokens, ',');
+
                             for (AZStd::string& switchValue : tokens)
                             {
                                 StringFunc::Strip(switchValue, " ", false, true, true);
@@ -161,4 +183,8 @@ namespace AzFramework
         return m_miscValues[index];
     }
 
+    const CommandLine::ParamMap& CommandLine::GetSwitchList() const
+    {
+        return m_switches;
+    }
 } // namespace AzFramework

@@ -3,7 +3,6 @@
         "Include": [
             "Include/Twitch/TwitchBus.h",
             "Include/Twitch/TwitchTypes.h",
-            "Include/Twitch/FuelTypes.h",
             "Include/Twitch/BaseTypes.h",
             "Include/Twitch/RESTTypes.h"
         ],
@@ -22,11 +21,10 @@
           "Source/TwitchReflection.cpp",
           "Source/TwitchReflection.h"
         ],
-        "Source/FuelInterface": [
-            "Source/IFuelInterface.h"
-        ],
         "Source/TwitchREST": [
-            "Source/ITwitchREST.h"
+          "Source/ITwitchREST.h",
+          "Source/TwitchREST.cpp",
+          "Source/TwitchREST.h"
         ]
     }
 }

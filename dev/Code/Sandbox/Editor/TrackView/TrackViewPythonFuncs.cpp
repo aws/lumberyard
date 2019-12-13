@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include "TrackViewPythonFuncs.h"
 #include "TrackViewNodes.h"
 #include "TrackViewAnimNode.h"
 #include "TrackViewSequenceManager.h"
@@ -23,6 +24,8 @@
 #include <Maestro/Types/AnimNodeType.h>
 #include <Maestro/Types/AnimParamType.h>
 #include <Maestro/Types/AnimValueType.h>
+
+#include <AzCore/RTTI/BehaviorContext.h>
 
 namespace
 {
@@ -114,7 +117,18 @@ namespace
         return pSequenceManager->GetCount();
     }
 
-    QString PyTrackViewGetSequenceName(unsigned int index)
+    QString PyLegacyTrackViewGetSequenceName(unsigned int index)
+    {
+        if (index < PyTrackViewGetNumSequences())
+        {
+            const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
+            return pSequenceManager->GetSequenceByIndex(index)->GetName();
+        }
+
+        throw std::runtime_error("Could not find sequence");
+    }
+
+    AZStd::string PyTrackViewGetSequenceName(unsigned int index)
     {
         if (index < PyTrackViewGetNumSequences())
         {
@@ -259,9 +273,23 @@ namespace
         return (foundNodes.GetCount() > 0) ? foundNodes.GetNode(0) : nullptr;
     }
 
-    void PyTrackViewDeleteNode(const char* nodeName, const char* parentDirectorName)
+    void PyLegacyTrackViewDeleteNode(const char* nodeName, const char* parentDirectorName)
     {
         CTrackViewAnimNode* pNode = GetNodeFromName(nodeName, parentDirectorName);
+        if (pNode == nullptr)
+        {
+            throw std::runtime_error("Couldn't find node");
+        }
+
+        CTrackViewAnimNode* pParentNode = static_cast<CTrackViewAnimNode*>(pNode->GetParentNode());
+
+        CUndo undo("Delete TrackView Node");
+        pParentNode->RemoveSubNode(pNode);
+    }
+
+    void PyTrackViewDeleteNode(AZStd::string nodeName, AZStd::string parentDirectorName)
+    {
+        CTrackViewAnimNode* pNode = GetNodeFromName(nodeName.data(), parentDirectorName.data());
         if (pNode == nullptr)
         {
             throw std::runtime_error("Couldn't find node");
@@ -335,7 +363,7 @@ namespace
         pNode->RemoveTrack(pTrack);
     }
 
-    int PyTrackViewGetNumNodes(const char* parentDirectorName)
+    int PyLegacyTrackViewGetNumNodes(const char* parentDirectorName)
     {
         CAnimationContext* pAnimationContext = GetIEditor()->GetAnimation();
         CTrackViewSequence* pSequence = pAnimationContext->GetSequence();
@@ -360,7 +388,32 @@ namespace
         return foundNodes.GetCount();
     }
 
-    QString PyTrackViewGetNodeName(int index, const char* parentDirectorName)
+    int PyTrackViewGetNumNodes(AZStd::string parentDirectorName)
+    {
+        CAnimationContext* pAnimationContext = GetIEditor()->GetAnimation();
+        CTrackViewSequence* pSequence = pAnimationContext->GetSequence();
+        if (!pSequence)
+        {
+            throw std::runtime_error("No sequence is active");
+        }
+
+        CTrackViewAnimNode* pParentDirector = pSequence;
+        if (!parentDirectorName.empty())
+        {
+            CTrackViewAnimNodeBundle foundNodes = pSequence->GetAnimNodesByName(parentDirectorName.data());
+            if (foundNodes.GetCount() == 0 || foundNodes.GetNode(0)->GetType() != AnimNodeType::Director)
+            {
+                throw std::runtime_error("Director node not found");
+            }
+
+            pParentDirector = foundNodes.GetNode(0);
+        }
+
+        CTrackViewAnimNodeBundle foundNodes = pParentDirector->GetAllAnimNodes();
+        return foundNodes.GetCount();
+    }
+
+    QString PyLegacyTrackViewGetNodeName(int index, const char* parentDirectorName)
     {
         CAnimationContext* pAnimationContext = GetIEditor()->GetAnimation();
         CTrackViewSequence* pSequence = pAnimationContext->GetSequence();
@@ -373,6 +426,36 @@ namespace
         if (strlen(parentDirectorName) > 0)
         {
             CTrackViewAnimNodeBundle foundNodes = pSequence->GetAnimNodesByName(parentDirectorName);
+            if (foundNodes.GetCount() == 0 || foundNodes.GetNode(0)->GetType() != AnimNodeType::Director)
+            {
+                throw std::runtime_error("Director node not found");
+            }
+
+            pParentDirector = foundNodes.GetNode(0);
+        }
+
+        CTrackViewAnimNodeBundle foundNodes = pParentDirector->GetAllAnimNodes();
+        if (index < 0 || index >= foundNodes.GetCount())
+        {
+            throw std::runtime_error("Invalid node index");
+        }
+
+        return foundNodes.GetNode(index)->GetName();
+    }
+
+    AZStd::string PyTrackViewGetNodeName(int index, AZStd::string parentDirectorName)
+    {
+        CAnimationContext* pAnimationContext = GetIEditor()->GetAnimation();
+        CTrackViewSequence* pSequence = pAnimationContext->GetSequence();
+        if (!pSequence)
+        {
+            throw std::runtime_error("No sequence is active");
+        }
+
+        CTrackViewAnimNode* pParentDirector = pSequence;
+        if (!parentDirectorName.empty())
+        {
+            CTrackViewAnimNodeBundle foundNodes = pSequence->GetAnimNodesByName(parentDirectorName.data());
             if (foundNodes.GetCount() == 0 || foundNodes.GetNode(0)->GetType() != AnimNodeType::Director)
             {
                 throw std::runtime_error("Director node not found");
@@ -520,6 +603,55 @@ namespace
     }
 }
 
+namespace AzToolsFramework
+{
+    void TrackViewFuncsHandler::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            // this will put these methods into the 'azlmbr.legacy.trackview' module
+            auto addLegacyTrackview = [](AZ::BehaviorContext::GlobalMethodBuilder methodBuilder)
+            {
+                methodBuilder->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Category, "Legacy/TrackView")
+                    ->Attribute(AZ::Script::Attributes::Module, "legacy.trackview");
+            };
+            addLegacyTrackview(behaviorContext->Method("set_recording", PyTrackViewSetRecording, nullptr, "Activates/deactivates TrackView recording mode."));
+
+            addLegacyTrackview(behaviorContext->Method("new_sequence", PyTrackViewNewSequence, nullptr, "Creates a new sequence of the given type (0=Object Entity Sequence (Legacy), 1=Component Entity Sequence (PREVIEW)) with the given name."));
+            addLegacyTrackview(behaviorContext->Method("delete_sequence", PyTrackViewDeleteSequence, nullptr, "Deletes the specified sequence."));
+            addLegacyTrackview(behaviorContext->Method("set_current_sequence", PyTrackViewSetCurrentSequence, nullptr, "Sets the specified sequence as a current one in TrackView."));
+            addLegacyTrackview(behaviorContext->Method("get_num_sequences", PyTrackViewGetNumSequences, nullptr, "Gets the number of sequences."));
+            addLegacyTrackview(behaviorContext->Method("get_sequence_name", PyTrackViewGetSequenceName, nullptr, "Gets the name of a sequence by its index."));
+
+            // Blocked by LY-99827
+            //addLegacyTrackview(behaviorContext->Method("get_sequence_time_range", PyTrackViewGetSequenceTimeRange, nullptr, "Gets the time range of a sequence as a pair."));
+
+            addLegacyTrackview(behaviorContext->Method("set_sequence_time_range", PyTrackViewSetSequenceTimeRange, nullptr, "Sets the time range of a sequence."));
+            addLegacyTrackview(behaviorContext->Method("play_sequence", PyTrackViewPlaySequence, nullptr, "Plays the current sequence in TrackView."));
+            addLegacyTrackview(behaviorContext->Method("stop_sequence", PyTrackViewStopSequence, nullptr, "Stops any sequence currently playing in TrackView."));
+            addLegacyTrackview(behaviorContext->Method("set_time", PyTrackViewSetSequenceTime, nullptr, "Sets the time of the sequence currently playing in TrackView."));
+
+            addLegacyTrackview(behaviorContext->Method("add_node", PyTrackViewAddNode, nullptr, "Adds a new node with the given type & name to the current sequence."));
+            addLegacyTrackview(behaviorContext->Method("add_selected_entities", PyTrackViewAddSelectedEntities, nullptr, "Adds an entity node(s) from viewport selection to the current sequence."));
+            addLegacyTrackview(behaviorContext->Method("add_layer_node", PyTrackViewAddLayerNode, nullptr, "Adds a layer node from the current layer to the current sequence."));
+            addLegacyTrackview(behaviorContext->Method("delete_node", PyTrackViewDeleteNode, nullptr, "Deletes the specified node from the current sequence."));
+            addLegacyTrackview(behaviorContext->Method("add_track", PyTrackViewAddTrack, nullptr, "Adds a track of the given parameter ID to the node."));
+            addLegacyTrackview(behaviorContext->Method("delete_track", PyTrackViewDeleteTrack, nullptr, "Deletes a track of the given parameter ID (in the given index in case of a multi-track) from the node."));
+            addLegacyTrackview(behaviorContext->Method("get_num_nodes", PyTrackViewGetNumNodes, nullptr, "Gets the number of nodes."));
+            addLegacyTrackview(behaviorContext->Method("get_node_name", PyTrackViewGetNodeName, nullptr, "Gets the name of a sequence by its index."));
+
+            addLegacyTrackview(behaviorContext->Method("get_num_track_keys", PyTrackViewGetNumTrackKeys, nullptr, "Gets number of keys of the specified track."));
+
+            // LY-101771
+            //addLegacyTrackview(behaviorContext->Method("get_key_value", PyTrackViewGetKeyValue, nullptr, "Gets the value of the specified key."));
+            //addLegacyTrackview(behaviorContext->Method("get_interpolated_value", PyTrackViewGetInterpolatedValue, nullptr, "Gets the interpolated value of a track at the specified time."));
+
+
+        }
+    }
+}
+
 // General
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTrackViewSetRecording, trackview, set_recording,
     "Activates/deactivates TrackView recording mode",
@@ -538,7 +670,7 @@ REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTrackViewSetCurrentSequence, trackview, s
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTrackViewGetNumSequences, trackview, get_num_sequences,
     "Gets the number of sequences.",
     "trackview.get_num_sequences()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTrackViewGetSequenceName, trackview, get_sequence_name,
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyTrackViewGetSequenceName, trackview, get_sequence_name,
     "Gets the name of a sequence by its index.",
     "trackview.get_sequence_name(int sequenceIndex)");
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTrackViewGetSequenceTimeRange, trackview, get_sequence_time_range,
@@ -567,7 +699,7 @@ REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTrackViewAddSelectedEntities, trackview, 
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTrackViewAddLayerNode, trackview, add_layer_node,
     "Adds a layer node from the current layer to the current sequence.",
     "trackview.add_layer_node()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTrackViewDeleteNode, trackview, delete_node,
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyTrackViewDeleteNode, trackview, delete_node,
     "Deletes the specified node from the current sequence.",
     "trackview.delete_node(str nodeName, str parentDirectorName)");
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTrackViewAddTrack, trackview, add_track,
@@ -576,10 +708,10 @@ REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTrackViewAddTrack, trackview, add_track,
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTrackViewDeleteTrack, trackview, delete_track,
     "Deletes a track of the given parameter ID (in the given index in case of a multi-track) from the node.",
     "trackview.delete_track(str paramType, int index, str nodeName, str parentDirectorName)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTrackViewGetNumNodes, trackview, get_num_nodes,
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyTrackViewGetNumNodes, trackview, get_num_nodes,
     "Gets the number of sequences.",
     "trackview.get_num_nodes(str parentDirectorName)");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyTrackViewGetNodeName, trackview, get_node_name,
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyLegacyTrackViewGetNodeName, trackview, get_node_name,
     "Gets the name of a sequence by its index.",
     "trackview.get_node_name(int nodeIndex, str parentDirectorName)");
 

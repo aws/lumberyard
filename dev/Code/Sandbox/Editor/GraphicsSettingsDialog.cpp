@@ -29,7 +29,6 @@
 #include "IEditor.h"
 #include "ILogFile.h"
 #include "XConsole.h"
-#include "IAssetTagging.h"
 #include "ISourceControl.h"
 #include <Util/FileUtil.h>
 #include "XConsoleVariable.h"
@@ -83,9 +82,9 @@ GraphicsSettingsDialog::GraphicsSettingsDialog(QWidget* parent /* = nullptr */)
     m_cfgFiles[CONFIG_IOS].push_back("ios_veryhigh.cfg");
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
-    m_cfgFiles[CONFIG_##PUBLICNAME].push_back(#publicname "_low.cfg");\
-    m_cfgFiles[CONFIG_##PUBLICNAME].push_back(#publicname "_medium.cfg");\
-    m_cfgFiles[CONFIG_##PUBLICNAME].push_back(#publicname "_high.cfg");
+    m_cfgFiles[CONFIG_##CODENAME].push_back(#publicname "_low.cfg");\
+    m_cfgFiles[CONFIG_##CODENAME].push_back(#publicname "_medium.cfg");\
+    m_cfgFiles[CONFIG_##CODENAME].push_back(#publicname "_high.cfg");
     AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
 #undef AZ_RESTRICTED_PLATFORM_EXPANSION
 #endif
@@ -131,7 +130,7 @@ GraphicsSettingsDialog::GraphicsSettingsDialog(QWidget* parent /* = nullptr */)
     m_platformStrings.push_back(AZStd::make_pair("iOS", CONFIG_IOS));
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
-    m_platformStrings.push_back(AZStd::make_pair(PublicAuxName2, CONFIG_##PUBLICNAME));
+    m_platformStrings.push_back(AZStd::make_pair(PublicAuxName2, CONFIG_##CODENAME));
     AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
 #undef AZ_RESTRICTED_PLATFORM_EXPANSION
 #endif
@@ -1101,7 +1100,7 @@ void GraphicsSettingsDialog::accept()
 
 void GraphicsSettingsDialog::OpenCustomSpecDialog()
 {
-    QString projectName = GetIEditor()->GetAssetTagging()->GetProjectName();
+    QString projectName = GetIEditor()->GetProjectName();
     QString settingsPath = projectName + "/" + SETTINGS_FILE_PATH;
 
     CAutoDirectoryRestoreFileDialog importCustomSpecDialog(QFileDialog::AcceptOpen, QFileDialog::ExistingFile, ".cfg", settingsPath, CFG_FILEFILTER, {}, {}, this);
@@ -1322,7 +1321,7 @@ void GraphicsSettingsDialog::SaveSystemSettings()
 
         // Adding the project name to the path so that the file is created there if it doesn't already exist
         // as we don't want to modify the version in Engine/config.
-        QString projectName = GetIEditor()->GetAssetTagging()->GetProjectName();
+        QString projectName = GetIEditor()->GetProjectName();
         QString settingsPath = projectName + "/" + SETTINGS_FILE_PATH;
 
         QString settingsFile = settingsPath + m_cfgFiles[m_currentPlatform][cfgFileIndex].c_str();

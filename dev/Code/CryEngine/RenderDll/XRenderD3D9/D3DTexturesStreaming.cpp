@@ -65,6 +65,8 @@ bool CTexture::IsStillUsedByGPU()
         #include "Xenia/D3DTexturesStreaming_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DTexturesStreaming_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DTexturesStreaming_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -85,6 +87,8 @@ bool CTexture::StreamPrepare_Platform()
         #include "Xenia/D3DTexturesStreaming_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DTexturesStreaming_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DTexturesStreaming_cpp_salem.inl"
     #endif
 #endif
 
@@ -142,6 +146,8 @@ void STexStreamOutState::CopyMips()
         #include "Xenia/D3DTexturesStreaming_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DTexturesStreaming_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DTexturesStreaming_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -238,6 +244,8 @@ int CTexture::StreamTrim(int nToMip)
         #include "Xenia/D3DTexturesStreaming_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DTexturesStreaming_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DTexturesStreaming_cpp_salem.inl"
     #endif
 #endif
             // it is a sync operation anyway, so we do it in the render thread
@@ -580,6 +588,8 @@ void CTexture::StreamApplyDeferred(ID3D11CommandList* pCmdList)
         #include "Xenia/D3DTexturesStreaming_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DTexturesStreaming_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DTexturesStreaming_cpp_salem.inl"
     #endif
 #endif
 
@@ -658,6 +668,8 @@ void CTexture::StreamAssignPoolItem(STexPoolItem* pItem, int nMinMip)
         #include "Xenia/D3DTexturesStreaming_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DTexturesStreaming_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DTexturesStreaming_cpp_salem.inl"
     #endif
 #endif
 
@@ -786,7 +798,6 @@ STexPoolItem* CTexture::StreamGetPoolItem(int nStartMip, int nMips, bool bShould
                 }
                 else
                 {
-                    //  Confetti BEGIN: Igor Lobanchikov
                     int nMipW = Align(max(1, m_nWidth >> nMip), vMipAlign.x);
                     int nPitch = 0;
                     const int BlockDim = vMipAlign.x;
@@ -799,7 +810,6 @@ STexPoolItem* CTexture::StreamGetPoolItem(int nStartMip, int nMips, bool bShould
                     {
                         nPitch = TextureDataSize(nMipW, 1, 1, 1, 1, m_eTFSrc);
                     }
-                    //  Confetti End: Igor Lobanchikov
 
                     ti.m_pData[nSRIdx].pSysMem = md.DataArray;
                     ti.m_pData[nSRIdx].SysMemPitch = nPitch;
@@ -845,6 +855,8 @@ void CTexture::StreamCopyMipsTexToTex(STexPoolItem* pSrcItem, int nMipSrc, STexP
         #include "Xenia/D3DTexturesStreaming_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DTexturesStreaming_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DTexturesStreaming_cpp_salem.inl"
     #endif
 #endif
 

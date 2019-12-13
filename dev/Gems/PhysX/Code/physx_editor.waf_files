@@ -1,13 +1,16 @@
 {
     "auto": {
         "Include": [
-            "Include/PhysX/EditorRigidBodyRequestBus.h"
+            "Include/PhysX/EditorRigidBodyRequestBus.h",
+            "Include/PhysX/EditorColliderComponentRequestBus.h"
         ],
         "Source/Components": [
             "Source/EditorRigidBodyComponent.cpp",
             "Source/EditorRigidBodyComponent.h",
             "Source/EditorColliderComponent.cpp",
             "Source/EditorColliderComponent.h",
+            "Source/EditorShapeColliderComponent.cpp",
+            "Source/EditorShapeColliderComponent.h",
             "Source/EditorTerrainComponent.cpp",
             "Source/EditorTerrainComponent.h",
             "Source/EditorSystemComponent.cpp",
@@ -64,7 +67,24 @@
             "Editor/UniqueStringContainer.h",
             "Editor/UniqueStringContainer.cpp",
             "Editor/ComboBoxEditButtonPair.h",
-            "Editor/ComboBoxEditButtonPair.cpp"
+            "Editor/ComboBoxEditButtonPair.cpp",
+            "Editor/ColliderComponentMode.h",
+            "Editor/ColliderComponentMode.cpp",
+            "Editor/ColliderSubComponentMode.h",
+            "Editor/ColliderOffsetMode.h",
+            "Editor/ColliderOffsetMode.cpp",
+            "Editor/ColliderBoxMode.h",
+            "Editor/ColliderBoxMode.cpp",
+            "Editor/ColliderRotationMode.h",
+            "Editor/ColliderRotationMode.cpp",
+            "Editor/ColliderSphereMode.h",
+            "Editor/ColliderSphereMode.cpp",
+            "Editor/ColliderCapsuleMode.h",
+            "Editor/ColliderCapsuleMode.cpp",
+            "Editor/ColliderAssetScaleMode.h",
+            "Editor/ColliderAssetScaleMode.cpp",
+            "Editor/DebugDraw.cpp",
+            "Editor/DebugDraw.h"
         ]
     }
 }

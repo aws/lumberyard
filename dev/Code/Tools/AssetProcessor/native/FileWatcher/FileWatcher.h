@@ -15,6 +15,7 @@
 
 #include "FileWatcherAPI.h"
 
+#include <AzCore/std/containers/vector.h>
 #include <QMap>
 #include <QVector>
 #include <QString>
@@ -89,7 +90,7 @@ Q_SIGNALS:
 
 private:
     int m_nextHandle;
-    QVector<FolderRootWatch*> m_folderWatchRoots;
+    AZStd::vector<FolderRootWatch*> m_folderWatchRoots;
     bool m_startedWatching = false;
 };
 

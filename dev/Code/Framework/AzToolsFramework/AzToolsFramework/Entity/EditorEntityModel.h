@@ -25,6 +25,7 @@
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/EntityCompositionNotificationBus.h>
+#include <AzToolsFramework/Entity/EditorEntityAPIBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Entity/EditorEntityRuntimeActivationBus.h>
 #include <AzToolsFramework/Entity/EditorEntitySortBus.h>
@@ -95,6 +96,7 @@ namespace AzToolsFramework
         void OnEditorEntitiesSliceOwnershipChanged(const AzToolsFramework::EntityIdList& entityIdList) override;
         void PrepareForContextReset() override { m_preparingForContextReset = true; }
         void OnContextReset() override;
+        void OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId, const AzFramework::SliceInstantiationTicket& ticket) override;
         void OnEntityStreamLoadBegin() override;
         void OnEntityStreamLoadSuccess() override;
         void OnEntityStreamLoadFailed() override;
@@ -104,6 +106,8 @@ namespace AzToolsFramework
         ////////////////////////////////////////////////
         void OnEntityContextReset() override;
         void OnEntityContextLoadedFromStream(const AZ::SliceComponent::EntityList&) override;
+        // Needed to avoid ambiguity between EditorEntityContextNotificationBus version
+        void OnSliceInstantiationFailed(const AZ::Data::AssetId& /*sliceAssetId*/) override {}
 
         ////////////////////////////////////////////////////////////////////////
         // EditorOnlyEntityComponentNotificationBus::Handler
@@ -161,6 +165,7 @@ namespace AzToolsFramework
             , private EditorLockComponentNotificationBus::Handler
             , private EditorVisibilityNotificationBus::Handler
             , private EntitySelectionEvents::Bus::Handler
+            , public EditorEntityAPIBus::Handler
             , public EditorEntityInfoRequestBus::Handler
             , public EditorInspectorComponentNotificationBus::Handler
             , public PropertyEditorEntityChangeNotificationBus::Handler
@@ -185,6 +190,11 @@ namespace AzToolsFramework
             void AddChild(AZ::EntityId childId);
             void RemoveChild(AZ::EntityId childId);
             bool HasChild(AZ::EntityId childId) const;
+
+            /////////////////////////////
+            // EditorEntityAPIRequests
+            /////////////////////////////
+            void SetName(AZStd::string name) override;
 
             /////////////////////////////
             // EditorEntityInfoRequests

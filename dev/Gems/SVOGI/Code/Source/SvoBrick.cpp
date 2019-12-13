@@ -766,17 +766,39 @@ namespace SVOGI
         bool bSuccess = true;
 
         {
+            AABB legacyAABB = AZAabbToLyAABB(worldBrickAabb);
+
             for (AZ::s32 nObjType = 0; nObjType < eERType_TypesNum; nObjType++)
             {
                 if ((nObjType == eERType_Brush) ||
                     (nObjType == eERType_Vegetation))
                 {
                     PodArray<IRenderNode*> arrRenderNodes;
-                    AABB legacyAABB = AZAabbToLyAABB(worldBrickAabb);
-                    gEnv->p3DEngine->GetObjectsByTypeInBox((EERType)nObjType, legacyAABB, &arrRenderNodes);
-                    if (gEnv->p3DEngine->GetIVisAreaManager())
+
+                    // Get the full set of Brush or Vegetation render nodes that appear within the requested AABB.
+                    // However, we filter out dynamic vegetation nodes because they violate the assumption of this
+                    // method that the brush and vegetation render nodes are "static" and don't change for the 
+                    // lifetime of the level.  Also, even if we gathered them, this method is not threadsafe in 
+                    // relation to the vegetation InstanceSystemComponent so it's possible our gathered instances 
+                    // would be deleted while we loop through them below, causing a sporadic crash.
+
+                    // NOTE:  The octree is NOT threadsafe, so performing this function on a job thread is inherently 
+                    // dangerous and might also lead to a crash.  This code ultimately needs to be rewritten.  Either the octree
+                    // needs to become threadsafe (which might cause performance issues), or this gathering step needs to be moved
+                    // to the main thread.
+                    if (nObjType == eERType_Vegetation)
                     {
-                        gEnv->p3DEngine->GetIVisAreaManager()->GetObjectsByType(arrRenderNodes, (EERType)nObjType, &legacyAABB);
+                        gEnv->p3DEngine->GetObjectsByTypeInBox((EERType)nObjType, legacyAABB, &arrRenderNodes,
+                            [](IRenderNode* node, EERType nodeType)
+                            {
+                                // For each object in the octree, only keep static vegetation instances in our result set.
+                                IVegetation* vegNode = static_cast<IVegetation*>(node);
+                                return !vegNode->IsDynamic();
+                            });
+                    }
+                    else
+                    {
+                        gEnv->p3DEngine->GetObjectsByTypeInBox((EERType)nObjType, legacyAABB, &arrRenderNodes, nullptr);
                     }
 
                     if (!arrRenderNodes.Count())

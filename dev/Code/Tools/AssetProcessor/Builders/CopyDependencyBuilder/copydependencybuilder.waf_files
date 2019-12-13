@@ -1,0 +1,40 @@
+{
+    "auto": {
+        "Source": [
+            "Source/CopyDependencyBuilderApplication.cpp",
+            "Source/CopyDependencyBuilderComponent.h",
+            "Source/CopyDependencyBuilderComponent.cpp",
+            "Source/CopyDependencyBuilderWorker.h",
+            "Source/CopyDependencyBuilderWorker.cpp",
+            "Source/XmlFormattedAssetBuilderWorker.h",
+            "Source/XmlFormattedAssetBuilderWorker.cpp"
+
+        ],
+        "FontBuilderWorker": [
+            "Source/FontBuilderWorker/FontBuilderWorker.h",
+            "Source/FontBuilderWorker/FontBuilderWorker.cpp"
+        ],
+        "AudioControlBuilderWorker": [
+            "Source/AudioControlBuilderWorker/AudioControlBuilderWorker.h",
+            "Source/AudioControlBuilderWorker/AudioControlBuilderWorker.cpp"
+        ],
+        "CfgBuilderWorker": [
+            "Source/CfgBuilderWorker/CfgBuilderWorker.cpp",
+            "Source/CfgBuilderWorker/CfgBuilderWorker.h"
+        ],
+        "ParticlePreloadLibsBuilderWorker": [
+            "Source/ParticlePreloadLibsBuilderWorker/ParticlePreloadLibsBuilderWorker.cpp",
+            "Source/ParticlePreloadLibsBuilderWorker/ParticlePreloadLibsBuilderWorker.h"
+        ],
+        "XmlBuilderWorker": [
+            "Source/XmlBuilderWorker/XmlBuilderWorker.h",
+            "Source/XmlBuilderWorker/XmlBuilderWorker.cpp"
+        ],
+        "SchemaBuilderWorker": [
+            "Source/SchemaBuilderWorker/SchemaBuilderWorker.h",
+            "Source/SchemaBuilderWorker/SchemaBuilderWorker.cpp",
+            "Source/SchemaBuilderWorker/SchemaUtils.h",
+            "Source/SchemaBuilderWorker/SchemaUtils.cpp"
+        ]
+    }
+}

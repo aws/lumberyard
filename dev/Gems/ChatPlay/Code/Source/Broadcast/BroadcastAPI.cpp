@@ -13,8 +13,11 @@
 #include "BroadcastAPI.h"
 #include "BroadcastCVars.h"
 
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option")
 #include <aws/core/utils/json/JsonSerializer.h>
+AZ_POP_DISABLE_WARNING
 #include <HttpRequestor/HttpRequestorBus.h>
+#include <sstream>
 
 namespace ChatPlay
 {
@@ -48,13 +51,13 @@ namespace ChatPlay
             );
 
         template <typename T>
-        void JSONParse(Aws::Http::HttpResponseCode httpResponse, const Aws::Utils::Json::JsonValue& jsonValue, const std::string& pathToKey,
+        void JSONParse(Aws::Http::HttpResponseCode httpResponse, const Aws::Utils::Json::JsonView& jsonValue, const std::string& pathToKey,
             const AZStd::function<void(ApiCallResult, Aws::Http::HttpResponseCode, T)>& userCallback
             );
 
         std::string MakeTwitchURL(const ChannelId& channelID, ApiKey type);
 
-        Aws::Utils::Json::JsonValue getJSONValue(const std::string& pathToKey, const Aws::Utils::Json::JsonValue& jsonValue);
+        Aws::Utils::Json::JsonValue getJSONValue(const std::string& pathToKey, const Aws::Utils::Json::JsonView& jsonValue);
 
         void RegisterEvent(const BroadcastEvent& event);
 
@@ -75,28 +78,28 @@ namespace ChatPlay
     {
         // Templates and specializations
         template <typename T>
-        bool JSONTypeCheck(const Aws::Utils::Json::JsonValue&); // unimplemented method
+        bool JSONTypeCheck(Aws::Utils::Json::JsonView); // unimplemented method
 
         template <>
-        bool JSONTypeCheck<bool>(const Aws::Utils::Json::JsonValue& jsonValue) { return jsonValue.IsBool(); }
+        bool JSONTypeCheck<bool>(Aws::Utils::Json::JsonView jsonValue) { return jsonValue.IsBool(); }
         template <>
-        bool JSONTypeCheck<int>(const Aws::Utils::Json::JsonValue& jsonValue) { return jsonValue.IsIntegerType(); }
+        bool JSONTypeCheck<int>(Aws::Utils::Json::JsonView jsonValue) { return jsonValue.IsIntegerType(); }
         template <>
-        bool JSONTypeCheck<float>(const Aws::Utils::Json::JsonValue& jsonValue) { return jsonValue.IsFloatingPointType(); }
+        bool JSONTypeCheck<float>(Aws::Utils::Json::JsonView jsonValue) { return jsonValue.IsFloatingPointType(); }
         template <>
-        bool JSONTypeCheck<std::string>(const Aws::Utils::Json::JsonValue& jsonValue) { return !jsonValue.IsListType() && !jsonValue.IsObject(); }
+        bool JSONTypeCheck<std::string>(Aws::Utils::Json::JsonView jsonValue) { return !jsonValue.IsListType() && !jsonValue.IsObject(); }
 
         template <typename T>
-        T JSONGetValue(const Aws::Utils::Json::JsonValue&); // unimplemented method
+        T JSONGetValue(Aws::Utils::Json::JsonView); // unimplemented method
 
         template <>
-        bool JSONGetValue<bool>(const Aws::Utils::Json::JsonValue& jsonValue) { return jsonValue.AsBool(); }
+        bool JSONGetValue<bool>(Aws::Utils::Json::JsonView jsonValue) { return jsonValue.AsBool(); }
         template <>
-        int JSONGetValue<int>(const Aws::Utils::Json::JsonValue& jsonValue) { return jsonValue.AsInteger(); }
+        int JSONGetValue<int>(Aws::Utils::Json::JsonView jsonValue) { return jsonValue.AsInteger(); }
         template <>
-        float JSONGetValue<float>(const Aws::Utils::Json::JsonValue& jsonValue) { return static_cast<float>(jsonValue.AsDouble()); }
+        float JSONGetValue<float>(Aws::Utils::Json::JsonView jsonValue) { return static_cast<float>(jsonValue.AsDouble()); }
         template <>
-        std::string JSONGetValue<std::string>(const Aws::Utils::Json::JsonValue& jsonValue) { return std::string(jsonValue.AsString().c_str()); }
+        std::string JSONGetValue<std::string>(Aws::Utils::Json::JsonView jsonValue) { return std::string(jsonValue.AsString().c_str()); }
     }
 
     IBroadcastPtr CreateBroadcastAPI()
@@ -169,7 +172,7 @@ namespace ChatPlay
     }
 
     template <typename T>
-    void TwitchAPI::JSONParse(Aws::Http::HttpResponseCode httpResponse, const Aws::Utils::Json::JsonValue& jsonValue, const std::string& pathToKey, const AZStd::function<void(ApiCallResult, Aws::Http::HttpResponseCode, T)>& userCallback)
+    void TwitchAPI::JSONParse(Aws::Http::HttpResponseCode httpResponse, const Aws::Utils::Json::JsonView& jsonValue, const std::string& pathToKey, const AZStd::function<void(ApiCallResult, Aws::Http::HttpResponseCode, T)>& userCallback)
     {
         /* HTTP MANAGER THREAD */
 
@@ -205,22 +208,22 @@ namespace ChatPlay
     // Helper function to check if a key in the form "node.node.leaf" exists:
     // * Returns the JsonValue object of the leaf if the keypath exists
     // * Returns an empty JsonValue object otherwise
-    Aws::Utils::Json::JsonValue TwitchAPI::getJSONValue(const std::string& pathToKey, const Aws::Utils::Json::JsonValue& jsonValue)
+    Aws::Utils::Json::JsonValue TwitchAPI::getJSONValue(const std::string& pathToKey, const Aws::Utils::Json::JsonView& jsonValue)
     {
-        string subKeyLeft;
-        string subKeyRight(pathToKey.c_str());
+        Aws::String subKeyLeft;
+        Aws::String subKeyRight(pathToKey.c_str());
         int delimiterPos;
-        Aws::Utils::Json::JsonValue jsonNodeValue = jsonValue;
+        Aws::Utils::Json::JsonView jsonNodeValue = jsonValue;
 
         do
         {
             delimiterPos = subKeyRight.find(".");
             subKeyLeft = subKeyRight.substr(0, delimiterPos);
             subKeyRight = subKeyRight.substr(delimiterPos + 1, std::string::npos);
-
-            if (jsonNodeValue.ValueExists(subKeyLeft))
+            Aws::Utils::Json::JsonView jsonNodeView(jsonNodeValue);
+            if (jsonNodeView.ValueExists(subKeyLeft))
             {
-                jsonNodeValue = jsonNodeValue.GetObject(subKeyLeft);
+                jsonNodeView = jsonNodeView.GetObject(subKeyLeft);
             }
             else
             {
@@ -228,7 +231,7 @@ namespace ChatPlay
             }
         } while (delimiterPos != std::string::npos);
 
-        return jsonNodeValue;
+        return jsonNodeValue.Materialize();
     }
 
     void TwitchAPI::RegisterEvent(const BroadcastEvent& event)

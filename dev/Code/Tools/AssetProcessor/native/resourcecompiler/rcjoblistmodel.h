@@ -74,6 +74,7 @@ namespace AssetProcessor
         void markAsProcessing(RCJob* rcJob);
         void markAsStarted(RCJob* rcJob);
         void markAsCompleted(RCJob* rcJob);
+        void markAsCataloged(const AssetProcessor::QueueElementID& check);
         unsigned int jobsInFlight() const;
 
         void UpdateJobEscalation(AssetProcessor::RCJob* rcJob, int jobPrioririty);
@@ -84,6 +85,7 @@ namespace AssetProcessor
 
         bool isInFlight(const QueueElementID& check) const;
         bool isInQueue(const QueueElementID& check) const;
+        bool isWaitingOnCatalog(const QueueElementID& check) const;
 
         void PerformHeuristicSearch(QString searchTerm, QString platform, QSet<QueueElementID>& found, AssetProcessor::JobIdEscalationList& escalationList, bool& isStatusRequest);
 
@@ -92,12 +94,17 @@ namespace AssetProcessor
         int GetIndexOfProcessingJob(const QueueElementID& elementId);
 
         ///! EraseJobs expects the database name of the source file.  (So with outputprefix)
-        void EraseJobs(QString sourceFileDatabaseName, QVector<RCJob*>& pendingJobs);
+        void EraseJobs(QString sourceFileDatabaseName, AZStd::vector<RCJob*>& pendingJobs);
 
     private:
 
-        QVector<RCJob*> m_jobs;
+        AZStd::vector<RCJob*> m_jobs;
         QSet<RCJob*> m_jobsInFlight;
+
+        // Keeps track of jobs waiting on the APM thread to finish writing out to the catalog
+        // This prevents job dependencies from starting before the dependent job is actually done
+        // Since the jobs aren't uniquely identified, and the APM thread can fall behind, we keep track of how many have finished
+        QHash<QueueElementID, int> m_finishedJobsNotInCatalog;
 
         // profiler showed much of our time was spent in IsInQueue.
         QMultiMap<QueueElementID, RCJob*> m_jobsInQueueLookup;

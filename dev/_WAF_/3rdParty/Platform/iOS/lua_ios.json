@@ -1,0 +1,15 @@
+{
+    "platform": {
+        "ios": {
+            "libpath_debug": [
+                "build/osx/ios-clang-703.0.31/debug"
+            ],
+            "libpath_release": [
+                "build/osx/ios-clang-703.0.31/release"
+            ],
+            "lib": [
+                "liblua.a"
+            ]
+        }
+    }
+}

@@ -30,6 +30,20 @@
 #include <android/native_window.h>
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define GLDEVICE_CPP_SECTION_1 1
+#define GLDEVICE_CPP_SECTION_2 2
+#define GLDEVICE_CPP_SECTION_3 3
+#define GLDEVICE_CPP_SECTION_4 4
+#define GLDEVICE_CPP_SECTION_5 5
+#define GLDEVICE_CPP_SECTION_6 6
+#define GLDEVICE_CPP_SECTION_7 7
+#define GLDEVICE_CPP_SECTION_8 8
+#define GLDEVICE_CPP_SECTION_9 9
+#define GLDEVICE_CPP_SECTION_10 10
+#endif
+
 #if defined(DEBUG) && !defined(MAC)
 #define DXGL_DEBUG_CONTEXT 1
 #else
@@ -142,15 +156,15 @@ namespace NCryOpenGL
         {
             EGL_RENDERABLE_TYPE,          renderableType,
             EGL_SURFACE_TYPE,             usePbuffer ? EGL_PBUFFER_BIT : EGL_WINDOW_BIT,
-            EGL_RED_SIZE,                 kPixelFormatSpec.m_pLayout->m_uRedBits,
-            EGL_GREEN_SIZE,               kPixelFormatSpec.m_pLayout->m_uGreenBits,
-            EGL_BLUE_SIZE,                kPixelFormatSpec.m_pLayout->m_uBlueBits,
-            EGL_ALPHA_SIZE,               kPixelFormatSpec.m_pLayout->m_uAlphaBits,
-            EGL_BUFFER_SIZE,              kPixelFormatSpec.m_pLayout->GetColorBits(),
-            EGL_DEPTH_SIZE,               kPixelFormatSpec.m_pLayout->m_uDepthBits,
-            EGL_STENCIL_SIZE,             kPixelFormatSpec.m_pLayout->m_uStencilBits,
-            EGL_SAMPLE_BUFFERS,           kPixelFormatSpec.m_uNumSamples > 1 ? 1 : 0,
-            EGL_SAMPLES,                  kPixelFormatSpec.m_uNumSamples > 1 ? kPixelFormatSpec.m_uNumSamples : 0,
+            EGL_RED_SIZE,                 static_cast<EGLint>(kPixelFormatSpec.m_pLayout->m_uRedBits),
+            EGL_GREEN_SIZE,               static_cast<EGLint>(kPixelFormatSpec.m_pLayout->m_uGreenBits),
+            EGL_BLUE_SIZE,                static_cast<EGLint>(kPixelFormatSpec.m_pLayout->m_uBlueBits),
+            EGL_ALPHA_SIZE,               static_cast<EGLint>(kPixelFormatSpec.m_pLayout->m_uAlphaBits),
+            EGL_BUFFER_SIZE,              static_cast<EGLint>(kPixelFormatSpec.m_pLayout->GetColorBits()),
+            EGL_DEPTH_SIZE,               static_cast<EGLint>(kPixelFormatSpec.m_pLayout->m_uDepthBits),
+            EGL_STENCIL_SIZE,             static_cast<EGLint>(kPixelFormatSpec.m_pLayout->m_uStencilBits),
+            EGL_SAMPLE_BUFFERS,           static_cast<EGLint>(kPixelFormatSpec.m_uNumSamples > 1 ? 1 : 0),
+            EGL_SAMPLES,                  static_cast<EGLint>(kPixelFormatSpec.m_uNumSamples > 1 ? kPixelFormatSpec.m_uNumSamples : 0),
             EGL_NONE
         };
 
@@ -550,7 +564,7 @@ namespace NCryOpenGL
 #endif //defined(WIN32)
 
         SDummyWindow()
-            : m_kNativeDisplay(NULL)
+            : m_kNativeDisplay()
 #if defined(WIN32)
             , m_kWndHandle(NULL)
             , m_kWndClassAtom(0)
@@ -651,7 +665,19 @@ namespace NCryOpenGL
 #if !defined(WIN32)
     bool CDevice::CreateWindow(const char* title, uint32 width, uint32 height, bool fullscreen, HWND * handle)
     {
-#if defined(ANDROID)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GLDEVICE_CPP_SECTION_1
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GLDevice_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GLDevice_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GLDevice_cpp_salem.inl"
+    #endif
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(ANDROID)
         // Windows is already created by the Native Activity. We just return a pointer to the ANativeWindow.
         ANativeWindow* nativeWindow = AZ::Android::Utils::GetWindow();
         *handle = reinterpret_cast<HWND>(nativeWindow);
@@ -665,7 +691,19 @@ namespace NCryOpenGL
 
     void CDevice::DestroyWindow(HWND handle)
     {
-#if defined(ANDROID)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GLDEVICE_CPP_SECTION_2
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GLDevice_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GLDevice_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GLDevice_cpp_salem.inl"
+    #endif
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(ANDROID)
         // Nothing to do since the window is destroyed by the OS when the Native Activity is destroyed
 #else
 #error "Not implemented for this platform"
@@ -1005,8 +1043,8 @@ namespace NCryOpenGL
         SVersion version = GetRequiredGLVersion();
         EGLint aiContextAttributes[] = 
         {
-            EGL_CONTEXT_MAJOR_VERSION, version.m_uMajorVersion,
-            EGL_CONTEXT_MINOR_VERSION, version.m_uMinorVersion,
+            EGL_CONTEXT_MAJOR_VERSION, static_cast<EGLint>(version.m_uMajorVersion),
+            EGL_CONTEXT_MINOR_VERSION, static_cast<EGLint>(version.m_uMinorVersion),
             EGL_NONE
         };
 #elif defined(DXGL_USE_WGL)
@@ -1100,7 +1138,19 @@ namespace NCryOpenGL
 
     bool CDevice::SetFullScreenState(const SFrameBufferSpec& kFrameBufferSpec, bool bFullScreen, SOutput* pOutput)
     {
-#if defined(WIN32)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GLDEVICE_CPP_SECTION_3
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GLDevice_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GLDevice_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GLDevice_cpp_salem.inl"
+    #endif
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(WIN32)
         if (bFullScreen)
         {
             if (pOutput == NULL)
@@ -1155,7 +1205,19 @@ namespace NCryOpenGL
 
     bool CDevice::ResizeTarget(const SDisplayMode& kTargetMode)
     {
-#if defined(WIN32)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GLDEVICE_CPP_SECTION_4
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GLDevice_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GLDevice_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GLDevice_cpp_salem.inl"
+    #endif
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(WIN32)
         if (kTargetMode.m_uBitsPerPixel != m_kPixelFormatSpec.m_pLayout->GetPixelBits())
         {
             DXGL_WARNING("ResizeTarget does not support changing the window pixel format");
@@ -1424,8 +1486,8 @@ namespace NCryOpenGL
 
             SVersion version = GetRequiredGLVersion();
             EGLint aiContextAttributes[] = {
-                EGL_CONTEXT_MAJOR_VERSION, version.m_uMajorVersion,
-                EGL_CONTEXT_MINOR_VERSION, version.m_uMinorVersion,
+                EGL_CONTEXT_MAJOR_VERSION, static_cast<EGLint>(version.m_uMajorVersion),
+                EGL_CONTEXT_MINOR_VERSION, static_cast<EGLint>(version.m_uMinorVersion),
                 EGL_NONE};
 
             m_kRenderingContext = eglCreateContext(m_kDisplayConnection->GetDisplay(),
@@ -1564,7 +1626,19 @@ namespace NCryOpenGL
 
     bool GetNativeDisplay(TNativeDisplay& kNativeDisplay, HWND kWindowHandle)
     {
-#if defined(WIN32)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GLDEVICE_CPP_SECTION_5
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GLDevice_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GLDevice_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GLDevice_cpp_salem.inl"
+    #endif
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(WIN32)
         HDC deviceContext = GetDC(kWindowHandle);
         if (deviceContext == NULL)
         {
@@ -1930,7 +2004,7 @@ namespace NCryOpenGL
         kFeatures.Set(eF_ComputeShader, gl43orHigher || DXGL_GL_EXTENSION_SUPPORTED(ARB_compute_shader));
         kFeatures.Set(eF_BufferStorage, gl44orHigher || DXGL_GL_EXTENSION_SUPPORTED(ARB_buffer_storage));
         kFeatures.Set(eF_IndependentBlending, true);
-		kFeatures.Set(eF_CopyImage, gl43orHigher);
+        kFeatures.Set(eF_CopyImage, gl43orHigher);
 #if DXGL_GLSL_FROM_HLSLCROSSCOMPILER
         // Technically dual source blending is supported since OpenGL 3.3 but you need to declare the fragment shader output with the 
         // position and the index (for OpenGL < 4.4): 
@@ -2122,7 +2196,19 @@ namespace NCryOpenGL
 #if DXGL_EXTENSION_LOADER
     bool LoadEarlyGLEntryPoints()
     {
-#if defined(DXGL_USE_LOADER_GLAD)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GLDEVICE_CPP_SECTION_6
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GLDevice_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GLDevice_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GLDevice_cpp_salem.inl"
+    #endif
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(DXGL_USE_LOADER_GLAD)
 #   if defined(DXGL_USE_EGL)
         if (gladLoaderLoadEGL(NULL) == 0)
         {
@@ -2138,7 +2224,19 @@ namespace NCryOpenGL
 
     bool LoadGLEntryPoints(SDummyContext& kDummyContext)
     {
-#if defined(DXGL_USE_LOADER_GLAD)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GLDEVICE_CPP_SECTION_7
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GLDevice_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GLDevice_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GLDevice_cpp_salem.inl"
+    #endif
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(DXGL_USE_LOADER_GLAD)
 #   if defined(DXGL_USE_GLX)
         if (gladLoaderLoadGLX(NULL, 0) == 0)
         {
@@ -2328,7 +2426,19 @@ namespace NCryOpenGL
 
     bool DetectOutputs(const SAdapter& kAdapter, std::vector<SOutputPtr>& kOutputs)
     {
-#if defined(WIN32)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GLDEVICE_CPP_SECTION_8
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GLDevice_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GLDevice_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GLDevice_cpp_salem.inl"
+    #endif
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(WIN32)
         uint32 uDisplay(0);
         DISPLAY_DEVICEA kDisplayDevice;
         ZeroMemory(&kDisplayDevice, sizeof(kDisplayDevice));
@@ -2416,7 +2526,19 @@ namespace NCryOpenGL
         pDXGIModeDesc->RefreshRate.Numerator = kDisplayMode.m_uFrequency;
         pDXGIModeDesc->RefreshRate.Denominator = 1;
 
-#if defined(WIN32)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GLDEVICE_CPP_SECTION_9
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GLDevice_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GLDevice_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GLDevice_cpp_salem.inl"
+    #endif
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(WIN32)
         DXGL_TODO("Check if there is a better way of mapping GL display modes to formats")
         switch (kDisplayMode.m_uBitsPerPixel)
         {
@@ -2466,7 +2588,19 @@ namespace NCryOpenGL
         {
             pDisplayMode->m_uFrequency = 0;
         }
-#if defined(WIN32)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GLDEVICE_CPP_SECTION_10
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GLDevice_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GLDevice_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GLDevice_cpp_salem.inl"
+    #endif
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(WIN32)
         switch (kDXGIModeDesc.Format)
         {
         case DXGI_FORMAT_R8G8B8A8_UNORM:
@@ -2516,13 +2650,11 @@ namespace NCryOpenGL
 
     void DXGL_DEBUG_CALLBACK_CONVENTION DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const char* message, void* userParam)
     {
-        //  Confetti BEGIN: Igor Lobanchikov
-        //  Igor: this filters out the debug messages earlier saving the performance which might be broken by excessive string creation.
+        //  this filters out the debug messages earlier saving the performance which might be broken by excessive string creation.
         if ((type == GL_DEBUG_SEVERITY_LOW) || (type == GL_DEBUG_SEVERITY_NOTIFICATION))
         {
             return;
         }
-        //  Confetti End: Igor Lobanchikov
 
         ::string errorMessage, sourceStr, typeStr, severityStr;
         ELogSeverity eLogSeverity = eLS_Warning;

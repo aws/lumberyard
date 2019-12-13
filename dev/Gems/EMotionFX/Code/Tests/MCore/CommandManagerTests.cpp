@@ -89,7 +89,7 @@ namespace EMotionFX
     class CommandGroupTester
     {
     public:
-        CommandGroupTester::CommandGroupTester()
+        CommandGroupTester()
         {
             m_commandManager.RegisterCommand(new TestCommand(AZStd::nullopt, &m_value));
             m_managerCallbackMock = new MCore::CommandManagerCallbackMock();

@@ -341,6 +341,7 @@
             "../../Common/RendElements/CREBeam.cpp",
             "../../Common/RendElements/CREClientPoly.cpp",
             "../../Common/RendElements/CRECloud.cpp",
+            "../../Common/RendElements/CRETerrain.cpp",
             "../../Common/RendElements/CREDeferredShading.cpp",
             "../../Common/RendElements/CREFogVolume.cpp",
             "../../Common/RendElements/CREGameEffect.cpp",
@@ -382,6 +383,28 @@
             "../../Common/RendElements/Utils/PolygonMath2D.cpp",
             "../../Common/RendElements/Utils/PolygonMath2D.h",
             "../../Common/RendElements/Utils/SpatialHashGrid.h"
+        ],
+        "Common/RendElements/TerrainUtils":
+        [
+            "../../Common/RendElements/TerrainUtils/TerrainTextureCache.cpp",
+            "../../Common/RendElements/TerrainUtils/TerrainTextureCache.h",
+            "../../Common/RendElements/TerrainUtils/TerrainCompositer_Render.cpp",
+            "../../Common/RendElements/TerrainUtils/TerrainCompositer.cpp",
+            "../../Common/RendElements/TerrainUtils/TerrainCompositer.h",
+            "../../Common/RendElements/TerrainUtils/VTWrapper.cpp",
+            "../../Common/RendElements/TerrainUtils/VTWrapper.h",
+            "../../Common/RendElements/TerrainUtils/VirtualTexture.cpp",
+            "../../Common/RendElements/TerrainUtils/VirtualTexture.h",
+            "../../Common/RendElements/TerrainUtils/TerrainRenderingParameters.cpp",
+            "../../Common/RendElements/TerrainUtils/TerrainRenderingParameters.h",
+            "../../Common/RendElements/TerrainUtils/IndirectionMap.cpp",
+            "../../Common/RendElements/TerrainUtils/IndirectionMap.h",
+            "../../Common/RendElements/TerrainUtils/LRUCacheQueue.h"
+        ],
+        "Common/RendElements/TerrainUtils/CDLOD":
+        [
+            "../../Common/RendElements/TerrainUtils/CDLOD/CDLODQuadTree.cpp",
+            "../../Common/RendElements/TerrainUtils/CDLOD/CDLODQuadTree.h"
         ],
         "Common/RendElements/LensOptics":
         [

@@ -1,0 +1,21 @@
+{
+    "platform": {
+        "darwin_x64": {
+            "libpath": [
+                "lib/Mac",
+                "@3P:hdf5@/lib/Mac",
+                "@3P:ilmbase@/lib/Mac"
+            ],
+            "lib_debug": [
+                "lib${alembic_libs}.a",
+                "lib${ilmbase_libs}.a",
+                "${hdf5_libs}.a"
+            ],
+            "lib_release": [
+                "lib${alembic_libs}.a",
+                "lib${ilmbase_libs}.a",
+                "${hdf5_libs}.a"
+            ]
+        }
+    }
+}

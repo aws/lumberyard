@@ -1,0 +1,36 @@
+{
+    "platform": {
+        "darwin_x64": {
+            "system_lib": [
+                "curl"
+            ],
+            "libpath_debug": [
+                "lib/mac/Debug"
+            ],
+            "libpath_release": [
+                "lib/mac/Release"
+            ],
+            "aws_cpp_sdk_core_static/lib": [
+                "lib${aws_cpp_sdk_core}.a",
+                "lib${aws_dependencies}.a"
+            ],
+            "aws_cpp_sdk_gamelift_static/lib": [
+                "lib${aws_cpp_sdk_gamelift}.a"
+            ],
+            "aws_cpp_sdk_cognito_identity_static/lib": [
+                "lib${aws_cpp_sdk_cognito_identity}.a"
+            ],
+            "aws_cpp_sdk_lambda_static/lib": [
+                "lib${aws_cpp_sdk_lambda}.a"
+            ],
+            "aws_cpp_sdk_identity_lambda_static/lib": [
+                "lib${aws_cpp_sdk_identity_lambda}.a",
+                "lib${aws_dependencies}.a"
+            ],
+            "aws_cpp_sdk_identity_metrics_static/lib": [
+                "lib${aws_cpp_sdk_identity_metrics}.a",
+                "lib${aws_dependencies}.a"
+            ]
+        }
+    }
+}

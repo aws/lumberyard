@@ -34,10 +34,13 @@
 #include "ITestSystem.h"
 #include "IRenderAuxGeom.h"
 #include <IGameFramework.h>
-#include "Terrain/Heightmap.h"
 #include "IPostEffectGroup.h"
 #include <HMDBus.h>
+
+#ifdef LY_TERRAIN_EDITOR
+#include "Terrain/Heightmap.h"
 #include "Terrain/TerrainManager.h"
+#endif //#ifdef LY_TERRAIN_EDITOR
 
 #include "ViewPane.h"
 #include "ViewportTitleDlg.h"
@@ -1341,9 +1344,14 @@ void CRenderViewport::OnEditorNotifyEvent(EEditorNotifyEvent event)
         PopDisableRendering();
 
         {
+#ifdef LY_TERRAIN_EDITOR
             CHeightmap* pHmap = GetIEditor()->GetHeightmap();
             float sx = pHmap->GetWidth() * pHmap->GetUnitSize();
             float sy = pHmap->GetHeight() * pHmap->GetUnitSize();
+#else
+            float sx = GetIEditor()->Get3DEngine()->GetTerrainSize();
+            float sy = sx;
+#endif //#ifdef LY_TERRAIN_EDITOR
 
             Matrix34 viewTM;
             viewTM.SetIdentity();
@@ -1362,9 +1370,14 @@ void CRenderViewport::OnEditorNotifyEvent(EEditorNotifyEvent event)
         PopDisableRendering();
 
         {
+#ifdef LY_TERRAIN_EDITOR
             CHeightmap* pHmap = GetIEditor()->GetHeightmap();
             float sx = pHmap->GetWidth() * pHmap->GetUnitSize();
             float sy = pHmap->GetHeight() * pHmap->GetUnitSize();
+#else
+            float sx = GetIEditor()->Get3DEngine()->GetTerrainSize();
+            float sy = sx;
+#endif //#ifdef LY_TERRAIN_EDITOR
 
             Matrix34 viewTM;
             viewTM.SetIdentity();
@@ -1580,6 +1593,7 @@ void CRenderViewport::OnRender()
         GetIEditor()->GetSystem()->RenderStatistics();
     }
 
+#ifdef LY_TERRAIN_EDITOR
     //Update the heightmap *after* RenderWorld otherwise RenderWorld will capture the terrain render requests and not handle them properly
     //Actual terrain heightmap data gets rendered later
     CHeightmap* heightmap = GetIEditor()->GetHeightmap();
@@ -1587,6 +1601,7 @@ void CRenderViewport::OnRender()
     {
         heightmap->UpdateModSectors();
     }
+#endif //#ifdef LY_TERRAIN_EDITOR;
 
 
     if (ITestSystem* pTestSystem = GetISystem()->GetITestSystem())
@@ -2282,8 +2297,11 @@ void CRenderViewport::OnTitleMenu(QMenu* menu)
     // Set ourself as the active viewport so the following actions create a camera from this view
     GetIEditor()->GetViewManager()->SelectViewport(this);
 
-    action = menu->addAction(tr("Create camera entity from current view"));
-    connect(action, &QAction::triggered, this, &CRenderViewport::OnMenuCreateCameraEntityFromCurrentView);
+    if (Camera::EditorCameraSystemRequestBus::HasHandlers())
+    {
+        action = menu->addAction(tr("Create camera entity from current view"));
+        connect(action, &QAction::triggered, this, &CRenderViewport::OnMenuCreateCameraEntityFromCurrentView);
+    }
 
     action = menu->addAction(tr("Create legacy camera from current view"));
     connect(action, &QAction::triggered, this, &CRenderViewport::OnMenuCreateCameraFromCurrentView);
@@ -2686,6 +2704,7 @@ void CRenderViewport::SetViewTM(const Matrix34& viewTM, bool bMoveOnly)
             if (GetIEditor()->Get3DEngine())
             {
                 AZ::Aabb terrainAabb(GetIEditor()->Get3DEngine()->GetTerrainAabb());
+#ifdef LY_TERRAIN_EDITOR
                 if (!GetIEditor()->GetTerrainManager()->GetUseTerrain())
                 {
                     adjustCameraElevation = false;
@@ -2698,6 +2717,16 @@ void CRenderViewport::SetViewTM(const Matrix34& viewTM, bool bMoveOnly)
                 {
                     adjustCameraElevation = false;
                 }
+#else
+                if (!terrainAabb.Contains(LYVec3ToAZVec3(p)))
+                {
+                    adjustCameraElevation = false;
+                }
+                else if (GetIEditor()->Get3DEngine()->GetTerrainHole(p.x, p.y))
+                {
+                    adjustCameraElevation = false;
+                }
+#endif //#ifdef LY_TERRAIN_EDITOR
             }
 
             if (adjustCameraElevation)

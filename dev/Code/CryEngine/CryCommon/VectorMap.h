@@ -79,7 +79,6 @@ public:
     typedef T key_compare;
 
     class FirstLess
-        : public std::binary_function<value_type, value_type, bool>
     {
     public:
         FirstLess(const key_compare& comp)
@@ -103,7 +102,7 @@ public:
     typedef const value_type& const_reference;
     typedef value_type* pointer;
     typedef const value_type* const_pointer;
-    typedef typename allocator_type::size_type size_type;
+    typedef typename std::allocator_traits<allocator_type>::size_type size_type;
 
     VectorMap();
     explicit VectorMap(const key_compare& comp);

@@ -193,12 +193,6 @@ namespace AZStd
         }
 
         //////////////////////////////////////////////////////////////////////////
-        // VS2015 adds an implicit const to constant expressions so it cannot use constexpr on non-const member functions
-#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC > 1900
-#define AZSTD_CHRONO_CONSTEXPR constexpr
-#else
-#define AZSTD_CHRONO_CONSTEXPR
-#endif
         // Duration
         template <class Rep, class Period >
         class duration
@@ -223,17 +217,17 @@ namespace AZStd
             // 20.9.3.3, arithmetic:
             constexpr duration operator+() const { *this; }
             constexpr duration operator-() const { return duration(-m_rep); }
-            AZSTD_CHRONO_CONSTEXPR duration& operator++() { ++m_rep; return *this; }
-            AZSTD_CHRONO_CONSTEXPR duration operator++(int) { return duration(m_rep++); }
-            AZSTD_CHRONO_CONSTEXPR duration& operator--() { --m_rep; return *this; }
-            AZSTD_CHRONO_CONSTEXPR duration operator--(int) { return duration(m_rep--); }
-            AZSTD_CHRONO_CONSTEXPR duration& operator+=(const duration& d) { m_rep += d.count(); return *this; }
-            AZSTD_CHRONO_CONSTEXPR duration& operator-=(const duration& d) { m_rep -= d.count(); return *this; }
-            AZSTD_CHRONO_CONSTEXPR duration& operator*=(const rep& rhs) { m_rep *= rhs; return *this; }
-            AZSTD_CHRONO_CONSTEXPR duration  operator/(const rep& rhs) { return duration(m_rep / rhs); }
-            AZSTD_CHRONO_CONSTEXPR duration& operator/=(const rep& rhs) { m_rep /= rhs; return *this; }
-            AZSTD_CHRONO_CONSTEXPR duration& operator%=(const rep& rhs) { m_rep %= rhs; return *this; }
-            AZSTD_CHRONO_CONSTEXPR duration& operator%=(const duration& rhs) { m_rep %= rhs.count(); return *this; }
+            constexpr duration& operator++() { ++m_rep; return *this; }
+            constexpr duration operator++(int) { return duration(m_rep++); }
+            constexpr duration& operator--() { --m_rep; return *this; }
+            constexpr duration operator--(int) { return duration(m_rep--); }
+            constexpr duration& operator+=(const duration& d) { m_rep += d.count(); return *this; }
+            constexpr duration& operator-=(const duration& d) { m_rep -= d.count(); return *this; }
+            constexpr duration& operator*=(const rep& rhs) { m_rep *= rhs; return *this; }
+            constexpr duration  operator/(const rep& rhs) { return duration(m_rep / rhs); }
+            constexpr duration& operator/=(const rep& rhs) { m_rep /= rhs; return *this; }
+            constexpr duration& operator%=(const rep& rhs) { m_rep %= rhs; return *this; }
+            constexpr duration& operator%=(const duration& rhs) { m_rep %= rhs.count(); return *this; }
             // 20.9.3.4, special values:
             static constexpr duration zero() { return duration(Internal::duration_value<rep>::zero()); }
             static constexpr duration min() { return duration(Internal::duration_value<rep>::min()); }
@@ -457,8 +451,8 @@ namespace AZStd
             // 20.9.4.2, observer:
             constexpr duration time_since_epoch() const { return m_d; }
             // 20.9.4.3, arithmetic:
-            AZSTD_CHRONO_CONSTEXPR time_point& operator+=(const duration& d) { m_d += d; return *this; }
-            AZSTD_CHRONO_CONSTEXPR time_point& operator-=(const duration& d) { m_d -= d; return *this; }
+            constexpr time_point& operator+=(const duration& d) { m_d += d; return *this; }
+            constexpr time_point& operator-=(const duration& d) { m_d -= d; return *this; }
             // 20.9.4.4, special values:
             static constexpr time_point min() { return time_point(duration::min()); }
             static constexpr time_point max() { return time_point(duration::max()); }

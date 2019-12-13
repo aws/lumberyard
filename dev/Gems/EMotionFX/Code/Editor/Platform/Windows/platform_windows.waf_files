@@ -1,0 +1,19 @@
+{
+    "auto":
+    {
+        "Platform/Windows":
+        [
+            "EMotionFX_Traits_Platform.h",
+            "EMotionFX_Traits_Windows.h"
+        ],
+        "EMotionFXTools/EMStudioSDK/Platform/Windows":
+        [
+            "EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MainWindowEventFilter_Windows.cpp"
+        ],
+        "EMotionFXTools/Rendering/OpenGL2/Platform/Windows":
+        [
+            "EMotionFX/Rendering/OpenGL2/Source/GLInclude_Platform.h",
+            "EMotionFX/Rendering/OpenGL2/Source/GLInclude_Windows.h"
+        ]
+    }
+}

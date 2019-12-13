@@ -22,6 +22,8 @@ namespace EMotionFX
 {
     namespace Pipeline
     {
+        AZ::EnvironmentVariable<EMotionFXAllocatorInitializer> PipelineComponent::s_eMotionFXAllocatorInitializer = nullptr;
+
         PipelineComponent::PipelineComponent()
             : m_EMotionFXInited(false)
         {
@@ -32,11 +34,9 @@ namespace EMotionFX
         {
             if (!m_EMotionFXInited)
             {
-                // Start EMotionFX allocator.
-                EMotionFX::Integration::EMotionFXAllocator::Descriptor allocatorDescriptor;
-                allocatorDescriptor.m_custom = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
-                AZ::AllocatorInstance<EMotionFX::Integration::EMotionFXAllocator>::Create(allocatorDescriptor);
-
+                // Start EMotionFX allocator or increase the reference counting
+                s_eMotionFXAllocatorInitializer = AZ::Environment::CreateVariable<EMotionFXAllocatorInitializer>(EMotionFXAllocatorInitializer::EMotionFXAllocatorInitializerTag);
+                
                 MCore::Initializer::InitSettings coreSettings;
                 if (!MCore::Initializer::Init(&coreSettings))
                 {
@@ -69,8 +69,8 @@ namespace EMotionFX
                 EMotionFX::Initializer::Shutdown();
                 MCore::Initializer::Shutdown();
 
-                // Memory leaks will be reported.
-                AZ::AllocatorInstance<EMotionFX::Integration::EMotionFXAllocator>::Destroy();
+                // Remove our reference
+                s_eMotionFXAllocatorInitializer = nullptr;
             }
         }
 

@@ -12,7 +12,7 @@
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
-#include <Cry_Vector3.h>
+#include <Cry_Math.h>
 
 namespace Metastream
 {

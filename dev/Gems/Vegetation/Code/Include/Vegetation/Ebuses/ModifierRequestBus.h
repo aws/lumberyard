@@ -46,7 +46,6 @@ namespace Vegetation
         * unless a handler explicitly sets its position.
         */
         struct BusHandlerOrderCompare
-            : public AZStd::binary_function<ModifierRequests*, ModifierRequests*, bool>
         {
             AZ_FORCE_INLINE bool operator()(ModifierRequests* left, ModifierRequests* right) const { return left->GetModifierStage() < right->GetModifierStage(); }
         };

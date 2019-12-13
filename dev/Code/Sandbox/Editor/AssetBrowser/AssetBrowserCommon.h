@@ -55,7 +55,6 @@ public:
     virtual TFilenameAssetMap& GetAssets();
     virtual IAssetItem* GetAsset(const char* pAssetFilename);
     virtual void ApplyFilters(const TAssetFieldFiltersMap& rFieldFilters);
-    virtual void ApplyTagFilters(const TAssetFieldFiltersMap& rFieldFilters, CAssetBrowserManager::StrVector& assetList);
     virtual void ClearFilters();
     virtual QWidget* CreateDbFilterDialog(QWidget* pParent, IAssetViewer* pViewerCtrl) override;
     virtual void UpdateDbFilterDialogUI(QWidget* pDlg) override;

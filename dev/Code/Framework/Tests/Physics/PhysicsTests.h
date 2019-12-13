@@ -24,43 +24,33 @@
 
 namespace Physics
 {
-    class PhysicsTestEnvironment
-        : public AZ::Test::ITestEnvironment
-    {
-    protected:
-        void SetupEnvironment() override;
-        void TeardownEnvironment() override;
-    };
-
-    /**
-     * Handler for the trace message bus to suppress errors / warnings that are expected due to testing particular
-     * code branches, so as to avoid filling the test output with traces.
-     */
+    /// Handler for the trace message bus to suppress errors / warnings that are expected due to testing particular
+    /// code branches, so as to avoid filling the test output with traces.
     class ErrorHandler
         : public AZ::Debug::TraceMessageBus::Handler
     {
     public:
-        ErrorHandler(const char* errorPattern);
+        explicit ErrorHandler(const char* errorPattern);
         ~ErrorHandler();
-        int GetErrorCount();
+        int GetErrorCount() const;
+        int GetWarningCount() const;
         bool SuppressExpectedErrors(const char* window, const char* message);
 
         // AZ::Debug::TraceMessageBus
-        bool OnPreError(const char* window, const char* fileName, int line, const char* func, const char* message);
-        bool OnPreWarning(const char* window, const char* fileName, int line, const char* func, const char* message);
+        bool OnPreError(const char* window, const char* fileName, int line, const char* func, const char* message) override;
+        bool OnPreWarning(const char* window, const char* fileName, int line, const char* func, const char* message) override;
     private:
         AZStd::string m_errorPattern;
         int m_errorCount;
+        int m_warningCount;
     };
 
-    /**
-     * Class to contain tests which any implementation of the AzFramework::Physics API should pass
-     * Each gem which implements the common physics API can run the generic API tests by:
-     * - including this header file and the appropriate .inl files.
-     * - deriving from PhysicsTestEnvironment and extending the environment functions to set up the gem system component etc.
-     * - implementing the helper functions required for the tests using gem specific components etc.
-     * - adding a AZ_UNIT_TEST_HOOK with the derived environment class
-     */
+    /// Class to contain tests which any implementation of the AzFramework::Physics API should pass
+    /// Each gem which implements the common physics API can run the generic API tests by:
+    /// - including this header file and the appropriate .inl files.
+    /// - deriving from AZ::Test::ITestEnvironment and extending the environment functions to set up the gem system component etc.
+    /// - implementing the helper functions required for the tests using gem specific components etc.
+    /// - adding a AZ_UNIT_TEST_HOOK with the derived environment class
     class GenericPhysicsInterfaceTest
         : public ::testing::Test
         , protected Physics::DefaultWorldBus::Handler
@@ -101,7 +91,7 @@ namespace Physics
     AZStd::shared_ptr<RigidBody> AddCapsuleToWorld(World* world, const AZ::Vector3& position);
 
     void UpdateWorld(World* world, float timeStep, AZ::u32 numSteps);
-    void UpdateDefaultWorld(float timeStep, AZ::u32 numSteps);
+    void UpdateDefaultWorld(AZ::u32 numSteps, float timeStep = WorldConfiguration::s_defaultFixedTimeStep);
     float GetPositionElement(AZ::Entity* entity, int element);
 } // namespace Physics
 

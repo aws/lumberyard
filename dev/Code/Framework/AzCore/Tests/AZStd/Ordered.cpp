@@ -186,7 +186,7 @@ namespace UnitTest
             int m_order;
         };
 
-        typedef AZStd::intrusive_multiset<Node, AZStd::intrusive_multiset_base_hook<Node>, AZStd::less<int> > IntrusiveSetIntKeyType;
+        typedef AZStd::intrusive_multiset<Node, AZStd::intrusive_multiset_base_hook<Node>, AZStd::less<> > IntrusiveSetIntKeyType;
     };
 
     TEST_F(Tree_IntrusiveMultiSet, Test)

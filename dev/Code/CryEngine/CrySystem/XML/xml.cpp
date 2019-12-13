@@ -32,6 +32,7 @@
 
 #include "../SimpleStringPool.h"
 
+#include "System.h"
 
 #if AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
 #include <clocale>
@@ -1150,7 +1151,7 @@ void CXmlNode::AddToXmlString(XmlString& xml, int level, AZ::IO::HandleType file
     xml += ">\n";
 }
 
-#if !defined(APPLE) && !defined(LINUX)
+#if !defined(APPLE) && !defined(LINUX) && !defined(AZ_LEGACY_CRYSYSTEM_TRAIT_HASSTPCPY)
 ILINE static char* stpcpy(char* dst, const char* src)
 {
     while (src[0])

@@ -45,12 +45,14 @@ namespace PhysXCharacters
 
     class CharacterController
         : public Physics::Character
+        , public physx::PxControllerFilterCallback
+        , public physx::PxQueryFilterCallback
     {
         friend class CharacterControllerComponent;
 
     public:
         AZ_CLASS_ALLOCATOR(CharacterController, AZ::SystemAllocator, 0);
-        AZ_TYPE_INFO(CharacterController, "{A75A7D19-BC21-4F7E-A3D9-05031D2DFC94}", Physics::Character);
+        AZ_TYPE_INFO_LEGACY(CharacterController, "{A75A7D19-BC21-4F7E-A3D9-05031D2DFC94}", Physics::Character);
         static void Reflect(AZ::ReflectContext* context);
 
         CharacterController() = default;
@@ -92,6 +94,14 @@ namespace PhysXCharacters
         void* GetNativePointer() const override;
         void AddToWorld(Physics::World&) override;
         void RemoveFromWorld(Physics::World&) override;
+
+        // physx::PxControllerFilterCallback
+        bool filter(const physx::PxController& controllerA, const physx::PxController& controllerB) override;
+
+        // physx::PxQueryFilterCallback
+        physx::PxQueryHitType::Enum preFilter(const physx::PxFilterData& filterData, const physx::PxShape* shape,
+            const physx::PxRigidActor* actor, physx::PxHitFlags& queryFlags) override;
+        physx::PxQueryHitType::Enum postFilter(const physx::PxFilterData& filterData, const physx::PxQueryHit& hit) override;
 
         // CharacterController specific
         void Resize(float height);

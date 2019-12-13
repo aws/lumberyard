@@ -45,104 +45,6 @@ namespace AZStd
     using std::tuple_cat;
     using std::get;
 
-#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
-    /* The below template class helpers are used to implement the C++14 functionality for std::get function which accepts a type parameter
-    instead of an index in VS2013.
-    Section 23.5.3.7 [tuple.elem] of the ISO N4687 draft of the C++ standard added 4 implementations of the get method that allowed access of a
-    tuple element by specifying it's type. VS2013 does not have this support and therefore it is implemented here.
-
-    template <class T, class... Types>
-    constexpr T& get(tuple<Types...>& t) noexcept;
-    template <class T, class... Types>
-    constexpr T&& get(tuple<Types...>&& t) noexcept;
-    template <class T, class... Types>
-    constexpr const T& get(const tuple<Types...>& t) noexcept;
-    template <class T, class... Types>
-    constexpr const T&& get(const tuple<Types...>&& t) noexcept;
-    */
-    namespace Internal
-    {
-        template <typename Type, size_t ElementIndex, typename MatchIndices, typename ElementTypes>
-        struct FindTypeInTupleLikeTypeMatchHelper;
-
-        template <typename Type, size_t ElementIndex, size_t... MatchIndices>
-        struct FindTypeInTupleLikeTypeMatchHelper<Type, ElementIndex, AZStd::index_sequence<MatchIndices...>, AZStd::make_void<> >
-        {
-            template<size_t, size_t... LastIndices>
-            struct GetLastIndex : GetLastIndex<LastIndices...>
-            {};
-
-            template<size_t Index>
-            struct GetLastIndex<Index>
-            {
-                static const size_t value = Index;
-            };
-            static const size_t size = sizeof...(MatchIndices);
-            static const size_t indices[];
-            static const size_t last_index = GetLastIndex<MatchIndices...>::value;
-        };
-        template <typename Type, size_t ElementIndex, size_t... MatchIndices>
-        const size_t FindTypeInTupleLikeTypeMatchHelper<Type, ElementIndex, AZStd::index_sequence<MatchIndices...>, AZStd::make_void<>>::indices[] = { MatchIndices... };
-
-        template <typename Type, size_t ElementIndex, size_t... MatchIndices, typename ElementType, typename... ElementTypeRest>
-        struct FindTypeInTupleLikeTypeMatchHelper<Type, ElementIndex, AZStd::index_sequence<MatchIndices...>, AZStd::make_void<ElementType, ElementTypeRest...> >
-            : FindTypeInTupleLikeTypeMatchHelper<Type, ElementIndex + 1,
-            AZStd::conditional_t<AZStd::is_same<Type, ElementType>::value, AZStd::index_sequence<MatchIndices..., ElementIndex>, AZStd::index_sequence<MatchIndices...>>,
-            AZStd::make_void<ElementTypeRest...>>
-        {};
-
-        template <typename Type, typename... Types>
-        struct FindTypeInTupleLikeTypeHelper : FindTypeInTupleLikeTypeMatchHelper<Type, 0U, AZStd::index_sequence<>, AZStd::make_void<Types...>>
-        {};
-
-        template <class Type>
-        struct FindTypeInTupleLikeTypeHelper<Type>
-        {
-            static_assert(sizeof(Type) == sizeof(Type) + 1, "Type cannot exist in empty tuple");
-        };
-
-        template <typename Type, typename... Types>
-        struct FindTypeInTupleLikeType : public FindTypeInTupleLikeTypeHelper<Type, Types...> {};
-
-        template <typename Type, typename... Types>
-        struct FindTypeInTupleLikeTypeUnique
-        {
-            using find_type_tuple_t = FindTypeInTupleLikeType<Type, Types...>;
-            static const size_t size = find_type_tuple_t::size;
-            static_assert(size != 0, "Type does not exist in tuple");
-            static_assert(size == 1, "Multiple of the same type exist in tuple");
-            static const size_t value = find_type_tuple_t::last_index;
-        };
-    }
-
-    //! Wraps the std::get function in the AZStd namespace
-    //! This methods extracts an element from the tuple with the specified type T
-    //! If the type T does not exist or there is more than one in the tuple, then this function fails to compile
-    template<typename T, typename... Types>
-    T& get(AZStd::tuple<Types...>& tupleObj)
-    {
-        return std::get<Internal::FindTypeInTupleLikeTypeUnique<T, Types...>::value>(tupleObj);
-    }
-
-    //! Wraps the std::get function in the AZStd namespace
-    //! This methods extracts an element from the tuple with the specified type T
-    //! If the type T does not exist or there is more than one in the tuple, then this function fails to compile
-    template<typename T, typename... Types>
-    const T& get(const AZStd::tuple<Types...>& tupleObj)
-    {
-        return std::get<Internal::FindTypeInTupleLikeTypeUnique<T, Types...>::value>(tupleObj);
-    }
-
-    //! Wraps the std::get function in the AZStd namespace
-    //! This methods extracts an element from the tuple with the specified type T
-    //! If the type T does not exist or there is more than one in the tuple, then this function fails to compile
-    template<typename T, typename... Types>
-    T&& get(AZStd::tuple<Types...>&& tupleObj)
-    {
-        return AZStd::forward<T&&>(std::get<Internal::FindTypeInTupleLikeTypeUnique<T, Types...>::value>(tupleObj));
-    }
-#endif
-
     //! Creates an hash specialization for tuple types using the hash_combine function
     //! The std::tuple implementation does not have this support. This is an extension
     template <typename... Types>
@@ -174,7 +76,6 @@ namespace AZStd
         : first(AZStd::forward<Args1>(AZStd::get<I1>(first_args))...)
         , second(AZStd::forward<Args2>(AZStd::get<I2>(second_args))...)
     {
-        // VS2015 triggers an unreferenced formal parameter warning when a variadic argument expands to zero args
         (void)first_args;
         (void)second_args;
         AZ_STATIC_ASSERT((AZStd::is_same<TupleType<Args2...>, tuple<Args2...>>::value), "AZStd::pair tuple constructor can be called with AZStd::tuple instances");
@@ -419,37 +320,40 @@ namespace AZStd
 
 namespace std
 {
+    // Suppressing clang warning error: 'tuple_size' defined as a class template here but previously declared as a struct template [-Werror,-Wmismatched-tags]
+    AZ_PUSH_DISABLE_WARNING(, "-Wmismatched-tags")
     template<class T1, class T2>
-    AZ_TRAIT_TUPLE_SIZE_ELEMENT_PAIR_CLASS_OR_STRUCT tuple_size<AZStd::pair<T1, T2>> : public AZStd::integral_constant<size_t, 2> {};
+    struct tuple_size<AZStd::pair<T1, T2>> : public AZStd::integral_constant<size_t, 2> {};
 
     template<class T1, class T2>
-    AZ_TRAIT_TUPLE_SIZE_ELEMENT_PAIR_CLASS_OR_STRUCT tuple_element<0, AZStd::pair<T1, T2>>
+    struct tuple_element<0, AZStd::pair<T1, T2>>
     {
     public:
         using type = T1;
     };
 
     template<class T1, class T2>
-    AZ_TRAIT_TUPLE_SIZE_ELEMENT_PAIR_CLASS_OR_STRUCT tuple_element<1, AZStd::pair<T1, T2>>
+    struct tuple_element<1, AZStd::pair<T1, T2>>
     {
     public:
         using type = T2;
     };
 
     template<class T, size_t N>
-    AZ_TRAIT_TUPLE_SIZE_ELEMENT_PAIR_CLASS_OR_STRUCT tuple_size<AZStd::array<T, N>> : public AZStd::integral_constant<size_t, N> {};
+    struct tuple_size<AZStd::array<T, N>> : public AZStd::integral_constant<size_t, N> {};
 
     template<size_t I, class T, size_t N>
-    AZ_TRAIT_TUPLE_SIZE_ELEMENT_PAIR_CLASS_OR_STRUCT tuple_element<I, AZStd::array<T, N>>
+    struct tuple_element<I, AZStd::array<T, N>>
     {
         AZ_STATIC_ASSERT(I < N, "AZStd::tuple_element has been called on array with an index that is out of bounds");
         using type = T;
     };
+    AZ_POP_DISABLE_WARNING
 }
 
 
 // Adds typeinfo specialization for tuple type
 namespace AZ
 {
-    AZ_INTERNAL_VARIATION_SPECIALIZATION_TEMPLATE(AZStd::tuple, tuple, "{F99F9308-DC3E-4384-9341-89CBF1ABD51E}");
+    AZ_TYPE_INFO_INTERNAL_SPECIALIZED_TEMPLATE_PREFIX_UUID(AZStd::tuple, "tuple", "{F99F9308-DC3E-4384-9341-89CBF1ABD51E}", AZ_TYPE_INFO_INTERNAL_TYPENAME_VARARGS);
 }

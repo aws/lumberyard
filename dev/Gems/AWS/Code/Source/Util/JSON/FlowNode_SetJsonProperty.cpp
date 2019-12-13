@@ -60,7 +60,7 @@ namespace LmbrAWS
             {
                 objectValue = Aws::Utils::Json::JsonValue(Aws::String(objectString.c_str()));
 
-                if (!objectValue.WasParseSuccessful() || !objectValue.IsObject())
+                if (!objectValue.WasParseSuccessful() || !objectValue.View().IsObject())
                 {
                     CRY_ASSERT_TRACE(false, ("Value of the Object field in JSONProperty node ('%s') does not parse to a valid JSON object", objectString.c_str()));
 
@@ -70,13 +70,19 @@ namespace LmbrAWS
 
             if (value.WasParseSuccessful())
             {
-                if (value.IsObject())
+                if (value.View().IsObject())
                 {
                     objectValue.WithObject(nameString.c_str(), value);
                 }
-                else if (value.IsListType())
+                else if (value.View().IsListType())
                 {
-                    objectValue.WithArray(nameString.c_str(), value.AsArray());
+                    Aws::Utils::Array<Aws::Utils::Json::JsonView> valueArray = value.View().AsArray();
+                    Aws::Utils::Array<Aws::Utils::Json::JsonValue> copyArray(valueArray.GetLength());
+                    for (size_t valueIndex = 0; valueIndex < valueArray.GetLength(); ++ valueIndex)
+                    {
+                        copyArray[valueIndex] = valueArray.GetItem(valueIndex).Materialize();
+                    }
+                    objectValue.WithArray(nameString.c_str(), copyArray);
                 }
                 else
                 {
@@ -88,11 +94,10 @@ namespace LmbrAWS
                 objectValue.WithString(nameString.c_str(), valueString.c_str());
             }
 
-            Aws::StringStream sstream;
-            objectValue.WriteCompact(sstream);
+            Aws::String jsonString = objectValue.View().WriteCompact();
 
             SFlowAddress addr(pActInfo->myID, EOP_Out, true);
-            pActInfo->pGraph->ActivatePort(addr, string(sstream.str().c_str()));
+            pActInfo->pGraph->ActivatePort(addr, string(jsonString.c_str()));
         }
     }
 

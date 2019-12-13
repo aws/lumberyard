@@ -75,10 +75,13 @@ namespace AzToolsFramework
             void OpenAsset(const AZ::Data::Asset<AZ::Data::AssetData> asset);
 
             void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
+            void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
             void OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
             bool IsDirty() const { return m_dirty; }
             bool TrySave(const AZStd::function<void()>& savedCallback);
+            bool WaitingToSave() const;
+            void SetCloseAfterSave();
 
         public Q_SLOTS:
             void OpenAssetWithDialog();
@@ -143,6 +146,10 @@ namespace AzToolsFramework
 
             QMenu* m_recentFileMenu;
 
+            AZStd::vector<AZ::u8> m_saveData;
+            bool m_closeAfterSave = false;
+            bool m_waitingToSave = false;
+
             AZStd::intrusive_ptr<AssetEditorWidgetUserSettings> m_userSettings;
             AZStd::unique_ptr< Ui::AssetEditorStatusBar > m_statusBar;
 
@@ -151,6 +158,8 @@ namespace AzToolsFramework
             bool SaveAsDialog(AZ::Data::Asset<AZ::Data::AssetData>& asset);
             void LoadAsset(AZ::Data::AssetId assetId, AZ::Data::AssetType assetType);
             void UpdatePropertyEditor(AZ::Data::Asset<AZ::Data::AssetData>& asset);
+
+            void GenerateSaveDataSnapshot();
         };
     } // namespace AssetEditor
 } // namespace AzToolsFramework

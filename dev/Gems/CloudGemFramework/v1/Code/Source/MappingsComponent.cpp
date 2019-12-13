@@ -246,12 +246,12 @@ namespace CloudGemFramework
             return false;
         }
 
-        m_isProtectedMapping = mappingsJsonData.GetBool(kProtectedFieldName);
+        m_isProtectedMapping = mappingsJsonData.View().GetBool(kProtectedFieldName);
 
-        Aws::Utils::Json::JsonValue logicalMappingsObject = mappingsJsonData.GetObject(kLogicalMappingsName);
-        Aws::Map<Aws::String, Aws::Utils::Json::JsonValue> mappingObjects = logicalMappingsObject.GetAllObjects();
+        Aws::Utils::Json::JsonView logicalMappingsObject = mappingsJsonData.View().GetObject(kLogicalMappingsName);
+        Aws::Map<Aws::String, Aws::Utils::Json::JsonView> mappingObjects = logicalMappingsObject.GetAllObjects();
 
-        for (const std::pair<Aws::String, Aws::Utils::Json::JsonValue>& mapping : mappingObjects)
+        for (const std::pair<Aws::String, Aws::Utils::Json::JsonView>& mapping : mappingObjects)
         {
             const Aws::String& logicalName = mapping.first;
 
@@ -266,13 +266,13 @@ namespace CloudGemFramework
         return true;
     }
 
-    void CloudCanvasMappingsComponent::HandleCustomResourceMapping(const Aws::String& logicalName, const Aws::String& resourceType, const std::pair<Aws::String, Aws::Utils::Json::JsonValue>& mapping)
+    void CloudCanvasMappingsComponent::HandleCustomResourceMapping(const Aws::String& logicalName, const Aws::String& resourceType, const std::pair<Aws::String, Aws::Utils::Json::JsonView>& mapping)
     {
         if (resourceType == "Custom::CognitoUserPool")
         {
-            Aws::Utils::Json::JsonValue clientAppsObject = mapping.second.GetObject(kUserPoolClientCollectionName);
-            Aws::Map<Aws::String, Aws::Utils::Json::JsonValue> clientApps = clientAppsObject.GetAllObjects();
-            for (const std::pair<Aws::String, Aws::Utils::Json::JsonValue>& currApp : clientApps)
+            Aws::Utils::Json::JsonView clientAppsObject = mapping.second.GetObject(kUserPoolClientCollectionName);
+            Aws::Map<Aws::String, Aws::Utils::Json::JsonView> clientApps = clientAppsObject.GetAllObjects();
+            for (const std::pair<Aws::String, Aws::Utils::Json::JsonView>& currApp : clientApps)
             {
                 const Aws::String& clientName = currApp.first;
                 const Aws::String& clientId = currApp.second.GetString(kUserPoolClientIdFieldName);
@@ -473,7 +473,7 @@ namespace CloudGemFramework
 
         fileIO->Close(launcherDeploymentFile);
 
-        AZStd::string dep = jsonValue.GetString(kLauncherDeployment).c_str();
+        AZStd::string dep = jsonValue.View().GetString(kLauncherDeployment).c_str();
 
         return dep;
     }

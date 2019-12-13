@@ -23,6 +23,9 @@
 
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzFramework/IO/LocalFileIO.h>
+#include <AzCore/Memory/SystemAllocator.h>
+#include <AzQtComponents/Utilities/QtPluginPaths.h>
+#include <QApplication>
 
 namespace Physics
 {
@@ -30,8 +33,15 @@ namespace Physics
         : public AZ::Test::ITestEnvironment
     {
     protected:
-        void SetupEnvironment() override;
-        void TeardownEnvironment() override;
+        void SetupEnvironment() override
+        {
+            AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
+        }
+
+        void TeardownEnvironment() override
+        {
+            AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
+        }
 
         AZ::ComponentApplication* m_application;
         AZ::Entity* m_systemEntity;
@@ -53,54 +63,22 @@ namespace Physics
         }
     };
 
-    void PhysXEditorTestEnvironment::SetupEnvironment()
-    {
-        AZ::IO::FileIOBase::SetInstance(&m_fileIo);
-
-        AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
-
-        // Create application and descriptor
-        m_application = aznew AZ::ComponentApplication;
-        AZ::ComponentApplication::Descriptor appDesc;
-        appDesc.m_useExistingAllocator = true;
-
-        // Set up gems for loading
-        AZ::DynamicModuleDescriptor dynamicModuleDescriptor;
-        dynamicModuleDescriptor.m_dynamicLibraryPath = "Gem.PhysX.4e08125824434932a0fe3717259caa47.v0.1.0";
-        appDesc.m_modules.push_back(dynamicModuleDescriptor);
-
-        dynamicModuleDescriptor = AZ::DynamicModuleDescriptor();
-        dynamicModuleDescriptor.m_dynamicLibraryPath = "Gem.LmbrCentral.ff06785f7145416b9d46fde39098cb0c.v0.1.0";
-        appDesc.m_modules.push_back(dynamicModuleDescriptor);
-
-        // Create system entity
-        AZ::ComponentApplication::StartupParameters startupParams;
-        m_systemEntity = m_application->Create(appDesc, startupParams);
-        AZ_TEST_ASSERT(m_systemEntity);
-        m_systemEntity->AddComponent(aznew AZ::MemoryComponent());
-        m_systemEntity->AddComponent(aznew AZ::AssetManagerComponent());
-        m_systemEntity->Init();
-        m_systemEntity->Activate();
-
-        // Set up transform component descriptor
-        m_serializeContext = AZStd::make_unique<AZ::SerializeContext>();
-        m_transformComponentDescriptor = AZStd::unique_ptr<AZ::ComponentDescriptor>(AzFramework::TransformComponent::CreateDescriptor());
-        m_transformComponentDescriptor->Reflect(&(*m_serializeContext));
-    }
-
-    void PhysXEditorTestEnvironment::TeardownEnvironment()
-    {
-        m_transformComponentDescriptor.reset();
-        m_serializeContext.reset();
-        delete m_application;
-        AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
-    }
-
     TEST_F(PhysXEditorTest, EditorDummyTest_NoState_TrivialPass)
     {
         EXPECT_TRUE(true);
     }
 
-    AZ_UNIT_TEST_HOOK(new PhysXEditorTestEnvironment);
+    AZTEST_EXPORT int AZ_UNIT_TEST_HOOK_NAME(int argc, char** argv)
+    {
+        ::testing::InitGoogleMock(&argc, argv);
+        AzQtComponents::PrepareQtPaths();
+        QApplication app(argc, argv);
+        AZ::Test::excludeIntegTests();
+        AZ::Test::ApplyGlobalParameters(&argc, argv);
+        AZ::Test::printUnusedParametersWarning(argc, argv);
+        AZ::Test::addTestEnvironments({ new PhysXEditorTestEnvironment });
+        int result = RUN_ALL_TESTS();
+        return result;
+    }
 } // namespace Physics
 #endif // AZ_TESTS_ENABLED

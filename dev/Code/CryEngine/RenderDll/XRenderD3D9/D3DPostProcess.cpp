@@ -94,6 +94,8 @@ void SD3DPostEffectsUtils::ResolveRT(CTexture*& pDst, const RECT* pSrcRect)
         #include "Xenia/D3DPostProcess_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DPostProcess_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DPostProcess_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -380,6 +382,8 @@ void SD3DPostEffectsUtils::SwapRedBlue(CTexture* pSrc, CTexture* pDst)
         #include "Xenia/D3DPostProcess_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DPostProcess_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DPostProcess_cpp_salem.inl"
     #endif
 #endif
 }

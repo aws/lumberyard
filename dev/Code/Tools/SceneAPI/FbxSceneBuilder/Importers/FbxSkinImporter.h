@@ -33,12 +33,6 @@ namespace AZ
                 static void Reflect(ReflectContext* context);
 
                 Events::ProcessingResult ImportSkin(FbxNodeEncounteredContext& context);
-            protected:
-#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
-                // Workaround for VS2013 - Delete the copy constructor and make it private
-                // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-                FbxSkinImporter(const FbxSkinImporter&) = delete;
-#endif
             };
         } // namespace FbxSceneBuilder
     } // namespace SceneAPI

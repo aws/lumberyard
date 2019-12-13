@@ -1,0 +1,11 @@
+{
+    "none":
+    {
+        "Source":
+        [
+            "Source/TouchBendingUnsupportedModule.cpp",
+            "Source/TouchBendingUnsupported_precompiled.cpp",
+            "Source/TouchBendingUnsupported_precompiled.h"
+        ]
+    }
+}

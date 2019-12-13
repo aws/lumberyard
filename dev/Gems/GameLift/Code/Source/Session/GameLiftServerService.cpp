@@ -12,6 +12,8 @@
 
 #if BUILD_GAMELIFT_SERVER
 
+#include <AzCore/Component/TickBus.h>
+
 #include <GameLift/Session/GameLiftServerService.h>
 #include <GameLift/Session/GameLiftServerSession.h>
 
@@ -176,7 +178,11 @@ namespace GridMate
             {
                 AZ_TracePrintf("GameLift", "Failed to initialize GameLift server: %s, %s\n", result.GetError().GetErrorName().c_str(), result.GetError().GetErrorMessage().c_str());
                 m_serverStatus = GameLift_Failed;
-                EBUS_EVENT_ID(m_gridMate, GameLiftServerServiceEventsBus, OnGameLiftSessionServiceFailed, this);
+                // defer the notification so Gridmate doesn't destroy this service while updating
+                AZ::TickBus::QueueFunction([this]()
+                {
+                    GameLiftServerServiceEventsBus::Event(m_gridMate, &GameLiftServerServiceEventsBus::Events::OnGameLiftSessionServiceFailed, this);
+                });
             }
         }
 

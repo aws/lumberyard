@@ -26,7 +26,6 @@ namespace GridMate
     * Hashing utils
     */
     struct ReplicaHashByPeer
-        : public AZStd::unary_function<ReplicaTarget*, AZStd::size_t>
     {
         AZ_FORCE_INLINE AZStd::size_t operator()(const ReplicaTarget* t) const
         {
@@ -36,7 +35,6 @@ namespace GridMate
     };
 
     struct ReplicaEqualToByPeer 
-        : public AZStd::binary_function<ReplicaTarget*, ReplicaTarget*, bool>
     {
         AZ_FORCE_INLINE bool operator()(const ReplicaTarget* left, const ReplicaTarget* right) const
         {
@@ -45,7 +43,6 @@ namespace GridMate
     };
 
     struct ReplicaHashByPeerId
-        : public AZStd::unary_function<PeerId, AZStd::size_t>
     {
         AZ_FORCE_INLINE AZStd::size_t operator()(PeerId peerId) const
         {
@@ -55,7 +52,6 @@ namespace GridMate
     };
 
     struct ReplicaEqualToByPeerId
-        : public AZStd::binary_function<PeerId, ReplicaTarget*, bool>
     {
         AZ_FORCE_INLINE bool operator()(PeerId peerId, const ReplicaTarget* right) const
         {

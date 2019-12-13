@@ -14,12 +14,12 @@
 
 #include <AzCore/PlatformDef.h>
 
-AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option") // 4251: class 'QExplicitlySharedDataPointer<QFontPrivate>' needs to have dll-interface to be used by clients of class 'QFontMetrics'
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option") // 4251: class '...' needs to have dll-interface to be used by clients of class '...'
                                                                // 4800: 'uint': forcing value to bool 'true' or 'false' (performance warning)
 #include <QTextEdit>
-AZ_POP_DISABLE_WARNING
 #include <AzCore/std/string/string.h>
 #include <AzCore/Memory/SystemAllocator.h>
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {

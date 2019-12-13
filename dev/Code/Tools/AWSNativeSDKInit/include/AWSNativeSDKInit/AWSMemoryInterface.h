@@ -55,7 +55,7 @@ namespace AWSNativeSDKInit
         void* AllocateMemory(std::size_t blockSize, std::size_t alignment, const char* allocationTag = nullptr) override;
         void FreeMemory(void* memoryPtr) override;
 
-        AWSNativeSDKAllocator m_allocator;
+        AZ::AllocatorWrapper<AWSNativeSDKAllocator> m_allocator;
         bool m_systemAllocatorCreated{ false };
     };
 #else

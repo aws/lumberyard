@@ -183,6 +183,8 @@ void CTiledShading::CreateResources()
         #include "Xenia/D3DTiledShading_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DTiledShading_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DTiledShading_cpp_salem.inl"
     #endif
 #endif
     }
@@ -207,6 +209,8 @@ void CTiledShading::CreateResources()
         #include "Xenia/D3DTiledShading_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DTiledShading_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DTiledShading_cpp_salem.inl"
     #endif
 #endif
     }
@@ -228,6 +232,8 @@ void CTiledShading::CreateResources()
         #include "Xenia/D3DTiledShading_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DTiledShading_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DTiledShading_cpp_salem.inl"
     #endif
 #endif
     }
@@ -924,6 +930,11 @@ void CTiledShading::Render(TArray<SRenderLight>& envProbes, TArray<SRenderLight>
         rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_APPLY_SSDO];
     }
 	
+
+    if (CRenderer::CV_r_DeferredShadingLBuffersFmt == 2)
+    {
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_DEFERRED_RENDER_TARGET_OPTIMIZATION];
+    }
 #if defined(FEATURE_SVO_GI)
     rd->m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_CUBEMAP0];
     rd->m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_DECAL_TEXGEN_2D];

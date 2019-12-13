@@ -723,6 +723,19 @@ namespace EMotionFX
         return motionSet;
     }
 
+
+    AZ::Data::Asset<Integration::AnimGraphAsset> AnimGraphReferenceNode::GetReferencedAnimGraphAsset() const
+    {
+        return m_animGraphAsset;
+    }
+
+
+    AZ::Data::Asset<Integration::MotionSetAsset> AnimGraphReferenceNode::GetReferencedMotionSetAsset() const
+    {
+        return m_motionSetAsset;
+    }
+
+
     AnimGraphInstance* AnimGraphReferenceNode::GetReferencedAnimGraphInstance(AnimGraphInstance* animGraphInstance) const
     {
         if (animGraphInstance)

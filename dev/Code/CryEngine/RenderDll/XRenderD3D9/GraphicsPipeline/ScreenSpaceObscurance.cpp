@@ -67,6 +67,8 @@ void CScreenSpaceObscurancePass::Execute()
         #include "Xenia/ScreenSpaceObscurance_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ScreenSpaceObscurance_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ScreenSpaceObscurance_cpp_salem.inl"
     #endif
 #endif
 

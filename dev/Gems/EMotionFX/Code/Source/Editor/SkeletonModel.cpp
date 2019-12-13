@@ -53,8 +53,6 @@ namespace EMotionFX
     SkeletonModel::~SkeletonModel()
     {
         ActorEditorNotificationBus::Handler::BusDisconnect();
-
-        Reset();
     }
 
     void SkeletonModel::SetActor(Actor* actor)
@@ -293,6 +291,7 @@ namespace EMotionFX
                 }
                 break;
             }
+#ifdef EMOTIONFX_ENABLE_CLOTH
             case COLUMN_CLOTH_COLLIDERS:
             {
                 const AZStd::shared_ptr<PhysicsSetup>& physicsSetup = m_actor->GetPhysicsSetup();
@@ -307,6 +306,7 @@ namespace EMotionFX
                 }
                 break;
             }
+#endif
             case COLUMN_SIMULATED_COLLIDERS:
             {
                 const AZStd::shared_ptr<PhysicsSetup>& physicsSetup = m_actor->GetPhysicsSetup();

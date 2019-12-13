@@ -12,7 +12,6 @@
 #include "StdAfx.h"
 
 #include <AzTest/AzTest.h>
-//#include <F:\amazon\ly-active-aaj\PyScripting\dev\Code\Tools\AssetProcessor\native\unittests\UnitTestRunner.h>
 
 #include <XConsole.h>
 
@@ -230,7 +229,7 @@ namespace UnitTests
         {
             if (args.size() > 1)
             {
-                return CommandResult::ErrorWrongNumberOfArguements;
+                return CommandResult::ErrorWrongNumberOfArguments;
             }
             return CommandResult::Error;
         });

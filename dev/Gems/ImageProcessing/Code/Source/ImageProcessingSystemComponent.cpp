@@ -102,6 +102,11 @@ namespace ImageProcessing
         else
         {
             ImageProcessingEditor::TexturePropertyEditor editor(textureSourceID, QApplication::activeWindow());
+            if (!editor.HasValidImage())
+            {
+                QMessageBox::warning(QApplication::activeWindow(), "Warning", "Invalid texture file", QMessageBox::Ok);
+                return;
+            }
             editor.exec();
         }
     }

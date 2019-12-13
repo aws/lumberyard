@@ -28,6 +28,7 @@ namespace EMotionFX
         virtual void SetUp() override;
         virtual void TearDown() override;
 
+        virtual void OnPostActorCreated() {}
         virtual void ConstructGraph();
 
         void Evaluate(float timeDelta);

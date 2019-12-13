@@ -11,12 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYFONT_STDAFX_H
-#define CRYINCLUDE_CRYFONT_STDAFX_H
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 #include <vector>
 
@@ -37,4 +32,3 @@
 #define USE_NULLFONT_ALWAYS 1
 #endif
 
-#endif // CRYINCLUDE_CRYFONT_STDAFX_H

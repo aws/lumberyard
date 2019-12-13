@@ -247,11 +247,7 @@ StringOutcome DeployWorkerDeviceFarm::Launch()
 
     // Get the platform specific Output Folder key
     AZStd::string platformOutputFolderKey;
-    if (m_deploymentConfig.m_platformOption == PlatformOptions::Android_ARMv7)
-    {
-        platformOutputFolderKey = "out_folder_android_armv7_clang";
-    }
-    else if (m_deploymentConfig.m_platformOption == PlatformOptions::Android_ARMv8)
+    if (m_deploymentConfig.m_platformOption == PlatformOptions::Android_ARMv8)
     {
         platformOutputFolderKey = "out_folder_android_armv8_clang";
     }

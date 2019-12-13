@@ -102,7 +102,7 @@ with open(os.path.join(SCRIPT_PATH, LUMBERYARD_ENGINE_VERSION_CONFIG_FILENAME)) 
 
 LUMBERYARD_VERSION = ENGINE_JSON_DATA.get('LumberyardVersion', '0.0.0.0').encode("ascii", "ignore")
 LUMBERYARD_COPYRIGHT_YEAR = ENGINE_JSON_DATA.get('LumberyardCopyrightYear', 2017)
-LUMBERYARD_BUILD = 989844
+LUMBERYARD_BUILD = 1017502
 LUMBERYARD_ENGINE_PATH = os.path.normpath(ENGINE_JSON_DATA.get('ExternalEnginePath', '.').encode("ascii", "ignore"))
 
 # validate the Lumberyard version string above
@@ -121,23 +121,3 @@ SUBFOLDERS = [
     'Code',
     'Engine',
 ]
-
-
-########################################################################################################################
-# List of available launchers by spec module
-########################################################################################################################
-AVAILABLE_LAUNCHERS = {
-    'modules':
-        [
-            'WindowsLauncher',
-            'MacLauncher',
-            'DedicatedLauncher',
-            'IOSLauncher',
-            'AppleTVLauncher',
-            'AndroidLauncher',
-            'LinuxLauncher',
-
-            'ClientLauncher',
-            'ServerLauncher'
-        ]
-    }

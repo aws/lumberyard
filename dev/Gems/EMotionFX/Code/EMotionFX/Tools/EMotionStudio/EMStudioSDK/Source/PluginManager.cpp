@@ -29,19 +29,12 @@
 #include <MCore/Source/StringConversions.h>
 #include <MCore/Source/LogManager.h>
 
-// include mac reladed
-#if !defined(AZ_PLATFORM_WINDOWS)
-    #include <dlfcn.h>
-#endif
-
-
 namespace EMStudio
 {
     // constructor
     PluginManager::PluginManager()
     {
         mActivePlugins.reserve(50);
-        mPluginLibs.reserve(10);
         mPlugins.reserve(50);
     }
 
@@ -50,7 +43,7 @@ namespace EMStudio
     PluginManager::~PluginManager()
     {
         MCore::LogInfo("Unloading plugins");
-        UnloadPluginLibs();
+        UnloadPlugins();
     }
 
 
@@ -75,18 +68,16 @@ namespace EMStudio
 
 
     // unload the plugin libraries
-    void PluginManager::UnloadPluginLibs()
+    void PluginManager::UnloadPlugins()
     {
         // process any remaining events
         QApplication::processEvents();
 
         // delete all plugins
-        // The plugins stored in mPlugins do not have Init() called, but the
-        // destructors are written assuming Init() was called.
-        //for (EMStudioPlugin* plugin : mPlugins)
-        //{
-        //    delete plugin;
-        //}
+        for (EMStudioPlugin* plugin : mPlugins)
+        {
+            delete plugin;
+        }
         mPlugins.clear();
 
         // delete all active plugins
@@ -110,129 +101,6 @@ namespace EMStudio
 
             MCORE_ASSERT(mActivePlugins.empty());
         }
-
-        // unload all plugin libs
-        const uint32 numLibs = static_cast<int32>(mPluginLibs.size());
-        for (uint32 l = 0; l < numLibs; ++l)
-        {
-    #if defined(AZ_PLATFORM_WINDOWS)
-            FreeLibrary(mPluginLibs[l]);
-    #else
-            dlclose(mPluginLibs[l]);
-    #endif
-        }
-    }
-
-
-    // scan for plugins and load them
-    void PluginManager::LoadPluginsFromDirectory(const char* directory)
-    {
-        // scan the directory for .plugin files
-        QDir dir(directory);
-        dir.setFilter(QDir::Files | QDir::NoSymLinks);
-        dir.setSorting(QDir::Name);
-
-        // iterate over all files
-        AZStd::string filename;
-        AZStd::string finalFile;
-        QFileInfoList list = dir.entryInfoList();
-        for (int i = 0; i < list.size(); ++i)
-        {
-            QFileInfo fileInfo = list.at(i);
-            FromQtString(fileInfo.fileName(), &filename);
-
-            // only add files with the .plugin extension
-            AZStd::string extension;
-            AzFramework::StringFunc::Path::GetExtension(filename.c_str(), extension, false /* include dot */);
-            if (extension == "plugin")
-            {
-            #ifdef MCORE_DEBUG
-                if (extension.find("_debug") == AZStd::string::npos) // skip non-debug versions of the plugins
-                {
-                    continue;
-                }
-            #else
-                if (extension.find("_debug") != AZStd::string::npos)  // skip debug versions of the plugins
-                {
-                    continue;
-                }
-            #endif
-
-                finalFile = directory;
-                finalFile += filename;
-                LoadPlugins(finalFile.c_str());
-            }
-        }
-    }
-
-
-    // load a given plugin library
-    bool PluginManager::LoadPlugins(const char* filename)
-    {
-        MCore::LogInfo("Loading plugins from file '%s'", filename);
-
-        //----------------------------------------
-        // Windows
-        //----------------------------------------
-    #if defined(AZ_PLATFORM_WINDOWS)
-        // load this DLL into our address space
-        HMODULE dllHandle = ::LoadLibraryA(filename);
-        if (dllHandle == nullptr)
-        {
-            MCore::LogError("Failed to load the plugin library file (code=%d)", GetLastError());
-            return false;
-        }
-
-        // get the address to the RegisterPlugins function inside the plugin
-        typedef void (__cdecl * RegisterFunction)();
-        RegisterFunction registerFunction = (RegisterFunction)::GetProcAddress(dllHandle, "RegisterPlugins");
-        if (registerFunction == nullptr)
-        {
-            MCore::LogError("Failed to find the RegisterPlugins function inside this plugin library");
-            FreeLibrary(dllHandle);
-            return false;
-        }
-
-        // execute the register plugins function
-        (registerFunction)();
-
-        // Find handle
-        mPluginLibs.push_back(dllHandle);
-    #else
-        // load dylib into address space
-        void* dylibHandle = dlopen(filename, RTLD_LAZY);
-        if (dylibHandle == nullptr)
-        {
-            MCore::LogError("Failed to load the plugin library file (error: %s)", dlerror());
-            return false;
-        }
-
-        dlerror();  // clear the error currently set
-
-        // get the address to the RegisterPlugins function inside the plugin
-        typedef void (MCORE_CDECL * RegisterPlugins)();
-        RegisterPlugins registerPlugins = (RegisterPlugins)dlsym(dylibHandle, "RegisterPlugins");
-        //      if (!registerPlugins)
-        const char* error = dlerror();
-        if (error != 0)
-        {
-            MCore::LogError("Failed to find the RegisterPlugins function inside this plugin library (code=%s)", error);
-            dlclose(dylibHandle);
-            return false;
-        }
-
-        // execute the register plugins function
-        (registerPlugins)();
-
-        // Find handle
-        mPluginLibs.push_back(dylibHandle);
-    #endif
-
-        //----------------------------------------
-        // TODO: add other platforms here
-        //----------------------------------------
-
-        return true;
     }
 
 

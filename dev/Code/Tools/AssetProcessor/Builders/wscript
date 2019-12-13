@@ -15,10 +15,13 @@ import os
 SUBFOLDERS = [
     'ExampleBuilder',
     'MaterialBuilder',
+    'LevelBuilder',
     'LuaBuilder',
     'SceneBuilder',
     'SliceBuilder',
-    'TranslationBuilder'
+    'TranslationBuilder',
+    'CopyDependencyBuilder',
+    'WwiseBuilder'
 ]
 
 def build(bld):

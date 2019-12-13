@@ -42,6 +42,9 @@
     #if defined(TOOLS_SUPPORT_PROVO)
         #include <Platform/Provo/ImageProcess_Provo.inl>
     #endif
+    #if defined(TOOLS_SUPPORT_SALEM)
+        #include <Platform/Salem/ImageProcess_Salem.inl>
+    #endif
 #endif
 
 namespace ImageProcessing

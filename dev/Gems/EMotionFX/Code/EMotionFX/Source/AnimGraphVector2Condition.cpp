@@ -271,9 +271,9 @@ namespace EMotionFX
     // Test Functions
     //------------------------------------------------------------------------------------------
     bool AnimGraphVector2Condition::TestGreater(float paramValue, float testValue, float rangeValue)           { MCORE_UNUSED(rangeValue); return (paramValue > testValue);    }
-    bool AnimGraphVector2Condition::TestGreaterEqual(float paramValue, float testValue, float rangeValue)      { MCORE_UNUSED(rangeValue); return (paramValue >= testValue);   }
+    bool AnimGraphVector2Condition::TestGreaterEqual(float paramValue, float testValue, float rangeValue)      { return TestGreater(paramValue, testValue, rangeValue) || TestEqual(paramValue, testValue, rangeValue);   }
     bool AnimGraphVector2Condition::TestLess(float paramValue, float testValue, float rangeValue)              { MCORE_UNUSED(rangeValue); return (paramValue < testValue);    }
-    bool AnimGraphVector2Condition::TestLessEqual(float paramValue, float testValue, float rangeValue)         { MCORE_UNUSED(rangeValue); return (paramValue <= testValue); }
+    bool AnimGraphVector2Condition::TestLessEqual(float paramValue, float testValue, float rangeValue)         { return TestLess(paramValue, testValue, rangeValue) || TestEqual(paramValue, testValue, rangeValue); }
     bool AnimGraphVector2Condition::TestEqual(float paramValue, float testValue, float rangeValue)             { MCORE_UNUSED(rangeValue); return MCore::Compare<float>::CheckIfIsClose(paramValue, testValue, MCore::Math::epsilon); }
     bool AnimGraphVector2Condition::TestNotEqual(float paramValue, float testValue, float rangeValue)          { MCORE_UNUSED(rangeValue); return !MCore::Compare<float>::CheckIfIsClose(paramValue, testValue, MCore::Math::epsilon); }
     bool AnimGraphVector2Condition::TestInRange(float paramValue, float testValue, float rangeValue)

@@ -25,22 +25,6 @@ namespace AZStd
 
         template<class R, class ClassType>
         struct is_member_function_pointer_tester<R ClassType::*> : is_function_pointer_tester<AZStd::remove_cv_t<R>>{};
-
-        // VS 2013 does not deduce a member function pointer type to the <R ClassType::*> above
-        // So explicit specializations are added for it.
-#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
-        template<class R, class ClassType, class... Args>
-        struct is_member_function_pointer_tester<R (ClassType::*)(Args...)> : AZStd::true_type {};
-
-        template<class R, class ClassType, class... Args>
-        struct is_member_function_pointer_tester<R(ClassType::*)(Args...) const> : AZStd::true_type {};
-
-        template<class R, class ClassType, class... Args>
-        struct is_member_function_pointer_tester<R(ClassType::*)(Args...) volatile> : AZStd::true_type {};
-
-        template<class R, class ClassType, class... Args>
-        struct is_member_function_pointer_tester<R(ClassType::*)(Args...) const volatile> : AZStd::true_type {};
-#endif
     }
 }
 

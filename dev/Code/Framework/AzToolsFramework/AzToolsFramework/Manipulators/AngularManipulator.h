@@ -42,10 +42,7 @@ namespace AzToolsFramework
         ~AngularManipulator() = default;
 
         /// A Manipulator must only be created and managed through a shared_ptr.
-        static AZStd::shared_ptr<AngularManipulator> MakeShared(const AZ::Transform& worldFromLocal)
-        {
-            return AZStd::shared_ptr<AngularManipulator>(aznew AngularManipulator(worldFromLocal));
-        }
+        static AZStd::shared_ptr<AngularManipulator> MakeShared(const AZ::Transform& worldFromLocal);
 
         /// The state of the manipulator at the start of an interaction.
         struct Start
@@ -66,6 +63,7 @@ namespace AzToolsFramework
             Start m_start;
             Current m_current;
             ViewportInteraction::KeyboardModifiers m_modifiers;
+            AZ::Quaternion LocalOrientation() const { return m_start.m_rotation * m_current.m_delta; }
         };
 
         /// This is the function signature of callbacks that will be invoked whenever a manipulator

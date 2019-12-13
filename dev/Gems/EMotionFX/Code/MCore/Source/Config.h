@@ -97,11 +97,6 @@
     #define MCORE_COMPILER_VERSION_MAJOR _MSC_VER
     #define MCORE_COMPILER_VERSION_MINOR 0
     #define MCORE_COMPILER_VERSION_PATCH 0
-    #if (MCORE_COMPILER_VERSION_MAJOR <= 1700)  // allow more variadic template parameters for VS2012
-        #ifndef _VARIADIC_MAX
-            #define _VARIADIC_MAX 10
-        #endif
-    #endif
 #else
 // unsupported compiler!
     #define MCORE_COMPILER MCORE_COMPILER_UNKNOWN
@@ -246,14 +241,8 @@ typedef uintptr_t uintPointer;
 #endif
 
 // shared lib import/export
-#if defined(AZ_PLATFORM_WINDOWS)
-    #define MCORE_EXPORT __declspec(dllexport)
-    #define MCORE_IMPORT __declspec(dllimport)
-#else
-    #define MCORE_EXPORT __attribute__((visibility("default")))
-    #define MCORE_IMPORT
-#endif
-
+#define MCORE_EXPORT AZ_DLL_EXPORT
+#define MCORE_IMPORT AZ_DLL_IMPORT
 
 // shared lib importing/exporting
 #if defined(MCORE_DLL_EXPORT)

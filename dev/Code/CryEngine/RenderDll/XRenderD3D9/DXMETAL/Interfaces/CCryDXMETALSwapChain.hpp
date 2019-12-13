@@ -20,9 +20,7 @@
 #include "CCryDXMETALBase.hpp"
 #include "CCryDXMETALGIObject.hpp"
 
-//  Confetti BEGIN: Igor Lobanchikov
 @protocol CAMetalDrawable;
-//  Confetti End: Igor Lobanchikov
 
 
 namespace NCryMetal
@@ -64,10 +62,8 @@ public:
     // IDXGIDeviceSubObject implementation
     HRESULT STDMETHODCALLTYPE GetDevice(REFIID riid, void** ppDevice) { return E_NOTIMPL; }
 
-    //  Confetti BEGIN: Igor Lobanchikov
     void    TryCreateAutoreleasePool();
     void    FlushAutoreleasePool();
-    //  Confetti End: Igor Lobanchikov
 
 protected:
     bool CreateDrawableView();
@@ -80,11 +76,9 @@ protected:
 
     MetalView* m_currentView;
 
-    //  Confetti BEGIN: Igor Lobanchikov
     id<CAMetalDrawable> m_Drawable;
 
     void* m_pAutoreleasePool;
-    //  Confetti End: Igor Lobanchikov
 };
 
 #endif //__CRYMETALGLSWAPCHAIN__

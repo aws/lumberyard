@@ -17,6 +17,8 @@ namespace EMotionFX
     // These functions make various configurations of events
     void MakeNoEvents(MotionEventTrack* /*track*/);
 
+    void MakeOneRangedEvent(MotionEventTrack* track);
+
     void MakeOneEvent(MotionEventTrack* track);
 
     void MakeTwoEvents(MotionEventTrack* track);

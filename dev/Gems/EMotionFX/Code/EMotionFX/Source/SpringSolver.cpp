@@ -354,8 +354,15 @@ namespace EMotionFX
         m_simulatedObject = settings.m_simulatedObject;
         m_name = settings.m_name;
 
-        // Make sure we have at least 2 joint chains.
+        // Don't allow empty objects.
         const size_t numRootJoints = m_simulatedObject->GetNumSimulatedRootJoints();
+        if (numRootJoints == 0)
+        {
+            AZ_Warning("EMotionFX", false, "Simulated object '%s' in simulation '%s' has a simulated object without any joints. A minimum of two joints per chain is required.", m_simulatedObject->GetName().c_str(), m_name.c_str());
+            return false;
+        }
+
+        // Make sure we have at least 2 joint chains.
         for (size_t rootIndex = 0; rootIndex < numRootJoints; ++rootIndex)
         {
             const SimulatedJoint* rootJoint = m_simulatedObject->GetSimulatedRootJoint(rootIndex);

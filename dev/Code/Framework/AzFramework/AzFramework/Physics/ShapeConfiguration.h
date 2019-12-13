@@ -29,6 +29,7 @@ namespace Physics
         TriangleMesh, ///< Not Supported in physx
         Native, ///< Native shape configuration if user wishes to bypass generic shape configurations.
         PhysicsAsset, ///< Shapes configured in the asset.
+        CookedMesh, ///< Stores a blob of mesh data cooked for the specific engine.
     };
 
     class ShapeConfiguration
@@ -139,6 +140,7 @@ namespace Physics
 
         AZ::Data::Asset<AZ::Data::AssetData> m_asset;
         AZ::Vector3 m_assetScale = AZ::Vector3::CreateOne();
+        bool m_useMaterialsFromAsset = true;
     };
 
     class NativeShapeConfiguration : public ShapeConfiguration
@@ -152,6 +154,48 @@ namespace Physics
 
         void* m_nativeShapePtr = nullptr; ///< Native shape ptr. This will not be serialised
         AZ::Vector3 m_nativeShapeScale = AZ::Vector3::CreateOne(); ///< Native shape scale. This will be serialised
+    };
+
+    class CookedMeshShapeConfiguration 
+        : public ShapeConfiguration
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(CookedMeshShapeConfiguration, AZ::SystemAllocator, 0);
+        AZ_RTTI(CookedMeshShapeConfiguration, "{D9E58241-36BB-4A4F-B50C-1736EB7E841F}", ShapeConfiguration);
+        static void Reflect(AZ::ReflectContext* context);
+
+        enum class MeshType : AZ::u8
+        {
+            TriangleMesh = 0,
+            Convex
+        };
+        
+        CookedMeshShapeConfiguration() = default;
+        CookedMeshShapeConfiguration(const CookedMeshShapeConfiguration&);
+        void operator=(const CookedMeshShapeConfiguration&);
+        ~CookedMeshShapeConfiguration();
+
+        ShapeType GetShapeType() const override;
+
+        //! Sets the cooked data. This will release the cached mesh.
+        //! Input data has to be in the physics engine specific format.
+        //! (e.g. in PhysX: result of cookTriangleMesh or cookConvexMesh).
+        void SetCookedMeshData(const AZ::u8* cookedData, size_t cookedDataSize, MeshType type);
+        const AZStd::vector<AZ::u8>& GetCookedMeshData() const;
+        
+        MeshType GetMeshType() const;
+
+        void* GetCachedNativeMesh() const;
+        void SetCachedNativeMesh(void* cachedNativeMesh) const;
+
+    private:
+        void ReleaseCachedNativeMesh();
+
+        AZStd::vector<AZ::u8> m_cookedData;
+        MeshType m_type = MeshType::TriangleMesh;
+        
+        //! Cached native mesh object (e.g. PxConvexMesh or PxTriangleMesh). This data is not serialized.
+        mutable void* m_cachedNativeMesh = nullptr;
     };
 
 } // namespace Physics

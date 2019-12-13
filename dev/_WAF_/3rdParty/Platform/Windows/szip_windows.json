@@ -1,0 +1,15 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "libpath": [
+                "lib/x64"
+            ],
+            "lib_debug": [
+                "libszip-vc140-mt-sd.lib"
+            ],
+            "lib_release": [
+                "libszip-vc140-mt-s.lib"
+            ]
+        }
+    }
+}

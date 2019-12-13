@@ -206,7 +206,6 @@ namespace EMotionFX
         void ProcessEventsImpl(float startTime, float endTime, ActorInstance* actorInstance, MotionInstance* motionInstance, const AZStd::function<void(EMotionFX::EventInfo&)>& processFunc);
 
         template <typename Functor>
-        void ExtractEvents(float startTime, float endTime, MotionInstance* motionInstance, const Functor& processFunc) const;
-
+        void ExtractEvents(float startTime, float endTime, MotionInstance* motionInstance, const Functor& processFunc, bool handleLoops = true) const;
     };
 } // namespace EMotionFX

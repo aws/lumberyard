@@ -34,7 +34,7 @@
     "defines": [],
     "lib_required": "True",
     "platform": {
-        "win_x64_vs2013": {
+        "win_x64_vs2017": {
             "importlibpath": [
                 "bin"
             ],
@@ -47,8 +47,6 @@
             "shared": [
                 "${dll_names}.dll"
             ]
-        },
-        "win_x64_vs2015": "@win_x64_vs2013",
-        "win_x64_vs2017": "@win_x64_vs2013"
+        }
     }
 }

@@ -96,7 +96,6 @@ const char* g_szModuleGroups[][2] = {
     {"CrySystem.dll", g_szGroupCore},
     {"CryNetwork.dll", g_szGroupCore},
     {"CryPhysics.dll", g_szGroupCore},
-    {"CrySoundSystem.dll", g_szGroupCore},
     {"CryFont.dll", g_szGroupCore},
     {"Cry3DEngine.dll", g_szGroupCore},
     {"CryAction.dll", g_szGroupCore},
@@ -392,21 +391,6 @@ void CSystem::CollectMemStats (ICrySizer* pSizer, MemStatsPurposeEnum nPurpose, 
             m_env.pCryFont->GetMemoryUsage(pSizer);
             // m_pIFont and m_pIFontUi are both counted in pCryFont sizing if they exist.
             // no need to manually add them here.
-        }
-    }
-
-    if (Audio::AudioSystemRequestBus::HasHandlers())
-    {
-        SIZER_COMPONENT_NAME(pSizer, "CrySoundSystem");
-        {
-            {
-                SIZER_COMPONENT_NAME (pSizer, "$Allocations waste");
-                const SmallModuleInfo* info = FindModuleInfo(stats, "CrySoundSystem.dll");
-                if (info)
-                {
-                    pSizer->AddObject(info, info->memInfo.allocated - info->memInfo.requested);
-                }
-            }
         }
     }
 
@@ -1220,6 +1204,8 @@ void CSystem::FatalError(const char* format, ...)
         #include "Xenia/SystemWin32_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemWin32_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemWin32_cpp_salem.inl"
     #endif
 #endif
 
@@ -1246,6 +1232,8 @@ void CSystem::FatalError(const char* format, ...)
         #include "Xenia/SystemWin32_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemWin32_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemWin32_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1294,6 +1282,8 @@ void CSystem::debug_GetCallStack(const char** pFunctions, int& nCount)
         #include "Xenia/SystemWin32_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemWin32_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemWin32_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1389,9 +1379,6 @@ void CSystem::LogSystemInfo()
     // log Windows type
     Win32SysInspect::GetOS(m_env.pi.winVer, m_env.pi.win64Bit, szBuffer, sizeof(szBuffer));
     CryLogAlways(szBuffer);
-
-    // log user name
-    CryLog("User name: \"%s\"", GetUserName());
 
     // log system language
     GetLocaleInfo(LOCALE_SYSTEM_DEFAULT, LOCALE_SENGLANGUAGE, szLanguageBuffer, sizeof(szLanguageBuffer));

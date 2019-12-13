@@ -15,6 +15,10 @@
 #define CRYINCLUDE_CRYCOMMON_IGENERALMEMORYHEAP_H
 #pragma once
 
+namespace AZ
+{
+    class IAllocator;
+}
 
 class IGeneralMemoryHeap
 {
@@ -35,6 +39,8 @@ public:
     virtual void* Realloc(void* ptr, size_t sz, const char* sUsage) = 0;
     virtual void* ReallocAlign(void* ptr, size_t size, size_t alignment, const char* sUsage) = 0;
     virtual void* Memalign(size_t boundary, size_t size, const char* sUsage) = 0;
+
+    virtual AZ::IAllocator* GetAllocator() const = 0;
 
     // Get the size of the allocation. Returns 0 if the ptr doesn't belong to the heap.
     virtual size_t UsableSize(void* ptr) const = 0;

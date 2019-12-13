@@ -481,6 +481,9 @@ namespace LumberyardLauncher
         #endif // defined(AZ_MONOLITHIC_BUILD)
 
             gameApplication.Start(fullPathToGameDescriptorFile, gameApplicationStartupParams);
+            AZ_Assert(AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady(), "System allocator was not created or creation failed.");
+            //Initialize the Debug trace instance to create necessary environment variables
+            AZ::Debug::Trace::Instance().Init();
         }
 
         if (mainInfo.m_onPostAppStart)
@@ -639,6 +642,7 @@ namespace LumberyardLauncher
     #endif // !defined(AZ_MONOLITHIC_BUILD)
 
         gameApplication.Stop();
+        AZ::Debug::Trace::Instance().Destroy();
 
         return status;
     }

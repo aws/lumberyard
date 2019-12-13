@@ -10,10 +10,13 @@
 *
 */
 #pragma once
-
+#include <AzCore/PlatformDef.h>
+// qdatetime.h(331): warning C4251: 'QDateTime::d': class 'QSharedDataPointer<QDateTimePrivate>' needs to have dll-interface to be used by clients of class 'QDateTime'
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option")
 #include <QIcon>
 #include <QTime>
 #include <QTimer>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Component/NamedEntityId.h>
 #include <AzCore/Memory/SystemAllocator.h>

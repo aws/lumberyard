@@ -31,6 +31,7 @@
 
 #include "native/assetprocessor.h"
 #include "native/utilities/AssetUtilEBusHelper.h"
+#include "native/utilities/MissingDependencyScanner.h"
 #include "native/utilities/ThreadHelper.h"
 #include "native/AssetManager/AssetCatalog.h"
 #include "native/AssetDatabase/AssetDatabase.h"
@@ -38,6 +39,7 @@
 #include <AzCore/std/containers/map.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
+#include "native/utilities/JobDiagnosticTracker.h"
 
 class FileWatcher;
 
@@ -77,6 +79,7 @@ namespace AssetProcessor
     struct AssetRecognizer;
     class PlatformConfiguration;
     class ScanFolderInfo;
+    class PathDependencyManager;
 
     //! The Asset Processor Manager is the heart of the pipeline
     //! It is what makes the critical decisions about what should and should not be processed
@@ -161,6 +164,7 @@ namespace AssetProcessor
 
     public:
         explicit AssetProcessorManager(AssetProcessor::PlatformConfiguration* config, QObject* parent = nullptr);
+
         virtual ~AssetProcessorManager();
         bool IsIdle();
         bool HasProcessedCriticalAssets() const;
@@ -176,7 +180,13 @@ namespace AssetProcessor
         //! and neither have any builders.
         void SetEnableModtimeSkippingFeature(bool enable);
 
+        //! Scans assets that match the given pattern for content that looks like a missing product dependency.
+        //! Note that the pattern is used as an SQL query, so use SQL syntax for the search (wildcard is %, not *).
+        void ScanForMissingProductDependencies(QString pattern, int maxScanIteration=AssetProcessor::MissingDependencyScanner::DefaultMaxScanIteration);
+
         AZStd::shared_ptr<AssetDatabaseConnection> GetDatabaseConnection() const;
+
+        void EmitResolvedDependency(const AZ::Data::AssetId& assetId, const AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& entry);
 
         //! Internal structure that will hold all the necessary information to process jobs later.
         //! We need to hold these jobs because they have declared either source dependency on other sources 
@@ -189,7 +199,7 @@ namespace AssetProcessor
             AZStd::vector<AZStd::pair<AZ::Uuid, AssetBuilderSDK::SourceFileDependency>> m_sourceFileDependencies;
         };
 
-Q_SIGNALS:
+    Q_SIGNALS:
         void NumRemainingJobsChanged(int newNumJobs);
 
         void AssetToProcess(JobDetails jobDetails);
@@ -222,6 +232,11 @@ Q_SIGNALS:
         void SourceQueued(AZ::Uuid sourceUuid, AZ::Uuid legacyUuid, QString rootPath, QString relativeFilePath);
         void SourceFinished(AZ::Uuid sourceUuid, AZ::Uuid legacyUuid);
         void JobRemoved(AzToolsFramework::AssetSystem::JobInfo jobInfo);
+
+        //! Send a message when a new path dependency is resolved, so that downstream tools know the AssetId of the resolved dependency.
+        void PathDependencyResolved(const AZ::Data::AssetId& assetId, const AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& entry);
+
+        void AddedToCatalog(JobEntry jobEntry);
 
     public Q_SLOTS:
         void AssetProcessed(JobEntry jobEntry, AssetBuilderSDK::ProcessJobResponse response);
@@ -277,7 +292,7 @@ Q_SIGNALS:
         void CheckMissingJobs(QString relativeSourceFile, const ScanFolderInfo* scanFolder, const AZStd::vector<JobDetails>& jobsThisTime);
         void CheckDeletedProductFile(QString normalizedPath);
         void CheckDeletedSourceFile(QString normalizedPath, QString relativePath, QString databaseSourceFile);
-        void CheckModifiedSourceFile(QString normalizedPath, QString databaseSourceFile, bool fromScanner, const ScanFolderInfo* scanFolderInfo);
+        void CheckModifiedSourceFile(QString normalizedPath, QString databaseSourceFile, const ScanFolderInfo* scanFolderInfo);
         bool AnalyzeJob(JobDetails& details);
         void CheckDeletedCacheFolder(QString normalizedPath);
         void CheckDeletedSourceFolder(QString normalizedPath, QString relativePath, const ScanFolderInfo* scanFolderInfo);
@@ -286,18 +301,11 @@ Q_SIGNALS:
         bool DeleteProducts(const AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& products);
         void DispatchFileChange();
         bool InitializeCacheRoot();
+        void PopulateJobStateCache();
         
         using ProductInfoList = AZStd::vector<AZStd::pair<AzToolsFramework::AssetDatabase::ProductDatabaseEntry, const AssetBuilderSDK::JobProduct*>>;
 
-        /// This function is responsible for looking up existing, unresolved dependencies that the current asset satisfies.
-        /// These can be dependencies on either the source asset or one of the product assets
-        void RetryDeferredpathDependencies(const AzToolsFramework::AssetDatabase::SourceDatabaseEntry& sourceEntry);
-
-        void WriteProductTableInfo(AZStd::pair<AzToolsFramework::AssetDatabase::ProductDatabaseEntry, const AssetBuilderSDK::JobProduct*>& pair, AZStd::vector<AZ::u32>& subIds, AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& dependencyContainer, const AZStd::string& platform);
-        
-        /// This function is responsible for taking the path dependencies output by the current asset and trying to resolve them to AssetIds
-        /// This does not look for dependencies that the current asset satisfies.
-        void ResolvePathDependencies(AssetBuilderSDK::ProductPathDependencySet& pathDeps, AZStd::vector<AssetBuilderSDK::ProductDependency>& resolvedDeps, const AZStd::string& platform);
+        void WriteProductTableInfo(AZStd::pair<AzToolsFramework::AssetDatabase::ProductDatabaseEntry, const AssetBuilderSDK::JobProduct*>& pair, AZStd::vector<AZ::u32>& subIds, AZStd::unordered_set<AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry>& dependencyContainer, const AZStd::string& platform);
 
         //! given a full absolute path to a file, add any metadata files you find that apply.
         void AddMetadataFilesForFingerprinting(QString absolutePathToFileToCheck, SourceFilesForFingerprintingContainer& outFilesToFingerprint);
@@ -323,20 +331,6 @@ Q_SIGNALS:
             QString m_sourceDatabaseName;
             QString m_analysisFingerprint;
         };
-
-        // The two Ids needed for a ProductDependency entry, and platform. Used for saving ProductDependencies that are pending resolution
-        struct DependencyProductIdInfo
-        {
-            AZ::s64 m_productId;
-            AZ::s64 m_productDependencyId;
-            AZStd::string m_platform;
-        };
-
-        /// Updates the database with the now-resolved product dependencies
-        /// dependencyPairs - the list of unresolved dependencies to update
-        /// sourceEntry - database entry for the source file that resolved these dependencies
-        /// products - database entry for the products the source file produced
-        void UpdateUnresolvedPathDependencies(AZStd::vector<DependencyProductIdInfo>& dependencyPairs, const AzToolsFramework::AssetDatabase::SourceDatabaseEntry& sourceEntry, const AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& products);
 
         //! Search the database and the the source dependency maps for the the sourceUuid. if found returns the cached info
         bool SearchSourceInfoBySourceUUID(const AZ::Uuid& sourceUuid, AssetProcessorManager::SourceInfo& result);
@@ -365,7 +359,7 @@ Q_SIGNALS:
         *   If there's a problem that makes it unusable (such as no fields being filled in), the string will be blank
         *     and this function will return false.
         */
-        bool ResolveDependencyPath(const AssetBuilderSDK::SourceFileDependency& sourceDependency, QString& resultDatabaseSourceNames, QStringList& resolvedDependencyList, const QString& sourcePath = {});
+        bool ResolveSourceFileDependencyPath(const AssetBuilderSDK::SourceFileDependency& sourceDependency, QString& resultDatabaseSourceNames, QStringList& resolvedDependencyList, const QString& sourcePath = {});
         //! Updates the database with all the changes related to source dependency / job dependency:
         void UpdateSourceFileDependenciesDatabase(JobToProcessEntry& entry);
 
@@ -374,7 +368,7 @@ Q_SIGNALS:
 
         void UpdateJobDependency(JobDetails& jobDetails);
         void QueueIdleCheck();
-        void UpdateWildcardDependencies(const AssetBuilderSDK::SourceFileDependency& sourceDependency, JobDetails& job, size_t jobDependencySlot, QStringList& resolvedDependencyList);
+        void UpdateWildcardDependencies(JobDetails& job, size_t jobDependencySlot, QStringList& resolvedDependencyList);
 
         //! Check whether the job can be analyzed by APM,
         //! A job cannot be analyzed if any of its dependent job hasn't been fingerprinted  
@@ -436,8 +430,11 @@ Q_SIGNALS:
         AZStd::unordered_map<AZ::Uuid, qint64> m_sourceFileModTimeMap;
         AZStd::unordered_map<JobIndentifier, AZ::u32> m_jobFingerprintMap; 
         AZStd::unordered_map<JobDesc, AZStd::unordered_set<AZ::Uuid>> m_jobDescToBuilderUuidMap;
-        AZStd::unordered_map< AZStd::string, AZStd::vector<DependencyProductIdInfo>> m_unresolvedSourcePathDependencyIds;
-        AZStd::unordered_map< AZStd::string, AZStd::vector<DependencyProductIdInfo>> m_unresolvedProductPathDependencyIds;
+        
+        AZStd::unique_ptr<PathDependencyManager> m_pathDependencyManager;
+
+        JobDiagnosticTracker m_jobDiagnosticTracker{};
+        
         QSet<QString> m_checkFoldersToRemove; //!< List of folders that needs to be checked for removal later by AP  
         //! List of all scanfolders that are present in the database but not currently watched by AP
         AZStd::unordered_map<AZStd::string, AzToolsFramework::AssetDatabase::ScanFolderDatabaseEntry> m_scanFoldersInDatabase;
@@ -507,6 +504,9 @@ Q_SIGNALS:
 
         // convenience overload of the above function when you have a jobEntry but no absolute path to the file.
         void UpdateAnalysisTrackerForFile(const JobEntry &entry, AnalysisTrackerUpdateType updateType);
+
+        // Used to scan through products for anything that looks like a missing product dependency;
+        MissingDependencyScanner m_missingDependencyScanner;
 
         // Metrics
         int m_numTotalSourcesFound = 0;

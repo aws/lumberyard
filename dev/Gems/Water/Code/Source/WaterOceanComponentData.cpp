@@ -18,7 +18,6 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 
 #include <Cry3DEngine/Environment/OceanEnvironmentBus.h>
-#include <CryCommon/ITerrain.h>
 
 #if WATER_GEM_EDITOR
 #include "EditorDefs.h"
@@ -114,12 +113,12 @@ namespace Water
     void WaterOceanComponentData_UpdateOceanMaterial(const AZStd::string& materialName)
     {
         ISystem* system = GetISystem();
-        if (system && system->GetI3DEngine() && system->GetI3DEngine()->GetITerrain())
+        if (system && system->GetI3DEngine())
         {
             auto pMaterial = WaterOceanComponentData_LoadMaterial(materialName);
             if (pMaterial)
             {
-                system->GetI3DEngine()->GetITerrain()->ChangeOceanMaterial(pMaterial);
+                system->GetI3DEngine()->ChangeOceanMaterial(pMaterial);
             }
         }
     }
@@ -127,10 +126,10 @@ namespace Water
     void WaterOceanComponentData_UpdateOceanBuoyancy(float height)
     {
         ISystem* system = GetISystem();
-        if (system && system->GetI3DEngine() && system->GetI3DEngine()->GetITerrain())
+        if (system && system->GetI3DEngine())
         {
             // updates the buoyancy area associated with the ocean.
-            system->GetI3DEngine()->GetITerrain()->SetOceanWaterLevel(height);
+            system->GetI3DEngine()->ChangeOceanWaterLevel(height);
         }
     }
 
@@ -148,11 +147,8 @@ namespace Water
         if (engine)
         {
             engine->EnableOceanRendering(true); // Sets a bool that allows the ocean to render
-            if (engine->GetITerrain())
-            {
-                auto pMaterial = WaterOceanComponentData_LoadMaterial(m_general.m_oceanMaterialAsset.GetAssetPath());
-                engine->GetITerrain()->InitTerrainWater(pMaterial); // Causes the ocean to be created
-            }
+            auto pMaterial = WaterOceanComponentData_LoadMaterial(m_general.m_oceanMaterialAsset.GetAssetPath());
+            engine->CreateOcean(pMaterial, m_general.m_height);
         }
     }
 
@@ -168,10 +164,7 @@ namespace Water
         I3DEngine* engine = GetISystem() ? GetISystem()->GetI3DEngine() : nullptr;
         if (engine)
         {
-            if (engine->GetITerrain())
-            {
-                engine->GetITerrain()->InitTerrainWater(nullptr); // Causes the ocean to be deleted
-            }
+            engine->DeleteOcean();
             engine->EnableOceanRendering(false); // turns off ocean rendering
         }
     }

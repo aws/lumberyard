@@ -139,7 +139,7 @@ namespace DX12
         // init unordered access descriptor cache
         {
             D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-            desc.NumDescriptors = 256;
+            desc.NumDescriptors = 4096;
             desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
             desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 

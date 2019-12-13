@@ -30,12 +30,11 @@
 #include <AzCore/Memory/PoolAllocator.h>
 #include <AzCore/Slice/SliceMetadataInfoComponent.h>
 #include <AzCore/UnitTest/TestTypes.h>
+#include <AZTestShared/Utils/Utils.h>
 
 #if defined(HAVE_BENCHMARK)
 #include <benchmark/benchmark.h>
 #endif
-
-#include "Utils.h"
 
 using namespace AZ;
 

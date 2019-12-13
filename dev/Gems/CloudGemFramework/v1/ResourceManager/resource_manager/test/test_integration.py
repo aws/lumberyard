@@ -29,6 +29,8 @@ import resource_manager_common.constant
 import lmbr_aws_test_support
 import mock_specification
 import time
+from resource_manager.view import ViewContext
+import mock
 
 class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws_test_support.lmbr_aws_TestCase):
 
@@ -41,7 +43,10 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
         
 
     def test_stack_operations_end_to_end(self):
-        self.run_all_tests()
+        with mock.patch.object(ViewContext, 'confirm_stack_resource_deletion', return_value=True), \
+             mock.patch.object(ViewContext, 'confirm_stack_security_change', return_value=True),\
+             mock.patch.object(ViewContext, 'confirm_aws_usage', return_value=True):
+            self.run_all_tests()
 
 
     def __100_no_error_when_listing_resource_groups_when_no_resource_groups(self):

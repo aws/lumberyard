@@ -846,10 +846,16 @@ namespace DX12
         }
         else if (dstResource.GetDesc().Dimension != D3D12_RESOURCE_DIMENSION_BUFFER)
         {
-            D3D12_PLACED_SUBRESOURCE_FOOTPRINT Layouts[1];
-            GetDevice()->GetD3D12Device()->GetCopyableFootprints(&dstResource.GetDesc(), dstSubResource, 1, 0, Layouts, nullptr, nullptr, nullptr);
+            // If this assert trips, you may need to increase MAX_SUBRESOURCES.  Just be wary of growing the stack too much.
+            AZ_Assert(dstSubResource < CCryDX12DeviceContext::MAX_SUBRESOURCES, "Too many sub resources: (sub ID %d requested, %d allowed)", dstSubResource, CCryDX12DeviceContext::MAX_SUBRESOURCES);
+            D3D12_PLACED_SUBRESOURCE_FOOTPRINT layouts[CCryDX12DeviceContext::MAX_SUBRESOURCES];
 
-            CD3DX12_TEXTURE_COPY_LOCATION src(srcResource.GetD3D12Resource(), Layouts[0]);
+            // From our "regular" resource, get the offset and description information for the subresource so we can copy the correct
+            // part of the buffer resource.  We need to get Layouts for subresource 0 through dstSubResource so that the offset is set
+            // correctly.  If we just get the Layout for dstSubResource, it will have an offset of 0.
+            GetDevice()->GetD3D12Device()->GetCopyableFootprints(&dstResource.GetDesc(), 0, dstSubResource + 1, 0, layouts, nullptr, nullptr, nullptr);
+            
+            CD3DX12_TEXTURE_COPY_LOCATION src(srcResource.GetD3D12Resource(), layouts[dstSubResource]);
             CD3DX12_TEXTURE_COPY_LOCATION dst(dstResource.GetD3D12Resource(), dstSubResource);
 
             m_CommandList->CopyTextureRegion(&dst, x, y, z, &src, srcBox);
@@ -857,11 +863,17 @@ namespace DX12
         }
         else if (srcResource.GetDesc().Dimension != D3D12_RESOURCE_DIMENSION_BUFFER)
         {
-            D3D12_PLACED_SUBRESOURCE_FOOTPRINT Layouts[1];
-            GetDevice()->GetD3D12Device()->GetCopyableFootprints(&srcResource.GetDesc(), srcSubResource, 1, 0, Layouts, nullptr, nullptr, nullptr);
+            // If this assert trips, you may need to increase MAX_SUBRESOURCES.  Just be wary of growing the stack too much.
+            AZ_Assert(dstSubResource < CCryDX12DeviceContext::MAX_SUBRESOURCES, "Too many sub resources: (sub ID %d requested, %d allowed)", dstSubResource, CCryDX12DeviceContext::MAX_SUBRESOURCES);
+            D3D12_PLACED_SUBRESOURCE_FOOTPRINT layouts[CCryDX12DeviceContext::MAX_SUBRESOURCES];
+
+            // From our "regular" resource, get the offset and description information for the subresource so we can copy the correct
+            // part of the buffer resource.  We need to get Layouts for subresource 0 through dstSubResource so that the offset is set
+            // correctly.  If we just get the Layout for dstSubResource, it will have an offset of 0.
+            GetDevice()->GetD3D12Device()->GetCopyableFootprints(&srcResource.GetDesc(), 0, srcSubResource + 1, 0, layouts, nullptr, nullptr, nullptr);
 
             CD3DX12_TEXTURE_COPY_LOCATION src(srcResource.GetD3D12Resource(), srcSubResource);
-            CD3DX12_TEXTURE_COPY_LOCATION dst(dstResource.GetD3D12Resource(), Layouts[0]);
+            CD3DX12_TEXTURE_COPY_LOCATION dst(dstResource.GetD3D12Resource(), layouts[srcSubResource]);
 
             m_CommandList->CopyTextureRegion(&dst, x, y, z, &src, srcBox);
             m_Commands += CLCOUNT_COPY;

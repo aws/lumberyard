@@ -1,0 +1,28 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "includes": [
+                "include",
+                "include/third_party/mini_chromium/mini_chromium/",
+                "include/compat/win"
+            ],
+            "libpath_debug": [
+                "bin/windows/vs2015/Debug_x64"
+            ],
+            "libpath_release": [
+                "bin/windows/vs2015/Release_x64/"
+            ],
+            "crashpad_handler/lib": [
+                "${crashpad_handler}.lib"
+            ],
+            "lib": [
+                "base.lib",
+                "crashpad_client.lib",
+                "crashpad_util.lib"
+            ],
+            "linkflags": [
+                "/ignore:4099"
+            ]
+        }
+    }
+}

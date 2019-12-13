@@ -1823,20 +1823,16 @@ namespace AZStd
         return basic_string<Element, Traits, Allocator>(lhs).compare(rhs) >= 0;
     }
 
-#if !defined(AZ_STRING_EXPLICIT_SPECIALIZATION) && (defined(AZ_COMPILER_MSVC) || defined(AZ_COMPILER_GCC))
-#if defined(AZ_COMPILER_MSVC)
+#if !defined(AZ_STRING_EXPLICIT_SPECIALIZATION) && defined(AZ_COMPILER_MSVC)
 #pragma warning(push)
 #pragma warning(disable:4231)
-#endif
 
     // extern explicit specialization - to speed up build time.
     extern template class basic_string<char>;
     //extern template class basic_string<wchar_t>;
 
-#if defined(AZ_COMPILER_MSVC)
 #pragma warning(pop)
-#endif
-#endif // defined(AZ_STRING_EXPLICIT_SPECIALIZATION) && (defined(AZ_COMPILER_MSVC) || defined(AZ_COMPILER_GCC))
+#endif // defined(AZ_STRING_EXPLICIT_SPECIALIZATION) && defined(AZ_COMPILER_MSVC)
 
     typedef basic_string<char >     string;
     typedef basic_string<wchar_t >  wstring;

@@ -215,6 +215,9 @@ def __generate_component_client(context, base_code_path, destination_code_path, 
 
     jinja_json["HasStdAfx"] = component_gen_utils.has_stdafx_files(gem.cpp_base_directory_path)
 
+    # Set to True to match CLOUD_GEM_WSCRIPT_FILE_CONTENT->disable_pch.
+    jinja_json["DisabledPCH"] = True
+
     __write_file(template_h, jinja_json, out_path_h)
     __write_file(template_cpp, jinja_json, out_path_cpp)
 
@@ -224,6 +227,7 @@ def __generate_component_client(context, base_code_path, destination_code_path, 
             'Source': [ __make_wscript_relative_path(base_code_path, out_path_cpp) ]
         }
     }
+
 
 def __generate_cs_client(context, base_code_path, destination_code_path, namespace_name, jinja, swagger, gem):
 

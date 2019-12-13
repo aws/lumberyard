@@ -292,7 +292,7 @@ namespace GridMate
          * so there is no point in trying to optimize cases
          * where only a few attributes have changed.
          */
-        if (m_dirtyAttributes.size() == 0)
+        if (m_dirtyAttributes.empty() && !m_dirtyRules.empty())
         {
             return m_dirtyRules;
         }
@@ -437,6 +437,27 @@ namespace GridMate
             {
                 // since it wasn't present during last calculation
                 m_resultCache.insert(AZStd::make_pair(repId, peerSet));
+            }
+        }
+
+        // Mark attributes (replicas) for removal that have not moved but a rule (clients) no longer sees it
+        for (auto& possiblyDirty : before)
+        {
+            ReplicaId repId = possiblyDirty.first;
+
+            const auto foundInAfter = after.find(repId);
+            /*
+             * If the prior state was a replica A present on peer X: "A{X}", and now A should no longer be present on any peer: "A{}"
+             * then by the rules of InterestHandlers interacting with InterestManager, we should return in @m_resultCache the following:
+             *
+             * A{} - indicating that replica A must be removed all peers.
+             *
+             * On the next pass, the prior state would be: "A{}" and the current state would be "A{}" as well. At that point, we have
+             * already sent the update to remove A from X, so @m_resultCache should no longer mention A at all.
+             */
+            if (foundInAfter == after.end() && !possiblyDirty.second.empty() /* "not A{}" see the above comment */)
+            {
+                m_resultCache.insert(AZStd::make_pair(repId, InterestPeerSet()));
             }
         }
 

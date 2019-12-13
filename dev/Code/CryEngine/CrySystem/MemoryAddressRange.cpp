@@ -96,6 +96,8 @@ void CMemoryAddressRange::UnmapPage(size_t pageIdx)
         #include "Xenia/MemoryAddressRange_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/MemoryAddressRange_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/MemoryAddressRange_cpp_salem.inl"
     #endif
 #elif defined(APPLE) || defined(LINUX)
 

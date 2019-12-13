@@ -36,7 +36,7 @@ namespace LmbrCentral
                     ->Value("Blended", Audio::MultiPositionBehaviorType::Blended)
                     ;
 
-                editContext->Class<EditorAudioMultiPositionComponent>("Multi-Position Audio", "Provides the ability to apply multiple positions to a sound via entity references")
+                editContext->Class<EditorAudioMultiPositionComponent>("Multi-Position Audio", "The Multi-Position Audio component provides the ability to broadcast sounds through multiple positions")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Audio")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/AudioMultiPosition.png")

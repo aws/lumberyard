@@ -22,14 +22,10 @@ namespace PhysX
         , public AZ::Data::AssetBus::MultiHandler
     {
     public:
-        using Configuration = Physics::NativeShapeConfiguration;
         AZ_COMPONENT(MeshColliderComponent, "{F3C7996A-F9B8-4AFD-B2A1-6DE971EFDA11}", BaseColliderComponent);
         static void Reflect(AZ::ReflectContext* context);
 
         MeshColliderComponent() = default;
-        explicit MeshColliderComponent(const Physics::ColliderConfiguration& colliderConfiguration, 
-            const Physics::PhysicsAssetShapeConfiguration& configuration);
-        
         ~MeshColliderComponent() override = default;
 
         // AZ::Component
@@ -40,20 +36,21 @@ namespace PhysX
         void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
         void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
-        // PhysXMeshShapeComponentRequestBus
+        // MeshColliderComponentRequestsBus
         AZ::Data::Asset<Pipeline::MeshAsset> GetMeshAsset() const override;
-        void GetStaticWorldSpaceMeshTriangles(AZStd::vector<AZ::Vector3>& verts, AZStd::vector<AZ::u32>& indices) const;
-        Physics::MaterialId GetMaterialId() const;
+        void GetStaticWorldSpaceMeshTriangles(AZStd::vector<AZ::Vector3>& verts, AZStd::vector<AZ::u32>& indices) const override;
+        Physics::MaterialId GetMaterialId() const override;
         void SetMeshAsset(const AZ::Data::AssetId& id) override;
         void SetMaterialAsset(const AZ::Data::AssetId& id) override;
         void SetMaterialId(const Physics::MaterialId& id) override;
 
         // BaseColliderComponent
-        AZStd::shared_ptr<Physics::ShapeConfiguration> CreateScaledShapeConfig() override;
+        void UpdateScaleForShapeConfigs() override;
 
     protected:
         void UpdateMeshAsset();
 
-        Physics::PhysicsAssetShapeConfiguration m_shapeConfiguration;
+        Physics::ColliderConfiguration* m_colliderConfiguration = nullptr;
+        Physics::PhysicsAssetShapeConfiguration* m_shapeConfiguration = nullptr;
     };
 } // namespace PhysX

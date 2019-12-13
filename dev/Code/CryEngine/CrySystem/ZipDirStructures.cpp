@@ -223,10 +223,6 @@ void ZlibInflateElementPartial_Impl(
     //error during inflate
     if (*pReturnCode != Z_STREAM_END && *pReturnCode != Z_OK)
     {
-#ifndef _RELEASE
-        __debugbreak();
-#endif
-
         inflateEnd(pZStream);
         return;
     }
@@ -238,9 +234,6 @@ void ZlibInflateElementPartial_Impl(
     }
     else if (bUsingLocal)
     {
-#ifndef _RELEASE
-        __debugbreak();
-#endif
         *pReturnCode = Z_VERSION_ERROR;
     }
 }
@@ -631,7 +624,7 @@ ZipDir::DirEntry* ZipDir::DirHeader::FindSubdirEntry(const char* szName)
         DirEntry* pBegin = GetSubdirEntry(0);
         DirEntry* pEnd = pBegin + this->numDirs;
         DirEntry* pEntry = std::lower_bound(pBegin, pEnd, szName, pred);
-#if defined(LINUX) || defined(APPLE)
+#if AZ_TRAIT_LEGACY_CRYPAK_UNIX_LIKE_FILE_SYSTEM
         if (pEntry != pEnd && !strcasecmp(szName, pEntry->GetName(pNamePool)))
 #else
         if (pEntry != pEnd && !strcmp(szName, pEntry->GetName(pNamePool)))
@@ -655,7 +648,7 @@ ZipDir::FileEntry* ZipDir::DirHeader::FindFileEntry(const char* szName)
         FileEntry* pBegin = GetFileEntry(0);
         FileEntry* pEnd = pBegin + this->numFiles;
         FileEntry* pEntry = std::lower_bound(pBegin, pEnd, szName, pred);
-#if defined(LINUX) || defined(APPLE)
+#if AZ_TRAIT_LEGACY_CRYPAK_UNIX_LIKE_FILE_SYSTEM
         if (pEntry != pEnd && !strcasecmp(szName, pEntry->GetName(pNamePool)))
 #else
         if (pEntry != pEnd && !strcmp(szName, pEntry->GetName(pNamePool)))

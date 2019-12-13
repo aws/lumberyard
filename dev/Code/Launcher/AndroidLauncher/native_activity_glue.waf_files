@@ -1,8 +1,0 @@
-{
-    "none" : {
-        "NativeActivityGlue" : [
-            "NativeActivityGlue/android_native_app_glue.c",
-            "NativeActivityGlue/android_native_app_glue.h"
-        ]
-    }
-}

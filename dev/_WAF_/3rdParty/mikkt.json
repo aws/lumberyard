@@ -6,40 +6,5 @@
         "."
     ],
     "defines": [],
-    "lib_required": "True",
-    "platform": {
-        "win_x64_vs2015": {
-            "libpath_debug": [
-                "build/win_x64/vc140/debug"
-            ],
-            "libpath_release": [
-                "build/win_x64/vc140/release"
-            ],
-            "lib": [
-                "mikkt.lib"
-            ]
-        },
-        "win_x64_vs2017": {
-            "libpath_debug": [
-                "build/win_x64/vc140/debug"
-            ],
-            "libpath_release": [
-                "build/win_x64/vc140/release"
-            ],
-            "lib": [
-                "mikkt.lib"
-            ]
-        },
-        "darwin_x64": {
-            "libpath_debug": [
-                "build/osx/darwin-clang-703.0.31/debug"
-            ],
-            "libpath_release": [
-                "build/osx/darwin-clang-703.0.31/release"
-            ],
-            "lib": [
-                "libmikkt.a"
-            ]
-        }
-    }
+    "lib_required": "True"
 }

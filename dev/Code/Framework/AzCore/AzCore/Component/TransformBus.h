@@ -370,7 +370,7 @@ namespace AZ
 
         /**
          * Get angles in radian for each principle axis around which the local transform is
-         * rotated in the order of z-axis and y-axis and then x-axis.
+         * rotated in the order of x-axis and y-axis and then z-axis.
          * @return A value of type Vector3 indicating how much in radian is rotated around each principle axis.
          */
         virtual AZ::Vector3 GetLocalRotation() { return AZ::Vector3(FLT_MAX); }

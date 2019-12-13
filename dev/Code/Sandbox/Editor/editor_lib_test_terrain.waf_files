@@ -1,0 +1,11 @@
+{
+    "none":
+    {
+      "Tests": [
+        "Lib/Tests/test_TerrainModifyPythonBindings.cpp",
+        "Lib/Tests/test_TerrainPythonBindings.cpp",
+        "Lib/Tests/test_TerrainLayerPythonBindings.cpp",
+        "Terrain/Tests/test_Terrain.cpp"
+      ]
+    }
+}

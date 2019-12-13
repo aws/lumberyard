@@ -738,8 +738,6 @@ bool AssetImporterManager::GetAndCheckAllFilesInFolder(QString path)
     while (it.hasNext())
     {
         QString absolutePath = it.next();
-        QStringList directoryNameList = absolutePath.split('/');
-
         QFileInfo info(absolutePath);
         QString extension = info.completeSuffix();
 

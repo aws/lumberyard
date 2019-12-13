@@ -77,8 +77,9 @@ namespace AZ
             m_thread.join();
 
             // Delete all requests
-            AZ_Warning("IO", m_pending.empty(), "We have %d pending request(s)! Canceling...", m_pending.size());
-            AZ_Warning("IO", m_completed.empty(), "We have %d completed request(s)! Ignoring...", m_completed.size());
+            AZ_Warning("IO", m_pending.empty(), "There are still %d pending request(s). These will be ignored.", m_pending.size());
+            AZ_Warning("IO", m_delayedCompletedCallbacks.empty(), "There are still %d requests waiting for their call back to be processed.",
+                m_delayedCompletedCallbacks.size());
 
             FlushCachesRequest(nullptr);
         }
@@ -336,14 +337,14 @@ namespace AZ
                 }
                 else
                 {
-                    if (!isLocked)
+                    if (isLocked)
                     {
-                        m_streamerContext.GetThreadSleepLock().lock();
+                        AZStd::scoped_lock<AZStd::mutex> lock(m_delayedCompletedCallbacksLock);
+                        m_delayedCompletedCallbacks.push_back(request);
                     }
-                    m_completed.push_back(request);
-                    if (!isLocked)
+                    else
                     {
-                        m_streamerContext.GetThreadSleepLock().unlock();
+                        m_delayedCompletedCallbacks.push_back(request);
                     }
                 }
             }
@@ -354,26 +355,29 @@ namespace AZ
         */
         void Device::InvokeCompletedCallbacks()
         {
-            if (!m_completed.empty())
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
+            AZStd::vector<AZStd::shared_ptr<Request>> completedRequests;
             {
-                AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
-                m_streamerContext.GetThreadSleepLock().lock();
-                AZStd::vector<AZStd::shared_ptr<Request>> completedRequests = AZStd::move(m_completed);
-                m_streamerContext.GetThreadSleepLock().unlock();
-                
-                for(const AZStd::shared_ptr<Request>& request : completedRequests)
+                AZStd::scoped_lock<AZStd::mutex> lock(m_delayedCompletedCallbacksLock);
+                if (m_delayedCompletedCallbacks.empty())
                 {
-                    AZ_Assert(request, "Stored request was unexpectedly deleted.");
-                    AZ_Assert(request->m_isDeferredCB, "Queued callback was not marked to be deferred.");
-                    AZ_Assert(request->m_callback, "Only requests with a deferred callback should be queued for later execution.");
-                    if (request->NeedsDecompression())
-                    {
-                        request->m_callback(request, request->m_byteSize, request->m_buffer, request->m_state);
-                    }
-                    else
-                    {
-                        request->m_callback(request, request->m_bytesProcessedStart + request->m_bytesProcessedEnd, request->m_buffer, request->m_state);
-                    }
+                    return;
+                }
+                completedRequests = AZStd::move(m_delayedCompletedCallbacks);
+            }
+                
+            for(const AZStd::shared_ptr<Request>& request : completedRequests)
+            {
+                AZ_Assert(request, "Stored request was unexpectedly deleted.");
+                AZ_Assert(request->m_isDeferredCB, "Queued callback was not marked to be deferred.");
+                AZ_Assert(request->m_callback, "Only requests with a deferred callback should be queued for later execution.");
+                if (request->NeedsDecompression())
+                {
+                    request->m_callback(request, request->m_byteSize, request->m_buffer, request->m_state);
+                }
+                else
+                {
+                    request->m_callback(request, request->m_bytesProcessedStart + request->m_bytesProcessedEnd, request->m_buffer, request->m_state);
                 }
             }
         }
@@ -386,63 +390,62 @@ namespace AZ
         {
             while (!m_shutdown_thread.load(AZStd::memory_order_acquire))
             {
-                auto predicate = [this]() -> bool
+                m_streamerContext.SuspendMainStreamThread();
+
+                // Only do processing if the thread hasn't been suspended.
+                while (!m_suspendRequestProcessing.load(AZStd::memory_order_acquire))
                 {
-                    if (m_shutdown_thread.load(AZStd::memory_order_acquire))
-                    {
-                        return true;
-                    }
-
-                    if (m_suspendRequestProcessing.load(AZStd::memory_order_acquire))
-                    {
-                        return false;
-                    }
-
-                    if (m_streamerContext.HasRequestsToFinalize())
-                    {
-                        return true;
-                    }
-
-                    if (DeviceRequestBus::QueuedEventCount() == 0 && m_pending.empty())
-                    {
-                        return false;
-                    }
-                    return true;
-                };
-                {
-                    AZStd::unique_lock<AZStd::mutex> lock(m_streamerContext.GetThreadSleepLock());
-                    m_streamerContext.GetThreadSleepCondition().wait(lock, predicate);
-                    
-                    // execute commands
-                    DeviceRequestBus::ExecuteQueuedEvents();
-                }
-
-                ScheduleRequests();
-                do
-                {
+                    // Always schedule requests first as the main Streamer thread could have been asleep for a long time due to slow reading
+                    // but also don't schedule after every change in the queue as scheduling is not cheap.
+                    ScheduleRequests();
                     do
                     {
-                        if (m_pending.empty())
+                        do
                         {
-                            continue;
-                        }
+                            // Check if there are any requests pending on the main Streamer thread.
+                            if (m_pending.empty())
+                            {
+                                continue;
+                            }
 
-                        AZStd::shared_ptr<Request> request = m_pending.front();
-                        if (m_streamStack->GetAvailableRequestSlots() > 0)
+                            // There are requests pending, so check if there are slots available to 
+                            // queue it.
+                            AZStd::shared_ptr<Request> request = m_pending.front();
+                            if (m_streamStack->GetAvailableRequestSlots() > 0)
+                            {
+                                m_pending.pop_front();
+                                request->m_state = Request::StateType::ST_IN_PROCESS;
+                                if (request->IsReadOperation())
+                                {
+                                    ReadStream(request);
+                                }
+                                else
+                                {
+                                    AZ_Assert(false, 
+                                        "Unsupported operation (%i) queued for AZ::IO::Streamer, or operation not processed at the appropriate point.", 
+                                        request->m_operation);
+                                }
+                            }
+                        // Check if there are any requests that have completed their work and if so complete the request itself and try to
+                        // queue any pending requests.
+                        } while (CompleteFileRequests());
+                    // Tick the stream stack to do work. If work was done there might be requests to complete and new slots might have opened up.
+                    } while (m_streamStack->ExecuteRequests());
+
+                    // Check if there are requests queued from other threads, if so move them to the main Streamer thread by executing them. This then
+                    // requires another cycle or scheduling and executing commands.
+                    {
+                        AZStd::scoped_lock<AZStd::mutex> lock(m_eventQueueLock);
+                        if (DeviceRequestBus::QueuedEventCount() > 0)
                         {
-                            m_pending.pop_front();
-                            request->m_state = Request::StateType::ST_IN_PROCESS;
-                            if (request->IsReadOperation())
-                            {
-                                ReadStream(request);
-                            }
-                            else
-                            {
-                                AZ_Assert(false, "Unsupported operation (%i) queued for AZ::IO::Streamer, or operation not processed at the appropriate point.", request->m_operation);
-                            }
+                            DeviceRequestBus::ExecuteQueuedEvents();
                         }
-                    } while (CompleteFileRequests());
-                } while (m_streamStack->ExecuteRequests());
+                        else
+                        {
+                            break;
+                        }
+                    }
+                }
             }
         }
 

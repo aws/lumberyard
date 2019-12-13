@@ -311,7 +311,6 @@ void PostAAPass::Execute()
 
     uint64 nSaveFlagsShader_RT = gRenDev->m_RP.m_FlagsShader_RT;
     gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3]);
-    
     CTexture* inOutBuffer = CTexture::s_ptexSceneSpecular;
 
     static ICVar* DolbyCvar = gEnv->pConsole->GetCVar("r_HDRDolby");
@@ -554,10 +553,17 @@ void PostAAPass::RenderComposites(CTexture* sourceTexture)
     CD3D9Renderer* rd = gcpRendD3D;
     
     rd->FX_SetStencilDontCareActions(0, true, true);
-    bool bEmpty = SRendItem::IsListEmpty(EFSLIST_AFTER_POSTPROCESS, rd->m_RP.m_nProcessThreadID, rd->m_RP.m_pRLD);
+    bool isAfterPostProcessBucketEmpty = SRendItem::IsListEmpty(EFSLIST_AFTER_POSTPROCESS, rd->m_RP.m_nProcessThreadID, rd->m_RP.m_pRLD);
+    
+    bool isAuxGeomEnabled = false;
+#if defined(ENABLE_RENDER_AUX_GEOM)
+    isAuxGeomEnabled = CRenderer::CV_r_enableauxgeom == 1;
+#endif
+    
     //We may need to preserve the depth buffer in case there is something to render in the EFSLIST_AFTER_POSTPROCESS bucket.
     //It could be UI in the 3d world. If the bucket is empty ignore the depth buffer as it is not needed.
-    if (bEmpty)
+    //Also check if Auxgeom rendering is enabled in which case we preserve depth buffer.
+    if (isAfterPostProcessBucketEmpty && !isAuxGeomEnabled)
     {
         rd->FX_SetDepthDontCareActions(0, true, true);
     }
@@ -719,9 +725,9 @@ void PostAAPass::RenderComposites(CTexture* sourceTexture)
     GetUtils().ShEndPass();
     
     //UI should be coming in next. Since its in a gem we cant set loadactions in lyshine.
-    //Hence we are setting it here. Stencil is setup as DoCare as it gets cleared at the start of UI rendering
+    //Hence we are setting it here. Stencil is setup as DoCare for load and store as it gets cleared at the start of UI rendering
     rd->FX_SetDepthDontCareActions(0, true, true); //We set this again here as all the actions get reset to conservative settings (do care) after the draw call
-    rd->FX_SetStencilDontCareActions(0, false, true);
+    rd->FX_SetStencilDontCareActions(0, false, false);
 }
 
 void PostAAPass::RenderFinalComposite(CTexture* sourceTexture)

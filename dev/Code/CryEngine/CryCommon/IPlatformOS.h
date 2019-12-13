@@ -187,23 +187,6 @@ struct IPlatformOS
     // Collect memory statistics in CrySizer
     virtual void GetMemoryUsage(ICrySizer* pSizer) const = 0;
 
-    // Start Deprecated: Local user functionality that has been replaced with a LocalUser Gem
-    AZ_DEPRECATED(typedef CryFixedStringT<256> TUserName, "TUserName has been deprecated because all the functions that use it have been deprecated");
-    AZ_DEPRECATED(int GetFirstSignedInUser() const, "IPlatformOS::GetFirstSignedInUser has been deprecated, please use LocalUser::LocalUserRequests::GetPrimaryLocalUserId instead") { return 0; }
-    AZ_DEPRECATED(virtual bool UserDoSignIn(unsigned int, unsigned int), "IPlatformOS::UserDoSignIn has been deprecated, please use LocalUser::LocalUserRequests::PromptLocalUserSignInFromInputDevice and/or LocalUser::LocalUserRequests::AssignLocalUserIdToLocalPlayerSlot instead") { return false; }
-    AZ_DEPRECATED(virtual bool UserIsSignedIn(unsigned int) const, "IPlatformOS::UserIsSignedIn has been deprecated, please use LocalUser::LocalUserRequests::IsLocalUserSignedIn instead") { return false; }
-    AZ_DEPRECATED(virtual bool UserIsSignedIn(const CryFixedStringT<256>&, unsigned int&) const, "IPlatformOS::UserIsSignedIn has been deprecated, please use LocalUser::LocalUserRequests::IsLocalUserSignedIn instead") { return false; }
-    AZ_DEPRECATED(virtual void UserSignOut(unsigned int controllerIndex), "IPlatformOS::UserSignOut has been deprecated, please use LocalUser::LocalUserRequests::RemoveLocalUserIdFromLocalPlayerSlot instead") {}
-    AZ_DEPRECATED(virtual unsigned int UserGetMaximumSignedInUsers() const, "IPlatformOS::UserGetMaximumSignedInUsers has been deprecated, please use LocalUser::LocalUserRequests::GetMaxLocalUsers instead") { return 0; }
-    AZ_DEPRECATED(virtual unsigned int UserGetPlayerIndex(const char*) const, "IPlatformOS::UserGetPlayerIndex has been deprecated, please use LocalUser::LocalUserRequests::GetLocalPlayerSlotOccupiedByLocalUserId instead") { return 0; }
-    AZ_DEPRECATED(virtual bool UserGetName(unsigned int, CryFixedStringT<256>&) const, "IPlatformOS::UserGetName has been deprecated, please use LocalUser::LocalUserRequests::GetLocalUserName instead") { return false; }
-    AZ_DEPRECATED(virtual bool UserGetOnlineName(unsigned int, CryFixedStringT<256>&) const, "IPlatformOS::UserGetOnlineName has been deprecated because it was implemented for all platforms by calling IPlatformOS::UserGetName, please use LocalUser::LocalUserRequests::GetLocalUserName instead") { return false; }
-    AZ_DEPRECATED(virtual bool UserSelectStorageDevice(unsigned int, bool), "IPlatformOS::UserSelectStorageDevice has been deprecated because it was never implemented for any platform") { return false; }
-    enum AZ_DEPRECATED(EUserProfilePreference {}, "IPlatformOS::EUserProfilePreference has been deprecated because all the functions that use it have been deprecated");
-    struct AZ_DEPRECATED(SUserProfileVariant, "IPlatformOS::SUserProfileVariant has been deprecated because all the functions that use it have been deprecated");
-    AZ_DEPRECATED(virtual bool GetUserProfilePreference(unsigned int, int, SUserProfileVariant&) const, "IPlatformOS::GetUserProfilePreference has been deprecated because it was never implemented for any platform") { return false; }
-    // End Deprecated: Local user functionality that has been replaced with a LocalUser Gem
-
     // Start Deprecated: Streaming install functionality that will be replaced with a StreamingInstall Gem
     virtual void QueryStreamingInstallProgressForChunk(const unsigned int chunkID, SStreamingInstallProgress* pProgress) const
     {
@@ -224,26 +207,6 @@ struct IPlatformOS
     virtual void RenderEnd() {}
     // End Deprecated: Streaming install functionality that will be replaced with a StreamingInstall Gem
 
-    // Start Deprecated: Save game functionality that will be replaced with a SaveGame Gem
-    class AZ_DEPRECATED(CScopedSaveLoad, "IPlatformOS::CScopedSaveLoad has been deprecated, please use the SaveData Gem instead");
-    struct AZ_DEPRECATED(SDebugDump, "IPlatformOS::SDebugDump has been deprecated because all the functions that use it have been deprecated");
-    struct AZ_DEPRECATED(SPlatformEvent, "IPlatformOS::SPlatformEvent has been deprecated because all the functions that use it have been deprecated");
-    struct AZ_DEPRECATED(IPlatformListener, "IPlatformOS::IPlatformListener has been deprecated because all the functions that use it have been deprecated");
-    AZ_DEPRECATED(virtual void AddListener(IPlatformListener*, const char*), "IPlatformOS::AddListener has been deprecated because it nothing is sending events to IPlatformListener anymore") {}
-    AZ_DEPRECATED(virtual void RemoveListener(IPlatformListener*), "IPlatformOS::RemoveListener has been deprecated because it nothing is sending events to IPlatformListener anymore") {}
-    AZ_DEPRECATED(virtual void NotifyListeners(SPlatformEvent&), "IPlatformOS::NotifyListeners has been deprecated because it nothing is sending events to IPlatformListener anymore") {}
-    AZ_DEPRECATED(virtual void Tick(float), "IPlatformOS::Tick has been deprecated because it none of the implementations need it anymore") {}
-    AZ_DEPRECATED(virtual bool UsePlatformSavingAPI() const, "IPlatformOS::UsePlatformSavingAPI has been deprecated, please use the SaveData Gem instead") { return false; }
-    AZ_DEPRECATED(virtual bool BeginSaveLoad(unsigned int, bool), "IPlatformOS::BeginSaveLoad has been deprecated, please use the SaveData Gem instead") { return false; }
-    AZ_DEPRECATED(virtual void EndSaveLoad(unsigned int), "IPlatformOS::EndSaveLoad has been deprecated, please use the SaveData Gem instead") {}
-    struct AZ_DEPRECATED(ISaveReader, "IPlatformOS::ISaveReader has been deprecated because all the functions that use it have been deprecated");
-    AZ_DEPRECATED(virtual AZStd::shared_ptr<ISaveReader> SaveGetReader(const char*, unsigned int), "IPlatformOS::SaveGetReader has been deprecated, please use the SaveData Gem instead") { return nullptr; }
-    struct AZ_DEPRECATED(ISaveWriter, "IPlatformOS::ISaveWriter has been deprecated because all the functions that use it have been deprecated");
-    AZ_DEPRECATED(virtual AZStd::shared_ptr<ISaveWriter> SaveGetWriter(const char*, unsigned int), "IPlatformOS::SaveGetWriter has been deprecated, please use the SaveData Gem instead") { return nullptr; }
-    AZ_DEPRECATED(virtual void InitEncryptionKey(const char*, size_t, const uint8*, size_t), "IPlatformOS::InitEncryptionKey has been deprecated because it is not called from anywhere and was implemented identicaly on all platforms") {}
-    AZ_DEPRECATED(virtual void GetEncryptionKey(const DynArray<char>**, const DynArray<uint8>**), "IPlatformOS::GetEncryptionKey has been deprecated because it is not called from anywhere and was implemented identicaly on all platforms") {}
-    // End Deprecated: Save game functionality that will be replaced with a SaveGame Gem
-
     // Start Deprecated: Miscellaneous functionality that is still being used by some legacy code
     virtual IPlatformOS::IFileFinderPtr GetFileFinder(unsigned int user) = 0;
     virtual void MountDLCContent(IDLCListener* pCallback, unsigned int user, const uint8 keyData[16]) = 0;
@@ -256,37 +219,6 @@ struct IPlatformOS
     virtual IPlatformOS::ECDP_Write WriteCachePak(const char* const filename, const void* const pData, const size_t numBytes) = 0;
     virtual IPlatformOS::EZipExtractFail ExtractZips(const char* path) = 0;
     // End Deprecated: Miscellaneous functionality that is still being used by some legacy code
-
-    // Start Deprecated: Miscellaneous functionality that was never implemented for any platform or that has already been replaced with something else
-    AZ_DEPRECATED(virtual bool CanRestartTitle() const, "IPlatformOS::CanRestartTitle has been deprecated because it was never implemented for any platform") { return false; }
-    AZ_DEPRECATED(virtual void RestartTitle(const char*), "IPlatformOS::RestartTitle has been deprecated because it was never implemented for any platform") {}
-    enum AZ_DEPRECATED(EUserPIIStatus {}, "IPlatformOS::EUserPIIStatus has been deprecated because all the functions that use it have been deprecated");
-    struct AZ_DEPRECATED(SUserPII, "IPlatformOS::SUserPII has been deprecated because all the functions that use it have been deprecated");    
-    AZ_DEPRECATED(virtual int GetUserPII(unsigned int, SUserPII*), "IPlatformOS::GetUserPII has been deprecated because it was never implemented for any platform") { return 0; }
-    AZ_DEPRECATED(virtual void SetOpticalDriveIdle(bool), "IPlatformOS::SetOpticalDriveIdle has been deprecated because it was never implemented for any platform") {}
-    AZ_DEPRECATED(virtual void AllowOpticalDriveUsage(bool), "IPlatformOS::AllowOpticalDriveUsage has been deprecated because it was never implemented for any platform") {}
-    struct AZ_DEPRECATED(IVirtualKeyboardEvents, "IPlatformOS::IVirtualKeyboardEvents has been deprecated all the functions that use it have been deprecated");
-    AZ_DEPRECATED(virtual bool KeyboardStart(unsigned int, unsigned int, const char*, const char*, int, IVirtualKeyboardEvents*), "IPlatformOS::KeyboardStart has been deprecated, use InputTextEntryRequestBus::TextEntryStart instead") { return false; }
-    AZ_DEPRECATED(virtual bool KeyboardIsRunning(), "IPlatformOS::KeyboardIsRunning has been deprecated, use InputTextEntryRequestBus::HasTextEntryStarted instead") { return false; }
-    AZ_DEPRECATED(virtual bool KeyboardCancel(), "IPlatformOS::KeyboardCancel has been deprecated, use InputTextEntryRequestBus::TextEntryStop instead") { return false; }
-    struct AZ_DEPRECATED(IStringVerifyEvents, "IPlatformOS::IStringVerifyEvents has been deprecated because it was never implemented for any platform");
-    AZ_DEPRECATED(virtual bool StringVerifyStart(const char*, IStringVerifyEvents*), "IPlatformOS::StringVerifyStart has been deprecated because it was never implemented for any platform") { return false; }
-    AZ_DEPRECATED(virtual bool IsVerifyingString(), "IPlatformOS::IsVerifyingString has been deprecated because it was never implemented for any platform") { return false; }
-    AZ_DEPRECATED(virtual const char* GetSKUId(), "IPlatformOS::GetSKUId has been deprecated because it was never implemented for any platform") { return nullptr; }    
-    AZ_DEPRECATED(virtual ILocalizationManager::EPlatformIndependentLanguageID GetSystemLanguage(), "IPlatformOS::GetSystemLanguage has been deprecated because it was never implemented for any platform") { return ILocalizationManager::ePILID_MAX_OR_INVALID; }
-    AZ_DEPRECATED(virtual ILocalizationManager::TLocalizationBitfield GetSystemSupportedLanguages(), "IPlatformOS::GetSystemSupportedLanguages has been deprecated because it was never implemented for any platform") { return 0; }
-    enum AZ_DEPRECATED(EMsgBoxFlags {}, "IPlatformOS::EMsgBoxFlags has been deprecated because all the functions that use it have been deprecated");
-    enum AZ_DEPRECATED(EMsgBoxResult {}, "IPlatformOS::EMsgBoxResult has been deprecated because all the functions that use it have been deprecated");
-    AZ_DEPRECATED(virtual int DebugMessageBox(const char*, const char*, unsigned int) const, "IPlatformOS::DebugMessageBox has been deprecated, please use AZ::NativeUI::NativeUIRequests::Display*Dialog instead") { return 0; }
-    AZ_DEPRECATED(virtual bool PostLocalizationBootChecks(), "IPlatformOS::PostLocalizationBootChecks has been deprecated because it was never implemented for any platform") { return false; }
-    AZ_DEPRECATED(virtual bool ConsoleLoadGame(IConsoleCmdArgs*), "IPlatformOS::ConsoleLoadGame has been deprecated because it was never implemented for any platform") { return false; }
-    AZ_DEPRECATED(virtual bool DebugSave(SDebugDump&), "IPlatformOS::DebugSave has been deprecated because it was never implemented for any platform") { return false; }
-    AZ_DEPRECATED(virtual bool IsInstalling() const, "IPlatformOS::IsInstalling has been deprecated because it was never implemented for any platform") { return false; }
-    AZ_DEPRECATED(virtual bool IsHDDAvailable() const, "IPlatformOS::IsHDDAvailable has been deprecated because it was never implemented for any platform") { return true; }
-    AZ_DEPRECATED(virtual uint64 GetHDDCacheCopySize() const, "IPlatformOS::GetHDDCacheCopySize has been deprecated because it was never implemented for any platform") { return 0; }
-    AZ_DEPRECATED(virtual bool CanSafelyQuit() const, "IPlatformOS::CanSafelyQuit has been deprecated because it was never implemented for any platform") { return true; }
-    AZ_DEPRECATED(virtual void HandleArchiveVerificationFailure(), "IPlatformOS::HandleArchiveVerificationFailure has been deprecated because it was never implemented for any platform") {}
-    // End Deprecated: Miscellaneous functionality that was never implemented for any platform or that has already been replaced with something else
 
     // Start Deprecated: Clip capture functionality that will be moved elsewhere
     // Interface for capturing in-game clips
@@ -351,9 +283,4 @@ struct IPlatformOS
 
     virtual IClipCaptureOS* GetClipCapture() { return NULL; }
     // End Deprecated: Clip capture functionality that will be moved elsewhere
-
-    // Start Deprecated: Miscellaneous functionality that is never called and that was implemented identicaly on all platforms
-    AZ_DEPRECATED(char* UIPToText(unsigned int address, char* toString, int length) const, "IPlatformOS::UIPToText has been deprecated because it is not called from anywhere and was implemented identicaly on all platforms") { return nullptr; }
-    AZ_DEPRECATED(unsigned int TextToUIP(const char* fromString) const, "IPlatformOS::TextToUIP has been deprecated because it is not called from anywhere and was implemented identicaly on all platforms") { return 0; }
-    // End Deprecated: Miscellaneous functionality that is never called and that was implemented identicaly on all platforms
 };

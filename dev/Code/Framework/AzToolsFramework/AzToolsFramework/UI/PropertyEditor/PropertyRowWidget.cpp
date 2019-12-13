@@ -15,17 +15,18 @@
 
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/UI/UiCore/WidgetHelpers.h>
+
+AZ_PUSH_DISABLE_WARNING(4244 4251 4800, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
+                                                                    // 4251: class '...' needs to have dll-interface to be used by clients of class 'QInputEvent'
+                                                                    // 4800: QTextEngine *const ': forcing value to bool 'true' or 'false' (performance warning)
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QWidget>
 #include <QtGui/QFontMetrics>
-AZ_PUSH_DISABLE_WARNING(4244 4251 4800, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
-                                                                    // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
-                                                                    // 4800: QTextEngine *const ': forcing value to bool 'true' or 'false' (performance warning)
 #include <QtGui/QTextLayout>
 #include <QtGui/QPainter>
+#include <QMessageBox>
 AZ_POP_DISABLE_WARNING
 
-#include <QMessageBox>
 
 namespace AzToolsFramework
 {
@@ -517,7 +518,8 @@ namespace AzToolsFramework
                             if (ptrValue)
                             {
                                 auto ptrClassElement = container->GetElement(container->GetDefaultElementNameCrc());
-                                pointeeType = (ptrClassElement && ptrClassElement->m_azRtti) ? ptrClassElement->m_azRtti->GetActualUuid(ptrValue) : genericClassInfo->GetTemplatedTypeId(0);
+                                pointeeType = (ptrClassElement && ptrClassElement->m_azRtti && ptrClassElement->m_azRtti->ProvidesFullRtti()) ? 
+                                    ptrClassElement->m_azRtti->GetActualUuid(ptrValue) : genericClassInfo->GetTemplatedTypeId(0);
                             }
                             else
                             {

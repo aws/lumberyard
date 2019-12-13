@@ -17,6 +17,7 @@
 #include "ParticleSubEmitter.h"
 #include "ParticleEmitter.h"
 #include <IAudioSystem.h>
+#include <MathConversion.h>
 #include <AzCore/Math/Internal/MathTypes.h>
 
 #include <PNoise3.h>
@@ -681,7 +682,7 @@ void CParticleSubEmitter::UpdateAudio()
                 m_pIAudioProxy->SetRtpcValue(m_nAudioRtpcID, fValue);
             }
 
-            m_pIAudioProxy->SetPosition(GetEmitPos());
+            m_pIAudioProxy->SetPosition(LYVec3ToAZVec3(GetEmitPos()));
             if (m_bExecuteAudioTrigger)
             {
                 m_pIAudioProxy->SetCurrentEnvironments();
@@ -723,7 +724,7 @@ void CParticleSubEmitter::UpdateAudio()
                     // Execute start trigger immediately.
                     if (m_nStartAudioTriggerID != INVALID_AUDIO_CONTROL_ID)
                     {
-                        m_pIAudioProxy->SetPosition(GetEmitPos());
+                        m_pIAudioProxy->SetPosition(LYVec3ToAZVec3(GetEmitPos()));
                         m_pIAudioProxy->SetCurrentEnvironments();
                         m_pIAudioProxy->ExecuteTrigger(m_nStartAudioTriggerID, eLSM_None);
                     }
@@ -1064,7 +1065,7 @@ void CParticleSubEmitter::DeactivateAudio()
 {
     if (m_pIAudioProxy != nullptr)
     {
-        m_pIAudioProxy->SetPosition(GetEmitPos());
+        m_pIAudioProxy->SetPosition(LYVec3ToAZVec3(GetEmitPos()));
 
         if (m_nAudioRtpcID != INVALID_AUDIO_CONTROL_ID)
         {
@@ -1084,9 +1085,9 @@ void CParticleSubEmitter::DeactivateAudio()
         }
 
         m_pIAudioProxy->Release();
-        m_nStartAudioTriggerID  = INVALID_AUDIO_CONTROL_ID;
-        m_nStopAudioTriggerID       = INVALID_AUDIO_CONTROL_ID;
-        m_nAudioRtpcID                  = INVALID_AUDIO_CONTROL_ID;
+        m_nStartAudioTriggerID = INVALID_AUDIO_CONTROL_ID;
+        m_nStopAudioTriggerID = INVALID_AUDIO_CONTROL_ID;
+        m_nAudioRtpcID = INVALID_AUDIO_CONTROL_ID;
         m_pIAudioProxy = nullptr;
     }
 }

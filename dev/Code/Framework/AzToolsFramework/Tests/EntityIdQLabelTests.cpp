@@ -36,6 +36,7 @@ namespace UnitTest
         explicit TestWidget(QWidget* parent = nullptr)
             : QWidget(nullptr)
         {
+            AZ_UNUSED(parent);
             // ensure TestWidget can intercept and filter any incoming events itself
             installEventFilter(this);
 
@@ -62,7 +63,7 @@ namespace UnitTest
         }
 
         void BrowseForAssets(AssetBrowser::AssetSelectionModel& /*selection*/) override {}
-        int GetIconTextureIdFromEntityIconPath(const AZStd::string& entityIconPath) override { return 0; }
+        int GetIconTextureIdFromEntityIconPath(const AZStd::string& entityIconPath) override { AZ_UNUSED(entityIconPath);  return 0; }
         bool DisplayHelpersVisible() override { return false; }
 
         void GoToSelectedEntitiesInViewports() override 

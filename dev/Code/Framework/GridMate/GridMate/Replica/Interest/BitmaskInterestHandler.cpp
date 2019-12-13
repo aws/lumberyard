@@ -22,7 +22,7 @@
 namespace GridMate
 {
 
-    void BitmaskInterestChunk::OnReplicaActivate(const ReplicaContext& rc) 
+    void BitmaskInterestChunk::OnReplicaActivate(const ReplicaContext& rc)
     {
         m_interestHandler = static_cast<BitmaskInterestHandler*>(rc.m_rm->GetUserContext(AZ_CRC("BitmaskInterestHandler", 0x5bf5d75b)));
         AZ_Warning("GridMate", m_interestHandler != nullptr, "No bitmask interest handler in the user context");
@@ -32,10 +32,11 @@ namespace GridMate
         }
     }
 
-    void BitmaskInterestChunk::OnReplicaDeactivate(const ReplicaContext& rc) 
+    void BitmaskInterestChunk::OnReplicaDeactivate(const ReplicaContext& rc)
     {
-        if (rc.m_peer && m_interestHandler)
+        if (m_interestHandler)
         {
+            // even if rc.m_peer is null, we still need to call OnDeleteRulesChunk so that the interest handler can clear m_rulesReplica
             m_interestHandler->OnDeleteRulesChunk(this, rc.m_peer);
         }
     }
@@ -154,7 +155,7 @@ namespace GridMate
         BitmaskInterestRule* rulePtr = aznew BitmaskInterestRule(this, peerId, GetNewRuleNetId());
         m_rules.insert(rulePtr);
 
-        if (peerId == m_rm->GetLocalPeerId())
+        if (peerId == m_rm->GetLocalPeerId() && m_rulesReplica)
         {
             m_rulesReplica->AddRuleRpc(rulePtr->GetNetworkId(), rulePtr->Get());
             m_localRules.insert(rulePtr);
@@ -172,7 +173,7 @@ namespace GridMate
 
     void BitmaskInterestHandler::DestroyRule(BitmaskInterestRule* rule)
     {
-        if (m_rm && rule->GetPeerId() == m_rm->GetLocalPeerId())
+        if (m_rm && rule->GetPeerId() == m_rm->GetLocalPeerId() && m_rulesReplica)
         {
             m_rulesReplica->RemoveRuleRpc(rule->GetNetworkId());
         }
@@ -184,7 +185,7 @@ namespace GridMate
 
     void BitmaskInterestHandler::UpdateRule(BitmaskInterestRule* rule)
     {
-        if (m_rm && rule->GetPeerId() == m_rm->GetLocalPeerId())
+        if (m_rm && m_rulesReplica && rule->GetPeerId() == m_rm->GetLocalPeerId())
         {
             m_rulesReplica->UpdateRuleRpc(rule->GetNetworkId(), rule->Get());
         }
@@ -232,14 +233,24 @@ namespace GridMate
 
     void BitmaskInterestHandler::OnDeleteRulesChunk(BitmaskInterestChunk::Ptr chunk, ReplicaPeer* peer)
     {
-        (void)chunk;
-        m_peerChunks.erase(peer->GetId());
+        AZ_UNUSED(chunk);
+        m_rulesReplica = nullptr;
+
+        if (peer)
+        {
+            m_peerChunks.erase(peer->GetId());
+        }
     }
 
     RuleNetworkId BitmaskInterestHandler::GetNewRuleNetId()
     {
         ++m_lastRuleNetId;
-        return m_rulesReplica->GetReplicaId() | (static_cast<AZ::u64>(m_lastRuleNetId) << 32);
+        if (m_rulesReplica)
+        {
+            return m_rulesReplica->GetReplicaId() | (static_cast<AZ::u64>(m_lastRuleNetId) << 32);
+        }
+
+        return (static_cast<AZ::u64>(m_lastRuleNetId) << 32);
     }
 
     BitmaskInterestChunk::Ptr BitmaskInterestHandler::FindRulesChunkByPeerId(PeerId peerId)
@@ -274,7 +285,7 @@ namespace GridMate
                 if (isMatch && ruleIt == m_ruleGroups[i].end())
                 {
                     m_ruleGroups[i].insert(rule);
-                    
+
                     // recalculate all the attributes in this bucket
                     for (BitmaskInterestAttribute* attr : m_attrGroups[i])
                     {
@@ -322,7 +333,7 @@ namespace GridMate
         for (BitmaskInterestAttribute* attr : m_dirtyAttributes)
         {
             auto repIt = m_resultCache.insert(attr->GetReplicaId());
-            
+
             InterestBitmask j = 1;
             for (size_t i = 0; i < k_numGroups; ++i, j <<= 1)
             {
@@ -343,7 +354,7 @@ namespace GridMate
 
         m_dirtyAttributes.clear();
     }
-    
+
     void BitmaskInterestHandler::OnRulesHandlerRegistered(InterestManager* manager)
     {
         AZ_Assert(m_im == nullptr, "Handler is already registered with manager %p (%p)\n", m_im, manager);
@@ -370,7 +381,7 @@ namespace GridMate
             m_rulesReplica->m_rules.clear();
             m_rulesReplica->m_interestHandler = nullptr;
         }
-            
+
         for (auto& chunk : m_peerChunks)
         {
             chunk.second->m_rules.clear();

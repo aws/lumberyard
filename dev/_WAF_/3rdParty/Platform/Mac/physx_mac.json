@@ -1,0 +1,17 @@
+{
+    "aliases": {
+        "lib_paths_darwin_x64": ["${lib_paths}/mac.x86_64/"]
+    },
+    "platform": {
+        "darwin_x64": {
+            "importlibpath_debug": ["${lib_paths_darwin_x64}/debug"],
+            "importlibpath_profile": ["${lib_paths_darwin_x64}/profile"],
+            "importlibpath_release": ["${lib_paths_darwin_x64}/release"],
+            "importlibpath_performance": ["${lib_paths_darwin_x64}/release"],
+
+            "import": [
+                "lib${lib_names}_static_64.a"
+            ]
+        }
+    }
+}

@@ -726,8 +726,8 @@ void CParserBin::Init()
     FX_REGISTER_TOKEN(23);
     FX_REGISTER_TOKEN(24);
 
-    FX_REGISTER_TOKEN(ORBIS); // ACCEPTED_USE
-    FX_REGISTER_TOKEN(DURANGO); // ACCEPTED_USE
+    FX_REGISTER_TOKEN(ORBIS);
+    FX_REGISTER_TOKEN(DURANGO);
     FX_REGISTER_TOKEN(PCDX11);
     FX_REGISTER_TOKEN(GL4);
     FX_REGISTER_TOKEN(GLES3);
@@ -791,6 +791,8 @@ void CParserBin::Init()
         #include "Xenia/ParserBin_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ParserBin_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ParserBin_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1070,13 +1072,13 @@ void CParserBin::SetupForGMEM(int const gmemPath)
 #endif
 }
 
-void CParserBin::SetupForOrbis() // ACCEPTED_USE
+void CParserBin::SetupForOrbis()
 {
     CleanPlatformMacros();
     SetupTargetPlatform();
     uint32 nMacro[1] = {eT_1};
-    AddMacro(CParserBin::fxToken("ORBIS"), nMacro, 1, 0, m_StaticMacros); // ACCEPTED_USE
-    m_nPlatform = SF_ORBIS; // ACCEPTED_USE
+    AddMacro(CParserBin::fxToken("ORBIS"), nMacro, 1, 0, m_StaticMacros);
+    m_nPlatform = SF_ORBIS;
 
     SetupShadersCacheAndFilter();
 
@@ -1087,17 +1089,17 @@ void CParserBin::SetupForOrbis() // ACCEPTED_USE
     gRenDev->m_cEF.m_pGlobalExt = gRenDev->m_cEF.mfCreateShaderGenInfo("RunTime", true);
 }
 
-void CParserBin::SetupForDurango() // ACCEPTED_USE
+void CParserBin::SetupForDurango()
 {
     CleanPlatformMacros();
     SetupTargetPlatform();
     uint32 nMacro[1] = {eT_1};
 
-    m_nPlatform = SF_DURANGO; // ACCEPTED_USE
+    m_nPlatform = SF_DURANGO;
 
     SetupShadersCacheAndFilter();
 
-    AddMacro(CParserBin::fxToken("DURANGO"), nMacro, 1, 0, m_StaticMacros); // ACCEPTED_USE
+    AddMacro(CParserBin::fxToken("DURANGO"), nMacro, 1, 0, m_StaticMacros);
 
     SetupFeatureDefines();
     gRenDev->m_cEF.m_Bin.InvalidateCache();
@@ -1130,6 +1132,8 @@ CCryNameTSCRC CParserBin::GetPlatformSpecName(CCryNameTSCRC orgName)
         #include "Xenia/ParserBin_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ParserBin_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ParserBin_cpp_salem.inl"
     #endif
 #endif
     // Confetti Nicholas Baldwin: adding metal shader language support
@@ -1301,8 +1305,8 @@ bool CParserBin::RemoveMacro(uint32 dwName, FXMacroBin& Macro)
 
 void CParserBin::CleanPlatformMacros()
 {
-    RemoveMacro(CParserBin::fxToken("DURANGO"), m_StaticMacros); // ACCEPTED_USE
-    RemoveMacro(CParserBin::fxToken("ORBIS"), m_StaticMacros); // ACCEPTED_USE
+    RemoveMacro(CParserBin::fxToken("DURANGO"), m_StaticMacros);
+    RemoveMacro(CParserBin::fxToken("ORBIS"), m_StaticMacros);
     RemoveMacro(CParserBin::fxToken("PCDX11"), m_StaticMacros);
     RemoveMacro(CParserBin::fxToken("GL4"), m_StaticMacros);
     RemoveMacro(CParserBin::fxToken("GLES3"), m_StaticMacros);
@@ -3663,7 +3667,7 @@ void CParserBin::SetupFeatureDefines()
 
     uint32 nEnable[1] = { eT_1 };
 #if defined(MESH_TESSELLATION)
-    if (m_nPlatform == SF_D3D11 || m_nPlatform == SF_DURANGO || m_nPlatform == SF_GL4) // ACCEPTED_USE
+    if (m_nPlatform == SF_D3D11 || m_nPlatform == SF_DURANGO || m_nPlatform == SF_GL4)
     {
         AddMacro(CParserBin::GetCRC32("FEATURE_MESH_TESSELLATION"), nEnable, 1, 0, m_StaticMacros);
     }
@@ -3677,13 +3681,13 @@ void CParserBin::SetupFeatureDefines()
     }
 #endif
 #if defined(PARTICLES_TESSELLATION)
-    if (m_nPlatform == SF_D3D11 || m_nPlatform == SF_DURANGO || m_nPlatform == SF_ORBIS || m_nPlatform == SF_GL4) // ACCEPTED_USE
+    if (m_nPlatform == SF_D3D11 || m_nPlatform == SF_DURANGO || m_nPlatform == SF_ORBIS || m_nPlatform == SF_GL4)
     {
         AddMacro(CParserBin::GetCRC32("FEATURE_PARTICLES_TESSELLATION"), nEnable, 1, 0, m_StaticMacros);
     }
 #endif
 
-    if (m_nPlatform == SF_DURANGO || m_nPlatform == SF_ORBIS || m_nPlatform == SF_D3D11 || m_nPlatform == SF_GL4 || m_nPlatform == SF_GLES3 || m_nPlatform == SF_METAL) // ACCEPTED_USE
+    if (m_nPlatform == SF_DURANGO || m_nPlatform == SF_ORBIS || m_nPlatform == SF_D3D11 || m_nPlatform == SF_GL4 || m_nPlatform == SF_GLES3 || m_nPlatform == SF_METAL)
     {
         AddMacro(CParserBin::GetCRC32("FEATURE_SPI_CONSTANT_BUFFERS"), nEnable, 1, 0, m_StaticMacros);
     }
@@ -3695,7 +3699,7 @@ void CParserBin::SetupFeatureDefines()
 #endif
     }
 
-    if (m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO | SF_GL4)) // ACCEPTED_USE
+    if (m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO | SF_GL4))
     {
         AddMacro(CParserBin::GetCRC32("FEATURE_GEOMETRY_SHADERS"), nEnable, 1, 0, m_StaticMacros);
     }
@@ -3704,7 +3708,7 @@ void CParserBin::SetupFeatureDefines()
     AddMacro(CParserBin::GetCRC32("FEATURE_SVO_GI"), nEnable, 1, 0, m_StaticMacros);
 #endif
 
-    if (m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO | SF_GL4)) // ACCEPTED_USE
+    if (m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO | SF_GL4))
     {
         AddMacro(CParserBin::GetCRC32("FEATURE_DUAL_SOURCE_BLENDING"), nEnable, 1, 0, m_StaticMacros);
     }
@@ -3715,7 +3719,7 @@ void CParserBin::SetupFeatureDefines()
     const bool isMacOpenGl = false;
 #endif
 
-    if ((m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO)) || (isMacOpenGl == false && m_nPlatform & (SF_GL4))) // ACCEPTED_USE
+    if ((m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO)) || (isMacOpenGl == false && m_nPlatform & (SF_GL4)))
     {
         // Disable FEATURE_8_BONE_SKINNING because structurebuffer sb_SkinExtraBlendWeights is not handled in the code currently.
         // AddMacro(CParserBin::GetCRC32("FEATURE_8_BONE_SKINNING"), nEnable, 1, 0, m_StaticMacros);

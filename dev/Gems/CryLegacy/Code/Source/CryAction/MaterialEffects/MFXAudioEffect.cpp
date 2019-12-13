@@ -15,6 +15,7 @@
 #include "MFXAudioEffect.h"
 
 #include <IAudioSystem.h>
+#include <MathConversion.h>
 #include "Components/IComponentAudio.h"
 
 namespace MaterialEffectsUtils
@@ -177,7 +178,7 @@ void CMFXAudioEffect::Execute(const SMFXRunTimeEffectParams& params)
 
             MaterialEffectsUtils::PrepareForAudioTriggerExecution<Audio::IAudioProxy>(pIAudioProxy, m_audioParams, params);
 
-            pIAudioProxy->SetPosition(params.pos);
+            pIAudioProxy->SetPosition(LYVec3ToAZVec3(params.pos));
             pIAudioProxy->SetObstructionCalcType(Audio::eAOOCT_SINGLE_RAY);
             pIAudioProxy->SetCurrentEnvironments();
             pIAudioProxy->ExecuteTrigger(m_audioParams.trigger.GetTriggerId(), eLSM_None);

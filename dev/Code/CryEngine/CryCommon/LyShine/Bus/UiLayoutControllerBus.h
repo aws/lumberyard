@@ -40,7 +40,6 @@ public: // static member data
 
     //! Priority will be used for ordering, lower priority number means it gets called earlier
     struct BusHandlerOrderCompare
-        : public AZStd::binary_function<UiLayoutControllerInterface*, UiLayoutControllerInterface*, bool>
     {
         AZ_FORCE_INLINE bool operator()(const UiLayoutControllerInterface* left, const UiLayoutControllerInterface* right) const { return left->GetPriority() < right->GetPriority(); }
     };

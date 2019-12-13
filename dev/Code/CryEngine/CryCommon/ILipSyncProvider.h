@@ -18,7 +18,6 @@
 
 #include <IAudioInterfacesCommonData.h>
 #include "SmartPointersHelpers.h"
-typedef uint32 tSoundID;
 
 enum ELipSyncMethod
 {

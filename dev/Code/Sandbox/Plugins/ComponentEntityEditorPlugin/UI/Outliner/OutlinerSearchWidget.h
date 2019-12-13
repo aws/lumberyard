@@ -34,12 +34,12 @@ namespace AzQtComponents
     {
     public:
         OutlinerSearchTypeSelector(QPushButton* parent = nullptr);
-        const QString& GetFilterString() { return m_filterString; }
 
     protected:
         // can be used to override the logic when adding items in RepopulateDataModel
         bool filterItemOut(int unfilteredDataIndex, bool itemMatchesFilter, bool categoryMatchesFilter) override;
         void initItem(QStandardItem* item, const SearchTypeFilter& filter, int unfilteredDataIndex) override;
+        int GetNumFixedItems() override;
     };
 
     class OutlinerCriteriaButton
@@ -57,6 +57,7 @@ namespace AzQtComponents
         Q_OBJECT
     public:
         explicit OutlinerSearchWidget(QWidget* parent = nullptr);
+        ~OutlinerSearchWidget() override;
 
         FilterCriteriaButton* createCriteriaButton(const SearchTypeFilter& filter, int filterIndex) override;
 
@@ -69,8 +70,9 @@ namespace AzQtComponents
             Separator,
             FirstRealFilter
         };
+    protected:
+        void SetupPaintDelegates() override;
     private:
-        OutlinerSearchTypeSelector* m_selector = nullptr;
         OutlinerSearchItemDelegate* m_delegate = nullptr;
     };
 
@@ -95,15 +97,16 @@ namespace AzQtComponents
     class OutlinerSearchItemDelegate : public QStyledItemDelegate
     {
     public:
-        OutlinerSearchItemDelegate(QWidget* parent = nullptr);
+        explicit OutlinerSearchItemDelegate(QWidget* parent = nullptr);
 
         void PaintRichText(QPainter* painter, QStyleOptionViewItemV4& opt, QString& text) const;
+        void SetSelector(SearchTypeSelector* selector) { m_selector = selector; }
+
+        // QStyleItemDelegate overrides.
         void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
         QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override;
 
-        void SetSelector(OutlinerSearchTypeSelector* selector) { m_selector = selector; }
-
     private:
-        OutlinerSearchTypeSelector* m_selector;
+        SearchTypeSelector* m_selector = nullptr;
     };
 }

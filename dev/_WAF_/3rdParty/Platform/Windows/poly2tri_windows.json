@@ -1,0 +1,9 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "libpath_debug": ["lib/win_x64_vc141/Debug"],
+            "libpath_release": ["lib/win_x64_vc141/Release"],
+            "lib": ["${lib_names}.lib"]
+        }
+    }
+}

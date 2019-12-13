@@ -85,21 +85,8 @@ namespace LmbrCentral
     {
     public:
         FogVolume();
-#if defined(AZ_COMPILER_MSVC) && (_MSC_VER <= 1800)
-        // workaround the VS2013 bug 
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-        FogVolume(const FogVolume&)
-        {
-            AZ_Assert(false, "FogVolume cannot be copy-constructed")
-        }
-        FogVolume& operator= (const FogVolume&)
-        {
-            AZ_Assert(false, "FogVolume cannot be assigned to")
-        }
-#else
         FogVolume(const FogVolume&) = delete;
         FogVolume& operator= (const FogVolume&) = delete;
-#endif
 
         virtual ~FogVolume();
 

@@ -15,7 +15,9 @@
 #include <AzCore/std/utils.h>
 #include <AzCore/std/functional.h>
 #include <AzCore/std/containers/array.h>
+#include <AzCore/std/containers/set.h>
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/std/iterator.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/sort.h>
@@ -862,5 +864,61 @@ namespace UnitTest
 
         container2.erase(iterBeyondEndOfUniques2, container2.end());
         EXPECT_EQ(container2.size(), 7);
+    }
+
+    TEST_F(Algorithms, SetDifference)
+    {
+        AZStd::set<int> setA { 3, 5, 8, 10 };
+        AZStd::set<int> setB { 1, 2, 3, 8 };
+        AZStd::set<int> setC { 7, 8, 9, 10, 11, 12 };
+
+        // Continue with tests: A - B, B - A, A - C, C - A, B - C, C - B
+
+        // A - B = 5, 10
+        AZStd::set<int> remainder;
+        AZStd::set_difference(setA.begin(), setA.end(), setB.begin(), setB.end(), AZStd::inserter(remainder, remainder.begin()));
+        EXPECT_TRUE(remainder == AZStd::set<int>({ 5, 10 }));
+
+        // B - A = 1, 2
+        remainder.clear();
+        AZStd::set_difference(setB.begin(), setB.end(), setA.begin(), setA.end(), AZStd::inserter(remainder, remainder.begin()));
+        EXPECT_TRUE(remainder == AZStd::set<int>({ 1, 2 }));
+
+        // A - C = 3, 5
+        remainder.clear();
+        AZStd::set_difference(setA.begin(), setA.end(), setC.begin(), setC.end(), AZStd::inserter(remainder, remainder.begin()));
+        EXPECT_TRUE(remainder == AZStd::set<int>({ 3, 5 }));
+
+        // C - A = 7, 9, 11, 12
+        remainder.clear();
+        AZStd::set_difference(setC.begin(), setC.end(), setA.begin(), setA.end(), AZStd::inserter(remainder, remainder.begin()));
+        EXPECT_TRUE(remainder == AZStd::set<int>({ 7, 9, 11, 12 }));
+
+        // B - C = 1, 2, 3
+        remainder.clear();
+        AZStd::set_difference(setB.begin(), setB.end(), setC.begin(), setC.end(), AZStd::inserter(remainder, remainder.begin()));
+        EXPECT_TRUE(remainder == AZStd::set<int>({ 1, 2, 3 }));
+
+        // C - B = 7, 9, 10, 11, 12
+        remainder.clear();
+        AZStd::set_difference(setC.begin(), setC.end(), setB.begin(), setB.end(), AZStd::inserter(remainder, remainder.begin()));
+        EXPECT_TRUE(remainder == AZStd::set<int>({ 7, 9, 10, 11, 12 }));
+    }
+
+    TEST_F(Algorithms, Equal)
+    {
+        AZStd::vector<int> container1 = { 1, 2, 3, 4, 5 };
+        AZStd::vector<int> container2 = { 11, 12, 13, 14, 15 };
+
+        EXPECT_TRUE(AZStd::equal(container1.begin(), container1.end(), container1.begin()));
+        EXPECT_FALSE(AZStd::equal(container1.begin(), container1.end(), container2.begin()));
+
+        auto compare = [](int lhs, int rhs) -> bool
+        {
+            return lhs == rhs;
+        };
+
+        EXPECT_TRUE(AZStd::equal(container1.begin(), container1.end(), container1.begin(), compare));
+        EXPECT_FALSE(AZStd::equal(container1.begin(), container1.end(), container2.begin(), compare));
     }
 }

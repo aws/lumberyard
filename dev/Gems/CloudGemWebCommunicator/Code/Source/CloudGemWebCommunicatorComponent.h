@@ -16,8 +16,10 @@
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 
+AZ_PUSH_DISABLE_WARNING(, "-Wdefaulted-function-deleted")
 #include <NetworkConnection.hpp>
 #include <Mqtt/Client.hpp>
+AZ_POP_DISABLE_WARNING
 #include <CloudGemWebCommunicator/CloudGemWebCommunicatorBus.h>
 #include <CloudCanvasCommon/CloudCanvasCommonBus.h>
 

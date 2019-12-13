@@ -18,6 +18,7 @@
 #include <QPointer>
 #include "native/assetprocessor.h"
 #include <AzQtComponents/Components/FilteredSearchWidget.h>
+#include <QElapsedTimer>
 
 namespace Ui {
     class MainWindow;
@@ -40,6 +41,9 @@ class MainWindow
 public:
     struct Config
     {
+        // These default values are used if the values can't be read from AssetProcessorConfig.ini,
+        // and the call to defaultConfig fails.
+
         // Asset Status
         int jobStatusColumnWidth = -1;
         int jobSourceColumnWidth = -1;
@@ -138,5 +142,20 @@ private:
     void ShowJobViewContextMenu(const QPoint& pos);
     void ShowLogLineContextMenu(const QPoint& pos);
     void ShowJobLogContextMenu(const QPoint& pos);
+
+    void ResetTimers();
+    void CheckStartAnalysisTimers();
+    void CheckEndAnalysisTimer();
+    void CheckStartProcessTimers();
+    void CheckEndProcessTimer();
+    QString FormatStringTime(qint64 timeMs) const;
+
+    QElapsedTimer m_scanTimer;
+    QElapsedTimer m_analysisTimer;
+    QElapsedTimer m_processTimer;
+
+    qint64 m_scanTime{ 0 };
+    qint64 m_analysisTime{ 0 };
+    qint64 m_processTime{ 0 };
 };
 

@@ -33,7 +33,7 @@ namespace Visibility
         : public OccluderAreaConfiguration
     {
     public:
-        AZ_TYPE_INFO(EditorOccluderAreaConfiguration, "{032F466F-25CB-5460-AC2F-B04236C87878}", OccluderAreaConfiguration);
+        AZ_TYPE_INFO_LEGACY(EditorOccluderAreaConfiguration, "{032F466F-25CB-5460-AC2F-B04236C87878}", OccluderAreaConfiguration);
         AZ_CLASS_ALLOCATOR(EditorOccluderAreaConfiguration, AZ::SystemAllocator, 0);
 
         static void Reflect(AZ::ReflectContext* context);

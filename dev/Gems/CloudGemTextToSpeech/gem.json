@@ -41,6 +41,11 @@
                 "~>0.1"
             ],
             "_comment": "LmbrCentral"
+        },
+        {
+            "Uuid": "6f63f2b6d07f4b89b4b7c86ebee7feb8",
+            "VersionConstraints": [">=0.1.0"],
+            "_comment": "AudioSystem"
         }
     ]
 }

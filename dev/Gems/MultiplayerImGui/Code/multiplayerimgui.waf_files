@@ -1,0 +1,13 @@
+{
+    "auto": {
+        "Source": [
+            "Source/MultiplayerImGuiModule.cpp",
+            "Source/ImGuiServerManager.cpp",
+            "Source/ImGuiServerManager.h",
+            "Source/ByteReporter.cpp",
+            "Source/ByteReporter.h",
+            "Source/MultiplayerImGuiSystemComponent.cpp",
+            "Source/MultiplayerImGuiSystemComponent.h"
+        ]
+    }
+}

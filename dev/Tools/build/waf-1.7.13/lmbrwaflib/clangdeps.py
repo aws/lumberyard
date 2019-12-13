@@ -22,8 +22,7 @@ from cry_utils import get_command_line_limit
 #   ex:  ... /dev/Code/Framework/AzCore/AzCore/base.h
 re_clang_include = re.compile(r'\.\.* (.*)$')
 
-supported_compilers = ['clang', 'clang++',
-]
+supported_compilers = ['clang', 'clang++']
 
 lock = threading.Lock()
 nodes = {}  # Cache the path -> Node lookup
@@ -97,7 +96,7 @@ def exec_command_clang(self, *k, **kw):
 
 
 #############################################################################
-def wrap_class_clang(class_name):
+def wrap_class_clang(class_name, eligible_compilers):
     """
     @response file workaround for command-line length limits
     The indicated task class is replaced by a subclass to prevent conflicts in case the class is wrapped more than once
@@ -110,19 +109,19 @@ def wrap_class_clang(class_name):
     derived_class = type(class_name, (cls,), {})
 
     def exec_command(self, *k, **kw):
-        if self.env.CC_NAME in supported_compilers:
+        if self.env.CC_NAME in eligible_compilers:
             return exec_command_clang(self, *k, **kw)
         else:
             return super(derived_class, self).exec_command(*k, **kw)
 
     def exec_response_command(self, cmd, **kw):
-        if self.env.CC_NAME in supported_compilers:
+        if self.env.CC_NAME in eligible_compilers:
             return exec_response_command_clang(self, cmd, **kw)
         else:
             return super(derived_class, self).exec_response_command(cmd, **kw)
 
     def quote_response_command(self, *k, **kw):
-        if self.env.CC_NAME in supported_compilers:
+        if self.env.CC_NAME in eligible_compilers:
             return quote_response_command_clang(self, *k, **kw)
         else:
             return super(derived_class, self).quote_response_command(*k, **kw)
@@ -139,7 +138,7 @@ def wrap_class_clang(class_name):
 #############################################################################
 ## Wrap call exec commands
 for k in 'c cxx pch_clang cprogram cxxprogram cshlib cxxshlib cstlib cxxstlib'.split():
-    wrap_class_clang(k)
+    wrap_class_clang(k, supported_compilers)
 
 
 #############################################################################
@@ -290,11 +289,11 @@ def path_to_node(base_node, path, cached_nodes, b_drive_hack):
 
 #############################################################################
 ## dependency handler
-def wrap_compiled_task_clang(classname):
+def wrap_compiled_task_clang(classname, eligible_compilers):
     derived_class = type(classname, (waflib.Task.classes[classname],), {})
 
     def post_run(self):
-        if self.env.CC_NAME not in supported_compilers:
+        if self.env.CC_NAME not in eligible_compilers:
             return super(derived_class, self).post_run()
 
         if getattr(self, 'cached', None):
@@ -314,7 +313,11 @@ def wrap_compiled_task_clang(classname):
             node = None
             assert os.path.isabs(path)
 
-            drive_hack = False
+            try:
+                drive_hack = self.env['APPLY_CLANG_DRIVE_HACK'] or False
+            except:
+                drive_hack = False
+
             node = path_to_node(bld.root, path, cached_nodes, drive_hack)
 
             if not node:
@@ -348,7 +351,7 @@ def wrap_compiled_task_clang(classname):
 
     def scan(self):
         # no previous signature or dependencies have changed for this node
-        if self.env.CC_NAME not in supported_compilers:
+        if self.env.CC_NAME not in eligible_compilers:
             return super(derived_class, self).scan()
 
         resolved_nodes = self.generator.bld.node_deps.get(self.uid(), [])
@@ -356,7 +359,7 @@ def wrap_compiled_task_clang(classname):
         return (resolved_nodes, unresolved_names)
 
     def exec_command(self, cmd, **kw):
-        if self.env.CC_NAME not in supported_compilers:
+        if self.env.CC_NAME not in eligible_compilers:
             return super(derived_class, self).exec_command(cmd, **kw)
 
         try:
@@ -442,7 +445,6 @@ def wrap_compiled_task_clang(classname):
 
         return ret
 
-
     derived_class.post_run = post_run
     derived_class.scan = scan
     derived_class.exec_command = exec_command
@@ -451,4 +453,4 @@ def wrap_compiled_task_clang(classname):
 #############################################################################
 ## Wrap compile commands to track dependencies for these types of files
 for compile_task in ('c', 'cxx', 'pch_clang'):
-    wrap_compiled_task_clang(compile_task)
+    wrap_compiled_task_clang(compile_task, supported_compilers)

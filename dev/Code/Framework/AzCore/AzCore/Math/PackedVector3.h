@@ -19,8 +19,6 @@ namespace AZ
     class PackedVector3
     {
     public:
-        AZ_TYPE_INFO(PackedVector3, "{AE80F5E2-F809-4E2A-AE63-39F171C62819}", TYPE)
-
         //===============================================================
         // Constructors.
         //===============================================================
@@ -57,6 +55,8 @@ namespace AZ
         TYPE m_y;
         TYPE m_z;
     };
+
+    AZ_TYPE_INFO_TEMPLATE(PackedVector3, "{AE80F5E2-F809-4E2A-AE63-39F171C62819}", AZ_TYPE_INFO_TYPENAME);
 
     //===============================================================
     // Standard type variations.
@@ -175,8 +175,3 @@ namespace AZ
         m_z = v;
     }
 }
-
-#ifndef AZ_PLATFORM_WINDOWS // Remove this once all compilers support POD (MSVC already does)
-#   include <AzCore/std/typetraits/is_pod.h>
-AZSTD_DECLARE_POD_TYPE(AZ::PackedVector3);
-#endif

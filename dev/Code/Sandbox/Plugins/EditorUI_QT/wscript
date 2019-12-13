@@ -29,6 +29,7 @@ def build(bld):
         client_only         = True,
         features            = ['qt5'],
         includes            = [ '.',
+                                bld.Path('Code/CryEngine/CryCommon'),
                                 '..',
                                 bld.Path('Code/Sandbox/Editor'),
                                 bld.Path('Code/Sandbox/Editor/Include')],

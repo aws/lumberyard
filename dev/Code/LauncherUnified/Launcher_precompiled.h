@@ -14,12 +14,6 @@
 #include <AzCore/PlatformDef.h>
 #include <Launcher_Traits_Platform.h>
 
-#if AZ_TRAIT_LAUNCHER_USE_CRY_NEW_AND_DELETE_FOR_MONOLITHIC_BULDS
-    #if defined(AZ_MONOLITHIC_BUILD)
-        #define USE_CRY_NEW_AND_DELETE
-    #endif // defined(AZ_MONOLITHIC_BUILD)
-#endif // AZ_TRAIT_LAUNCHER_USE_CRY_NEW_AND_DELETE_FOR_MONOLITHIC_BULDS
-
 #define _LAUNCHER  // should be defined in launcher, because launcher has to have every symbols in platform_impl.h
 
 #include <platform.h>

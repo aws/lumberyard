@@ -72,6 +72,8 @@ namespace AzRHI
         #include "Xenia/Base_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/Base_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/Base_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

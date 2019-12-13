@@ -20,6 +20,7 @@
 #include "vector"
 
 class CVehicleSeat;
+class CVehicle;
 
 class CVehicleSeatGroup
 {

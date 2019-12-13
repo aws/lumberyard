@@ -16,6 +16,7 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <native/utilities/assetUtils.h>
 #include <native/unittests/UnitTestRunner.h> // for the assert absorber.
+#include <AssetManager/FileStateCache.h>
 
 namespace AssetProcessor
 {
@@ -27,6 +28,7 @@ namespace AssetProcessor
     {
     protected:
         UnitTestUtils::AssertAbsorber* m_errorAbsorber;
+        FileStatePassthrough m_fileStateCache;
 
         void SetUp() override
         {

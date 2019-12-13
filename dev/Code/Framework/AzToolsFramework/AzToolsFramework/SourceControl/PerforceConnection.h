@@ -26,6 +26,8 @@ namespace AzToolsFramework
         PerforceMap m_commandOutputMap;             // doesn't allow duplicate kvp's
         AZStd::vector<PerforceMap> m_commandOutputMapList; // allows duplicate kvp's
 
+        AZStd::mutex m_commandMutex;
+
         PerforceCommand() {}
         ~PerforceCommand() {}
 

@@ -27,15 +27,6 @@ namespace AZ
     }
 }
 
-#ifdef MALLOC_SCHEMA_USE_AZ_OS_MALLOC
-#   define MALLOC_SCHEMA_MALLOC(x)     AZ_OS_MALLOC((x), 0)
-#   define MALLOC_SCHEMA_FREE(x)       AZ_OS_FREE(x)
-#else
-#   define MALLOC_SCHEMA_MALLOC(x)     malloc(x)
-#   define MALLOC_SCHEMA_FREE(x)       free(x)
-#endif
-
-
 //---------------------------------------------------------------------
 // MallocSchema methods
 //---------------------------------------------------------------------
@@ -43,7 +34,18 @@ namespace AZ
 AZ::MallocSchema::MallocSchema(const Descriptor& desc) : 
     m_bytesAllocated(0)
 {
-    (void)desc;
+    if (desc.m_useAZMalloc)
+    {
+        static const int DEFAULT_ALIGNMENT = sizeof(void*) * 2;  // Default malloc alignment
+
+        m_mallocFn = [](size_t byteSize) { return AZ_OS_MALLOC(byteSize, DEFAULT_ALIGNMENT); };
+        m_freeFn = [](void* ptr) { AZ_OS_FREE(ptr); };
+    }
+    else
+    {
+        m_mallocFn = &malloc;
+        m_freeFn = &free;
+    }
 }
 
 AZ::MallocSchema::~MallocSchema()
@@ -58,15 +60,20 @@ AZ::MallocSchema::pointer_type AZ::MallocSchema::Allocate(size_type byteSize, si
     (void)lineNum;
     (void)suppressStackRecord;
 
+    if (!byteSize)
+    {
+        return nullptr;
+    }
+
     if (alignment == 0)
     {
-        alignment = sizeof(double);
+        alignment = sizeof(void*) * 2;  // Default malloc alignment
     }
 
     AZ_Assert(byteSize < 0x100000000ull, "Malloc allocator only allocates up to 4GB");
 
     size_type required = byteSize + sizeof(Internal::Header) + ((alignment > sizeof(double)) ? alignment : 0);  // Malloc will align to a minimum boundary for native objects, so we only pad if aligning to a large value
-    void* data = MALLOC_SCHEMA_MALLOC(required);
+    void* data = (*m_mallocFn)(required);
     void* result = PointerAlignUp(reinterpret_cast<void*>(reinterpret_cast<size_t>(data) + sizeof(Internal::Header)), alignment);
     Internal::Header* header = PointerAlignDown<Internal::Header>((Internal::Header*)(reinterpret_cast<size_t>(result) - sizeof(Internal::Header)), AZStd::alignment_of<Internal::Header>::value);
 
@@ -91,7 +98,7 @@ void AZ::MallocSchema::DeAllocate(pointer_type ptr, size_type byteSize, size_typ
     void* freePtr = reinterpret_cast<void*>(reinterpret_cast<size_t>(ptr) - static_cast<size_t>(header->offset));
 
     m_bytesAllocated -= header->size;
-    MALLOC_SCHEMA_FREE(freePtr);
+    (*m_freeFn)(freePtr);
 }
 
 AZ::MallocSchema::pointer_type AZ::MallocSchema::ReAllocate(pointer_type ptr, size_type newSize, size_type newAlignment)
@@ -115,12 +122,15 @@ AZ::MallocSchema::size_type AZ::MallocSchema::Resize(pointer_type ptr, size_type
 
 AZ::MallocSchema::size_type AZ::MallocSchema::AllocationSize(pointer_type ptr)
 {
+    size_type result = 0;
+
     if (ptr)
     {
         Internal::Header* header = PointerAlignDown(reinterpret_cast<Internal::Header*>(reinterpret_cast<size_t>(ptr) - sizeof(Internal::Header)), AZStd::alignment_of<Internal::Header>::value);
-        return header->size;
+        result = header->size;
     }
-    return 0;
+
+    return result;
 }
 
 AZ::MallocSchema::size_type AZ::MallocSchema::NumAllocatedBytes() const

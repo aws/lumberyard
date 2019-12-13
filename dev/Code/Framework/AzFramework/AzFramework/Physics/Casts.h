@@ -28,8 +28,17 @@ namespace Physics
     class WorldBody;
     class Shape;
     class ShapeConfiguration;
-    
-    using CustomFilterCallback = AZStd::function<bool(const Physics::WorldBody* body, const Physics::Shape* shape)>;
+
+    /// Enum to specify the hit type returned by the filter callback.
+    enum QueryHitType 
+    {
+        None, ///< The hit should not be reported.
+        Touch, ///< The hit should be reported but it should not block the query
+        Block ///< The hit should be reported and it should block the query
+    };
+
+    /// Callback used for directed scene queries: RayCasts and ShapeCasts
+    using FilterCallback = AZStd::function<QueryHitType(const Physics::WorldBody* body, const Physics::Shape* shape)>;
 
     /// Enum to specify which shapes are included in the query.
     enum class QueryType
@@ -49,7 +58,7 @@ namespace Physics
         AZ::Vector3 m_start = AZ::Vector3::CreateZero(); ///< World space point where ray starts from.
         AZ::Vector3 m_direction = AZ::Vector3::CreateZero(); ///< World space direction (normalized).
         CollisionGroup m_collisionGroup = CollisionGroup::All; ///< The layers to include in the query
-        CustomFilterCallback m_customFilterCallback = nullptr; ///< Custom filtering function
+        FilterCallback m_filterCallback = nullptr; ///< Hit filtering function
         QueryType m_queryType = QueryType::StaticAndDynamic; ///< Object types to include in the query
     };
     
@@ -64,9 +73,12 @@ namespace Physics
         AZ::Vector3 m_direction = AZ::Vector3::CreateZero(); ///< World space direction (Should be normalized)
         ShapeConfiguration* m_shapeConfiguration = nullptr; ///< Shape information.
         CollisionGroup m_collisionGroup = CollisionGroup::All; ///< Collision filter for the query.
-        CustomFilterCallback m_customFilterCallback = nullptr; ///< Custom filtering function
+        FilterCallback m_filterCallback = nullptr; ///< Hit filtering function
         QueryType m_queryType = QueryType::StaticAndDynamic; ///< Object types to include in the query
     };
+
+    /// Callback used for undirected scene queries: Overlaps
+    using OverlapFilterCallback = AZStd::function<bool(const Physics::WorldBody* body, const Physics::Shape* shape)>;
 
     /// Searches a region enclosed by a specified shape for any overlapping objects in the scene.
     struct OverlapRequest
@@ -77,7 +89,7 @@ namespace Physics
         AZ::Transform m_pose = AZ::Transform::CreateIdentity(); ///< Initial shape pose
         ShapeConfiguration* m_shapeConfiguration = nullptr; ///< Shape information.
         CollisionGroup m_collisionGroup = CollisionGroup::All; ///< Collision filter for the query.
-        CustomFilterCallback m_customFilterCallback = nullptr; ///< Custom filtering function
+        OverlapFilterCallback m_filterCallback = nullptr; ///< Hit filtering function
         QueryType m_queryType = QueryType::StaticAndDynamic; ///< Object types to include in the query
     };
 

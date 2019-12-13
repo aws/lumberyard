@@ -135,10 +135,7 @@ namespace PhysX
         static void DestroyPhysXSDK();
 
     protected:
-        // Workaround for VS2013 - Delete the copy constructor and make it private
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
         SystemComponent(const SystemComponent&) = delete;
-
         static struct PhysXSDKGlobals
         {
             physx::PxDefaultAllocator m_defaultAllocator;
@@ -166,8 +163,14 @@ namespace PhysX
         physx::PxErrorCallback* GetPhysXErrorCallback() override;
 
         bool CookConvexMeshToFile(const AZStd::string& filePath, const AZ::Vector3* vertices, AZ::u32 vertexCount) override;
+        
+        bool CookConvexMeshToMemory(const AZ::Vector3* vertices, AZ::u32 vertexCount, AZStd::vector<AZ::u8>& result) override;
+
         bool CookTriangleMeshToFile(const AZStd::string& filePath, const AZ::Vector3* vertices, AZ::u32 vertexCount,
             const AZ::u32* indices, AZ::u32 indexCount) override;
+
+        bool CookTriangleMeshToMemory(const AZ::Vector3* vertices, AZ::u32 vertexCount,
+            const AZ::u32* indices, AZ::u32 indexCount, AZStd::vector<AZ::u8>& result) override;
 
         void AddColliderComponentToEntity(AZ::Entity* entity, const Physics::ColliderConfiguration& colliderConfiguration, const Physics::ShapeConfiguration& shapeConfiguration, bool addEditorComponents = false) override;
 
@@ -182,6 +185,7 @@ namespace PhysX
         // PhysX::ConfigurationRequestBus
         const Configuration& GetConfiguration() override;
         void SetConfiguration(const Configuration&) override;
+        const AZ::Data::Asset<Physics::MaterialLibraryAsset>* GetDefaultMaterialLibraryAssetPtr() override;
 
         // CrySystemEventBus
         void OnCrySystemInitialized(ISystem&, const SSystemInitParams&) override;
@@ -235,6 +239,8 @@ namespace PhysX
             const AZ::Quaternion& childWorldRotation,
             const AZ::Vector3& axis,
             const AZStd::vector<AZ::Quaternion>& exampleLocalRotations) override;
+
+        void ReleaseNativeMeshObject(void* nativeMeshObject) override;
 
         Configuration CreateDefaultConfiguration() const;
         void LoadConfiguration();

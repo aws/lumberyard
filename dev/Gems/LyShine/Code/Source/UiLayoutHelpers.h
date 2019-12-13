@@ -77,6 +77,14 @@ namespace UiLayoutHelpers
     void GetSizeInsidePadding(AZ::EntityId elementId, const UiLayoutInterface::Padding& padding, AZ::Vector2& size);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Get the width to apply to an element based on the layout cell properties on that element
+    float GetLayoutElementTargetWidth(AZ::EntityId elementId);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Get the height to apply to an element based on the layout cell properties on that element
+    float GetLayoutElementTargetHeight(AZ::EntityId elementId);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
     //! Called on a property change that has caused an element's layout to be invalid.
     //! Marks the element as needing to recompute its layout
     void InvalidateLayout(AZ::EntityId elementId);

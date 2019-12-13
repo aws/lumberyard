@@ -1,0 +1,9 @@
+{
+    "name": "fbxsdk",
+    "source": "@3P:fbxsdk@",
+    "description": "FBX SDK Library",
+    "includes": [
+        "include"
+    ],
+    "defines": []
+}

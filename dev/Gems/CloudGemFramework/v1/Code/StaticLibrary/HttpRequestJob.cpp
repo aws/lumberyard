@@ -12,6 +12,13 @@
 
 #include <CloudGemFramework/HttpRequestJob.h>
 
+// The AWS Native SDK AWSAllocator triggers a warning due to accessing members of std::allocator directly.
+// AWSAllocator.h(70): warning C4996: 'std::allocator<T>::pointer': warning STL4010: Various members of std::allocator are deprecated in C++17.
+// Use std::allocator_traits instead of accessing these members directly.
+// You can define _SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING or _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS to acknowledge that you have received this warning.
+
+#include <AzCore/PlatformDef.h>
+AZ_PUSH_DISABLE_WARNING(4251 4996, "-Wunknown-warning-option")
 #include <aws/core/http/HttpRequest.h>
 #include <aws/core/http/HttpResponse.h>
 #include <aws/core/http/HttpClient.h>
@@ -19,7 +26,7 @@
 #include <aws/core/utils/stream/ResponseStream.h>
 #include <aws/core/utils/memory/stl/AWSStringStream.h>
 #include <aws/core/auth/AWSAuthSigner.h>
-
+AZ_POP_DISABLE_WARNING
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 
@@ -389,7 +396,7 @@ namespace CloudGemFramework
                 m_awsAuthSigner->SignRequest(*request);
             }
 
-            httpResponse = m_httpClient->MakeRequest(*request.get(), m_readRateLimiter.get(), m_writeRateLimiter.get());
+            httpResponse = m_httpClient->MakeRequest(request, m_readRateLimiter.get(), m_writeRateLimiter.get());
         }
 
         // Allow descendant classes to process the response

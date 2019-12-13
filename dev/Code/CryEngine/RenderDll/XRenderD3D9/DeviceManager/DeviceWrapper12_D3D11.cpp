@@ -26,6 +26,8 @@
         #include "Xenia/DeviceWrapper12_D3D11_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DeviceWrapper12_D3D11_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DeviceWrapper12_D3D11_cpp_salem.inl"
     #endif
 #endif
 #if defined(DEVICEWRAPPER12_D3D11_CPP_WRAP_DX11)

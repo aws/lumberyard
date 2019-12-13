@@ -15,6 +15,7 @@
 #include <Physics/TriggerBus.h>
 #include <Physics/CollisionNotificationBus.h>
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzFramework/Physics/World.h>
 
 namespace Physics
 {
@@ -68,6 +69,32 @@ namespace Physics
             void OnCollisionBegin(const CollisionEvent& triggerEvent) override;
             void OnCollisionPersist(const CollisionEvent& triggerEvent) override;
             void OnCollisionEnd(const CollisionEvent& triggerEvent) override;
+        };
+
+        class WorldNotificationBusBehaviorHandler
+            : public WorldNotificationBus::Handler
+            , public AZ::BehaviorEBusHandler
+        {
+        public:
+            static void Reflect(AZ::ReflectContext* context);
+            AZ_EBUS_BEHAVIOR_BINDER(WorldNotificationBusBehaviorHandler, "{D8B108B8-9126-4C66-B857-377BA5DB3062}", AZ::SystemAllocator
+                , OnPrePhysicsUpdate
+                , OnPostPhysicsUpdate
+                , GetPhysicsTickOrder
+            );
+
+            // WorldNotificationBus ...
+            void OnPrePhysicsUpdate(float fixedDeltaTime) override
+            {
+                Call(FN_OnPrePhysicsUpdate, fixedDeltaTime);
+            }
+
+            void OnPostPhysicsUpdate(float fixedDeltaTime) override
+            {
+                Call(FN_OnPostPhysicsUpdate, fixedDeltaTime);
+            }
+
+            int GetPhysicsTickOrder() override;
         };
     }
 }

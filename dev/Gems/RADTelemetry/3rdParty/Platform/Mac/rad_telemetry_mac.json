@@ -1,0 +1,12 @@
+{
+  "platform": {
+    "darwin_x64": {
+      "libpath": [
+        "External/Lib"
+      ],
+      "lib": [
+        "librad_tm_mac_x64_link.a"
+      ]
+    }
+  }
+}

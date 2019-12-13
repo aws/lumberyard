@@ -833,7 +833,18 @@ namespace EMStudio
 
     void AnimGraphModel::OnSyncVisualObject(EMotionFX::AnimGraphObject* object)
     {
-        Edited(object);
+        if (m_pendingToDeleteIndices.empty())
+        {
+            Edited(object);
+        }
+        else
+        {
+            QModelIndexList modelIndexes = FindModelIndexes(object);
+            for (QModelIndex& modelIndex : modelIndexes)
+            {
+                m_pendingToEditIndices.emplace_back(modelIndex);
+            }
+        }
     }
 
     void AnimGraphModel::OnReferenceAnimGraphChanged(EMotionFX::AnimGraphReferenceNode* referenceNode)
@@ -1269,6 +1280,12 @@ namespace EMStudio
             return; // early out, nothing to do
         }
 
+        // Clear the current index before removing the rows. We are remembering the old state in m_pendingFocus
+        // and are setting its' state back after removing the rows.
+        // beginRemoveRows() is accessing the data of the to be removed model index, which might have changed by a
+        // previous removal iteration and thus accessing an invalid current index.
+        m_selectionModel.clearCurrentIndex();
+
         for (const QPersistentModelIndex& modelIndex : m_pendingToDeleteIndices)
         {
             if (modelIndex.isValid())
@@ -1280,6 +1297,18 @@ namespace EMStudio
             }
         }
         m_pendingToDeleteIndices.clear();
+
+        if (!m_pendingToEditIndices.empty())
+        {
+            for (const QPersistentModelIndex& modelIndex : m_pendingToEditIndices)
+            {
+                if (modelIndex.isValid())
+                {
+                    dataChanged(modelIndex, modelIndex);
+                }
+            }
+        }
+        m_pendingToEditIndices.clear();
 
         Focus(m_pendingFocus);
         m_pendingFocus = QPersistentModelIndex();

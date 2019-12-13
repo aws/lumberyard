@@ -27,4 +27,4 @@ echo Dumping parameters
 echo $*
 echo Dumped parameters
 PYP=$ENGINE_DIR/Code/Tools/AzTestScanner
-env PYTHONPATH=$PYP python -m aztest $*
+env PYTHONPATH=$PYP $ENGINE_DIR/Tools/Python/python.sh -m aztest $*

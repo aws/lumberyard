@@ -54,6 +54,9 @@
     #define __ANDROID_API_P__ 28
 #endif
 
+#ifndef __ANDROID_API_Q__
+    #define __ANDROID_API_Q__ 29
+#endif
 
 namespace AZ
 {
@@ -71,6 +74,7 @@ namespace AZ
             Oreo            = __ANDROID_API_O__,
             Oreo_mr1        = __ANDROID_API_O_MR1__,
             Pie             = __ANDROID_API_P__,
+            Ten             = __ANDROID_API_Q__,
         };
 
         //! Request the OS runtime API level of the device

@@ -62,9 +62,11 @@
 
         "Memory/Platform/Android":
         [
+            "../Common/Unimplemented/AzCore/Memory/OverrunDetectionAllocator_Unimplemented.h",
             "../Common/UnixLike/AzCore/Memory/OSAllocator_UnixLike.h",
             "AzCore/Memory/HeapSchema_Android.cpp",
-            "AzCore/Memory/OSAllocator_Platform.h"
+            "AzCore/Memory/OSAllocator_Platform.h",
+            "AzCore/Memory/OverrunDetectionAllocator_Platform.h"
         ],
 
         "Math/Internal/Platform/Android":

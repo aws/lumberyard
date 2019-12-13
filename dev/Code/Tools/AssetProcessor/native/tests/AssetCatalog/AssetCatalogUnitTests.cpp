@@ -11,6 +11,7 @@
 */
 #include <AzCore/base.h>
 #include <AzCore/Component/ComponentApplication.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzTest/AzTest.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/API/AssetDatabaseBus.h>
@@ -23,6 +24,7 @@
 #include <native/resourcecompiler/RCBuilder.h> // for defines like BUILDER_ID_RC
 
 #include <native/AssetManager/AssetCatalog.h>
+#include "AssetManager/FileStateCache.h"
 
 namespace AssetProcessor
 {
@@ -31,6 +33,7 @@ namespace AssetProcessor
     using namespace testing;
     using ::testing::NiceMock;
     using namespace UnitTestUtils;
+    using namespace UnitTest;
     using namespace AzFramework::AssetSystem;
     using namespace AzToolsFramework::AssetSystem;
     using namespace AzToolsFramework::AssetDatabase;
@@ -56,12 +59,18 @@ namespace AssetProcessor
         {
             m_catalogIsDirty = false;
         }
+
+        AzFramework::AssetRegistry& GetRegistry(QString platformKey)
+        {
+            return m_registries[platformKey];
+        }
+
     protected:
 
     };
 
     class AssetCatalogTest
-        : public ::testing::Test
+        : public ScopedAllocatorSetupFixture
     {
     protected:
         
@@ -69,6 +78,7 @@ namespace AssetProcessor
         struct DataMembers
         {
             NiceMock<MockDatabaseLocationListener> m_databaseLocationListener;
+            FileStatePassthrough m_fileStateCache;
             QTemporaryDir m_temporaryDir;
             QDir m_temporarySourceDir;
             QDir m_priorAssetRoot;
@@ -88,17 +98,19 @@ namespace AssetProcessor
             }
         };
 
+        // The component application creates and returns a system entity, but doesn't keep track of it
+        // It's the responsibility of whatever owns the component application to also track and manage the lifetime
+        // of this entity.
+        AZ::Entity* m_systemEntity = nullptr;
         DataMembers* m_data = nullptr;
         AZStd::unique_ptr<AZ::ComponentApplication> m_app; // the app is created seperately so that we can control its lifetime.
 
         void SetUp() override
         {
-            AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
-
             m_app.reset(aznew AZ::ComponentApplication());
             AZ::ComponentApplication::Descriptor desc;
             desc.m_useExistingAllocator = true;
-            m_app->Create(desc);
+            m_systemEntity = m_app->Create(desc);
 
             m_data = azcreate(DataMembers, ());
             
@@ -190,9 +202,10 @@ namespace AssetProcessor
             AssetUtilities::ResetAssetRoot();
 
             azdestroy(m_data);
+            delete m_systemEntity;
+            m_systemEntity = nullptr;
             m_app->Destroy();
             m_app.reset();
-            AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
         }
 
         // -- utility functions to create default state data --
@@ -282,9 +295,41 @@ namespace AssetProcessor
             dbConn->SetSource(sourceEntry);
 
             JobDatabaseEntry jobEntry(sourceEntry.m_sourceID, "test", 1234, "pc", assetId, AzToolsFramework::AssetSystem::JobStatus::Completed, 12345);
-            dbConn->SetJob(jobEntry);
+            result = dbConn->SetJob(jobEntry);
 
             jobId = jobEntry.m_jobID;
+            return result;
+        };
+
+        bool AddSourceAndJobForMultiplePlatforms(
+            const char* scanFolder,
+            const char* sourceRelPath,
+            AssetDatabaseConnection* dbConn,
+            AZStd::map<AZStd::string, AZ::s64>& platformsToJobIds,
+            const AZStd::vector<AZStd::string>& platforms,
+            AZ::Uuid assetId = AZ::Uuid::CreateRandom())
+        {
+            ScanFolderDatabaseEntry scanFolderEntry;
+            bool result = dbConn->GetScanFolderByPortableKey(scanFolder, scanFolderEntry);
+
+            if (!result)
+            {
+                return false;
+            }
+
+            SourceDatabaseEntry sourceEntry(scanFolderEntry.m_scanFolderID, sourceRelPath, assetId, "fingerprint1");
+            dbConn->SetSource(sourceEntry);
+
+            for (const AZStd::string& platform : platforms)
+            {
+                JobDatabaseEntry jobEntry(sourceEntry.m_sourceID, "test", 1234, platform.c_str(), assetId, AzToolsFramework::AssetSystem::JobStatus::Completed, 12345);
+                result = dbConn->SetJob(jobEntry);
+                if (!result)
+                {
+                    return false;
+                }
+                platformsToJobIds[platform] = jobEntry.m_jobID;
+            }
             return true;
         };
 
@@ -331,6 +376,18 @@ namespace AssetProcessor
             output.remove(0, tempPath.path().length() + 1); //adding one for the native separator
 
             return (output == expectedPath);
+        }
+
+        AZ::s64 CreateProductAndGetProductId(AZ::s64 jobId, const AZStd::string& productPath, const AZ::u32 productSubId)
+        {
+            ProductDatabaseEntry product(
+                jobId,
+                productSubId,
+                m_data->m_cacheRootDir.relativeFilePath(productPath.c_str()).toStdString().c_str(),
+                AZ::Data::AssetType::CreateRandom());
+            bool result = m_data->m_dbConn.SetProduct(product);
+            EXPECT_TRUE(result);
+            return product.m_productID;
         }
     };
 
@@ -842,7 +899,185 @@ namespace AssetProcessor
 
         catalogThread.join();
     }
-    
+
+    class AssetCatalogTestForProductDependencies
+        : public AssetCatalogTest
+    {
+    public:
+        void SetUp() override
+        {
+            AssetCatalogTest::SetUp();
+            m_platforms.push_back("pc");
+            m_platforms.push_back("es3");
+
+            // 4 products for one platform, 1 product for the other.
+            m_platformToProductsForSourceWithDifferentProducts["pc"].push_back("subfolder3/basefilez.arc2");
+            m_platformToProductsForSourceWithDifferentProducts["pc"].push_back("subfolder3/basefileaz.azm2");
+            m_platformToProductsForSourceWithDifferentProducts["pc"].push_back("subfolder3/basefile.arc2");
+            m_platformToProductsForSourceWithDifferentProducts["pc"].push_back("subfolder3/basefile.azm2");
+
+            m_platformToProductsForSourceWithDifferentProducts["es3"].push_back("subfolder3/es3exclusivefile.azm2");
+
+            m_sourceFileWithDifferentProductsPerPlatform = AZ::Uuid::CreateString("{38032FC9-2838-4D6A-9DA0-79E5E4F20C1B}");
+            m_sourceFileWithDependency = AZ::Uuid::CreateString("{807C4174-1D19-42AD-B8BC-A59291D9388C}");
+
+            // Setup:
+            //  2 source files: MultiplatformFile.txt and FileWithDependency.txt.
+            //      MultiplatformFile.txt has different products on different platforms.
+            //      FileWithDependency.txt has the same product on each platform, but these products have different product dependencies per platform.
+            // This setup is meant to mimic a pattern we've seen with materials and mipmaps: Mipmap generation settings can be different per platform,
+            // resulting in image processing jobs having different products per platform. Because of this, the material jobs will then have different
+            // dependencies per platform, because each material will depend on a referenced texture and all of that texture's mipmaps.
+
+            // Add a source file with 4 products on pc, but 1 on es3
+            bool result = AddSourceAndJobForMultiplePlatforms(
+                "subfolder3",
+                "MultiplatformFile.txt",
+                &(m_data->m_dbConn),
+                m_sourceFileWithDifferentProductsJobsPerPlatform,
+                m_platforms,
+                m_sourceFileWithDifferentProductsPerPlatform);
+            EXPECT_TRUE(result);
+
+            // Add a source file with 1 product on each platform, that has different dependencies per platform.
+            AZStd::map<AZStd::string, AZ::s64> sourceFileWithSameProductsJobsPerPlatform;
+            result = AddSourceAndJobForMultiplePlatforms("subfolder3", "FileWithDependency.txt", &(m_data->m_dbConn), sourceFileWithSameProductsJobsPerPlatform, m_platforms, m_sourceFileWithDependency);
+            EXPECT_TRUE(result);
+
+            const AZStd::string fileWithDependencyProductPath = "subfolder3/es3exclusivefile.azm2";
+
+            for (const AZStd::string& platform : m_platforms)
+            {
+                m_platformToSourceIdToProductIds[platform][m_sourceFileWithDependency].push_back(
+                    CreateProductAndGetProductId(sourceFileWithSameProductsJobsPerPlatform[platform], fileWithDependencyProductPath, 0));
+            }
+        }
+
+        void CreateProducts()
+        {
+            for (const AZStd::string& platform : m_platforms)
+            {
+                AZ::u32 productSubId = 0;
+                for (const auto& relativeProductPath : m_platformToProductsForSourceWithDifferentProducts[platform])
+                {
+                    m_sourceWithMultipleProductsPlatformToProductIds[platform].push_back(
+                        CreateProductAndGetProductId(m_sourceFileWithDifferentProductsJobsPerPlatform[platform], relativeProductPath, productSubId++));
+                }
+            }
+        }
+
+        // Containers are stored in unique pointers so they can be destroyed in teardown before the allocators are freed.
+        AZStd::vector<AZStd::string> m_platforms;
+        AZStd::map<AZStd::string, AZStd::vector<AZStd::string>> m_platformToProductsForSourceWithDifferentProducts;
+        AZ::Uuid m_sourceFileWithDifferentProductsPerPlatform;
+        AZ::Uuid m_sourceFileWithDependency;
+        AZStd::map<AZStd::string, AZ::s64> m_sourceFileWithDifferentProductsJobsPerPlatform;
+        AZStd::map<AZStd::string, AZStd::map<AZ::Uuid, AZStd::vector<AZ::s64>>> m_platformToSourceIdToProductIds;
+        AZStd::map<AZStd::string, AZStd::vector<AZ::s64>> m_sourceWithMultipleProductsPlatformToProductIds;
+    };
+
+    TEST_F(AssetCatalogTestForProductDependencies, SaveCatalog_DifferentDependenciesPerPlatform_CorrectDependenciesSavedToCatalog)
+    {
+        CreateProducts();
+        for (const AZStd::string& platform : m_platforms)
+        {
+            AZ::s64 productIdForPlatform = m_platformToSourceIdToProductIds[platform][m_sourceFileWithDependency][0];
+            for (AZ::s64 subIdAndProductIndex : m_sourceWithMultipleProductsPlatformToProductIds[platform])
+            {
+                // SubId matches index.
+                ProductDependencyDatabaseEntry productDependency(
+                    productIdForPlatform,
+                    m_sourceFileWithDifferentProductsPerPlatform,
+                    subIdAndProductIndex,
+                    /*dependencyFlags*/ 0,
+                    platform);
+                bool result = m_data->m_dbConn.SetProductDependency(productDependency);
+                EXPECT_TRUE(result);
+                // Don't need to cache anything at this point, the dependency ID isn't tracked in the catalog.
+            }
+        }
+
+        m_data->m_assetCatalog->BuildRegistry();
+
+        // Verify that the dependencies are correct.
+        // Without the bug fix to AssetCatalog, every platform's registry included the dependencies for all other platforms.
+        const AZ::Data::AssetId productWithDependency(m_sourceFileWithDependency, 0);
+        for (const AZStd::string& platform : m_platforms)
+        {
+            AzFramework::AssetRegistry& registry = m_data->m_assetCatalog->GetRegistry(platform.c_str());
+            EXPECT_EQ(registry.m_assetDependencies[productWithDependency].size(), m_sourceWithMultipleProductsPlatformToProductIds[platform].size());
+        }
+    }
+
+    TEST_F(AssetCatalogTestForProductDependencies, SaveCatalog_DifferentDependenciesPerPlatformResolvedFromPaths_CorrectDependenciesSavedToCatalog)
+    {
+        // Setup:
+        //  2 source files: MultiplatformFile.txt and FileWithDependency.txt.
+        //      MultiplatformFile.txt has different products on different platforms.
+        //      FileWithDependency.txt has the same product on each platform, but these products have different product dependencies per platform.
+        //          FileWithDependency.txt initially emits dependencies as path dependencies, which are resolved later into asset IDs.
+        // This test differs from the previous test in that it forces OnDependencyResolved to be called, which is where we've seen
+        // bugs in the past related to the asset catalog.
+
+        // Set up the path dependencies.
+        AZStd::vector<ProductDependencyDatabaseEntry> productDependencies;
+        for (const AZStd::string& platform : m_platforms)
+        {
+            AZ::s64 productIdForPlatform = m_platformToSourceIdToProductIds[platform][m_sourceFileWithDependency][0];
+            for (const auto& relativeProductPath : m_platformToProductsForSourceWithDifferentProducts[platform])
+            {
+                // SubId matches index.
+                ProductDependencyDatabaseEntry productDependency(
+                    productIdForPlatform,
+                    AZ::Uuid::CreateNull(),
+                    /*subId*/ 0,
+                    /*dependencyFlags*/ 0,
+                    platform,
+                    relativeProductPath);
+                bool result = m_data->m_dbConn.SetProductDependency(productDependency);
+                EXPECT_TRUE(result);
+                productDependencies.push_back(productDependency);
+            }
+        }
+
+        // Create the products that match the path dependencies.
+        CreateProducts();
+
+        // Resolve the path dependencies.
+        AZStd::map<AZStd::string, size_t> platformToProductIdIndex;
+        for (const AZStd::string& platform : m_platforms)
+        {
+            platformToProductIdIndex[platform] = 0;
+        }
+        for (ProductDependencyDatabaseEntry& productDependency : productDependencies)
+        {
+            // These were generated in this same order previously, but it also doesn't
+            // matter to this test which dependencies are upgraded from paths to asset ID,
+            // what matters is calling AssetCatalog::OnDependencyResolved to replace paths with asset IDs.
+            AZ::s64 subId = m_sourceWithMultipleProductsPlatformToProductIds[productDependency.m_platform][platformToProductIdIndex[productDependency.m_platform]];
+            platformToProductIdIndex[productDependency.m_platform]++;
+
+            productDependency.m_dependencySubID = subId;
+            productDependency.m_dependencySourceGuid = m_sourceFileWithDifferentProductsPerPlatform;
+            productDependency.m_unresolvedPath = AZStd::string();
+            m_data->m_assetCatalog->OnDependencyResolved(m_sourceFileWithDependency, productDependency);
+        }
+
+        // Verify the catalog is correct.
+        m_data->m_assetCatalog->BuildRegistry();
+
+        // Verify that the dependencies are correct.
+        // Without the bug fix to AssetCatalog, every platform's registry included the dependencies for all other platforms.
+        const AZ::Data::AssetId productWithDependency(m_sourceFileWithDependency, 0);
+        for (const AZStd::string& platform : m_platforms)
+        {
+            AzFramework::AssetRegistry& registry = m_data->m_assetCatalog->GetRegistry(platform.c_str());
+            EXPECT_EQ(registry.m_assetDependencies[productWithDependency].size(), m_sourceWithMultipleProductsPlatformToProductIds[platform].size());
+        }
+
+        EXPECT_TRUE(true);
+    }
+
 } // namespace AssetProcessor
 
 

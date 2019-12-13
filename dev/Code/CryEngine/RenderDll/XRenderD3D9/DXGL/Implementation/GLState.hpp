@@ -123,7 +123,6 @@ namespace NCryOpenGL
 
     inline bool operator==(SColorMask kLeft, SColorMask kRight)
     {
-        //  Confetti BEGIN: Igor Lobanchikov :END
         return 0 == memcmp(kLeft.m_abRGBA, kRight.m_abRGBA, sizeof(kRight.m_abRGBA));
     }
 

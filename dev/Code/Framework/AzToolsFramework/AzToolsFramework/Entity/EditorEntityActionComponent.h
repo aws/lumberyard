@@ -44,6 +44,8 @@ namespace AzToolsFramework
             //////////////////////////////////////////////////////////////////////////
             // EntityCompositionRequestBus::Handler
             AddComponentsOutcome AddComponentsToEntities(const EntityIdList& entityIds, const AZ::ComponentTypeList& componentsToAdd) override;
+            AddExistingComponentsOutcome AddExistingComponentsToEntityById(const AZ::EntityId& entityId, const AZStd::vector<AZ::Component*>& componentsToAdd) override;
+            //! LUMBERYARD_DEPRECATED(LY-103316)
             AddExistingComponentsOutcome AddExistingComponentsToEntity(AZ::Entity* entity, const AZStd::vector<AZ::Component*>& componentsToAdd) override;
             RemoveComponentsOutcome RemoveComponents(const AZStd::vector<AZ::Component*>& componentsToRemove) override;
             ScrubEntitiesOutcome ScrubEntities(const EntityList& entities) override;

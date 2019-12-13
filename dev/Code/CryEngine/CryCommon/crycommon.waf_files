@@ -188,6 +188,7 @@
             "INetworkingState.h",
             "IProximityTriggerSystem.h",
             "MicrophoneBus.h",
+            "NativeUIRequests.h",
             "ParticleParams.h",
             "ParticleParams_info.h",
             "physinterface.h",
@@ -202,7 +203,8 @@
             "CharacterBoundsBus.h",
             "ColorGradingBus.h",
             "HeightmapUpdateNotificationBus.h",
-            "RTTBus.h"	    
+            "RTTBus.h",
+            "IVegetationPoolManager.h" 
         ],
         "Interfaces_h/AI Interfaces":
         [
@@ -239,7 +241,6 @@
         [
             "Components/IComponentArea.h",
             "Components/IComponentAudio.h",
-            "Components/IComponentBoids.h",
             "Components/IComponentCamera.h",
             "Components/IComponentClipVolume.h",
             "Components/IComponentEntityAttributes.h",
@@ -319,6 +320,7 @@
             "CountedValue.h",
             "CrtDebugStats.h",
             "CryArray.h",
+            "CryArray2d.h",
             "CryAssert.h",
             "CryBufferedFileReader.h",
             "CryCrc32.h",
@@ -336,6 +338,7 @@
             "CryMemoryManager.h",
             "CryLegacyAllocator.h",
             "CryName.h",
+            "CryPakBus.h",
             "CryParticleSpawnInfo.h",
             "CryPath.h",
             "CryPodArray.h",
@@ -377,6 +380,7 @@
             "MultiThread_Containers.h",
             "Name_TypeInfo.h",
             "NameCRCHelper.h",
+            "NullAudioSystem.h",
             "ParamNodeTypes.h",
             "ParticleParams_TypeInfo.h",
             "Pipe.h",
@@ -451,7 +455,9 @@
             "UniqueManualEvent.h",
             "CryCommonReflection.h",
             "OceanConstants.h",
-            "Codec.h"
+            "Codec.h",
+            "PakLoadDataUtils.h",
+            "TPool.h"
         ],
         "Common_h/RenderElements":
         [
@@ -468,6 +474,7 @@
             "CREParticleGPU.h",
             "CREPostProcess.h",
             "CRESky.h",
+            "CRETerrain.h",
             "CREVolumeObject.h",
             "CREWaterOcean.h",
             "CREWaterVolume.h",
@@ -800,7 +807,12 @@
 
         "Terrain/Bus":
         [
-            "Terrain/Bus/LegacyTerrainBus.h"
+            "Terrain/Bus/LegacyTerrainBus.h",
+            "Terrain/Bus/WorldMaterialRequestsBus.h",
+            "Terrain/Bus/TerrainBus.h",
+            "Terrain/Bus/TerrainRendererBus.h",
+            "Terrain/Bus/HeightmapDataBus.h",
+            "Terrain/Bus/TerrainProviderBus.h"
         ],
 
         "Vegetation":

@@ -23,6 +23,7 @@
 #include <AzFramework/API/BootstrapReaderBus.h>
 #include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
+#include <AzFramework/Asset/AssetSeedList.h>
 #include <AzFramework/Network/AssetProcessorConnection.h>
 
 namespace AzFramework
@@ -230,7 +231,8 @@ namespace AzFramework
             SaveAssetCatalogResponse::Reflect(context);
 
             AssetNotificationMessage::Reflect(context);
-
+            AssetSeedListReflector::Reflect(context);
+            SeedInfo::Reflect(context);
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {

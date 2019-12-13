@@ -1,0 +1,22 @@
+{
+    "configuration_settings": {
+        "linux_rpath": ["$ORIGIN"]
+    },
+    "platform": {
+        "linux_x64": {
+            "sharedlibpath_debug": [
+                "bin/linux/Debug"
+            ],
+            "sharedlibpath_release": [
+                "bin/linux/Release"
+            ],
+            "aws_cpp_sdk_gamelift_shared/shared": [
+                "lib${aws_cpp_sdk_gamelift}.so"
+            ],
+            "aws_cpp_sdk_identity_lambda_shared/shared": [
+                "lib${aws_cpp_sdk_identity_lambda}.so",
+                "lib${aws_dependencies}.so"
+            ]
+        }
+    }
+}

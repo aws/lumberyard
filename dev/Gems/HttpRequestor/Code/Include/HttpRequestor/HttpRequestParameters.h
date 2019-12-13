@@ -37,9 +37,8 @@ namespace HttpRequestor
         Parameters(const Parameters&) = default;
         Parameters& operator=(const Parameters&) = default;
 
-        // VS2013 won't default these
-        Parameters(Parameters&&);
-        Parameters& operator=(Parameters&&);
+        Parameters(Parameters&&) = default;
+        Parameters& operator=(Parameters&&) = default;
 
         //returns the URI in string form as an recipient of the HTTP connection
         const Aws::String& GetURI() const { return m_URI; }
@@ -89,23 +88,5 @@ namespace HttpRequestor
     {
     }
 
-    inline Parameters::Parameters(Parameters&& rhs)
-        : m_URI(std::move(rhs.m_URI))
-        , m_method(std::move(rhs.m_method))
-        , m_headers(std::move(rhs.m_headers))
-        , m_bodyStream(std::move(rhs.m_bodyStream))
-        , m_callback(std::move(rhs.m_callback))
-    {
-    }
-
-    inline Parameters& Parameters::operator=(Parameters&& rhs)
-    {
-        m_URI = std::move(rhs.m_URI);
-        m_method = std::move(rhs.m_method);
-        m_headers = std::move(rhs.m_headers);
-        m_bodyStream = std::move(rhs.m_bodyStream);
-        m_callback = std::move(rhs.m_callback);
-        return *this;
-    }
 }
 

@@ -20,6 +20,7 @@
 #include <GridMate_Traits_Platform.h>
 
 //#define PRINT_IPADDRESS
+//#define DEBUG_CERTIFICATE_CHAIN_ENCODE 1
 
 #if AZ_TRAIT_GRIDMATE_SECURE_SOCKET_DRIVER_HOOK_ENABLED
 #include <openssl/ossl_typ.h>
@@ -521,6 +522,8 @@ namespace GridMate
         return privateKey;
     }
 
+
+#if DEBUG_CERTIFICATE_CHAIN_ENCODE
     AZStd::string X509NameToString(X509_NAME *subj_or_issuer)
     {
         BIO * bio_out = BIO_new(BIO_s_mem());
@@ -583,6 +586,7 @@ namespace GridMate
 
         return AZStd::string::format("%02d-%02d-%4d %02d:%02d:%02d", month, day, year, hour, minute, second);
     }
+#endif
 
     void CreateCertificateChainFromEncodedPEM(const char* encodedPem, AZStd::vector<X509*>& certificateChain)
     {
@@ -613,12 +617,15 @@ namespace GridMate
                 break;
             }
 
+#if DEBUG_CERTIFICATE_CHAIN_ENCODE
+            // We don't want this in client logs normally; it's left here purely debugging purposes
             AZ_Printf("GridMateSecure", "Certinfo: Issuer:\"%s\" Serial:%s Not Before:%s Not After:%s\n",
                 X509NameToString(X509_get_issuer_name(newCertificate)).c_str(),
                 X509IntegerToString(X509_get_serialNumber(newCertificate)).c_str(),
                 X509DateToString(X509_get0_notBefore(newCertificate)).c_str(),
                 X509DateToString(X509_get0_notAfter(newCertificate)).c_str()
                 );
+#endif
 
             certificateChain.push_back(newCertificate);
 

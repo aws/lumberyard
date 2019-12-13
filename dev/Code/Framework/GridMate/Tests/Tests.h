@@ -102,7 +102,7 @@ namespace UnitTest
 
             m_drillerSession = NULL;
 
-            AZ::Debug::AllocationRecords* records = AZ::AllocatorInstance<GridMate::GridMateAllocator>::Get().GetRecords();
+            AZ::Debug::AllocationRecords* records = AZ::AllocatorInstance<GridMate::GridMateAllocator>::GetAllocator().GetRecords();
             if (records)
             {
                 records->SetMode(AZ::Debug::AllocationRecords::RECORD_FULL);
@@ -174,7 +174,7 @@ namespace UnitTest
                 desc.m_custom = &AZ::AllocatorInstance<GridMate::GridMateAllocator>::Get();
                 AZ::AllocatorInstance<GridMate::GridMateAllocatorMP>::Create(desc);
 
-                AZ::Debug::AllocationRecords* records = AZ::AllocatorInstance<GridMate::GridMateAllocatorMP>::Get().GetRecords();
+                AZ::Debug::AllocationRecords* records = AZ::AllocatorInstance<GridMate::GridMateAllocatorMP>::GetAllocator().GetRecords();
                 if (records)
                 {
                     records->SetMode(AZ::Debug::AllocationRecords::RECORD_FULL);

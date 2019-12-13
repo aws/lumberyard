@@ -15,6 +15,7 @@
 #include <AzCore/std/createdestroy.h>
 #include <AzCore/std/iterator.h>
 #include <AzCore/std/functional_basic.h>
+#include <AzCore/std/typetraits/common_type.h>
 #include <AzCore/std/typetraits/remove_cvref.h>
 
 namespace AZStd
@@ -960,6 +961,45 @@ namespace AZStd
     }
 
     // todo search_n
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    // set_difference
+    template <class Compare, class InputIterator1, class InputIterator2, class OutputIterator>
+    OutputIterator set_difference(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2, OutputIterator result, Compare comp)
+    {
+        while (first1 != last1)
+        {
+            if (first2 == last2)
+            {
+                return AZStd::copy(first1, last1, result);
+            }
+
+            if (comp(*first1, *first2))
+            {
+                *result = *first1;
+                ++result;
+                ++first1;
+            }
+            else
+            {
+                if (!comp(*first2, *first1))
+                {
+                    ++first1;
+                }
+                ++first2;
+            }
+        }
+        return result;
+    }
+
+    template <class InputIterator1, class InputIterator2, class OutputIterator>
+    inline OutputIterator set_difference(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2, OutputIterator result)
+    {
+        return AZStd::set_difference(first1, last1, first2, last2, result,
+            AZStd::less<AZStd::common_type_t<typename iterator_traits<InputIterator1>::value_type,
+                                             typename iterator_traits<InputIterator2>::value_type>>());
+    }
     //////////////////////////////////////////////////////////////////////////
 
     template<class InputIterator1, class InputIterator2>

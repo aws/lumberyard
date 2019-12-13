@@ -286,7 +286,7 @@ namespace cry
 #endif
 
 #if defined(_DEBUG) && defined(WIN32)
-#if _MSC_VER >= 1300 && defined(_MAP_)
+#if defined(_MAP_)
     template <class Key, class Type, class Traits = std::less<Key> >
     class map
         : public std::map <Key, Type, Traits, dbg_allocator<std::pair<Key, Type> > >
@@ -301,7 +301,7 @@ namespace cry
     };
 #endif
 
-#if (_MSC_VER >= 1300) && defined(_SET_)
+#if defined(_SET_)
     template <class Key, class Traits = std::less<Key> >
     class set
         : public std::set <Key, Traits, dbg_allocator<Key> >
@@ -316,7 +316,7 @@ namespace cry
     };
 #endif
 
-#if (_MSC_VER >= 1300) && defined(_VECTOR_)
+#if defined(_VECTOR_)
     template <class Type>
     class vector
         : public std::vector <Type, dbg_allocator<Type> >
@@ -336,7 +336,7 @@ namespace cry
     };
 #endif
 
-#if (_MSC_VER >= 1300) && defined(_STRING_)
+#if defined(_STRING_)
     class string
         : public std::basic_string<char, std::char_traits<char>, dbg_allocator<char> >
     {
@@ -362,7 +362,6 @@ namespace cry
     };
 #endif
 #else
-    //#if _MSC_VER >= 1300 && defined(_MAP_)
     template <class Key, class Type, class Traits = std::less<Key> >
     class map
         : public std::map <Key, Type, Traits >
@@ -376,9 +375,7 @@ namespace cry
         {
         }
     };
-    //#endif
 
-    //#if (_MSC_VER >= 1300) && defined(_SET_)
     template <class Key, class Traits = std::less<Key> >
     class set
         : public std::set <Key, Traits>
@@ -392,9 +389,7 @@ namespace cry
         {
         }
     };
-    //#endif
 
-    //#if (_MSC_VER >= 1300) && defined(_VECTOR_)
     template <class Type>
     class vector
         : public std::vector <Type>
@@ -408,9 +403,7 @@ namespace cry
         {
         }
     };
-    //#endif
 
-    //#if (_MSC_VER >= 1300) && defined(_STRING_)
     class string
         : public string
     {
@@ -448,7 +441,6 @@ namespace cry
         {
         }
     };
-    //#endif
 #endif
 }
 #endif // CRYINCLUDE_CRYCOMMON_STLDBGALLOC_H

@@ -298,6 +298,9 @@ namespace AssetUtilities
 
         void AppendLog(AzToolsFramework::Logging::LogLine& logLine);
 
+        AZ::s64 GetErrorCount() const;
+        AZ::s64 GetWarningCount() const;
+
     private:
         AZStd::unique_ptr<AzFramework::LogFile> m_logFile;
         AZStd::string m_logFileName;
@@ -308,6 +311,8 @@ namespace AssetUtilities
         bool m_inException = false;
         //! If true, log file will be overwritten instead of appended
         bool m_forceOverwriteLog = false;
+        AZ::s64 m_errorCount = 0;
+        AZ::s64 m_warningCount = 0;
 
         void AppendLog(AzFramework::LogFile::SeverityLevel severity, const char* window, const char* message);
     };

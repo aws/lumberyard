@@ -1,0 +1,47 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+
+def build(bld):
+
+    bld.CryConsoleApplication(
+
+        # Settings
+        target          = 'AssetBundlerBatch',
+        file_list       = ['assetbundlerbatch.waf_files'],
+        platforms       = ['win', 'darwin'],
+        configurations  = ['debug_all', 'profile_all'],
+        vs_filter       = 'Tools/AssetBundler',
+        use             = ['AzToolsFramework'] + bld.make_aws_library_task_list(["LyMetricsProducer", "LyMetricsShared", "LyIdentity"]),
+        uselib          = ['QT5CORE',
+                           'QT5GUI',
+                           'QT5WIDGETS',
+                           'QT5NETWORK',
+                           'AWS_CPP_SDK_CORE',
+                           'AWS_CPP_SDK_COGNITO_IDP',
+                           'AWS_CPP_SDK_COGNITO_IDENTITY',
+                           'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
+                           'AWS_CPP_SDK_LAMBDA',
+                           'AWS_CPP_SDK_MOBILEANALYTICS',
+                           'AWS_CPP_SDK_STS',
+                           'SSLEAY'],
+
+        defines = [ 'METRICS_ENABLED' ],
+
+        includes = [ bld.Path("Code/Tools/LyMetrics/LyMetricsProducer/include"),
+                     bld.Path('Code/Tools/GemRegistry/include') ],
+        features = ['ExternalLyIdentity', 'ExternalLyMetrics'],
+
+        # Platform Specific
+        darwin_rpath    = ['@executable_path', '@executable_path/qtlibs/lib', '@executable_path/qtlibs_mac/Frameworks'],
+        test_all_file_list = ['assetbundlerbatch_test.waf_files']
+    )

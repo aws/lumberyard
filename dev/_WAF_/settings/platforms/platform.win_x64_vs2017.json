@@ -12,7 +12,9 @@
         "platforms/compile_settings_cryengine",
         "platforms/compile_settings_msvc",
         "platforms/compile_settings_windows",
-        "platforms/platform_settings_win_x64_vs2017"
+        "platforms/platform_settings_win_x64_vs2017",
+        "platforms/platform_impl_win_x64",
+        "platforms/platform_impl_win_x64_vs2017"
     ],
 
     "includes": [
@@ -52,8 +54,8 @@
             {
                 "long_form"         : "--win-vs2017-vswhere-args",
                 "attribute"         : "win_vs2017_vswhere_args",
-                "default_value"     : "-version [15.7.27703.2035,15.9.28307.665]",
-                "description"       : "The arguments to pass to vswhere when locating vs2017 executables. The default maximum is the last version that Lumberyard was tested against before release. The default minimum is the last known ABI incompatiblity for Lumberyard builds."
+                "default_value"     : "-version [15.9.28307.770,16.0)",
+                "description"       : "The arguments to pass to vswhere when locating vs2017 executables. The default maximum is all future versions of VS2017 (beyond the minimum). The default minimum is the last known ABI incompatiblity for Lumberyard builds."
             },
             {
                 "long_form"         : "--win-vs2017-winkit",
@@ -75,7 +77,9 @@
             "_ENABLE_EXTENDED_ALIGNED_STORAGE"
         ],
         "CFLAGS,CXXFLAGS": [
-            "/FS"       # Fix for issue writing to pdb files
+            "/FS",
+            "/std:c++17",
+            "/Zc:__cplusplus"
         ]
     },
     "env/performance": {

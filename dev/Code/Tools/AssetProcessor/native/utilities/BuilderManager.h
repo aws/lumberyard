@@ -48,6 +48,17 @@ namespace AssetProcessor
 
     using BuilderManagerBus = AZ::EBus<BuilderManagerBusTraits>;
 
+    enum class BuilderRunJobOutcome
+    {
+        Ok,
+        LostConnection,
+        ProcessTerminated,
+        JobCancelled,
+        ResponseFailure,
+        FailedToDecodeResponse,
+        FailedToWriteDebugRequest
+    };
+
     //! Wrapper for managing a single builder process and sending job requests to it
     class Builder
     {
@@ -86,7 +97,7 @@ namespace AssetProcessor
 
         //! Sends the job over to the builder and blocks until the response is received or the builder crashes/times out
         template<typename TNetRequest, typename TNetResponse, typename TRequest, typename TResponse>
-        void RunJob(const TRequest& request, TResponse& response, AZ::u32 processTimeoutLimitInSeconds, const AZStd::string& task, const AZStd::string& modulePath, AssetBuilderSDK::JobCancelListener* jobCancelListener = nullptr, AZStd::string tempFolderPath = AZStd::string()) const;
+        BuilderRunJobOutcome RunJob(const TRequest& request, TResponse& response, AZ::u32 processTimeoutLimitInSeconds, const AZStd::string& task, const AZStd::string& modulePath, AssetBuilderSDK::JobCancelListener* jobCancelListener = nullptr, AZStd::string tempFolderPath = AZStd::string()) const;
 
     private:
 
@@ -100,7 +111,7 @@ namespace AssetProcessor
         AZStd::unique_ptr<AzToolsFramework::ProcessWatcher> LaunchProcess(const char* fullExePath, const AZStd::string& params) const;
 
         //! Waits for the builder exe to send the job response and pumps stdout/err
-        bool WaitForBuilderResponse(AssetBuilderSDK::JobCancelListener* jobCancelListener, AZ::u32 processTimeoutLimitInSeconds, AZStd::binary_semaphore* waitEvent) const;
+        BuilderRunJobOutcome WaitForBuilderResponse(AssetBuilderSDK::JobCancelListener* jobCancelListener, AZ::u32 processTimeoutLimitInSeconds, AZStd::binary_semaphore* waitEvent) const;
 
         //! Writes the request out to disk for debug purposes and logs info on how to manually run the asset builder
         template<typename TRequest>
@@ -157,7 +168,7 @@ namespace AssetProcessor
         ~BuilderManager();
 
         // Disable copy
-        AZ_DISABLE_COPY(BuilderManager);
+        AZ_DISABLE_COPY_MOVE(BuilderManager);
 
         void ConnectionLost(AZ::u32 connId);
 

@@ -13,10 +13,12 @@
 
 #include "EditorCommon.h"
 #include "CanvasHelpers.h"
+#include "AssetDropHelpers.h"
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/std/sort.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzQtComponents/Components/StyledDockWidget.h>
 #include <LyShine/UiComponentTypes.h>
 #include <LyShine/Bus/UiEditorCanvasBus.h>
@@ -135,6 +137,8 @@ EditorWindow::EditorWindow(QWidget* parent, Qt::WindowFlags flags)
     SaveStartupLocalizationFolderSetting();
 
     PropertyHandlers::Register();
+
+    setAcceptDrops(true);
 
     // Store local copy of startup localization value
     QSettings settings(QSettings::IniFormat, QSettings::UserScope, AZ_QCOREAPPLICATION_SETTINGS_ORGANIZATION_NAME);
@@ -2432,6 +2436,60 @@ void EditorWindow::closeEvent(QCloseEvent* closeEvent)
     SaveEditorWindowSettings();
 
     QMainWindow::closeEvent(closeEvent);
+}
+
+void EditorWindow::dragEnterEvent(QDragEnterEvent* event)
+{
+    AssetDropHelpers::AssetList canvasAssets;
+    if (AssetDropHelpers::AcceptsMimeType(event->mimeData()))
+    {
+        AssetDropHelpers::DecodeUiCanvasAssetsFromMimeData(event->mimeData(), canvasAssets);
+    }
+
+    if (!canvasAssets.empty())
+    {
+        event->accept();
+    }
+    else
+    {
+        event->ignore();
+    }
+}
+
+void EditorWindow::dropEvent(QDropEvent* event)
+{
+    AssetDropHelpers::AssetList canvasAssets;
+    if (AssetDropHelpers::AcceptsMimeType(event->mimeData()))
+    {
+        AssetDropHelpers::DecodeUiCanvasAssetsFromMimeData(event->mimeData(), canvasAssets);
+    }
+
+    QStringList canvasFilenames;
+    for (const AZ::Data::AssetId& canvasAssetId : canvasAssets)
+    {
+        const AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry* source = AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry::GetSourceByUuid(canvasAssetId.m_guid);
+        if (!source)
+        {
+            continue;
+        }
+
+        AZStd::string fullEntryPath = source->GetFullPath();
+        if (!fullEntryPath.empty())
+        {
+            canvasFilenames.push_back(QString(fullEntryPath.c_str()));
+        }
+    }
+
+    // If in Preview mode, exit back to Edit mode
+    if (m_editorMode == UiEditorMode::Preview)
+    {
+        ToggleEditorMode();
+    }
+
+    OpenCanvases(canvasFilenames);
+
+    activateWindow();
+    m_viewport->setFocus();
 }
 
 void EditorWindow::SetupCentralWidget()

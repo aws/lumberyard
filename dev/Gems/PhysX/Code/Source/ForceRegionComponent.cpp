@@ -13,9 +13,11 @@
 
 #include <Source/ForceRegionComponent.h>
 #include <Source/ForceRegionForces.h>
+#include <Source/World.h>
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzFramework/Physics/World.h>
 #include <AzFramework/Physics/WorldBody.h>
 #include <AzFramework/Physics/WorldEventhandler.h>
 #include <AzFramework/Physics/RigidBodyBus.h>
@@ -50,7 +52,7 @@ namespace PhysX
 
     void ForceRegionComponent::Activate()
     {
-        AZ::TickBus::Handler::BusConnect();
+        Physics::WorldNotificationBus::Handler::BusConnect(Physics::DefaultPhysicsWorldId);
         Physics::TriggerNotificationBus::Handler::BusConnect(m_entity->GetId());
         if (m_debugForces)
         {
@@ -67,10 +69,10 @@ namespace PhysX
             AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
         }
         Physics::TriggerNotificationBus::Handler::BusDisconnect();
-        AZ::TickBus::Handler::BusDisconnect();
+        Physics::WorldNotificationBus::Handler::BusDisconnect();
     }
 
-    void ForceRegionComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
+    void ForceRegionComponent::OnPostPhysicsUpdate(float fixedDeltaTime)
     {
         for (auto entityId : m_entities)
         {
@@ -80,10 +82,15 @@ namespace PhysX
 
             if (!netForce.IsZero())
             {
-                netForce *= deltaTime;
+                netForce *= fixedDeltaTime;
                 Physics::RigidBodyRequestBus::Event(entityId, &Physics::RigidBodyRequestBus::Events::ApplyLinearImpulse, netForce);
             }
         }
+    }
+
+    int ForceRegionComponent::GetPhysicsTickOrder()
+    {
+        return WorldNotifications::Components;
     }
 
     void ForceRegionComponent::OnTriggerEnter(const Physics::TriggerEvent& triggerEvent)

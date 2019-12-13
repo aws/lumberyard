@@ -31,9 +31,6 @@
 #include <IConsole.h>
 #include <StringUtils.h>
 
-//#include "E:\novanet_dev_physx\dev\Gems\ImGui\External\ImGui\v1.53\imgui\imgui_internal.h"
-//#include "E:\physx\PhysX-3.4-master\PhysX-3.4-master\PhysX_3.4\Include\common\PxCoreUtilityTypes.h"
-
 namespace PhysXDebug
 {
     const float SystemComponent::m_maxCullingBoxSize = 150.0f;
@@ -209,14 +206,14 @@ namespace PhysXDebug
         ImGui::ImGuiUpdateListenerBus::Handler::BusConnect();
 #endif // IMGUI_ENABLED
 #ifdef PHYSXDEBUG_GEM_EDITOR
-        Physics::SystemNotificationBus::Handler::BusConnect();
+        Physics::WorldNotificationBus::Handler::BusConnect(Physics::EditorPhysicsWorldId);
 #endif // PHYSXDEBUG_GEM_EDITOR
     }
 
     void SystemComponent::Deactivate()
     {
 #ifdef PHYSXDEBUG_GEM_EDITOR
-        Physics::SystemNotificationBus::Handler::BusDisconnect();
+        Physics::WorldNotificationBus::Handler::BusDisconnect();
 #endif // PHYSXDEBUG_GEM_EDITOR
 #ifdef IMGUI_ENABLED
         ImGui::ImGuiUpdateListenerBus::Handler::BusDisconnect();
@@ -227,14 +224,9 @@ namespace PhysXDebug
     }
 
 #ifdef PHYSXDEBUG_GEM_EDITOR
-    void SystemComponent::OnPostPhysicsUpdate(float, Physics::World* world)
+    void SystemComponent::OnPostPhysicsUpdate(float)
     {
-        AZStd::shared_ptr<Physics::World> editorWorld = nullptr;
-        Physics::EditorWorldBus::BroadcastResult(editorWorld, &Physics::EditorWorldRequests::GetEditorWorld);
-        if (editorWorld.get() == world)
-        {
-            m_editorPhysicsWorldDirty = true;
-        }
+        m_editorPhysicsWorldDirty = true;
     }
 #endif
 

@@ -12,19 +12,22 @@
 
 #include <AzCore/Math/MathReflection.h>
 
+#include <AzCore/Serialization/Json/RegistrationContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
 #include <AzCore/Script/ScriptContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 
-
 #include <AzCore/Math/Uuid.h>
+#include <AzCore/Math/UuidSerializer.h>
 #include <AzCore/Math/Crc.h>
 
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Vector4.h>
+#include <AzCore/Math/MathVectorSerializer.h>
 #include <AzCore/Math/Color.h>
+#include <AzCore/Math/ColorSerializer.h>
 
 #include <AzCore/Math/Quaternion.h>
 
@@ -2258,7 +2261,9 @@ namespace AZ
         context.Constant("FloatEpsilonSq", BehaviorConstant(static_cast<float>(g_fltEpsSq)));
 
          context.Class<MathGlobals>("Math")
-            ->Method("DegToRad", &DegToRad, {{{"Degrees", ""}}})
+            ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+            ->Attribute(AZ::Script::Attributes::Module, "math")
+            ->Method("DegToRad", &DegToRad, { {{"Degrees", ""}} })
             ->Method("RadToDeg", &RadToDeg, {{{"Radians", ""}}})
             ->Method("Sin", &sinf)
             ->Method("Cos", &cosf)
@@ -2292,6 +2297,8 @@ namespace AZ
 
         // Vector2
         context.Class<Vector2>()->
+            Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)->
+            Attribute(AZ::Script::Attributes::Module, "math")->
             Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Constructor<float>()->
             Constructor<float, float>()->
@@ -2410,6 +2417,8 @@ namespace AZ
 
         // Vector3
         context.Class<Vector3>()->
+            Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)->
+            Attribute(AZ::Script::Attributes::Module, "math")->
             Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Constructor<const VectorFloat&>()->
             Constructor<const VectorFloat&, const VectorFloat&, const VectorFloat&>()->
@@ -2546,6 +2555,8 @@ namespace AZ
             
         // Vector4
         context.Class<Vector4>()->
+            Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)->
+            Attribute(AZ::Script::Attributes::Module, "math")->
             Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Constructor<const VectorFloat&>()->
             Constructor<const VectorFloat&, const VectorFloat&, const VectorFloat&, const VectorFloat&>()->
@@ -2648,6 +2659,8 @@ namespace AZ
         
         // Color
         context.Class<Color>()->
+            Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)->
+            Attribute(AZ::Script::Attributes::Module, "math")->
             Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
             Constructor<const VectorFloat&>()->
@@ -3152,6 +3165,8 @@ namespace AZ
 
         // Uuid
         context.Class<Uuid>("Uuid")->
+            Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)->
+            Attribute(AZ::Script::Attributes::Module, "math")->
             Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
             Attribute(AZ::Script::Attributes::ConstructorOverride, &Internal::ScriptUuidConstructor)->
@@ -3207,6 +3222,8 @@ namespace AZ
 
         // Aabb
         context.Class<Aabb>()->
+            Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)->
+            Attribute(AZ::Script::Attributes::Module, "math")->
             Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
             Attribute(AZ::Script::Attributes::GenericConstructorOverride, &Internal::AabbDefaultConstructor)->
@@ -3336,7 +3353,14 @@ namespace AZ
         // Other math function
     }
 
-
+    void MathReflect(JsonRegistrationContext& context)
+    {
+        context.Serializer<JsonColorSerializer>()->HandlesType<Color>();
+        context.Serializer<JsonUuidSerializer>()->HandlesType<Uuid>();
+        context.Serializer<JsonVector2Serializer>()->HandlesType<Vector2>();
+        context.Serializer<JsonVector3Serializer>()->HandlesType<Vector3>();
+        context.Serializer<JsonVector4Serializer>()->HandlesType<Vector4>();
+    }
 
     void MathReflect(ReflectContext* context)
     {
@@ -3352,6 +3376,12 @@ namespace AZ
             if (behaviorContext)
             {
                 MathReflect(*behaviorContext);
+            }
+
+            JsonRegistrationContext* jsonContext = azrtti_cast<JsonRegistrationContext*>(context);
+            if (jsonContext)
+            {
+                MathReflect(*jsonContext);
             }
         }
     }

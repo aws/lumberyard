@@ -44,6 +44,7 @@
 #include "math.h"
 #include "IAIObjectManager.h"
 #include "IGoalPipe.h"
+#include <MathConversion.h>
 
 #include "Components/IComponentRender.h"
 #include "Components/IComponentTrigger.h"
@@ -53,9 +54,6 @@
 #include "Components/IComponentCamera.h"
 #include "DynamicResponseProxy.h"
 #include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
-
-//#pragma optimize("", off)
-//#pragma inline_depth(0)
 
 // Macro for getting IEntity pointer for function.
 #define GET_ENTITY IEntity * pEntity = GetEntity(pH); if (!pEntity) {return pH->EndFunction(); }
@@ -4835,7 +4833,7 @@ int CScriptBind_Entity::SetAudioProxyOffset(IFunctionHandler* pH, const Vec3 vOf
 
     if (pAudioComponent)
     {
-        pAudioComponent->SetAuxAudioProxyOffset(Audio::SATLWorldPosition(vOffset), HandleToInt<Audio::TAudioProxyID>(hAudioProxyLocalID));
+        pAudioComponent->SetAuxAudioProxyOffset(Audio::SATLWorldPosition(LYVec3ToAZVec3(vOffset)), HandleToInt<Audio::TAudioProxyID>(hAudioProxyLocalID));
     }
 
     return pH->EndFunction();

@@ -50,7 +50,7 @@ namespace AzToolsFramework
         AZ_CLASS_ALLOCATOR(ManipulatorView, AZ::SystemAllocator, 0)
         AZ_RTTI(ManipulatorView, "{7529E3E9-39B3-4D15-899A-FA13770113B2}")
 
-        ManipulatorView() = default;
+        ManipulatorView();
         virtual ~ManipulatorView();
 
         void SetBoundDirty(ManipulatorManagerId managerId);
@@ -267,6 +267,7 @@ namespace AzToolsFramework
         float m_radius = 0.0f;
         DecideColorFn m_decideColorFn;
         AZ::Color m_color = AZ::Color(1.0f, 0.0f, 0.0f, 1.0f);
+        bool m_depthTest = false;
     };
 
     /// Displays a wire circle. DrawCircleFunc can be used to either draw a full
@@ -368,7 +369,7 @@ namespace AzToolsFramework
         float length, float radius);
 
     AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewSphere(
-        const AZ::Color& color, float radius, const DecideColorFn& decideColor);
+        const AZ::Color& color, float radius, const DecideColorFn& decideColor, bool enableDepthTest = false);
 
     AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewCircle(
         const AngularManipulator& angularManipulator, const AZ::Color& color,

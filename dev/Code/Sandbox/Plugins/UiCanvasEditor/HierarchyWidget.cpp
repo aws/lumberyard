@@ -12,7 +12,11 @@
 #include "stdafx.h"
 
 #include "EditorCommon.h"
+#include "AssetDropHelpers.h"
+#include "QtHelpers.h"
+#include <AzCore/Asset/AssetManager.h>
 #include <AzToolsFramework/ToolsComponents/EditorEntityIdContainer.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponentBus.h>
 
 HierarchyWidget::HierarchyWidget(EditorWindow* editorWindow)
@@ -25,7 +29,7 @@ HierarchyWidget::HierarchyWidget(EditorWindow* editorWindow)
     , m_selectionChangedBeforeDrag(false)
     , m_signalSelectionChange(true)
     , m_inObjectPickMode(false)
-    , m_inited(false)
+    , m_isInited(false)
 {
     setMouseTracking(true);
 
@@ -169,27 +173,24 @@ void HierarchyWidget::CreateItems(const LyShine::EntityArray& elements)
     // Create the items.
     for (auto& e : elementList)
     {
-        QTreeWidgetItem* parent = HierarchyHelpers::ElementToItem(this, EntityHelpers::GetParentElement(e), true);
+        AZ::Entity* parentElement = EntityHelpers::GetParentElement(e);
+        QTreeWidgetItem* parent = HierarchyHelpers::ElementToItem(this, parentElement, true);
+        AZ_Assert(parent, "No parent widget item found for parent entity");
+
+        int childIndex = -1;
+        EBUS_EVENT_ID_RESULT(childIndex, parentElement->GetId(), UiElementBus, GetIndexOfChild, e);
 
         HierarchyItem* child = new HierarchyItem(m_editorWindow,
-                parent,
-                e->GetName().c_str(),
-                e);
-
-        // Reorder.
-        {
-            int index = -1;
-            EBUS_EVENT_ID_RESULT(index, EntityHelpers::GetParentElement(e)->GetId(), UiElementBus, GetIndexOfChild, e);
-
-            parent->removeChild(child);
-            parent->insertChild(index, child);
-        }
+            *parent,
+            childIndex,
+            e->GetName().c_str(),
+            e);
     }
 
     // restore the expanded state of all items
     ApplyElementIsExpanded();
 
-    m_inited = true;
+    m_isInited = true;
 }
 
 void HierarchyWidget::RecreateItems(const LyShine::EntityArray& elements)
@@ -215,7 +216,7 @@ void HierarchyWidget::ClearItems()
     // The map needs to be cleared here since HandleItemRemove won't remove the map entry due to the entity Ids being cleared above
     m_entityItemMap.clear();
 
-    m_inited = false;
+    m_isInited = false;
 }
 
 AZ::Entity* HierarchyWidget::CurrentSelectedElement() const
@@ -228,7 +229,7 @@ AZ::Entity* HierarchyWidget::CurrentSelectedElement() const
 void HierarchyWidget::contextMenuEvent(QContextMenuEvent* ev)
 {
     // The context menu.
-    if (m_inited)
+    if (m_isInited)
     {
         HierarchyMenu contextMenu(this,
             (HierarchyMenu::Show::kCutCopyPaste |
@@ -310,17 +311,6 @@ void HierarchyWidget::HandleItemRemove(HierarchyItem* item)
     m_entityItemMap.erase(item->GetEntityId());
 }
 
-void HierarchyWidget::ReparentItems(bool onCreationOfElement,
-    const QTreeWidgetItemRawPtrList& baseParentItems,
-    const HierarchyItemRawPtrList& childItems)
-{
-    CommandHierarchyItemReparent::Push(onCreationOfElement,
-        m_editorWindow->GetActiveStack(),
-        this,
-        childItems,
-        baseParentItems);
-}
-
 void HierarchyWidget::ClearAllHierarchyItemEntityIds()
 {
     // as a simple way of going through all the HierarchyItem's we use the
@@ -335,7 +325,7 @@ void HierarchyWidget::ApplyElementIsExpanded()
 {
     // Seed the list.
     HierarchyItemRawPtrList allItems;
-    HierarchyHelpers::AppendAllChildrenToEndOfList(m_editorWindow->GetHierarchy()->invisibleRootItem(), allItems);
+    HierarchyHelpers::AppendAllChildrenToEndOfList(invisibleRootItem(), allItems);
 
     // Traverse the list.
     blockSignals(true);
@@ -405,33 +395,42 @@ void HierarchyWidget::startDrag(Qt::DropActions supportedActions)
     QTreeView::startDrag(supportedActions);
 }
 
-void HierarchyWidget::dragEnterEvent(QDragEnterEvent * event)
+void HierarchyWidget::dragEnterEvent(QDragEnterEvent* event)
 {
     if (!AcceptsMimeData(event->mimeData()))
     {
+        event->ignore();
         return;
     }
 
-    m_inDragStartState = false;
-
-    if (m_selectionChangedBeforeDrag)
+    if (event->mimeData()->hasFormat(AzToolsFramework::EditorEntityIdContainer::GetMimeType()))
     {
-        m_signalSelectionChange = false;
+        m_inDragStartState = false;
 
-        // Set the current selection to the items being dragged
-        clearSelection();
-        for (auto i : m_dragSelection)
+        if (m_selectionChangedBeforeDrag)
         {
-            i->setSelected(true);
-        }
+            m_signalSelectionChange = false;
 
-        m_signalSelectionChange = true;
+            // Set the current selection to the items being dragged
+            clearSelection();
+            for (auto i : m_dragSelection)
+            {
+                i->setSelected(true);
+            }
+
+            m_signalSelectionChange = true;
+        }
+    }
+    else
+    {
+        // Dragging an item from outside the hierarchy window
+        m_selectionChangedBeforeDrag = false;
     }
 
     QTreeView::dragEnterEvent(event);
 }
 
-void HierarchyWidget::dragLeaveEvent(QDragLeaveEvent * event)
+void HierarchyWidget::dragLeaveEvent(QDragLeaveEvent* event)
 {
     // This is called when dragging outside the hierarchy, or when a drag is released inside the hierarchy
     // but a dropEvent isn't called (ex. drop item onto itself or press Esc to cancel a drag)
@@ -469,99 +468,119 @@ void HierarchyWidget::dragLeaveEvent(QDragLeaveEvent * event)
 
 void HierarchyWidget::dropEvent(QDropEvent* ev)
 {
-    m_inDragStartState = false;
-    
-    m_signalSelectionChange = false;
-
-    // Get a list of selected items
-    QTreeWidgetItemRawPtrQList selection = selectedItems();
-
-    // Change current selection to only contain top level items. This avoids
-    // the default drop behavior from changing the internal hierarchy of 
-    // the dragged elements
-    QTreeWidgetItemRawPtrQList topLevelSelection;
-    SelectionHelpers::GetListOfTopLevelSelectedItems(this, selection, topLevelSelection);
-    clearSelection();
-    for (auto i : topLevelSelection)
+    if (!m_isInited)
     {
-        i->setSelected(true);
+        return;
     }
 
-    // Set current parent and child index of each selected item
-    for (auto i : selection)
+    if (ev->mimeData()->hasFormat(AzToolsFramework::EditorEntityIdContainer::GetMimeType()))
     {
-        HierarchyItem* item = dynamic_cast<HierarchyItem*>(i);
-        if (item)
-        {
-            QModelIndex itemIndex = indexFromItem(item);
+        m_inDragStartState = false;
 
-            QTreeWidgetItem* baseParentItem = itemFromIndex(itemIndex.parent());
-            if (!baseParentItem)
-            {
-                baseParentItem = invisibleRootItem();
-            }
-            HierarchyItem* parentItem = dynamic_cast<HierarchyItem*>(baseParentItem);
-            AZ::EntityId parentId = (parentItem ? parentItem->GetEntityId() : AZ::EntityId());
+        m_signalSelectionChange = false;
 
-            item->SetPreMove(parentId, itemIndex.row());
-        }
-    }
+        // Get a list of selected items
+        QTreeWidgetItemRawPtrQList selection = selectedItems();
 
-    // Do the drop event
-    ev->setDropAction(Qt::MoveAction);
-    QTreeWidget::dropEvent(ev);
-
-    // Make a list of selected items and their parents
-    HierarchyItemRawPtrList childItems;
-    QTreeWidgetItemRawPtrList baseParentItems;
-
-    bool itemMoved = false;
-
-    for (auto i : selection)
-    {
-        HierarchyItem* item = dynamic_cast<HierarchyItem*>(i);
-        if (item)
-        {
-            QModelIndex index = indexFromItem(item);
-
-            QTreeWidgetItem* baseParentItem = itemFromIndex(index.parent()); 
-            if (!baseParentItem)
-            {
-                baseParentItem = invisibleRootItem();
-            }
-            HierarchyItem* parentItem = dynamic_cast<HierarchyItem*>(baseParentItem);
-            AZ::EntityId parentId = parentItem ? parentItem->GetEntityId() : AZ::EntityId();
-
-            if ((item->GetPreMoveChildRow() != index.row()) || (item->GetPreMoveParentId() != parentId))
-            {
-                // Item has moved
-                itemMoved = true;
-            }
-
-            childItems.push_back(item);
-            baseParentItems.push_back(baseParentItem);
-        }
-    }
-
-    if (itemMoved)
-    {
-        ReparentItems(false, baseParentItems, childItems);
-    }
-    else
-    {
-        // Items didn't move, but they became unselected so they need to be reselected
-        for (auto i : childItems)
+        // Change current selection to only contain top level items. This avoids
+        // the default drop behavior from changing the internal hierarchy of 
+        // the dragged elements
+        QTreeWidgetItemRawPtrQList topLevelSelection;
+        SelectionHelpers::GetListOfTopLevelSelectedItems(this, selection, topLevelSelection);
+        clearSelection();
+        for (auto i : topLevelSelection)
         {
             i->setSelected(true);
         }
+
+        // Set current parent and child index of each selected item
+        for (auto i : selection)
+        {
+            HierarchyItem* item = dynamic_cast<HierarchyItem*>(i);
+            if (item)
+            {
+                QModelIndex itemIndex = indexFromItem(item);
+
+                QTreeWidgetItem* baseParentItem = itemFromIndex(itemIndex.parent());
+                if (!baseParentItem)
+                {
+                    baseParentItem = invisibleRootItem();
+                }
+                HierarchyItem* parentItem = dynamic_cast<HierarchyItem*>(baseParentItem);
+                AZ::EntityId parentId = (parentItem ? parentItem->GetEntityId() : AZ::EntityId());
+
+                item->SetPreMove(parentId, itemIndex.row());
+            }
+        }
+
+        // Do the drop event
+        ev->setDropAction(Qt::MoveAction);
+        QTreeWidget::dropEvent(ev);
+
+        // Make a list of selected items and their parents
+        HierarchyItemRawPtrList childItems;
+        QTreeWidgetItemRawPtrList baseParentItems;
+
+        bool itemMoved = false;
+
+        for (auto i : selection)
+        {
+            HierarchyItem* item = dynamic_cast<HierarchyItem*>(i);
+            if (item)
+            {
+                QModelIndex index = indexFromItem(item);
+
+                QTreeWidgetItem* baseParentItem = itemFromIndex(index.parent());
+                if (!baseParentItem)
+                {
+                    baseParentItem = invisibleRootItem();
+                }
+                HierarchyItem* parentItem = dynamic_cast<HierarchyItem*>(baseParentItem);
+                AZ::EntityId parentId = parentItem ? parentItem->GetEntityId() : AZ::EntityId();
+
+                if ((item->GetPreMoveChildRow() != index.row()) || (item->GetPreMoveParentId() != parentId))
+                {
+                    // Item has moved
+                    itemMoved = true;
+                }
+
+                childItems.push_back(item);
+                baseParentItems.push_back(baseParentItem);
+            }
+        }
+
+        if (itemMoved)
+        {
+            ReparentItems(baseParentItems, childItems);
+        }
+        else
+        {
+            // Items didn't move, but they became unselected so they need to be reselected
+            for (auto i : childItems)
+            {
+                i->setSelected(true);
+            }
+        }
+
+        m_signalSelectionChange = true;
+
+        if (m_selectionChangedBeforeDrag)
+        {
+            // Signal a selection change on the mouse release
+            SignalUserSelectionHasChanged(selectedItems());
+        }
     }
-
-    m_signalSelectionChange = true;
-
-    if (m_selectionChangedBeforeDrag)
+    else if (AssetDropHelpers::DoesMimeDataContainSliceOrComponentAssets(ev->mimeData()))
     {
-        // Signal a selection change on the mouse release
-        SignalUserSelectionHasChanged(selectedItems());
+        DropMimeDataAssetsAtHierarchyPosition(ev->mimeData(), ev->pos());
+
+        ev->setDropAction(Qt::CopyAction);
+        ev->accept();
+        QTreeWidget::dropEvent(ev);
+
+        // Put focus on the hierarchy widget
+        activateWindow();
+        setFocus();
     }
 }
 
@@ -569,6 +588,7 @@ QStringList HierarchyWidget::mimeTypes() const
 {
     QStringList list = QTreeWidget::mimeTypes();
     list.append(AzToolsFramework::EditorEntityIdContainer::GetMimeType());
+    list.append(AzToolsFramework::AssetBrowser::AssetBrowserEntry::GetMimeType());
     return list;
 }
 
@@ -604,42 +624,262 @@ QMimeData* HierarchyWidget::mimeData(const QList<QTreeWidgetItem*> items) const
     return mimeDataPtr;
 }
 
-bool HierarchyWidget::AcceptsMimeData(const QMimeData *mimeData)
+bool HierarchyWidget::AcceptsMimeData(const QMimeData* mimeData)
 {
-    if (!mimeData || !mimeData->hasFormat(AzToolsFramework::EditorEntityIdContainer::GetMimeType()))
+    if (!mimeData)
     {
         return false;
     }
 
-    QByteArray arrayData = mimeData->data(AzToolsFramework::EditorEntityIdContainer::GetMimeType());
-
-    AzToolsFramework::EditorEntityIdContainer entityIdListContainer;
-    if (!entityIdListContainer.FromBuffer(arrayData.constData(), arrayData.size()))
+    if (!m_isInited)
     {
         return false;
     }
 
-    if (entityIdListContainer.m_entityIds.empty())
+    if (mimeData->hasFormat(AzToolsFramework::EditorEntityIdContainer::GetMimeType()))
     {
-        return false;
+        QByteArray arrayData = mimeData->data(AzToolsFramework::EditorEntityIdContainer::GetMimeType());
+
+        AzToolsFramework::EditorEntityIdContainer entityIdListContainer;
+        if (!entityIdListContainer.FromBuffer(arrayData.constData(), arrayData.size()))
+        {
+            return false;
+        }
+
+        if (entityIdListContainer.m_entityIds.empty())
+        {
+            return false;
+        }
+
+        // Get the entity context that the first dragged entity is attached to
+        AzFramework::EntityContextId contextId = AzFramework::EntityContextId::CreateNull();
+        EBUS_EVENT_ID_RESULT(contextId, entityIdListContainer.m_entityIds[0], AzFramework::EntityIdContextQueryBus, GetOwningContextId);
+        if (contextId.IsNull())
+        {
+            return false;
+        }
+
+        // Check that the entity context is the UI editor entity context
+        UiEditorEntityContext* editorEntityContext = m_editorWindow->GetEntityContext();
+        if (!editorEntityContext || (editorEntityContext->GetContextId() != contextId))
+        {
+            return false;
+        }
+
+        return true;
     }
 
-    // Get the entity context that the first dragged entity is attached to
-    AzFramework::EntityContextId contextId = AzFramework::EntityContextId::CreateNull();
-    EBUS_EVENT_ID_RESULT(contextId, entityIdListContainer.m_entityIds[0], AzFramework::EntityIdContextQueryBus, GetOwningContextId);
-    if (contextId.IsNull())
+    return AssetDropHelpers::DoesMimeDataContainSliceOrComponentAssets(mimeData);
+}
+
+void HierarchyWidget::DropMimeDataAssetsAtHierarchyPosition(const QMimeData* data, const QPoint& position)
+{
+    using namespace AzToolsFramework;
+
+    // Check where the drop indicator is to determine the parent for a new entity
+    // or to determine an existing entity for new components
+    QTreeWidgetItem* item = itemAt(position);
+    DropIndicatorPosition dropPosition = dropIndicatorPosition();
+
+    QTreeWidgetItem* targetWidgetItem = nullptr;
+    bool onItem = false;
+    int childIndex = -1;
+    switch (dropPosition)
     {
-        return false;
+    case QAbstractItemView::AboveItem:
+        targetWidgetItem = item->parent();
+        childIndex = (targetWidgetItem ? targetWidgetItem : invisibleRootItem())->indexOfChild(item);
+        break;
+    case QAbstractItemView::BelowItem:
+        targetWidgetItem = item->parent();
+        childIndex = (targetWidgetItem ? targetWidgetItem : invisibleRootItem())->indexOfChild(item) + 1;
+        break;
+    case QAbstractItemView::OnItem:
+        targetWidgetItem = item;
+        // Shift modifier enables creating a child entity from the asset
+        onItem = !(QApplication::keyboardModifiers() & Qt::ShiftModifier);
+        break;
+    case QAbstractItemView::OnViewport:
+        targetWidgetItem = nullptr;
+        break;
     }
 
-    // Check that the entity context is the UI editor entity context
-    UiEditorEntityContext* editorEntityContext = m_editorWindow->GetEntityContext();
-    if (!editorEntityContext || (editorEntityContext->GetContextId() != contextId))
+    DropMimeDataAssets(data, targetWidgetItem, onItem, childIndex, nullptr);
+}
+
+void HierarchyWidget::DropMimeDataAssets(const QMimeData* data,
+    QTreeWidgetItem* targetWidgetItem,
+    bool onElement,
+    int childIndex,
+    const QPoint* newElementPosition)
+{
+    ComponentAssetHelpers::ComponentAssetPairs componentAssetPairs;
+    AssetDropHelpers::AssetList sliceAssets;
+    AssetDropHelpers::DecodeSliceAndComponentAssetsFromMimeData(data, componentAssetPairs, sliceAssets);
+
+    if (componentAssetPairs.empty() && sliceAssets.empty())
     {
-        return false;
+        return;
     }
 
-    return true;
+    // Change current selection so instantiated slices will be parented correctly
+    if (targetWidgetItem)
+    {
+        SetUniqueSelectionHighlight(targetWidgetItem);
+    }
+    else
+    {
+        clearSelection();
+    }
+
+    // Instantiate dropped slices
+    for (const AZ::Data::AssetId& sliceAssetId : sliceAssets)
+    {
+        // Instantiate slice under currently selected parent
+        AZ::Vector2 viewportPosition(-1.0f, -1.0f); // indicates no viewport position specified
+        if (newElementPosition)
+        {
+            viewportPosition = QtHelpers::QPointFToVector2(*newElementPosition);
+        }
+        GetEditorWindow()->GetSliceManager()->InstantiateSlice(sliceAssetId, viewportPosition, childIndex);
+    }
+
+    if (componentAssetPairs.empty())
+    {
+        return;
+    }
+
+    // Add components to the element being hovered or to a newly created element
+    if (onElement)
+    {
+        // Add components to the existing target element which is now the selected element
+        AZ_Assert(targetWidgetItem, "Must provide a target item when dropping component assets onto an element");
+
+        // Make a list of the component types to be added
+        AZStd::vector<AZ::TypeId> componentTypes;
+        componentTypes.reserve(componentAssetPairs.size());
+        for (const ComponentAssetHelpers::ComponentAssetPair& pair : componentAssetPairs)
+        {
+            componentTypes.push_back(pair.first);
+        }
+
+        ComponentHelpers::EntityComponentPair firstIncompatibleComponentType = AZStd::make_pair(AZ::EntityId(), AZ::Uuid::CreateNull());
+        if (!ComponentHelpers::CanAddComponentsToSelectedEntities(componentTypes, &firstIncompatibleComponentType))
+        {
+            const AZ::EntityId& entityId = firstIncompatibleComponentType.first;
+            const AZ::TypeId& componentTypeId = firstIncompatibleComponentType.second;
+
+            HierarchyItem* targetItem = dynamic_cast<HierarchyItem*>(targetWidgetItem);
+            AZStd::string entityName(targetItem->GetElement() ? targetItem->GetElement()->GetName() : "<unknown>");
+
+            if (!entityId.IsValid() || componentTypeId.IsNull())
+            {
+                const AZStd::string message = AZStd::string::format("Failed to add components to target element \"%s\".", entityName.c_str());
+                QMessageBox::warning(m_editorWindow, tr("Asset Drop"), QString(message.c_str()));
+            }
+            else
+            {
+                AZ::ComponentDescriptor* descriptor = nullptr;
+                AZ::ComponentDescriptorBus::EventResult(descriptor, firstIncompatibleComponentType.second, &AZ::ComponentDescriptorBus::Events::GetDescriptor);
+                AZStd::string componentName(descriptor ? descriptor->GetName() : "<unknown>");
+                const AZStd::string message = AZStd::string::format("Failed to add components to target element \"%s\". Component \"%s\" is not compatible.", entityName.c_str(), componentName.c_str());
+                QMessageBox::warning(m_editorWindow, tr("Asset Drop"), QString(message.c_str()));
+            }
+
+            return;
+        }
+
+        // Batch-add all the components
+        ComponentHelpers::AddComponentsWithAssetToSelectedEntities(componentAssetPairs);
+    }
+    else
+    {
+        // Create a new element
+        QTreeWidgetItemRawPtrQList parentItems;
+        if (targetWidgetItem)
+        {
+            parentItems.append(targetWidgetItem);
+        }
+        CommandHierarchyItemCreate::Push(m_editorWindow->GetActiveStack(),
+            this,
+            parentItems,
+            childIndex,
+            [this, componentAssetPairs, newElementPosition](AZ::Entity* element)
+        {
+            if (element)
+            {
+                // Set the element's position
+                if (newElementPosition)
+                {
+                    EntityHelpers::MoveElementToGlobalPosition(element, *newElementPosition);
+                }
+
+                // Make a list of the component types to be added
+                AZStd::vector<AZ::TypeId> componentTypes;
+                componentTypes.reserve(componentAssetPairs.size());
+                for (const ComponentAssetHelpers::ComponentAssetPair& pair : componentAssetPairs)
+                {
+                    componentTypes.push_back(pair.first);
+                }
+
+                ComponentHelpers::EntityComponentPair firstIncompatibleComponentType = AZStd::make_pair(AZ::EntityId(), AZ::Uuid::CreateNull());
+                if (!ComponentHelpers::CanAddComponentsToEntity(componentTypes, element->GetId(), &firstIncompatibleComponentType))
+                {
+                    const AZ::TypeId& componentTypeId = firstIncompatibleComponentType.second;
+                    if (componentTypeId.IsNull())
+                    {
+                        QMessageBox::warning(m_editorWindow, tr("Asset Drop"), tr("Failed to add components to new element."));
+                    }
+                    else
+                    {
+                        AZ::ComponentDescriptor* descriptor = nullptr;
+                        AZ::ComponentDescriptorBus::EventResult(descriptor, firstIncompatibleComponentType.second, &AZ::ComponentDescriptorBus::Events::GetDescriptor);
+                        AZStd::string componentName(descriptor ? descriptor->GetName() : "<unknown>");
+                        const AZStd::string message = AZStd::string::format("Failed to add components to new element. Component \"%s\" is not compatible.", componentName.c_str());
+                        QMessageBox::warning(m_editorWindow, tr("Asset Drop"), QString(message.c_str()));
+                    }
+                    return;
+                }
+
+                // Batch-add all the components
+                ComponentHelpers::AddComponentsWithAssetToEntity(componentAssetPairs, element->GetId());
+
+                // Name the entity after the first asset
+                const ComponentAssetHelpers::ComponentAssetPair& pair = componentAssetPairs.front();
+                const AZ::Data::AssetId& assetId = pair.second;
+                AZStd::string assetPath;
+                EBUS_EVENT_RESULT(assetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, assetId);
+                if (!assetPath.empty())
+                {
+                    AZStd::string entityName;
+                    AzFramework::StringFunc::Path::GetFileName(assetPath.c_str(), entityName);
+
+                    // Find a unique name for the new element
+                    AZ::EntityId parentEntityId;
+                    EBUS_EVENT_ID_RESULT(parentEntityId, element->GetId(), UiElementBus, GetParentEntityId);
+
+                    AZStd::string uniqueName;
+                    EBUS_EVENT_ID_RESULT(uniqueName,
+                        GetEditorWindow()->GetCanvas(),
+                        UiCanvasBus,
+                        GetUniqueChildName,
+                        parentEntityId,
+                        entityName,
+                        nullptr);
+
+                    element->SetName(uniqueName);
+
+                    QTreeWidgetItem* item = HierarchyHelpers::ElementToItem(this, element, false);
+                    AZ_Assert(item, "Newly created element doesn't have a hierarchy item");
+                    item->setText(0, uniqueName.c_str());
+                }
+            }
+            else
+            {
+                QMessageBox::warning(m_editorWindow, tr("Asset Drop"), tr("Failed to create a new element to add components to."));
+            }
+        });
+    }
 }
 
 void HierarchyWidget::mouseMoveEvent(QMouseEvent* ev)
@@ -774,6 +1014,21 @@ void HierarchyWidget::UpdateSliceInfo()
     }
 }
 
+void HierarchyWidget::DropMimeDataAssets(const QMimeData* data,
+    const AZ::EntityId& targetEntityId,
+    bool onElement,
+    int childIndex,
+    const QPoint* newElementPosition)
+{
+    if (!m_isInited)
+    {
+        return;
+    }
+
+    QTreeWidgetItem* targetWidgetItem = targetEntityId.IsValid() ? HierarchyHelpers::ElementToItem(this, targetEntityId, false) : nullptr;
+    DropMimeDataAssets(data, targetWidgetItem, onElement, childIndex, newElementPosition);
+}
+
 void HierarchyWidget::DeleteSelectedItems()
 {
     DeleteSelectedItems(selectedItems());
@@ -858,6 +1113,15 @@ bool HierarchyWidget::IsEntityInEntityContext(AZ::EntityId entityId)
     }
 
     return false;
+}
+
+void HierarchyWidget::ReparentItems(const QTreeWidgetItemRawPtrList& baseParentItems,
+    const HierarchyItemRawPtrList& childItems)
+{
+    CommandHierarchyItemReparent::Push(m_editorWindow->GetActiveStack(),
+        this,
+        childItems,
+        baseParentItems);
 }
 
 void HierarchyWidget::ToggleVisibility(HierarchyItem* hierarchyItem)
@@ -971,9 +1235,11 @@ void HierarchyWidget::SetEditorOnlyForSelectedItems(bool editorOnly)
 
 void HierarchyWidget::AddElement(const QTreeWidgetItemRawPtrQList& selectedItems, const QPoint* optionalPos)
 {
+    const int childIndex = -1;
     CommandHierarchyItemCreate::Push(m_editorWindow->GetActiveStack(),
         this,
         selectedItems,
+        childIndex,
         [optionalPos](AZ::Entity* element)
         {
             if (optionalPos)
@@ -994,7 +1260,7 @@ void HierarchyWidget::SetUniqueSelectionHighlight(QTreeWidgetItem* item)
     setCurrentIndex(indexFromItem(item));
 }
 
-void HierarchyWidget::SetUniqueSelectionHighlight(AZ::Entity* element)
+void HierarchyWidget::SetUniqueSelectionHighlight(const AZ::Entity* element)
 {
     SetUniqueSelectionHighlight(HierarchyHelpers::ElementToItem(this, element, false));
 }

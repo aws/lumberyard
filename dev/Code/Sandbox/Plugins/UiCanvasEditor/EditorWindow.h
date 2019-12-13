@@ -85,15 +85,15 @@ public: // member functions
     // ~UiEditorChangeNotificationBus
 
     // UiEditorInternalRequestBus
-    AzToolsFramework::EntityIdList GetSelectedEntityIds();
-    AZ::Entity::ComponentArrayType GetSelectedComponents();
-    AZ::EntityId GetActiveCanvasEntityId();
+    AzToolsFramework::EntityIdList GetSelectedEntityIds() override;
+    AZ::Entity::ComponentArrayType GetSelectedComponents() override;
+    AZ::EntityId GetActiveCanvasEntityId() override;
     // ~UiEditorInternalRequestBus
 
     // UiEditorInternalNotificationBus
-    virtual void OnSelectedEntitiesPropertyChanged();
-    virtual void OnBeginUndoableEntitiesChange();
-    virtual void OnEndUndoableEntitiesChange(const AZStd::string& commandText);
+    void OnSelectedEntitiesPropertyChanged() override;
+    void OnBeginUndoableEntitiesChange() override;
+    void OnEndUndoableEntitiesChange(const AZStd::string& commandText) override;
     // ~UiEditorInternalNotificationBus
 
     // AssetBrowserModelNotificationBus
@@ -197,6 +197,9 @@ protected:
 
     void paintEvent(QPaintEvent* paintEvent) override;
     void closeEvent(QCloseEvent* closeEvent) override;
+
+    void dragEnterEvent(QDragEnterEvent* event) override;
+    void dropEvent(QDropEvent* event) override;
 
 public slots:
     void RestoreEditorWindowSettings();

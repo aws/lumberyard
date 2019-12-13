@@ -1,0 +1,15 @@
+{
+  "none": {
+    "Root": [
+      "source/main.cpp"
+    ],
+
+    "Utils": [
+      "source/utils/utils.h",
+      "source/utils/utils.cpp",
+      "source/utils/applicationManager.h",
+      "source/utils/applicationManager.cpp"
+    ]
+  }
+    
+}

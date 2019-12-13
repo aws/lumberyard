@@ -152,18 +152,6 @@ def calculate_string_hash(string_to_hash):
     hash_result = digest.hexdigest()
     return hash_result
 
-def calculate_string_hash(string_to_hash):
-    """
-    Quickly compute a hash (md5) of a string
-    :param file_path:
-    :return:
-    """
-    digest = hashlib.md5()
-    digest.update(string_to_hash)
-    hash_result = digest.hexdigest()
-    return hash_result
-
-
 
 def copy_file_if_needed(source_path, dest_path):
     """
@@ -527,8 +515,6 @@ ROLE_TO_DESCRIPTION_MAP = {
     "compilesandbox":"Compile Lumberyard Editor and tools",
     "runeditor":"Run the Lumberyard Editor and tools",
     "rungame":"Run your game project",
-    "vc120":"Visual Studio 2013",
-    "vc140":"Visual Studio 2015",
     "vc141":"Visual Studio 2017"
 }
 

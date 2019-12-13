@@ -100,8 +100,12 @@ namespace AzToolsFramework
 
         EntityIdSet GatherEntitiesAndAllDescendents(const EntityIdList& inputEntities) override;
 
+        AZ::EntityId CreateNewEntity(AZ::EntityId parentId = AZ::EntityId()) override;
+        AZ::EntityId CreateNewEntityAtPosition(const AZ::Vector3& pos, AZ::EntityId parentId = AZ::EntityId()) override;
         void DeleteSelected() override;
+        void DeleteEntityById(AZ::EntityId entityId) override;
         void DeleteEntities(const EntityIdList& entities) override;
+        void DeleteEntityAndAllDescendants(AZ::EntityId entityId) override;
         void DeleteEntitiesAndAllDescendants(const EntityIdList& entities) override;
 
         bool DetachEntities(const AZStd::vector<AZ::EntityId>& entitiesToDetach, AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityRestoreInfo>>& restoreInfos) override;

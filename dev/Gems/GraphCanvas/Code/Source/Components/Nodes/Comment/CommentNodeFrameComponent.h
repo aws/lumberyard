@@ -74,11 +74,8 @@ namespace GraphCanvas
 
     private:
 
-        // Fix for VS2013
         CommentNodeFrameComponent(const CommentNodeFrameComponent&) = delete;
         const CommentNodeFrameComponent& operator=(const CommentNodeFrameComponent&) = delete;
-        ////
-
         AZStd::unique_ptr<CommentNodeFrameGraphicsWidget> m_frameWidget;
     };
 
@@ -88,7 +85,7 @@ namespace GraphCanvas
         , public CommentNotificationBus::Handler
     {
     public:
-        AZ_TYPE_INFO(CommentNodeFrameGraphicsWidget, "{99343103-C8EF-44D0-BD6C-EF44ACDBD69B}", GeneralNodeFrameGraphicsWidget);
+        AZ_TYPE_INFO_LEGACY(CommentNodeFrameGraphicsWidget, "{99343103-C8EF-44D0-BD6C-EF44ACDBD69B}", GeneralNodeFrameGraphicsWidget);
         AZ_CLASS_ALLOCATOR(CommentNodeFrameGraphicsWidget, AZ::SystemAllocator, 0);
 
         // Do not allow Serialization of Graphics Ui classes

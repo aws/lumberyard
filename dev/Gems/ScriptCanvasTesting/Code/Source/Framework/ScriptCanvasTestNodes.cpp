@@ -410,7 +410,7 @@ namespace TestNodes
         }
     }
 
-    ScriptCanvas::Slot* ConfigurableUnitTestNode::AddTestingSlot(ScriptCanvas::SlotConfiguration& slotConfiguration)
+    ScriptCanvas::Slot* ConfigurableUnitTestNode::AddTestingSlot(const ScriptCanvas::SlotConfiguration& slotConfiguration)
     {
         ScriptCanvas::SlotId slotId = AddSlot(slotConfiguration);
 

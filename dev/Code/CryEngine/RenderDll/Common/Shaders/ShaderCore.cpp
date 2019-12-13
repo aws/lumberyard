@@ -55,8 +55,8 @@ CShader* CShaderMan::s_shPostEffectsGame;
 CShader* CShaderMan::s_shPostAA;
 CShader* CShaderMan::s_ShaderCommon;
 CShader* CShaderMan::s_ShaderOcclTest;
-CShader* CShaderMan::s_ShaderDXTCompress = NULL;
-CShader* CShaderMan::s_ShaderStereo = NULL;
+CShader* CShaderMan::s_ShaderDXTCompress = nullptr;
+CShader* CShaderMan::s_ShaderStereo = nullptr;
 CShader* CShaderMan::s_ShaderFur = nullptr;
 #else
 SShaderItem CShaderMan::s_DefaultShaderItem;
@@ -184,13 +184,13 @@ void SEfTexModPool::Unlock(void)
 EShaderLanguage GetShaderLanguage()
 {
     EShaderLanguage shaderLanguage = eSL_Unknown;
-    if (CParserBin::m_nPlatform == SF_ORBIS) // ACCEPTED_USE
+    if (CParserBin::m_nPlatform == SF_ORBIS)
     {
-        shaderLanguage = eSL_Orbis; // ACCEPTED_USE
+        shaderLanguage = eSL_Orbis;
     }
-    else if (CParserBin::m_nPlatform == SF_DURANGO) // ACCEPTED_USE
+    else if (CParserBin::m_nPlatform == SF_DURANGO)
     {
-        shaderLanguage = eSL_Durango; // ACCEPTED_USE
+        shaderLanguage = eSL_Durango;
     }
     else if (CParserBin::m_nPlatform == SF_D3D11)
     {
@@ -217,8 +217,8 @@ const char* GetShaderLanguageName()
     static const char *platformNames[eSL_MAX] =
     {
         "Unknown",
-        "Orbis", // ACCEPTED_USE
-        "Durango", // ACCEPTED_USE
+        "Orbis",
+        "Durango",
         "D3D11",
         "GL4",
         "GL4",
@@ -236,8 +236,8 @@ const char* GetShaderLanguageResourceName()
     static const char *platformResourceNames[eSL_MAX] =
     {
         "(UNK)",
-        "(O)", // ACCEPTED_USE
-        "(D)", // ACCEPTED_USE
+        "(O)",
+        "(D)",
         "(DX1)",
         "(G4)",
         "(G4)",
@@ -739,6 +739,8 @@ void CShaderMan::ShutDown(void)
     mfCloseShadersCache(1);
 
     m_bInitialized = false;
+
+    Terrain::TerrainShaderRequestBus::Handler::BusDisconnect();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1490,6 +1492,11 @@ void CShaderMan::mfInitGlobal (void)
                 g_HWSR_MaskBit[HWSR_SRGB2] = gb->m_Mask;
             }
             else
+            if (gb->m_ParamName == "%_RT_DEFERRED_RENDER_TARGET_OPTIMIZATION")
+            {
+                g_HWSR_MaskBit[HWSR_DEFERRED_RENDER_TARGET_OPTIMIZATION] = gb->m_Mask;
+            }
+            else
             if (gb->m_ParamName == "%_RT_DEPTHFIXUP")
             {
                 g_HWSR_MaskBit[HWSR_DEPTHFIXUP] = gb->m_Mask;
@@ -1681,6 +1688,8 @@ void CShaderMan::mfInit (void)
         #include "Xenia/ShaderCore_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ShaderCore_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ShaderCore_cpp_salem.inl"
     #endif
 #endif
 
@@ -1749,6 +1758,8 @@ bool CShaderMan::LoadShaderStartupCache()
         #include "Xenia/ShaderCore_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ShaderCore_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ShaderCore_cpp_salem.inl"
     #endif
 #endif
     
@@ -3395,7 +3406,7 @@ const char* CHWShader::mfProfileString(EHWShaderClass eClass)
         szProfile = "ps_5_0";
         break;
     case eHWSC_Geometry:
-        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4) // ACCEPTED_USE
+        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4)
         {
             szProfile = "gs_5_0";
         }
@@ -3405,7 +3416,7 @@ const char* CHWShader::mfProfileString(EHWShaderClass eClass)
         }
         break;
     case eHWSC_Domain:
-        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4) // ACCEPTED_USE
+        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4)
         {
             szProfile = "ds_5_0";
         }
@@ -3415,7 +3426,7 @@ const char* CHWShader::mfProfileString(EHWShaderClass eClass)
         }
         break;
     case eHWSC_Hull:
-        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4) // ACCEPTED_USE
+        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4)
         {
             szProfile = "hs_5_0";
         }
@@ -3425,7 +3436,7 @@ const char* CHWShader::mfProfileString(EHWShaderClass eClass)
         }
         break;
     case eHWSC_Compute:
-        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_METAL || CParserBin::m_nPlatform == SF_GLES3) // ACCEPTED_USE
+        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_METAL || CParserBin::m_nPlatform == SF_GLES3)
         {
             szProfile = "cs_5_0";
         }

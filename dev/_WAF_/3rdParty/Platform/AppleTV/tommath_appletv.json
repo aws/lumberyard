@@ -1,0 +1,12 @@
+{
+    "platform": {
+        "appletv": {
+            "libpath": [
+                "lib/appletv"
+            ],
+            "lib": [
+                "libtommath.a"
+            ]
+        }
+    }
+}

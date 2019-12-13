@@ -33,9 +33,15 @@ namespace PhysX
         Physics::Material* GetUserData(const physx::PxMaterial* material);
         Physics::Shape* GetUserData(const physx::PxShape* shape);
         Physics::World* GetUserData(physx::PxScene* scene);
-        void SetLayer(const Physics::CollisionLayer& layer, physx::PxFilterData& filterData);
-        void SetGroup(const Physics::CollisionGroup& group, physx::PxFilterData& filterData);
-        void SetCollisionLayerAndGroup(physx::PxShape* shape, const Physics::CollisionLayer& layer, const Physics::CollisionGroup&  group);
+
+        namespace Collision
+        {
+            AZ::u64 Combine(AZ::u32 word0, AZ::u32 word1);
+            void SetLayer(const Physics::CollisionLayer& layer, physx::PxFilterData& filterData);
+            void SetGroup(const Physics::CollisionGroup& group, physx::PxFilterData& filterData);
+            void SetCollisionLayerAndGroup(physx::PxShape* shape, const Physics::CollisionLayer& layer, const Physics::CollisionGroup& group);
+            bool ShouldCollide(const physx::PxFilterData& filterData0, const physx::PxFilterData& filterData1);
+        }
     }
 }
 

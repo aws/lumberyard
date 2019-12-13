@@ -4,7 +4,7 @@
     "description": "SSL EAY Binary redistributable shared libraries",
     "lib_required": "True",
     "platform": {
-        "win_x64_vs2013": {
+        "win_x64_vs2017": {
             "sharedlibpath": [
                 "win32"
             ],
@@ -12,8 +12,6 @@
                 "libeay32.dll",
                 "ssleay32.dll"
             ]
-        },
-        "win_x64_vs2015": "@win_x64_vs2013",
-        "win_x64_vs2017": "@win_x64_vs2013"
+        }
     }
 }

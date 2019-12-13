@@ -74,6 +74,8 @@ private:
         #include "Xenia/GPUTimer_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/GPUTimer_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GPUTimer_h_salem.inl"
     #endif
 #endif
 

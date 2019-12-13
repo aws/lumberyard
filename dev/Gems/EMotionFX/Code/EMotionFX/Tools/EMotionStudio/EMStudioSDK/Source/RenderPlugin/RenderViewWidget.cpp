@@ -97,8 +97,11 @@ namespace EMStudio
         CreateEntry(viewMenu, "Hit Detection Colliders",QIcon(":/EMotionFX/HitDetection_Blue.png"), true,           RENDER_HITDETECTION_COLLIDERS);
         CreateEntry(viewMenu, "Simulated Object Colliders", QIcon(":/EMotionFX/SimulatedObjectCollider.png"), true, RENDER_SIMULATEDOBJECT_COLLIDERS);
         CreateEntry(viewMenu, "Simulated Joints",       QIcon(":/EMotionFX/SimulatedObject.png"), true, RENDER_SIMULATEJOINTS);
-        // Disable cloth - not available
-        CreateEntry(viewMenu, "Cloth Colliders",        QIcon(":/EMotionFX/ClothCollider_Purple.png"), false,        RENDER_CLOTH_COLLIDERS);
+#ifdef EMOTIONFX_ENABLE_CLOTH
+        CreateEntry(viewMenu, "Cloth Colliders",        QIcon(":/EMotionFX/ClothCollider_Purple.png"), true,        RENDER_CLOTH_COLLIDERS);
+#else
+        CreateEntry(viewMenu, "Cloth Colliders",        QIcon(":/EMotionFX/ClothCollider_Purple.png"), false,       RENDER_CLOTH_COLLIDERS, false);
+#endif
         viewMenu->addSeparator();
         CreateEntry(viewMenu, "Skeleton",               "Skeleton.png",         RENDER_SKELETON);
         CreateEntry(viewMenu, "Line Skeleton",          "SkeletonLines.png",    RENDER_LINESKELETON);

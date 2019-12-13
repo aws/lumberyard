@@ -72,6 +72,7 @@ class IntegrationTest_CloudGemDynamicContent_EndToEnd(base_stack_test.BaseStackT
         self.lmbr_aws('dynamic-content', 'list-bucket-content', '--manifest-path',self.manifest_name)
         self.assertIn(self.manifest_pak_name, self.lmbr_aws_stdout)
         self.assertIn(self.content_pak_name, self.lmbr_aws_stdout)
+        self.assertIn(self.manifest_name, self.lmbr_aws_stdout)
 
     def __110_compare_bucket_content_match(self):
         self.lmbr_aws('dynamic-content', 'compare-bucket-content', '--manifest-path',self.manifest_name)

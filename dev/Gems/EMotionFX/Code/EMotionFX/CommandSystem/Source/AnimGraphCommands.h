@@ -54,7 +54,6 @@ public:
     float                           mOldVisualizeScaleUsed;
     bool                            mOldWorkspaceDirtyFlag;
     static const char*              s_activateAnimGraphCmdName;
-    EMotionFX::AnimGraphInstance*   m_oldAnimGraphInstance = nullptr;
     MCORE_DEFINECOMMAND_END
 
 

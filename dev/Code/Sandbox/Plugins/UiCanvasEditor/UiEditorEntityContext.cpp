@@ -338,9 +338,18 @@ AZ::SliceComponent::SliceInstanceAddress UiEditorEntityContext::CloneEditorSlice
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AzFramework::SliceInstantiationTicket UiEditorEntityContext::InstantiateEditorSlice(const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset, AZ::Vector2 viewportPosition)
 {
+    return InstantiateEditorSliceAtChildIndex(sliceAsset, viewportPosition, -1);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+AzFramework::SliceInstantiationTicket UiEditorEntityContext::InstantiateEditorSliceAtChildIndex(const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset,
+                                                                                                AZ::Vector2 viewportPosition,
+                                                                                                int childIndex)
+{
     if (sliceAsset.GetId().IsValid())
     {
-        m_instantiatingSlices.push_back(AZStd::make_pair(sliceAsset, viewportPosition));
+        InstantiatingEditorSliceParams instantiatingSliceParams(viewportPosition, childIndex);
+        m_instantiatingSlices.push_back(AZStd::make_pair(sliceAsset, instantiatingSliceParams));
 
         const AzFramework::SliceInstantiationTicket ticket = InstantiateSlice(sliceAsset);
         if (ticket)
@@ -615,6 +624,19 @@ void UiEditorEntityContext::OnSliceInstantiated(const AZ::Data::AssetId& sliceAs
             // add as a child of the root element.
             AZ::Entity* parent = m_editorWindow->GetHierarchy()->CurrentSelectedElement();
 
+            int childIndex = instantiatingIter->second.m_childIndex;
+            if (!insertBefore && childIndex >= 0)
+            {
+                if (parent)
+                {
+                    EBUS_EVENT_ID_RESULT(insertBefore, parent->GetId(), UiElementBus, GetChildElement, childIndex);
+                }
+                else
+                {
+                    EBUS_EVENT_ID_RESULT(insertBefore, m_editorWindow->GetCanvas(), UiCanvasBus, GetChildElement, childIndex);
+                }
+            }
+
             // Now topLevelElements contains all of the top-level elements in the set of newly instantiated entities
             // Copy the topLevelEntities set into a list
             LyShine::EntityArray entitiesToInit;
@@ -639,7 +661,7 @@ void UiEditorEntityContext::OnSliceInstantiated(const AZ::Data::AssetId& sliceAs
 
             // Here we adjust the position of the instantiated entities so that if the slice was instantiated from the
             // viewport menu we instantiate it at the mouse position
-            AZ::Vector2 desiredViewportPosition = instantiatingIter->second;
+            AZ::Vector2 desiredViewportPosition = instantiatingIter->second.m_viewportPosition;
             if (desiredViewportPosition != AZ::Vector2(-1.0f, -1.0f))
             {
                 // This is the same behavior as the old "Add elements from prefab" had.

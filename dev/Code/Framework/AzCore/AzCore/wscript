@@ -13,6 +13,21 @@
 def build(bld):
 
     defines = []
+    
+    bld.CryEngineStaticLibrary(
+        # Settings
+        target          = 'AzCoreTestCommon',
+        vs_filter       = 'AZ Framework',
+        file_list       = ['azcore_test.waf_files'],
+        disable_pch     = True,
+        test_only       = True,
+        includes        = ['..'],
+        export_includes = ['..'],
+        use             = ['GMOCK', 'UNWIND'],
+        
+        # Platform Roots
+        platform_roots = [bld.PlatformRoot('../Platform', export_includes=True)]
+    )
 
     bld.CryEngineStaticLibrary(
         # Settings
@@ -32,6 +47,8 @@ def build(bld):
                            'ZLIB',
                            'RAD_TELEMETRY',
                            'UNWIND'],
+        test_all_use    = ['GMOCK',
+                           'AzCoreTestCommon'],
         defines         = list(defines),
         export_defines  = list(defines),
         features        = ['internal_telemetry'],
@@ -39,7 +56,25 @@ def build(bld):
         # Platform Roots
         platform_roots  = [bld.PlatformRoot('../Platform', export_includes=True)],
     
-        # Testing
-        test_all_file_list  = ['azcore_test.waf_files'],
+        # Test Specific
+        create_test_driver  = True,
+        test_vs_filter      = 'AZ Framework/TestSuites',
+        test_file_list      = ['../Tests/azcoretests.waf_files'],
+        test_includes       = ['../Tests'],
+        test_use            = ['BENCHMARK', 'AzTestShared'],
+        test_platforms      = ['win', 'darwin'],
+        test_platform_roots = [bld.PlatformRoot('../Tests/Platform', export_includes=False)],
+    )
 
+    bld.CryEngineStaticLibrary(
+        target                  = 'AzTestShared',
+        vs_filter               = 'AZ Framework',
+        file_list               = '../Tests/aztestshared.waf_files',
+        platforms               = ['win', 'darwin'],
+        configurations          = ['all'],
+        test_only               = True,
+        use                     = ['AzCore'],
+        includes                = ['../Tests'],
+        export_includes         = ['../Tests'],
+        msvc_cxxflags           = ['/W4'],
     )

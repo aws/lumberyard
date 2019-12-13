@@ -20,11 +20,6 @@
 
 #include "ProfileTelemetryComponent.h"
 
-#ifdef AZ_MONOLITHIC_BUILD
-    // The monolithic binary RAD Telemetry instance pointer
-    tm_api* g_radTmApi;
-#endif
-
 namespace RADTelemetry
 {
     static const char * ProfileChannel = "RADTelemetry";
@@ -270,6 +265,11 @@ namespace RADTelemetry
         }
 
         tmLoadLibrary(TM_RELEASE);
+        if (!TM_API_PTR)
+        {
+            // Work around for UnixLike platforms that do not load RAD Telemetry static lib (they are incorrectly compiled with the dynamic library version of tmLoadLibrary.  RAD is aware of the issue.)
+            TM_API_PTR = g_tm_api;
+        }
         AZ_Assert(TM_API_PTR, "Invalid RAD Telemetry API pointer state");
 
         tmSetMaxThreadCount(MaxProfileThreadCount);

@@ -201,6 +201,7 @@ namespace AzToolsFramework
     {
         bool enterComponentModeAttempted = false;
         const bool componentModeBefore = InComponentMode();
+        bool handled = false;
         if (!componentModeBefore)
         {
             // enumerate all ComponentModeDelegateRequestBus and check if any triggered AddComponentModes
@@ -227,12 +228,13 @@ namespace AzToolsFramework
         }
         else
         {
-            bool handled = false;
             ComponentModeFramework::ComponentModeRequestBus::EnumerateHandlers(
                 [&mouseInteraction, &handled]
                 (ComponentModeFramework::ComponentModeRequestBus::InterfaceType* componentModeRequest)
             {
-                handled = handled || componentModeRequest->HandleMouseInteraction(mouseInteraction);
+                // HandleMouseInteraction must be on the left side of the OR to ensure it's executed for every component
+                // and prevent an early out.
+                handled = componentModeRequest->HandleMouseInteraction(mouseInteraction) || handled;
                 return true;
             });
 
@@ -256,11 +258,11 @@ namespace AzToolsFramework
             if (m_transformComponentSelection)
             {
                 // no components being edited (not in ComponentMode), use standard selection
-                return m_transformComponentSelection->HandleMouseInteraction(mouseInteraction);
+                handled = m_transformComponentSelection->HandleMouseInteraction(mouseInteraction);
             }
         }
 
-        return false;
+        return handled;
     }
 
     void EditorDefaultSelection::DisplayViewportSelection(

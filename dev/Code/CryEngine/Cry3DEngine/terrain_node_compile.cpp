@@ -16,11 +16,11 @@
 #include "StdAfx.h"
 #include "terrain_sector.h"
 #include "terrain.h"
+#include "Ocean.h"
 #include "ObjMan.h"
 #include "VisAreas.h"
 #include "Environment/OceanEnvironmentBus.h"
-
-#define TERRAIN_NODE_CHUNK_VERSION 8
+#include <PakLoadDataUtils.h>
 
 int CTerrainNode::Load(uint8*& f, int& nDataSize, EEndian eEndian, bool bSectorPalettes, SHotUpdateInfo* pExportInfo)
 {
@@ -52,7 +52,7 @@ int CTerrainNode::Load_T(T& f, int& nDataSize, EEndian eEndian, bool bSectorPale
 
     // set node data
     STerrainNodeChunk chunk;
-    if (!CTerrain::LoadDataFromFile(&chunk, 1, f, nDataSize, eEndian))
+    if (!PakLoadDataUtils::LoadDataFromFile(&chunk, 1, f, nDataSize, eEndian))
     {
         return 0;
     }
@@ -66,7 +66,17 @@ int CTerrainNode::Load_T(T& f, int& nDataSize, EEndian eEndian, bool bSectorPale
     // set error levels, bounding boxes and some flags
     m_LocalAABB = chunk.boxHeightmap;
     // TODO: Figure out why the bounding box includes the ocean height when the ocean is above the terrain.
-    m_LocalAABB.max.z = max(m_LocalAABB.max.z + TerrainConstants::coloredVegetationMaxSafeHeight, OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : GetTerrain()->GetWaterLevel());
+    float oceanWaterLevel = 0.0f;
+    if (OceanToggle::IsActive())
+    {
+        oceanWaterLevel = OceanRequest::GetOceanLevel();
+    }
+    else
+    {
+        oceanWaterLevel = m_pOcean ? m_pOcean->GetWaterLevel() : 0.0f;
+    }
+
+    m_LocalAABB.max.z = max(m_LocalAABB.max.z + TerrainConstants::coloredVegetationMaxSafeHeight, oceanWaterLevel);
     m_bHasHoles = chunk.bHasHoles;
 
     assert(m_SurfaceTile.GetHeightmap() == nullptr);
@@ -76,23 +86,23 @@ int CTerrainNode::Load_T(T& f, int& nDataSize, EEndian eEndian, bool bSectorPale
 
         const int ChunkSizeSqr = chunk.nSize * chunk.nSize;
         uint16* heightmap = new uint16[(ChunkSizeSqr + 7) & (~0x7)];
-        if (!CTerrain::LoadDataFromFile(heightmap, ChunkSizeSqr, f, nDataSize, eEndian))
+        if (!PakLoadDataUtils::LoadDataFromFile(heightmap, ChunkSizeSqr, f, nDataSize, eEndian))
         {
             delete[] heightmap;
             return 0;
         }
 
-        CTerrain::LoadDataFromFile_FixAlignment(f, nDataSize);
+        PakLoadDataUtils::LoadDataFromFile_FixAlignment(f, nDataSize);
 
         ITerrain::SurfaceWeight* weights = new ITerrain::SurfaceWeight[(ChunkSizeSqr + 7) & (~0x7)];
-        if (!CTerrain::LoadDataFromFile(weights, ChunkSizeSqr, f, nDataSize, eEndian))
+        if (!PakLoadDataUtils::LoadDataFromFile(weights, ChunkSizeSqr, f, nDataSize, eEndian))
         {
             delete[] heightmap;
             delete[] weights;
             return 0;
         }
 
-        CTerrain::LoadDataFromFile_FixAlignment(f, nDataSize);
+        PakLoadDataUtils::LoadDataFromFile_FixAlignment(f, nDataSize);
 
         m_SurfaceTile.AssignMaps(chunk.nSize, heightmap, weights);
         m_SurfaceTile.SetRange(chunk.fOffset, chunk.fRange);
@@ -101,7 +111,7 @@ int CTerrainNode::Load_T(T& f, int& nDataSize, EEndian eEndian, bool bSectorPale
     // load LOD errors
     delete[] m_ZErrorFromBaseLOD;
     m_ZErrorFromBaseLOD = new float[GetTerrain()->m_UnitToSectorBitShift];
-    if (!CTerrain::LoadDataFromFile(m_ZErrorFromBaseLOD, GetTerrain()->m_UnitToSectorBitShift, f, nDataSize, eEndian))
+    if (!PakLoadDataUtils::LoadDataFromFile(m_ZErrorFromBaseLOD, GetTerrain()->m_UnitToSectorBitShift, f, nDataSize, eEndian))
     {
         return 0;
     }
@@ -119,7 +129,7 @@ int CTerrainNode::Load_T(T& f, int& nDataSize, EEndian eEndian, bool bSectorPale
         {
             uint8* pTypes = new uint8[chunk.nSurfaceTypesNum];
 
-            if (!CTerrain::LoadDataFromFile(pTypes, chunk.nSurfaceTypesNum, f, nDataSize, eEndian))
+            if (!PakLoadDataUtils::LoadDataFromFile(pTypes, chunk.nSurfaceTypesNum, f, nDataSize, eEndian))
             {
                 delete[] pTypes;
                 return 0;
@@ -132,7 +142,7 @@ int CTerrainNode::Load_T(T& f, int& nDataSize, EEndian eEndian, bool bSectorPale
 
             delete[] pTypes;
 
-            CTerrain::LoadDataFromFile_FixAlignment(f, nDataSize);
+            PakLoadDataUtils::LoadDataFromFile_FixAlignment(f, nDataSize);
         }
     }
 

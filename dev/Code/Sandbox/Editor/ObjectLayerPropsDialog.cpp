@@ -86,8 +86,8 @@ void CObjectLayerPropsDialog::showEvent(QShowEvent* e)
     }
 
     ui->PLATFORM_PC->setChecked(true);
-    ui->PLATFORM_XBOXONE->setChecked(true);
-    ui->PLATFORM_PS4->setChecked(true);
+    ui->PLATFORM_XENIA->setChecked(true);
+    ui->PLATFORM_PROVO->setChecked(true);
 
     UpdateSpecsUI();
 
@@ -101,14 +101,14 @@ void CObjectLayerPropsDialog::UpdateSpecsUI()
     ui->PLATFORM_ALL->setChecked(!bNotAllSpecTypes);
     ui->PLATFORM_SPEC->setChecked(bNotAllSpecTypes);
     ui->PLATFORM_PC->setEnabled(bNotAllSpecTypes);
-    ui->PLATFORM_XBOXONE->setEnabled(bNotAllSpecTypes);
-    ui->PLATFORM_PS4->setEnabled(bNotAllSpecTypes);
+    ui->PLATFORM_XENIA->setEnabled(bNotAllSpecTypes);
+    ui->PLATFORM_PROVO->setEnabled(bNotAllSpecTypes);
 
     if (m_specs != eSpecType_All)
     {
         ui->PLATFORM_PC->setChecked(m_specs & eSpecType_PC ? true : false);
-        ui->PLATFORM_XBOXONE->setChecked(m_specs & eSpecType_XBoxOne ? true : false);
-        ui->PLATFORM_PS4->setChecked(m_specs & eSpecType_PS4 ? true : false);
+        ui->PLATFORM_XENIA->setChecked(m_specs & eSpecType_Xenia ? true : false);
+        ui->PLATFORM_PROVO->setChecked(m_specs & eSpecType_Provo ? true : false);
     }
 }
 
@@ -126,14 +126,14 @@ void CObjectLayerPropsDialog::ReadSpecsUI()
             m_specs |= eSpecType_PC;
         }
 
-        if (ui->PLATFORM_XBOXONE->isChecked())
+        if (ui->PLATFORM_XENIA->isChecked())
         {
-            m_specs |= eSpecType_XBoxOne;
+            m_specs |= eSpecType_Xenia;
         }
 
-        if (ui->PLATFORM_PS4->isChecked())
+        if (ui->PLATFORM_PROVO->isChecked())
         {
-            m_specs |= eSpecType_PS4;
+            m_specs |= eSpecType_Provo;
         }
     }
 }

@@ -23,11 +23,12 @@
 #define UICANVASEDITOR_HIERARCHY_ICON_PADLOCK_ENABLED       ":/Icons/Padlock_Enabled.tif"
 
 HierarchyItem::HierarchyItem(EditorWindow* editWindow,
-    QTreeWidgetItem* parent,
+    QTreeWidgetItem& parent,
+    int childIndex,
     const QString label,
     AZ::Entity* optionalElement)
     : QObject()
-    , QTreeWidgetItem(parent, QStringList(label))
+    , QTreeWidgetItem(static_cast<QTreeWidgetItem*>(nullptr), QStringList(label))
     , m_editorWindow(editWindow)
     , m_elementId(optionalElement ? optionalElement->GetId() : AZ::EntityId())
     , m_mark(false)
@@ -36,22 +37,34 @@ HierarchyItem::HierarchyItem(EditorWindow* editWindow,
     , m_nonSnappedOffsets()
     , m_nonSnappedZRotation(0.0f)
 {
-    // Element.
-    if (optionalElement)
+    // Add this hierarchy item to its parent at the specified child index
+    QTreeWidgetItem* child = static_cast<QTreeWidgetItem*>(this);
+    if (childIndex >= 0)
     {
-        // IMPORTANT: We provided an optionalElement, which means that
-        // we're building the UI for an existing element, in an existing
-        // canvas. Therefore we DON'T have to automatically create an
-        // element for this HierarchyItem.
+        parent.insertChild(childIndex, child);
     }
     else
     {
-        AZ::Entity* element = nullptr;
+        parent.addChild(child);
+    }
 
-        // The element DIDN'T already exists.
-        // Create the element.
-        EBUS_EVENT_ID_RESULT(element, editWindow->GetCanvas(), UiCanvasBus,
-            CreateChildElement, label.toStdString().c_str());
+    // If an optional existing element is specified, we don't need to create a
+    // new element. This occurs when building the tree from an existing canvas
+    if (!optionalElement)
+    {
+        // Create a new element as the last child of the specified parent element
+        AZ::Entity* element = nullptr;
+        HierarchyItem* parentHierarchyItem = dynamic_cast<HierarchyItem*>(&parent);
+        if (parentHierarchyItem)
+        {
+            EBUS_EVENT_ID_RESULT(element, parentHierarchyItem->GetEntityId(), UiElementBus,
+                CreateChildElement, label.toStdString().c_str());
+        }  
+        else
+        {
+            EBUS_EVENT_ID_RESULT(element, editWindow->GetCanvas(), UiCanvasBus,
+                CreateChildElement, label.toStdString().c_str());
+        }
 
         if (element->GetState() == AZ::Entity::ES_ACTIVE)
         {
@@ -72,6 +85,21 @@ HierarchyItem::HierarchyItem(EditorWindow* editWindow,
         }
 
         m_elementId = element->GetId();
+
+        // Move the new child element to the desired child index
+        if (childIndex >= 0)
+        {
+            AZ::EntityId parentEntityId;
+            if (parentHierarchyItem)
+            {
+                parentEntityId = parentHierarchyItem->GetEntityId();
+            }
+
+            AZ::EntityId insertBeforeEntityId;
+            EBUS_EVENT_ID_RESULT(insertBeforeEntityId, parentEntityId, UiElementBus, GetChildEntityId, childIndex);
+
+            EBUS_EVENT_ID(m_elementId, UiElementBus, ReparentByEntityId, parentEntityId, insertBeforeEntityId);
+        }
     }
 
     AZ_Assert(m_elementId.IsValid(), "Invalid element ID");

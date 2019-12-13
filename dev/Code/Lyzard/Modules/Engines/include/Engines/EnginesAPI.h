@@ -19,14 +19,17 @@
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/string/string.h>
 
-namespace Gems
+namespace AzFramework
 {
     // Version struct forward declaration
     template <size_t N>
     struct Version;
+}
 
+namespace Gems
+{
     // Forward declaring EngineVersion
-    using EngineVersion = Gems::Version<4>;
+    using EngineVersion = AzFramework::Version<4>;
 }
 
 namespace Engines

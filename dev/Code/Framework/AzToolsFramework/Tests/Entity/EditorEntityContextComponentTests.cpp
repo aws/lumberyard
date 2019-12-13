@@ -40,14 +40,18 @@ namespace AzToolsFramework
     TEST_F(EditorEntityContextComponentTests, EditorEntityContextTests_CreateEditorEntity_CreatesValidEntity)
     {
         AZStd::string entityName("TestName");
-        AZ::Entity* createdEntity = nullptr;
+        AZ::EntityId createdEntityId;
         AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
-            createdEntity,
-            &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateEditorEntity,
+            createdEntityId,
+            &AzToolsFramework::EditorEntityContextRequests::CreateNewEditorEntity,
             entityName.c_str());
+        EXPECT_TRUE(createdEntityId.IsValid());
+
+        AZ::Entity* createdEntity = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(createdEntity, &AZ::ComponentApplicationRequests::FindEntity, createdEntityId);
         EXPECT_NE(createdEntity, nullptr);
         EXPECT_EQ(entityName.compare(createdEntity->GetName()), 0);
-        EXPECT_TRUE(createdEntity->GetId().IsValid());
+        EXPECT_EQ(createdEntity->GetId(), createdEntityId);
     }
 
     TEST_F(EditorEntityContextComponentTests, EditorEntityContextTests_CreateEditorEntityWithValidId_CreatesValidEntity)
@@ -55,12 +59,17 @@ namespace AzToolsFramework
         AZ::EntityId validId(AZ::Entity::MakeId());
         EXPECT_TRUE(validId.IsValid());
         AZStd::string entityName("TestName");
-        AZ::Entity* createdEntity = nullptr;
+        AZ::EntityId createdEntityId;
         AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
-            createdEntity,
-            &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateEditorEntityWithId,
+            createdEntityId,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateNewEditorEntityWithId,
             entityName.c_str(),
             validId);
+        EXPECT_TRUE(createdEntityId.IsValid());
+        EXPECT_EQ(createdEntityId, validId);
+
+        AZ::Entity* createdEntity = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(createdEntity, &AZ::ComponentApplicationRequests::FindEntity, createdEntityId);
         EXPECT_NE(createdEntity, nullptr);
         EXPECT_EQ(entityName.compare(createdEntity->GetName()), 0);
         EXPECT_EQ(createdEntity->GetId(), validId);
@@ -71,12 +80,16 @@ namespace AzToolsFramework
         AZ::EntityId invalidId;
         EXPECT_FALSE(invalidId.IsValid());
         AZStd::string entityName("TestName");
-        AZ::Entity* createdEntity = nullptr;
+        AZ::EntityId createdEntityId;
         AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
-            createdEntity,
-            &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateEditorEntityWithId,
+            createdEntityId,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateNewEditorEntityWithId,
             entityName.c_str(),
             invalidId);
+        EXPECT_FALSE(createdEntityId.IsValid());
+
+        AZ::Entity* createdEntity = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(createdEntity, &AZ::ComponentApplicationRequests::FindEntity, createdEntityId);
         EXPECT_EQ(createdEntity, nullptr);
     }
 
@@ -84,21 +97,20 @@ namespace AzToolsFramework
     {
         // Create an entity so we can grab an in-use entity ID.
         AZStd::string entityName("TestName");
-        AZ::Entity* createdEntity = nullptr;
+        AZ::EntityId createdEntityId;
         AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
-            createdEntity,
-            &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateEditorEntity,
+            createdEntityId,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateNewEditorEntity,
             entityName.c_str());
-        EXPECT_NE(createdEntity, nullptr);
-        EXPECT_TRUE(createdEntity->GetId().IsValid());
+        EXPECT_TRUE(createdEntityId.IsValid());
 
         // Attempt to create another entity with the same ID, and verify this call fails.
-        AZ::Entity* secondEntity = nullptr;
+        AZ::EntityId secondEntityId;
         AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
-            secondEntity,
-            &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateEditorEntityWithId,
+            secondEntityId,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateNewEditorEntityWithId,
             entityName.c_str(),
-            createdEntity->GetId());
-        EXPECT_EQ(secondEntity, nullptr);
+            createdEntityId);
+        EXPECT_FALSE(secondEntityId.IsValid());
     }
 }

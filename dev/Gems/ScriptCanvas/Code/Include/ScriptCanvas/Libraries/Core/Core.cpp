@@ -23,7 +23,6 @@ namespace CoreCPP
     template<typename t_Type>
     struct BehaviorClassReflection
     {
-        AZ_TYPE_INFO((BehaviorClassReflection<t_Type>), "{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}", t_Type);
     };
 
     template<typename t_Type, bool isHashable = ScriptCanvas::Data::Traits<t_Type>::s_isKey>
@@ -197,4 +196,9 @@ namespace ScriptCanvas
             });
         }
     }
+}
+
+namespace AZ
+{
+    AZ_TYPE_INFO_TEMPLATE_WITH_NAME(CoreCPP::BehaviorClassReflection, "(BehaviorClassReflection<t_Type>)", "{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}", AZ_TYPE_INFO_TYPENAME);
 }

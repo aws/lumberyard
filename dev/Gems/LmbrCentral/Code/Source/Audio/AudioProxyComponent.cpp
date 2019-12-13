@@ -37,7 +37,7 @@ namespace LmbrCentral
             auto editContext = serializeContext->GetEditContext();
             if (editContext)
             {
-                editContext->Class<AudioProxyComponent>("Audio Proxy", "The Audio Proxy component is a required dependency if you add multiple audio components to an entity")
+                editContext->Class<AudioProxyComponent>("Audio Proxy", "The Audio Proxy component is a required dependency when you add other audio components to an entity")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Audio")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/AudioProxy.svg")
@@ -52,7 +52,7 @@ namespace LmbrCentral
     //=========================================================================
     void AudioProxyComponent::Activate()
     {
-        AZ_Assert(!m_audioProxy, "AudioProxyCompnent::Activate - Audio Proxy has been set already!");
+        AZ_Assert(!m_audioProxy, "AudioProxyComponent::Activate - Audio Proxy has been set already!");
         Audio::AudioSystemRequestBus::BroadcastResult(m_audioProxy, &Audio::AudioSystemRequestBus::Events::GetFreeAudioProxy);
 
         if (m_audioProxy)
@@ -89,7 +89,7 @@ namespace LmbrCentral
         m_transform = world;
         if (m_tracksEntityPosition)
         {
-            m_audioProxy->SetPosition(AZTransformToLYTransform(m_transform));
+            m_audioProxy->SetPosition(m_transform);
         }
     }
 
@@ -100,7 +100,7 @@ namespace LmbrCentral
         {
             // set the position at the Entity's current location.
             // need to poll in case we haven't hit a transform update yet.
-            m_audioProxy->SetPosition(AZTransformToLYTransform(m_transform));
+            m_audioProxy->SetPosition(m_transform);
 
             // ...and kick it off...
             m_audioProxy->ExecuteSourceTrigger(triggerID, sourceInfo, callbackInfo);
@@ -117,7 +117,7 @@ namespace LmbrCentral
         {
             // set the position at the Entity's current location.
             // need to poll in case we haven't hit a transform update yet.
-            m_audioProxy->SetPosition(AZTransformToLYTransform(m_transform));
+            m_audioProxy->SetPosition(m_transform);
 
             // ...and kick it off...
             m_audioProxy->ExecuteTrigger(triggerID, eLSM_None, callbackInfo);

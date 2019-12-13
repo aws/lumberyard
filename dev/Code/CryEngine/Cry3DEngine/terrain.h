@@ -23,6 +23,10 @@
 #include <Terrain/Bus/LegacyTerrainBus.h>
 #include <AzCore/std/function/function_fwd.h> // for callbacks
 #include "Environment/OceanEnvironmentBus.h"
+#include "TerrainProfiler.h"
+#include <HeightmapUpdateNotificationBus.h>
+
+#include "terrain_sector.h"
 
 // lowest level of the outdoor world
 #define TERRAIN_BOTTOM_LEVEL 0
@@ -44,7 +48,6 @@ enum
 };
 
 class CTerrainUpdateDispatcher;
-class COcean;
 
 namespace TerrainConstants
 {
@@ -106,66 +109,6 @@ struct SSurfaceType
     float fCustomMaxDistance;
 };
 
-class CTerrainNode;
-
-#pragma pack(push,4)
-
-//! structure to vegetation group properties loading/saving
-struct StatInstGroupChunk
-{
-    StatInstGroupChunk()
-    {
-        ZeroStruct(*this);
-    }
-    char  szFileName[256];
-    float fBending;
-    float fSpriteDistRatio;
-    float fShadowDistRatio;
-    float fMaxViewDistRatio;
-    float   fBrightness;
-    int32 nRotationRangeToTerrainNormal; // applied to a vegetation object that has been realigned in the terrain's Y/X direction
-    float fAlignToTerrainCoefficient;
-    uint32  nMaterialLayers;
-
-    float fDensity;
-    float fElevationMax;
-    float fElevationMin;
-    float fSize;
-    float fSizeVar;
-    float fSlopeMax;
-    float fSlopeMin;
-
-    float fStatObjRadius_NotUsed;
-    int nIDPlusOne; // For backward compatibility, we need to save ID + 1
-
-    float fLodDistRatio;
-    uint32  nReserved;
-
-    int nFlags;
-    int nMaterialId;
-
-    //! flags similar to entity render flags
-    int m_dwRndFlags;
-
-    float fStiffness;
-    float fDamping;
-    float fVariance;
-    float fAirResistance;
-
-    AUTO_STRUCT_INFO_LOCAL
-};
-
-struct SNameChunk
-{
-    SNameChunk() { memset(this, 0, sizeof(SNameChunk)); }
-
-    char szFileName[256];
-
-    AUTO_STRUCT_INFO_LOCAL
-};
-
-#pragma pack(pop)
-
 class CTerrain
     : public ITerrain
     , public Cry3DEngineBase
@@ -177,11 +120,12 @@ public:
     using MeterF = float;
     using Unit = int;
 
-    CTerrain(const STerrainInfo& TerrainInfo);
+    CTerrain(const STerrainInfo& terrainInfo);
     ~CTerrain();
 
     virtual float GetZ(Meter x, Meter y) const;
     virtual float GetBilinearZ(MeterF x1, MeterF y1) const;
+    virtual float GetSlope(Meter x, Meter y) const;
 
     virtual SurfaceWeight GetSurfaceWeight(Meter x, Meter y) const;
 
@@ -230,10 +174,8 @@ public:
     CTerrainNode* GetLeafNodeAt(Meter x, Meter y);
     inline CTerrainNode* GetLeafNodeAt(const Vec3& pos);
 
-    bool SetCompiledData(byte* pData, int nDataSize, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable, bool bHotUpdate, SHotUpdateInfo* pExportInfo) override;
-    bool GetCompiledData(byte* pData, int nDataSize, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable, std::vector<struct IStatInstGroup*>** ppStatInstGroupTable, EEndian eEndian, SHotUpdateInfo* pExportInfo) override;
-    int  GetCompiledDataSize(SHotUpdateInfo* pExportInfo) override;
-    void GetStatObjAndMatTables(DynArray<IStatObj*>* pStatObjTable, DynArray<_smart_ptr<IMaterial>>* pMatTable, DynArray<IStatInstGroup*>* pStatInstGroupTable, uint32 nObjTypeMask) override;
+    //Returns the number of nodes (CTerrainNode) that wrote data into pData.
+    int GetNodesData(byte*& pData, int& nDataSize, EEndian eEndian, SHotUpdateInfo* pExportInfo);
 
     void GetMemoryUsage(class ICrySizer* pSizer) const;
 
@@ -272,10 +214,6 @@ public:
 
     void GetResourceMemoryUsage(ICrySizer* pSizer, const AABB& crstAABB);
 
-    void GetVegetationMaterials(std::vector<_smart_ptr<IMaterial>>*& pMatTable);
-    void LoadVegetationData(PodArray<struct StatInstGroup>& rTable, PodArray<StatInstGroupChunk>& lstFileChunks, int i);
-    virtual IRenderNode* AddVegetationInstance(int nStaticGroupID, const Vec3& vPos, const float fScale, uint8 ucBright, uint8 angle, uint8 angleX, uint8 angleY) override;
-
     inline SSurfaceType* GetSurfaceTypes();
 
     inline int GetTerrainTextureNodeSizeMeters();
@@ -288,56 +226,77 @@ public:
     void ActivateNodeTexture(CTerrainNode* pNode, const SRenderingPassInfo& passInfo);
     void ActivateNodeProcObj(CTerrainNode* pNode);
 
-    bool Load(AZ::IO::HandleType fileHandle, int nDataSize, struct STerrainChunkHeader* pTerrainChunkHeader, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable);
-
-    // REFACTOR IN PROGRESS
-    //////////////////////////////////////////////////////////////////////////
-
-    // (bethelz) TODO: These belong in 3DEngine
-    static void RemoveAllStaticObjects();
-    static bool RemoveObjectsInArea(Vec3 vExploPos, float fExploRadius);
-    static void GetObjectsAround(Vec3 vPos, float fRadius, PodArray<struct SRNInfo>* pEntList, bool bSkip_ERF_NO_DECALNODE_DECALS, bool bSkipDynamicObjects);
-    static bool Recompile_Modified_Incrementaly_RoadRenderNodes();
-    //
-
-    // (bethelz) TODO: Remove global ocean dependency
-    inline float GetWaterLevel();
-    inline void SetWaterLevel(float fOceanWaterLevel);
     inline bool IsOceanVisible() const;
-    inline COcean* GetOcean();
     inline float GetDistanceToSectorWithWater() const;
-    int UpdateOcean(const SRenderingPassInfo& passInfo);
-    int RenderOcean(const SRenderingPassInfo& passInfo);
-    void InitTerrainWater(_smart_ptr<IMaterial> pTerrainWaterMat) override;
-    virtual void SetOceanWaterLevel(float fOceanWaterLevel) override;
-    virtual void ChangeOceanMaterial(_smart_ptr<IMaterial> pMat) override;
-    //
-
-    // (bethelz) TODO: Move to utility class.
-    template <class T>
-    static bool LoadDataFromFile(T* data, size_t elems, AZ::IO::HandleType& fileHandle, int& nDataSize, EEndian eEndian, int* pSeek = 0);
-    static bool LoadDataFromFile_Seek(size_t elems, AZ::IO::HandleType& fileHandle, int& nDataSize, EEndian eEndian);
-
-    template <class T>
-    static bool LoadDataFromFile(T* data, size_t elems, uint8*& f, int& nDataSize, EEndian eEndian, int* pSeek = 0);
-    static bool LoadDataFromFile_Seek(size_t elems, uint8*& f, int& nDataSize, EEndian eEndian);
-    static void LoadDataFromFile_FixAlignment(AZ::IO::HandleType& fileHandle, int& nDataSize);
-    static void LoadDataFromFile_FixAlignment(uint8*& f, int& nDataSize);
-    //
 
     // LegacyTerrain::CryTerrainRequestBus
     void RequestTerrainUpdate() override;
 
-private:
+    //! Returns the number of CTerrainNode that were loaded from "f".
     template <class T>
-    bool Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHeader, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable, bool bHotUpdate, SHotUpdateInfo* pExportInfo);
+    int Load_T(XmlNodeRef pDoc, T& f, int& nDataSize, const STerrainInfo& terrainInfo, bool bHotUpdate, bool bHMap, bool bSectorPalettes, EEndian eEndian, SHotUpdateInfo* pExportInfo, bool loadMacroTexture = false)
+    {
+#if !defined(_RELEASE)
+        //Make sure in non-release mode, the terrain profiler is active so we don't lose the LoadTimeFromDisk performance number.
+        AZ::Debug::TerrainProfiler::GetInstance();
+        AZ_PROFILE_TIMER("TerrainProfiler", TERRAIN_STATISTIC_LOAD_TIME_FROM_DISK);
+#endif //!defined(_RELEASE)
 
-    int GetTablesSize(SHotUpdateInfo* pExportInfo);
-    void SaveTables(byte*& pData, int& nDataSize, std::vector<struct IStatObj*>*& pStatObjTable, std::vector<_smart_ptr<IMaterial>>*& pMatTable, std::vector<struct IStatInstGroup*>*& pStatInstGroupTable, EEndian eEndian, SHotUpdateInfo* pExportInfo);
+        LoadSurfaceTypesFromXML(pDoc);
 
+        // get terrain settings
+        terrainInfo.LoadTerrainSettings(m_nUnitSize, m_fInvUnitSize, m_nTerrainSize,
+                                        m_MeterToUnitBitShift, m_nTerrainSizeDiv,
+                                        m_nSectorSize, m_nSectorsTableSize, m_UnitToSectorBitShift);
+
+        if (bHMap && !m_RootNode)
+        {
+            LOADING_TIME_PROFILE_SECTION_NAMED("BuildSectorsTree");
+
+            // build nodes tree in fast way
+            BuildSectorsTree(false);
+
+            // pass heightmap to the physics
+            InitHeightfieldPhysics();
+        }
+
+        if (!bHotUpdate)
+        {
+            PrintMessage("===== Initializing terrain nodes ===== ");
+        }
+        int nNodesLoaded = 1;
+
+        if (m_RootNode)
+        {
+            if (bHMap)
+            {
+                nNodesLoaded = m_RootNode->Load_T(f, nDataSize, eEndian, bSectorPalettes, pExportInfo);
+            }
+            // reopen texture file if needed, texture pack may be randomly closed by editor so automatic reopening used
+            if (loadMacroTexture && !m_MacroTexture)
+            {
+                OpenTerrainTextureFile(COMPILED_TERRAIN_TEXTURE_FILE_NAME);
+            }
+        }
+
+        if (bHMap)
+        {
+            LOADING_TIME_PROFILE_SECTION_NAMED("PostTerrain");
+            ResetTerrainVertBuffers();
+        }
+
+        int numTiles = CTerrain::m_NodePyramid[0].GetSize();
+        SendLegacyTerrainUpdateNotifications(0, 0, numTiles, numTiles);
+        AZ::HeightmapUpdateNotificationBus::Broadcast(&AZ::HeightmapUpdateNotificationBus::Events::HeightmapModified, AZ::Aabb::CreateNull());
+
+        return nNodesLoaded;
+    }
+
+private:
     inline void Clamp_Unit(Unit& x, Unit& y) const;
     float GetZ_Unit(Unit nX_units, Unit nY_units) const;
     SurfaceWeight GetSurfaceWeight_Units(Unit nX_units, Unit nY_units) const;
+    float GetSlope_Unit(Unit nX_units, Unit nY_units) const;
 
     inline Unit SectorSize_Units() const;
 
@@ -354,14 +313,11 @@ private:
 
     int m_nLoadedSectors;
     int m_bOceanIsVisible;
-
     float m_fDistanceToSectorWithWater;
 
     MacroTexture::UniquePtr m_MacroTexture;
 
     _smart_ptr<IMaterial> m_pTerrainEf;
-
-    float   m_fOceanWaterLevel;
 
     PodArray<CTerrainNode*> m_lstVisSectors;
     PodArray<CTerrainNode*> m_lstUpdatedSectors;
@@ -374,8 +330,6 @@ private:
     int             m_nTerrainSizeDiv;
     static int      m_nSectorSize;  // in meters
     static int      m_nSectorsTableSize;    // sector width/height of the finest LOD level (sector count is the square of this value)
-
-    class COcean*  m_pOcean;
 
     PodArray<CTerrainNode*> m_lstActiveTextureNodes;
     PodArray<CTerrainNode*> m_lstActiveProcObjNodes;
@@ -399,19 +353,25 @@ private:
     int m_MeterToUnitBitShift;
     int m_UnitToSectorBitShift;
 
-    static float GetHeightFromUnits_Callback(int ix, int iy);
-    static unsigned char GetSurfaceTypeFromUnits_Callback(int ix, int iy);
+    static float GetHeightFromTerrain_Callback(int ix, int iy);
+    static unsigned char GetSurfaceTypeFromTerrain_Callback(int ix, int iy);
 
     struct SCachedHeight
     {
-        SCachedHeight() { x = y = 0; fHeight = 0; }
+        // Initialize the cached coordinates to 0xFFFF, which is an invalid value.
+        // (The heightmap supports a max value of 4096)  If we initialize to 0, it
+        // could be mistaken as a valid cached entry.
+        SCachedHeight() { x = y = 0xFFFF; fHeight = 0; }
         uint16 x, y;
         float fHeight;
     };
 
     struct SCachedSurfType
     {
-        SCachedSurfType() { x = y = 0; surfType = 0;}
+        // Initialize the cached coordinates to 0xFFFF, which is an invalid value.
+        // (The heightmap supports a max value of 4096)  If we initialize to 0, it
+        // could be mistaken as a valid cached entry.
+        SCachedSurfType() { x = y = 0xFFFF; surfType = 0; }
         uint16 x, y;
         uint32 surfType;
     };
@@ -421,8 +381,10 @@ private:
 
     void ResetHeightMapCache()
     {
-        memset(m_arrCacheHeight, 0, sizeof(m_arrCacheHeight));
-        memset(m_arrCacheSurfType, 0, sizeof(m_arrCacheSurfType));
+        // Wipe cache to 0xff, otherwise CTerrain::GetHeightFromUnits_Callback and CTerrrain::GetSurfaceTypeFromUnits_Callback
+        // incorrectly uses the cache for x=0, y=0 coordinate despite having no value written.
+        memset(m_arrCacheHeight, 0xFF, sizeof(m_arrCacheHeight));
+        memset(m_arrCacheSurfType, 0xFF, sizeof(m_arrCacheSurfType));
     }
 };
 
@@ -483,24 +445,9 @@ inline CTerrainNode* CTerrain::GetLeafNodeAt(const Vec3& pos)
     return GetLeafNodeAt((Meter)pos.x, (Meter)pos.y);
 }
 
-inline float CTerrain::GetWaterLevel()
-{
-    return OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : m_fOceanWaterLevel;
-}
-
-inline void CTerrain::SetWaterLevel(float fOceanWaterLevel)
-{
-    m_fOceanWaterLevel = fOceanWaterLevel;
-}
-
 inline bool CTerrain::IsOceanVisible() const
 {
     return m_bOceanIsVisible != 0;
-}
-
-inline COcean* CTerrain::GetOcean()
-{
-    return m_pOcean;
 }
 
 inline float CTerrain::GetDistanceToSectorWithWater() const
@@ -516,73 +463,6 @@ inline SSurfaceType* CTerrain::GetSurfaceTypes()
 inline int CTerrain::GetTerrainTextureNodeSizeMeters()
 {
     return GetSectorSize();
-}
-
-template <class T>
-bool CTerrain::LoadDataFromFile(T* data, size_t elems, AZ::IO::HandleType& fileHandle, int& nDataSize, EEndian eEndian, int* pSeek)
-{
-    if (pSeek)
-    {
-        *pSeek = GetPak()->FTell(fileHandle);
-    }
-
-    if (GetPak()->FRead(data, elems, fileHandle, eEndian) != elems)
-    {
-        assert(0);
-        return false;
-    }
-    nDataSize -= sizeof(T) * elems;
-    assert(nDataSize >= 0);
-    return true;
-}
-
-inline bool CTerrain::LoadDataFromFile_Seek(size_t elems, AZ::IO::HandleType& fileHandle, int& nDataSize, EEndian eEndian)
-{
-    GetPak()->FSeek(fileHandle, elems, SEEK_CUR);
-    nDataSize -= elems;
-    assert(nDataSize >= 0);
-    return (nDataSize >= 0);
-}
-
-template <class T>
-bool CTerrain::LoadDataFromFile(T* data, size_t elems, uint8*& f, int& nDataSize, EEndian eEndian, int* pSeek)
-{
-    StepDataCopy(data, f, elems, eEndian);
-    nDataSize -= elems * sizeof(T);
-    assert(nDataSize >= 0);
-    return (nDataSize >= 0);
-}
-
-inline bool CTerrain::LoadDataFromFile_Seek(size_t elems, uint8*& f, int& nDataSize, EEndian eEndian)
-{
-    nDataSize -= elems;
-    f += elems;
-    assert(nDataSize >= 0);
-    return true;
-}
-
-inline void CTerrain::LoadDataFromFile_FixAlignment(AZ::IO::HandleType& fileHandle, int& nDataSize)
-{
-    while (nDataSize & 3)
-    {
-        int nRes = GetPak()->FSeek(fileHandle, 1, SEEK_CUR);
-        assert(nRes == 0);
-        assert(nDataSize);
-        nDataSize--;
-    }
-    assert(nDataSize >= 0);
-}
-
-inline void CTerrain::LoadDataFromFile_FixAlignment(uint8*& f, int& nDataSize)
-{
-    while (nDataSize & 3)
-    {
-        assert(*f == 222);
-        f++;
-        assert(nDataSize);
-        nDataSize--;
-    }
-    assert(nDataSize >= 0);
 }
 
 inline CTerrain::Unit CTerrain::SectorSize_Units() const

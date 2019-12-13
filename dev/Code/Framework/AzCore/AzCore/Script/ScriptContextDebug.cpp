@@ -17,6 +17,7 @@
 #include <AzCore/Math/Crc.h>
 #include <AzCore/Debug/StackTracer.h>  // for CodeStackTrace
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/RTTI/AttributeReader.h>
 
 #include <AzCore/std/string/tokenize.h>
 
@@ -338,6 +339,13 @@ void ScriptContextDebug::EnumRegisteredEBuses(EnumEBus enumEBus, EnumEBusSender 
     for (auto const &ebusPair : behaviorContext->m_ebuses)
     {
         AZ::BehaviorEBus* ebus = ebusPair.second;
+
+        // Do not enum if this bus should not be available in Lua
+        if (!AZ::Internal::IsAvailableInLua(ebus->m_attributes))
+        {
+            continue;
+        }
+
         bool canBroadcast = EBusCanBroadcast(ebus);
         bool canQueue = EBusCanQueue(ebus);
         bool hasHandler = EBusHasHandler(ebus);

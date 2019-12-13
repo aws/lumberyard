@@ -11,7 +11,16 @@
 */
 #include <AWS_precompiled.h>
 #include <Util/JSON/FlowNode_IsValueInJsonArray.h>
+// The AWS Native SDK AWSAllocator triggers a warning due to accessing members of std::allocator directly.
+// AWSAllocator.h(70): warning C4996: 'std::allocator<T>::pointer': warning STL4010: Various members of std::allocator are deprecated in C++17.
+// Use std::allocator_traits instead of accessing these members directly.
+// You can define _SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING or _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS to acknowledge that you have received this warning.
+
+// The AWS gem does not use AzCore, therefore the AZ_PUSH_DISABLE_WARNING macro is not available
+#include <AzCore/PlatformDef.h>
+AZ_PUSH_DISABLE_WARNING(4251 4996, "-Wunknown-warning-option")
 #include <aws/core/utils/json/JsonSerializer.h>
+AZ_POP_DISABLE_WARNING
 
 namespace LmbrAWS
 {
@@ -52,19 +61,19 @@ namespace LmbrAWS
 
                 Aws::Utils::Json::JsonValue jsonValue(Aws::String(jsonArrayStr.c_str()));
 
-                if (!jsonValue.IsListType())
+                if (!jsonValue.View().IsListType())
                 {
                     CRY_ASSERT_MESSAGE(false, "Json value is not a list");
                     return;
                 }
 
-                Aws::Utils::Array<Aws::Utils::Json::JsonValue> jsonArray = jsonValue.AsArray();
+                Aws::Utils::Array<Aws::Utils::Json::JsonView> jsonArray = jsonValue.View().AsArray();
 
                 int numOccurrences = 0;
 
                 for (unsigned int i = 0; i < jsonArray.GetLength(); ++i)
                 {
-                    Aws::Utils::Json::JsonValue& item = jsonArray.GetItem(i);
+                    Aws::Utils::Json::JsonView& item = jsonArray.GetItem(i);
                     Aws::String itemValue = item.AsString();
 
                     if (itemValue == value.c_str())

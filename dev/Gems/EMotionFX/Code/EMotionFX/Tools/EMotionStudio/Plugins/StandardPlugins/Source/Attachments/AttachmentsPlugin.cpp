@@ -102,6 +102,7 @@ namespace EMStudio
         mRemoveAttachmentCallback           = new CommandRemoveAttachmentCallback(false);
         mClearAttachmentsCallback           = new CommandClearAttachmentsCallback(false);
         mAdjustActorCallback                = new CommandAdjustActorCallback(false);
+        mRemoveActorInstanceCallback        = new CommandRemoveActorInstanceCallback(false);
 
         GetCommandManager()->RegisterCommandCallback("Select", mSelectCallback);
         GetCommandManager()->RegisterCommandCallback("Unselect", mUnselectCallback);
@@ -112,6 +113,7 @@ namespace EMStudio
         GetCommandManager()->RegisterCommandCallback("RemoveAttachment", mRemoveAttachmentCallback);
         GetCommandManager()->RegisterCommandCallback("ClearAttachments", mClearAttachmentsCallback);
         GetCommandManager()->RegisterCommandCallback("AdjustActor", mAdjustActorCallback);
+        GetCommandManager()->RegisterCommandCallback("RemoveActorInstance", mRemoveActorInstanceCallback);
 
         // reinit the dialog
         ReInit();
@@ -266,6 +268,8 @@ namespace EMStudio
     bool AttachmentsPlugin::CommandRemoveAttachmentCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)           { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return ReInitAttachmentsPlugin(); }
     bool AttachmentsPlugin::CommandClearAttachmentsCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)        { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return ReInitAttachmentsPlugin(); }
     bool AttachmentsPlugin::CommandClearAttachmentsCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)           { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return ReInitAttachmentsPlugin(); }
+    bool AttachmentsPlugin::CommandRemoveActorInstanceCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)     { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return ReInitAttachmentsPlugin(); }
+    bool AttachmentsPlugin::CommandRemoveActorInstanceCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)        { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return ReInitAttachmentsPlugin(); }
     bool AttachmentsPlugin::CommandAdjustActorCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
     {
         MCORE_UNUSED(command);

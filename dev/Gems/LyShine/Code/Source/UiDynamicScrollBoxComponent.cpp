@@ -14,6 +14,7 @@
 
 #include "UiElementComponent.h"
 #include "UiNavigationHelpers.h"
+#include "UiLayoutHelpers.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -2760,81 +2761,11 @@ float UiDynamicScrollBoxComponent::AutoCalculateElementSize(AZ::EntityId element
 
     if (m_isVertical)
     {
-        float targetHeight = LyShine::UiLayoutCellUnspecifiedSize;
-
-        // First check for overriden cell height
-        EBUS_EVENT_ID_RESULT(targetHeight, elementForAutoSizeCalculation, UiLayoutCellBus, GetTargetHeight);
-
-        // Get max height
-        float maxHeight = LyShine::UiLayoutCellUnspecifiedSize;
-        EBUS_EVENT_ID_RESULT(maxHeight, elementForAutoSizeCalculation, UiLayoutCellBus, GetMaxHeight);
-
-        // If not overriden, get the default cell height
-        if (!LyShine::IsUiLayoutCellSizeSpecified(targetHeight))
-        {
-            targetHeight = 0.0f;
-
-            AZ::EBusAggregateResults<float> results;
-            EBUS_EVENT_ID_RESULT(results, elementForAutoSizeCalculation, UiLayoutCellDefaultBus, GetTargetHeight, maxHeight);
-
-            if (!results.values.empty())
-            {
-                for (float value : results.values)
-                {
-                    if (targetHeight < value)
-                    {
-                        targetHeight = value;
-                    }
-                }
-            }
-        }
-
-        size = targetHeight;
-
-        // Make sure that max height isn't less than target height
-        if (LyShine::IsUiLayoutCellSizeSpecified(maxHeight) && maxHeight < size)
-        {
-            size = maxHeight;
-        }
+        size = UiLayoutHelpers::GetLayoutElementTargetHeight(elementForAutoSizeCalculation);
     }
     else
     {
-        float targetWidth = LyShine::UiLayoutCellUnspecifiedSize;
-
-        // First check for overriden cell width
-        EBUS_EVENT_ID_RESULT(targetWidth, elementForAutoSizeCalculation, UiLayoutCellBus, GetTargetWidth);
-
-        // Get max width
-        float maxWidth = LyShine::UiLayoutCellUnspecifiedSize;
-        EBUS_EVENT_ID_RESULT(maxWidth, elementForAutoSizeCalculation, UiLayoutCellBus, GetMaxWidth);
-
-        // If not overriden, get the default cell width
-        if (!LyShine::IsUiLayoutCellSizeSpecified(targetWidth))
-        {
-            targetWidth = 0.0f;
-
-            AZ::EBusAggregateResults<float> results;
-            EBUS_EVENT_ID_RESULT(results, elementForAutoSizeCalculation, UiLayoutCellDefaultBus, GetTargetWidth, maxWidth);
-
-            if (!results.values.empty())
-            {
-                for (float value : results.values)
-                {
-                    if (targetWidth < value)
-                    {
-                        targetWidth = value;
-                    }
-                }
-            }
-        }
-
-        size = targetWidth;
-
-        // Make sure that max width isn't less than target width
-        if (LyShine::IsUiLayoutCellSizeSpecified(maxWidth) && maxWidth < size)
-        {
-            size = maxWidth;
-        }
+        size = UiLayoutHelpers::GetLayoutElementTargetWidth(elementForAutoSizeCalculation);
     }
 
     return size;

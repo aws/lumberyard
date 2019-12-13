@@ -20,14 +20,17 @@
 #include <AzToolsFramework/ToolsComponents/EditorLockComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityComponent.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
+#include <AzToolsFramework/UI/PropertyEditor/EntityPropertyEditor.hxx>
 #include <AzToolsFramework/Viewport/ActionBus.h>
 #include <AzToolsFramework/ViewportSelection/EditorDefaultSelection.h>
 #include <AzToolsFramework/ViewportSelection/EditorInteractionSystemViewportSelectionRequestBus.h>
 #include <AzToolsFramework/ViewportSelection/EditorVisibleEntityDataCache.h>
 #include <AzCore/UnitTest/TestTypes.h>
 
-#include "AzToolsFrameworkTestHelpers.h"
-#include "ComponentModeTestDoubles.h"
+#include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
+#include <AzToolsFramework/UnitTest/ComponentModeTestDoubles.h>
+#include <AzToolsFramework/UnitTest/ComponentModeTestFixture.h>
+
 
 #include <QtTest/QtTest>
 #include <QApplication>
@@ -37,37 +40,7 @@ namespace UnitTest
     using namespace AzToolsFramework;
     using namespace AzToolsFramework::ComponentModeFramework;
 
-    class ComponentModeTest
-        : public AllocatorsTestFixture
-    {
-        AZStd::unique_ptr<AZ::SerializeContext> m_serializeContext;
-
-    public:
-        void SetUp() override
-        {
-            m_serializeContext = AZStd::make_unique<AZ::SerializeContext>();
-            m_app.Start(AzFramework::Application::Descriptor());
-
-            m_app.RegisterComponentDescriptor(PlaceholderEditorComponent::CreateDescriptor());
-            m_app.RegisterComponentDescriptor(AnotherPlaceholderEditorComponent::CreateDescriptor());
-            m_app.RegisterComponentDescriptor(DependentPlaceholderEditorComponent::CreateDescriptor());
-
-            m_editorActions.Connect();
-        }
-
-        void TearDown() override
-        {
-            m_editorActions.Disconnect();
-
-            m_app.Stop();
-            m_serializeContext.reset();
-        }
-
-        ToolsApplication m_app;
-        TestEditorActions m_editorActions;
-    };
-
-    TEST_F(ComponentModeTest, BeginEndComponentMode)
+    TEST_F(ComponentModeTestFixture, BeginEndComponentMode)
     {
         using ::testing::Eq;
 
@@ -115,7 +88,7 @@ namespace UnitTest
             GetEntityContextId(), &ActionOverrideRequests::TeardownActionOverrideHandler);
     }
 
-    TEST_F(ComponentModeTest, TwoComponentsOnSingleEntityWithSameComponentModeBothBegin)
+    TEST_F(ComponentModeTestFixture, TwoComponentsOnSingleEntityWithSameComponentModeBothBegin)
     {
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Given
@@ -155,18 +128,18 @@ namespace UnitTest
         bool firstComponentModeInstantiated = false;
         ComponentModeSystemRequestBus::BroadcastResult(
             firstComponentModeInstantiated, &ComponentModeSystemRequests::ComponentModeInstantiated,
-            AZ::EntityComponentIdPair(entityId, placeholder1->GetId())); 
+            AZ::EntityComponentIdPair(entityId, placeholder1->GetId()));
 
         bool secondComponentModeInstantiated = false;
         ComponentModeSystemRequestBus::BroadcastResult(
             secondComponentModeInstantiated, &ComponentModeSystemRequests::ComponentModeInstantiated,
             AZ::EntityComponentIdPair(entityId, placeholder2->GetId()));
-        
+
         EXPECT_TRUE(firstComponentModeInstantiated && secondComponentModeInstantiated);
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     }
 
-    TEST_F(ComponentModeTest, OneComponentModeBeginsWithTwoComponentsOnSingleEntityEachWithDifferentComponentModes)
+    TEST_F(ComponentModeTestFixture, OneComponentModeBeginsWithTwoComponentsOnSingleEntityEachWithDifferentComponentModes)
     {
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Given
@@ -212,12 +185,12 @@ namespace UnitTest
         ComponentModeSystemRequestBus::BroadcastResult(
             secondComponentModeInstantiated, &ComponentModeSystemRequests::ComponentModeInstantiated,
             AZ::EntityComponentIdPair(entityId, placeholder2->GetId()));
-        
+
         EXPECT_TRUE(firstComponentModeInstantiated && !secondComponentModeInstantiated);
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     }
 
-    TEST_F(ComponentModeTest, TwoComponentsOnSingleEntityWithSameComponentModeDoNotCycle)
+    TEST_F(ComponentModeTestFixture, TwoComponentsOnSingleEntityWithSameComponentModeDoNotCycle)
     {
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Given
@@ -232,7 +205,9 @@ namespace UnitTest
 
         // add two placeholder Components (each with their own Component Mode)
         const AZ::Component* placeholder1 = entity->CreateComponent<PlaceholderEditorComponent>();
+        AZ_UNUSED(placeholder1);
         const AZ::Component* placeholder2 = entity->CreateComponent<PlaceholderEditorComponent>();
+        AZ_UNUSED(placeholder2);
 
         entity->Activate();
 
@@ -266,7 +241,7 @@ namespace UnitTest
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     }
 
-    TEST_F(ComponentModeTest, TwoComponentsOnSingleEntityWithSameComponentModeHasOnlyOneType)
+    TEST_F(ComponentModeTestFixture, TwoComponentsOnSingleEntityWithSameComponentModeHasOnlyOneType)
     {
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Given
@@ -281,7 +256,9 @@ namespace UnitTest
 
         // add two placeholder Components (each with their own Component Mode)
         const AZ::Component* placeholder1 = entity->CreateComponent<PlaceholderEditorComponent>();
+        AZ_UNUSED(placeholder1);
         const AZ::Component* placeholder2 = entity->CreateComponent<PlaceholderEditorComponent>();
+        AZ_UNUSED(placeholder2);
 
         entity->Activate();
 
@@ -311,7 +288,7 @@ namespace UnitTest
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     }
 
-    TEST_F(ComponentModeTest, TwoComponentsOnSingleEntityWithDifferentComponentModeHasOnlyOneType)
+    TEST_F(ComponentModeTestFixture, TwoComponentsOnSingleEntityWithDifferentComponentModeHasOnlyOneType)
     {
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Given
@@ -326,7 +303,9 @@ namespace UnitTest
 
         // add two placeholder Components (each with their own Component Mode)
         const AZ::Component* placeholder1 = entity->CreateComponent<PlaceholderEditorComponent>();
+        AZ_UNUSED(placeholder1);
         const AZ::Component* placeholder2 = entity->CreateComponent<AnotherPlaceholderEditorComponent>();
+        AZ_UNUSED(placeholder2);
 
         entity->Activate();
 
@@ -356,7 +335,7 @@ namespace UnitTest
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     }
 
-    TEST_F(ComponentModeTest, TwoComponentsOnSingleEntityWithDependentComponentModesHasTwoTypes)
+    TEST_F(ComponentModeTestFixture, TwoComponentsOnSingleEntityWithDependentComponentModesHasTwoTypes)
     {
         using testing::Eq;
 
@@ -373,8 +352,10 @@ namespace UnitTest
 
         // add two placeholder Components (each with their own Component Mode)
         const AZ::Component* placeholder1 = entity->CreateComponent<AnotherPlaceholderEditorComponent>();
+        AZ_UNUSED(placeholder1);
         // DependentPlaceholderEditorComponent has a Component Mode dependent on AnotherPlaceholderEditorComponent
         const AZ::Component* placeholder2 = entity->CreateComponent<DependentPlaceholderEditorComponent>();
+        AZ_UNUSED(placeholder2);
 
         entity->Activate();
 
@@ -415,7 +396,7 @@ namespace UnitTest
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     }
 
-    TEST_F(ComponentModeTest, TwoComponentsOnSingleEntityWithSameComponentModeBothTriggerSameAction)
+    TEST_F(ComponentModeTestFixture, TwoComponentsOnSingleEntityWithSameComponentModeBothTriggerSameAction)
     {
         using testing::Eq;
 
@@ -427,7 +408,7 @@ namespace UnitTest
             // create the default viewport (handles ComponentMode)
             AZStd::unique_ptr<EditorDefaultSelection> defaultSelection =
                 AZStd::make_unique<EditorDefaultSelection>(entityDataCache);
-            
+
             // override the phantom widget so we can use out custom test widget
             defaultSelection->SetOverridePhantomWidget(&m_editorActions.m_testWidget);
 
@@ -454,15 +435,15 @@ namespace UnitTest
         const AzToolsFramework::EntityIdList entityIds = { entityId };
         ToolsApplicationRequestBus::Broadcast(
             &ToolsApplicationRequests::SetSelectedEntities, entityIds);
-        
+
         // move all selected components into ComponentMode
         // (mimic pressing the 'Edit' button to begin Component Mode)
         ComponentModeSystemRequestBus::Broadcast(
             &ComponentModeSystemRequests::AddSelectedComponentModesOfType,
             AZ::AzTypeInfo<PlaceholderEditorComponent>::Uuid());
-        
+
         // Component Modes are now instantiated
-        
+
         // create a simple signal checker type which implements the ComponentModeActionSignalNotificationBus
         const int checkerBusId = 1234;
         ComponentModeActionSignalNotificationChecker checker(checkerBusId);
@@ -490,9 +471,129 @@ namespace UnitTest
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Then
-        // ensure the checker count is what we expect (both Component Modes will notify the 
+        // ensure the checker count is what we expect (both Component Modes will notify the
         // ComponentModeActionSignalNotificationChecker connected at the address specified)
         EXPECT_THAT(checker.GetCount(), Eq(2));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    TEST_F(ComponentModeTestFixture, ShouldIgnoreMouseEventWhenOverridenByComponentMode)
+    {
+        using OverrideMouseInteractionComponent = TestComponentModeComponent<OverrideMouseInteractionComponentMode>;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        // Setup default editor interaction model.
+        EditorInteractionSystemViewportSelectionRequestBus::Event(
+            GetEntityContextId(), &EditorInteractionSystemViewportSelection::SetDefaultHandler);
+
+        AZ::Entity* entity = nullptr;
+        AZ::EntityId entityId = CreateDefaultEditorEntity("ComponentModeEntity", &entity);
+
+        entity->Deactivate();
+
+        // Add placeholder component which implements component mode.
+        const AZ::Component* placeholder1 = entity->CreateComponent<OverrideMouseInteractionComponent>();
+
+        entity->Activate();
+
+        // Mimic selecting the entity in the viewport (after selection the ComponentModeDelegate
+        // connects to the ComponentModeDelegateRequestBus on the entity/component pair address)
+        SelectEntities({ entityId });
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        // Move all selected components into ComponentMode
+        // (mimic pressing the 'Edit' button to begin Component Mode)
+        EnterComponentMode<OverrideMouseInteractionComponent>();
+
+        ViewportInteraction::MouseInteractionEvent interactionEvent;
+        interactionEvent.m_mouseEvent = ViewportInteraction::MouseEvent::Move;
+
+        // Simulate a mouse event
+        bool handled = false;
+        AzToolsFramework::EditorInteractionSystemViewportSelectionRequestBus::BroadcastResult(handled,
+            &AzToolsFramework::ViewportInteraction::MouseViewportRequests::HandleMouseInteraction,
+            interactionEvent);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        // Check it was handled by the component mode.
+        EXPECT_TRUE(handled);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    // Test version of EntityPropertyEditor to detect/ensure certain functions were called
+    class TestEntityPropertyEditor
+        : public AzToolsFramework::EntityPropertyEditor
+    {
+    public:
+        void InvalidatePropertyDisplay(PropertyModificationRefreshLevel level) override;
+        bool m_invalidatePropertyDisplayCalled = false;
+    };
+
+    void TestEntityPropertyEditor::InvalidatePropertyDisplay(PropertyModificationRefreshLevel level)
+    {
+        m_invalidatePropertyDisplayCalled = true;
+    }
+
+    // Simple fixture to encapsulate a TestEntityPropertyEditor
+    class ComponentModePinnedSelectionFixture
+        : public ToolsApplicationFixture
+    {
+    public:
+        void SetUpEditorFixtureImpl() override
+        {
+            EditorInteractionSystemViewportSelectionRequestBus::Event(
+                GetEntityContextId(), &EditorInteractionSystemViewportSelection::SetDefaultHandler);
+
+            m_testEntityPropertyEditor = AZStd::make_unique<TestEntityPropertyEditor>();
+        }
+
+        AZStd::unique_ptr<TestEntityPropertyEditor> m_testEntityPropertyEditor;
+    };
+
+    TEST_F(ComponentModePinnedSelectionFixture, CannotEnterComponentModeWhenEntityIsPinnedButNotSelected)
+    {
+        using PlaceHolderComponent = TestComponentModeComponent<PlaceHolderComponentMode>;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        AZ::Entity* entity = nullptr;
+        AZ::EntityId entityId = CreateDefaultEditorEntity("ComponentModeEntity", &entity);
+
+        entity->Deactivate();
+
+        // Add placeholder component which implements component mode.
+        entity->CreateComponent<PlaceHolderComponent>();
+
+        entity->Activate();
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        // select entity
+        const auto selectedEntities = AzToolsFramework::EntityIdList { entityId };
+        SelectEntities(selectedEntities);
+
+        // pin entity
+        m_testEntityPropertyEditor->SetOverrideEntityIds(selectedEntities);
+
+        // deselect entity
+        SelectEntities(AzToolsFramework::EntityIdList{});
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_TRUE(m_testEntityPropertyEditor->IsLockedToSpecificEntities());
+        EXPECT_TRUE(m_testEntityPropertyEditor->m_invalidatePropertyDisplayCalled);
+
+        bool couldBeginComponentMode =
+            AzToolsFramework::ComponentModeFramework::CouldBeginComponentModeWithEntity(entityId);
+
+        EXPECT_FALSE(couldBeginComponentMode);
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     }
 } // namespace UnitTest

@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/Socket/AzSocket_Platform.h>
+#include <AzCore/PlatformIncl.h>
 
 #include <AzCore/Socket/AzSocket_fwd.h>
 #include <AzCore/std/string/string.h>

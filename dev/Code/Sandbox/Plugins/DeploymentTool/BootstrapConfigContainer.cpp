@@ -70,7 +70,6 @@ StringOutcome BootstrapConfigContainer::ApplyConfiguration(const DeploymentConfi
 
     switch (deploymentConfig.m_platformOption)
     {
-        case PlatformOptions::Android_ARMv7:
         case PlatformOptions::Android_ARMv8:
             SetBool(androidConnectToRemoteKey, deploymentConfig.m_shaderCompilerUseAP);
             break;
@@ -112,7 +111,6 @@ AZStd::string BootstrapConfigContainer::GetAssetsTypeForPlatform(PlatformOptions
     AZStd::string platfromSpecificAssetKey;
     switch (platform)
     {
-        case PlatformOptions::Android_ARMv7:
         case PlatformOptions::Android_ARMv8:
             platfromSpecificAssetKey = AZStd::move(AZStd::string::format("android_%s", assetsKey));
             break;

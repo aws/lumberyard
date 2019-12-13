@@ -133,12 +133,12 @@ namespace TouchBending
             CrySystemEventBus::Handler::BusConnect();
             AsyncSkeletonBuilderBus::Handler::BusConnect();
             Physics::TouchBendingBus::Handler::BusConnect();
-            Physics::SystemNotificationBus::Handler::BusConnect();
+            Physics::WorldNotificationBus::Handler::BusConnect(Physics::DefaultPhysicsWorldId);
         }
 
         void PhysicsComponent::Deactivate()
         {
-            Physics::SystemNotificationBus::Handler::BusDisconnect();
+            Physics::WorldNotificationBus::Handler::BusDisconnect();
             Physics::TouchBendingBus::Handler::BusDisconnect();
             AsyncSkeletonBuilderBus::Handler::BusDisconnect();
             CrySystemEventBus::Handler::BusDisconnect();
@@ -250,7 +250,7 @@ namespace TouchBending
             const PxShapeFlags shapeFlags = PxShapeFlag::eTRIGGER_SHAPE;
 #endif
             PxShape* shape = physics.createShape(PxBoxGeometry(halfExtents), *m_dummyMaterialForTriggers, true, shapeFlags);
-            PhysX::Utils::SetCollisionLayerAndGroup(shape, Physics::CollisionLayer::TouchBend, Physics::CollisionGroup::All);
+            PhysX::Utils::Collision::SetCollisionLayerAndGroup(shape, Physics::CollisionLayer::TouchBend, Physics::CollisionGroup::All);
             rigidStatic->attachShape(*shape);
             //We should decrement by one shape ownership
             shape->release();
@@ -483,9 +483,9 @@ namespace TouchBending
 
         //*********************************************************************
         // Physics::SystemNotificationBus::Handler START **********************       
-        void PhysicsComponent::OnPrePhysicsUpdate(float fixedDeltaTime, Physics::World* world)
+        void PhysicsComponent::OnPrePhysicsUpdate(float fixedDeltaTime)
         {
-            if (m_world.get() != world)
+            if (!m_world)
             {
                 return;
             }
@@ -511,15 +511,16 @@ namespace TouchBending
             PxScene* pxScene = (PxScene*)m_world->GetNativePointer();
             for (Physics::TouchBendingTriggerHandle* triggerActor : triggerActorsWithSkeletons)
             {
-                triggerActor->m_callback->OnPhysicalizedTouchBendingSkeleton(triggerActor->m_callbackPrivateData, triggerActor->m_skeleton);
-                triggerActor->m_isSkeletonOwnedByEngine = true;
+                const bool success = triggerActor->m_callback->OnPhysicalizedTouchBendingSkeleton(triggerActor->m_callbackPrivateData, triggerActor->m_skeleton);
+                AZ_Warning(Physics::AZ_TOUCH_BENDING_WINDOW, success, "Engine was not ready to physicalize actor %p with privateData %p", triggerActor, triggerActor->m_callbackPrivateData);
+                triggerActor->m_isSkeletonOwnedByEngine = success;
                 triggerActor->m_skeleton->SetTriggerHandle(triggerActor);
             }
         }
 
-        void PhysicsComponent::OnPostPhysicsUpdate(float fixedDeltaTime, Physics::World* world)
+        void PhysicsComponent::OnPostPhysicsUpdate(float fixedDeltaTime)
         {
-            if (m_world.get() != world)
+            if (!m_world)
             {
                 return;
             }
@@ -538,10 +539,6 @@ namespace TouchBending
                 AZ::Job* job = AZ::CreateJobFunction(lambda, true, nullptr);
                 job->Start();
             }
-        }
-
-        void PhysicsComponent::OnPreWorldDestroy(::Physics::World* world)
-        {
         }
         // Physics::SystemNotificationBus::Handler END ************************ 
         //*********************************************************************

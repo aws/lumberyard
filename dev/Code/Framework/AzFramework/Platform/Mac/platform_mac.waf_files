@@ -23,6 +23,10 @@
         [
             "../Common/UnixLike/AzFramework/IO/LocalFileIO_UnixLike.cpp"
         ],
+        "Network/Platform/Mac":
+        [
+            "../Common/Default/AzFramework/Network/AssetProcessorConnection_Default.cpp"
+        ],
         "TargetManagement/Platform/Mac":
         [
             "AzFramework/TargetManagement/TargetManagementComponent_Mac.cpp"

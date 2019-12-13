@@ -19,6 +19,7 @@
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/std/smart_ptr/intrusive_ptr.h>
 
 #include <MCore/Source/Vector.h>
 #include <MCore/Source/Matrix4.h>

@@ -65,6 +65,10 @@ void CVegetation::Init()
     m_pDeformable = nullptr;
     m_touchBendingTriggerProxy = nullptr;
     m_bApplyPhys = false;
+
+    // By default, we assume that we're a static vegetation instance.  Dynamic instances will explicitly 
+    // set this flag.
+    m_isDynamic = false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -80,7 +84,11 @@ void CVegetation::CalcMatrix(Matrix34A& tm, int* pFObjFlags)
         tm.SetRotationZ(GetZAngle());
 
         Matrix33 m33;
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
         GetTerrain()->GetTerrainAlignmentMatrix(m_vPos, vegetGroup.GetAlignToTerrainAmount(), m33);
+#else
+        m33.SetIdentity();
+#endif
         tm = m33 * tm;
     }
     else

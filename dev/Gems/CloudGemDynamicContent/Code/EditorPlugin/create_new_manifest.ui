@@ -238,7 +238,7 @@
     <string>Windows</string>
    </property>
   </widget>
-  <widget class="QCheckBox" name="ps4">
+  <widget class="QCheckBox" name="provo">
    <property name="geometry">
     <rect>
      <x>120</x>
@@ -260,10 +260,10 @@
     </size>
    </property>
    <property name="text">
-    <string>PlayStation®4</string>
+    <string>Provo</string>
    </property>
   </widget>
-  <widget class="QCheckBox" name="xboxone">
+  <widget class="QCheckBox" name="xenia">
    <property name="geometry">
     <rect>
      <x>240</x>
@@ -285,7 +285,7 @@
     </size>
    </property>
    <property name="text">
-    <string>Xbox One</string>
+    <string>Xenia</string>
    </property>
   </widget>
  </widget>

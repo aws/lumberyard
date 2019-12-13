@@ -92,12 +92,10 @@ namespace NCryOpenGL
     {
 #if defined(WIN32)
         return InterlockedExchange(piDestination, iExchange);
-#elif defined(LINUX) || defined(APPLE)
+#else
         LONG iOldValue(__sync_lock_test_and_set(piDestination, iExchange));
         __sync_synchronize();
         return iOldValue;
-#else
-#error "Not implemented on this platform"
 #endif
     }
 

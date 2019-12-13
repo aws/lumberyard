@@ -1,0 +1,13 @@
+{
+    "auto": {
+        "Include": [
+            "Include/Presence/PresenceRequestBus.h",
+            "Include/Presence/PresenceNotificationBus.h"
+        ],
+        "Source": [
+            "Source/PresenceModule.cpp",
+            "Source/PresenceSystemComponent.cpp",
+            "Source/PresenceSystemComponent.h"
+        ]
+    }
+}

@@ -1,7 +1,7 @@
 # external modules/dependencies
 av(codec|device|filter|format|resample|util).*
 astcenc\.exe
-(lib)?aws-cpp-sdk.*
+(lib)?aws-c.*
 boost_.*
 D3D.*
 dbghelp.*

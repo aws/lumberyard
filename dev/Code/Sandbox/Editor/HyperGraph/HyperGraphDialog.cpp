@@ -603,7 +603,6 @@ void CHyperGraphsTreeCtrl::Reload()
     }
 
     struct NonCaseSensitiveString
-        : public std::binary_function<QString, QString, bool>
     {
         bool operator()(const QString& left, const QString& right) const
         {

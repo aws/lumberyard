@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "ComponentEntityEditorPlugin_precompiled.h"
 #include "ComponentEntityEditorPlugin.h"
 
 #include <LyViewPaneNames.h>

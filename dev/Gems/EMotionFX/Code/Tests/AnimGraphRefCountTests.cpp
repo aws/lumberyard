@@ -24,7 +24,8 @@
 
 namespace EMotionFX
 {
-    class AnimGraphRefCountFixture : public AnimGraphFixture
+    class AnimGraphRefCountFixture
+        : public AnimGraphFixture
     {
     public:
         void Run()
@@ -58,7 +59,7 @@ namespace EMotionFX
         }
     };
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
 
     struct AnimGraphRefCountData_SimpleChain
     {
@@ -192,4 +193,54 @@ namespace EMotionFX
     {
         Run();
     }
+
+    ///////////////////////////////////////////////////////////////////////////
+
+    class NodeDataAutoRefCountMixinFixture
+        : public AnimGraphRefCountTest_SimpleChain
+    {
+    };
+
+    TEST_P(NodeDataAutoRefCountMixinFixture, NodeDataAutoRefCountMixinTest)
+    {
+        AnimGraphStateMachine::UniqueData* uniqueData = static_cast<AnimGraphStateMachine::UniqueData*>(m_rootStateMachine->FindUniqueNodeData(m_animGraphInstance));
+        ASSERT_TRUE(m_rootStateMachine->GetNumChildNodes() > 1);
+        AnimGraphNode* firstState = m_rootStateMachine->GetChildNode(0);
+        AnimGraphNode* secondState = m_rootStateMachine->GetChildNode(1);
+        
+        GetEMotionFX().Update(1.0f/60.0f);
+
+        // Artificially increase the ref count for the second, non-active and non-transitioning state.
+        uniqueData->IncreaseDataRefCountForNode(secondState, m_animGraphInstance);
+        uniqueData->IncreasePoseRefCountForNode(secondState, m_animGraphInstance);
+
+        m_animGraphInstance->DisableObjectFlags(m_rootStateMachine->GetObjectIndex(), AnimGraphInstance::OBJECTFLAGS_UPDATE_READY);
+        m_rootStateMachine->PerformUpdate(m_animGraphInstance, 1.0f/60.0f);
+
+        // Make sure the first state is still the active one.
+        const AZStd::vector<AnimGraphNode*>& activeStates = m_rootStateMachine->GetActiveStates(m_animGraphInstance);
+        EXPECT_EQ(activeStates.size(), 1);
+        EXPECT_TRUE(activeStates[0] == firstState) << "We should have not transitioned into the second state yet.";
+
+        const AZStd::vector<AnimGraphNode*>& dataRefIncreased = uniqueData->GetDataRefIncreasedNodes();
+        const AZStd::vector<AnimGraphNode*>& poseRefIncreased = uniqueData->GetPoseRefIncreasedNodes();
+        EXPECT_EQ(dataRefIncreased.size(), 1) << "The artificially increased ref counts were not reset correctly.";
+        EXPECT_EQ(poseRefIncreased.size(), 1);
+        EXPECT_TRUE(dataRefIncreased[0] == firstState);
+        EXPECT_TRUE(poseRefIncreased[0] == firstState);
+    }
+
+    std::vector<AnimGraphRefCountData_SimpleChain> nodeDataAutoRefCountMixinTestData
+    {
+        {
+            /*m_numStates*/3,
+            /*m_blendTime*/1.0,
+            /*m_countDownTime*/1.0
+        },
+    };
+
+    INSTANTIATE_TEST_CASE_P(NodeDataAutoRefCountMixinTest,
+        NodeDataAutoRefCountMixinFixture,
+        ::testing::ValuesIn(nodeDataAutoRefCountMixinTestData)
+    );
 } // EMotionFX

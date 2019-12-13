@@ -11,7 +11,7 @@
     "GemFormatVersion": 3,
     "Uuid": "0549200795a94b7f902727db81d5d6d8",
     "Name": "AudioAnimationEvents",
-    "DisplayName": "AudioAnimationEvents",
+    "DisplayName": "Audio Animation Events",
     "Version": "0.1.0",
     "LinkType": "Dynamic",
     "Summary": "Plays audio triggers on animation events.",

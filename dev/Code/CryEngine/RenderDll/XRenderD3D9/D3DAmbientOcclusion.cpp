@@ -114,6 +114,8 @@ void CD3D9Renderer::SetDepthBoundTest(float fMin, float fMax, bool bEnable)
         #include "Xenia/D3DAmbientOcclusion_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DAmbientOcclusion_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DAmbientOcclusion_cpp_salem.inl"
     #endif
 #elif defined (USE_NV_API) //transparent execution without NVDB
         NvAPI_Status status = NvAPI_D3D11_SetDepthBoundsTest(&GetDevice(), bEnable, fMin, fMax);
@@ -132,6 +134,8 @@ void CD3D9Renderer::SetDepthBoundTest(float fMin, float fMax, bool bEnable)
         #include "Xenia/D3DAmbientOcclusion_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DAmbientOcclusion_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DAmbientOcclusion_cpp_salem.inl"
     #endif
 #elif defined (USE_NV_API)
         NvAPI_Status status = NvAPI_D3D11_SetDepthBoundsTest(&GetDevice(), bEnable, fMin, fMax);

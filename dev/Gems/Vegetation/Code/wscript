@@ -20,7 +20,9 @@ def build(bld):
         win_features      = ['crcfix'],
         use_required_gems = True,
         debug_export_defines = ['VEG_PROFILE_ENABLED'],
+        debug_test_export_defines = ['VEG_PROFILE_ENABLED'],
         profile_export_defines = ['VEG_PROFILE_ENABLED'],
+        profile_test_export_defines = ['VEG_PROFILE_ENABLED'],
 
         editor = dict(
             platforms   = ['win', 'darwin'],
@@ -47,6 +49,8 @@ def build(bld):
                            'AzQtComponents'],
             use_required_gems = True,
             debug_export_defines = ['VEG_PROFILE_ENABLED'],
+            debug_test_export_defines = ['VEG_PROFILE_ENABLED'],
             profile_export_defines = ['VEG_PROFILE_ENABLED'],
+            profile_test_export_defines = ['VEG_PROFILE_ENABLED'],
         ),
     )

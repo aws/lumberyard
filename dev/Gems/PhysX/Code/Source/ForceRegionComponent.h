@@ -17,9 +17,9 @@
 #include <PhysX/ComponentTypeIds.h>
 
 #include <AzCore/Component/Component.h>
-#include <AzCore/Component/TickBus.h>
 
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
+#include <AzFramework/Physics/World.h>
 #include <AzFramework/Physics/TriggerBus.h>
 
 namespace PhysX
@@ -30,7 +30,7 @@ namespace PhysX
     /// A net force will be calculated per entity by summing all the attached forces on each tick.
     class ForceRegionComponent
         : public AZ::Component
-        , protected AZ::TickBus::Handler
+        , protected Physics::WorldNotificationBus::Handler
         , protected Physics::TriggerNotificationBus::Handler
         , private AzFramework::EntityDebugDisplayEventBus::Handler
     {
@@ -53,8 +53,9 @@ namespace PhysX
         void Activate() override;
         void Deactivate() override;
 
-        // TickBus
-        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+        // Physics::WorldNotificationBus
+        void OnPostPhysicsUpdate(float fixedDeltaTime) override;
+        int GetPhysicsTickOrder() override;
 
         // TriggerNotifications
         void OnTriggerEnter(const Physics::TriggerEvent& triggerEvent) override;

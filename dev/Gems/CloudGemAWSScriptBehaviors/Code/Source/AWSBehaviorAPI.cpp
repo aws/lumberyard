@@ -14,9 +14,17 @@
 
 #include "AWSBehaviorAPI.h"
 
+// The AWS Native SDK AWSAllocator triggers a warning due to accessing members of std::allocator directly.
+// AWSAllocator.h(70): warning C4996: 'std::allocator<T>::pointer': warning STL4010: Various members of std::allocator are deprecated in C++17.
+// Use std::allocator_traits instead of accessing these members directly.
+// You can define _SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING or _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS to acknowledge that you have received this warning.
+
+#include <AzCore/PlatformDef.h>
+AZ_PUSH_DISABLE_WARNING(4251 4355 4996, "-Wunknown-warning-option")
 #include <aws/core/http/HttpClient.h>
 #include <aws/core/http/HttpClientFactory.h>
 #include <aws/core/auth/AWSCredentialsProvider.h>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/Jobs/JobFunction.h>
@@ -29,7 +37,7 @@
 #include <CloudCanvasCommon/CloudCanvasCommonBus.h>
 
 /// To use a specific AWS API request you have to include each of these.
-#pragma warning(disable: 4355) // <future> includes ppltasks.h which throws a C4355 warning: 'this' used in base member initializer list
+AZ_PUSH_DISABLE_WARNING(4251 4355 4996, "-Wunknown-warning-option")
 #include <aws/lambda/LambdaClient.h>
 #include <aws/lambda/model/ListFunctionsRequest.h>
 #include <aws/lambda/model/ListFunctionsResult.h>
@@ -38,7 +46,7 @@
 #include <aws/core/auth/AWSCredentialsProvider.h>
 #include <aws/core/utils/Outcome.h>
 #include <aws/core/utils/memory/stl/AWSStringStream.h>
-#pragma warning(default: 4355)
+AZ_POP_DISABLE_WARNING
 
 namespace CloudGemAWSScriptBehaviors
 {
@@ -49,7 +57,6 @@ namespace CloudGemAWSScriptBehaviors
         m_jsonParam(),
         m_httpMethods()
     {
-        // VS2013 doesn't support initializer lists in constructors so 
         // instead just add them to the map here
         m_httpMethods["GET"] = Aws::Http::HttpMethod::HTTP_GET;
         m_httpMethods["POST"] = Aws::Http::HttpMethod::HTTP_POST;
@@ -178,7 +185,7 @@ namespace CloudGemAWSScriptBehaviors
                 AZ_Printf("AWSBehaviorAPI", "Unable to sign API request as no credentials provider available");
             }
 
-            auto httpResponse(httpClient->MakeRequest(*httpRequest, nullptr, nullptr));
+            auto httpResponse(httpClient->MakeRequest(httpRequest, nullptr, nullptr));
 
             if (!httpResponse)
             {

@@ -32,6 +32,9 @@ def build(bld):
                                        'QT5WIDGETS'],
         features                    = ['qt5'],
         defines                     = ['EDITOR_COMMON_IMPORTS'],
+        includes                    = [bld.Path('Code/CryEngine/CryCommon'),
+                                       bld.Path('Code/Sandbox/Editor'),
+                                       bld.Path('Code/Sandbox/Editor/Include')],
 
         win_file_list    = ['projectsettingstool_win.waf_files'],
 

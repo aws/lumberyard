@@ -14,7 +14,7 @@
 def build(bld):
     file_list = []
 
-    implemented_platforms = ['win_x64_vs2015', 'win_x64_vs2017','win_x64_vs2013', 'darwin_x64', 'android_armv7_clang', 'android_armv8_clang', 'ios']
+    implemented_platforms = ['win', 'darwin', 'android', 'ios']
 
     platform = bld.env['PLATFORM']
 

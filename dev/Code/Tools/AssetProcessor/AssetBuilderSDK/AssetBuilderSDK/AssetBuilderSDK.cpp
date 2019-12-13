@@ -89,14 +89,23 @@ namespace AssetBuilderSDK
         {
             return AssetBuilderSDK::Platform_OSX;
         }
-        if (azstricmp(newPlatformName, "xboxone") == 0)
+        if (azstricmp(newPlatformName, "xenia") == 0)
         {
-            return AssetBuilderSDK::Platform_XBOXONE;  // ACCEPTED_USE
+            return AssetBuilderSDK::Platform_XENIA;
         }
-        if (azstricmp(newPlatformName, "ps4") == 0)
+        if (azstricmp(newPlatformName, "provo") == 0)
         {
-            return AssetBuilderSDK::Platform_PS4;  // ACCEPTED_USE
+            return AssetBuilderSDK::Platform_PROVO;
         }
+#if defined(AZ_PLATFORM_XENIA) || defined(TOOLS_SUPPORT_XENIA)
+#include "Xenia/AssetBuilderSDK_cpp_xenia.inl"
+#endif
+#if defined(AZ_PLATFORM_PROVO) || defined(TOOLS_SUPPORT_PROVO)
+#include "Provo/AssetBuilderSDK_cpp_provo.inl"
+#endif
+#if defined(AZ_PLATFORM_SALEM) || defined(TOOLS_SUPPORT_SALEM)
+#include "Salem/AssetBuilderSDK_cpp_salem.inl"
+#endif
 
         return AssetBuilderSDK::Platform_NONE;
     }
@@ -115,10 +124,12 @@ namespace AssetBuilderSDK
             return "ios";
         case AssetBuilderSDK::Platform_OSX:
             return "osx_gl";
-        case AssetBuilderSDK::Platform_XBOXONE:     // ACCEPTED_USE
-            return "xboxone";
-        case AssetBuilderSDK::Platform_PS4:     // ACCEPTED_USE
-            return "ps4";
+        case AssetBuilderSDK::Platform_XENIA:
+            return "xenia";
+        case AssetBuilderSDK::Platform_PROVO:
+            return "provo";
+        case AssetBuilderSDK::Platform_SALEM:
+            return "salem";
         }
         return "unknown platform";
     }
@@ -161,7 +172,7 @@ namespace AssetBuilderSDK
         if (pattern.m_type == AssetBuilderSDK::AssetBuilderPattern::Regex)
         {
             m_isRegex = true;
-            m_isValid = FilePatternMatcher::ValidatePatternRegex(pattern.m_pattern, m_errorString);
+            m_isValid = FilePatternMatcher::ValidatePatternRegex(pattern.m_pattern);
             if (m_isValid)
             {
                 this->m_regex = RegexType(pattern.m_pattern.c_str(), RegexType::flag_type::icase | RegexType::flag_type::ECMAScript);
@@ -227,7 +238,7 @@ namespace AssetBuilderSDK
         return this->m_pattern;
     }
 
-    bool FilePatternMatcher::ValidatePatternRegex(const AZStd::string& pattern, AZStd::string& errorString)
+    bool FilePatternMatcher::ValidatePatternRegex(const AZStd::string& pattern)
     {
         AssertAbsorber absorber;
         AZStd::regex validate_regex(pattern.c_str(),
@@ -537,8 +548,8 @@ namespace AssetBuilderSDK
         , m_productSubID(productSubID)
     {
         //////////////////////////////////////////////////////////////////////////
-        //REMOVE THIS
-        //when builders output asset type, guess by file extension
+        // Builders should output product asset types directly.  
+        // This should only be used for exceptions, mostly legacy and generic data.
         if (m_productAssetType.IsNull())
         {
             m_productAssetType = InferAssetTypeByProductFileName(m_productFileName.c_str());
@@ -556,8 +567,8 @@ namespace AssetBuilderSDK
         , m_productSubID(productSubID)
     {
         //////////////////////////////////////////////////////////////////////////
-        //REMOVE THIS
-        //when builders output asset type, guess by file extension
+        // Builders should output product asset types directly.  
+        // This should only be used for exceptions, mostly legacy.
         if (m_productAssetType.IsNull())
         {
             m_productAssetType = InferAssetTypeByProductFileName(m_productFileName.c_str());
@@ -579,8 +590,12 @@ namespace AssetBuilderSDK
     static const char* staticMeshExtensions = ".cgf";
     static const char* skinnedMeshExtensions = ".skin";
     static const char* materialExtensions = ".mtl";
+
+    // MIPS
+    static const int c_MaxMipsCount = 11; // 11 is for 8k textures non-compressed. When not compressed it is using one file per mip.
     // splitted lods have the following extensions:
-    static const char* mipsAndLodsExtensions = ".1 .2 .3 .4 .5 .6 .7 .8 .9 .a .1a .2a .3a .4a .5a .6a .7a .8a .9a";
+    static const char* mipsAndLodsExtensions = ".1 .2 .3 .4 .5 .6 .7 .8 .9 .10 .11 .a .1a .2a .3a .4a .5a .6a .7a .8a .9a .10a .11a";
+
     // XML files may contain generic data (avoid this in new builders - use a custom extension!)
     static const char* xmlExtensions = ".xml";
     static const char* geomCacheExtensions = ".cax";
@@ -946,7 +961,7 @@ namespace AssetBuilderSDK
                 extension.resize(extension.size() - 1);
             }
 
-            for (int idx = 1; idx <= 9; ++idx)
+            for (int idx = 1; idx <= c_MaxMipsCount; ++idx)
             {
                 AZStd::string check = AZStd::string::format(".%i", idx);
                 if (check == extension)
@@ -1009,7 +1024,8 @@ namespace AssetBuilderSDK
                 Version(2)->
                 Field("Output Products", &ProcessJobResponse::m_outputProducts)->
                 Field("Result Code", &ProcessJobResponse::m_resultCode)->
-                Field("Requires SubId Generation", &ProcessJobResponse::m_requiresSubIdGeneration);
+                Field("Requires SubId Generation", &ProcessJobResponse::m_requiresSubIdGeneration)->
+                Field("Source To Reprocess", &ProcessJobResponse::m_sourcesToReprocess);
         }
     }
 
@@ -1306,4 +1322,60 @@ namespace AssetBuilderSDK
     }
 
     AZ_THREAD_LOCAL bool AssertAbsorber::s_onAbsorbThread = false;
+
+
+    AssertAndErrorAbsorber::AssertAndErrorAbsorber(bool errorsWillFailJob)
+        : m_errorsWillFailJob(errorsWillFailJob)
+        , m_jobThreadId(AZStd::this_thread::get_id())
+    {
+        BusConnect();
+    }
+
+    AssertAndErrorAbsorber::~AssertAndErrorAbsorber()
+    {
+        BusDisconnect();
+    }
+
+    bool AssertAndErrorAbsorber::OnError(const char*, const char* message)
+    {
+        if (AZStd::this_thread::get_id() != m_jobThreadId)
+        {
+            return false;
+        }
+
+        if (m_errorsWillFailJob)
+        {
+            ++m_errorsOccurred;
+            return false;
+        }
+        else
+        {
+            AZ_Warning("AssetBuilder", false, "Error: %s", message);
+            return true;
+        }
+    }
+
+    bool AssertAndErrorAbsorber::OnAssert(const char* message)
+    {
+        if (AZStd::this_thread::get_id() != m_jobThreadId)
+        {
+            return false;
+        }
+
+        if (m_errorsWillFailJob)
+        {
+            ++m_errorsOccurred;
+            return false;
+        }
+        else
+        {
+            AZ_Warning("", false, "Assert failed: %s", message);
+            return true;
+        }
+    }
+
+    size_t AssertAndErrorAbsorber::GetErrorCount() const
+    {
+        return m_errorsOccurred;
+    }
 }

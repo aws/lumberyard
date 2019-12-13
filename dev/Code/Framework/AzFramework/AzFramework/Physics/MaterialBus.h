@@ -25,6 +25,9 @@ namespace Physics
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single; // Implemented by sole owner of materials, e.g. class MaterialManager in PhysX gem.
 
+        /// Get default material
+        virtual AZStd::shared_ptr<Physics::Material> GetGenericDefaultMaterial() = 0;
+
         /// Returns weak pointers to physics materials.
         /// Connect to PhysicsMaterialNotifications::MaterialsReleased to be informed when material pointers are deleted by owner.
         virtual void GetMaterials(const MaterialSelection& materialSelection

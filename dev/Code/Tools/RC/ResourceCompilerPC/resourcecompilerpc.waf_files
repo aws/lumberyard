@@ -178,12 +178,14 @@
             "../../../CryEngine/Cry3DEngine/MeshCompiler/PVRTTriStrip/PVRTTriStrip.cpp"
 
         ],
-        "Root":
+        "Root": 
         [
             "../../../CryEngine/Cry3DEngine/CGF/CGFSaver.cpp",
             "../../../CryEngine/Cry3DEngine/CGF/CGFLoader.cpp",
             "../../../CryEngine/Cry3DEngine/CGF/ChunkFile.cpp",
+            "../ResourceCompiler/Config.cpp",
             "../ResourceCompiler/IConfig.cpp",
+            "../ResourceCompiler/PropertyVars.cpp",
             "ResourceCompilerPC.cpp",
             "../../../CryEngine/Cry3DEngine/CGF/ChunkFileWriters.cpp",
             "../../../CryEngine/Cry3DEngine/CGF/ChunkFileReaders.cpp",

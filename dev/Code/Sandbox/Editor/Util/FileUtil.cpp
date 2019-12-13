@@ -132,7 +132,6 @@ bool CFileUtil::CompileLuaFile(const char* luaFilename)
             QObject::tr("Error output from Lua compiler:\r\n%1\r\nDo you want to edit the file ?").arg(CompilerOutput), QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes)
         {
             int line = 0;
-            QString cmdLine = luaFile;
             int index = CompilerOutput.indexOf("at line");
             if (index >= 0)
             {
@@ -517,9 +516,8 @@ bool CFileUtil::SelectFiles(const QString& fileSpec, const QString& searchFolder
 
 bool CFileUtil::SelectSaveFile(const QString& fileFilter, const QString& defaulExtension, const QString& startFolder, QString& fileName)
 {
-    QDir folder(startFolder);
     QtUtil::QtMFCScopedHWNDCapture cap;
-    CAutoDirectoryRestoreFileDialog dlg(QFileDialog::AcceptSave, {}, defaulExtension, folder.filePath(fileName), fileFilter, {}, {}, cap);
+    CAutoDirectoryRestoreFileDialog dlg(QFileDialog::AcceptSave, {}, defaulExtension, startFolder, fileFilter, {}, {}, cap);
 
     if (dlg.exec())
     {

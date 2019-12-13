@@ -293,6 +293,17 @@ void CSkyLightNishita::ComputeInScatteringNoPremul(const f32 outScatteringConstM
         SOpticalDepthLUTEntry odAtHeightSky(LookupBilerpedOpticalDepthLUTEntry(cpOptDepthLUT, a, skyDir.Dot(newUp)));
         SOpticalDepthLUTEntry odAtHeightSun(LookupBilerpedOpticalDepthLUTEntry(cpOptDepthLUT, a, cSunDir.Dot(newUp)));
 
+        // when optimized in clang, values seem to drift a bit and under certain edge conditions
+        // raise asserts in SamplePartialInScatteringAtHeight function
+        if (odAtHeightSky.mie > odAtViewerSky.mie)
+        {
+            odAtHeightSky.mie = odAtViewerSky.mie;
+        }
+        if (odAtHeightSky.rayleigh > odAtViewerSky.rayleigh)
+        {
+            odAtHeightSky.rayleigh = odAtViewerSky.rayleigh;
+        }
+        
         // sample partial in-scattering term at new position
         Vec3 newSampleMie, newSampleRayleigh;
         SamplePartialInScatteringAtHeight(osAtHeight, outScatteringConstMie, outScatteringConstRayleigh,

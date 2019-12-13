@@ -211,6 +211,81 @@ namespace PhysX
                 }
             }
 
+
+            if (dataElement.GetVersion() <= 5)
+            {
+                // version 6 moves the settings "DebugDraw" and "DebugDrawButtonState" into a separate object,
+                // "DebugDrawSettings", which is owned by the editor collider component.
+                AZ::SerializeContext::DataElementNode* debugDrawElement = dataElement.FindSubElement(AZ_CRC("DebugDraw", 0x42ef6229));
+
+                bool debugDraw = false;
+                const int debugDrawIndex = dataElement.FindElement(AZ_CRC("DebugDraw", 0x42ef6229));
+                if (debugDrawIndex != -1)
+                {
+                    dataElement.GetChildData<bool>(AZ_CRC("DebugDraw", 0x42ef6229), debugDraw);
+                    dataElement.RemoveElement(debugDrawIndex);
+                }
+
+                bool debugDrawButtonState = false;
+                const int debugDrawButtonStateIndex = dataElement.FindElement(AZ_CRC("DebugDrawButtonState", 0x7a4f440f));
+                if (debugDrawButtonStateIndex != -1)
+                {
+                    dataElement.GetChildData<bool>(AZ_CRC("DebugDrawButtonState", 0x7a4f440f), debugDrawButtonState);
+                    dataElement.RemoveElement(debugDrawButtonStateIndex);
+                }
+
+                dataElement.AddElement<DebugDraw::Collider>(context, "DebugDrawSettings");
+
+                const int debugDrawSettingsIndex = dataElement.FindElement(AZ_CRC("DebugDrawSettings", 0xda74260a));
+                if (debugDrawSettingsIndex != -1)
+                {
+                    AZ::SerializeContext::DataElementNode& debugDrawSettingsNode = dataElement.GetSubElement(debugDrawSettingsIndex);
+                    debugDrawSettingsNode.AddElementWithData<bool>(context, "LocallyEnabled", debugDraw);
+                    debugDrawSettingsNode.AddElementWithData<bool>(context, "GlobalButtonState", debugDrawButtonState);
+                }
+            }
+
+            if (dataElement.GetVersion() <= 6)
+            {
+                // version 7 is just a version bump to force a recompile of dynamic slices because the runtime component
+                // serialization changed.
+            }
+
+
+            // Mesh Asset and ShapeConfiguration moved so edit context is better for UX purposes
+            if (dataElement.GetVersion() <= 7)
+            {
+                // Find the shape configuration on the EditorColliderComponent
+                AZ::SerializeContext::DataElementNode* shapeConfigurationElement = dataElement.FindSubElement(AZ_CRC("ShapeConfiguration", 0xe29d5a5c));
+                if (!shapeConfigurationElement)
+                {
+                    return false;
+                }
+
+                // Moved:
+                //    EditorColliderComponent::MeshAsset                        -> EditorColliderComponent::ShapeConfiguration::PhysicsAsset::Asset
+                //    EditorColliderComponent::ShapeConfiguration::PhysicsAsset -> EditorColliderComponent::ShapeConfiguration::PhysicsAsset::Configuration
+                
+                Physics::PhysicsAssetShapeConfiguration physAssetConfig;
+                FindElementAndGetData(*shapeConfigurationElement, AZ_CRC("PhysicsAsset", 0x4a3b5e62), physAssetConfig);
+                shapeConfigurationElement->RemoveElementByName(AZ_CRC("PhysicsAsset", 0x4a3b5e62));
+
+                AZ::Data::Asset<Pipeline::MeshAsset> meshAsset;
+                FindElementAndGetData(dataElement, AZ_CRC("MeshAsset", 0x2e843642), meshAsset);
+                dataElement.RemoveElementByName(AZ_CRC("MeshAsset", 0x2e843642));
+
+                EditorProxyAssetShapeConfig newAssetShapeConfig;
+                newAssetShapeConfig.m_pxAsset = meshAsset;
+                newAssetShapeConfig.m_configuration = physAssetConfig;
+
+                shapeConfigurationElement->AddElementWithData(context, "PhysicsAsset", newAssetShapeConfig);
+            }
+            
+            if (dataElement.GetVersion() <= 8)
+            {
+                dataElement.RemoveElementByName(AZ_CRC("LinkedRenderMeshAssetId", 0x466f4230));
+            }
+
             return true;
         }
 

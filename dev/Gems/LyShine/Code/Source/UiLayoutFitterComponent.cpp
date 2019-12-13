@@ -44,40 +44,7 @@ void UiLayoutFitterComponent::ApplyLayoutWidth()
 {
     if (m_horizontalFit)
     {
-        float targetWidth = LyShine::UiLayoutCellUnspecifiedSize;
-
-        // First check for overriden cell width
-        EBUS_EVENT_ID_RESULT(targetWidth, GetEntityId(), UiLayoutCellBus, GetTargetWidth);
-
-        // Check if there is a max width
-        float maxWidth = LyShine::UiLayoutCellUnspecifiedSize;
-        EBUS_EVENT_ID_RESULT(maxWidth, GetEntityId(), UiLayoutCellBus, GetMaxWidth);
-
-        // If not overriden, get the default cell width
-        if (!LyShine::IsUiLayoutCellSizeSpecified(targetWidth))
-        {
-            targetWidth = 0.0f;
-
-            AZ::EBusAggregateResults<float> results;
-            EBUS_EVENT_ID_RESULT(results, GetEntityId(), UiLayoutCellDefaultBus, GetTargetWidth, maxWidth);
-
-            if (!results.values.empty())
-            {
-                for (float value : results.values)
-                {
-                    if (targetWidth < value)
-                    {
-                        targetWidth = value;
-                    }
-                }
-            }
-        }
-
-        // Make sure target width does not exceed max width
-        if (LyShine::IsUiLayoutCellSizeSpecified(maxWidth) && maxWidth < targetWidth)
-        {
-            targetWidth = maxWidth;
-        }
+        float targetWidth = UiLayoutHelpers::GetLayoutElementTargetWidth(GetEntityId());
 
         // Recalculate the new horizontal offsets using the pivot
         UiTransform2dInterface::Offsets offsets;
@@ -116,40 +83,7 @@ void UiLayoutFitterComponent::ApplyLayoutHeight()
 {
     if (m_verticalFit)
     {
-        float targetHeight = LyShine::UiLayoutCellUnspecifiedSize;
-
-        // First check for overriden cell height
-        EBUS_EVENT_ID_RESULT(targetHeight, GetEntityId(), UiLayoutCellBus, GetTargetHeight);
-
-        // Check if there is a max height
-        float maxHeight = LyShine::UiLayoutCellUnspecifiedSize;
-        EBUS_EVENT_ID_RESULT(maxHeight, GetEntityId(), UiLayoutCellBus, GetMaxHeight);
-
-        // If not overriden, get the default cell height
-        if (!LyShine::IsUiLayoutCellSizeSpecified(targetHeight))
-        {
-            targetHeight = 0.0f;
-
-            AZ::EBusAggregateResults<float> results;
-            EBUS_EVENT_ID_RESULT(results, GetEntityId(), UiLayoutCellDefaultBus, GetTargetHeight, maxHeight);
-
-            if (!results.values.empty())
-            {
-                for (float value : results.values)
-                {
-                    if (targetHeight < value)
-                    {
-                        targetHeight = value;
-                    }
-                }
-            }
-        }
-
-        // Make sure target height does not exceed max height
-        if (LyShine::IsUiLayoutCellSizeSpecified(maxHeight) && maxHeight < targetHeight)
-        {
-            targetHeight = maxHeight;
-        }
+        float targetHeight = UiLayoutHelpers::GetLayoutElementTargetHeight(GetEntityId());
 
         // Recalculate the new vertical offsets using the pivot
         UiTransform2dInterface::Offsets offsets;

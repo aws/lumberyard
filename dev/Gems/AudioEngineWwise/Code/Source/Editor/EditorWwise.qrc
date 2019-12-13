@@ -1,0 +1,12 @@
+<RCC>
+  <qresource prefix="/Editor/WwiseIcons">
+    <file alias="auxbus_nor.png">WwiseIcons/auxbus_nor.png</file>
+    <file alias="event_nor.png">WwiseIcons/event_nor.png</file>
+    <file alias="gameparameter_nor.png">WwiseIcons/gameparameter_nor.png</file>
+    <file alias="soundbank_nor.png">WwiseIcons/soundbank_nor.png</file>
+    <file alias="state_nor.png">WwiseIcons/state_nor.png</file>
+    <file alias="stategroup_nor.png">WwiseIcons/stategroup_nor.png</file>
+    <file alias="switch_nor.png">WwiseIcons/switch_nor.png</file>
+    <file alias="switchgroup_nor.png">WwiseIcons/switchgroup_nor.png</file>
+  </qresource>
+</RCC>

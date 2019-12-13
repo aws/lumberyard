@@ -933,6 +933,17 @@ void CSequenceBatchRenderDialog::CaptureItemStart()
     itemText.replace('/', '-'); // A full sequence name can have slash characters which aren't suitable for a file name.
     folder += "/";
     folder += itemText;
+
+    // If this is a relative path, prepend the @assets@ folder to match where the Renderer is going
+    // to dump the frame buffer image captures.
+    if (AzFramework::StringFunc::Path::IsRelative(folder.toUtf8().data()))
+    {
+        AZStd::string absolutePath;
+        AZStd::string assetsRoot = AZ::IO::FileIOBase::GetInstance()->GetAlias("@assets@");
+        AzFramework::StringFunc::Path::Join(assetsRoot.c_str(), folder.toUtf8().data(), absolutePath);
+        folder = absolutePath.c_str();
+    }
+
     QString finalFolder = folder;
     int i = 2;
     while (QFileInfo::exists(finalFolder))

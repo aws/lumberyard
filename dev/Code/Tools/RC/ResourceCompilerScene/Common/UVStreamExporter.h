@@ -34,11 +34,6 @@ namespace AZ
 
             SceneAPI::Events::ProcessingResult CopyUVStream(MeshNodeExportContext& context) const;
         protected:
-#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
-            // Workaround for VS2013 - Delete the copy constructor and make it private
-            // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-            UVStreamExporter(const UVStreamExporter&) = delete;
-#endif
             SceneAPI::Events::ProcessingResult PopulateUVStream(MeshNodeExportContext& context, int index, AZStd::shared_ptr<const SceneAPI::DataTypes::IMeshVertexUVData> uvs) const;
             static const size_t s_uvMaxStreamCount = 2;
         };

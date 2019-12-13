@@ -20,6 +20,7 @@
 #include <EMotionFX/Source/EMotionFXManager.h>
 #include <EMotionFX/Source/Node.h>
 #include <EMotionFX/Source/PhysicsSetup.h>
+#include <EMotionFX/Source/SimulatedObjectBus.h>
 
 
 namespace EMotionFX
@@ -317,6 +318,11 @@ namespace EMotionFX
             m_oldColliderIndex = nodeConfig->m_shapes.size() - 1;
         }
 
+        if (m_configType == PhysicsSetup::SimulatedObjectCollider)
+        {
+            SimulatedObjectNotificationBus::Broadcast(&SimulatedObjectNotificationBus::Events::OnSimulatedObjectChanged);
+        }
+
         m_oldIsDirty = actor->GetDirtyFlag();
         actor->SetDirtyFlag(true);
         return true;
@@ -496,6 +502,11 @@ namespace EMotionFX
             ExecuteParameter<AZ::Vector3>(m_oldDimensions, m_dimensions, box->m_dimensions);
         }
 
+        if (m_configType == PhysicsSetup::SimulatedObjectCollider && m_tag.has_value())
+        {
+            SimulatedObjectNotificationBus::Broadcast(&SimulatedObjectNotificationBus::Events::OnSimulatedObjectChanged);
+        }
+
         return true;
     }
 
@@ -575,6 +586,11 @@ namespace EMotionFX
             {
                 box->m_dimensions = m_oldDimensions.value();
             }
+        }
+
+        if (m_configType == PhysicsSetup::SimulatedObjectCollider && m_tag.has_value())
+        {
+            SimulatedObjectNotificationBus::Broadcast(&SimulatedObjectNotificationBus::Events::OnSimulatedObjectChanged);
         }
 
         actor->SetDirtyFlag(m_oldIsDirty);
@@ -705,6 +721,11 @@ namespace EMotionFX
         if (nodeConfig->m_shapes.empty())
         {
             colliderConfig->RemoveNodeConfigByName(nodeConfig->m_name);
+        }
+
+        if (m_configType == PhysicsSetup::SimulatedObjectCollider)
+        {
+            SimulatedObjectNotificationBus::Broadcast(&SimulatedObjectNotificationBus::Events::OnSimulatedObjectChanged);
         }
 
         actor->SetDirtyFlag(true);

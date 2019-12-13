@@ -198,12 +198,13 @@ IReadStreamPtr CStreamEngine::StartRead (const EStreamTaskType tSource, const ch
         };
 
         // Register stream and start file request.
+        IReadStreamPtr result = static_cast<IReadStreamPtr>(pStream);
         AZStd::shared_ptr<AZ::IO::Request> azRequest = AZ::IO::Streamer::Instance().CreateAsyncRead(szFilePath, offset, pStream->GetFileSize(), pStream->GetFileReadBuffer(),
             callback, deadline, priority);
         pStream->SetFileRequest(azRequest);
         AZ::IO::Streamer::Instance().QueueRequest(azRequest);
 
-        return static_cast<AZRequestReadStream*>(pStream);
+        return result;
     }
 
     return NULL;

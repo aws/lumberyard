@@ -1407,7 +1407,6 @@ namespace EMStudio
         {
             AZStd::string motionFileName;
             AZStd::string tempString;
-            const EMotionFX::MotionSet::MotionEntries& motionEntries = motionSet->GetMotionEntries();
             for (const auto& item : motionEntries)
             {
                 const EMotionFX::MotionSet::MotionEntry* motionEntry = item.second;

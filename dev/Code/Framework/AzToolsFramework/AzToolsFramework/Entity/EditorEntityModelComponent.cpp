@@ -14,6 +14,8 @@
 
 #include <AzToolsFramework/Entity/EditorEntityModel.h>
 
+#include <AzCore/RTTI/BehaviorContext.h>
+
 namespace AzToolsFramework
 {
     namespace Components
@@ -26,6 +28,28 @@ namespace AzToolsFramework
             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
                 serializeContext->Class<EditorEntityModelComponent, AZ::Component>(); // Empty class
+            }
+
+            if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+            {
+                behaviorContext->EBus<EditorEntityInfoRequestBus>("EditorEntityInfoRequestBus")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Category, "Entity")
+                    ->Attribute(AZ::Script::Attributes::Module, "editor")
+                    ->Event("GetParent", &EditorEntityInfoRequests::GetParent)
+                    ->Event("GetChildren", &EditorEntityInfoRequests::GetChildren)
+                    ->Event("GetChild", &EditorEntityInfoRequests::GetChild)
+                    ->Event("GetChildCount", &EditorEntityInfoRequests::GetChildCount)
+                    ->Event("GetChildIndex", &EditorEntityInfoRequests::GetChildIndex)
+                    ->Event("GetName", &EditorEntityInfoRequests::GetName)
+                    ;
+
+                behaviorContext->EBus<EditorEntityAPIBus>("EditorEntityAPIBus")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Category, "Entity")
+                    ->Attribute(AZ::Script::Attributes::Module, "editor")
+                    ->Event("SetName", &EditorEntityAPIRequests::SetName)
+                    ;
             }
         }
 

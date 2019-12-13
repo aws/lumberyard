@@ -22,7 +22,7 @@ namespace Physics
         Physics::RigidBodyRequestBus::Event(sphereB->GetId(),
             &Physics::RigidBodyRequests::SetLinearDamping, 0.2f);
 
-        UpdateDefaultWorld(1.0f / 60.0f, 60);
+        UpdateDefaultWorld(60);
 
         float dampingA, dampingB;
         Physics::RigidBodyRequestBus::EventResult(dampingA, sphereA->GetId(),
@@ -65,7 +65,7 @@ namespace Physics
             &Physics::RigidBodyRequests::GetLinearDamping);
 
         EXPECT_NEAR(damping, initialDamping, 1e-3f);
-        EXPECT_TRUE(errorHandler.GetErrorCount() > 0);
+        EXPECT_TRUE(errorHandler.GetWarningCount() > 0);
 
         delete sphere;
     }
@@ -95,7 +95,7 @@ namespace Physics
         Physics::RigidBodyRequestBus::Event(sphereB->GetId(),
             &Physics::RigidBodyRequests::ApplyLinearImpulse, impulse);
 
-        UpdateDefaultWorld(1.0f / 60.0f, 10);
+        UpdateDefaultWorld(10);
         auto angularVelocityA = AZ::Vector3::CreateZero();
         auto angularVelocityB = AZ::Vector3::CreateZero();
 
@@ -106,7 +106,7 @@ namespace Physics
             Physics::RigidBodyRequestBus::EventResult(angularVelocityB, sphereB->GetId(),
                 &Physics::RigidBodyRequests::GetAngularVelocity);
             EXPECT_GT(static_cast<float>(angularVelocityA.GetLength()), static_cast<float>(angularVelocityB.GetLength()));
-            UpdateDefaultWorld(1.0f / 60.0f, 1);
+            UpdateDefaultWorld(1);
         }
 
         delete floor;
@@ -131,7 +131,7 @@ namespace Physics
             &Physics::RigidBodyRequests::GetAngularDamping);
 
         EXPECT_NEAR(damping, initialDamping, 1e-3f);
-        EXPECT_TRUE(errorHandler.GetErrorCount() > 0);
+        EXPECT_TRUE(errorHandler.GetWarningCount() > 0);
 
         delete sphere;
     }
@@ -149,7 +149,7 @@ namespace Physics
         {
             float xPreviousA = GetPositionElement(sphereA, 0);
             float xPreviousB = GetPositionElement(sphereB, 0);
-            UpdateDefaultWorld(1.0f / 60.0f, 10);
+            UpdateDefaultWorld(10);
             EXPECT_GT(GetPositionElement(sphereA, 0), xPreviousA);
             EXPECT_NEAR(GetPositionElement(sphereB, 0), xPreviousB, 1e-3f);
         }
@@ -171,7 +171,7 @@ namespace Physics
         {
             float xPreviousA = GetPositionElement(sphereA, 0);
             float xPreviousB = GetPositionElement(sphereB, 0);
-            UpdateDefaultWorld(1.0f / 60.0f, 10);
+            UpdateDefaultWorld(10);
             EXPECT_GT(GetPositionElement(sphereA, 0), xPreviousA);
             EXPECT_NEAR(GetPositionElement(sphereB, 0), xPreviousB, 1e-3f);
         }
@@ -197,7 +197,7 @@ namespace Physics
         {
             float xPreviousA = GetPositionElement(sphereA, 0);
             float xPreviousB = GetPositionElement(sphereB, 0);
-            UpdateDefaultWorld(1.0f / 60.0f, 10);
+            UpdateDefaultWorld(10);
             EXPECT_GT(GetPositionElement(sphereA, 0), xPreviousA);
             EXPECT_NEAR(GetPositionElement(sphereB, 0), xPreviousB, 1e-3f);
 
@@ -228,7 +228,7 @@ namespace Physics
         {
             float xPreviousA = GetPositionElement(sphereA, 0);
             float xPreviousB = GetPositionElement(sphereB, 0);
-            UpdateDefaultWorld(1.0f / 60.0f, 10);
+            UpdateDefaultWorld(10);
             EXPECT_NEAR(GetPositionElement(sphereA, 0), xPreviousA, 1e-3f);
             EXPECT_NEAR(GetPositionElement(sphereB, 0), xPreviousB, 1e-3f);
 
@@ -261,7 +261,7 @@ namespace Physics
         {
             float xPreviousA = GetPositionElement(sphereA, 0);
             float xPreviousB = GetPositionElement(sphereB, 0);
-            UpdateDefaultWorld(1.0f / 60.0f, 10);
+            UpdateDefaultWorld(10);
             EXPECT_NEAR(GetPositionElement(sphereA, 0), xPreviousA, 1e-3f);
             EXPECT_NEAR(GetPositionElement(sphereB, 0), xPreviousB, 1e-3f);
 
@@ -291,7 +291,7 @@ namespace Physics
 
         for (int timestep = 0; timestep < 60; timestep++)
         {
-            UpdateDefaultWorld(1.0f / 60.0f, 1);
+            UpdateDefaultWorld(1);
             AZ::Vector3 velocity;
             Physics::RigidBodyRequestBus::EventResult(velocity, sphere->GetId(),
                 &Physics::RigidBodyRequests::GetLinearVelocity);
@@ -334,7 +334,7 @@ namespace Physics
         Physics::RigidBodyRequestBus::Event(sphereB->GetId(),
             &Physics::RigidBodyRequests::ApplyAngularImpulse, impulse);
 
-        UpdateDefaultWorld(1.0f / 60.0f, 300);
+        UpdateDefaultWorld(300);
 
         EXPECT_GT(GetPositionElement(sphereB, 0), GetPositionElement(sphereA, 0));
 
@@ -358,7 +358,7 @@ namespace Physics
             &Physics::RigidBodyRequests::GetSleepThreshold);
 
         EXPECT_NEAR(threshold, initialThreshold, 1e-3f);
-        EXPECT_TRUE(errorHandler.GetErrorCount() > 0);
+        EXPECT_TRUE(errorHandler.GetWarningCount() > 0);
 
         delete sphere;
     }
@@ -377,7 +377,7 @@ namespace Physics
             &Physics::RigidBodyRequests::GetMass);
         EXPECT_NEAR(mass, 5.0f, 1e-3f);
 
-        UpdateDefaultWorld(1.0f / 60.0f, 30);
+        UpdateDefaultWorld(30);
         EXPECT_GT(1.5f, GetPositionElement(boxA, 2));
         EXPECT_LT(1.5f, GetPositionElement(boxB, 2));
 
@@ -386,7 +386,7 @@ namespace Physics
             &Physics::RigidBodyRequests::GetMass);
         EXPECT_NEAR(mass, 20.0f, 1e-3f);
 
-        UpdateDefaultWorld(1.0f / 60.0f, 60);
+        UpdateDefaultWorld(60);
         EXPECT_LT(1.5f, GetPositionElement(boxA, 2));
         EXPECT_GT(1.5f, GetPositionElement(boxB, 2));
 
@@ -495,7 +495,7 @@ namespace Physics
         auto boxA = AddBoxEntity(AZ::Vector3(-5.0f, 0.0f, 1.0f), AZ::Vector3::CreateOne());
         auto boxB = AddBoxEntity(AZ::Vector3(5.0f, 0.0f, 100.0f), AZ::Vector3::CreateOne());
 
-        UpdateDefaultWorld(1.0f / 60.0f, 60);
+        UpdateDefaultWorld(60);
         bool isAwakeA = false;
         bool isAwakeB = false;
         Physics::RigidBodyRequestBus::EventResult(isAwakeA, boxA->GetId(),
@@ -509,7 +509,7 @@ namespace Physics
         Physics::RigidBodyRequestBus::Event(boxA->GetId(), &Physics::RigidBodyRequests::ForceAwake);
         Physics::RigidBodyRequestBus::Event(boxB->GetId(), &Physics::RigidBodyRequests::ForceAsleep);
 
-        UpdateDefaultWorld(1.0f / 60.0f, 1);
+        UpdateDefaultWorld(1);
 
         Physics::RigidBodyRequestBus::EventResult(isAwakeA, boxA->GetId(),
             &Physics::RigidBodyRequests::IsAwake);
@@ -519,7 +519,7 @@ namespace Physics
         EXPECT_TRUE(isAwakeA);
         EXPECT_FALSE(isAwakeB);
 
-        UpdateDefaultWorld(1.0f / 60.0f, 60);
+        UpdateDefaultWorld(60);
 
         Physics::RigidBodyRequestBus::EventResult(isAwakeA, boxA->GetId(),
             &Physics::RigidBodyRequests::IsAwake);
@@ -545,7 +545,7 @@ namespace Physics
         float previousSpeed = 0.0f;
         for (int timestep = 0; timestep < 30; timestep++)
         {
-            UpdateDefaultWorld(1.0f / 60.0f, 1);
+            UpdateDefaultWorld(1);
             Physics::RigidBodyRequestBus::EventResult(velocity, sphere->GetId(), &Physics::RigidBodyRequests::GetLinearVelocity);
             previousSpeed = velocity.GetLength();
         }
@@ -556,7 +556,7 @@ namespace Physics
         // Check speed is not changing
         for (int timestep = 0; timestep < 60; timestep++)
         {
-            UpdateDefaultWorld(1.0f / 60.0f, 1);
+            UpdateDefaultWorld(1);
             Physics::RigidBodyRequestBus::EventResult(velocity, sphere->GetId(), &Physics::RigidBodyRequests::GetLinearVelocity);
             float speed = velocity.GetLength();
             EXPECT_FLOAT_EQ(speed, previousSpeed);
@@ -574,7 +574,7 @@ namespace Physics
         // Check speed is increasing
         for (int timestep = 0; timestep < 60; timestep++)
         {
-            UpdateDefaultWorld(1.0f / 60.0f, 1);
+            UpdateDefaultWorld(1);
             Physics::RigidBodyRequestBus::EventResult(velocity, sphere->GetId(), &Physics::RigidBodyRequests::GetLinearVelocity);
             float speed = velocity.GetLength();
             EXPECT_GT(speed, previousSpeed);

@@ -14,10 +14,15 @@
 
 #include <AzCore/EBus/EBus.h>
 #include <Twitch/TwitchTypes.h>
-#include <Twitch/FuelTypes.h>
 
 namespace Twitch
 {
+    //@deprecated The following forward declarations are related to functionality pending deprecation
+    struct ProductDataReturnValue;
+    struct PurchaseUpdateReturnValue;
+    struct PurchaseReceiptReturnValue;
+    struct FuelSku;
+
     class TwitchRequests
         : public AZ::EBusTraits
     {
@@ -27,13 +32,21 @@ namespace Twitch
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
         // Twitch Commerce
+        AZ_DEPRECATED(virtual void RequestEntitlement(ReceiptID& receipt) {}, "Functionality deprecated, please remove usage of RequestEntitlement");
+        AZ_DEPRECATED(virtual void RequestProductCatalog(ReceiptID& receipt) {}, "Functionality deprecated, please remove usage of RequestProductCatalog");
+        AZ_DEPRECATED(virtual void PurchaseProduct(ReceiptID& receipt, const Twitch::FuelSku& sku) {}, "Functionality deprecated, please remove usage of PurchaseProduct");
+        AZ_DEPRECATED(virtual void GetPurchaseUpdates(ReceiptID& receipt, const AZStd::string& syncToken) {}, "Functionality deprecated, please remove usage of GetPurchaseUpdates");
+
+        // Twitch Auth
         virtual void SetApplicationID(const AZStd::string& twitchApplicationID) = 0;
+        virtual void SetUserID(ReceiptID& receipt, const AZStd::string& userID) = 0;
+        virtual void SetOAuthToken(ReceiptID& receipt, const AZStd::string& token) = 0;
         virtual void RequestUserID(ReceiptID& receipt) = 0;
         virtual void RequestOAuthToken(ReceiptID& receipt) = 0;
-        virtual void RequestEntitlement(ReceiptID& receipt) = 0;
-        virtual void RequestProductCatalog(ReceiptID& receipt) = 0;
-        virtual void PurchaseProduct(ReceiptID& receipt, const Twitch::FuelSku& sku) = 0;
-        virtual void GetPurchaseUpdates(ReceiptID& receipt, const AZStd::string& syncToken) = 0;
+        virtual AZStd::string GetApplicationID() const = 0;
+        virtual AZStd::string GetUserID() const = 0;
+        virtual AZStd::string GetOAuthToken() const = 0;
+        virtual AZStd::string GetSessionID() const = 0;
 
         // User
         virtual void GetUser(ReceiptID& receipt) = 0;
@@ -67,9 +80,10 @@ namespace Twitch
         virtual void GetChannelVideos(ReceiptID& receipt, const AZStd::string& channelID, BroadCastType boradcastType, const AZStd::string& language, AZ::u64 offset) = 0;
         virtual void StartChannelCommercial(ReceiptID& receipt, const AZStd::string& channelID, CommercialLength length) = 0;
         virtual void ResetChannelStreamKey(ReceiptID& receipt, const AZStd::string& channelID) = 0;
-        virtual void GetChannelCommunity(ReceiptID& receipt, const AZStd::string& channelID) = 0;
-        virtual void SetChannelCommunity(ReceiptID& receipt, const AZStd::string& channelID, const AZStd::string& communityID) = 0;
-        virtual void DeleteChannelfromCommunity(ReceiptID& receipt, const AZStd::string& channelID) = 0;
+        AZ_DEPRECATED(virtual void GetChannelCommunity(ReceiptID& receipt, const AZStd::string& channelID) {}, "GetChannelCommunity has been deprecated.");
+        AZ_DEPRECATED(virtual void GetChannelCommunities(ReceiptID& receipt, const AZStd::string& channelID) {}, "GetChannelCommunities has been deprecated.");
+        AZ_DEPRECATED(virtual void SetChannelCommunity(ReceiptID& receipt, const AZStd::string& channelID, const AZStd::string& communityID) {}, "GetChannelCommunities has been deprecated.");
+        AZ_DEPRECATED(virtual void DeleteChannelfromCommunity(ReceiptID& receipt, const AZStd::string& channelID) {}, "GetChannelCommunities has been deprecated.");
     };
 
     using TwitchRequestBus = AZ::EBus<TwitchRequests>;
@@ -85,12 +99,14 @@ namespace Twitch
         static const bool EnableQueuedReferences = true;
 
         // Twitch Commerce notifications
+        AZ_DEPRECATED(virtual void EntitlementNotify(const StringValue& entitlement) { (void)entitlement; }, "Functionality deprecated, please remove usage of EntitlementNotify");
+        AZ_DEPRECATED(virtual void RequestProductCatalog(const ProductDataReturnValue& result) { (void) result; }, "Functionality deprecated, please remove usage of RequestProductCatalog");
+        AZ_DEPRECATED(virtual void PurchaseProduct(const PurchaseReceiptReturnValue& result) { (void)result; }, "Functionality deprecated, please remove usage of PurchaseProduct");
+        AZ_DEPRECATED(virtual void GetPurchaseUpdates(const PurchaseUpdateReturnValue& result) { (void)result; }, "Functionality deprecated, please remove usage of GetPurchaseUpdates");
+
+        // Twitch Auth notifications
         virtual void UserIDNotify(const StringValue& userID) { (void) userID; }
         virtual void OAuthTokenNotify(const StringValue& token) { (void) token; } 
-        virtual void EntitlementNotify(const StringValue& entitlement) { (void)entitlement; }
-        virtual void RequestProductCatalog(const ProductDataReturnValue& result) { (void) result; }
-        virtual void PurchaseProduct(const PurchaseReceiptReturnValue& result) { (void)result; }
-        virtual void GetPurchaseUpdates(const PurchaseUpdateReturnValue& result) { (void)result; }
 
         // Users notifications
         virtual void GetUser(const UserInfoValue& result) { (void)result; }
@@ -124,9 +140,10 @@ namespace Twitch
         virtual void GetChannelVideos(const VideoReturnValue& result) { (void)result; }
         virtual void StartChannelCommercial(const StartChannelCommercialValue& result) { (void)result; }
         virtual void ResetChannelStreamKey(const ChannelInfoValue& result) { (void)result; }
-        virtual void GetChannelCommunity(const CommunityInfoValue& result) { (void)result; }
-        virtual void SetChannelCommunity(const Int64Value& result) { (void)result; }
-        virtual void DeleteChannelfromCommunity(const Int64Value& result) { (void)result; }
+        AZ_DEPRECATED(virtual void GetChannelCommunity(const CommunityInfoValue& result) { (void)result; }, "GetChannelCommunity has been deprecated.");
+        AZ_DEPRECATED(virtual void GetChannelCommunities(const CommunityInfoReturnValue& result) { (void)result; }, "GetChannelCommunity has been deprecated.");
+        AZ_DEPRECATED(virtual void SetChannelCommunity(const Int64Value& result) { (void)result; }, "GetChannelCommunity has been deprecated.");
+        AZ_DEPRECATED(virtual void DeleteChannelfromCommunity(const Int64Value& result) { (void)result; }, "GetChannelCommunity has been deprecated.");
     };
 
     using TwitchNotifyBus = AZ::EBus<TwitchNotifications>;

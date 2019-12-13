@@ -50,11 +50,7 @@ namespace Gestures
         //! Constructor
         GesturesSystemComponent();
 
-        ////////////////////////////////////////////////////////////////////////////////////////////
-        // Disable copying (protected to workaround a VS2013 bug in std::is_copy_constructible)
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-    protected:
-        AZ_DISABLE_COPY_MOVE(GesturesSystemComponent);
+        GesturesSystemComponent(const GesturesSystemComponent&) = delete;
     public:
 
         ////////////////////////////////////////////////////////////////////////////////////////////

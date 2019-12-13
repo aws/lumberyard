@@ -30,6 +30,8 @@
         #include "Xenia/ThreadInfo_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ThreadInfo_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ThreadInfo_cpp_salem.inl"
     #endif
 #endif
 
@@ -108,6 +110,8 @@ void SThreadInfo::CloseThreadHandles(const TThreads& threads)
         #include "Xenia/ThreadInfo_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ThreadInfo_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ThreadInfo_cpp_salem.inl"
     #endif
 #elif defined(LINUX) || defined(APPLE)
 void SThreadInfo::GetCurrentThreads(TThreadInfo& threadsOut)

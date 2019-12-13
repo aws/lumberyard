@@ -80,7 +80,7 @@
 /// @}
 
 #ifndef AZSTD_STL
-    #if defined(AZ_COMPILER_MSVC) || defined(AZ_COMPILER_GCC) || defined(AZ_COMPILER_MWERKS)
+    #if defined(AZ_COMPILER_MSVC)
         #define AZSTD_STL std
     #else
         #define AZSTD_STL

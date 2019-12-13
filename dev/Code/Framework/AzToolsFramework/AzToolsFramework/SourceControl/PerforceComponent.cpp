@@ -757,6 +757,8 @@ namespace AzToolsFramework
     {
         s_perforceConn->m_command.ExecuteFstat(filePath);
         sourceAwareFile = CommandSucceeded();
+
+        AZStd::lock_guard<AZStd::mutex> locker(s_perforceConn->m_command.m_commandMutex);
         return ParseOutput(s_perforceConn->m_command.m_commandOutputMap, s_perforceConn->m_command.m_rawOutput.outputResult);
     }
 
@@ -777,6 +779,7 @@ namespace AzToolsFramework
             return false;
         }
 
+        AZStd::lock_guard<AZStd::mutex> locker(s_perforceConn->m_command.m_commandMutex);
         return ParseOutput(s_perforceConn->m_command.m_commandOutputMap, s_perforceConn->m_command.m_rawOutput.outputResult, "=");
     }
 

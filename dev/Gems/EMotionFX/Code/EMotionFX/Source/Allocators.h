@@ -139,7 +139,7 @@ namespace EMotionFX
         typedef AZStd::false_type   allow_memory_leaks;
 
         STLAllocator()
-            : m_allocator(AZ::AllocatorInstance<Allocator>::Get())
+            : m_allocator(static_cast<Allocator&>(AZ::AllocatorInstance<Allocator>::GetAllocator()))
         {
         }
 

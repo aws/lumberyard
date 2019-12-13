@@ -61,11 +61,24 @@ namespace PhysX
 
     Material::Material(const Physics::MaterialConfiguration& materialConfiguration)
     {
-        auto pxMaterial = PxGetPhysics().createMaterial(
-            materialConfiguration.m_staticFriction,
-            materialConfiguration.m_dynamicFriction,
-            materialConfiguration.m_restitution
-        );
+        float staticFriction = materialConfiguration.m_staticFriction;
+        AZ_Warning("PhysX Material", staticFriction >= 0.0f, "Static friction %f for material %s is out of range [0, PX_MAX_F32)",
+            staticFriction, materialConfiguration.m_surfaceType.c_str());
+
+        float dynamicFriction = materialConfiguration.m_dynamicFriction;
+        AZ_Warning("PhysX Material", dynamicFriction >= 0.0f, "Dynamic friction %f for material %s is out of range [0, PX_MAX_F32)",
+            dynamicFriction, materialConfiguration.m_surfaceType.c_str());
+
+        float restitution = materialConfiguration.m_restitution;
+        AZ_Warning("PhysX Material", restitution >= 0 && restitution <= 1.0f, "Restitution %f for material %s is out of range [0, 1]",
+            restitution, materialConfiguration.m_surfaceType.c_str());
+
+        // Clamp the values to valid ranges
+        staticFriction = AZ::GetMax(0.0f, staticFriction);
+        dynamicFriction = AZ::GetMax(0.0f, dynamicFriction);
+        restitution = AZ::GetClamp(restitution, 0.0f, 1.0f);
+
+        auto pxMaterial = PxGetPhysics().createMaterial(staticFriction, dynamicFriction, restitution);
 
         auto materialDestructor = [](auto material)
         {
@@ -91,12 +104,12 @@ namespace PhysX
     {
         AZ_Assert(m_pxMaterial != nullptr, "Material can't be null!");
 
-        m_pxMaterial->setRestitution(configuration.m_restitution);
-        m_pxMaterial->setStaticFriction(configuration.m_staticFriction);
-        m_pxMaterial->setDynamicFriction(configuration.m_dynamicFriction);
+        SetRestitution(configuration.m_restitution);
+        SetStaticFriction(configuration.m_staticFriction);
+        SetDynamicFriction(configuration.m_dynamicFriction);
 
-        m_pxMaterial->setFrictionCombineMode(ToPxCombineMode(configuration.m_frictionCombine));
-        m_pxMaterial->setRestitutionCombineMode(ToPxCombineMode(configuration.m_restitutionCombine));
+        SetFrictionCombineMode(configuration.m_frictionCombine);
+        SetRestitutionCombineMode(configuration.m_restitutionCombine);
 
         m_surfaceType = AZ::Crc32(configuration.m_surfaceType.c_str());
         m_surfaceString = configuration.m_surfaceType;
@@ -129,9 +142,13 @@ namespace PhysX
 
     void Material::SetDynamicFriction(float dynamicFriction)
     {
+        AZ_Warning("PhysX Material", dynamicFriction >= 0.0f, 
+            "SetDynamicFriction: Dynamic friction %f for material %s is out of range [0, PX_MAX_F32)",
+            dynamicFriction, m_surfaceString.c_str());
+
         if (m_pxMaterial)
         {
-            m_pxMaterial->setDynamicFriction(dynamicFriction);
+            m_pxMaterial->setDynamicFriction(AZ::GetMax(0.0f, dynamicFriction));
         }
     }
 
@@ -142,9 +159,13 @@ namespace PhysX
 
     void Material::SetStaticFriction(float staticFriction)
     {
+        AZ_Warning("PhysX Material", staticFriction >= 0.0f, 
+            "SetStaticFriction: Static friction %f for material %s is out of range [0, PX_MAX_F32)",
+            staticFriction, m_surfaceString.c_str());
+        
         if (m_pxMaterial)
         {
-            m_pxMaterial->setStaticFriction(AZStd::clamp(staticFriction, 0.0f, 1.0f));
+            m_pxMaterial->setStaticFriction(AZ::GetMax(0.0f, staticFriction));
         }
     }
 
@@ -155,9 +176,13 @@ namespace PhysX
 
     void Material::SetRestitution(float restitution)
     {
+        AZ_Warning("PhysX Material", restitution >= 0 && restitution <= 1.0f, 
+            "SetRestitution: Restitution %f for material %s is out of range [0, 1]",
+            restitution, m_surfaceString.c_str());
+
         if (m_pxMaterial)
         {
-            m_pxMaterial->setRestitution(AZStd::clamp(restitution, 0.0f, 1.0f));
+            m_pxMaterial->setRestitution(AZ::GetClamp(restitution, 0.0f, 1.0f));
         }
     }
 
@@ -256,7 +281,7 @@ namespace PhysX
     {
         const AZ::u32 defaultMaterialIndex = 0;
 
-        if (!materialSelection.MaterialLibraryIsValid())
+        if (!materialSelection.IsMaterialLibraryValid())
         {
             return defaultMaterialIndex;
         }
@@ -323,6 +348,11 @@ namespace PhysX
                 outMaterials.push_back(GetDefaultMaterial()->GetPxMaterial());
             }
         }
+    }
+
+    AZStd::shared_ptr<Physics::Material> MaterialsManager::GetGenericDefaultMaterial()
+    {
+        return GetDefaultMaterial();
     }
 
     const AZStd::shared_ptr<Material>& MaterialsManager::GetDefaultMaterial()

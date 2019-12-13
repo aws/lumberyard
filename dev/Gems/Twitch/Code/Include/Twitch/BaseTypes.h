@@ -18,7 +18,7 @@ namespace Twitch
     ** Results enum, Unknown must be the last element, and its value must be 0x7fffffff
     */
      
-    enum class ResultCode {Success, FuelSDKNotInitialized, FuelNoSession, FuelNoApplicationID, FuelNoIAPClient, FuelMissingCredentials, FuelProductDataFail, FuelIllformedSku, FuelPurchaseFail, InvalidParam, TwitchRESTError, TwitchChannelNoUpdatesToMake, Unknown=0x7ffffff};
+    enum class ResultCode {Success, InvalidParam, TwitchRESTError, TwitchChannelNoUpdatesToMake, Unknown=0x7ffffff};
 
     /*
     ** Our receipts

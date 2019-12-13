@@ -29,6 +29,18 @@ def get_parser():
     # adding plugins subparsers first allows AzTest to clobber any conflicting options, instead of vice versa
     plugins.subparser_hook(subparsers)
 
+    try:
+        import aztest.platform.Xenia
+        aztest.platform.Xenia.add_subparser(subparsers)
+    except ImportError:
+        pass
+
+    try:
+        import aztest.platform.Provo
+        aztest.platform.Provo.add_subparser(subparsers)
+    except ImportError:
+        pass
+
     p_scan = subparsers.add_parser("scan", help="scans a directory for modules to test and executes them",
                                    epilog="Extra parameters are assumed to be for the test framework and will be "
                                           "passed along to the modules/executables under test. Returns 1 if any "

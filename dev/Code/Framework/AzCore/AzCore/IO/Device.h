@@ -116,7 +116,7 @@ namespace AZ
                 //Need to create AZStd::result_of and AZStd::declval type trait
                 AZ_STATIC_ASSERT((AZStd::is_void<typename std::result_of<decltype(func)(DeviceRequest*, Args...)>::type>::value), "Argument cannot be bound to supplied device function argument");
                 {
-                    AZStd::lock_guard<AZStd::mutex> lock(m_streamerContext.GetThreadSleepLock());
+                    AZStd::scoped_lock<AZStd::mutex> lock(m_eventQueueLock);
                     DeviceRequestBus::QueueBroadcast(func, AZStd::forward<Args>(args)...);
                 }
                 m_streamerContext.WakeUpMainStreamThread();
@@ -193,14 +193,16 @@ namespace AZ
             void CompleteRequest(const AZStd::shared_ptr<Request>& request, Request::StateType state = Request::StateType::ST_COMPLETED, bool isLocked = false);
             
             AZStd::vector<AZStd::string>    m_pathIdentifiers;  //< Set of path prefix that identify if a file needs to accessed through this device. Accessing this member requires a lock.
-            AZStd::string                   m_physicalName;     ///< Device name (doesn't change while running so it's safe to read from multiple threads.
+            AZStd::string                   m_physicalName;     //!< Device name (doesn't change while running so it's safe to read from multiple threads.
             AZStd::forward_list<FileRequest*> m_queued; //!< The requests queued in the stream stack.
             AZStd::vector<FileRequest*> m_internalPendingBuffer; //!< To avoid allocating memory every time requests are scheduled, the temporary vector is cached here.
-            AZStd::vector<AZStd::shared_ptr<Request>> m_completed;        ///< List of completed requests for this device. (must be accessed with the m_lock (locked)
+            AZStd::vector<AZStd::shared_ptr<Request>> m_delayedCompletedCallbacks; //!< List of completed requests for this device
             AZStd::deque<AZStd::shared_ptr<Request>> m_pending;    //< List of pending request for this device.
 
+            AZStd::mutex                m_eventQueueLock;
+            AZStd::mutex                m_delayedCompletedCallbacksLock;
             AZStd::atomic_bool          m_shutdown_thread;
-            AZStd::atomic_bool          m_suspendRequestProcessing; //< Requests are still queued, but not processed.
+            AZStd::atomic_bool          m_suspendRequestProcessing; //!< Requests are still queued, but not processed.
             AZStd::thread               m_thread;
         };
     }

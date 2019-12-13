@@ -113,6 +113,92 @@ namespace
 
         return GetLargestFloat(results.values);
     }
+
+    float GetLayoutCellTargetWidth(AZ::EntityId elementId, bool ignoreDefaultLayoutCells)
+    {
+        float value = LyShine::UiLayoutCellUnspecifiedSize;
+
+        // First check for overridden cell values
+        EBUS_EVENT_ID_RESULT(value, elementId, UiLayoutCellBus, GetTargetWidth);
+
+        // Get max value
+        float maxValue = LyShine::UiLayoutCellUnspecifiedSize;
+        EBUS_EVENT_ID_RESULT(maxValue, elementId, UiLayoutCellBus, GetMaxWidth);
+
+        // If not overridden, get the default cell values
+        if (!LyShine::IsUiLayoutCellSizeSpecified(value))
+        {
+            value = 0.0f;
+            if (!ignoreDefaultLayoutCells)
+            {
+                value = GetElementDefaultTargetWidth(elementId, value, maxValue);
+            }
+        }
+
+        // Make sure that min width isn't greater than target width
+        float minValue = LyShine::UiLayoutCellUnspecifiedSize;
+        EBUS_EVENT_ID_RESULT(minValue, elementId, UiLayoutCellBus, GetMinWidth);
+        if (!LyShine::IsUiLayoutCellSizeSpecified(minValue))
+        {
+            minValue = 0.0f;
+            if (!ignoreDefaultLayoutCells)
+            {
+                minValue = GetElementDefaultMinWidth(elementId, minValue);
+            }
+        }
+        value = AZ::GetMax(value, minValue);
+
+        // Make sure that max width isn't less than target width
+        if (LyShine::IsUiLayoutCellSizeSpecified(maxValue) && maxValue < value)
+        {
+            value = maxValue;
+        }
+
+        return value;
+    }
+
+    float GetLayoutCellTargetHeight(AZ::EntityId elementId, bool ignoreDefaultLayoutCells)
+    {
+        float value = LyShine::UiLayoutCellUnspecifiedSize;
+
+        // First check for overridden cell values
+        EBUS_EVENT_ID_RESULT(value, elementId, UiLayoutCellBus, GetTargetHeight);
+
+        // Get max value
+        float maxValue = LyShine::UiLayoutCellUnspecifiedSize;
+        EBUS_EVENT_ID_RESULT(maxValue, elementId, UiLayoutCellBus, GetMaxHeight);
+
+        // If not overridden, get the default cell values
+        if (!LyShine::IsUiLayoutCellSizeSpecified(value))
+        {
+            value = 0.0f;
+            if (!ignoreDefaultLayoutCells)
+            {
+                value = GetElementDefaultTargetHeight(elementId, value, maxValue);
+            }
+        }
+
+        // Make sure that min height isn't greater than target height
+        float minValue = LyShine::UiLayoutCellUnspecifiedSize;
+        EBUS_EVENT_ID_RESULT(minValue, elementId, UiLayoutCellBus, GetMinHeight);
+        if (!LyShine::IsUiLayoutCellSizeSpecified(minValue))
+        {
+            minValue = 0.0f;
+            if (!ignoreDefaultLayoutCells)
+            {
+                minValue = GetElementDefaultMinHeight(elementId, minValue);
+            }
+        }
+        value = AZ::GetMax(value, minValue);
+
+        // Make sure that max height isn't less than target height
+        if (LyShine::IsUiLayoutCellSizeSpecified(maxValue) && maxValue < value)
+        {
+            value = maxValue;
+        }
+
+        return value;
+    }
 }
 
 namespace UiLayoutHelpers
@@ -289,44 +375,7 @@ namespace UiLayoutHelpers
         int i = 0;
         for (auto childEntityId : childEntityIds)
         {
-            float value = LyShine::UiLayoutCellUnspecifiedSize;
-
-            // First check for overridden cell values
-            EBUS_EVENT_ID_RESULT(value, childEntityId, UiLayoutCellBus, GetTargetWidth);
-
-            // Get max value
-            float maxValue = LyShine::UiLayoutCellUnspecifiedSize;
-            EBUS_EVENT_ID_RESULT(maxValue, childEntityId, UiLayoutCellBus, GetMaxWidth);
-
-            // If not overridden, get the default cell values
-            if (!LyShine::IsUiLayoutCellSizeSpecified(value))
-            {
-                value = 0.0f;
-                if (!ignoreDefaultLayoutCells)
-                {
-                    value = GetElementDefaultTargetWidth(childEntityId, value, maxValue);
-                }
-            }
-
-            // Make sure that min width isn't greater than target width
-            float minValue = LyShine::UiLayoutCellUnspecifiedSize;
-            EBUS_EVENT_ID_RESULT(minValue, childEntityId, UiLayoutCellBus, GetMinWidth);
-            if (!LyShine::IsUiLayoutCellSizeSpecified(minValue))
-            {
-                minValue = 0.0f;
-                if (!ignoreDefaultLayoutCells)
-                {
-                    minValue = GetElementDefaultMinWidth(childEntityId, minValue);
-                }
-            }
-            value = AZ::GetMax(value, minValue);
-
-            // Make sure that max width isn't less than target width
-            if (LyShine::IsUiLayoutCellSizeSpecified(maxValue) && maxValue < value)
-            {
-                value = maxValue;
-            }
-
+            float value = GetLayoutCellTargetWidth(childEntityId, ignoreDefaultLayoutCells);
             values[i] = value;
             i++;
         }
@@ -379,44 +428,7 @@ namespace UiLayoutHelpers
         int i = 0;
         for (auto childEntityId : childEntityIds)
         {
-            float value = LyShine::UiLayoutCellUnspecifiedSize;
-
-            // First check for overridden cell values
-            EBUS_EVENT_ID_RESULT(value, childEntityId, UiLayoutCellBus, GetTargetHeight);
-
-            // Get max value
-            float maxValue = LyShine::UiLayoutCellUnspecifiedSize;
-            EBUS_EVENT_ID_RESULT(maxValue, childEntityId, UiLayoutCellBus, GetMaxHeight);
-
-            // If not overridden, get the default cell values
-            if (!LyShine::IsUiLayoutCellSizeSpecified(value))
-            {
-                value = 0.0f;
-                if (!ignoreDefaultLayoutCells)
-                {
-                    value = GetElementDefaultTargetHeight(childEntityId, value, maxValue);
-                }
-            }
-
-            // Make sure that min height isn't greater than target height
-            float minValue = LyShine::UiLayoutCellUnspecifiedSize;
-            EBUS_EVENT_ID_RESULT(minValue, childEntityId, UiLayoutCellBus, GetMinHeight);
-            if (!LyShine::IsUiLayoutCellSizeSpecified(minValue))
-            {
-                minValue = 0.0f;
-                if (!ignoreDefaultLayoutCells)
-                {
-                    minValue = GetElementDefaultMinHeight(childEntityId, minValue);
-                }
-            }
-            value = AZ::GetMax(value, minValue);
-
-            // Make sure that max height isn't less than target height
-            if (LyShine::IsUiLayoutCellSizeSpecified(maxValue) && maxValue < value)
-            {
-                value = maxValue;
-            }
-
+            float value = GetLayoutCellTargetHeight(childEntityId, ignoreDefaultLayoutCells);
             values[i] = value;
             i++;
         }
@@ -701,6 +713,18 @@ namespace UiLayoutHelpers
         height += epsilon;
 
         size.Set(width, height);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    float GetLayoutElementTargetWidth(AZ::EntityId elementId)
+    {
+        return GetLayoutCellTargetWidth(elementId, false);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    float GetLayoutElementTargetHeight(AZ::EntityId elementId)
+    {
+        return GetLayoutCellTargetHeight(elementId, false);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -15,7 +15,7 @@
 #include "SystemComponentFixture.h"
 #include <EMotionFX/Source/MotionSet.h>
 
-
+#include <AzCore/Debug/TraceMessageBus.h>
 
 namespace EMotionFX
 {
@@ -28,7 +28,8 @@ namespace EMotionFX
     class AnimGraphTimeCondition;
     class Transform;
 
-    class AnimGraphFixture : public SystemComponentFixture
+    class AnimGraphFixture : public SystemComponentFixture,
+        public AZ::Debug::TraceMessageBus::Handler
     {
     public:
         void SetUp() override;
@@ -55,6 +56,9 @@ namespace EMotionFX
 
         // Helper function for motion set construction (Works on m_motionSet)
         MotionSet::MotionEntry* AddMotionEntry(const AZStd::string& motionId, float motionMaxTime);
+
+        // TraceMessageBus - Intercepting to prevent dialog popup in AnimGraphReferenceNodeWithNoContentsTest
+        virtual bool OnError(const char* /*window*/, const char* /*message*/) override { return true; } 
 
 
         using SimulateFrameCallback = std::function<void(AnimGraphInstance*, /*time*/float, /*timeDelta*/float, /*frame*/int)>;

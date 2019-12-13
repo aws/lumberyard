@@ -1,0 +1,4 @@
+<EngineDependencies versionnumber="1.0.0">
+    <Dependency path="config/launcher.deployment.json" optional="true" />
+    <Dependency path="config/*.awsLogicalMappings.json" optional="true" />
+</EngineDependencies>

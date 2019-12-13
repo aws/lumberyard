@@ -1,0 +1,12 @@
+{
+    "platform": {
+        "darwin_x64": {
+            "copy_extra": [
+                "bin/darwin_x64/release/dxcGL:../../Compiler/LLVMGL/release",
+                "bin/darwin_x64/release/dxcMetal:../../Compiler/LLVMMETAL/release",
+                "bin/darwin_x64/debug/dxcGL:../../Compiler/LLVMGL/debug",
+                "bin/darwin_x64/debug/dxcMetal:../../Compiler/LLVMMETAL/debug"
+            ]
+        }
+    }
+}

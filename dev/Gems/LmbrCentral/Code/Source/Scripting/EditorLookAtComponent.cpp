@@ -171,6 +171,7 @@ namespace LmbrCentral
             {
                 AZ::Transform currentTM = AZ::Transform::CreateIdentity();
                 EBUS_EVENT_ID_RESULT(currentTM, GetEntityId(), AZ::TransformBus, GetWorldTM);
+                AZ::Vector3 currentScale = currentTM.ExtractScale();
 
                 AZ::Transform targetTM = AZ::Transform::CreateIdentity();
                 EBUS_EVENT_ID_RESULT(targetTM, m_targetId, AZ::TransformBus, GetWorldTM);
@@ -180,6 +181,8 @@ namespace LmbrCentral
                     targetTM.GetPosition(),
                     m_forwardAxis
                     );
+
+                lookAtTransform.MultiplyByScale(currentScale);
 
                 EBUS_EVENT_ID(GetEntityId(), AZ::TransformBus, SetWorldTM, lookAtTransform);
             }

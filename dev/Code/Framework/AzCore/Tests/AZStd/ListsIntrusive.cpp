@@ -59,14 +59,12 @@ namespace UnitTest
 
     template <class T>
     struct RemoveLessThan401
-        : public unary_function<T, bool>
     {
         AZ_FORCE_INLINE bool operator()(const T& element) const { return element.m_data < 401; }
     };
 
     template <class T>
     struct UniqueForLessThan401
-        : public binary_function<int, int, bool>
     {
         AZ_FORCE_INLINE bool operator()(const T& el1, const T& el2) const { return (el1.m_data == el2.m_data && el1.m_data < 401); }
     };

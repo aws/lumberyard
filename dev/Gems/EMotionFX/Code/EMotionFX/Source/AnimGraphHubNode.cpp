@@ -88,6 +88,11 @@ namespace EMotionFX
         uniqueData->m_sourceNode = nullptr;
     }
 
+    AnimGraphNode* AnimGraphHubNode::GetSourceNode(const AnimGraphInstance* animGraphInstance) const
+    {
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        return uniqueData->m_sourceNode;
+    }
 
     void AnimGraphHubNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
     {

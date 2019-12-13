@@ -2809,9 +2809,7 @@ bool CHWShader_D3D::mfSetTextures(const std::vector<SCGTexture>& Textures, EHWSh
                 break;
             }
 
-            //  Confetti BEGIN: Igor Lobanchikov
             CTexture* tex = nCustomID ? CTexture::GetByID(nCustomID) : CTexture::s_ptexRT_ShadowStub;
-            //  Confetti End: Igor Lobanchikov
             tex->ApplyTexture(nTUnit, eSHClass, nResViewKey);
         }
         break;
@@ -4662,7 +4660,7 @@ ED3DShError CHWShader_D3D::mfFallBack(SHWSInstance*& pInst, int nStatus)
     //  - ShadowGen pass
     //  - Z-prepass
     //  - Shadow-pass
-    if (CParserBin::m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO | SF_GL4 | SF_GLES3 | SF_METAL)) // ACCEPTED_USE
+    if (CParserBin::m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO | SF_GL4 | SF_GLES3 | SF_METAL))
     {
         //assert(gRenDev->m_cEF.m_nCombinationsProcess >= 0);
         return ED3DShError_CompilingError;
@@ -5310,6 +5308,8 @@ bool CHWShader_D3D::mfSetHS(int nFlags)
         #include "Xenia/D3DHWShader_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DHWShader_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DHWShader_cpp_salem.inl"
     #endif
 #endif
 
@@ -5371,6 +5371,8 @@ bool CHWShader_D3D::mfSetDS(int nFlags)
         #include "Xenia/D3DHWShader_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DHWShader_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DHWShader_cpp_salem.inl"
     #endif
 #endif
 

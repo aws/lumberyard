@@ -1,0 +1,14 @@
+{
+    "none":
+    {
+        "Pipeline/EMotionFXBuilder":
+        [
+            "EMotionFXBuilderComponent.h",
+            "EMotionFXBuilderComponent.cpp",
+            "AnimGraphBuilderWorker.h",
+            "AnimGraphBuilderWorker.cpp",
+            "MotionSetBuilderWorker.h",
+            "MotionSetBuilderWorker.cpp"
+        ]
+    }
+}

@@ -279,6 +279,7 @@ Negative values will be ignored.\n")->
         {
             // Copy the editor-side settings to the game entity to be exported.
             component->m_settings = m_settings;
+            component->m_settings.m_asset = m_asset;
         }
     }
 
@@ -520,7 +521,7 @@ Negative values will be ignored.\n")->
         bool entityVisibility = true;
         AzToolsFramework::EditorVisibilityRequestBus::EventResult(entityVisibility, GetEntityId(), &AzToolsFramework::EditorVisibilityRequestBus::Events::GetCurrentVisibility);
         settingsForEmitter.m_visible &= entityVisibility;
-
+        settingsForEmitter.m_asset = m_asset;
         return settingsForEmitter;
     }
 

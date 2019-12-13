@@ -19,6 +19,10 @@
 #include "ParticleEmitter.h"
 #include "VisAreas.h"
 
+#ifdef LY_TERRAIN_RUNTIME
+#include <Terrain/Bus/TerrainProviderBus.h>
+#endif
+
 //////////////////////////////////////////////////////////////////////////
 // SPhysEnviron implementation.
 //////////////////////////////////////////////////////////////////////////
@@ -56,7 +60,11 @@ void SPhysEnviron::GetWorldPhysAreas(uint32 nFlags, bool bNonUniformAreas)
     // Mark areas as queried.
     m_nNonUniformFlags |= EFF_LOADED;
 
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
     Vec3 vWorldSize(GetTerrain() ? float(GetTerrain()->GetTerrainSize()) : 0.f);
+#else
+    Vec3 vWorldSize(0.f);
+#endif
 
     // Atomic iteration.
     for (IPhysicalEntity* pArea = 0; pArea = GetPhysicalWorld()->GetNextArea(pArea); )
@@ -355,8 +363,15 @@ bool SPhysEnviron::PhysicsCollision(ray_hit& hit, Vec3 const& vStart, Vec3 const
     ZeroStruct(hit);
     hit.dist = 1.f;
 
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
     // Collide terrain first (if set as separately colliding).
+    // NEW-TERRAIN LY-103227:  Need to make particle collisions work with new terrain system
+    // NEW-TERRAIN LY-101543:  Need to replace specific terrain calls with abstracted API
+#ifdef LY_TERRAIN_RUNTIME
+    if ((nEnvFlags & ~ENV_COLLIDE_PHYSICS & ENV_TERRAIN) && !pTestEntity && GetTerrain() && !Terrain::TerrainProviderRequestBus::HasHandlers())
+#else
     if ((nEnvFlags & ~ENV_COLLIDE_PHYSICS & ENV_TERRAIN) && !pTestEntity && GetTerrain())
+#endif
     {
         nEnvFlags &= ~ENV_TERRAIN;
         CTerrain::SRayTrace rt;
@@ -380,6 +395,7 @@ bool SPhysEnviron::PhysicsCollision(ray_hit& hit, Vec3 const& vStart, Vec3 const
             }
         }
     }
+#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
 
     if (pTestEntity)
     {

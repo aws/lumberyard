@@ -14,6 +14,18 @@
 
 AZ_UNIT_TEST_HOOK();
 
+TEST(Cry3DEngineCVarTest, DeclareConstIntCVar_CheckDefault_ReturnsValue_FT)
+{
+    // Set the default value in the initialization
+    struct Foo {
+        DeclareConstIntCVar(test_cvar, 15);
+    } foo;
+    EXPECT_EQ(foo.test_cvar, 15);
+
+    DeclareConstIntCVar(test_cvar2, 15);
+    EXPECT_EQ(test_cvar2, 15);
+}
+
 TEST(Cry3DEngineSanityTest, Sanity)
 {
     EXPECT_EQ(1, 1);

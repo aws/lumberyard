@@ -57,7 +57,7 @@ namespace AZ
         public:
             AZ_CLASS_ALLOCATOR(StreamerLayoutHelper, SystemAllocator, 0);
             /**
-             * \param deviceName - example PC - "C:\",X360 - "game:\", PS3 - "/dev_bdvd/" // ACCEPTED_USE
+             * \param deviceName - example PC - "C:\"
              */
             StreamerLayoutHelper(const char* deviceName);
 

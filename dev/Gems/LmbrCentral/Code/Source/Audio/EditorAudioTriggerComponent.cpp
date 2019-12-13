@@ -41,7 +41,7 @@ namespace LmbrCentral
                     ->Value("MultiRay", Audio::ObstructionType::MultiRay)
                     ;
 
-                editContext->Class<EditorAudioTriggerComponent>("Audio Trigger", "The Audio Trigger component provides basic play and stop features so that you can set up Audio Translation Layer (ATL) play and stop triggers that can be executed on demand")
+                editContext->Class<EditorAudioTriggerComponent>("Audio Trigger", "The Audio Trigger component provides Audio Translation Layer (ATL) triggers for play/stop functionality and on-demand execution")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Audio")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/AudioTrigger.svg")

@@ -23,8 +23,9 @@ namespace AssetProcessor
     {
         m_assetScannerWorker.moveToThread( &m_assetWorkerScannerThread );
 
-        QObject::connect( &m_assetScannerWorker, &AssetScannerWorker::FilesFound, this, &AssetScanner::FilesFound );
-        QObject::connect( &m_assetScannerWorker, &AssetScannerWorker::FoldersFound, this, &AssetScanner::FoldersFound );
+        QObject::connect(&m_assetScannerWorker, &AssetScannerWorker::FilesFound, this, &AssetScanner::FilesFound);
+        QObject::connect(&m_assetScannerWorker, &AssetScannerWorker::FoldersFound, this, &AssetScanner::FoldersFound);
+        QObject::connect(&m_assetScannerWorker, &AssetScannerWorker::ExcludedFound, this, &AssetScanner::ExcludedFound);
 
         QObject::connect(&m_assetScannerWorker, &AssetScannerWorker::ScanningStateChanged, this,
             [this](AssetProcessor::AssetScanningStatus status)

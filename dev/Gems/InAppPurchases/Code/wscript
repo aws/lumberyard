@@ -19,6 +19,7 @@ def build(bld):
             group = 'com.android.billingclient',
             version = '1.0'
         )
+    bld.register_non_lumberyard_module('billing')
 
     bld.DefineGem(
         # Add custom build options here

@@ -35,7 +35,7 @@
 
 #undef SendMessage
 namespace AssetProcessor {
-ConnectionWorker::ConnectionWorker(qintptr socketDescriptor, QObject* parent)
+ConnectionWorker::ConnectionWorker(qintptr /*socketDescriptor*/, QObject* parent)
     : QObject(parent)
     , m_terminate(false)
 {
@@ -114,7 +114,7 @@ bool ConnectionWorker::ReadData(QTcpSocket& socket, char* buffer, qint64 size)
 bool ConnectionWorker::WriteMessage(QTcpSocket& socket, const AssetProcessor::Message& message)
 {
     const qint64 sizeOfHeader = static_cast<qint64>(sizeof(AssetProcessor::MessageHeader));
-    AZ_Assert(message.header.size == message.payload.size(), "Message header size does not match payload size");
+    AZ_Assert(message.header.size == aznumeric_cast<decltype(message.header.size)>(message.payload.size()), "Message header size does not match payload size");
 
     // Write header
     if (!WriteData(socket, (char*)&message.header, sizeOfHeader))
@@ -325,6 +325,7 @@ bool ConnectionWorker::NegotiateDirect(bool initiate)
         //if we are here it means that the editor/game which is negotiating is running on a different branch
         // note that it could have just read nothing from the engine or a repeat packet, in that case, discard it silently and try again.
         AZ_TracePrintf(AssetProcessor::ConsoleChannel, "ConnectionWorker::NegotiateDirect: branch token mismatch from %s - %p - %s vs %s\n", engineInfo.m_identifier.c_str(), this, incomingBranchToken.toUtf8().data(), branchToken.toUtf8().data());
+        AssetProcessor::MessageInfoBus::Broadcast(&AssetProcessor::MessageInfoBus::Events::NegotiationFailed);
         QTimer::singleShot(0, this, SLOT(DisconnectSockets()));
         return false;
     }

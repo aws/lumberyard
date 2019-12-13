@@ -4,16 +4,16 @@
         "testdata":
         [
             "unittests.qrc",
-            "testdata/config_broken_badplatform.ini",
-            "testdata/config_broken_noplatform.ini",
-            "testdata/config_broken_noscans.ini",
-            "testdata/config_broken_recognizers.ini",
-            "testdata/config_regular.ini",
-            "testdata/config_regular_platform_scanfolder.ini",
-            "testdata/config_overrides.ini"
+            "testdata/config_broken_badplatform/AssetProcessorPlatformConfig.ini",
+            "testdata/config_broken_noplatform/AssetProcessorPlatformConfig.ini",
+            "testdata/config_broken_noscans/AssetProcessorPlatformConfig.ini",
+            "testdata/config_broken_recognizers/AssetProcessorPlatformConfig.ini",
+            "testdata/config_regular/AssetProcessorPlatformConfig.ini",
+            "testdata/config_regular_platform_scanfolder/AssetProcessorPlatformConfig.ini",
+            "testdata/EmptyDummyProject/AssetProcessorGamePlatformConfig.ini",
+            "testdata/DummyProject/AssetProcessorGamePlatformConfig.ini"
         ],
-        "tests":
-        [
+        "tests": [
             "native/tests/AssetProcessorTest.h",
             "native/tests/AssetProcessorTest.cpp",
             "native/tests/BaseAssetProcessorTest.h",
@@ -26,6 +26,7 @@
             "native/tests/resourcecompiler/RCJobTest.h",
             "native/tests/assetBuilderSDK/assetBuilderSDKTest.h",
             "native/tests/assetBuilderSDK/assetBuilderSDKTest.cpp",
+            "native/tests/assetBuilderSDK/SerializationDependenciesTests.cpp",
             "native/tests/assetmanager/AssetProcessorManagerTest.cpp",
             "native/tests/assetmanager/AssetProcessorManagerTest.h",
             "native/tests/utilities/assetUtilsTest.cpp",
@@ -36,8 +37,12 @@
             "native/tests/AssetCatalog/AssetCatalogUnitTests.cpp",
             "native/tests/assetscanner/AssetScannerTests.h",
             "native/tests/assetscanner/AssetScannerTests.cpp",
+            "native/tests/BuilderConfiguration/BuilderConfigurationTests.cpp",
             "native/tests/FileProcessor/FileProcessorTests.h",
-            "native/tests/FileProcessor/FileProcessorTests.cpp"
+            "native/tests/FileProcessor/FileProcessorTests.cpp",
+            "native/tests/FileStateCache/FileStateCacheTests.h",
+            "native/tests/FileStateCache/FileStateCacheTests.cpp",
+            "native/tests/MissingDependencyScannerTests.cpp"
         ],
         "unittests":
         [

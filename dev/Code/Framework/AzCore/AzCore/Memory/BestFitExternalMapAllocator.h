@@ -23,7 +23,8 @@ namespace AZ
     * because the tracking node is stored outside the main chunk.
      */
     class BestFitExternalMapAllocator
-        : public IAllocator
+        : public AllocatorBase
+        , public IAllocatorAllocate
     {
     public:
         AZ_TYPE_INFO(BestFitExternalMapAllocator, "{36266C8B-9A2C-4E3E-9812-3DB260868A2B}")
@@ -53,9 +54,10 @@ namespace AZ
 
         //////////////////////////////////////////////////////////////////////////
         // IAllocator
-        virtual const char*     GetName() const                 { return "BestFitExternalMapAllocator"; }
-        virtual const char*     GetDescription() const          { return "Best fit allocator with external tracking storage!"; }
+        AllocatorDebugConfig GetDebugConfig() override;
 
+        //////////////////////////////////////////////////////////////////////////
+        // IAllocatorAllocate
         virtual pointer_type    Allocate(size_type byteSize, size_type alignment, int flags = 0, const char* name = 0, const char* fileName = 0, int lineNum = 0, unsigned int suppressStackRecord = 0);
         virtual void            DeAllocate(pointer_type ptr, size_type byteSize = 0, size_type alignment = 0);
         virtual size_type       Resize(pointer_type ptr, size_type newSize);
@@ -72,7 +74,8 @@ namespace AZ
         BestFitExternalMapAllocator(const BestFitExternalMapAllocator&);
         BestFitExternalMapAllocator& operator=(const BestFitExternalMapAllocator&);
 
-        BestFitExternalMapSchema*   m_schema;
+        Descriptor m_desc;
+        BestFitExternalMapSchema* m_schema;
     };
 }
 

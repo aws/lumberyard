@@ -39,7 +39,7 @@ public: // member functions
     virtual ~UiCanvasInterface() {}
 
     //! Get the asset ID path name of this canvas. If not loaded or saved yet this will be ""
-    virtual const string& GetPathname() = 0;
+    virtual const AZStd::string& GetPathname() = 0;
 
     //! Get the ID of this canvas. This will remain the same while this canvas is loaded.
     virtual LyShine::CanvasId GetCanvasId() = 0;
@@ -335,6 +335,10 @@ public: // member functions
     //! Clear all active interactables, and all hover interactables if last input was positional (mouse/touch).
     //! This is intended for internal use by UI components
     virtual void ClearAllInteractables() = 0;
+
+    //! Generate Enter pressed/released input events on an interactable.
+    //! Useful for automated testing to simulate button clicks
+    virtual void ForceEnterInputEventOnInteractable(AZ::EntityId interactableId) = 0;
 
 public: // static member data
 

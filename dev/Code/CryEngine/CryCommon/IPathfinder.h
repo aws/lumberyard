@@ -97,7 +97,7 @@ struct NavigationBlocker
         : sphere(Vec3(0, 0, 0), 0.0f)
         , costAddMod(0)
         , costMultMod(0)
-        , radialDecay(false) {assert("Should never get called"); }
+        , radialDecay(false) {AZ_Assert(false, "Should never get called"); }
 
     Sphere sphere;
     bool radialDecay;

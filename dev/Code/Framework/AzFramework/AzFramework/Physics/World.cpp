@@ -14,9 +14,21 @@
 #include <AzFramework/Physics/ShapeConfiguration.h>
 #include <AzCore/Serialization/EditContext.h>
 
+namespace
+{
+    const float TimestepMin = 0.001f; //1000fps
+    const float TimestepMax = 0.05f; //20fps
+}
+
 namespace Physics
 {
-    bool WorldConfiguration::VersionConverter(AZ::SerializeContext& /*context*/,
+    // This value represents 1/60 of a second. We cannot use 1/60.f directly because this value may be serialized
+    // by the serialization system, when 1/60 is serialized to text, it is truncated to the serialization systems
+    // float precision ( 1/60 = 0.0166667 ). Using the value that would be serialized and deserialized from the 
+    // same 1/60 will keep this value consistent
+    const float WorldConfiguration::s_defaultFixedTimeStep = 0.0166667f;
+
+    bool WorldConfiguration::VersionConverter(AZ::SerializeContext& context,
         AZ::SerializeContext::DataElementNode& classElement)
     {
         // conversion from version 1:
@@ -42,7 +54,46 @@ namespace Physics
             classElement.RemoveElementByName(AZ_CRC("HandleSimulationEvents", 0xba508787));
         }
 
+        //clamping of time steps
+        if (classElement.GetVersion() <= 4)
+        {
+            if (AZ::SerializeContext::DataElementNode* maxTimeStepElement = classElement.FindSubElement(AZ_CRC("MaxTimeStep", 0x34e83795)))
+            {
+                float maxTimeStep = TimestepMax;
+                const bool foundMaxTimeStep = maxTimeStepElement->GetData<float>(maxTimeStep);
+                if (foundMaxTimeStep)
+                {
+                    //clamp maxTimeStep between max and min
+                    maxTimeStep = AZ::GetClamp(maxTimeStep, TimestepMin, TimestepMax);
+                    maxTimeStepElement->SetData<float>(context, maxTimeStep);
+                }
+
+                if (AZ::SerializeContext::DataElementNode* fixedTimeStepElement = classElement.FindSubElement(AZ_CRC("FixedTimeStep", 0xd748ea77)))
+                {
+                    float fixedTimeStep = TimestepMax;
+                    bool foundFixedTimeStep = fixedTimeStepElement->GetData<float>(fixedTimeStep);
+                    if (foundFixedTimeStep)
+                    {
+                        //clamp fixedTimeStep between maxTimeStep and min
+                        fixedTimeStep = AZ::GetClamp(fixedTimeStep, TimestepMin, maxTimeStep);
+                        fixedTimeStepElement->SetData<float>(context, fixedTimeStep);
+                    }
+                }
+            }
+        }
+
         return true;
+    }
+
+    AZ::u32 WorldConfiguration::OnMaxTimeStepChanged()
+    {
+        m_fixedTimeStep = AZStd::GetMin(m_fixedTimeStep, GetFixedTimeStepMax()); //since m_maxTimeStep has changed, m_fixedTimeStep might be larger then the max.
+        return AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
+    }
+
+    float WorldConfiguration::GetFixedTimeStepMax() const
+    {
+        return m_maxTimeStep;
     }
 
     void WorldConfiguration::Reflect(AZ::ReflectContext* context)
@@ -50,7 +101,7 @@ namespace Physics
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<WorldConfiguration>()
-                ->Version(4, &VersionConverter)
+                ->Version(5, &VersionConverter)
                 ->Field("WorldBounds", &WorldConfiguration::m_worldBounds)
                 ->Field("MaxTimeStep", &WorldConfiguration::m_maxTimeStep)
                 ->Field("FixedTimeStep", &WorldConfiguration::m_fixedTimeStep)
@@ -69,12 +120,24 @@ namespace Physics
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &WorldConfiguration::m_worldBounds, "World Bounds", "World bounds")
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WorldConfiguration::m_maxTimeStep, "Max Time Step", "Max time step")
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WorldConfiguration::m_fixedTimeStep, "Fixed Time Step", "Fixed time step")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WorldConfiguration::m_maxTimeStep, "Max Time Step (sec)", "Max time step in seconds")
+                        ->Attribute(AZ::Edit::Attributes::Min, TimestepMin)
+                        ->Attribute(AZ::Edit::Attributes::Max, TimestepMax)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WorldConfiguration::OnMaxTimeStepChanged)//need to clamp m_fixedTimeStep if this value changes
+                        ->Attribute(AZ::Edit::Attributes::Decimals, 8)
+                        ->Attribute(AZ::Edit::Attributes::DisplayDecimals, 8)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WorldConfiguration::m_fixedTimeStep, "Fixed Time Step (sec)", "Fixed time step in seconds. Limited by 'Max Time Step'")
+                        ->Attribute(AZ::Edit::Attributes::Min, TimestepMin)
+                        ->Attribute(AZ::Edit::Attributes::Max, &WorldConfiguration::GetFixedTimeStepMax)
+                        ->Attribute(AZ::Edit::Attributes::Decimals, 8)
+                        ->Attribute(AZ::Edit::Attributes::DisplayDecimals, 8)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &WorldConfiguration::m_gravity, "Gravity", "Gravity")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &WorldConfiguration::m_raycastBufferSize, "Raycast Buffer Size", "Maximum number of hits from a raycast")
+                        ->Attribute(AZ::Edit::Attributes::Min, 1u)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &WorldConfiguration::m_sweepBufferSize, "Shapecast Buffer Size", "Maximum number of hits from a shapecast")
+                        ->Attribute(AZ::Edit::Attributes::Min, 1u)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &WorldConfiguration::m_overlapBufferSize, "Overlap Query Buffer Size", "Maximum number of hits from a overlap query")
+                        ->Attribute(AZ::Edit::Attributes::Min, 1u)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &WorldConfiguration::m_enableCcd, "Continuous Collision Detection", "Enabled continuous collision detection in the world")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &WorldConfiguration::m_enablePcm, "Persistent Contact Manifold", "Enabled the persistent contact manifold narrow-phase algorithm")
                     ;
@@ -83,7 +146,7 @@ namespace Physics
     }
 
     AZStd::vector<OverlapHit> World::OverlapSphere(float radius, const AZ::Transform& pose,
-        CustomFilterCallback customFilterCallback)
+        OverlapFilterCallback filterCallback)
     {
         SphereShapeConfiguration shapeConfiguration;
         shapeConfiguration.m_radius = radius;
@@ -91,12 +154,12 @@ namespace Physics
         OverlapRequest overlapRequest;
         overlapRequest.m_pose = pose;
         overlapRequest.m_shapeConfiguration = &shapeConfiguration;
-        overlapRequest.m_customFilterCallback = customFilterCallback;
+        overlapRequest.m_filterCallback = filterCallback;
         return Overlap(overlapRequest);
     }
 
     AZStd::vector<OverlapHit> World::OverlapBox(const AZ::Vector3& dimensions, const AZ::Transform& pose,
-        CustomFilterCallback customFilterCallback)
+        OverlapFilterCallback filterCallback)
     {
         BoxShapeConfiguration shapeConfiguration;
         shapeConfiguration.m_dimensions = dimensions;
@@ -104,12 +167,12 @@ namespace Physics
         OverlapRequest overlapRequest;
         overlapRequest.m_pose = pose;
         overlapRequest.m_shapeConfiguration = &shapeConfiguration;
-        overlapRequest.m_customFilterCallback = customFilterCallback;
+        overlapRequest.m_filterCallback = filterCallback;
         return Overlap(overlapRequest);
     }
 
     AZStd::vector<OverlapHit> World::OverlapCapsule(float height, float radius, const AZ::Transform& pose,
-        CustomFilterCallback customFilterCallback)
+        OverlapFilterCallback filterCallback)
     {
         CapsuleShapeConfiguration shapeConfiguration;
         shapeConfiguration.m_height = height;
@@ -118,12 +181,12 @@ namespace Physics
         OverlapRequest overlapRequest;
         overlapRequest.m_pose = pose;
         overlapRequest.m_shapeConfiguration = &shapeConfiguration;
-        overlapRequest.m_customFilterCallback = customFilterCallback;
+        overlapRequest.m_filterCallback = filterCallback;
         return Overlap(overlapRequest);
     }
 
     Physics::RayCastHit World::SphereCast(float radius, const AZ::Transform& startPose, const AZ::Vector3& direction, float distance,
-        QueryType queryType, CollisionGroup collisionGroup, CustomFilterCallback filterCallback)
+        QueryType queryType, CollisionGroup collisionGroup, FilterCallback filterCallback)
     {
         SphereShapeConfiguration shapeConfiguration;
         shapeConfiguration.m_radius = radius;
@@ -135,12 +198,12 @@ namespace Physics
         request.m_shapeConfiguration = &shapeConfiguration;
         request.m_queryType = queryType;
         request.m_collisionGroup = collisionGroup;
-        request.m_customFilterCallback = filterCallback;
+        request.m_filterCallback = filterCallback;
         return ShapeCast(request);
     }
 
     AZStd::vector<Physics::RayCastHit> World::SphereCastMultiple(float radius, const AZ::Transform& startPose, const AZ::Vector3& direction, float distance,
-        QueryType queryType, CollisionGroup collisionGroup, CustomFilterCallback filterCallback)
+        QueryType queryType, CollisionGroup collisionGroup, FilterCallback filterCallback)
     {
         SphereShapeConfiguration shapeConfiguration;
         shapeConfiguration.m_radius = radius;
@@ -152,12 +215,12 @@ namespace Physics
         request.m_shapeConfiguration = &shapeConfiguration;
         request.m_queryType = queryType;
         request.m_collisionGroup = collisionGroup;
-        request.m_customFilterCallback = filterCallback;
+        request.m_filterCallback = filterCallback;
         return ShapeCastMultiple(request);
     }
 
     Physics::RayCastHit World::BoxCast(const AZ::Vector3& boxDimensions, const AZ::Transform& startPose,
-        const AZ::Vector3& direction, float distance, QueryType queryType, CollisionGroup collisionGroup, CustomFilterCallback filterCallback)
+        const AZ::Vector3& direction, float distance, QueryType queryType, CollisionGroup collisionGroup, FilterCallback filterCallback)
     {
         BoxShapeConfiguration shapeConfiguration;
         shapeConfiguration.m_dimensions = boxDimensions;
@@ -169,12 +232,12 @@ namespace Physics
         request.m_shapeConfiguration = &shapeConfiguration;
         request.m_queryType = queryType;
         request.m_collisionGroup = collisionGroup;
-        request.m_customFilterCallback = filterCallback;
+        request.m_filterCallback = filterCallback;
         return ShapeCast(request);
     }
 
     AZStd::vector<Physics::RayCastHit> World::BoxCastMultiple(const AZ::Vector3& boxDimensions, const AZ::Transform& startPose,
-        const AZ::Vector3& direction, float distance, QueryType queryType, CollisionGroup collisionGroup, CustomFilterCallback filterCallback)
+        const AZ::Vector3& direction, float distance, QueryType queryType, CollisionGroup collisionGroup, FilterCallback filterCallback)
     {
         BoxShapeConfiguration shapeConfiguration;
         shapeConfiguration.m_dimensions = boxDimensions;
@@ -186,12 +249,12 @@ namespace Physics
         request.m_shapeConfiguration = &shapeConfiguration;
         request.m_queryType = queryType;
         request.m_collisionGroup = collisionGroup;
-        request.m_customFilterCallback = filterCallback;
+        request.m_filterCallback = filterCallback;
         return ShapeCastMultiple(request);
     }
 
     Physics::RayCastHit World::CapsuleCast(float capsuleRadius, float capsuleHeight, const AZ::Transform& startPose,
-        const AZ::Vector3& direction, float distance, QueryType queryType, CollisionGroup collisionGroup, CustomFilterCallback filterCallback)
+        const AZ::Vector3& direction, float distance, QueryType queryType, CollisionGroup collisionGroup, FilterCallback filterCallback)
     {
         CapsuleShapeConfiguration shapeConfiguration;
         shapeConfiguration.m_height = capsuleHeight;
@@ -204,12 +267,12 @@ namespace Physics
         request.m_shapeConfiguration = &shapeConfiguration;
         request.m_queryType = queryType;
         request.m_collisionGroup = collisionGroup;
-        request.m_customFilterCallback = filterCallback;
+        request.m_filterCallback = filterCallback;
         return ShapeCast(request);
     }
 
     AZStd::vector<Physics::RayCastHit> World::CapsuleCastMultiple(float capsuleRadius, float capsuleHeight, const AZ::Transform& startPose,
-        const AZ::Vector3& direction, float distance, QueryType queryType, CollisionGroup collisionGroup, CustomFilterCallback filterCallback)
+        const AZ::Vector3& direction, float distance, QueryType queryType, CollisionGroup collisionGroup, FilterCallback filterCallback)
     {
         CapsuleShapeConfiguration shapeConfiguration;
         shapeConfiguration.m_height = capsuleHeight;
@@ -222,7 +285,7 @@ namespace Physics
         request.m_shapeConfiguration = &shapeConfiguration;
         request.m_queryType = queryType;
         request.m_collisionGroup = collisionGroup;
-        request.m_customFilterCallback = filterCallback;
+        request.m_filterCallback = filterCallback;
         return ShapeCastMultiple(request);
     }
 } // namespace Physics

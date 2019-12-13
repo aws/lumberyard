@@ -68,7 +68,7 @@ namespace EMStudio
         mInterfaceTimerID           = MCORE_INVALIDINDEX32;
         mGameControllerTimerID      = MCORE_INVALIDINDEX32;
         mString.reserve(4096);
-    #ifdef HAS_GAME_CONTROLLER
+    #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         mGameController         = nullptr;
     #endif
 
@@ -98,7 +98,7 @@ namespace EMStudio
         delete mUnselectCallback;
 
         // get rid of the game controller
-    #ifdef HAS_GAME_CONTROLLER
+    #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         if (mGameController)
         {
             mGameController->Shutdown();
@@ -195,7 +195,7 @@ namespace EMStudio
     // automatically selec the game controller in the combo box
     void GameControllerWindow::AutoSelectGameController()
     {
-    #ifdef HAS_GAME_CONTROLLER
+    #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         // this will call ReInit();
         if (mGameController->GetDeviceNameString().empty() == false && mGameControllerComboBox->count() > 1)
         {
@@ -212,7 +212,7 @@ namespace EMStudio
     // initialize the game controller
     void GameControllerWindow::InitGameController()
     {
-    #ifdef HAS_GAME_CONTROLLER
+    #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         if (mGameController)
         {
             mGameController->Shutdown();
@@ -244,7 +244,7 @@ namespace EMStudio
         mGameControllerComboBox->addItem(NO_GAMECONTROLLER_NAME);
 
         // add the gamepad in case it is valid and the device name is not empty
-    #ifdef HAS_GAME_CONTROLLER
+    #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         if (mGameController->GetIsValid() && mGameController->GetDeviceNameString().empty() == false)
         {
             mGameControllerComboBox->addItem(mGameController->GetDeviceName());
@@ -304,7 +304,7 @@ namespace EMStudio
         mGameControllerTimer.stop();
 
         // check if we need to recreate the dynamic widget
-    #ifdef HAS_GAME_CONTROLLER
+    #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         if (mGameController->GetIsValid() == false || mGameControllerComboBox->currentText() != mGameController->GetDeviceName())
         {
             DisablePresetInterface();
@@ -385,7 +385,7 @@ namespace EMStudio
 
             // iterate over the elements and add the ones which are present on the current game controller to the combo box
             uint32 selectedComboItem = 0;
-        #ifdef HAS_GAME_CONTROLLER
+        #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
             if (parameter->GetType() == MCore::AttributeFloat::TYPE_ID)
             {
                 uint32 numPresentElements = 0;
@@ -495,7 +495,7 @@ namespace EMStudio
         mButtonInfos.Clear();
 
         // get the number of buttons and iterate through them
-    #ifdef HAS_GAME_CONTROLLER
+    #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         const uint32 numButtons = mGameController->GetNumButtons();
         for (uint32 i = 0; i < numButtons; ++i)
         {
@@ -673,7 +673,7 @@ namespace EMStudio
         dynamicWidgetLayout->addLayout(verticalLayout);
 
         // add the realtime preview window to the dynamic widget layout
-    #ifdef HAS_GAME_CONTROLLER
+    #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         QWidget* realTimePreviewWidget = new QWidget();
         realTimePreviewWidget->setMinimumWidth(200);
         realTimePreviewWidget->setMaximumWidth(200);
@@ -690,7 +690,7 @@ namespace EMStudio
 
     void GameControllerWindow::OnDeadZoneSliderChanged(int value)
     {
-    #ifdef HAS_GAME_CONTROLLER
+    #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         mGameController->SetDeadZone(value * 0.01f);
         mString = AZStd::string::format("%.2f", value * 0.01f);
         mDeadZoneValueLabel->setText(mString.c_str());
@@ -1194,7 +1194,7 @@ namespace EMStudio
         EMotionFX::AnimGraphGameControllerSettings::ParameterInfo* settingsInfo = activePreset->FindParameterInfo(paramInfo->mParameter->GetName().c_str());
         MCORE_ASSERT(settingsInfo);
 
-    #ifdef HAS_GAME_CONTROLLER
+    #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         if (azrtti_istypeof<EMotionFX::FloatParameter>(paramInfo->mParameter))
         {
             const uint32 elementID = mGameController->FindElemendIDByName(FromQtString(combo->currentText()).c_str());
@@ -1290,7 +1290,7 @@ namespace EMStudio
     // handle timer event
     void GameControllerWindow::timerEvent(QTimerEvent* event)
     {
-    #ifndef HAS_GAME_CONTROLLER
+    #if !AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         MCORE_UNUSED(event);
     #endif
 
@@ -1300,7 +1300,7 @@ namespace EMStudio
         }
 
         // update the game controller
-    #ifdef HAS_GAME_CONTROLLER
+    #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         mGameController->Update();
 
         // check if the game controller is usable and if we have actually checked it in the combobox, if not return directly
@@ -1312,7 +1312,7 @@ namespace EMStudio
         return;
     #endif
 
-    #ifdef HAS_GAME_CONTROLLER
+    #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         // get the selected actor instance
         EMotionFX::ActorInstance* actorInstance = GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
         if (actorInstance == nullptr)
@@ -1858,7 +1858,7 @@ namespace EMStudio
         }
 
         // re-init the param window
-    #ifdef HAS_GAME_CONTROLLER
+    #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         AnimGraphPlugin* animGraphPlugin = (AnimGraphPlugin*)plugin;
         animGraphPlugin->GetGameControllerWindow()->ReInit();
     #endif

@@ -4710,7 +4710,7 @@ void CEntityObject::OnMenuConvertToPrefab()
     IDataBaseLibrary* pLibrary = GetIEditor()->GetPrefabManager()->FindLibrary(libraryFileName);
     if (pLibrary == NULL)
     {
-        IDataBaseLibrary* pLibrary = GetIEditor()->GetPrefabManager()->LoadLibrary(libraryFileName);
+        pLibrary = GetIEditor()->GetPrefabManager()->LoadLibrary(libraryFileName);
     }
 
     if (pLibrary == NULL)

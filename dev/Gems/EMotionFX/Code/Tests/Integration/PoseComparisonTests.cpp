@@ -20,7 +20,6 @@
 #include <EMotionFX/Source/Importer/Importer.h>
 #include <Tests/Printers.h>
 
-#include <io.h>
 
 namespace EMotionFX
 {
@@ -104,15 +103,13 @@ namespace EMotionFX
                 {
                     *result_listener << "where the value pair at index #" << i << " don't match\n";
 
-                    static const bool useColor = _isatty(_fileno(stdout)) != 0;
-
                     const uint32 numContextLines = 2;
                     const uint32 beginContextLines = i > numContextLines ? i - numContextLines : 0;
                     const uint32 endContextLines = i > commonSize - numContextLines - 1 ? commonSize : i + numContextLines + 1;
                     for (uint32 contextIndex = beginContextLines; contextIndex < endContextLines; ++contextIndex)
                     {
                         const bool contextLineMatches = ::testing::Matches(innerMatcher)(::testing::make_tuple(got.GetKey(contextIndex), m_expected.GetKey(contextIndex)));
-                        if (useColor && !contextLineMatches)
+                        if (!contextLineMatches)
                         {
                             *result_listener << "\033[0;31m"; // red
                         }
@@ -120,7 +117,7 @@ namespace EMotionFX
                         PrintTo(m_expected.GetKey(contextIndex), result_listener->stream());
                         *result_listener << "\n" << contextIndex << ":   Actual: ";
                         PrintTo(got.GetKey(contextIndex), result_listener->stream());
-                        if (useColor && !contextLineMatches)
+                        if (!contextLineMatches)
                         {
                             *result_listener << "\033[0;m";
                         }

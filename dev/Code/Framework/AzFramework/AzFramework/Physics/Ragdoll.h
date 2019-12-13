@@ -119,5 +119,8 @@ namespace Physics
 
         /// Returns the number of ragdoll nodes in the ragdoll.
         virtual size_t GetNumNodes() const = 0;
+
+        /// Returns the id of the world the ragdoll exists in.
+        virtual AZ::Crc32 GetWorldId() const = 0;
     };
 }

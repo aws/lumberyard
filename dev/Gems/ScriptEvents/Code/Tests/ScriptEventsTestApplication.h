@@ -18,7 +18,6 @@
 #include <AzCore/Asset/AssetManagerComponent.h>
 #include <AzCore/Jobs/JobManagerComponent.h>
 #include <AzCore/IO/StreamerComponent.h>
-#include <AzCore/Serialization/ObjectStreamComponent.h>
 #include <AzCore/Memory/MemoryComponent.h>
 #include <AzFramework/Asset/AssetCatalogComponent.h>
 
@@ -39,7 +38,6 @@ namespace ScriptEventsTests
                     azrtti_typeid<AZ::MemoryComponent>(),
                     azrtti_typeid<AZ::AssetManagerComponent>(),
                     azrtti_typeid<AzFramework::AssetCatalogComponent>(),
-
                 });
 
             return components;

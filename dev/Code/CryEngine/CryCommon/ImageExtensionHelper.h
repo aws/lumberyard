@@ -19,10 +19,12 @@
 #include <Cry_Vector3.h>
 #include <Cry_Color.h>
 
-#if defined(AZ_RESTRICTED_PLATFORM)
+#if defined(AZ_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #undef AZ_RESTRICTED_SECTION
 #define IMAGEEXTENSIONHELPER_H_SECTION_1 1
 #define IMAGEEXTENSIONHELPER_H_SECTION_2 2
+#define IMAGEEXTENSIONHELPER_H_SECTION_CONSTS 3
+#define IMAGEEXTENSIONHELPER_H_SECTION_ISNATIVE 4
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
@@ -31,6 +33,8 @@
         #include "Xenia/ImageExtensionHelper_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ImageExtensionHelper_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ImageExtensionHelper_h_salem.inl"
     #endif
 #endif
 
@@ -40,6 +44,8 @@
         #include "Xenia/ImageExtensionHelper_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ImageExtensionHelper_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ImageExtensionHelper_h_salem.inl"
     #endif
 #endif
 
@@ -240,18 +246,12 @@ namespace CImageExtensionHelper
     const static uint32 EIF_Greyscale           =        0x8;  // hint for the engine (e.g. greyscale light beams can be applied to shadow mask), can be for DXT1 because compression artfacts don't count as color
     const static uint32 EIF_SupressEngineReduce =       0x10;  // info for the engine: don't reduce texture resolution on this texture
     const static uint32 EIF_UNUSED_BIT          =       0x40;  // Free to use
-    const static uint32 EIF_Compressed          =      0x200;  // info for the engine: it's an MCT or PTC compressed texture for XBox // ACCEPTED_USE
     const static uint32 EIF_AttachedAlpha       =      0x400;  // info for the engine: it's a texture with attached alpha channel
     const static uint32 EIF_SRGBRead            =      0x800;  // info for the engine: if gamma corrected rendering is on, this texture requires SRGBRead (it's not stored in linear)
-    const static uint32 EIF_XBox360Native       =     0x1000;  // info for the engine: native XBox360 texture format // ACCEPTED_USE
-    const static uint32 EIF_PS3Native           =     0x2000;  // info for the engine: native PS3 texture format // ACCEPTED_USE
-    const static uint32 EIF_X360NotPretiled     =     0x4000;  // info for the engine: the texture cannot be pretiled // ACCEPTED_USE
     const static uint32 EIF_DontResize          =     0x8000;  // info for the engine: for dds textures that shouldn't be resized with r_TexResolution
     const static uint32 EIF_RenormalizedTexture =    0x10000;  // info for the engine: for dds textures that have renormalized color range
     const static uint32 EIF_CafeNative          =    0x20000;  // info for the engine: native Cafe texture format
-    const static uint32 EIF_OrbisNative         =    0x40000;  // info for the engine: native Orbis texture format // ACCEPTED_USE
     const static uint32 EIF_Tiled               =    0x80000;  // info for the engine: texture has been tiled for the platform
-    const static uint32 EIF_DurangoNative       =   0x100000;  // info for the engine: native Durango texture format // ACCEPTED_USE
     const static uint32 EIF_Splitted            =   0x200000;  // info for the engine: this texture is splitted
     const static uint32 EIF_Colormodel          =  0x7000000;  // info for the engine: bitmask: colormodel used in the texture
     const static uint32 EIF_Colormodel_RGB      =  0x0000000;  // info for the engine: colormodel is RGB (default)
@@ -259,6 +259,24 @@ namespace CImageExtensionHelper
     const static uint32 EIF_Colormodel_YCC      =  0x2000000;  // info for the engine: colormodel is Y'CbCr (used for reflectance)
     const static uint32 EIF_Colormodel_YFF      =  0x3000000;  // info for the engine: colormodel is Y'FbFr (used for reflectance)
     const static uint32 EIF_Colormodel_IRB      =  0x4000000;  // info for the engine: colormodel is IRB (used for reflectance)
+
+#if defined(AZ_PLATFORM_XENIA) || defined(TOOLS_SUPPORT_XENIA)
+#define AZ_RESTRICTED_SECTION IMAGEEXTENSIONHELPER_H_SECTION_CONSTS
+#include "Xenia/ImageExtensionHelper_h_xenia.inl"
+#undef AZ_RESTRICTED_SECTION
+#endif
+
+#if defined(AZ_PLATFORM_PROVO) || defined(TOOLS_SUPPORT_PROVO)
+#define AZ_RESTRICTED_SECTION IMAGEEXTENSIONHELPER_H_SECTION_CONSTS
+#include "Provo/ImageExtensionHelper_h_provo.inl"
+#undef AZ_RESTRICTED_SECTION
+#endif
+
+#if defined(AZ_PLATFORM_SALEM) || defined(TOOLS_SUPPORT_SALEM)
+#define AZ_RESTRICTED_SECTION IMAGEEXTENSIONHELPER_H_SECTION_CONSTS
+#include "Salem/ImageExtensionHelper_h_salem.inl"
+#undef AZ_RESTRICTED_SECTION
+#endif
 
     enum ETileMode
     {
@@ -318,7 +336,20 @@ namespace CImageExtensionHelper
     //   true, if this texture is ready for this platform
     inline const bool IsImageNative(const uint32 nFlags)
     {
-        return (nFlags & (EIF_XBox360Native | EIF_PS3Native)) == 0; // ACCEPTED_USE
+        return (nFlags & (0
+#if defined(AZ_PLATFORM_XENIA) || defined(TOOLS_SUPPORT_XENIA)
+#define AZ_RESTRICTED_SECTION IMAGEEXTENSIONHELPER_H_SECTION_ISNATIVE
+#include "Xenia/ImageExtensionHelper_h_xenia.inl"
+#endif
+#if defined(AZ_PLATFORM_PROVO) || defined(TOOLS_SUPPORT_PROVO)
+#define AZ_RESTRICTED_SECTION IMAGEEXTENSIONHELPER_H_SECTION_ISNATIVE
+#include "Provo/ImageExtensionHelper_h_provo.inl"
+#endif
+#if defined(AZ_PLATFORM_SALEM) || defined(TOOLS_SUPPORT_SALEM)
+#define AZ_RESTRICTED_SECTION IMAGEEXTENSIONHELPER_H_SECTION_ISNATIVE
+#include "Salem/ImageExtensionHelper_h_salem.inl"
+#endif
+        )) == 0;
     }
 
     // Arguments:
@@ -392,14 +423,13 @@ namespace CImageExtensionHelper
         return 0;   // chunk does not exist
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov
     static ILINE Vec2i GetBlockDim(const ETEX_Format eTF)
     {
         if (eTF == eTF_BC1 || eTF == eTF_BC2 || eTF == eTF_BC3 || eTF == eTF_BC5U || eTF == eTF_BC5S || eTF == eTF_BC4U || eTF == eTF_BC4S || eTF == eTF_CTX1 || eTF == eTF_BC6UH || eTF == eTF_BC6SH || eTF == eTF_BC7 || eTF == eTF_EAC_R11 || eTF == eTF_EAC_RG11 || eTF == eTF_ETC2 || eTF == eTF_ETC2A)
         {
             return Vec2i(4, 4);
         }
-        //  Igor: Apple requires the following for the texture:
+        //  Apple requires the following for the texture:
         //  Height and width must be a power of 2
         //  Height and width must be at least 8
         //  Must be square
@@ -459,14 +489,12 @@ namespace CImageExtensionHelper
             return 8 / 8;
         case eTF_R16:
             return 16 / 8;
-        //  Confetti BEGIN: Igor Lobanchikov
         case eTF_R16U:
             return 16 / 8;
         case eTF_R16G16U:
             return 32 / 8;
         case eTF_R10G10B10A2UI:
             return 32 / 8;
-        //  Confetti End: Igor Lobanchikov
         case eTF_R16F:
             return 16 / 8;
         case eTF_R32F:
@@ -572,7 +600,6 @@ namespace CImageExtensionHelper
         return 0;
     }
 
-    //  Confetti End: Igor Lobanchikov
 
     inline bool IsBlockCompressed(ETEX_Format eTF)
     {
@@ -593,7 +620,6 @@ namespace CImageExtensionHelper
                 eTF == eTF_EAC_RG11      ||
                 eTF == eTF_PVRTC2        ||
                 eTF == eTF_PVRTC4        ||
-                //  Confetti BEGIN: Igor Lobanchikov
                 eTF == eTF_ASTC_4x4      ||
                 eTF == eTF_ASTC_5x4      ||
                 eTF == eTF_ASTC_5x5      ||
@@ -608,7 +634,6 @@ namespace CImageExtensionHelper
                 eTF == eTF_ASTC_10x10    ||
                 eTF == eTF_ASTC_12x10    ||
                 eTF == eTF_ASTC_12x12
-                //  Confetti End: Igor Lobanchikov
                 );
     }
 
@@ -647,7 +672,6 @@ namespace CImageExtensionHelper
                 eTF == eTF_EAC_RG11      ||
                 eTF == eTF_PVRTC2        ||
                 eTF == eTF_PVRTC4        ||
-                //  Confetti BEGIN: Igor Lobanchikov
                 eTF == eTF_ASTC_4x4 ||
                 eTF == eTF_ASTC_5x4 ||
                 eTF == eTF_ASTC_5x5 ||
@@ -662,7 +686,6 @@ namespace CImageExtensionHelper
                 eTF == eTF_ASTC_10x10 ||
                 eTF == eTF_ASTC_12x10 ||
                 eTF == eTF_ASTC_12x12
-                //  Confetti End: Igor Lobanchikov
                 );
     }
 
@@ -770,7 +793,6 @@ namespace CImageExtensionHelper
         case eTF_PVRTC4:
             return "PVRTC4";
 
-        //  Confetti BEGIN: Igor Lobanchikov
         case eTF_ASTC_4x4:
             return "ASTC_4x4";
         case eTF_ASTC_5x4:
@@ -799,7 +821,6 @@ namespace CImageExtensionHelper
             return "ASTC_12x10";
         case eTF_ASTC_12x12:
             return "ASTC_12x12";
-        //  Confetti End: Igor Lobanchikov
 
         case eTF_A8L8:
             return "A8L8";
@@ -1015,7 +1036,6 @@ namespace CImageExtensionHelper
             return eTF_PVRTC4;
         }
 
-        //  Confetti BEGIN: Igor Lobanchikov
         if (!azstricmp(sETF, "ASTC_4x4"))
         {
             return eTF_ASTC_4x4;
@@ -1072,7 +1092,6 @@ namespace CImageExtensionHelper
         {
             return eTF_ASTC_12x12;
         }
-        //  Confetti End: Igor Lobanchikov
 
         if (!azstricmp(sETF, "A8L8"))
         {
@@ -1437,7 +1456,6 @@ namespace DDSFormats
     const CImageExtensionHelper::DDS_PIXELFORMAT DDSPF_ETC2A =
     { sizeof(CImageExtensionHelper::DDS_PIXELFORMAT), DDS_FOURCC, MAKEFOURCC('E', 'T', '2', 'A'), 0, 0, 0, 0, 0 };
 
-    //  Confetti BEGIN: Igor Lobanchikov
     const CImageExtensionHelper::DDS_PIXELFORMAT DDSPF_PVRTC2 =
     { sizeof(CImageExtensionHelper::DDS_PIXELFORMAT), DDS_FOURCC, MAKEFOURCC('P', 'V', 'R', '2'), 0, 0, 0, 0, 0 };
 
@@ -1485,7 +1503,6 @@ namespace DDSFormats
 
     const CImageExtensionHelper::DDS_PIXELFORMAT DDSPF_ASTC_12x12 =
     { sizeof(CImageExtensionHelper::DDS_PIXELFORMAT), DDS_FOURCC, MAKEFOURCC('A', 'S', 'C', 'C'), 0, 0, 0, 0, 0 };
-    //  Confetti End: Igor Lobanchikov
 
     const CImageExtensionHelper::DDS_PIXELFORMAT DDSPF_R32F =
     { sizeof(CImageExtensionHelper::DDS_PIXELFORMAT), DDS_FOURCC, DDS_FOURCC_R32F, 32, 0, 0, 0, 0 };
@@ -1671,7 +1688,6 @@ namespace DDSFormats
         {
             return eTF_A8;
         }
-        //  Confetti BEGIN: Igor Lobanchikov
         else if (ddspf.dwFourCC == DDSPF_PVRTC2.dwFourCC)
         {
             return eTF_PVRTC2;
@@ -1736,7 +1752,6 @@ namespace DDSFormats
         {
             return eTF_ASTC_12x12;
         }
-        //  Confetti End: Igor Lobanchikov
 
         assert(0);
         return eTF_Unknown;
@@ -1892,7 +1907,6 @@ namespace DDSFormats
             case DXGI_FORMAT_PVRTC4_UNORM_SRGB:
                 return eTF_PVRTC4;
 #endif
-                //  Confetti BEGIN: Igor Lobanchikov
 #if defined(ANDROID) //|| defined(CRY_USE_METAL)
             case DXGI_FORMAT_ASTC_4x4_TYPELESS:
                 return eTF_ASTC_4x4;
@@ -1979,7 +1993,6 @@ namespace DDSFormats
             case DXGI_FORMAT_ASTC_12x12_UNORM_SRGB:
                 return eTF_ASTC_12x12;
 #endif
-            //  Confetti End: Igor Lobanchikov
             // only available as hardware format under DX9
             case DXGI_FORMAT_B8G8R8A8_TYPELESS:
                 return eTF_B8G8R8A8;
@@ -2094,7 +2107,6 @@ namespace DDSFormats
         case eTF_PVRTC4:
             return DDSPF_PVRTC4;
 
-        //  Confetti BEGIN: Igor Lobanchikov
         case eTF_ASTC_4x4:
             return DDSPF_ASTC_4x4;
         case eTF_ASTC_5x4:
@@ -2123,7 +2135,6 @@ namespace DDSFormats
             return DDSPF_ASTC_12x10;
         case eTF_ASTC_12x12:
             return DDSPF_ASTC_12x12;
-        //  Confetti End: Igor Lobanchikov
         default:
             assert(0);
             return DDSPF_A8B8G8R8;

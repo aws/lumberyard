@@ -17,27 +17,5 @@
         "include"
     ],
     "defines": [],
-    "lib_required": "True",
-    "platform": {
-        "win_x64_vs2015": {
-            "libpath_debug": [
-                "vs14/debug"
-            ],
-            "libpath_release": [
-                "vs14/release"
-            ],
-            "lib": [
-                "${lib_names}.lib"
-            ]
-        },
-        "win_x64_vs2017": "@win_x64_vs2015",
-        "darwin_x64": {
-            "libpath": [
-                "macos"
-            ],
-            "lib": [
-                "${lib_names}.a"
-            ]
-        }
-    }
+    "lib_required": "True"
 }

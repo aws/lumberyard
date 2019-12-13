@@ -24,7 +24,7 @@ namespace AssetBuilderApplicationPrivate
         // Builder processes load user-code and we couldn't expect that every single gem
         // written by every single external developer be able to shut down cleanly.
 
-        TerminateProcess(GetCurrentProcess(), -1); // dont ever return a success error code from a terminated process.
+        TerminateProcess(GetCurrentProcess(), UINT(-1)); // dont ever return a success error code from a terminated process.
         return TRUE;
     }
 }

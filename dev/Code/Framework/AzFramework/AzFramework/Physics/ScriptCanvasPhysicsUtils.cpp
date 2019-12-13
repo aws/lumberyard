@@ -118,5 +118,22 @@ namespace Physics
         {
             Call(FN_OnCollisionEnd, collisionEvent.m_body2->GetEntityId());
         }
+
+        void WorldNotificationBusBehaviorHandler::Reflect(AZ::ReflectContext* context)
+        {
+            if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+            {
+                behaviorContext->EBus<WorldNotificationBus>("WorldNotificationBus")
+                    ->Handler<WorldNotificationBusBehaviorHandler>()
+                    ;
+            }
+        }
+
+        int WorldNotificationBusBehaviorHandler::GetPhysicsTickOrder()
+        {
+            int order = WorldNotifications::Scripting;
+            CallResult(order, FN_GetPhysicsTickOrder);
+            return order;
+        }
     }
 }

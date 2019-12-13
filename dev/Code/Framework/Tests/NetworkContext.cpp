@@ -14,7 +14,6 @@
 #include <AzFramework/Application/Application.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/Memory/MemoryComponent.h>
-#include <AzCore/Memory/AllocationRecords.h>
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/IO/ByteContainerStream.h>
 #include <AzCore/UnitTest/TestTypes.h>
@@ -25,6 +24,8 @@
 #include <GridMate/Serialize/DataMarshal.h>
 #include <GridMate/Serialize/UtilityMarshal.h>
 #include <GridMate/Serialize/ContainerMarshal.h>
+#include <GridMate/Replica/ReplicaMgr.h>
+#include <AzFramework/Network/InterestManagerComponent.h>
 
 namespace UnitTest
 {
@@ -48,9 +49,6 @@ namespace UnitTest
         void Activate() override {}
         void Deactivate() override {}
 
-        void SetNetworkBinding(ReplicaChunkPtr chunk) override {}
-        void UnbindFromNetwork() override {}
-
         bool SetPos(float x, float y, const RpcContext&)
         {
             m_x = x;
@@ -65,14 +63,15 @@ namespace UnitTest
 
         bool m_floatChanged = false;
     private:
-        float m_x, m_y;
+        float m_x = 0, m_y = 0;
     };
 
     class TestComponentReplicaChunk
-        : public ReplicaChunk
+        : public ReplicaChunkBase
+        , public ReplicaChunkInterface
     {
     public:
-        AZ_CLASS_ALLOCATOR(TestComponentReplicaChunk, AZ::SystemAllocator, 0);
+        GM_CLASS_ALLOCATOR(TestComponentReplicaChunk);
         static const char* GetChunkName() { return "TestComponentReplicaChunk"; }
         bool IsReplicaMigratable() override { return true; }
 
@@ -92,9 +91,9 @@ namespace UnitTest
         }
 
         DataSet<int> m_int;
-        DataSet<float>::BindInterface<TestComponentExternalChunk, & TestComponentExternalChunk::OnFloatChanged> m_float;
-        GridMate::Rpc<GridMate::RpcArg<int, Marshaler<int> > >::BindInterface<TestComponentReplicaChunk, & TestComponentReplicaChunk::SetIntImpl> SetInt;
-        GridMate::Rpc<GridMate::RpcArg<float>, GridMate::RpcArg<float> >::BindInterface<TestComponentExternalChunk, & TestComponentExternalChunk::SetPos> SetPos;
+        DataSet<float>::BindInterface<TestComponentExternalChunk, &TestComponentExternalChunk::OnFloatChanged> m_float;
+        GridMate::Rpc<GridMate::RpcArg<int, Marshaler<int> > >::BindInterface<TestComponentReplicaChunk, &TestComponentReplicaChunk::SetIntImpl> SetInt;
+        GridMate::Rpc<GridMate::RpcArg<float>, GridMate::RpcArg<float> >::BindInterface<TestComponentExternalChunk, &TestComponentExternalChunk::SetPos> SetPos;
     };
 
     void TestComponentExternalChunk::Reflect(ReflectContext* context)
@@ -181,9 +180,9 @@ namespace UnitTest
         int m_ctorInt;
         AZStd::vector<int> m_ctorVec;
         Field<int> m_int;
-        BoundField<float, TestComponentAutoChunk, & TestComponentAutoChunk::OnFloatChanged> m_float;
+        BoundField<float, TestComponentAutoChunk, &TestComponentAutoChunk::OnFloatChanged> m_float;
         Field<TestEnum, GridMate::ConversionMarshaler<AZ::u8, TestEnum> > m_enum;
-        Rpc<int>::Binder<TestComponentAutoChunk, & TestComponentAutoChunk::SetIntImpl> SetInt;
+        Rpc<int>::Binder<TestComponentAutoChunk, &TestComponentAutoChunk::SetIntImpl> SetInt;
     };
 
     class NetContextReflectionTest
@@ -193,7 +192,12 @@ namespace UnitTest
         void run()
         {
             AzFramework::Application app;
-            app.Start(AzFramework::Application::Descriptor());
+            AzFramework::Application::Descriptor appDesc;
+            appDesc.m_recordingMode = Debug::AllocationRecords::RECORD_NO_RECORDS;
+            appDesc.m_allocationRecords = false;
+            appDesc.m_enableDrilling = false;
+
+            app.Start(appDesc);
 
             AzFramework::NetworkContext* netContext = nullptr;
             EBUS_EVENT_RESULT(netContext, NetSystemRequestBus, GetNetworkContext);
@@ -277,7 +281,7 @@ namespace UnitTest
                     ReplicaChunkPtr chunk2 = desc->CreateFromStream(ctx);
 
                     TestComponentAutoChunk* testComponent2 = testEntity2->FindComponent<TestComponentAutoChunk>();
-                    netContext->Bind(testComponent2, chunk2);
+                    netContext->Bind(testComponent2, chunk2, NetworkContextBindMode::NonAuthoritative);
                     // Ensure values match after ctor data is applied
                     AZ_TEST_ASSERT(testComponent2->m_ctorInt == testComponent->m_ctorInt);
                     AZ_TEST_ASSERT(testComponent2->m_ctorVec == testComponent->m_ctorVec);
@@ -310,7 +314,8 @@ namespace UnitTest
                 testChunk->m_float.Set(1024.0f);
                 // I would like to test that the notify fired, but without a Replica, cant :(
 
-                chunk.reset();
+                testComponent->UnbindFromNetwork();
+                chunk.reset(); ///// CRASHES FROM HERE
             }
 
             // test serialization of NetBindable::Fields
@@ -339,5 +344,425 @@ namespace UnitTest
     TEST_F(NetContextReflectionTest, Test)
     {
         run();
+    }
+
+    template <typename ComponentType>
+    class NetContextFixture
+        : public ::testing::Test
+    {
+    public:
+        NetContextFixture() = default;
+        ~NetContextFixture() = default;
+
+        void SetUp() override
+        {
+            AZ::AllocatorInstance<SystemAllocator>::Create();
+
+            m_app = AZStd::make_unique<AzFramework::Application>();
+            m_app->Start(AzFramework::Application::Descriptor());
+
+            AzFramework::NetworkContext* netContext = nullptr;
+            EBUS_EVENT_RESULT(netContext, NetSystemRequestBus, GetNetworkContext);
+            AZ_TEST_ASSERT(netContext);
+
+            m_descTestComponentAutoChunk = ComponentType::CreateDescriptor();
+            m_app->RegisterComponentDescriptor(m_descTestComponentAutoChunk);
+
+            m_entity = AZStd::make_unique<AZ::Entity>("TestEntity");
+            m_entity->Init();
+            m_entity->CreateComponent<ComponentType>();
+            m_entity->Activate();
+        }
+
+        void TearDown() override
+        {
+            m_descTestComponentAutoChunk->ReleaseDescriptor();
+
+            m_entity->Deactivate();
+            m_entity.reset();
+
+            m_app->Stop();
+            m_app.reset();
+
+            AZ::AllocatorInstance<SystemAllocator>::Destroy();
+        }
+
+        void RunTest()
+        {
+            const ComponentType* testComponent = m_entity->FindComponent<ComponentType>();
+            AZStd::vector<AZ::u8> buffer;
+            AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8> > saveStream(&buffer);
+            const bool saved = AZ::Utils::SaveObjectToStream(saveStream, AZ::DataStream::ST_XML, testComponent);
+            AZ_TEST_ASSERT(saved);
+            AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8> > loadStream(&buffer);
+            const AZStd::unique_ptr<ComponentType> testCopy(AZ::Utils::LoadObjectFromStream<ComponentType>(loadStream));
+            AZ_TEST_ASSERT(testCopy);
+        }
+
+        AZStd::unique_ptr<AzFramework::Application> m_app;
+        AZStd::unique_ptr<AZ::Entity> m_entity;
+        AZ::ComponentDescriptor* m_descTestComponentAutoChunk = nullptr;
+    };
+
+    class TestComponent_EmptyNetContext
+        : public AZ::Component
+        , public NetBindable
+    {
+    public:
+        AZ_COMPONENT(TestComponent_EmptyNetContext, "{B1E2E2DD-DA70-4D59-A185-AF9A5CCF1574}", AZ::Component, NetBindable);
+
+        static void Reflect(ReflectContext* context)
+        {
+            if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context))
+            {
+                serializeContext->Class<TestComponent_EmptyNetContext, AZ::Component>()
+                    ->Version(1);
+            }
+            if (NetworkContext* netContext = azrtti_cast<NetworkContext*>(context))
+            {
+                netContext->Class<TestComponent_EmptyNetContext>();
+            }
+        }
+
+        void Activate() override {}
+        void Deactivate() override {}
+    };
+
+    using NetContextEmpty = NetContextFixture<TestComponent_EmptyNetContext>;
+    TEST_F(NetContextEmpty, SerializationTests)
+    {
+        RunTest();
+    }
+
+    template<typename FieldType>
+    class TestComponent_OneField
+        : public AZ::Component
+        , public NetBindable
+    {
+    public:
+        AZ_COMPONENT(TestComponent_OneField, "{A7BCDBEF-3D4F-4D04-A6FA-DF48D4B66ABE}", AZ::Component, NetBindable);
+
+        using ThisComponentType = TestComponent_OneField<FieldType>;
+
+        static void Reflect(ReflectContext* context)
+        {
+            if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context))
+            {
+                serializeContext->Class<TestComponent_OneField, AZ::Component>()
+                    ->Field("Field", &TestComponent_OneField::m_field)
+                    ->Version(1);
+            }
+            if (NetworkContext* netContext = azrtti_cast<NetworkContext*>(context))
+            {
+                netContext->Class<TestComponent_OneField>()
+                    ->Field("Field", &TestComponent_OneField::m_field);
+            }
+        }
+
+        void Activate() override {}
+        void Deactivate() override {}
+
+        Field<FieldType> m_field;
+    };
+
+    TYPED_TEST_CASE_P(NetContextFixture);
+
+    TYPED_TEST_P(NetContextFixture, SerializationTests)
+    {
+        this->RunTest();
+    }
+
+    REGISTER_TYPED_TEST_CASE_P(NetContextFixture, SerializationTests);
+
+    /*
+     * Testing the basic common types.
+     */
+    using CommonTypes = ::testing::Types<
+        TestComponent_OneField<bool>,
+        TestComponent_OneField<float>,
+        TestComponent_OneField<AZ::u32>,
+        TestComponent_OneField<AZ::EntityId>,
+        TestComponent_OneField<AZ::Vector2>,
+        TestComponent_OneField<AZ::Vector3>,
+        TestComponent_OneField<AZ::Quaternion>
+    >;
+
+    INSTANTIATE_TYPED_TEST_CASE_P(NetContextCommonSerialization, NetContextFixture, CommonTypes);
+
+    /*
+     * And some less common types.
+     */
+    using LessCommonTypes = ::testing::Types<
+        TestComponent_OneField<AZStd::string>,
+        TestComponent_OneField<AZ::Transform>,
+        TestComponent_OneField<AZ::Color>,
+        TestComponent_OneField<AZStd::vector<int>>,
+        TestComponent_OneField<AZ::Uuid>
+    >;
+
+    INSTANTIATE_TYPED_TEST_CASE_P(NetContextLessCommonSerialization, NetContextFixture, LessCommonTypes);
+
+    /*
+     * Next up are marshal and unmarshal tests.
+     */
+
+    template <typename ComponentType>
+    class NetContextMarshalFixture
+        : public ::testing::Test
+    {
+    public:
+        NetContextMarshalFixture() = default;
+        ~NetContextMarshalFixture() = default;
+
+        void SetUp() override
+        {
+            AZ::AllocatorInstance<SystemAllocator>::Create();
+
+            AZ::AllocatorInstance<GridMate::GridMateAllocator>::Create();
+
+            m_app = AZStd::make_unique<AzFramework::Application>();
+            m_app->Start(AzFramework::Application::Descriptor());
+
+            AzFramework::NetworkContext* netContext = nullptr;
+            EBUS_EVENT_RESULT(netContext, NetSystemRequestBus, GetNetworkContext);
+            AZ_TEST_ASSERT(netContext);
+
+            m_descTestComponentAutoChunk = ComponentType::CreateDescriptor();
+            m_app->RegisterComponentDescriptor(m_descTestComponentAutoChunk);
+
+            m_entityFrom = AZStd::make_unique<AZ::Entity>("TestEntityFrom");
+            m_entityFrom->Init();
+            m_componentFrom = m_entityFrom->CreateComponent<ComponentType>();
+            m_entityFrom->Activate();
+
+            m_entityTo = AZStd::make_unique<AZ::Entity>("TestEntityTo");
+            m_entityTo->Init();
+            m_componentTo = m_entityTo->CreateComponent<ComponentType>();
+            m_entityTo->Activate();
+        }
+
+        void MarshalUnMarshal()
+        {
+            AzFramework::NetworkContext* netContext = nullptr;
+            NetSystemRequestBus::BroadcastResult(netContext, &NetSystemRequestBus::Events::GetNetworkContext);
+            AZ_TEST_ASSERT(netContext);
+
+            ComponentType* testComponent = m_entityFrom->FindComponent<ComponentType>();
+            AZ_TEST_ASSERT(testComponent);
+            ReplicaChunkPtr chunk = testComponent->GetNetworkBinding();
+            AZ_TEST_ASSERT(chunk);
+
+            m_outReplica = AZStd::make_unique<GridMate::Replica>("ReplicaTo");
+            {
+                m_outManager = AZStd::make_unique<GridMate::ReplicaManager>();
+                m_outPeer = AZStd::make_unique<GridMate::ReplicaPeer>(m_outManager.get());
+
+                GridMate::WriteBufferDynamic wb(GridMate::EndianType::IgnoreEndian);
+                {
+                    GridMate::TimeContext tc;
+                    const GridMate::ReplicaContext rc(nullptr, tc);
+                    GridMate::MarshalContext mc(GridMate::ReplicaMarshalFlags::FullSync, &wb, nullptr, rc);
+                    mc.m_peer = m_outPeer.get();
+                    mc.m_rm = m_outManager.get();
+                    chunk->Debug_PrepareData(wb.GetEndianType(), GridMate::ReplicaMarshalFlags::FullSync);
+                    chunk->Debug_Marshal(mc, 0);
+                }
+
+                // and now unmarshal into the other entity
+                {
+                    GridMate::TimeContext tc;
+                    const GridMate::ReplicaContext rc(nullptr, tc);
+                    GridMate::ReadBuffer rb(wb.GetEndianType(), wb.Get(), wb.Size());
+                    GridMate::UnmarshalContext ctx(rc);
+                    ctx.m_hasCtorData = false;
+                    ctx.m_iBuf = &rb;
+                    ctx.m_peer = m_outPeer.get();
+                    ctx.m_rm = m_outManager.get();
+                    m_outReplicaChunk = chunk->GetDescriptor()->CreateFromStream(ctx);
+
+                    m_outReplicaChunk->Debug_AttachedToReplica(m_outReplica.get());
+                    ctx.m_peer->Debug_Add(m_outReplica.get());
+                    m_outReplicaChunk->Debug_Unmarshal(ctx, 0);
+                    /*
+                     * Note the order: unmarshal first to populate the chunk with data, then apply it to a component.
+                     * The expectation is that the valid will apply to NetBindable::Field without being overwritten.
+                     */
+                    m_componentTo->SetNetworkBinding(m_outReplicaChunk);
+
+                    // the main test body can now test for the equality
+                }
+            }
+        }
+
+        void TearDown() override
+        {
+            m_outReplicaChunk.reset();
+            m_outManager.reset();
+            m_outPeer.reset();
+            m_outReplica.release(); // Replica is held by as an intrusive pointer in @m_outPeer and is destroyed there.
+
+            if (m_entityFrom)
+            {
+                m_entityFrom->Deactivate();
+                m_entityFrom.reset();
+            }
+
+            if (m_entityTo)
+            {
+                m_entityTo->Deactivate();
+                m_entityTo.reset();
+            }
+
+            m_descTestComponentAutoChunk->ReleaseDescriptor();
+
+            m_app->Stop();
+            m_app.reset();
+
+            AZ::AllocatorInstance<GridMate::GridMateAllocator>::Destroy();
+            AZ::AllocatorInstance<SystemAllocator>::Destroy();
+        }
+
+        AZStd::unique_ptr<AzFramework::Application> m_app;
+        AZStd::unique_ptr<AZ::Entity> m_entityFrom;
+        AZStd::unique_ptr<AZ::Entity> m_entityTo;
+
+        ComponentType* m_componentFrom = nullptr;
+        ComponentType* m_componentTo = nullptr;
+
+        AZ::ComponentDescriptor* m_descTestComponentAutoChunk = nullptr;
+
+        GridMate::ReplicaChunkPtr m_outReplicaChunk;
+        AZStd::unique_ptr<GridMate::Replica> m_outReplica;
+        AZStd::unique_ptr<GridMate::ReplicaManager> m_outManager;
+        AZStd::unique_ptr<GridMate::ReplicaPeer> m_outPeer;
+    };
+
+    using NetContextVector3 = NetContextMarshalFixture<TestComponent_OneField<AZ::Vector3>>;
+    TEST_F(NetContextVector3, SerializationTests)
+    {
+        const Vector3 value = AZ::Vector3::CreateAxisZ( 1.f );
+
+        m_componentFrom->m_field = value;
+        MarshalUnMarshal();
+
+        AZ_TEST_ASSERT(m_componentTo->m_field.Get() == value);
+    }
+
+    /*
+     * Now the same test but with NetBindable::BoundField<>
+     */
+
+    template<typename FieldType>
+    class TestComponent_OneBoundField
+        : public AZ::Component
+        , public NetBindable
+    {
+    public:
+        AZ_COMPONENT(TestComponent_OneBoundField, "{2B283821-41DF-46BB-BE8E-66EF7301B62A}", AZ::Component, NetBindable);
+
+        using ThisComponentType = TestComponent_OneBoundField<FieldType>;
+
+        static void Reflect(ReflectContext* context)
+        {
+            if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context))
+            {
+                serializeContext->Class<ThisComponentType, AZ::Component>()
+                    ->Field("Field", &ThisComponentType::m_boundField)
+                    ->Version(1);
+            }
+            if (NetworkContext* netContext = azrtti_cast<NetworkContext*>(context))
+            {
+                netContext->Class<ThisComponentType>()
+                    ->Field("Field", &ThisComponentType::m_boundField);
+            }
+        }
+
+        void Activate() override {}
+        void Deactivate() override {}
+
+        void OnBoundFieldChanged( const FieldType&, const GridMate::TimeContext& ) {}
+
+        BoundField<FieldType, ThisComponentType, &ThisComponentType::OnBoundFieldChanged> m_boundField;
+    };
+
+    using NetContextBoundVector2 = NetContextMarshalFixture<TestComponent_OneBoundField<AZ::Vector2>>;
+    TEST_F(NetContextBoundVector2, SerializationTests)
+    {
+        const Vector2 value = AZ::Vector2::CreateAxisX( 4.f );
+
+        m_componentFrom->m_boundField = value;
+        MarshalUnMarshal();
+
+        AZ_TEST_ASSERT(m_componentTo->m_boundField.Get() == value);
+    }
+
+    TEST_F(NetContextBoundVector2, Delete_Authoritative_Entity)
+    {
+        using ThisComponentType = TestComponent_OneBoundField<AZ::Vector2>;
+
+        AzFramework::NetworkContext* netContext = nullptr;
+        NetSystemRequestBus::BroadcastResult(netContext, &NetSystemRequestBus::Events::GetNetworkContext);
+        AZ_TEST_ASSERT(netContext);
+        ThisComponentType* testComponent = m_entityFrom->FindComponent<ThisComponentType>();
+        AZ_TEST_ASSERT(testComponent);
+        ReplicaChunkPtr chunk = testComponent->GetNetworkBinding();
+
+        // Testing early deletion of an entity on the server.
+        m_entityFrom->Deactivate();
+        m_entityFrom.reset();
+
+        // This test passes if it doesn't crash on cleanup.
+        chunk.reset();
+    }
+
+    template<typename FieldType>
+    class TestComponent_OneBoundField_ServerCallback
+        : public AZ::Component
+        , public NetBindable
+    {
+    public:
+        AZ_COMPONENT(TestComponent_OneBoundField_ServerCallback, "{74F5B232-0544-45CA-B207-9846052ED1AD}", AZ::Component, NetBindable);
+
+        using ThisComponentType = TestComponent_OneBoundField_ServerCallback<FieldType>;
+
+        static void Reflect(ReflectContext* context)
+        {
+            if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context))
+            {
+                serializeContext->Class<ThisComponentType, AZ::Component>()
+                    ->Field("Field", &ThisComponentType::m_boundField)
+                    ->Version(1);
+            }
+            if (NetworkContext* netContext = azrtti_cast<NetworkContext*>(context))
+            {
+                netContext->Class<ThisComponentType>()
+                    ->Field("Field", &ThisComponentType::m_boundField);
+            }
+        }
+
+        void Activate() override {}
+        void Deactivate() override {}
+
+        void OnBoundFieldChanged( const FieldType&, const GridMate::TimeContext& )
+        {
+            ++m_callbacksInvokeCount;
+        }
+
+        AZ::u8 m_callbacksInvokeCount = 0;
+
+        BoundField<FieldType, ThisComponentType, &ThisComponentType::OnBoundFieldChanged> m_boundField;
+    };
+
+    using NetContextBoundVector2WithCallbackCount = NetContextMarshalFixture<TestComponent_OneBoundField_ServerCallback<AZ::Vector2>>;
+    TEST_F(NetContextBoundVector2WithCallbackCount, BoundField_Invoke_OnServer_Test)
+    {
+        MarshalUnMarshal();
+
+        m_componentFrom->m_callbacksInvokeCount = 0; // resetting the count
+
+        const Vector2 value = AZ::Vector2::CreateAxisX( 4.f );
+        m_componentFrom->m_boundField = value;
+
+        AZ_TEST_ASSERT(m_componentFrom->m_callbacksInvokeCount ==  1);
     }
 }

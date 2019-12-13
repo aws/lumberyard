@@ -166,7 +166,7 @@ bool PropertyHandlerSprite::ReadValuesIntoGUI(size_t index, PropertySpriteCtrl* 
         {
             EBUS_EVENT_RESULT(assetId, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, instance.GetAssetPath().c_str(), instance.GetAssetType(), false);
         }
-        ctrl->SetCurrentAssetID(assetId);
+        ctrl->SetSelectedAssetID(assetId);
     }
     ctrl->blockSignals(false);
 

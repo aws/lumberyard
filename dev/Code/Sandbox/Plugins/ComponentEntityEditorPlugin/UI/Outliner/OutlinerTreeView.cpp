@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "ComponentEntityEditorPlugin_precompiled.h"
 
 #include "OutlinerTreeView.hxx"
 #include "OutlinerListModel.hxx"
@@ -345,8 +345,6 @@ void OutlinerTreeView::drawBranches(QPainter* painter, const QRect& rect, const 
         lineBaseX -= indentation();
         previousIndex = ancestorIndex;
     }
-
-    painter->restore();
 }
 
 void OutlinerTreeView::timerEvent(QTimerEvent* event)

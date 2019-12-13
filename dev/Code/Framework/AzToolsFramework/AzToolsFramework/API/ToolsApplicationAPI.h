@@ -396,15 +396,31 @@ namespace AzToolsFramework
          */
         virtual EntityIdSet GatherEntitiesAndAllDescendents(const EntityIdList& inputEntities) = 0;
 
+        //! Create a new entity at a default position
+        virtual AZ::EntityId CreateNewEntity(AZ::EntityId parentId = AZ::EntityId()) = 0;
+
+        //! Create a new entity at a specified position
+        virtual AZ::EntityId CreateNewEntityAtPosition(const AZ::Vector3& pos, AZ::EntityId parentId = AZ::EntityId()) = 0;
+
         /*!
          * Delete all currently-selected entities.
          */
         virtual void DeleteSelected() = 0;
 
         /*!
+         * Deletes the specified entity.
+         */
+        virtual void DeleteEntityById(AZ::EntityId entityId) = 0;
+
+        /*!
          * Deletes all specified entities.
          */
         virtual void DeleteEntities(const EntityIdList& entities) = 0;
+
+        /*!
+        * Deletes the specified entity, as well as any transform descendants.
+        */
+        virtual void DeleteEntityAndAllDescendants(AZ::EntityId entityId) = 0;
 
         /*!
         * Deletes all entities in the provided list, as well as their transform descendants.

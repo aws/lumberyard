@@ -190,35 +190,6 @@ namespace AzToolsFramework
             {
                 m_jobRunKey = rand();
             }
-            JobInfo(const JobInfo& other) = default;
-            JobInfo& operator=(const JobInfo& other) = default;
-
-            JobInfo(JobInfo&& other)
-            {
-                *this = AZStd::move(other);
-            }
-
-            JobInfo& operator=(JobInfo&& other)
-            {
-                if (this != &other)
-                {
-                    m_sourceFile = AZStd::move(other.m_sourceFile);
-                    m_watchFolder = AZStd::move(other.m_watchFolder);
-                    m_platform = AZStd::move(other.m_platform);
-                    m_builderGuid = AZStd::move(other.m_builderGuid);
-                    m_jobKey = AZStd::move(other.m_jobKey);
-                    m_status = other.m_status;
-                    m_jobRunKey = other.m_jobRunKey;
-                    m_firstFailLogTime = other.m_firstFailLogTime;
-                    m_firstFailLogFile = AZStd::move(other.m_firstFailLogFile);
-                    m_lastFailLogTime = other.m_lastFailLogTime;
-                    m_lastFailLogFile = AZStd::move(other.m_lastFailLogFile);
-                    m_lastLogTime = other.m_lastLogTime;
-                    m_lastLogFile = AZStd::move(other.m_lastLogFile);
-                    m_jobID = other.m_jobID;
-                }
-                return *this;
-            }
 
             AZ::u32 GetHash() const
             {
@@ -235,7 +206,7 @@ namespace AzToolsFramework
                 if (serialize)
                 {
                     serialize->Class<JobInfo>()
-                        ->Version(3)
+                        ->Version(4)
                         ->Field("sourceFile", &JobInfo::m_sourceFile)
                         ->Field("platform", &JobInfo::m_platform)
                         ->Field("builderUuid", &JobInfo::m_builderGuid)
@@ -249,7 +220,10 @@ namespace AzToolsFramework
                         ->Field("lastLogTime", &JobInfo::m_lastLogTime)
                         ->Field("lastLogFile", &JobInfo::m_lastLogFile)
                         ->Field("jobID", &JobInfo::m_jobID)
-                        ->Field("watchFolder", &JobInfo::m_watchFolder);
+                        ->Field("watchFolder", &JobInfo::m_watchFolder)
+                        ->Field("errorCount", &JobInfo::m_errorCount)
+                        ->Field("warningCount", &JobInfo::m_warningCount)
+                        ;
                 }
             }
 
@@ -284,6 +258,8 @@ namespace AzToolsFramework
             AZStd::string m_lastFailLogFile;
             AZ::s64 m_lastLogTime = 0;
             AZStd::string m_lastLogFile;
+            AZ::s64 m_errorCount = 0;
+            AZ::s64 m_warningCount = 0;
 
             AZ::s64 m_jobID = 0; // this is the actual database row.   Client is unlikely to need this.
         };

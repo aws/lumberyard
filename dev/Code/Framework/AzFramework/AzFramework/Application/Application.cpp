@@ -24,14 +24,15 @@
 #include <AzCore/std/parallel/binary_semaphore.h>
 #include <AzCore/std/string/conversions.h>
 #include <AzCore/Serialization/DataPatch.h>
-#include <AzCore/Serialization/ObjectStreamComponent.h>
 #include <AzCore/Debug/FrameProfilerComponent.h>
 #include <AzCore/NativeUI/NativeUISystemComponent.h>
 #include <AzCore/PlatformIncl.h>
 #include <AzCore/Module/ModuleManagerBus.h>
 
 #include <AzFramework/Asset/SimpleAsset.h>
+#include <AzFramework/Asset/AssetBundleManifest.h>
 #include <AzFramework/Asset/AssetCatalogComponent.h>
+#include <AzFramework/Asset/CustomAssetTypeComponent.h>
 #include <AzFramework/Asset/AssetSystemComponent.h>
 #include <AzFramework/Asset/AssetRegistry.h>
 #include <AzFramework/Components/ConsoleBus.h>
@@ -41,11 +42,13 @@
 #include <AzFramework/Entity/EntityContext.h>
 #include <AzFramework/Entity/GameEntityContextComponent.h>
 #include <AzFramework/FileFunc/FileFunc.h>
+#include <AzFramework/FileTag/FileTagComponent.h>
 #include <AzFramework/Input/System/InputSystemComponent.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/IO/LocalFileIO.h>
 #include <AzFramework/Network/NetBindingComponent.h>
 #include <AzFramework/Network/NetBindingSystemComponent.h>
+#include <AzFramework/Physics/Utils.h>
 #include <AzFramework/Script/ScriptRemoteDebugging.h>
 #include <AzFramework/Script/ScriptComponent.h>
 #include <AzFramework/TargetManagement/TargetManagementComponent.h>
@@ -420,7 +423,7 @@ namespace AzFramework
              * which does not get cleared when Application shuts down. We need to un-reflect here to clear ReplicaChunkDescriptor
              * so that ReplicaChunkDescriptor::m_vdt doesn't get flooded when we repeatedly instantiate Application in unit tests.
              */
-            m_reflectionManager->RemoveReflectContext<NetworkContext>();
+            AZ::ReflectionEnvironment::GetReflectionManager()->RemoveReflectContext<NetworkContext>();
 
             if (AZ::IO::FileIOBase::GetInstance() == m_defaultFileIO.get())
             {
@@ -454,7 +457,6 @@ namespace AzFramework
             azrtti_typeid<AZ::StreamerComponent>(),
             azrtti_typeid<AZ::JobManagerComponent>(),
             azrtti_typeid<AZ::AssetManagerComponent>(),
-            azrtti_typeid<AZ::ObjectStreamComponent>(),
             azrtti_typeid<AZ::UserSettingsComponent>(),
             azrtti_typeid<AZ::Debug::FrameProfilerComponent>(),
             azrtti_typeid<AZ::NativeUI::NativeUISystemComponent>(),
@@ -462,6 +464,8 @@ namespace AzFramework
             azrtti_typeid<AZ::SliceSystemComponent>(),
 
             azrtti_typeid<AzFramework::AssetCatalogComponent>(),
+            azrtti_typeid<AzFramework::CustomAssetTypeComponent>(),
+            azrtti_typeid<AzFramework::FileTag::BlackListFileComponent>(),
             azrtti_typeid<AzFramework::NetBindingComponent>(),
             azrtti_typeid<AzFramework::NetBindingSystemComponent>(),
             azrtti_typeid<AzFramework::TransformComponent>(),
@@ -493,11 +497,13 @@ namespace AzFramework
         AzFramework::SimpleAssetReferenceBase::Reflect(context);
         AzFramework::ConsoleRequests::Reflect(context);
         AzFramework::ConsoleNotifications::Reflect(context);
+        Physics::ReflectionUtils::ReflectPhysicsApi(context);
 
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             AzFramework::AssetRegistry::ReflectSerialize(serializeContext);
             CameraState::Reflect(*serializeContext);
+            AzFramework::AssetBundleManifest::ReflectSerialize(serializeContext);
         }
     }
 
@@ -517,6 +523,8 @@ namespace AzFramework
 
             azrtti_typeid<AzFramework::BootstrapReaderComponent>(),
             azrtti_typeid<AzFramework::AssetCatalogComponent>(),
+            azrtti_typeid<AzFramework::CustomAssetTypeComponent>(),
+            azrtti_typeid<AzFramework::FileTag::BlackListFileComponent>(),
             azrtti_typeid<AzFramework::GameEntityContextComponent>(),
             azrtti_typeid<AzFramework::AssetSystem::AssetSystemComponent>(),
             azrtti_typeid<AzFramework::InputSystemComponent>(),
@@ -667,7 +675,7 @@ namespace AzFramework
         ComponentApplication::CreateReflectionManager();
 
         // Setup NetworkContext
-        m_reflectionManager->AddReflectContext<NetworkContext>();
+        AZ::ReflectionEnvironment::GetReflectionManager()->AddReflectContext<NetworkContext>();
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -690,7 +698,14 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////
     NetworkContext* Application::GetNetworkContext()
     {
-        return m_reflectionManager ? m_reflectionManager->GetReflectContext<NetworkContext>() : nullptr;
+        NetworkContext* result = nullptr;
+
+        if (auto reflectionManager = AZ::ReflectionEnvironment::GetReflectionManager())
+        {
+            result = reflectionManager->GetReflectContext<NetworkContext>();
+        }
+
+        return result;
     }
 
     bool Application::IsEngineExternal() const
@@ -786,7 +801,7 @@ namespace AzFramework
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzFramework);
 
         AZStd::thread_desc newThreadDesc;
-        newThreadDesc.m_cpuId = AZ_TRAIT_THREAD_WORKERTHREAD_AFFINITY_MASK;
+        newThreadDesc.m_cpuId = AFFINITY_MASK_USERTHREADS;
         newThreadDesc.m_name = newThreadName;
         AZStd::binary_semaphore binarySemaphore;
         AZStd::thread newThread([&workForNewThread, &binarySemaphore, &newThreadName]

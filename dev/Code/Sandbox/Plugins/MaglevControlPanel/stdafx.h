@@ -11,9 +11,15 @@
 */
 #pragma once
 
+// MSVC warns that these typedef members are being used and therefore must be acknowledged by using the following macro
+#pragma push_macro("_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
+#ifndef _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
+#define _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
+#endif
 #include <QtGlobal>
 
 #include <AzCore/PlatformDef.h>
+AZ_PUSH_DISABLE_WARNING(5033, "-Wunused-warning-option") // Disabling C++17 warning - warning C5033: 'register' is no longer a supported storage class
 
 /////////////////////////////////////////////////////////////////////////////
 // CRY Stuff ////////////////////////////////////////////////////////////////
@@ -31,3 +37,5 @@
 #include <map>
 #include <set>
 #include <algorithm>
+AZ_POP_DISABLE_WARNING
+#pragma pop_macro("_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")

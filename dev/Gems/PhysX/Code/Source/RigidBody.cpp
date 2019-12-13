@@ -418,6 +418,10 @@ namespace PhysX
     void RigidBody::SetGravityEnabled(bool enabled)
     {
         m_pxRigidActor->setActorFlag(physx::PxActorFlag::eDISABLE_GRAVITY, enabled == false);
+        if (enabled)
+        {
+            ForceAwake();
+        }
     }
 
     void RigidBody::SetSimulationEnabled(bool enabled)
@@ -528,7 +532,7 @@ namespace PhysX
 
     void RigidBody::ForceAsleep()
     {
-        if (m_pxRigidActor)
+        if (m_pxRigidActor && m_pxRigidActor->getScene()) //<- Rigid body must be in a scene, otherwise putToSleep will crash
         {
             m_pxRigidActor->putToSleep();
         }
@@ -536,7 +540,7 @@ namespace PhysX
 
     void RigidBody::ForceAwake()
     {
-        if (m_pxRigidActor)
+        if (m_pxRigidActor && m_pxRigidActor->getScene()) //<- Rigid body must be in a scene, otherwise wakeUp will crash
         {
             m_pxRigidActor->wakeUp();
         }

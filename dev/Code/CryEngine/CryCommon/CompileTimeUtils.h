@@ -19,20 +19,8 @@
 #include "MetaUtils.h"
 
 // static assert
-#if _MSC_VER >= 1600
 #define STATIC_ASSERT(condition, errMessage) static_assert(condition, errMessage)
-#else
-template <bool condition>
-struct _SStaticAssert{};
-template <>
-struct _SStaticAssert<true>
-{
-    static void Assert()
-    {
-    }
-};
-#define STATIC_ASSERT(condition, errMessage) _SStaticAssert<(condition)>::Assert();
-#endif
+
 
 // static_max
 template<int left, int right>

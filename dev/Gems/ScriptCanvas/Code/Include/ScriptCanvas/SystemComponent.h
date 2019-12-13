@@ -74,9 +74,6 @@ namespace ScriptCanvas
 
     private:
         void RegisterCreatableTypes();
-        // Workaround for VS2013 - Delete the copy constructor and make it private
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-        SystemComponent(const SystemComponent&) = delete;
         
         // excruciatingly meticulous ScriptCanvas memory tracking
         using MutexType = AZStd::recursive_mutex;

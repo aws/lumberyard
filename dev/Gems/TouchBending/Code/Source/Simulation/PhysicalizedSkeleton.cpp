@@ -122,14 +122,20 @@ namespace TouchBending
 
             for (PxD6Joint* joint : m_physicsJoints)
             {
-                joint->release();
+                if (joint)
+                {
+                    joint->release();
+                }
             }
 
             for (SpineData& spine : m_physicsSpines)
             {
                 for (BoneData& bone : spine.m_bones)
                 {
-                    bone.m_rigidDynamicActor->release();
+                    if (bone.m_rigidDynamicActor)
+                    {
+                        bone.m_rigidDynamicActor->release();
+                    }
                 }
             }
 
@@ -201,6 +207,12 @@ namespace TouchBending
 
                     const AZ::Vector3 boneVector = boneTopPointTransformedPosition - boneBottomPointTransformedPosition;
                     const float boneVectorLength = boneVector.GetLength();
+                    if (AZ::IsClose(boneVectorLength, 0.0f, AZ_FLT_EPSILON))
+                    {
+                        AZ_Error(TRACE_WINDOW_NAME, false, "Failed to create geometry for Spine Index=%zu, at Segment Index=%u: 0-length bone.", spineIndex, pointIndex);
+                        return false;
+                    }
+
                     const AZ::Vector3 boneVectorNormalized = boneVector * (1.0f / boneVectorLength);
 
                     PxGeometry* boneGeometry = nullptr;
@@ -331,7 +343,7 @@ namespace TouchBending
                     pxJoint->setConstraintFlag(PxConstraintFlag::ePROJECTION, true);
 
                     pxRigidDynamicBone->setDominanceGroup(VegetationDominanceGroup);
-                    PhysX::Utils::SetCollisionLayerAndGroup(pxShape, Physics::CollisionLayer::TouchBend, Physics::CollisionGroup::All_NoTouchBend);
+                    PhysX::Utils::Collision::SetCollisionLayerAndGroup(pxShape, Physics::CollisionLayer::TouchBend, Physics::CollisionGroup::All_NoTouchBend);
 
                     // add to joints array for cleanup
                     m_physicsJoints.push_back(pxJoint);

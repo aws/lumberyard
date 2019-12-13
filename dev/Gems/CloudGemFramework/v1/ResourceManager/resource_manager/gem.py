@@ -473,13 +473,13 @@ class GemContext(object):
         # lmbr.exe used to live in Tools/LmbrSetup/{platform].{compiler}(.Debug)(.Test)
         baselmbrpath = os.path.join('Tools', 'LmbrSetup')
 
-        for platformname in ['Win','Win.vc120','Win.vc140','Win.vc141','Mac','Mac.clang','Linux','Linux.clang','Linux.gcc']:
+        for platformname in ['Win','Mac','Mac.clang','Linux','Linux.clang','Linux.gcc']:
             directory_names.append(os.path.join(baselmbrpath,'{}.Debug.Test'.format(platformname)))
             directory_names.append(os.path.join(baselmbrpath,'{}'.format(platformname)))
             directory_names.append(os.path.join(baselmbrpath,'{}.Debug'.format(platformname)))
 
         if sys.platform == 'win32':
-            folder_list = ["Bin64vc140", "Bin64vc141"]
+            folder_list = ["Bin64vc141"]
             lmbr_name = 'lmbr.exe'
         elif sys.platform == 'darwin':
             folder_list = ["BinMac64"]
@@ -689,7 +689,9 @@ def build(bld):
             file_list.append('aws_unsupported.waf_files')
 
     bld.DefineGem(
-        
+        includes = [
+            bld.Path('Code/CryEngine/CryCommon')
+        ],
         disable_pch = True,
 
         file_list = file_list,

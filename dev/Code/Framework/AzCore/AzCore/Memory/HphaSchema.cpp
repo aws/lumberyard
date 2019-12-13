@@ -13,7 +13,7 @@
 #include <AzCore/PlatformIncl.h>
 #include <AzCore/Memory/HphaSchema.h>
 
-#include <AzCore/Math/Sfmt.h>
+#include <AzCore/Math/Random.h>
 #include <AzCore/Memory/OSAllocator.h> // required by certain platforms
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/lock.h>
@@ -56,6 +56,9 @@ namespace AZ {
 #ifdef MULTITHREADED
 #   define  SPIN_COUNT 4000
 #endif
+
+// Enabled mutex per bucket
+#define USE_MUTEX_PER_BUCKET
 
     //////////////////////////////////////////////////////////////////////////
     // TODO: Replace with AZStd::intrusive_list
@@ -282,7 +285,7 @@ namespace AZ {
 
         // the maximum small allocation, anything larger goes to the tree HpAllocator
         // must be a power of two
-        static const size_t MAX_SMALL_ALLOCATION_LOG2 = 8UL;
+        static const size_t MAX_SMALL_ALLOCATION_LOG2 = 9UL;
         static const size_t MAX_SMALL_ALLOCATION  = 1UL << MAX_SMALL_ALLOCATION_LOG2;
 
         // default alignment, must be a power of two
@@ -321,7 +324,6 @@ namespace AZ {
             enum block_flags : uint64_t
             {
                 BL_USED = 1,
-                BL_TAG_MASK = 0xffff000000000000,
                 BL_FLAG_MASK = 0x3
             };
             block_header* mPrev;
@@ -330,8 +332,7 @@ namespace AZ {
 
         public:
             typedef block_header* block_ptr;
-            size_t size() const { return mSizeAndFlags & ~(BL_FLAG_MASK|BL_TAG_MASK); }
-            uint16_t tag() const { return (mSizeAndFlags & BL_TAG_MASK) >> 48; }
+            size_t size() const { return mSizeAndFlags & ~BL_FLAG_MASK; }
             block_ptr next() const {return (block_ptr)((char*)mem() + size()); }
             block_ptr prev() const {return mPrev; }
             void* mem() const {return (void*)((char*)this + sizeof(block_header)); }
@@ -349,13 +350,11 @@ namespace AZ {
                 next(link->next());
                 next()->prev(this);
                 prev()->next(this);
-                tag(link->tag());
             }
             void size(size_t size)
             {
                 HPPA_ASSERT((size & BL_FLAG_MASK) == 0);
-                HPPA_ASSERT((size & BL_TAG_MASK) == 0);
-                mSizeAndFlags = (mSizeAndFlags & BL_TAG_MASK) | (mSizeAndFlags & BL_FLAG_MASK) | size;
+                mSizeAndFlags = (mSizeAndFlags & BL_FLAG_MASK) | size;
             }
             void next(block_ptr next)
             {
@@ -365,10 +364,6 @@ namespace AZ {
             void prev(block_ptr prev)
             {
                 mPrev = prev;
-            }
-            void tag(uint16_t tag)
-            {
-                mSizeAndFlags = (mSizeAndFlags & ~BL_TAG_MASK) | (uint64_t(tag) << 48);
             }
         };
 
@@ -428,19 +423,27 @@ namespace AZ {
         class bucket
         {
             page_list mPageList;
-#ifdef MULTITHREADED
+#ifdef MULTITHREADED 
+    #if defined (USE_MUTEX_PER_BUCKET)
             mutable AZStd::mutex mLock;
+    #endif
 #endif
             size_t          mMarker;
 #ifdef MULTITHREADED
+    #if defined (USE_MUTEX_PER_BUCKET)
             unsigned char _padding[sizeof(void*) * 16 - sizeof(page_list) - sizeof(AZStd::mutex) - sizeof(size_t)];
+    #else
+            unsigned char _padding[sizeof(void*) * 16 - sizeof(page_list) - sizeof(size_t)];
+    #endif
 #else
             unsigned char _padding[sizeof(void*) * 4 - sizeof(page_list) - sizeof(size_t)];
 #endif
         public:
             bucket();
 #ifdef MULTITHREADED
+    #if defined (USE_MUTEX_PER_BUCKET)
             AZStd::mutex& get_lock() const {return mLock; }
+    #endif
 #endif
             size_t marker() const {return mMarker; }
             const page* page_list_begin() const {return mPageList.begin(); }
@@ -514,8 +517,22 @@ namespace AZ {
             operator size_t() const {
                 return get_block()->size();
             }
+
+            friend bool operator<(const free_node& lhs, const free_node& rhs)
+            {
+                return static_cast<size_t>(lhs) < static_cast<size_t>(rhs);
+            }
+            friend bool operator<(const free_node& lhs, size_t rhs)
+            {
+                return static_cast<size_t>(lhs) < rhs;
+            }
+            friend bool operator<(size_t rhs, const free_node& lhs)
+            {
+                return rhs < static_cast<size_t>(lhs);
+            }
         };
-        typedef AZStd::intrusive_multiset<free_node, AZStd::intrusive_multiset_base_hook<free_node>, AZStd::less<size_t> > free_node_tree;
+
+        using free_node_tree = AZStd::intrusive_multiset<free_node, AZStd::intrusive_multiset_base_hook<free_node>, AZStd::less<> >;
 
         static inline block_header* ptr_get_block_header(void* ptr)
         {
@@ -550,8 +567,6 @@ namespace AZ {
         size_t tree_get_max_allocation() const;
         size_t tree_get_unused_memory(bool isPrint) const;
         void tree_purge();
-        // the lower 16 bits of the allocator's address should be enough to be unique for a handful of allocators
-        uint16_t tree_tag() const { return reinterpret_cast<uintptr_t>(this) & 0xffff; }
 
         bucket mBuckets[NUM_BUCKETS];
         free_node_tree mFreeTree;
@@ -641,17 +656,44 @@ namespace AZ {
                 , source(_source) {}
         };
 
+        class DebugAllocator
+        {
+        public:
+            typedef void* pointer_type;
+            typedef AZStd::size_t       size_type;
+            typedef AZStd::ptrdiff_t    difference_type;
+            typedef AZStd::false_type   allow_memory_leaks;         ///< Regular allocators should not leak.
+
+            AZ_FORCE_INLINE pointer_type allocate(size_t byteSize, size_t alignment, int = 0)
+            {
+                return AZ_OS_MALLOC(byteSize, alignment);
+            }
+            AZ_FORCE_INLINE size_type resize(pointer_type, size_type)
+            {
+                return 0;
+            }
+            AZ_FORCE_INLINE void deallocate(pointer_type ptr, size_type, size_type)
+            {
+                AZ_OS_FREE(ptr);
+            }
+        };
+
         // record map that keeps all debug records in a set, sorted by memory address of the allocation
         class debug_record_map
-            : public AZStd::set<debug_record, AZStd::less<debug_record>, AZStdAlloc<OSAllocator> >
+            : public AZStd::set<debug_record, AZStd::less<debug_record>, DebugAllocator >
         {
-            typedef AZStd::set<debug_record, AZStd::less<debug_record>, AZStdAlloc<OSAllocator> > base;
+            typedef AZStd::set<debug_record, AZStd::less<debug_record>, DebugAllocator > base;
 
             static void memory_fill(void* ptr, size_t size);
 
         public:
-            debug_record_map() = default;
-            ~debug_record_map() = default;
+            
+            debug_record_map()
+            {
+            }
+            ~debug_record_map()
+            {
+            }
 
             typedef base::const_iterator const_iterator;
             typedef base::iterator iterator;
@@ -681,9 +723,10 @@ namespace AZ {
 
 #endif // DEBUG_ALLOCATOR
 
-        size_t mTotalAllocatedSizeBuckets;
-        size_t mTotalAllocatedSizeTree;
-
+        size_t mTotalAllocatedSizeBuckets = 0;
+        size_t mTotalCapacitySizeBuckets = 0;
+        size_t mTotalAllocatedSizeTree = 0;
+        size_t mTotalCapacitySizeTree = 0;
     public:
         HpAllocator(AZ::HphaSchema::Descriptor desc);
         ~HpAllocator();
@@ -928,15 +971,28 @@ namespace AZ {
                 return ptr_get_page(ptr)->elem_size() - MEMORY_GUARD_SIZE;
             }
             block_header* bl = ptr_get_block_header(ptr);
-            // If this block doesn't belong to this allocator, return 0
-            if (bl->tag() != tree_tag())
-            {
-                return 0;
-            }
             debug_check(ptr);
             size_t blockSize = bl->size() - MEMORY_GUARD_SIZE;
             return blockSize;
         }
+
+#ifdef DEBUG_ALLOCATOR
+        // Similar method as above, except this one receives an iterator to the debug record. It avoids a lookup and will not lock
+        inline size_t size(debug_record_map::const_iterator it) const
+        {
+            if (it == mDebugMap.end())
+            {
+                return 0;
+            }
+            if (ptr_in_bucket(it->ptr()))
+            {
+                return ptr_get_page(it->ptr())->elem_size() - MEMORY_GUARD_SIZE;
+            }
+            block_header* bl = ptr_get_block_header(it->ptr());
+            size_t blockSize = bl->size() - MEMORY_GUARD_SIZE;
+            return blockSize;
+        }
+#endif
 
         // free the memory block
         inline void free(void* ptr)
@@ -1029,11 +1085,55 @@ namespace AZ {
         const size_t m_poolPageSize;
         bool         m_isPoolAllocations;
         IAllocatorAllocate* m_subAllocator;
+
+#if !defined (USE_MUTEX_PER_BUCKET)
+        mutable AZStd::mutex m_mutex;
+#endif
     };
 
+#ifdef DEBUG_MULTI_RBTREE
+    unsigned intrusive_multi_rbtree_base::check_height(node_base* node) const
+    {
+        if (node == &mHead)
+        {
+            return 0;
+        }
+        if (node->black())
+        {
+            return check_height(node->child(LEFT)) + check_height(node->child(RIGHT)) + 1;
+        }
+        HPPA_ASSERT(node->child(LEFT)->black() && node->child(RIGHT)->black());
+        unsigned lh = check_height(node->child(LEFT));
+        unsigned rh = check_height(node->child(RIGHT));
+        HPPA_ASSERT(lh == rh);
+        return lh;
+    }
+
+    void intrusive_multi_rbtree_base::dump(node_base* node) const
+    {
+        if (node == nullptr)
+        {
+            node = mHead.child(LEFT);
+        }
+        if (!node->nil())
+        {
+            AZ_TracePrintf("HphaAllocator", "%p(%s|%s|%p|%p|%p)\n", node, node->red() ? "red" : "black", node->parent_side() == LEFT ? "L" : "R", reinterpret_cast<void*>(reinterpret_cast<int>(node->parent()) & ~3), node->left()->nil() ? nullptr : node->left(), node->right()->nil() ? nullptr : node->right());
+            dump(node->left());
+            dump(node->right());
+        }
+    }
+
+    void intrusive_multi_rbtree_base::check() const
+    {
+        HPPA_ASSERT(mHead.black());
+        HPPA_ASSERT(mHead.child(RIGHT) == &mHead);
+        HPPA_ASSERT(mHead.child(LEFT) == &mHead || mHead.child(LEFT)->black());
+        check_height(mHead.child(LEFT));
+    }
+#endif
+
     //////////////////////////////////////////////////////////////////////////
-    // Prevent SystemAllocator from growing in small chunks
-    HpAllocator::HpAllocator(HphaSchema::Descriptor desc)
+    HpAllocator::HpAllocator(AZ::HphaSchema::Descriptor desc)
         // We will use the os for direct allocations if memoryBlock == NULL
         // If m_systemChunkSize is specified, use that size for allocating tree blocks from the OS
         // m_treePageAlignment should be OS_VIRTUAL_PAGE_SIZE in all cases with this trait as we work 
@@ -1066,6 +1166,15 @@ namespace AZ {
         SetCriticalSectionSpinCount((LPCRITICAL_SECTION)mTreeMutex.native_handle(), SPIN_COUNT);
 #   endif // MULTITHREADED
 #endif // AZ_TRAIT_OS_HAS_CRITICAL_SECTION_SPIN_COUNT
+
+#if !defined (USE_MUTEX_PER_BUCKET)
+    #if AZ_TRAIT_OS_HAS_CRITICAL_SECTION_SPIN_COUNT
+    #   if  defined(MULTITHREADED)
+            // For some platforms we can use an actual spin lock, test and profile. We don't expect much contention there
+            SetCriticalSectionSpinCount(m_mutex.native_handle(), SPIN_COUNT);
+    #   endif // MULTITHREADED
+    #endif // AZ_TRAIT_OS_HAS_CRITICAL_SECTION_SPIN_COUNT
+#endif
     }
 
     HpAllocator::~HpAllocator()
@@ -1085,8 +1194,9 @@ namespace AZ {
             HPPA_ASSERT(mBuckets[i].page_list_empty(), "small object leak");
         }
 
-        if (!m_fixedBlockSize)
+        if (!m_fixedBlock)
         {
+#ifdef AZ_ENABLE_TRACING
             if (!mFreeTree.empty())
             {
                 free_node_tree::iterator node = mFreeTree.begin();
@@ -1098,6 +1208,7 @@ namespace AZ {
                     ++node;
                 }
             }
+#endif
             HPPA_ASSERT(mFreeTree.empty());
         }
         else
@@ -1114,13 +1225,17 @@ namespace AZ {
     {
 #if AZ_TRAIT_OS_HAS_CRITICAL_SECTION_SPIN_COUNT
 #   if  defined(MULTITHREADED)
+    #if defined (USE_MUTEX_PER_BUCKET)
         // For some platforms we can use an actual spin lock, test and profile. We don't expect much contention there
         SetCriticalSectionSpinCount((LPCRITICAL_SECTION)mLock.native_handle(), SPIN_COUNT);
+    #endif
 #   endif // MULTITHREADED
 #endif // AZ_TRAIT_OS_HAS_CRITICAL_SECTION_SPIN_COUNT
 
-        // Use the global AZ random generator.
-        mMarker = AZ::Sfmt::GetInstance().Rand64();
+        // Initializing Sfmt causes a file read which causes an allocation which prevents us from initializing the allocators before we need malloc overridden.
+        // Thats why we use SimpleLcgRandom here
+        AZ::SimpleLcgRandom randGenerator = AZ::SimpleLcgRandom(reinterpret_cast<u64>(static_cast<void*>(this)));
+        mMarker = size_t(randGenerator.Getu64Random());
 
         (void)_padding;
     }
@@ -1190,12 +1305,12 @@ namespace AZ {
         if (m_fixedBlock)
         {
             ptr = tree_alloc_bucket_page();
-            // mTotalAllocatedSizeBuckets memory is part of the tree allocations
+            // mTotalCapacitySizeBuckets memory is part of the tree allocations
         }
         else
         {
             ptr = SystemAlloc(m_poolPageSize, m_poolPageSize);
-            mTotalAllocatedSizeBuckets += m_poolPageSize;
+            mTotalCapacitySizeBuckets += m_poolPageSize;
         }
         HPPA_ASSERT(((size_t)ptr & (m_poolPageSize - 1)) == 0);
         return ptr;
@@ -1212,7 +1327,7 @@ namespace AZ {
         else
         {
             SystemFree(ptr);
-            mTotalAllocatedSizeBuckets -= m_poolPageSize;
+            mTotalCapacitySizeBuckets -= m_poolPageSize;
         }
     }
 
@@ -1233,7 +1348,11 @@ namespace AZ {
         unsigned bi = bucket_spacing_function(size);
         HPPA_ASSERT(bi < NUM_BUCKETS);
 #ifdef MULTITHREADED
+    #if defined (USE_MUTEX_PER_BUCKET)
         AZStd::lock_guard<AZStd::mutex> lock(mBuckets[bi].get_lock());
+    #else
+        AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
+    #endif
 #endif
         // get the page info and check if there's any available elements
         page* p = mBuckets[bi].get_free_page();
@@ -1249,6 +1368,7 @@ namespace AZ {
             mBuckets[bi].add_free_page(p);
         }
         HPPA_ASSERT(p->elem_size() >= size);
+        mTotalAllocatedSizeBuckets += p->elem_size();
         return mBuckets[bi].alloc(p);
     }
 
@@ -1256,7 +1376,11 @@ namespace AZ {
     {
         HPPA_ASSERT(bi < NUM_BUCKETS);
 #ifdef MULTITHREADED
+    #if defined (USE_MUTEX_PER_BUCKET)
         AZStd::lock_guard<AZStd::mutex> lock(mBuckets[bi].get_lock());
+    #else
+        AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
+    #endif
 #endif
         page* p = mBuckets[bi].get_free_page();
         if (!p)
@@ -1269,6 +1393,7 @@ namespace AZ {
             }
             mBuckets[bi].add_free_page(p);
         }
+        mTotalAllocatedSizeBuckets += p->elem_size();
         return mBuckets[bi].alloc(p);
     }
 
@@ -1318,8 +1443,13 @@ namespace AZ {
         unsigned bi = p->bucket_index();
         HPPA_ASSERT(bi < NUM_BUCKETS);
 #ifdef MULTITHREADED
+    #if defined (USE_MUTEX_PER_BUCKET)
         AZStd::lock_guard<AZStd::mutex> lock(mBuckets[bi].get_lock());
+    #else
+        AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
+    #endif
 #endif
+        mTotalAllocatedSizeBuckets -= p->elem_size();
         mBuckets[bi].free(p, ptr);
     }
 
@@ -1331,18 +1461,28 @@ namespace AZ {
         // most likely a class needs a base virtual destructor
         HPPA_ASSERT(bi == p->bucket_index());
 #ifdef MULTITHREADED
+    #if defined (USE_MUTEX_PER_BUCKET)
         AZStd::lock_guard<AZStd::mutex> lock(mBuckets[bi].get_lock());
+    #else
+        AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
+    #endif
 #endif
+        mTotalAllocatedSizeBuckets -= p->elem_size();
         mBuckets[bi].free(p, ptr);
     }
 
     size_t HpAllocator::bucket_ptr_size(void* ptr) const
     {
         page* p = ptr_get_page(ptr);
-        unsigned bi = p->bucket_index();
-        HPPA_ASSERT(bi < NUM_BUCKETS);
+        HPPA_ASSERT(p->bucket_index() < NUM_BUCKETS);
+
 #ifdef MULTITHREADED
+    #if defined (USE_MUTEX_PER_BUCKET)
+        unsigned bi = p->bucket_index();
         AZStd::lock_guard<AZStd::mutex> lock(mBuckets[bi].get_lock());
+    #else
+        AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
+    #endif
 #endif
         return p->elem_size() - MEMORY_GUARD_SIZE;
     }
@@ -1352,7 +1492,11 @@ namespace AZ {
         for (int i = (int)NUM_BUCKETS - 1; i > 0; i--)
         {
 #ifdef MULTITHREADED
+    #if defined (USE_MUTEX_PER_BUCKET)
             AZStd::lock_guard<AZStd::mutex> lock(mBuckets[i].get_lock());
+    #else
+            AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
+    #endif
 #endif
             const page* p = mBuckets[i].get_free_page();
             if (p)
@@ -1371,7 +1515,11 @@ namespace AZ {
         for (int i = (int)NUM_BUCKETS - 1; i > 0; i--)
         {
 #ifdef MULTITHREADED
+    #if defined (USE_MUTEX_PER_BUCKET)
             AZStd::lock_guard<AZStd::mutex> lock(mBuckets[i].get_lock());
+    #else
+            AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
+    #endif
 #endif
             const page* pageEnd = mBuckets[i].page_list_end();
             for (const page* p = mBuckets[i].page_list_begin(); p != pageEnd; )
@@ -1399,7 +1547,11 @@ namespace AZ {
         for (unsigned i = 0; i < NUM_BUCKETS; i++)
         {
 #ifdef MULTITHREADED
+    #if defined (USE_MUTEX_PER_BUCKET)
             AZStd::lock_guard<AZStd::mutex> lock(mBuckets[i].get_lock());
+    #else
+            AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
+    #endif
 #endif
             page* pageEnd = mBuckets[i].page_list_end();
             for (page* p = mBuckets[i].page_list_begin(); p != pageEnd; )
@@ -1466,6 +1618,8 @@ namespace AZ {
         {
             return nullptr; // we ran out of memory in our fixed block
         }
+        size_t allocSize = AZ::SizeAlignUp(size, OS_VIRTUAL_PAGE_SIZE);
+        mTotalCapacitySizeTree += allocSize;
         return SystemAlloc(size, m_treePageAlignment);
     }
 
@@ -1478,6 +1632,8 @@ namespace AZ {
         {
             return; // no need to free the fixed block
         }
+        size_t allocSize = AZ::SizeAlignUp(size, OS_VIRTUAL_PAGE_SIZE);
+        mTotalCapacitySizeTree -= allocSize;
         SystemFree(ptr);
     }
 
@@ -1489,7 +1645,6 @@ namespace AZ {
         front->prev(0);
         front->size(0);
         front->set_used();
-        front->tag(tree_tag());
         block_header* back = (block_header*)front->mem();
         back->prev(front);
         back->size(0);
@@ -1500,25 +1655,19 @@ namespace AZ {
         back->set_used();
         front->set_unused();
         front->next(back);
-        front->tag(tree_tag());
         back->prev(front);
-        back->tag(tree_tag());
         return front;
     }
 
     HpAllocator::block_header* HpAllocator::tree_grow(size_t size)
     {
-        const size_t paddedSize = size + 3 * sizeof(block_header); // two fences plus one fake
-        size_t alignedSize = paddedSize;
-        if (alignedSize < m_treePageSize)
+        const size_t sizeWithBlockHeaders = size + 3 * sizeof(block_header); // two fences plus one fake
+        const size_t newSize = (sizeWithBlockHeaders < m_treePageSize) ? AZ::SizeAlignUp(sizeWithBlockHeaders, m_treePageSize) : sizeWithBlockHeaders;
+        HPPA_ASSERT(newSize >= sizeWithBlockHeaders);
+
+        if (void* mem = tree_system_alloc(newSize))
         {
-            alignedSize = AZ::SizeAlignUp(alignedSize, m_treePageSize);
-        }
-        HPPA_ASSERT(alignedSize >= paddedSize);
-        if (void* mem = tree_system_alloc(alignedSize))
-        {
-            mTotalAllocatedSizeTree += alignedSize;
-            return tree_add_block(mem, alignedSize);
+            return tree_add_block(mem, newSize);
         }
         return nullptr;
     }
@@ -1570,7 +1719,37 @@ namespace AZ {
 
     HpAllocator::block_header* HpAllocator::tree_extract_bucket_page()
     {
-        return tree_extract_aligned(m_poolPageSize, m_poolPageSize);
+        block_header* bestBlock = nullptr;
+        size_t alignment = m_poolPageSize;
+        size_t size = m_poolPageSize;
+
+        // get the sequence of nodes from size to (size + alignment - 1) including
+        size_t sizeUpper = size + alignment;
+        free_node_tree::iterator bestNode = mFreeTree.lower_bound(size);
+        free_node_tree::iterator lastNode = mFreeTree.upper_bound(sizeUpper);
+        while (bestNode != lastNode)
+        {
+            bestBlock = bestNode->get_block();
+            size_t alignmentOffs = AZ::PointerAlignUp((char*)bestBlock, alignment) - (char*)bestBlock;
+            if (bestBlock->size() + sizeof(block_header) >= size + alignmentOffs)
+            {
+                break;
+            }
+            // keep walking the sequence till we find a match or reach the end
+            // the larger the alignment the more linear searching will be done
+            ++bestNode;
+        }
+        if (bestNode == mFreeTree.end())
+        {
+            return nullptr;
+        }
+        if (bestNode == lastNode)
+        {
+            bestNode = bestNode->next(); // improves removal time
+        }
+        bestBlock = bestNode->get_block();
+        tree_detach(bestBlock);
+        return bestBlock;
     }
 
     void HpAllocator::tree_attach(block_header* bl)
@@ -1580,7 +1759,6 @@ namespace AZ {
 
     void HpAllocator::tree_detach(block_header* bl)
     {
-        bl->tag(tree_tag());
         mFreeTree.erase((free_node*)bl->mem());
     }
 
@@ -1615,6 +1793,7 @@ namespace AZ {
             tree_attach(newBl->next());
         }
         newBl->set_used();
+        mTotalAllocatedSizeTree += newBl->size();
         return newBl->mem();
     }
 
@@ -1657,6 +1836,7 @@ namespace AZ {
         }
         newBl->set_used();
         HPPA_ASSERT(((size_t)newBl->mem() & (alignment - 1)) == 0);
+        mTotalAllocatedSizeTree += newBl->size();
         return newBl->mem();
     }
 
@@ -1723,6 +1903,7 @@ namespace AZ {
                 block_header* next = bl->next();
                 next = coalesce_block(next);
                 tree_attach(next);
+                mTotalAllocatedSizeTree += bl->size() - blSize;
             }
             HPPA_ASSERT(bl->size() >= size);
             return ptr;
@@ -1741,6 +1922,7 @@ namespace AZ {
                 split_block(bl, size);
                 tree_attach(bl->next());
             }
+            mTotalAllocatedSizeTree += bl->size() - blSize;
             return ptr;
         }
         // check if the previous block can be used to avoid searching
@@ -1767,6 +1949,7 @@ namespace AZ {
                 split_block(bl, size);
                 tree_attach(bl->next());
             }
+            mTotalAllocatedSizeTree += bl->size() - blSize;
             return newPtr;
         }
         // fall back to alloc/copy/free
@@ -1802,6 +1985,7 @@ namespace AZ {
                 next = coalesce_block(next);
                 tree_attach(next);
             }
+            mTotalAllocatedSizeTree += bl->size() - blSize;
             HPPA_ASSERT(bl->size() >= size);
             return ptr;
         }
@@ -1818,6 +2002,7 @@ namespace AZ {
                 split_block(bl, size);
                 tree_attach(bl->next());
             }
+            mTotalAllocatedSizeTree += bl->size() - blSize;
             return ptr;
         }
         block_header* prev = bl->prev();
@@ -1853,6 +2038,7 @@ namespace AZ {
                 split_block(bl, size);
                 tree_attach(bl->next());
             }
+            mTotalAllocatedSizeTree += bl->size() - blSize;
             return newPtr;
         }
         void* newPtr = tree_alloc_aligned(size, alignment);
@@ -1903,6 +2089,7 @@ namespace AZ {
                 HPPA_ASSERT(bl->size() >= size);
             }
         }
+        mTotalAllocatedSizeTree += bl->size() - blSize;
         return bl->size();
     }
 
@@ -1913,7 +2100,7 @@ namespace AZ {
 #endif
         block_header* bl = ptr_get_block_header(ptr);
         AZ_Assert(bl->used(), "Double free detected of address 0x%p", ptr);
-        AZ_Assert(bl->tag() == tree_tag(), "Attempted to free address 0x%p which does not belong to this allocator", ptr);
+        mTotalAllocatedSizeTree -= bl->size();
         bl->set_unused();
         bl = coalesce_block(bl);
         tree_attach(bl);
@@ -1946,7 +2133,6 @@ namespace AZ {
             size_t size = memEnd - memStart;
             HPPA_ASSERT(((size_t)mem & (m_treePageAlignment - 1)) == 0);
             memset(mem, 0xff, sizeof(block_header));
-            mTotalAllocatedSizeTree -= size;
             tree_system_free(mem, size);
         }
         //else if( m_fixedBlock )
@@ -2062,7 +2248,7 @@ namespace AZ {
             unusedMemory += it->get_block()->size();
             if (isPrint)
             {
-                AZ_TracePrintf("System", "Unused Treenode %p size: %d\n", it->get_block()->mem(), it->get_block()->size());
+                AZ_TracePrintf("System", "Unused Treenode %p size: %zu\n", it->get_block()->mem(), it->get_block()->size());
             }
         }
         return unusedMemory;
@@ -2162,15 +2348,23 @@ namespace AZ {
 
     const void HpAllocator::debug_record::print_stack() const
     {
-        AZ::Debug::SymbolStorage::StackLine stackLines[MAX_CALLSTACK_DEPTH];
+        AZ::Debug::SymbolStorage::StackLine stackLines[MAX_CALLSTACK_DEPTH] = { { 0 } };
         AZ::Debug::SymbolStorage::DecodeFrames(mCallStack, MAX_CALLSTACK_DEPTH, stackLines);
-#if AZ_TRAIT_COMPILER_USE_OUTPUT_DEBUG_STRING
+        
         for (int i = 0; i < MAX_CALLSTACK_DEPTH; ++i)
         {
-            OutputDebugString(stackLines[i]);
-            OutputDebugString("\n");
+            if (stackLines[i][0] != 0)
+            {
+                const size_t lineLength = strlen(stackLines[i]);
+                // Append a line return to the stack line if we have enough room
+                if ((lineLength + 1) < AZ_ARRAY_SIZE(stackLines[i]))
+                {
+                    stackLines[i][lineLength] = '\n';
+                    stackLines[i][lineLength + 1] = 0;
+                }
+                AZ::Debug::Trace::Output("HpAllocator", stackLines[i]);
+            }
         }
-#endif
     }
 
     void HpAllocator::debug_record::record_stack()
@@ -2274,11 +2468,13 @@ namespace AZ {
     {
         if (ptr)
         {
+            {
 #ifdef MULTITHREADED
-            AZStd::lock_guard<AZStd::mutex> lock(mDebugMutex);
+                AZStd::lock_guard<AZStd::mutex> lock(mDebugMutex);
 #endif
-            mDebugMap.add(ptr, size, source, flags);
-            mTotalDebugRequestedSize[source] += size + MEMORY_GUARD_SIZE;
+                mDebugMap.add(ptr, size, source, flags);
+                mTotalDebugRequestedSize[source] += size + MEMORY_GUARD_SIZE;
+            }
             HPPA_ASSERT(size <= this->size(ptr));
         }
     }
@@ -2302,12 +2498,12 @@ namespace AZ {
 
     void HpAllocator::check()
     {
-    #ifdef MULTITHREADED
+#ifdef MULTITHREADED
         AZStd::lock_guard<AZStd::mutex> lock(mDebugMutex);
-    #endif
+#endif
         for (debug_record_map::const_iterator it = mDebugMap.begin(); it != mDebugMap.end(); ++it)
         {
-            HPPA_ASSERT(it->size() <= size(it->ptr()));
+            HPPA_ASSERT(it->size() <= size(it));
             HPPA_ASSERT(it->check_guard(), "leaky overflow");
         }
     }
@@ -2348,12 +2544,12 @@ namespace AZ {
             AZ_Assert((m_desc.m_fixedMemoryBlockByteSize & (m_desc.m_pageSize - 1)) == 0, "Memory block size %d MUST be multiples of the of the page size %d!", m_desc.m_fixedMemoryBlockByteSize, m_desc.m_pageSize);
             if (m_desc.m_fixedMemoryBlock == NULL)
             {
-                AZ_Assert(m_desc.m_subAllocator != NULL, "Sub allocator must point to a valid allocator if m_memoryBlock is NOT allocated (NULL)!");
-                m_desc.m_fixedMemoryBlock = m_desc.m_subAllocator->Allocate(m_desc.m_fixedMemoryBlockByteSize, m_desc.m_memoryBlockAlignment, 0, "HphaSchema", __FILE__, __LINE__, 1);
+                AZ_Assert(m_desc.m_subAllocator != NULL, "Sub allocator must point to a valid allocator if m_fixedMemoryBlock is NOT allocated (NULL)!");
+                m_desc.m_fixedMemoryBlock = m_desc.m_subAllocator->Allocate(m_desc.m_fixedMemoryBlockByteSize, m_desc.m_fixedMemoryBlockAlignment, 0, "HphaSchema", __FILE__, __LINE__, 1);
                 AZ_Assert(m_desc.m_fixedMemoryBlock != NULL, "Failed to allocate %d bytes!", m_desc.m_fixedMemoryBlockByteSize);
                 m_ownMemoryBlock = true;
             }
-            AZ_Assert((reinterpret_cast<size_t>(m_desc.m_fixedMemoryBlock) & static_cast<size_t>(desc.m_memoryBlockAlignment - 1)) == 0, "Memory block must be page size (%d bytes) aligned!", desc.m_memoryBlockAlignment);
+            AZ_Assert((reinterpret_cast<size_t>(m_desc.m_fixedMemoryBlock) & static_cast<size_t>(desc.m_fixedMemoryBlockAlignment - 1)) == 0, "Memory block must be page size (%d bytes) aligned!", desc.m_fixedMemoryBlockAlignment);
             m_capacity = m_desc.m_fixedMemoryBlockByteSize;
         }
         else
@@ -2362,7 +2558,6 @@ namespace AZ {
         }
 
         AZ_Assert(sizeof(HpAllocator) <= sizeof(m_hpAllocatorBuffer), "Increase the m_hpAllocatorBuffer, we need %d bytes but we have %d bytes!", sizeof(HpAllocator), sizeof(m_hpAllocatorBuffer));
-        // Fix SystemAllocator from growing in small chunks
         m_allocator = new (&m_hpAllocatorBuffer) HpAllocator(m_desc);
     }
 
@@ -2377,7 +2572,7 @@ namespace AZ {
 
         if (m_ownMemoryBlock)
         {
-            m_desc.m_subAllocator->DeAllocate(m_desc.m_fixedMemoryBlock, m_desc.m_fixedMemoryBlockByteSize, m_desc.m_memoryBlockAlignment);
+            m_desc.m_subAllocator->DeAllocate(m_desc.m_fixedMemoryBlock, m_desc.m_fixedMemoryBlockByteSize, m_desc.m_fixedMemoryBlockAlignment);
             m_desc.m_fixedMemoryBlock = NULL;
         }
     }
@@ -2504,4 +2699,16 @@ namespace AZ {
     {
         m_allocator->purge();
     }
+        
+    size_t
+    HphaSchema::Capacity() const
+    { 
+        // Do not return m_capacity if it was never initialized.  Instead return raw tracked numbers of how much the tree and buckets have grown
+        if (m_capacity == AZ_CORE_MAX_ALLOCATOR_SIZE)
+        {
+            return m_allocator->mTotalCapacitySizeBuckets + m_allocator->mTotalCapacitySizeTree;
+        }
+        return m_capacity;
+    }
+
 } // namspace AZ

@@ -87,10 +87,10 @@ namespace Vegetation
     protected:
         //////////////////////////////////////////////////////////////////////////
         // AreaBlenderRequestBus
-        float GetAreaPriority() const override;
-        void SetAreaPriority(float priority) override;
-        AreaLayer GetAreaLayer() const override;
-        void SetAreaLayer(AreaLayer layer) override;
+        AZ::u32 GetAreaPriority() const override;
+        void SetAreaPriority(AZ::u32 priority) override;
+        AZ::u32 GetAreaLayer() const override;
+        void SetAreaLayer(AZ::u32 layer) override;
         AZ::u32 GetAreaProductCount() const override;
         bool GetInheritBehavior() const override;
         void SetInheritBehavior(bool value) override;

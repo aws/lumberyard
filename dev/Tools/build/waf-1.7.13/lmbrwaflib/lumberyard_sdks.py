@@ -24,6 +24,8 @@ def use_windows_dll_semantics(ctx):
     if ctx.is_windows_platform():
         return True
     platform = ctx.env['PLATFORM'].lower()
+    if platform.startswith('xenia'):
+        return True
     return False
 
 
@@ -78,6 +80,8 @@ def aws_native_sdk_platforms(bld):
         'linux',
         'android_armv7_clang',
         'android_armv8_clang',
+        'provo_vs2017',
+        'xenia_vs2017',
         'project_generator']
 
 
@@ -195,7 +199,7 @@ def process_dual_lib(self):
         for y in names:
             node = x.find_node(y)
             if node:
-                node.sig = Utils.h_file(node.abspath())
+                node.cache_sig = Utils.h_file(node.abspath())
                 break
         else:
             continue
@@ -244,6 +248,12 @@ def _get_build_dir(self, forceReleaseDir=False):
     elif 'android' in platform:
         build_dir = 'android'
         return build_dir
+    elif 'provo' in platform:
+        build_dir = 'provo'
+        return build_dir
+    elif 'xenia' in platform:
+        build_dir = 'xenia'
+        return build_dir
 
     build_dir += '/'
 
@@ -287,21 +297,12 @@ def BuildPlatformLibraryDirectory(bld, forceStaticLinking):
         platformDir = 'linux/intel64'
     elif 'android' in platform:
         platformDir = 'android'
+    elif 'provo' in platform:
+        platformDir = 'provo'
+    elif 'xenia' in platform:
+        platformDir = 'xenia'
     else:
-        # TODO: add support for other platforms as versions become available
         platformDir = 'windows/intel64'
-        compilerDir = None
-
-        msvcVersion = bld.env['MSVC_VERSION']
-        if msvcVersion == 15:
-            compilerDir = 'vs2017'
-        elif msvcVersion == 14:
-            compilerDir = 'vs2015'
-        elif msvcVersion == 12:
-            compilerDir = 'vs2013'
-
-        if compilerDir != None:
-            platformDir += '/{}'.format(compilerDir)
 
     return '{}/{}/{}'.format(libDir, platformDir, configDir)
 
@@ -331,49 +332,25 @@ def copy_external_ly_identity(self):
 def copy_external_ly_metrics(self):
     pass
 
-def get_python_home_lib_and_dll(ctx, platform):
+def get_python_home_lib_and_dll(ctx, env):
     """
-    Get the following (internal) python paths based on the platform
+    Get the following (internal) python paths based on the host platform
     1.  Home path
     2.  Includes path
     3.  Lib path
     4.  Path to the shared object (dll)
 
-    :param ctx:         The build context
-    :param platform:    The platform to key the search
+    :param ctx:         The build context to search within
+    :param env:         The build context platform environment to search within
     :return:    see the description
     """
 
-    if platform in ['win_x64_vs2013', 'win_x64_vs2015', 'win_x64_vs2017', 'win_x64_clang', 'win_x64_test', 'project_generator']:
-        python_version = '2.7.12'
-        python_variant = 'windows'
-        python_includes = 'include'
-        python_libs = 'libs'
-        python_dll_name = 'python27.dll'
-        python_home = os.path.join(ctx.engine_path, 'Tools', 'Python', python_version, python_variant)
-    elif platform == 'linux_x64':
-        python_version = '2.7.12'
-        python_variant = 'linux_x64'
-        python_includes = 'include/python2.7'
-        python_libs = 'lib'
-        python_dll_name = 'lib/libpython2.7.so'
-        python_home = os.path.join(ctx.engine_path, 'Tools', 'Python', python_version, python_variant)
-    elif platform == 'darwin_x64':
-        python_version = '2.7.13'
-        python_variant = 'mac'
-        python_includes = 'Versions/2.7/include/python2.7'
-        python_libs = 'Versions/2.7/lib'
-        python_dll_name = 'Versions/2.7/lib/libpython2.7.dylib'
-        python_home = os.path.join(ctx.engine_path, 'Tools', 'Python', python_version, python_variant, 'Python.framework')
-    else:
-        raise Errors.WafError('Python dll not supported for platform {}'.format(platform))
+    if not env['EMBEDDED_PYTHON_HOME'] or not env['EMBEDDED_PYTHON_INCLUDE_PATH']\
+        or not env['EMBEDDED_PYTHON_LIBPATH'] or not env['EMBEDDED_PYTHON_SHARED_OBJECT']:
+        raise Errors.WafError('Python dll not supported for platform {}'.format(ctx.get_waf_host_platform()))
 
-
-    python_includes_dir = os.path.join(python_home, python_includes)
-    python_libs_dir = os.path.join(python_home, python_libs)
-    python_dll = os.path.join(python_home, python_dll_name)
-    return python_home, python_includes_dir, python_libs_dir, python_dll
-
+    return env['EMBEDDED_PYTHON_HOME'], env['EMBEDDED_PYTHON_INCLUDE_PATH'],\
+           env['EMBEDDED_PYTHON_LIBPATH'], env['EMBEDDED_PYTHON_SHARED_OBJECT']
 
 def copy_local_python_to_target(task, source_python_dll_path):
     """
@@ -421,13 +398,23 @@ def enable_embedded_python(self):
     # Only win_x64 builds support embedding Python.
     #
     # We assume 'project_generator' (the result of doing a lmbr_waf configure) is
-    # also for a win_x64 build so that the include directory is configured property
-    # for Visual Studio.
+    # using the host waf platform build so that the include directory is configured property
+    # for that host platform.
 
     platform = self.env['PLATFORM'].lower()
     config = self.env['CONFIGURATION'].lower()
 
-    if platform in ['win_x64_vs2013', 'win_x64_vs2015', 'win_x64_vs2017', 'win_x64_clang', 'win_x64_test', 'linux_x64', 'project_generator']:
+    if self.bld.is_windows_platform(platform) or self.bld.is_linux_platform(platform) or platform == 'project_generator':
+
+        env = self.bld.env
+        # If the platform is project generator, the default environment will not have the EMBEDDED_PYTHON_*
+        # env varaiable set. Therefore the first platform environment which contains the host_platform name is used instead
+        if platform == 'project_generator':
+            host_platform = self.bld.get_waf_host_platform()
+            for platform_env in self.bld.all_envs:
+                if host_platform in platform_env:
+                    env = self.bld.all_envs[platform_env]
+                    break
 
         # Set the USE_DEBUG_PYTHON environment variable to the location of
         # a debug build of python if you want to use one for debug builds.
@@ -448,8 +435,7 @@ def enable_embedded_python(self):
             self.env['DEFINES'] += ['USE_DEBUG_PYTHON']
 
         else:
-            python_home, python_include_dir, python_libs_dir, python_dll = get_python_home_lib_and_dll(self.bld,
-                                                                                                       platform)
+            python_home, python_include_dir, python_libs_dir, python_dll = get_python_home_lib_and_dll(self.bld, env)
 
         self.includes += [python_include_dir]
         self.env['LIBPATH'] += [python_libs_dir]
@@ -457,7 +443,7 @@ def enable_embedded_python(self):
         # Save off the python home for use from within code (BoostPythonHelpers.cpp).  This allows us to control exactly which version of
         # python the editor uses.
         # Also, standardize on forward-slash through the entire path.  We specifically don't use backslashes to avoid an interaction with compiler
-        # response-file generation in msvcdeps.py and mscv_helper.py that "fixes up" all the compiler flags, in part by replacing backslashes
+        # response-file generation in msvcdeps.py and msvc_helper.py that "fixes up" all the compiler flags, in part by replacing backslashes
         # with double-backslashes.  If we tried to replace backslashes with double-backslashes here to make it a valid C++ string, it would
         # get double-fixed-up in the case that a response file gets used (long directory path names).
         # Side note - BoostPythonHelpers.cpp, which uses this define, apparently goes through and replaces forward-slashes with backslashes anyways.
@@ -475,7 +461,7 @@ def enable_embedded_python(self):
                     self.name))
 
     if platform in ['darwin_x64']:
-        _, python_include_dir, python_libs_dir, _ = get_python_home_lib_and_dll(self.bld, platform)
+        _, python_include_dir, python_libs_dir, _ = get_python_home_lib_and_dll(self.bld, self.bld.env)
 
         # TODO: figure out what needs to be set for OSX builds.
         self.includes += [python_include_dir]
@@ -494,9 +480,9 @@ def apply_embedded_python_dependency(self):
     """
     current_platform = self.bld.env['PLATFORM']
 
-    if current_platform in ['win_x64_vs2013', 'win_x64_vs2015', 'win_x64_vs2017', 'win_x64_clang', 'win_x64_test', 'linux_x64']:
+    if self.bld.is_windows_platform(current_platform) or self.bld.is_linux_platform(current_platform):
         # Only supported for win_x64 and linux
-        _, _, _, python_dll = get_python_home_lib_and_dll(self.bld, current_platform)
+        _, _, _, python_dll = get_python_home_lib_and_dll(self.bld, self.bld.env)
         copy_local_python_to_target(self, python_dll)
 
 

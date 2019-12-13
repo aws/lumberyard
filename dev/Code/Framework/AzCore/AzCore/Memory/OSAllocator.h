@@ -27,7 +27,8 @@ namespace AZ
      * debug data (like drillers, memory trackng, etc.)
      */
     class OSAllocator
-        : public IAllocator
+        : public AllocatorBase
+        , public IAllocatorAllocate
     {
     public:
         AZ_TYPE_INFO(OSAllocator, "{9F835EE3-F23C-454E-B4E3-011E2F3C8118}")
@@ -51,9 +52,10 @@ namespace AZ
 
         //////////////////////////////////////////////////////////////////////////
         // IAllocator
-        virtual const char*     GetName() const                 { return "OSAllocator"; }
-        virtual const char*     GetDescription() const          { return "OS allocator, allocating memory directly from the OS (C heap)!"; }
+        AllocatorDebugConfig GetDebugConfig() override;
 
+        //////////////////////////////////////////////////////////////////////////
+        // IAllocatorAllocate
         virtual pointer_type    Allocate(size_type byteSize, size_type alignment, int flags = 0, const char* name = 0, const char* fileName = 0, int lineNum = 0, unsigned int suppressStackRecord = 0);
         virtual void            DeAllocate(pointer_type ptr, size_type byteSize = 0, size_type alignment = 0);
         virtual size_type       Resize(pointer_type ptr, size_type newSize) { return m_custom ? m_custom->Resize(ptr, newSize) : 0; }

@@ -104,6 +104,18 @@
             "_comment": "CloudGemSpeechRecognition"
         },
         {
+            "Path": "Gems/AudioEngineWwise",
+            "Uuid": "67a80e2ac865406c990f2715feb55f7f",
+            "Version": "0.1.0",
+            "_comment": "AudioEngineWwise"
+        },
+        {
+            "Path": "Gems/AudioSystem",
+            "Uuid": "6f63f2b6d07f4b89b4b7c86ebee7feb8",
+            "Version": "0.1.0",
+            "_comment": "AudioSystem"
+        },
+        {
             "Path": "Gems/CloudGemFramework/v1",
             "Uuid": "6fc787a982184217a5a553ca24676cfa",
             "Version": "1.1.4",

@@ -149,26 +149,25 @@ namespace GraphCanvas
         PruneNodes(potentialCategories);
     }
 
-    void GraphCanvasTreeCategorizer::PruneNodes(AZStd::unordered_set< GraphCanvas::GraphCanvasTreeItem*> potentialCategories)
+    void GraphCanvasTreeCategorizer::PruneNodes(AZStd::unordered_set< GraphCanvas::GraphCanvasTreeItem*> potentialPruners)
     {
         AZStd::unordered_set< GraphCanvas::GraphCanvasTreeItem* > deletedRoots;
 
-        while (!potentialCategories.empty())
+        while (!potentialPruners.empty())
         {
-            GraphCanvas::GraphCanvasTreeItem* treeItem = (*potentialCategories.begin());
-            potentialCategories.erase(potentialCategories.begin());
+            GraphCanvas::GraphCanvasTreeItem* treeItem = (*potentialPruners.begin());
+            potentialPruners.erase(potentialPruners.begin());
 
-            GraphCanvas::GraphCanvasTreeItem* parentItem = static_cast<GraphCanvas::GraphCanvasTreeItem*>(treeItem->GetParent());
-
-            treeItem->DetachItem();
-
-            if (parentItem && parentItem->GetChildCount() == 0 && parentItem->AllowPruneOnEmpty())
+            if (treeItem && treeItem->GetChildCount() == 0 && treeItem->AllowPruneOnEmpty())
             {
-                potentialCategories.insert(parentItem);
-            }
+                GraphCanvas::GraphCanvasTreeItem* parentItem = static_cast<GraphCanvas::GraphCanvasTreeItem*>(treeItem->GetParent());
 
-            deletedRoots.insert(treeItem);
-            delete treeItem;
+                treeItem->DetachItem();                
+                potentialPruners.insert(parentItem);
+
+                deletedRoots.insert(treeItem);
+                delete treeItem;
+            }
         }
 
         auto mapIter = m_rootMaps.begin();

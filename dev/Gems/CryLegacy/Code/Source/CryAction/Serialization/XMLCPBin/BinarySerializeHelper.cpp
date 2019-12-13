@@ -22,6 +22,8 @@
         #include "Xenia/BinarySerializeHelper_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/BinarySerializeHelper_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/BinarySerializeHelper_cpp_salem.inl"
     #endif
 #endif
 

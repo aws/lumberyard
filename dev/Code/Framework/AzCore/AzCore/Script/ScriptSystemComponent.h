@@ -167,11 +167,6 @@ namespace AZ
         AZStd::unordered_set<Data::AssetId> m_queuedReloads;
         // Used for being alerted when a require()'d script has finished reloading
         void OnAssetReloaded(Data::Asset<Data::AssetData> asset) override;
-
-        private:
-            // Workaround for VS2013 - Delete the copy constructor and make it private
-            // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-            ScriptSystemComponent(const ScriptSystemComponent&) = delete;
     };
 }
 

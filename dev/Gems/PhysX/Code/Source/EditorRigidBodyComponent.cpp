@@ -238,7 +238,7 @@ namespace PhysX
                 AZStd::shared_ptr<Physics::Shape> shape;
                 EditorProxyShapeConfig shapeConfigurationProxy = collider->GetShapeConfiguration();
 
-                if (shapeConfigurationProxy.IsAssetConfig() && !shapeConfigurationProxy.m_physicsAsset.m_asset.IsReady())
+                if (shapeConfigurationProxy.IsAssetConfig() && !shapeConfigurationProxy.m_physicsAsset.m_configuration.m_asset.IsReady())
                 {
                     continue;
                 }

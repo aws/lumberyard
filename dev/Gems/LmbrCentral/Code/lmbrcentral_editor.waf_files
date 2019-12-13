@@ -12,7 +12,8 @@
         "Include/Rendering": 
         [
             "include/LmbrCentral/Rendering/EditorCameraCorrectionBus.h",
-            "include/LmbrCentral/Rendering/EditorLightComponentBus.h"
+            "include/LmbrCentral/Rendering/EditorLightComponentBus.h",
+            "include/LmbrCentral/Rendering/EditorMeshBus.h"
         ],
         "Include/Shape": [
             "include/LmbrCentral/Shape/EditorPolygonPrismShapeComponentBus.h",

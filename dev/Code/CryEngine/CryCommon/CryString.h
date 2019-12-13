@@ -46,12 +46,12 @@ class CConstCharWrapper;    //forward declaration for special const char * witho
 #define CRY_STRING_DEBUG(s)
 
 class CryStringAllocator
-    : public AZ::AllocatorBase<AZ::HphaSchema>
+    : public AZ::SimpleSchemaAllocator<AZ::HphaSchema>
 {
 public:
     AZ_TYPE_INFO(CryStringAllocator, "{763DFC83-8A6E-4FD9-B6BC-BBF56E93E4EE}");
 
-    using Base = AZ::AllocatorBase<AZ::HphaSchema>;
+    using Base = AZ::SimpleSchemaAllocator<AZ::HphaSchema>;
     using Descriptor = Base::Descriptor;
 
     CryStringAllocator()

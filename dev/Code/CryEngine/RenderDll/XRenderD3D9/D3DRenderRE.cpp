@@ -24,6 +24,7 @@
 #include "../Common/Renderer.h"
 #include "../Common/Textures/TextureManager.h"
 
+
 #pragma warning(disable: 4244)
 
 //=======================================================================
@@ -2095,6 +2096,8 @@ bool CREParticleGPU::mfPreDraw(SShaderPass* sl)
 
 bool CREParticleGPU::mfDraw(CShader* ef, SShaderPass* sl)
 {
+    PROFILE_LABEL_SCOPE("PARTICLES");
+
     if (!m_instance || !gRenDev->GetGPUParticleEngine())
     {
         return false;
@@ -2127,6 +2130,8 @@ bool CREBeam::mfDraw(CShader* ef, SShaderPass* sl)
         #include "Xenia/D3DRenderRE_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DRenderRE_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DRenderRE_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -2663,3 +2668,5 @@ bool CREGeomCache::mfDraw(CShader* ef, SShaderPass* sfm)
 }
 
 #endif
+
+

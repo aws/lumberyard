@@ -48,6 +48,8 @@
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
 
@@ -83,6 +85,8 @@
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
 
@@ -531,7 +535,7 @@ bool CD3D9Renderer::ChangeResolution(int nNewWidth, int nNewHeight, int nNewColD
         m_FullResRect.right = m_width;
         m_FullResRect.bottom = m_height;
 
-#if defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(APPLE)
+#if defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(APPLE) || defined(CREATE_DEVICE_ON_MAIN_THREAD)
         m_pRT->RC_SetViewport(0, 0, m_width, m_height);
 #else
         RT_SetViewport(0, 0, m_width, m_height);
@@ -542,6 +546,8 @@ bool CD3D9Renderer::ChangeResolution(int nNewWidth, int nNewHeight, int nNewColD
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
         m_MainViewport.nX = 0;
@@ -738,9 +744,7 @@ int CD3D9Renderer::EnumDisplayFormats(SDispFormat* formats)
                         {
                             formats[numUniqueModes].m_Width = dispModes[i].Width;
                             formats[numUniqueModes].m_Height = dispModes[i].Height;
-                            //  Confetti BEGIN: Igor Lobanchikov
                             formats[numUniqueModes].m_BPP = CTexture::BytesPerBlock(CTexture::TexFormatFromDeviceFormat(dispModes[i].Format)) * 8;
-                            //  Confetti End: Igor Lobanchikov
                         }
 
                         prevWidth = dispModes[i].Width;
@@ -786,6 +790,8 @@ void CD3D9Renderer::DestroyWindow(void)
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1042,7 +1048,6 @@ void CD3D9Renderer::ShutDownFast()
     }
     SAFE_DELETE(m_pRT);
 
-    //  Confetti BEGIN: Igor Lobanchikov
 #if defined(OPENGL)
 #if !DXGL_FULL_EMULATION && !defined(CRY_USE_METAL)
     if (CV_r_multithreaded)
@@ -1052,7 +1057,6 @@ void CD3D9Renderer::ShutDownFast()
 #endif //!DXGL_FULL_EMULATION
     m_devInfo.Release();
 #endif //defined(OPENGL)
-    //  Confetti End: Igor Lobanchikov
 }
 
 void CD3D9Renderer::RT_ShutDown(uint32 nFlags)
@@ -1093,7 +1097,6 @@ void CD3D9Renderer::RT_ShutDown(uint32 nFlags)
 
     FX_PipelineShutdown();
 
-    //  Confetti BEGIN: Igor Lobanchikov
 #if defined(SUPPORT_DEVICE_INFO)
     //m_devInfo.Release();
 #  if defined(OPENGL) && !DXGL_FULL_EMULATION && !defined(CRY_USE_METAL)
@@ -1101,7 +1104,6 @@ void CD3D9Renderer::RT_ShutDown(uint32 nFlags)
     m_pRT->m_kDXGLContextHandle.Set(NULL);
 #  endif //if defined(OPENGL) && !DXGL_FULL_EMULATION
 #endif
-    //  Confetti End: Igor Lobanchikov
 
 
     SAFE_RELEASE(m_pZBufferReadOnlyDSV);
@@ -1143,6 +1145,8 @@ void CD3D9Renderer::ShutDown(bool bReInit)
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
     //////////////////////////////////////////////////////////////////////////
@@ -1153,7 +1157,6 @@ void CD3D9Renderer::ShutDown(bool bReInit)
 
         SAFE_DELETE(m_pRT);
 
-    //  Confetti BEGIN: Igor Lobanchikov
 #if defined(OPENGL)
 #if !DXGL_FULL_EMULATION && !defined(CRY_USE_METAL)
     if (CV_r_multithreaded)
@@ -1163,7 +1166,6 @@ void CD3D9Renderer::ShutDown(bool bReInit)
 #endif //!DXGL_FULL_EMULATION
     m_devInfo.Release();
 #endif //defined(OPENGL)
-    //  Confetti End: Igor Lobanchikov
 
     if (!bReInit)
     {
@@ -1175,6 +1177,10 @@ void CD3D9Renderer::ShutDown(bool bReInit)
 
     EnableGPUTimers2(false);
     AllowGPUTimers2(false);
+
+#if defined(OPENGL) && !DXGL_FULL_EMULATION && !defined(CRY_USE_METAL)
+    DXGLFinalize();
+#endif //defined(OPENGL) && !DXGL_FULL_EMULATION
 
     PostShutDown();
 }
@@ -1619,6 +1625,8 @@ WIN_HWND CD3D9Renderer::Init(int x, int y, int width, int height, unsigned int c
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1656,11 +1664,9 @@ WIN_HWND CD3D9Renderer::Init(int x, int y, int width, int height, unsigned int c
     bNativeResolution = false;
 #endif
 
-    //  Confetti BEGIN: Igor Lobanchikov
 #if defined(OPENGL) && !DXGL_FULL_EMULATION && !defined(CRY_USE_METAL)
     DXGLInitialize(CV_r_multithreaded ? 4 : 0);
 #endif //defined(OPENGL) && !DXGL_FULL_EMULATION
-    //  Confetti End: Igor Lobanchikov
 
 #ifdef D3DX_SDK_VERSION
     iLog->Log("D3DX_SDK_VERSION = %d", D3DX_SDK_VERSION);
@@ -1775,12 +1781,10 @@ WIN_HWND CD3D9Renderer::Init(int x, int y, int width, int height, unsigned int c
         {
             CTexture::s_eTFZ = eTF_R16F;
         }
-        //  Confetti BEGIN: Igor Lobanchikov
         if (!gcpRendD3D->UseHalfFloatRenderTargets())
         {
             CTexture::s_eTFZ = eTF_R16U;
         }
-        //  Confetti End: Igor Lobanchikov
 
         // Note: Not rolling this into the if statement above in case s_eTFZ is set to R16F on initialization
         if (CTexture::s_eTFZ != eTF_R32F)
@@ -1884,17 +1888,17 @@ WIN_HWND CD3D9Renderer::Init(int x, int y, int width, int height, unsigned int c
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
 
-    //  Confetti BEGIN: Igor Lobanchikov
 #if defined(OPENGL) && !DXGL_FULL_EMULATION && !defined(CRY_USE_METAL)
     if (!m_pRT->IsRenderThread())
     {
         DXGLUnbindDeviceContext(&GetDeviceContext(), !CV_r_multithreaded);
     }
 #endif //defined(OPENGL) && !DXGL_FULL_EMULATION
-    //  Confetti End: Igor Lobanchikov
 
     if (!bShaderCacheGen)
     {
@@ -2189,6 +2193,8 @@ bool CD3D9Renderer::SetRes()
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -2262,13 +2268,10 @@ bool SPixFormat::CheckSupport(D3DFormat Format, const char* szDescr, ETexture_Us
         if (nOptions & (D3D11_FORMAT_SUPPORT_TEXTURE2D | D3D11_FORMAT_SUPPORT_TEXTURECUBE))
         {
             bool canAutoGenMips = (nOptions & D3D11_FORMAT_SUPPORT_MIP_AUTOGEN) != 0;
-            //  Confetti BEGIN: Igor Lobanchikov
             bool canReadSRGB = CTexture::IsDeviceFormatSRGBReadable(Format);
 
-            //  Confetti BEGIN: Igor Lobanchikov
-            //  TODO: Igor: check if need to allow other compressed formats to stay here formats here too?
+            //  TODO: check if need to allow other compressed formats to stay here formats here too?
             //  Adding PVRTC format here improved the picture on iOS device.
-            //  Confetti End: Igor Lobanchikov
 
             bool bCanMips = true;
 
@@ -2280,6 +2283,8 @@ bool SPixFormat::CheckSupport(D3DFormat Format, const char* szDescr, ETexture_Us
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -2289,9 +2294,7 @@ bool SPixFormat::CheckSupport(D3DFormat Format, const char* szDescr, ETexture_Us
             MaxHeight = D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
 #endif
             Desc          = szDescr;
-            //  Confetti BEGIN: Igor Lobanchikov
             BytesPerBlock = CTexture::BytesPerBlock(CTexture::TexFormatFromDeviceFormat(Format));
-            //  Confetti End: Igor Lobanchikov
 
             bCanDS            = (nOptions & D3D11_FORMAT_SUPPORT_DEPTH_STENCIL) != 0;
             bCanRT            = (nOptions & D3D11_FORMAT_SUPPORT_RENDER_TARGET) != 0;
@@ -2353,11 +2356,9 @@ void SPixFormatSupport::CheckFormatSupport()
     m_FormatR8.CheckSupport(DXGI_FORMAT_R8_UNORM, "R8");
     m_FormatR8S.CheckSupport(DXGI_FORMAT_R8_SNORM, "R8S");
     m_FormatR16.CheckSupport(DXGI_FORMAT_R16_UNORM, "R16");
-    //  Confetti BEGIN: Igor Lobanchikov
     m_FormatR16U.CheckSupport(DXGI_FORMAT_R16_UINT, "R16U");
     m_FormatR16G16U.CheckSupport(DXGI_FORMAT_R16G16_UINT, "R16G16U");
     m_FormatR10G10B10A2UI.CheckSupport(DXGI_FORMAT_R10G10B10A2_UINT, "R10G10B10A2UI");
-    //  Confetti End: Igor Lobanchikov
     m_FormatR16F.CheckSupport(DXGI_FORMAT_R16_FLOAT, "R16F");
     m_FormatR32F.CheckSupport(DXGI_FORMAT_R32_FLOAT, "R32F");
     m_FormatR8G8.CheckSupport(DXGI_FORMAT_R8G8_UNORM, "R8G8");
@@ -2391,6 +2392,8 @@ void SPixFormatSupport::CheckFormatSupport()
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -2416,7 +2419,6 @@ void SPixFormatSupport::CheckFormatSupport()
     m_FormatETC2A.CheckSupport(DXGI_FORMAT_ETC2A_UNORM, "ETC2A");
 #endif //defined(OPENGL)
 
-    //  Confetti BEGIN: Igor Lobanchikov (copied from CD3D9Renderer::OnD3D11CreateDevice by bosnichd)
 #ifdef CRY_USE_METAL
     m_FormatPVRTC2.CheckSupport(DXGI_FORMAT_PVRTC2_UNORM, "PVRTC2");
     m_FormatPVRTC4.CheckSupport(DXGI_FORMAT_PVRTC4_UNORM, "PVRTC4");
@@ -2437,7 +2439,6 @@ void SPixFormatSupport::CheckFormatSupport()
     m_FormatASTC_12x10.CheckSupport(DXGI_FORMAT_ASTC_12x10_UNORM, "ASTC_12x10");
     m_FormatASTC_12x12.CheckSupport(DXGI_FORMAT_ASTC_12x12_UNORM, "ASTC_12x12");
 #endif
-    //  Confetti End: Igor Lobanchikov (copied from CD3D9Renderer::OnD3D11CreateDevice by bosnichd)
 }
 
 void CD3D9Renderer::GetVideoMemoryUsageStats(size_t& vidMemUsedThisFrame, size_t& vidMemUsedRecently, bool bGetPoolsSizes)
@@ -2514,19 +2515,15 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11CreateDevice(D3DDevice* pd3dDevice)
             rd->m_Features |= RFT_HW_INTEL;
             iLog->Log ("D3D Detected: intel video card");
         }
-        //  Confetti BEGIN: Igor Lobanchikov
         else if (rd->m_devInfo.AdapterDesc().VendorId == RenderCapabilities::s_gpuVendorIdARM)
         {
             rd->m_Features |= RFT_HW_ARM_MALI;
             iLog->Log ("D3D Detected: ARM (MALI) video card");
         }
-        //  Confetti End: Igor Lobanchikov
 
-        //  Confetti BEGIN: Igor Lobanchikov
 #if defined(OPENGL) && !defined(CRY_USE_METAL)
         DXGLInitializeIHVSpecifix();
 #endif
-        //  Confetti End: Igor Lobanchikov
     }
 
     rd->m_nGPUs = min(rd->m_nGPUs, (uint32)MAX_GPU_NUM);
@@ -2540,6 +2537,8 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11CreateDevice(D3DDevice* pd3dDevice)
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -2573,6 +2572,8 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11CreateDevice(D3DDevice* pd3dDevice)
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #elif defined(IOS)
     rd->m_MaxTextureMemory = 1024 * 1024 * 1024;
@@ -2589,6 +2590,8 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11CreateDevice(D3DDevice* pd3dDevice)
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -2603,10 +2606,9 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11CreateDevice(D3DDevice* pd3dDevice)
         rd->m_Features |= RFT_HW_VERTEXTEXTURES;
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov
 #if defined(CRY_USE_METAL) || (defined(OPENGL_ES))
-    // Igor: METAL Supports R32 RTs but it doesn't support blending for it. Cryengine uses blending to fix up depth.
-    // Igor: Disable R32 RT for metal for now.
+    // METAL Supports R32 RTs but it doesn't support blending for it. Cryengine uses blending to fix up depth.
+    // Disable R32 RT for metal for now.
     // Qualcomm's OpenGL ES 3.0 driver does not support R32F render targets.  Disabling for all OpenGL ES 3.0 versions for the time being.
     // When bound as a render target, we get this error:
     // W/Adreno-ES20(12623): <validate_render_targets:444>: GL_INVALID_OPERATION
@@ -2644,7 +2646,6 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11CreateDevice(D3DDevice* pd3dDevice)
 #else
     rd->m_bDeviceSupportsTessellation = false;
 #endif
-    //  Confetti End: Igor Lobanchikov
 
     rd->m_Features |= RFT_OCCLUSIONTEST;
 
@@ -2663,7 +2664,6 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11CreateDevice(D3DDevice* pd3dDevice)
         rd->m_bDeviceSupportsFP16Separate = false;
         rd->m_bDeviceSupportsFP16Filter = true;
 
-        //  Confetti BEGIN: Igor Lobanchikov
 #ifdef CRY_USE_METAL
         rd->m_FormatPVRTC2.CheckSupport(DXGI_FORMAT_PVRTC2_UNORM, "PVRTC2");
         rd->m_FormatPVRTC4.CheckSupport(DXGI_FORMAT_PVRTC4_UNORM, "PVRTC4");
@@ -2684,7 +2684,6 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11CreateDevice(D3DDevice* pd3dDevice)
         rd->m_FormatASTC_12x10.CheckSupport(DXGI_FORMAT_ASTC_12x10_UNORM, "ASTC_12x10");
         rd->m_FormatASTC_12x12.CheckSupport(DXGI_FORMAT_ASTC_12x12_UNORM, "ASTC_12x12");
 #endif
-        //  Confetti End: Igor Lobanchikov
 
         if (rd->m_hwTexFormatSupport.m_FormatBC1.IsValid() || rd->m_hwTexFormatSupport.m_FormatBC2.IsValid() || rd->m_hwTexFormatSupport.m_FormatBC3.IsValid())
         {
@@ -2699,7 +2698,7 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11CreateDevice(D3DDevice* pd3dDevice)
     rd->m_FullResRect.right = rd->m_width;
     rd->m_FullResRect.bottom = rd->m_height;
 
-#if defined(WIN32) || defined(WIN64) || defined(APPLE) || defined(LINUX)
+#if defined(WIN32) || defined(WIN64) || defined(APPLE) || defined(LINUX) || defined(CREATE_DEVICE_ON_MAIN_THREAD)
     rd->m_pRT->RC_SetViewport(0, 0, rd->m_width, rd->m_height);
 #else
     rd->RT_SetViewport(0, 0, rd->m_width, rd->m_height);
@@ -2750,6 +2749,8 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
     SAFE_RELEASE(pBackBuffer);
@@ -2777,6 +2778,8 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -2805,6 +2808,8 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
     hr = rd->m_DevMan.CreateD3D11Texture2D(&dsTextureDesc, clearValues, NULL, &rd->m_pZTexture, "DepthBuffer");
@@ -2816,6 +2821,8 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
         return hr;
@@ -2840,6 +2847,8 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
         hr = rd->m_DevMan.CreateD3D11Texture2D(&dsTextureDesc, clearValues, NULL, &rd->m_pNativeZTexture, "DepthBuffer");
@@ -2896,6 +2905,8 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -2987,6 +2998,8 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
 #endif
@@ -3032,6 +3045,8 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
         #include "Xenia/D3DSystem_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DSystem_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DSystem_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

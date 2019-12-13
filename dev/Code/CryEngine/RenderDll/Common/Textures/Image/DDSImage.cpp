@@ -570,10 +570,14 @@ bool CImageDDSFile::SetHeaderFromMemory(byte* pFileStart, byte* pFileAfterHeader
     {
         m_Flags |= FIM_GREYSCALE;
     }
-    if (imageFlags & CImageExtensionHelper::EIF_X360NotPretiled) // ACCEPTED_USE
-    {
-        m_Flags |= FIM_X360_NOT_PRETILED; // ACCEPTED_USE
-    }
+#if defined(AZ_PLATFORM_PROVO) || defined(TOOLS_SUPPORT_PROVO)
+#define AZ_RESTRICTED_SECTION IMAGEEXTENSIONHELPER_H_SECTION_ISNATIVE
+#include "Provo/DDSImage_cpp_provo.inl"
+#endif
+#if defined(AZ_PLATFORM_XENIA) || defined(TOOLS_SUPPORT_XENIA)
+#define AZ_RESTRICTED_SECTION IMAGEEXTENSIONHELPER_H_SECTION_ISNATIVE
+#include "Xenia/DDSImage_cpp_xenia.inl"
+#endif
     if (imageFlags & CImageExtensionHelper::EIF_AttachedAlpha)
     {
         m_Flags |= FIM_HAS_ATTACHED_ALPHA;

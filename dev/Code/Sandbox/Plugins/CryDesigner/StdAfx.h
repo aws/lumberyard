@@ -12,6 +12,11 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #pragma once
+// MSVC warns that these typedef members are being used and therefore must be acknowledged by using the following macro
+#pragma push_macro("_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
+#ifndef _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
+#define _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
+#endif
 #include <AzCore/PlatformDef.h>
 
 #include <QtGlobal>
@@ -68,3 +73,4 @@
 #include "Core/BrushDeclaration.h"
 #include "Core/BrushCommon.h"
 #include "Util/DesignerSettings.h"
+#pragma pop_macro("_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")

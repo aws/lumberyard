@@ -68,6 +68,21 @@ namespace
     }
 }
 
+#if AZ_TESTS_ENABLED
+
+int main(int argc, char** argv)
+{
+    char exePath[AZ_MAX_PATH_LEN] = { 0 };
+    if (readlink("/proc/self/exe", exePath, AZ_MAX_PATH_LEN) == -1)
+    {
+        return static_cast<int>(ReturnCode::ErrExePath);
+    }
+    char* runDir = dirname(exePath);
+    LumberyardLauncher::ReturnCode status = LumberyardLauncher::RunUnitTests(runDir, argc, argv);
+    return static_cast<int>(status);
+}
+
+#else
 
 int main(int argc, char** argv)
 {
@@ -115,3 +130,5 @@ int main(int argc, char** argv)
 
     return static_cast<int>(status);
 }
+
+#endif // AZ_TESTS_ENABLED

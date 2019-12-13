@@ -51,11 +51,6 @@ namespace VirtualGamepad
         explicit InputDeviceVirtualGamepad(const AZStd::unordered_set<AZStd::string>& buttonNames,
                                            const AZStd::unordered_set<AZStd::string>& thumbStickNames);
 
-        ////////////////////////////////////////////////////////////////////////////////////////////
-        // Disable copying (protected to workaround a VS2013 bug in std::is_copy_constructible)
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-    protected:
-        AZ_DISABLE_COPY_MOVE(InputDeviceVirtualGamepad);
     public:
 
         ////////////////////////////////////////////////////////////////////////////////////////////

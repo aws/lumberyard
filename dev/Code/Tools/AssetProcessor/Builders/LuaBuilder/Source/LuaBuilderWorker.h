@@ -34,6 +34,8 @@ namespace LuaBuilder
         void ShutDown() override;
         //////////////////////////////////////////////////////////////////////////
 
+        void ParseDependencies(const AZStd::string& file, AssetBuilderSDK::ProductPathDependencySet& outDependencies);
+
     private:
         using JobStepOutcome = AZ::Outcome<AssetBuilderSDK::JobProduct, AssetBuilderSDK::ProcessJobResultCode>;
 

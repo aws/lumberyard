@@ -19,6 +19,7 @@
 #include "Cry_Math.h"
 #include "Cry_Color.h"
 #include "Tarray.h"
+#include <AzCore/PlatformDef.h>
 class CTexture;
 
 #ifndef COMPILER_SUPPORTS_ENUM_SPECIFICATION
@@ -126,7 +127,6 @@ enum eTEX_Format
     eTF_PVRTC2,
     eTF_PVRTC4,
 
-    //  Confetti BEGIN: Igor Lobanchikov
     eTF_ASTC_4x4,
     eTF_ASTC_5x4,
     eTF_ASTC_5x5,
@@ -146,7 +146,6 @@ enum eTEX_Format
     eTF_R16U,
     eTF_R16G16U,
     eTF_R10G10B10A2UI,
-    //  Confetti End: Igor Lobanchikov
 
     eTF_MaxFormat               // unused, must be always the last in the list
 };
@@ -399,88 +398,15 @@ public:
 };
 
 // Animating Texture sequence definition
-struct STexAnim
+class ITexAnim
 {
-    int m_nRefCount;
-    TArray<CTexture*> m_TexPics;
-    int m_Rand;
-    int m_NumAnimTexs;
-    bool m_bLoop;
-    float m_Time;
-
-    int Size()
-    {
-        int nSize = sizeof(STexAnim);
-        nSize += m_TexPics.GetMemoryUsage();
-        return nSize;
-    }
-    void Release()
-    {
-        long refCnt = CryInterlockedDecrement(&m_nRefCount);
-        if (refCnt > 0)
-        {
-            return;
-        }
-        delete this;
-    }
-    void AddRef()
-    {
-        CryInterlockedIncrement(&m_nRefCount);
-    }
-
-    STexAnim()
-    {
-        m_nRefCount = 1;
-        m_Rand = 0;
-        m_NumAnimTexs = 0;
-        m_bLoop = false;
-        m_Time = 0.0f;
-    }
-
-    ~STexAnim()
-    {
-        for (uint32 i = 0; i < m_TexPics.Num(); i++)
-        {
-            ITexture* pTex = (ITexture*) m_TexPics[i];
-            SAFE_RELEASE(pTex);
-        }
-        m_TexPics.Free();
-    }
-
-    STexAnim& operator = (const STexAnim& sl)
-    {
-        // make sure not same object
-        if (this == &sl)
-        {
-            return *this;
-        }
-
-        for (uint32 i = 0; i < m_TexPics.Num(); i++)
-        {
-            ITexture* pTex = (ITexture*)m_TexPics[i];
-            SAFE_RELEASE(pTex);
-        }
-        m_TexPics.Free();
-
-        for (uint32 i = 0; i < sl.m_TexPics.Num(); i++)
-        {
-            ITexture* pTex = (ITexture*)sl.m_TexPics[i];
-            if (pTex)
-            {
-                pTex->AddRef();
-            }
-
-            m_TexPics.AddElem(sl.m_TexPics[i]);
-        }
-
-        m_Rand = sl.m_Rand;
-        m_NumAnimTexs = sl.m_NumAnimTexs;
-        m_bLoop = sl.m_bLoop;
-        m_Time = sl.m_Time;
-
-        return *this;
-    }
+public:
+    virtual ~ITexAnim() {};
+    virtual void Release() = 0;
+    virtual void AddRef() = 0;
 };
+
+struct AZ_DEPRECATED(STexAnim, "STexAnim has been deprecated and replaced by the abstract interface ITexAnim above and CTexAnim in RenderDLL/Common/Textures/Texture.h. This was done to keep proper ref counting between CryRenderDLL and EditorLib.") {};
 
 struct STexComposition
 {

@@ -1,0 +1,11 @@
+{
+    "auto": {
+        "Source": [
+            "Source/LevelBuilderApplication.cpp",
+            "Source/LevelBuilderComponent.h",
+            "Source/LevelBuilderComponent.cpp",
+            "Source/LevelBuilderWorker.h",
+            "Source/LevelBuilderWorker.cpp"
+        ]
+    }
+}

@@ -54,6 +54,11 @@ public:
     //! Instantiates a UI slice.
     virtual AzFramework::SliceInstantiationTicket InstantiateEditorSlice(const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset, AZ::Vector2 viewportPosition) = 0;
 
+    /// Instantiates a UI slice at the specified child index
+    virtual AzFramework::SliceInstantiationTicket InstantiateEditorSliceAtChildIndex(const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset,
+                                                                                        AZ::Vector2 viewportPosition,
+                                                                                        int childIndex) = 0;
+
     //! Restores an entity back to a slice instance for undo/redo *only*. A valid \ref EntityRestoreInfo must be provided,
     //! and is only extracted directly via \ref SliceReference::GetEntityRestoreInfo().
     virtual void RestoreSliceEntity(AZ::Entity* entity, const AZ::SliceComponent::EntityRestoreInfo& info) = 0;

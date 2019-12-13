@@ -77,8 +77,8 @@ public:
                 }
             }
         }
-    
-        return scriptBody;        
+
+        return scriptBody;
     }
 
 private:
@@ -86,11 +86,12 @@ private:
 };
 
 
-TEST_F(Integ_TwitchTest, TwitchScriptTest)
+TEST_F(Integ_TwitchTest, DISABLED_TwitchScriptTest)
 {
     bool success = RunTest();
 
-    EXPECT_NE(success, true);
+    // This test is disabled since Twitch presently requires credentials be manually provisioned and injected
+    EXPECT_EQ(success, true);
 }
 
 
@@ -115,3 +116,4 @@ TEST_F(TwitchTest, ExampleTest)
 }
 
 AZ_UNIT_TEST_HOOK();
+AZ_INTEG_TEST_HOOK();

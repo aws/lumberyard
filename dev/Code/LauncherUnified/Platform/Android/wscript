@@ -44,8 +44,9 @@ def build(bld):
 
     elif isinstance(bld, BuildContext):
         bld.read_aar(
-            name = 'support-compat',
-            group = 'com.android.support'
+            name = 'core',
+            version = '1.1.0',
+            group = 'androidx.core'
         )
 
     # launchers are considered exempt modules with the system that determines which modules, and their 

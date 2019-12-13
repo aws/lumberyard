@@ -19,7 +19,11 @@
 #include "StatObj.h"
 #include "ObjMan.h"
 #include "VisAreas.h"
+
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
 #include "terrain_sector.h"
+#endif
+
 #include "3dEngine.h"
 #include "TimeOfDay.h"
 
@@ -28,7 +32,11 @@ PodArray<Vec3> CVisArea::s_tmpLstPortVertsClipped;
 PodArray<Vec3> CVisArea::s_tmpLstPortVertsSS;
 PodArray<Vec3> CVisArea::s_tmpPolygonA;
 PodArray<IRenderNode*>  CVisArea::s_tmpLstLights;
+
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
 PodArray<CTerrainNode*> CVisArea::s_tmpLstTerrainNodeResult;
+#endif
+
 CPolygonClipContext CVisArea::s_tmpClipContext;
 PodArray<CCamera> CVisArea::s_tmpCameras;
 int CVisArea::s_nGetDistanceThruVisAreasCallCounter = 0;
@@ -89,7 +97,11 @@ void CVisArea::StaticReset()
     stl::free_container(s_tmpLstPortVertsSS);
     stl::free_container(s_tmpPolygonA);
     stl::free_container(s_tmpLstLights);
+
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
     stl::free_container(s_tmpLstTerrainNodeResult);
+#endif
+
     stl::free_container(s_tmpCameras);
     s_tmpClipContext.Reset();
 }
@@ -1025,6 +1037,7 @@ void CVisArea::GetMemoryUsage(ICrySizer* pSizer)
 
 void CVisArea::UpdateOcclusionFlagInTerrain()
 {
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
     if (m_bAffectedByOutLights && !m_bThisIsPortal)
     {
         Vec3 vCenter = GetAABBox()->GetCenter();
@@ -1047,6 +1060,7 @@ void CVisArea::UpdateOcclusionFlagInTerrain()
             }
         }
     }
+#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
 }
 
 void CVisArea::AddConnectedAreas(PodArray<CVisArea*>& lstAreas, int nMaxRecursion)

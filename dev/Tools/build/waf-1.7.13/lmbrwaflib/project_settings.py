@@ -36,6 +36,34 @@ def _project_setting_entry(ctx, project, entry, required=True):
 
     return projects_settings[project][entry]
 
+
+def _project_xenia_setting_entry(ctx, project, entry):
+    """
+    Util function to load an entry from the projects.json file
+    """
+
+    xenia_settings = _project_setting_entry(ctx, project, 'xenia_settings')
+
+    if not entry in xenia_settings:
+        ctx.cry_file_error('Cannot find entry "%s" for project "%s"' % (entry, project),
+                           get_project_settings_node(ctx, project).abspath())
+
+    return xenia_settings[entry]
+
+
+def _project_provo_setting_entry(ctx, project, entry):
+    """
+    Util function to load an entry from the projects.json file
+    """
+
+    provo_settings = _project_setting_entry(ctx, project, 'provo_settings')
+
+    if not entry in provo_settings:
+        ctx.cry_file_error('Cannot find entry "%s" for project "%s"' % (entry, project),
+                           get_project_settings_node(ctx, project).abspath())
+
+    return provo_settings[entry]
+
 #############################################################################
 @conf
 def game_projects(self):
@@ -371,7 +399,7 @@ def project_flavor_modules(self, project, flavor):
                                 get_project_settings_node(self, project).abspath())
 
     return []
-
+  
 
 @conf
 def add_game_projects_to_specs(self):
@@ -418,18 +446,12 @@ def add_game_projects_to_specs(self):
                     Logs.debug("lumberyard: Added module to spec list: %s for %s" % (module, spec_name))
 
             # if we have game projects, also allow the building of the launcher from templates:
-            available_launchers = self.get_available_launchers(project)
+            spec_list_to_append_to = spec_dict.setdefault('modules',[])
 
-            for available_launcher_spec in available_launchers:
-                if available_launcher_spec not in spec_dict:
-                    spec_dict[available_launcher_spec] = []
-                spec_list_to_append_to = spec_dict[available_launcher_spec]
-                available_spec_list = available_launchers[available_launcher_spec]
-                for module in available_spec_list:
-                    launcher_name = project + module
-                    Logs.debug("lumberyard: Added launcher %s for %s (to %s spec in in %s sub_spec)" % (
-                    launcher_name, project, spec_name, available_launcher_spec))
-                    spec_list_to_append_to.append(launcher_name)
+            for module in ('ClientLauncher', 'ServerLauncher'):
+                launcher_name = project + module
+                Logs.debug("lumberyard: Added launcher %s for %s (to %s spec)" % (launcher_name, project, spec_name))
+                spec_list_to_append_to.append(launcher_name)
 
 
 #############################################################################

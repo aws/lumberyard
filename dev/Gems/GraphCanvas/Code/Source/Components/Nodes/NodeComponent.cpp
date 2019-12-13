@@ -354,11 +354,6 @@ namespace GraphCanvas
             SlotRequestBus::Event(slotId, &SlotRequests::ClearConnections);
             SlotRequestBus::Event(slotId, &SlotRequests::SetNode, AZ::EntityId());            
 
-            QGraphicsItem* item = nullptr;
-            VisualRequestBus::EventResult(item, slotId, &VisualRequests::AsGraphicsItem);
-
-            delete item;
-
             AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::DeleteEntity, slotId);
             NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::AdjustSize);
         }

@@ -192,6 +192,11 @@ namespace AssetProcessor
         bool GetUnresolvedProductDependencies(AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& container);
         bool SetProductDependency(AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& entry);
 
+        // Missing product dependencies
+        bool SetMissingProductDependency(AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry& entry);
+        bool GetMissingProductDependenciesByProductId(AZ::s64 productId, AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntryContainer& container);
+        bool GetMissingProductDependencyByMissingProductDependencyId(AZ::s64 missingProductDependencyId, AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry& missingProductDependencyEntry);
+
         // updates or inserts multiple dependencies in a single transaction.  Unlike SetProductDependencies, this does *not* delete existing dependencies
         bool UpdateProductDependencies(AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& container);
 
@@ -210,8 +215,8 @@ namespace AssetProcessor
         bool GetFilesLikeFileName(QString likeFileName, LikeType likeType, AzToolsFramework::AssetDatabase::FileDatabaseEntryContainer& container);
 
         bool InsertFiles(AzToolsFramework::AssetDatabase::FileDatabaseEntryContainer& entry);
-        bool InsertFile(AzToolsFramework::AssetDatabase::FileDatabaseEntry& entry);
-        bool UpdateFile(AzToolsFramework::AssetDatabase::FileDatabaseEntry& entry);
+        bool InsertFile(AzToolsFramework::AssetDatabase::FileDatabaseEntry& entry, bool& entryAlreadyExists);
+        bool UpdateFile(AzToolsFramework::AssetDatabase::FileDatabaseEntry& entry, bool& entryAlreadyExists);
 
         // updates the modtime for a file if it exists.  Only returns true if the row existed and was successfully updated
         bool UpdateFileModTimeByFileNameAndScanFolderId(QString fileName, AZ::s64 scanFolderId, AZ::u64 modTime);

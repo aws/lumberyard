@@ -55,6 +55,13 @@ namespace ScriptCanvasBuilder
         void ShutDown() override;
         //////////////////////////////////////////////////////////////////////////
         
+        // Helper function for unit tests
+        static bool GatherProductDependencies(
+            AZ::SerializeContext& serializeContext,
+            AZ::Data::Asset<ScriptCanvas::RuntimeAsset>& runtimeAsset,
+            AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
+            AssetBuilderSDK::ProductPathDependencySet& productPathDependencySet);
+
         void Activate();
         void Deactivate();
 

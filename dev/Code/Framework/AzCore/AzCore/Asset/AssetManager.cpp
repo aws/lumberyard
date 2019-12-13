@@ -13,6 +13,7 @@
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetInternal/LegacyBlockingAssetTypeManager.h>
 #include <AzCore/Asset/LegacyAssetHandler.h>
+#include <AzCore/Debug/AssetTracking.h>
 #include <AzCore/Math/Crc.h>
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/std/parallel/atomic.h>
@@ -119,30 +120,37 @@ namespace AZ
 
             void Process() override
             {
-                m_owner->RegisterAssetLoading(m_asset);
-                
-                const bool loadSucceeded = LoadData();
-
-                // Queue the result for dispatch to main thread.
-                m_assetHandler->InitAsset(m_asset, loadSucceeded, false);
-
-                // Notify any dependent jobs.
-                if (loadSucceeded)
+                // This scope opened here intentionally to prevent stack variables from destructing after the deletion further down
                 {
-                    EBUS_EVENT_ID(m_asset.GetId(), AssetJobBus, OnAssetReady, m_asset);
-                }
-                else
-                {
-                    EBUS_EVENT_ID(m_asset.GetId(), AssetJobBus, OnAssetError, m_asset);
-                }
+                    AZ_ASSET_ATTACH_TO_SCOPE(this);
 
-                m_owner->UnregisterAssetLoading(m_asset);
+                    m_owner->RegisterAssetLoading(m_asset);
+
+                    const bool loadSucceeded = LoadData();
+
+                    // Queue the result for dispatch to main thread.
+                    m_assetHandler->InitAsset(m_asset, loadSucceeded, false);
+
+                    // Notify any dependent jobs.
+                    if (loadSucceeded)
+                    {
+                        EBUS_EVENT_ID(m_asset.GetId(), AssetJobBus, OnAssetReady, m_asset);
+                    }
+                    else
+                    {
+                        EBUS_EVENT_ID(m_asset.GetId(), AssetJobBus, OnAssetError, m_asset);
+                    }
+
+                    m_owner->UnregisterAssetLoading(m_asset);
+                }
 
                 delete this;
             }
 
             bool LoadData()
             {
+                AZ_ASSET_NAMED_SCOPE(m_asset.GetHint().c_str());
+
                 AssetStreamInfo loadInfo = m_owner->GetLoadStreamInfoForAsset(m_asset.GetId(), m_asset.GetType());
                 if (loadInfo.IsValid())
                 {
@@ -168,6 +176,7 @@ namespace AZ
          * Base class to handle blocking on an asset load. Takes care connecting to the AssetJobBus
          * and clean up of the object.
          */
+
         class WaitForAsset
             : public AssetJobBus::Handler
         {
@@ -198,6 +207,8 @@ namespace AZ
                 BusConnect(m_assetData.GetId());
 
                 Wait();
+
+                BusDisconnect(m_assetData.GetId());
 
                 delete this;
             }
@@ -679,6 +690,8 @@ namespace AZ
                     assetInfo.m_assetId = assetId;
                     assetInfo.m_assetType = assetType;
                 }
+
+                AZ_ASSET_NAMED_SCOPE("GetAsset: %s", assetInfo.m_relativePath.c_str());
 
                 bool isNewEntry = false;
                 AssetHandler* handler = nullptr;

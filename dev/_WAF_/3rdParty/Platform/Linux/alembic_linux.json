@@ -1,0 +1,17 @@
+{
+    "platform": {
+        "linux_x64": {
+            "libpath": [
+                "lib/linux",
+                "@3P:hdf5@/lib/linux",
+                "@3P:ilmbase@/lib/linux"
+            ],
+            "lib_debug": [
+                "lib${lib_names}.a"
+            ],
+            "lib_release": [
+                "lib${lib_names}.a"
+            ]
+        }
+    }
+}

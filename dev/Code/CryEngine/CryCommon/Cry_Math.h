@@ -499,6 +499,8 @@ ILINE int ilog2(uint64 x)   // if x==1<<i (i=0..63), returns i
 #   include "Xenia/Cry_Math_h_xenia.inl"
 #  elif defined(AZ_PLATFORM_PROVO)
 #   include "Provo/Cry_Math_h_provo.inl"
+#  elif defined(AZ_PLATFORM_SALEM)
+#   include "Salem/Cry_Math_h_salem.inl"
 #  endif
 # endif
 # if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

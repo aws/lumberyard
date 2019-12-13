@@ -36,7 +36,12 @@ namespace MaterialBuilder
         //! Returns the UUID for this builder
         static AZ::Uuid GetUUID();
 
+        bool GetResolvedTexturePathsFromMaterial(const AZStd::string& path, AZStd::vector<AZStd::string>& resolvedPaths);
+        bool PopulateProductDependencyList(AZStd::vector<AZStd::string>& resolvedPaths, AssetBuilderSDK::ProductPathDependencySet& dependencies);
+
     private:
+        bool GatherProductDependencies(const AZStd::string& path, AssetBuilderSDK::ProductPathDependencySet& dependencies);
+
         bool m_isShuttingDown = false;
     };
 

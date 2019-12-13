@@ -25,6 +25,7 @@
 #include <native/utilities/assetUtils.h>
 #include <native/AssetManager/assetScanFolderInfo.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
+#include <AzToolsFramework/Asset/AssetUtils.h>
 
 class QSettings;
 
@@ -32,6 +33,8 @@ namespace AssetProcessor
 {
     class PlatformConfiguration;
     class ScanFolderInfo;
+    extern const char AssetConfigPlatfomrDir[];
+    extern const char AssetProcessorPlatformConfigFileName[];
 
     //! Information for a given recognizer, on a specific platform
     //! essentially a plain data holder, but with helper funcs
@@ -41,30 +44,15 @@ namespace AssetProcessor
         QString m_extraRCParams;
     };
 
-    //! The information about a gem that we need, extracted from the gem system.
-    struct GemInformation
-    {
-        QString m_identifier; ///< The UUID of the gem.
-        QString m_absolutePath;     ///< Where the gem's folder is (as an absolute path)
-        QString m_relativePath;    ///< Where the gem's folder is (relative to the gems search path(s))
-        QString m_displayName;     ///< A friendly display name, not to be used for any pathing stuff.
-        bool m_isGameGem = false; ///< True if its a 'game project' gem.  Only one such gem can exist for any game project.
-        bool m_assetOnly = false; ///< True if it is an asset only gems.
-
-        GemInformation() = default;
-        GemInformation(const char* identifier, const char* absolutePath, const char* relativePath, const char* displayName, bool isGameGem, bool assetOnlyGem);
-
-        static QString GetGemAssetFolder() { return QString("Assets"); }
-        static AZStd::string GemDirectoryFolderName() { return AZStd::string("Gems"); }
-    };
-
     //! The data about a particular recognizer, including all platform specs.
     //! essentially a plain data holder, but with helper funcs
     struct AssetRecognizer
     {
         AssetRecognizer() = default;
 
-        AssetRecognizer(const QString& name, bool testLockSource, int priority, bool critical, bool supportsCreateJobs, AssetBuilderSDK::FilePatternMatcher patternMatcher, const QString& version, const AZ::Data::AssetType& productAssetType, bool checkServer = false)
+        AssetRecognizer(const QString& name, bool testLockSource, int priority, 
+            bool critical, bool supportsCreateJobs, AssetBuilderSDK::FilePatternMatcher patternMatcher, 
+            const QString& version, const AZ::Data::AssetType& productAssetType, bool outputProductDependencies, bool checkServer = false)
             : m_name(name)
             , m_testLockSource(testLockSource)
             , m_priority(priority)
@@ -73,6 +61,7 @@ namespace AssetProcessor
             , m_patternMatcher(patternMatcher)
             , m_version(version)
             , m_productAssetType(productAssetType) // if specified, it allows you to assign a UUID for the type of products directly.
+            , m_outputProductDependencies(outputProductDependencies)
             , m_checkServer(checkServer)
         {}
 
@@ -93,6 +82,7 @@ namespace AssetProcessor
         bool m_isCritical = false;
         bool m_checkServer = false;
         bool m_supportsCreateJobs = false; // used to indicate a recognizer that can respond to a createJobs request
+        bool m_outputProductDependencies = false;
     };
     //! Dictionary of Asset Recognizers based on name
     typedef QHash<QString, AssetRecognizer> RecognizerContainer;
@@ -134,18 +124,17 @@ namespace AssetProcessor
         * a full configuration.
         * Note that order of the config files is relevant - later files override settings in
         * files that are earlier.
-        * @param rootConfigFile the root config file that is the default, baseline config.  This has the lowest priority
-        * @param projectConfigFile (optional) the project configuration file.  This has the absolutely highest priority and will be read last
-        * @param gemsFolderPath (optional) the absolute path to a folder containing the 'gem.json' file for this project.  If specified, gems will be queried and they will be added in the middle between the above two
-        * Also note that if the project has any "game project gems", then those will also be inserted last, and thus have a higher priority than the root or non-project gems.
-        */
-        bool InitializeFromConfigFiles(QString rootConfigFile, QString projectConfigFile = QString());
+        **/
+        bool InitializeFromConfigFiles(QString absoluteSystemRoot, QString absoluteAssetRoot, QString gameName, bool addPlatformConfigs = true, bool addGemsConfigs = true);
 
         QString PlatformName(unsigned int platformCrc) const;
         QString RendererName(unsigned int rendererCrc) const;
 
         const AZStd::vector<AssetBuilderSDK::PlatformInfo>& GetEnabledPlatforms() const;
         const AssetBuilderSDK::PlatformInfo* const GetPlatformByIdentifier(const char* identifier) const;
+
+        //! Add AssetProcessor config files from platform specific folders
+        bool AddPlatformConfigFilePaths(QStringList& configList);
 
         int MetaDataFileTypesCount() const { return m_metaDataFileTypes.count(); }
         // Metadata file types are (meta file extension, original file extension - or blank if its tacked on the end instead of replacing).
@@ -169,7 +158,7 @@ namespace AssetProcessor
         int GetScanFolderCount() const;
 
         //! Return the gems info list
-        QList<GemInformation> GetGemsInformation() const;
+        AZStd::vector<AzToolsFramework::AssetUtils::GemInfo> GetGemsInformation() const;
 
         //! Retrieve the scan folder at a given index.
         AssetProcessor::ScanFolderInfo& GetScanFolderAt(int index);
@@ -227,6 +216,7 @@ namespace AssetProcessor
         //! note that this does return a database source path by default, which includes the output prefix of the scan folder if present
         //! You can override this by setting includeOutputPrefix = false;
         bool ConvertToRelativePath(QString fullFileName, QString& databaseSourceName, QString& scanFolderName, bool includeOutputPrefix = true) const;
+        static bool ConvertToRelativePath(const QString& fullFileName, const ScanFolderInfo* scanFolderInfo, QString& databaseSourceName, bool includeOutputPrefix = true);
 
         //! given a full file name (assumed already fed through the normalization funciton), return the first matching scan folder
         const AssetProcessor::ScanFolderInfo* GetScanFolderForFile(const QString& fullFileName) const;
@@ -253,23 +243,17 @@ namespace AssetProcessor
 
         void PopulatePlatformsForScanFolder(AZStd::vector<AssetBuilderSDK::PlatformInfo>& platformsList, QStringList includeTagsList = QStringList(), QStringList excludeTagsList = QStringList());
 
-        //! Read all the gems for the project and return a list of
-        //! the folders containing gems that are active for this project.
-        virtual bool ReadGems(QList<GemInformation>& gemInfoList);  //virtual, so that unit tests can override to avoid loading extra dlls during testing
     protected:
 
         // call this first, to populate the list of platform informations
         void ReadPlatformInfosFromConfigFile(QString fileSource);
         // call this next, in order to find out what platforms are enabled
-        void PopulateEnabledPlatforms(QString fileSource);
+        void PopulateEnabledPlatforms(QStringList configFiles);
         // finaly, call this, in order to delete the platforminfos for non-enabled platforms
         void FinalizeEnabledPlatforms();
 
         // iterate over all the gems and add their folders to the "scan folders" list as appropriate.
-        void AddGemScanFolders(const QList<GemInformation>& gemInfoList);
-
-        // iterate over all the gems and add their asset processor config snippets to the configFilesOut array
-        void AddGemConfigFiles(const QList<GemInformation>& gemInfoList, QStringList& configFilesOut, bool& foundGameGem);
+        void AddGemScanFolders(const AZStd::vector<AzToolsFramework::AssetUtils::GemInfo>& gemInfoList);
 
         void ReadEnabledPlatformsFromConfigFile(QString fileSource);
         bool ReadRecognizersFromConfigFile(QString fileSource);
@@ -279,10 +263,10 @@ namespace AssetProcessor
         AZStd::vector<AssetBuilderSDK::PlatformInfo> m_enabledPlatforms;
         RecognizerContainer m_assetRecognizers;
         ExcludeRecognizerContainer m_excludeAssetRecognizers;
-        QVector<AssetProcessor::ScanFolderInfo> m_scanFolders;
+        AZStd::vector<AssetProcessor::ScanFolderInfo> m_scanFolders;
         QList<QPair<QString, QString> > m_metaDataFileTypes;
         QSet<QString> m_metaDataRealFiles;
-        QList<GemInformation> m_gemInfoList;
+        AZStd::vector<AzToolsFramework::AssetUtils::GemInfo> m_gemInfoList;
 
         int m_minJobs = 1;
         int m_maxJobs = 3;

@@ -60,9 +60,6 @@ public:
     //////////////////////////////////////////////////////////////////////////
 
 protected:
-    // Workaround for VS2013
-    // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-    LoadScreenComponent(const LoadScreenComponent&) = delete;
 
     static void Reflect(AZ::ReflectContext* context);
 

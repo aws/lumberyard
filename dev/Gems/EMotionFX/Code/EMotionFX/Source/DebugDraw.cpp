@@ -42,6 +42,15 @@ namespace EMotionFX
 
     //-------------------------------------------------------------------------
 
+    DebugDraw::~DebugDraw()
+    {
+        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
+        for (auto& data : m_actorInstanceData)
+        {
+            delete data.second;
+        }
+    }
+
     void DebugDraw::Lock()
     {
         m_mutex.lock();
@@ -73,7 +82,12 @@ namespace EMotionFX
     void DebugDraw::UnregisterActorInstance(ActorInstance* actorInstance)
     {
         AZStd::scoped_lock<AZStd::recursive_mutex> lock(m_mutex);
-        m_actorInstanceData.erase(actorInstance);
+        const auto it = m_actorInstanceData.find(actorInstance);
+        if (it != m_actorInstanceData.end())
+        {
+            delete it->second;
+            m_actorInstanceData.erase(it);
+        }
     }
 
     DebugDraw::ActorInstanceData* DebugDraw::GetActorInstanceData(ActorInstance* actorInstance)

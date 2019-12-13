@@ -61,9 +61,6 @@ namespace EMotionFX
         /// Remove the given parameter by name. This removes the parameter from the parameter mask and also deletes the port.
         void RemoveParameterByName(const AZStd::string& parameterName);
 
-        /// Renames the given currentName parameter to newName
-        void RenameParameterName(const AZStd::string& currentName, const AZStd::string& newName);
-
         /// Sort the parameter names based on the order of the parameters in the anim graph.
         static void SortParameterNames(AnimGraph* animGraph, AZStd::vector<AZStd::string>& outParameterNames);
 

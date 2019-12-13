@@ -1453,14 +1453,14 @@ void CShaderMan::AddRTCombinations(FXShaderCacheCombinations& CmbsMap, CHWShader
     int nBits = 0;
 
     uint32 nBitsPlatform = 0;
-    if (CParserBin::m_nPlatform == SF_ORBIS) // ACCEPTED_USE
+    if (CParserBin::m_nPlatform == SF_ORBIS)
     {
-        nBitsPlatform |= SHGD_HW_ORBIS; // ACCEPTED_USE
+        nBitsPlatform |= SHGD_HW_ORBIS;
     }
     else
-    if (CParserBin::m_nPlatform == SF_DURANGO) // ACCEPTED_USE
+    if (CParserBin::m_nPlatform == SF_DURANGO)
     {
-        nBitsPlatform |= SHGD_HW_DURANGO; // ACCEPTED_USE
+        nBitsPlatform |= SHGD_HW_DURANGO;
     }
     else
     if (CParserBin::m_nPlatform == SF_D3D11)
@@ -1822,7 +1822,7 @@ void CShaderMan::_PrecacheShaderList(bool bStatsOnly)
                             }
                         }
 
-                        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_GL4) // ACCEPTED_USE
+                        if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_GL4)
                         {
                             CHWShader* d3d11Shaders[] = { pPass->m_GShader, pPass->m_HShader, pPass->m_CShader, pPass->m_DShader };
                             for (int i = 0; i < 4; i++)
@@ -1981,7 +1981,7 @@ void CShaderMan::mfPrecacheShaders(bool bStatsOnly)
     AZ_Assert(CRenderer::CV_r_shadersPlatform != AZ::PLATFORM_MAX, "You must set a shaders platform (r_shadersPlatform) before precaching the shaders");
     CHWShader::mfFlushPendedShadersWait(-1);
 
-    if (CRenderer::CV_r_shadersorbis) // ACCEPTED_USE
+    if (CRenderer::CV_r_shadersorbis)
     {
 #ifdef WATER_TESSELLATION_RENDERER
         CRenderer::CV_r_WaterTessellationHW = 0;
@@ -1994,14 +1994,14 @@ void CShaderMan::mfPrecacheShaders(bool bStatsOnly)
         CParserBin::m_bShaderCacheGen = true;
 
         gRenDev->m_Features |= RFT_HW_SM50;
-        CParserBin::SetupForOrbis(); // ACCEPTED_USE
-        CryLogAlways("\nStarting shader compilation for Orbis..."); // ACCEPTED_USE
+        CParserBin::SetupForOrbis();
+        CryLogAlways("\nStarting shader compilation for Orbis...");
         mfInitShadersList(NULL);
         mfPreloadShaderExts();
         _PrecacheShaderList(bStatsOnly);
     }
     else
-    if (CRenderer::CV_r_shadersdurango) // ACCEPTED_USE
+    if (CRenderer::CV_r_shadersdurango)
     {
         gRenDev->m_bDeviceSupportsFP16Filter = true;
         gRenDev->m_bDeviceSupportsFP16Separate = false;
@@ -2011,8 +2011,8 @@ void CShaderMan::mfPrecacheShaders(bool bStatsOnly)
         CParserBin::m_bShaderCacheGen = true;
 
         gRenDev->m_Features |= RFT_HW_SM50;
-        CParserBin::SetupForDurango(); // ACCEPTED_USE
-        CryLogAlways("\nStarting shader compilation for Durango..."); // ACCEPTED_USE
+        CParserBin::SetupForDurango();
+        CryLogAlways("\nStarting shader compilation for Durango...");
         mfInitShadersList(NULL);
         mfPreloadShaderExts();
         _PrecacheShaderList(bStatsOnly);
@@ -2104,18 +2104,16 @@ void CShaderMan::mfPrecacheShaders(bool bStatsOnly)
 
 void CShaderMan::mfGetShaderList()
 {
-    if (CRenderer::CV_r_shadersorbis) // ACCEPTED_USE
+    if (CRenderer::CV_r_shadersorbis)
     {
         CParserBin::m_bShaderCacheGen = true;
-        CParserBin::SetupForOrbis(); // ACCEPTED_USE
-        CryLogAlways("\nGet ShaderList_Provo.txt...");
+        CParserBin::SetupForOrbis();
     }
     else
-    if (CRenderer::CV_r_shadersdurango) // ACCEPTED_USE
+    if (CRenderer::CV_r_shadersdurango)
     {
         CParserBin::m_bShaderCacheGen = true;
-        CParserBin::SetupForDurango(); // ACCEPTED_USE
-        CryLogAlways("\nGet ShaderList_Xenia.txt...");
+        CParserBin::SetupForDurango();
     }
     else
     if (CRenderer::CV_r_shadersdx11)

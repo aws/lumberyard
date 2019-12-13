@@ -21,7 +21,6 @@
 
 #include "../Dialogs/BrushPanel.h"
 #include "PanelTreeBrowser.h"
-#include "AssetBrowser/AssetBrowserMetaTaggingDlg.h"
 #include "AssetBrowser/AssetBrowserManager.h"
 
 #include "EntityObject.h"
@@ -1337,33 +1336,6 @@ void CBrushObject::GetVerticesInWorld(std::vector<Vec3>& vertices) const
             vertices.push_back(tm.TransformPoint(meshDesc.m_pVertsF16[v].ToVec3()));
         }
     }
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CBrushObject::EditTags(bool alwaysTag)
-{
-    bool toTag = true;
-
-    if (alwaysTag == false)
-    {
-        CAssetBrowserManager::StrVector tags;
-        QString asset(GetGeometryFile());
-
-        int numTags = CAssetBrowserManager::Instance()->GetTagsForAsset(tags, asset);
-
-        if (numTags != 0)
-        {
-            toTag = false;
-        }
-    }
-
-    if (toTag == false)
-    {
-        return;
-    }
-
-    CAssetBrowserMetaTaggingDlg taggingDialog(GetGeometryFile());
-    taggingDialog.exec();
 }
 
 //////////////////////////////////////////////////////////////////////////

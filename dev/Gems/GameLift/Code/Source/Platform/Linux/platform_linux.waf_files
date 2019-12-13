@@ -1,0 +1,7 @@
+{
+  "auto": {
+    "Platform/Linux": [
+      "../../CAFile_Default.cpp"
+    ]
+  }
+}

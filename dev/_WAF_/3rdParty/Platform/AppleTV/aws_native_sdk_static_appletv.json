@@ -1,0 +1,53 @@
+{
+    "platform": {
+        "appletv": {
+            "libpath_debug": [
+                "lib/ios/Debug"
+            ],
+            "libpath_release": [
+                "lib/ios/Release"
+            ],
+            "aws_cpp_sdk_all_static/lib": [
+                "lib${aws_cpp_sdk_all}.a",
+                "libcurl.a"
+            ],
+            "aws_cpp_sdk_core_static/lib": [
+                "lib${aws_cpp_sdk_core}.a",
+                "libcurl.a"
+            ],
+            "aws_cpp_sdk_gamelift_static/lib": [
+                "lib${aws_cpp_sdk_gamelift}.a"
+            ],
+            "aws_cpp_sdk_s3_static/lib": [
+                "lib${aws_cpp_sdk_s3}.a"
+            ],
+            "aws_cpp_sdk_sts_static/lib": [
+                "lib${aws_cpp_sdk_sts}.a"
+            ],
+            "aws_cpp_sdk_mobileanalytics_static/lib": [
+                "lib${aws_cpp_sdk_mobileanalytics}.a"
+            ],
+            "aws_cpp_sdk_identity_management_static/lib": [
+                "lib${aws_cpp_sdk_identity_management}.a"
+            ],
+            "aws_cpp_sdk_cognito_identity_static/lib": [
+                "lib${aws_cpp_sdk_cognito_identity}.a"
+            ],
+            "aws_cpp_sdk_cognito_idp_static/lib": [
+                "lib${aws_cpp_sdk_cognito_idp}.a"
+            ],
+            "aws_cpp_sdk_kinesis_static/lib": [
+                "lib${aws_cpp_sdk_kinesis}.a"
+            ],
+            "aws_cpp_sdk_lambda_static/lib": [
+                "lib${aws_cpp_sdk_lambda}.a"
+            ],
+            "aws_cpp_sdk_identity_lambda_static/lib": [
+                "lib${aws_cpp_sdk_identity_lambda}.a"
+            ],
+            "aws_cpp_sdk_identity_metrics_static/lib": [
+                "lib${aws_cpp_sdk_identity_metrics}.a"
+            ]
+        }
+    }
+}

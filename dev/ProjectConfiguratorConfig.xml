@@ -35,7 +35,6 @@
         <Class name="AZStd::string" field="dynamicLibraryPath" value="LyzardEngines" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
       </Class>
 		</Class>
-		<Class name="bool" field="x360PhysicalMemory" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 	</Class>
 	<Class name="AZ::Entity" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 		<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">

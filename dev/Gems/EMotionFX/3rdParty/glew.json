@@ -1,35 +1,9 @@
 {
     "name": "glew",
     "source": "@GEM@/External/GLEW/1.10.0",
-    "description": "AMD AGS Library (Shared)",
+    "description": "GLEW: The OpenGL Extension Wrangler Library",
     "includes": [
         "include"
     ],
-    "lib_required": "True",
-    "platform": {
-        "win_x64_vs2013": {
-            "importlibpath": [
-                "lib/win64"
-            ],
-            "sharedlibpath": [
-                "bin/win64"
-            ],
-            "import": [
-                "glew32.lib"
-            ],
-            "shared": [
-                "glew32.dll"
-            ]
-        },
-        "win_x64_vs2015": "@win_x64_vs2013",
-        "win_x64_vs2017": "@win_x64_vs2013",
-        "darwin_x64" : {
-            "libpath": [
-                "lib/mac"
-            ],
-            "lib": [
-                "libGLEW.a"
-            ]
-        }
-    }
+    "lib_required": "True"
 }

@@ -30,6 +30,7 @@ def build(bld):
                                        'QT5WIDGETS'],
         features                    = ['qt5'],
         includes                    = [ '.',
+                                        bld.Path('Code/CryEngine/CryCommon'),
                                         bld.Path('Code/Tools'),
                                         bld.Path('Code/Tools/RC/ResourceCompiler'),
                                         bld.Path('Code/Tools/CryCommonTools')],

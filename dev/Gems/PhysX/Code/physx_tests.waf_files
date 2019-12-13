@@ -1,9 +1,13 @@
 {
     "auto": {
         "Tests": [
+            "Tests/PhysXTestCommon.h",
+            "Tests/PhysXTestCommon.cpp",
             "Tests/PhysXGenericTest.cpp",
             "Tests/PhysXSpecificTest.cpp",
-            "Tests/PhysXForceRegionTest.cpp"
+            "Tests/PhysXForceRegionTest.cpp",
+            "Tests/PhysXWorldTest.cpp",
+            "Tests/PhysXMaterialLibraryTest.cpp"
         ]
     }
 }

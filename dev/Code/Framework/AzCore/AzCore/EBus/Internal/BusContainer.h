@@ -12,7 +12,6 @@
 #pragma once
 
 #include <AzCore/std/functional.h>
-#include <AzCore/std/function/invoke.h>
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/smart_ptr/intrusive_ptr.h>
 
@@ -153,7 +152,8 @@ namespace AZ
 
                             while (handlerIt != handlersEnd)
                             {
-                                AZStd::invoke(func, (*handlerIt++), args...);
+                                auto itr = handlerIt++;
+                                Traits::EventProcessingPolicy::Call(func, *itr, args...);
                             }
 
                             holder.release();
@@ -195,7 +195,8 @@ namespace AZ
 
                             while (handlerIt != handlersEnd)
                             {
-                                results = AZStd::invoke(func, (*handlerIt++), args...);
+                                auto itr = handlerIt++;
+                                Traits::EventProcessingPolicy::CallResult(results, func, *itr, args...);
                             }
 
                             holder.release();
@@ -223,7 +224,8 @@ namespace AZ
                             CallstackEntry entry(context, &id);
                             while (handlerIt != handlers.rend())
                             {
-                                AZStd::invoke(func, (*handlerIt++), args...);
+                                auto itr = handlerIt++;
+                                Traits::EventProcessingPolicy::Call(func, *itr, args...);
                             }
 
                             holder.release();
@@ -251,7 +253,8 @@ namespace AZ
                             CallstackEntry entry(context, &id);
                             while (handlerIt != handlers.rend())
                             {
-                                results = AZStd::invoke(func, (*handlerIt++), args...);
+                                auto itr = handlerIt++;
+                                Traits::EventProcessingPolicy::CallResult(results, func, *itr, args...);
                             }
 
                             holder.release();
@@ -289,7 +292,8 @@ namespace AZ
 
                         while (handlerIt != handlersEnd)
                         {
-                            AZStd::invoke(func, (*handlerIt++), args...);
+                            auto itr = handlerIt++;
+                            Traits::EventProcessingPolicy::Call(func, *itr, args...);
                         }
                     }
                 }
@@ -324,7 +328,8 @@ namespace AZ
 
                         while (handlerIt != handlersEnd)
                         {
-                            results = AZStd::invoke(func, (*handlerIt++), args...);
+                            auto itr = handlerIt++;
+                            Traits::EventProcessingPolicy::CallResult(results, func, *itr, args...);
                         }
                     }
                 }
@@ -345,7 +350,8 @@ namespace AZ
                         CallstackEntry entry(context, &busPtr->m_busId);
                         while (handlerIt != handlers.rend())
                         {
-                            AZStd::invoke(func, (*handlerIt++), args...);
+                            auto itr = handlerIt++;
+                            Traits::EventProcessingPolicy::Call(func, *itr, args...);
                         }
                     }
                 }
@@ -366,7 +372,8 @@ namespace AZ
                         CallstackEntry entry(context, &busPtr->m_busId);
                         while (handlerIt != handlers.rend())
                         {
-                            results = AZStd::invoke(func, (*handlerIt++), args...);
+                            auto itr = handlerIt++;
+                            Traits::EventProcessingPolicy::CallResult(results, func, *itr, args...);
                         }
                     }
                 }
@@ -407,7 +414,8 @@ namespace AZ
 
                             while (handlerIt != handlersEnd)
                             {
-                                AZStd::invoke(func, (*handlerIt++), args...);
+                                auto itr = handlerIt++;
+                                Traits::EventProcessingPolicy::Call(func, *itr, args...);
                             }
 
                             // Increment before release so that if holder goes away, iterator is still valid
@@ -452,7 +460,8 @@ namespace AZ
 
                             while (handlerIt != handlersEnd)
                             {
-                                results = AZStd::invoke(func, (*handlerIt++), args...);
+                                auto itr = handlerIt++;
+                                Traits::EventProcessingPolicy::CallResult(results, func, *itr, args...);
                             }
 
                             // Increment before release so that if holder goes away, iterator is still valid
@@ -494,7 +503,8 @@ namespace AZ
                             CallstackEntry entry(context, &holder.m_busId);
                             while (handlerIt != handlers.rend())
                             {
-                                AZStd::invoke(func, *handlerIt++, args...);
+                                auto itr = handlerIt++;
+                                Traits::EventProcessingPolicy::Call(func, *itr, args...);
                             }
                             holder.release();
 
@@ -551,7 +561,8 @@ namespace AZ
                             CallstackEntry entry(context, &holder.m_busId);
                             while (handlerIt != handlers.rend())
                             {
-                                results = AZStd::invoke(func, *handlerIt++, args...);
+                                auto itr = handlerIt++;
+                                Traits::EventProcessingPolicy::CallResult(results, func, *itr, args...);
                             }
                             holder.release();
 
@@ -655,7 +666,11 @@ namespace AZ
                 bool shouldContinue = true;
                 while (handlerIt != handlersEnd)
                 {
-                    if (!AZStd::invoke(callback, (handlerIt++)->m_interface))
+                    bool result = false;
+                    auto itr = handlerIt++;
+                    Traits::EventProcessingPolicy::CallResult(result, callback, itr->m_interface);
+
+                    if (!result)
                     {
                         shouldContinue = false;
                         break;
@@ -795,7 +810,7 @@ namespace AZ
                         if (addressIt != addresses.end() && addressIt->m_interface)
                         {
                             CallstackEntry entry(context, &addressIt->m_busId);
-                            AZStd::invoke(AZStd::forward<Function>(func), addressIt->m_interface, AZStd::forward<ArgsT>(args)...);
+                            Traits::EventProcessingPolicy::Call(AZStd::forward<Function>(func), addressIt->m_interface, AZStd::forward<ArgsT>(args)...);
                         }
                     }
                 }
@@ -812,7 +827,7 @@ namespace AZ
                         if (addressIt != addresses.end() && addressIt->m_interface)
                         {
                             CallstackEntry entry(context, &addressIt->m_busId);
-                            results = AZStd::invoke(AZStd::forward<Function>(func), addressIt->m_interface, AZStd::forward<ArgsT>(args)...);
+                            Traits::EventProcessingPolicy::CallResult(results, AZStd::forward<Function>(func), addressIt->m_interface, AZStd::forward<ArgsT>(args)...);
                         }
                     }
                 }
@@ -829,7 +844,7 @@ namespace AZ
                         if (addressIt != addresses.end() && addressIt->m_interface)
                         {
                             CallstackEntry entry(context, &addressIt->m_busId);
-                            AZStd::invoke(AZStd::forward<Function>(func), addressIt->m_interface, AZStd::forward<ArgsT>(args)...);
+                            Traits::EventProcessingPolicy::Call(AZStd::forward<Function>(func), addressIt->m_interface, AZStd::forward<ArgsT>(args)...);
                         }
                     }
                 }
@@ -846,7 +861,7 @@ namespace AZ
                         if (addressIt != addresses.end() && addressIt->m_interface)
                         {
                             CallstackEntry entry(context, &addressIt->m_busId);
-                            results = AZStd::invoke(AZStd::forward<Function>(func), addressIt->m_interface, AZStd::forward<ArgsT>(args)...);
+                            Traits::EventProcessingPolicy::CallResult(results, AZStd::forward<Function>(func), addressIt->m_interface, AZStd::forward<ArgsT>(args)...);
                         }
                     }
                 }
@@ -864,7 +879,7 @@ namespace AZ
                         if (busPtr->m_interface)
                         {
                             CallstackEntry entry(context, &busPtr->m_busId);
-                            AZStd::invoke(AZStd::forward<Function>(func), busPtr->m_interface, AZStd::forward<ArgsT>(args)...);
+                            Traits::EventProcessingPolicy::Call(AZStd::forward<Function>(func), busPtr->m_interface, AZStd::forward<ArgsT>(args)...);
                         }
                     }
                 }
@@ -882,7 +897,7 @@ namespace AZ
                         if (busPtr->m_interface)
                         {
                             CallstackEntry entry(context, &busPtr->m_busId);
-                            results = AZStd::invoke(AZStd::forward<Function>(func), busPtr->m_interface, AZStd::forward<ArgsT>(args)...);
+                            Traits::EventProcessingPolicy::CallResult(results, AZStd::forward<Function>(func), busPtr->m_interface, AZStd::forward<ArgsT>(args)...);
                         }
                     }
                 }
@@ -900,7 +915,7 @@ namespace AZ
                         if (busPtr->m_interface)
                         {
                             CallstackEntry entry(context, &busPtr->m_busId);
-                            AZStd::invoke(AZStd::forward<Function>(func), busPtr->m_interface, AZStd::forward<ArgsT>(args)...);
+                            Traits::EventProcessingPolicy::Call(AZStd::forward<Function>(func), busPtr->m_interface, AZStd::forward<ArgsT>(args)...);
                         }
                     }
                 }
@@ -918,7 +933,7 @@ namespace AZ
                         if (busPtr->m_interface)
                         {
                             CallstackEntry entry(context, &busPtr->m_busId);
-                            results = AZStd::invoke(AZStd::forward<Function>(func), busPtr->m_interface, AZStd::forward<ArgsT>(args)...);
+                            Traits::EventProcessingPolicy::CallResult(results, AZStd::forward<Function>(func), busPtr->m_interface, AZStd::forward<ArgsT>(args)...);
                         }
                     }
                 }
@@ -957,7 +972,7 @@ namespace AZ
                             {
                                 // @func and @args cannot be forwarded here as rvalue arguments need to bind to const lvalue arguments
                                 // due to potential of multiple addresses of this EBus container invoking the function multiple times
-                                AZStd::invoke(func, inst, args...);
+                                Traits::EventProcessingPolicy::Call(func, inst, args...);
                             }
                         }
                     }
@@ -995,7 +1010,7 @@ namespace AZ
                             {
                                 // @func and @args cannot be forwarded here as rvalue arguments need to bind to const lvalue arguments
                                 // due to potential of multiple addresses of this EBus container invoking the function multiple times
-                                results = AZStd::invoke(func, inst, args...);
+                                Traits::EventProcessingPolicy::CallResult(results, func, inst, args...);
                             }
                         }
                     }
@@ -1031,7 +1046,7 @@ namespace AZ
                                 CallstackEntry entry(context, &holder.m_busId);
                                 // @func and @args cannot be forwarded here as rvalue arguments need to bind to const lvalue arguments
                                 // due to potential of multiple addresses of this EBus container invoking the function multiple times
-                                AZStd::invoke(func, inst, args...);
+                                Traits::EventProcessingPolicy::Call(func, inst, args...);
                             }
                             holder.release();
 
@@ -1087,7 +1102,7 @@ namespace AZ
                                 CallstackEntry entry(context, &holder.m_busId);
                                 // @func and @args cannot be forwarded here as rvalue arguments need to bind to const lvalue arguments
                                 // due to potential of multiple addresses of this EBus container invoking the function multiple times
-                                results = AZStd::invoke(func, inst, args...);
+                                Traits::EventProcessingPolicy::CallResult(results, func, inst, args...);
                             }
                             holder.release();
 
@@ -1144,7 +1159,9 @@ namespace AZ
                             fixer.m_busId = &addressIt->m_busId;
                             if (Interface* inst = (addressIt++)->m_interface)
                             {
-                                if (!AZStd::invoke(callback, inst))
+                                bool result = false;
+                                Traits::EventProcessingPolicy::CallResult(result, callback, inst);
+                                if (!result)
                                 {
                                     return;
                                 }
@@ -1166,7 +1183,9 @@ namespace AZ
                             if (Interface* inst = addressIt->m_interface)
                             {
                                 CallstackEntry entry(context, &id);
-                                if (!AZStd::invoke(callback, inst))
+                                bool result = false;
+                                Traits::EventProcessingPolicy::CallResult(result, callback, inst);
+                                if (!result)
                                 {
                                     return;
                                 }
@@ -1186,7 +1205,9 @@ namespace AZ
                             if (Interface* inst = ptr->m_interface)
                             {
                                 CallstackEntry entry(context, &ptr->m_busId);
-                                if (!AZStd::invoke(callback, inst))
+                                bool result = false;
+                                Traits::EventProcessingPolicy::CallResult(result, callback, inst);
+                                if (!result)
                                 {
                                     return;
                                 }
@@ -1347,7 +1368,8 @@ namespace AZ
                         {
                             // @func and @args cannot be forwarded here as rvalue arguments need to bind to const lvalue arguments
                             // due to potential of multiple handlers of this EBus container invoking the function multiple times
-                            AZStd::invoke(func, (*handlerIt++), args...);
+                            auto itr = handlerIt++;
+                            Traits::EventProcessingPolicy::Call(func, *itr, args...);
                         }
                     }
                 }
@@ -1381,7 +1403,8 @@ namespace AZ
                         {
                             // @func and @args cannot be forwarded here as rvalue arguments need to bind to const lvalue arguments
                             // due to potential of multiple handlers of this EBus container invoking the function multiple times
-                            results = AZStd::invoke(func, (*handlerIt++), args...);
+                            auto itr = handlerIt++;
+                            Traits::EventProcessingPolicy::CallResult(results, func, *itr, args...);
                         }
                     }
                 }
@@ -1401,7 +1424,8 @@ namespace AZ
                         {
                             // @func and @args cannot be forwarded here as rvalue arguments need to bind to const lvalue arguments
                             // due to potential of multiple handlers of this EBus container invoking the function multiple times
-                            AZStd::invoke(func, (*handlerIt++), args...);
+                            auto itr = handlerIt++;
+                            Traits::EventProcessingPolicy::Call(func, *itr, args...);
                         }
                     }
                 }
@@ -1421,7 +1445,8 @@ namespace AZ
                         {
                             // @func and @args cannot be forwarded here as rvalue arguments need to bind to const lvalue arguments
                             // due to potential of multiple handlers of this EBus container invoking the function multiple times
-                            results = AZStd::invoke(func, (*handlerIt++), args...);
+                            auto itr = handlerIt++;
+                            Traits::EventProcessingPolicy::CallResult(results, func, *itr, args...);
                         }
                     }
                 }
@@ -1454,7 +1479,10 @@ namespace AZ
 
                         while (handlerIt != handlersEnd)
                         {
-                            if (!AZStd::invoke(callback, (handlerIt++)->m_interface))
+                            bool result = false;
+                            auto itr = handlerIt++;
+                            Traits::EventProcessingPolicy::CallResult(result, callback, itr->m_interface);
+                            if (!result)
                             {
                                 return;
                             }
@@ -1486,7 +1514,7 @@ namespace AZ
             using ContainerType = EBusContainer;
             using IdType = typename Traits::BusIdType;
 
-            using CallstackEntry = Internal::CallstackEntry<Interface, Traits>;
+            using CallstackEntry = AZ::Internal::CallstackEntry<Interface, Traits>;
 
             // Handlers can just be stored as raw pointer
             // Needs to be public for ConnectionPolicy
@@ -1516,7 +1544,7 @@ namespace AZ
                         if (handler)
                         {
                             CallstackEntry entry(context, nullptr);
-                            AZStd::invoke(AZStd::forward<Function>(func), handler, AZStd::forward<ArgsT>(args)...);
+                            Traits::EventProcessingPolicy::Call(AZStd::forward<Function>(func), handler, AZStd::forward<ArgsT>(args)...);
                         }
                     }
                 }
@@ -1532,7 +1560,7 @@ namespace AZ
                         if (handler)
                         {
                             CallstackEntry entry(context, nullptr);
-                            results = AZStd::invoke(AZStd::forward<Function>(func), handler, AZStd::forward<ArgsT>(args)...);
+                            Traits::EventProcessingPolicy::CallResult(results, AZStd::forward<Function>(func), handler, AZStd::forward<ArgsT>(args)...);
                         }
                     }
                 }
@@ -1548,7 +1576,7 @@ namespace AZ
                         if (handler)
                         {
                             CallstackEntry entry(context, nullptr);
-                            AZStd::invoke(AZStd::forward<Function>(func), handler, AZStd::forward<ArgsT>(args)...);
+                            Traits::EventProcessingPolicy::Call(AZStd::forward<Function>(func), handler, AZStd::forward<ArgsT>(args)...);
                         }
                     }
                 }
@@ -1564,7 +1592,7 @@ namespace AZ
                         if (handler)
                         {
                             CallstackEntry entry(context, nullptr);
-                            results = AZStd::invoke(AZStd::forward<Function>(func), handler, AZStd::forward<ArgsT>(args)...);
+                            Traits::EventProcessingPolicy::CallResult(results, AZStd::forward<Function>(func), handler, AZStd::forward<ArgsT>(args)...);
                         }
                     }
                 }
@@ -1581,7 +1609,7 @@ namespace AZ
                         if (handler)
                         {
                             CallstackEntry entry(context, nullptr);
-                            AZStd::invoke(callback, handler);
+                            Traits::EventProcessingPolicy::Call(callback, handler);
                         }
                     }
                 }

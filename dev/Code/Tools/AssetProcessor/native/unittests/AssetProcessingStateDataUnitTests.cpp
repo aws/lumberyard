@@ -71,6 +71,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     JobDatabaseEntryContainer jobs;
     ProductDatabaseEntryContainer products;
     ProductDependencyDatabaseEntryContainer productDependencies;
+    MissingProductDependencyDatabaseEntryContainer missingDependencies;
 
     QString outName;
     QString outPlat;

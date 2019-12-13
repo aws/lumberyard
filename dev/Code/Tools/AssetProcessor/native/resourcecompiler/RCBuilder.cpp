@@ -370,7 +370,7 @@ namespace AssetProcessor
     };
 
     InternalAssetRecognizer::InternalAssetRecognizer(const AssetRecognizer& src, const QString& builderId, const QHash<QString, AssetPlatformSpec>& assetPlatformSpecByPlatform)
-        : AssetRecognizer(src.m_name, src.m_testLockSource, src.m_priority, src.m_isCritical, src.m_supportsCreateJobs, src.m_patternMatcher, src.m_version, src.m_productAssetType, src.m_checkServer)
+        : AssetRecognizer(src.m_name, src.m_testLockSource, src.m_priority, src.m_isCritical, src.m_supportsCreateJobs, src.m_patternMatcher, src.m_version, src.m_productAssetType, src.m_outputProductDependencies, src.m_checkServer)
         , m_builderId(builderId)
     {
         // assetPlatformSpecByPlatform is a hash table like
@@ -451,7 +451,7 @@ namespace AssetProcessor
         this->m_rcCompiler->RequestQuit();
     }
 
-    bool InternalRecognizerBasedBuilder::FindRC(QString& systemRootOut, QString& rcAbsolutePathOut)
+    bool InternalRecognizerBasedBuilder::FindRC(QString& rcAbsolutePathOut)
     {
         QString appRoot;
         QString filename;
@@ -480,7 +480,7 @@ namespace AssetProcessor
         QString rcFullPath;
 
         // Validate that the engine root contains the necessary rc.exe
-        if (!FindRC(systemRoot, rcFullPath))
+        if (!FindRC(rcFullPath))
         {
             return false;
         }
@@ -823,10 +823,9 @@ namespace AssetProcessor
             }
             QString rcParam = assetRecognizer->m_platformSpecsByPlatform[request.m_jobDescription.GetPlatformIdentifier().c_str()].m_extraRCParams;
 
-            //
             if (rcParam.compare(ASSET_PROCESSOR_CONFIG_KEYWORD_COPY) == 0)
             {
-                ProcessCopyJob(request, assetRecognizer->m_productAssetType, jobCancelListener, response);
+                ProcessCopyJob(request, assetRecognizer->m_productAssetType, assetRecognizer->m_outputProductDependencies, jobCancelListener, response);
             }
             else if (rcParam.compare(ASSET_PROCESSOR_CONFIG_KEYWORD_SKIP) == 0)
             {
@@ -836,7 +835,18 @@ namespace AssetProcessor
             }
             else
             {
-                ProcessLegacyRCJob(request, rcParam, assetRecognizer->m_productAssetType, jobCancelListener, response);
+                // If the job fails due to a networking issue, we will attempt to retry RetriesForJobNetworkError times
+                int retryCount = 0;
+
+                do 
+                {
+                    ++retryCount;
+                    ProcessLegacyRCJob(request, rcParam, assetRecognizer->m_productAssetType, jobCancelListener, response);
+
+                    AZ_Warning("RC Builder", response.m_resultCode != AssetBuilderSDK::ProcessJobResult_NetworkIssue, "RC.exe reported a network connection issue.  %s", 
+                        retryCount <= AssetProcessor::RetriesForJobNetworkError ? "Attempting to retry job." : "Maximum retry attempts exceeded, giving up.");
+                } while (response.m_resultCode == AssetBuilderSDK::ProcessJobResult_NetworkIssue && retryCount <= AssetProcessor::RetriesForJobNetworkError);
+                
             }
 
             if (jobCancelListener.IsCancelled())
@@ -963,12 +973,13 @@ namespace AssetProcessor
             if (jobCancelListener.IsCancelled())
             {
                 response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Cancelled;
+                return;
             }
-            else
+            else if (rcResult.m_crashed)
             {
-                response.m_resultCode = rcResult.m_crashed ? AssetBuilderSDK::ProcessJobResult_Crashed : AssetBuilderSDK::ProcessJobResult_Failed;
+                response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Crashed;
+                return;
             }
-            return;
         }
 
         // did the rc Compiler output a response file?
@@ -981,8 +992,17 @@ namespace AssetProcessor
         
         if (!responseFromRCCompiler)
         {
-            // if the response was NOT loaded from a response file, we assume success (since RC did not crash or anything)
-            response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
+            if(rcResult.m_exitCode != 0)
+            {
+                // RC didn't crash and didn't write a response, but returned a failure code
+                response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+                return;
+            }
+            else
+            {
+                // if the response was NOT loaded from a response file, we assume success (since RC did not crash or anything)
+                response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
+            }
         }
 
         if (jobCancelListener.IsCancelled())
@@ -1153,7 +1173,12 @@ namespace AssetProcessor
         }
     }
 
-    void InternalRecognizerBasedBuilder::ProcessCopyJob(const AssetBuilderSDK::ProcessJobRequest& request, AZ::Uuid productAssetType, const AssetBuilderSDK::JobCancelListener& jobCancelListener, AssetBuilderSDK::ProcessJobResponse& response)
+    void InternalRecognizerBasedBuilder::ProcessCopyJob(
+        const AssetBuilderSDK::ProcessJobRequest& request, 
+        AZ::Uuid productAssetType, 
+        bool outputProductDependencies, 
+        const AssetBuilderSDK::JobCancelListener& jobCancelListener, 
+        AssetBuilderSDK::ProcessJobResponse& response)
     {
         response.m_outputProducts.push_back(AssetBuilderSDK::JobProduct(request.m_fullPath, productAssetType));
         response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
@@ -1165,6 +1190,14 @@ namespace AssetProcessor
         }
         // Temporary solution to get around the fact that we don't have job dependencies
         TempSolution_TouchCopyJobActivity();
+
+        if (outputProductDependencies)
+        {
+            // Launch the external process when it requires the old cry code to parse a specific type of asset
+            QString rcParam = QString("/copyonly /outputproductdependencies /targetroot");
+            rcParam = QString("%1=\"%2\"").arg(rcParam).arg(request.m_tempDirPath.c_str());
+            ProcessLegacyRCJob(request, rcParam, productAssetType, jobCancelListener, response);
+        }
     }
 
     QFileInfoList InternalRecognizerBasedBuilder::GetFilesInDirectory(const QString& directoryPath)

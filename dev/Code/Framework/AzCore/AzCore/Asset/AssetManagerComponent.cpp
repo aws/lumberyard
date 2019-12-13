@@ -11,6 +11,7 @@
 */
 
 #include <AzCore/Asset/AssetManagerComponent.h>
+#include <AzCore/Asset/AssetManagerBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -91,18 +92,11 @@ namespace AZ
     //=========================================================================
     void AssetManagerComponent::Reflect(ReflectContext* context)
     {
+        Data::AssetId::Reflect(context);
+        Data::AssetData::Reflect(context);
+
         if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context))
         {
-            serializeContext->Class<Data::AssetId>()
-                ->Version(1)
-                ->Field("guid", &Data::AssetId::m_guid)
-                ->Field("subId", &Data::AssetId::m_subId)
-                ;
-
-            serializeContext->Class<AZ::Data::AssetData>()
-                ->Version(1)
-                ;
-
             serializeContext->Class<AssetManagerComponent, AZ::Component>()
                 ->Version(1)
                 ;
@@ -120,7 +114,14 @@ namespace AZ
 
         if (BehaviorContext* behaviorContext = azrtti_cast<BehaviorContext*>(context))
         {
-            behaviorContext->Class<Data::AssetId>();
+            behaviorContext->EBus<Data::AssetCatalogRequestBus>("AssetCatalogRequestBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Category, "Asset")
+                ->Attribute(AZ::Script::Attributes::Module, "asset")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Event("GetAssetPathById", &Data::AssetCatalogRequests::GetAssetPathById)
+                ->Event("GetAssetIdByPath", &Data::AssetCatalogRequests::GetAssetIdByPath)
+                ;
         }
     }
 }

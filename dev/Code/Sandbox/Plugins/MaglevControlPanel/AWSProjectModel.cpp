@@ -1775,7 +1775,15 @@ void AWSProjectModel::OnDeploymentInProgress(const QString& deploymentName)
     DeploymentListNode* deploymentListNode = static_cast<DeploymentListNode*>(itemFromIndex(DeploymentListIndex()));
     Node* deploymentNode = static_cast<Node*>(deploymentListNode->GetDeploymentNode(deploymentName));
 
-    deploymentNode->SetIsUpdating(true);
+    // This guard is to avoid a crash that happens in resource manager UI when switching to mis configured profile, quickly
+    // clicking create deployment using the bad profile and then trying switching back to bad profile and  trying to delete newly created deployment.
+    // This is not a solution to the underlying problem of slow responsiveness between Resource Manager UI and python boost bindings,
+    // which is the root cause of the issue. After the fix above the below check should not be needed as the OnDeploymentInProgress
+    // method wont be called from DeploymentStatusModel->DeleteStack() as (ResourceManager()->IsProjectInitialized()) will return false correctly
+    if (deploymentNode)
+    {
+        deploymentNode->SetIsUpdating(true);
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////

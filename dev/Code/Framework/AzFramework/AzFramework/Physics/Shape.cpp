@@ -38,21 +38,20 @@ namespace Physics
             {
                 editContext->Class<ColliderConfiguration>("ColliderConfiguration", "Configuration for a collider")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ColliderConfiguration::m_isTrigger, "Trigger", "If set, this collider will act as a trigger")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &ColliderConfiguration::GetIsTriggerVisibility)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ColliderConfiguration::m_collisionLayer, "Collision Layer", "The collision layer assigned to the collider")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &ColliderConfiguration::GetCollisionLayerVisibility)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ColliderConfiguration::m_collisionGroupId, "Collides With", "The collision group containing the layers this collider collides with")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, &ColliderConfiguration::GetCollisionLayerVisibility)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &ColliderConfiguration::GetCollisionLayerVisibility)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ColliderConfiguration::m_position, "Offset", "Local offset from the rigid body")
-                    ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &ColliderConfiguration::GetOffsetVisibility)
+                        ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ColliderConfiguration::m_rotation, "Rotation", "Local rotation relative to the rigid body")
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &ColliderConfiguration::m_materialSelection, "Material", "Assign material library and select material")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &ColliderConfiguration::m_materialSelection, "Physics Material", "Select physics material library and which materials to use for the shape")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &ColliderConfiguration::GetMaterialSelectionVisibility)
-#ifdef ENABLE_COLLIDER_TAG
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ColliderConfiguration::m_tag, "Tag", "Tag used to identify colliders from one another")
-#endif
                     ;
             }
         }
@@ -93,5 +92,10 @@ namespace Physics
     AZ::Crc32 ColliderConfiguration::GetIsVisibleVisibility() const
     {
         return GetPropertyVisibility(IsVisible);
+    }
+    
+    AZ::Crc32 ColliderConfiguration::GetOffsetVisibility() const
+    {
+        return GetPropertyVisibility(Offset);
     }
 }

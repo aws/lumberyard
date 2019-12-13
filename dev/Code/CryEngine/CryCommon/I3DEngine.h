@@ -19,6 +19,7 @@
 
 // The maximum number of unique surface types that can be used per node
 #define MMRM_MAX_SURFACE_TYPES 16
+#define COMPILED_OCTREE_FILE_NAME "terrain/terrain.dat"
 
 // !!! Do not add any headers here !!!
 #include "CryEngineDecalInfo.h" 
@@ -57,6 +58,11 @@ struct ITimeOfDay;
 struct ITerrain;
 struct STerrainInfo;
 struct MacroTextureConfiguration;
+
+namespace LegacyProceduralVegetation
+{
+    class IVegetationPoolManager;
+}
 
 namespace ChunkFile
 {
@@ -702,6 +708,126 @@ struct SHotUpdateInfo
   AUTO_STRUCT_INFO
 };
 
+struct STerrainInfo
+{
+    //! Helper method.
+    //! Returns terrain size in meters.
+    int TerrainSize() const
+    {
+        return nHeightMapSize_InUnits * nUnitSize_InMeters;
+    }
+
+    //! Helper method.
+    void LoadTerrainSettings(int& unitSize, // in meters
+                             float& invUnitSize, // in 1/meters
+                             int& terrainSize, // in meters
+                             int& meterToUnitBitShift,
+                             int& terrainSizeDiv,
+                             int& sectorSize, // in meters
+                             int& sectorsTableSize, // sector width/height of the finest LOD level (sector count is the square of this value)
+                             int& unitToSectorBitShift) const
+    {
+        unitSize = nUnitSize_InMeters;
+        invUnitSize = 1.f / unitSize;
+        terrainSize = TerrainSize();
+        meterToUnitBitShift = 0;
+        {
+            int shift = 0;
+            while ((1 << shift) < unitSize)
+            {
+                shift++;
+            }
+            meterToUnitBitShift = shift;
+        }
+        terrainSizeDiv = (terrainSize >> meterToUnitBitShift) - 1;
+        sectorSize = nSectorSize_InMeters;
+        sectorsTableSize = nSectorsTableSize_InSectors;
+
+        unitToSectorBitShift = 0;
+        while (sectorSize >> unitToSectorBitShift > unitSize)
+        {
+            unitToSectorBitShift++;
+        }
+    }
+
+    int nHeightMapSize_InUnits;
+    int nUnitSize_InMeters;
+    int nSectorSize_InMeters;
+
+    int nSectorsTableSize_InSectors;
+    float fHeightmapZRatio;
+    float fOceanWaterLevel; //For file format compatibility purposes this is left here even though Terrain doesn't own Ocean/Water issues anymore.
+
+    AUTO_STRUCT_INFO
+};
+
+#define OCTREE_CHUNK_VERSION 29
+#define TERRAIN_NODE_CHUNK_VERSION 8
+
+struct STerrainChunkHeader
+{
+    int8 nVersion;
+    int8 nDummy;
+    int8 nFlags;
+    int8 nFlags2;
+    int32 nChunkSize;
+    STerrainInfo TerrainInfo;
+
+    AUTO_STRUCT_INFO
+};
+
+//==============================================================================================
+
+#define FILEVERSION_TERRAIN_TEXTURE_FILE 10
+
+// Summary:
+//   Common header for binary files used by 3dengine
+struct SCommonFileHeader
+{
+    char    signature[4];   // File signature, should be "CRY "
+    uint8   file_type;      // File type
+    uint8   flags;          // File common flags
+    uint16  version;        // File version
+
+    AUTO_STRUCT_INFO
+};
+
+// Summary:
+// Sub header for terrain texture file
+struct STerrainTextureFileHeader
+{
+    uint16  LayerCount;
+    uint16  Flags;
+    float   ColorMultiplier_deprecated;
+
+    AUTO_STRUCT_INFO
+};
+
+// Summary:
+//   Layer header for terrain texture file (for each layer)
+struct STerrainTextureLayerFileHeader
+{
+    uint16      SectorSizeInPixels; //
+    uint16      nReserved;          // ensure padding and for later usage
+    ETEX_Format eTexFormat;         // typically eTF_BC3
+    uint32      SectorSizeInBytes;  // redundant information for more convenient loading code
+
+    AUTO_STRUCT_INFO
+};
+
+struct STerrainNodeChunk
+{
+    int16   nChunkVersion;
+    int16 bHasHoles;
+    AABB    boxHeightmap;
+    float fOffset;
+    float fRange;
+    int     nSize;
+    int     nSurfaceTypesNum;
+
+    AUTO_STRUCT_INFO
+};
+
 struct IVisAreaCallback
 {
     // <interfuscator:shuffle>
@@ -709,6 +835,11 @@ struct IVisAreaCallback
     virtual void OnVisAreaDeleted(IVisArea* pVisArea) = 0;
     // </interfuscator:shuffle>
 };
+
+// Optional filter function for octree queries to perform custom filtering of the results.
+// return true to keep the render node, false to filter it out.
+using ObjectTreeQueryFilterCallback = AZStd::function<bool(IRenderNode*, EERType)>;
+
 
 struct IVisAreaManager
 {
@@ -756,7 +887,7 @@ struct IVisAreaManager
     //   Removes all vis areas in a region of the level.
     virtual void ClearRegion(const AABB& region) = 0;
 
-    virtual void GetObjectsByType(PodArray<IRenderNode*>& lstObjects, EERType objType, const AABB* pBBox) = 0;
+    virtual void GetObjectsByType(PodArray<IRenderNode*>& lstObjects, EERType objType, const AABB* pBBox, ObjectTreeQueryFilterCallback filterCallback = nullptr) = 0;
     virtual void GetObjectsByFlags(uint dwFlags, PodArray<IRenderNode*>& lstObjects) = 0;
 
     virtual void GetObjects(PodArray<IRenderNode*>& lstObjects, const AABB* pBBox) = 0;
@@ -1421,7 +1552,17 @@ struct I3DEngine
     // Return Value:
     //     A pointer to an object derived from IStatObj.
     virtual IStatObj* FindStatObjectByFilename(const char* filename) = 0;
-    
+
+    // Summary:
+    //     Returns pointer to the IVegetationPoolManager singleton.
+    // See Also:
+    //     IVegetationPool
+    // Arguments:
+    //     void
+    // Return Value:
+    //     A pointer to the IVegetationPoolManager singleton.
+    virtual LegacyProceduralVegetation::IVegetationPoolManager& GetIVegetationPoolManager() = 0;
+
     //Summary:
     //      Creates a deformable render node
     //See Also:
@@ -1495,6 +1636,29 @@ struct I3DEngine
     virtual bool IsSunShadows(){ return false; };
     // End Confetti//////////////////////////////
     //////////////////////////////////////////////
+
+
+    // Summary:
+    //     Loads and instantiate the Octree from the data available in pData stream.
+    // Return Value:
+    //     true if the octree and its data were created successfully.
+    virtual bool SetOctreeCompiledData(byte* pData, int nDataSize, std::vector<IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable, bool bHotUpdate = false, SHotUpdateInfo* pExportInfo = nullptr, bool loadTerrainMacroTexture = false) = 0;
+
+    // Summary:
+    //     Writes the octree data into the pData stream.
+    // Return Value:
+    //     true if the octree data was copied into pData.
+    virtual bool GetOctreeCompiledData(byte* pData, int nDataSize, std::vector<IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable, std::vector<struct IStatInstGroup*>** ppStatInstGroupTable, EEndian eEndian, SHotUpdateInfo* pExportInfo = nullptr) = 0;
+
+    // Summary:
+    //     Traverses the Octree and calculates the size in bytes of the smallest buffer that can fit the serializable octree data.
+    // Return Value:
+    //     number of bytes.
+    virtual int GetOctreeCompiledDataSize(SHotUpdateInfo* pExportInfo = nullptr) = 0;
+
+    virtual void GetStatObjAndMatTables(DynArray<IStatObj*>* pStatObjTable, DynArray<_smart_ptr<IMaterial>>* pMatTable, DynArray<IStatInstGroup*>* pStatInstGroupTable, uint32 nObjTypeMask) = 0;
+
+    virtual IRenderNode* AddVegetationInstance(int nStaticGroupID, const Vec3& vPos, const float fScale, uint8 ucBright, uint8 angle, uint8 angleX = 0, uint8 angleY = 0) = 0;
 
 
 #ifndef _RELEASE
@@ -1631,7 +1795,6 @@ struct I3DEngine
     //     Sets the current sun base color.
     virtual void SetSunColor(Vec3 vColor) = 0;
 
-    // BEGIN JAVELIN FORK: https://jira.agscollab.com/browse/JAV-12177
     // Summary:
     //     Gets the current sun animated color.
     virtual Vec3 GetSunAnimColor() = 0;
@@ -1765,6 +1928,18 @@ struct I3DEngine
     // Return Value:
     //     A float which indicate the elevation level.
     virtual float GetTerrainZ(int x, int y) = 0;
+
+    // Summary:
+    //     Gets the terrain slope for a specified location.
+    // Notes:
+    //     Only values between 0 and WORLD_SIZE.
+    //     Otherwise returns 0.
+    // Arguments:
+    //     x - X coordinate of the location
+    //     y - Y coordinate of the location
+    // Return Value:
+    //     A float which indicate the slope (a value between 0f and 255.0f).
+    virtual float GetTerrainSlope(int x, int y) = 0;
 
   // Summary:
     //     Gets the terrain surfaceid.
@@ -1903,6 +2078,11 @@ struct I3DEngine
     // Summary:
     //     Loads detail texture and detail object settings from XML doc (load from current LevelData.xml if pDoc is 0)
     virtual void    LoadTerrainSurfacesFromXML(XmlNodeRef pDoc, bool bUpdateTerrain, int nSID = DEFAULT_SID) = 0;
+
+    // Summary:
+    //      This one is called by the editor when the terrain editing tools are not being built.
+    //      This is the case when the game developers are using external tools to author terrain.
+    virtual bool LoadCompiledTerrainForEditor() = 0;
 
     //DOC-IGNORE-END
 
@@ -2211,7 +2391,6 @@ struct I3DEngine
     virtual void DeleteEntityDecals(IRenderNode* pEntity) = 0;
 
     // Summary:
-    virtual void CompleteObjectsGeometry() = 0;
     //     Disables CGFs unloading.
     virtual void LockCGFResources() = 0;
 
@@ -2296,7 +2475,22 @@ struct I3DEngine
     virtual ChunkFile::IChunkFileWriter* CreateChunkFileWriter(EChunkFileFormat eFormat, ICryPak* pPak, const char* filename) const = 0;
     virtual void ReleaseChunkFileWriter(ChunkFile::IChunkFileWriter* p) const = 0;
 
-    
+    // Description:
+    //      Returns true if the ocean was created successfully.
+    virtual bool CreateOcean(_smart_ptr<IMaterial> pTerrainWaterMat, float waterLevel) = 0;
+
+    // Description:
+    //      Deletes the ocean if it exists, otherwise does nothing.
+    virtual void DeleteOcean() = 0;
+
+    // Description:
+    //      Changes ocean material if the ocean exists.
+    virtual void ChangeOceanMaterial(_smart_ptr<IMaterial> pMat) = 0;
+
+    // Description:
+    //      Changes ocean water level if the ocean exists.
+    virtual void ChangeOceanWaterLevel(float fWaterLevel) = 0;
+
     // Description:
     //      Returns interface to terrain engine
     virtual ITerrain* GetITerrain() = 0;
@@ -2406,12 +2600,12 @@ struct I3DEngine
     // Return Value:
     //   Count returned
     virtual uint32 GetObjectsByType(EERType objType, IRenderNode** pObjects = 0) = 0;
-    virtual uint32 GetObjectsByTypeInBox(EERType objType, const AABB& bbox, IRenderNode** pObjects = 0) = 0;
+    virtual uint32 GetObjectsByTypeInBox(EERType objType, const AABB& bbox, IRenderNode** pObjects = 0, ObjectTreeQueryFilterCallback filterCallback = nullptr) = 0;
     virtual uint32 GetObjectsInBox(const AABB& bbox, IRenderNode** pObjects = 0) = 0;
     virtual uint32 GetObjectsByFlags(uint dwFlag, IRenderNode** pObjects = 0) = 0;
 
     // variant which takes a POD array which is resized in the function itself
-    virtual void GetObjectsByTypeInBox(EERType objType, const AABB& bbox, PodArray<IRenderNode*>* pLstObjects) = 0;
+    virtual void GetObjectsByTypeInBox(EERType objType, const AABB& bbox, PodArray<IRenderNode*>* pLstObjects, ObjectTreeQueryFilterCallback filterCallback = nullptr) = 0;
 
     // Called from editor whenever an object is modified by the user
     virtual void OnObjectModified(IRenderNode* pRenderNode, uint dwFlags) = 0;

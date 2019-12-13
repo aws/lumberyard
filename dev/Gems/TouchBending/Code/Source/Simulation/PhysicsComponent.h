@@ -15,7 +15,7 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzFramework/Physics/World.h>
-#include <AzFramework/Physics/SystemBus.h>
+#include <AzFramework/Physics/World.h>
 #include <AzFramework/Physics/TouchBendingBus.h>
 #include <AzFramework/Physics/WorldEventhandler.h>
 
@@ -41,7 +41,7 @@ namespace TouchBending
         class PhysicsComponent
             : public AZ::Component
             , public Physics::TouchBendingBus::Handler
-            , public Physics::SystemNotificationBus::Handler
+            , public Physics::WorldNotificationBus::Handler
             , public PhysX::IPhysxTriggerEventCallback
             , public AsyncSkeletonBuilderBus::Handler
             , private CrySystemEventBus::Handler
@@ -83,9 +83,8 @@ namespace TouchBending
             //AsyncSkeletonBuilderBus::Handler END
 
             //::Physics::SystemNotificationBus::Handler START        
-            void OnPrePhysicsUpdate(float fixedDeltaTime, Physics::World* world) override;
-            void OnPostPhysicsUpdate(float fixedDeltaTime, Physics::World* world) override;
-            void OnPreWorldDestroy(Physics::World* world) override;
+            void OnPrePhysicsUpdate(float fixedDeltaTime) override;
+            void OnPostPhysicsUpdate(float fixedDeltaTime) override;
             //::Physics::SystemNotificationBus::Handler END
 
             //CrySystemEventBus::Handler START

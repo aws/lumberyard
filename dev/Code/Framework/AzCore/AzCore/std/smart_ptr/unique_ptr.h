@@ -66,19 +66,9 @@ namespace AZStd
 
 } // namespace AZStd
 
-namespace std
-{
-    //! VS2013 HACK: This specializations only occurs in VS2013 because std::is_copy_constructible always returns true.
-    //! https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-    template<typename T, typename Deleter>
-    struct is_copy_constructible<std::unique_ptr<T, Deleter>>
-        : public std::false_type
-    {};
-}
-
 namespace AZ
 {
-    AZ_INTERNAL_VARIATION_SPECIALIZATION_2_CONCAT_1(T, Deleter, AZStd::unique_ptr, "AZStd::unique_ptr<", ">", "{B55F90DA-C21E-4EB4-9857-87BE6529BA6D}");
+    AZ_TYPE_INFO_INTERNAL_VARIATION_SPECIALIZATION_2_CONCAT_1(AZStd::unique_ptr, "{B55F90DA-C21E-4EB4-9857-87BE6529BA6D}", T, Deleter);
 }
 
 #endif // AZSTD_SMART_PTR_UNIQUE_PTR_H

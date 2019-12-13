@@ -128,6 +128,10 @@ namespace GraphCanvas
                         break;
                     }
                 }
+                else
+                {
+                    break;
+                }
             }
         }
 

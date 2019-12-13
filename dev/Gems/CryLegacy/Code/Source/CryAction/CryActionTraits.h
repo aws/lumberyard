@@ -18,6 +18,8 @@
         #include "Xenia/CryActionTraits_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CryActionTraits_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryActionTraits_h_salem.inl"
     #endif
 #else
     #define AZ_LEGACY_CRYACTION_TRAIT_SCREENSHOT_EXTENSION "tif"

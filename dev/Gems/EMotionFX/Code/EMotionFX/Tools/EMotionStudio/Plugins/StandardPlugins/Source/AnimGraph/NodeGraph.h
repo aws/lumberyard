@@ -112,7 +112,7 @@ namespace EMStudio
         void UpdateHighlightConnectionFlags(const QPoint& mousePos);
 
         virtual void RenderBackground(QPainter& painter, int32 width, int32 height);
-        virtual void Render(QPainter& painter, int32 width, int32 height, const QPoint& mousePos, float timePassedInSeconds);
+        virtual void Render(const QItemSelectionModel& selectionModel, QPainter& painter, int32 width, int32 height, const QPoint& mousePos, float timePassedInSeconds);
         virtual void RenderCreateConnection(QPainter& painter);
         void UpdateNodesAndConnections(int32 width, int32 height, const QPoint& mousePos);
 
@@ -163,9 +163,6 @@ namespace EMStudio
         static bool CheckIfIsRelinkConnectionValid(NodeConnection* connection, GraphNode* newTargetNode, uint32 newTargetPortNr, bool isTargetInput);
 
         void RecursiveSetOpacity(EMotionFX::AnimGraphNode* startNode, float opacity);
-
-        const QString& GetTitleBarText() const { return m_titleBarText; }
-        void SetTitleBarText(const QString& text) { m_titleBarText = text; }
 
     protected:
         void RenderNodeGroups(QPainter& painter);
@@ -225,7 +222,6 @@ namespace EMStudio
 
         // Overlay drawing
         QFont                       mFont;
-        QString                     m_titleBarText;
         QString                     mQtTempString;
         QTextOption                 mTextOptions;
         QFontMetrics*               mFontMetrics;

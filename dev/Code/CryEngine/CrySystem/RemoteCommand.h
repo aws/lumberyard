@@ -212,8 +212,10 @@ class CRemoteCommandServer
         #include "Xenia/RemoteCommand_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RemoteCommand_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RemoteCommand_h_salem.inl"
     #endif
-	#endif
+#endif
 
 protected:
     // Wrapped commands

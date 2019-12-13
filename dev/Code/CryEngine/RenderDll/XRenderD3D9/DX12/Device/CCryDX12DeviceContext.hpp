@@ -704,9 +704,12 @@ public:
         _In_  ID3D11Resource* pStagingResource);
 
     HRESULT STDMETHODCALLTYPE MapStagingResource(
+        _In_  ID3D11Resource* pTextureResource,
         _In_  ID3D11Resource* pStagingResource,
+        _In_  UINT SubResource,
         _In_  BOOL Upload,
-        _Out_ void** ppStagingMemory);
+        _Out_ void** ppStagingMemory,
+        _Out_ uint32* pRowPitch);
 
     void STDMETHODCALLTYPE UnmapStagingResource(
         _In_  ID3D11Resource* pStagingResource,
@@ -779,6 +782,9 @@ public:
     UINT OcclusionIndex(DX12::CommandList* pCmdList, bool counter);
     ID3D12Resource* QueryOcclusion(DX12::CommandList* pCmdList, UINT index, bool counter);
     void ResolveOcclusion(DX12::CommandList* pCmdList, UINT index, void* mem);
+
+    // This is a somewhat arbitrary number that affects stack usage for methods that get subresource descriptors.
+    static constexpr int MAX_SUBRESOURCES = 64;
 
 private:
     bool PreparePSO(DX12::CommandMode commandMode);

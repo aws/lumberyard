@@ -1,0 +1,44 @@
+{
+    "aliases": {
+        "aws_android_dependencies": [
+            "curl",
+            "ssl",
+            "crypto",
+            "z"
+        ]
+    },
+    "platform": {
+        "android_armv8_clang": {
+            "libpath_debug": [
+                "lib/android/arm64-v8a/Debug",
+                "lib/android/arm64-v8a/Debug/dependencies"
+            ],
+            "libpath_release": [
+                "lib/android/arm64-v8a/Release",
+                "lib/android/arm64-v8a/Release/dependencies"
+            ],
+            "aws_cpp_sdk_core_static/lib": [
+                "lib${aws_cpp_sdk_core}.a",
+                "lib${aws_dependencies}.a",
+                "lib${aws_android_dependencies}.a"
+            ],
+            "aws_cpp_sdk_gamelift_static/lib": [
+                "lib${aws_cpp_sdk_gamelift}.a"
+            ],
+            "aws_cpp_sdk_cognito_identity_static/lib": [
+                "lib${aws_cpp_sdk_cognito_identity}.a"
+            ],
+            "aws_cpp_sdk_lambda_static/lib": [
+                "lib${aws_cpp_sdk_lambda}.a"
+            ],
+            "aws_cpp_sdk_identity_lambda_static/lib": [
+                "lib${aws_cpp_sdk_identity_lambda}.a",
+                "lib${aws_dependencies}.a"
+            ],
+            "aws_cpp_sdk_identity_metrics_static/lib": [
+                "lib${aws_cpp_sdk_identity_metrics}.a",
+                "lib${aws_dependencies}.a"
+            ]
+        }
+    }
+}

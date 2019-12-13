@@ -21,6 +21,9 @@ class CTerrainHoleTool
     : public CEditTool
 {
     Q_OBJECT
+private:
+    friend class ScriptingBindings;
+
 public:
     Q_INVOKABLE CTerrainHoleTool();
     virtual ~CTerrainHoleTool();
@@ -53,9 +56,11 @@ public:
     void SetMakeHole(bool bEnable) { m_bMakeHole = bEnable; }
     bool GetMakeHole() { return m_bMakeHole; }
 
-    void Modify();
+    AZStd::pair<Vec2i, Vec2i> Modify();
 
 private:
+    bool UpdatePointerPos(CViewport* view, const QPoint& pos);
+
     bool CalculateHoleArea(Vec2i& min, Vec2i& max) const;
 
     Vec3 m_pointerPos;

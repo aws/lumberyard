@@ -1,0 +1,44 @@
+{
+    "none": {
+        "Include": [
+            "Include/Engine/ATLEntityData.h",
+            "Include/Engine/AudioAllocators.h",
+            "Include/Engine/AudioFileUtils.h",
+            "Include/Engine/AudioLogger.h",
+            "Include/Engine/AudioRingBuffer.h",
+            "Include/Engine/IAudioSystemImplementation.h"
+        ]
+    },
+    "auto": {
+        "Source": [
+            "Source/AudioSystemGemSystemComponent.cpp",
+            "Source/AudioSystemGemSystemComponent.h",
+            "Source/AudioSystemModule.cpp"
+        ],
+        "Source/Engine/Header Files": [
+            "Source/Engine/ATL.h",
+            "Source/Engine/ATLAudioObject.h",
+            "Source/Engine/ATLCommon.h",
+            "Source/Engine/ATLComponents.h",
+            "Source/Engine/ATLEntities.h",
+            "Source/Engine/ATLUtils.h",
+            "Source/Engine/AudioInternalInterfaces.h",
+            "Source/Engine/AudioProxy.h",
+            "Source/Engine/AudioSystem.h",
+            "Source/Engine/FileCacheManager.h",
+            "Source/Engine/SoundCVars.h"
+        ],
+        "Source/Engine/Source Files": [
+            "Source/Engine/ATL.cpp",
+            "Source/Engine/ATLAudioObject.cpp",
+            "Source/Engine/ATLComponents.cpp",
+            "Source/Engine/ATLEntities.cpp",
+            "Source/Engine/ATLUtils.cpp",
+            "Source/Engine/AudioProxy.cpp",
+            "Source/Engine/AudioRequests.cpp",
+            "Source/Engine/AudioSystem.cpp",
+            "Source/Engine/FileCacheManager.cpp",
+            "Source/Engine/SoundCVars.cpp"
+        ]
+    }
+}

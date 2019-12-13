@@ -26,6 +26,12 @@
             "_comment": "LyShine"
         },
         {
+            "Path": "Gems/SliceFavorites",
+            "Uuid": "1bfc7270d4a1490daac8aa8b072c4489",
+            "Version": "0.1.0",
+            "_comment": "SliceFavorites"
+        },
+        {
             "Path": "Gems/Footsteps",
             "Uuid": "257393f09006498ab706cc4d4c8d4721",
             "Version": "0.1.0",
@@ -80,6 +86,12 @@
             "_comment": "TextureAtlas"
         },
         {
+            "Path": "Gems/AssetValidation",
+            "Uuid": "5a5c3c10b91d4b4ea8baef474c5b5d49",
+            "Version": "0.1.0",
+            "_comment": "AssetValidation"
+        },
+        {
             "Path": "Gems/StarterGameGem",
             "Uuid": "5c539192ddda40aaa2e92eb71f8e3170",
             "Version": "1.12.0",
@@ -98,10 +110,22 @@
             "_comment": "Gestures"
         },
         {
+            "Path": "Gems/AudioEngineWwise",
+            "Uuid": "67a80e2ac865406c990f2715feb55f7f",
+            "Version": "0.1.0",
+            "_comment": "AudioEngineWwise"
+        },
+        {
             "Path": "Gems/UiBasics",
             "Uuid": "6bb61c9e547043f0afc5019d6d460b78",
             "Version": "0.1.0",
             "_comment": "UiBasics"
+        },
+        {
+            "Path": "Gems/AudioSystem",
+            "Uuid": "6f63f2b6d07f4b89b4b7c86ebee7feb8",
+            "Version": "0.1.0",
+            "_comment": "AudioSystem"
         },
         {
             "Path": "Gems/SceneProcessing",
@@ -180,6 +204,12 @@
             "Uuid": "d969b997bb7f4342ba0b3eedc378025d",
             "Version": "0.1.0",
             "_comment": "ScriptCanvasDiagnosticLibrary"
+        },
+        {
+            "Path": "Gems/SaveData",
+            "Uuid": "d96ab03f53d14c9e83f9b4528c8576d7",
+            "Version": "0.1.0",
+            "_comment": "SaveData"
         },
         {
             "Path": "Gems/Rain",

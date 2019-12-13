@@ -29,7 +29,13 @@ public:
         m_priorRenderer = Cry3DEngineBase::m_pRenderer;
 
         UnitTest::AllocatorsTestFixture::SetUp();
-        AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+
+        // LegacyAllocator is a lazily-created allocator, so it will always exist, but we still manually shut it down and
+        // start it up again between tests so we can have consistent behavior.
+        if (!AZ::AllocatorInstance<AZ::LegacyAllocator>::GetAllocator().IsReady())
+        {
+            AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+        }
 
         m_data = AZStd::make_unique<DataMembers>();
 

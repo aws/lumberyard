@@ -67,7 +67,7 @@
 #include "Interfaces/CCryDXMETALGIAdapter.hpp"
 #endif //!DXGL_FULL_EMULATION
 
-// Igor: Metal requires that all RTs and depth buffer have the same size.
+// Metal requires that all RTs and depth buffer have the same size.
 #define CRY_OPENGL_DO_NOT_ALLOW_LARGER_RT
 
 typedef ID3D10Blob* LPD3D10BLOB;

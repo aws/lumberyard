@@ -11,6 +11,8 @@
 #
 ########################################################################################
 
+from waflib import Configure
+
 def build(bld):
     # PhysX has global pointers for referencing the PhysX SDK. These pointers need to exist in a single memory
     # space so different Gems can get copies of them. Monolithic builds will use the static version of PhysX SDK libraries,
@@ -20,17 +22,43 @@ def build(bld):
         physx_sdk_lib = 'PHYSX_SDK'
     else:
         physx_sdk_lib = 'PHYSX_SDK_SHARED'
+
+    #Bit 0 is already reserved by the PhysX Gem as the "default" layer.
+    #The TouchBending layer can be a number from 1 to 63.
+    #REMARK: If the file "default.physxconfiguration" already existed
+    #under the current game project folder, you should delete it whenever
+    #this bit changes value.
+    physx_layer_bit = 'TOUCHBENDING_LAYER_BIT=1'
+
+    touchbending_file_list = []
+    touchbending_file_list_editor = []
+    pch_file = "Source/TouchBending_precompiled.cpp"
+    if bld.env['PLATFORM'] == 'project_generator' or isinstance(bld,Configure.ConfigurationContext):
+        touchbending_file_list.extend(['touchbending.waf_files',
+                                       'touchbending_unsupported.waf_files'])
+        touchbending_file_list_editor.extend(['touchbending.waf_files',
+                                              'touchbending_editor.waf_files',
+                                              'touchbending_unsupported.waf_files'])
+    else:
+        if bld.check_platform_uselib_compatibility(physx_sdk_lib):
+            touchbending_file_list.extend(['touchbending.waf_files'])
+            touchbending_file_list_editor.extend(['touchbending.waf_files',
+                                                  'touchbending_editor.waf_files'])
+        else:
+            touchbending_file_list.extend(['touchbending_unsupported.waf_files'])
+            touchbending_file_list_editor.extend(['touchbending_unsupported.waf_files'])
+            pch_file = "Source/TouchBendingUnsupported_precompiled.cpp"
     
     bld.DefineGem(
         # General
-        file_list               = ['touchbending.waf_files'],
+        file_list               = touchbending_file_list,
 
         # Testing
         test_all_file_list      = ['touchbending_tests.waf_files'],
         test_all_includes       = [bld.Path('Code/Framework/Tests')],
         test_all_use            = ['AzPhysicsTests'],
 
-        pch                 = "Source/TouchBending_precompiled.cpp",
+        pch                 = pch_file,
         use                 = ['AzFramework'],
         uselib              = [physx_sdk_lib],
         win_features        = ['crcfix'],
@@ -39,7 +67,8 @@ def build(bld):
         includes            = [bld.Path('Code/CryEngine/CryCommon')
                               ],
 
-        debug_export_defines = ['TOUCHBENDING_VISUALIZE_ENABLED'],
+        export_defines         = [physx_layer_bit],
+        debug_export_defines   = ['TOUCHBENDING_VISUALIZE_ENABLED'],
         profile_export_defines = ['TOUCHBENDING_VISUALIZE_ENABLED'],
 
         # Section to control the editor (things related with asset pipeline, etc) build.
@@ -47,7 +76,7 @@ def build(bld):
             platforms           = ['win', 'darwin'],
 
             # General
-            file_list           = ['touchbending.waf_files', 'touchbending_editor.waf_files'],
+            file_list           = touchbending_file_list_editor,
             
             #Testing
             test_all_file_list  = ['touchbending_tests.waf_files'],
@@ -60,13 +89,14 @@ def build(bld):
                                    bld.Path('Code/CryEngine/CryCommon')
                                   ],
 
-            pch                 = "Source/TouchBending_precompiled.cpp",
+            pch                 = pch_file,
             use                 = ['AzFramework','SceneCore', 'SceneData'],
             uselib              = [physx_sdk_lib],
             win_features        = ['crcfix'],
             use_required_gems   = True,
 
-            debug_export_defines = ['TOUCHBENDING_VISUALIZE_ENABLED'],
+            export_defines         = [physx_layer_bit],
+            debug_export_defines   = ['TOUCHBENDING_VISUALIZE_ENABLED'],
             profile_export_defines = ['TOUCHBENDING_VISUALIZE_ENABLED'],
         )
     )

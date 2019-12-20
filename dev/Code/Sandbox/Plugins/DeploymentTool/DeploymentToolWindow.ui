@@ -163,11 +163,6 @@
                    </property>
                    <item>
                     <property name="text">
-                     <string>Android ARMv7</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
                      <string>Android ARMv8</string>
                     </property>
                    </item>
@@ -644,7 +639,7 @@
                          <string notr="true"/>
                         </property>
                         <property name="text">
-                         <string>User Asset Processor for shaders</string>
+                         <string>Use Asset Processor for shaders</string>
                         </property>
                        </widget>
                       </item>

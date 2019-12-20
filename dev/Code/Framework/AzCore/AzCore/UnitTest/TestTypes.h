@@ -50,7 +50,7 @@ namespace UnitTest
             m_drillerManager->Register(aznew AZ::Debug::MemoryDriller);
 
             AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
-            AZ::Debug::AllocationRecords* records = AZ::AllocatorInstance<AZ::SystemAllocator>::Get().GetRecords();
+            AZ::Debug::AllocationRecords* records = AZ::AllocatorInstance<AZ::SystemAllocator>::GetAllocator().GetRecords();
             if (records)
             {
                 records->SetMode(AZ::Debug::AllocationRecords::RECORD_FULL);
@@ -198,9 +198,10 @@ namespace UnitTest
     private:
         // The test member variable has configurable alignment and this class has configurable size
         // In some cases (when the size < alignment) padding is required. To avoid the compiler warning
-        // us about the padding being added, we added it here for the cases that is required
+        // us about the padding being added, we added it here for the cases that is required.
+        // '% alignment' in the padding is redundant, but it fixes an 'array is too large' clang error.
         static constexpr bool sHasPadding = size < alignment;
-        AZStd::enable_if<sHasPadding, char[size - alignment]> mPadding;
+        AZStd::enable_if<sHasPadding, char[(alignment - size) % alignment]> mPadding;
     };
     
     template <AZ::u32 size, AZ::u8 instance, size_t alignment>

@@ -150,11 +150,12 @@ namespace AssetBuilderSDK
         Platform_ES3        = 0x02,
         Platform_IOS        = 0x04,
         Platform_OSX        = 0x08,
-        Platform_XBOXONE    = 0x10, // ACCEPTED_USE
-        Platform_PS4        = 0x20, // ACCEPTED_USE
+        Platform_XENIA      = 0x10,
+        Platform_PROVO      = 0x20,
+        Platform_SALEM      = 0x40,
 
         //! if you add a new platform entry to this enum, you must add it to allplatforms as well otherwise that platform would not be considered valid. 
-        AllPlatforms = Platform_PC | Platform_ES3 | Platform_IOS | Platform_OSX | Platform_XBOXONE | Platform_PS4 // ACCEPTED_USE
+        AllPlatforms = Platform_PC | Platform_ES3 | Platform_IOS | Platform_OSX | Platform_XENIA | Platform_PROVO | Platform_SALEM
     };
 #endif // defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
     //! Map data structure to holder parameters that are passed into a job for ProcessJob requests.
@@ -214,7 +215,7 @@ namespace AssetBuilderSDK
         const AssetBuilderSDK::AssetBuilderPattern& GetBuilderPattern() const;
 
     protected:
-        static bool ValidatePatternRegex(const AZStd::string& pattern, AZStd::string& errorString);
+        static bool ValidatePatternRegex(const AZStd::string& pattern);
         
         AssetBuilderSDK::AssetBuilderPattern    m_pattern;
         RegexType           m_regex;
@@ -705,7 +706,8 @@ namespace AssetBuilderSDK
         ProcessJobResult_Success = 0,
         ProcessJobResult_Failed = 1,
         ProcessJobResult_Crashed = 2,
-        ProcessJobResult_Cancelled = 3
+        ProcessJobResult_Cancelled = 3,
+        ProcessJobResult_NetworkIssue = 4
     };
 
     //! ProcessJobResponse contains job data that will be send by the builder to the assetProcessor in response to ProcessJobRequest
@@ -717,6 +719,9 @@ namespace AssetBuilderSDK
         ProcessJobResultCode m_resultCode = ProcessJobResult_Failed;
         AZStd::vector<JobProduct> m_outputProducts;
         bool m_requiresSubIdGeneration = true; //!< Used to determine if legacy RC products need sub ids generated for them.
+        //! Populate m_sourcesToReprocess with sources by absolute path which you want to trigger a rebuild for
+        //! To reprocess these sources, make sure to update fingerprints in CreateJobs of those builders which process them, like changing source dependencies.
+        AZStd::vector<AZStd::string> m_sourcesToReprocess; 
         
         bool Succeeded() const;
 
@@ -737,7 +742,7 @@ namespace AssetBuilderSDK
         unsigned int GetMessageType() const override;
 
         //! Unique ID assigned to this builder to identify it
-        AZ::Uuid m_uuid;
+        AZ::Uuid m_uuid = AZ::Uuid::CreateNull();
     };
 
     //! BuilderHelloResponse contains the AssetProcessor's response to a builder connection attempt, indicating if it is accepted and the ID that it was assigned
@@ -753,10 +758,10 @@ namespace AssetBuilderSDK
         unsigned int GetMessageType() const override;
 
         //! Indicates if the builder was accepted by the AP
-        bool m_accepted;
+        bool m_accepted = false;
 
         //! Unique ID assigned to the builder.  If the builder isn't a local process, this is the ID assigned by the AP
-        AZ::Uuid m_uuid;
+        AZ::Uuid m_uuid = AZ::Uuid::CreateNull();
     };
 
     class CreateJobsNetRequest : public AzFramework::AssetSystem::BaseAssetProcessorMessage
@@ -852,6 +857,31 @@ namespace AssetBuilderSDK
         AZStd::string m_assertMessage;
         // only absorb messages for your thread!
         static AZ_THREAD_LOCAL bool s_onAbsorbThread;
+    };
+
+    //! Trace hook for asserts/errors.
+    //! This allows us to detect any errors that occur during a job so we can fail it.
+    class AssertAndErrorAbsorber
+        : public AZ::Debug::TraceMessageBus::Handler
+    {
+    public:
+
+        explicit AssertAndErrorAbsorber(bool errorsWillFailJob);
+        ~AssertAndErrorAbsorber() override;
+
+        bool OnAssert(const char* message) override;
+        bool OnError(const char* window, const char* message) override;
+
+        size_t GetErrorCount() const;
+
+    private:
+
+        bool m_errorsWillFailJob;
+        size_t m_errorsOccurred = 0;
+
+        //! The id of the thread that created this object.  
+        //! There can be multiple builders running at once, so we need to filter out ones coming from other builders
+        AZStd::thread_id m_jobThreadId;
     };
 } // namespace AssetBuilderSDK
 

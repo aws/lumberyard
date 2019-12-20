@@ -6,8 +6,8 @@
         ]
     },
     "auto": {
-    "Tests/Framework": [
-            "Tests/ScriptCanvasTest.cpp"
+      "Tests/Framework": [
+        "Tests/ScriptCanvasTest.cpp"
       ]
     }
 }

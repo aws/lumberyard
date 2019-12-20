@@ -27,35 +27,47 @@ namespace PhysX
             serializeContext->ClassDeprecate("MeshColliderComponent", "{87A02711-8D7F-4966-87E1-77001EB6B29E}");
             serializeContext->Class<MeshColliderComponent, BaseColliderComponent>()
                 ->Version(1)
-                ->Field("Configuration", &MeshColliderComponent::m_shapeConfiguration)
             ;
         }
     }
 
-    MeshColliderComponent::MeshColliderComponent(const Physics::ColliderConfiguration& colliderConfiguration, 
-        const Physics::PhysicsAssetShapeConfiguration& configuration)
-        : BaseColliderComponent(colliderConfiguration)
-        , m_shapeConfiguration(configuration)
-    {
-
-    }
-
+    // AZ::Component
     void MeshColliderComponent::Activate()
     {
-        UpdateMeshAsset();
-        MeshColliderComponentRequestsBus::Handler::BusConnect(GetEntityId());
-        BaseColliderComponent::Activate();
+        bool validConfiguration = m_shapeConfigList.size() == 1;
+        AZ_Error("PhysX", validConfiguration, "Expected exactly one collider/shape configuration for entity \"%s\".",
+            GetEntity()->GetName().c_str());
+
+        if (validConfiguration)
+        {
+            validConfiguration = m_shapeConfigList[0].second->GetShapeType() == Physics::ShapeType::PhysicsAsset;
+            AZ_Error("PhysX", validConfiguration, "Expected shape configuration to be of type PhysicsAsset for entity \"%s\".",
+                GetEntity()->GetName().c_str());
+        }
+
+        // only connect to buses if we have a valid configuration
+        if (validConfiguration)
+        {
+            m_colliderConfiguration = m_shapeConfigList[0].first.get();
+            m_shapeConfiguration = static_cast<Physics::PhysicsAssetShapeConfiguration*>(m_shapeConfigList[0].second.get());
+            UpdateMeshAsset();
+            MeshColliderComponentRequestsBus::Handler::BusConnect(GetEntityId());
+            BaseColliderComponent::Activate();
+        }
     }
 
     void MeshColliderComponent::Deactivate()
     {
         BaseColliderComponent::Deactivate();
         MeshColliderComponentRequestsBus::Handler::BusDisconnect();
+        m_colliderConfiguration = nullptr;
+        m_shapeConfiguration = nullptr;
     }
 
+    // MeshColliderComponentRequestsBus
     AZ::Data::Asset<Pipeline::MeshAsset> MeshColliderComponent::GetMeshAsset() const
     {
-        return m_shapeConfiguration.m_asset.GetAs<Pipeline::MeshAsset>();
+        return m_shapeConfiguration->m_asset.GetAs<Pipeline::MeshAsset>();
     }
 
     void MeshColliderComponent::GetStaticWorldSpaceMeshTriangles(AZStd::vector<AZ::Vector3>& verts, AZStd::vector<AZ::u32>& indices) const
@@ -65,77 +77,67 @@ namespace PhysX
 
     Physics::MaterialId MeshColliderComponent::GetMaterialId() const
     {
-        return m_configuration.m_materialSelection.GetMaterialId();
+        return m_colliderConfiguration->m_materialSelection.GetMaterialId();
     }
 
     void MeshColliderComponent::SetMeshAsset(const AZ::Data::AssetId& id)
     {
-        m_shapeConfiguration.m_asset.Create(id);
+        m_shapeConfiguration->m_asset.Create(id);
         UpdateMeshAsset();
     }
 
     void MeshColliderComponent::SetMaterialAsset(const AZ::Data::AssetId& id)
     {
-        m_configuration.m_materialSelection.CreateMaterialLibrary(id);
+        m_colliderConfiguration->m_materialSelection.SetMaterialLibrary(id);
     }
 
     void MeshColliderComponent::SetMaterialId(const Physics::MaterialId& id)
     {
-        m_configuration.m_materialSelection.SetMaterialId(id);
-    }
-
-    AZStd::shared_ptr<Physics::ShapeConfiguration> MeshColliderComponent::CreateScaledShapeConfig()
-    {
-        if (m_shapeConfiguration.m_asset)
-        {
-            physx::PxBase* meshData = m_shapeConfiguration.m_asset.GetAs<Pipeline::MeshAsset>()->GetMeshData();
-            AZ_Error("PhysX", meshData != nullptr, "Error. Invalid mesh collider asset. Name: %s", GetEntity()->GetName().c_str());
-
-            if (meshData)
-            {
-                auto scaledShape = AZStd::make_shared<Physics::PhysicsAssetShapeConfiguration>(m_shapeConfiguration);
-                scaledShape->m_scale = GetNonUniformScale();
-                return scaledShape;
-            }
-        }
-        // It is a valid case to have PhysXMesh shape but we don't create any configurations for this
-        return nullptr;
+        m_colliderConfiguration->m_materialSelection.SetMaterialId(id);
     }
 
     void MeshColliderComponent::UpdateMeshAsset()
     {
-        if (m_shapeConfiguration.m_asset.GetId().IsValid())
+        if (m_shapeConfiguration->m_asset.GetId().IsValid())
         {
-            AZ::Data::AssetBus::MultiHandler::BusConnect(m_shapeConfiguration.m_asset.GetId());
-            m_shapeConfiguration.m_asset.QueueLoad();
+            AZ::Data::AssetBus::MultiHandler::BusConnect(m_shapeConfiguration->m_asset.GetId());
+            m_shapeConfiguration->m_asset.QueueLoad();
         }
     }
-   
 
+    // AZ::Data::AssetBus::Handler
     void MeshColliderComponent::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
-        if (asset == m_shapeConfiguration.m_asset)
+        if (asset == m_shapeConfiguration->m_asset)
         {
-            m_shapeConfiguration.m_asset = asset;
+            m_shapeConfiguration->m_asset = asset;
 
-#ifdef ENABLE_DEFAULT_MATERIAL_LIBRARY
             Physics::SystemRequestBus::Broadcast(&Physics::SystemRequests::UpdateMaterialSelection, 
-                m_shapeConfiguration, m_configuration);
-#endif
+                *m_shapeConfiguration, *m_colliderConfiguration);
         }
     }
 
     void MeshColliderComponent::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
-        if (asset == m_shapeConfiguration.m_asset)
+        if (asset == m_shapeConfiguration->m_asset)
         {
-            m_shapeConfiguration.m_asset = asset;
+            m_shapeConfiguration->m_asset = asset;
 
-#ifdef ENABLE_DEFAULT_MATERIAL_LIBRARY
             Physics::SystemRequestBus::Broadcast(&Physics::SystemRequests::UpdateMaterialSelection,
-                m_shapeConfiguration, m_configuration);
-#endif
+                *m_shapeConfiguration, *m_colliderConfiguration);
         }
     }
 
+    // BaseColliderComponent
+    void MeshColliderComponent::UpdateScaleForShapeConfigs()
+    {
+        if (m_shapeConfigList.size() != 1)
+        {
+            AZ_Error("PhysX Mesh Collider Component", false,
+                "Expected exactly one collider/shape configuration for entity \"%s\".", GetEntity()->GetName().c_str());
+            return;
+        }
+
+        m_shapeConfigList[0].second->m_scale = GetNonUniformScale();
+    }
 } // namespace PhysX

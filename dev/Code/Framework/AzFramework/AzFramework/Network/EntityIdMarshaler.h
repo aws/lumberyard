@@ -23,6 +23,8 @@ namespace GridMate
     class Marshaler<AZ::EntityId>
     {
     public:
+        AZ_TYPE_INFO_LEGACY( Marshaler, "{23F4722F-D104-4E30-9342-43F4DDD1894D}", AZ::EntityId );
+
         void Marshal(GridMate::WriteBuffer& wb, const AZ::EntityId& source) const
         {
             Marshaler<AZ::u64> idMarshaler;

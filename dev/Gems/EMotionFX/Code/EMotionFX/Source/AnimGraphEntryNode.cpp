@@ -19,6 +19,7 @@
 #include "AnimGraphStateMachine.h"
 #include "AnimGraphRefCountedData.h"
 #include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/AnimGraphHubNode.h>
 #include <EMotionFX/Source/EMotionFXManager.h>
 
 
@@ -66,7 +67,22 @@ namespace EMotionFX
         AnimGraphStateMachine* grandParentStateMachine = AnimGraphStateMachine::GetGrandParentStateMachine(this);
         if (grandParentStateMachine)
         {
-            return grandParentStateMachine->GetCurrentState(animGraphInstance);
+            AnimGraphNode* currentState = grandParentStateMachine->GetCurrentState(animGraphInstance);
+            if (currentState)
+            {
+                // Avoid circular dependency between a hub node coming from a state machine with our entry node being active.
+                if (currentState->RTTI_GetType() == azrtti_typeid<AnimGraphHubNode>())
+                {
+                    AnimGraphHubNode* hubNode = static_cast<AnimGraphHubNode*>(currentState);
+                    AnimGraphStateMachine* hubStateMachine = azdynamic_cast<AnimGraphStateMachine*>(hubNode->GetSourceNode(animGraphInstance));
+                    if (hubStateMachine && hubStateMachine->GetCurrentState(animGraphInstance) == this)
+                    {
+                        return nullptr;
+                    }
+                }
+
+                return currentState;
+            }
         }
 
         return nullptr;

@@ -32,7 +32,7 @@ CNewLevelDialog::CNewLevelDialog(QWidget* pParent /*=NULL*/)
     , m_ilevelFolders(0)
     , m_useTerrain(false)
     , m_terrainResolution(0)
-    , m_terrainUnits(0)
+    , m_terrainUnitsIndex(0)
     , m_bUpdate(false)
     , ui(new Ui::CNewLevelDialog)
     , m_initialized(false)
@@ -55,9 +55,11 @@ CNewLevelDialog::CNewLevelDialog(QWidget* pParent /*=NULL*/)
     QValidator* validator = new QRegExpValidator(rx, this);
     ui->LEVEL->setValidator(validator);
 
+#ifdef LY_TERRAIN_EDITOR
     connect(ui->USE_TERRAIN, &QGroupBox::clicked, this, &CNewLevelDialog::OnBnClickedUseTerrain);
     connect(ui->TERRAIN_RESOLUTION, SIGNAL(activated(int)), this, SLOT(OnCbnSelendokTerrainResolution()));
     connect(ui->TERRAIN_UNITS, SIGNAL(activated(int)), this, SLOT(OnCbnSelendokTerraniUnits()));
+#endif
     connect(ui->LEVEL_FOLDERS, SIGNAL(activated(int)), this, SLOT(OnCbnSelendokLevelFolders()));
     connect(ui->LEVEL, &QLineEdit::textChanged, this, &CNewLevelDialog::OnLevelNameChange);
 
@@ -78,23 +80,31 @@ void CNewLevelDialog::UpdateData(bool fromUi)
     {
         m_level = ui->LEVEL->text();
         m_levelFolders = ui->LEVEL_FOLDERS->currentText();
+        m_ilevelFolders = ui->LEVEL_FOLDERS->currentIndex();
+
+#ifdef LY_TERRAIN_EDITOR
         //The checkbox is disabled during resize. Don't bother checking it. 
         if (!m_bIsResize)
         {
             m_useTerrain = ui->USE_TERRAIN->isChecked();
         }
-        m_ilevelFolders = ui->LEVEL_FOLDERS->currentIndex();
         m_terrainResolution = ui->TERRAIN_RESOLUTION->currentIndex();
-        m_terrainUnits = ui->TERRAIN_UNITS->currentIndex();
+        m_terrainUnitsIndex = ui->TERRAIN_UNITS->currentIndex();
+#endif
+
     }
     else
     {
         ui->LEVEL->setText(m_level);
         ui->LEVEL_FOLDERS->setCurrentText(m_levelFolders);
-        ui->USE_TERRAIN->setChecked(m_useTerrain);
         ui->LEVEL_FOLDERS->setCurrentIndex(m_ilevelFolders);
+
+#ifdef LY_TERRAIN_EDITOR
+        ui->USE_TERRAIN->setChecked(m_useTerrain);
         ui->TERRAIN_RESOLUTION->setCurrentIndex(m_terrainResolution);
-        ui->TERRAIN_UNITS->setCurrentIndex(m_terrainUnits);
+        ui->TERRAIN_UNITS->setCurrentIndex(m_terrainUnitsIndex);
+#endif
+
     }
 }
 
@@ -104,6 +114,7 @@ void CNewLevelDialog::OnInitDialog()
 {
     ReloadLevelFolders();
 
+#ifdef LY_TERRAIN_EDITOR
     m_useTerrain = true;
 
     // Inititialize terrain values.
@@ -117,6 +128,11 @@ void CNewLevelDialog::OnInitDialog()
     }
 
     UpdateTerrainUnits();
+#else
+    m_useTerrain = false;
+    ui->USE_TERRAIN->setDisabled(true);
+#endif
+
     ToggleTerrainControlLayout();
 
     if (m_bIsResize)
@@ -190,9 +206,9 @@ void CNewLevelDialog::UpdateTerrainUnits()
     }
     if (size > Ui::MAXIMUM_TERRAIN_RESOLUTION)
     {
-        m_terrainUnits = 0;
+        m_terrainUnitsIndex = 0;
     }
-    ui->TERRAIN_UNITS->setCurrentText(QString::number(m_terrainUnits));
+    ui->TERRAIN_UNITS->setCurrentText(QString::number(m_terrainUnitsIndex));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -263,7 +279,7 @@ int CNewLevelDialog::GetTerrainResolution() const
 
 int CNewLevelDialog::GetTerrainUnits() const
 {
-    return Ui::START_TERRAIN_UNITS * (1 << m_terrainUnits);
+    return Ui::START_TERRAIN_UNITS * (1 << m_terrainUnitsIndex);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -349,7 +365,7 @@ void CNewLevelDialog::SetTerrainUnits(int units)
     {
         if ((dim >> i) == 1)
         {
-            m_terrainUnits = i;
+            m_terrainUnitsIndex = i;
             break;
         }
     }

@@ -110,7 +110,7 @@ namespace AzToolsFramework
             void OnSelected() override;
             void OnDeselected() override;
 
-            // ComponentMouseViewportRequestBus
+            // ComponentModeDelegateRequestBus
             bool DetectEnterComponentModeInteraction(
                 const ViewportInteraction::MouseInteractionEvent& mouseInteraction) override;
             bool DetectLeaveComponentModeInteraction(
@@ -125,6 +125,7 @@ namespace AzToolsFramework
 
             /// Is the ComponentMode button active/operational.
             /// It will not be if the entity with this component is either locked or hidden.
+            /// It will also not be active if the Entity is pinned but not selected.
             bool ComponentModeButtonInactive() const;
 
             AZ::Uuid m_componentType; ///< The type of component entering ComponentMode.
@@ -139,5 +140,10 @@ namespace AzToolsFramework
             bool m_componentModeEnterButton = false;
             bool m_componentModeLeaveButton = false;
         };
+
+        /// If this Entity had a Component supporting a ComponentMode, would
+        /// it be possible for it to enter it given the current Editor state.
+        bool CouldBeginComponentModeWithEntity(AZ::EntityId entityId);
+
     } // namespace ComponentModeFramework
 } // namespace AzToolsFramework

@@ -313,8 +313,6 @@ private:
 
     bool ProcessLoadedImage(const QString& fileName, const CFloatImage& tmpImage, bool atWorldScale, ImageRotationDegrees rotationAmount, HeightmapImportTechnique importType);
 
-    __inline float ExpCurve(float v, float fCover, float fSharpness);
-
     // Verify internal class state
     __inline void Verify()
     {
@@ -327,6 +325,7 @@ private:
 
     float m_fOceanLevel;
     float m_fMaxHeight;
+    float m_defaultHeight;
 
     std::vector<t_hmap> m_pHeightmap;
 

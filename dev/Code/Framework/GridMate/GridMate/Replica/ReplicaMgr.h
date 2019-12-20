@@ -63,7 +63,7 @@ namespace GridMate {
         CallbackBuffer m_callbackTargets;
     public:
         GM_CLASS_ALLOCATOR(PeerAckCallbacks);
-        /** 
+        /**
          *  Initializes by capturing the callback buffer
          */
         explicit PeerAckCallbacks(CallbackBuffer &callbacks)
@@ -166,6 +166,14 @@ namespace GridMate {
         CallbackBuffer& GetUnreliableCallbackBuffer() { return m_unreliableCallbacks; }
 
         ReplicaPtr GetReplica(ReplicaId repId);
+
+#if defined(AZ_TESTS_ENABLED)
+        //---------------------------------------------------------------------
+        // DEBUG and Test Interface. Do not use in production code.
+        //---------------------------------------------------------------------
+        void Debug_Add(Replica* pObj) { Add(pObj); }
+        void Debug_Remove(Replica* pObj) { Remove(pObj); }
+#endif // AZ_TESTS_ENABLED
     };
     //-----------------------------------------------------------------------------
 
@@ -184,30 +192,30 @@ namespace GridMate {
         static const AZ::s16 k_fixedTimeStepDisabled = -1;
 
         // id for the local peer
-        AZ::Crc32 m_myPeerId; 
+        AZ::Crc32 m_myPeerId;
 
         // pointer to underlying carrier
-        Carrier* m_carrier; 
+        Carrier* m_carrier;
 
         // carrier comm channel to use
         unsigned char m_commChannel;
 
         // roles for this replica manager
-        AZ::u32 m_roles; 
+        AZ::u32 m_roles;
 
         // target milliseconds between sends
         unsigned int m_targetSendTimeMS;
 
         // incoming bandwidth limit per peer in bytes per second (0 - unlimited)
-        unsigned int m_targetSendLimitBytesPerSec; 
+        unsigned int m_targetSendLimitBytesPerSec;
 
         // burst in bandwidth will be allowed for the given amount of time maximum. burst will only be allowed if bandwidth is not capped at the time of burst
-        float m_targetSendLimitBurst; 
+        float m_targetSendLimitBurst;
 
-        // -1 (default) means use real time (time from Carrier) when adding timestamp to send buffer read in Unmarshal and propagated to datasets and replicas 
-        // as m_lastUpdateTime, otherwise specify a value that indicates the target server frame rate and the server will send a fixed time step in packets. 
+        // -1 (default) means use real time (time from Carrier) when adding timestamp to send buffer read in Unmarshal and propagated to datasets and replicas
+        // as m_lastUpdateTime, otherwise specify a value that indicates the target server frame rate and the server will send a fixed time step in packets.
         // This should match your intended target frame rate.
-        // This feature would really only be useful if you are running a server, since clients should be time stamping with their local time. The idea would be 
+        // This feature would really only be useful if you are running a server, since clients should be time stamping with their local time. The idea would be
         // that the application should read a config file or cvar to know when to set this value.
         AZ::s16 m_targetFixedTimeStepsPerSecond;
 
@@ -251,7 +259,7 @@ namespace GridMate {
     public:
         static const AZ::u16 k_millisecondsPerSecond = 1000;
 
-        FixedTimeStep() 
+        FixedTimeStep()
             : m_updateCount(0)
             , m_updateCountTargetPerSecond(0)
             , m_currentTime(0)
@@ -269,7 +277,7 @@ namespace GridMate {
                 m_seconds += 1;
             }
 
-            // generate a ratio of the progress through the current second, this solves rounding issues created by trying to accumulate repeating decimal values (16.66666 for example) 
+            // generate a ratio of the progress through the current second, this solves rounding issues created by trying to accumulate repeating decimal values (16.66666 for example)
             const AZ::u64 oneSecondRatio = (k_millisecondsPerSecond * (m_updateCount % m_updateCountTargetPerSecond)) / m_updateCountTargetPerSecond;
 
             // update the time to be the second count plus the ratio of our progress through the current second
@@ -287,7 +295,7 @@ namespace GridMate {
             }
             m_updateCountTargetPerSecond = updateCountTargetPerSecond;
 
-            // this could allow for changing on the fly but it would need to ensure that if it were in the middle of a second, that the new rate would result in landing on the 
+            // this could allow for changing on the fly but it would need to ensure that if it were in the middle of a second, that the new rate would result in landing on the
         }
 
         AZ::u64 GetCurrentTime() const

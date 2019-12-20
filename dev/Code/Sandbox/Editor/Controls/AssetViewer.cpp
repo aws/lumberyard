@@ -1094,8 +1094,6 @@ void CAssetViewer::OnRButtonUp(const QPoint& point, Qt::KeyboardModifiers modifi
 
         if (m_selectedAssets.size() == 1)
         {
-            extraMenuItems.push_back(tr("Edit tags..."));
-
             const QString clickedAssetName = m_pClickedAsset->GetFilename();
             const bool isGeometry = QFileInfo(clickedAssetName).completeSuffix().compare(CRY_GEOMETRY_FILE_EXT, Qt::CaseInsensitive);
             if (!clickedAssetName.contains(QStringLiteral("_lod")) && isGeometry)
@@ -1120,10 +1118,6 @@ void CAssetViewer::OnRButtonUp(const QPoint& point, Qt::KeyboardModifiers modifi
             }
         }
         else if (extraMenuItems.count() >= 2 && selectedTextIfAny == extraMenuItems[1])
-        {
-            CAssetBrowserDialog::Instance()->OnUpdateAssetBrowserEditTags();
-        }
-        else if (extraMenuItems.count() >= 3 && selectedTextIfAny == extraMenuItems[2])
         {
             GetIEditor()->ExecuteCommand(QStringLiteral("lodtools.loadcgfintool '%1%2'").arg(m_pClickedAsset->GetRelativePath(), m_pClickedAsset->GetFilename()));
         }

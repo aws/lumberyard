@@ -20,7 +20,7 @@ def build(bld):
 
     kw_dict = dict(
         file_list = ['microphone.waf_files'],
-        includes            = [bld.Path('Code/CryEngine/CrySoundSystem/Common'),
+        includes            = [bld.Path('Gems/AudioSystem/Code/Include/Engine'),
                                bld.Path('Code/CryEngine/CryCommon')
                               ],
 

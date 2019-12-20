@@ -19,6 +19,10 @@
 #include <sstream>
 #include <iomanip>
 
+
+// This is not AZ code - AzCore is not used in the AzCoreGenerator project
+#pragma warning(push)
+#pragma warning(disable: 5033) // Disabling C++17 warning - warning C5033: 'register' is no longer a supported storage class which occurs in Python 2.7
 // Undef _DEBUG to prevent python from trying to link with debug libs even when doing 
 // a debug build. To force the use of a debug python, define USE_DEBUG_PYTHON and make 
 // sure the build output directory has a python27_d.dll file and that the lib path 
@@ -33,6 +37,7 @@
 #ifdef DEBUG
 #define _DEBUG
 #endif
+#pragma warning(pop)
 
 #ifdef Py_DEBUG
 #define PYTHON_PATHS Configuration::PythonDebugPaths
@@ -296,32 +301,6 @@ namespace PythonScripting
             }
             scriptPathLength = strlen(scriptPath.c_str());
             scriptExtension = scriptPath.c_str() + scriptPathLength - (scriptPathLength > 4 ? 4 : 0);
-#if 0 // Avoid this flow for the moment, we will need to determine if this is necessary in our use case
-            if (maybe_pyc_file(fp, filename, scriptExtension, closeit))
-            {
-                /* Try to run a pyc file. First, re-open in binary */
-                if (closeit)
-                {
-                    fclose(fp);
-                }
-                if ((fp = fopen(filename, "rb")) == NULL)
-                {
-                    fprintf(stderr, "python: Can't reopen .pyc file\n");
-                    goto done;
-                }
-                /* Turn on optimization if a .pyo file is given */
-                if (strcmp(scriptExtension, ".pyo") == 0)
-                {
-                    Py_OptimizeFlag = 1;
-                }
-                v = run_pyc_file(fp, filename, d, d, flags);
-            }
-            else
-            {
-                v = PyRun_FileExFlags(fp, filename, Py_file_input, d, d,
-                        closeit, flags);
-            }
-#endif // #if 0
             pyResultObject = PyRun_FileExFlags(PyFile_AsFile(PyFileObject), scriptPath.c_str(), Py_file_input, pyDictMain, pyDictMain, 0, nullptr);
             if (pyResultObject == nullptr)
             {
@@ -357,10 +336,17 @@ namespace PythonScripting
                 }
                 else
                 {
-                    PyObject* pyErrStr = PyObject_Str(pyErrValue);
-                    CodeGenerator::Output::Error("Python errored during launcher.\nPython error string: %s\n", PyString_AsString(pyErrStr));
+                    PyObject* pyErrTypeStr = PyObject_Str(pyErrType);
+                    PyObject* pyErrValueStr = PyObject_Str(pyErrValue);
+                    PyObject* pyErrTracebackStr = PyObject_Str(pyErrTraceback);
+		    const char* errTypeStr = PyString_AsString(pyErrTypeStr);
+		    const char* errTypeValueStr = PyString_AsString(pyErrValueStr);
+		    const char* errTracebackStr = PyString_AsString(pyErrTracebackStr);
+                    CodeGenerator::Output::Error("Python Error %s: %s\n%s\n", errTypeStr, errTypeValueStr, errTracebackStr);
                     scriptErrorNumber = ScriptErrors::LauncherError;
-                    Py_DECREF(pyErrStr);
+                    Py_DECREF(pyErrTracebackStr);
+                    Py_DECREF(pyErrValueStr);
+                    Py_DECREF(pyErrTypeStr);
                 }
                 // End custom error handling code
 

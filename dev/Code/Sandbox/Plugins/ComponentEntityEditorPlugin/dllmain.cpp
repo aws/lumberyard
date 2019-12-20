@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "ComponentEntityEditorPlugin_precompiled.h"
 
 // All plugins suffer from the following warning:
 //  warning C4273: 'GetIEditor' : inconsistent dll linkage

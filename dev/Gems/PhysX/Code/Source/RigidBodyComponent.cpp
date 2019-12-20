@@ -16,6 +16,7 @@
 #include <AzFramework/Physics/World.h>
 #include <AzFramework/Physics/Utils.h>
 #include <AzFramework/Entity/GameEntityContextBus.h>
+#include <AzFramework/Physics/SystemBus.h>
 #include <PhysX/ColliderComponentBus.h>
 #include <PhysX/MathConversion.h>
 #include <Source/RigidBodyComponent.h>
@@ -164,7 +165,7 @@ namespace PhysX
 
         Physics::RigidBodyRequestBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::MultiHandler::BusDisconnect();
-        Physics::SystemNotificationBus::Handler::BusDisconnect();
+        Physics::WorldNotificationBus::Handler::BusDisconnect();
         AZ::TickBus::Handler::BusDisconnect();
     }
 
@@ -187,35 +188,40 @@ namespace PhysX
         return AZ::ComponentTickBus::TICK_PHYSICS;
     }
 
-    void RigidBodyComponent::OnPostPhysicsUpdate(float fixedDeltaTime, Physics::World* world)
+    void RigidBodyComponent::OnPostPhysicsUpdate(float fixedDeltaTime)
     {
-        // if it's kinematic, something else is moving it,
-        // so its physics position is updated by the entity transform
-        // hence no need to update the entity transform from physics.
-        if (!IsPhysicsEnabled() || m_rigidBody->IsKinematic())
+        // When transform changes, Kinematic Target is updated with the new transform, so don't set the transform again.
+        // But in the case of setting the Kinematic Target directly, the transform needs to reflect the new kinematic target
+        //    User sets kinematic Target ---> Update transform
+        //    User sets transform        ---> Update kinematic target
+
+        if (!IsPhysicsEnabled() || (m_rigidBody->IsKinematic() && !m_isLastMovementFromKinematicSource))
         {
             return;
         }
 
-        if (m_world == world)
+        if (m_configuration.m_interpolateMotion)
         {
-            if (m_configuration.m_interpolateMotion)
-            {
-                AZ::Transform transform = m_rigidBody->GetTransform();
-                m_interpolator->SetTarget(transform.GetTranslation(), m_rigidBody->GetOrientation(), fixedDeltaTime);
-            }
-            else
-            {
-                AZ::Transform transform = m_rigidBody->GetTransform();
-
-                // Maintain scale (this must be precise).
-                AZ::Transform entityTransform = AZ::Transform::Identity();
-                AZ::TransformBus::EventResult(entityTransform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
-                transform.MultiplyByScale(m_initialScale);
-
-                AZ::TransformBus::Event(GetEntityId(), &AZ::TransformInterface::SetWorldTM, transform);
-            }
+            AZ::Transform transform = m_rigidBody->GetTransform();
+            m_interpolator->SetTarget(transform.GetTranslation(), m_rigidBody->GetOrientation(), fixedDeltaTime);
         }
+        else
+        {
+            AZ::Transform transform = m_rigidBody->GetTransform();
+
+            // Maintain scale (this must be precise).
+            AZ::Transform entityTransform = AZ::Transform::Identity();
+            AZ::TransformBus::EventResult(entityTransform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
+            transform.MultiplyByScale(m_initialScale);
+
+            AZ::TransformBus::Event(GetEntityId(), &AZ::TransformInterface::SetWorldTM, transform);
+        }
+        m_isLastMovementFromKinematicSource = false;
+    }
+
+    int RigidBodyComponent::GetPhysicsTickOrder()
+    {
+        return WorldNotifications::Physics;
     }
 
     void RigidBodyComponent::OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world)
@@ -223,7 +229,7 @@ namespace PhysX
         // Note: OnTransformChanged is not safe at the moment due to TransformComponent design flaw.
         // It is called when the parent entity is activated after the children causing rigid body
         // to move through the level instantly.
-        if (IsPhysicsEnabled() && m_rigidBody->IsKinematic())
+        if (IsPhysicsEnabled() && (m_rigidBody->IsKinematic() && !m_isLastMovementFromKinematicSource))
         {
             m_rigidBody->SetKinematicTarget(world);
         }
@@ -239,14 +245,17 @@ namespace PhysX
         // Add shapes
         ColliderComponentRequestBus::EnumerateHandlersId(GetEntityId(), [this](ColliderComponentRequests* handler)
         {
-            m_rigidBody->AddShape(handler->GetShape());
+            for (auto& shape : handler->GetShapes())
+            {
+                m_rigidBody->AddShape(shape);
+            }
             return true;
         });
         m_rigidBody->UpdateCenterOfMassAndInertia(m_configuration.m_computeCenterOfMass, m_configuration.m_centerOfMassOffset,
             m_configuration.m_computeInertiaTensor, m_configuration.m_inertiaTensor);
 
         // Listen to the PhysX system for events concerning this entity.
-        Physics::SystemNotificationBus::Handler::BusConnect();
+        Physics::WorldNotificationBus::Handler::BusConnect(Physics::DefaultPhysicsWorldId);
         AZ::TickBus::Handler::BusConnect();
         AZ::TransformNotificationBus::MultiHandler::BusConnect(GetEntityId());
         Physics::RigidBodyRequestBus::Handler::BusConnect(GetEntityId());
@@ -421,6 +430,7 @@ namespace PhysX
 
     void RigidBodyComponent::SetKinematicTarget(const AZ::Transform& targetPosition)
     {
+        m_isLastMovementFromKinematicSource = true;
         m_rigidBody->SetKinematicTarget(targetPosition);
     }
 

@@ -97,8 +97,8 @@ namespace AZ {
         {
         public:
             GenericClassGenericAsset()
+                : m_classData{ SerializeContext::ClassData::Create<ThisType>("Asset", GetAssetClassId(), &m_factory, &AssetSerializer::s_serializer) }
             {
-                m_classData = SerializeContext::ClassData::Create<ThisType>("Asset", GetAssetClassId(), &m_factory, &AssetSerializer::s_serializer);
                 m_classData.m_version = 1;
             }
 

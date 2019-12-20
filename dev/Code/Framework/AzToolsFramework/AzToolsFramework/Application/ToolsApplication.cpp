@@ -12,6 +12,7 @@
 
 #include "StdAfx.h"
 
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/IO/FileIO.h>
@@ -32,14 +33,16 @@
 #include <AzToolsFramework/Entity/EditorEntityContextComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/Slice/SliceMetadataEntityContextComponent.h>
+#include <AzToolsFramework/Component/EditorComponentAPIComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityActionComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityFixupComponent.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <AzToolsFramework/SourceControl/PerforceComponent.h>
-#include <AzToolsFramework/Archive/SevenZipComponent.h>
+#include <AzToolsFramework/Archive/ArchiveComponent.h>
 #include <AzToolsFramework/Asset/AssetSystemComponent.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/ComponentMode/ComponentModeDelegate.h>
+#include <AzToolsFramework/AssetBundle/AssetBundleComponent.h>
 #include <AzToolsFramework/UI/UICore/QTreeViewStateSaver.hxx>
 #include <AzToolsFramework/UI/UICore/QWidgetSavedState.h>
 #include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
@@ -47,6 +50,7 @@
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/ToolsComponents/EditorInspectorComponent.h>
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
+#include <AzToolsFramework/Entity/EditorEntitySearchComponent.h>
 #include <AzToolsFramework/Entity/EditorEntitySortComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityModelComponent.h>
 #include <AzToolsFramework/Slice/SliceDependencyBrowserComponent.h>
@@ -163,6 +167,24 @@ namespace AzToolsFramework
                 EBUS_EVENT(ToolsApplicationRequests::Bus, EndUndoBatch);
             }
         }
+
+        struct ToolsApplicationNotificationBusHandler final
+            : public ToolsApplicationNotificationBus::Handler
+            , public AZ::BehaviorEBusHandler
+        {
+            AZ_EBUS_BEHAVIOR_BINDER(ToolsApplicationNotificationBusHandler, "{7EB67956-FF86-461A-91E2-7B08279CFACF}", AZ::SystemAllocator,
+                EntityRegistered, EntityDeregistered);
+
+            void EntityRegistered(AZ::EntityId entityId) override
+            {
+                Call(FN_EntityRegistered, entityId);
+            }
+
+            void EntityDeregistered(AZ::EntityId entityId) override
+            {
+                Call(FN_EntityDeregistered, entityId);
+            }
+        };
 
     } // Internal
 
@@ -387,15 +409,18 @@ namespace AzToolsFramework
                 azrtti_typeid<EditorEntityContextComponent>(),
                 azrtti_typeid<SliceMetadataEntityContextComponent>(),
                 azrtti_typeid<EditorEntityFixupComponent>(),
+                azrtti_typeid<Components::EditorComponentAPIComponent>(),
                 azrtti_typeid<Components::EditorEntityActionComponent>(),
                 azrtti_typeid<Components::PropertyManagerComponent>(),
                 azrtti_typeid<AzFramework::TargetManagementComponent>(),
                 azrtti_typeid<AssetSystem::AssetSystemComponent>(),
                 azrtti_typeid<PerforceComponent>(),
-                azrtti_typeid<AzToolsFramework::SevenZipComponent>(),
+                azrtti_typeid<AzToolsFramework::AssetBundleComponent>(),
+                azrtti_typeid<AzToolsFramework::ArchiveComponent>(),
                 azrtti_typeid<AzToolsFramework::SliceDependencyBrowserComponent>(),
                 azrtti_typeid<Components::EditorEntityModelComponent>(),
-                azrtti_typeid<AzToolsFramework::EditorInteractionSystemComponent>()
+                azrtti_typeid<AzToolsFramework::EditorInteractionSystemComponent>(),
+                azrtti_typeid<Components::EditorEntitySearchComponent>()
             });
 
         return components;
@@ -483,6 +508,30 @@ namespace AzToolsFramework
         ComponentModeFramework::ComponentModeDelegate::Reflect(context);
 
         ViewportInteraction::ViewportInteractionReflect(context);
+
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->EBus<ToolsApplicationRequestBus>("ToolsApplicationRequestBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Category, "Editor")
+                ->Attribute(AZ::Script::Attributes::Module, "editor")
+                ->Event("CreateNewEntity", &ToolsApplicationRequests::CreateNewEntity)
+                ->Event("CreateNewEntityAtPosition", &ToolsApplicationRequests::CreateNewEntityAtPosition)
+                ->Event("DeleteEntityById", &ToolsApplicationRequests::DeleteEntityById)
+                ->Event("DeleteEntities", &ToolsApplicationRequests::DeleteEntities)
+                ->Event("DeleteEntityAndAllDescendants", &ToolsApplicationRequests::DeleteEntityAndAllDescendants)
+                ->Event("DeleteEntitiesAndAllDescendants", &ToolsApplicationRequests::DeleteEntitiesAndAllDescendants)
+                ;
+
+            behaviorContext->EBus<ToolsApplicationNotificationBus>("ToolsApplicationNotificationBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Category, "Editor")
+                ->Attribute(AZ::Script::Attributes::Module, "editor")
+                ->Handler<Internal::ToolsApplicationNotificationBusHandler>()
+                ->Event("EntityRegistered", &ToolsApplicationEvents::EntityRegistered)
+                ->Event("EntityDeregistered", &ToolsApplicationEvents::EntityDeregistered)
+                ;
+        }
     }
 
     bool ToolsApplication::AddEntity(AZ::Entity* entity)
@@ -798,9 +847,30 @@ namespace AzToolsFramework
         return m_selectedEntities.end() != AZStd::find(m_selectedEntities.begin(), m_selectedEntities.end(), entityId);
     }
 
+    AZ::EntityId ToolsApplication::CreateNewEntity(AZ::EntityId parentId)
+    {
+        AZ::EntityId createdEntityId;
+        EditorRequestBus::BroadcastResult(createdEntityId, &EditorRequests::CreateNewEntity, parentId);
+
+        return createdEntityId;
+    }
+
+    AZ::EntityId ToolsApplication::CreateNewEntityAtPosition(const AZ::Vector3& pos, AZ::EntityId parentId)
+    {
+        AZ::EntityId createdEntityId;
+        EditorRequestBus::BroadcastResult(createdEntityId, &EditorRequests::CreateNewEntityAtPosition, pos, parentId);
+
+        return createdEntityId;
+    }
+
     void ToolsApplication::DeleteSelected()
     {
         Internal::DeleteEntities(m_selectedEntities);
+    }
+
+    void ToolsApplication::DeleteEntityAndAllDescendants(AZ::EntityId entityId)
+    {
+        DeleteEntitiesAndAllDescendants({ entityId });
     }
 
     void ToolsApplication::DeleteEntitiesAndAllDescendants(const EntityIdList& entities)
@@ -1165,6 +1235,11 @@ namespace AzToolsFramework
         }
 
         RequestEditForFile(assetPath, resultCallback);
+    }
+
+    void ToolsApplication::DeleteEntityById(AZ::EntityId entityId)
+    {
+        DeleteEntities({ entityId });
     }
 
     void ToolsApplication::DeleteEntities(const EntityIdList& entities)

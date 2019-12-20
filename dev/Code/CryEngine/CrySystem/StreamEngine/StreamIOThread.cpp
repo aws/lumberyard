@@ -127,6 +127,8 @@ void CStreamingIOThread::Run()
         #include "Xenia/StreamIOThread_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/StreamIOThread_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/StreamIOThread_cpp_salem.inl"
     #endif
 #endif
         }
@@ -747,6 +749,8 @@ void CStreamingWorkerThread::Run()
         #include "Xenia/StreamIOThread_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/StreamIOThread_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/StreamIOThread_cpp_salem.inl"
     #endif
 #endif
 

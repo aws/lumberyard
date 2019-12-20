@@ -36,7 +36,7 @@ namespace AssetProcessor
 
     void LogTab::AddInitialLogMessage()
     {
-        LogTraceMessage(AzToolsFramework::Logging::LogLine::TYPE_MESSAGE, "AssetProcessor", "Started recording logs. To check previous logs please navigate to the logs folder.");
+        LogTraceMessage(AzToolsFramework::Logging::LogLine::TYPE_MESSAGE, "AssetProcessor", "Started recording logs. To check previous logs please navigate to the logs folder.", true);
     }
 
     bool LogTab::OnAssert(const char* message)

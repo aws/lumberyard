@@ -41,6 +41,8 @@ namespace ImageProcessingEditor
         explicit TexturePropertyEditor(const AZ::Uuid& sourceTextureId, QWidget* parent = nullptr);
         ~TexturePropertyEditor();
 
+        bool HasValidImage();
+
     protected:
         void OnSave();
         void OnHelp();
@@ -60,6 +62,7 @@ namespace ImageProcessingEditor
         QScopedPointer<MipmapSettingWidget> m_mipmapSettingWidget;
 
         EditorTextureSetting m_textureSetting;
+        bool m_validImage = true;
 
         void SaveTextureSetting(AZStd::string outputPath);
         void DeleteLegacySetting();

@@ -51,6 +51,7 @@
 
 #include <list>
 #include <functional>
+#include <random>
 
 
 #if defined(AZ_RESTRICTED_PLATFORM)
@@ -4033,15 +4034,24 @@ int CScriptBind_AI::FindObjectOfType(IFunctionHandler* pH)
         #include "Xenia/ScriptBind_AI_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ScriptBind_AI_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ScriptBind_AI_cpp_salem.inl"
     #endif
 #endif
-            std::random_shuffle(randomObjs.begin(), randomObjs.end());
+            AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+            std::random_device randomDevice;
+            std::mt19937 uniformRandomGenerator(randomDevice());
+            std::shuffle(randomObjs.begin(), randomObjs.end(), uniformRandomGenerator);
+            AZ_POP_DISABLE_WARNING
+
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SCRIPTBIND_AI_CPP_SECTION_2
     #if defined(AZ_PLATFORM_XENIA)
         #include "Xenia/ScriptBind_AI_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ScriptBind_AI_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ScriptBind_AI_cpp_salem.inl"
     #endif
 #endif
             pFoundObject = randomObjs[0];

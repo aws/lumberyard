@@ -361,13 +361,60 @@ namespace AssetProcessor
 
             m_db->QueryProductDependenciesTable([this, &platform](AZ::Data::AssetId& assetId, AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& entry)
             {
-                m_registries[platform].RegisterAssetDependency(assetId, AZ::Data::ProductDependency{ AZ::Data::AssetId(entry.m_dependencySourceGuid, entry.m_dependencySubID), entry.m_dependencyFlags });
+                if (AzFramework::StringFunc::Equal(entry.m_platform.c_str(), platform.toUtf8().data()))
+                {
+                    m_registries[platform].RegisterAssetDependency(assetId, AZ::Data::ProductDependency{ AZ::Data::AssetId(entry.m_dependencySourceGuid, entry.m_dependencySubID), entry.m_dependencyFlags });
+                }
 
                 return true;
             });
 
             AZ_TracePrintf("Catalog", "Read %u assets from database for %s in %fs\n", currentRegistry.m_assetIdToInfo.size(), platform.toUtf8().constData(), timer.elapsed() / 1000.0f);
         }
+    }
+
+    void AssetCatalog::OnDependencyResolved(const AZ::Data::AssetId& assetId, const AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& entry)
+    {
+        QString platform(entry.m_platform.c_str());
+        if (!m_platforms.contains(platform))
+        {
+            return;
+        }
+
+        AzFramework::AssetSystem::AssetNotificationMessage message;
+        message.m_type = AzFramework::AssetSystem::AssetNotificationMessage::NotificationType::AssetChanged;
+
+        // Get the existing data from registry.
+        AZ::Data::AssetInfo assetInfo = GetAssetInfoById(assetId);
+        message.m_data = assetInfo.m_relativePath;
+        message.m_sizeBytes = assetInfo.m_sizeBytes;
+        message.m_assetId = assetId;
+        message.m_assetType = assetInfo.m_assetType;
+
+        // Get legacyIds from registry to put in message.
+        AZStd::unordered_map<AZ::Data::AssetId, AZ::Data::AssetId> legacyIds;
+
+        // Add the new dependency entry and get the list of all dependencies for the message.
+        AZ::Data::ProductDependency newDependency{ AZ::Data::AssetId(entry.m_dependencySourceGuid, entry.m_dependencySubID), entry.m_dependencyFlags };
+        {
+            QMutexLocker locker(&m_registriesMutex);
+            m_registries[platform].RegisterAssetDependency(assetId, newDependency);
+            message.m_dependencies = AZStd::move(m_registries[platform].GetAssetDependencies(assetId));
+            legacyIds = m_registries[platform].GetLegacyMappingSubsetFromRealIds(AZStd::vector<AZ::Data::AssetId>{ assetId });
+        }
+
+        for (auto& legacyId : legacyIds)
+        {
+            message.m_legacyAssetIds.emplace_back(legacyId.first);
+        }
+
+        if (m_registryBuiltOnce)
+        {
+            Q_EMIT SendAssetMessage(platform, message);
+        }
+
+        m_catalogIsDirty = true;
+        SaveRegistry();
     }
 
     void AssetCatalog::OnSourceQueued(AZ::Uuid sourceUuid, AZ::Uuid legacyUuid, QString rootPath, QString relativeFilePath)
@@ -690,7 +737,7 @@ namespace AssetProcessor
         return false;
     }
 
-    int AssetCatalog::GetPendingAssetsForPlatform(const char* platform)
+    int AssetCatalog::GetPendingAssetsForPlatform(const char* /*platform*/)
     {
         AZ_Assert(false, "Call to unsupported Asset Processor function GetPendingAssetsForPlatform on AssetCatalog");
         return -1;
@@ -974,7 +1021,7 @@ namespace AssetProcessor
         }
     }
 
-    void AssetCatalog::UnregisterSourceAssetType(const AZ::Data::AssetType& assetType)
+    void AssetCatalog::UnregisterSourceAssetType(const AZ::Data::AssetType& /*assetType*/)
     {
         // For now, this does nothing, because it would just needlessly complicate things for no gain.
         // Unregister is only called when a builder is shut down, which really is only supposed to happen when AssetCatalog is being shutdown

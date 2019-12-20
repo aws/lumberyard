@@ -16,13 +16,15 @@
 
 #include "StdAfx.h"
 #include "TerrainPanel.h"
-#include "TerrainModifyTool.h"
-#include "TerrainHoleTool.h"
 #include "VegetationTool.h"
 #include "EnvironmentTool.h"
+#ifdef LY_TERRAIN_EDITOR
+#include "TerrainModifyTool.h"
+#include "TerrainHoleTool.h"
 #include "TerrainTexturePainter.h"
 #include "TerrainMoveTool.h"
 #include "TerrainMiniMapTool.h"
+#endif //#ifdef LY_TERRAIN_EDITOR
 
 /////////////////////////////////////////////////////////////////////////////
 // CTerrainPanel dialog
@@ -31,14 +33,19 @@
 CTerrainPanel::CTerrainPanel(QWidget* pParent)
     : CButtonsPanel(pParent)
 {
+#ifdef LY_TERRAIN_EDITOR
     AddButton(tr("Modify"), &CTerrainModifyTool::staticMetaObject);
     AddButton(tr("Holes"), &CTerrainHoleTool::staticMetaObject);
+#endif //#ifdef LY_TERRAIN_EDITOR
+
     AddButton(tr("Vegetation"), &CVegetationTool::staticMetaObject);
     AddButton(tr("Environment"), &CEnvironmentTool::staticMetaObject);
 
+#ifdef LY_TERRAIN_EDITOR
     AddButton(tr("Layer Painter"), &CTerrainTexturePainter::staticMetaObject);
     AddButton(tr("Move Area"), &CTerrainMoveTool::staticMetaObject);
     AddButton(tr("Mini Map"), &CTerrainMiniMapTool::staticMetaObject);
+#endif //#ifdef LY_TERRAIN_EDITOR
 
     OnInitDialog();
 }

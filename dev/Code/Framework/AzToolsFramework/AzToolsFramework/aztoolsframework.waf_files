@@ -42,6 +42,8 @@
             "API/EditorCameraBus.h",
             "API/EditorAnimationSystemRequestBus.h",
             "API/EditorVegetationRequestsBus.h",
+            "API/EditorPythonRunnerRequestsBus.h",
+            "API/EntityPropertyEditorRequestsBus.h",
             "API/EntityCompositionRequestBus.h",
             "API/EntityCompositionNotificationBus.h",
             "API/HyperGraphBus.h",
@@ -53,35 +55,21 @@
             "Application/ToolsApplication.cpp",
             "Application/ToolsApplication.h"
         ],
-        "Archive": [
-            "Archive/NullArchiveComponent.h",
-            "Archive/NullArchiveComponent.cpp",
-            "Archive/SevenZipComponent.h",
-            "Archive/SevenZipComponent.cpp",
-            "Archive/ArchiveAPI.h"
-        ],
-        "Asset" : [
+        "Asset": [
+            "Asset/AssetDebugInfo.h",
+            "Asset/AssetDebugInfo.cpp",
             "Asset/AssetProcessorMessages.cpp",
             "Asset/AssetProcessorMessages.h",
             "Asset/AssetSystemComponent.cpp",
-            "Asset/AssetSystemComponent.h"
+            "Asset/AssetSystemComponent.h",
+            "Asset/AssetSeedManager.h",
+            "Asset/AssetSeedManager.cpp",
+            "Asset/AssetBundler.h",
+            "Asset/AssetBundler.cpp",
+            "Asset/AssetUtils.h",
+            "Asset/AssetUtils.cpp"
         ],
-        "AssetBrowser": [
-            "AssetBrowser/AssetBrowserBus.h",
-            "AssetBrowser/AssetBrowserComponent.cpp",
-            "AssetBrowser/AssetBrowserComponent.h",
-            "AssetBrowser/AssetBrowserEntry.h",
-            "AssetBrowser/AssetBrowserFilterModel.cpp",
-            "AssetBrowser/AssetBrowserFilterModel.h",
-            "AssetBrowser/AssetBrowserModel.cpp",
-            "AssetBrowser/AssetBrowserModel.h",
-            "AssetBrowser/AssetEntryChange.h",
-            "AssetBrowser/AssetEntryChangeset.cpp",
-            "AssetBrowser/AssetEntryChangeset.h",
-            "AssetBrowser/AssetSelectionModel.cpp",
-            "AssetBrowser/AssetSelectionModel.h",
-            "AssetBrowser/EBusFindAssetTypeByName.h"
-        ],
+
         "AssetBrowser/Views": [
             "AssetBrowser/Views/AssetBrowserTreeView.cpp",
             "AssetBrowser/Views/AssetBrowserTreeView.h",
@@ -131,6 +119,13 @@
             "AssetBrowser/Thumbnails/SourceThumbnail.cpp",
             "AssetBrowser/Thumbnails/SourceThumbnail.h"
         ],
+        "AssetCatalog": [
+            "AssetCatalog/PlatformAddressedAssetCatalogBus.h",
+            "AssetCatalog/PlatformAddressedAssetCatalog.h",
+            "AssetCatalog/PlatformAddressedAssetCatalog.cpp",
+            "AssetCatalog/PlatformAddressedAssetCatalogManager.h",
+            "AssetCatalog/PlatformAddressedAssetCatalogManager.cpp"
+        ],
         "MaterialBrowser": [
             "MaterialBrowser/MaterialBrowserBus.h",
             "MaterialBrowser/MaterialBrowserComponent.cpp",
@@ -159,6 +154,11 @@
             "Thumbnails/ThumbnailWidget.cpp",
             "Thumbnails/ThumbnailWidget.h"
         ],
+        "AssetBundle": [
+            "AssetBundle/AssetBundleAPI.h",
+            "AssetBundle/AssetBundleComponent.cpp",
+            "AssetBundle/AssetBundleComponent.h"
+        ],
         "AssetDatabase": [
             "AssetDatabase/AssetDatabaseConnection.cpp",
             "AssetDatabase/AssetDatabaseConnection.h"
@@ -184,7 +184,13 @@
             "Engine/EngineUtilities.h",
             "Engine/EngineUtilities.cpp"
         ],
+        "Component": [
+            "Component/EditorComponentAPIBus.h",
+            "Component/EditorComponentAPIComponent.cpp",
+            "Component/EditorComponentAPIComponent.h"
+        ],
         "Entity": [
+            "Entity/EditorEntityAPIBus.h",
             "Entity/EditorEntityContextComponent.cpp",
             "Entity/EditorEntityContextComponent.h",
             "Entity/EditorEntityContextBus.h",
@@ -202,10 +208,17 @@
             "Entity/EditorEntityModelComponent.cpp",
             "Entity/EditorEntityModelComponent.h",
             "Entity/EditorEntityRuntimeActivationBus.h",
+            "Entity/EditorEntitySearchBus.h",
+            "Entity/EditorEntitySearchComponent.cpp",
+            "Entity/EditorEntitySearchComponent.h",
             "Entity/EditorEntitySortBus.h",
             "Entity/EditorEntitySortComponent.cpp",
             "Entity/EditorEntitySortComponent.h",
             "Entity/EditorEntityTransformBus.h"
+        ],
+        "Fingerprinting": [
+            "Fingerprinting/TypeFingerprinter.h",
+            "Fingerprinting/TypeFingerprinter.cpp"
         ],
         "Manipulators": [
             "Manipulators/AngularManipulator.cpp",
@@ -268,6 +281,12 @@
             "Picking/Manipulators/ManipulatorBoundManager.h",
             "Picking/Manipulators/ManipulatorBounds.cpp",
             "Picking/Manipulators/ManipulatorBounds.h"
+        ],
+        "PropertyTreeEditor": [
+            "PropertyTreeEditor/PropertyTreeEditor.cpp",
+            "PropertyTreeEditor/PropertyTreeEditor.h",
+            "PropertyTreeEditor/PropertyTreeEditorComponent.cpp",
+            "PropertyTreeEditor/PropertyTreeEditorComponent.h"
         ],
         "Slice": [
             "Slice/SliceDataFlagsCommand.h",
@@ -560,9 +579,11 @@
         ],
         "ComponentModes": [
             "ComponentModes/BoxComponentMode.h",
-            "ComponentModes/BoxComponentMode.cpp"
+            "ComponentModes/BoxComponentMode.cpp",
+            "ComponentModes/BoxViewportEdit.h",
+            "ComponentModes/BoxViewportEdit.cpp"
         ],
-        "ViewportSelection":  [
+        "ViewportSelection": [
             "ViewportSelection/EditorBoxSelect.h",
             "ViewportSelection/EditorBoxSelect.cpp",
             "ViewportSelection/EditorDefaultSelection.h",
@@ -582,8 +603,48 @@
             "ViewportSelection/EditorVisibleEntityDataCache.h",
             "ViewportSelection/EditorVisibleEntityDataCache.cpp"
         ],
-	"Physics": [
+        "Physics": [
             "Physics/EditorTerrainComponentBus.h"
+        ],
+        "ToolsFileUtils": [
+            "ToolsFileUtils/ToolsFileUtils.h"
+        ]
+    },
+    "Archive_Uber.cpp": {
+        "Archive": [
+            "Archive/ArchiveComponent.h",
+            "Archive/ArchiveComponent.cpp",
+            "Archive/NullArchiveComponent.h",
+            "Archive/NullArchiveComponent.cpp",
+            "Archive/ArchiveAPI.h"
+        ]
+    },
+    "AssetBrowser_Uber.cpp": {
+        "AssetBrowser": [
+            "AssetBrowser/AssetBrowserBus.h",
+            "AssetBrowser/AssetBrowserComponent.cpp",
+            "AssetBrowser/AssetBrowserComponent.h",
+            "AssetBrowser/AssetBrowserEntry.h",
+            "AssetBrowser/AssetBrowserFilterModel.cpp",
+            "AssetBrowser/AssetBrowserFilterModel.h",
+            "AssetBrowser/AssetBrowserModel.cpp",
+            "AssetBrowser/AssetBrowserModel.h",
+            "AssetBrowser/AssetEntryChange.h",
+            "AssetBrowser/AssetEntryChangeset.cpp",
+            "AssetBrowser/AssetEntryChangeset.h",
+            "AssetBrowser/AssetSelectionModel.cpp",
+            "AssetBrowser/AssetSelectionModel.h",
+            "AssetBrowser/EBusFindAssetTypeByName.h"
+        ]
+    },
+    "PropertyEditor_Uber.cpp": {
+        "UI/PropertyEditor/Model": [
+            "UI/PropertyEditor/Model/AssetCompleterModel.h",
+            "UI/PropertyEditor/Model/AssetCompleterModel.cpp"
+        ],
+        "UI/PropertyEditor/View": [
+            "UI/PropertyEditor/View/AssetCompleterListView.h",
+            "UI/PropertyEditor/View/AssetCompleterListView.cpp"
         ]
     }
 }

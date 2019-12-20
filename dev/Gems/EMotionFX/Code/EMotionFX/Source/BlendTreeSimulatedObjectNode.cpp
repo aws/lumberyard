@@ -13,9 +13,6 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/functional.h>
-
-#include <AzFramework/Physics/Character.h>
-
 #include <EMotionFX/Source/AnimGraph.h>
 #include <EMotionFX/Source/Attachment.h>
 #include <EMotionFX/Source/BlendTreeSimulatedObjectNode.h>
@@ -27,7 +24,16 @@
 namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeSimulatedObjectNode, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeSimulatedObjectNode::Simulation, AnimGraphAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeSimulatedObjectNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
+
+    BlendTreeSimulatedObjectNode::UniqueData::~UniqueData()
+    {
+        for (Simulation* simulation : m_simulations)
+        {
+            delete simulation;
+        }
+    }
 
     BlendTreeSimulatedObjectNode::BlendTreeSimulatedObjectNode()
         : AnimGraphNode()
@@ -45,6 +51,11 @@ namespace EMotionFX
         SetupOutputPortAsPose("Pose", OUTPUTPORT_POSE, PORTID_OUTPUT_POSE);
     }
 
+    BlendTreeSimulatedObjectNode::~BlendTreeSimulatedObjectNode()
+    {
+        SimulatedObjectNotificationBus::Handler::BusDisconnect();
+    }
+
     void BlendTreeSimulatedObjectNode::Reinit()
     {
         if (!mAnimGraph)
@@ -52,6 +63,7 @@ namespace EMotionFX
             return;
         }
 
+        SimulatedObjectNotificationBus::Handler::BusConnect();
         AnimGraphNode::Reinit();
 
         const size_t numInstances = mAnimGraph->GetNumAnimGraphInstances();
@@ -132,7 +144,7 @@ namespace EMotionFX
         const SimulatedObjectSetup* simObjectSetup = actor->GetSimulatedObjectSetup().get();
         if (!simObjectSetup)
         {
-            AZ_Warning("EMotionFX", false, "The actor has no simulated object setup, so the simulated object anim graph node '%s' cannot do anything.", GetName());
+            //AZ_Warning("EMotionFX", false, "The actor has no simulated object setup, so the simulated object anim graph node '%s' cannot do anything.", GetName());
             return false;
         }
 
@@ -141,7 +153,7 @@ namespace EMotionFX
         {
             if (!simObjectSetup->FindSimulatedObjectByName(simObjectName.c_str()))
             {
-                AZ_Warning("EMotionFX", false, "Anim graph simulated object node '%s' references a simulated object with the name '%s', which does not exist in the simulated object setup for this actor.", GetName(), simObjectName.c_str());
+                //AZ_Warning("EMotionFX", false, "Anim graph simulated object node '%s' references a simulated object with the name '%s', which does not exist in the simulated object setup for this actor.", GetName(), simObjectName.c_str());
             }
         }
 
@@ -158,7 +170,7 @@ namespace EMotionFX
             }
 
             // Create the simulation, which holds the solver.
-            Simulation* sim = new Simulation();
+            Simulation* sim = aznew Simulation();
             SpringSolver& solver = sim->m_solver;
             sim->m_simulatedObject = simObject;
 
@@ -302,6 +314,21 @@ namespace EMotionFX
 
         uniqueData->m_mustUpdate = true;
         UpdateUniqueData(animGraphInstance, uniqueData);
+    }
+
+    void BlendTreeSimulatedObjectNode::OnSimulatedObjectChanged()
+    {
+        const size_t numInstances = mAnimGraph->GetNumAnimGraphInstances();
+        for (size_t i = 0; i < numInstances; ++i)
+        {
+            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
+            OnUpdateUniqueData(animGraphInstance);
+        }
+    }
+
+    void BlendTreeSimulatedObjectNode::SetSimulatedObjectNames(const AZStd::vector<AZStd::string>& simObjectNames)
+    {
+        m_simulatedObjectNames = simObjectNames;
     }
 
     void BlendTreeSimulatedObjectNode::AdjustParticles(const SpringSolver::ParticleAdjustFunction& func)

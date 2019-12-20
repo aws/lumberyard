@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "ComponentEntityEditorPlugin_precompiled.h"
 
 #include "OutlinerListModel.hxx"
 #include "OutlinerSortFilterProxyModel.hxx"
@@ -253,7 +253,6 @@ OutlinerWidget::OutlinerWidget(QWidget* pParent, Qt::WindowFlags flags)
 
     m_listModel->Initialize();
 
-    AzToolsFramework::EditorMetricsEventsBus::Handler::BusConnect();
     AzToolsFramework::EditorPickModeNotificationBus::Handler::BusConnect(AzToolsFramework::GetEntityContextId());
     EntityHighlightMessages::Bus::Handler::BusConnect();
     OutlinerModelNotificationBus::Handler::BusConnect();
@@ -268,7 +267,6 @@ OutlinerWidget::~OutlinerWidget()
 {
     AzToolsFramework::ComponentModeFramework::EditorComponentModeNotificationBus::Handler::BusDisconnect();
     AzToolsFramework::EditorEntityInfoNotificationBus::Handler::BusDisconnect();
-    AzToolsFramework::EditorMetricsEventsBus::Handler::BusDisconnect();
     AzToolsFramework::EditorPickModeNotificationBus::Handler::BusDisconnect();
     EntityHighlightMessages::Bus::Handler::BusDisconnect();
     OutlinerModelNotificationBus::Handler::BusDisconnect();
@@ -288,17 +286,6 @@ OutlinerWidget::~OutlinerWidget()
 //  Currently, the first behavior is implemented.
 void OutlinerWidget::OnSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected)
 {
-    if (selected.size() != 1)
-    {
-        AZ::EntityId id(AZ::EntityId::InvalidEntityId);
-        MainWindow::instance()->SetSelectedEntity(id);
-    }
-    else
-    {
-        AZ::EntityId entityId(GetEntityIdFromIndex(selected.indexes().at(0)));
-        MainWindow::instance()->SetSelectedEntity(entityId);
-    }
-
     if (m_selectionChangeInProgress || !m_enableSelectionUpdates)
     {
         return;
@@ -476,21 +463,21 @@ void OutlinerWidget::UpdateSelection()
 
             AzToolsFramework::EntityIdList selectedEntities;
             AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(selectedEntities, &AzToolsFramework::ToolsApplicationRequests::Bus::Events::GetSelectedEntities);
-
+            // it is expected that BuildSelectionFrom Entities results in the actual row-and-column selection.
             m_gui->m_objectTree->selectionModel()->select(
-                BuildSelectionFromEntities(selectedEntities), QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+                BuildSelectionFromEntities(selectedEntities), QItemSelectionModel::ClearAndSelect);
         }
         else
         {
             {
                 AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "OutlinerWidget::ModelEntitySelectionChanged:Deselect");
                 m_gui->m_objectTree->selectionModel()->select(
-                    BuildSelectionFromEntities(m_entitiesToDeselect), QItemSelectionModel::Deselect | QItemSelectionModel::Rows);
+                    BuildSelectionFromEntities(m_entitiesToDeselect), QItemSelectionModel::Deselect);
             }
             {
                 AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "OutlinerWidget::ModelEntitySelectionChanged:Select");
                 m_gui->m_objectTree->selectionModel()->select(
-                    BuildSelectionFromEntities(m_entitiesToSelect), QItemSelectionModel::Select | QItemSelectionModel::Rows);
+                    BuildSelectionFromEntities(m_entitiesToSelect), QItemSelectionModel::Select);
             }
         }
 
@@ -516,10 +503,13 @@ void OutlinerWidget::UpdateSelection()
 
     for (const auto& entityId : entityIds)
     {
-        const QModelIndex proxyIndex = GetIndexFromEntityId(entityId);
-        if (proxyIndex.isValid())
+        const QModelIndex startOfRow = GetIndexFromEntityId(entityId);
+        
+        if (startOfRow.isValid())
         {
-            selection.select(proxyIndex, proxyIndex);
+            // we select from start of row to end of row (ie, the last column), not just the first cell
+            const QModelIndex endOfRow = m_proxyModel->index(startOfRow.row(), m_proxyModel->columnCount() - 1, startOfRow.parent());
+            selection.select(startOfRow, endOfRow);
         }
     }
 
@@ -1021,7 +1011,7 @@ void OutlinerWidget::OnDropEvent()
     m_listModel->SetDropOperationInProgress(true);
 }
 
-void OutlinerWidget::EntityCreated(const AZ::EntityId& entityId)
+void OutlinerWidget::OnEditorEntityCreated(const AZ::EntityId& entityId)
 {
     QueueContentUpdateSort(entityId);
     QueueScrollToNewContent(entityId);
@@ -1096,7 +1086,7 @@ QModelIndex OutlinerWidget::GetIndexFromEntityId(const AZ::EntityId& entityId) c
 {
     if (entityId.IsValid())
     {
-        QModelIndex modelIndex = m_listModel->GetIndexFromEntity(entityId);
+        QModelIndex modelIndex = m_listModel->GetIndexFromEntity(entityId, 0);
         if (modelIndex.isValid())
         {
             return m_proxyModel->mapFromSource(modelIndex);

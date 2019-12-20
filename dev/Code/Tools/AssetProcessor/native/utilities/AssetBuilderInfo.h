@@ -25,12 +25,14 @@
 #include <native/assetprocessor.h>
 #include <native/utilities/PlatformConfiguration.h>
 #include <native/resourcecompiler/RCBuilder.h>
+#include <AssetBuilder/AssetBuilderInfo.h>
 
 class FolderWatchCallbackEx;
 class QCoreApplication;
 
 namespace AssetProcessor
 {
+    using AssetBuilder::AssetBuilderType;
     enum ASSET_BUILDER_TYPE
     {
         INVALID, VALID, NONE
@@ -51,7 +53,7 @@ namespace AssetProcessor
 
 
         //! Perform a load of the external module, this is required before initialize.
-        bool Load();
+        AssetBuilderType Load();
 
         //! Sanity check for the module's status
         bool IsLoaded() const;
@@ -63,6 +65,7 @@ namespace AssetProcessor
         void UnInitialize();
 
         //! Check to see if the builder has the required functions defined.
+        AssetBuilderType GetAssetBuilderType();
         ASSET_BUILDER_TYPE IsAssetBuilder();
 
         //! Register a builder descriptor ID to track as part of this builders lifecycle management
@@ -85,7 +88,7 @@ namespace AssetProcessor
         ModuleRegisterDescriptorsFunction m_moduleRegisterDescriptorsFunction;
         ModuleAddComponentsFunction m_moduleAddComponentsFunction;
         UninitializeModuleFunction m_uninitializeModuleFunction;
-        QVector<AZ::ComponentDescriptor*> m_componentDescriptorList;
+        AZStd::vector<AZ::ComponentDescriptor*> m_componentDescriptorList;
         AZ::Entity* m_entity = nullptr;
 
         QString m_builderName;
@@ -104,7 +107,7 @@ namespace AssetProcessor
 
         virtual ~AssetBuilderRegistrationBusTraits() {}
 
-        virtual void UnRegisterBuilderDescriptor(const AZ::Uuid& builderId) {}
+        virtual void UnRegisterBuilderDescriptor(const AZ::Uuid& /*builderId*/) {}
     };
 
     typedef AZ::EBus<AssetBuilderRegistrationBusTraits> AssetBuilderRegistrationBus;

@@ -105,13 +105,12 @@ namespace UnitTest
 
     // Create a dummy allocator so unit tests can leak it
     class TestAllocator
-        : public AZ::AllocatorBase<AZ::ChildAllocatorSchema<AZ::SystemAllocator>>
+        : public AZ::SimpleSchemaAllocator<AZ::ChildAllocatorSchema<AZ::SystemAllocator>>
     {
     public:
         AZ_TYPE_INFO(TestAllocator, "{186B6E32-344D-4322-820A-4C3E4F30650B}");
 
-        using Base = AZ::AllocatorBase<AZ::ChildAllocatorSchema<AZ::SystemAllocator>>;
-        using Schema = Base::Schema;
+        using Base = AZ::SimpleSchemaAllocator<AZ::ChildAllocatorSchema<AZ::SystemAllocator>>;
         using Descriptor = Base::Descriptor;
 
         TestAllocator()
@@ -122,7 +121,7 @@ namespace UnitTest
         TestAllocator(const char* name, const char* desc)
             : Base(name, desc)
         {
-            m_schema = new (&m_schemaStorage) Schema(Descriptor());
+            Create();
         }
 
         ~TestAllocator() override = default;
@@ -134,12 +133,15 @@ namespace UnitTest
     public:
         void TestAllocatorLeak()
         {
-            TraceBusHook traceBusHook;
-            traceBusHook.SetupEnvironment();
-
             AZ::AllocatorInstance<TestAllocator>::Create();
 
-            traceBusHook.TeardownEnvironment();
+            // In regular unit test operation, the environment will be teardown at the end and thats where the validation will happen. Here, we need
+            // to do a teardown before the test ends so gtest detects the death before it starts to teardown.
+            // We suppress the traces so they dont produce more abort calls that would cause the debugger to break (i.e. to stop at a breakpoint). Since
+            // this is part of a death test, the trace suppression wont leak because death tests are executed in their own process space.
+            AZ_TEST_START_TRACE_SUPPRESSION;
+            TraceBusHook* traceBusHook = static_cast<TraceBusHook*>(AZ::Test::sTestEnvironment);
+            traceBusHook->TeardownEnvironment();
         }
     };
    
@@ -272,7 +274,7 @@ namespace UnitTest
                 AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
             }
             AZ::AllocatorInstance<AllocatorType>::Create();
-            AZ::Debug::AllocationRecords* records = AZ::AllocatorInstance<AllocatorType>::Get().GetRecords();
+            AZ::Debug::AllocationRecords* records = AZ::AllocatorInstance<AllocatorType>::GetAllocator().GetRecords();
             if (records)
             {
                 records->SetMode(AZ::Debug::AllocationRecords::RECORD_FULL);

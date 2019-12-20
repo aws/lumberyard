@@ -38,7 +38,7 @@ namespace SliceFavorites
         void startDrag(Qt::DropActions supportedActions) override;
 
     private:
-        QModelIndexList SliceFavoritesTreeView::SortIndicesByHierarchicalLocation(const QModelIndexList& indexList) const;
+        QModelIndexList SortIndicesByHierarchicalLocation(const QModelIndexList& indexList) const;
         void ConstructHierarchyData(const QModelIndex& index, AZStd::list<int>& hierarchy) const;
         QImage createDragImage(const QModelIndexList& indexList) const;
 

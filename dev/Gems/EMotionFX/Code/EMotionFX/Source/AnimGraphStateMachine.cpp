@@ -459,6 +459,7 @@ namespace EMotionFX
     void AnimGraphStateMachine::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+        uniqueData->ClearRefCounts();
 
         // Update all currently active transitions.
         for (AnimGraphStateTransition* transition : uniqueData->m_activeTransitions)
@@ -543,7 +544,6 @@ namespace EMotionFX
                         }
                         else
                         {
-                            // const AnimGraphNodeData* masterUniqueData = sourceState->FindUniqueNodeData(animGraphInstance);
                             const AnimGraphNodeData* servantUniqueData = targetState->FindUniqueNodeData(animGraphInstance);
 
                             // Interpolate the in-between factor from the previous iteration with the interpolated factor from the given transition.
@@ -1330,6 +1330,7 @@ namespace EMotionFX
                 {
                     // mark this node recursively as synced
                     const ESyncMode syncMode = activeTransition->GetSyncMode();
+
                     if (syncMode != SYNCMODE_DISABLED)
                     {
                         if (animGraphInstance->GetIsObjectFlagEnabled(mObjectIndex, AnimGraphInstance::OBJECTFLAGS_SYNCED) == false)
@@ -1342,14 +1343,9 @@ namespace EMotionFX
                         HierarchicalSyncInputNode(animGraphInstance, sourceNode, uniqueData);
 
                         // Adjust the playspeed of the source node to the precalculated transition playspeed.
+                        // NOTE: Only adjust playspeeds in case syncing is enabled.
                         sourceNode->SetPlaySpeed(animGraphInstance, uniqueData->GetPlaySpeed());
                         targetNode->AutoSync(animGraphInstance, sourceNode, weight, syncMode, false);
-                    }
-                    else
-                    {
-                        // child node speed propagation in case the transition is set to not syncing the states
-                        sourceNode->SetPlaySpeed(animGraphInstance, uniqueData->GetPlaySpeed());
-                        targetNode->SetPlaySpeed(animGraphInstance, uniqueData->GetPlaySpeed());
                     }
 
                     sourceNode->FindUniqueNodeData(animGraphInstance)->SetGlobalWeight(uniqueData->GetGlobalWeight() * (1.0f - weight));

@@ -254,6 +254,59 @@ namespace UnitTest
         };
 
         SharedPtr* m_sharedPtr = nullptr;
+    
+        /// Special deleter for RefCountedClass to use, that will track whether the object has been deleted.
+        struct TestDeleter
+            : public AZStd::intrusive_default_delete
+        {
+            bool* m_deleted = nullptr;
+
+            explicit TestDeleter(bool* deleted = nullptr)
+            {
+                m_deleted = deleted;
+            }
+
+            template <typename U>
+            void operator () (U* p) const
+            {
+                if (m_deleted)
+                {
+                    *m_deleted = true;
+                }
+
+                AZStd::intrusive_default_delete::operator () (p);
+            }
+        };
+
+        struct RefCountedClass : public AZStd::intrusive_refcount<uint32_t, TestDeleter>
+        {
+            AZ_RTTI(RefCountedClass, "{622324BD-1407-4843-B798-90F7AA48D615}")
+
+            RefCountedClass(bool* deleted = nullptr) : AZStd::intrusive_refcount<uint32_t, TestDeleter>(TestDeleter{deleted})
+            {}
+
+            AZStd::string m_string;
+        };
+
+        struct RefCountedSubclass : public RefCountedClass
+        {
+            AZ_RTTI(RefCountedSubclass, "{8C687739-01DC-4272-8008-5FE38A0839FB}", RefCountedClass)
+
+            RefCountedSubclass(bool* deleted = nullptr) : RefCountedClass(deleted)
+            {}
+
+            AZStd::string m_anotherString;
+        };
+
+        struct RefCountedSubclassB : public RefCountedClass
+        {
+            AZ_RTTI(RefCountedSubclassB, "{809046A7-18F5-4DC3-8841-34EFACC5C5E8}", RefCountedClass)
+
+            RefCountedSubclassB(bool* deleted = nullptr) : RefCountedClass(deleted)
+            {}
+
+            int m_number;
+        };
     };
 
     void SmartPtr::SetUp()
@@ -1969,4 +2022,47 @@ namespace UnitTest
         EXPECT_TRUE(pv < pv2 || pv2 < pv);
     }
 #endif
+
+    TEST_F(SmartPtr, IntrusivePtr_ConstructMoveDerived)
+    {
+        bool derivedIsDeleted = false;
+        AZStd::intrusive_ptr<RefCountedSubclass> derived = new RefCountedSubclass{&derivedIsDeleted};
+        RefCountedSubclass* originalDerived = derived.get();
+
+        AZStd::intrusive_ptr<RefCountedClass> base{ AZStd::move(derived) };
+
+        EXPECT_TRUE(base.get() == originalDerived);
+        EXPECT_TRUE(derived.get() == nullptr);
+        EXPECT_FALSE(derivedIsDeleted);
+    }
+
+    TEST_F(SmartPtr, IntrusivePtr_AssignMoveDerived)
+    {
+        bool derivedIsDeleted = false;
+        AZStd::intrusive_ptr<RefCountedSubclass> derived = new RefCountedSubclass{&derivedIsDeleted};
+        RefCountedSubclass* originalDerived = derived.get();
+
+        bool originalBaseIsDeleted = false;
+        AZStd::intrusive_ptr<RefCountedClass> base = new RefCountedClass{&originalBaseIsDeleted};
+
+        base = AZStd::move(derived);
+
+        EXPECT_TRUE(base.get() == originalDerived);
+        EXPECT_TRUE(originalBaseIsDeleted);
+        EXPECT_TRUE(derived.get() == nullptr);
+        EXPECT_FALSE(derivedIsDeleted); 
+    }
+
+    TEST_F(SmartPtr, IntrusivePtr_DynamicCast)
+    {
+        AZStd::intrusive_ptr<RefCountedClass> basePointer = new RefCountedSubclass;
+
+        AZStd::intrusive_ptr<RefCountedSubclass> correctCast = dynamic_pointer_cast<RefCountedSubclass>(basePointer);
+        AZStd::intrusive_ptr<RefCountedSubclassB> wrongCast = dynamic_pointer_cast<RefCountedSubclassB>(basePointer);
+
+        EXPECT_TRUE(correctCast.get() == basePointer.get());
+        EXPECT_TRUE(wrongCast.get() == nullptr);
+        EXPECT_EQ(2, basePointer->use_count());
+    }
+
 } // namespace UnitTest

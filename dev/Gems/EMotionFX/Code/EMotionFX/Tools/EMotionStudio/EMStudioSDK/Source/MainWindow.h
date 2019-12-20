@@ -23,7 +23,6 @@
 #include <Editor/ActorEditorBus.h>
 
 #include <QMainWindow>
-#include <QAbstractNativeEventFilter>
 
 // forward declarations
 QT_FORWARD_DECLARE_CLASS(QPushButton)

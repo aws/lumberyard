@@ -25,8 +25,8 @@ namespace AzToolsFramework
     /// A cache of packed EntityData that can be iterated over efficiently without
     /// the need to make individual EBus calls
     class EditorVisibleEntityDataCache
-        : private EditorContextVisibilityNotificationBus::Handler
-        , private EditorContextLockComponentNotificationBus::Handler
+        : private EditorEntityVisibilityNotificationBus::Router
+        , private EditorEntityLockComponentNotificationBus::Router
         , private AZ::TransformNotificationBus::Router
         , private EditorComponentSelectionNotificationsBus::Router
         , private EntitySelectionEvents::Bus::Router
@@ -59,15 +59,17 @@ namespace AzToolsFramework
 
         AZStd::optional<size_t> GetVisibleEntityIndexFromId(AZ::EntityId entityId) const;
 
+        void AddEntityIds(const EntityIdList& entityIds);
+
     private:
         // ToolsApplicationNotificationBus
         void AfterUndoRedo() override;
 
-        // EditorContextVisibilityNotificationBus
-        void OnEntityVisibilityChanged(AZ::EntityId entityId, bool visibility) override;
+        // EditorEntityVisibilityNotificationBus
+        void OnEntityVisibilityChanged(bool visibility) override;
 
-        // EditorContextLockComponentNotificationBus
-        void OnEntityLockChanged(AZ::EntityId entityId, bool locked) override;
+        // EditorEntityLockComponentNotificationBus
+        void OnEntityLockChanged(bool locked) override;
 
         // TransformNotificationBus
         void OnTransformChanged(

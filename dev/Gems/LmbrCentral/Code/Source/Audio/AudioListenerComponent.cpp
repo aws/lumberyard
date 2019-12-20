@@ -161,6 +161,7 @@ namespace LmbrCentral
         AZ::TransformNotificationBus::MultiHandler::BusDisconnect(entityId);
     }
 
+    //=========================================================================
     void AudioListenerComponent::SetListenerEnabled(bool enabled)
     {
         if (enabled && m_listenerObjectId == INVALID_AUDIO_OBJECT_ID)
@@ -182,6 +183,7 @@ namespace LmbrCentral
 
             Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::ReleaseAudioListenerID, m_listenerObjectId);
             Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::SetAudioListenerOverrideID, INVALID_AUDIO_OBJECT_ID);
+
             m_listenerObjectId = INVALID_AUDIO_OBJECT_ID;
         }
     }
@@ -194,7 +196,7 @@ namespace LmbrCentral
         transform.SetPosition(m_transform.GetPosition() + m_fixedOffset);
 
         // Send an update request
-        Audio::SAudioListenerRequestData<Audio::eALRT_SET_POSITION> requestData(AZTransformToLYTransform(transform));
+        Audio::SAudioListenerRequestData<Audio::eALRT_SET_POSITION> requestData(transform);
         Audio::SAudioRequest request;
         request.nAudioObjectID = m_listenerObjectId;
         request.nFlags = Audio::eARF_PRIORITY_NORMAL;
@@ -207,13 +209,21 @@ namespace LmbrCentral
     //=========================================================================
     void AudioListenerComponent::RefreshBusConnections(const AZ::EntityId rotationEntityId, const AZ::EntityId positionEntityId)
     {
-        // Entity used for Orientation
+        // First, disconnect from previous Entities (which may have the same id)
 
         if (m_currentRotationEntity.IsValid())
         {
             AZ::EntityBus::MultiHandler::BusDisconnect(m_currentRotationEntity);
             AZ::TransformNotificationBus::MultiHandler::BusDisconnect(m_currentRotationEntity);
         }
+
+        if (m_currentPositionEntity.IsValid())
+        {
+            AZ::EntityBus::MultiHandler::BusDisconnect(m_currentPositionEntity);
+            AZ::TransformNotificationBus::MultiHandler::BusDisconnect(m_currentPositionEntity);
+        }
+
+        // Next, connect to the Entity used for Orientation
 
         if (rotationEntityId.IsValid())
         {
@@ -226,13 +236,7 @@ namespace LmbrCentral
             m_currentRotationEntity = GetEntityId();
         }
 
-        // Entity used for Position
-
-        if (m_currentPositionEntity.IsValid())
-        {
-            AZ::EntityBus::MultiHandler::BusDisconnect(m_currentPositionEntity);
-            AZ::TransformNotificationBus::MultiHandler::BusDisconnect(m_currentPositionEntity);
-        }
+        // Lastly, connect to the Entity used for Position
 
         if (positionEntityId.IsValid())
         {

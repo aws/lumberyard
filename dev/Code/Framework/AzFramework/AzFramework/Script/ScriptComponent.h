@@ -56,13 +56,8 @@ namespace AzFramework
         ScriptPropertyGroup() = default;
         ~ScriptPropertyGroup();
 
-        // Disallow copying, only moving
-        // Workaround for VS2013 - Delete the copy constructor and make it private
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-    private:
         ScriptPropertyGroup(const ScriptPropertyGroup& rhs) = delete;
         ScriptPropertyGroup& operator=(ScriptPropertyGroup&) = delete;
-
     public:
         ScriptPropertyGroup(ScriptPropertyGroup&& rhs) { *this = AZStd::move(rhs); }
         ScriptPropertyGroup& operator=(ScriptPropertyGroup&& rhs);

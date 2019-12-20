@@ -177,4 +177,7 @@ namespace LmbrCentral
         IPhysicalEntity* m_physicalEntity = nullptr;  ///< Edit-time physical entity (for object snapping).
         AZ::Vector3 m_physScale; ///< To track scale changes, which requires re-physicalizing.
     };
+
+    // Helper function useful for automation.
+    bool AddMeshComponentWithMesh(const AZ::EntityId& targetEntity, const AZ::Uuid& meshAssetId);
 } // namespace LmbrCentral

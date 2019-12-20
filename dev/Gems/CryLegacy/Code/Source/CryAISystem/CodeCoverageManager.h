@@ -53,7 +53,6 @@ class CCodeCoverageManager
     typedef std::vector<CCodeCoverageCheckPoint*> CheckPointVector;
     // String comparison for set
     struct cmp_str
-        : public std::binary_function < const char*, const char*, bool >
     {
         bool operator()(char const* a, char const* b) const
         {

@@ -47,14 +47,7 @@
 // #define _DISALLOW_ENUM_CLASS
 
 #if defined(_MSC_VER)
-    #if (_MSC_VER >= 1700)
-        #define _ALLOW_KEYWORD_MACROS
-    #endif
-
-    #if (_MSC_FULL_VER < 180031101)
-        #define _DISALLOW_INITIALIZER_LISTS
-        #define _DISALLOW_ENUM_CLASS
-    #endif
+    #define _ALLOW_KEYWORD_MACROS
 
     #define alignof _alignof
     #if !defined(_HAS_EXCEPTIONS)
@@ -65,11 +58,7 @@
 #endif
 
 // Alignment|InitializerList support.
-#if defined(_MSC_VER) && (_MSC_VER >= 1800)
-    #define _ALLOW_INITIALIZER_LISTS
-#elif defined(__GNUC__) || defined(__clang__)
-    #define _ALLOW_INITIALIZER_LISTS
-#endif
+#define _ALLOW_INITIALIZER_LISTS
 
 #if (defined(LINUX) && !defined(ANDROID)) || defined(APPLE)
 #define _FILE_OFFSET_BITS 64 // define large file support > 2GB
@@ -91,6 +80,8 @@
         #include "Xenia/platform_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -142,6 +133,8 @@
         #include "Xenia/platform_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -171,6 +164,8 @@
         #include "Xenia/platform_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -197,6 +192,8 @@
         #include "Xenia/platform_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -227,6 +224,8 @@
         #include "Xenia/platform_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -258,6 +257,8 @@
         #include "Xenia/platform_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -279,6 +280,8 @@
         #include "Xenia/platform_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -342,11 +345,7 @@
 // THEADLOCAL should NOT be defined to empty because that creates some
 // really hard to find issues.
 #if !defined(USE_PTHREAD_TLS)
-#if defined(__GNUC__) || defined(MAC) || defined(ANDROID)
-    #define THREADLOCAL __thread
-#else
-    #define THREADLOCAL __declspec(thread)
-#endif
+#   define THREADLOCAL AZ_TRAIT_COMPILER_THREAD_LOCAL
 #endif //!defined(USE_PTHREAD_TLS)
 
 
@@ -387,6 +386,8 @@ static inline void  __dmb()
         #include "Xenia/platform_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -458,6 +459,8 @@ static inline void  __dmb()
         #include "Xenia/platform_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -491,6 +494,8 @@ static inline void  __dmb()
         #include "Xenia/platform_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_h_salem.inl"
     #endif
 #endif
 
@@ -597,12 +602,6 @@ void   CryGetCurrentDirectory(unsigned int nBufferLength, char* lpBuffer);
 short  CryGetAsyncKeyState(int vKey);
 unsigned int CryGetFileAttributes(const char* lpFileName);
 
-#if defined(LINUX) || defined(APPLE)
-#define CrySwprintf swprintf
-#else
-#define CrySwprintf _snwprintf
-#endif
-
 inline void CryHeapCheck()
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
@@ -611,6 +610,8 @@ inline void CryHeapCheck()
         #include "Xenia/platform_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_h_salem.inl"
     #endif
 #elif !defined(LINUX) && !defined(APPLE) // todo: this might be readded with later xdks?
     int Result = _heapchk();
@@ -785,6 +786,8 @@ void SetFlags(T& dest, U flags, bool b)
         #include "Xenia/platform_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_h_salem.inl"
     #endif
 #endif
 
@@ -886,6 +889,8 @@ __declspec(dllimport) int __stdcall TlsSetValue(unsigned long dwTlsIndex, void* 
         #include "Xenia/platform_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_h_salem.inl"
     #endif
 #elif !defined(LINUX) && !defined(APPLE)
 typedef int socklen_t;
@@ -922,6 +927,8 @@ typedef int socklen_t;
         #include "Xenia/platform_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_h_salem.inl"
     #endif
     #endif
 #endif
@@ -935,6 +942,8 @@ typedef int socklen_t;
         #include "Xenia/platform_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/platform_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

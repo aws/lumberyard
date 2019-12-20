@@ -13,16 +13,28 @@
 #include <iosfwd>
 
 #include <AzCore/std/string/string.h>
+#include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Quaternion.h>
+#include <MCore/Source/Quaternion.h>
+#include <EMotionFX/Source/Transform.h>
 
 namespace AZ
 {
-    class Vector3;
-    class Quaternion;
-    void PrintTo(const Vector3& vector, ::std::ostream* os);
-    void PrintTo(const Quaternion& quaternion, ::std::ostream* os);
+    void PrintTo(const AZ::Vector3& vector, ::std::ostream* os);
+    void PrintTo(const AZ::Quaternion& quaternion, ::std::ostream* os);
 } // namespace AZ
 
 namespace AZStd
 {
     void PrintTo(const string& string, ::std::ostream* os);
 } // namespace AZStd
+
+namespace MCore
+{
+    void PrintTo(const Quaternion& quaternion, ::std::ostream* os);
+} // namespace MCore
+
+namespace EMotionFX
+{
+    void PrintTo(const Transform& transform, ::std::ostream* os);
+} // namespace EMotionFX

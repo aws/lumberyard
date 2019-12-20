@@ -498,6 +498,8 @@ private:
     char m_sPreviewFile[_MAX_PATH];
     //! True if "/runpython" was passed as a flag.
     bool m_bRunPythonScript = false;
+    //! File to run on startup
+    QString m_execFile;
     CMatEditMainDlg* m_pMatEditDlg = nullptr;
     CConsoleDialog* m_pConsoleDialog = nullptr;
     Vec3 m_tagLocations[12];
@@ -754,5 +756,39 @@ public:
     QVector<CCrySingleDocTemplate*> m_templateList;
 };
 
+#include <AzCore/Component/Component.h>
+
+namespace AzToolsFramework
+{
+    //! A component to reflect scriptable commands for the Editor
+    class CryEditPythonHandler
+        : public AZ::Component
+    {
+    public:
+        AZ_COMPONENT(CryEditPythonHandler, "{D4B19973-54D9-44BD-9E70-6069462A0CDC}")
+        virtual ~CryEditPythonHandler() = default;
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        // AZ::Component ...
+        void Activate() override {}
+        void Deactivate() override {}
+
+        class CryEditHandler
+        {
+        public:
+            AZ_RTTI(CryEditHandler, "{6C1FD05A-2F39-4094-80D4-CA526676F13E}")
+            virtual ~CryEditHandler() = default;
+        };
+
+        class CryEditCheckoutHandler
+        {
+        public:
+            AZ_RTTI(CryEditCheckoutHandler, "{C65EF439-6754-4ACD-AEA2-196F2DBA0AF3}")
+            virtual ~CryEditCheckoutHandler() = default;
+        };
+    };
+
+} // namespace AzToolsFramework
 
 #endif // CRYINCLUDE_EDITOR_CRYEDIT_H

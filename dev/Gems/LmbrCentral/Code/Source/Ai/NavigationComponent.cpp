@@ -19,6 +19,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <LmbrCentral/Physics/CryCharacterPhysicsBus.h>
 #include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
+#include <AzFramework/Physics/RigidBodyBus.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #ifdef LMBR_CENTRAL_EDITOR
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
@@ -205,7 +206,7 @@ namespace LmbrCentral
     {
         // Get the target entity's position
         AZ::Transform entityTransform = AZ::Transform::CreateIdentity();
-        EBUS_EVENT_ID_RESULT(entityTransform, m_request.GetTargetEntityId(), AZ::TransformBus, GetWorldTM);
+        AZ::TransformBus::EventResult(entityTransform, m_request.GetTargetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
         m_currentDestination = entityTransform.GetPosition();
 
         if (m_responseStatus == Status::WaitingForTargetEntity)
@@ -310,8 +311,8 @@ namespace LmbrCentral
             SetStatus(PathfindResponse::Status::TraversalCancelled);
 
             // Inform every listener on this entity that traversal was cancelled.
-            EBUS_EVENT_ID(m_navigationComponent->GetEntityId(), NavigationComponentNotificationBus,
-                OnTraversalCancelled, GetRequestId());
+            NavigationComponentNotificationBus::Event(m_navigationComponent->GetEntityId(),
+                &NavigationComponentNotificationBus::Events::OnTraversalCancelled, GetRequestId());
         }
 
         m_pathFollower.reset();
@@ -340,6 +341,8 @@ namespace LmbrCentral
         , m_arrivalDistanceThreshold(0.25f)
         , m_repathThreshold(1.f)
         , m_movesPhysically(true)
+        , m_usesLegacyPhysics(false)
+        , m_usesCharacterPhysics(false)
     {
     }
 
@@ -356,10 +359,22 @@ namespace LmbrCentral
 
     void NavigationComponent::Activate()
     {
-        NavigationComponentRequestBus::Handler::BusConnect(m_entity->GetId());
-        AZ::TransformNotificationBus::Handler::BusConnect(m_entity->GetId());
+        const AZ::EntityId& entityId = GetEntityId();
 
-        EBUS_EVENT_ID_RESULT(m_entityTransform, m_entity->GetId(), AZ::TransformBus, GetWorldTM);
+        NavigationComponentRequestBus::Handler::BusConnect(entityId);
+        AZ::TransformNotificationBus::Handler::BusConnect(entityId);
+
+        if (m_movesPhysically)
+        {
+            m_usesCharacterPhysics = CryCharacterPhysicsRequestBus::FindFirstHandler(entityId) != nullptr;
+            m_usesLegacyPhysics = m_usesCharacterPhysics || CryPhysicsComponentRequestBus::FindFirstHandler(entityId);
+
+            AZ_Warning("NavigationComponent",
+                m_usesLegacyPhysics || Physics::RigidBodyRequestBus::FindFirstHandler(entityId),
+                "Entity %s cannot be moved physically - no physics component", GetEntity()->GetName().c_str());
+        }
+
+        AZ::TransformBus::EventResult(m_entityTransform, entityId, &AZ::TransformBus::Events::GetWorldTM);
     }
 
     void NavigationComponent::Deactivate()
@@ -453,16 +468,16 @@ namespace LmbrCentral
             m_lastResponseCache.SetStatus(PathfindResponse::Status::SearchingForPath);
 
             // Inform every listener on this entity about the "Searching For Path" event
-            EBUS_EVENT_ID(m_entity->GetId(), NavigationComponentNotificationBus,
-                          OnSearchingForPath, m_lastResponseCache.GetRequestId());
+            NavigationComponentNotificationBus::Event(m_entity->GetId(),
+                &NavigationComponentNotificationBus::Events::OnSearchingForPath, m_lastResponseCache.GetRequestId());
         }
         else
         {
             m_lastResponseCache.SetStatus(PathfindResponse::Status::TraversalCancelled);
 
             // Inform every listener on this entity about the "Traversal cancelled" event
-            EBUS_EVENT_ID(m_entity->GetId(), NavigationComponentNotificationBus,
-                OnTraversalCancelled, m_lastResponseCache.GetRequestId());
+            NavigationComponentNotificationBus::Event(m_entity->GetId(),
+                &NavigationComponentNotificationBus::Events::OnTraversalCancelled, m_lastResponseCache.GetRequestId());
         }
     }
 
@@ -507,21 +522,29 @@ namespace LmbrCentral
                     // Inform every listener on this entity that a path has been found
                     bool shouldPathBeTraversed = true;
 
-                    EBUS_EVENT_ID_RESULT(shouldPathBeTraversed, m_entity->GetId(),
-                        NavigationComponentNotificationBus,
-                        OnPathFound, m_lastResponseCache.GetRequestId(), m_lastResponseCache.GetCurrentPath());
+                    NavigationComponentNotificationBus::EventResult(shouldPathBeTraversed, m_entity->GetId(),
+                        &NavigationComponentNotificationBus::Events::OnPathFound, m_lastResponseCache.GetRequestId(),
+                        m_lastResponseCache.GetCurrentPath());
 
                     if (shouldPathBeTraversed)
                     {
-                        // Connect to tick bus
-                        AZ::TickBus::Handler::BusConnect();
+                        // Connect to physics bus if appropriate, else tick bus
+                        if (m_movesPhysically && !m_usesLegacyPhysics)
+                        {
+                            Physics::WorldNotificationBus::Handler::BusConnect(Physics::DefaultPhysicsWorldId);
+                        }
+                        else
+                        {
+                            AZ::TickBus::Handler::BusConnect();
+                        }
 
                         //  Set the status of this request
                         m_lastResponseCache.SetStatus(PathfindResponse::Status::TraversalStarted);
 
                         // Inform every listener on this entity that traversal is in progress
-                        EBUS_EVENT_ID(m_entity->GetId(), NavigationComponentNotificationBus,
-                            OnTraversalStarted, m_lastResponseCache.GetRequestId());
+                        NavigationComponentNotificationBus::Event(m_entity->GetId(),
+                            &NavigationComponentNotificationBus::Events::OnTraversalStarted,
+                            m_lastResponseCache.GetRequestId());
                     }
                     else
                     {
@@ -529,8 +552,9 @@ namespace LmbrCentral
                         m_lastResponseCache.SetStatus(PathfindResponse::Status::TraversalCancelled);
 
                         // Inform every listener on this entity that a path could not be found
-                        EBUS_EVENT_ID(m_entity->GetId(), NavigationComponentNotificationBus,
-                            OnTraversalCancelled, m_lastResponseCache.GetRequestId());
+                        NavigationComponentNotificationBus::Event(m_entity->GetId(),
+                        &NavigationComponentNotificationBus::Events::OnTraversalCancelled,
+                        m_lastResponseCache.GetRequestId());
                     }
                 }
             }
@@ -540,8 +564,9 @@ namespace LmbrCentral
                 m_lastResponseCache.SetStatus(PathfindResponse::Status::TraversalCancelled);
 
                 // Inform every listener on this entity that a path could not be found
-                EBUS_EVENT_ID(m_entity->GetId(), NavigationComponentNotificationBus,
-                    OnTraversalCancelled, m_lastResponseCache.GetRequestId());
+                NavigationComponentNotificationBus::Event(m_entity->GetId(),
+                    &NavigationComponentNotificationBus::Events::OnTraversalCancelled,
+                    m_lastResponseCache.GetRequestId());
             }
         }
     }
@@ -577,10 +602,7 @@ namespace LmbrCentral
         }
     }
 
-    //////////////////////////////////////////////////////////////////////////
-    // AZ::TickBus::Handler implementation
-
-    void NavigationComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
+    void NavigationComponent::MoveEntity(float deltaTime)
     {
         // If there isn't a valid path
         if (!m_lastResponseCache.GetCurrentPath())
@@ -589,15 +611,35 @@ namespace LmbrCentral
             return;
         }
 
-        pe_status_dynamics dynamics;
+        AZ::Vector3 currentVelocity = AZ::Vector3::CreateZero();
+        float mass = 0.f;
+
         if (m_movesPhysically)
         {
-            EBUS_EVENT_ID(GetEntityId(), CryPhysicsComponentRequestBus, GetPhysicsStatus, dynamics);
-            m_lastResponseCache.SetLastKnownAgentVelocity(LYVec3ToAZVec3(dynamics.v));
+            if (m_usesLegacyPhysics)
+            {
+                pe_status_dynamics dynamics;
+
+                CryPhysicsComponentRequestBus::Event(GetEntityId(),
+                    &CryPhysicsComponentRequestBus::Events::GetPhysicsStatus, dynamics);
+
+                currentVelocity = LYVec3ToAZVec3(dynamics.v);
+                mass = dynamics.mass;
+            }
+            else
+            {
+                Physics::RigidBodyRequestBus::EventResult(currentVelocity, GetEntityId(),
+                    &Physics::RigidBodyRequestBus::Events::GetLinearVelocity);
+
+                Physics::RigidBodyRequestBus::EventResult(mass, GetEntityId(),
+                    &Physics::RigidBodyRequestBus::Events::GetMass);
+            }
+
+            m_lastResponseCache.SetLastKnownAgentVelocity(currentVelocity);
         }
 
         // Update path-following and extract desired velocity.
-        AZ::Vector3 velocity = AZ::Vector3::CreateZero();
+        AZ::Vector3 targetVelocity = AZ::Vector3::CreateZero();
         float distanceToEnd = 0.f;
         auto pathFollower = m_lastResponseCache.GetPathFollower();
         if (pathFollower)
@@ -613,78 +655,111 @@ namespace LmbrCentral
                 AZVec3ToLYVec3(agentVelocity),
                 deltaTime);
 
-            velocity = LYVec3ToAZVec3(result.velocityOut);
+            targetVelocity = LYVec3ToAZVec3(result.velocityOut);
             distanceToEnd = result.distanceToEnd;
         }
 
-        if (velocity == AZ::Vector3::CreateZero())
+        if (targetVelocity == AZ::Vector3::CreateZero())
         {
             if (m_movesPhysically)
             {
-                if (CryCharacterPhysicsRequestBus::FindFirstHandler(GetEntityId()))
+                if (m_usesLegacyPhysics)
                 {
-                    EBUS_EVENT_ID(GetEntityId(), LmbrCentral::CryCharacterPhysicsRequestBus, RequestVelocity, AZ::Vector3::CreateZero(), 0);
+                    if (m_usesCharacterPhysics)
+                    {
+                        LmbrCentral::CryCharacterPhysicsRequestBus::Event(GetEntityId(),
+                            &LmbrCentral::CryCharacterPhysicsRequestBus::Events::RequestVelocity,
+                            AZ::Vector3::CreateZero(), 0);
+                    }
+                    else
+                    {
+                        pe_action_set_velocity setVel;
+                        setVel.v = ZERO;
+                        CryPhysicsComponentRequestBus::Event(GetEntityId(),
+                            &CryPhysicsComponentRequestBus::Events::ApplyPhysicsAction, setVel, false);
+                    }
                 }
-                else if (CryPhysicsComponentRequestBus::FindFirstHandler(GetEntityId()))
+                else
                 {
-                    pe_action_set_velocity setVel;
-                    setVel.v = ZERO;
-                    EBUS_EVENT_ID(GetEntityId(), CryPhysicsComponentRequestBus, ApplyPhysicsAction, setVel, false);
+                    Physics::RigidBodyRequestBus::Event(GetEntityId(),
+                        &Physics::RigidBodyRequestBus::Events::SetLinearVelocity, AZ::Vector3::CreateZero());
                 }
             }
 
             // Set the status of this request
             m_lastResponseCache.SetStatus(PathfindResponse::Status::TraversalComplete);
+
             // Reset the pathfinding component
             Reset();
 
             // Inform every listener on this entity that the path has been finished
-            EBUS_EVENT_ID(m_entity->GetId(), NavigationComponentNotificationBus,
-                OnTraversalComplete, m_lastResponseCache.GetRequestId());
+            NavigationComponentNotificationBus::Event(m_entity->GetId(),
+                &NavigationComponentNotificationBus::Events::OnTraversalComplete, m_lastResponseCache.GetRequestId());
         }
         else
         {
             if (m_movesPhysically)
             {
-                if (CryCharacterPhysicsRequestBus::FindFirstHandler(GetEntityId()))
+                if (m_usesLegacyPhysics && m_usesCharacterPhysics)
                 {
-                    EBUS_EVENT_ID(GetEntityId(), LmbrCentral::CryCharacterPhysicsRequestBus, RequestVelocity, velocity, 0);
-                }
-                else if (CryPhysicsComponentRequestBus::FindFirstHandler(GetEntityId()))
-                {
-                    float entityMass = dynamics.mass;
-                    AZ::Vector3 currentVelocity = LYVec3ToAZVec3(dynamics.v);
-
-                    AZ::Vector3 forceRequired = ((velocity - currentVelocity) * entityMass);
-                    forceRequired.SetZ(0);
-                    pe_action_impulse applyImpulse;
-                    applyImpulse.impulse = AZVec3ToLYVec3(forceRequired);
-                    EBUS_EVENT_ID(GetEntityId(), CryPhysicsComponentRequestBus, ApplyPhysicsAction, applyImpulse, false);
+                    LmbrCentral::CryCharacterPhysicsRequestBus::Event(GetEntityId(),
+                        &LmbrCentral::CryCharacterPhysicsRequestBus::Events::RequestVelocity, targetVelocity, 0);
                 }
                 else
                 {
-                    AZ_WarningOnce("NavigationComponent", false, "Entity cannot be moved physically; No physics component %llu", static_cast<AZ::u64>(GetEntityId()));
+                    AZ::Vector3 forceRequired = (targetVelocity - currentVelocity) * mass;
+                    forceRequired.SetZ(0);
+
+                    if (m_usesLegacyPhysics)
+                    {
+                        pe_action_impulse applyImpulse;
+                        applyImpulse.impulse = AZVec3ToLYVec3(forceRequired);
+                        CryPhysicsComponentRequestBus::Event(GetEntityId(),
+                            &CryPhysicsComponentRequestBus::Events::ApplyPhysicsAction, applyImpulse, false);
+                    }
+                    else
+                    {
+                        Physics::RigidBodyRequestBus::Event(GetEntityId(),
+                            &Physics::RigidBodyRequestBus::Events::ApplyLinearImpulse, forceRequired);
+                    }
                 }
             }
             else
             {
                 // Set the position of the entity
                 AZ::Transform newEntityTransform = m_entityTransform;
-                AZ::Vector3 movementDelta = velocity * deltaTime;
+                AZ::Vector3 movementDelta = targetVelocity * deltaTime;
                 AZ::Vector3 currentPosition = m_entityTransform.GetPosition();
                 AZ::Vector3 newPosition = m_entityTransform.GetPosition() + movementDelta;
                 newEntityTransform.SetPosition(newPosition);
-                EBUS_EVENT_ID(m_entity->GetId(), AZ::TransformBus, SetWorldTM, newEntityTransform);
+                AZ::TransformBus::Event(m_entity->GetId(), &AZ::TransformBus::Events::SetWorldTM, newEntityTransform);
 
-                m_lastResponseCache.SetLastKnownAgentVelocity(velocity);
+                m_lastResponseCache.SetLastKnownAgentVelocity(targetVelocity);
             }
 
             m_lastResponseCache.SetStatus(PathfindResponse::Status::TraversalInProgress);
 
             // Inform every listener on this entity that the path has been finished
-            EBUS_EVENT_ID(m_entity->GetId(), NavigationComponentNotificationBus,
-                OnTraversalInProgress, m_lastResponseCache.GetRequestId(), distanceToEnd);
+            NavigationComponentNotificationBus::Event(m_entity->GetId(),
+                &NavigationComponentNotificationBus::Events::OnTraversalInProgress, m_lastResponseCache.GetRequestId(),
+                distanceToEnd);
         }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // AZ::TickBus::Handler implementation
+
+    void NavigationComponent::OnTick(float deltaTime, AZ::ScriptTimePoint /*time*/)
+    {
+        MoveEntity(deltaTime);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // Physics::WorldNotificationBus::Handler implementation
+
+    void NavigationComponent::OnPrePhysicsUpdate(float fixedDeltaTime)
+    {
+        MoveEntity(fixedDeltaTime);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -702,8 +777,9 @@ namespace LmbrCentral
     {
         m_lastResponseCache.Reset();
 
-        // Disconnect from tick bus
+        // Disconnect from tick bus and physics bus
         AZ::TickBus::Handler::BusDisconnect();
+        Physics::WorldNotificationBus::Handler::BusDisconnect();
     }
 
     PathfindRequest::NavigationRequestId NavigationComponent::FindPathToEntity(AZ::EntityId targetEntityId)

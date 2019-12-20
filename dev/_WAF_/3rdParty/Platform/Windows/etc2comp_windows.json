@@ -1,0 +1,15 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "libpath_debug": [
+                "EtcLib/Windows_x86_64/vc140/Debug"
+            ],
+            "libpath_release": [
+                "EtcLib/Windows_x86_64/vc140/Release"
+            ],
+            "lib": [
+                "EtcLib.lib"
+            ]
+        }
+    }
+}

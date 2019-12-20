@@ -27,7 +27,6 @@
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/Jobs/JobManagerComponent.h>
-#include <AzCore/Serialization/ObjectStreamComponent.h>
 #include <AzCore/Asset/AssetManagerComponent.h>
 #include <AzCore/Script/ScriptSystemComponent.h>
 #include <AzCore/IO/StreamerComponent.h>
@@ -552,7 +551,6 @@ namespace LegacyFramework
         EnsureComponentCreated(AZ::MemoryComponent::RTTI_Type());
         EnsureComponentCreated(AZ::JobManagerComponent::RTTI_Type());
         EnsureComponentCreated(AZ::StreamerComponent::RTTI_Type());
-        EnsureComponentCreated(AZ::ObjectStreamComponent::RTTI_Type());
 
         AZ_Assert(!m_desc.m_enableProjectManager || m_desc.m_enableGUI, "Enabling the project manager in the application settings requires enabling the GUI as well.");
 

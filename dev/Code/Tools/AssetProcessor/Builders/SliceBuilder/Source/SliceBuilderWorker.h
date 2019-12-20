@@ -14,11 +14,12 @@
 
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
+#include <AzCore/Slice/SliceAsset.h>
+#include <AzCore/Component/ComponentExport.h>
+#include <AzToolsFramework/Fingerprinting/TypeFingerprinter.h>
 
 namespace SliceBuilder
 {
-    class TypeFingerprinter;
-
     class SliceBuilderWorker
         : public AssetBuilderSDK::AssetBuilderCommandBus::Handler
     {
@@ -32,6 +33,7 @@ namespace SliceBuilder
         void CreateJobs(const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response) const;
         void ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response) const;
 
+        bool GetDynamicSliceAssetAndDependencies(AZ::IO::GenericStream* stream, const char* fullPath, const AZ::PlatformTagSet& platformTags, AZ::Data::Asset<AZ::SliceAsset>& outSliceAsset, AZStd::vector<AssetBuilderSDK::ProductDependency>& outProductDependencies, AssetBuilderSDK::ProductPathDependencySet& productPathDependencySet) const;
         //////////////////////////////////////////////////////////////////////////
         //!AssetBuilderSDK::AssetBuilderCommandBus interface
         void ShutDown() override;
@@ -41,6 +43,6 @@ namespace SliceBuilder
 
     private:
         bool m_isShuttingDown = false;
-        AZStd::unique_ptr<TypeFingerprinter> m_typeFingerprinter;
+        AZStd::unique_ptr<AzToolsFramework::Fingerprinting::TypeFingerprinter> m_typeFingerprinter;
     };
 }

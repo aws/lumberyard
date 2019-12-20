@@ -462,11 +462,6 @@ namespace AZ
     AZ::Transform ConvertEulerDegreesToTransformPrecise(const AZ::Vector3& eulerDegrees);
 }
 
-#ifndef AZ_PLATFORM_WINDOWS // Remove this once all compilers support POD (MSVC already does)
-#   include <AzCore/std/typetraits/is_pod.h>
-AZSTD_DECLARE_POD_TYPE(AZ::Transform);
-#endif
-
 #if AZ_TRAIT_USE_PLATFORM_SIMD
     #include <AzCore/Math/Internal/TransformWin32.inl>
 #else

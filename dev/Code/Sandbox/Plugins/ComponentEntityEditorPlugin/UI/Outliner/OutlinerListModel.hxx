@@ -14,9 +14,15 @@
 #define OUTLINER_VIEW_MODEL_H
 
 #include <AzCore/base.h>
+
+// Qt tends to have private non-exported classes inside exported classes, and this raises 4251
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") 
 #include <QtWidgets/QWidget>
 #include <QtWidgets/QStyledItemDelegate>
 #include <QtWidgets/QCheckBox>
+#include <QtCore/QRect>
+AZ_POP_DISABLE_WARNING
+
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Component/EntityBus.h>
 #include <AzCore/Asset/AssetCommon.h>
@@ -135,8 +141,6 @@ public:
     bool dropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent) override;
     bool canDropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent) const override;
 
-    bool IsSelected(const AZ::EntityId& entityId) const;
-
     QMimeData* mimeData(const QModelIndexList& indexes) const override;
     QStringList mimeTypes() const override;
 
@@ -187,21 +191,11 @@ protected:
     void OnEditorEntitiesReplacedBySlicedEntities(const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& replacedEntitiesMap) override;
     void OnEditorEntityDuplicated(const AZ::EntityId& oldEntity, const AZ::EntityId& newEntity) override;
     void OnContextReset() override;
+    void OnStartPlayInEditorBegin() override;
+    void OnStartPlayInEditor() override;
 
-    //! Editor component lock interface to enable/disable selection of entity in the viewport.
-    //! Setting the editor lock state on a parent will recursively set the flag on all descendants as well. (to match visibility)
-    void ToggleEditorLockState(const AZ::EntityId& entityId);
-    void SetEditorLockState(const AZ::EntityId& entityId, bool isLocked);
-    void SetEditorLockStateRecursively(const AZ::EntityId& entityId, bool isLocked, const AZ::EntityId& toggledEntityId, bool toggledEntityWasLayer);
+    bool m_beginStartPlayInEditor = false;
 
-    //! Editor Visibility interface to enable/disable rendering in the viewport.
-    //! Setting the editor visibility on a parent will recursively set the flag on all descendants as well.
-    void ToggleEditorVisibility(const AZ::EntityId& entityId);
-    void SetEditorVisibility(const AZ::EntityId& entityId, bool isVisible);
-    void SetEditorVisibilityStateRecursively(const AZ::EntityId& entityId, bool isVisible, const AZ::EntityId& toggledEntityId, bool toggledEntityWasLayer);
-
-    bool IsEntityVisible(const AZ::EntityId& entityId) const;
-    void SetEntityVisibility(const AZ::EntityId& entityId, bool visibility) const;
 
     void QueueEntityUpdate(AZ::EntityId entityId);
     void QueueAncestorUpdate(AZ::EntityId entityId);
@@ -304,7 +298,7 @@ private:
 
     const char* circleIconColor = "#ff7b00";
     const int circleIconDiameter = 5;
-    const int maskDiameter = 8;  
+    const int maskDiameter = 8;
 };
 
 class OutlinerCheckBox : public QCheckBox
@@ -382,6 +376,9 @@ private:
     QColor m_outlinerSelectionColor;
 
     OutlinerCheckBox* setupCheckBox(const QStyleOptionViewItem& option, const QModelIndex& index, const QColor& backgroundColor, bool isLayerEntity) const;
+
+    // this is a cache, and is hence mutable
+    mutable QRect m_cachedBoundingRectOfTallCharacter;
 };
 
 Q_DECLARE_METATYPE(AZ::ComponentTypeList); // allows type to be stored by QVariable

@@ -224,9 +224,9 @@ namespace AZ
     #define AZ_RTTI_I_MACRO_SPECIALIZE_I(MACRO_NAME, NPARAMS, PARAMS) AZ_RTTI_I_MACRO_SPECIALIZE_II(MACRO_NAME, NPARAMS, PARAMS)
     #define AZ_RTTI_I_MACRO_SPECIALIZE(MACRO_NAME, NPARAMS, PARAMS) AZ_RTTI_I_MACRO_SPECIALIZE_I(MACRO_NAME, NPARAMS, PARAMS)
 
-    #define AZ_RTTI_HELPER_1(_Name, ...) AZ_TYPE_INFO_2(_Name, AZ_INTERNAL_USE_FIRST_ELEMENT(__VA_ARGS__)); AZ_RTTI_I_MACRO_SPECIALIZE(AZ_RTTI_, AZ_VA_NUM_ARGS(__VA_ARGS__), (AZ_INTERNAL_SKIP_FIRST(__VA_ARGS__)))
+    #define AZ_RTTI_HELPER_1(_Name, ...) AZ_TYPE_INFO_INTERNAL_2(_Name, AZ_INTERNAL_USE_FIRST_ELEMENT(__VA_ARGS__)); AZ_RTTI_I_MACRO_SPECIALIZE(AZ_RTTI_, AZ_VA_NUM_ARGS(__VA_ARGS__), (AZ_INTERNAL_SKIP_FIRST(__VA_ARGS__)))
 
-    #define AZ_RTTI_HELPER_3(...)  AZ_TYPE_INFO(AZ_INTERNAL_REMOVE_PARENTHESIS(AZ_INTERNAL_USE_FIRST_ELEMENT(__VA_ARGS__))); AZ_RTTI_I_MACRO_SPECIALIZE(AZ_RTTI_, AZ_VA_NUM_ARGS(__VA_ARGS__), (AZ_INTERNAL_SKIP_FIRST(__VA_ARGS__)))
+    #define AZ_RTTI_HELPER_3(...)  AZ_TYPE_INFO_INTERNAL(AZ_INTERNAL_REMOVE_PARENTHESIS(AZ_INTERNAL_USE_FIRST_ELEMENT(__VA_ARGS__))); AZ_RTTI_I_MACRO_SPECIALIZE(AZ_RTTI_, AZ_VA_NUM_ARGS(__VA_ARGS__), (AZ_INTERNAL_SKIP_FIRST(__VA_ARGS__)))
     #define AZ_RTTI_HELPER_2(...)  AZ_RTTI_HELPER_3(__VA_ARGS__)
     #define AZ_RTTI_HELPER_4(...)  AZ_RTTI_HELPER_3(__VA_ARGS__)
     #define AZ_RTTI_HELPER_5(...)  AZ_RTTI_HELPER_3(__VA_ARGS__)
@@ -268,10 +268,11 @@ namespace AZ
      * The syntax is AZ_RTTI(ClassName,ClassUuid,(BaseClass1..N)) you can have 0 to N base classes this will allow us
      * to perform dynamic casts and query about types.
      * 
-     *  \note A more complex use case is when you use templates, the you have to group the parameters for the TypeInfo call.
+     *  \note A more complex use case is when you use templates where you have to group the parameters for the TypeInfo call.
      * ex. AZ_RTTI( ( (ClassName<TemplateArg1, TemplateArg2, ...>), ClassUuid, TemplateArg1, TemplateArg2, ...), BaseClass1...)
      *
      * Take care with the parentheses, excruciatingly explicitly delineated here: AZ_RTTI (3 (2 (1 fully templated class name 1), Uuid, template args... 2), base classes... 3)
+     * Note that using this approach will not expose the AzGenericTypeInfo for the template.
      */
     #define AZ_RTTI(...)  AZ_RTTI_MACRO_SPECIALIZE(AZ_RTTI_HELPER_, AZ_VA_NUM_ARGS(AZ_INTERNAL_REMOVE_PARENTHESIS(AZ_INTERNAL_USE_FIRST_ELEMENT(__VA_ARGS__))), (__VA_ARGS__))
 
@@ -305,9 +306,15 @@ namespace AZ
         virtual const void*       Cast(const void* instance, const AZ::TypeId& asType) const = 0;
         virtual void*             Cast(void* instance, const AZ::TypeId& asType) const = 0;
         virtual const AZ::TypeId& GetTypeId() const = 0;
+        // If the type is an instance of a template this will return the type id of the template instead of the instance.
+        // otherwise it return the regular type id.
+        virtual const AZ::TypeId& GetGenericTypeId() const = 0;
         virtual bool              IsTypeOf(const AZ::TypeId& id) const = 0;
         virtual bool              IsAbstract() const = 0;
+        virtual bool              ProvidesFullRtti() const = 0;
         virtual void              EnumHierarchy(RTTI_EnumCallback callback, void* userData = nullptr) const = 0;
+        virtual TypeTraits        GetTypeTraits() const = 0;
+        virtual size_t            GetTypeSize() const = 0;
 
         // Template helpers
         template <typename TargetType>
@@ -347,7 +354,7 @@ namespace AZ
         {
         public:
             using ValueType = T;
-            AZ_STATIC_ASSERT(HasAZRtti<ValueType>::value, "Type parameter for RttiHelper must support AZ RTTI.");
+            static_assert(HasAZRtti<ValueType>::value, "Type parameter for RttiHelper must support AZ RTTI.");
 
             //////////////////////////////////////////////////////////////////////////
             // IRttiHelper
@@ -379,6 +386,10 @@ namespace AZ
             {
                 return T::RTTI_Type();
             }
+            const AZ::TypeId& GetGenericTypeId() const override
+            {
+                return AzTypeInfo<T>::template Uuid<AZ::GenericTypeIdTag>();
+            }
             bool IsTypeOf(const AZ::TypeId& id) const override
             {
                 return T::RTTI_IsContainType(id);
@@ -387,9 +398,82 @@ namespace AZ
             {
                 return AZStd::is_abstract<T>::value;
             }
+            bool ProvidesFullRtti() const override
+            {
+                return true;
+            }
             void EnumHierarchy(RTTI_EnumCallback callback, void* userData = nullptr) const override
             {
-                return T::RTTI_EnumHierarchy(callback, userData);
+                T::RTTI_EnumHierarchy(callback, userData);
+            }
+            TypeTraits GetTypeTraits() const override
+            {
+                return AzTypeInfo<T>::GetTypeTraits();
+            }
+            size_t GetTypeSize() const override
+            {
+                return AzTypeInfo<T>::Size();
+            }
+            //////////////////////////////////////////////////////////////////////////
+        };
+
+        template<typename T>
+        struct TypeInfoOnlyRttiHelper
+            : public IRttiHelper
+        {
+        public:
+            using ValueType = T;
+            static_assert(Internal::HasAZTypeInfo<ValueType>::value, "Type parameter for RttiHelper must support AZ Type Info.");
+
+            //////////////////////////////////////////////////////////////////////////
+            // IRttiHelper
+            const AZ::TypeId& GetActualUuid(const void*) const override
+            {
+                return AZ::AzTypeInfo<ValueType>::Uuid();
+            }
+            const char* GetActualTypeName(const void*) const override
+            {
+                return AZ::AzTypeInfo<ValueType>::Name();
+            }
+            const void* Cast(const void* instance, const AZ::TypeId& asType) const override
+            {
+                return asType == GetTypeId() ? instance : nullptr;
+            }
+            void* Cast(void* instance, const AZ::TypeId& asType) const override
+            {
+                return asType == GetTypeId() ? instance : nullptr;
+            }
+            const AZ::TypeId& GetTypeId() const override
+            {
+                return AZ::AzTypeInfo<ValueType>::Uuid();
+            }
+            const AZ::TypeId& GetGenericTypeId() const override
+            {
+                return AZ::AzTypeInfo<ValueType>::template Uuid<AZ::GenericTypeIdTag>();
+            }
+            bool IsTypeOf(const AZ::TypeId& id) const override
+            {
+                return id == GetTypeId();
+            }
+            bool IsAbstract() const override
+            {
+                return false;
+            }
+            bool ProvidesFullRtti() const override
+            {
+                return false;
+            }
+            void EnumHierarchy(RTTI_EnumCallback callback, void* instance) const override
+            {
+                callback(GetTypeId(), instance);
+            }
+            TypeTraits GetTypeTraits() const
+            {
+                return AzTypeInfo<T>::GetTypeTraits();
+            }
+            size_t GetTypeSize() const
+            {
+                return AzTypeInfo<T>::Size();
             }
             //////////////////////////////////////////////////////////////////////////
         };
@@ -426,6 +510,11 @@ namespace AZ
                 return AZ::AzTypeInfo<T>::Uuid();
             }
 
+            const AZ::TypeId& GetGenericTypeId() const override
+            {
+                return AZ::AzTypeInfo<T>::template Uuid<AZ::GenericTypeIdTag>();
+            }
+
             bool IsTypeOf(const AZ::TypeId& id) const override
             {
                 bool result = GetTypeId() == id;
@@ -439,12 +528,24 @@ namespace AZ
             {
                 return AZStd::is_abstract<T>::value;
             }
+            bool ProvidesFullRtti() const override
+            {
+                return true;
+            }
             void EnumHierarchy(RTTI_EnumCallback callback, void* instance) const override
             {
                 callback(GetActualUuid(instance), instance);
 
                 using dummy = bool[];
                 dummy{ true, (RttiHelper<TArgs>{}.EnumHierarchy(callback, instance), true)... };
+            }
+            TypeTraits GetTypeTraits() const
+            {
+                return AzTypeInfo<T>::GetTypeTraits();
+            }
+            size_t GetTypeSize() const
+            {
+                return AzTypeInfo<T>::Size();
             }
 
         private:
@@ -476,17 +577,31 @@ namespace AZ
             }
         };
 
+        namespace RttiHelperTags
+        {
+            struct Unavailable {};
+            struct Standard {};
+            struct TypeInfoOnly {};
+        }
+
         // Overload for AZRtti
         // Named _Internal so that GetRttiHelper() calls from inside namespace Internal don't resolve here
         template<typename T>
-        IRttiHelper* GetRttiHelper_Internal(AZStd::true_type /*hasRtti*/)
+        IRttiHelper* GetRttiHelper_Internal(RttiHelperTags::Standard)
         {
             static RttiHelper<T> s_instance;
             return &s_instance;
         }
+
+        template<typename T>
+        IRttiHelper* GetRttiHelper_Internal(RttiHelperTags::TypeInfoOnly)
+        {
+            static TypeInfoOnlyRttiHelper<T> s_instance;
+            return &s_instance;
+        }
         // Overload for no typeinfo available
         template<typename>
-        IRttiHelper* GetRttiHelper_Internal(AZStd::false_type /*hasRtti*/)
+        IRttiHelper* GetRttiHelper_Internal(RttiHelperTags::Unavailable)
         {
             return nullptr;
         }
@@ -496,7 +611,13 @@ namespace AZ
     IRttiHelper* GetRttiHelper()
     {
         using ValueType = std::remove_const_t<std::remove_pointer_t<T>>;
-        return Internal::GetRttiHelper_Internal<ValueType>(typename HasAZRtti<ValueType>::type());
+        static constexpr bool hasRtti =  HasAZRtti<ValueType>::value;
+        static constexpr bool hasTypeInfo = Internal::HasAZTypeInfo<ValueType>::value;
+
+        using TypeInfoTag = AZStd::conditional_t<hasTypeInfo, Internal::RttiHelperTags::TypeInfoOnly, Internal::RttiHelperTags::Unavailable>;
+        using Tag = AZStd::conditional_t<hasRtti, Internal::RttiHelperTags::Standard, TypeInfoTag>;
+
+        return Internal::GetRttiHelper_Internal<ValueType>(Tag{});
     }                                                      
 
     namespace Internal
@@ -574,19 +695,19 @@ namespace AZ
         template<class T, class U>
         struct RttiIsTypeOfHelper
         {
-            static inline bool  Check(U& ref, const AZStd::integral_constant<RttiKind, RttiKind::Intrusive>& /* HasAZRttiIntrusive<U> */)
+            static inline bool  Check(const U& ref, const AZStd::integral_constant<RttiKind, RttiKind::Intrusive>& /* HasAZRttiIntrusive<U> */)
             {
                 typedef typename RttiRemoveQualifiers<T>::type CheckType;
                 return ref.RTTI_IsTypeOf(AzTypeInfo<CheckType>::Uuid());
             }
 
-            static inline bool  Check(U&, const AZStd::integral_constant<RttiKind, RttiKind::External>& /* HasAZRttiExternal<U> */)
+            static inline bool  Check(const U&, const AZStd::integral_constant<RttiKind, RttiKind::External>& /* HasAZRttiExternal<U> */)
             {
                 typedef typename RttiRemoveQualifiers<T>::type CheckType;
                 return Internal::RttiHelper<U>().IsTypeOf(AzTypeInfo<CheckType>::Uuid());
             }
 
-            static inline bool  Check(U&, const AZStd::integral_constant<RttiKind, RttiKind::None>& /* !HasAZRtti<U> */)
+            static inline bool  Check(const U&, const AZStd::integral_constant<RttiKind, RttiKind::None>& /* !HasAZRtti<U> */)
             {
                 typedef typename RttiRemoveQualifiers<T>::type CheckType;
                 typedef typename RttiRemoveQualifiers<U>::type SrcType;
@@ -596,19 +717,19 @@ namespace AZ
         template<class T, class U>
         struct RttiIsTypeOfHelper<T, U*>
         {
-            static inline bool  Check(U* ptr, const AZStd::integral_constant<RttiKind, RttiKind::Intrusive>& /* HasAZRttiIntrusive<U> */)
+            static inline bool  Check(const U* ptr, const AZStd::integral_constant<RttiKind, RttiKind::Intrusive>& /* HasAZRttiIntrusive<U> */)
             {
                 typedef typename RttiRemoveQualifiers<T>::type CheckType;
                 return ptr && ptr->RTTI_IsTypeOf(AzTypeInfo<CheckType>::Uuid());
             }
 
-            static inline bool  Check(U* ptr, const AZStd::integral_constant<RttiKind, RttiKind::External>& /* HasAZRttiExternal<U> */)
+            static inline bool  Check(const U* ptr, const AZStd::integral_constant<RttiKind, RttiKind::External>& /* HasAZRttiExternal<U> */)
             {
                 typedef typename RttiRemoveQualifiers<T>::type CheckType;
                 return ptr ? Internal::RttiHelper<U>().IsTypeOf(AzTypeInfo<CheckType>::Uuid()) : false;
             }
 
-            static inline bool  Check(U*, const AZStd::integral_constant<RttiKind, RttiKind::None>& /* !HasAZRtti<U> */)
+            static inline bool  Check(const U*, const AZStd::integral_constant<RttiKind, RttiKind::None>& /* !HasAZRtti<U> */)
             {
                 typedef typename RttiRemoveQualifiers<T>::type CheckType;
                 typedef typename RttiRemoveQualifiers<U>::type SrcType;
@@ -774,7 +895,19 @@ namespace AZ
                 return nullptr;
             }
         };
-    }
+
+        template<class U, typename TypeIdResolverTag, typename AZStd::enable_if_t<AZStd::is_same_v<TypeIdResolverTag, AZStd::false_type>>* = nullptr>
+        inline const AZ::TypeId& RttiTypeId()
+        {
+            return AzTypeInfo<U>::Uuid();
+        }
+
+        template<class U, typename TypeIdResolverTag, typename AZStd::enable_if_t<!AZStd::is_same_v<TypeIdResolverTag, AZStd::false_type>>* = nullptr>
+        inline const AZ::TypeId& RttiTypeId()
+        {
+            return AzTypeInfo<U>::template Uuid<TypeIdResolverTag>();
+        }
+    } // namespace Internal
 
     /// Enumerate class hierarchy (static) based on input type. Safe to call for type not supporting AZRtti returns the AzTypeInfo<T>::Uuid only.
     template<class T>
@@ -822,7 +955,7 @@ namespace AZ
         }
     }
 
-    /// RttiCast specialization for intrusive_ptr.
+    // RttiCast specialization for intrusive_ptr.
     template<class T, class U>
     inline AZStd::intrusive_ptr<typename AZStd::remove_pointer<T>::type>    RttiCast(const AZStd::intrusive_ptr<U>& ptr)
     {
@@ -833,7 +966,7 @@ namespace AZ
         return Internal::RttiCastHelper<T>(ptr.get(), typename HasAZRtti<U>::kind_type());
     }
 
-    /// Gets address of a contained type or NULL. Safe to call for type not supporting AZRtti (returns 0 unless type fully match).
+    // Gets address of a contained type or NULL. Safe to call for type not supporting AZRtti (returns 0 unless type fully match).
     template<class T>
     inline typename Internal::AddressTypeHelper<T>::type RttiAddressOf(T ptr, const AZ::TypeId& id)
     {
@@ -842,32 +975,106 @@ namespace AZ
         return Internal::RttiAddressOfHelper(ptr, id, typename HasAZRtti<AZStd::remove_pointer_t<T>>::kind_type());
     }
 
-    /// Returns true if the type is contained, otherwise false. Safe to call for type not supporting AZRtti (returns false unless type fully match).
-    template<class T, class U>
-    inline bool     RttiIsTypeOf(U data)
-    {
-        return Internal::RttiIsTypeOfHelper<T, U>::Check(data, typename HasAZRtti<AZStd::remove_pointer_t<U>>::kind_type());
-    }
-
-    /// Returns true if the type (by id) is contained, otherwise false. Safe to call for type not supporting AZRtti (returns false unless type fully match).
-    template<class U>
-    inline bool     RttiIsTypeOf(const AZ::TypeId& id, U data)
-    {
-        return Internal::RttiIsTypeOfIdHelper<U>::Check(id, data, typename HasAZRtti<AZStd::remove_pointer_t<U>>::kind_type());
-    }
-
-    template<class U>
+    // TypeIdResolverTag is one of the TypeIdResolverTags such as CanonicalTypeIdTag. If false_type is provided the default on assigned
+    // by the type will be used.
+    template<class U, typename TypeIdResolverTag = AZStd::false_type>
     inline const AZ::TypeId& RttiTypeId()
     {
-        return AzTypeInfo<U>::Uuid();
+        return Internal::RttiTypeId<U, TypeIdResolverTag>();
     }
-
+    
+    template<template<typename...> class U, typename = void>
+    inline const AZ::TypeId& RttiTypeId()
+    {
+        return AzGenericTypeInfo::Uuid<U>();
+    }
+    
+    template<template<AZStd::size_t...> class U, typename = void>
+    inline const AZ::TypeId& RttiTypeId()
+    {
+        return AzGenericTypeInfo::Uuid<U>();
+    }
+    
+    template<template<typename, AZStd::size_t> class U, typename = void>
+    inline const AZ::TypeId& RttiTypeId()
+    {
+        return AzGenericTypeInfo::Uuid<U>();
+    }
+    
+    template<template<typename, typename, AZStd::size_t> class U, typename = void>
+    inline const AZ::TypeId& RttiTypeId()
+    {
+        return AzGenericTypeInfo::Uuid<U>();
+    }
+    
+    template<template<typename, typename, typename, AZStd::size_t> class U, typename = void>
+    inline const AZ::TypeId& RttiTypeId()
+    {
+        return AzGenericTypeInfo::Uuid<U>();
+    }
+    
     template<class U>
     inline const AZ::TypeId& RttiTypeId(const U& data)
     {
         return Internal::RttiIsTypeOfIdHelper<U>::Type(data, typename HasAZRtti<AZStd::remove_pointer_t<U>>::kind_type());
     }
 
+
+    // Returns true if the type is contained, otherwise false. Safe to call for type not supporting AZRtti (returns false unless type fully match).
+    template<class T, class U>
+    inline bool     RttiIsTypeOf(const U& data)
+    {
+        return Internal::RttiIsTypeOfHelper<T, U>::Check(data, typename HasAZRtti<AZStd::remove_pointer_t<U>>::kind_type());
+    }
+
+    // Since it's not possible to create an instance of a non-type template, only the T has to be overloaded.
+
+    // Returns true if the type is contained, otherwise false. Safe to call for type not supporting AZRtti (returns false unless type fully match).
+    template<template<typename...> class T, class U>
+    inline bool     RttiIsTypeOf(const U&)
+    {
+        using CheckType = typename Internal::RttiRemoveQualifiers<U>::type;
+        return AzGenericTypeInfo::Uuid<T>() == RttiTypeId<CheckType, AZ::GenericTypeIdTag>();
+    }
+
+    // Returns true if the type is contained, otherwise false. Safe to call for type not supporting AZRtti (returns false unless type fully match).
+    template<template<AZStd::size_t...> class T, class U>
+    inline bool     RttiIsTypeOf(const U&)
+    {
+        using CheckType = typename Internal::RttiRemoveQualifiers<U>::type;
+        return AzGenericTypeInfo::Uuid<T>() == RttiTypeId<CheckType, AZ::GenericTypeIdTag>();
+    }
+
+    // Returns true if the type is contained, otherwise false. Safe to call for type not supporting AZRtti (returns false unless type fully match).
+    template<template<typename, AZStd::size_t> class T, class U>
+    inline bool     RttiIsTypeOf(const U&)
+    {
+        using CheckType = typename Internal::RttiRemoveQualifiers<U>::type;
+        return AzGenericTypeInfo::Uuid<T>() == RttiTypeId<CheckType, AZ::GenericTypeIdTag>();
+    }
+
+    // Returns true if the type is contained, otherwise false.Safe to call for type not supporting AZRtti(returns false unless type fully match).
+    template<template<typename, typename, AZStd::size_t> class T, class U>
+    inline bool     RttiIsTypeOf(const U&)
+    {
+        using CheckType = typename Internal::RttiRemoveQualifiers<U>::type;
+        return AzGenericTypeInfo::Uuid<T>() == RttiTypeId<CheckType, AZ::GenericTypeIdTag>();
+    }
+
+    // Returns true if the type is contained, otherwise false.Safe to call for type not supporting AZRtti(returns false unless type fully match).
+    template<template<typename, typename, typename, AZStd::size_t> class T, class U>
+    inline bool     RttiIsTypeOf(const U&)
+    {
+        using CheckType = typename Internal::RttiRemoveQualifiers<U>::type;
+        return AzGenericTypeInfo::Uuid<T>() == RttiTypeId<CheckType, AZ::GenericTypeIdTag>();
+    }
+
+    // Returns true if the type (by id) is contained, otherwise false. Safe to call for type not supporting AZRtti (returns false unless type fully match).
+    template<class U>
+    inline bool     RttiIsTypeOf(const AZ::TypeId& id, U data)
+    {
+        return Internal::RttiIsTypeOfIdHelper<U>::Check(id, data, typename HasAZRtti<AZStd::remove_pointer_t<U>>::kind_type());
+    }
 } // namespace AZ
 
 #endif // AZCORE_RTTI_H

@@ -1,0 +1,21 @@
+{
+    "platform": {
+        "darwin_x64": {
+            "includes": [
+                "."
+            ],
+            "libpath": [
+                "lib/macos"
+            ],
+            "sharedlibpath": [
+                "lib/macos"
+            ],
+            "lib": [
+                "libboost_python.a"
+            ],
+            "shared": [
+                "libboost_python.dylib"
+            ]
+        }
+    }
+}

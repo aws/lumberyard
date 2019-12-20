@@ -107,6 +107,10 @@ namespace PhysXCharacters
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 
+        // Editor change notification
+        AZ::u32 OnControllerConfigChanged();
+        AZ::u32 OnShapeConfigChanged();
+
     private:
 
         CharacterControllerConfiguration m_configuration;

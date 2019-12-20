@@ -33,7 +33,7 @@ namespace Visibility
         : public PortalConfiguration
     {
     public:
-        AZ_TYPE_INFO(EditorPortalConfiguration, "{C9F99449-7A77-50C4-9ED3-D69B923BFDBD}", PortalConfiguration);
+        AZ_TYPE_INFO_LEGACY(EditorPortalConfiguration, "{C9F99449-7A77-50C4-9ED3-D69B923BFDBD}", PortalConfiguration);
         AZ_CLASS_ALLOCATOR(EditorPortalConfiguration, AZ::SystemAllocator,0);
 
         static void Reflect(AZ::ReflectContext* context);

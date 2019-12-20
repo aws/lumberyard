@@ -134,7 +134,6 @@ namespace NCryOpenGL
         }
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov :END
     bool SShaderTextureBasedView::BindTextureUnit(SSamplerState* pSamplerState, STextureUnitContext& kContext, CContext* pContext, const STextureUnitCache& kCurrentUnitCache)
     {
         DXGL_ERROR("Cannot bind this type of texture based view to a texture unit");
@@ -201,7 +200,6 @@ namespace NCryOpenGL
         return true;
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov :END
     bool SShaderTextureBufferView::BindTextureUnit(SSamplerState* pSamplerState, STextureUnitContext& kContext, CContext* pContext, const STextureUnitCache& kCurrentUnitCache)
     {
         kContext.m_kCurrentUnitState.m_kTextureName = m_kName;
@@ -354,7 +352,6 @@ namespace NCryOpenGL
         return false;
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov :END
     bool SShaderTextureView::BindTextureUnit(SSamplerState* pSamplerState, STextureUnitContext& kContext, CContext* pContext, const STextureUnitCache& kCurrentUnitCache)
     {
         kContext.m_kCurrentUnitState.m_uSampler = m_kConfiguration.m_uNumMipLevels > 1 ?
@@ -376,7 +373,6 @@ namespace NCryOpenGL
                 {
                     if (m_pTexture->m_kCache != m_kViewState)
                     {
-                        //  Confetti BEGIN: Igor Lobanchikov :END
                         m_kViewState.Apply(m_pTexture->m_kName.GetName(), m_kConfiguration.m_eTarget, kCurrentUnitCache);
                         m_pTexture->m_kCache = m_kViewState;
                     }
@@ -678,7 +674,6 @@ namespace NCryOpenGL
     {
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov :END
     bool SDefaultFrameBufferShaderTextureView::BindTextureUnit(SSamplerState* pSamplerState, STextureUnitContext& kContext, CContext* pContext, const STextureUnitCache& kCurrentUnitCache)
     {
         SDefaultFrameBufferTexture* pDefaultFrameBufferTexture(static_cast<SDefaultFrameBufferTexture*>(m_pTexture));
@@ -688,7 +683,6 @@ namespace NCryOpenGL
             m_bUsesTexture = true;
         }
         pDefaultFrameBufferTexture->OnRead(pContext);
-        //  Confetti BEGIN: Igor Lobanchikov :END
         return SShaderTextureView::BindTextureUnit(pSamplerState, kContext, pContext, kCurrentUnitCache);
     }
 

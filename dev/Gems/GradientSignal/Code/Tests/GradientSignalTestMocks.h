@@ -99,7 +99,7 @@ namespace UnitTest
     struct MockGradientRequestsBus
         : public GradientSignal::GradientRequestBus::Handler
     {
-        MockGradientRequestsBus(AZ::EntityId& id)
+        MockGradientRequestsBus(const AZ::EntityId& id)
         {
             BusConnect(id);
         }
@@ -124,7 +124,7 @@ namespace UnitTest
     struct MockGradientArrayRequestsBus
         : public GradientSignal::GradientRequestBus::Handler
     {
-        MockGradientArrayRequestsBus(AZ::EntityId& id, const AZStd::vector<float>& data, int dataSize)
+        MockGradientArrayRequestsBus(const AZ::EntityId& id, const AZStd::vector<float>& data, int dataSize)
             : m_getValue(data), m_dataSize(dataSize)
         {
             BusConnect(id);

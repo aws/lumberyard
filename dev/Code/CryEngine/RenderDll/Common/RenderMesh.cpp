@@ -1902,7 +1902,7 @@ void CRenderMesh::CopyTo(IRenderMesh* _pDst, int nAppendVtx, bool bDynamic, bool
             rNewMat.pRE->m_NextGlobal = pNext;
             rNewMat.pRE->m_PrevGlobal = pPrev;
             rNewMat.pRE->m_pRenderMesh = pDst;
-            //assert(rNewMat.pRE->m_CustomData);
+            assert(rNewMat.pRE->m_CustomData);
             rNewMat.pRE->m_CustomData = NULL;
         }
     }
@@ -3301,7 +3301,7 @@ void CRenderMesh::Render(const SRendParams& rParams, CRenderObject* pObj, _smart
                     continue;
                 }
 
-                if (bSG && (pMaterial->GetSafeSubMtl(i)->GetFlags() & MTL_FLAG_NOSHADOW))
+                if (bSG && (pMaterial->GetSafeSubMtl(pChunk->m_nMatID)->GetFlags() & MTL_FLAG_NOSHADOW))
                 {
                     continue;
                 }
@@ -3330,7 +3330,7 @@ void CRenderMesh::AddRenderElements(_smart_ptr<IMaterial> pIMatInfo, CRenderObje
 
     assert(!(pObj->m_ObjFlags & FOB_BENDED));
     //assert (!pObj->GetInstanceInfo(0));
-    //assert(pIMatInfo);
+    assert(pIMatInfo);
 
     if (!_GetVertexContainer()->m_nVerts || !m_Chunks.size() || !pIMatInfo)
     {
@@ -3823,7 +3823,7 @@ void CRenderMesh::UpdateBBoxFromMesh()
 
     if (!pIndices || !pPositions)
     {
-        //assert(!"Mesh is not ready");
+        assert(!"Mesh is not ready");
         return;
     }
 
@@ -5245,9 +5245,9 @@ CThreadSafeRendererContainer<SMeshSubSetIndicesJobEntry> CRenderMesh::m_meshSubS
 
 
 #if RENDERMESH_CPP_TRAIT_BUFFER_ENABLE_DIRECT_ACCESS || defined(CRY_USE_DX12)
-	#ifdef BUFFER_ENABLE_DIRECT_ACCESS
-		#undef BUFFER_ENABLE_DIRECT_ACCESS
-		#define BUFFER_ENABLE_DIRECT_ACCESS 1
-	#endif
+    #ifdef BUFFER_ENABLE_DIRECT_ACCESS
+        #undef BUFFER_ENABLE_DIRECT_ACCESS
+        #define BUFFER_ENABLE_DIRECT_ACCESS 1
+    #endif
 #endif
 

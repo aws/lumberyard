@@ -21,26 +21,23 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 
-#include <QtWidgets/QApplication>
-#include <QtCore/QTimer>
-AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QFileInfo::d_ptr': class 'QSharedDataPointer<QFileInfoPrivate>' needs to have dll-interface to be used by clients of class 'QFileInfo'
-#include <QtCore/QDir>
-AZ_POP_DISABLE_WARNING
-
 #include <AzFramework/CommandLine/CommandLine.h>
 
+#include <AzToolsFramework/UI/UICore/QWidgetSavedState.h>
 #include <AzToolsFramework/UI/LegacyFramework/Core/EditorFrameworkAPI.h>
 #include "MainWindowSavedState.h"
-#include <AzToolsFramework/UI/UICore/QWidgetSavedState.h>
 
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // '...' needs to have dll-interface to be used by clients of class '...'
+#include <QtWidgets/QApplication>
+#include <QtCore/QTimer>
+#include <QtCore/QDir>
 #include <QThread>
 #include <QAction>
 #include <QMenu>
 #include <QFontDatabase>
-AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QResource::d_ptr': class 'QScopedPointer<QResourcePrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QResource'
 #include <QResource>
-AZ_POP_DISABLE_WARNING
 #include <QProxyStyle>
+AZ_POP_DISABLE_WARNING
 
 #include <AzFramework/StringFunc/StringFunc.h>
 

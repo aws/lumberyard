@@ -15,7 +15,7 @@
 #define CRYINCLUDE_TOOLS_RC_RESOURCECOMPILERPC_PHYSWORLD_H
 #pragma once
 
-
+#include <AzFramework/StringFunc/StringFunc.h>
 #include <primitives.h>
 #include <physinterface.h>
 
@@ -41,7 +41,10 @@ public:
 
         // Need to use the library from the "rc" folder
 #ifdef CGF_PHYSX_COMPILER
-        libName = "rc/" + libName;
+        if (!AzFramework::StringFunc::StartsWith(libName, "rc/"))
+        {
+            libName = "rc/" + libName;
+        }
 #endif
 
         const char* const pName = libName.c_str();

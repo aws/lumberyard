@@ -76,18 +76,6 @@ IF EXIST "%MYBATCHFILEDIRECTORY%\Bin64vc141\AssetProcessorBatch.exe" (
         GOTO BinFolderFound
     )
 )
-IF EXIST "%MYBATCHFILEDIRECTORY%\Bin64vc140\AssetProcessorBatch.exe" (
-    IF EXIST "%MYBATCHFILEDIRECTORY%\Bin64vc140\rc\rc.exe" (
-        SET BINFOLDER=Bin64vc140
-        GOTO BinFolderFound
-    )
-)
-IF EXIST "%MYBATCHFILEDIRECTORY%\Bin64vc120\AssetProcessorBatch.exe" (
-    IF EXIST "%MYBATCHFILEDIRECTORY%\Bin64vc120\rc\rc.exe" (
-        SET BINFOLDER=Bin64vc120
-        GOTO BinFolderFound
-    )
-)
 
 REM Unable to determine or find a binfolder/AssetProcessorBatch.exe
 IF %SILENTMODE%==0 echo unable to locate AssetProcessorBatch.exe.  Make sure it is available or re-build it from the source

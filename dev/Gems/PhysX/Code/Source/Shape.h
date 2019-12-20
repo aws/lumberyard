@@ -32,7 +32,7 @@ namespace PhysX
     {
     public:
         AZ_CLASS_ALLOCATOR(Shape, AZ::SystemAllocator, 0);
-        AZ_RTTI(Shape, "{0A47DDD6-2BD7-43B3-BF0D-2E12CC395C13}", Physics::Shape);
+        AZ_RTTI(Shape, "{A84BCCA2-7F29-4E17-830F-911E7BB3E80C}", Physics::Shape);
 
         Shape(const Physics::ColliderConfiguration& colliderConfiguration, const Physics::ShapeConfiguration& configuration);
         Shape(physx::PxShape* nativeShape);

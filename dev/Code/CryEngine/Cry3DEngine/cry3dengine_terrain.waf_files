@@ -1,0 +1,36 @@
+{
+    "Cry3DEngine_terrain_uber.cpp":
+    {
+        "Terrain":
+        [
+            "terrain.cpp",
+            "terrain_det_tex.cpp",
+            "terrain_hmap.cpp",
+            "terrain_edit.cpp",
+            "terrain.h"
+        ],
+        "Terrain/Texture":
+        [
+            "Terrain/Texture/MacroTexture.h",
+            "Terrain/Texture/MacroTexture.cpp",
+            "Terrain/Texture/MacroTextureImporter.h",
+            "Terrain/Texture/MacroTextureImporter.cpp",
+            "Terrain/Texture/TexturePool.h",
+            "Terrain/Texture/TexturePool.cpp"
+        ],
+        "Terrain/Sector":
+        [
+            "terrain_node.cpp",
+            "terrain_node_compile.cpp",
+            "terrain_sector.cpp",
+            "terrain_sector_render.cpp",
+            "terrain_sector_tex.cpp",
+            "terrain_sector.h"
+        ],
+        "Terrain/Debug":
+        [
+            "TerrainProfiler.cpp",
+            "TerrainProfiler.h"
+        ]
+    }
+}

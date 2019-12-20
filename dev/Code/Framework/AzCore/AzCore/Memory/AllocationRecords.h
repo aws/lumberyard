@@ -40,6 +40,8 @@ namespace AZ
             size_t          m_namesBlockSize;
 
             AZ::Debug::StackFrame*  m_stackFrames;
+
+            AZ::u64         m_timeStamp = 0; ///< Timestamp for sorting/tracking allocations
         };
 
         // We use OSAllocator which uses system calls to allocate memory, they are not recorded or tracked!
@@ -66,36 +68,7 @@ namespace AZ
             bool m_isDetailed;      ///< True to print allocation line and allocation callstack, otherwise false.
             bool m_includeNameAndFilename;  /// < True to print the source name and source filename, otherwise skip
         };
-
-        /**
-        * Enumerate all allocation that belong to a specific range.
-        */
-        struct PrintRangeAllocationCB
-            : public PrintAllocationsCB
-        {
-            PrintRangeAllocationCB(void* rangeStart, void* rangeEnd, bool isDetailed = false, bool includeNameAndFilename = false)
-                : PrintAllocationsCB(isDetailed, includeNameAndFilename)
-                , m_rangeStart(rangeStart)
-                , m_rangeEnd(rangeEnd)
-            {}
-
-            bool operator()(void* address, const AllocationInfo& info, unsigned char numStackLevels)
-            {
-                if (address < m_rangeStart || address > m_rangeEnd)
-                {
-                    return true;
-                }
-
-                PrintAllocationsCB::operator ()(address, info, numStackLevels);
-
-                return true;
-            }
-
-            void* m_rangeStart;
-            void* m_rangeEnd;
-        };
-
-
+        
         /**
          * Guard value is used to guard different memory allocations for stomping.
          */
@@ -169,7 +142,8 @@ namespace AZ
             /**
              * IMPORTANT: if isAllocationGuard
              */
-            AllocationRecords(unsigned char stackRecordLevels, bool isMemoryGuard, bool isMarkUnallocatedMemory);
+
+            AllocationRecords(unsigned char stackRecordLevels, bool isMemoryGuard, bool isMarkUnallocatedMemory, const char* allocatorName);
             ~AllocationRecords();
 
             unsigned int  MemoryGuardSize() const               { return m_memoryGuardSize; }
@@ -215,6 +189,8 @@ namespace AZ
             /// Returns total number of requested allocations.
             size_t  RequestedAllocs() const                     { return m_requestedAllocs; }
 
+            const char* GetAllocatorName() const                { return m_allocatorName; }
+
         protected:
 
             // @{ Allocation tracking management - we assume this functions are called with the lock locked.
@@ -237,6 +213,8 @@ namespace AZ
             size_t                          m_requestedAllocs;
             size_t                          m_requestedBytes;
             size_t                          m_requestedBytesPeak;
+
+            const char*                     m_allocatorName;
         };
     }
 

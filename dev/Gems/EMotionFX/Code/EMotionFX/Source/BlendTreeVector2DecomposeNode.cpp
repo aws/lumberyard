@@ -19,7 +19,6 @@ namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeVector2DecomposeNode, AnimGraphAllocator, 0)
 
-
     BlendTreeVector2DecomposeNode::BlendTreeVector2DecomposeNode()
         : AnimGraphNode()
     {
@@ -32,12 +31,10 @@ namespace EMotionFX
         SetupOutputPort("x", OUTPUTPORT_X, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_X);
         SetupOutputPort("y", OUTPUTPORT_Y, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_Y);
     }
-
         
     BlendTreeVector2DecomposeNode::~BlendTreeVector2DecomposeNode()
     {
     }
-
 
     bool BlendTreeVector2DecomposeNode::InitAfterLoading(AnimGraph* animGraph)
     {
@@ -52,36 +49,39 @@ namespace EMotionFX
         return true;
     }
 
-
-    // get the palette name
     const char* BlendTreeVector2DecomposeNode::GetPaletteName() const
     {
         return "Vector2 Decompose";
     }
 
-
-    // get the category
     AnimGraphObject::ECategory BlendTreeVector2DecomposeNode::GetPaletteCategory() const
     {
         return AnimGraphObject::CATEGORY_MATH;
     }
 
-
-    // the update function
     void BlendTreeVector2DecomposeNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        // update all inputs
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
+        UpdateOutputPortValues(animGraphInstance);
+    }
 
+    void BlendTreeVector2DecomposeNode::Output(AnimGraphInstance* animGraphInstance)
+    {
+        OutputAllIncomingNodes(animGraphInstance);
+        UpdateOutputPortValues(animGraphInstance);
+    }
+
+    void BlendTreeVector2DecomposeNode::UpdateOutputPortValues(AnimGraphInstance* animGraphInstance)
+    {
         AZ::Vector2 value = AZ::Vector2::CreateZero();
         if (!TryGetInputVector2(animGraphInstance, INPUTPORT_VECTOR, value))
         {
             return;
         }
+
         GetOutputFloat(animGraphInstance, OUTPUTPORT_X)->SetValue(value.GetX());
         GetOutputFloat(animGraphInstance, OUTPUTPORT_Y)->SetValue(value.GetY());
     }
-
 
     void BlendTreeVector2DecomposeNode::Reflect(AZ::ReflectContext* context)
     {

@@ -106,19 +106,8 @@ namespace AZStd
         template <typename B, typename D>
         struct bd_helper
         {
-            //
-            // This VC7.1 specific workaround stops the compiler from generating
-            // an internal compiler error when compiling with /vmg (thanks to
-            // Aleksey Gurtovoy for figuring out the workaround).
-            //
-            #if defined(AZ_COMPILER_MSVC) && (AZ_COMPILER_MSVC == 1310)
-            template <typename T>
-            static type_traits::yes_type check_sig(D const volatile*, T);
-            static type_traits::no_type  check_sig(B const volatile*, int);
-            #else
             static type_traits::yes_type check_sig(D const volatile*, long);
             static type_traits::no_type  check_sig(B const volatile* const&, int);
-            #endif
         };
 
         template<typename B, typename D>
@@ -137,11 +126,7 @@ namespace AZStd
 
             struct Host
             {
-            #if !defined(AZ_COMPILER_MSVC) || (AZ_COMPILER_MSVC != 1310)
                 operator B const volatile* () const;
-            #else
-                operator B const volatile* const& () const;
-            #endif
                 operator D const volatile* ();
             };
 

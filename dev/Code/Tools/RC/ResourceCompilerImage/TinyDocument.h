@@ -101,8 +101,9 @@ public:
         this->value = value;
 
         using namespace std;
-        for_each(this->listeners.begin(), this->listeners.end(),
-            bind2nd(mem_fun<void, Listener, TinyDocument*>(&Listener::OnTinyDocumentChanged), this));
+        AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+        for_each(this->listeners.begin(), this->listeners.end(), [this](Listener* listener) { listener->OnTinyDocumentChanged(this); });
+        AZ_POP_DISABLE_WARNING
     }
 
     typename TinyDocumentBase<V>::Value GetValue() const

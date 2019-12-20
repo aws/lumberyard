@@ -44,6 +44,7 @@
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
+#include <AzToolsFramework/Entity/EditorEntitySortComponent.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
@@ -55,23 +56,20 @@
 #include <AzToolsFramework/Slice/SliceTransaction.h>
 #include <AzToolsFramework/Undo/UndoSystem.h>
 
+AZ_PUSH_DISABLE_WARNING(4251 4244, "-Wunknown-warning-option") // 4251: class '...' needs to have dll-interface to be used by clients of class '...'
+                                                               // 4244: 'argument': conversion from 'int' to 'float', possible loss of data
 #include <QtWidgets/QWidget>
 #include <QtWidgets/QWidgetAction>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QDialog>
-AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QFileInfo::d_ptr': class 'QSharedDataPointer<QFileInfoPrivate>' needs to have dll-interface to be used by clients of class 'QFileInfo'
 #include <QtWidgets/QFileDialog>
-AZ_POP_DISABLE_WARNING
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QErrorMessage>
-AZ_PUSH_DISABLE_WARNING(4251 4244, "-Wunknown-warning-option") // 4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
-                                                               // 4244: 'argument': conversion from 'int' to 'float', possible loss of data
 #include <QtWidgets/QVBoxLayout>
-AZ_POP_DISABLE_WARNING
 #include <QtCore/QThread>
-
 #include <QDialogButtonBox>
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {
@@ -198,8 +196,9 @@ namespace AzToolsFramework
              * \param outerMenu outer Qt menu to which sub menu items will be added.
              * \param inputEntities list of entities to use for population of menu options. Typically callers will pass the selected entity set.
              * \param fieldAddress optional field address to filter push to.
+             * \param options contains optional settings to affect the appearance of the push menu, i.e. title and whether to display a change count if it's singular.
              */
-            void PopulateQuickPushMenu(QMenu& outerMenu, const AzToolsFramework::EntityIdList& inputEntities, const InstanceDataNode::Address* fieldAddress, const AZStd::string& headerText);
+            void PopulateQuickPushMenu(QMenu& outerMenu, const AzToolsFramework::EntityIdList& inputEntities, const InstanceDataNode::Address* fieldAddress, const QuickPushMenuOptions& options);
 
             /**
             * \brief Generates the quick push sub menu.
@@ -210,6 +209,7 @@ namespace AzToolsFramework
             * \param numEntitiesToUpdateMapping [out] mapping used to record the number of entities to update for each slice
             * \param inputEntities list of entities to use for population of menu options. Typically callers will pass the selected entity set.
             * \param fieldAddress optional field address to filter push to.
+            * \param options contains optional settings to alter the appearance of the menu.
             */
             QMenu* GenerateQuickPushMenu(
                 QWidget* parent,
@@ -218,7 +218,8 @@ namespace AzToolsFramework
                 AZStd::unordered_set<AZ::EntityId>& entitiesToRemove,
                 AZStd::unordered_map<int, AZ::u32>& numEntitiesToUpdateMapping,
                 const AzToolsFramework::EntityIdList& inputEntities,
-                const InstanceDataNode::Address* fieldAddress);
+                const InstanceDataNode::Address* fieldAddress,
+                const QuickPushMenuOptions& options);
 
             /**
             * \brief Finalizes a subslice instance clone for use in the editor: Adds it to the editor,
@@ -256,7 +257,8 @@ namespace AzToolsFramework
                 const AZStd::unordered_set<AZ::EntityId>& entitiesToAdd,
                 const AZStd::unordered_set<AZ::EntityId>& entitiesToRemove,
                 const InstanceDataHierarchy::Address& pushFieldAddress,
-                const AzToolsFramework::EntityIdList& inputEntities);
+                const AzToolsFramework::EntityIdList& inputEntities,
+                const EntityIdSet unpushableIds);
 
             /**
             * \brief Flattens the ancestry of a slice to a selected point
@@ -1585,15 +1587,15 @@ namespace AzToolsFramework
         }
         
         //=========================================================================
-        void PopulateQuickPushMenu(QMenu& outerMenu, AZ::EntityId entityId, const InstanceDataNode::Address& fieldAddress, const AZStd::string& headerText)
+        void PopulateQuickPushMenu(QMenu& outerMenu, AZ::EntityId entityId, const InstanceDataNode::Address& fieldAddress, const QuickPushMenuOptions& options)
         {
-            Internal::PopulateQuickPushMenu(outerMenu, { entityId }, &fieldAddress, headerText);
+            Internal::PopulateQuickPushMenu(outerMenu, { entityId }, &fieldAddress, options);
         }
 
         //=========================================================================
-        void PopulateQuickPushMenu(QMenu& outerMenu, const AzToolsFramework::EntityIdList& inputEntities, const AZStd::string& headerText)
+        void PopulateQuickPushMenu(QMenu& outerMenu, const AzToolsFramework::EntityIdList& inputEntities, const QuickPushMenuOptions& options)
         {
-            Internal::PopulateQuickPushMenu(outerMenu, inputEntities, nullptr, headerText);
+            Internal::PopulateQuickPushMenu(outerMenu, inputEntities, nullptr, options);
         }
 
         void PopulateSliceSubMenus(QMenu& outerMenu, const AzToolsFramework::EntityIdList& inputEntities, SliceSelectedCallback sliceSelectedCallback, SliceSelectedCallback sliceRelationshipViewCallback)
@@ -2146,7 +2148,8 @@ namespace AzToolsFramework
                 entitiesToRemove,
                 numEntitiesToUpdateMapping,
                 inputEntities,
-                nullptr);
+                nullptr,
+                QuickPushMenuOptions());
 
             numEntitiesToAdd = static_cast<int>(entitiesToAdd.size());
             numEntitiesToRemove = static_cast<int>(entitiesToRemove.size());
@@ -2792,6 +2795,21 @@ namespace AzToolsFramework
             }
         }
 
+        void RemoveInvalidChildOrderArrayEntries(const AZStd::vector<AZ::EntityId>& originalOrderArray,
+            AZStd::vector<AZ::EntityId>& prunedOrderArray,
+            const AZ::Data::Asset <AZ::SliceAsset>& targetSlice,
+            WillPushEntityCallback willPushEntityCallback)
+        {
+            // Build prunedOrderArray as a copy of originalOrderArray but with only valid entity ids.
+            for (const AZ::EntityId& childId : originalOrderArray)
+            {
+                if (willPushEntityCallback(childId, targetSlice))
+                {
+                    prunedOrderArray.push_back(childId);
+                }
+            }
+        }
+
         AZ::DataStream::StreamType GetSliceStreamFormat()
         {
             return AZ::DataStream::ST_XML;
@@ -3229,7 +3247,7 @@ namespace AzToolsFramework
 
                             // If nodeAddress ends with the field's address, the filter matches.
                             auto nodeIter = nodeAddress.begin();
-                            for (auto filterIter = fieldAddress->begin(); filterIter != fieldAddress->begin(); ++filterIter, ++nodeIter)
+                            for (auto filterIter = fieldAddress->begin(); filterIter != fieldAddress->end(); ++filterIter, ++nodeIter)
                             {
                                 if (*filterIter != *nodeIter)
                                 {
@@ -3285,7 +3303,7 @@ namespace AzToolsFramework
             }
 
             //=========================================================================
-            void PopulateQuickPushMenu(QMenu& outerMenu, const AzToolsFramework::EntityIdList& inputEntities, const InstanceDataNode::Address* fieldAddress, const AZStd::string& headerText)
+            void PopulateQuickPushMenu(QMenu& outerMenu, const AzToolsFramework::EntityIdList& inputEntities, const InstanceDataNode::Address* fieldAddress, const QuickPushMenuOptions& options)
             {
                 AZ::SerializeContext* serializeContext = nullptr;
                 AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
@@ -3318,8 +3336,10 @@ namespace AzToolsFramework
                     entitiesToRemove,
                     numEntitiesToUpdateMapping,
                     inputEntities,
-                    fieldAddress);
+                    fieldAddress,
+                    options);
 
+                AZStd::string headerText = options.m_headerText;
                 const QString headerTextTranslated = QObject::tr(headerText.c_str());
                 const QString headerTextTranslatedAdvanced = QObject::tr(headerText.c_str()) + QObject::tr(" (Advanced)...");
 
@@ -3364,7 +3384,8 @@ namespace AzToolsFramework
                 AZStd::unordered_set<AZ::EntityId>& entitiesToRemove,
                 AZStd::unordered_map<int, AZ::u32>& numEntitiesToUpdateMapping,
                 const AzToolsFramework::EntityIdList& inputEntities,
-                const InstanceDataNode::Address* fieldAddress)
+                const InstanceDataNode::Address* fieldAddress,
+                const QuickPushMenuOptions& options)
             {
                 AZ::SerializeContext* serializeContext = nullptr;
                 AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
@@ -3523,7 +3544,12 @@ namespace AzToolsFramework
                             overridesText = overridesText != "" ? (overridesText + QString("<font color=\"%1\"> | </font>").arg(splitterColor)) : overridesText;
                             overridesText += QString("<i>%1 removed</i>").arg(static_cast<int>(entitiesToRemove.size()));
                         }
-                        if (totalDifferences > 0)
+                        if (totalDifferences == 1 && options.m_singleOverrideDisplayOption == QuickPushMenuOverrideDisplayCount::ShowOverrideCountWhenSingle)
+                        {
+                            overridesText = overridesText != "" ? (overridesText + QString("<font color=\"%1\"> | </font>").arg(splitterColor)) : overridesText;
+                            overridesText += QString("<i>%1 updated</i>").arg(totalDifferences);
+                        }
+                        if (totalDifferences > 1)
                         {
                             overridesText = overridesText != "" ? (overridesText + QString("<font color=\"%1\"> | </font>").arg(splitterColor)) : overridesText;
                             overridesText += QString("<i>%1 updated</i>").arg(totalDifferences);
@@ -3592,9 +3618,9 @@ namespace AzToolsFramework
                             
 
                             QObject::connect(widgetAction, &QAction::triggered,
-                                [sliceAsset, entityAncestors, pushableEntitiesToAdd, entitiesToRemove, pushFieldAddress, inputEntities, numUnpushableSliceEntityAdditions]
+                                [sliceAsset, entityAncestors, pushableEntitiesToAdd, entitiesToRemove, pushFieldAddress, inputEntities, numUnpushableSliceEntityAdditions, unpushableIds]
                             {
-                                Internal::QuickPushToSlice(sliceAsset, entityAncestors, pushableEntitiesToAdd, entitiesToRemove, pushFieldAddress, inputEntities);
+                                Internal::QuickPushToSlice(sliceAsset, entityAncestors, pushableEntitiesToAdd, entitiesToRemove, pushFieldAddress, inputEntities, unpushableIds);
 
                                 bool showCircularDependencyError = true;
                                 AzToolsFramework::EditorRequests::Bus::BroadcastResult(showCircularDependencyError, &AzToolsFramework::EditorRequests::GetShowCircularDependencyError);
@@ -3688,7 +3714,8 @@ namespace AzToolsFramework
                 const AZStd::unordered_set<AZ::EntityId>& entitiesToAdd,
                 const AZStd::unordered_set<AZ::EntityId>& entitiesToRemove,
                 const InstanceDataHierarchy::Address& pushFieldAddress,
-                const AzToolsFramework::EntityIdList& inputEntities)
+                const AzToolsFramework::EntityIdList& inputEntities,
+                const EntityIdSet unpushableIds)
             {                            
                 // Calculate entity Id set.
                 AZStd::unordered_set<AZ::EntityId> pushEntities;
@@ -3703,6 +3730,37 @@ namespace AzToolsFramework
 
                 InvalidSliceReferencesWarningResult invalidSliceCheckResult =
                     Internal::CheckForInvalidSliceReferences(mainWindow, sliceAsset);
+
+                for (const AZ::EntityId& id : inputEntities)
+                {
+                    AZ::Entity* entity = nullptr;
+                    AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Handler::FindEntity, id);
+
+                    if (!entity)
+                    {
+                        continue;
+                    }
+
+                    AzToolsFramework::Components::EditorEntitySortComponent* liveSortOrderComponent = entity->FindComponent<AzToolsFramework::Components::EditorEntitySortComponent>();
+
+                    if (liveSortOrderComponent)
+                    {
+                        AzToolsFramework::EntityOrderArray orderArray = liveSortOrderComponent->GetChildEntityOrderArray();
+                        AzToolsFramework::EntityOrderArray prunedOrderArray;
+                        prunedOrderArray.reserve(orderArray.size());
+
+                        WillPushEntityCallback willPushEntityCallback =
+                            [unpushableIds]
+                        (const AZ::EntityId entityId, const SliceAssetPtr& /*assetToPushTo*/) -> bool
+                        {
+                            return unpushableIds.find(entityId) == unpushableIds.end();
+                        };
+
+                        RemoveInvalidChildOrderArrayEntries(orderArray, prunedOrderArray, sliceAsset, willPushEntityCallback);
+
+                        liveSortOrderComponent->SetChildEntityOrderArray(prunedOrderArray);
+                    }
+                }
 
                 switch (invalidSliceCheckResult)
                 {

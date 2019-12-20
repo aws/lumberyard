@@ -17,6 +17,12 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/bitset.h>
 #include <AzCore/Outcome/Outcome.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
+
+namespace AzFramework
+{
+    class AssetRegistry;
+}
 
 namespace AZ
 {
@@ -81,7 +87,25 @@ namespace AZ
             /// Populates catalog data from specified file.
             /// \param catalogRegistryFile cache-relative file path from which catalog should be pre-loaded.
             /// \return true if catalog was successfuly loaded.
-            virtual bool LoadCatalog(const char* /*catalogRegistryFile*/) { return false; };
+
+            virtual bool LoadCatalog(const char* /*catalogRegistryFile*/) { return false; }
+            virtual void ClearCatalog() {}
+
+            /// Write out our existing catalog to the given file.
+            virtual bool SaveCatalog(const char* /*outputFile*/) { return false; }
+            
+            /// Load a catalog file on top of our existing catalog data
+            virtual bool AddDeltaCatalog(AZStd::shared_ptr<AzFramework::AssetRegistry> /*deltaCatalog*/) { return true; }
+            /// Insert a new delta catalog at a particular index  
+            virtual bool InsertDeltaCatalog(AZStd::shared_ptr<AzFramework::AssetRegistry> /*deltaCatalog*/, size_t /* slotNum */) { return true; }
+            /// Insert a new delta catalog before the given next unique catalog name
+            virtual bool InsertDeltaCatalogBefore(AZStd::shared_ptr<AzFramework::AssetRegistry> /*deltaCatalog*/, AZStd::shared_ptr<AzFramework::AssetRegistry> /*nextDeltaCatalog*/) { return true; }
+            /// Remove a catalog from our delta list and rebuild the catalog from remaining items
+            virtual bool RemoveDeltaCatalog(AZStd::shared_ptr<AzFramework::AssetRegistry> /*deltaCatalog*/) { return true; }
+            /// Creates a manifest with the given DeltaCatalog name
+            virtual bool CreateBundleManifest(const AZStd::string& /*deltaCatalogPath*/, const AZStd::vector<AZStd::string>& /*dependentBundleNames*/, const AZStd::string& /*fileDirectory*/, int /*bundleVersion*/) { return false; }
+            /// Creates an instance of a registry containing info for just the specified files, and writes it out to a file at the specified path
+            virtual bool CreateDeltaCatalog(const AZStd::vector<AZStd::string>& /*files*/, const AZStd::string& /*filePath*/) { return false; }
 
             /// Adds an extension to the catalog's handled list.
             /// \param file extension to add to catalog's list of those handled. With and without prefix '.' are both accepted.
@@ -113,6 +137,9 @@ namespace AZ
             /// \param autoRegisterIfNotFound - registers the asset if not already in the catalog.
             /// \return valid AssetId if it's in the registry, otherwise an empty AssetId.
             virtual AZ::Data::AssetId GetAssetIdByPath(const char* /*path*/, const AZ::Data::AssetType& /*typeToRegister*/, bool /*autoRegisterIfNotFound*/) { return AZ::Data::AssetId(); }
+
+            /// Retrieves file paths of all the registered assets
+            virtual AZStd::vector<AZStd::string> GetRegisteredAssetPaths() { return AZStd::vector<AZStd::string>(); }
 
             /// Given an asset ID, retrieve general information about that asset.
             virtual AZ::Data::AssetInfo GetAssetInfoById(const AZ::Data::AssetId& /*id*/) { return AssetInfo(); }

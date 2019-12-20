@@ -80,11 +80,9 @@ private:
     int GetFrontBuffer() const;
     int GetBackBuffer() const;
     void ToggleBuffer();
-    //  Confetti BEGIN: Igor Lobanchikov
 public:
     void UpdateRenderParams();
 private:
-    //  Confetti End: Igor Lobanchikov
     void PushUpdateParams();
 
 private:

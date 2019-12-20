@@ -25,6 +25,7 @@
 //
 
 #include <AzCore/std/smart_ptr/sp_convertible.h>
+#include <AzCore/RTTI/RTTI.h>
 
 namespace AZStd
 {
@@ -72,6 +73,10 @@ namespace AZStd
     class intrusive_ptr
     {
     private:
+        // Allow construction between compatible contained types (base / derived classes).
+        template <typename U>
+        friend class intrusive_ptr;
+
         typedef intrusive_ptr this_type;
         typedef IntrusivePtrCountPolicy<T> CountPolicy;
 
@@ -94,7 +99,7 @@ namespace AZStd
         }
 
         template<class U>
-        intrusive_ptr(intrusive_ptr<U> const& rhs, typename AZStd::Internal::sp_enable_if_convertible<U, T>::type = AZStd::Internal::sp_empty())
+        intrusive_ptr(intrusive_ptr<U> const& rhs, enable_if_t<is_convertible<U*, T*>::value, int> = 0)
             : px(rhs.get())
         {
             if (px != 0)
@@ -110,6 +115,7 @@ namespace AZStd
                 CountPolicy::add_ref(px);
             }
         }
+        
         ~intrusive_ptr()
         {
             if (px != 0)
@@ -117,17 +123,31 @@ namespace AZStd
                 CountPolicy::release(px);
             }
         }
+        
         template<class U>
-        intrusive_ptr& operator=(intrusive_ptr<U> const& rhs)
+        enable_if_t<is_convertible<U*, T*>::value, intrusive_ptr&> operator=(intrusive_ptr<U> const& rhs)
         {
             this_type(rhs).swap(*this);
             return *this;
         }
-        // Move support
+
+        template<class U>
+        intrusive_ptr(intrusive_ptr<U>&& rhs, enable_if_t<is_convertible<U*, T*>::value, int> = 0)
+            : px(rhs.get())
+        {
+            rhs.px = 0;
+        }
         intrusive_ptr(intrusive_ptr&& rhs)
             : px(rhs.px)
         {
             rhs.px = 0;
+        }
+
+        template<class U>
+        enable_if_t<is_convertible<U*, T*>::value, intrusive_ptr&> operator=(intrusive_ptr<U>&& rhs)
+        {
+            this_type(move(rhs)).swap(*this);
+            return *this;
         }
         intrusive_ptr& operator=(intrusive_ptr&& rhs)
         {
@@ -140,23 +160,28 @@ namespace AZStd
             this_type(rhs).swap(*this);
             return *this;
         }
+        
         intrusive_ptr& operator=(T* rhs)
         {
             this_type(rhs).swap(*this);
             return *this;
         }
+        
         void reset()
         {
             this_type().swap(*this);
         }
+        
         void reset(T* rhs)
         {
             this_type(rhs).swap(*this);
         }
+        
         T* get() const
         {
             return px;
         }
+        
         T& operator*() const
         {
             AZ_Assert(px != 0, "You can't dereference a null pointer");
@@ -173,6 +198,7 @@ namespace AZStd
         operator unspecified_bool_type() const {
             return px == 0 ? 0 : &this_type::px;
         }                                                                              // never throws
+
         // operator! is redundant, but some compilers need it
         bool operator! () const { return px == 0; } // never throws
 
@@ -182,6 +208,7 @@ namespace AZStd
             px = rhs.px;
             rhs.px = tmp;
         }
+
     private:
         T* px;
     };
@@ -256,7 +283,7 @@ namespace AZStd
     template<class T, class U>
     intrusive_ptr<T> dynamic_pointer_cast(intrusive_ptr<U> const& p)
     {
-        return dynamic_cast<T*>(p.get());
+        return azdynamic_cast<T*>(p.get());
     }
 
     template <typename T>

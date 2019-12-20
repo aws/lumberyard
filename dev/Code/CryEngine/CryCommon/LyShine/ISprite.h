@@ -12,6 +12,7 @@
 #pragma once
 
 #include <SerializeFwd.h>
+#include <smartptr.h>
 #include <LyShine/Bus/UiTransformBus.h>
 #include <AzCore/Math/Vector2.h>
 

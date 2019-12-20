@@ -600,11 +600,13 @@ AmazonToolbar ToolbarManager::GetEditorsToolbar() const
 
     t.AddAction(ID_OPEN_AUDIO_CONTROLS_BROWSER, ORIGINAL_TOOLBAR_VERSION);
 
+#ifdef LY_TERRAIN_EDITOR
     if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
     {
         t.AddAction(ID_OPEN_TERRAIN_EDITOR, ORIGINAL_TOOLBAR_VERSION);
         t.AddAction(ID_OPEN_TERRAINTEXTURE_EDITOR, ORIGINAL_TOOLBAR_VERSION);
     }
+#endif // #ifdef LY_TERRAIN_EDITOR
 
     t.AddAction(ID_PARTICLE_EDITOR, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_TERRAIN_TIMEOFDAYBUTTON, ORIGINAL_TOOLBAR_VERSION);

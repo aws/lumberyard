@@ -62,7 +62,4 @@ namespace AzFramework
         }
     };
     using InputChannelNotificationBus = AZ::EBus<InputChannelNotifications>;
-
-    AZ_DEPRECATED(typedef InputChannelNotificationBus InputChannelEventNotificationBus, "Renamed to InputChannelNotificationBus");
-    AZ_DEPRECATED(typedef InputChannelNotifications InputChannelEventNotifications, "Renamed to InputChannelNotifications");
 } // namespace AzFramework

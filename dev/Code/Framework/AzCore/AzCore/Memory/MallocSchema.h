@@ -31,9 +31,12 @@ namespace AZ
 
         struct Descriptor
         {
-            Descriptor()
+            Descriptor(bool useAZMalloc = true)
+                : m_useAZMalloc(useAZMalloc)
             {
             }
+
+            bool m_useAZMalloc;
         };
 
         MallocSchema(const Descriptor& desc = Descriptor());
@@ -55,6 +58,11 @@ namespace AZ
         virtual void GarbageCollect() override;
 
     private:
+        typedef void* (*MallocFn)(size_t);
+        typedef void (*FreeFn)(void*);
+
         AZStd::atomic<size_t> m_bytesAllocated;
+        MallocFn m_mallocFn;
+        FreeFn m_freeFn;
     };
 }

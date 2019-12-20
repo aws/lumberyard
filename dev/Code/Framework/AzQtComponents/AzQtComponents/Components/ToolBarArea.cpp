@@ -67,5 +67,6 @@ namespace AzQtComponents
             delete item;
 
         m_mainLayout->addWidget(widget);
+        m_mainWidget = widget;
     }
 }

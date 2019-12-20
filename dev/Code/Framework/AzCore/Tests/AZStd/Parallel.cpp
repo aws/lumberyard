@@ -579,6 +579,39 @@ namespace UnitTest
         run();
     }
 
+    TEST_F(Parallel_Thread, Hashable)
+    {
+        constexpr size_t ThreadCount = 100;
+
+        // Make sure threadids can be added to a map.
+        AZStd::vector<AZStd::thread*> threadVector;
+        AZStd::unordered_map<AZStd::thread_id, AZStd::thread*> threadMap;
+
+        // Create a bunch of threads and add them to a map
+        for (uint32_t i = 0; i < ThreadCount; ++i)
+        {
+            AZStd::thread* thread = new AZStd::thread([i]() { return i; });
+            threadVector.push_back(thread);
+            threadMap[thread->get_id()] = thread;
+        }
+
+        // Check and make sure they threads can be found by id and match the ones created.
+        for (uint32_t i = 0; i < ThreadCount; ++i)
+        {
+            AZStd::thread* thread = threadVector.at(i);
+            EXPECT_TRUE(threadMap.at(thread->get_id()) == thread);
+        }
+
+        // Clean up the threads
+        AZStd::for_each(threadVector.begin(), threadVector.end(), 
+            [](AZStd::thread* thread)
+            {
+                thread->join();
+                delete thread;
+            }
+        );
+    }
+
     class Parallel_Combinable
         : public AllocatorsFixture
     {

@@ -532,29 +532,26 @@ void CRealtimeRemoteUpdateListener::Update()
 
             if (nBinaryDataSize > 0)
             {
-                if (ITerrain* piTerrain = gEnv->p3DEngine->GetITerrain())
-                {
-                    size_t nUncompressedBinarySize(nBinaryDataSize);
-                    unsigned char* szData = new unsigned char[nBinaryDataSize];
+                size_t nUncompressedBinarySize(nBinaryDataSize);
+                unsigned char* szData = new unsigned char[nBinaryDataSize];
 
-                    gEnv->pSystem->DecompressDataBlock(chBinaryBuffer, nBinaryBufferSize, szData, nUncompressedBinarySize);
+                gEnv->pSystem->DecompressDataBlock(chBinaryBuffer, nBinaryBufferSize, szData, nUncompressedBinarySize);
 
-                    SHotUpdateInfo* pExportInfo = (SHotUpdateInfo*)szData;
+                SHotUpdateInfo* pExportInfo = (SHotUpdateInfo*)szData;
 
-                    // As messages of oSyncType "EngineTerrainData" always come before
-                    // "EngineIndoorData" and are always paired together, and have
-                    // inter-dependencies amongst themselves, the locking is done here
-                    // and the unlocking is done when we receive a "EngineIndoorData".
-                    // Currently if we, for any reason, don't receive the second message,
-                    // we should expect horrible things to happen.
-                    gEnv->p3DEngine->LockCGFResources();
+                // As messages of oSyncType "EngineTerrainData" always come before
+                // "EngineIndoorData" and are always paired together, and have
+                // inter-dependencies amongst themselves, the locking is done here
+                // and the unlocking is done when we receive a "EngineIndoorData".
+                // Currently if we, for any reason, don't receive the second message,
+                // we should expect horrible things to happen.
+                gEnv->p3DEngine->LockCGFResources();
 
-                    pStatObjTable = NULL;
-                    pMatTable = NULL;
+                pStatObjTable = NULL;
+                pMatTable = NULL;
 
-                    piTerrain->SetCompiledData((uint8*)szData + sizeof(SHotUpdateInfo), nBinaryDataSize - sizeof(SHotUpdateInfo), &pStatObjTable, &pMatTable, true, pExportInfo);
-                    SAFE_DELETE_ARRAY(szData);
-                }
+                gEnv->p3DEngine->SetOctreeCompiledData((uint8*)szData + sizeof(SHotUpdateInfo), nBinaryDataSize - sizeof(SHotUpdateInfo), &pStatObjTable, &pMatTable, true, pExportInfo);
+                SAFE_DELETE_ARRAY(szData);
             }
         }
         else if (oSyncType.compare("EngineIndoorData") == 0)

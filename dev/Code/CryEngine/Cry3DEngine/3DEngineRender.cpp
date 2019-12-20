@@ -20,11 +20,18 @@
 #include "3dEngine.h"
 #include "ObjMan.h"
 #include "VisAreas.h"
-#include "terrain_water.h"
+#include "Ocean.h"
+#include <Terrain/Bus/TerrainProviderBus.h>
 #include "IParticles.h"
 #include "DecalManager.h"
 #include "SkyLightManager.h"
+
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
 #include "terrain.h"
+#endif
+
+#include "VegetationPoolManager.h"
+
 #include "CullBuffer.h"
 #include "LightEntity.h"
 #include "FogVolumeRenderNode.h"
@@ -216,7 +223,6 @@ public:
         {
             if (m_bMetaData)
             {
-                const f32   nTSize      =   static_cast<f32>(gEnv->p3DEngine->GetTerrainSize());
                 const f32   fSizeX  =   GetCVars()->e_ScreenShotMapSizeX;
                 const f32   fSizeY  =   GetCVars()->e_ScreenShotMapSizeY;
                 const f32   fTLX    =   GetCVars()->e_ScreenShotMapCenterX - fSizeX;
@@ -1420,6 +1426,8 @@ void C3DEngine::PrintDebugInfo(const SRenderingPassInfo& passInfo)
 void C3DEngine::UpdatePreRender(const SRenderingPassInfo& passInfo)
 {
     AZ_TRACE_METHOD();
+    FUNCTION_PROFILER(GetISystem(), PROFILE_3DENGINE);
+
     assert(passInfo.IsGeneralPass());
 
     // Compute global shadow cascade parameters.
@@ -1474,6 +1482,8 @@ void C3DEngine::UpdatePreRender(const SRenderingPassInfo& passInfo)
 void C3DEngine::UpdatePostRender(const SRenderingPassInfo& passInfo)
 {
     AZ_TRACE_METHOD();
+    FUNCTION_PROFILER(GetISystem(), PROFILE_3DENGINE);
+
     assert (m_pObjManager);
 
     m_pObjManager->CheckTextureReadyFlag();
@@ -1659,7 +1669,6 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
     CRY_ASSERT(m_pVisAreaManager);
     CRY_ASSERT(m_pClipVolumeManager);
     CRY_ASSERT(m_pPartManager);
-    CRY_ASSERT(m_pTerrain);
     CRY_ASSERT(m_pDecalManager);
 
     GetObjManager()->GetCullThread().SetActive(true);
@@ -1720,10 +1729,13 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
     }
     m_nOceanRenderFlags &= ~OCR_OCEANVOLUME_VISIBLE;
 
-    if (m_pTerrain != nullptr)
+    // NEW-TERRAIN LY-101543:  Need to replace specific terrain calls with abstracted API
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
+    if (m_pTerrain != nullptr && !Terrain::TerrainProviderRequestBus::HasHandlers())
     {
         m_pTerrain->ClearVisSectors();
     }
+#endif
     if (IsOutdoorVisible() || GetRenderer()->IsPost3DRendererEnabled())
     {
         if (m_pVisAreaManager != nullptr && m_pVisAreaManager->m_lstOutdoorPortalCameras.Count()   &&
@@ -1737,17 +1749,23 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
             RenderSkyBox(GetSkyMaterial(), passInfo);
         }
 
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
         // start processing terrain
+        // NEW-TERRAIN LY-101543:  Need to replace specific terrain calls with abstracted API
         if (IsOutdoorVisible() && passInfo.RenderTerrain() && Get3DEngine()->m_bShowTerrainSurface && !gEnv->IsDedicated() &&
-            m_pTerrain != nullptr)
+            m_pTerrain != nullptr && !Terrain::TerrainProviderRequestBus::HasHandlers())
         {
             m_pTerrain->CheckVis(passInfo);
         }
 
-        if (m_pTerrain != nullptr)
+        // process streaming and procedural vegetation distribution
+        // NEW-TERRAIN LY-101543:  Need to replace specific terrain calls with abstracted API
+        if (m_pTerrain && !Terrain::TerrainProviderRequestBus::HasHandlers())
         {
             m_pTerrain->UpdateNodesIncrementaly(passInfo);
         }
+#endif
+
         rendItemSorter.IncreaseOctreeCounter();
         {
             FRAME_PROFILER_LEGACYONLY("COctreeNode::Render_____", GetSystem(), PROFILE_3DENGINE);
@@ -1816,7 +1834,10 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
     }
     rendItemSorter.IncreaseGroupCounter();
 
-    ProcessOcean(passInfo);
+    if (m_pOcean)
+    {
+        ProcessOcean(passInfo);
+    }
 
     if (passInfo.RenderDecals() && m_pDecalManager != nullptr)
     {
@@ -1845,11 +1866,14 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
         GetRenderer()->EF_InvokeShadowMapRenderJobs(IsShadersSyncLoad() ? (nRenderFlags | SHDF_NOASYNC | SHDF_STREAM_SYNC) : nRenderFlags);
     }
 
-    if (m_pTerrain != nullptr)
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
+    // NEW-TERRAIN LY-101543:  Need to replace specific terrain calls with abstracted API
+    if (m_pTerrain != nullptr && !Terrain::TerrainProviderRequestBus::HasHandlers())
     {
         m_pTerrain->ClearTextureSets();
         m_pTerrain->DrawVisibleSectors(passInfo);
     }
+#endif
 
     if (m_pPartManager != nullptr)
     {
@@ -1872,10 +1896,14 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
 
     SetupClearColor();
 
-    if (m_pTerrain != nullptr)
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
+    // NEW-TERRAIN LY-101543:  Need to replace specific terrain calls with abstracted API
+    if (m_pTerrain != nullptr && !Terrain::TerrainProviderRequestBus::HasHandlers())
     {
         m_pTerrain->UpdateSectorMeshes(passInfo);
     }
+#endif
+
     if (gEnv->pCharacterManager)
     {
         gEnv->pCharacterManager->UpdateStreaming(GetObjManager()->GetUpdateStreamingPrioriryRoundId(), GetObjManager()->GetUpdateStreamingPrioriryRoundIdFast());
@@ -1893,10 +1921,15 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
     {
         m_pMergedMeshesManager->Update(passInfo);
     }
-    if (m_pTerrain != nullptr)
+
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
+    // NEW-TERRAIN LY-101543:  Need to replace specific terrain calls with abstracted API
+    if (m_pTerrain != nullptr && !Terrain::TerrainProviderRequestBus::HasHandlers())
     {
         m_pTerrain->CheckNodesGeomUnload(passInfo);
     }
+#endif
+
     bool bIsMultiThreadedRenderer = false;
     gEnv->pRenderer->EF_Query(EFQ_RenderMultithreaded, bIsMultiThreadedRenderer);
     if (bIsMultiThreadedRenderer)
@@ -1923,7 +1956,6 @@ void C3DEngine::RenderSceneReflection(const int nRenderFlags, const SRenderingPa
     CRY_ASSERT(m_pVisAreaManager);
     CRY_ASSERT(m_pClipVolumeManager);
     CRY_ASSERT(m_pPartManager);
-    CRY_ASSERT(m_pTerrain);
     CRY_ASSERT(m_pDecalManager);
 
     if (!GetCVars()->e_Recursion)
@@ -1957,10 +1989,13 @@ void C3DEngine::RenderSceneReflection(const int nRenderFlags, const SRenderingPa
         m_pVisAreaManager->DrawVisibleSectors(passInfo, rendItemSorter);
     }
 
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
     if (m_pTerrain != nullptr)
     {
         m_pTerrain->ClearVisSectors();
     }
+#endif
+
     if (IsOutdoorVisible() || GetRenderer()->IsPost3DRendererEnabled())
     {
         if (m_pVisAreaManager != nullptr && m_pVisAreaManager->m_lstOutdoorPortalCameras.Count() &&
@@ -1974,17 +2009,25 @@ void C3DEngine::RenderSceneReflection(const int nRenderFlags, const SRenderingPa
             RenderSkyBox(GetSkyMaterial(), passInfo);
         }
 
-        // start processing terrain
-        if (IsOutdoorVisible() && passInfo.RenderTerrain() && Get3DEngine()->m_bShowTerrainSurface && !gEnv->IsDedicated()
-            && m_pTerrain != nullptr)
-        {
-            m_pTerrain->CheckVis(passInfo);
-        }
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
 
+        // start processing terrain
+        // NEW-TERRAIN LY-101543:  Need to replace specific terrain calls with abstracted API
         if (m_pTerrain != nullptr)
         {
-            m_pTerrain->UpdateNodesIncrementaly(passInfo);
+#ifdef LY_TERRAIN_RUNTIME
+            if (!Terrain::TerrainProviderRequestBus::HasHandlers())
+#endif
+            {
+                if (IsOutdoorVisible() && passInfo.RenderTerrain() && Get3DEngine()->m_bShowTerrainSurface && !gEnv->IsDedicated())
+                {
+                    m_pTerrain->CheckVis(passInfo);
+                }
+                m_pTerrain->UpdateNodesIncrementaly(passInfo);
+            }
         }
+#endif
+
         {
             rendItemSorter.IncreaseOctreeCounter();
             FRAME_PROFILER("COctreeNode::Render_____", GetSystem(), PROFILE_3DENGINE);
@@ -2044,7 +2087,10 @@ void C3DEngine::RenderSceneReflection(const int nRenderFlags, const SRenderingPa
     }
     rendItemSorter.IncreaseGroupCounter();
 
-    ProcessOcean(passInfo);
+    if (m_pOcean)
+    {
+        ProcessOcean(passInfo);
+    }
 
     //Update light volumes again. Processing particles may have resulted in an increase in the number of light volumes.
     m_LightVolumesMgr.Update(passInfo);
@@ -2054,10 +2100,13 @@ void C3DEngine::RenderSceneReflection(const int nRenderFlags, const SRenderingPa
         m_pDecalManager->Render(passInfo);
     }
 
-    if (m_pTerrain != nullptr)
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
+    if (m_pTerrain != nullptr && !Terrain::TerrainProviderRequestBus::HasHandlers())
+
     {
         m_pTerrain->DrawVisibleSectors(passInfo);
     }
+#endif
 
     if (m_pPartManager != nullptr)
     {
@@ -2069,10 +2118,13 @@ void C3DEngine::RenderSceneReflection(const int nRenderFlags, const SRenderingPa
         gEnv->pGame->OnRenderScene(passInfo);
     }
 
-    if (m_pTerrain != nullptr)
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
+    if (m_pTerrain != nullptr && !Terrain::TerrainProviderRequestBus::HasHandlers())
     {
         m_pTerrain->UpdateSectorMeshes(passInfo);
     }
+#endif
+
     if (gEnv->pCharacterManager)
     {
         gEnv->pCharacterManager->UpdateStreaming(GetObjManager()->GetUpdateStreamingPrioriryRoundId(), GetObjManager()->GetUpdateStreamingPrioriryRoundIdFast());
@@ -2088,6 +2140,8 @@ void C3DEngine::ProcessOcean(const SRenderingPassInfo& passInfo)
 {
     FUNCTION_PROFILER_3DENGINE_LEGACYONLY;
     AZ_TRACE_METHOD();
+
+    AZ_Assert(m_pOcean != nullptr, "Ocean pointer must be validated before calling ProcessOcean");
 
     if (GetOceanRenderFlags() & OCR_NO_DRAW || !GetVisAreaManager() || GetCVars()->e_DefaultMaterial)
     {
@@ -2109,15 +2163,20 @@ void C3DEngine::ProcessOcean(const SRenderingPassInfo& passInfo)
     else
     {
         bOceanVisible = !Get3DEngine()->m_bShowTerrainSurface;
-        bOceanVisible |= m_pTerrain->GetDistanceToSectorWithWater() >= 0 && m_pTerrain->IsOceanVisible();
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
+        if (m_pTerrain != nullptr && !Terrain::TerrainProviderRequestBus::HasHandlers())
+        {
+            bOceanVisible |= m_pTerrain->GetDistanceToSectorWithWater() >= 0 && m_pTerrain->IsOceanVisible();
+        }
+#endif
+
     }
-    
+
     if (bOceanVisible && passInfo.RenderWaterOcean() && m_bOcean)
     {
         Vec3 vCamPos = passInfo.GetCamera().GetPosition();
         float fWaterPlaneSize = passInfo.GetCamera().GetFarPlane();
-
-        float fOceanLevel = OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : GetTerrain()->GetWaterLevel();
+        const float fOceanLevel = OceanToggle::IsActive() ? OceanRequest::GetOceanLevel():  m_pOcean->GetWaterLevel();
 
         AABB boxOcean(Vec3(vCamPos.x - fWaterPlaneSize, vCamPos.y - fWaterPlaneSize, std::numeric_limits<float>::lowest()),
             Vec3(vCamPos.x + fWaterPlaneSize, vCamPos.y + fWaterPlaneSize, fOceanLevel + 0.5f));
@@ -2151,11 +2210,15 @@ void C3DEngine::ProcessOcean(const SRenderingPassInfo& passInfo)
 
             if (bOceanIsVisibleFromIndoor)
             {
-                m_pTerrain->UpdateOcean(passInfo);
+                m_pOcean->Update(passInfo);
 
                 if ((GetOceanRenderFlags() & OCR_OCEANVOLUME_VISIBLE))
                 {
-                    m_pTerrain->RenderOcean(passInfo);
+                    if (passInfo.RenderWaterOcean())
+                    {
+                        m_pOcean->Render(passInfo);
+                        m_pOcean->SetLastFov(passInfo.GetCamera().GetFov());
+                    }
                 }
             }
         }
@@ -2251,7 +2314,8 @@ void C3DEngine::RenderSkyBox(_smart_ptr<IMaterial> pMat, const SRenderingPassInf
             }
             else
             {
-                m_pRESky->m_fTerrainWaterLevel = max(0.0f, m_pTerrain->GetWaterLevel());
+                const float waterLevel = m_pOcean ? m_pOcean->GetWaterLevel() : 0.0f;
+                m_pRESky->m_fTerrainWaterLevel = max(0.0f, waterLevel);
             }
             m_pRESky->m_fSkyBoxStretching = m_fSkyBoxStretching;
 
@@ -2522,11 +2586,11 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
     case eRT_DX12:
         pRenderType = "DX12";
         break;
-    case eRT_XboxOne: // ACCEPTED_USE
-        pRenderType = "XboxOne"; // ACCEPTED_USE
+    case eRT_Xenia:
+        pRenderType = "Xenia";
         break;
-    case eRT_PS4: // ACCEPTED_USE
-        pRenderType = "PS4"; // ACCEPTED_USE
+    case eRT_Provo:
+        pRenderType = "Provo";
         break;
     case eRT_Metal:
         pRenderType = "Metal";
@@ -3531,6 +3595,7 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
     DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, "Frame #%d", frameCounter);
 #endif
 
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
     if (GetCVars()->e_TerrainTextureStreamingDebug && m_pTerrain)
     {
         MacroTexture::TileStatistics statistics;
@@ -3554,9 +3619,9 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
             "GetDistanceToSectorWithWater() = %.2f", m_pTerrain->GetDistanceToSectorWithWater());
     }
 
-    if (GetCVars()->e_ProcVegetation == 2)
+    if (GetCVars()->e_ProcVegetation == 2 && m_vegetationPoolManager)
     {
-        CProcVegetPoolMan& pool = *CTerrainNode::GetProcObjPoolMan();
+        LegacyProceduralVegetation::VegetationSectorsPool& pool = m_vegetationPoolManager->GetVegetationSectorPool();
         int nAll;
         int nUsed = pool.GetUsedInstancesCount(nAll);
 
@@ -3566,27 +3631,29 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
         DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, "---------------------------------------");
         for (int i = 0; i < pool.m_lstUsed.Count(); i++)
         {
-            CProcObjSector* pSubPool = pool.m_lstUsed[i];
-            nUsed = pSubPool->GetUsedInstancesCount(nAll);
+            LegacyProceduralVegetation::VegetationSector* pSubPool = pool.m_lstUsed[i];
+            nUsed = pSubPool->GetVegetationInstancesCount(nAll);
             DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY,
                 "Used sector: used=%d, all=%dx%d", nUsed, nAll, (int)GetCVars()->e_ProcVegetationMaxObjectsInChunk);
         }
         for (int i = 0; i < pool.m_lstFree.Count(); i++)
         {
-            CProcObjSector* pSubPool = pool.m_lstFree[i];
-            nUsed = pSubPool->GetUsedInstancesCount(nAll);
+            LegacyProceduralVegetation::VegetationSector* pSubPool = pool.m_lstFree[i];
+            nUsed = pSubPool->GetVegetationInstancesCount(nAll);
             DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY,
                 "Free sector: used=%d, all=%dx%d", nUsed, nAll, (int)GetCVars()->e_ProcVegetationMaxObjectsInChunk);
         }
         DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, "---------------------------------------");
         {
-            SProcObjChunkPool& chunks = *CTerrainNode::GetProcObjChunkPool();
+            LegacyProceduralVegetation::VegetationChunksPool& chunks = m_vegetationPoolManager->GetVegetationChunksPool();
             nUsed = chunks.GetUsedInstancesCount(nAll);
             DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY,
                 "chunks pool status: used=%d, all=%d, %d MB", nUsed, nAll,
                 nAll * int(GetCVars()->e_ProcVegetationMaxObjectsInChunk) * (int)sizeof(CVegetation) / 1024 / 1024);
         }
     }
+#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
+
     if (GetCVars()->e_MergedMeshesDebug)
     {
         if (m_pMergedMeshesManager->PoolOverFlow())
@@ -3705,50 +3772,279 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
+static const float DISPLAY_MEMORY_ROW_MARGIN = 16.0f;
+static const float DISPLAY_MEMORY_ROW_HEIGHT = 32.0f;
+static const float DISPLAY_MEMORY_ROW_NUMBER_WIDTH = 128.0f;
+static const float DISPLAY_MEMORY_ROW_FONT_SCALE = 1.5f;
+static const float DISPLAY_MEMORY_COL_LABEL_FONT_SCALE = 1.0f;
+
+static inline void AdjustDisplayMemoryParameters(float& yPos, float& columnInset, float columnWidth, float screenHeight)
+{
+    int column = (int)(yPos + DISPLAY_MEMORY_ROW_HEIGHT) / (int)screenHeight;
+    columnInset += columnWidth * column;
+    yPos -= screenHeight * column;
+}
+
+static void DisplayMemoryRow(C3DEngine& engine, float columnWidth, float screenHeight, float yPos, float valueA, float valueB, const char* valueBFormat, const ColorF& color, const char* categoryName, const char* subcategoryName = nullptr)
+{
+    float columnInset = columnWidth - DISPLAY_MEMORY_ROW_MARGIN;
+    AdjustDisplayMemoryParameters(yPos, columnInset, columnWidth, screenHeight);
+    if (valueA != -1.0f)
+    {
+        engine.DrawTextRightAligned(columnInset - DISPLAY_MEMORY_ROW_NUMBER_WIDTH, yPos, DISPLAY_MEMORY_ROW_FONT_SCALE, color, "%.1fMB", valueA);
+    }
+    if (valueB != -1.0f)
+    {
+        engine.DrawTextRightAligned(columnInset, yPos, DISPLAY_MEMORY_ROW_FONT_SCALE, color, valueBFormat, valueB);
+    }
+
+    if (subcategoryName)
+    {
+        static const float MAIN_TEXT_SCALE = 1.5f;
+        static const float SUB_TEXT_SCALE = 1.0f;
+        static const float SUB_LINE_OFFSET_Y = 16.0f;
+
+        engine.DrawTextLeftAligned(columnInset - DISPLAY_MEMORY_ROW_NUMBER_WIDTH * 4, yPos, MAIN_TEXT_SCALE, color, "%s", categoryName);
+        engine.DrawTextLeftAligned(columnInset - DISPLAY_MEMORY_ROW_NUMBER_WIDTH * 4, yPos + SUB_LINE_OFFSET_Y, SUB_TEXT_SCALE, color, "%s", subcategoryName);
+    }
+    else
+    {
+        engine.DrawTextLeftAligned(columnInset - DISPLAY_MEMORY_ROW_NUMBER_WIDTH * 4, yPos, DISPLAY_MEMORY_ROW_FONT_SCALE, color, "%s", categoryName);
+    }
+}
 
 void C3DEngine::DisplayMemoryStatistics()
-{    
-    if (GetCVars()->e_MemoryProfiling > 0)
-    {
-        float memoryXPos = 512.0f;
-        float memoryYPos = 32.0f;
-        float memoryYPosStepSize = 32.0f;
+{
+    const ColorF headerColor = ColorF(0.4f, 0.9f, 0.3f, 1.0f);
+    const ColorF statisticColor = ColorF(0.4f, 0.9f, 0.9f, 1.0f);
+    const ColorF subtotalColor = ColorF(0.4f, 0.3f, 0.9f, 1.0f);
+    const ColorF totalColor = ColorF(0.9f, 0.9f, 0.9f, 1.0f);
+    const ColorF labelColor = ColorF(0.4f, 0.3f, 0.3f, 1.0f);
 
-        ColorF headerColor = ColorF(0.4f, 0.9f, 0.3f, 1.0f);
-        ColorF statisticColor = ColorF(0.4f, 0.9f, 0.9f, 1.0f);
-        
-        // Store position for where we want to render the VRAM memory usage header (so we can simply print a total)
-        float gpuHeaderYPos = memoryYPos;
-        memoryYPos += memoryYPosStepSize;
+    const float screenHeight = (float)m_pRenderer->GetHeight();
+
+    if (GetCVars()->e_MemoryProfiling == 1)
+    {
+        const float columnWidth = (float)(m_pRenderer->GetWidth() / 2);
+        float columnInset = columnWidth - DISPLAY_MEMORY_ROW_MARGIN;
+
+        float memoryYPos = DISPLAY_MEMORY_ROW_HEIGHT;
+        float memoryYPosStepSize = DISPLAY_MEMORY_ROW_HEIGHT;
+
+        // Add column labels and header
+        this->DrawTextRightAligned(columnInset - DISPLAY_MEMORY_ROW_NUMBER_WIDTH, memoryYPos, DISPLAY_MEMORY_COL_LABEL_FONT_SCALE, labelColor, "Allocated");
+        this->DrawTextRightAligned(columnInset, memoryYPos, DISPLAY_MEMORY_COL_LABEL_FONT_SCALE, labelColor, "No. Allocations");
+        DisplayMemoryRow(*this, columnWidth, screenHeight, memoryYPos, -1.0f, -1.0f, "%.1fMB", headerColor, "VRAM Usage");
+        memoryYPos += (memoryYPosStepSize * 0.5f);
 
         float totalTrackedGPUAlloc = 0.0f;
 
         // Print the memory usage of each major VRAM category and each subcategory
         for (int category = 0; category < Render::Debug::VRAM_CATEGORY_NUMBER_CATEGORIES; ++category)
         {
+            float categorySubTotal = 0.0f;
+            AZStd::string categoryName;
+
             for (int subcategory = 0; subcategory < Render::Debug::VRAM_SUBCATEGORY_NUMBER_SUBCATEGORIES; ++subcategory)
             {
-                AZStd::string categoryName, subcategoryName;
+                AZStd::string subcategoryName;
                 size_t numberBytesAllocated = 0;
                 size_t numberAllocations = 0;
-                EBUS_EVENT(Render::Debug::VRAMDrillerBus, GetCurrentVRAMStats, static_cast<Render::Debug::VRAMAllocationCategory>(category), 
+                EBUS_EVENT(Render::Debug::VRAMDrillerBus, GetCurrentVRAMStats, static_cast<Render::Debug::VRAMAllocationCategory>(category),
                     static_cast<Render::Debug::VRAMAllocationSubcategory>(subcategory), categoryName, subcategoryName, numberBytesAllocated, numberAllocations);
-                
+
                 if (numberAllocations != 0)
                 {
                     float numMBallocated = numberBytesAllocated / (1024.0f * 1024.0f);
-                    DrawTextLeftAligned(memoryXPos, memoryYPos, 2.0f, statisticColor,
-                        "%s / %s - Size: %.1fMB - Allocations: %zu", categoryName.c_str(), subcategoryName.c_str(), numMBallocated, numberAllocations);
+                    DisplayMemoryRow(*this, columnWidth, screenHeight, memoryYPos, numMBallocated, (float)numberAllocations, "%.0f", statisticColor, categoryName.c_str(), subcategoryName.c_str());
 
                     memoryYPos += memoryYPosStepSize;
                     totalTrackedGPUAlloc += numMBallocated;
+                    categorySubTotal += numMBallocated;
                 }
-
+            }
+            if (categorySubTotal > 0.0f)
+            {
+                float yPos = memoryYPos;
+                AdjustDisplayMemoryParameters(yPos, columnInset, columnWidth, screenHeight);
+                DrawTextLeftAligned(columnInset - DISPLAY_MEMORY_ROW_NUMBER_WIDTH * 4, yPos, DISPLAY_MEMORY_ROW_FONT_SCALE, subtotalColor, "%s Subtotal", categoryName.c_str());
+                DrawTextRightAligned(columnInset - DISPLAY_MEMORY_ROW_NUMBER_WIDTH, yPos, DISPLAY_MEMORY_ROW_FONT_SCALE, subtotalColor, "%.1fMB", categorySubTotal);
+                memoryYPos += (memoryYPosStepSize * 0.5f);
             }
         }
 
-        // Print our VRAM
-        DrawTextLeftAligned(memoryXPos, gpuHeaderYPos, 2.0f, headerColor, "VRAM Usage: %.1fMB", totalTrackedGPUAlloc);
+        float allocatedVideoMemoryMB = -1.0f, reservedVideoMemoryMB = -1.0f;
+
+#if defined(AZ_PLATFORM_PROVO)
+        size_t allocatedVideoMemoryBytes = 0, reservedVideoMemoryBytes = 0;
+        VirtualAllocator::QueryVideoMemory(allocatedVideoMemoryBytes, reservedVideoMemoryBytes);
+        allocatedVideoMemoryMB = static_cast<float>(allocatedVideoMemoryBytes) / (1024.0f * 1024.0f);
+        reservedVideoMemoryMB = static_cast<float>(reservedVideoMemoryBytes) / (1024.0f * 1024.0f);
+#else
+        // Non PROVO platforms just sum up the tracked allocations
+        allocatedVideoMemoryMB = totalTrackedGPUAlloc;
+#endif
+
+        DrawTextLeftAligned(columnInset - DISPLAY_MEMORY_ROW_NUMBER_WIDTH * 4, memoryYPos, DISPLAY_MEMORY_ROW_FONT_SCALE, totalColor, "Total");
+        if (reservedVideoMemoryMB != -1.0f)
+        {
+            DrawTextRightAligned(columnInset - DISPLAY_MEMORY_ROW_NUMBER_WIDTH * 1, memoryYPos, DISPLAY_MEMORY_ROW_FONT_SCALE, totalColor, "%.1fMB/%.1fMB", allocatedVideoMemoryMB, reservedVideoMemoryMB);
+            memoryYPos += (memoryYPosStepSize * 0.5f);
+        }
+        else
+        {
+            DrawTextRightAligned(columnInset - DISPLAY_MEMORY_ROW_NUMBER_WIDTH * 1, memoryYPos, DISPLAY_MEMORY_ROW_FONT_SCALE, totalColor, "%.1fMB", allocatedVideoMemoryMB);
+            memoryYPos += (memoryYPosStepSize * 0.5f);
+        }
+
+        // Spacer
+        memoryYPos += (memoryYPosStepSize * 0.5f);
+
+        // Add column labels and header
+        this->DrawTextRightAligned(columnInset - DISPLAY_MEMORY_ROW_NUMBER_WIDTH, memoryYPos, DISPLAY_MEMORY_COL_LABEL_FONT_SCALE, labelColor, "Allocated");
+        this->DrawTextRightAligned(columnInset, memoryYPos, DISPLAY_MEMORY_COL_LABEL_FONT_SCALE, labelColor, "Capacity");
+        DisplayMemoryRow(*this, columnWidth, screenHeight, memoryYPos, -1.0f, -1.0f, "%.1fMB", headerColor, "CPU Memory Usage");
+        memoryYPos += (memoryYPosStepSize * 0.5f);
+
+        float totalTrackedCPUAlloc = 0.0f;
+        float totalCapacityCPUAlloc = 0.0f;
+
+        AZ::AllocatorManager& allocatorManager = AZ::AllocatorManager::Instance();
+        const size_t allocatorCount = allocatorManager.GetNumAllocators();
+        AZStd::map<AZ::IAllocatorAllocate*, AZ::IAllocator*> existingAllocators;
+        AZStd::map<AZ::IAllocatorAllocate*, AZ::IAllocator*> sourcesToAllocators;
+
+        // Build a mapping of original allocator sources to their allocators
+        for (int i = 0; i < allocatorCount; ++i)
+        {
+            AZ::IAllocator* allocator = allocatorManager.GetAllocator(i);
+            sourcesToAllocators.emplace(allocator->GetOriginalAllocationSource(), allocator);
+        }
+
+        // Group up any allocators under this size
+        static float smallAllocatorCapacityMaxMB = 10.0f;
+        float smallAllocatorsTotalCapacityMB = 0.0f;
+        float smallAllocatorsTotalAllocatedMB = 0.0f;
+
+        for (int i = 0; i < allocatorCount; ++i)
+        {
+            AZ::IAllocator* allocator = allocatorManager.GetAllocator(i);
+            AZ::IAllocatorAllocate* source = allocator->GetAllocationSource();
+            AZ::IAllocatorAllocate* originalSource = allocator->GetOriginalAllocationSource();
+            AZ::IAllocatorAllocate* schema = allocator->GetSchema();
+            AZ::IAllocator* alias = (source != originalSource) ? sourcesToAllocators[source] : nullptr;
+
+            if (schema && !alias)
+            {
+                // Check to see if this allocator's source maps to another allocator
+                // Need to check both the schema and the allocator itself, as either one might be used as the alias depending on how it's implemented
+                AZStd::array<AZ::IAllocatorAllocate*, 2> checkAllocators = { { schema, allocator->GetAllocationSource() } };
+
+                for (AZ::IAllocatorAllocate* check : checkAllocators)
+                {
+                    auto existing = existingAllocators.emplace(check, allocator);
+
+                    if (!existing.second)
+                    {
+                        alias = existing.first->second;
+                        // Do not break out of the loop as we need to add to the map for all entries
+                    }
+                }
+            }
+
+            if (!alias)
+            {
+                static const AZ::IAllocator* OS_ALLOCATOR = &AZ::AllocatorInstance<AZ::OSAllocator>::GetAllocator();
+                float allocatedMB = (float)source->NumAllocatedBytes() / (1024.0f * 1024.0f);
+                float capacityMB = (float)source->Capacity() / (1024.0f * 1024.0f);
+
+                totalTrackedCPUAlloc += allocatedMB;
+                totalCapacityCPUAlloc += capacityMB;
+
+                // Skip over smaller allocators so the display is readable.
+                if (capacityMB < smallAllocatorCapacityMaxMB)
+                {
+                    smallAllocatorsTotalCapacityMB += capacityMB;
+                    smallAllocatorsTotalAllocatedMB += allocatedMB;
+                    continue;
+                }
+
+                if (allocator == OS_ALLOCATOR)
+                {
+                    // Need to special case the OS allocator because its capacity is a made-up number. Better to just use the allocated amount, it will hopefully be small anyway.
+                    capacityMB = allocatedMB;
+                }
+
+                DisplayMemoryRow(*this, columnWidth, screenHeight, memoryYPos, allocatedMB, capacityMB, "%.1fMB", statisticColor, allocator->GetName(), allocator->GetDescription());
+
+                memoryYPos += memoryYPosStepSize;
+            }
+        }
+
+        if (smallAllocatorCapacityMaxMB > 0.0f)
+        {
+            AZStd::string subText = AZStd::string::format("Allocators smaller than %.0f MB", smallAllocatorCapacityMaxMB);
+            DisplayMemoryRow(*this, columnWidth, screenHeight, memoryYPos, smallAllocatorsTotalAllocatedMB, smallAllocatorsTotalCapacityMB, "%.1fMB", statisticColor, "All Small Allocators", subText.c_str());
+            memoryYPos += memoryYPosStepSize;
+        }
+
+        DisplayMemoryRow(*this, columnWidth, screenHeight, memoryYPos, totalTrackedCPUAlloc, totalCapacityCPUAlloc, "%.1fMB", totalColor, "Total");
+        memoryYPos += (memoryYPosStepSize * 0.5f);
+    }
+    else if (GetCVars()->e_MemoryProfiling == 2)
+    {
+        const float columnWidth = (float)(m_pRenderer->GetWidth() / 2);
+
+        float memoryYPos = DISPLAY_MEMORY_ROW_HEIGHT;
+        float memoryYPosStepSize = DISPLAY_MEMORY_ROW_HEIGHT;
+
+        AZ::AllocatorManager& allocatorManager = AZ::AllocatorManager::Instance();
+        const size_t allocatorCount = allocatorManager.GetNumAllocators();
+        AZStd::map<AZ::IAllocatorAllocate*, AZ::IAllocator*> existingAllocators;
+        AZStd::map<AZ::IAllocatorAllocate*, AZ::IAllocator*> sourcesToAllocators;
+
+        // Build a mapping of original allocator sources to their allocators
+        for (int i = 0; i < allocatorCount; ++i)
+        {
+            AZ::IAllocator* allocator = allocatorManager.GetAllocator(i);
+            sourcesToAllocators.emplace(allocator->GetOriginalAllocationSource(), allocator);
+        }
+
+        for (int i = 0; i < allocatorCount; ++i)
+        {
+            AZ::IAllocator* allocator = allocatorManager.GetAllocator(i);
+            AZ::IAllocatorAllocate* source = allocator->GetAllocationSource();
+            AZ::IAllocatorAllocate* originalSource = allocator->GetOriginalAllocationSource();
+            AZ::IAllocatorAllocate* schema = allocator->GetSchema();
+            AZ::IAllocator* alias = (source != originalSource) ? sourcesToAllocators[source] : nullptr;
+
+            if (schema && !alias)
+            {
+                // Check to see if this allocator's source maps to another allocator
+                // Need to check both the schema and the allocator itself, as either one might be used as the alias depending on how it's implemented
+                AZStd::array<AZ::IAllocatorAllocate*, 2> checkAllocators = { { schema, allocator->GetAllocationSource() } };
+
+                for (AZ::IAllocatorAllocate* check : checkAllocators)
+                {
+                    auto existing = existingAllocators.emplace(check, allocator);
+
+                    if (!existing.second)
+                    {
+                        alias = existing.first->second;
+                        // Do not break out of the loop as we need to add to the map for all entries
+                    }
+                }
+            }
+
+            if (alias)
+            {
+                float columnInset = columnWidth - DISPLAY_MEMORY_ROW_MARGIN;
+                float yPos = memoryYPos;
+                AdjustDisplayMemoryParameters(yPos, columnInset, columnWidth, screenHeight);
+                DrawTextRightAligned(columnInset, yPos, DISPLAY_MEMORY_ROW_FONT_SCALE, statisticColor, "%s => %s", allocator->GetName(), alias->GetName());
+                memoryYPos += (memoryYPosStepSize * 0.5f);
+            }
+        }
     }
 }
 
@@ -3870,7 +4166,6 @@ bool C3DEngine::ScreenShotMap(CStitchedImage* pStitchedImage,
 {
 #if defined(WIN32) || defined(WIN64) || defined(MAC)
 
-    const uint32  nTSize = GetTerrain()->GetTerrainSize();
     const f32     fTLX   = GetCVars()->e_ScreenShotMapCenterX - GetCVars()->e_ScreenShotMapSizeX + fTransitionSize * GetRenderer()->GetWidth();
     const f32     fTLY   = GetCVars()->e_ScreenShotMapCenterY - GetCVars()->e_ScreenShotMapSizeY + fTransitionSize * GetRenderer()->GetHeight();
     const f32     fBRX   = GetCVars()->e_ScreenShotMapCenterX + GetCVars()->e_ScreenShotMapSizeX + fTransitionSize * GetRenderer()->GetWidth();

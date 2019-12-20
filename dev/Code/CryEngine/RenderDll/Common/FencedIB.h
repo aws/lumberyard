@@ -105,6 +105,8 @@ void FencedIB<IndexType>::UnlockIB()
         #include "Xenia/FencedIB_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/FencedIB_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/FencedIB_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

@@ -27,9 +27,20 @@ def build(bld):
                         'EXCLUDE_CINEMIZER_SDK',
                         'EXCLUDE_OCULUS_SDK',
                         'NOMINMAX',
-                        'UNICODE']
+                        'UNICODE',
+                        'METRICS_ENABLED']
 
     console_defines  = defines + ['BATCH_MODE']
+    
+    metrics_uselib  = [ "AWS_CPP_SDK_CORE",
+                    "AWS_CPP_SDK_COGNITO_IDP",
+                    "AWS_CPP_SDK_COGNITO_IDENTITY",
+                    "AWS_CPP_SDK_IDENTITY_MANAGEMENT",
+                    "AWS_CPP_SDK_LAMBDA",
+                    "AWS_CPP_SDK_MOBILEANALYTICS",
+                    "AWS_CPP_SDK_STS",
+                    "SSLEAY"
+                    ]
 
     bld.CryQtApplication(
 
@@ -43,29 +54,37 @@ def build(bld):
         win_file_list    = ['assetprocessor_win.waf_files'],
         darwin_file_list = ['assetprocessor_gui_macos.waf_files'],
         disable_pch      = True,
-        features         = ['qt5', 'link_running_program'],
+        features         = ['qt5', 'link_running_program', 'ExternalLyIdentity', 'ExternalLyMetrics'],
         includes         = [bld.Path('Code/Tools/GemRegistry/include'),
                             'native',
-                            bld.Path('Code/CryEngine/CryCommon')
+                            bld.Path('Code/CryEngine/CryCommon'),
+                            bld.Path("Code/Tools/LyMetrics/LyMetricsProducer/include")
                            ],
         use             = ['AzToolsFramework',
                            'AzQtComponents',
                            'AssetBuilderSDK',
-                           'ToolsCrashHandler'],
-        uselib          = ['QTMAIN',
-                           'QT5CORE',
+                           'ToolsCrashHandler'
+                           ] + bld.make_aws_library_task_list(["LyMetricsProducer", "LyMetricsShared", "LyIdentity"]),
+        uselib          = ['QT5CORE',
                            'QT5GUI',
                            'QT5NETWORK',
-                           'QT5SVG',
+                           'QT5QML',
+                           'QT5WEBKITWIDGETS',
+                           'QT5WEBKIT',
                            'QT5WIDGETS',
+                           'QT5WINEXTRAS',
+                           'QT5CONCURRENT',
                            'QT5XML',
+                           'QTMAIN',
                            'SQLITE',
                            'D3D_COMPILER',
                            'SSLEAY',
-                           'LUA_COMPILER',
-                           'FFMPEG_EXE'
-                           ],
+                           'LUA_COMPILER'
+                           ] + metrics_uselib,
         defines         = defines,
+
+        # Compiler Specific
+        msvc_cxxflags       = ['/W4'],
 
         # Platform Specific
         win_features    = ['generate_rc_file', 'crcfix'],
@@ -92,20 +111,21 @@ def build(bld):
         configurations  = ['all'],
         exclude_monolithic = True,
         disable_pch     = True,
-        features        = ['qt5'],
+        features        = ['qt5', 'ExternalLyIdentity', 'ExternalLyMetrics'],
         includes        = [bld.Path('Code/Tools/GemRegistry/include'),
                            'native',
-                           bld.Path('Code/CryEngine/CryCommon')
+                           bld.Path('Code/CryEngine/CryCommon'),
+                          bld.Path("Code/Tools/LyMetrics/LyMetricsProducer/include")
                           ],
 
         win_features    = ['generate_rc_file', 'crcfix'],
         use             = ['AzToolsFramework',
-                           'AssetBuilderSDK'],
+                           'AssetBuilderSDK'] + bld.make_aws_library_task_list(["LyMetricsProducer", "LyMetricsShared", "LyIdentity"]),
         uselib          = ['QT5CORE',
                            'QT5GUI',
                            'QT5NETWORK',
                            'QT5WIDGETS',
-                           'SQLITE'],
+                           'SQLITE'] + metrics_uselib,
         defines         = console_defines,
 
         # Platform Specific
@@ -121,8 +141,9 @@ def build(bld):
 
 
 def copy_asset_builder(pkg, executable_dest_node):
-    output_folder_node = pkg.get_output_folders(pkg.platform, pkg.config)[0]
-    pkg.install_files(executable_dest_node.abspath(), "AssetBuilder", cwd=output_folder_node, chmod=Utils.O755, postpone=False)
+    output_folder_node = pkg.bld.get_output_folders(pkg.bld.platform, pkg.bld.config)[0]
+    pkg.bld.install_files(executable_dest_node.abspath(), "AssetBuilder", cwd=output_folder_node, chmod=Utils.O755, postpone=False)
+    pkg.codesign_executable_file(executable_dest_node.abspath() + "/AssetBuilder")
 
     rc_folder_node = output_folder_node.make_node('rc')
     rc_files = rc_folder_node.ant_glob("*")
@@ -133,10 +154,10 @@ def copy_asset_builder(pkg, executable_dest_node):
         filename, file_extension = os.path.splitext(file.abspath())
         if file_extension in ['.ini', '.xml', '.txt']:
             # data files need to go into the Resources directory otherwise code signing fails 
-            pkg.create_symlink_or_copy(file, resources_node.abspath(), postpone=False)
+            pkg.bld.create_symlink_or_copy(file, resources_node.abspath(), postpone=False)
         else:
             # Need 0755 permissions as rc is an exeutable. 
-            pkg.create_symlink_or_copy(file, rc_dest_node.abspath(), chmod=Utils.O755, postpone=False)
+            pkg.bld.create_symlink_or_copy(file, rc_dest_node.abspath(), chmod=Utils.O755, postpone=False)
 
 
 def package(pkg):

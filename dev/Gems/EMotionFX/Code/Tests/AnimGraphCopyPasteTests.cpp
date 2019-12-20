@@ -39,6 +39,9 @@ namespace EMotionFX
                 +---+            +---+
                 | A |--Actions-->| B |
                 +---+            +---+
+                +---+
+                | C |
+                +---+
             */
             m_stateA = aznew AnimGraphMotionNode();
             m_stateA->SetName("A");
@@ -49,11 +52,16 @@ namespace EMotionFX
             m_stateB->SetName("B");
             m_rootStateMachine->AddChildNode(m_stateB);
 
+            m_stateC = aznew AnimGraphStateMachine();
+            m_stateC->SetName("C");
+            m_rootStateMachine->AddChildNode(m_stateC);
+
             m_transition = AddTransition(m_stateA, m_stateB, 1.0f);
         }
 
         AnimGraphNode* m_stateA = nullptr;
         AnimGraphNode* m_stateB = nullptr;
+        AnimGraphStateMachine* m_stateC = nullptr;
         AnimGraphStateTransition* m_transition = nullptr;
     };
 
@@ -160,6 +168,102 @@ namespace EMotionFX
 
                 EXPECT_FALSE(transition->GetId() == oldtransitionId) << "There copied transition should have another id. Transition ids need to be unique.";
             }
+        }
+    }
+
+    TEST_P(AnimGraphSimpleCopyPasteFixture, AnimGraphCopyPasteTests_CopyAndPasteToAStateMachine)
+    {
+        CommandSystem::CommandManager commandManager;
+        AZStd::string result;
+        MCore::CommandGroup commandGroup;
+        const bool cutMode = GetParam();
+
+        // 1. Copy the nodeA and nodeB to nodeC(statemachine) 
+        AZStd::vector<EMotionFX::AnimGraphNode*> nodesToCopy;
+        nodesToCopy.emplace_back(m_stateA);
+        nodesToCopy.emplace_back(m_stateB);
+
+        CommandSystem::AnimGraphCopyPasteData copyPasteData;
+        CommandSystem::ConstructCopyAnimGraphNodesCommandGroup(&commandGroup,
+            /*targetParentNode=*/m_stateC,
+            nodesToCopy,
+            /*posX=*/0,
+            /*posY=*/0,
+            /*cutMode=*/cutMode,
+            copyPasteData,
+            /*ignoreTopLevelConnections=*/false);
+        EXPECT_TRUE(CommandSystem::GetCommandManager()->ExecuteCommandGroup(commandGroup, result));
+
+        if (cutMode)
+        {
+            EXPECT_EQ(1, m_rootStateMachine->GetNumChildNodes());
+            EXPECT_EQ(0, m_rootStateMachine->GetNumTransitions());
+
+            EXPECT_EQ(2, m_stateC->GetNumChildNodes());
+            EXPECT_EQ(1, m_stateC->GetNumTransitions());
+
+            EXPECT_EQ("A", m_stateC->GetChildNode(0)->GetNameString());
+            EXPECT_EQ("B", m_stateC->GetChildNode(1)->GetNameString());
+        }
+        else
+        {
+            EXPECT_EQ(3, m_rootStateMachine->GetNumChildNodes());
+            EXPECT_EQ(1, m_rootStateMachine->GetNumTransitions());
+
+            EXPECT_EQ(2, m_stateC->GetNumChildNodes());
+            EXPECT_EQ(1, m_stateC->GetNumTransitions());
+        }
+
+        /*      After 1. Cut == true
+                +--------------------------+
+                | C                        |
+                |  +---+            +---+  |
+                |  | A2|--Actions-->| B2|  |
+                |  +---+            +---+  |
+                |                          |
+                +--------------------------+
+        */
+
+        /*      After 1. Cut == false
+                +---+            +---+
+                | A |--Actions-->| B |
+                +---+            +---+
+                +--------------------------+
+                | C                        |
+                |  +---+            +---+  |
+                |  | A2|--Actions-->| B2|  |
+                |  +---+            +---+  |
+                |                          | 
+                +--------------------------+
+        */
+
+        // 2. Copy and paste the nodeC(state machine).
+        commandGroup.Clear();
+        nodesToCopy.clear();
+        nodesToCopy.emplace_back(m_stateC);
+
+        CommandSystem::AnimGraphCopyPasteData copyPasteData2;
+        CommandSystem::ConstructCopyAnimGraphNodesCommandGroup(&commandGroup,
+            /*targetParentNode=*/m_rootStateMachine,
+            nodesToCopy,
+            /*posX=*/0,
+            /*posY=*/0,
+            /*cutMode=*/false,
+            copyPasteData2,
+            /*ignoreTopLevelConnections=*/false);
+        EXPECT_TRUE(CommandSystem::GetCommandManager()->ExecuteCommandGroup(commandGroup, result));
+
+        if (cutMode)
+        {
+            EXPECT_EQ(2, m_rootStateMachine->GetNumChildNodes());
+            EXPECT_EQ(0, m_rootStateMachine->GetNumTransitions());
+            EXPECT_EQ(6, m_rootStateMachine->RecursiveCalcNumNodes());
+        }
+        else
+        {
+            EXPECT_EQ(4, m_rootStateMachine->GetNumChildNodes());
+            EXPECT_EQ(1, m_rootStateMachine->GetNumTransitions());
+            EXPECT_EQ(8, m_rootStateMachine->RecursiveCalcNumNodes());
         }
     }
 

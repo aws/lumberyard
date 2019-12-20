@@ -58,6 +58,7 @@ public:
     bool IsNeedMoveTool() { return true; };
 
     static void PySetSelectionType(const char* modeName);
+    static const char* Debug_GetSelectionType();
 
 protected:
     enum ECommandMode
@@ -116,5 +117,23 @@ protected:
 
     static CModellingModeTool* m_pModellingModeTool;
 };
+
+namespace AzToolsFramework
+{
+    //! A component to reflect scriptable commands for the Editor
+    class ModellingModeFuncsHandler
+        : public AZ::Component
+    {
+    public:
+        AZ_COMPONENT(ModellingModeFuncsHandler, "{5A0FBA2C-0918-4897-A2B8-23DCAF883E61}")
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        // AZ::Component ...
+        void Activate() override {}
+        void Deactivate() override {}
+    };
+
+} // namespace AzToolsFramework
 
 #endif // CRYINCLUDE_EDITOR_MODELLING_MODELLINGMODE_H

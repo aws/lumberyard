@@ -298,7 +298,6 @@ private:
     PrototypeSoundEvents m_prototypeEvents;  // this set is purely used for clever string/string assigning to save memory
 
     struct less_strcmp
-        : public std::binary_function<const string&, const string&, bool>
     {
         bool operator()(const string& left, const string& right) const
         {

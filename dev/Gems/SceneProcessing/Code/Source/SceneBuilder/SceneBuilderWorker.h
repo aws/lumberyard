@@ -22,6 +22,7 @@ namespace AssetBuilderSDK
     struct CreateJobsResponse;
     struct ProcessJobRequest;
     struct ProcessJobResponse;
+    struct JobProduct;
 }
 
 namespace AZ
@@ -53,6 +54,8 @@ namespace SceneBuilder
         void ShutDown() override;
         const char* GetFingerprint() const;
         static AZ::Uuid GetUUID();
+
+        void PopulateProductDependencies(const AZ::SceneAPI::Events::ExportProduct& exportProduct, const char* watchFolder, AssetBuilderSDK::JobProduct& jobProduct) const;
 
     protected:
         bool LoadScene(AZStd::shared_ptr<AZ::SceneAPI::Containers::Scene>& result, 

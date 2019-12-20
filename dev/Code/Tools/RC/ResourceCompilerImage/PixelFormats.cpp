@@ -77,7 +77,6 @@ void PixelFormatsInitializer::InitPixelFormat(EPixelFormat format, const PixelFo
 
 void PixelFormatsInitializer::InitPixelFormats()
 {
-    //  Confetti BEGIN: Igor Lobanchikov
     // Unsigned Formats
     // Data in an unsigned format must be positive. Unsigned formats use combinations of
     // (R)ed, (G)reen, (B)lue, (A)lpha, (L)uminance
@@ -106,7 +105,7 @@ void PixelFormatsInitializer::InitPixelFormats()
     // Data in these FourCC formats is custom compressed data and only decodable by certain hardware.
     InitPixelFormat(ePixelFormat_3DCp,         PixelFormatInfo(4, 1, true, "4",   4, 4,  4, 4,  64, false, D3DFMT_3DCp,     DXGI_FORMAT_BC4_UNORM,      eSampleType_Compressed, "3DCp",         "ATI compressed texture format for single channel maps", true, true, eTF_BC4U));
     InitPixelFormat(ePixelFormat_3DC,          PixelFormatInfo(8, 2, false, "0",   4, 4,  4, 4, 128, false, D3DFMT_3DC,      DXGI_FORMAT_BC5_UNORM,      eSampleType_Compressed, "3DC",          "ATI compressed texture format for normalmaps", true, true, eTF_BC5U));
-    InitPixelFormat(ePixelFormat_CTX1,         PixelFormatInfo(4, 2, false, "0",   4, 4,  4, 4,  64, false, D3DFMT_CTX1,     DXGI_FORMAT_UNKNOWN,        eSampleType_Compressed, "CTX1",         "CTX1 4 bpp compressed normal maps for Xbox 360", true, false, eTF_CTX1)); // ACCEPTED_USE // TODO: OBSOLETE FORMAT. REMOVE THIS LATER
+    InitPixelFormat(ePixelFormat_CTX1,         PixelFormatInfo(4, 2, false, "0",   4, 4,  4, 4,  64, false, D3DFMT_CTX1,     DXGI_FORMAT_UNKNOWN,        eSampleType_Compressed, "CTX1",         "CTX1 4 bpp compressed normal maps for Xbox 360", true, false, eTF_CTX1)); // TODO: OBSOLETE FORMAT. REMOVE THIS LATER
     InitPixelFormat(ePixelFormat_ASTC_4x4,     PixelFormatInfo(0, 4, true, "?", 16, 16,  4, 4, 128, true,  D3DFMT_ASTC4x4,  DXGI_FORMAT_UNKNOWN,        eSampleType_Compressed, "ASTC_4x4",     "ASTC 4x4 compressed texture format", true, false, eTF_ASTC_4x4));
     InitPixelFormat(ePixelFormat_ASTC_5x4,     PixelFormatInfo(0, 4, true, "?", 16, 16,  5, 4, 128, true,  D3DFMT_ASTC5x4,  DXGI_FORMAT_UNKNOWN,        eSampleType_Compressed, "ASTC_5x4",     "ASTC 5x4 compressed texture format", true, false, eTF_ASTC_5x4));
     InitPixelFormat(ePixelFormat_ASTC_5x5,     PixelFormatInfo(0, 4, true, "?", 16, 16,  5, 5, 128, true,  D3DFMT_ASTC5x5,  DXGI_FORMAT_UNKNOWN,        eSampleType_Compressed, "ASTC_5x5",     "ASTC 5x5 compressed texture format", true, false, eTF_ASTC_5x5));
@@ -153,7 +152,6 @@ void PixelFormatsInitializer::InitPixelFormats()
     InitPixelFormat(ePixelFormat_A16B16G16R16F, PixelFormatInfo(64, 4, true, "10",  1, 1, 1, 1,  64, false, D3DFMT_A16B16G16R16F, DXGI_FORMAT_R16G16B16A16_FLOAT, eSampleType_Half, "A16B16G16R16F", "four half channels", false, false, eTF_R16G16B16A16F));
     InitPixelFormat(ePixelFormat_G16R16F,      PixelFormatInfo(32, 2, false, "0",   1, 1, 1, 1,  32, false, D3DFMT_G16R16F,  DXGI_FORMAT_R16G16_FLOAT,   eSampleType_Half, "G16R16F",      "two half channel", false, false, eTF_R16G16F));
     InitPixelFormat(ePixelFormat_R16F,         PixelFormatInfo(16, 1, false, "0",   1, 1, 1, 1,  16, false, D3DFMT_R16F,     DXGI_FORMAT_R16_FLOAT,      eSampleType_Half, "R16F",         "one half channel", false, false, eTF_R16F));
-    //  Confetti End: Igor Lobanchikov
 
     for (int i = 0; i < ePixelFormat_Count; ++i)
     {

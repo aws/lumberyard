@@ -37,6 +37,8 @@
         #include "Xenia/ProjectDefines_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ProjectDefines_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ProjectDefines_h_salem.inl"
     #endif
 #elif defined(WIN32) || defined(WIN64)
 #if !defined(_RELEASE) || defined(PERFORMANCE_BUILD)
@@ -64,6 +66,8 @@ typedef uint16 vtx_idx;
         #include "Xenia/ProjectDefines_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ProjectDefines_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ProjectDefines_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -113,6 +117,8 @@ typedef uint32 vtx_idx;
         #include "Xenia/ProjectDefines_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ProjectDefines_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ProjectDefines_h_salem.inl"
     #endif
 #else
 #define PROJECTDEFINES_H_TRAIT_DISABLE_MONOLITHIC_PROFILING_MARKERS 1

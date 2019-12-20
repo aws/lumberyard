@@ -288,13 +288,27 @@ namespace PhysX
             }
         }
 
+        static physx::PxMeshMidPhase::Enum GetMidPhaseStructureType(const AZStd::string& platformIdentifier)
+        {
+            // Use by default 3.4 since 3.3 is being deprecated (despite being default)
+            physx::PxMeshMidPhase::Enum ret = physx::PxMeshMidPhase::eBVH34;
+
+            // Fallback to 3.3 on Android and iOS platforms since they don't support SSE2, which is required for 3.4
+            if (platformIdentifier == "es3" || platformIdentifier == "ios")
+            {
+                ret = physx::PxMeshMidPhase::eBVH33;
+            }
+            return ret;
+        }
+
         // used by CGFMeshAssetBuilderWorker.cpp to generate .pxmesh from cgf
         bool CookPhysxTriangleMesh(
             const AZStd::vector<Vec3>& vertices,
             const AZStd::vector<AZ::u32>& indices,
             const AZStd::vector<AZ::u16>& faceMaterials,
             AZStd::vector<AZ::u8>* output,
-            const MeshGroup& meshGroup
+            const MeshGroup& meshGroup,
+            const AZStd::string& platformIdentifier
         ) {
             bool cookingSuccessful = false;
             AZStd::string cookingResultErrorCodeString;
@@ -303,7 +317,7 @@ namespace PhysX
             physx::PxCookingParams pxCookingParams = physx::PxCookingParams(physx::PxTolerancesScale());
 
             pxCookingParams.buildGPUData = false;
-            pxCookingParams.midphaseDesc.setToDefault(physx::PxMeshMidPhase::eBVH34); // Always set to 3.4 since 3.3 is being deprecated (despite being default)
+            pxCookingParams.midphaseDesc.setToDefault(GetMidPhaseStructureType(platformIdentifier));
 
             if (shouldExportAsConvex)
             {
@@ -542,7 +556,7 @@ namespace PhysX
                 if (accumulatedVertices.size())
                 {
                     AZStd::vector<AZ::u8> physxData;
-                    bool success = CookPhysxTriangleMesh(accumulatedVertices, accumulatedIndices, accumulatedFaceMaterialIndicies, &physxData, pxMeshGroup);
+                    bool success = CookPhysxTriangleMesh(accumulatedVertices, accumulatedIndices, accumulatedFaceMaterialIndicies, &physxData, pxMeshGroup, context.GetPlatformIdentifier());
                     if (success)
                     {
                         result += WritePxmesh(context, physxData, accumulatedMaterialConfigurations, pxMeshGroup);

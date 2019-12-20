@@ -57,10 +57,23 @@ else
     exit 3
 fi 
 
+echo "Copying ca-certificates.crt"
+if [ -f /etc/ssl/certs/ca-certificates.crt ]
+then
+    cp -a /etc/ssl/certs/ca-certificates.crt GameLiftPackageLinux/.
+else
+    echo "Failed to find and copy /etc/ssl/certs/ca-certificates.crt"
+    echo "Without a valid root certificate, your server may not be able to validate and access AWS endpoints. If you see Curl error code 77 in your server logs, this is a likely cause."
+fi 
+
 echo "Creating install.sh"
 echo "#!/bin/sh" >> GameLiftPackageLinux/install.sh
 echo "" >> GameLiftPackageLinux/install.sh
 echo "sudo cp -a ./lib64/* /lib64/." >> GameLiftPackageLinux/install.sh
+
+# the following line is optional so we ignore the copy command error code 
+echo "sudo cp ./ca-certificates.crt /etc/ssl/certs/ca-certificates.crt || :" >> GameLiftPackageLinux/install.sh
+
 chmod +x GameLiftPackageLinux/install.sh
 
 echo "GameLift package created successfully: GameLiftPackageLinux"

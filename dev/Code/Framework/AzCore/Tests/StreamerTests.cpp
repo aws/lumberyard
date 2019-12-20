@@ -420,7 +420,6 @@ namespace AZ
             delete[] buffer;
         }
 
-        /* NOTE: Test temporarily disabled until problem with a specific test machine is resolved.
         // Reads multiple small pieces to make sure that the cache is hit, seeded and copied properly.
         TYPED_TEST_P(StreamerTest, Read_ReadMultiplePieces_AllReadRequestWereSuccessful)
         {
@@ -446,7 +445,7 @@ namespace AZ
                 valueStart += bufferSize;
                 fileRemainder -= readSize;
             }
-        }*/
+        }
 
         // Queue a request on a suspended device, then resume to see if gets picked up again.
         TYPED_TEST_P(StreamerTest, SuspendProcesisng_SuspendWhileFileIsQueued_FileIsNotReadUntilProcessingIsRestarted)
@@ -485,8 +484,7 @@ namespace AZ
         REGISTER_TYPED_TEST_CASE_P(StreamerTest,
             Read_ReadSmallFileEntirely_FileFullyRead,
             Read_ReadLargeFileEntirely_FileFullyRead,
-            // NOTE: Test temporarily disabled until problem with a specific test machine is resolved.
-            // Read_ReadMultiplePieces_AllReadRequestWereSuccessful,
+            Read_ReadMultiplePieces_AllReadRequestWereSuccessful,
             SuspendProcesisng_SuspendWhileFileIsQueued_FileIsNotReadUntilProcessingIsRestarted);
 
         typedef ::testing::Types<GlobalCache_Uncompressed, DedicatedCache_Uncompressed, GlobalCache_Compressed, DedicatedCache_Compressed> StreamerTestCases;

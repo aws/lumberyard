@@ -22,6 +22,10 @@
 
 #include "Environment/OceanEnvironmentBus.h"
 
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
+#include "TerrainProfiler.h"
+#endif
+
 //////////////////////////////////////////////////////////////////////////
 void OnTimeOfDayVarChange(ICVar* pArgs)
 {
@@ -99,6 +103,16 @@ void OnVolumetricFogChanged(ICVar* pArgs)
         Cry3DEngineBase::GetCVars()->e_VolumetricFog = 0;
     }
 }
+
+#if !defined(_RELEASE)
+void OnTerrainPerformanceSecondsChanged(ICVar* pArgs)
+{
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
+    AZ::Debug::TerrainProfiler::RefreshFrameProfilerStatus();
+#endif
+}
+#endif
+
 
 void CVars::Init()
 {
@@ -889,6 +903,8 @@ void CVars::Init()
         "Activate deferred terrain ambient occlusion");
     REGISTER_CVAR(e_PhysMinCellSize, 4, VF_NULL,
         "Min size of cell in physical entity grid");
+    DefineConstIntCVar(e_PhysEntityGridSizeDefault, 4096, VF_NULL,
+        "Default size of the physical entity grid when there's no terrain.");
     REGISTER_CVAR(e_PhysProxyTriLimit, 5000, VF_NULL,
         "Maximum allowed triangle count for phys proxies");
     DefineConstIntCVar(e_PhysFoliage, 2, VF_NULL,
@@ -1226,4 +1242,9 @@ void CVars::Init()
     REGISTER_CVAR(e_StaticInstancingMinInstNum, 10, VF_NULL, "Minimum number of common static objects in a tree node before hardware instancing is used.");
 
     DefineConstIntCVar(e_MemoryProfiling, 0, VF_DEV_ONLY, "Toggle displaying memory usage statistics");
+#ifndef _RELEASE
+    REGISTER_CVAR_CB(e_TerrainPerformanceSecondsPerLog, 0.0, VF_DEV_ONLY, "How frequently the Terrain Profiler dumps performance statistics to the game log. Default: 0.0 (OFF)", 
+                     OnTerrainPerformanceSecondsChanged);
+    REGISTER_CVAR(e_TerrainPerformanceCollectMemoryStats, 0, VF_DEV_ONLY, "Enable or disable collection of CTerrain memory usage per frame. Default: 0 (OFF)\n");
+#endif
 }

@@ -1,0 +1,35 @@
+{
+    "auto": {
+        "Source": [
+            "Source/AudioEngineWwiseGemSystemComponent.cpp",
+            "Source/AudioEngineWwiseGemSystemComponent.h",
+            "Source/AudioEngineWwiseModule.cpp"
+        ],
+        "Source/Engine/Header Files": [
+            "Source/Engine/ATLEntities_wwise.h",
+            "Source/Engine/AudioSourceManager.h",
+            "Source/Engine/AudioSystemImpl_wwise.h",
+            "Source/Engine/AudioSystemImplCVars.h",
+            "Source/Engine/Common_wwise.h",
+            "Source/Engine/FileIOHandler_wwise.h",
+            "Source/Engine/PluginRegistration_wwise.h"
+        ],
+        "Source/Engine/Source Files": [
+            "Source/Engine/AudioSourceManager.cpp",
+            "Source/Engine/AudioSystemImpl_wwise.cpp",
+            "Source/Engine/AudioSystemImplCVars.cpp",
+            "Source/Engine/Common_wwise.cpp",
+            "Source/Engine/FileIOHandler_wwise.cpp"
+        ],
+        "Source/Engine/AudioInput": [
+            "Source/Engine/AudioInput/AudioInputFile.cpp",
+            "Source/Engine/AudioInput/AudioInputFile.h",
+            "Source/Engine/AudioInput/AudioInputMicrophone.cpp",
+            "Source/Engine/AudioInput/AudioInputMicrophone.h",
+            "Source/Engine/AudioInput/AudioInputStream.cpp",
+            "Source/Engine/AudioInput/AudioInputStream.h",
+            "Source/Engine/AudioInput/WavParser.cpp",
+            "Source/Engine/AudioInput/WavParser.h"
+        ]
+    }
+}

@@ -65,7 +65,7 @@ namespace
                 return true;
             }
 
-            return (static_cast<AZ::u64>(excludeAttributeData->Get(nullptr)) & exclusionFlags);
+            return (static_cast<AZ::u64>(excludeAttributeData->Get(nullptr)) & exclusionFlags) != 0; // warning C4800: 'AZ::u64': forcing value to bool 'true' or 'false' (performance warning)
         }
         return false;
     }
@@ -75,7 +75,7 @@ namespace
     {
         if (excludeAttributeData)
         {
-            return static_cast<AZ::u64>(excludeAttributeData->Get(nullptr)) & AZ::Script::Attributes::ExcludeFlags::Preview;
+            return (static_cast<AZ::u64>(excludeAttributeData->Get(nullptr)) & AZ::Script::Attributes::ExcludeFlags::Preview) != 0; // warning C4800: 'AZ::u64': forcing value to bool 'true' or 'false' (performance warning)
         }
 
         return false;
@@ -101,7 +101,7 @@ namespace
 
     bool MethodHasAttribute(const AZ::BehaviorMethod* method, AZ::Crc32 attribute)
     {
-        return AZ::FindAttribute(attribute, method->m_attributes);
+        return AZ::FindAttribute(attribute, method->m_attributes) != nullptr; // warning C4800: 'AZ::Attribute *': forcing value to bool 'true' or 'false' (performance warning)
     }
 
     bool HasAttribute(AZ::BehaviorClass* behaviorClass, AZ::Crc32 attribute)
@@ -272,6 +272,12 @@ namespace
                 if (IsDeprecated(behaviorClass->m_attributes))
                 {
                     continue;
+                }
+
+                // Only bind Behavior Classes marked with the Scope type of Launcher
+                if (!AZ::Internal::IsInScope(behaviorClass->m_attributes, AZ::Script::Attributes::ScopeFlags::Launcher))
+                {
+                    continue; // skip this class
                 }
 
                 // Check for "ExcludeFrom" attribute for ScriptCanvas
@@ -454,6 +460,12 @@ namespace
                 if (ebusIter.first == ebus->m_deprecatedName)
                 {
                     continue;
+                }
+                
+                // Only bind Behavior Buses marked with the Scope type of Launcher
+                if (!AZ::Internal::IsInScope(ebus->m_attributes, AZ::Script::Attributes::ScopeFlags::Launcher))
+                {
+                    continue; // skip this bus
                 }
 
                 // EBus Handler

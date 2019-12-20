@@ -34,7 +34,14 @@ namespace ImageProcessingEditor
         : AzQtComponents::StyledDialog(parent, Qt::Dialog | Qt::CustomizeWindowHint | Qt::WindowCloseButtonHint | Qt::WindowTitleHint)
         , m_ui(new Ui::TexturePropertyEditor)
         , m_textureSetting(sourceTextureId)
+        , m_validImage(true)
     {
+        if (m_textureSetting.m_img == nullptr)
+        {
+            m_validImage = false;
+            return;
+        }
+
         m_ui->setupUi(this);
 
         //Initialize all the format string here
@@ -86,6 +93,11 @@ namespace ImageProcessingEditor
         EditorInternalNotificationBus::Handler::BusDisconnect();
     }
 
+    bool TexturePropertyEditor::HasValidImage()
+    {
+        return m_validImage;
+    }
+
     void TexturePropertyEditor::OnEditorSettingsChanged(bool needRefresh, const AZStd::string& /*platform*/)
     {
         m_textureSetting.m_modified = true;
@@ -93,6 +105,11 @@ namespace ImageProcessingEditor
 
     void TexturePropertyEditor::OnSave()
     {
+        if (!m_validImage)
+        {
+            return;
+        }
+
         bool sourceControlActive = false;
         AzToolsFramework::SourceControlConnectionRequestBus::BroadcastResult(sourceControlActive, &AzToolsFramework::SourceControlConnectionRequests::IsActive);
         AZStd::string outputPath = m_textureSetting.m_fullPath + ImageProcessing::TextureSettings::modernExtensionName;
@@ -124,9 +141,13 @@ namespace ImageProcessingEditor
         }
     }
 
-
     void TexturePropertyEditor::SaveTextureSetting(AZStd::string outputPath)
     {
+        if (!m_validImage)
+        {
+            return;
+        }
+
         ImageProcessing::TextureSettings& baseSetting = m_textureSetting.GetMultiplatformTextureSetting();
         for (auto& it : m_textureSetting.m_settingsMap)
         {

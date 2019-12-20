@@ -114,10 +114,5 @@ namespace AZ
     const Obb operator*(const class Transform& transform, const Obb& obb);
 }
 
-#ifndef AZ_PLATFORM_WINDOWS // Remove this once all compilers support POD (MSVC already does)
-#   include <AzCore/std/typetraits/is_pod.h>
-AZSTD_DECLARE_POD_TYPE(AZ::Obb);
-#endif
-
 #endif
 #pragma once

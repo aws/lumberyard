@@ -13,7 +13,7 @@
 
 import os
 from waflib.TaskGen import feature, after_method
-from waflib import Logs
+from waflib import Logs, Utils
 
 
 LAUNCHER_SCRIPT='''#!/bin/bash
@@ -59,3 +59,16 @@ def add_linux_launcher_script(self):
             if not os.path.exists(linux_launcher_script_file.abspath()) or linux_launcher_script_file.read() != linux_launcher_script_content:
                 Logs.info('Updating Linux Launcher Script (%s)' % linux_launcher_script_file.abspath() )
                 linux_launcher_script_file.write(linux_launcher_script_content)
+
+@feature('package_linux_x64')
+def package_linux_x64(tsk_gen):
+    bld = tsk_gen.bld
+    platform = bld.env['PLATFORM']
+    configuration = bld.env['CONFIGURATION']
+    output_folder = bld.get_output_folders(platform, configuration)[0]
+    
+    # GameLift Linux packages requires that *.so libs have proper permissions, setting them here
+    Logs.info('[WAF] Setting Linux permissions for libraries .so in {}'.format(output_folder))
+    libs = output_folder.ant_glob('lib*.so')
+    for lib in libs:
+        os.chmod(lib.abspath(), Utils.O755)

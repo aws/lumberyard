@@ -43,7 +43,6 @@ struct IRenderNode;
 
 namespace Vegetation
 {
-    struct DebugData;
     /**
     * The configuration for the vegetation instance manager
     */
@@ -73,15 +72,16 @@ namespace Vegetation
     class InstanceSystemComponent
         : public AZ::Component
         , private InstanceSystemRequestBus::Handler
+        , private InstanceSystemStatsRequestBus::Handler
         , private AZ::TickBus::Handler
         , private InstanceStatObjEventBus::Handler
         , private SystemConfigurationRequestBus::Handler
         , private CrySystemEventBus::Handler
     {
         friend class EditorInstanceSystemComponent;
-        InstanceSystemComponent(const InstanceSystemConfig&);
 
     public:
+        InstanceSystemComponent(const InstanceSystemConfig&);
         InstanceSystemComponent() = default;
         virtual ~InstanceSystemComponent();
 
@@ -112,6 +112,12 @@ namespace Vegetation
         void DestroyAllInstances() override;
         void Cleanup() override;
 
+        // InstanceSystemStatsRequestBus
+        AZ::u32 GetInstanceCount() const override;
+        AZ::u32 GetTotalTaskCount() const override;
+        AZ::u32 GetCreateTaskCount() const override;
+        AZ::u32 GetDestroyTaskCount() const override;
+
         // AZ::TickBus
         void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
 
@@ -133,7 +139,7 @@ namespace Vegetation
         InstanceId CreateInstanceId();
         void ReleaseInstanceId(InstanceId instanceId);
 
-        AZStd::recursive_mutex m_instanceIdMutex;
+        mutable AZStd::recursive_mutex m_instanceIdMutex;
         InstanceId m_instanceIdCounter = 0;
         AZStd::unordered_set<InstanceId> m_instanceIdPool;
 
@@ -148,7 +154,7 @@ namespace Vegetation
 
         void ReleaseInstanceNode(InstanceId instanceId);
 
-        AZStd::recursive_mutex m_instanceMapMutex;
+        mutable AZStd::recursive_mutex m_instanceMapMutex;
         AZStd::unordered_map<InstanceId, IRenderNode*> m_instanceMap;
 
         mutable AZStd::recursive_mutex m_instanceDeletionSetMutex;
@@ -182,8 +188,6 @@ namespace Vegetation
         void ReleaseRenderGroup(DescriptorRenderGroupPtr& groupPtr);
         void ReleaseAllRenderGroups();
 
-        DebugData* m_debugData = nullptr;
-
         struct DescriptorDetails
         {
             int m_refCount = 1;
@@ -195,5 +199,9 @@ namespace Vegetation
 
         ISystem* m_system = nullptr;
         I3DEngine* m_engine = nullptr;
+
+        AZStd::atomic_int m_instanceCount{ 0 };
+        AZStd::atomic_int m_createTaskCount{ 0 };
+        AZStd::atomic_int m_destroyTaskCount{ 0 };
     };
 } // namespace Vegetation

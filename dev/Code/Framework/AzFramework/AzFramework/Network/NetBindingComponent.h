@@ -53,7 +53,6 @@ namespace AzFramework
         ///////////////////////////////////////////////////////////////////////
         // AZ::Component
         static void Reflect(AZ::ReflectContext* reflection);
-        void Init() override;
         void Activate() override;
         void Deactivate() override;
         ///////////////////////////////////////////////////////////////////////

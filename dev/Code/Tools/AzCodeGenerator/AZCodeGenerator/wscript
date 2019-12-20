@@ -19,12 +19,12 @@ def build(bld):
     win_x64_defines = ['_CRT_SECURE_NO_WARNINGS', '_SCL_SECURE_NO_WARNINGS', 'AZCG_COMPILER_MSVC',
                        'AZCG_PLATFORM_WINDOWS']
 
-    darwin_x64_cxxflags = ['-w', '-std=c++11', '-pthread']
+    darwin_x64_cxxflags = ['-w', '-pthread', '-Wno-register']
     darwin_x64_defines = ['__STDC_CONSTANT_MACROS','__STDC_LIMIT_MACROS', 'AZCG_COMPILER_CLANG',
                           'AZCG_PLATFORM_DARWIN']
     darwin_x64_lib = ['python2.7', 'z', 'ncurses']
 
-    linux_x64_cxxflags = ['-w', '-std=c++11', '-stdlib=libstdc++', '-pthread']
+    linux_x64_cxxflags = ['-w', '-stdlib=libstdc++', '-pthread', '-Wno-register']
     linux_x64_defines = ['__STDC_CONSTANT_MACROS','__STDC_LIMIT_MACROS', 'AZCG_PLATFORM_LINUX']
     linux_x64_lib = ['python2.7', 'z', 'util', 'ncurses', 'dl']
     linux_x64_linkflags = list(linux_x64_cxxflags) # ['-pthread', '-stdlib=libstdc++']
@@ -45,15 +45,14 @@ def build(bld):
         'Code/Tools/AzCodeGenerator/Scripts/debug.py'
     ]
 
-    output_folder_vs2015 = ['Tools/AzCodeGenerator/bin/vc140/']
-    output_folder_vs2017 = ['Tools/AzCodeGenerator/bin/vc141/']
+    output_folder_windows = ['Tools/AzCodeGenerator/bin/windows/']
     output_folder_darwin = ['Tools/AzCodeGenerator/bin/osx/']
     output_folder_linux = ['Tools/AzCodeGenerator/bin/linux/']
 
     bld.CryBuildUtility(
 
         target              = 'AzCodeGenerator',
-        platforms           = ['win', 'darwin_x64', 'linux_x64'],
+        platforms           = ['win', 'darwin', 'linux'],
         configurations      = ['all'],
         exclude_monolithic  = True,
         vs_filter           = 'Tools',
@@ -83,8 +82,7 @@ def build(bld):
         linux_x64_linkflags=linux_x64_linkflags,
         linux_x64_rpath=linux_x64_rpath,
 
-        win_x64_vs2015_output_folder=output_folder_vs2015,
-        win_x64_vs2017_output_folder=output_folder_vs2017,
+        win_x64_output_folder=output_folder_windows,
         darwin_x64_output_folder=output_folder_darwin,
         linux_x64_output_folder=output_folder_linux,
 

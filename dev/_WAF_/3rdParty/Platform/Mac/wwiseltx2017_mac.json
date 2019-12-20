@@ -1,0 +1,36 @@
+{
+    "platform": {
+        "darwin_x64": {
+            "libpath_debug": [
+                "SDK/Mac/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/Mac/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/Mac/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/Mac/Release/lib"
+            ],
+            "lib_debug": [
+                "lib${communication_libs}.a",
+                "lib${common_libs_nix}.a",
+                "lib${codec_libs_apple}.a"
+            ],
+            "lib_profile": [
+                "lib${communication_libs}.a",
+                "lib${common_libs_nix}.a",
+                "lib${codec_libs_apple}.a"
+            ],
+            "lib_performance": [
+                "lib${common_libs_nix}.a",
+                "lib${codec_libs_apple}.a"
+            ],
+            "lib_release": [
+                "lib${common_libs_nix}.a",
+                "lib${codec_libs_apple}.a"
+            ]
+        }
+    }
+}

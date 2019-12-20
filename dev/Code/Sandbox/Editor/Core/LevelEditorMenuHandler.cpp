@@ -787,9 +787,9 @@ void LevelEditorMenuHandler::PopulateEditMenu(ActionManager::MenuWrapper& editMe
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
     auto publicname##Menu = graphicPerformanceSubMenu.AddMenu(tr(PublicAuxName2));\
-    publicname##Menu.AddAction(ID_GAME_##PUBLICNAME##_ENABLEHIGHSPEC);\
-    publicname##Menu.AddAction(ID_GAME_##PUBLICNAME##_ENABLEMEDIUMSPEC);\
-    publicname##Menu.AddAction(ID_GAME_##PUBLICNAME##_ENABLELOWSPEC);
+    publicname##Menu.AddAction(ID_GAME_##CODENAME##_ENABLEHIGHSPEC);\
+    publicname##Menu.AddAction(ID_GAME_##CODENAME##_ENABLEMEDIUMSPEC);\
+    publicname##Menu.AddAction(ID_GAME_##CODENAME##_ENABLELOWSPEC);
     AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
 #undef AZ_RESTRICTED_PLATFORM_EXPANSION
 #endif
@@ -830,8 +830,10 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
 
     gameMenu.AddSeparator();
 
+#ifdef LY_TERRAIN_EDITOR
     // Terrain Collision
     gameMenu.AddAction(ID_TERRAIN_COLLISION);
+#endif //#ifdef LY_TERRAIN_EDITOR
 
     if (m_enableLegacyCryEntities)
     {
@@ -966,6 +968,7 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
 
     if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
     {
+#ifdef LY_TERRAIN_EDITOR
         // Terrain
         auto terrainMenu = gameMenu.AddMenu(tr("&Terrain"));
 
@@ -987,13 +990,16 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
         auto terrainModifyMenu = terrainMenu.AddMenu(tr("Terrain Modify"));
         terrainModifyMenu.AddAction(ID_TOOLTERRAINMODIFY_SMOOTH);
         terrainModifyMenu.AddAction(ID_TERRAINMODIFY_SMOOTH);
-
         terrainMenu.AddAction(ID_TERRAIN_VEGETATION);
         terrainMenu.AddAction(ID_TERRAIN_PAINTLAYERS);
         terrainMenu.AddAction(ID_TERRAIN_REFINETERRAINTEXTURETILES);
         terrainMenu.AddSeparator();
         terrainMenu.AddAction(ID_FILE_EXPORT_TERRAINAREA);
         terrainMenu.AddAction(ID_FILE_EXPORT_TERRAINAREAWITHOBJECTS);
+#else
+        // If there's no terrain, just add vegetation directly to the Game menu.
+        gameMenu.AddAction(ID_TERRAIN_VEGETATION);
+#endif //#ifdef LY_TERRAIN_EDITOR
 
         gameMenu.AddSeparator();
     }

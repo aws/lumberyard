@@ -23,10 +23,16 @@
 #include "Objects/AIWave.h"
 #include "Geometry/EdMesh.h"
 #include "Mission.h"
+
+#ifdef LY_TERRAIN_EDITOR
 #include "Terrain/SurfaceType.h"
 #include "Terrain/Heightmap.h"
 #include "Terrain/TerrainGrid.h"
+#endif //#ifdef LY_TERRAIN_EDITOR
+
+// This is the "Sun Trajectory Tool", so it's not directly related to the rest of the Terrain Editor code above.
 #include "TerrainLighting.h"
+
 #include "ViewManager.h"
 #include "StartupLogoDialog.h"
 #include "AI/AIManager.h"
@@ -863,32 +869,42 @@ bool CGameEngine::LoadLevel(
     // Initialize physics grid.
     if (bReleaseResources)
     {
+#ifdef LY_TERRAIN_EDITOR
         SSectorInfo si;
-
         GetIEditor()->GetHeightmap()->GetSectorsInfo(si);
-        float terrainSize = si.sectorSize * si.numSectors;
+        int physicsEntityGridSize = si.sectorSize * si.numSectors;
+#else
+        int physicsEntityGridSize = GetIEditor()->Get3DEngine()->GetTerrainSize();
+#endif //#ifdef LY_TERRAIN_EDITOR
+
+        //CryPhysics under performs if physicsEntityGridSize < nTerrainSize.
+        if (physicsEntityGridSize <= 0)
+        {
+            ICVar* pCvar = m_pISystem->GetIConsole()->GetCVar("e_PhysEntityGridSizeDefault");
+            AZ_Assert(pCvar, "The CVAR e_PhysEntityGridSizeDefault is not defined");
+            physicsEntityGridSize = pCvar->GetIVal();
+        }
 
         if (m_pISystem->GetIPhysicalWorld())
         {
-            float fCellSize = terrainSize > 2048 ? terrainSize * (1.0f / 1024) : 2.0f;
+            int nCellSize = physicsEntityGridSize > 2048 ? physicsEntityGridSize >> 10 : 2;
 
             if (ICVar* pCvar = m_pISystem->GetIConsole()->GetCVar("e_PhysMinCellSize"))
             {
-                fCellSize = max(fCellSize, (float)pCvar->GetIVal());
+                nCellSize = max(nCellSize, pCvar->GetIVal());
             }
 
             int log2PODGridSize = 0;
-
-            if (fCellSize == 2.0f)
+            if (nCellSize == 2)
             {
                 log2PODGridSize = 2;
             }
-            else if (fCellSize == 4.0f)
+            else if (nCellSize == 4)
             {
                 log2PODGridSize = 1;
             }
 
-            m_pISystem->GetIPhysicalWorld()->SetupEntityGrid(2, Vec3(0, 0, 0), terrainSize / fCellSize, terrainSize / fCellSize, fCellSize, fCellSize, log2PODGridSize);
+            m_pISystem->GetIPhysicalWorld()->SetupEntityGrid(2, Vec3(0, 0, 0), physicsEntityGridSize / nCellSize, physicsEntityGridSize / nCellSize, (float)nCellSize, (float)nCellSize, log2PODGridSize);
         }
 
         // Resize proximity grid in entity system.
@@ -896,7 +912,7 @@ bool CGameEngine::LoadLevel(
         {
             if (gEnv->pEntitySystem)
             {
-                gEnv->pEntitySystem->ResizeProximityGrid(terrainSize, terrainSize);
+                gEnv->pEntitySystem->ResizeProximityGrid(physicsEntityGridSize, physicsEntityGridSize);
             }
         }
     }
@@ -1002,6 +1018,7 @@ bool CGameEngine::ReloadEnvironment()
 
     // Notify mission that environment may be changed.
     GetIEditor()->GetDocument()->GetCurrentMission()->OnEnvironmentChange();
+
     //! Add lighting node to environment settings.
     GetIEditor()->GetDocument()->GetCurrentMission()->GetLighting()->Serialize(env, false);
 

@@ -25,7 +25,7 @@ namespace Vegetation
     /**
     * An interface to manage creation and destruction of vegetation instances
     */
-    class InstanceRequests
+    class InstanceSystemRequests
         : public AZ::EBusTraits
     {
     public:
@@ -36,7 +36,7 @@ namespace Vegetation
         using MutexType = AZStd::recursive_mutex;
         ////////////////////////////////////////////////////////////////////////
 
-        virtual ~InstanceRequests() AZ_DEFAULT_METHOD;
+        virtual ~InstanceSystemRequests() AZ_DEFAULT_METHOD;
 
         virtual DescriptorPtr RegisterUniqueDescriptor(const Descriptor& descriptor) = 0;
         virtual void ReleaseUniqueDescriptor(DescriptorPtr descriptorPtr) = 0;
@@ -51,6 +51,30 @@ namespace Vegetation
         virtual void Cleanup() = 0;
     };
 
-    using InstanceSystemRequestBus = AZ::EBus<InstanceRequests>;
+    using InstanceSystemRequestBus = AZ::EBus<InstanceSystemRequests>;
+
+    /**
+    * An interface to get statistics about vegetation instances
+    */
+    class InstanceSystemStatsRequests
+        : public AZ::EBusTraits
+    {
+    public:
+        ////////////////////////////////////////////////////////////////////////
+        // EBusTraits
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        using MutexType = AZStd::recursive_mutex;
+        ////////////////////////////////////////////////////////////////////////
+
+        virtual ~InstanceSystemStatsRequests() AZ_DEFAULT_METHOD;
+
+        virtual AZ::u32 GetInstanceCount() const = 0;
+        virtual AZ::u32 GetTotalTaskCount() const = 0;
+        virtual AZ::u32 GetCreateTaskCount() const = 0;
+        virtual AZ::u32 GetDestroyTaskCount() const = 0;
+    };
+
+    using InstanceSystemStatsRequestBus = AZ::EBus<InstanceSystemStatsRequests>;
 
 } // namespace Vegetation

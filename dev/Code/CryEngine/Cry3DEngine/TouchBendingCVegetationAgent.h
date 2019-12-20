@@ -61,7 +61,7 @@ namespace AZ
         //Physics::ITouchBendingCallback START
         Physics::SpineTreeIDType CheckDistanceToCamera(const void* privateData) override;
         bool BuildSpineTree(const void* privateData, Physics::SpineTreeIDType spineTreeId, Physics::SpineTree& spineTreeOut) override;
-        void OnPhysicalizedTouchBendingSkeleton(const void* privateData, Physics::TouchBendingSkeletonHandle* skeletonHandle) override;
+        bool OnPhysicalizedTouchBendingSkeleton(const void* privateData, Physics::TouchBendingSkeletonHandle* skeletonHandle) override;
         //Physics::ITouchBendingCallback END
 
         //Used by CStatObjFoliage START

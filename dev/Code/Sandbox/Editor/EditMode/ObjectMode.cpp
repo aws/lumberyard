@@ -18,7 +18,11 @@
 #include "ObjectMode.h"
 #include "Viewport.h"
 #include "ViewManager.h"
+
+#ifdef LY_TERRAIN_EDITOR
 #include "./Terrain/Heightmap.h"
+#endif
+
 #include "GameEngine.h"
 #include "Objects/EntityObject.h"
 #include "Objects/CameraObject.h"
@@ -397,11 +401,13 @@ bool CObjectMode::OnLButtonDown(CViewport* view, int nFlags, const QPoint& point
 
     // Swap X/Y
     int unitSize = 1;
+#ifdef LY_TERRAIN_EDITOR
     CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
     if (pHeightmap)
     {
         unitSize = pHeightmap->GetUnitSize();
     }
+#endif //#ifdef LY_TERRAIN_EDITOR
     float hx = pos.y / unitSize;
     float hy = pos.x / unitSize;
     float hz = GetIEditor()->GetTerrainElevation(pos.x, pos.y);

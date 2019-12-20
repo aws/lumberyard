@@ -13,7 +13,7 @@
 // include required headers
 #include "GameController.h"
 
-#ifdef HAS_GAME_CONTROLLER
+#if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
 
 #include <MCore/Source/LogManager.h>
 

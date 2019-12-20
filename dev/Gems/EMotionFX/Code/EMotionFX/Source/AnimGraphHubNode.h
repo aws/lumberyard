@@ -68,6 +68,7 @@ namespace EMotionFX
         bool GetCanHaveOnlyOneInsideParent() const override         { return false; }
         void OnStateEntering(AnimGraphInstance* animGraphInstance, AnimGraphNode* previousState, AnimGraphStateTransition* usedTransition) override;
         void Rewind(AnimGraphInstance* animGraphInstance) override;
+        AnimGraphNode* GetSourceNode(const AnimGraphInstance* animGraphInstance) const;
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 

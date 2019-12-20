@@ -11,3 +11,5 @@
 */
 
 #pragma once
+
+#include <AzCore/PlatformDef.h>

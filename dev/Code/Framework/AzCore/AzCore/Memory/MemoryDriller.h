@@ -51,16 +51,22 @@ namespace AZ
 
             //////////////////////////////////////////////////////////////////////////
             // MemoryDrillerBus
-            virtual void RegisterAllocator(IAllocator* allocator, unsigned char stackRecordLevels, bool isMemoryGuard, bool isMarkUnallocatedMemory);
+            virtual void RegisterAllocator(IAllocator* allocator);
             virtual void UnregisterAllocator(IAllocator* allocator);
 
             virtual void RegisterAllocation(IAllocator* allocator, void* address, size_t byteSize, size_t alignment, const char* name, const char* fileName, int lineNum, unsigned int stackSuppressCount);
             virtual void UnregisterAllocation(IAllocator* allocator, void* address, size_t byteSize, size_t alignment, AllocationInfo* info);
+            virtual void ReallocateAllocation(IAllocator* allocator, void* prevAddress, void* newAddress, size_t newByteSize, size_t newAlignment);
             virtual void ResizeAllocation(IAllocator* allocator, void* address, size_t newSize);
+
+            virtual void DumpAllAllocations();
             //////////////////////////////////////////////////////////////////////////
 
             void RegisterAllocatorOutput(IAllocator* allocator);
             void RegisterAllocationOutput(IAllocator* allocator, void* address, const AllocationInfo* info);
+        private:
+            // Store a list of all of our allocator records so we can dump them all without having to know about the allocators
+            AZStd::list<Debug::AllocationRecords*, OSStdAllocator> m_allAllocatorRecords;
         };
     } // namespace Debug
 } // namespace AZ

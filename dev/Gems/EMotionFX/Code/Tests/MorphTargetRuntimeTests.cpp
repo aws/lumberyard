@@ -39,6 +39,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 
 #include <Tests/Printers.h>
+#include <Tests/Matchers.h>
 
 namespace EMotionFX
 {
@@ -242,12 +243,6 @@ namespace EMotionFX
         const AZStd::fixed_vector<AZ::Vector3, 6> m_points;
     };
 
-    MATCHER(AZVector3Eq, "")
-    {
-        using ::testing::get;
-        return get<0>(arg).IsClose(get<1>(arg), 0.001f);
-    }
-
     TEST_F(MorphTargetRuntimeFixture, TestMorphTargetMeshRuntime)
     {
         const float fps = 30.0f;
@@ -280,7 +275,7 @@ namespace EMotionFX
                 const AZ::Vector3 delta = (neutralPoint * m_scaleFactor) - neutralPoint;
                 expectedWeightedPoints.emplace_back(neutralPoint + delta * weight);
             }
-            EXPECT_THAT(gotWeightedPoints, ::testing::Pointwise(AZVector3Eq(), expectedWeightedPoints));
+            EXPECT_THAT(gotWeightedPoints, ::testing::Pointwise(IsClose(), expectedWeightedPoints));
         }
     }
 }

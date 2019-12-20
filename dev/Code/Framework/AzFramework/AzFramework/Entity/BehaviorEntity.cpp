@@ -26,6 +26,8 @@ namespace AzFramework
                 ->Version(1)
                 ->Field("ComponentId", &BehaviorComponentId::m_id)
                 ;
+
+            serializeContext->RegisterGenericType<AZStd::vector<BehaviorComponentId>>();
         }
 
         if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))

@@ -257,7 +257,6 @@ namespace GridMate
         };
 
         struct SocketPtrHasher
-            : public AZStd::unary_function<SocketDriverAddressPtr, AZStd::size_t>
         {
             AZStd::size_t operator()(const SocketDriverAddressPtr& v) const;
         };

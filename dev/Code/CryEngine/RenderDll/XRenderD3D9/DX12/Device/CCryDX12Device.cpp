@@ -736,10 +736,9 @@ HRESULT STDMETHODCALLTYPE CCryDX12Device::CreateStagingResource(
     DX12::Resource& rResource = dx12Resource->GetDX12Resource();
 
     D3D12_RESOURCE_DESC resourceDesc = rResource.GetDesc();
-    UINT64 requiredSize, rowPitch;
-    UINT rowCount;
-    UINT numSubResources = 1;// resourceDesc.MipLevels * (resourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D ? 1 : resourceDesc.DepthOrArraySize);
-    GetD3D12Device()->GetCopyableFootprints(&resourceDesc, 0, numSubResources, 0, nullptr, &rowCount, &rowPitch, &requiredSize);
+    UINT64 requiredSize;
+    UINT numSubResources = resourceDesc.MipLevels * (resourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D ? 1 : resourceDesc.DepthOrArraySize);
+    GetD3D12Device()->GetCopyableFootprints(&resourceDesc, 0, numSubResources, 0, nullptr, nullptr, nullptr, &requiredSize);
 
     D3D12_RESOURCE_STATES initialState = Upload ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COPY_DEST;
     D3D12_HEAP_TYPE heapType = Upload ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_READBACK;

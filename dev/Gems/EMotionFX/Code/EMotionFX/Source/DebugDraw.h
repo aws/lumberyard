@@ -91,7 +91,7 @@ namespace EMotionFX
 
         using ActorInstanceDataSet = AZStd::unordered_map<ActorInstance*, ActorInstanceData*>;
 
-        virtual ~DebugDraw() = default;
+        virtual ~DebugDraw();
 
         void Clear();
         void Lock();

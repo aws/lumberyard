@@ -15,6 +15,7 @@
 #include <AzCore/Component/Component.h>
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
+#include <AzCore/OutCome/OutCome.h>
 
 namespace ImageProcessing
 {
@@ -36,6 +37,9 @@ namespace ImageProcessing
         //!AssetBuilderSDK::AssetBuilderCommandBus interface
         void ShutDown() override; // if you get this you must fail all existing jobs and return.
         //////////////////////////////////////////////////////////////////////////
+
+        //! Populates the jobProduct vector with all the entries including their product dependencies 
+        AZ::Outcome<void, AZStd::string> PopulateProducts(const AssetBuilderSDK::ProcessJobRequest& request, const AZStd::vector<AZStd::string>& productFilepaths, AZStd::vector<AssetBuilderSDK::JobProduct>& jobProducts);
 
     private:
         bool m_isShuttingDown = false;

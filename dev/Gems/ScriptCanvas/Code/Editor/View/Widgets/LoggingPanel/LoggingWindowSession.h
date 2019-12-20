@@ -11,10 +11,14 @@
 */
 #pragma once
 
+// qbrush.h(118): warning C4251: 'QBrush::d': class 'QScopedPointer<QBrushData,QBrushDataPointerDeleter>' needs to have dll-interface to be used by clients of class 'QBrush'
+// qwidget.h(858): warning C4800: 'uint': forcing value to bool 'true' or 'false' (performance warning)
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option")
 #include <QAbstractItemModel>
 #include <QIcon>
 #include <QSortFilterProxyModel>
 #include <QWidget>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Component/NamedEntityId.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
@@ -31,7 +35,10 @@
 #include <ScriptCanvas/Core/NodeBus.h>
 
 // Qt Generated
+// warning C4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option")
 #include <Editor/View/Widgets/LoggingPanel/ui_LoggingWindowSession.h>
+AZ_POP_DISABLE_WARNING
 
 namespace ScriptCanvasEditor
 {

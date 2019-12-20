@@ -25,13 +25,16 @@
         gems_pak_types="gems\*.json;${game}\gems.json;${game}\gem\*.*"
         gems_pak_excludes=""
 
+        shaders_pak_types="shaders\*.*"
+        shaders_pak_excludes=""
+
         pak_files="*.pak"
         pak_files_excludes="shaders.pak;"
 
         basic_types="*Shaders*.pak;level.pak;engine.pak;modes/menucommon_sp.pak;modes/menucommon_mp.pak;Localization/*;Localized/*;config/game.xml"
         
         assets_files="*.*"
-        assets_files_excludes="*cmakelists.*;editor\*.*;${levels_pak_excludes};${game_data_pak_excludes};${engine_pak_types};${engine_pak_excludes};${gems_pak_types};${gems_pak_excludes};${pak_files};${pak_files_excludes};${basic_types}"
+        assets_files_excludes="*cmakelists.*;editor\*.*;${levels_pak_excludes};${game_data_pak_excludes};${engine_pak_types};${engine_pak_excludes};${gems_pak_types};${gems_pak_excludes};${pak_files};${pak_files_excludes};${basic_types};${shaders_pak_types};${shaders_pak_excludes}"
         
         src_game="${src}\${game}"
         trg_paks="${trg}\${game}"
@@ -46,16 +49,11 @@
         <Job sourceroot="${src}" targetroot="${trg}" input="engineroot.txt" copyonly="1"/>
         <Job sourceroot="${src}" targetroot="${trg}" input="*.cfg" copyonly="1" recursive="0"/>
         <Job sourceroot="${src}" targetroot="${trg}" input="*.xml" copyonly="1" recursive="0"/>
+        <Job sourceroot="${src_game}" targetroot="${trg_paks}" input="${engine_pak_types}" exclude="${engine_pak_excludes}" copyonly="1"/>
+        <Job sourceroot="${src}" targetroot="${trg_paks}" input="${gems_pak_types}" exclude="${gems_pak_excludes}" copyonly="1"/>
+        <Job sourceroot="${src_game}" targetroot="${trg_paks}" input="${shaders_pak_types}" exclude="${shaders_pak_excludes}" copyonly="1"/>
         <Job souceroot="" input=""/>
     </CopyJob>
-
-    <!-- 
-        Pack assets that are going into the APK
-    -->
-    <PakJob>
-        <Job sourceroot="${src_game}" input="${engine_pak_types}" zip="${trg_paks}\engine.pak" exclude="${engine_pak_excludes}" />
-        <Job sourceroot="${src}"      input="${gems_pak_types}" zip="${trg_paks}\gems\gems.pak" exclude="${gems_pak_excludes}" />
-    </PakJob>
 
     <!--
         Clean the temp folder.

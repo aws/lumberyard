@@ -153,9 +153,7 @@ void CHDRPostProcess::AddRenderTarget(uint32 nWidth, uint32 nHeight, const Color
     drt.fPriority        = fPriority;
     drt.lplpStorage      = pStorage;
     drt.nCustomID        = nCustomID;
-    //  Confetti BEGIN: Igor Lobanchikov
     drt.nPitch           = nWidth * CTexture::BytesPerBlock(Format);
-    //  Confetti End: Igor Lobanchikov
     cry_strcpy(drt.szName, szName);
     m_pRenderTargets.push_back(drt);
 }
@@ -212,7 +210,6 @@ void CTexture::GenerateHDRMaps()
 
     ETEX_Format nHDRFormat = eTF_R16G16B16A16F; // note: for main rendertarget R11G11B10 precision/range (even with rescaling) not enough for darks vs good blooming quality
 
-    //  Confetti BEGIN: Igor Lobanchikov :END
     ETEX_Format nHDRReducedFormat = r->UseHalfFloatRenderTargets() ? eTF_R11G11B10F : eTF_R10G10B10A2;
 
     uint32 nHDRTargetFlags = FT_DONT_RELEASE | (CRenderer::CV_r_msaa ? FT_USAGE_MSAA : 0);
@@ -225,7 +222,6 @@ void CTexture::GenerateHDRMaps()
         pHDRPostProcess->AddRenderTarget(r->GetWidth(), r->GetHeight(), Clr_Unknown, r->UseHalfFloatRenderTargets() ? nHDRFormat : nHDRReducedFormat, 1.0f, "$HDRTarget", &s_ptexHDRTarget, nHDRTargetFlagsUAV);
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov :END
     pHDRPostProcess->AddRenderTarget(r->GetWidth(), r->GetHeight(), Clr_Unknown, nHDRReducedFormat, 1.0f, "$HDRTargetPrev", &s_ptexHDRTargetPrev);
 
     pHDRPostProcess->AddRenderTarget(r->GetWidth(), r->GetHeight(), Clr_Unknown, nHDRFormat, 1.0f, "$FurLightAcc", &s_ptexFurLightAcc, FT_DONT_RELEASE);
@@ -280,13 +276,11 @@ void CTexture::GenerateHDRMaps()
 
     pHDRPostProcess->AddRenderTarget(r->GetWidth() >> 1, r->GetHeight() >> 1, Clr_Unknown, nHDRFormat, 0.9f, "$HDRDofLayerNear", &s_ptexHDRDofLayers[0], FT_DONT_RELEASE);
     pHDRPostProcess->AddRenderTarget(r->GetWidth() >> 1, r->GetHeight() >> 1, Clr_Unknown, nHDRFormat, 0.9f, "$HDRDofLayerFar", &s_ptexHDRDofLayers[1], FT_DONT_RELEASE);
-    //  Confetti BEGIN: Igor Lobanchikov
 #if METAL
     pHDRPostProcess->AddRenderTarget(r->GetWidth() >> 1, r->GetHeight() >> 1, Clr_Unknown, eTF_R16F, 1.0f, "$MinCoC_0_Temp", &s_ptexSceneCoCTemp, FT_DONT_RELEASE);
 #else
     pHDRPostProcess->AddRenderTarget(r->GetWidth() >> 1, r->GetHeight() >> 1, Clr_Unknown, eTF_R16G16F, 1.0f, "$MinCoC_0_Temp", &s_ptexSceneCoCTemp, FT_DONT_RELEASE);
 #endif
-    //  Confetti End: Igor Lobanchikov
 
     pHDRPostProcess->AddRenderTarget(r->GetWidth(), r->GetHeight(), Clr_Unknown, eTF_R16G16F, 1.0, "$CoC_History0", &s_ptexSceneCoCHistory[0], FT_DONT_RELEASE);
     pHDRPostProcess->AddRenderTarget(r->GetWidth(), r->GetHeight(), Clr_Unknown, eTF_R16G16F, 1.0, "$CoC_History1", &s_ptexSceneCoCHistory[1], FT_DONT_RELEASE);
@@ -294,13 +288,11 @@ void CTexture::GenerateHDRMaps()
     for (i = 0; i < MIN_DOF_COC_K; i++)
     {
         sprintf_s(szName, "$MinCoC_%d", i);
-        //  Confetti BEGIN: Igor Lobanchikov
 #if METAL
         pHDRPostProcess->AddRenderTarget((r->m_dwHDRCropWidth >> 1) / (i + 1), (r->m_dwHDRCropHeight >> 1) / (i + 1), Clr_Unknown, eTF_R16F, 0.1f, szName, &s_ptexSceneCoC[i], FT_DONT_RELEASE, -1, true);
 #else
         pHDRPostProcess->AddRenderTarget((r->m_dwHDRCropWidth >> 1) / (i + 1), (r->m_dwHDRCropHeight >> 1) / (i + 1), Clr_Unknown, eTF_R16G16F, 0.1f, szName, &s_ptexSceneCoC[i], FT_DONT_RELEASE, -1, true);
 #endif
-        //  Confetti End: Igor Lobanchikov
     }
 
     if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
@@ -660,11 +652,9 @@ void CHDRPostProcess::HalfResDownsampleHDRTarget()
     CTexture* pSrcRT = CTexture::s_ptexHDRTarget;
     CTexture* pDstRT = CTexture::s_ptexHDRTargetScaled[0];
 
-    //  Confetti BEGIN: Igor Lobanchikov
 #if defined(CRY_USE_METAL) || defined(ANDROID)
     gRenDev->RT_SetScissor(true, 0, 0, gcpRendD3D->m_HalfResRect.right, gcpRendD3D->m_HalfResRect.bottom);
 #endif
-    //  Confetti End: Igor Lobanchikov
 
     if (CRenderer::CV_r_HDRBloomQuality >= 2)
     {
@@ -675,11 +665,9 @@ void CHDRPostProcess::HalfResDownsampleHDRTarget()
         PostProcessUtils().StretchRect(pSrcRT, pDstRT, true);
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov
 #ifdef CRY_USE_METAL
     gRenDev->RT_SetScissor(false, 0, 0, 0, 0);
 #endif
-    //  Confetti End: Igor Lobanchikov
 }
 
 
@@ -690,11 +678,9 @@ void CHDRPostProcess::QuarterResDownsampleHDRTarget()
     CTexture* pSrcRT = CTexture::s_ptexHDRTargetScaled[0];
     CTexture* pDstRT = CTexture::s_ptexHDRTargetScaled[1];
 
-    //  Confetti BEGIN: Igor Lobanchikov
 #if defined(CRY_USE_METAL) || defined(ANDROID)
     gRenDev->RT_SetScissor(true, 0, 0, (gcpRendD3D->m_HalfResRect.right + 1) >> 1, (gcpRendD3D->m_HalfResRect.bottom + 1) >> 1);
 #endif
-    //  Confetti End: Igor Lobanchikov
 
     // TODO: this pass seems redundant.  Can we get rid of it in non-gmem paths too?
     if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
@@ -729,11 +715,9 @@ void CHDRPostProcess::QuarterResDownsampleHDRTarget()
         PostProcessUtils().StretchRect(pSrcRT, pDstRT);
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov
 #if defined(CRY_USE_METAL) || defined(ANDROID)
     gRenDev->RT_SetScissor(false, 0, 0, 0, 0);
 #endif
-    //  Confetti End: Igor Lobanchikov
 }
 
 
@@ -1329,11 +1313,17 @@ void CHDRPostProcess::ToneMapping()
     rd->FX_SetStencilDontCareActions(1, true, true);
     
 
-    bool bEmpty = SRendItem::IsListEmpty(EFSLIST_AFTER_POSTPROCESS, rd->m_RP.m_nProcessThreadID, rd->m_RP.m_pRLD);
+    bool isAfterPostProcessBucketEmpty = SRendItem::IsListEmpty(EFSLIST_AFTER_POSTPROCESS, rd->m_RP.m_nProcessThreadID, rd->m_RP.m_pRLD);
+    
+    bool isAuxGeomEnabled = false;
+#if defined(ENABLE_RENDER_AUX_GEOM)
+    isAuxGeomEnabled = CRenderer::CV_r_enableauxgeom == 1;
+#endif
     
     //We may need to preserve the depth buffer in case there is something to render in the EFSLIST_AFTER_POSTPROCESS bucket.
     //It could be UI in the 3d world. If the bucket is empty ignore the depth buffer as it is not needed.
-    if (bEmpty)
+    //Also check if Auxgeom rendering is enabled in which case we preserve depth buffer.
+    if (isAfterPostProcessBucketEmpty && !isAuxGeomEnabled)
     {
         rd->FX_SetDepthDontCareActions(0, true, true);
         rd->FX_SetDepthDontCareActions(1, true, true);

@@ -16,6 +16,14 @@
 #include <../Common/Apple/Launcher_Apple.h>
 #include <../Common/UnixLike/Launcher_UnixLike.h>
 
+#if AZ_TESTS_ENABLED
+
+int main(int argc, char* argv[])
+{
+    // TODO: Implement for Mac
+    return static_cast<int>(LumberyardLauncher::ReturnCode::ErrUnitTestNotSupported);
+}
+#else
 
 int main(int argc, char* argv[])
 {
@@ -54,3 +62,5 @@ int main(int argc, char* argv[])
 
     return static_cast<int>(status);
 }
+
+#endif // AZ_TESTS_ENABLED

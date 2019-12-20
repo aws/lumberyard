@@ -251,6 +251,14 @@ void CObjManager::RenderObject(IRenderNode* pEnt,
             return;
         }
         break;
+#ifdef LY_TERRAIN_RUNTIME
+    case eERType_TerrainSystem:
+        if (!passInfo.RenderTerrain())
+        {
+            return;
+        }
+        break;
+#endif
     default:
         if (!passInfo.RenderEntities())
         {

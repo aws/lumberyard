@@ -27,12 +27,27 @@ namespace PhysX
         : public AZ::ComponentBus
     {
     public:
-        /// Creates a ShapeConfiguration based on shape information from this entity's shape bus.
-        /// @return A smart pointer to the created ShapeConfiguration.
+        // LUMBERYARD_DEPRECATED(LY-101785)
+        /// @deprecated Please use GetShapeConfigurations instead.
         virtual AZStd::shared_ptr<Physics::ShapeConfiguration> GetShapeConfigFromEntity() = 0;
+
+        // LUMBERYARD_DEPRECATED(LY-101785)
+        /// @deprecated Please use GetShapeConfigurations instead.
         virtual const Physics::ColliderConfiguration& GetColliderConfig() = 0;
+
+        // LUMBERYARD_DEPRECATED(LY-101785)
+        /// @deprecated Please use GetShapes instead.
         virtual AZStd::shared_ptr<Physics::Shape> GetShape() = 0;
+
+        // LUMBERYARD_DEPRECATED(LY-101785)
+        /// @deprecated Please use GetShapes instead.
         virtual void* GetNativePointer() = 0;
+
+        /// Gets the collection of collider configuration / shape configuration pairs used to define the collider's shapes.
+        virtual Physics::ShapeConfigurationList GetShapeConfigurations() = 0;
+
+        /// Gets the collection of physics shapes associated with the collider.
+        virtual AZStd::vector<AZStd::shared_ptr<Physics::Shape>> GetShapes() = 0;
 
         /// Checks if this collider component is associated with a static rigid body.
         /// Checks whether this collider component exists on an entity without a rigid body component,

@@ -1,12 +1,7 @@
 {
     "auto":
     {
-        "Platform/AppleTV":
-        [
-            "EMotionFX_Traits_Platform.h",
-            "EMotionFX_Traits_AppleTV.h"
-        ],
-        "Platform/Common/FileOffsetType":
+        "EMotionFXSDK/MCore/Platform/AppleTV":
         [
             "../Common/FileOffsetType/MCore/Source/DiskFile_FileOffsetType.cpp"
         ]

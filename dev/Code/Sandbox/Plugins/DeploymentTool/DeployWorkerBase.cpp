@@ -39,8 +39,6 @@ namespace
     {
         switch (platform)
         {
-            case PlatformOptions::Android_ARMv7:
-                return "android_armv7_clang";
             case PlatformOptions::Android_ARMv8:
                 return "android_armv8_clang";
 
@@ -307,8 +305,10 @@ bool DeployWorkerBase::LaunchShaderCompiler() const
         }
         else
         {
-            DEPLOY_LOG_ERROR("[ERROR] Unable to validate connection to specified shader compiler IP address and port!");
-            return false;
+            // Just warn here instead of producing an error. Just because our host machine can't connect to the
+            // shader compiler doesn't mean that the target device wont be able to connect to it.
+            DEPLOY_LOG_WARN("[WARN] Unable to validate connection to specified shader compiler IP address and port.");
+            return true;
         }
     }
     else
@@ -427,11 +427,7 @@ StringOutcome DeployWorkerBase::GetUserSettingsValue(const char* groupName, cons
 
     // Get the platform specific Output Folder key
     AZStd::string platformOutputFolderKey;
-    if (platformOption == PlatformOptions::Android_ARMv7)
-    {
-        platformOutputFolderKey = "out_folder_android_armv7_clang";
-    }
-    else if (platformOption == PlatformOptions::Android_ARMv8)
+    if (platformOption == PlatformOptions::Android_ARMv8)
     {
         platformOutputFolderKey = "out_folder_android_armv8_clang";
     }
@@ -481,11 +477,7 @@ StringOutcome DeployWorkerBase::GetUserSettingsValue(const char* groupName, cons
 AZStd::string DeployWorkerBase::GetPlatformSpecficDefaultSettingsFilename(PlatformOptions platformOption, const char* devRoot)
 {
     AZStd::string defaultSettingsFile;
-    if (platformOption == PlatformOptions::Android_ARMv7)
-    {
-        defaultSettingsFile = AZStd::string::format("%s/_WAF_/settings/platforms/platform.android_armv7_clang.json", devRoot);
-    }
-    else if (platformOption == PlatformOptions::Android_ARMv8)
+    if (platformOption == PlatformOptions::Android_ARMv8)
     {
         defaultSettingsFile = AZStd::string::format("%s/_WAF_/settings/platforms/platform.android_armv8_clang.json", devRoot);
     }

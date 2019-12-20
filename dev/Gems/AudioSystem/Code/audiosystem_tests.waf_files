@@ -1,0 +1,14 @@
+{
+    "auto": {
+        "Tests": [
+            "Tests/AudioInputTest.cpp",
+            "Tests/AudioIntegTest.cpp",
+            "Tests/AudioSystemTest.cpp"
+        ],
+        "Tests/Mocks": [
+            "Tests/Mocks/ATLEntitiesMock.h",
+            "Tests/Mocks/FileCacheManagerMock.h",
+            "Tests/Mocks/IAudioSystemImplementationMock.h"
+        ]
+    }
+}

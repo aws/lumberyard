@@ -10,6 +10,8 @@
 *
 */
 
+#pragma once
+
 #include <AzCore/base.h>
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/UserSettings/UserSettings.h>
@@ -17,13 +19,19 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
 #include <AzToolsFramework/Slice/SliceTransaction.h>
+
+// Suppresses the following warnings
+// warning C4251: 'QBrush::d': class 'QScopedPointer<QBrushData,QBrushDataPointerDeleter>' needs to have dll-interface to be used by clients of class 'QBrush'
+// warning C4251: 'QGradient::m_stops': class 'QVector<QGradientStop>' needs to have dll-interface to be used by clients of class 'QGradient'
+// warning C4800: 'uint': forcing value to bool 'true' or 'false' (performance warning)
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option")
 #include <QString>
 #include <QSize>
 #include <QWidget>
 #include <QLabel>
 #include <QDialog>
 #include <QWidgetAction>
-#pragma once
+AZ_POP_DISABLE_WARNING
 
 class QMenu;
 
@@ -36,6 +44,28 @@ namespace AzToolsFramework
         using EntityAncestorPair = AZStd::pair<AZ::EntityId, AZStd::shared_ptr<AZ::Entity>>;
         using IdToEntityMapping = AZStd::unordered_map<AZ::EntityId, AZ::Entity*>;
         using IdToInstanceAddressMapping = AZStd::unordered_map<AZ::EntityId, AZ::SliceComponent::SliceInstanceAddress>;
+        
+        using WillPushEntityCallback = AZStd::function<bool(const AZ::EntityId, const AZ::Data::Asset <AZ::SliceAsset>&)> ;
+
+        enum class QuickPushMenuOverrideDisplayCount
+        {
+            ShowOverrideCountWhenSingle,
+            ShowOverrideCountOnlyWhenMultiple
+        };
+
+        /// Options that can be passed to PupulateQuickPushMenu to affect appearance.
+        struct QuickPushMenuOptions
+        {
+            QuickPushMenuOptions() = default;
+            QuickPushMenuOptions(const AZStd::string& headerText, QuickPushMenuOverrideDisplayCount singleOverrideDisplayOption) :
+                m_headerText(headerText),
+                m_singleOverrideDisplayOption(singleOverrideDisplayOption)
+            {
+            }
+
+            AZStd::string m_headerText = "Save Slice Overrides";
+            QuickPushMenuOverrideDisplayCount m_singleOverrideDisplayOption = QuickPushMenuOverrideDisplayCount::ShowOverrideCountWhenSingle;
+        };
 
         /**
          * Displays slice push UI for the specified set of entities.
@@ -216,17 +246,18 @@ namespace AzToolsFramework
          * Populates a QMenu with sub-menus to expose slice override push operations for a provided set of entities.
          * \param outerMenu QMenu to which sub menus will be added.
          * \param inputEntities a set of entities for which quick push options will be determined. Typically callers will pass the selected entity set.
-         * \param headerText optional header text for push options.
+         * \param options optional settings to affect the appearance of the push menu, i.e. title and whether to display a change count if it's singular.
          */
-        void PopulateQuickPushMenu(QMenu& outerMenu, const AzToolsFramework::EntityIdList& inputEntities, const AZStd::string& headerText = "Save slice overrides");
+        void PopulateQuickPushMenu(QMenu& outerMenu, const AzToolsFramework::EntityIdList& inputEntities, const QuickPushMenuOptions& options = QuickPushMenuOptions());
 
         /**
          * Populates a QMenu with sub-menus to expose slice override push operations for a specific entity and data field.
          * \param outerMenu QMenu to which sub menus will be added.
          * \param entityId a specific live entity for which the specified field should be pushed.
          * \param fieldAddress address for the specific field to be pushed.
+         * \param options optional settings to affect the appearance of the push menu, i.e. title and whether to display a change count if it's singular.
          */
-        void PopulateQuickPushMenu(QMenu& outerMenu, AZ::EntityId entityId, const InstanceDataNode::Address& fieldAddress, const AZStd::string& headerText = "Save slice overrides");
+        void PopulateQuickPushMenu(QMenu& outerMenu, AZ::EntityId entityId, const InstanceDataNode::Address& fieldAddress, const QuickPushMenuOptions& options = QuickPushMenuOptions());
 
         /**
         * Get pushable new child entity Ids
@@ -545,6 +576,18 @@ namespace AzToolsFramework
         * \return The slice save format.
         */
         AZ::DataStream::StreamType GetSliceStreamFormat();
+
+        /**
+        * Prunes child order array entries that won't be in a pushed slice.
+        * \param originalOrderArray Child array with all entities in
+        * \param prunedOrderArray [out] Child array after removing unneeded entities.
+        * \param targetSlice Slice that the children are being pushed to.
+        * \param willPushEntityCallback Callback routine that is called per entity in the array and returns true if the entity will be pushed.
+        */
+        void RemoveInvalidChildOrderArrayEntries(const AZStd::vector<AZ::EntityId>& originalOrderArray,
+            AZStd::vector<AZ::EntityId>& prunedOrderArray,
+            const AZ::Data::Asset<AZ::SliceAsset>& targetSlice,
+            WillPushEntityCallback willPushEntityCallback);
 
         static const char* splitterColor = "black";
         static const char* detachMenuItemHoverColor = "#4285F4";

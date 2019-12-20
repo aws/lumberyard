@@ -142,10 +142,11 @@ namespace GridMate
         void                        DebugMarshal(MarshalContext& mc) { Marshal(mc); }
         void                        DebugPreDestruct() { PreDestruct(); }
         //---------------------------------------------------------------------
-    protected:
+        
         explicit Replica(const char* replicaName);
         ~Replica();
 
+    protected:
         //---------------------------------------------------------------------
         // refcount
         //---------------------------------------------------------------------

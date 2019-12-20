@@ -185,6 +185,22 @@ void RCLogContext(const char* szMessage)
     }
 }
 
+void RCLogSummary(const char* szFormat, ...)
+{
+    va_list args;
+    va_start(args, szFormat);
+    if (g_pRCLog)
+    {
+        g_pRCLog->LogV(IRCLog::eType_Summary, szFormat, args);
+    }
+    else
+    {
+        vprintf(szFormat, args);
+        printf("\n");
+        fflush(stdout);
+    }
+    va_end(args);
+}
 
 //////////////////////////////////////////////////////////////////////////
 // Log important data that must be printed regardless verbosity.

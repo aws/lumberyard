@@ -19,13 +19,17 @@
 #include "StatObj.h"
 #include "ObjMan.h"
 #include "VisAreas.h"
+
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
 #include "terrain_sector.h"
+#include "terrain.h"
+#endif
+
 #include "CullBuffer.h"
 #include "3dEngine.h"
 #include "IndexedMesh.h"
 #include "Brush.h"
 #include "Vegetation.h"
-#include "terrain.h"
 #include "ObjectsTree.h"
 #include <IResourceManager.h>
 #include "DecalRenderNode.h"
@@ -164,7 +168,10 @@ void CObjManager::UnloadObjects(bool bDeleteAll)
     //leak and most likely crash the engine across level loads.
     stl::free_container(m_collectedMaterials);
 
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
     stl::free_container(m_lstTmpCastingNodes);
+#endif
+
     stl::free_container(m_decalsToPrecreate);
     stl::free_container(m_tmpAreas0);
     stl::free_container(m_tmpAreas1);
@@ -1381,6 +1388,7 @@ void CObjManager::MakeDepthCubemapRenderItemList(CVisArea* pReceiverArea, const 
             Get3DEngine()->GetObjectTree()->FillDepthCubemapRenderList(cubemapAABB, passInfo, objectsList);
         }
 
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
         if (GetTerrain() != nullptr && passInfo.RenderTerrain() && Get3DEngine()->m_bShowTerrainSurface)
         {
             PodArray<CTerrainNode*> terrainNodes;
@@ -1394,6 +1402,7 @@ void CObjManager::MakeDepthCubemapRenderItemList(CVisArea* pReceiverArea, const 
                 objectsList->Add(pNode);
             }
         }
+#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
     }
 }
 

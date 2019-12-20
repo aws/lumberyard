@@ -32,9 +32,6 @@ namespace AzFramework
         static const AZ::Crc32 AnyDeviceNameCrc32;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        AZ_DEPRECATED(static const AZ::u32 AnyDeviceIndex, "Deprecated, please use LocalUserIdAny");
-
-        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Default constructor
         InputChannelEventFilter() = default;
 

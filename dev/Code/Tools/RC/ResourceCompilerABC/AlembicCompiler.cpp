@@ -893,7 +893,7 @@ bool AlembicCompiler::CompileStaticDataRec(GeomCache::Node* pParentNode, Alembic
         bFlatten = true;
     }
 
-    pCurrentNode->m_abcObject = Alembic::Abc::IObject(currentObject, Alembic::Abc::kWrapExisting);
+    pCurrentNode->m_abcObject = Alembic::Abc::IObject(Alembic::Abc::ALEMBIC_VERSION_NS::GetObjectReaderPtr(currentObject), Alembic::Abc::kWrapExisting);
     pCurrentNode->m_abcXForms = abcXformStack;
 
     // Flatten hierarchy if possible

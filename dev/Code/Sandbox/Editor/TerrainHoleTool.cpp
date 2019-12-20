@@ -16,6 +16,8 @@
 
 #include "StdAfx.h"
 #include "TerrainHoleTool.h"
+
+#include "ViewManager.h"
 #include "Viewport.h"
 #include "TerrainHolePanel.h"
 #include "Terrain/Heightmap.h"
@@ -24,6 +26,8 @@
 
 #include "I3DEngine.h"
 #include "ITerrain.h"
+
+#include "Util/BoostPythonHelpers.h"
 
 float CTerrainHoleTool::m_brushRadius = 0.5;
 bool CTerrainHoleTool::m_bMakeHole = true;
@@ -74,17 +78,7 @@ void CTerrainHoleTool::EndEditParams()
 //////////////////////////////////////////////////////////////////////////
 bool CTerrainHoleTool::MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags)
 {
-    bool bHitTerrain(false);
-    Vec3 stPointerPos;
-
-    stPointerPos = view->ViewToWorld(point, &bHitTerrain, true);
-
-    // When there is no terrain, the returned position would be 0,0,0 causing
-    // users to often delete the terrain under this position unintentionally.
-    if (bHitTerrain)
-    {
-        m_pointerPos = stPointerPos;
-    }
+    UpdatePointerPos(view, point);
 
     if (event == eMouseLDown || (event == eMouseMove && (flags & MK_LBUTTON)))
     {
@@ -195,17 +189,17 @@ bool CTerrainHoleTool::OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, ui
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CTerrainHoleTool::Modify()
+AZStd::pair<Vec2i, Vec2i> CTerrainHoleTool::Modify()
 {
     if (!GetIEditor()->Get3DEngine()->GetITerrain())
     {
-        return;
+        return {};
     }
 
     CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
     if (!pHeightmap)
     {
-        return;
+        return {};
     }
 
     Vec2i min;
@@ -213,15 +207,35 @@ void CTerrainHoleTool::Modify()
 
     CalculateHoleArea(min, max);
 
-    if (
-        (max.x - min.x) >= 0
-        &&
-        (max.y - min.y) >= 0
-        )
+    if ((max.x - min.x) >= 0 && (max.y - min.y) >= 0)
     {
         pHeightmap->MakeHole(min.x, min.y, max.x - min.x, max.y - min.y, m_bMakeHole);
+        return AZStd::make_pair(min, max);
+    }
+    else
+    {
+        return {};
     }
 }
+
+//////////////////////////////////////////////////////////////////////////
+bool CTerrainHoleTool::UpdatePointerPos(CViewport* view, const QPoint& pos)
+{
+    bool bHitTerrain(false);
+    Vec3 stPointerPos;
+
+    stPointerPos = view->ViewToWorld(pos, &bHitTerrain, true);
+
+    // When there is no terrain, the returned position would be 0,0,0 causing
+    // users to often delete the terrain under this position unintentionally.
+    if (bHitTerrain)
+    {
+        m_pointerPos = stPointerPos;
+    }
+
+    return bHitTerrain;
+}
+
 //////////////////////////////////////////////////////////////////////////
 bool CTerrainHoleTool::CalculateHoleArea(Vec2i& min, Vec2i& max) const
 {
@@ -247,6 +261,165 @@ bool CTerrainHoleTool::CalculateHoleArea(Vec2i& min, Vec2i& max) const
 
     return true;
 }
+
 //////////////////////////////////////////////////////////////////////////
+class ScriptingBindings
+{
+public:
+    //////////////////////////////////////////////////////////////////////////
+    static void PySetBrushRadius(float radius)
+    {
+        if (CTerrainHoleTool* holeTool = GetTool())
+        {
+            holeTool->SetBrushRadius(radius);
+            RefreshUI(*holeTool);
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static float PyGetBrushRadius()
+    {
+        return CTerrainHoleTool::m_brushRadius;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void PySetMakeHole(bool bEnable)
+    {
+        CTerrainHoleTool::m_bMakeHole = bEnable;
+
+        if (CTerrainHoleTool* holeTool = GetTool())
+        {
+            RefreshUI(*holeTool);
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static bool PyGetMakeHole()
+    {
+        return CTerrainHoleTool::m_bMakeHole;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static boost::python::tuple PyPaintHole(float x, float y)
+    {
+        if (CTerrainHoleTool* holeTool = GetTool())
+        {
+            if (holeTool->UpdatePointerPos(GetIEditor()->GetViewManager()->GetGameViewport(), QPoint(x, y)))
+            {
+                AZStd::pair<Vec2i, Vec2i> modifiedArea = holeTool->Modify();
+
+                if (!modifiedArea.first.IsZero() || !modifiedArea.second.IsZero())
+                {
+                    return boost::python::make_tuple(modifiedArea.first.x, modifiedArea.first.y, modifiedArea.second.x, modifiedArea.second.y);
+                }
+            }
+        }
+
+        return {};
+    }
+    
+    //////////////////////////////////////////////////////////////////////////
+    static void PyPaintHoleDirect(int x1, int y1, int x2, int y2)
+    {
+        IEditor* editor = GetIEditor();
+        if (!editor)
+        {
+            return;
+        }
+
+        CHeightmap* heightmap = editor->GetHeightmap();
+        if (!heightmap)
+        {
+            return;
+        }
+
+        heightmap->MakeHole(x1, y1, x2, y2, CTerrainHoleTool::m_bMakeHole);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static bool PyIsHoleAt(int x, int y)
+    {
+        IEditor* editor = GetIEditor();
+        if (!editor)
+        {
+            return false;
+        }
+
+        CHeightmap* heightmap = editor->GetHeightmap();
+        if (!heightmap)
+        {
+            return false;
+        }
+
+        return heightmap->IsHoleAt(x, y);
+    }
+
+private:
+    //////////////////////////////////////////////////////////////////////////
+    static void RefreshUI(CTerrainHoleTool& tool)
+    {
+        if (tool.m_panelId)
+        {
+            tool.m_panel->SetMakeHole(tool.m_bMakeHole);
+            tool.m_panel->SetRadius();
+
+            IEditor* editor = GetIEditor();
+            AZ_Assert(editor, "Editor instance doesn't exist!");
+            if (editor)
+            {
+                editor->Notify(eNotify_OnInvalidateControls);
+            }
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static CTerrainHoleTool* GetTool()
+    {
+        IEditor* editor = GetIEditor();
+        AZ_Assert(editor, "Editor instance doesn't exist!");
+
+        if (!editor)
+        {
+            return nullptr;
+        }
+
+        CEditTool* pTool = editor->GetEditTool();
+
+        if (!pTool || !qobject_cast<CTerrainHoleTool*>(pTool))
+        {
+            editor->SelectRollUpBar(ROLLUP_TERRAIN);
+
+            // This needs to be done after the terrain tab is selected, because in
+            // Cry-Free mode the terrain tool could be closed, whereas in legacy
+            // mode the rollupbar is never deleted, it's only hidden
+            pTool = new CTerrainHoleTool();
+            editor->SetEditTool(pTool);
+
+            MainWindow::instance()->update();
+        }
+
+        return reinterpret_cast<CTerrainHoleTool*>(pTool);
+    }
+};
+
+//////////////////////////////////////////////////////////////////////////
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(ScriptingBindings::PySetBrushRadius, terrain, set_brush_radius,
+    "Sets the brush radius of the hole tool.", "terrain.set_brush_radius(float radius)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(ScriptingBindings::PyGetBrushRadius, terrain, get_brush_radius,
+    "Gets the brush radius of the hole tool.", "float terrain.get_brush_radius()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(ScriptingBindings::PySetMakeHole, terrain, set_make_hole,
+    "Sets making holes to enabled or disabled. Disabling will remove holes.", "void terrain.set_make_hole(bool make_hole)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(ScriptingBindings::PyGetMakeHole, terrain, get_make_hole,
+    "Returns whether or not making holes is enabled.", "bool terrain.get_make_hole()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(ScriptingBindings::PyPaintHole, terrain, paint_hole,
+    "Paints or removes holes from the terrain based on flags set. X and Y are viewport coordinates.",
+    "tuple terrain.paint_hole(float x, float y)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(ScriptingBindings::PyPaintHoleDirect, terrain, paint_hole_direct,
+    "Paints or removes holes directly on the heightmap based on flags set.",
+    "void terrain.paint_hole_direct(int x1, int y1, int x2, int y2)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(ScriptingBindings::PyIsHoleAt, terrain, is_hole_at,
+    "Returns whether or not a hole exists at point X, Y. X and Y are heightmap coordinates.",
+    "bool terrain.is_hole_at(int x, int y)");
 
 #include <TerrainHoleTool.moc>

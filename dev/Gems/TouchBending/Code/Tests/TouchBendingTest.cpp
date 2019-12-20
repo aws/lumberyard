@@ -13,6 +13,7 @@
 
 #include <AzCore/UnitTest/UnitTest.h>
 #include <AzTest/AzTest.h>
+#include <AzTest/GemTestEnvironment.h>
 
 #include <AzCore/Asset/AssetManagerComponent.h>
 #include <AzCore/Jobs/JobManagerComponent.h>
@@ -30,12 +31,13 @@
 #include <PxPhysicsAPI.h>
 #include <Physics/PhysicsTests.h>
 #include <Physics/PhysicsTests.inl>
+#include <PhysX/SystemComponentBus.h>
+#include <Simulation/PhysicsComponent.h>
 
 #include <AzFramework/Physics/TouchBendingBus.h>
 
 #ifdef AZ_TESTS_ENABLED
 
-static const char* PVD_HOST = "127.0.0.1";
 static const char* const TOUCH_BENDING_TEST_WINDOW = "TouchBendingTest";
 
 namespace TouchBending
@@ -85,12 +87,13 @@ namespace TouchBending
     };
     
     class TouchBendingTestEnvironment
-        : public Physics::PhysicsTestEnvironment
+        : public AZ::Test::GemTestEnvironment
         , protected Physics::DefaultWorldBus::Handler
     {
-    protected:
+    private:
         void SetupEnvironment() override;
         void TeardownEnvironment() override;
+        void AddGemsAndComponents() override;
 
         // DefaultWorldBus
         AZStd::shared_ptr<Physics::World> GetDefaultWorld() override
@@ -101,55 +104,33 @@ namespace TouchBending
         // Flag to enable pvd in tests
         static const bool s_enablePvd = true;
 
-        AZ::ComponentApplication* m_application;
-        AZ::Entity* m_systemEntity;
-        physx::PxPvdTransport* m_pvdTransport = nullptr;
-        physx::PxPvd* m_pvd = nullptr;
         AZ::IO::LocalFileIO m_fileIo;
         AZStd::shared_ptr<Physics::World> m_defaultWorld;
     };
 
     void TouchBendingTestEnvironment::SetupEnvironment()
     {
-        Physics::PhysicsTestEnvironment::SetupEnvironment();
-
         AZ::IO::FileIOBase::SetInstance(&m_fileIo);
 
-        // Create application and descriptor
-        m_application = aznew AZ::ComponentApplication;
-        AZ::ComponentApplication::Descriptor appDesc;
-        appDesc.m_useExistingAllocator = true;
-
-        // Set up gems for loading
-        AZ::DynamicModuleDescriptor dynamicModuleDescriptor;
-        dynamicModuleDescriptor.m_dynamicLibraryPath = "Gem.PhysX.4e08125824434932a0fe3717259caa47.v0.1.0";
-        appDesc.m_modules.push_back(dynamicModuleDescriptor);
-
-        dynamicModuleDescriptor = AZ::DynamicModuleDescriptor();
-        dynamicModuleDescriptor.m_dynamicLibraryPath = "Gem.TouchBending.c58d2057f3724b22ae0df0be68a4e316.v0.1.0";
-        appDesc.m_modules.push_back(dynamicModuleDescriptor);
-
-        // Create system entity
-        m_systemEntity = m_application->Create(appDesc);
-        AZ_TEST_ASSERT(m_systemEntity);
-        m_systemEntity->AddComponent(aznew AZ::MemoryComponent());
-        m_systemEntity->AddComponent(aznew AZ::AssetManagerComponent());
-        m_systemEntity->AddComponent(aznew AZ::JobManagerComponent());
-        m_systemEntity->Init();
-        m_systemEntity->Activate();
+        AZ::Test::GemTestEnvironment::SetupEnvironment();
 
         if (s_enablePvd)
         {
-            // set up visual debugger
-            m_pvdTransport = physx::PxDefaultPvdSocketTransportCreate(PVD_HOST, 5425, 10);
-            m_pvd = PxCreatePvd(PxGetFoundation());
-            m_pvd->connect(*m_pvdTransport, physx::PxPvdInstrumentationFlag::eALL);
+            bool pvdConnectionSuccessful;
+            PhysX::SystemRequestsBus::BroadcastResult(pvdConnectionSuccessful, &PhysX::SystemRequests::ConnectToPvd);
         }
 
         Physics::SystemRequestBus::BroadcastResult(m_defaultWorld,
-            &Physics::SystemRequests::CreateWorld, AZ_CRC("UnitTestWorld", 0x39d5e465));
+            &Physics::SystemRequests::CreateWorld, Physics::DefaultPhysicsWorldId);
 
         Physics::DefaultWorldBus::Handler::BusConnect();
+    }
+
+    void TouchBendingTestEnvironment::AddGemsAndComponents()
+    {
+        AddDynamicModulePaths({ "Gem.PhysX.4e08125824434932a0fe3717259caa47.v0.1.0" });
+        AddComponentDescriptors({ Simulation::PhysicsComponent::CreateDescriptor() });
+        AddRequiredComponents({ Simulation::PhysicsComponent::TYPEINFO_Uuid() });
     }
 
     void TouchBendingTestEnvironment::TeardownEnvironment()
@@ -157,18 +138,12 @@ namespace TouchBending
         Physics::DefaultWorldBus::Handler::BusDisconnect();
         m_defaultWorld = nullptr;
 
-        if (m_pvd)
+        if (s_enablePvd)
         {
-            m_pvd->disconnect();
-            m_pvd->release();
+            PhysX::SystemRequestsBus::Broadcast(&PhysX::SystemRequests::DisconnectFromPvd);
         }
 
-        if (m_pvdTransport)
-        {
-            m_pvdTransport->release();
-        }
-        delete m_application;
-        Physics::PhysicsTestEnvironment::TeardownEnvironment();
+        AZ::Test::GemTestEnvironment::TeardownEnvironment();
     }
 
     /// This class mimics the behavior of TouchBendingCVegetationAgent
@@ -404,11 +379,13 @@ namespace TouchBending
             return true;
         }
 
-        void OnPhysicalizedTouchBendingSkeleton(const void* privateData, Physics::TouchBendingSkeletonHandle* skeleton) override
+        bool OnPhysicalizedTouchBendingSkeleton(const void* privateData, Physics::TouchBendingSkeletonHandle* skeleton) override
         {
             TouchBendingTestState* testState = static_cast<TouchBendingTestState*>(const_cast<void*>(privateData));
             testState->m_physicalizedSkeleton = skeleton;
+            return true;
         }
+
         //Physics::ITouchBendingCallback END
 
         // Physics::WorldEventHandler START

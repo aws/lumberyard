@@ -30,7 +30,7 @@ namespace PhysXCharacters
 
     public:
         AZ_CLASS_ALLOCATOR(CharacterControllerCosmeticReplica, AZ::SystemAllocator, 0);
-        AZ_TYPE_INFO(CharacterControllerCosmeticReplica, "{B32BB80F-26AD-4F72-A84A-9FA2F6989D67}", Physics::Character);
+        AZ_TYPE_INFO_LEGACY(CharacterControllerCosmeticReplica, "{B32BB80F-26AD-4F72-A84A-9FA2F6989D67}", Physics::Character);
         static void Reflect(AZ::ReflectContext* context);
 
         CharacterControllerCosmeticReplica() = default;

@@ -12,7 +12,9 @@
 #pragma once
 
 #include <AzCore/base.h>
-#include <AzCore/Memory/AllocatorBase.h>
+#include <AzCore/Memory/AllocatorWrapper.h>
+#include <AzCore/Memory/Config.h>
+#include <AzCore/Memory/SimpleSchemaAllocator.h>
 #include <AzCore/std/typetraits/alignment_of.h>
 #include <AzCore/std/typetraits/aligned_storage.h>
 
@@ -20,6 +22,7 @@
 
 #include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/Module/Environment.h>
+
 
 // Declarations of new overloads, definitions are in NewAndDelete.inl, or you can link your own versions
 // AZ::Internal::AllocatorDummy is merely to differentiate our overloads from any other operator new signatures
@@ -83,9 +86,9 @@ void* operator new[](std::size_t, const AZ::Internal::AllocatorDummy*);
 #endif
 
 /**
- * azmalloc is equivalent to ::malloc(...). It should be used with corresponding azfree call.
- * macro signature: azmalloc(size_t byteSize, size_t alignment = DefaultAlignment, AllocatorType = AZ::SystemAllocator, const char* name = "Default Name", int flags = 0)
- */
+* azmalloc is equivalent to ::malloc(...). It should be used with corresponding azfree call.
+* macro signature: azmalloc(size_t byteSize, size_t alignment = DefaultAlignment, AllocatorType = AZ::SystemAllocator, const char* name = "Default Name", int flags = 0)
+*/
 #define azmalloc(...)       AZ_MACRO_SPECIALIZE(azmalloc_, AZ_VA_NUM_ARGS(__VA_ARGS__), (__VA_ARGS__))
 
 /// azcalloc(size)
@@ -113,9 +116,9 @@ void* operator new[](std::size_t, const AZ::Internal::AllocatorDummy*);
 #define azrealloc_4(_1, _2, _3, _4)     AZ::AllocatorInstance<_4>::Get().ReAllocate(_1, _2, _3)
 
 /**
- * azrealloc is equivalent to ::realloc(...)
- * macro signature: azrealloc(void* ptr, size_t size, size_t alignment = DefaultAlignment, AllocatorType = AZ::SystemAllocator)
- */
+* azrealloc is equivalent to ::realloc(...)
+* macro signature: azrealloc(void* ptr, size_t size, size_t alignment = DefaultAlignment, AllocatorType = AZ::SystemAllocator)
+*/
 #define azrealloc(...)      AZ_MACRO_SPECIALIZE(azrealloc_, AZ_VA_NUM_ARGS(__VA_ARGS__), (__VA_ARGS__))
 
 /**
@@ -385,80 +388,262 @@ namespace AZ {
  */
 namespace AZ
 {
+    namespace AllocatorStorage
+    {
+        /// A private structure to create heap-storage for an allocator that won't expire until other static module members are destructed.
+        struct LazyAllocatorRef
+        {
+            using CreationFn = IAllocator*(*)(void*);
+            using DestructionFn = void(*)(IAllocator&);
+
+            ~LazyAllocatorRef();
+            void Init(size_t size, size_t alignment, CreationFn creationFn, DestructionFn destructionFn);
+
+            IAllocator* m_allocator = nullptr;
+            DestructionFn m_destructor = nullptr;
+        };
+
+        /**
+        * A base class for all storage policies. This exists to provide access to private IAllocator methods via template friends.
+        */
+        template<class Allocator>
+        class StoragePolicyBase
+        {
+        protected:
+            static void Create(Allocator& allocator, const typename Allocator::Descriptor& desc, bool lazilyCreated)
+            {
+                allocator.Create(desc);
+                allocator.PostCreate();
+                allocator.SetLazilyCreated(lazilyCreated);
+            }
+
+            static void SetLazilyCreated(Allocator& allocator, bool lazilyCreated)
+            {
+                allocator.SetLazilyCreated(lazilyCreated);
+            }
+
+            static void Destroy(IAllocator& allocator)
+            {
+                allocator.PreDestroy();
+                allocator.Destroy();
+            }
+        };
+
+        /**
+        * EnvironmentStoragePolicy stores the allocator singleton in the shared Environment.
+        * This is the default, preferred method of storing allocators.
+        */
+        template<class Allocator>
+        class EnvironmentStoragePolicy : public StoragePolicyBase<Allocator>
+        {
+        public:
+            static IAllocator& GetAllocator()
+            {
+                if (!s_allocator)
+                {
+                    // Assert here before attempting to resolve. Otherwise a module-local
+                    // environment will be created which will result in a much more difficult to
+                    // locate problem
+                    AZ_Assert(AZ::Environment::IsReady(), "Environment has not been attached yet, allocator cannot be created/resolved");
+                    if (AZ::Environment::IsReady())
+                    {
+                        s_allocator = Environment::FindVariable<Allocator>(AzTypeInfo<Allocator>::Name());
+                        AZ_Assert(s_allocator, "Allocator '%s' NOT ready for use! Call Create first!", AzTypeInfo<Allocator>::Name());
+                    }
+                }
+                return *s_allocator;
+            }
+
+            static void Create(const typename Allocator::Descriptor& desc)
+            {
+                if (!s_allocator)
+                {
+                    s_allocator = Environment::CreateVariable<Allocator>(AzTypeInfo<Allocator>::Name());
+                    if (s_allocator->IsReady()) // already created in a different module
+                    {
+                        return;
+                    }
+                }
+                else
+                {
+                    AZ_Assert(s_allocator->IsReady(), "Allocator '%s' already created!", AzTypeInfo<Allocator>::Name());
+                }
+
+                StoragePolicyBase<Allocator>::Create(*s_allocator, desc, false);
+            }
+
+            static void Destroy()
+            {
+                if (s_allocator)
+                {
+                    if (s_allocator.IsOwner())
+                    {
+                        StoragePolicyBase<Allocator>::Destroy(*s_allocator);
+                    }
+                    s_allocator = nullptr;
+                }
+                else
+                {
+                    AZ_Assert(false, "Allocator '%s' NOT ready for use! Call Create first!", AzTypeInfo<Allocator>::Name());
+                }
+            }
+
+            AZ_FORCE_INLINE static bool IsReady()
+            {
+                if (Environment::IsReady())
+                {
+                    if (!s_allocator) // if not there check the environment (if available)
+                    {
+                        s_allocator = Environment::FindVariable<Allocator>(AzTypeInfo<Allocator>::Name());
+                    }
+                    return s_allocator && s_allocator->IsReady();
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            static EnvironmentVariable<Allocator> s_allocator;
+        };
+
+        template<class Allocator>
+        EnvironmentVariable<Allocator> EnvironmentStoragePolicy<Allocator>::s_allocator;
+
+        /**
+        * ModuleStoragePolicy stores the allocator in a static variable that is local to the module using it.
+        * This forces separate instances of the allocator to exist in each module, and permits lazy instantiation.
+        * We only tolerate this for some special allocators, primarily to maintain backwards compatibility with CryEngine,
+        * since it still allocates outside of code in the data section.
+        *
+        * It has two ways of storing its allocator: either on the heap, which is the preferred way, since it guarantees
+        * the memory for the allocator won't be deallocated (such as in a DLL) before anyone that's using it. If disabled
+        * the allocator is stored in a static variable, which should only be used where this isn't a problem a shut-down
+        * time, such as on a console.
+        */
+        template<class Allocator, bool StoreAllocatorOnHeap>
+        struct ModuleStoragePolicyBase;
+        
+        template<class Allocator>
+        struct ModuleStoragePolicyBase<Allocator, false>: public StoragePolicyBase<Allocator>
+        {
+        protected:
+            // Use a static instance to store the allocator. This is not recommended when the order of shut-down with the module matters, as the allocator could have its memory destroyed 
+            // before the users of it are destroyed. The primary use case for this is allocators that need to support the CRT, as they cannot allocate from the heap.
+            static Allocator& GetModuleAllocatorInstance()
+            {
+                static Allocator* s_allocator = nullptr;
+                static typename AZStd::aligned_storage<sizeof(Allocator), AZStd::alignment_of<Allocator>::value>::type s_storage;
+
+                if (!s_allocator)
+                {
+                    s_allocator = new (&s_storage) Allocator;
+                    StoragePolicyBase<Allocator>::Create(*s_allocator, typename Allocator::Descriptor(), true);
+                }
+
+                return *s_allocator;
+            }
+        };
+
+        template<class Allocator>
+        struct ModuleStoragePolicyBase<Allocator, true> : public StoragePolicyBase<Allocator>
+        {
+        protected:
+            // Store-on-heap implementation uses the LazyAllocatorRef to create and destroy an allocator using heap-space so there isn't a problem with destruction order within the module.
+            static Allocator& GetModuleAllocatorInstance()
+            {
+                static LazyAllocatorRef s_allocator;
+
+                if (!s_allocator.m_allocator)
+                {
+                    s_allocator.Init(sizeof(Allocator), AZStd::alignment_of<Allocator>::value, [](void* mem) -> IAllocator* { return new (mem) Allocator; }, &StoragePolicyBase<Allocator>::Destroy);
+                    StoragePolicyBase<Allocator>::Create(*static_cast<Allocator*>(s_allocator.m_allocator), typename Allocator::Descriptor(), true);
+                }
+
+                return *static_cast<Allocator*>(s_allocator.m_allocator);
+            }
+        };
+
+        template<class Allocator, bool StoreAllocatorOnHeap = true>
+        class ModuleStoragePolicy : public ModuleStoragePolicyBase<Allocator, StoreAllocatorOnHeap>
+        {
+        public:
+            using Base = ModuleStoragePolicyBase<Allocator, StoreAllocatorOnHeap>;
+
+            static IAllocator& GetAllocator()
+            {
+                return Base::GetModuleAllocatorInstance();
+            }
+
+            static void Create(const typename Allocator::Descriptor& desc = typename Allocator::Descriptor())
+            {
+                StoragePolicyBase<Allocator>::Create(Base::GetModuleAllocatorInstance(), desc, true);
+            }
+
+            static void Destroy()
+            {
+                StoragePolicyBase<Allocator>::Destroy(Base::GetModuleAllocatorInstance());
+            }
+
+            AZ_FORCE_INLINE static bool IsReady()
+            {
+                return true;
+            }
+        };
+    }
+
+    namespace Internal
+    {
+        /**
+        * The main class that provides access to the allocator singleton, with a customizable storage policy for that allocator.
+        */
+        template<class Allocator, typename StoragePolicy = AllocatorStorage::EnvironmentStoragePolicy<Allocator>>
+        class AllocatorInstanceBase
+        {
+        public:
+            typedef typename Allocator::Descriptor Descriptor;
+
+            AZ_FORCE_INLINE static IAllocatorAllocate& Get()
+            {
+                return *GetAllocator().GetAllocationSource();
+            }
+
+            AZ_FORCE_INLINE static IAllocator& GetAllocator()
+            {
+                return StoragePolicy::GetAllocator();
+            }
+
+            static void Create(const Descriptor& desc = Descriptor())
+            {
+                StoragePolicy::Create(desc);
+            }
+
+            static void Destroy()
+            {
+                StoragePolicy::Destroy();
+            }
+
+            AZ_FORCE_INLINE static bool IsReady()
+            {
+                return StoragePolicy::IsReady();
+            }
+        };
+    }
+
     /**
      * Standard allocator singleton, using Environment storage. Specialize this for your
-     * allocator if you need to control storage or lifetime
+     * allocator if you need to control storage or lifetime, by changing the policy class
+     * used in AllocatorInstanceBase.
+     *
+     * It is preferred that you don't do a complete specialization of AllocatorInstance,
+     * as the logic governing creation and destruction of allocators is complicated and
+     * susceptible to edge cases across all platforms and build types, and it is best to
+     * keep the allocator code flowing through a consistent codepath.
      */
-    template <class Allocator>
-    class AllocatorInstance
-    {
-    public:
-        typedef typename Allocator::Descriptor Descriptor;
-
-        AZ_FORCE_INLINE static Allocator&   Get()
-        {
-            if (!s_allocator)
-            {
-                // Assert here before attempting to resolve. Otherwise a module-local
-                // environment will be created which will result in a much more difficult to
-                // locate problem
-                AZ_Assert(AZ::Environment::IsReady(), "Environment has not been attached yet, allocator cannot be created/resolved");
-                if (AZ::Environment::IsReady())
-                {
-                    s_allocator = Environment::FindVariable<Allocator>(AzTypeInfo<Allocator>::Name());
-                    AZ_Assert(s_allocator, "Allocator '%s' NOT ready for use! Call Create first!", AzTypeInfo<Allocator>::Name());
-                }
-            }
-            return *s_allocator;
-        }
-
-        static void Create(const Descriptor& desc = Descriptor())
-        {
-            if (!s_allocator)
-            {
-                s_allocator = Environment::CreateVariable<Allocator>(AzTypeInfo<Allocator>::Name());
-                if (s_allocator->IsReady()) // already created in a different module
-                {
-                    return;
-                }
-            }
-            else
-            {
-                AZ_Assert(s_allocator->IsReady(), "Allocator '%s' already created!", AzTypeInfo<Allocator>::Name());
-            }
-
-            s_allocator->Create(desc);
-        }
-
-        static void Destroy()
-        {
-            if (s_allocator)
-            {
-                if (s_allocator.IsOwner())
-                {
-                    s_allocator->Destroy();
-                }
-                s_allocator = nullptr;
-            }
-            else
-            {
-                AZ_Assert(false, "Allocator '%s' NOT ready for use! Call Create first!", AzTypeInfo<Allocator>::Name());
-            }
-        }
-        AZ_FORCE_INLINE static bool IsReady()
-        {
-            if (!s_allocator && Environment::IsReady()) // if not there check the environment (if available)
-            {
-                s_allocator = Environment::FindVariable<Allocator>(AzTypeInfo<Allocator>::Name());
-            }
-            return s_allocator && s_allocator.IsConstructed();
-        }
-    private:
-        static EnvironmentVariable<Allocator> s_allocator;
-    };
-
     template<class Allocator>
-    EnvironmentVariable<Allocator> AllocatorInstance<Allocator>::s_allocator;
+    class AllocatorInstance : public Internal::AllocatorInstanceBase<Allocator, AllocatorStorage::EnvironmentStoragePolicy<Allocator>>
+    {
+    };
 
     // Schema which acts as a pass through to another allocator. This allows for allocators
     // which exist purely to categorize/track memory separately, piggy backing on the
@@ -543,7 +728,6 @@ namespace AZ
     class AZStdAlloc
     {
     public:
-        AZ_TYPE_INFO(AZStdAlloc, "{42D0AA1E-3C6C-440E-ABF8-435931150470}", Allocator);
         typedef void*               pointer_type;
         typedef AZStd::size_t       size_type;
         typedef AZStd::ptrdiff_t    difference_type;
@@ -553,7 +737,7 @@ namespace AZ
         {
             if (AllocatorInstance<Allocator>::IsReady())
             {
-                m_name = AllocatorInstance<Allocator>::Get().GetName();
+                m_name = AllocatorInstance<Allocator>::GetAllocator().GetName();
             }
             else
             {
@@ -590,6 +774,8 @@ namespace AZ
     private:
         const char* m_name;
     };
+
+    AZ_TYPE_INFO_TEMPLATE(AZStdAlloc, "{42D0AA1E-3C6C-440E-ABF8-435931150470}", AZ_TYPE_INFO_CLASS);
 
     template<class Allocator>
     AZ_FORCE_INLINE bool operator==(const AZStdAlloc<Allocator>& a, const AZStdAlloc<Allocator>& b) { (void)a; (void)b; return true; } // always true since they use the same instance of AllocatorInstance<Allocator>
@@ -648,16 +834,11 @@ namespace AZ
     };
 
     /**
-     * Generic wrapper for binding IAllocator interface allocator.
-     * This is basically the same as \ref AZStdAlloc but it allows
-     * you to remove the template parameter and retrieve the allocator from a supplied function
-     * pointer
-     */
-#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC > 1900
-#define AZ_FUNCTORALLOCATOR_CONSTEXPR constexpr
-#else
-#define AZ_FUNCTORALLOCATOR_CONSTEXPR
-#endif
+    * Generic wrapper for binding IAllocator interface allocator.
+    * This is basically the same as \ref AZStdAlloc but it allows
+    * you to remove the template parameter and retrieve the allocator from a supplied function
+    * pointer
+    */
     class AZStdFunctorAllocator
     {
     public:
@@ -679,7 +860,7 @@ namespace AZ
         {
         }
         constexpr AZStdFunctorAllocator(const AZStdFunctorAllocator& rhs) = default;
-        AZ_FUNCTORALLOCATOR_CONSTEXPR AZStdFunctorAllocator& operator=(const AZStdFunctorAllocator& rhs) = default;
+        constexpr AZStdFunctorAllocator& operator=(const AZStdFunctorAllocator& rhs) = default;
         pointer_type allocate(size_t byteSize, size_t alignment, int flags = 0)
         {
             return m_allocatorFunctor().Allocate(byteSize, alignment, flags, m_name, __FILE__, __LINE__, 1);
@@ -704,10 +885,6 @@ namespace AZ
         const char* m_name;
     };
 
-#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC > 1900
-#undef AZ_FUNCTORALLOCATOR_CONSTEXPR
-#endif
-
     /**
     * Helper class to determine if type T has a AZ_CLASS_ALLOCATOR defined,
     * so we can safely call aznew on it. -  AZClassAllocator<ClassType>....
@@ -730,4 +907,3 @@ namespace AZ
 
 // define unlimited allocator limits (scaled to real number when we check if there is enough memory to allocate)
 #define AZ_CORE_MAX_ALLOCATOR_SIZE AZ_TRAIT_OS_MEMORY_MAX_ALLOCATOR_SIZE
-

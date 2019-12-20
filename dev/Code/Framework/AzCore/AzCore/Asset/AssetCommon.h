@@ -21,11 +21,13 @@
 #include <AzCore/std/typetraits/is_base_of.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
+#include <AzCore/Debug/AssetTracking.h>
 
 namespace AZ
 {
     class AssetSerializer;
     class AssetEventHandler;
+    class ReflectContext;
     class SerializeContext;
 
     namespace Data
@@ -63,6 +65,7 @@ namespace AZ
 
             bool operator==(const AssetId& rhs) const;
             bool operator!=(const AssetId& rhs) const;
+            bool operator<(const AssetId& rhs) const;
 
             template<class StringType>
             StringType ToString() const;
@@ -71,6 +74,7 @@ namespace AZ
             void ToString(StringType& result) const;
 
             static AssetId CreateString(AZStd::string_view input);
+            static void Reflect(ReflectContext* context);
 
             Uuid m_guid;
             u32  m_subId;   ///< To allow easier and more consistent asset guid, we can provide asset sub ID. (i.e. Guid is a cubemap texture, subId is the index of the side)
@@ -114,6 +118,8 @@ namespace AZ
             virtual ~AssetData()
             {}
 
+            static void Reflect(ReflectContext* context);
+
             void Acquire();
             void Release();
 
@@ -142,10 +148,7 @@ namespace AZ
              */
             virtual bool IsRegisterReadonlyAndShareable() { return true; }
 
-            // Workaround for VS2013
-            // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
             AssetData(const AssetData&) = delete;
-
             AZStd::atomic_int m_useCount;
             AZStd::atomic_int m_status;
             AssetId m_assetId;
@@ -191,7 +194,6 @@ namespace AZ
             friend class Asset;
 
         public:
-            AZ_TYPE_INFO(Asset, "{C891BF19-B60C-45E2-BFD0-027D15DDC939}", T);
             /// Create asset with default params (no asset bounded)
             /// By default, referenced assets will be preloaded during serialization.
             /// Use \ref AssetLoadBehavior to control this behavior.
@@ -418,6 +420,8 @@ namespace AZ
             };
             template<typename Bus>
             using ConnectionPolicy = AssetConnectionPolicy<Bus>;
+
+            using EventProcessingPolicy = Debug::AssetTrackingEventProcessingPolicy<>;
             //////////////////////////////////////////////////////////////////////////
 
             virtual ~AssetEvents() {}
@@ -557,6 +561,16 @@ namespace AZ
         inline bool AssetId::operator != (const AssetId& rhs) const
         {
             return m_guid != rhs.m_guid || m_subId != rhs.m_subId;
+        }
+
+        //=========================================================================
+        inline bool AssetId::operator < (const AssetId& rhs) const
+        {
+            if (m_guid == rhs.m_guid)
+            {
+                return m_subId < rhs.m_subId;
+            }
+            return m_guid < rhs.m_guid;
         }
 
         //=========================================================================
@@ -998,6 +1012,8 @@ namespace AZ
         bool AssetFilterNoAssetLoading(const Asset<Data::AssetData>& /*asset*/);
 
     }  // namespace Data
+
+    AZ_TYPE_INFO_TEMPLATE_WITH_NAME(AZ::Data::Asset, "Asset", "{C891BF19-B60C-45E2-BFD0-027D15DDC939}", AZ_TYPE_INFO_CLASS);
 
 }   // namespace AZ
 

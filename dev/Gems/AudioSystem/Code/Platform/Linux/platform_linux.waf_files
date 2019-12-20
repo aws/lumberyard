@@ -1,0 +1,11 @@
+{
+    "auto":
+    {
+        "Platform/Linux":
+        [
+            "AudioSystem_Traits_Platform.h",
+            "AudioSystem_Traits_Linux.h",
+            "../Common/Unimplemented/AudioSystem_Unimplemented.cpp"
+        ]
+    }
+}

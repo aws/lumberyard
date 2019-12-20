@@ -15,7 +15,7 @@ namespace AssetProcessor
 {
     //! Sends the job over to the builder and blocks until the response is received or the builder crashes/times out
     template<typename TNetRequest, typename TNetResponse, typename TRequest, typename TResponse>
-    void Builder::RunJob(const TRequest& request, TResponse& response, AZ::u32 processTimeoutLimitInSeconds, const AZStd::string& task, const AZStd::string& modulePath, AssetBuilderSDK::JobCancelListener* jobCancelListener /*= nullptr*/, AZStd::string tempFolderPath /*= AZStd::string()*/) const
+    BuilderRunJobOutcome Builder::RunJob(const TRequest& request, TResponse& response, AZ::u32 processTimeoutLimitInSeconds, const AZStd::string& task, const AZStd::string& modulePath, AssetBuilderSDK::JobCancelListener* jobCancelListener /*= nullptr*/, AZStd::string tempFolderPath /*= AZStd::string()*/) const
     {
         TNetRequest netRequest;
         TNetResponse netResponse;
@@ -33,11 +33,13 @@ namespace AssetProcessor
             wait.release();
         });
 
-        if (!WaitForBuilderResponse(jobCancelListener, processTimeoutLimitInSeconds, &wait))
+        BuilderRunJobOutcome result = WaitForBuilderResponse(jobCancelListener, processTimeoutLimitInSeconds, &wait);
+
+        if (result != BuilderRunJobOutcome::Ok)
         {
             // Clear out the response handler so it doesn't get triggered after the variables go out of scope (also to clean up the memory)
             AssetProcessor::ConnectionBus::Event(m_connectionId, &AssetProcessor::ConnectionBusTraits::RemoveResponseHandler, serial);
-            return;
+            return result;
         }
 
         AZ_Assert(type == netRequest.GetMessageType(), "Response type does not match");
@@ -45,7 +47,7 @@ namespace AssetProcessor
         if (!AZ::Utils::LoadObjectFromBufferInPlace(data.data(), data.length(), netResponse))
         {
             AZ_Error("Builder", false, "Failed to deserialize processJobs response");
-            return;
+            return BuilderRunJobOutcome::FailedToDecodeResponse;
         }
 
         if (!netResponse.m_response.Succeeded() || s_createRequestFileForSuccessfulJob)
@@ -53,11 +55,13 @@ namespace AssetProcessor
             // we write the request out to disk for failure or debugging 
             if (!DebugWriteRequestFile(tempFolderPath.c_str(), request, task, modulePath))
             {
-                return;
+                return BuilderRunJobOutcome::FailedToWriteDebugRequest;
             }
         }
 
         response = AZStd::move(netResponse.m_response);
+
+        return result;
     }
 
     template<typename TRequest>

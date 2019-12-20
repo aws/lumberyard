@@ -19,6 +19,7 @@
 #pragma once
 
 class CTerrainPanel;
+
 class CPanelDisplayLayer;
 class QRollupCtrl;
 class CMainTools;
@@ -35,13 +36,14 @@ public:
     void insertControl(int index, QWidget* w, const QString& tooltip);
     QRollupCtrl* GetRollUpControl(int rollupBarId) const;
 private:
-    CTerrainPanel* m_terrainPanel;
     CPanelDisplayLayer* m_pLayerPanel;
     QRollupCtrl* m_objectRollupCtrl;
-    QRollupCtrl* m_terrainRollupCtrl;
     QRollupCtrl* m_modellingRollupCtrl;
     QRollupCtrl* m_displayRollupCtrl;
     CMainTools* const m_mainTools;
+
+    CTerrainPanel* m_terrainPanel;
+    QRollupCtrl* m_terrainRollupCtrl;
 };
 
 #endif // CRYINCLUDE_EDITOR_CONTROLS_ROLLUPBAR_H

@@ -107,6 +107,9 @@ protected:
     // WaterNotificationBus
     void OceanHeightChanged(float height) override;
 
+    // Ensure that we prevent close events while in the middle of lengthy operations.
+    void closeEvent(QCloseEvent* ev) override;
+
     QScopedPointer<Ui::TerrainDialog> m_ui;
 
     SNoiseParams* m_sLastParam;
@@ -115,6 +118,7 @@ protected:
     _smart_ptr<CTerrainModifyTool> m_pTerrainTool;
 
     QLabel* m_terrainDimensions;
+    bool m_processing = false;
 };
 
 #endif // CRYINCLUDE_EDITOR_TERRAINDIALOG_H

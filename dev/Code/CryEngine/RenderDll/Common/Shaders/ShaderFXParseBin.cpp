@@ -2957,7 +2957,7 @@ void CShaderManBin::AddAffectedParameter(CParserBin& Parser, std::vector<SFXPara
     int nFlags = pParam->GetFlags();
     bool bCheckAffect = CParserBin::m_bParseFX ? true : false;
 
-    if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_GLES3 || CParserBin::m_nPlatform == SF_METAL) // ACCEPTED_USE
+    if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_GLES3 || CParserBin::m_nPlatform == SF_METAL)
     {
         CRY_ASSERT(eSHClass < eHWSC_Num);
         if (((nFlags & PF_TWEAKABLE_MASK) || pParam->m_Values.c_str()[0] == '(') && pParam->m_Register[eSHClass] >= 0 && pParam->m_Register[eSHClass] < 1000)
@@ -3976,7 +3976,7 @@ bool CShaderManBin::ParseBinFX_Technique_Pass_GenerateShaderData(CParserBin& Par
             Parser.CopyTokens(cf, SHData, Replaces, NewTokens, h);
             if (cf->m_eType == eFT_Sampler)
             {
-                if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_GLES3 || CParserBin::m_nPlatform == SF_METAL) // ACCEPTED_USE
+                if (CParserBin::m_nPlatform == SF_D3D11 || CParserBin::m_nPlatform == SF_DURANGO || CParserBin::m_nPlatform == SF_GL4 || CParserBin::m_nPlatform == SF_GLES3 || CParserBin::m_nPlatform == SF_METAL)
                 {
                     int nT = Parser.m_Tokens[cf->m_nLastToken - 1];
                     //CRY_ASSERT(nT >= eT_s0 && nT <= eT_s15);
@@ -5264,7 +5264,7 @@ bool CShaderManBin::ParseBinFX(SShaderBin* pBin, CShader* ef, uint64 nMaskGen)
                     }
                 }
                 else
-                if (CParserBin::m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO | SF_GL4 | SF_GLES3 | SF_METAL)) // ACCEPTED_USE
+                if (CParserBin::m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO | SF_GL4 | SF_GLES3 | SF_METAL))
                 {
                     uint32 nTokName = Parser.GetToken(Parser.m_Name);
                     const char* name = Parser.GetString(nTokName);

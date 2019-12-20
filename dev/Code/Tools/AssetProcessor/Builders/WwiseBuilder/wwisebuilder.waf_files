@@ -1,0 +1,12 @@
+{
+    "NoUberFile": {
+        "Root": [
+        ],
+        
+        "WwiseBuilder": [
+            "Source/WwiseBuilderComponent.h",
+            "Source/WwiseBuilderComponent.cpp",
+            "Source/WwiseBuilderApplication.cpp"
+        ]
+    }
+}

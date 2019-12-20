@@ -86,8 +86,9 @@ namespace AZ
             Edit::Attribute* FindAttribute(AttributeId attributeId) const;
 
             AttributeId         m_elementId;
-            const char*         m_description;
-            const char*         m_name;
+            const char*         m_description = nullptr;
+            const char*         m_name = nullptr;
+            const char*         m_deprecatedName = nullptr;
             SerializeContext::ClassElement* m_serializeClassElement; ///< If nullptr this is class (logical) element, not physical element exists in the class
             AttributeArray      m_attributes;
         };
@@ -278,6 +279,17 @@ namespace AZ
             */
             template<class T>
             ClassBuilder* DataElement(Crc32 uiIdCrc, T memberVariable, const char* name, const char* description);
+
+            /** Declare element that will handle a specific class member variable (SerializeContext::ClassBuilder::Field).
+            * \param uiId - Crc32 of us element ID ("Int" or "Real", etc. how to edit the memberVariable)
+            * \param memberVariable - reference to the member variable to we can bind to serializations data.
+            * \param name - descriptive name of the field. Use this when using types in context. For example T is 'int' and name describes what it does.
+            * \param deprecatedName - supports name deprecation when an element name needs to be changed.
+            * Sometime 'T' will have edit context with enough information for name and description. In such cases use the DataElement function below.
+            * \param description - detailed description that will usually appear in a tool tip.
+            */
+            template<class T>
+            ClassBuilder* DataElement(Crc32 uiIdCrc, T memberVariable, const char* name, const char* description, const char* deprecatedName);
 
             /**
              * Same as above, except we will get the name and description from the edit context of the 'T' type. If 'T' doesn't have edit context
@@ -552,7 +564,7 @@ namespace AZ
     EditContext::ClassBuilder*
     EditContext::ClassBuilder::DataElement(const char* uiId, T memberVariable, const char* name, const char* description)
     {
-        return DataElement(Crc32(uiId), memberVariable, name, description);
+        return DataElement(Crc32(uiId), memberVariable, name, description, "");
     }
 
     //=========================================================================
@@ -560,7 +572,17 @@ namespace AZ
     //=========================================================================
     template<class T>
     EditContext::ClassBuilder*
-    EditContext::ClassBuilder::DataElement(Crc32 uiIdCrc, T memberVariable, const char* name, const char* description)
+        EditContext::ClassBuilder::DataElement(Crc32 uiIdCrc, T memberVariable, const char* name, const char* description)
+    {
+        return DataElement(uiIdCrc, memberVariable, name, description, "");
+    }
+
+    //=========================================================================
+    // DataElement
+    //=========================================================================
+    template<class T>
+    EditContext::ClassBuilder*
+    EditContext::ClassBuilder::DataElement(Crc32 uiIdCrc, T memberVariable, const char* name, const char* description, const char* deprecatedName)
     {
         if (!IsValid())
         {
@@ -594,6 +616,7 @@ namespace AZ
         m_editElement = ed;
         ed->m_elementId = uiIdCrc;
         ed->m_name = name;
+        ed->m_deprecatedName = deprecatedName;
         ed->m_description = description;
         ed->m_serializeClassElement = classElement;
         return this;

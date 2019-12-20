@@ -31,8 +31,6 @@ namespace MCore
     class TCompressedQuaternion
     {
     public:
-        AZ_TYPE_INFO(MCore::TCompressedQuaternion, "{31AD5C7F-A999-40C5-AC3A-E13D150036E3}", StorageType)
-
         /**
          * Default constructor.
          * This sets the quaternion to identity.
@@ -93,3 +91,8 @@ namespace MCore
     typedef TCompressedQuaternion<int16>    Compressed16BitQuaternion;
     typedef TCompressedQuaternion<int8>     Compressed8BitQuaternion;
 } // namespace MCore
+
+namespace AZ
+{
+    AZ_TYPE_INFO_TEMPLATE(MCore::TCompressedQuaternion, "{31AD5C7F-A999-40C5-AC3A-E13D150036E3}", AZ_TYPE_INFO_CLASS);
+}

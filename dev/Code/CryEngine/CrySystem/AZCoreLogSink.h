@@ -87,12 +87,16 @@ public:
             Trace::PrintCallstack(nullptr, 3);
             Trace::Output(nullptr, "\n==================================================================\n");
 
-            // Note - CryAssertTrace doesn't actually print any info to logging
-            // it just stores the message internally for the message box in CryAssert to use
-            CryAssertTrace("%s", message);
-            if (CryAssert("Assertion failed", fileName, line, ignore) || Trace::IsDebuggerPresent())
+            AZ::EnvironmentVariable<bool> inEditorBatchMode = AZ::Environment::FindVariable<bool>("InEditorBatchMode");
+            if (!inEditorBatchMode.IsConstructed() || !inEditorBatchMode.Get())
             {
-                Trace::Break();
+                // Note - CryAssertTrace doesn't actually print any info to logging
+                // it just stores the message internally for the message box in CryAssert to use
+                CryAssertTrace("%s", message);
+                if (CryAssert("Assertion failed", fileName, line, ignore) || Trace::IsDebuggerPresent())
+                {
+                    Trace::Break();
+                }
             }
         }
         else

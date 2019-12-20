@@ -145,11 +145,8 @@ namespace GraphCanvas
 
         AZ::EntityId CreateConnectionHelper(const Endpoint& otherEndpoint, bool createConnection);
 
-        // VS2013 Fixes
         SlotComponent(const SlotComponent&) = delete;
         const SlotComponent& operator=(const SlotComponent&) = delete;
-        ////
-
         virtual AZ::Entity* ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection);
 
         void FinalizeDisplay();

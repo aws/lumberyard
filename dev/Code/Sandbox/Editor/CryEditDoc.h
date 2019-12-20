@@ -17,6 +17,7 @@
 
 #include "DocMultiArchive.h"
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#include <AzCore/Component/Component.h>
 
 class CMission;
 class CLevelShaderCache;
@@ -248,4 +249,23 @@ public:
 private:
     bool m_prevState;
 };
+
+namespace AzToolsFramework
+{
+    //! A component to reflect scriptable commands for the Editor
+    class CryEditDocFuncsHandler
+        : public AZ::Component
+    {
+    public:
+        AZ_COMPONENT(CryEditDocFuncsHandler, "{628CE458-72E7-4B7B-B8A2-62F95F55E738}")
+
+            static void Reflect(AZ::ReflectContext* context);
+
+        // AZ::Component ...
+        void Activate() override {}
+        void Deactivate() override {}
+    };
+
+} // namespace AzToolsFramework
+
 #endif // CRYINCLUDE_EDITOR_CRYEDITDOC_H

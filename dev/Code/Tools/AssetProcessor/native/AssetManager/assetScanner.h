@@ -44,6 +44,7 @@ namespace AssetProcessor
         void AssetScanningStatusChanged(AssetScanningStatus status);
         void FilesFound(QSet<AssetFileInfo> files);
         void FoldersFound(QSet<AssetFileInfo> folders);
+        void ExcludedFound(QSet<AssetFileInfo> excluded);
 
     private:
 

@@ -1,0 +1,40 @@
+{
+    "platform": {
+        "android_armv8_clang": {
+            "libpath_debug": [
+                "lib/Android/armv8/Debug"
+            ],
+            "libpath_release": [
+                "lib/Android/armv8/Release"
+            ],
+            "gtest/lib_debug": [
+                "libgtestd.a"
+            ],
+            "gtest/lib_release": [
+                "libgtest.a"
+            ],
+            "gtest_main/lib_debug": [
+                "libgtest_maind.a"
+            ],
+            "gtest_main/lib_release": [
+                "libgtest_main.a"
+            ],
+            "gmock/lib_debug": [
+                "libgmockd.a",
+                "libgtestd.a"
+            ],
+            "gmock/lib_release": [
+                "libgmock.a",
+                "libgtest.a"
+            ],
+            "gmock_main/lib_debug": [
+                "libgmock_maind.a",
+                "libgtestd.a"
+            ],
+            "gmock_main/lib_release": [
+                "libgmock_main.a",
+                "libgtest.a"
+            ]
+        }
+    }
+}

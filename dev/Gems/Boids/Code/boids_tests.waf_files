@@ -1,7 +1,0 @@
-{
-    "none": {
-        "Tests": [
-            "Tests/BoidsTest.cpp"
-        ]
-    }
-}

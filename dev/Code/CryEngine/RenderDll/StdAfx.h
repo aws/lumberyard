@@ -205,6 +205,8 @@ inline Plane TransformPlane2Transposed(const Matrix44A& m, const Plane& src)
         #include "Xenia/StdAfx_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/StdAfx_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/StdAfx_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -227,6 +229,8 @@ inline int vsnprintf(char* buf, int size, const char* format, va_list& args)
         #include "Xenia/StdAfx_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/StdAfx_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/StdAfx_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -416,6 +420,8 @@ void fpUsePath (const char* name, const char* path, char (&dst)[bytes]) { fpUseP
         #include "Xenia/StdAfx_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/StdAfx_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/StdAfx_h_salem.inl"
     #endif
 #endif
 

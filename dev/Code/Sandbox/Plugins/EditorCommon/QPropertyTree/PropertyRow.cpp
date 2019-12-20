@@ -377,7 +377,7 @@ void PropertyRow::Serialize(IArchive& ar)
 				++it;
 			}
 			else{
-				YASLI_ASSERT("Missing property row");
+                YASLI_ASSERT_STR(false, "Missing property row");
 				it = erase(it);
 			}
 		}

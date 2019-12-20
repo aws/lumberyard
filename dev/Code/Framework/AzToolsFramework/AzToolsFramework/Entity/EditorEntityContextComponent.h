@@ -72,8 +72,14 @@ namespace AzToolsFramework
         AZ::SliceComponent* GetEditorRootSlice() override { return GetRootSlice(); }
         void ResetEditorContext() override;
 
+        AZ::EntityId CreateNewEditorEntity(const char* name) override;
+        // LUMBERYARD_DEPRECATED(LY-103316)
         AZ::Entity* CreateEditorEntity(const char* name) override;
+        // LUMBERYARD_DEPRECATED(LY-103316)
+        AZ::EntityId CreateNewEditorEntityWithId(const char* name, const AZ::EntityId& entityId) override;
+        // LUMBERYARD_DEPRECATED(LY-103316)
         AZ::Entity* CreateEditorEntityWithId(const char* name, const AZ::EntityId& entityId) override;
+        // LUMBERYARD_DEPRECATED(LY-103316)
         void AddEditorEntity(AZ::Entity* entity) override;
         void AddEditorEntities(const EntityList& entities) override;
         void AddEditorSliceEntities(const EntityList& entities) override;
@@ -145,6 +151,7 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
         // AzFramework::EntityContext
         void PrepareForContextReset() override;
+        bool ValidateEntitiesAreValidForContext(const EntityList& entities) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -212,8 +219,6 @@ namespace AzToolsFramework
             QueuedSliceReplacement() = default;
 
         private:
-            //! Workaround for VS2013 is_copy_constructible returning true for deleted copy constructors
-            //! https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
             QueuedSliceReplacement(const QueuedSliceReplacement&) = delete;
             QueuedSliceReplacement& operator=(const QueuedSliceReplacement&) = delete;
 

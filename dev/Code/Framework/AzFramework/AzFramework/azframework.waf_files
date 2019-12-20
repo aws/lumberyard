@@ -31,9 +31,20 @@
             "Asset/AssetProcessorMessages.h",
             "Asset/AssetRegistry.h",
             "Asset/AssetRegistry.cpp",
+            "Asset/AssetSeedList.cpp",
+            "Asset/AssetSeedList.h",
             "Asset/AssetSystemComponent.cpp",
             "Asset/AssetSystemComponent.h",
-            "Asset/GenericAssetHandler.h"
+            "Asset/CfgFileAsset.h",
+            "Asset/GenericAssetHandler.h",
+            "Asset/AssetBundleManifest.cpp",
+            "Asset/AssetBundleManifest.h",
+            "Asset/CustomAssetTypeComponent.cpp",
+            "Asset/CustomAssetTypeComponent.h",
+            "Asset/FileTagAsset.cpp",
+            "Asset/FileTagAsset.h",
+            "Asset/XmlSchemaAsset.cpp",
+            "Asset/XmlSchemaAsset.h"
         ],
         "CommandLine": [
             "CommandLine/CommandLine.cpp",
@@ -46,6 +57,8 @@
         "Viewport": [
             "Viewport/ViewportColors.h",
             "Viewport/ViewportColors.cpp",
+            "Viewport/ViewportConstants.h",
+            "Viewport/ViewportConstants.cpp",
             "Viewport/CameraState.h",
             "Viewport/CameraState.cpp",
             "Viewport/DisplayContextRequestBus.h"
@@ -100,7 +113,7 @@
             "Math/MathUtils.cpp",
             "Math/MathUtils.h"
         ],
-        "Metrics":  [
+        "Metrics": [
             "Metrics/MetricsPlainTextNameRegistration.h"
         ],
         "Network": [
@@ -135,7 +148,10 @@
             "Logging/LoggingComponent.cpp",
             "Logging/LoggingComponent.h",
             "Logging/StartupLogSinkReporter.cpp",
-            "Logging/StartupLogSinkReporter.h"
+            "Logging/StartupLogSinkReporter.h",
+            "Logging/MissingAssetLogger.cpp",
+            "Logging/MissingAssetLogger.h",
+            "Logging/MissingAssetNotificationBus.h"
         ],
         "Script": [
             "Script/ScriptComponent.h",
@@ -198,6 +214,10 @@
             "Physics/WorldEventhandler.h",
             "Physics/ScriptCanvasPhysicsUtils.h",
             "Physics/ScriptCanvasPhysicsUtils.cpp"
+        ],
+        "Platform": [
+            "Platform/PlatformDefaults.h",
+            "Platform/PlatformDefaults.cpp"
         ]
     },
     "AzFramework_Input_Uber.cpp":
@@ -300,6 +320,15 @@
             "Input/Utils/AdjustAnalogInputForDeadZone.h",
             "Input/Utils/IsAnyKeyOrButton.h",
             "Input/Utils/ProcessRawInputEventQueues.h"
+        ],
+        "Statistics": [
+            "Statistics/RunningStatistic.h",
+            "Statistics/RunningStatistic.cpp",
+            "Statistics/NamedRunningStatistic.h",
+            "Statistics/RunningStatisticsManager.h",
+            "Statistics/RunningStatisticsManager.cpp",
+            "Statistics/TimeDataStatisticsManager.h",
+            "Statistics/TimeDataStatisticsManager.cpp"
         ]
     },
     "AzFramework_TargetManagement_Uber.cpp":
@@ -311,6 +340,16 @@
             "TargetManagement/TargetManagementAPI.h",
             "TargetManagement/TargetManagementComponent.cpp",
             "TargetManagement/TargetManagementComponent.h"
+        ]
+    },
+    "AzFramework_FileTag_Uber.cpp":
+    {
+        "FileTag": [
+            "FileTag/FileTag.h",
+            "FileTag/FileTag.cpp",
+            "FileTag/FileTagBus.h",
+            "FileTag/FileTagComponent.h",
+            "FileTag/FileTagComponent.cpp"
         ]
     }
 }

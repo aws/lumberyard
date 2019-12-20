@@ -19,15 +19,6 @@
 namespace AZStd
 {
     // Extension: static_storage: Used to initialize statics in a thread-safe manner
-    // VS2013 and some other platforms do not handle non-pod function statics correctly in a thread-safe manner
-    // VS2015+/clang init them as part of static init, or interlocked (as per standard)
-
-// VS2013 doesn't believe that ptr->~T() references ptr. We wholeheartedly disagree.
-#if defined(AZ_COMPILER_MSVC) && _MSC_VER <= 1800
-#pragma warning(push)
-#pragma warning(disable: 4100) // unreferenced formal parameter
-#endif
-
     // These are similar to default_delete/no_delete, except they just invoke the destructor (or not)
     template <class T>
     struct default_destruct
@@ -47,10 +38,6 @@ namespace AZStd
         {
         }
     };
-
-#if defined(AZ_COMPILER_MSVC) && _MSC_VER <= 1800
-#pragma warning(pop)
-#endif
 
     template <typename T, class Destructor = default_destruct<T>>
     class static_storage

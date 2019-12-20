@@ -435,7 +435,7 @@ namespace DynamicContent
         }
     }
 
-    void PackagesModel::stopS3StatusAnimation(QString message) // ACCEPTED_USE
+    void PackagesModel::stopS3StatusAnimation(QString message)
     {
         m_isUpdating = false;
     }

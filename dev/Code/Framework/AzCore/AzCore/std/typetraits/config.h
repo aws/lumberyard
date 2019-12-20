@@ -19,35 +19,6 @@
 // across compilers
 #include <type_traits>
 
-//////////////////////////////////////////////////////////////////////////
-// GCC
-#if defined(AZ_COMPILER_GCC)
-#   if AZ_COMPILER_GCC < 3
-    #error Not supported!
-#   else
-    #define AZSTD_TYPE_TRAITS_HAS_CONFORMING_IS_CLASS_IMPLEMENTATION
-#   endif
-#elif defined(AZ_COMPILER_MSVC)
-    #define AZSTD_TYPE_TRAITS_HAS_CONFORMING_IS_CLASS_IMPLEMENTATION
-#elif defined(AZ_COMPILER_SNC)
-    #define AZSTD_TYPE_TRAITS_HAS_CONFORMING_IS_CLASS_IMPLEMENTATION
-#elif defined(AZ_COMPILER_CLANG)
-    #define AZSTD_TYPE_TRAITS_HAS_CONFORMING_IS_CLASS_IMPLEMENTATION
-#elif defined(AZ_COMPILER_MWERKS)
-    #define AZSTD_TYPE_TRAITS_HAS_CONFORMING_IS_CLASS_IMPLEMENTATION
-#else
-    #error Compiler not supported!
-#endif
-//////////////////////////////////////////////////////////////////////////
-
-//
-// Define AZSTD_TYPE_TRAITS_NO_ELLIPSIS_IN_FUNC_TESTING
-// when we can't test for function types with elipsis:
-//
-#if defined(AZ_COMPILER_GCC) && (AZ_COMPILER_GCC < 3)
-    #define AZSTD_TYPE_TRAITS_NO_ELLIPSIS_IN_FUNC_TESTING
-#endif
-
 //
 // define AZSTD_TYPE_TRAITS_TEST_MS_FUNC_SIGS
 // when we want to test __stdcall etc function types with is_function etc

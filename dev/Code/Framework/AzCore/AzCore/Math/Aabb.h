@@ -101,10 +101,10 @@ namespace AZ
         }
 
         AZ_MATH_FORCE_INLINE const VectorFloat GetWidth() const     { return m_max.GetX() - m_min.GetX(); }
-        AZ_MATH_FORCE_INLINE const VectorFloat GetHeight() const        { return m_max.GetY() - m_min.GetY(); }
+        AZ_MATH_FORCE_INLINE const VectorFloat GetHeight() const    { return m_max.GetY() - m_min.GetY(); }
         AZ_MATH_FORCE_INLINE const VectorFloat GetDepth() const     { return m_max.GetZ() - m_min.GetZ(); }
-        AZ_MATH_FORCE_INLINE const Vector3 GetExtents() const           { return m_max - m_min; }
-        AZ_MATH_FORCE_INLINE const Vector3 GetCenter() const            { return 0.5f * (m_min + m_max); }
+        AZ_MATH_FORCE_INLINE const Vector3 GetExtents() const       { return m_max - m_min; }
+        AZ_MATH_FORCE_INLINE const Vector3 GetCenter() const        { return 0.5f * (m_min + m_max); }
         AZ_MATH_FORCE_INLINE void GetAsSphere(Vector3& center, VectorFloat& radius) const
         {
             center = GetCenter();
@@ -154,11 +154,27 @@ namespace AZ
             return p.GetDistance(closest);
         }
 
-        ///Calculates distance from the AABB to specified point, a point inside the AABB will return zero
+        ///Calculates squared distance from the AABB to specified point, a point inside the AABB will return zero
         AZ_MATH_FORCE_INLINE const VectorFloat GetDistanceSq(const Vector3& p) const
         {
             Vector3 closest = p.GetClamp(m_min, m_max);
             return p.GetDistanceSq(closest);
+        }
+
+        ///Calculates maximum distance from the AABB to specified point.
+        ///This will always be at least the distance from the center to the corner, even for points inside the AABB.
+        AZ_MATH_FORCE_INLINE const VectorFloat GetMaxDistance(const Vector3& p) const
+        {
+            Vector3 farthest(Vector3::CreateSelectCmpGreaterEqual(p, GetCenter(), m_min, m_max));
+            return p.GetDistance(farthest);
+        }
+
+        ///Calculates maximum squared distance from the AABB to specified point.
+        ///This will always be at least the squared distance from the center to the corner, even for points inside the AABB.
+        AZ_MATH_FORCE_INLINE const VectorFloat GetMaxDistanceSq(const Vector3& p) const
+        {
+            Vector3 farthest(Vector3::CreateSelectCmpGreaterEqual(p, GetCenter(), m_min, m_max));
+            return p.GetDistanceSq(farthest);
         }
 
         ///Clamps the AABB to be contained within the specified AABB
@@ -169,7 +185,7 @@ namespace AZ
             return clampedAabb;
         }
 
-        AZ_MATH_FORCE_INLINE void       Clamp(const Aabb& clamp)
+        AZ_MATH_FORCE_INLINE void Clamp(const Aabb& clamp)
         {
             m_min = m_min.GetClamp(clamp.m_min, clamp.m_max);
             m_max = m_max.GetClamp(clamp.m_min, clamp.m_max);
@@ -203,7 +219,7 @@ namespace AZ
         /************************************************************************
          *
          ************************************************************************/
-        void            ApplyTransform(const Transform& transform);
+        void ApplyTransform(const Transform& transform);
 
         /**
          * Transforms an Aabb and returns the resulting Obb.
@@ -213,14 +229,14 @@ namespace AZ
         /**
          * Returns a new AABB containing the transformed AABB
          */
-        AZ_MATH_FORCE_INLINE const Aabb     GetTransformedAabb(const Transform& transform) const
+        AZ_MATH_FORCE_INLINE const Aabb GetTransformedAabb(const Transform& transform) const
         {
             Aabb aabb = Aabb::CreateFromMinMax(m_min, m_max);
             aabb.ApplyTransform(transform);
             return aabb;
         }
 
-        AZ_MATH_FORCE_INLINE bool IsValid() const                   { return m_min.IsLessEqualThan(m_max); }
+        AZ_MATH_FORCE_INLINE bool IsValid() const  { return m_min.IsLessEqualThan(m_max); }
 
         AZ_MATH_FORCE_INLINE bool IsFinite() const { return m_min.IsFinite() && m_max.IsFinite(); }
 
@@ -229,11 +245,6 @@ namespace AZ
         Vector3 m_max;
     };
 }
-
-#ifndef AZ_PLATFORM_WINDOWS // Remove this once all compilers support POD (MSVC already does)
-#   include <AzCore/std/typetraits/is_pod.h>
-AZSTD_DECLARE_POD_TYPE(AZ::Aabb);
-#endif
 
 #endif
 #pragma once

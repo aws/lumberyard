@@ -151,7 +151,7 @@ enum CA_AnimationFlags
     CA_TRACK_VIEW_EXCLUSIVE     =   0x001000,
 
     // Description:
-    //      Usually we always update animations, even when the object is not visible. For simple objects (e.g. boids) we want to
+    //      Usually we always update animations, even when the object is not visible. For simple objects we want to
     //      avoid even animation-update. This can lead to an overflow in the FIFO-queue.
     //      To avoid the overflow, we remove the first animation from the FIFO when there are more then 16 animation in the queue.
     CA_REMOVE_FROM_FIFO                 = 0x002000,

@@ -205,7 +205,7 @@ void ConnectionManager::OnStatusChanged(unsigned int connId)
 }
 
 
-QModelIndex ConnectionManager::parent(const QModelIndex& index) const
+QModelIndex ConnectionManager::parent(const QModelIndex& /*index*/) const
 {
     return QModelIndex();
 }
@@ -379,7 +379,7 @@ QVariant ConnectionManager::headerData(int section, Qt::Orientation orientation,
 }
 
 
-bool ConnectionManager::setData(const QModelIndex& index, const QVariant& value, int role)
+bool ConnectionManager::setData(const QModelIndex& index, const QVariant& value, int /*role*/)
 {
     if (!index.isValid())
     {

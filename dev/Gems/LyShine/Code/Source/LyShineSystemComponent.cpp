@@ -254,7 +254,7 @@ namespace LyShine
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-    UiSystemToolsInterface::CanvasAssetHandle* LyShineSystemComponent::LoadCanvasFromStream(AZ::IO::FileIOStream& stream, const AZ::ObjectStream::FilterDescriptor& filterDesc)
+    UiSystemToolsInterface::CanvasAssetHandle* LyShineSystemComponent::LoadCanvasFromStream(AZ::IO::GenericStream& stream, const AZ::ObjectStream::FilterDescriptor& filterDesc)
     {
         return UiCanvasFileObject::LoadCanvasFromStream(stream, filterDesc);
     }

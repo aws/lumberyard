@@ -25,6 +25,76 @@ namespace AzToolsFramework
 {
     namespace ComponentPaletteUtil
     {
+        bool OffersRequiredServices(const AZ::SerializeContext::ClassData* componentClass, const AZStd::vector<AZ::ComponentServiceType>& serviceFilter)
+        {
+            AZ_Assert(componentClass, "Component class must not be null");
+
+            if (!componentClass)
+            {
+                return false;
+            }
+
+            AZ::ComponentDescriptor* componentDescriptor = nullptr;
+            EBUS_EVENT_ID_RESULT(componentDescriptor, componentClass->m_typeId, AZ::ComponentDescriptorBus, GetDescriptor);
+            if (!componentDescriptor)
+            {
+                return false;
+            }
+
+            // If no services are provided, this function returns true
+            if (serviceFilter.empty())
+            {
+                return true;
+            }
+
+            AZ::ComponentDescriptor::DependencyArrayType providedServices;
+            componentDescriptor->GetProvidedServices(providedServices, nullptr);
+
+            //reject this component if it does not offer any of the required services
+            if (AZStd::find_first_of(
+                providedServices.begin(),
+                providedServices.end(),
+                serviceFilter.begin(),
+                serviceFilter.end()) == providedServices.end())
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        bool IsAddableByUser(const AZ::SerializeContext::ClassData* componentClass)
+        {
+            AZ_Assert(componentClass, "component class must not be null");
+
+            if (!componentClass)
+            {
+                return false;
+            }
+
+            auto editorDataElement = componentClass->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData);
+
+            if (!editorDataElement)
+            {
+                return false;
+            }
+
+            auto attribute = editorDataElement->FindAttribute(AZ::Edit::Attributes::AddableByUser);
+            if (attribute)
+            {
+                auto data = azdynamic_cast<AZ::Edit::AttributeData<bool>*>(attribute);
+                if (data)
+                {
+                    if (!data->Get(nullptr))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
         void BuildComponentTables(
             AZ::SerializeContext* serializeContext,
             const AzToolsFramework::ComponentFilter& componentFilter,
@@ -35,70 +105,76 @@ namespace AzToolsFramework
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
             serializeContext->EnumerateDerived<AZ::Component>(
                 [&](const AZ::SerializeContext::ClassData* componentClass, const AZ::Uuid& knownType) -> bool
-            {
-                (void)knownType;
-
-                if (componentFilter(*componentClass) && componentClass->m_editData)
                 {
-                    QString categoryName = QString::fromUtf8("Miscellaneous");
-                    QString componentName = QString::fromUtf8(componentClass->m_editData->m_name);
+                    AZ_UNUSED(knownType);
 
-                    //apply the service filter, if any
-                    if (!serviceFilter.empty())
+                    if (componentFilter(*componentClass) && componentClass->m_editData)
                     {
-                        AZ::ComponentDescriptor* componentDescriptor = nullptr;
-                        EBUS_EVENT_ID_RESULT(componentDescriptor, componentClass->m_typeId, AZ::ComponentDescriptorBus, GetDescriptor);
-                        if (componentDescriptor)
-                        {
-                            AZ::ComponentDescriptor::DependencyArrayType providedServices;
-                            componentDescriptor->GetProvidedServices(providedServices, nullptr);
+                        QString categoryName = QString::fromUtf8("Miscellaneous");
+                        QString componentName = QString::fromUtf8(componentClass->m_editData->m_name);
 
-                            //reject this component if it does not offer any of the required services
-                            if (AZStd::find_first_of(
-                                providedServices.begin(),
-                                providedServices.end(),
-                                serviceFilter.begin(),
-                                serviceFilter.end()) == providedServices.end())
-                            {
-                                return true;
-                            }
+                        // If none of the required services are offered by this component, or the component
+                        // can not be added by the user, skip to the next component
+                        if (!OffersRequiredServices(componentClass, serviceFilter) || !IsAddableByUser(componentClass))
+                        {
+                            return true;
                         }
-                    }
 
-                    if (auto editorDataElement = componentClass->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData))
-                    {
-                        if (auto attribute = editorDataElement->FindAttribute(AZ::Edit::Attributes::AddableByUser))
+                        if (auto editorDataElement = componentClass->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData))
                         {
-                            // skip this component (return early) if user is not allowed to add it directly
-                            if (auto data = azdynamic_cast<AZ::Edit::AttributeData<bool>*>(attribute))
+                            if (auto attribute = editorDataElement->FindAttribute(AZ::Edit::Attributes::Category))
                             {
-                                if (!data->Get(nullptr))
+                                if (auto data = azdynamic_cast<AZ::Edit::AttributeData<const char*>*>(attribute))
                                 {
-                                    return true;
+                                    categoryName = QString::fromUtf8(data->Get(nullptr));
                                 }
                             }
+
+                            AZStd::string componentIconPath;
+                            EBUS_EVENT_RESULT(componentIconPath, AzToolsFramework::EditorRequests::Bus, GetComponentEditorIcon, componentClass->m_typeId, nullptr);
+                            componentIconTable[componentClass] = QString::fromUtf8(componentIconPath.c_str());
                         }
 
-                        if (auto attribute = editorDataElement->FindAttribute(AZ::Edit::Attributes::Category))
-                        {
-                            if (auto data = azdynamic_cast<AZ::Edit::AttributeData<const char*>*>(attribute))
-                            {
-                                categoryName = QString::fromUtf8(data->Get(nullptr));
-                            }
-                        }
-
-                        AZStd::string componentIconPath;
-                        EBUS_EVENT_RESULT(componentIconPath, AzToolsFramework::EditorRequests::Bus, GetComponentEditorIcon, componentClass->m_typeId, nullptr);
-                        componentIconTable[componentClass] = QString::fromUtf8(componentIconPath.c_str());
+                        componentDataTable[categoryName][componentName] = componentClass;
                     }
 
-                    componentDataTable[categoryName][componentName] = componentClass;
-                }
-
-                return true;
-            }
-            );
+                    return true;
+                });
         }
+
+        bool ContainsEditableComponents(
+            AZ::SerializeContext* serializeContext,
+            const AzToolsFramework::ComponentFilter& componentFilter,
+            const AZStd::vector<AZ::ComponentServiceType>& serviceFilter)
+        {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+            
+            bool containsEditable = false;
+
+            serializeContext->EnumerateDerived<AZ::Component>(
+                [&](const AZ::SerializeContext::ClassData* componentClass, const AZ::Uuid& knownType) -> bool
+                {
+                    AZ_UNUSED(knownType);
+
+                    if (componentFilter(*componentClass) && componentClass->m_editData)
+                    {
+                        // If none of the required services are offered by this component, or the component
+                        // can not be added by the user, skip to the next component
+                        if (!OffersRequiredServices(componentClass, serviceFilter) || !IsAddableByUser(componentClass))
+                        {
+                            return true;
+                        }
+
+                        containsEditable = true;
+                    }
+
+                    // We can stop enumerating if we've found an editable component
+                    return !containsEditable;
+                });
+
+            return containsEditable;
+        }
+
 
         QRegExp BuildFilterRegExp(QStringList& criteriaList, AzToolsFramework::FilterOperatorType filterOperator)
         {

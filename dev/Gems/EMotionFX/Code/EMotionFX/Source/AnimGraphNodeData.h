@@ -42,8 +42,7 @@ namespace EMotionFX
 
         enum
         {
-            INHERITFLAGS_BACKWARD       = 1 << 0,
-            INHERITFLAGS_LOOPED         = 1 << 1
+            INHERITFLAGS_BACKWARD = 1 << 0
         };
 
         AnimGraphNodeData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
@@ -83,9 +82,6 @@ namespace EMotionFX
         MCORE_INLINE uint8 GetInheritFlags() const                              { return mInheritFlags; }
 
         MCORE_INLINE bool GetIsBackwardPlaying() const                          { return (mInheritFlags & INHERITFLAGS_BACKWARD) != 0; }
-        MCORE_INLINE bool GetHasLooped() const                                  { return (mInheritFlags & INHERITFLAGS_LOOPED) != 0; }
-
-        MCORE_INLINE void SetLoopedFlag()                                       { mInheritFlags |= INHERITFLAGS_LOOPED; }
         MCORE_INLINE void SetBackwardFlag()                                     { mInheritFlags |= INHERITFLAGS_BACKWARD; }
         MCORE_INLINE void ClearInheritFlags()                                   { mInheritFlags = 0; }
 
@@ -137,11 +133,15 @@ namespace EMotionFX
     class EMFX_API NodeDataAutoRefCountMixin
     {
     public:
+        void ClearRefCounts();
+
         void IncreaseDataRefCountForNode(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
         void DecreaseDataRefCounts(AnimGraphInstance* animGraphInstance);
+        const AZStd::vector<AnimGraphNode*>& GetDataRefIncreasedNodes() const { return m_dataRefCountIncreasedNodes; }
 
         void IncreasePoseRefCountForNode(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
         void DecreasePoseRefCounts(AnimGraphInstance* animGraphInstance);
+        const AZStd::vector<AnimGraphNode*>& GetPoseRefIncreasedNodes() const { return m_poseRefCountIncreasedNodes; }
 
     protected:
         AZStd::vector<AnimGraphNode*> m_dataRefCountIncreasedNodes;

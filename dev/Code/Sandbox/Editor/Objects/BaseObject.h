@@ -870,7 +870,6 @@ private:
 
     void OnMenuShowInAssetBrowser();
     void OnMenuProperties();
-    void OnMenuEditTags();
 
     //! Set class description for this object,
     //! Only called once after creation by ObjectManager.

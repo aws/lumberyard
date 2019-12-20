@@ -183,14 +183,14 @@ namespace AZStd
     template<class Str>
     void to_string(Str& str, float value)
     {
-        char buf[16];
+        char buf[64];
         azsnprintf(buf, AZ_ARRAY_SIZE(buf), "%f", value);
         str = buf;
     }
     template<class Str>
     void to_string(Str& str, double value)
     {
-        char buf[16];
+        char buf[64];
         azsnprintf(buf, AZ_ARRAY_SIZE(buf), "%f", value);
         str = buf;
     }
@@ -225,7 +225,7 @@ namespace AZStd
     template<class Str>
     void to_string(Str& str, long double value)
     {
-        char buf[64];
+        char buf[128];
         azsnprintf(buf, AZ_ARRAY_SIZE(buf), "%Lf", value);
         str = buf;
     }

@@ -21,11 +21,6 @@
 extern "C" {
 #endif
 
-#if !defined (__GNUC__) && (!defined(_MSC_VER) || (_MSC_VER <= 1310))
-/* This is caught in the linker, so its not necessary for gcc. */
-extern char * (gets) (char * buf);
-#endif
-
 extern char * (strncpy) (char *dst, const char *src, size_t n);
 extern char * (strncat) (char *dst, const char *src, size_t n);
 extern char * (strtok) (char *s1, const char *s2);

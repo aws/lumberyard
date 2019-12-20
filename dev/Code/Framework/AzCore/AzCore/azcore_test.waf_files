@@ -3,6 +3,8 @@
     {
         "UnitTest": 
         [
+            "UnitTest/MockComponentApplication.h",
+            "UnitTest/MockComponentApplication.cpp",
             "UnitTest/UnitTest.h",
             "UnitTest/TestTypes.h"
         ],

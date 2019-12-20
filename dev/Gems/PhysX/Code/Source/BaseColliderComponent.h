@@ -39,18 +39,23 @@ namespace PhysX
         static void Reflect(AZ::ReflectContext* context);
 
         BaseColliderComponent() = default;
-        BaseColliderComponent(const Physics::ColliderConfiguration& colliderConfiguration);
+
+        void SetShapeConfigurationList(const Physics::ShapeConfigurationList& shapeConfigList);
 
         // ColliderComponentRequestBus
         AZStd::shared_ptr<Physics::ShapeConfiguration> GetShapeConfigFromEntity() override;
         const Physics::ColliderConfiguration& GetColliderConfig() override;
-        virtual AZStd::shared_ptr<Physics::Shape> GetShape() override;
-        virtual void* GetNativePointer() override;
+        AZStd::shared_ptr<Physics::Shape> GetShape() override;
+        void* GetNativePointer() override;
+
+        Physics::ShapeConfigurationList GetShapeConfigurations() override;
+        AZStd::vector<AZStd::shared_ptr<Physics::Shape>> GetShapes() override;
+
         bool IsStaticRigidBody() override;
         PhysX::RigidBodyStatic* GetStaticRigidBody() override;
 
         // TransformNotificationsBus
-        virtual void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
+        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 
         // PhysX::ColliderShapeBus
         AZ::Aabb GetColliderShapeAabb() override;
@@ -63,7 +68,7 @@ namespace PhysX
         class ShapeInfoCache
         {
         public:
-            AZ::Aabb GetAabb(PhysX::Shape& shape);
+            AZ::Aabb GetAabb(const AZStd::vector<AZStd::shared_ptr<Physics::Shape>>& shapes);
 
             void InvalidateCache();
 
@@ -72,7 +77,7 @@ namespace PhysX
             void SetWorldTransform(const AZ::Transform& worldTransform);
 
         private:
-            void UpdateCache(PhysX::Shape& shape);
+            void UpdateCache(const AZStd::vector<AZStd::shared_ptr<Physics::Shape>>& shapes);
 
             AZ::Aabb m_aabb = AZ::Aabb::CreateNull();
             AZ::Transform m_worldTransform = AZ::Transform::CreateIdentity();
@@ -84,10 +89,17 @@ namespace PhysX
             provided.push_back(AZ_CRC("PhysXColliderService", 0x4ff43f7c));
             provided.push_back(AZ_CRC("PhysXTriggerService", 0x3a117d7b)); // PhysX trigger service (not cry, non-legacy)
         }
+
+        static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
+        {
+            dependent.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
+        }
+
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
             required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
         }
+
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
             // Not compatible with cry engine colliders
@@ -101,21 +113,24 @@ namespace PhysX
         // AZ::EntityBus
         void OnEntityActivated(const AZ::EntityId& parentEntityId) override;
 
-        AZ::Vector3 GetNonUniformScale();
-        float GetUniformScale();
+        AZ::Vector3 GetNonUniformScale() const;
+        float GetUniformScale() const;
 
-        // Specific collider components should override this function
-        virtual AZStd::shared_ptr<Physics::ShapeConfiguration> CreateScaledShapeConfig();
+        /// Updates the scale of shape configurations to reflect the scale from the transform component.
+        /// Specific collider components should override this function.
+        virtual void UpdateScaleForShapeConfigs();
 
-        Physics::ColliderConfiguration m_configuration;
         ShapeInfoCache m_shapeInfoCache;
-
+        Physics::ShapeConfigurationList m_shapeConfigList;
     private:
         void InitStaticRigidBody();
-        void InitShape();
+        void InitShapes();
 
         AZStd::unique_ptr<PhysX::RigidBodyStatic> m_staticRigidBody;
-        AZStd::shared_ptr<PhysX::Shape> m_shape;
-
+        AZStd::vector<AZStd::shared_ptr<Physics::Shape>> m_shapes;
+        // This is here only to cover the edge case where GetColliderConfig (which expects a const reference to be
+        // returned) is called and m_shapeConfigList is empty. It can be removed as soon as the deprecation of
+        // GetColliderConfig is complete.
+        static const Physics::ColliderConfiguration s_defaultColliderConfig;
     };
 }

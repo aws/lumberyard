@@ -33,6 +33,8 @@
         #include "Xenia/ResourceManager_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ResourceManager_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ResourceManager_cpp_salem.inl"
     #endif
 #endif
 
@@ -322,6 +324,8 @@ bool CResourceManager::LoadFastLoadPaks(bool bToMemory)
         #include "Xenia/ResourceManager_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ResourceManager_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ResourceManager_cpp_salem.inl"
     #endif
 #endif
 

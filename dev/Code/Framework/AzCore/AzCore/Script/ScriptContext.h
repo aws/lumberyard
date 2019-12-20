@@ -31,6 +31,8 @@
 #include <AzCore/std/allocator_static.h>
 #include <AzCore/std/parallel/thread.h>
 
+#include <AzCore/RTTI/ReflectContext.h>
+
 #ifndef AZ_USE_CUSTOM_SCRIPT_BIND
 struct lua_State;
 struct lua_Debug;
@@ -988,5 +990,11 @@ namespace AZ
         lua_State* m_thread = nullptr;
         int m_registryIndex = 0;
     };
+
+    namespace Internal
+    {
+        bool IsAvailableInLua(const AttributeArray& attributes);
+    }
+
 } // namespace AZ
 #endif // AZCORE_SCRIPT_CONTEXT_H

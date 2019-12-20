@@ -21,7 +21,6 @@
 #include <AzToolsFramework/ComponentMode/EditorComponentModeBus.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
-#include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/ToolsMessaging/EntityHighlightBus.h>
 #include <AzToolsFramework/UI/SearchWidget/SearchWidgetTypes.hxx>
 #include "OutlinerSearchWidget.h"
@@ -52,7 +51,6 @@ namespace EntityOutliner
 
 class OutlinerWidget
     : public QWidget
-    , private AzToolsFramework::EditorMetricsEventsBus::Handler
     , private AzToolsFramework::EditorPickModeNotificationBus::Handler
     , private AzToolsFramework::EntityHighlightMessages::Bus::Handler
     , private OutlinerModelNotificationBus::Handler
@@ -92,11 +90,9 @@ private:
     void OnEntityPickModeStarted() override;
     void OnEntityPickModeStopped() override;
 
-    // EditorMetricsEventsBus
-    void EntityCreated(const AZ::EntityId& entityId) override;
-
     // EditorEntityContextNotificationBus
     void OnSliceInstantiated(const AZ::Data::AssetId& /*sliceAssetId*/, AZ::SliceComponent::SliceInstanceAddress& /*sliceAddress*/, const AzFramework::SliceInstantiationTicket& /*ticket*/) override;
+    void OnEditorEntityCreated(const AZ::EntityId& entityId) override;
     void OnStartPlayInEditor() override;
     void OnStopPlayInEditor() override;
     void OnFocusInEntityOutliner(const AzToolsFramework::EntityIdList& entityIdList) override;
@@ -104,11 +100,6 @@ private:
     /// AzToolsFramework::EditorEntityInfoNotificationBus implementation
     void OnEntityInfoUpdatedAddChildEnd(AZ::EntityId /*parentId*/, AZ::EntityId /*childId*/) override;
     void OnEntityInfoUpdatedName(AZ::EntityId entityId, const AZStd::string& /*name*/) override;
-    
-
-    // EditorMetricsEventsBus
-    using EditorMetricsEventsBusTraits::EnteredComponentMode;
-    using EditorMetricsEventsBusTraits::LeftComponentMode;
 
     // EditorComponentModeNotificationBus
     void EnteredComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes) override;

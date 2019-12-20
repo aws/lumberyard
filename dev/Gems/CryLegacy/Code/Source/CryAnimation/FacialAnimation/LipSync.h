@@ -68,7 +68,6 @@ class CFacialSentence
 {
 public:
     struct SFaceIdentifierHandleLess
-        : public std::binary_function<CFaceIdentifierHandle, CFaceIdentifierHandle, bool>
     {
         bool operator()(const CFaceIdentifierHandle& left, const CFaceIdentifierHandle& right) const
         {

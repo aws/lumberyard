@@ -10,11 +10,11 @@
 	</Definitions>
 		
 	<Parameters>
-		<!--  ============= TARGTES ============== -->
+		<!--  ============= TARGETS ============== -->
 		<Targets>
 			<Target name="PC" ip="localhost" port="4600"/>
-			<Target name="XboxOne" ip="10.11.110.201" port="4600"/>
-			<Target name="PS4" ip="10.11.110.202" port="4600"/>
+			<Target name="Xenia" ip="10.11.110.201" port="4600"/>
+			<Target name="Provo" ip="10.11.110.202" port="4600"/>
 		</Targets>
 
 		<!--  ============= Macros ============== -->
@@ -86,15 +86,8 @@
 		</WF1>
 		
 		<!--  ============= Macros ============== -->
-		<MacrosXB1>
+		<MacrosOther>
 
-			<Item name="Kinect Debug On" midi="65" pad="1">
-				<CVar>i_showDurangoKinectAudioStatus 1</CVar>
-				<CVar>i_grammar_enable archers 1</CVar>
-			</Item>
-			<Item name="Kinect Debug Off" midi="33" pad="1">
-				<CVar>i_showDurangoKinectAudioStatus 0</CVar>
-			</Item>
 			<Item name="Disable Archers Grammar" midi="49" pad="1">
 				<CVar>i_grammar_enable archers 0</CVar>
 			</Item>
@@ -103,7 +96,7 @@
 				<CVar>i_debugdigitalButtons 127</CVar>
 			</Item>
 
-		</MacrosXB1>
+		</MacrosOther>
 
 		<!--  ============= GamePlay ============== -->
 

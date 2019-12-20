@@ -87,7 +87,7 @@ namespace EMStudio
 
 
     // render the connection
-    void NodeConnection::Render(QPainter& painter, QPen* pen, QBrush* brush, int32 stepSize, const QRect& visibleRect, float opacity, bool alwaysColor)
+    void NodeConnection::Render(const QItemSelectionModel& selectionModel, QPainter& painter, QPen* pen, QBrush* brush, int32 stepSize, const QRect& visibleRect, float opacity, bool alwaysColor)
     {
         AZ_UNUSED(brush);
         AZ_UNUSED(stepSize);

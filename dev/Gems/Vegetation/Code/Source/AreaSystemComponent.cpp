@@ -366,9 +366,11 @@ namespace Vegetation
         QueueVegetationTask([this, areaId]() {
             auto& area = m_globalVegetationAreaMap[areaId];
             area.m_id = areaId;
+            area.m_layer = {};
             area.m_priority = {};
             area.m_bounds = AZ::Aabb::CreateNull();
 
+            AreaInfoBus::EventResult(area.m_layer, area.m_id, &AreaInfoBus::Events::GetLayer);
             AreaInfoBus::EventResult(area.m_priority, area.m_id, &AreaInfoBus::Events::GetPriority);
             AreaInfoBus::EventResult(area.m_bounds, area.m_id, &AreaInfoBus::Events::GetEncompassingAabb);
             AreaNotificationBus::Event(area.m_id, &AreaNotificationBus::Events::OnAreaRegistered);
@@ -403,6 +405,12 @@ namespace Vegetation
             {
                 auto& area = itArea->second;
                 m_dirtyAreaBoundsSet.insert(area.m_bounds);
+
+                area.m_layer = {};
+                area.m_priority = {};
+                area.m_bounds = AZ::Aabb::CreateNull();
+
+                AreaInfoBus::EventResult(area.m_layer, area.m_id, &AreaInfoBus::Events::GetLayer);
                 AreaInfoBus::EventResult(area.m_priority, area.m_id, &AreaInfoBus::Events::GetPriority);
                 AreaInfoBus::EventResult(area.m_bounds, area.m_id, &AreaInfoBus::Events::GetEncompassingAabb);
                 AreaNotificationBus::Event(area.m_id, &AreaNotificationBus::Events::OnAreaRefreshed);
@@ -418,6 +426,11 @@ namespace Vegetation
             for (auto& entry : m_globalVegetationAreaMap)
             {
                 auto& area = entry.second;
+                area.m_layer = {};
+                area.m_priority = {};
+                area.m_bounds = AZ::Aabb::CreateNull();
+
+                AreaInfoBus::EventResult(area.m_layer, area.m_id, &AreaInfoBus::Events::GetLayer);
                 AreaInfoBus::EventResult(area.m_priority, area.m_id, &AreaInfoBus::Events::GetPriority);
                 AreaInfoBus::EventResult(area.m_bounds, area.m_id, &AreaInfoBus::Events::GetEncompassingAabb);
                 AreaNotificationBus::Event(area.m_id, &AreaNotificationBus::Events::OnAreaRefreshed);
@@ -635,7 +648,7 @@ namespace Vegetation
 
             AZStd::sort(m_activeAreas.begin(), m_activeAreas.end(), [](const auto& lhs, const auto& rhs)
             {
-                return lhs.m_priority > rhs.m_priority;
+                return AZStd::make_pair(lhs.m_layer, lhs.m_priority) > AZStd::make_pair(rhs.m_layer, rhs.m_priority);
             });
         }
 

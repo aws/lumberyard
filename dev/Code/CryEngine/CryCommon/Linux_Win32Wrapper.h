@@ -338,8 +338,6 @@ typedef int64 __time64_t;     /* 64-bit time value */
 // Need to include this before using it's used in finddata, but after the strnicmp definition
 #include "CryString.h"
 
-#if defined(ANDROID) || defined (APPLE) || defined(LINUX)
-
 typedef struct __finddata64_t
 {
     //!< atributes set by find request
@@ -390,10 +388,6 @@ extern intptr_t _findfirst64(const char* pFileName, __finddata64_t* pFindData);
 extern DWORD GetFileAttributes(LPCSTR lpFileName);
 
 extern const bool GetFilenameNoCase(const char* file, char*, const bool cCreateNew = false);
-
-
-#endif //defined(ANDROID) || defined (APPLE)
-
 
 extern BOOL GetUserName(LPSTR lpBuffer, LPDWORD nSize);
 

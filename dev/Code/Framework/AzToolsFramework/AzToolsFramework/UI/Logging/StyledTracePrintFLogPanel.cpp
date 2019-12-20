@@ -110,7 +110,7 @@ namespace AzToolsFramework
             return false;
         }
 
-        void StyledTracePrintFLogTab::LogTraceMessage(Logging::LogLine::LogType type, const char* window, const char* message)
+        void StyledTracePrintFLogTab::LogTraceMessage(Logging::LogLine::LogType type, const char* window, const char* message, bool alwaysShowMessage)
         {
             // note:  This is responding to a trace driller bus message
             // as such, the mutex is already locked but we could be called from any thread at all, so we buffer the lines.
@@ -122,7 +122,7 @@ namespace AzToolsFramework
 
             if (isMyWindowAll || ((window) && (azstricmp(window, settings().m_window.c_str()) == 0)))
             {
-                if ((settings().m_textFilter.length() == 0) || (strstr(message, settings().m_textFilter.c_str())))
+                if (alwaysShowMessage || (settings().m_textFilter.length() == 0 || strstr(message, settings().m_textFilter.c_str())))
                 {
                     {
                         AZStd::lock_guard<AZStd::mutex> lock(m_bufferedLinesMutex);

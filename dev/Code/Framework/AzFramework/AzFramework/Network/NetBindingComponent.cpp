@@ -79,26 +79,40 @@ namespace AzFramework
     {
     }
 
-    void NetBindingComponent::Init()
-    {
-        // This is about as early as we can connect to the bus, since we need EntityId.
-        NetBindingHandlerBus::Handler::BusConnect(GetEntityId());
-    }
-
     void NetBindingComponent::Activate()
     {
-        if (!NetBindingHandlerBus::Handler::BusIsConnected())
-        {
-            NetBindingHandlerBus::Handler::BusConnect(GetEntityId());
-        }
+        NetBindingHandlerBus::Handler::BusConnect(GetEntityId());
 
         if (!IsEntityBoundToNetwork())
         {
             bool shouldBind = false;
-            EBUS_EVENT_RESULT(shouldBind, NetBindingSystemBus, ShouldBindToNetwork);
+            NetBindingSystemBus::BroadcastResult( shouldBind, &NetBindingSystemBus::Events::ShouldBindToNetwork);
             if (shouldBind)
             {
                 BindToNetwork(nullptr);
+            }
+            else
+            {
+                /*
+                 * This is the Editor path. We still need to call NetBindable::NetInit() in order
+                 * to initialize NetworkContext Fields and RPCs, so that they behave as
+                 * authoritative in game editor mode. Without this call RPCs callbacks won't invoke inside the Editor.
+                 * For example:
+                 *
+                 * static void Reflect(...)
+                 * {
+                 *  NetworkContext->Class<MyNetworkComponent>()->RPC("my rpc", &MyNetworkComponent::m_myRpc);
+                 * }
+                 * ...
+                 * m_myRpc(); // <--- will not invoke the callback inside the Editor unless NetInit() is called below.
+                 */
+                for (Component* component : GetEntity()->GetComponents())
+                {
+                    if (NetBindable* netBindable = azrtti_cast<NetBindable*>(component))
+                    {
+                        netBindable->NetInit();
+                    }
+                }
             }
         }
     }
@@ -190,7 +204,7 @@ namespace AzFramework
             });
 
             // Add replica to session replica manager (may be deferred)
-            EBUS_EVENT(NetBindingSystemBus, AddReplicaMaster, GetEntity(), replica);
+            NetBindingSystemBus::Broadcast( &NetBindingSystemBus::Events::AddReplicaMaster, GetEntity(), replica);
         }
     }
 
@@ -213,14 +227,14 @@ namespace AzFramework
             if (chunk->IsProxy())
             {
                 EntityContextId contextId = EntityContextId::CreateNull();
-                EBUS_EVENT_ID_RESULT(contextId, GetEntityId(), EntityIdContextQueryBus, GetOwningContextId);
+                EntityIdContextQueryBus::EventResult( contextId, GetEntityId(), &EntityIdContextQueryBus::Events::GetOwningContextId);
                 if (contextId.IsNull())
                 {
                     delete GetEntity();
                 }
                 else if (!IsLevelSliceEntity())
                 {
-                    EBUS_EVENT(NetBindingSystemBus, UnbindGameEntity, GetEntityId(), m_sliceInstanceId);
+                    NetBindingSystemBus::Broadcast( &NetBindingSystemBus::Events::UnbindGameEntity, GetEntityId(), m_sliceInstanceId);
                 }
             }
         }

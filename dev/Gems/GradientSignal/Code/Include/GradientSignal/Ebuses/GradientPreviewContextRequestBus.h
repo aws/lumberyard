@@ -52,7 +52,6 @@ namespace GradientSignal
         * Determines the order in which handlers receive events.
         */
         struct BusHandlerOrderCompare
-            : public AZStd::binary_function<GradientPreviewContextRequests*, GradientPreviewContextRequests*, bool>
         {
             bool operator()(GradientPreviewContextRequests* left, GradientPreviewContextRequests* right) const { return left->GetPreviewContextPriority() < right->GetPreviewContextPriority(); }
         };

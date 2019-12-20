@@ -43,24 +43,8 @@
 // AZSTD_IS_CONVERTIBLE(T,U) true if T is convertible to U
 // AZSTD_IS_ENUM(T) true is T is an enum
 // AZSTD_IS_POLYMORPHIC(T) true if T is a polymorphic type
-#if defined(AZ_COMPILER_MWERKS) && (__MSL_CPP__ >= 0x8000)
-// Metrowerks compiler is acquiring intrinsic type traits support
-// post version 8.  We hook into the published interface to pick up
-// user defined specializations as well as compiler intrinsics as
-// and when they become available:
-#   include <msl_utility>
-#   define AZSTD_IS_UNION(T) Metrowerks::is_union<T>::value
-// failes in our unitest
-//#   define AZSTD_IS_POD(T) Metrowerks::is_POD<T>::value
-#   define AZSTD_HAS_TRIVIAL_CONSTRUCTOR(T) Metrowerks::has_trivial_default_ctor<T>::value
-#   define AZSTD_HAS_TRIVIAL_COPY(T) Metrowerks::has_trivial_copy_ctor<T>::value
-#   define AZSTD_HAS_TRIVIAL_ASSIGN(T) Metrowerks::has_trivial_assignment<T>::value
-#   define AZSTD_HAS_TRIVIAL_DESTRUCTOR(T) Metrowerks::has_trivial_dtor<T>::value
-// because of POD issues we can't define it
-//#   define AZSTD_HAS_TYPE_TRAITS_INTRINSICS
-#endif
 
-#if defined(AZ_COMPILER_MSVC) && defined(_MSC_FULL_VER) && (_MSC_FULL_VER >= 140050215)
+#if defined(AZ_COMPILER_MSVC)
 #   include <AzCore/std/typetraits/is_same.h>
 
 #   define AZSTD_IS_UNION(T) __is_union(T)
@@ -83,10 +67,9 @@
 #   define AZSTD_IS_ENUM(T) __is_enum(T)
 //  This one doesn't quite always do the right thing:
 //  #   define AZSTD_IS_POLYMORPHIC(T) __is_polymorphic(T)
-#   define AZSTD_HAS_TYPE_TRAITS_INTRINSICS
 #endif
 
-#if defined(AZ_COMPILER_CLANG) || (defined(AZ_COMPILER_GCC) && ((__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 3))))
+#if defined(AZ_COMPILER_CLANG)
 #   include <AzCore/std/typetraits/is_same.h>
 #   include <AzCore/std/typetraits/is_reference.h>
 #   include <AzCore/std/typetraits/is_volatile.h>
@@ -109,8 +92,6 @@
 #   define AZSTD_IS_CLASS(T) __is_class(T)
 #   define AZSTD_IS_ENUM(T) __is_enum(T)
 #   define AZSTD_IS_POLYMORPHIC(T) __is_polymorphic(T)
-
-#   define AZSTD_HAS_TYPE_TRAITS_INTRINSICS
 #endif
 
 #ifndef AZSTD_IS_UNION

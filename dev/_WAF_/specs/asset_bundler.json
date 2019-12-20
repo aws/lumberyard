@@ -1,0 +1,10 @@
+{
+    "description"           : "Configuration to build Asset Bundler",
+    "visual_studio_name"    : "Asset Bundler",
+    "disable_game_projects" : true,
+    "platforms"             : [ "win", "darwin" ],
+    "modules": 
+    [
+        "AssetBundlerBatch"
+    ]
+}

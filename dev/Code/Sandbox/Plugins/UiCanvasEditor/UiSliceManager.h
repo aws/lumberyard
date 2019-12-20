@@ -33,7 +33,7 @@ public:     // member functions
     //~UiEditorEntityContextNotificationBus implementation
 
     //! Instantiate an existing slice asset into the UI canvas
-    void InstantiateSlice(const AZ::Data::AssetId& assetId, AZ::Vector2 viewportPosition);
+    void InstantiateSlice(const AZ::Data::AssetId& assetId, AZ::Vector2 viewportPosition, int childIndex = -1);
 
     //! Instantiate an existing slice asset into the UI canvas using a file browser
     void InstantiateSliceUsingBrowser(HierarchyWidget* hierarchy, AZ::Vector2 viewportPosition);

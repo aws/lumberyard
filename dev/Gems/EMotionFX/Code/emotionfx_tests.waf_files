@@ -5,6 +5,9 @@
         [
             "Tests/ActorFixture.cpp",
             "Tests/ActorFixture.h",
+            "Tests/AdditiveMotionSamplingTests.cpp",
+            "Tests/AnimAudioComponentTests.cpp",
+            "Tests/AnimGraphCommandTests.cpp",
             "Tests/AnimGraphActionCommandTests.cpp",
             "Tests/AnimGraphCopyPasteTests.cpp",
             "Tests/AnimGraphEventHandlerCounter.h",
@@ -13,11 +16,15 @@
             "Tests/AnimGraphFixture.cpp",
             "Tests/AnimGraphFixture.h",
             "Tests/AnimGraphFuzzTests.cpp",
+            "Tests/AnimGraphHubNodeTests.cpp",
             "Tests/AnimGraphMotionConditionTests.cpp",
+            "Tests/AnimGraphMotionNodeTests.cpp",
+            "Tests/AnimGraphParameterActionTests.cpp",
             "Tests/AnimGraphRefCountTests.cpp",
             "Tests/AnimGraphReferenceNodeTests.cpp",
             "Tests/AnimGraphStateMachineTests.cpp",
             "Tests/AnimGraphStateMachineInterruptionTests.cpp",
+            "Tests/AnimGraphStateMachineSyncTests.cpp",
             "Tests/AnimGraphSyncTrackTests.cpp",
             "Tests/AnimGraphTransitionCommandTests.cpp",
             "Tests/AnimGraphTransitionConditionFixture.cpp",
@@ -26,15 +33,22 @@
             "Tests/AnimGraphTransitionFixture.cpp",
             "Tests/AnimGraphTransitionFixture.h",
             "Tests/AnimGraphTransitionTests.cpp",
+            "Tests/BlendTreeBlendNNodeTests.cpp",
             "Tests/BlendTreeFloatConstantNodeTests.cpp",
             "Tests/BlendTreeFloatConditionNodeTests.cpp",
             "Tests/BlendTreeFloatMath1NodeTests.cpp",
             "Tests/BlendTreeFootIKNodeTests.cpp",
             "Tests/BlendTreeMirrorPoseNodeTests.cpp",
+            "Tests/BlendTreeParameterNodeTests.cpp",
+            "Tests/BlendTreeMotionFrameNodeTests.cpp",
             "Tests/BlendTreeRagdollNodeTests.cpp",
+            "Tests/BlendTreeRangeRemapperNodeTests.cpp",
             "Tests/BlendTreeRotationMath2NodeTests.cpp",
             "Tests/BlendTreeRotationLimitNodeTests.cpp",
+            "Tests/BlendTreeSimulatedObjectNodeTests.cpp",
             "Tests/BlendTreeTransformNodeTests.cpp",
+            "Tests/BlendTreeTwoLinkIKNodeTests.cpp",
+            "Tests/BoolLogicNodeTests.cpp",
             "Tests/ColliderCommandTests.cpp",
             "Tests/EMotionFXTest.cpp",
             "Tests/EmotionFXMathLibTests.cpp",
@@ -45,17 +59,22 @@
             "Tests/MCoreSystemFixture.h",
             "Tests/MCoreSystemFixture.cpp",
             "Tests/MorphTargetRuntimeTests.cpp",
+            "Tests/MorphSkinAttachmentTests.cpp",
             "Tests/MotionEventTrackTests.cpp",
+            "Tests/MotionExtractionTests.cpp",
+            "Tests/PoseTests.cpp",
+            "Tests/Printers.cpp",
+            "Tests/QuaternionParameterTests.cpp",
             "Tests/RagdollCommandTests.cpp",
+            "Tests/RandomMotionSelectionTests.cpp",
+            "Tests/SkeletalLODTests.cpp",
+            "Tests/SimulatedObjectCommandTests.cpp",
+            "Tests/SimulatedObjectSerializeTests.cpp",
             "Tests/SystemComponentFixture.h",
             "Tests/SystemComponentTests.cpp",
-            "Tests/BlendTreeBlendNNodeTests.cpp",
-            "Tests/RandomMotionSelectionTests.cpp",
-            "Tests/BoolLogicNodeTests.cpp",
+            "Tests/TransformUnitTests.cpp",
             "Tests/Vector2ToVector3CompatibilityTests.cpp",
-            "Tests/Printers.cpp",
-            "Tests/SimulatedObjectCommandTests.cpp",
-            "Tests/SimulatedObjectSerializeTests.cpp"
+            "Tests/Vector3ParameterTests.cpp"
         ],
         "Tests/MCore":
         [
@@ -66,7 +85,7 @@
         [
             "Tests/Prefabs/LeftArmSkeleton.h"
         ],
-        "Tests/AssetCode": 
+        "Tests/AssetCode":
         [
             "Tests/TestAssetCode/MotionEvent.h",
             "Tests/TestAssetCode/MotionEvent.cpp"
@@ -93,6 +112,8 @@
             "Tests/Mocks/ObjectAffectedByParameterChanges.h",
             "Tests/Mocks/Parameter.h",
             "Tests/Mocks/ParameterFactory.h",
+            "Tests/Mocks/SimulatedObject.h",
+            "Tests/Mocks/SimulatedObjectSetup.h",
             "Tests/Mocks/Skeleton.h",
             "Tests/Mocks/ValueParameter.h"
         ],
@@ -100,6 +121,11 @@
         [
             "Tests/Integration/PoseComparisonFixture.h",
             "Tests/Integration/PoseComparisonTests.cpp"
+        ],
+        "Tests/Game":
+        [
+            "Tests/Game/SampleGameFixture.h",
+            "Tests/Game/SamplePerformanceTests.cpp"
         ]
     },
     "AnimGraphParameterCommandsTests.cpp":

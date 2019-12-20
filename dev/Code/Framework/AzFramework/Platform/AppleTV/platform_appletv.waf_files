@@ -23,6 +23,10 @@
         [
             "../Common/UnixLike/AzFramework/IO/LocalFileIO_UnixLike.cpp"
         ],
+        "Network/Platform/AppleTV":
+        [
+            "../Common/Default/AzFramework/Network/AssetProcessorConnection_Default.cpp"
+        ],
         "TargetManagement/Platform/AppleTV":
         [
             "../Common/Default/AzFramework/TargetManagement/TargetManagementComponent_Default.cpp"

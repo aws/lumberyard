@@ -125,17 +125,22 @@ namespace AZ
 
         void StreamerContext::WakeUpMainStreamThread()
         {
+            AZStd::unique_lock<AZStd::mutex> lock(m_threadSleepLock);
+            m_threadWakeUpQueued.store(true, AZStd::memory_order_release);
             m_threadSleepCondition.notify_one(); 
         }
 
-        AZStd::mutex& StreamerContext::GetThreadSleepLock()
+        void StreamerContext::SuspendMainStreamThread()
         {
-            return m_threadSleepLock;
-        }
-
-        AZStd::condition_variable& StreamerContext::GetThreadSleepCondition()
-        {
-            return m_threadSleepCondition;
+            auto predicate = [this]() -> bool
+            {
+                // Don't go to sleep if there's a wake up call queued
+                return m_threadWakeUpQueued.load(AZStd::memory_order_acquire);
+            };
+            
+            AZStd::unique_lock<AZStd::mutex> lock(m_threadSleepLock);
+            m_threadSleepCondition.wait(lock, predicate);
+            m_threadWakeUpQueued.store(false, AZStd::memory_order_release);
         }
 
         FileRequest* StreamerContext::GetNewRequest(AZStd::vector<FileRequest*>& recycleBin, FileRequest::Usage usage)

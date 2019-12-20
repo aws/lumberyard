@@ -37,6 +37,7 @@
         "LyMetricsProducer_static",
         "LyMetricsProducer_python",
         "LyMetricsConsumer",
-        "LyInstallerMetrics"
+        "LyInstallerMetrics",
+        "DeltaCataloger"    
     ]
 }

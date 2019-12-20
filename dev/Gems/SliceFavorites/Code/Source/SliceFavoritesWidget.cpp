@@ -23,6 +23,8 @@
 #include <QPainter>
 #include <QtCore/QPropertyAnimation>
 #include <QtCore/qtimer>
+#include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
+#include <AzToolsFramework/AssetEditor/AssetEditorBus.h>
 
 #include <Source/ui_SliceFavoritesWidget.h>
 
@@ -176,7 +178,23 @@ namespace SliceFavorites
 
         contextMenu->addSeparator();
 
-        contextMenu->addAction("Import slice favorites", contextMenu, [this]()
+        contextMenu->addAction("Import slice...", contextMenu, [this]()
+        {
+            AssetSelectionModel selection = AssetSelectionModel::AssetTypeSelection("Slice");
+            AzToolsFramework::EditorRequests::Bus::Broadcast(&AzToolsFramework::EditorRequests::BrowseForAssets, selection);
+            if (selection.IsValid())
+            {
+                auto product = azrtti_cast<const ProductAssetBrowserEntry*>(selection.GetResult());
+                if (product)
+                {
+                    m_dataModel->AddFavorite(product);
+                }
+            }
+        });
+
+        contextMenu->addSeparator();
+
+        contextMenu->addAction("Import slice favorites...", contextMenu, [this]()
         {
             QString fileName = QFileDialog::getOpenFileName(this, "Import Favorites From...", QString(), tr("XML (*.xml)"), nullptr, QFileDialog::DontUseNativeDialog);
             if (fileName.length() > 0)
@@ -187,7 +205,7 @@ namespace SliceFavorites
             }
         });
 
-        QAction* exportAction = contextMenu->addAction("Export slice favorites", contextMenu, [this]()
+        QAction* exportAction = contextMenu->addAction("Export slice favorites...", contextMenu, [this]()
         {
             QString fileName = QFileDialog::getSaveFileName(nullptr, QString("Export Favorites To..."), "SliceFavorites.xml", QString("XML (*.xml)"));
             if (fileName.length() > 0)

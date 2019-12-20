@@ -67,6 +67,11 @@ namespace AzToolsFramework
         return action;
     }
 
+    AZStd::shared_ptr<SurfaceManipulator> SurfaceManipulator::MakeShared(const AZ::Transform& worldFromLocal)
+    {
+        return AZStd::shared_ptr<SurfaceManipulator>(aznew SurfaceManipulator(worldFromLocal));
+    }
+
     SurfaceManipulator::SurfaceManipulator(const AZ::Transform& worldFromLocal)
         : m_worldFromLocal(worldFromLocal)
     {

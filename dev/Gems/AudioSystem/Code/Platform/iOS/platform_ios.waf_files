@@ -1,0 +1,11 @@
+{
+    "auto":
+    {
+        "Platform/iOS":
+        [
+            "AudioSystem_Traits_Platform.h",
+            "AudioSystem_Traits_iOS.h",
+            "../Common/Unimplemented/AudioSystem_Unimplemented.cpp"
+        ]
+    }
+}

@@ -11,8 +11,6 @@
 */
 
 #include "HttpRequestor_precompiled.h"
-#include <platform_impl.h>
-
-#include <IGem.h>
+#include <AzCore/Module/Module.h>
 
 AZ_DECLARE_MODULE_CLASS(HttpRequestor_28479e255bde466e91fc34eec808d9c7, AZ::Module)

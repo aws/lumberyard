@@ -56,8 +56,8 @@ namespace AZ
             //! Causes the main thread for streamer to wake up and process any pending requests. If the thread
             //! is already awake, nothing happens.
             void WakeUpMainStreamThread();
-            AZStd::mutex& GetThreadSleepLock();
-            AZStd::condition_variable& GetThreadSleepCondition();
+            //! If there's no pending messages this will cause the main thread for streamer to go to sleep.
+            void SuspendMainStreamThread();
 
         private:
             static constexpr size_t s_initialRecycleBinSize = 64;
@@ -74,6 +74,7 @@ namespace AZ
             AZStd::queue<FileRequest*> m_completed;
             
             AZStd::mutex m_threadSleepLock;
+            AZStd::atomic<bool> m_threadWakeUpQueued{ false }; //!< Whether or not there's a wake up call queued.
             AZStd::condition_variable m_threadSleepCondition;
         };
     } // namespace IO

@@ -153,6 +153,7 @@ namespace AZ
         template<class Function>
         class JobFunctionExecutorHelper : public JobFunction<Function>, public JobExecutorHelper
         {
+            using Base = JobFunction<Function>;
         public:
             AZ_CLASS_ALLOCATOR(JobFunctionExecutorHelper, ThreadPoolAllocator, 0)
 
@@ -169,7 +170,7 @@ namespace AZ
 
             void Process() override
             {
-                JobFunction<Function>::m_function();
+                Base::Process();
 
                 m_executor.JobCompleteUpdate();
             }

@@ -683,7 +683,7 @@ AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
 
         if (!outcome.IsSuccess())
         {
-            AZ_Warning(AssetBuilderSDK::WarningWindow, false, "Failed to read project specific preset setting at [%s], will use default setting file.", projectSettingPath.c_str());
+            AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Failed to read project specific preset setting at [%s], will use default setting file.\n", projectSettingPath.c_str());
             // Construct the default setting path
             const char* engineRoot = nullptr;
             AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRoot, &AzFramework::ApplicationRequests::GetEngineRoot);

@@ -942,6 +942,8 @@ void CAttachmentVCLOTH::DrawAttachment(SRendParams& RendParams, const SRendering
         #include "Xenia/AttachmentVCloth_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/AttachmentVCloth_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/AttachmentVCloth_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

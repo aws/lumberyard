@@ -36,6 +36,7 @@
 #include "Audio/AudioSwitchComponent.h"
 #include "Audio/AudioSystemComponent.h"
 #include "Audio/AudioTriggerComponent.h"
+#include "Bundling/BundlingSystemComponent.h"
 #include "Rendering/DecalComponent.h"
 #include "Rendering/StereoRendererComponent.h"
 #include "Scripting/FlowGraphComponent.h"
@@ -119,10 +120,11 @@
 #include <LmbrCentral/Animation/MannequinAsset.h>
 
 // Asset handlers
-#include "Rendering/LensFlareAssetHandler.h"
-#include "Rendering/MeshAssetHandler.h"
-#include "Rendering/ParticleAssetHandler.h"
-#include "Ai/BehaviorTreeAssetHandler.h"
+#include <Rendering/LensFlareAssetHandler.h>
+#include <Rendering/MaterialAssetHandler.h>
+#include <Rendering/MeshAssetHandler.h>
+#include <Rendering/ParticleAssetHandler.h>
+#include <Ai/BehaviorTreeAssetHandler.h>
 
 // Scriptable Ebus Registration
 #include "Events/ReflectScriptableEvents.h"
@@ -252,6 +254,7 @@ namespace LmbrCentral
             AudioSystemComponent::CreateDescriptor(),
             AudioTriggerComponent::CreateDescriptor(),
             BehaviorTreeComponent::CreateDescriptor(),
+            BundlingSystemComponent::CreateDescriptor(),
             ConstraintComponent::CreateDescriptor(),
             DecalComponent::CreateDescriptor(),
             FlowGraphComponent::CreateDescriptor(),
@@ -334,6 +337,7 @@ namespace LmbrCentral
                    azrtti_typeid<NavigationSystemComponent>(),
                    azrtti_typeid<GeometrySystemComponent>(),
                    azrtti_typeid<AudioSystemComponent>(),
+                   azrtti_typeid<BundlingSystemComponent>(),
 #if AZ_LOADSCREENCOMPONENT_ENABLED
                    azrtti_typeid<LoadScreenComponent>(),
 #endif // if AZ_LOADSCREENCOMPONENT_ENABLED
@@ -431,6 +435,11 @@ namespace LmbrCentral
         characterDefinitionAssetHandler->Register(); // registers self with AssetManager
         m_assetHandlers.emplace_back(characterDefinitionAssetHandler);
 
+        auto materialAssetHandler = aznew MaterialAssetHandler();
+        materialAssetHandler->Register(); // registers self with AssetManager
+        m_assetHandlers.emplace_back(materialAssetHandler);
+
+
         auto particleAssetHandler = aznew ParticleAssetHandler;
         particleAssetHandler->Register(); // registers self with AssetManager
         m_assetHandlers.emplace_back(particleAssetHandler);
@@ -446,6 +455,7 @@ namespace LmbrCentral
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<AZ::ScriptAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<LensFlareAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<MaterialAsset>::Uuid());
+            assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<MaterialDataAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<DccMaterialAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<MeshAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<CharacterDefinitionAsset>::Uuid());

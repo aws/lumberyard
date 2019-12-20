@@ -403,7 +403,8 @@ namespace AzToolsFramework
                 res = sqlite3_step(m_statement);
             }
 
-            AZ_Error("SQLiteConnection", res != SQLITE_ERROR, "Statement::Step() resulted in SQLITE_ERROR.  This could indicate a problem with the asset database in the cache.");
+            // These 3 result codes are the ONLY non-error result codes for the v2 interface according to sqlite documentation, any other return value is an error.
+            AZ_Error("SQLiteConnection", res == SQLITE_OK || res == SQLITE_ROW || res == SQLITE_DONE, "Statement::Step() resulted in error code %d.  This could indicate a problem with the asset database in the cache.", res);
 
             if (res == SQLITE_ROW)
             {

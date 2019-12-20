@@ -21,9 +21,14 @@ namespace LmbrCentral
         : public AZ::Data::AssetData
     {
     public:
-
         AZ_RTTI(ParticleAsset, "{6EB56B55-1B58-4EE3-A268-27680338AE56}", AZ::Data::AssetData);
         AZ_CLASS_ALLOCATOR(ParticleAsset, AZ::SystemAllocator, 0);
+
+        ParticleAsset(const AZ::Data::AssetId& assetId = AZ::Data::AssetId()) :
+            AZ::Data::AssetData(assetId)
+        {
+
+        }
 
         AZStd::vector<AZStd::string> m_emitterNames;
     };

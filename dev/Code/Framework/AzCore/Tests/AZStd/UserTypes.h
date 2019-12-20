@@ -227,9 +227,5 @@ namespace UnitTestInternal
     };
 }
 
-// Without compiler help we should help a little. If the compiler support TR1 this will not be necessary.
-AZSTD_DECLARE_POD_TYPE(UnitTestInternal::MyStruct)
-AZSTD_DECLARE_UNION(UnitTestInternal::MyUnion)
-
 #endif // AZSTD_UNITTEST_USERTYPES_H
 #pragma once

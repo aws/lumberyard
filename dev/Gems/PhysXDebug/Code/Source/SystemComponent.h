@@ -112,7 +112,7 @@ namespace PhysXDebug
         , public ImGui::ImGuiUpdateListenerBus::Handler
 #endif // IMGUI_ENABLED
 #ifdef PHYSXDEBUG_GEM_EDITOR
-        , public Physics::SystemNotificationBus::Handler
+        , public Physics::WorldNotificationBus::Handler
 #endif // PHYSXDEBUG_GEM_EDITOR
     {
     public:
@@ -151,8 +151,8 @@ namespace PhysXDebug
         void OnCrySystemInitialized(ISystem&, const SSystemInitParams&) override;
 
 #ifdef PHYSXDEBUG_GEM_EDITOR
-        // Physics::SystemNotificationBus
-        void OnPostPhysicsUpdate(float, Physics::World*) override;
+        // Physics::WorldNotificationBus
+        void OnPostPhysicsUpdate(float) override;
 #endif
 
     private:

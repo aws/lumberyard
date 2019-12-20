@@ -15,24 +15,25 @@
 #include "PropertyAssetCtrl.hxx"
 #include "PropertyQTConstants.h"
 
-#include <QtWidgets/QLineEdit>
-#include <QtCore/QEvent>
-#include <QtCore/QTimer>
 AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
                                                                // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
-#include <QtGui/QMouseEvent>
 #include <QtWidgets/QHBoxLayout>
-AZ_POP_DISABLE_WARNING
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QMenu>
-#include <QClipboard>
-#include <QtGui/QPixmapCache>
-#include <QtCore/QMimeData>
-AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
 #include <QtWidgets/QFileDialog>
-AZ_POP_DISABLE_WARNING
 #include <QtWidgets/QMessageBox>
+#include <QtGui/QPixmapCache>
+#include <QtGui/QMouseEvent>
+#include <QtCore/QMimeData>
+#include <QtCore/QEvent>
+#include <QtCore/QTimer>
+#include <QClipboard>
+#include <QListView>
+#include <QTableView>
+#include <QHeaderView>
+#include <QPainter>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -53,23 +54,89 @@ AZ_POP_DISABLE_WARNING
 #include <AzToolsFramework/AssetEditor/AssetEditorBus.h>
 #include <AzToolsFramework/ToolsComponents/ComponentAssetMimeDataContainer.h>
 
+#include <UI/PropertyEditor/Model/AssetCompleterModel.h>
+#include <UI/PropertyEditor/View/AssetCompleterListView.h>
+
 namespace AzToolsFramework
 {
+    /* ----- LineEditLoading ----- */
+
+    LineEditLoading::LineEditLoading(QWidget *parent)
+        : QLineEdit(parent)
+        , m_loadIcon("Editor/Icons/AssetBrowser/in_progress.gif")
+    {
+        m_loadIcon.setCacheMode(QMovie::CacheMode::CacheAll);
+        m_loadIcon.setScaledSize(QSize(10, 10));
+        m_loadIcon.start();
+
+        setStyleSheet("AzToolsFramework--LineEditLoading[DropHighlight=\"true\"] { background-color: #D9822E; }");
+    }
+
+    LineEditLoading::~LineEditLoading()
+    {
+        if (m_isLoading)
+        {
+            AZ::TickBus::Handler::BusDisconnect();
+        }
+    }
+
+    void LineEditLoading::StartLoading()
+    {
+        m_isLoading = true;
+        AZ::TickBus::Handler::BusConnect();
+    }
+
+    void LineEditLoading::StopLoading()
+    {
+        AZ::TickBus::Handler::BusDisconnect();
+        m_isLoading = false;
+    }
+
+    void LineEditLoading::paintEvent(QPaintEvent *event)
+    {
+        QLineEdit::paintEvent(event);
+
+        if (m_isLoading)
+        {
+            QPainter painter(this);
+
+            // Draw loading icon on the right end of the lineEdit
+            int verticalOffset = 4;
+            int horizontalOffset = rect().width() - 15;
+
+            painter.drawPixmap(horizontalOffset, verticalOffset, m_loadIcon.currentPixmap());
+        }
+    }
+
+    void LineEditLoading::OnTick(float /*deltaTime*/, AZ::ScriptTimePoint /*time*/)
+    {
+        repaint();
+    }
+
+    /* ----- PropertyAssetCtrl ----- */
+
     PropertyAssetCtrl::PropertyAssetCtrl(QWidget* pParent, QString optionalValidDragDropExtensions)
         : QWidget(pParent)
         , m_optionalValidDragDropExtensions(optionalValidDragDropExtensions)
-        , m_editNotifyTarget(nullptr)
-        , m_editNotifyCallback(nullptr)
     {
-        // create the gui, it consists of a layout, and in that layout, a text field for the value
-        // and then a slider for the value.
         QHBoxLayout* pLayout = aznew QHBoxLayout();
-        m_label = aznew QLabel(this);
+        m_lineEdit = aznew LineEditLoading(this);
+
+        connect(m_lineEdit, &QLineEdit::textEdited, this, &PropertyAssetCtrl::OnTextChange);
+        connect(m_lineEdit, &QLineEdit::returnPressed, this, &PropertyAssetCtrl::OnReturnPressed);
 
         pLayout->setContentsMargins(0, 0, 0, 0);
 
         setFixedHeight(PropertyQTConstant_DefaultHeight);
 
+        m_lineEdit->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+        m_lineEdit->setMinimumWidth(PropertyQTConstant_MinimumWidth);
+        m_lineEdit->setFixedHeight(PropertyQTConstant_DefaultHeight);
+        m_lineEdit->setFocusPolicy(Qt::StrongFocus);
+
+        setAcceptDrops(true);
+
+        m_label = aznew QLabel(this);
         m_label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
         m_label->setMinimumWidth(PropertyQTConstant_MinimumWidth);
         m_label->setFixedHeight(PropertyQTConstant_DefaultHeight);
@@ -78,7 +145,7 @@ namespace AzToolsFramework
         m_label->setFrameShadow(QFrame::Sunken);
         m_label->setFocusPolicy(Qt::StrongFocus);
 
-        setAcceptDrops(true);
+        m_label->setVisible(false);
 
         m_editButton = aznew QPushButton(this);
         m_editButton->setFlat(true);
@@ -98,6 +165,7 @@ namespace AzToolsFramework
         m_clearButton->setIcon(QIcon(":/PropertyEditor/Resources/cross-small.png"));
         m_clearButton->setContentsMargins(0, 0, 0, 0);
         m_clearButton->setToolTip("Clear Asset");
+        m_clearButton->setVisible(true);
 
         m_browseButton = aznew QPushButton(this); //changed for preview to have right click to open new asset browser popup
         m_browseButton->setFlat(true);
@@ -107,26 +175,146 @@ namespace AzToolsFramework
         m_browseButton->setMouseTracking(true);
         m_browseButton->setContentsMargins(0, 0, 0, 0);
         m_browseButton->setToolTip("Browse...");
+        m_browseButton->setVisible(true);
 
         connect(m_editButton, &QPushButton::clicked, this, &PropertyAssetCtrl::OnEditButtonClicked);
         connect(m_browseButton, &QPushButton::clicked, this, &PropertyAssetCtrl::PopupAssetBrowser);
         connect(m_clearButton, &QPushButton::clicked, this, &PropertyAssetCtrl::ClearAsset);
 
+        pLayout->addWidget(m_lineEdit);
         pLayout->addWidget(m_label);
         pLayout->addWidget(m_browseButton);
         pLayout->addWidget(m_editButton);
         pLayout->addWidget(m_clearButton);
 
         setLayout(pLayout);
-        setFocusProxy(m_label);
-        setFocusPolicy(m_label->focusPolicy());
 
-        m_label->installEventFilter(this);
+        setFocusProxy(m_lineEdit);
+        setFocusPolicy(m_lineEdit->focusPolicy());
+
+        m_lineEdit->installEventFilter(this);
         m_currentAssetType = AZ::Data::s_invalidAssetType;
 
         setContextMenuPolicy(Qt::CustomContextMenu);
         connect(this, SIGNAL(customContextMenuRequested(const QPoint&)),
             this, SLOT(ShowContextMenu(const QPoint&)));
+    }
+
+    void PropertyAssetCtrl::ConfigureAutocompleter()
+    {
+        if (m_completerIsConfigured)
+        {
+            return;
+        }
+        m_completerIsConfigured = true;
+
+        m_model = aznew AssetCompleterModel(this);
+
+        m_completer = aznew QCompleter(m_model, this);
+        m_completer->setMaxVisibleItems(20);
+        m_completer->setCompletionColumn(0);
+        m_completer->setCompletionRole(Qt::DisplayRole);
+        m_completer->setCaseSensitivity(Qt::CaseInsensitive);
+        m_completer->setFilterMode(Qt::MatchContains);
+
+        connect(m_completer, static_cast<void (QCompleter::*)(const QModelIndex& index)>(&QCompleter::activated), this, &PropertyAssetCtrl::OnAutocomplete);
+
+        m_view = aznew AssetCompleterListView(this);
+        m_completer->setPopup(m_view);
+
+        m_view->setModelColumn(1);
+
+        m_view->setSelectionMode(QAbstractItemView::SelectionMode::SingleSelection);
+        m_view->setSelectionBehavior(QAbstractItemView::SelectItems);
+
+        m_model->SetFilter(m_currentAssetType);
+    }
+
+    void PropertyAssetCtrl::EnableAutocompleter()
+    {
+        m_completerIsActive = true;
+        m_lineEdit->setCompleter(m_completer);
+    }
+
+    void PropertyAssetCtrl::DisableAutocompleter()
+    {
+        m_completerIsActive = false;
+        m_lineEdit->setCompleter(nullptr);
+    }
+
+    void PropertyAssetCtrl::OnAutocomplete(const QModelIndex& index)
+    {
+        SetSelectedAssetID(m_model->GetAssetIdFromIndex(GetSourceIndex(index)));
+        m_lineEdit->StopLoading();
+    }
+
+    void PropertyAssetCtrl::OnReturnPressed()
+    {
+        if (m_completerIsActive)
+        {
+            m_view->SelectFirstItem();
+
+            const QModelIndex selectedindex = m_view->currentIndex();
+            if (selectedindex.isValid())
+            {
+                OnAutocomplete(selectedindex);
+            }
+            else
+            {
+                SetSelectedAssetID(AZ::Data::AssetId());
+                m_lineEdit->setText("");
+                m_lineEdit->StopLoading();
+            }
+        }
+        else
+        {
+            SetSelectedAssetID(AZ::Data::AssetId());
+            m_lineEdit->setText("");
+            m_lineEdit->StopLoading();
+        }
+    }
+
+    void PropertyAssetCtrl::OnTextChange(const QString& text)
+    {
+        // Triggered when text in textEdit is deliberately changed by the user
+
+        // 0 - Save position of cursor on lineEdit
+        m_lineEditLastCursorPosition = m_lineEdit->cursorPosition();
+
+        // 1 - If the model for this field still hasn't been configured, do so.
+        if (!m_completerIsConfigured)
+        {
+            ConfigureAutocompleter();
+        }
+
+        // 2a - Detect number of keys in lineEdit; if more than m_autocompleteAfterNumberOfChars, activate autocompleter
+        int chars = text.size();
+        if (chars >= s_autocompleteAfterNumberOfChars && !m_completerIsActive)
+        {
+            EnableAutocompleter();
+        }
+        // 2b - If less than m_autocompleteAfterNumberOfChars, deactivate autocompleter
+        else if (chars < s_autocompleteAfterNumberOfChars && m_completerIsActive)
+        {
+            DisableAutocompleter();
+        }
+
+        // 3 - If completer is active, pass search string to its model to highlight the results
+        if (m_completerIsActive)
+        {
+            m_model->SearchStringHighlight(text);
+        }
+
+        // 4 - Whenever the string is altered  mark the filename as incomplete.
+        //     Asset is only legally selected by going through the Asset Browser Popup or via the Autocomplete.
+        m_incompleteFilename = true;
+
+        // 5 - If lineEdit isn't manually set to text, first alteration of the text isn't registered correctly. We're also restoring cursor position.
+        m_lineEdit->setText(text);
+        m_lineEdit->setCursorPosition(m_lineEditLastCursorPosition);
+
+        // 6 - Every text change triggers the loading icon
+        m_lineEdit->StartLoading();
     }
 
     void PropertyAssetCtrl::ShowContextMenu(const QPoint& pos)
@@ -174,7 +362,7 @@ namespace AzToolsFramework
             QMimeData* newMimeData = aznew QMimeData();
 
             AzToolsFramework::EditorAssetMimeDataContainer mimeDataContainer;
-            mimeDataContainer.AddEditorAsset(m_currentAssetID, m_currentAssetType);
+            mimeDataContainer.AddEditorAsset(GetCurrentAssetID(), m_currentAssetType);
             mimeDataContainer.AddToMimeData(newMimeData);
 
             clipboard->setMimeData(newMimeData);
@@ -183,7 +371,7 @@ namespace AzToolsFramework
         {
             if (canPasteFromClipboard)
             {
-                SetCurrentAssetID(readId);
+                SetSelectedAssetID(readId);
             }
         }
     }
@@ -246,6 +434,7 @@ namespace AzToolsFramework
                 return true;
             }
         }
+
         if (pData->hasFormat(AssetBrowser::AssetBrowserEntry::GetMimeType()) || pData->hasFormat(EditorAssetMimeDataContainer::GetMimeType()))
         {
             AZ::Data::AssetId assetId;
@@ -432,15 +621,15 @@ namespace AzToolsFramework
             // We call the above function to set the initial state to be the reset state, otherwise it would start blank.
             tabsResetFunction();
 
-            #pragma warning(push)
-            #pragma warning(disable: 4573)  // the usage of 'X' requires the compiler to capture 'this' but the current default capture mode 
+#pragma warning(push)
+#pragma warning(disable: 4573)  // the usage of 'X' requires the compiler to capture 'this' but the current default capture mode 
 
             // Connect the above function to when the user clicks the reset tabs button
             QObject::connect(logPanel, &AzToolsFramework::LogPanel::BaseLogPanel::TabsReset, logPanel, tabsResetFunction);
             // Connect to finished slot to delete the allocated dialog
             QObject::connect(logDialog, &QDialog::finished, logDialog, &QObject::deleteLater);
 
-            #pragma warning(pop)
+#pragma warning(pop)
 
             // Show the dialog
             logDialog->adjustSize();
@@ -451,8 +640,9 @@ namespace AzToolsFramework
     void PropertyAssetCtrl::ClearAssetInternal()
     {
         SetCurrentAssetHint(AZStd::string());
-        SetCurrentAssetID(AZ::Data::AssetId());
-        EBUS_EVENT(ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, Refresh_EntireTree);
+        SetSelectedAssetID(AZ::Data::AssetId());
+        // To clear the asset we only need to refresh the values.
+        EBUS_EVENT(ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, Refresh_Values);
     }
 
     void PropertyAssetCtrl::SourceFileChanged(AZStd::string /*relativePath*/, AZStd::string /*scanFolder*/, AZ::Uuid sourceUUID)
@@ -473,7 +663,14 @@ namespace AzToolsFramework
 
     void PropertyAssetCtrl::dragEnterEvent(QDragEnterEvent* event)
     {
-        if (m_label->isEnabled() && IsCorrectMimeData(event->mimeData()))
+        if (m_lineEdit->isVisible() && IsCorrectMimeData(event->mimeData()))
+        {
+            m_lineEdit->setProperty("DropHighlight", true);
+            m_lineEdit->style()->unpolish(m_lineEdit);
+            m_lineEdit->style()->polish(m_lineEdit);
+            event->acceptProposedAction();
+        }
+        else if (m_label->isVisible() && m_label->isEnabled() && IsCorrectMimeData(event->mimeData()))
         {
             m_label->setProperty("DropHighlight", true);
             m_label->style()->unpolish(m_label);
@@ -486,21 +683,24 @@ namespace AzToolsFramework
     {
         (void)event;
 
-        //do nothing if the label is disabled
-        if (!m_label->isEnabled())
+        if (m_lineEdit->isVisible())
         {
-            return;
+            m_lineEdit->setProperty("DropHighlight", QVariant());
+            m_lineEdit->style()->unpolish(m_lineEdit);
+            m_lineEdit->style()->polish(m_lineEdit);
         }
-
-        m_label->setProperty("DropHighlight", QVariant());
-        m_label->style()->unpolish(m_label);
-        m_label->style()->polish(m_label);
+        else if (m_label->isVisible() && m_label->isEnabled())
+        {
+            m_label->setProperty("DropHighlight", QVariant());
+            m_label->style()->unpolish(m_label);
+            m_label->style()->polish(m_label);
+        }
     }
 
     void PropertyAssetCtrl::dropEvent(QDropEvent* event)
     {
-        //do nothing if the label is disabled
-        if (!m_label->isEnabled())
+        //do nothing if the line edit is disabled
+        if ((m_lineEdit->isVisible() && !m_lineEdit->isEnabled()) || (m_label->isVisible() && !m_label->isEnabled()))
         {
             return;
         }
@@ -511,19 +711,28 @@ namespace AzToolsFramework
         {
             if (readId.IsValid())
             {
-                SetCurrentAssetID(readId);
+                SetSelectedAssetID(readId);
             }
             event->acceptProposedAction();
         }
 
-        m_label->setProperty("DropHighlight", QVariant());
-        m_label->style()->unpolish(m_label);
-        m_label->style()->polish(m_label);
+        if (m_lineEdit->isVisible())
+        {
+            m_lineEdit->setProperty("DropHighlight", QVariant());
+            m_lineEdit->style()->unpolish(m_lineEdit);
+            m_lineEdit->style()->polish(m_lineEdit);
+        }
+        else if (m_label->isVisible())
+        {
+            m_label->setProperty("DropHighlight", QVariant());
+            m_label->style()->unpolish(m_label);
+            m_label->style()->polish(m_label);
+        }
     }
 
     void PropertyAssetCtrl::UpdateTabOrder()
     {
-        setTabOrder(m_label, m_browseButton);
+        setTabOrder(m_lineEdit, m_browseButton);
         setTabOrder(m_browseButton, m_clearButton);
     }
 
@@ -536,11 +745,22 @@ namespace AzToolsFramework
             if (event->type() == QEvent::MouseButtonDblClick)
             {
                 // if its filled in with an asset, open the asset.
-                if (m_currentAssetID.IsValid())
+                if (m_selectedAssetID.IsValid())
                 {
                     bool someoneHandledIt = false;
-                    AssetBrowser::AssetBrowserInteractionNotificationBus::Broadcast(&AssetBrowser::AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, m_currentAssetID, someoneHandledIt);
+                    AssetBrowser::AssetBrowserInteractionNotificationBus::Broadcast(&AssetBrowser::AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, GetCurrentAssetID(), someoneHandledIt);
                 }
+            }
+        }
+
+        // When focus is lost, delete text in editLabel if no asset is currently selected
+        if (event->type() == QEvent::FocusOut)
+        {
+            if (m_incompleteFilename)
+            {
+                SetSelectedAssetID(AZ::Data::AssetId());
+                m_lineEdit->setText("");
+                m_lineEdit->StopLoading();
             }
         }
 
@@ -553,10 +773,11 @@ namespace AzToolsFramework
 
     void PropertyAssetCtrl::OnEditButtonClicked()
     {
+        AZ::Data::AssetId assetId = GetCurrentAssetID();
         if (m_editNotifyCallback)
         {
             AZ_Error("Asset Property", m_editNotifyTarget, "No notification target set for edit callback.");
-            m_editNotifyCallback->Invoke(m_editNotifyTarget, GetCurrentAssetID(), GetCurrentAssetType());
+            m_editNotifyCallback->Invoke(m_editNotifyTarget, assetId, GetCurrentAssetType());
             return;
         }
         else
@@ -569,7 +790,7 @@ namespace AzToolsFramework
                 const AZ::SerializeContext::ClassData* classData = serializeContext->FindClassData(GetCurrentAssetType());
                 if (classData && classData->m_editData)
                 {
-                    if (!GetCurrentAssetID().IsValid())
+                    if (!assetId.IsValid())
                     {
                         // No Asset Id selected - Open editor and create new asset for them
                         AssetEditor::AssetEditorRequestsBus::Broadcast(&AssetEditor::AssetEditorRequests::CreateNewAsset, GetCurrentAssetType());
@@ -578,7 +799,7 @@ namespace AzToolsFramework
                     {
                         // Open the asset with the preferred asset editor
                         bool handled = false;
-                        AssetBrowser::AssetBrowserInteractionNotificationBus::Broadcast(&AssetBrowser::AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, GetCurrentAssetID(), handled);
+                        AssetBrowser::AssetBrowserInteractionNotificationBus::Broadcast(&AssetBrowser::AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, assetId, handled);
                     }
 
                     return;
@@ -596,7 +817,7 @@ namespace AzToolsFramework
 
         // Request the AssetBrowser Dialog and set a type filter
         AssetSelectionModel selection = GetAssetSelectionModel();
-        selection.SetSelectedAssetId(m_currentAssetID);
+        selection.SetSelectedAssetId(m_selectedAssetID);
         EditorRequests::Bus::Broadcast(&EditorRequests::BrowseForAssets, selection);
         if (selection.IsValid())
         {
@@ -605,12 +826,12 @@ namespace AzToolsFramework
             AZ_Assert(product || folder, "Incorrect entry type selected. Expected product or folder.");
             if (product)
             {
-                SetCurrentAssetID(product->GetAssetId());
+                SetSelectedAssetID(product->GetAssetId());
             }
             else if (folder)
             {
                 SetFolderSelection(folder->GetRelativePath());
-                SetCurrentAssetID(AZ::Data::AssetId());
+                SetSelectedAssetID(AZ::Data::AssetId());
             }
         }
     }
@@ -620,18 +841,19 @@ namespace AzToolsFramework
         ClearAssetInternal();
     }
 
-
-    void PropertyAssetCtrl::SetCurrentAssetID(const AZ::Data::AssetId& newID)
+    void PropertyAssetCtrl::SetSelectedAssetID(const AZ::Data::AssetId& newID)
     {
+        m_incompleteFilename = false;
+
         // Early out if we're attempting to set the same asset ID unless the
         // asset is a folder. Folders don't have an asset ID, so we bypass
         // the early-out for folder selections. See PropertyHandlerDirectory.
         const bool isFolderSelection = !GetFolderSelection().empty();
-        if (m_currentAssetID == newID && !isFolderSelection)
+        if (m_selectedAssetID == newID && !isFolderSelection)
         {
             return;
         }
-        m_currentAssetID = newID;
+        m_selectedAssetID = newID;
 
         // If the id is valid, connect to the asset system bus
         if (newID.IsValid())
@@ -654,18 +876,60 @@ namespace AzToolsFramework
         {
             return;
         }
+
         m_currentAssetType = newType;
+
+        // Get Asset Type Name - If empty string (meaning it's an unregistered asset type), disable autocomplete and show label instead of lineEdit
+        // (in short, we revert to previous functionality without autocomplete)
+        AZStd::string assetTypeName;
+        AZ::AssetTypeInfoBus::EventResult(assetTypeName, m_currentAssetType, &AZ::AssetTypeInfo::GetAssetTypeDisplayName);
+
+        if (assetTypeName.empty())
+        {
+            m_label->setVisible(true);
+            m_lineEdit->setVisible(false);
+            m_unnamedType = true;
+        }
+        else
+        {
+            m_label->setVisible(false);
+            m_lineEdit->setVisible(true);
+            m_unnamedType = false;
+        }
+
         UpdateAssetDisplay();
     }
 
-    void PropertyAssetCtrl::SetCurrentAssetID(const AZ::Data::AssetId& newID, const AZ::Data::AssetType& newType)
+    void PropertyAssetCtrl::SetSelectedAssetID(const AZ::Data::AssetId& newID, const AZ::Data::AssetType& newType)
     {
-        if (m_currentAssetID == newID && m_currentAssetType == newType)
+        m_incompleteFilename = false;
+
+        if (m_selectedAssetID == newID && m_currentAssetType == newType)
         {
             return;
         }
+
         m_currentAssetType = newType;
-        m_currentAssetID = newID;
+
+        // Get Asset Type Name - If empty string (meaning it's an unregistered asset type), disable autocomplete and show label instead of lineEdit
+        // (in short, we revert to previous functionality without autocomplete)
+        AZStd::string assetTypeName;
+        AZ::AssetTypeInfoBus::EventResult(assetTypeName, m_currentAssetType, &AZ::AssetTypeInfo::GetAssetTypeDisplayName);
+
+        if (assetTypeName.empty())
+        {
+            m_label->setVisible(true);
+            m_lineEdit->setVisible(false);
+            m_unnamedType = true;
+        }
+        else
+        {
+            m_label->setVisible(false);
+            m_lineEdit->setVisible(true);
+            m_unnamedType = false;
+        }
+
+        m_selectedAssetID = newID;
 
         // If the id is valid, connect to the asset system bus
         if (newID.IsValid())
@@ -687,6 +951,26 @@ namespace AzToolsFramework
         m_currentAssetHint = hint;
     }
 
+    // Note: Setting a Default Asset ID here will only display placeholder information when no asset is selected.
+    // The default asset will not be automatically written into property (and thus won't display in-editor).
+    // Functionality to use the default asset when no asset is selected has to be implemented on the component side.
+    void PropertyAssetCtrl::SetDefaultAssetID(const AZ::Data::AssetId& defaultID)
+    {
+        m_defaultAssetID = defaultID;
+
+        AZ::Data::AssetInfo assetInfo;
+        AZStd::string rootFilePath;
+
+        AssetSystemRequestBus::Broadcast(&AssetSystem::AssetSystemRequest::GetAssetInfoById, defaultID, m_currentAssetType, assetInfo, rootFilePath);
+
+        if (!assetInfo.m_relativePath.empty())
+        {
+            AzFramework::StringFunc::Path::GetFileName(assetInfo.m_relativePath.c_str(), m_defaultAssetHint);
+        }
+
+        m_lineEdit->setPlaceholderText((m_defaultAssetHint + " (default)").data());
+    }
+
     void PropertyAssetCtrl::UpdateAssetDisplay()
     {
         if (m_currentAssetType == AZ::Data::s_invalidAssetType)
@@ -694,79 +978,85 @@ namespace AzToolsFramework
             return;
         }
 
-        AZ::Outcome<AssetSystem::JobInfoContainer> jobOutcome = AZ::Failure();
-        AssetSystemJobRequestBus::BroadcastResult(jobOutcome, &AssetSystemJobRequestBus::Events::GetAssetJobsInfoByAssetID, GetCurrentAssetID(), false, false);
-
-        if (jobOutcome.IsSuccess())
+        if (!m_unnamedType) 
         {
-            AZStd::string assetPath;
-            AssetSystem::JobInfoContainer& jobs = jobOutcome.GetValue();
 
-            // Get the asset relative path
-            AssetSystem::JobStatus assetStatus = AssetSystem::JobStatus::Completed;
+            AZ::Outcome<AssetSystem::JobInfoContainer> jobOutcome = AZ::Failure();
+            AZ::Data::AssetId assetID = GetCurrentAssetID();
+            AssetSystemJobRequestBus::BroadcastResult(jobOutcome, &AssetSystemJobRequestBus::Events::GetAssetJobsInfoByAssetID, assetID, false, false);
 
-            if (!jobs.empty())
+            if (jobOutcome.IsSuccess())
             {
-                assetPath = jobs[0].m_sourceFile;
+                AZStd::string assetPath;
+                AssetSystem::JobInfoContainer& jobs = jobOutcome.GetValue();
 
-                AZStd::string errorLog;
+                // Get the asset relative path
+                AssetSystem::JobStatus assetStatus = AssetSystem::JobStatus::Completed;
 
-                for (const auto& jobInfo : jobs)
+                if (!jobs.empty())
                 {
-                    // If the job has failed, mark the asset as failed, and collect the log.
-                    switch (jobInfo.m_status)
-                    {
-                    case AssetSystem::JobStatus::Failed:
-                    case AssetSystem::JobStatus::Failed_InvalidSourceNameExceedsMaxLimit:
-                        {
-                            assetStatus = AssetSystem::JobStatus::Failed;
+                    assetPath = jobs[0].m_sourceFile;
 
-                            AZ::Outcome<AZStd::string> logOutcome = AZ::Failure();
-                            AssetSystemJobRequestBus::BroadcastResult(logOutcome, &AssetSystemJobRequestBus::Events::GetJobLog, jobInfo.m_jobRunKey);
-                            if (logOutcome.IsSuccess())
+                    AZStd::string errorLog;
+
+                    for (const auto& jobInfo : jobs)
+                    {
+                        // If the job has failed, mark the asset as failed, and collect the log.
+                        switch (jobInfo.m_status)
+                        {
+                            case AssetSystem::JobStatus::Failed:
+                            case AssetSystem::JobStatus::Failed_InvalidSourceNameExceedsMaxLimit:
                             {
-                                errorLog += logOutcome.TakeValue();
-                                errorLog += '\n';
+                                assetStatus = AssetSystem::JobStatus::Failed;
+
+                                AZ::Outcome<AZStd::string> logOutcome = AZ::Failure();
+                                AssetSystemJobRequestBus::BroadcastResult(logOutcome, &AssetSystemJobRequestBus::Events::GetJobLog, jobInfo.m_jobRunKey);
+                                if (logOutcome.IsSuccess())
+                                {
+                                    errorLog += logOutcome.TakeValue();
+                                    errorLog += '\n';
+                                }
                             }
+                            break;
+
+                            // If the job is in progress, mark the asset as in progress
+                            case AssetSystem::JobStatus::InProgress:
+                            {
+                                // Only mark asset in progress if it isn't already in progress, or marked as an error
+                                if (assetStatus == AssetSystem::JobStatus::Completed)
+                                {
+                                    assetStatus = AssetSystem::JobStatus::InProgress;
+                                }
+                            }
+                            break;
+                        }
+                    }
+
+                    switch (assetStatus)
+                    {
+                        // In case of failure, render failure icon
+                        case AssetSystem::JobStatus::Failed:
+                        {
+                            UpdateErrorButton(errorLog);
                         }
                         break;
 
-                    // If the job is in progress, mark the asset as in progress
-                    case AssetSystem::JobStatus::InProgress:
+                        // In case of success, remove error elements
+                        case AssetSystem::JobStatus::Completed:
                         {
-                            // Only mark asset in progress if it isn't already in progress, or marked as an error
-                            if (assetStatus == AssetSystem::JobStatus::Completed)
-                            {
-                                assetStatus = AssetSystem::JobStatus::InProgress;
-                            }
+                            ClearErrorButton();
                         }
                         break;
                     }
                 }
 
-                switch (assetStatus)
+                // Only change the asset name if the asset not found or there's no last known good name for it
+                if (!assetPath.empty() && (assetStatus != AssetSystem::JobStatus::Completed || m_currentAssetHint != assetPath))
                 {
-                // In case of failure, render failure icon
-                case AssetSystem::JobStatus::Failed:
-                    {
-                        UpdateErrorButton(errorLog);
-                    }
-                    break;
-
-                // In case of success, remove error elements
-                case AssetSystem::JobStatus::Completed:
-                    {
-                        ClearErrorButton();
-                    }
-                    break;
+                    m_currentAssetHint = assetPath;
                 }
             }
 
-            // Only change the asset name if the asset not found or there's no last known good name for it
-            if (!assetPath.empty() && (assetStatus != AssetSystem::JobStatus::Completed || m_currentAssetHint != assetPath))
-            {
-                m_currentAssetHint = assetPath;
-            }
         }
 
         // Get the asset file name
@@ -777,6 +1067,7 @@ namespace AzToolsFramework
         }
 
         setToolTip(m_currentAssetHint.c_str());
+        m_lineEdit->setText(assetName.c_str());
         m_label->setText(assetName.c_str());
     }
 
@@ -810,6 +1101,27 @@ namespace AzToolsFramework
         m_editButton->setToolTip(tooltip);
     }
 
+    const QModelIndex PropertyAssetCtrl::GetSourceIndex(const QModelIndex& index)
+    {
+        if (!index.isValid())
+        {
+            return QModelIndex();
+        }
+
+        // mapToSource is only available for QAbstractProxyModel but completionModel() returns a QAbstractItemModel, hence the cast.
+        return static_cast<QAbstractProxyModel*>(m_completer->completionModel())->mapToSource(index);
+    }
+
+    void PropertyAssetCtrl::SetClearButtonEnabled(bool enable)
+    {
+        m_clearButton->setEnabled(enable);
+    }
+
+    void PropertyAssetCtrl::SetClearButtonVisible(bool visible)
+    {
+        m_clearButton->setVisible(visible);
+    }
+
     const AZ::Uuid& AssetPropertyHandlerDefault::GetHandledType() const
     {
         return AZ::GetAssetClassId();
@@ -818,12 +1130,12 @@ namespace AzToolsFramework
     QWidget* AssetPropertyHandlerDefault::CreateGUI(QWidget* pParent)
     {
         PropertyAssetCtrl* newCtrl = aznew PropertyAssetCtrl(pParent);
-        connect(newCtrl, &PropertyAssetCtrl::OnAssetIDChanged, this, [ newCtrl ](AZ::Data::AssetId newAssetID)
-            {
-                (void)newAssetID;
-                EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
-                AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
-            });
+        connect(newCtrl, &PropertyAssetCtrl::OnAssetIDChanged, this, [newCtrl](AZ::Data::AssetId newAssetID)
+        {
+            (void)newAssetID;
+            EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
+        });
         return newCtrl;
     }
 
@@ -864,6 +1176,20 @@ namespace AzToolsFramework
                 GUI->SetEditButtonTooltip(tr(buttonTooltip.c_str()));
             }
         }
+        else if (attrib == AZ::Edit::Attributes::DefaultAsset)
+        {
+            AZ::Data::AssetId assetId;
+            if (attrValue->Read<AZ::Data::AssetId>(assetId))
+            {
+                GUI->SetDefaultAssetID(assetId);
+            }
+        }
+        else if (attrib == AZ::Edit::Attributes::AllowClearAsset)
+        {
+            bool visible = true;
+            attrValue->Read<bool>(visible);
+            GUI->SetClearButtonVisible(visible);
+        }
     }
 
     void AssetPropertyHandlerDefault::WriteGUIValuesIntoProperty(size_t index, PropertyAssetCtrl* GUI, property_t& instance, InstanceDataNode* node)
@@ -871,13 +1197,13 @@ namespace AzToolsFramework
         (void)index;
         (void)node;
 
-        if (!GUI->GetCurrentAssetID().IsValid())
+        if (!GUI->GetSelectedAssetID().IsValid())
         {
-            instance = nullptr;
+            instance = property_t(AZ::Data::AssetId(), GUI->GetCurrentAssetType(), "");
         }
         else
         {
-            instance = property_t(GUI->GetCurrentAssetID(), GUI->GetCurrentAssetType(), GUI->GetCurrentAssetHint());
+            instance = property_t(GUI->GetSelectedAssetID(), GUI->GetCurrentAssetType(), GUI->GetCurrentAssetHint());
         }
     }
 
@@ -894,7 +1220,7 @@ namespace AzToolsFramework
         const AZ::Uuid& assetTypeId = node->GetElementMetadata()->m_genericClassInfo->GetTemplatedTypeId(0);
 
         GUI->SetCurrentAssetHint(instance.GetHint());
-        GUI->SetCurrentAssetID(instance.GetId(), assetTypeId);
+        GUI->SetSelectedAssetID(instance.GetId(), assetTypeId);
         GUI->SetEditNotifyTarget(node->GetParent()->GetInstance(0));
 
         GUI->blockSignals(false);
@@ -906,11 +1232,11 @@ namespace AzToolsFramework
         PropertyAssetCtrl* newCtrl = aznew PropertyAssetCtrl(pParent);
 
         connect(newCtrl, &PropertyAssetCtrl::OnAssetIDChanged, this, [newCtrl](AZ::Data::AssetId newAssetID)
-            {
-                (void)newAssetID;
-                EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
-                AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
-            });
+        {
+            (void)newAssetID;
+            EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
+        });
         return newCtrl;
     }
 
@@ -928,7 +1254,7 @@ namespace AzToolsFramework
         (void)node;
 
         AZStd::string assetPath;
-        EBUS_EVENT_RESULT(assetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, GUI->GetCurrentAssetID());
+        EBUS_EVENT_RESULT(assetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, GUI->GetSelectedAssetID());
 
         instance.SetAssetPath(assetPath.c_str());
     }
@@ -948,7 +1274,7 @@ namespace AzToolsFramework
 
         // Set the hint in case the asset is not able to be found by assetId
         GUI->SetCurrentAssetHint(instance.GetAssetPath());
-        GUI->SetCurrentAssetID(assetId, instance.GetAssetType());
+        GUI->SetSelectedAssetID(assetId, instance.GetAssetType());
 
         GUI->blockSignals(false);
         return false;

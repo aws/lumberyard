@@ -151,9 +151,11 @@ def is_cxx_file(self, file_name):
 # DX12 detection and configuration.  DX12_INCLUDES and DX12_LIBPATH are set in compile_rules_win_x64_host
 @conf
 def has_dx12(conf):
-
-    if conf.env['DX12_INCLUDES'] and conf.env['DX12_LIBPATH']:
+    
+    result = conf.does_support_dx12()
+    if result and any(result):
         return True
+
     return False
 
 
@@ -536,8 +538,11 @@ def LoadFileLists(ctx, kw, file_lists):
     kw['header_files']          = sorted(header_files, key=lambda file: file.abspath())
 
     # In the uber files, paths are relative to the current module path, so make sure the root of the project is included in the include search path
-    if '.' not in kw.get('includes',[]):
-        kw.get('includes', []).append('.')
+    # include it first to avoid wrong files being picked from other modules (e.g. picking stdafx.h from another module)
+    includeList = kw.setdefault('includes', [])
+    if '.' in includeList:
+      includeList.remove('.')
+    includeList.insert(0, '.')
 
 
 def VerifyInput(ctx, kw):
@@ -981,7 +986,7 @@ def process_extern_engine_lib(self):
             raise Errors.WafError('could not find library %r' % self.output_name)
 
         output_file_node = self.bld.root.find_node(output_file)
-        output_file_node.sig = Utils.h_file(output_file_node.abspath())
+        output_file_node.cache_sig = Utils.h_file(output_file_node.abspath())
         self.link_task = self.create_task('fake_%s' % self.lib_type, [], [output_file_node])
         if not getattr(self, 'target', None):
             self.target = self.name
@@ -1010,7 +1015,7 @@ def MonolithicBuildModule(ctx, *k, **kw):
         ctx.monolithic_build_settings[key] += values
 
     def _append_linker_options():
-        for setting in ['lib', 'libpath', 'linkflags', 'framework']:
+        for setting in ['stlib', 'stlibpath', 'lib', 'libpath', 'linkflags', 'framework']:
             _append(prefix + setting, kw[setting] )
             _append(prefix + setting, ctx.GetPlatformSpecificSettings(kw, setting, ctx.env['PLATFORM'], ctx.env['CONFIGURATION']))
 
@@ -1104,6 +1109,13 @@ def BuildTaskGenerator(ctx, kw):
 
     if not ctx.is_valid_configuration_request(**kw):
         return False
+    
+    # If this is a unit test module for a static library (see CryEngineStaticLibrary), then enable it if its unit test target
+    # is enabled as well
+    unit_test_target = kw.get('unit_test_target')
+    if unit_test_target and ctx.is_target_enabled(unit_test_target):
+        Logs.debug('lumberyard: module {} enabled for platform {}.'.format(target, current_platform))
+        return True
 
     if ctx.is_target_enabled(target):
         Logs.debug('lumberyard: module {} enabled for platform {}.'.format(target, current_platform))
@@ -1262,7 +1274,7 @@ def CryEngineSharedLibrary(ctx, *k, **kw):
 
 ###############################################################################
 @build_stlib
-def CryEngineStaticLibrary(ctx, *k, **kw):
+def CryEngineStaticLibraryLegacy(ctx, *k, **kw):
     """
     CryEngine Static Libraries are static libraries
     Except the build configuration requires a monolithic build
@@ -1386,14 +1398,14 @@ def codegen_static_modules_cpp(ctx, static_modules, kw):
 
     # LMBR-30070: We should be generating this file with a waf task. Until then,
     # we need to manually set the cached signature.
-    static_modules_json_node.sig = static_modules_json_node.cache_sig = Utils.h_file(static_modules_json_node.abspath())
+    static_modules_json_node.cache_sig = Utils.h_file(static_modules_json_node.abspath())
 
     # Set up codegen for launcher.
     kw['features'] += ['az_code_gen']
     if 'az_code_gen' not in kw:
         kw['az_code_gen'] = []
         
-    static_modules_py = ctx.engine_node.make_node('Code/Launcher/CodeGen/StaticModules.py')
+    static_modules_py = ctx.engine_node.make_node('Code/LauncherUnified/CodeGen/StaticModules.py')
     static_modules_node_rel = static_modules_py.path_from(ctx.path)
 
     kw['az_code_gen'] += [
@@ -1522,10 +1534,7 @@ def CryLauncher_Impl(ctx, project, *k, **kw_per_launcher):
 
     Logs.debug("lumberyard: Generating launcher %s from %s" % (kw_per_launcher['output_file_name'], kw_per_launcher['target']))
 
-    # We can only apply gems to the AndroidLauncher during monolithic builds.  This is due to how the launcher is
-    # loaded at runtime and may not be able to recursively load all "NEEDED" libraries depending on OS version
-    if (not is_android) or (is_android and is_monolithic):
-        ctx.apply_gems_to_context(project, k, kw_per_launcher)
+    ctx.apply_gems_to_context(project, k, kw_per_launcher)
 
     codegen_static_modules_cpp_for_launcher(ctx, project, k, kw_per_launcher)
 
@@ -1779,8 +1788,17 @@ def CryFileContainer(ctx, *k, **kw):
     if not BuildTaskGenerator(ctx, kw):
         return
 
-    if ctx.env['PLATFORM'] == 'project_generator':
-        ctx(*k, **kw)
+    # A file container is not supposed to actually generate any build tasks at all, but it still needs
+    # to be a task gen so that it can export includes and export defines (in the 'use' system)
+    # We want the files to show up in the generated projects (xcode and other IDEs) as if they are compile tasks
+    # but when actually building, we want them only to affect use / defines / includes.
+    
+    if ctx.env['PLATFORM'] != 'project_generator':
+        # clear out the 'source' and features so that as little as possible executes.
+        kw['source'] = []
+        kw['features'] = ['use']
+    
+    return ctx(*k, **kw)
 
 
 ###############################################################################
@@ -2450,6 +2468,30 @@ def GetPlatformSpecificSettings(ctx, dict, entry, _platform, configuration):
     if configuration == []:
         return [] # Dont try to check for configurations if we dont have any
 
+    # Check for 'test' or 'dedicated' tagged entries
+    if _platform and _platform != 'project_generator':
+    
+        platform_details = ctx.get_target_platform_detail(_platform)
+        configuration_details = platform_details.get_configuration(configuration)
+    
+        if configuration_details.is_test:
+            test_entry = 'test_{}'.format(entry)
+            if test_entry in dict:
+                returnValue += _to_list(dict[test_entry])
+            for platform in platforms:
+                platform_test_entry = '{}_test_{}'.format(platform, entry)
+                if platform_test_entry in dict:
+                    returnValue += _to_list(dict[platform_test_entry])
+    
+        if configuration_details.is_server:
+            test_entry = 'dedicated_{}'.format(entry)
+            if test_entry in dict:
+                returnValue += _to_list(dict[test_entry])
+            for platform in platforms:
+                platform_test_entry = '{}_dedicated_{}'.format(platform, entry)
+                if platform_test_entry in dict:
+                    returnValue += _to_list(dict[platform_test_entry])
+
     # Check for entry in <configuration>_<entry> style
     configuration_entry = configuration + '_' + entry
     if configuration_entry in dict:
@@ -2687,11 +2729,17 @@ def apply_monolithic_build_settings(self):
 
     def _apply_monolithic_build_settings(monolithic_dict, prefix=''):
         append_to_unique_list(self.use, list(monolithic_dict[prefix + 'use']))
+        append_to_unique_list(self.uselib, list(monolithic_dict[prefix + 'uselib']))
+        append_to_unique_list(self.framework, list(monolithic_dict[prefix + 'framework']))
+        self.linkflags  += list(monolithic_dict[prefix + 'linkflags'])
+
+        # static libs
+        self.stlib      += list(monolithic_dict[prefix + 'stlib'])
+        append_to_unique_list(self.stlibpath, list(monolithic_dict[prefix + 'stlibpath']))
+
+        # shared libs
         self.lib        += list(monolithic_dict[prefix + 'lib'])
         append_to_unique_list(self.libpath, list(monolithic_dict[prefix + 'libpath']))
-        self.linkflags  += list(monolithic_dict[prefix + 'linkflags'])
-        append_to_unique_list(self.framework, list(monolithic_dict[prefix + 'framework']))
-        append_to_unique_list(self.uselib, list(monolithic_dict[prefix + 'uselib']))
 
     Logs.debug("lumberyard: Applying monolithic build settings for %s ... " % self.name)
 
@@ -2789,63 +2837,6 @@ def apply_custom_flags(self):
             self.env['CXXFLAGS'] = list(filter(lambda r:not r.startswith('-fno-rtti'), self.env['CXXFLAGS']))
 
 
-# handle outputs not in the build directory.  Outputs in the build directory don't cache their signatures,
-# and instead use their parent task signature as their own.  Since their signatures aren't cached, any
-# use of those files as inputs into later tasks will cause a recalc of their signature base on the file
-# contents, which will differ from the previously set parent signature, and cause an overwrite of the signature
-# Instead, this function will modify the runnable_status to check the individual outputs for differences, and
-# modify the post_run to store a cache_sig based on the file signature instead of the parent task signature
-# based on Task.update_outputs(), which acts on a class instead of a class-instantiation
-def allow_non_bld_outputs(self):
-
-    old_post_run = self.post_run
-    def new_post_run():
-        old_post_run()
-        for node in self.outputs:
-            node.sig = node.cache_sig = Utils.h_file(node.abspath())
-            # most of the task_sigs use uid as the key, this is using the node path as the key and storing the uid
-            self.generator.bld.task_sigs[node.abspath()] = self.uid()
-    self.post_run = new_post_run
-
-    old_runnable_status = self.runnable_status
-    def new_runnable_status():
-        status = old_runnable_status()
-        if status != Task.RUN_ME:
-            return status
-
-        try:
-            # by default, we check that the output nodes have the signature of the task
-            # perform a second check, returning 'SKIP_ME' as we are expecting that
-            # the signatures do not match
-            bld = self.generator.bld
-            prev_sig = bld.task_sigs[self.uid()]
-            if prev_sig == self.signature():
-                for x in self.outputs:
-                    # most of the task_sigs use uid as the key, this is using the node path as the key and storing the uid
-                    if not x.sig or bld.task_sigs[x.abspath()] != self.uid():
-                        return Task.RUN_ME
-                return Task.SKIP_ME
-        except KeyError:
-            pass
-        except IndexError:
-            pass
-        except AttributeError:
-            pass
-        return Task.RUN_ME
-    self.runnable_status = new_runnable_status
-
-    # clear signature for nodes not found on disk
-    # this differs from Task.update_outputs() primarily because make_node was used instead of find_node,
-    # the later which clears the signature if the node is not found on disk
-    for node in self.outputs:
-        try:
-            os.stat(node.abspath())
-            # also consider copying node.sig -> node.cache_sig, the signature will be recalculated
-            # in get_bld_sig() is the cache_sig is not set.
-        except OSError:
-            node.sig = None
-
-
 @feature('cxxprogram', 'cxxshlib', 'cprogram', 'cshlib', 'cxx', 'c')
 @after_method('apply_link')
 @before_method('process_use')
@@ -2895,7 +2886,6 @@ def set_link_outputs(self):
         output_nodes = new_output_nodes
 
     # process only the first output, additional outputs will copy from the first.  Its rare that additional copies are needed
-    non_bld_outputs = False
     output_node = output_nodes[0]
     if self._type == 'stlib':
         # add_target() will create an output in the temp/intermediate directory.  Since .libs are not directly executable, they
@@ -2917,9 +2907,6 @@ def set_link_outputs(self):
         # create node (and intermediate folders)
         target = output_node.make_node(target)
         self.link_task.set_outputs(target)
-
-        # set flag and process later
-        non_bld_outputs = True
 
     # remove extensions to get the name of the target, we will be using it as a base for additional outputs below
     target_node = self.link_task.outputs[0]
@@ -3001,13 +2988,6 @@ def set_link_outputs(self):
                                 _create_sub_folder_copy_task(output_sub_folder_copy_attr_item, output)
                     else:
                         Logs.warn("[WARN] attribute items in 'output_sub_folder_copy' must be a string.")
-
-
-    # setup for outputs that are not in tbe build directory, must be done after link_task.outputs has its members
-    if non_bld_outputs:
-        # modify the task to handle signatures of files outside of the temp directory
-        allow_non_bld_outputs(self.link_task)
-
 
 
 # Use this feature if you want to write to an existing exe/dll that may be currently in use.  The os prevents
@@ -3148,3 +3128,21 @@ def patch_run_method(self):
         # replace the run method with a lambda, save the old run method so we can wrap/call it
         self.link_task.run = patch_run
 
+
+###############################################################################
+@conf
+def CryEngineStaticLibrary(ctx, *k, **kw):
+    """
+    CryEngine Static Libraries are static libraries
+    Except the build configuration requires a monolithic build
+    """
+    
+    # Only create a test driver shared if the 'create_test_driver' is specified and set to true
+    create_test_driver = kw.get('create_test_driver', False)
+    if create_test_driver:
+        kw_static, kw_shared = ctx.split_keywords_from_static_lib_definition_for_test(kw)
+        ctx.CryEngineStaticLibraryLegacy(**kw_static)
+        if kw_shared:
+            ctx.CryEngineSharedLibrary(**kw_shared)
+    else:
+        ctx.CryEngineStaticLibraryLegacy(**kw)

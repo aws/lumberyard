@@ -13,9 +13,26 @@
                 "~>0.1"
             ],
             "_comment": "Texture Atlas"
+        },
+        {
+            "Uuid": "6bb61c9e547043f0afc5019d6d460b78",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "UiBasics - LyShine requires assets from UiBasics Gem."
         }
     ],
-    "GemFormatVersion": 3,
+    "Modules": [
+        {
+            "Type": "GameModule"
+        },
+        {
+            "Name": "Editor",
+            "Type": "EditorModule",
+            "Extends":  "GameModule"
+        }
+    ],
+    "GemFormatVersion": 4,
     "Uuid": "0fefab3f13364722b2eab3b96ce2bf20",
     "Name": "LyShine",
     "DisplayName": "LyShine",

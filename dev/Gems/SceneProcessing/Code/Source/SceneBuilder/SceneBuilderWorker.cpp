@@ -14,6 +14,7 @@
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/containers/set.h>
+#include <AzFramework/Application/Application.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/Debug/TraceContext.h>
 #include <SceneAPI/SceneCore/Components/ExportingComponent.h>
@@ -142,6 +143,39 @@ namespace SceneBuilder
         return AZ::Uuid::CreateString("{BD8BF658-9485-4FE3-830E-8EC3A23C35F3}");
     }
 
+    void SceneBuilderWorker::PopulateProductDependencies(const AZ::SceneAPI::Events::ExportProduct& exportProduct, const char* watchFolder, AssetBuilderSDK::JobProduct& jobProduct) const
+    {
+        // Register the product dependencies and path dependencies from the export product to the job product.
+        for (const AZ::SceneAPI::Events::ExportProduct& dependency : exportProduct.m_productDependencies)
+        {
+            jobProduct.m_dependencies.emplace_back(dependency.m_id, 0);
+        }
+        for (const AZStd::string& pathDependency : exportProduct.m_legacyPathDependencies)
+        {
+            // SceneCore doesn't have access to AssetBuilderSDK, so it doesn't have access to the 
+            //  ProductPathDependency type or the ProductPathDependencyType enum. Exporters registered with the
+            //  Scene Builder should report path dependencies on source files as absolute paths, while dependencies 
+            //  on product files should be reported as relative paths.
+            if (AzFramework::StringFunc::Path::IsRelative(pathDependency.c_str()))
+            {
+                // Make sure the path is relative to the watch folder. Paths passed in might be using asset database separators.
+                //  Convert to system separators for path manipulation.
+                AZStd::string normalizedPathDependency = pathDependency;
+                AZStd::string normalizedWatchFolder(watchFolder);
+                AZStd::string assetRootRelativePath;
+                AzFramework::StringFunc::Path::Normalize(normalizedWatchFolder);
+                AzFramework::StringFunc::Path::Normalize(normalizedPathDependency);
+                AzFramework::StringFunc::Path::Join(normalizedWatchFolder.c_str(), normalizedPathDependency .c_str(), assetRootRelativePath, true);
+                AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::Bus::Events::MakePathRelative, assetRootRelativePath, watchFolder);
+                jobProduct.m_pathDependencies.emplace(assetRootRelativePath, AssetBuilderSDK::ProductPathDependencyType::ProductFile);
+            }
+            else
+            {
+                jobProduct.m_pathDependencies.emplace(pathDependency, AssetBuilderSDK::ProductPathDependencyType::SourceFile);
+            }
+        }
+    }
+
     bool SceneBuilderWorker::LoadScene(AZStd::shared_ptr<AZ::SceneAPI::Containers::Scene>& result,
         const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response)
     {
@@ -202,7 +236,11 @@ namespace SceneBuilder
             AZ::u32 subId = BuildSubId(product);
             AZ_TracePrintf(Utilities::LogWindow, "Listed product: %s+0x%08x - %s (type %s)\n", product.m_id.ToString<AZStd::string>().c_str(),
                 subId, product.m_filename.c_str(), product.m_assetType.ToString<AZStd::string>().c_str());
-            response.m_outputProducts.emplace_back(AZStd::move(product.m_filename), product.m_assetType, subId);
+
+            AssetBuilderSDK::JobProduct jobProduct(AZStd::move(product.m_filename), product.m_assetType, subId);
+            PopulateProductDependencies(product, request.m_watchFolder.c_str(), jobProduct);
+
+            response.m_outputProducts.emplace_back(jobProduct);
             // Unlike the version in ResourceCompilerScene/SceneCompiler.cpp, this version doesn't need to deal with sub ids that were
             // created before explicit sub ids were added to the SceneAPI.
         }

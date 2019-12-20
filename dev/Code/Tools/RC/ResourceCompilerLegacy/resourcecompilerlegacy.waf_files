@@ -1,0 +1,27 @@
+{
+    "none": {
+        "Root": [
+            "stdafx.h",
+            "ResourceCompilerLegacy.cpp",
+            "LegacyConverter.h",
+            "LegacyConverter.cpp",
+            "LegacyCompiler.h",
+            "LegacyCompiler.cpp",
+            "Utilities.h"
+        ],
+
+        "AssetParser": [
+            "LegacyAssetParser/AssetParser.h",
+            "LegacyAssetParser/AssetParser.cpp",
+            "LegacyAssetParser/ProductInfoCreator.h",
+            "LegacyAssetParser/ProductInfoCreator.cpp"
+        ],
+
+        "CryCommonTools": [
+            "../../CryCommonTools/PathHelpers.h",
+            "../../CryCommonTools/PathHelpers.cpp",
+            "../../CryCommonTools/StringHelpers.h",
+            "../../CryCommonTools/StringHelpers.cpp"
+        ]
+    }
+}

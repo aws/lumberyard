@@ -3887,25 +3887,6 @@ void CBaseObject::OnMenuProperties()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CBaseObject::OnMenuEditTags()
-{
-    IAssetTagging* pAssetTagging = GetIEditor()->GetAssetTagging();
-    if (!pAssetTagging)
-    {
-        return;
-    }
-
-    if (!IsSelected())
-    {
-        CUndo undo("Select Object");
-        GetIEditor()->GetObjectManager()->ClearSelection();
-        GetIEditor()->SelectObject(this);
-    }
-
-    EditTags(true);
-}
-
-//////////////////////////////////////////////////////////////////////////
 void CBaseObject::OnMenuShowInAssetBrowser()
 {
     if (!IsSelected())
@@ -3930,12 +3911,6 @@ void CBaseObject::OnContextMenu(QMenu* menu)
 
     QAction* action = menu->addAction(QObject::tr("Properties"));
     QObject::connect(action, &QAction::triggered, this, &CBaseObject::OnMenuProperties);
-
-    if (GetIEditor()->GetAssetTagging() != NULL && SupportsEditTags())
-    {
-        action = menu->addAction(QObject::tr("Edit Tags"));
-        QObject::connect(action, &QAction::triggered, this, &CBaseObject::OnMenuEditTags);
-    }
 
     static_cast<CEditorImpl*>(GetIEditor())->OnObjectContextMenuOpened(menu, this);
 

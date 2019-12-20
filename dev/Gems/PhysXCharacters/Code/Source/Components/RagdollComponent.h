@@ -40,7 +40,6 @@ namespace PhysXCharacters
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
             incompatible.push_back(AZ_CRC("PhysXRagdollService", 0x6d889c70));
-            incompatible.push_back(AZ_CRC("LegacyCryPhysicsService", 0xbb370351));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
@@ -76,6 +75,9 @@ namespace PhysXCharacters
         // deprecated Cry functions
         void EnterRagdoll() override;
         void ExitRagdoll() override;
+
+        // version converters
+        static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
     private:
         bool IsJointProjectionVisible();

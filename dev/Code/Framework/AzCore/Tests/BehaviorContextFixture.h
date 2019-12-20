@@ -53,6 +53,7 @@ namespace UnitTest
         AZ::Entity* FindEntity(const AZ::EntityId&) override { return nullptr; }
         AZ::SerializeContext* GetSerializeContext() override { return nullptr; }
         AZ::BehaviorContext*  GetBehaviorContext() override { return m_behaviorContext; }
+        AZ::JsonRegistrationContext* GetJsonRegistrationContext() override { return nullptr; }
         const char* GetExecutableFolder() const override { return nullptr; }
         const char* GetAppRoot() override { return nullptr; }
         const char* GetBinFolder() const override { return nullptr; }

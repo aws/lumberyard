@@ -59,7 +59,6 @@ namespace AZStd
         typedef typename tree_type::key_eq         key_compare;
         typedef MappedType                         mapped_type;
         class value_compare
-            : public AZStd::binary_function<value_type, value_type, bool>
         {
         protected:
             Compare m_comp;
@@ -329,7 +328,6 @@ namespace AZStd
         typedef typename tree_type::key_eq         key_compare;
         typedef MappedType                         mapped_type;
         class value_compare
-            : public AZStd::binary_function<value_type, value_type, bool>
         {
         protected:
             Compare m_comp;

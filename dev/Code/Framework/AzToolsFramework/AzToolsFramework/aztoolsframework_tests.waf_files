@@ -1,0 +1,12 @@
+{
+    "none": {
+        "UnitTest": [
+            "UnitTest/AzToolsFrameworkTestHelpers.cpp",
+            "UnitTest/AzToolsFrameworkTestHelpers.h",
+            "UnitTest/ComponentModeTestDoubles.h",
+            "UnitTest/ComponentModeTestDoubles.cpp",
+            "UnitTest/ComponentModeTestFixture.h",
+            "UnitTest/ComponentModeTestFixture.cpp"
+        ]
+    }
+}

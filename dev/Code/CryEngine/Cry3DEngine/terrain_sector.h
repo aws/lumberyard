@@ -21,13 +21,18 @@
 
 
 #include "BasicArea.h"
-#include "Array2d.h"
+#include <CryArray2d.h>
 #include "Terrain/Texture/MacroTexture.h"
 #include <ITerrain.h>
 
 class BuildMeshData;
 class InPlaceIndexBuffer;
 struct SSurfaceType;
+
+namespace LegacyProceduralVegetation
+{
+    class VegetationSector;
+}
 
 struct DetailLayerMesh
 {
@@ -251,111 +256,6 @@ private:
     }
 };
 
-template <class T>
-class TPool
-{
-public:
-
-    TPool(int nPoolSize)
-    {
-        m_nPoolSize = nPoolSize;
-        m_pPool = new T[nPoolSize];
-        m_lstFree.PreAllocate(nPoolSize, 0);
-        m_lstUsed.PreAllocate(nPoolSize, 0);
-        for (int i = 0; i < nPoolSize; i++)
-        {
-            m_lstFree.Add(&m_pPool[i]);
-        }
-    }
-
-    ~TPool()
-    {
-        delete[] m_pPool;
-    }
-
-    void ReleaseObject(T* pInst)
-    {
-        if (m_lstUsed.Delete(pInst))
-        {
-            m_lstFree.Add(pInst);
-        }
-    }
-
-    int GetUsedInstancesCount(int& nAll)
-    {
-        nAll = m_nPoolSize;
-        return m_lstUsed.Count();
-    }
-
-    T* GetObject()
-    {
-        T* pInst = NULL;
-        if (m_lstFree.Count())
-        {
-            pInst = m_lstFree.Last();
-            m_lstFree.DeleteLast();
-            m_lstUsed.Add(pInst);
-        }
-        else
-        {
-            assert(!"TPool::GetObject: Out of free elements error");
-        }
-
-        return pInst;
-    }
-
-    void GetMemoryUsage(class ICrySizer* pSizer) const
-    {
-        pSizer->AddObject(m_lstFree);
-        pSizer->AddObject(m_lstUsed);
-
-        if (m_pPool)
-        {
-            for (int i = 0; i < m_nPoolSize; i++)
-            {
-                m_pPool[i].GetMemoryUsage(pSizer);
-            }
-        }
-    }
-
-    PodArray<T*> m_lstFree;
-    PodArray<T*> m_lstUsed;
-    T* m_pPool;
-    int m_nPoolSize;
-};
-
-#define MAX_PROC_OBJ_CHUNKS_NUM 128
-
-struct SProcObjChunk
-    : public Cry3DEngineBase
-{
-    CVegetation* m_pInstances;
-    SProcObjChunk();
-    ~SProcObjChunk();
-    void GetMemoryUsage(class ICrySizer* pSizer) const;
-};
-
-typedef TPool<SProcObjChunk> SProcObjChunkPool;
-
-class CProcObjSector
-    : public Cry3DEngineBase
-{
-public:
-    CProcObjSector() { m_nProcVegetNum = 0; m_ProcVegetChunks.PreAllocate(32); }
-    ~CProcObjSector();
-    CVegetation* AllocateProcObject();
-    void ReleaseAllObjects();
-    int GetUsedInstancesCount(int& nAll) { nAll = m_ProcVegetChunks.Count(); return m_nProcVegetNum; }
-    void GetMemoryUsage(ICrySizer* pSizer) const;
-
-protected:
-    PodArray<SProcObjChunk*> m_ProcVegetChunks;
-    int m_nProcVegetNum;
-};
-
-typedef TPool<CProcObjSector> CProcVegetPoolMan;
-
-
 struct STerrainNodeLeafData
 {
     STerrainNodeLeafData()
@@ -421,7 +321,7 @@ public:
         , m_nLastTimeUsed(0)
         , m_nSetLodFrameId(0)
         , m_ZErrorFromBaseLOD(0)
-        , m_pProcObjPoolPtr(0)
+        , m_vegetationSectorPtr(nullptr)
         , m_nGSMFrameId(0)
         , m_pRNTmpData(0)
         , m_nEditorDiffuseTex(0)
@@ -434,14 +334,6 @@ public:
     static void ResetStaticData();
 
     static void GetStaticMemoryUsage(ICrySizer* sizer);
-
-    static CProcVegetPoolMan* GetProcObjPoolMan() { return s_pProcObjPoolMan; }
-
-    static SProcObjChunkPool* GetProcObjChunkPool() { return s_pProcObjChunkPool; }
-
-    static void SetProcObjPoolMan(CProcVegetPoolMan* pProcObjPoolMan) { s_pProcObjPoolMan = pProcObjPoolMan; }
-
-    static void SetProcObjChunkPool(SProcObjChunkPool* pProcObjChunkPool) { s_pProcObjChunkPool = pProcObjChunkPool; }
 
     bool CheckVis(bool bAllIN, bool bAllowRenderIntoCBuffer, const SRenderingPassInfo& passInfo);
 
@@ -581,7 +473,7 @@ private:
 
     STerrainNodeLeafData* m_pLeafData;
 
-    CProcObjSector* m_pProcObjPoolPtr;
+    LegacyProceduralVegetation::VegetationSector* m_vegetationSectorPtr;
 
     PodArray<DetailLayerMesh> m_DetailLayers;
 
@@ -591,8 +483,6 @@ private:
     BuildMeshData* m_MeshData;
 
     static PodArray<vtx_idx> s_SurfaceIndices[SurfaceTile::MaxSurfaceCount][4];
-    static CProcVegetPoolMan* s_pProcObjPoolMan;
-    static SProcObjChunkPool* s_pProcObjChunkPool;
 
     static void SetupTexGenParams(SSurfaceType* pLayer, float* pOutParams, uint8 ucProjAxis, bool bOutdoor, float fTexGenScale = 1.f);
 
@@ -629,23 +519,6 @@ private:
     PodArray<CTerrainNode*>     m_queuedJobs;
     PodArray<CTerrainNode*>     m_arrRunningJobs;
 };
-
-#pragma pack(push,4)
-
-struct STerrainNodeChunk
-{
-    int16   nChunkVersion;
-    int16 bHasHoles;
-    AABB    boxHeightmap;
-    float fOffset;
-    float fRange;
-    int     nSize;
-    int     nSurfaceTypesNum;
-
-    AUTO_STRUCT_INFO
-};
-
-#pragma pack(pop)
 
 #include "terrain.h"
 

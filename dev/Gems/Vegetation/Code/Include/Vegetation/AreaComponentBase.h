@@ -23,6 +23,15 @@
 
 namespace Vegetation
 {
+    namespace AreaConstants
+    {
+        static const AZ::u32 s_backgroundLayer = 0;
+        static const AZ::u32 s_foregroundLayer = 1;
+        static const AZ::u32 s_priorityMin = 0;
+        static const AZ::u32 s_priorityMax = 10000; //arbitrary number because std::numeric_limits<AZ::u32>::max() always dislays -1 in RPE
+        static const AZ::u32 s_prioritySoftMax = 100; //design specified slider range
+    }
+
     class AreaConfig
         : public AZ::ComponentConfig
     {
@@ -31,11 +40,9 @@ namespace Vegetation
         AZ_RTTI(AreaConfig, "{61599E53-2B6A-40AC-B5B8-FC1C3F87275E}", AZ::ComponentConfig);
         static void Reflect(AZ::ReflectContext* context);
 
-        AreaLayer m_layer = AreaLayer::Foreground;
-
-        static constexpr float s_priorityMin = 0.0f;
-        static constexpr float s_priorityMax = 1.0f;
-        float m_priority = s_priorityMin;
+        AZStd::vector<AZStd::pair<AZ::u32, AZStd::string>> GetSelectableLayers() const;
+        AZ::u32 m_layer = AreaConstants::s_foregroundLayer;
+        AZ::u32 m_priority = AreaConstants::s_priorityMin;
     };
 
     class AreaComponentBase
@@ -67,7 +74,8 @@ namespace Vegetation
 
         //////////////////////////////////////////////////////////////////////////
         // AreaInfoBus
-        float GetPriority() const override;
+        AZ::u32 GetLayer() const override;
+        AZ::u32 GetPriority() const override;
         AZ::u32 GetChangeIndex() const override;
 
         //////////////////////////////////////////////////////////////////////////

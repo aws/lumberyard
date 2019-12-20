@@ -28,6 +28,8 @@
         #include "Xenia/CryAssert_impl_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CryAssert_impl_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryAssert_impl_h_salem.inl"
     #endif
 #endif
 
@@ -53,6 +55,8 @@
         #include "Xenia/CryAssert_impl_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CryAssert_impl_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryAssert_impl_h_salem.inl"
     #endif
 #elif defined(WIN32)
 

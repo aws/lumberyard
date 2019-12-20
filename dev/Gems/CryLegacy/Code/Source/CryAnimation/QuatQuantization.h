@@ -533,6 +533,8 @@ struct SmallTree48BitQuat
         #include "Xenia/QuatQuantization_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/QuatQuantization_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/QuatQuantization_h_salem.inl"
     #endif
 #elif defined(APPLE) || defined(LINUX) || defined(AZ_COMPILER_CLANG)
 #define QUATQUANTIZATION_H_TRAIT_USE_FL_M128_UNION 1

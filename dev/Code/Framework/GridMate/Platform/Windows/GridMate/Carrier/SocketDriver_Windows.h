@@ -26,7 +26,9 @@ struct sockaddr_in;
 struct sockaddr;
 struct addrinfo;
 
+AZ_PUSH_DISABLE_WARNING(4800, "-Wunknown-warning-option")
 #include <VersionHelpers.h>
+AZ_POP_DISABLE_WARNING
 #define SO_NBIO          FIONBIO
 #define AZ_EWOULDBLOCK   WSAEWOULDBLOCK
 #define AZ_EINPROGRESS   WSAEINPROGRESS

@@ -79,6 +79,10 @@ namespace AZ
                 }
             }
 
+            void EnumTypes(const ElementTypeCB& /*cb*/) override
+            {
+            }
+
             /// Return number of elements in the container.
             size_t  Size(void* instance) const override
             {

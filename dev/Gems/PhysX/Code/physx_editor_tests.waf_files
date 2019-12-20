@@ -1,7 +1,9 @@
 {
     "auto": {
         "Tests": [
-            "Tests/PhysXEditorTest.cpp"
+            "Tests/PhysXEditorTest.cpp",
+            "Tests/PhysXColliderComponentModeTests.cpp",
+            "Tests/TestColliderComponent.h"
         ]
     }
 }

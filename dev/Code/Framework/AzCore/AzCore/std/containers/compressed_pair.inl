@@ -32,7 +32,7 @@ namespace AZStd
 
 
     template <typename T, size_t Index, bool CanBeEmptyBase>
-    inline AZSTD_COMPRESSED_PAIR_CONSTEXPR T& compressed_pair_element<T, Index, CanBeEmptyBase>::get()
+    inline constexpr T& compressed_pair_element<T, Index, CanBeEmptyBase>::get()
     {
         return m_element;
     }
@@ -60,7 +60,7 @@ namespace AZStd
     }
 
     template <typename T, size_t Index>
-    inline AZSTD_COMPRESSED_PAIR_CONSTEXPR T& compressed_pair_element<T, Index, true>::get()
+    inline constexpr T& compressed_pair_element<T, Index, true>::get()
     {
         return *this;
     }
@@ -111,7 +111,7 @@ namespace AZStd
     }
 
     template <typename T1, typename T2>
-    inline AZSTD_COMPRESSED_PAIR_CONSTEXPR auto compressed_pair<T1, T2>::first() -> first_base_value_type&
+    inline constexpr auto compressed_pair<T1, T2>::first() -> first_base_value_type&
     {
         return static_cast<first_base_type&>(*this).get();
     }
@@ -123,7 +123,7 @@ namespace AZStd
     }
     
     template <typename T1, typename T2>
-    inline AZSTD_COMPRESSED_PAIR_CONSTEXPR auto compressed_pair<T1, T2>::second() -> second_base_value_type&
+    inline constexpr auto compressed_pair<T1, T2>::second() -> second_base_value_type&
     {
         return static_cast<second_base_type&>(*this).get();
     }

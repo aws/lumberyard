@@ -43,6 +43,8 @@
 #include <Source/Components/SurfaceMaskFilterComponent.h>
 #include <Source/Components/SurfaceSlopeFilterComponent.h>
 
+#include <Source/Debugger/AreaDebugComponent.h>
+
 namespace UnitTest
 {
     struct VegetationComponentTestsBasics
@@ -73,7 +75,165 @@ namespace UnitTest
             entity.Deactivate();
             ASSERT_TRUE(entity.GetState() == AZ::Entity::ES_INIT);
         }
+
+        template <typename ComponentA, typename ComponentB>
+        bool IsComponentCompatible()
+        {
+            AZ::ComponentDescriptor::DependencyArrayType providedServicesA;
+            ComponentA::GetProvidedServices(providedServicesA);
+
+            AZ::ComponentDescriptor::DependencyArrayType incompatibleServicesB;
+            ComponentB::GetIncompatibleServices(incompatibleServicesB);
+
+            for (auto providedServiceA : providedServicesA)
+            {
+                for (auto incompatibleServiceB : incompatibleServicesB)
+                {
+                    if (providedServiceA == incompatibleServiceB)
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        template <typename ComponentA, typename ComponentB>
+        bool AreComponentsCompatible()
+        {
+            return IsComponentCompatible<ComponentA, ComponentB>() && IsComponentCompatible<ComponentB, ComponentA>();
+        }
+
+        bool BeginElementMinMaxTests(
+            AZ::SerializeContext* sc,
+            void* instance,
+            const AZ::SerializeContext::ClassData* classData,
+            const AZ::SerializeContext::ClassElement* classElement)
+        {
+            (void)instance;
+
+            if (classElement)
+            {
+                // if we are a pointer, then we may be pointing to a derived type.
+                if (classElement->m_flags & AZ::SerializeContext::ClassElement::FLG_POINTER)
+                {
+                    // if dataAddress is a pointer in this case, cast it's value to a void* (or const void*) and dereference to get to the actual class.
+                    instance = *(void**)(instance);
+                    if (instance && classElement->m_azRtti)
+                    {
+                        AZ::Uuid actualClassId = classElement->m_azRtti->GetActualUuid(instance);
+                        if (actualClassId != classElement->m_typeId)
+                        {
+                            // we are pointing to derived type, adjust class data, uuid and pointer.
+                            classData = sc->FindClassData(actualClassId);
+                            if (classData)
+                            {
+                                instance = classElement->m_azRtti->Cast(instance, classData->m_azRtti->GetTypeId());
+                            }
+                        }
+                    }
+                }
+            }
+
+            //check editor data numeric elements for min/max attributes
+            if (classElement &&
+                classElement->m_editData)
+            {
+                if (classElement->m_editData->m_elementId == AZ::Edit::UIHandlers::Default ||
+                    classElement->m_editData->m_elementId == AZ::Edit::UIHandlers::Slider ||
+                    classElement->m_editData->m_elementId == AZ::Edit::UIHandlers::SpinBox)
+                {
+                    if (classElement->m_typeId == azrtti_typeid<AZ::u64>() ||
+                        classElement->m_typeId == azrtti_typeid<AZ::u32>() ||
+                        classElement->m_typeId == azrtti_typeid<AZ::u16>() ||
+                        classElement->m_typeId == azrtti_typeid<AZ::u8>() ||
+                        classElement->m_typeId == azrtti_typeid<AZ::s64>() ||
+                        classElement->m_typeId == azrtti_typeid<AZ::s32>() ||
+                        classElement->m_typeId == azrtti_typeid<AZ::s16>() ||
+                        classElement->m_typeId == azrtti_typeid<AZ::s8>() ||
+                        classElement->m_typeId == azrtti_typeid<float>() ||
+                        classElement->m_typeId == azrtti_typeid<double>())
+                    {
+                        EXPECT_TRUE(classElement->m_editData->FindAttribute(AZ::Edit::Attributes::Min) != nullptr);
+                        EXPECT_TRUE(classElement->m_editData->FindAttribute(AZ::Edit::Attributes::Max) != nullptr);
+                    }
+                }
+            }
+            return true;
+        }
+
+        bool EndfElementMinMaxTests()
+        {
+            return true;
+        }
+
+        template<typename T>
+        void ValidateHasMinMaxRanges()
+        {
+            //create a serialize context with edit context enabled
+            AZ::SerializeContext serializeContext(true, true);
+
+            //must reflect AZ::Entity to register AZ::ComponentConfig so new serialize context asserts don't fail test
+            AZ::Entity::Reflect(&serializeContext);
+
+            //reflect and inspect the object
+            T::Reflect(&serializeContext);
+
+            T object;
+            serializeContext.EnumerateObject(&object,
+                AZStd::bind(&VegetationComponentTestsBasics::BeginElementMinMaxTests, this, &serializeContext, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3),
+                AZStd::bind(&VegetationComponentTestsBasics::EndfElementMinMaxTests, this),
+                AZ::SerializeContext::ENUM_ACCESS_FOR_READ);
+        }
     };
+
+    TEST_F(VegetationComponentTestsBasics, VerifyCompatibility)
+    {
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::DescriptorWeightSelectorComponent, Vegetation::DescriptorWeightSelectorComponent>()));
+
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::PositionModifierComponent, Vegetation::PositionModifierComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::RotationModifierComponent, Vegetation::RotationModifierComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::ScaleModifierComponent, Vegetation::ScaleModifierComponent>()));
+
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::ReferenceShapeComponent, Vegetation::ReferenceShapeComponent>()));
+
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::DescriptorListComponent, Vegetation::DescriptorListComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::DescriptorListComponent, Vegetation::DescriptorListCombinerComponent>()));
+
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::DescriptorListCombinerComponent, Vegetation::DescriptorListComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::DescriptorListCombinerComponent, Vegetation::DescriptorListCombinerComponent>()));
+
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::AreaBlenderComponent, Vegetation::AreaBlenderComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::AreaBlenderComponent, Vegetation::BlockerComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::AreaBlenderComponent, Vegetation::SpawnerComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::AreaBlenderComponent, Vegetation::MeshBlockerComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::AreaBlenderComponent, Vegetation::StaticVegetationBlockerComponent>()));
+
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::BlockerComponent, Vegetation::AreaBlenderComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::BlockerComponent, Vegetation::BlockerComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::BlockerComponent, Vegetation::SpawnerComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::BlockerComponent, Vegetation::MeshBlockerComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::BlockerComponent, Vegetation::StaticVegetationBlockerComponent>()));
+
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::SpawnerComponent, Vegetation::AreaBlenderComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::SpawnerComponent, Vegetation::BlockerComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::SpawnerComponent, Vegetation::SpawnerComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::SpawnerComponent, Vegetation::MeshBlockerComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::SpawnerComponent, Vegetation::StaticVegetationBlockerComponent>()));
+
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::MeshBlockerComponent, Vegetation::AreaBlenderComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::MeshBlockerComponent, Vegetation::BlockerComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::MeshBlockerComponent, Vegetation::SpawnerComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::MeshBlockerComponent, Vegetation::MeshBlockerComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::MeshBlockerComponent, Vegetation::StaticVegetationBlockerComponent>()));
+
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::StaticVegetationBlockerComponent, Vegetation::AreaBlenderComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::StaticVegetationBlockerComponent, Vegetation::BlockerComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::StaticVegetationBlockerComponent, Vegetation::SpawnerComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::StaticVegetationBlockerComponent, Vegetation::MeshBlockerComponent>()));
+        EXPECT_FALSE((AreComponentsCompatible<Vegetation::StaticVegetationBlockerComponent, Vegetation::StaticVegetationBlockerComponent>()));
+
+    }
 
     TEST_F(VegetationComponentTestsBasics, CreateEach)
     {
@@ -144,7 +304,7 @@ namespace UnitTest
         EXPECT_EQ(defaultProcessTime, instConfig->m_maxInstanceProcessTimeMicroseconds);
     }
 
-    TEST_F(VegetationComponentTestsBasics, ReferenceShapeComponent)
+    TEST_F(VegetationComponentTestsBasics, ReferenceShapeComponent_WithValidReference)
     {
         UnitTest::MockShape testShape;
 
@@ -170,8 +330,8 @@ namespace UnitTest
 
         testShape.m_localBounds = AZ::Aabb::CreateFromPoint(AZ::Vector3(1.0f, 21.0f, 31.0f));
         testShape.m_localTransform = AZ::Transform::CreateTranslation(testShape.m_localBounds.GetCenter());
-        AZ::Transform resultTransform = {};
-        AZ::Aabb resultBounds = {};
+        AZ::Transform resultTransform = AZ::Transform::CreateIdentity();
+        AZ::Aabb resultBounds = AZ::Aabb::CreateNull();
         LmbrCentral::ShapeComponentRequestsBus::Event(entity->GetId(), &LmbrCentral::ShapeComponentRequestsBus::Events::GetTransformAndLocalBounds, resultTransform, resultBounds);
         EXPECT_EQ(testShape.m_localTransform, resultTransform);
         EXPECT_EQ(testShape.m_localBounds, resultBounds);
@@ -188,8 +348,55 @@ namespace UnitTest
 
         testShape.m_intersectRay = false;
         bool resultIntersectRay = false;
-        LmbrCentral::ShapeComponentRequestsBus::EventResult(resultIntersectRay, entity->GetId(), &LmbrCentral::ShapeComponentRequestsBus::Events::IntersectRay, AZ::Vector3::CreateZero(), AZ::Vector3::CreateZero(), AZ::VectorFloat() );
+        LmbrCentral::ShapeComponentRequestsBus::EventResult(resultIntersectRay, entity->GetId(), &LmbrCentral::ShapeComponentRequestsBus::Events::IntersectRay, AZ::Vector3::CreateZero(), AZ::Vector3::CreateZero(), AZ::VectorFloat());
         EXPECT_TRUE(testShape.m_intersectRay == resultIntersectRay);
+    }
+
+    TEST_F(VegetationComponentTestsBasics, ReferenceShapeComponent_WithInvalidReference)
+    {
+        Vegetation::ReferenceShapeConfig config;
+        config.m_shapeEntityId = AZ::EntityId();
+
+        Vegetation::ReferenceShapeComponent* component;
+        auto entity = CreateEntity(config, &component);
+
+        AZ::RandomDistributionType randomDistribution = AZ::RandomDistributionType::Normal;
+        AZ::Vector3 randPos = AZ::Vector3::CreateOne();
+        LmbrCentral::ShapeComponentRequestsBus::EventResult(randPos, entity->GetId(), &LmbrCentral::ShapeComponentRequestsBus::Events::GenerateRandomPointInside, randomDistribution);
+        EXPECT_EQ(randPos, AZ::Vector3::CreateZero());
+
+        AZ::Aabb resultAABB;
+        LmbrCentral::ShapeComponentRequestsBus::EventResult(resultAABB, entity->GetId(), &LmbrCentral::ShapeComponentRequestsBus::Events::GetEncompassingAabb);
+        EXPECT_EQ(resultAABB, AZ::Aabb::CreateNull());
+
+        AZ::Crc32 resultCRC;
+        LmbrCentral::ShapeComponentRequestsBus::EventResult(resultCRC, entity->GetId(), &LmbrCentral::ShapeComponentRequestsBus::Events::GetShapeType);
+        EXPECT_EQ(resultCRC, AZ::Crc32(AZ::u32(0)));
+
+        AZ::Transform resultTransform;
+        AZ::Aabb resultBounds;
+        LmbrCentral::ShapeComponentRequestsBus::Event(entity->GetId(), &LmbrCentral::ShapeComponentRequestsBus::Events::GetTransformAndLocalBounds, resultTransform, resultBounds);
+        EXPECT_EQ(resultTransform, AZ::Transform::CreateIdentity());
+        EXPECT_EQ(resultBounds, AZ::Aabb::CreateNull());
+
+        bool resultPointInside = true;
+        LmbrCentral::ShapeComponentRequestsBus::EventResult(resultPointInside, entity->GetId(), &LmbrCentral::ShapeComponentRequestsBus::Events::IsPointInside, AZ::Vector3::CreateZero());
+        EXPECT_EQ(resultPointInside, false);
+
+        float resultdistanceSquaredFromPoint = 0;
+        LmbrCentral::ShapeComponentRequestsBus::EventResult(resultdistanceSquaredFromPoint, entity->GetId(), &LmbrCentral::ShapeComponentRequestsBus::Events::DistanceSquaredFromPoint, AZ::Vector3::CreateZero());
+        EXPECT_EQ(resultdistanceSquaredFromPoint, FLT_MAX);
+
+        bool resultIntersectRay = true;
+        LmbrCentral::ShapeComponentRequestsBus::EventResult(resultIntersectRay, entity->GetId(), &LmbrCentral::ShapeComponentRequestsBus::Events::IntersectRay, AZ::Vector3::CreateZero(), AZ::Vector3::CreateZero(), AZ::VectorFloat());
+        EXPECT_EQ(resultIntersectRay, false);
+    }
+
+    TEST_F(VegetationComponentTestsBasics, Components_HaveMinMaxRanges)
+    {
+        ValidateHasMinMaxRanges<Vegetation::AreaSystemConfig>();
+        ValidateHasMinMaxRanges<Vegetation::InstanceSystemConfig>();
+        ValidateHasMinMaxRanges<Vegetation::AreaDebugConfig>();
     }
 }
 

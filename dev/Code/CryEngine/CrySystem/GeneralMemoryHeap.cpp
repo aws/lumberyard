@@ -19,9 +19,9 @@
 #include <AzCore/Memory/HphaSchema.h>
 
 class GeneralMemoryHeapAllocator
-    : public AZ::AllocatorBase<AZ::HphaSchema>
+    : public AZ::SimpleSchemaAllocator<AZ::HphaSchema>
 {
-    using Base = AZ::AllocatorBase<AZ::HphaSchema>;
+    using Base = AZ::SimpleSchemaAllocator<AZ::HphaSchema>;
 public:
     static const size_t DEFAULT_ALIGNMENT = sizeof(void*);
 
@@ -45,11 +45,11 @@ CGeneralMemoryHeap::CGeneralMemoryHeap(UINT_PTR base, size_t upperLimit, size_t 
 {
     AZ::HphaSchema::Descriptor desc;
     desc.m_subAllocator = &AZ::AllocatorInstance<AZ::LegacyAllocator>::Get();
-    m_allocator = AZStd::make_unique<GeneralMemoryHeapAllocator>(sUsage);
-    m_allocator->Create(desc);
+    m_allocator.reset(new AZ::AllocatorWrapper<GeneralMemoryHeapAllocator>);
+    m_allocator->Create(desc, sUsage);
     if (reserveSize)
     {
-        m_allocator->Reserve(reserveSize);
+        (*m_allocator)->Reserve(reserveSize);
     }
 }
 
@@ -61,20 +61,18 @@ CGeneralMemoryHeap::CGeneralMemoryHeap(void* base, size_t size, const char* sUsa
     AZ::HphaSchema::Descriptor desc;
     desc.m_fixedMemoryBlock = base;
     desc.m_fixedMemoryBlockByteSize = size;
-    desc.m_memoryBlockAlignment = GeneralMemoryHeapAllocator::DEFAULT_ALIGNMENT;
-    m_allocator = AZStd::make_unique<GeneralMemoryHeapAllocator>(sUsage);
-    m_allocator->Create(desc);
+    desc.m_fixedMemoryBlockAlignment = GeneralMemoryHeapAllocator::DEFAULT_ALIGNMENT;
+    m_allocator.reset(new AZ::AllocatorWrapper<GeneralMemoryHeapAllocator>);
+    m_allocator->Create(desc, sUsage);
 }
 
 CGeneralMemoryHeap::~CGeneralMemoryHeap()
 {
-    m_allocator->Destroy();
-    m_allocator.reset();
 }
 
 bool CGeneralMemoryHeap::Cleanup()
 {
-    m_allocator->GarbageCollect();
+    (*m_allocator)->GarbageCollect();
     return true;
 }
 
@@ -123,7 +121,7 @@ bool CGeneralMemoryHeap::IsInAddressRange(void* ptr) const
 
 void* CGeneralMemoryHeap::Calloc(size_t numElements, size_t size, const char* sUsage)
 {
-    void* ptr = m_allocator->Allocate(numElements * size, GeneralMemoryHeapAllocator::DEFAULT_ALIGNMENT, 0, sUsage, __FILE__, __LINE__);
+    void* ptr = (*m_allocator)->Allocate(numElements * size, GeneralMemoryHeapAllocator::DEFAULT_ALIGNMENT, 0, sUsage, __FILE__, __LINE__);
     memset(ptr, 0, numElements * size);
     RecordAlloc(ptr, numElements * size);
     return ptr;
@@ -131,7 +129,7 @@ void* CGeneralMemoryHeap::Calloc(size_t numElements, size_t size, const char* sU
 
 void* CGeneralMemoryHeap::Malloc(size_t size, const char* sUsage)
 {
-    void* ptr = m_allocator->Allocate(size, GeneralMemoryHeapAllocator::DEFAULT_ALIGNMENT, 0, sUsage, __FILE__, __LINE__);
+    void* ptr = (*m_allocator)->Allocate(size, GeneralMemoryHeapAllocator::DEFAULT_ALIGNMENT, 0, sUsage, __FILE__, __LINE__);
     RecordAlloc(ptr, size);
     return ptr;
 }
@@ -143,9 +141,9 @@ size_t CGeneralMemoryHeap::Free(void* ptr)
     // it's necessary to validate that the ptr belongs to this heap before attempting to free
     if (IsInAddressRange(ptr))
     {
-        size_t size = m_allocator->AllocationSize(ptr);
+        size_t size = (*m_allocator)->AllocationSize(ptr);
         RecordFree(ptr, size);
-        m_allocator->DeAllocate(ptr);
+        (*m_allocator)->DeAllocate(ptr);
         return size;
     }
     return 0;
@@ -153,28 +151,33 @@ size_t CGeneralMemoryHeap::Free(void* ptr)
 
 void* CGeneralMemoryHeap::Realloc(void* ptr, size_t size, const char* /*sUsage*/)
 {
-    RecordFree(ptr, m_allocator->AllocationSize(ptr));
-    void* newPtr = m_allocator->ReAllocate(ptr, size, GeneralMemoryHeapAllocator::DEFAULT_ALIGNMENT);
+    RecordFree(ptr, (*m_allocator)->AllocationSize(ptr));
+    void* newPtr = (*m_allocator)->ReAllocate(ptr, size, GeneralMemoryHeapAllocator::DEFAULT_ALIGNMENT);
     RecordAlloc(newPtr, size);
     return newPtr;
 }
 
 void* CGeneralMemoryHeap::ReallocAlign(void* ptr, size_t size, size_t alignment, const char* /*sUsage*/)
 {
-    RecordFree(ptr, m_allocator->AllocationSize(ptr));
-    void* newPtr = m_allocator->ReAllocate(ptr, size, alignment);
+    RecordFree(ptr, (*m_allocator)->AllocationSize(ptr));
+    void* newPtr = (*m_allocator)->ReAllocate(ptr, size, alignment);
     RecordAlloc(newPtr, size);
     return newPtr;
 }
 
 void* CGeneralMemoryHeap::Memalign(size_t boundary, size_t size, const char* sUsage)
 {
-    void* ptr = m_allocator->Allocate(size, boundary, 0, sUsage, __FILE__, __LINE__);
+    void* ptr = (*m_allocator)->Allocate(size, boundary, 0, sUsage, __FILE__, __LINE__);
     RecordAlloc(ptr, size);
     return ptr;
 }
 
 size_t CGeneralMemoryHeap::UsableSize(void* ptr) const
 {
-    return m_allocator->AllocationSize(ptr);
+    return (*m_allocator)->AllocationSize(ptr);
+}
+
+AZ::IAllocator* CGeneralMemoryHeap::GetAllocator() const
+{
+    return m_allocator->Get();
 }

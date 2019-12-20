@@ -94,7 +94,7 @@ namespace UnitTest
 #endif
             void* addresses[numAllocations] = {0};
 
-            SystemAllocator& sysAlloc = AllocatorInstance<SystemAllocator>::Get();
+            IAllocatorAllocate& sysAlloc = AllocatorInstance<SystemAllocator>::Get();
 
             //////////////////////////////////////////////////////////////////////////
             // Allocate
@@ -129,7 +129,7 @@ namespace UnitTest
             {
                 AllocatorInstance<SystemAllocator>::Create();
 
-                SystemAllocator& sysAlloc = AllocatorInstance<SystemAllocator>::Get();
+                IAllocatorAllocate& sysAlloc = AllocatorInstance<SystemAllocator>::Get();
 
                 for (int i = 0; i < 100; ++i)
                 {
@@ -172,8 +172,11 @@ namespace UnitTest
 #endif
             memset(address, 0, AZ_ARRAY_SIZE(address) * sizeof(void*));
 
-            AllocatorInstance<SystemAllocator>::Create();
-            SystemAllocator& sysAlloc = AllocatorInstance<SystemAllocator>::Get();
+            SystemAllocator::Descriptor descriptor;
+            descriptor.m_stackRecordLevels = 20;
+            AllocatorInstance<SystemAllocator>::Create(descriptor);
+            IAllocator& sysAllocator = AllocatorInstance<SystemAllocator>::GetAllocator();
+            IAllocatorAllocate& sysAlloc = *sysAllocator.GetAllocationSource();
 
             for (int i = 0; i < 100; ++i)
             {
@@ -187,30 +190,47 @@ namespace UnitTest
 
 // If tracking and recording is enabled, we can verify that the alloc info is valid
 #if defined(AZCORE_ENABLE_MEMORY_TRACKING) && defined(AZ_DEBUG_BUILD)
-            sysAlloc.GetRecords()->lock();
-            EXPECT_TRUE(sysAlloc.GetRecords());
-            const Debug::AllocationRecordsType& records = sysAlloc.GetRecords()->GetMap();
+            sysAllocator.GetRecords()->lock();
+            EXPECT_TRUE(sysAllocator.GetRecords());
+            const Debug::AllocationRecordsType& records = sysAllocator.GetRecords()->GetMap();
             EXPECT_EQ(100, records.size());
             for (Debug::AllocationRecordsType::const_iterator iter = records.begin(); iter != records.end(); ++iter)
             {
                 const Debug::AllocationInfo& ai = iter->second;
                 EXPECT_EQ(32, ai.m_alignment);
                 EXPECT_EQ(1000, ai.m_byteSize);
-                EXPECT_EQ(nullptr, ai.m_fileName); // We did not pass fileName or lineNum to sysAllocator.Allocate()
+                EXPECT_EQ(nullptr, ai.m_fileName); // We did not pass fileName or lineNum to sysAlloc.Allocate()
                 EXPECT_EQ(0, ai.m_lineNum);  // -- " --
 #   if defined(AZ_PLATFORM_WINDOWS)
                 // if our hardware support stack traces make sure we have them, since we did not provide fileName,lineNum
                 EXPECT_TRUE(ai.m_stackFrames[0].IsValid());  // We need to have at least one frame
-#       if defined(AZ_PLATFORM_WINDOWS) && defined(_DEBUG)
+
                 // For windows we should be able to decode the program counters into readable content.
                 // This is possible on deprecated platforms too, but we would need to load the map file manually and so on... it's tricky.
-                SymbolStorage::StackLine stackLine{ 0 };
-                SymbolStorage::DecodeFrames(ai.m_stackFrames, 1, &stackLine);
-                //EXPECT_THAT((char*)stackLine, testing::HasSubstr("SystemAllocatorTest::run")); // We should have proper callstack
-#       endif // AZ_PLATFORM_WINDOWS
+                // Note: depending on where the tests are run from the call stack may differ.
+                SymbolStorage::StackLine stackLine[20];
+                SymbolStorage::DecodeFrames(ai.m_stackFrames, AZ_ARRAY_SIZE(stackLine), stackLine);
+                bool found = false;
+                int foundIndex = 0;  // After finding it for the first time, save the index so it can be reused
+
+                for (int idx = foundIndex; idx < AZ_ARRAY_SIZE(stackLine); idx++)
+                {
+                    if (strstr(stackLine[idx], "SystemAllocatorTest::run"))
+                    {
+                        found = true;
+                        break;
+                    }
+                    else
+                    {
+                        foundIndex++;
+                    }
+                }
+
+                EXPECT_TRUE(found);
 #   endif // defined(AZ_PLATFORM_WINDOWS)
             }
-            sysAlloc.GetRecords()->unlock();
+
+            sysAllocator.GetRecords()->unlock();
 #endif //#if defined(AZCORE_ENABLE_MEMORY_TRACKING) && defined(AZ_DEBUG_BUILD)
 
             // Free all memory
@@ -327,7 +347,8 @@ namespace UnitTest
 
         void run()
         {
-            PoolAllocator& poolAlloc = AllocatorInstance<PoolAllocator>::Get();
+            IAllocatorAllocate& poolAlloc = AllocatorInstance<PoolAllocator>::Get();
+            IAllocator& poolAllocator = AllocatorInstance<PoolAllocator>::GetAllocator();
             // 64 should be the max number of different pool sizes we can allocate.
             void* address[64];
             //////////////////////////////////////////////////////////////////////////
@@ -345,12 +366,12 @@ namespace UnitTest
 
             EXPECT_GE(poolAlloc.NumAllocatedBytes(), 4126);
 
-            if (poolAlloc.GetRecords())
+            if (poolAllocator.GetRecords())
             {
-                poolAlloc.GetRecords()->lock();
-                const Debug::AllocationRecordsType& records = poolAlloc.GetRecords()->GetMap();
+                poolAllocator.GetRecords()->lock();
+                const Debug::AllocationRecordsType& records = poolAllocator.GetRecords()->GetMap();
                 EXPECT_EQ(32, records.size());
-                poolAlloc.GetRecords()->unlock();
+                poolAllocator.GetRecords()->unlock();
             }
 
             for (i = 0; address[i] != 0; ++i)
@@ -361,12 +382,12 @@ namespace UnitTest
 
             EXPECT_EQ(0, poolAlloc.NumAllocatedBytes());
 
-            if (poolAlloc.GetRecords())
+            if (poolAllocator.GetRecords())
             {
-                poolAlloc.GetRecords()->lock();
-                const Debug::AllocationRecordsType& records = poolAlloc.GetRecords()->GetMap();
+                poolAllocator.GetRecords()->lock();
+                const Debug::AllocationRecordsType& records = poolAllocator.GetRecords()->GetMap();
                 EXPECT_EQ(0, records.size());
-                poolAlloc.GetRecords()->unlock();
+                poolAllocator.GetRecords()->unlock();
             }
 
             //////////////////////////////////////////////////////////////////////////
@@ -387,12 +408,12 @@ namespace UnitTest
 
             EXPECT_GE(poolAlloc.NumAllocatedBytes(), AZ_ARRAY_SIZE(address)*256);
 
-            if (poolAlloc.GetRecords())
+            if (poolAllocator.GetRecords())
             {
-                poolAlloc.GetRecords()->lock();
-                const Debug::AllocationRecordsType& records = poolAlloc.GetRecords()->GetMap();
+                poolAllocator.GetRecords()->lock();
+                const Debug::AllocationRecordsType& records = poolAllocator.GetRecords()->GetMap();
                 EXPECT_EQ(AZ_ARRAY_SIZE(address), records.size());
-                poolAlloc.GetRecords()->unlock();
+                poolAllocator.GetRecords()->unlock();
             }
 
             for (unsigned int j = 0; j < AZ_ARRAY_SIZE(address); ++j)
@@ -403,13 +424,13 @@ namespace UnitTest
 
             EXPECT_EQ(0, poolAlloc.NumAllocatedBytes());
 
-            if (poolAlloc.GetRecords())
+            if (poolAllocator.GetRecords())
             {
-                EXPECT_NE(nullptr, poolAlloc.GetRecords());
-                poolAlloc.GetRecords()->lock();
-                const Debug::AllocationRecordsType& records = poolAlloc.GetRecords()->GetMap();
+                EXPECT_NE(nullptr, poolAllocator.GetRecords());
+                poolAllocator.GetRecords()->lock();
+                const Debug::AllocationRecordsType& records = poolAllocator.GetRecords()->GetMap();
                 EXPECT_EQ(0, records.size());
-                poolAlloc.GetRecords()->unlock();
+                poolAllocator.GetRecords()->unlock();
             }
         }
     };
@@ -527,7 +548,7 @@ namespace UnitTest
 #endif
             void* addresses[numAllocations] = {0};
 
-            ThreadPoolAllocator& poolAlloc = AllocatorInstance<ThreadPoolAllocator>::Get();
+            IAllocatorAllocate& poolAlloc = AllocatorInstance<ThreadPoolAllocator>::Get();
 
             //////////////////////////////////////////////////////////////////////////
             // Allocate
@@ -554,7 +575,7 @@ namespace UnitTest
          */
         void SharedAlloc()
         {
-            ThreadPoolAllocator& poolAlloc = AllocatorInstance<ThreadPoolAllocator>::Get();
+            IAllocatorAllocate& poolAlloc = AllocatorInstance<ThreadPoolAllocator>::Get();
             for (int i = 0; i < m_numSharedAlloc; ++i)
             {
                 AZStd::size_t minSize = sizeof(AllocClass);
@@ -570,7 +591,7 @@ namespace UnitTest
         */
         void SharedDeAlloc()
         {
-            ThreadPoolAllocator& poolAlloc = AllocatorInstance<ThreadPoolAllocator>::Get();
+            IAllocatorAllocate& poolAlloc = AllocatorInstance<ThreadPoolAllocator>::Get();
             AllocClass* ac;
             int isDone = 0;
             while (isDone!=2)
@@ -609,20 +630,18 @@ namespace UnitTest
                 }
             };
 
-            const char* GetName() const override
-            {
-                return "MyThreadPoolAllocator";
-            }
+            using Base = ThreadPoolBase<MyThreadPoolAllocator>;
 
-            const char* GetDescription() const override
+            MyThreadPoolAllocator()
+                : Base("MyThreadPoolAllocator", "Fast thread 1024 byte allocator")
             {
-                return "Fast thread 1024 byte allocator";
             }
         };
 
         void run()
         {
-            ThreadPoolAllocator& poolAlloc = AllocatorInstance<ThreadPoolAllocator>::Get();
+            IAllocatorAllocate& poolAlloc = AllocatorInstance<ThreadPoolAllocator>::Get();
+            IAllocator& poolAllocator = AllocatorInstance<ThreadPoolAllocator>::GetAllocator();
             // 64 should be the max number of different pool sizes we can allocate.
             void* address[64];
             //////////////////////////////////////////////////////////////////////////
@@ -640,12 +659,12 @@ namespace UnitTest
 
             EXPECT_GE(poolAlloc.NumAllocatedBytes(), 4126);
 
-            if (poolAlloc.GetRecords())
+            if (poolAllocator.GetRecords())
             {
-                poolAlloc.GetRecords()->lock();
-                const Debug::AllocationRecordsType& records = poolAlloc.GetRecords()->GetMap();
+                poolAllocator.GetRecords()->lock();
+                const Debug::AllocationRecordsType& records = poolAllocator.GetRecords()->GetMap();
                 EXPECT_EQ(32, records.size());
-                poolAlloc.GetRecords()->unlock();
+                poolAllocator.GetRecords()->unlock();
             }
 
             for (int i = 0; address[i] != 0; ++i)
@@ -656,12 +675,12 @@ namespace UnitTest
 
             EXPECT_EQ(0, poolAlloc.NumAllocatedBytes());
 
-            if (poolAlloc.GetRecords())
+            if (poolAllocator.GetRecords())
             {
-                poolAlloc.GetRecords()->lock();
-                const Debug::AllocationRecordsType& records = poolAlloc.GetRecords()->GetMap();
+                poolAllocator.GetRecords()->lock();
+                const Debug::AllocationRecordsType& records = poolAllocator.GetRecords()->GetMap();
                 EXPECT_EQ(0, records.size());
-                poolAlloc.GetRecords()->unlock();
+                poolAllocator.GetRecords()->unlock();
             }
 
             //////////////////////////////////////////////////////////////////////////
@@ -676,12 +695,12 @@ namespace UnitTest
 
             EXPECT_GE(poolAlloc.NumAllocatedBytes(), AZ_ARRAY_SIZE(address)*256);
 
-            if (poolAlloc.GetRecords())
+            if (poolAllocator.GetRecords())
             {
-                poolAlloc.GetRecords()->lock();
-                const Debug::AllocationRecordsType& records = poolAlloc.GetRecords()->GetMap();
+                poolAllocator.GetRecords()->lock();
+                const Debug::AllocationRecordsType& records = poolAllocator.GetRecords()->GetMap();
                 EXPECT_EQ(AZ_ARRAY_SIZE(address), records.size());
-                poolAlloc.GetRecords()->unlock();
+                poolAllocator.GetRecords()->unlock();
             }
 
             for (unsigned int i = 0; i < AZ_ARRAY_SIZE(address); ++i)
@@ -692,12 +711,12 @@ namespace UnitTest
 
             EXPECT_EQ(0, poolAlloc.NumAllocatedBytes());
 
-            if (poolAlloc.GetRecords())
+            if (poolAllocator.GetRecords())
             {
-                poolAlloc.GetRecords()->lock();
-                const Debug::AllocationRecordsType& records = poolAlloc.GetRecords()->GetMap();
+                poolAllocator.GetRecords()->lock();
+                const Debug::AllocationRecordsType& records = poolAllocator.GetRecords()->GetMap();
                 EXPECT_EQ(0, records.size());
-                poolAlloc.GetRecords()->unlock();
+                poolAllocator.GetRecords()->unlock();
             }
 
             //////////////////////////////////////////////////////////////////////////
@@ -808,7 +827,7 @@ namespace UnitTest
         desc.m_memoryBlock = azmalloc(desc.m_memoryBlockByteSize, desc.m_memoryBlockAlignment);
 
         AllocatorInstance<BestFitExternalMapAllocator>::Create(desc);
-        BestFitExternalMapAllocator& bfAlloc = AllocatorInstance<BestFitExternalMapAllocator>::Get();
+        IAllocatorAllocate& bfAlloc = AllocatorInstance<BestFitExternalMapAllocator>::Get();
 
         EXPECT_EQ( desc.m_memoryBlockByteSize, bfAlloc.Capacity() );
         EXPECT_EQ( 0, bfAlloc.NumAllocatedBytes() );
@@ -870,76 +889,76 @@ namespace UnitTest
 
         void run()
         {
-            SystemAllocator& sysAlloc = AllocatorInstance<SystemAllocator>::Get();
-            PoolAllocator& poolAlloc = AllocatorInstance<PoolAllocator>::Get();
+            IAllocator& sysAllocator = AllocatorInstance<SystemAllocator>::GetAllocator();
+            IAllocator& poolAllocator = AllocatorInstance<PoolAllocator>::GetAllocator();
 
             void* ptr = azmalloc(16*1024, 32, SystemAllocator);
             EXPECT_EQ(0, ((size_t)ptr & 31));  // check alignment
-            if (sysAlloc.GetRecords())
+            if (sysAllocator.GetRecords())
             {
-                AZStd::lock_guard<AZ::Debug::AllocationRecords> lock(*sysAlloc.GetRecords());
-                const Debug::AllocationRecordsType& records = sysAlloc.GetRecords()->GetMap();
+                AZStd::lock_guard<AZ::Debug::AllocationRecords> lock(*sysAllocator.GetRecords());
+                const Debug::AllocationRecordsType& records = sysAllocator.GetRecords()->GetMap();
                 Debug::AllocationRecordsType::const_iterator iter = records.find(ptr);
                 EXPECT_TRUE(iter!=records.end());  // our allocation is in the list
             }
             azfree(ptr, SystemAllocator);
-            if (sysAlloc.GetRecords())
+            if (sysAllocator.GetRecords())
             {
-                AZStd::lock_guard<AZ::Debug::AllocationRecords> lock(*sysAlloc.GetRecords());
-                const Debug::AllocationRecordsType& records = sysAlloc.GetRecords()->GetMap();
+                AZStd::lock_guard<AZ::Debug::AllocationRecords> lock(*sysAllocator.GetRecords());
+                const Debug::AllocationRecordsType& records = sysAllocator.GetRecords()->GetMap();
                 EXPECT_TRUE(records.find(ptr)==records.end());  // our allocation is NOT in the list
             }
             const char allocName[] = "BlaBla";
             ptr = azmalloc(16*1024, 32, SystemAllocator, allocName);
             EXPECT_EQ(0, ((size_t)ptr & 31));  // check alignment
-            if (sysAlloc.GetRecords())
+            if (sysAllocator.GetRecords())
             {
-                AZStd::lock_guard<AZ::Debug::AllocationRecords> lock(*sysAlloc.GetRecords());
-                const Debug::AllocationRecordsType& records = sysAlloc.GetRecords()->GetMap();
+                AZStd::lock_guard<AZ::Debug::AllocationRecords> lock(*sysAllocator.GetRecords());
+                const Debug::AllocationRecordsType& records = sysAllocator.GetRecords()->GetMap();
                 Debug::AllocationRecordsType::const_iterator iter = records.find(ptr);
                 EXPECT_TRUE(iter!=records.end());  // our allocation is in the list
                 //printf("%s",iter->second.m_name);
                 EXPECT_STREQ(iter->second.m_name, allocName);
             }
             azfree(ptr, SystemAllocator);
-            if (sysAlloc.GetRecords())
+            if (sysAllocator.GetRecords())
             {
-                AZStd::lock_guard<AZ::Debug::AllocationRecords> lock(*sysAlloc.GetRecords());
-                const Debug::AllocationRecordsType& records = sysAlloc.GetRecords()->GetMap();
+                AZStd::lock_guard<AZ::Debug::AllocationRecords> lock(*sysAllocator.GetRecords());
+                const Debug::AllocationRecordsType& records = sysAllocator.GetRecords()->GetMap();
                 EXPECT_TRUE(records.find(ptr)==records.end());  // our allocation is NOT in the list
             }
 
             ptr = azmalloc(16, 32, PoolAllocator);
             EXPECT_EQ(0, ((size_t)ptr & 31));  // check alignment
-            if (poolAlloc.GetRecords())
+            if (poolAllocator.GetRecords())
             {
-                AZStd::lock_guard<AZ::Debug::AllocationRecords> lock(*poolAlloc.GetRecords());
-                const Debug::AllocationRecordsType& records = poolAlloc.GetRecords()->GetMap();
+                AZStd::lock_guard<AZ::Debug::AllocationRecords> lock(*poolAllocator.GetRecords());
+                const Debug::AllocationRecordsType& records = poolAllocator.GetRecords()->GetMap();
                 Debug::AllocationRecordsType::const_iterator iter = records.find(ptr);
                 EXPECT_TRUE(iter!=records.end());  // our allocation is in the list
             }
             azfree(ptr, PoolAllocator);
-            if (poolAlloc.GetRecords())
+            if (poolAllocator.GetRecords())
             {
-                AZStd::lock_guard<AZ::Debug::AllocationRecords> lock(*poolAlloc.GetRecords());
-                const Debug::AllocationRecordsType& records = poolAlloc.GetRecords()->GetMap();
+                AZStd::lock_guard<AZ::Debug::AllocationRecords> lock(*poolAllocator.GetRecords());
+                const Debug::AllocationRecordsType& records = poolAllocator.GetRecords()->GetMap();
                 EXPECT_TRUE(records.find(ptr)==records.end());  // our allocation is NOT in the list
             }
             ptr = azmalloc(16, 32, PoolAllocator, "BlaBlaPool");
             EXPECT_EQ(0, ((size_t)ptr & 31));  // check alignment
-            if (poolAlloc.GetRecords())
+            if (poolAllocator.GetRecords())
             {
-                AZStd::lock_guard<AZ::Debug::AllocationRecords> lock(*poolAlloc.GetRecords());
-                const Debug::AllocationRecordsType& records = poolAlloc.GetRecords()->GetMap();
+                AZStd::lock_guard<AZ::Debug::AllocationRecords> lock(*poolAllocator.GetRecords());
+                const Debug::AllocationRecordsType& records = poolAllocator.GetRecords()->GetMap();
                 Debug::AllocationRecordsType::const_iterator iter = records.find(ptr);
                 EXPECT_TRUE(iter!=records.end());  // our allocation is in the list
                 EXPECT_STREQ(iter->second.m_name, "BlaBlaPool");
             }
             azfree(ptr, PoolAllocator);
-            if (poolAlloc.GetRecords())
+            if (poolAllocator.GetRecords())
             {
-                AZStd::lock_guard<AZ::Debug::AllocationRecords> lock(*poolAlloc.GetRecords());
-                const Debug::AllocationRecordsType& records = poolAlloc.GetRecords()->GetMap();
+                AZStd::lock_guard<AZ::Debug::AllocationRecords> lock(*poolAllocator.GetRecords());
+                const Debug::AllocationRecordsType& records = poolAllocator.GetRecords()->GetMap();
                 EXPECT_TRUE(records.find(ptr)==records.end());  // our allocation is NOT in the list
             }
         }
@@ -971,6 +990,8 @@ namespace UnitTest
         class MyDerivedClass
             : public MyClass
         {
+        public:
+            MyDerivedClass() = default;
         };
         SystemAllocator::Descriptor m_sysAllocDesc;
     public:
@@ -996,8 +1017,8 @@ namespace UnitTest
 
         void run()
         {
-            SystemAllocator& sysAlloc = AllocatorInstance<SystemAllocator>::Get();
-            PoolAllocator& poolAlloc = AllocatorInstance<PoolAllocator>::Get();
+            IAllocator& sysAlloc = AllocatorInstance<SystemAllocator>::GetAllocator();
+            IAllocator& poolAlloc = AllocatorInstance<PoolAllocator>::GetAllocator();
 
             MyClass* ptr = aznew MyClass(202);  /// this should allocate memory from the pool allocator
             EXPECT_EQ(0, ((size_t)ptr & 31));  // check alignment
@@ -1431,7 +1452,7 @@ namespace UnitTest
             for (unsigned i = iStart; i < iEnd; i++)
             {
                 size_t size = rand_size();
-                tr[i].ptr = pool.Allocate(size, DefaultAlignment, 0);
+                tr[i].ptr = pool.Allocate(size, DefaultAlignment, 0, nullptr, nullptr, 0, 0);
             }
         }
         void poolFree(PoolSchema& pool, unsigned iStart, unsigned iEnd)
@@ -1439,7 +1460,7 @@ namespace UnitTest
             for (unsigned i = iStart; i < iEnd; i++)
             {
                 unsigned j = i + rand() % (iEnd - i);
-                pool.DeAllocate(tr[j].ptr);
+                pool.DeAllocate(tr[j].ptr, 0, 0);
                 tr[j].ptr = tr[i].ptr;
             }
         }
@@ -1448,7 +1469,7 @@ namespace UnitTest
             for (unsigned i = iStart; i < iEnd; i++)
             {
                 size_t size = rand_size();
-                tr[i].ptr = pool.Allocate(size, DefaultAlignment, 0);
+                tr[i].ptr = pool.Allocate(size, DefaultAlignment, 0, nullptr, nullptr, 0, 0);
                 tr[i].size = size;
             }
         }
@@ -1457,7 +1478,7 @@ namespace UnitTest
             for (unsigned i = iStart; i < iEnd; i++)
             {
                 unsigned j = i + rand() % (iEnd - i);
-                pool.DeAllocate(tr[j].ptr /*, tr[j].size*/);
+                pool.DeAllocate(tr[j].ptr, tr[j].size, 0);
                 tr[j].ptr = tr[i].ptr;
                 tr[j].size = tr[i].size;
             }
@@ -1469,7 +1490,7 @@ namespace UnitTest
             {
                 size_t size = rand_size();
                 size_t alignment = rand_alignment();
-                tr[i].ptr = pool.Allocate(size, alignment, 0);
+                tr[i].ptr = pool.Allocate(size, alignment, 0, nullptr, nullptr, 0, 0);
             }
         }
         void poolFreeAlignment(PoolSchema& pool, unsigned iStart, unsigned iEnd)
@@ -1477,7 +1498,7 @@ namespace UnitTest
             for (unsigned i = iStart; i < iEnd; i++)
             {
                 unsigned j = i + rand() % (iEnd - i);
-                pool.DeAllocate(tr[j].ptr);
+                pool.DeAllocate(tr[j].ptr, 0, 0);
                 tr[j].ptr = tr[i].ptr;
             }
         }
@@ -1488,7 +1509,7 @@ namespace UnitTest
             {
                 size_t size = rand_size();
                 size_t alignment = rand_alignment();
-                tr[i].ptr = pool.Allocate(size, alignment, 0);
+                tr[i].ptr = pool.Allocate(size, alignment, 0, nullptr, nullptr, 0, 0);
                 tr[i].size = size;
                 tr[i].alignment = alignment;
             }
@@ -1498,7 +1519,7 @@ namespace UnitTest
             for (unsigned i = iStart; i < iEnd; i++)
             {
                 unsigned j = i + rand() % (iEnd - i);
-                pool.DeAllocate(tr[j].ptr /*, tr[j].size, tr[j].alignment*/);
+                pool.DeAllocate(tr[j].ptr, tr[j].size, tr[j].alignment);
                 tr[j].ptr = tr[i].ptr;
                 tr[j].size = tr[i].size;
                 tr[j].alignment = tr[i].alignment;
@@ -1513,7 +1534,7 @@ namespace UnitTest
             for (unsigned i = iStart; i < iEnd; i++)
             {
                 size_t size = rand_size();
-                tr[i].ptr = pool.Allocate(size, DefaultAlignment, 0);
+                tr[i].ptr = pool.Allocate(size, DefaultAlignment, 0, nullptr, nullptr, 0, 0);
             }
         }
         void thPoolFree(ThreadPoolSchema& pool, unsigned iStart, unsigned iEnd)
@@ -1521,7 +1542,7 @@ namespace UnitTest
             for (unsigned i = iStart; i < iEnd; i++)
             {
                 unsigned j = i + rand() % (iEnd - i);
-                pool.DeAllocate(tr[j].ptr);
+                pool.DeAllocate(tr[j].ptr, 0, 0);
                 tr[j].ptr = tr[i].ptr;
             }
         }
@@ -1530,7 +1551,7 @@ namespace UnitTest
             for (unsigned i = iStart; i < iEnd; i++)
             {
                 size_t size = rand_size();
-                tr[i].ptr = pool.Allocate(size, DefaultAlignment, 0);
+                tr[i].ptr = pool.Allocate(size, DefaultAlignment, 0, nullptr, nullptr, 0, 0);
                 tr[i].size = size;
             }
         }
@@ -1539,7 +1560,7 @@ namespace UnitTest
             for (unsigned i = iStart; i < iEnd; i++)
             {
                 unsigned j = i + rand() % (iEnd - i);
-                pool.DeAllocate(tr[j].ptr /*, tr[j].size*/);
+                pool.DeAllocate(tr[j].ptr, tr[j].size, 0);
                 tr[j].ptr = tr[i].ptr;
                 tr[j].size = tr[i].size;
             }
@@ -1551,7 +1572,7 @@ namespace UnitTest
             {
                 size_t size = rand_size();
                 size_t alignment = rand_alignment();
-                tr[i].ptr = pool.Allocate(size, alignment, 0);
+                tr[i].ptr = pool.Allocate(size, alignment, 0, nullptr, nullptr, 0, 0);
             }
         }
         void thPoolFreeAlignment(ThreadPoolSchema& pool, unsigned iStart, unsigned iEnd)
@@ -1559,7 +1580,7 @@ namespace UnitTest
             for (unsigned i = iStart; i < iEnd; i++)
             {
                 unsigned j = i + rand() % (iEnd - i);
-                pool.DeAllocate(tr[j].ptr);
+                pool.DeAllocate(tr[j].ptr, 0, 0);
                 tr[j].ptr = tr[i].ptr;
             }
         }
@@ -1570,7 +1591,7 @@ namespace UnitTest
             {
                 size_t size = rand_size();
                 size_t alignment = rand_alignment();
-                tr[i].ptr = pool.Allocate(size, alignment, 0);
+                tr[i].ptr = pool.Allocate(size, alignment, 0, nullptr, nullptr, 0, 0);
                 tr[i].size = size;
                 tr[i].alignment = alignment;
             }
@@ -1580,7 +1601,7 @@ namespace UnitTest
             for (unsigned i = iStart; i < iEnd; i++)
             {
                 unsigned j = i + rand() % (iEnd - i);
-                pool.DeAllocate(tr[j].ptr /*, tr[j].size, tr[j].alignment*/);
+                pool.DeAllocate(tr[j].ptr, tr[j].size, tr[j].alignment);
                 tr[j].ptr = tr[i].ptr;
                 tr[j].size = tr[i].size;
                 tr[j].alignment = tr[i].alignment;
@@ -2553,11 +2574,11 @@ namespace UnitTest
             {
                 HphaSchema::Descriptor hphaDesc;
                 hphaDesc.m_fixedMemoryBlockByteSize = AZ_TRAIT_OS_HPHA_MEMORYBLOCKBYTESIZE;
-                hphaDesc.m_fixedMemoryBlock = AZ_OS_MALLOC(hphaDesc.m_fixedMemoryBlockByteSize, hphaDesc.m_memoryBlockAlignment);
+                hphaDesc.m_fixedMemoryBlock = AZ_OS_MALLOC(hphaDesc.m_fixedMemoryBlockByteSize, hphaDesc.m_fixedMemoryBlockAlignment);
                 HeapSchema::Descriptor dlMallocDesc;
                 dlMallocDesc.m_numMemoryBlocks = 1;
                 dlMallocDesc.m_memoryBlocksByteSize[0] = hphaDesc.m_fixedMemoryBlockByteSize;
-                dlMallocDesc.m_memoryBlocks[0] = AZ_OS_MALLOC(dlMallocDesc.m_memoryBlocksByteSize[0], hphaDesc.m_memoryBlockAlignment);
+                dlMallocDesc.m_memoryBlocks[0] = AZ_OS_MALLOC(dlMallocDesc.m_memoryBlocksByteSize[0], hphaDesc.m_fixedMemoryBlockAlignment);
                 PoolSchema::Descriptor poolDesc;
                 poolDesc.m_pageAllocator = &da;
                 poolDesc.m_numStaticPages = 100;

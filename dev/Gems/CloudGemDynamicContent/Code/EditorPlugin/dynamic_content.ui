@@ -274,14 +274,14 @@
          </widget>
         </item>
         <item>
-         <widget class="QLabel" name="ps4">
+         <widget class="QLabel" name="provo">
           <property name="text">
            <string/>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QLabel" name="xboxone">
+         <widget class="QLabel" name="xenia">
           <property name="text">
            <string/>
           </property>

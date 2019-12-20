@@ -3,8 +3,7 @@
         "Interface": [
             "include/GemRegistry/Version.h",
             "include/GemRegistry/IGemRegistry.h",
-            "include/GemRegistry/Dependency.h",
-            "include/GemRegistry/Dependency.inl"
+            "include/GemRegistry/Dependency.h"
         ],
         "Implementation": [
             "source/GemRegistry.h",

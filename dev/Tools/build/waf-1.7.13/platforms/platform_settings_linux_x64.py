@@ -10,9 +10,9 @@
 #
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
-from waflib import Errors, Logs
+
 from waflib.Configure import conf
-from lumberyard import deprecated
+import lumberyard
 
 
 PLATFORM = 'linux_x64'
@@ -63,3 +63,10 @@ def is_linux_x64_available(ctx):
     return True
 
 
+@lumberyard.multi_conf
+def generate_ib_profile_tool_elements(ctx):
+    linux_tool_elements = [
+        '<Tool Filename="x86_64-linux-gnu-gcc" AllowRemote="true" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>',
+        '<Tool Filename="x86_64-linux-gnu-g++" AllowRemote="true" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>'
+    ]
+    return linux_tool_elements

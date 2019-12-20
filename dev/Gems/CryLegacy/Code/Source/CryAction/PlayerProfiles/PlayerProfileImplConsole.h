@@ -16,12 +16,7 @@
 //               which may not be present.
 
 
-#ifndef __PLAYERPROFILECONSOLE_H__
-#define __PLAYERPROFILECONSOLE_H__
-
-#if _MSC_VER > 1000
-#   pragma once
-#endif
+#pragma once
 
 #include "PlayerProfileImplFS.h"
 
@@ -63,4 +58,3 @@ private:
     CPlayerProfileManager* m_pMgr;
 };
 
-#endif

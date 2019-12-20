@@ -282,6 +282,11 @@ namespace PhysXCharacters
         return m_nodes.size();
     }
 
+    AZ::Crc32 Ragdoll::GetWorldId() const
+    {
+        return Physics::DefaultPhysicsWorldId;
+    }
+
     // Physics::WorldBody
     AZ::EntityId Ragdoll::GetEntityId() const
     {

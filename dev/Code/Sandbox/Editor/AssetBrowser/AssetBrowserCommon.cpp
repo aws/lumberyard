@@ -188,83 +188,10 @@ IAssetItem* CAssetItemDatabase::GetAsset(const char* pAssetFilename)
     return NULL;
 }
 
-void CAssetItemDatabase::ApplyTagFilters(const TAssetFieldFiltersMap& rFieldFilters, CAssetBrowserManager::StrVector& assetList)
-{
-    CAssetBrowserManager::StrVector tags;
-
-    for (auto iter = rFieldFilters.begin(), iterEnd = rFieldFilters.end(); iter != iterEnd; ++iter)
-    {
-        const SAssetField& field = iter->second;
-
-        if (field.m_fieldName == "tags")
-        {
-            if (field.m_filterCondition != SAssetField::eCondition_Contains)
-            {
-                continue;
-            }
-
-            QString filterValue(field.m_filterValue);
-
-            if (filterValue.isEmpty())
-            {
-                continue;
-            }
-
-            tags.push_back(filterValue);
-        }
-    }
-
-    for (auto item = tags.begin(), end = tags.end(); item != end; ++item)
-    {
-        if (item->isEmpty())
-        {
-            continue;
-        }
-
-        CAssetBrowserManager::Instance()->GetAssetsForTag(assetList, (*item));
-        CAssetBrowserManager::Instance()->GetAssetsWithDescription(assetList, (*item));
-    }
-}
-
 void CAssetItemDatabase::ApplyFilters(const TAssetFieldFiltersMap& rFieldFilters)
 {
     CAssetBrowserManager::StrVector assetList;
     TFilenameAssetMap tagFilteredAssetList;
-    bool bFoundAssetTags = false;
-
-    // loop through all field filters and abort if one of them does not comply
-    for (auto iter = rFieldFilters.begin(), iterEnd = rFieldFilters.end(); iter != iterEnd; ++iter)
-    {
-        const SAssetField& field = iter->second;
-
-        if (field.m_fieldName == "tags")
-        {
-            ApplyTagFilters(rFieldFilters, assetList);
-            bFoundAssetTags = !assetList.empty();
-            break;
-        }
-    }
-
-    if (bFoundAssetTags)
-    {
-        for (auto item = assetList.begin(), end = assetList.end(); item != end; ++item)
-        {
-            for (auto iterAsset = m_assets.begin(), iterAssetsEnd = m_assets.end(); iterAsset != iterAssetsEnd; ++iterAsset)
-            {
-                bool found = false;
-                IAssetItem* pAsset = iterAsset->second;
-
-                if (iterAsset->first.compare(*item, Qt::CaseInsensitive) == 0)
-                {
-                    found = true;
-                }
-
-                pAsset->SetFlag(IAssetItem::eFlag_Visible, found);
-            }
-        }
-
-        return;
-    }
 
     std::map<QString, char*> cFieldFiltersValueRawData, cFieldFiltersMinValueRawData, cFieldFiltersMaxValueRawData;
     bool bAssetIsVisible;
@@ -1121,27 +1048,6 @@ QVariant CAssetItem::GetAssetFieldValue(const char* pFieldName) const
     else if (AssetViewer::IsFieldName(pFieldName, "usedinlevel"))
     {
         return (m_flags & eFlag_UsedInLevel);
-    }
-    else if (AssetViewer::IsFieldName(pFieldName, "tags"))
-    {
-        QString path = GetRelativePath();
-        path += GetFilename();
-
-        QString description;
-        CAssetBrowserManager::Instance()->GetAssetDescription(path, description);
-
-        CAssetBrowserManager::StrVector tags;
-        CAssetBrowserManager::Instance()->GetTagsForAsset(tags, path);
-
-        QString result = description;
-
-        for (size_t i = 0; i < tags.size(); ++i)
-        {
-            result += ",";
-            result += tags[i];
-        }
-
-        return result;
     }
 
     return QVariant();

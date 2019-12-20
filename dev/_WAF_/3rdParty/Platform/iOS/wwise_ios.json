@@ -1,0 +1,40 @@
+{
+    "platform": {
+        "ios": {
+            "libpath_debug": [
+                "SDK/iOS/Debug-iphoneos/lib"
+            ],
+            "libpath_profile": [
+                "SDK/iOS/Profile-iphoneos/lib"
+            ],
+            "libpath_performance": [
+                "SDK/iOS/Release-iphoneos/lib"
+            ],
+            "libpath_release": [
+                "SDK/iOS/Release-iphoneos/lib"
+            ],
+            "lib_debug": [
+                "lib${non_release_libs}.a",
+                "lib${common_libs}.a",
+                "lib${ios_libs}.a",
+                "lib${common_extra_libs}.a"
+            ],
+            "lib_profile": [
+                "lib${non_release_libs}.a",
+                "lib${common_libs}.a",
+                "lib${ios_libs}.a",
+                "lib${common_extra_libs}.a"
+            ],
+            "lib_performance": [
+                "lib${common_libs}.a",
+                "lib${ios_libs}.a",
+                "lib${common_extra_libs}.a"
+            ],
+            "lib_release": [
+                "lib${common_libs}.a",
+                "lib${ios_libs}.a",
+                "lib${common_extra_libs}.a"
+            ]
+        }
+    }
+}

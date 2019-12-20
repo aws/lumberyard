@@ -74,6 +74,8 @@ namespace EMotionFX
         const char* GetDescription() const override { return "Add a simulated object to an actor"; }
         MCore::Command* Create() override { return aznew CommandAddSimulatedObject(this); }
 
+        size_t GetObjectIndex() const { return m_objectIndex; }
+
         static const char* s_commandName;
         static const char* s_objectIndexParameterName;
         static const char* s_nameParameterName;
@@ -83,6 +85,7 @@ namespace EMotionFX
         size_t              m_objectIndex;
         AZStd::string       m_contents;
         AZStd::optional<AZStd::string> m_name;
+        bool                m_oldDirtyFlag = false;
     };
 
     class CommandRemoveSimulatedObject
@@ -108,7 +111,7 @@ namespace EMotionFX
         const char* GetDescription() const override { return "Remove a simulated object from an actor"; }
         MCore::Command* Create() override { return aznew CommandRemoveSimulatedObject(this); }
 
-        size_t GetObjectIndex() { return m_objectIndex; }
+        size_t GetObjectIndex() const { return m_objectIndex; }
 
         static const char* s_commandName;
         static const char* s_objectIndexParameterName;
@@ -116,6 +119,7 @@ namespace EMotionFX
     private:
         size_t             m_objectIndex;
         AZStd::string      m_oldContents;
+        bool               m_oldDirtyFlag = false;
     };
 
     class CommandAdjustSimulatedObject
@@ -165,6 +169,7 @@ namespace EMotionFX
         SimulatedObject* GetSimulatedObject(AZStd::string& outResult) const;
 
         size_t m_objectIndex = ~0UL;
+        bool m_oldDirtyFlag = false;
 
         AZStd::optional<AZStd::string> m_objectName;
         AZStd::optional<float> m_gravityFactor;
@@ -203,7 +208,10 @@ namespace EMotionFX
         MCore::Command* Create() override { return aznew CommandAddSimulatedJoints(this); }
 
         const AZStd::vector<AZ::u32>& GetJointIndices() const { return m_jointIndices; }
+        void SetJointIndices(AZStd::vector<AZ::u32> newJointIndices) { m_jointIndices = AZStd::move(newJointIndices); }
+
         size_t GetObjectIndex() { return m_objectIndex; }
+        void SetObjectIndex(size_t newObjectIndex ) { m_objectIndex = newObjectIndex; }
 
         static const char* s_commandName;
         static const char* s_jointIndicesParameterName;
@@ -215,6 +223,7 @@ namespace EMotionFX
         AZStd::vector<AZ::u32>                  m_jointIndices;
         AZStd::optional<AZStd::string>          m_contents;
         bool                                    m_addChildren = false;
+        bool                                    m_oldDirtyFlag = false;
     };
 
     class CommandRemoveSimulatedJoints
@@ -253,6 +262,7 @@ namespace EMotionFX
         AZStd::vector<AZ::u32>                  m_jointIndices;
         AZStd::optional<AZStd::string>          m_oldContents;
         bool                                    m_removeChildren = false;
+        bool                                    m_oldDirtyFlag = false;
     };
 
     class CommandAdjustSimulatedJoint
@@ -320,6 +330,7 @@ namespace EMotionFX
 
         size_t m_objectIndex = ~0UL;
         size_t m_jointIndex = ~0UL;
+        bool m_oldDirtyFlag = false;
 
         AZStd::optional<float> m_coneAngleLimit;
         AZStd::optional<float> m_mass;

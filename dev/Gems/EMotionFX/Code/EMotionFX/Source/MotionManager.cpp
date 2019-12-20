@@ -10,20 +10,28 @@
 *
 */
 
-// include the required headers
-#include "EMotionFXConfig.h"
-#include "MotionManager.h"
-#include "Motion.h"
-#include "MotionSet.h"
-#include "SkeletalMotion.h"
-#include "ActorInstance.h"
-#include "ActorManager.h"
-#include "MotionSystem.h"
-#include "MotionInstance.h"
-#include "AnimGraph.h"
-#include "AnimGraphMotionNode.h"
-#include "AnimGraphManager.h"
-#include <EMotionFX/Source/Allocators.h>
+#include <AzCore/RTTI/RTTI.h>
+#include <AzCore/std/string/string.h>
+#include <AzFramework/StringFunc/StringFunc.h>
+#include <EMotionFX/Source/ActorInstance.h>
+#include <EMotionFX/Source/ActorManager.h>
+#include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/AnimGraphInstance.h>
+#include <EMotionFX/Source/AnimGraphManager.h>
+#include <EMotionFX/Source/AnimGraphMotionNode.h>
+#include <EMotionFX/Source/AnimGraphNode.h>
+#include <EMotionFX/Source/AnimGraphNodeData.h>
+#include <EMotionFX/Source/BaseObject.h>
+#include <EMotionFX/Source/EMotionFXManager.h>
+#include <EMotionFX/Source/MemoryCategories.h>
+#include <EMotionFX/Source/Motion.h>
+#include <EMotionFX/Source/MotionEventTable.h>
+#include <EMotionFX/Source/MotionInstance.h>
+#include <EMotionFX/Source/MotionManager.h>
+#include <EMotionFX/Source/MotionSet.h>
+#include <EMotionFX/Source/MotionSystem.h>
+#include <MCore/Source/Array.h>
+#include <MCore/Source/MultiThreadManager.h>
 
 namespace EMotionFX
 {
@@ -39,13 +47,6 @@ namespace EMotionFX
 
         // reserve space for 400 motions
         mMotions.Reserve(400);
-    }
-
-
-    // destructor
-    MotionManager::~MotionManager()
-    {
-        //Clear();
     }
 
 
@@ -454,13 +455,18 @@ namespace EMotionFX
             for (uint32 m = 0; m < numNodes; ++m)
             {
                 AnimGraphNode* node = animGraph->GetNode(m);
+                AnimGraphNodeData* uniqueData = node->FindUniqueNodeData(animGraphInstance);
+                if (motion->GetEventTable()->GetSyncTrack() == uniqueData->GetSyncTrack())
+                {
+                    uniqueData->SetSyncTrack(nullptr);
+                }
                 if (azrtti_istypeof<AnimGraphMotionNode>(node))
                 {
-                    AnimGraphMotionNode* motionNode = static_cast<AnimGraphMotionNode*>(node);
-                    MotionInstance* motionInstance = motionNode->FindMotionInstance(animGraphInstance);
+                    AnimGraphMotionNode::UniqueData* motionNodeData = static_cast<AnimGraphMotionNode::UniqueData*>(uniqueData);
+                    const MotionInstance* motionInstance = motionNodeData->mMotionInstance;
                     if (motionInstance && motionInstance->GetMotion() == motion)
                     {
-                        motionNode->ResetUniqueData(animGraphInstance);
+                        motionNodeData->Reset();
                     }
                 }
             }

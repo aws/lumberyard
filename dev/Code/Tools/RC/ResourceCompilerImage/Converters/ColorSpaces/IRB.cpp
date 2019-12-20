@@ -32,9 +32,9 @@ void ImageToProcess::ConvertBetweenRGBA32FAndIRB32F(bool bEncode)
     if (bEncode)
     {
         assert((get()->GetImageFlags() & CImageExtensionHelper::EIF_Colormodel) == CImageExtensionHelper::EIF_Colormodel_RGB);
-
-        std::auto_ptr<ImageObject> pRet(get()->AllocateImage(0, ePixelFormat_A32B32G32R32F));
-
+        AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+        std::unique_ptr<ImageObject> pRet(get()->AllocateImage(0, ePixelFormat_A32B32G32R32F));
+        AZ_POP_DISABLE_WARNING
         const uint32 dwMips = pRet->GetMipCount();
         for (uint32 dwMip = 0; dwMip < dwMips; ++dwMip)
         {
@@ -77,9 +77,9 @@ void ImageToProcess::ConvertBetweenRGBA32FAndIRB32F(bool bEncode)
     else
     {
         assert((get()->GetImageFlags() & CImageExtensionHelper::EIF_Colormodel) == CImageExtensionHelper::EIF_Colormodel_IRB);
-
-        std::auto_ptr<ImageObject> pRet(get()->AllocateImage(0, ePixelFormat_A32B32G32R32F));
-
+        AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+        std::unique_ptr<ImageObject> pRet(get()->AllocateImage(0, ePixelFormat_A32B32G32R32F));
+        AZ_POP_DISABLE_WARNING
         const uint32 dwMips = pRet->GetMipCount();
         for (uint32 dwMip = 0; dwMip < dwMips; ++dwMip)
         {

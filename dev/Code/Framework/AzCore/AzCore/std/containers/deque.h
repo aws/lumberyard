@@ -209,11 +209,6 @@ namespace AZStd
             AZ_FORCE_INLINE reference operator[](difference_type offset) const { this_type tmp = *this; tmp += offset; return *tmp; }
         };
 
-#if defined(AZ_COMPILER_GCC) && (AZ_COMPILER_GCC < 4)
-        friend class iterator_impl;
-        friend class const_iterator_impl;
-#endif
-
 #ifdef AZSTD_HAS_CHECKED_ITERATORS
         typedef Debug::checked_randomaccess_iterator<iterator_impl, this_type>           iterator;
         typedef Debug::checked_randomaccess_iterator<const_iterator_impl, this_type> const_iterator;
@@ -571,6 +566,13 @@ namespace AZStd
                 }
             }
         }
+
+#ifdef AZ_HAS_INITIALIZERS_LIST
+        AZ_FORCE_INLINE void insert(const_iterator insertPos, std::initializer_list<value_type> list)
+        {
+            insert(insertPos, list.begin(), list.end());
+        }
+#endif // #ifdef AZ_HAS_INITIALIZERS_LIST
 
         template<class InputIterator>
         AZ_FORCE_INLINE void insert(const_iterator insertPos, InputIterator first, InputIterator last)

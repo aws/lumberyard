@@ -2,12 +2,13 @@
     "NoUberFile": {
         "Root": [
         ],
-        
-        "AssetBuilderSDK": [
-            "AssetBuilderSDK/AssetBuilderSDK.h",
-            "AssetBuilderSDK/AssetBuilderSDK.cpp",
-            "AssetBuilderSDK/AssetBuilderBusses.h"
-        ]
+
+      "AssetBuilderSDK": [
+        "AssetBuilderSDK/AssetBuilderSDK.h",
+        "AssetBuilderSDK/AssetBuilderSDK.cpp",
+        "AssetBuilderSDK/AssetBuilderBusses.h",
+        "AssetBuilderSDK/SerializationDependencies.h"
+      ]
         
     }
 }

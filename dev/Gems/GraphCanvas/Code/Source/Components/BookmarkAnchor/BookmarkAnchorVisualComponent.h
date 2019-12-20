@@ -142,11 +142,8 @@ namespace GraphCanvas
 
     private:
 
-        // Fix for VS2013
         BookmarkAnchorVisualComponent(const BookmarkAnchorVisualComponent&) = delete;
         const BookmarkAnchorVisualComponent& operator=(const BookmarkAnchorVisualComponent&) = delete;
-        ////
-
         AZStd::unique_ptr<BookmarkAnchorVisualGraphicsWidget>  m_graphicsWidget;        
     };
 }

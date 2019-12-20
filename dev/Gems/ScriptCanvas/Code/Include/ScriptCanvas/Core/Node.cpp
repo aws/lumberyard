@@ -1416,12 +1416,12 @@ namespace ScriptCanvas
         return FindSlotIdForDescriptor(name, slotDescriptor).IsValid();
     }
 
-    SlotId Node::AddSlot(const SlotConfiguration& slotConfiguration)
+    SlotId Node::AddSlot(const SlotConfiguration& slotConfiguration, bool signalAdd)
     {
-        return InsertSlot(-1, slotConfiguration);
+        return InsertSlot(-1, slotConfiguration, signalAdd);
     }
 
-    SlotId Node::InsertSlot(AZ::s64 index, const SlotConfiguration& slotConfig)
+    SlotId Node::InsertSlot(AZ::s64 index, const SlotConfiguration& slotConfig, bool signalAdd)
     {
         SlotIterator addSlotIter = m_slots.end();
         auto insertSlotOutcome = FindOrInsertSlot(index, slotConfig, addSlotIter);
@@ -1470,13 +1470,16 @@ namespace ScriptCanvas
                 }
             }
 
-            NodeNotificationsBus::Event((GetEntity() != nullptr) ? GetEntityId() : AZ::EntityId(), &NodeNotifications::OnSlotAdded, addSlotIter->GetId());
+            if (signalAdd)
+            {
+                NodeNotificationsBus::Event((GetEntity() != nullptr) ? GetEntityId() : AZ::EntityId(), &NodeNotifications::OnSlotAdded, addSlotIter->GetId());
+            }
         }
 
         return addSlotIter != m_slots.end() ? addSlotIter->GetId() : SlotId{};
     }
 
-    bool Node::RemoveSlot(const SlotId& slotId, bool deleteConnections)
+    bool Node::RemoveSlot(const SlotId& slotId, bool signalRemoval)
     {
         // If we are already removing the slot, early out with false since something else is doing the deleting.
         if (m_removingSlots.count(slotId) != 0)
@@ -1490,7 +1493,7 @@ namespace ScriptCanvas
             SlotIterator slotIt = slotIdIt->second;
 
             /// Disconnect connected endpoints
-            if (deleteConnections)
+            if (signalRemoval)
             {
                 // We want to avoid recursive calls into ourselves here(happens in the case of dynamically added slots)
                 m_removingSlots.insert(slotId);
@@ -1542,7 +1545,11 @@ namespace ScriptCanvas
             }
 
             m_slots.erase(slotIt);
-            SignalSlotRemoved(slotId);
+
+            if (signalRemoval)
+            {
+                SignalSlotRemoved(slotId);
+            }
 
             return true;
         }

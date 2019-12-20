@@ -84,6 +84,8 @@ class CEditorImpl
     : public IEditor
     , protected AzToolsFramework::EditorEntityContextNotificationBus::Handler
 {
+    Q_DECLARE_TR_FUNCTIONS(CEditorImpl)
+
 public:
     CEditorImpl();
     ~CEditorImpl();
@@ -141,6 +143,7 @@ public:
     QString GetLevelDataFolder();
     QString GetSearchPath(EEditorPathName path);
     QString GetResolvedUserFolder();
+    QString GetProjectName() override;
     bool ExecuteConsoleApp(const QString& CommandLine, QString& OutputText, bool bNoTimeOut = false, bool bShowWindow = false);
     virtual bool IsInGameMode() override;
     virtual void SetInGameMode(bool inGame) override;
@@ -350,8 +353,6 @@ public:
     bool IsSourceControlAvailable() override;
     //! Only returns true if source control is both available AND currently connected and functioning
     bool IsSourceControlConnected() override;
-    //! Retrieve interface to the source control.
-    IAssetTagging* GetAssetTagging();
     //! Setup Material Editor mode
     void SetMatEditMode(bool bIsMatEditMode);
     CFlowGraphManager* GetFlowGraphManager() { return m_pFlowGraphManager; };
@@ -497,8 +498,6 @@ protected:
     CErrorsDlg* m_pErrorsDlg;
     //! Source control interface.
     ISourceControl* m_pSourceControl;
-    //! AssetTagging provider interface
-    IAssetTagging* m_pAssetTagging;
     CFlowGraphManager* m_pFlowGraphManager;
 
     CSelectionTreeManager* m_pSelectionTreeManager;

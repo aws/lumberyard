@@ -3,7 +3,9 @@
     {
         "Source/Platform/AppleTV":
         [
-            "../Common/Apple/SaveData_SystemComponent_Apple.mm"
+            "../Common/Apple/SaveData_SystemComponent_Apple.mm",
+            "SaveData_Traits_Platform.h",
+            "SaveData_Traits_AppleTV.h"
         ]
     }
 }

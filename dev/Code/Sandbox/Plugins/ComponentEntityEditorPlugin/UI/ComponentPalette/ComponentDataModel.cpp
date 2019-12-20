@@ -10,7 +10,8 @@
 *
 */
 
-#include "stdafx.h"
+#include "ComponentEntityEditorPlugin_precompiled.h"
+
 #include "ComponentDataModel.h"
 
 #include <AzCore/Component/Entity.h>

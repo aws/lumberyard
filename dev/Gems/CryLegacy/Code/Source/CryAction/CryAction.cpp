@@ -34,6 +34,8 @@
         #include "Xenia/CryAction_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CryAction_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryAction_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -56,6 +58,8 @@
         #include "Xenia/CryAction_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CryAction_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryAction_cpp_salem.inl"
     #endif
 #elif defined(WIN32) || defined(WIN64)
 #include <CryWindows.h>
@@ -1090,7 +1094,7 @@ bool CCryAction::Init(SSystemInitParams& startupParams)
     m_pGamePhysicsSettings = new GameConfigPhysicsSettings();
     m_pGamePhysicsSettings->Init();
 
-    //-- Network Stall ticker thread - PS3 only // ACCEPTED_USE
+    //-- Network Stall ticker thread - legacy only?
     if (m_pCryActionCVars->g_gameplayAnalyst)
     {
         m_pGameplayAnalyst = new CGameplayAnalyst();
@@ -1140,6 +1144,8 @@ bool CCryAction::Init(SSystemInitParams& startupParams)
         #include "Xenia/CryAction_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CryAction_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryAction_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -4219,6 +4225,8 @@ void CCryAction::SetupLocalView()
         #include "Xenia/CryAction_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CryAction_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryAction_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

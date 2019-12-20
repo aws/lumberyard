@@ -1,0 +1,40 @@
+{
+    "platform": {
+        "linux_x64": {
+            "libpath_debug": [
+                "SDK/Linux_x64/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/Linux_x64/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/Linux_x64/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/Linux_x64/Release/lib"
+            ],
+            "lib_debug": [
+                "lib${non_release_libs}.a",
+                "lib${common_libs}.a",
+                "lib${linux_libs}.a",
+                "lib${common_extra_libs}.a"
+            ],
+            "lib_profile": [
+                "lib${non_release_libs}.a",
+                "lib${common_libs}.a",
+                "lib${linux_libs}.a",
+                "lib${common_extra_libs}.a"
+            ],
+            "lib_performance": [
+                "lib${common_libs}.a",
+                "lib${linux_libs}.a",
+                "lib${common_extra_libs}.a"
+            ],
+            "lib_release": [
+                "lib${common_libs}.a",
+                "lib${linux_libs}.a",
+                "lib${common_extra_libs}.a"
+            ]
+        }
+    }
+}

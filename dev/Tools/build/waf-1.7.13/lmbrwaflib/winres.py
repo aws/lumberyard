@@ -331,4 +331,6 @@ def is_rc_supported_for_platform(taskgen):
 	rc_supported_platform = False
 	if platform.startswith('win'):
 		rc_supported_platform = True
+	if platform.startswith('xenia'):
+		rc_supported_platform = True
 	return rc_supported_platform

@@ -20,7 +20,7 @@
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityComponent.h>
 #include <AzCore/UnitTest/TestTypes.h>
 
-#include "AzToolsFrameworkTestHelpers.h"
+#include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
 
 using namespace AzToolsFramework;
 

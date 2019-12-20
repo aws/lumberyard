@@ -1,0 +1,12 @@
+{
+  "platform": {
+    "ios": {
+      "libpath": [
+        "External/Lib"
+      ],
+      "lib": [
+        "librad_tm_ios.a"
+      ]
+    }
+  }
+}

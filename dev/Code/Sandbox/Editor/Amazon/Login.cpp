@@ -212,13 +212,13 @@ namespace Amazon {
             .WithInt64("event_timestamp", seconds.count() * 1000);
 
         std::shared_ptr<Aws::StringStream> sstream = Aws::MakeShared<Aws::StringStream>(eventName);
-        auto eventString = eventJson.WriteCompact();
+        auto eventString = eventJson.View().WriteCompact();
         *sstream << eventString;
         httpRequest->AddContentBody(sstream);
         httpRequest->SetContentLength(std::to_string(eventString.length()).c_str());
         httpRequest->SetHeaderValue("Content-Type", "application/json");
 
-        auto httpResponse(httpClient->MakeRequest(*httpRequest, nullptr, nullptr));
+        auto httpResponse(httpClient->MakeRequest(httpRequest, nullptr, nullptr));
         return;
     }
 

@@ -4,6 +4,11 @@
         "AzCore/Platform/Windows":
         [
             "../Common/WinAPI/Tests/UtilsTests_WinAPI.cpp"
+        ],
+        "AzCore/Memory/Platform/Windows":
+        [
+            "Tests/Memory/OverrunDetectionAllocator_Windows.cpp",
+            "Tests/Serialization_Windows.cpp"
         ]
     }
 }

@@ -36,13 +36,11 @@ using namespace UnitTestInternal;
 namespace UnitTest
 {
     struct RemoveLessThan401
-        : public unary_function<int, bool>
     {
         AZ_FORCE_INLINE bool operator()(int element) const { return element < 401; }
     };
 
     struct UniqueForLessThan401
-        : public binary_function<int, int, bool>
     {
         AZ_FORCE_INLINE bool operator()(int el1, int el2) const { return (el1 == el2 && el1 < 401); }
     };
@@ -53,6 +51,7 @@ namespace UnitTest
         fixed_list<int, 100> int_list1;
         fixed_list<int, 100> int_list2;
         fixed_list<int, 100> int_list3;
+        fixed_list<int, 100> int_list4;
 
         // default ctor
         AZ_TEST_VALIDATE_EMPTY_LIST(int_list);
@@ -76,6 +75,10 @@ namespace UnitTest
         // copy construct
         int_list3 = fixed_list<int, 100>(int_list1);
         AZ_TEST_ASSERT(int_list1 == int_list3);
+
+        // initializer_list construct
+        int_list4 = { 33, 33, 33, 33, 33, 33, 33, 33, 33, 33 };
+        AZ_TEST_ASSERT(int_list1 == int_list4);
 
         // assign
         int_list = int_list1;
@@ -365,6 +368,7 @@ namespace UnitTest
         fixed_forward_list<int, 100> int_slist1;
         fixed_forward_list<int, 100> int_slist2;
         fixed_forward_list<int, 100> int_slist3;
+        fixed_forward_list<int, 100> int_slist4;
 
         // default ctor
         AZ_TEST_VALIDATE_EMPTY_LIST(int_slist);
@@ -388,6 +392,10 @@ namespace UnitTest
         // copy construct
         int_slist3 = fixed_forward_list<int, 100>(int_slist1);
         AZ_TEST_ASSERT(int_slist1 == int_slist3);
+
+        // initializer_list construct
+        int_slist4 = { 33, 33, 33, 33, 33, 33, 33, 33, 33, 33 };
+        AZ_TEST_ASSERT(int_slist1 == int_slist4);
 
         // assign
         int_slist = int_slist1;

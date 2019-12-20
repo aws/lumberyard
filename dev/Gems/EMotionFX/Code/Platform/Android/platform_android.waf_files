@@ -1,12 +1,7 @@
 {
     "auto":
     {
-        "Platform/Android":
-        [
-            "EMotionFX_Traits_Platform.h",
-            "EMotionFX_Traits_Android.h"
-        ],
-        "Platform/Common/FileOffsetType":
+        "EMotionFXSDK/MCore/Platform/Android":
         [
             "../Common/FileOffsetType/MCore/Source/DiskFile_FileOffsetType.cpp"
         ]

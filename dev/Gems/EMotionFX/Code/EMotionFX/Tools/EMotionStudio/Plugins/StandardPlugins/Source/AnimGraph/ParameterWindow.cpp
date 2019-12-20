@@ -279,7 +279,7 @@ namespace EMStudio
 
         // get access to the game controller and check if it is valid
         bool isGameControllerValid = false;
-#ifdef HAS_GAME_CONTROLLER
+#if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         GameControllerWindow* gameControllerWindow = mPlugin->GetGameControllerWindow();
         if (gameControllerWindow)
         {
@@ -330,7 +330,7 @@ namespace EMStudio
         // get access to the game controller and check if it is valid
         bool isGameControllerValid = false;
 
-#ifdef HAS_GAME_CONTROLLER
+#if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         GameControllerWindow* gameControllerWindow = mPlugin->GetGameControllerWindow();
         if (gameControllerWindow)
         {
@@ -713,12 +713,7 @@ namespace EMStudio
     // callback function when the attribute get changed from trigger actions.
     void ParameterWindow::OnParameterActionTriggered(const EMotionFX::ValueParameter* valueParameter)
     {
-        ParameterWidgetByParameter::const_iterator it = m_parameterWidgets.find(valueParameter);
-        if (it != m_parameterWidgets.end())
-        {
-            it->second.m_valueParameterEditor->UpdateValue();
-            it->second.m_propertyEditor->InvalidateValues();
-        }
+        UpdateParameterValue(valueParameter);
     }
 
 
@@ -737,9 +732,10 @@ namespace EMStudio
 
         m_animGraph = mPlugin->GetAnimGraphModel().GetFocusedAnimGraph();
 
-        // clear the parameter tree and the widget table
-        mTreeWidget->clear();
+        // First clear the parameter widgets array and then the actual tree widget.
+        // Don't change the order here as the tree widget clear call calls an on selection changed which uses the parameter widget array.
         m_parameterWidgets.clear();
+        mTreeWidget->clear();
 
         if (!m_animGraph || GetCommandManager()->GetCurrentSelection().GetNumSelectedActorInstances() > 1) // only allow one actor or none instance to be selected
         {
@@ -937,6 +933,9 @@ namespace EMStudio
 
                 const AZStd::vector<MCore::Attribute*> attributes = GetAttributesForParameter(parameterIndex.GetValue());
                 iterator.second.m_valueParameterEditor->SetAttributes(attributes);
+                // Also update the parameter value after the attributes updated.
+                iterator.second.m_valueParameterEditor->UpdateValue();
+                iterator.second.m_propertyEditor->InvalidateValues();
             }
         }
     }
@@ -1093,6 +1092,12 @@ namespace EMStudio
                     }
                 }
             }
+        }
+
+        commandGroup.SetGroupName("Adjust parameter");
+        if (oldName != editedParameter->GetName())
+        {
+            commandGroup.SetGroupName("Rename parameter");
         }
 
         // Build the command string and execute it.

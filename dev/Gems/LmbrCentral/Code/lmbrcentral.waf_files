@@ -36,10 +36,13 @@
             "include/LmbrCentral/Audio/AudioSystemComponentBus.h",
             "include/LmbrCentral/Audio/AudioTriggerComponentBus.h"
         ],
+        "Include/Bundling": [
+            "include/LmbrCentral/Bundling/BundlingSystemComponentBus.h"
+        ],
         "Include/Geometry": [
             "include/LmbrCentral/Geometry/GeometrySystemComponentBus.h"
         ],
-        "Include/Dependency" : [
+        "Include/Dependency": [
             "include/LmbrCentral/Dependency/DependencyMonitor.h",
             "include/LmbrCentral/Dependency/DependencyMonitor.inl",
             "include/LmbrCentral/Dependency/DependencyNotificationBus.h"
@@ -99,6 +102,9 @@
             "include/LmbrCentral/Shape/SplineAttribute.h",
             "include/LmbrCentral/Shape/SplineAttribute.inl"
         ],
+        "Include/Terrain": [
+            "include/LmbrCentral/Terrain/TerrainSystemRequestBus.h"
+        ],
         "Source/Ai": [
             "Source/Ai/BehaviorTreeAssetHandler.h",
             "Source/Ai/BehaviorTreeAssetHandler.cpp",
@@ -145,6 +151,10 @@
             "Source/Audio/AudioSystemComponent.cpp",
             "Source/Audio/AudioTriggerComponent.h",
             "Source/Audio/AudioTriggerComponent.cpp"
+        ],
+        "Source/Bundling": [
+            "Source/Bundling/BundlingSystemComponent.h",
+            "Source/Bundling/BundlingSystemComponent.cpp"
         ],
         "Source/Events": [
             "Source/Events/ReflectScriptableEvents.h",
@@ -213,6 +223,8 @@
             "Source/Rendering/FogVolumeCommon.cpp",
             "Source/Rendering/FogVolumeRequestsHandler.h",
             "Source/Rendering/FogVolumeRequestsHandler.cpp",
+            "Source/Rendering/MaterialAssetHandler.h",
+            "Source/Rendering/MaterialAssetHandler.cpp",
             "Source/Rendering/MeshAssetHandler.h",
             "Source/Rendering/MeshAssetHandler.cpp",
             "Source/Rendering/ParticleAssetHandler.h",

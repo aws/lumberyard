@@ -18,6 +18,7 @@
 #include <IMaterialEffects.h>
 #include <CryExtension/Impl/ClassWeaver.h>
 #include <CryExtension/CryCreateClassInstance.h>
+#include <MathConversion.h>
 #include "EffectPlayer.h"
 
 #include "Serialization/Decorators/ResourcesAudio.h"
@@ -212,19 +213,19 @@ namespace CharacterTool {
 
             Matrix34 cameraWithOffset = cameraMatrix;
             cameraWithOffset.SetTranslation(cameraMatrix.GetTranslation() + AUDIO_OFFSET);
-            Audio::SAudioListenerRequestData<Audio::eALRT_SET_POSITION> requestData(cameraWithOffset);
+            Audio::SAudioListenerRequestData<Audio::eALRT_SET_POSITION> requestData(LYTransformToAZTransform(cameraWithOffset));
             requestData.oNewPosition.NormalizeForwardVec();
             requestData.oNewPosition.NormalizeUpVec();
             request.pData = &requestData;
-
 
             Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequest, request);
 
             if (m_audioProxy)
             {
                 Audio::SATLWorldPosition pos;
-                pos.mPosition = Matrix34(playerLocation);
-                pos.mPosition.SetTranslation(pos.mPosition.GetTranslation() + AUDIO_OFFSET);
+                auto location = Matrix34(playerLocation);
+                location.SetTranslation(location.GetTranslation() + AUDIO_OFFSET);
+                pos.m_transform = LYTransformToAZTransform(location);
                 m_audioProxy->SetPosition(pos);
             }
         }

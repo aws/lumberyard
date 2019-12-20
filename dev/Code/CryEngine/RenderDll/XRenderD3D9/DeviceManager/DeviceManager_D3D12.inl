@@ -69,34 +69,38 @@ void CDeviceTexture::Unbind()
 
 void CDeviceTexture::DownloadToStagingResource(uint32 nSubRes, StagingHook cbTransfer)
 {
+    AZ_Assert(nSubRes < m_numSubResources, "Invalid SubResource ID %d, (should be < %d)", nSubRes, m_numSubResources);
+
     D3D11_RESOURCE_DIMENSION eResourceDimension;
     m_pD3DTexture->GetType(&eResourceDimension);
 
     D3DResource* pStagingResource;
-    void* pStagingMemory = m_pStagingMemory[0];
-    if (!(pStagingResource = m_pStagingResource[0]))
+    void* pStagingMemory = nullptr;
+    if (!(pStagingResource = GetCurrDownloadStagingResource()))
     {
         pStagingResource = gcpRendD3D->m_DevMan.AllocateStagingResource(m_pD3DTexture, FALSE);
     }
 
-    assert(pStagingResource);
+    AZ_Assert(pStagingResource, "Null download staging resource");
 
     if (gcpRendD3D->GetDeviceContext().CopyStagingResource(pStagingResource, m_pD3DTexture, nSubRes, FALSE) == S_OK)
     {
+        uint32 rowPitch = 0;
+
         // Resources on D3D12_HEAP_TYPE_READBACK heaps do not support persistent map.
         // Map and Unmap must be called between CPU and GPU accesses to the same memory
         // address on some system architectures, when the page caching behavior is write-back.
         // Map and Unmap invalidate and flush the last level CPU cache on some ARM systems,
         // to marshal data between the CPU and GPU through memory addresses with write-back behavior.
         gcpRendD3D->GetDeviceContext().WaitStagingResource(pStagingResource);
-        gcpRendD3D->GetDeviceContext().MapStagingResource(pStagingResource, FALSE, &pStagingMemory);
+        gcpRendD3D->GetDeviceContext().MapStagingResource(m_pD3DTexture, pStagingResource, nSubRes, FALSE, &pStagingMemory, &rowPitch);
 
-        cbTransfer(pStagingMemory, 0, 0);
+        cbTransfer(pStagingMemory, rowPitch, 0);
 
         gcpRendD3D->GetDeviceContext().UnmapStagingResource(pStagingResource, FALSE);
     }
 
-    if (!(m_pStagingResource[0]))
+    if (!(GetCurrDownloadStagingResource()))
     {
         gcpRendD3D->m_DevMan.ReleaseStagingResource(pStagingResource);
     }
@@ -104,32 +108,46 @@ void CDeviceTexture::DownloadToStagingResource(uint32 nSubRes, StagingHook cbTra
 
 void CDeviceTexture::DownloadToStagingResource(uint32 nSubRes)
 {
-    assert(m_pStagingResource[0]);
+    AZ_Assert(nSubRes < m_numSubResources, "Invalid SubResource ID %d, (should be < %d)", nSubRes, m_numSubResources);
+    AZ_Assert(GetCurrDownloadStagingResource(), "Null download staging resource");
 
-    gcpRendD3D->GetDeviceContext().CopyStagingResource(m_pStagingResource[0], m_pD3DTexture, nSubRes, FALSE);
+    gcpRendD3D->GetDeviceContext().CopyStagingResource(GetCurrDownloadStagingResource(), m_pD3DTexture, nSubRes, FALSE);
+}
+
+void CDeviceTexture::DownloadToStagingResource()
+{
+    // D3D12 doesn't allow direct copies from a buffer to a resource with multiple subresources, so copy each subresource
+    // one at a time.
+    for (uint32 subResource = 0; subResource < m_numSubResources; subResource++)
+    {
+        DownloadToStagingResource(subResource);
+    }
 }
 
 void CDeviceTexture::UploadFromStagingResource(uint32 nSubRes, StagingHook cbTransfer)
 {
+    AZ_Assert(nSubRes < m_numSubResources, "Invalid SubResource ID %d, (should be < %d)", nSubRes, m_numSubResources);
     D3D11_RESOURCE_DIMENSION eResourceDimension;
     m_pD3DTexture->GetType(&eResourceDimension);
 
     D3DResource* pStagingResource;
-    void* pStagingMemory = m_pStagingMemory[1];
-    if (!(pStagingResource = m_pStagingResource[1]))
+    void* pStagingMemory = nullptr;
+    if (!(pStagingResource = GetCurrUploadStagingResource()))
     {
         pStagingResource = gcpRendD3D->m_DevMan.AllocateStagingResource(m_pD3DTexture, TRUE);
     }
 
-    assert(pStagingResource);
+    AZ_Assert(pStagingResource, "Null upload staging resource");
+
+    uint32 rowPitch = 0;
 
     // The first call to Map allocates a CPU virtual address range for the resource.
     // The last call to Unmap deallocates the CPU virtual address range.
     // Applications cannot rely on the address being consistent, unless Map is persistently nested.
     gcpRendD3D->GetDeviceContext().WaitStagingResource(pStagingResource);
-    gcpRendD3D->GetDeviceContext().MapStagingResource(pStagingResource, TRUE, &pStagingMemory);
+    gcpRendD3D->GetDeviceContext().MapStagingResource(m_pD3DTexture, pStagingResource, nSubRes, TRUE, &pStagingMemory, &rowPitch);
 
-    if (cbTransfer(pStagingMemory, 0, 0))
+    if (cbTransfer(pStagingMemory, rowPitch, 0))
     {
         gcpRendD3D->GetDeviceContext().CopyStagingResource(pStagingResource, m_pD3DTexture, nSubRes, TRUE);
     }
@@ -138,7 +156,7 @@ void CDeviceTexture::UploadFromStagingResource(uint32 nSubRes, StagingHook cbTra
     // address reflect any modifications made by the CPU.
     gcpRendD3D->GetDeviceContext().UnmapStagingResource(pStagingResource, TRUE);
 
-    if (!(m_pStagingResource[1]))
+    if (!GetCurrUploadStagingResource())
     {
         gcpRendD3D->m_DevMan.ReleaseStagingResource(pStagingResource);
     }
@@ -146,22 +164,40 @@ void CDeviceTexture::UploadFromStagingResource(uint32 nSubRes, StagingHook cbTra
 
 void CDeviceTexture::UploadFromStagingResource(uint32 nSubRes)
 {
-    assert(m_pStagingResource[1]);
+    AZ_Assert(nSubRes < m_numSubResources, "Invalid SubResource ID %d, (should be < %d)", nSubRes, m_numSubResources);
+    AZ_Assert(GetCurrUploadStagingResource(), "Null upload staging resource");
 
-    gcpRendD3D->GetDeviceContext().CopyStagingResource(m_pStagingResource[1], m_pD3DTexture, nSubRes, TRUE);
+    gcpRendD3D->GetDeviceContext().CopyStagingResource(GetCurrUploadStagingResource(), m_pD3DTexture, nSubRes, TRUE);
+}
+
+void CDeviceTexture::UploadFromStagingResource()
+{
+    // D3D12 doesn't allow direct copies from a buffer to a resource with multiple subresources, so copy each subresource
+    // one at a time.
+    for (uint32 subResource = 0; subResource < m_numSubResources; subResource++)
+    {
+        UploadFromStagingResource(subResource);
+    }
 }
 
 void CDeviceTexture::AccessCurrStagingResource(uint32 nSubRes, bool forUpload, StagingHook cbTransfer)
 {
+    AZ_Assert(nSubRes < m_numSubResources, "Invalid SubResource ID %d, (should be < %d)", nSubRes, m_numSubResources);
+
+    void** stagingMemoryPtr = GetCurrStagingMemoryPtr(forUpload);
+    D3DResource *stagingResource = GetCurrStagingResource(forUpload);
+    uint32 rowPitch = 0;
+
     // Resources on D3D12_HEAP_TYPE_READBACK heaps do not support persistent map.
     // Applications cannot rely on the address being consistent, unless Map is persistently nested.
-    gcpRendD3D->GetDeviceContext().WaitStagingResource(m_pStagingResource[forUpload]);
-    gcpRendD3D->GetDeviceContext().MapStagingResource(m_pStagingResource[forUpload], forUpload, &m_pStagingMemory[forUpload]);
+    gcpRendD3D->GetDeviceContext().WaitStagingResource(stagingResource);
+    gcpRendD3D->GetDeviceContext().MapStagingResource(m_pD3DTexture, stagingResource, nSubRes, forUpload, stagingMemoryPtr, &rowPitch);
 
-    cbTransfer(m_pStagingMemory[forUpload], 0, 0);
+    cbTransfer(*stagingMemoryPtr, rowPitch, 0);
 
-    gcpRendD3D->GetDeviceContext().UnmapStagingResource(m_pStagingResource[forUpload], forUpload);
+    gcpRendD3D->GetDeviceContext().UnmapStagingResource(stagingResource, forUpload);
 }
+
 
 //=============================================================================
 
@@ -245,6 +281,8 @@ HRESULT CDeviceManager::Create2DTexture(const string& textureName, uint32 nWidth
     if (SUCCEEDED(hr) && pD3DTex)
     {
         pDeviceTexture->m_pD3DTexture = pD3DTex;
+        pDeviceTexture->m_numSubResources = nMips * nArraySize;
+
         if (!pDeviceTexture->m_nBaseAllocatedSize)
         {
             pDeviceTexture->m_nBaseAllocatedSize = CDeviceTexture::TextureDataSize(nWidth, nHeight, 1, nMips, 1, CTexture::TexFormatFromDeviceFormat(Format));
@@ -260,13 +298,17 @@ HRESULT CDeviceManager::Create2DTexture(const string& textureName, uint32 nWidth
             if (nUsage & USAGE_CPU_READ)
             {
                 // Resources on D3D12_HEAP_TYPE_READBACK heaps do not support persistent map.
-                pDeviceTexture->m_pStagingResource[0] = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, FALSE);
+                pDeviceTexture->m_pStagingResourceDownload = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, FALSE);
             }
             if (nUsage & USAGE_CPU_WRITE)
             {
                 // Applications cannot rely on the address being consistent, unless Map is persistently nested.
-                pDeviceTexture->m_pStagingResource[1] = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, TRUE);
-                gcpRendD3D->GetDeviceContext().MapStagingResource(pDeviceTexture->m_pStagingResource[1], TRUE, &pDeviceTexture->m_pStagingMemory[1]);
+                for (int i = 0; i < CDeviceTexture::NUM_UPLOAD_STAGING_RES; i++)
+                {
+                    uint32 rowPitch = 0;
+                    pDeviceTexture->m_pStagingResourceUpload[i] = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, TRUE);
+                    gcpRendD3D->GetDeviceContext().MapStagingResource(pD3DTex, pDeviceTexture->m_pStagingResourceUpload[i], 0, TRUE, &pDeviceTexture->m_pStagingMemoryUpload[i], &rowPitch);
+                }
             }
         }
     }
@@ -354,6 +396,8 @@ HRESULT CDeviceManager::CreateCubeTexture(const string& textureName, uint32 nSiz
     {
         pDeviceTexture->m_pD3DTexture = pD3DTex;
         pDeviceTexture->m_bCube = true;
+        pDeviceTexture->m_numSubResources = nMips * nArraySize;
+
         if (!pDeviceTexture->m_nBaseAllocatedSize)
         {
             pDeviceTexture->m_nBaseAllocatedSize = CDeviceTexture::TextureDataSize(nSize, nSize, 1, nMips, 1, CTexture::TexFormatFromDeviceFormat(Format)) * 6;
@@ -369,13 +413,17 @@ HRESULT CDeviceManager::CreateCubeTexture(const string& textureName, uint32 nSiz
             if (nUsage & USAGE_CPU_READ)
             {
                 // Resources on D3D12_HEAP_TYPE_READBACK heaps do not support persistent map.
-                pDeviceTexture->m_pStagingResource[0] = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, FALSE);
+                pDeviceTexture->m_pStagingResourceDownload = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, FALSE);
             }
             if (nUsage & USAGE_CPU_WRITE)
             {
                 // Applications cannot rely on the address being consistent, unless Map is persistently nested.
-                pDeviceTexture->m_pStagingResource[1] = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, TRUE);
-                gcpRendD3D->GetDeviceContext().MapStagingResource(pDeviceTexture->m_pStagingResource[1], TRUE, &pDeviceTexture->m_pStagingMemory[1]);
+                for (int i = 0; i < CDeviceTexture::NUM_UPLOAD_STAGING_RES; i++)
+                {
+                    uint32 rowPitch = 0;
+                    pDeviceTexture->m_pStagingResourceUpload[i] = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, TRUE);
+                    gcpRendD3D->GetDeviceContext().MapStagingResource(pD3DTex, pDeviceTexture->m_pStagingResourceUpload[i], 0, TRUE, &pDeviceTexture->m_pStagingMemoryUpload[i], &rowPitch);
+                }
             }
         }
     }
@@ -445,6 +493,7 @@ HRESULT CDeviceManager::CreateVolumeTexture(const string& textureName, uint32 nW
     if (SUCCEEDED(hr) && pD3DTex)
     {
         pDeviceTexture->m_pD3DTexture = pD3DTex;
+        pDeviceTexture->m_numSubResources = nMips;
 
         if (!pDeviceTexture->m_nBaseAllocatedSize)
         {
@@ -461,13 +510,17 @@ HRESULT CDeviceManager::CreateVolumeTexture(const string& textureName, uint32 nW
             if (nUsage & USAGE_CPU_READ)
             {
                 // Resources on D3D12_HEAP_TYPE_READBACK heaps do not support persistent map.
-                pDeviceTexture->m_pStagingResource[0] = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, FALSE);
+                pDeviceTexture->m_pStagingResourceDownload = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, FALSE);
             }
             if (nUsage & USAGE_CPU_WRITE)
             {
                 // Applications cannot rely on the address being consistent, unless Map is persistently nested.
-                pDeviceTexture->m_pStagingResource[1] = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, TRUE);
-                gcpRendD3D->GetDeviceContext().MapStagingResource(pDeviceTexture->m_pStagingResource[1], TRUE, &pDeviceTexture->m_pStagingMemory[1]);
+                for (int i = 0; i < CDeviceTexture::NUM_UPLOAD_STAGING_RES; i++)
+                {
+                    uint32 rowPitch = 0;
+                    pDeviceTexture->m_pStagingResourceUpload[i] = gcpRendD3D->m_DevMan.AllocateStagingResource(pDeviceTexture->m_pD3DTexture, TRUE);
+                    gcpRendD3D->GetDeviceContext().MapStagingResource(pD3DTex, pDeviceTexture->m_pStagingResourceUpload[i], 0, TRUE, &pDeviceTexture->m_pStagingMemoryUpload[i], &rowPitch);
+                }
             }
         }
     }

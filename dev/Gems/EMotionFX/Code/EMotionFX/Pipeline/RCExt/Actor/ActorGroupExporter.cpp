@@ -72,7 +72,9 @@ namespace EMotionFX
             SceneEvents::ProcessingResultCombiner result;
 
             const Group::IActorGroup& actorGroup = context.m_group;
-            ActorBuilderContext actorBuilderContext(context.m_scene, context.m_outputDirectory, actorGroup, actor, AZ::RC::Phase::Construction);
+            AZStd::vector<AZStd::string> actorMaterialReferences;
+            ActorBuilderContext actorBuilderContext(context.m_scene, context.m_outputDirectory, actorGroup, actor, actorMaterialReferences, AZ::RC::Phase::Construction);
+            
             result += SceneEvents::Process(actorBuilderContext);
             result += SceneEvents::Process<ActorBuilderContext>(actorBuilderContext, AZ::RC::Phase::Filling);
             result += SceneEvents::Process<ActorBuilderContext>(actorBuilderContext, AZ::RC::Phase::Finalizing);
@@ -117,7 +119,11 @@ namespace EMotionFX
 #endif // EMOTIONFX_ACTOR_DEBUG
 
             static AZ::Data::AssetType emotionFXActorAssetType("{F67CC648-EA51-464C-9F5D-4A9CE41A7F86}"); // from ActorAsset.h in EMotionFX Gem
-            context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), emotionFXActorAssetType);
+            AZ::SceneAPI::Events::ExportProduct& product = context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), emotionFXActorAssetType);
+            for (AZStd::string& materialPathReference : actorMaterialReferences)
+            {
+                product.m_legacyPathDependencies.emplace_back(AZStd::move(materialPathReference));
+            }
 
             // Destroy the actor after save.
             MCore::Destroy(actor);

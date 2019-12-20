@@ -14,7 +14,7 @@ def build(bld):
 
     kw = dict(
         # Add custom build options here
-        use         = ['GridMate'],
+        use         = ['GridMate','GameLift'],
         uselib      = ['OPENSSL'],
         includes    = [bld.Path('Code/CryEngine/CryCommon'),
                        bld.Path('Code/CryEngine/CryAction'),

@@ -18,7 +18,7 @@ To make it easy for you to contribute to our game engine, the Lumberyard develop
 -	When positioning curly braces, open braces on a new line and keep them flush with the outer block's indentation.
 -	Always use curly braces for flow control statements.
 -	Each line of code should only include a single statement.
--	Naming conventions for classes, functions, types and files should adhere to CamelCase and specify what the function does.
+-	Naming conventions for classes, functions, types and files should adhere to CamelCase and specify what the function does. 
 -	All header files must include the directive, "#pragma once".
 -	Use forward declarations to minimize header file dependencies. Compile times are a concern so please put in the effort to minimize include chains.
 -	The following syntax should be used when including header files: #include <Package/SubdirectoryChain/Header.h>

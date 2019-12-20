@@ -1,0 +1,14 @@
+{
+    "none":
+    {
+        "Source":
+        [
+            "Source/PhysXCharactersUnsupported_precompiled.cpp",
+            "Source/PhysXCharactersUnsupported_precompiled.h"
+        ],
+        "Source/System":
+        [
+            "Source/System/ModuleUnsupported.cpp"
+        ]
+    }
+}

@@ -76,10 +76,6 @@ namespace ScriptCanvasEditor
         static AZ::Data::AssetType GetAssetTypeStatic();
 
     protected:
-        // Workaround for VS2013 - Delete the copy constructor and make it private
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-        ScriptCanvasAssetHandler(const ScriptCanvasAssetHandler&) = delete;
-
         AZ::SerializeContext* m_serializeContext;
     };
 } // namespace ScriptCanvasEditor

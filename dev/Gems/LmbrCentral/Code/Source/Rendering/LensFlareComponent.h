@@ -16,6 +16,7 @@
 #include <AzFramework/Asset/SimpleAsset.h>
 
 #include "LightInstance.h"
+#include <LmbrCentral/Rendering/LensFlareAsset.h>
 #include <LmbrCentral/Rendering/LensFlareComponentBus.h>
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
 #include <LmbrCentral/Rendering/MaterialAsset.h>
@@ -37,6 +38,8 @@ namespace LmbrCentral
 
         static void Reflect(AZ::ReflectContext* context);
         static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
+
+        AZ::Data::Asset<LensFlareAsset> m_asset;                 //! Used at asset compile time to track the dependency. Not used at edit or runtime.
 
         //! Settings common to all LY engine lights
         EngineSpec m_minSpec;
@@ -149,6 +152,8 @@ namespace LmbrCentral
 
         static void Reflect(AZ::ReflectContext* context);
         //////////////////////////////////////////////////////////////////////////
+
+        LensFlareConfiguration GetLensFlareConfiguration();
 
     protected:
 

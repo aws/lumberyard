@@ -2879,7 +2879,7 @@ namespace AssetProcessor
                 {
                     AssetBuilderSDK::JobDescriptor secondDescriptor = descriptor;
                     secondDescriptor.m_jobKey = "yyy";
-                    sourceFileDependency.m_sourceFileDependencyPath = "FileA.txt";
+                    sourceFileDependency.m_sourceFileDependencyPath = "some\\random/Folders/FILEa.TxT";
                     // ... declare a job dependency on job A ('FileA.txt', 'xxx', platform)
                     AssetBuilderSDK::JobDependency jobDependency("xxx", platformInfo.m_identifier.c_str(), AssetBuilderSDK::JobDependencyType::Fingerprint, sourceFileDependency);
                     secondDescriptor.m_jobDependencyList.push_back(jobDependency);
@@ -2958,7 +2958,7 @@ namespace AssetProcessor
         }
         );
 
-        QString sourceFileAPath = tempPath.absoluteFilePath("subfolder1/FileA.txt");
+        QString sourceFileAPath = tempPath.absoluteFilePath("subfolder1/some/random/folders/FileA.txt");
         QString sourceFileBPath = tempPath.absoluteFilePath("subfolder1/FileB.txt");
         QString sourceFileCPath = tempPath.absoluteFilePath("FileC.txt");
         sourceFileBUuid = AssetUtilities::CreateSafeSourceUUIDFromName("FileB.txt");
@@ -3017,7 +3017,7 @@ namespace AssetProcessor
                 UNIT_TEST_EXPECT_TRUE(jobDetail.m_jobDependencyList.size() == 1);
                 JobDependencyInternal& jobDependencyInternal = jobDetail.m_jobDependencyList[0];
                 UNIT_TEST_EXPECT_TRUE(jobDependencyInternal.m_builderUuidList.find(builderUuid) != jobDependencyInternal.m_builderUuidList.end());
-                UNIT_TEST_EXPECT_TRUE(QString(jobDependencyInternal.m_jobDependency.m_sourceFile.m_sourceFileDependencyPath.c_str()).endsWith("FileA.txt"));
+                UNIT_TEST_EXPECT_TRUE(QString(jobDependencyInternal.m_jobDependency.m_sourceFile.m_sourceFileDependencyPath.c_str()).endsWith("FileA.txt", Qt::CaseSensitivity::CaseInsensitive));
             }
         }
 

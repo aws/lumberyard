@@ -49,7 +49,7 @@ public:
     //! Load a canvas but do not init or activate the entities
     //! The CanvasAssetHandle is an opaque pointer only valid to be passed to the
     //! methods below.
-    virtual CanvasAssetHandle* LoadCanvasFromStream(AZ::IO::FileIOStream& stream, const AZ::ObjectStream::FilterDescriptor& filterDesc) = 0;
+    virtual CanvasAssetHandle* LoadCanvasFromStream(AZ::IO::GenericStream& stream, const AZ::ObjectStream::FilterDescriptor& filterDesc) = 0;
 
     //! Save a canvas to a stream
     virtual void SaveCanvasToStream(CanvasAssetHandle* canvas, AZ::IO::FileIOStream& stream) = 0;

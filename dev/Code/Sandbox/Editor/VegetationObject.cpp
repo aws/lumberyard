@@ -17,7 +17,9 @@
 #include "Material/MaterialManager.h"
 #include "ErrorReport.h"
 
+#ifdef LY_TERRAIN_EDITOR
 #include "Terrain/Heightmap.h"
+#endif //#ifdef LY_TERRAIN_EDITOR
 
 #include "I3DEngine.h"
 
@@ -50,7 +52,13 @@ CVegetationObject::CVegetationObject(int id)
 
     // Int vars.
     mv_size = 1;
+
+#ifdef LY_TERRAIN_EDITOR
     mv_hmin = GetIEditor()->GetHeightmap()->GetOceanLevel();
+#else
+    mv_hmin = GetIEditor()->Get3DEngine()->GetWaterLevel();
+#endif //#ifdef LY_TERRAIN_EDITOR
+
     mv_hmax = 4096;
     mv_slope_min = 0;
     mv_slope_max = 255;

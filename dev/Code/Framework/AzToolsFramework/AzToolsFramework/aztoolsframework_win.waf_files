@@ -36,11 +36,13 @@
         ]
     },
     "auto": {
-        "Process":
-        [
+        "Process": [
             "Process/internal/ProcessWatcher_Win.cpp",
             "Process/internal/ProcessCommon_Win.h",
             "Process/internal/ProcessCommunicator_Win.cpp"
+        ],
+        "ToolsFileUtils": [
+            "ToolsFileUtils/ToolsFileUtils_win.cpp"
         ]
     }
 }

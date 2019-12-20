@@ -719,7 +719,15 @@ bool ResourceCompiler::CompileFilesBySingleProcess(const std::vector<RcFile>& fi
             return false;
         }
         CopyFiles(filesToConvert.m_allFiles, config->GetAsBool("copyonlynooverwrite", false, true), bRecompress);
-        return true;
+        if (!config->GetAsBool("outputproductdependencies", false, true))
+        {
+            return true;
+        }
+    }
+    else if (config->GetAsBool("outputproductdependencies", false, true))
+    {
+        RCLogError("/outputproductdependencies: you can only use this argument to output product dependencies for copy jobs.");
+        return false;
     }
 
     const PakManager::ECallResult eResult = m_pPakManager->CompileFilesIntoPaks(config, filesToConvert.m_allFiles);
@@ -997,10 +1005,10 @@ bool ResourceCompiler::CompileFile()
     if (GetVerbosityLevel() >= 2)
     {
         RCLog("CompileFile():");
-        RCLog("  sourceFullFileName: '%s'", sourceFullFileName);
-        RCLog("  targetLeftPath: '%s'", targetLeftPath);
-        RCLog("  sourceInnerPath: '%s'", sourceInnerPath);
-        RCLog("  targetPath: '%s'", targetFullFileName);
+        RCLog("  sourceFullFileName: '%s'", sourceFullFileName.c_str());
+        RCLog("  targetLeftPath: '%s'", targetLeftPath.c_str());
+        RCLog("  sourceInnerPath: '%s'", sourceInnerPath.c_str());
+        RCLog("  targetPath: '%s'", targetFullFileName.c_str());
     }
 
     // Setup conversion context.
@@ -1049,8 +1057,8 @@ bool ResourceCompiler::CompileFile()
 
     if (GetVerbosityLevel() >= 2)
     {
-        RCLog("sourceFullFileName: '%s'", sourceFullFileName);
-        RCLog("outputFolder: '%s'", outputFolder);
+        RCLog("sourceFullFileName: '%s'", sourceFullFileName.c_str());
+        RCLog("outputFolder: '%s'", outputFolder.c_str());
         RCLog("Path='%s'", PathHelpers::CanonicalizePath(sourceInnerPath).c_str());
         RCLog("File='%s'", PathHelpers::GetFilename(sourceFullFileName).c_str());
     }
@@ -1079,7 +1087,7 @@ bool ResourceCompiler::CompileFile()
 
         if (!bRet)
         {
-            RCLogError("Failed to create jobs for file %s", sourceFullFileName);
+            RCLogError("Failed to create jobs for file %s", sourceFullFileName.c_str());
         }
     }
     else
@@ -1089,7 +1097,7 @@ bool ResourceCompiler::CompileFile()
 
         if (!bRet)
         {
-            RCLogError("Failed to convert file %s", sourceFullFileName);
+            RCLogError("Failed to convert file %s", sourceFullFileName.c_str());
         }
     }
 
@@ -1197,6 +1205,10 @@ void ResourceCompiler::LogLine(const IRCLog::EType eType, const char* szText)
 
     case IRCLog::eType_Context:
         prefix = "C: ";
+        break;
+
+    case IRCLog::eType_Summary:
+        prefix = "S: ";
         break;
 
     default:
@@ -1975,6 +1987,7 @@ int rcmain(int argc, char** argv, char** envp)
         "each format string.");
     rc.RegisterKey("copyonly", "copy source files to target root without processing");
     rc.RegisterKey("copyonlynooverwrite", "copy source files to target root without processing, will not overwrite if target file exists");
+    rc.RegisterKey("outputproductdependencies", "output product dependencies");
     rc.RegisterKey("name_as_crc32", "When creating Pak File outputs target filename as the CRC32 code without the extension");
     rc.RegisterKey("exclude", "List of file exclusions for the command, separated by semicolon, may contain wildcard characters");
     rc.RegisterKey("exclude_listfile", "Specify a file which contains a list of files to be excluded from command input");
@@ -2302,7 +2315,7 @@ int rcmain(int argc, char** argv, char** envp)
     if (rc.GetNumErrors() || rc.GetNumWarnings())
     {
         RCLog("");
-        RCLog("%d errors, %d warnings.", rc.GetNumErrors(), rc.GetNumWarnings());
+        RCLogSummary("%d errors, %d warnings.", rc.GetNumErrors(), rc.GetNumWarnings());
     }
 
     if (!bExitCodeIsReady)

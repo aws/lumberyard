@@ -205,7 +205,7 @@ namespace EMStudio
         // render the active graph
         if (mActiveGraph)
         {
-            mActiveGraph->Render(painter, width, height, mMousePos, timePassedInSeconds);
+            mActiveGraph->Render(mPlugin->GetAnimGraphModel().GetSelectionModel(), painter, width, height, mMousePos, timePassedInSeconds);
         }
 
         // render selection rect

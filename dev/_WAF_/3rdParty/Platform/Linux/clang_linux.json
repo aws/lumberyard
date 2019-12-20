@@ -1,0 +1,38 @@
+{
+    "platform": {
+        "linux_x64": {
+            "includes": [
+                "llvm/include",
+                "linux_x64/release/include"
+            ],
+            "libpath": [
+                "linux_x64/release/lib"
+            ],
+            "lib": [
+                "libclangFrontend.a",
+                "libclangSerialization.a",
+                "libclangDriver.a",
+                "libclangTooling.a",
+                "libclangParse.a",
+                "libclangSema.a",
+                "libclangAnalysis.a",
+                "libclangRewriteFrontend.a",
+                "libclangRewrite.a",
+                "libclangEdit.a",
+                "libclangAST.a",
+                "libclangLex.a",
+                "libclangBasic.a",
+                "libLLVMCore.a",
+                "libLLVMBinaryFormat.a",
+                "libLLVMDebugInfoDWARF.a",
+                "libLLVMMC.a",
+                "libLLVMOption.a",
+                "libLLVMBitReader.a",
+                "libLLVMMCParser.a",
+                "libLLVMProfileData.a",
+                "libLLVMTarget.a",
+                "libLLVMSupport.a"
+            ]
+        }
+    }
+}

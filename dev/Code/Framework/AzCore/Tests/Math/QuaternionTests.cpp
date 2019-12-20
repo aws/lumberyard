@@ -226,21 +226,38 @@ namespace UnitTest
         EXPECT_NEAR(Constants::HalfPi, static_cast<float>(resultVector.GetY()), getEulerRadiansEpsilon);
     }
 
-    TEST(MATH_Quaternion, FromEulerDegrees)
+    TEST(MATH_Quaternion, FromEulerDegreesApprox)
     {
         const AZ::Vector3 testDegrees(0.0f, 0.0f, 45.0f);
         AZ::Quaternion testQuat;
-        testQuat.SetFromEulerDegrees(testDegrees);
+        testQuat.SetFromEulerDegreesApprox(testDegrees);
         EXPECT_TRUE(testQuat.IsClose(AZ::Quaternion(0.0f, 0.0f, 0.382690936f, 0.924530089f)));
     }
 
-    TEST(MATH_Quaternion, FromEulerRadians)
+    TEST(MATH_Quaternion, FromEulerDegreesExact)
+    {
+        const AZ::Vector3 testDegrees(45.0f, 45.0f, 45.0f);
+        AZ::Quaternion testQuat;
+        testQuat.SetFromEulerDegreesExact(testDegrees);
+        EXPECT_TRUE(testQuat.IsClose(AZ::Quaternion(0.46193981170654296875f, 0.1913417130708694458f, 0.46193981170654296875f, 0.73253774642944335938f), 0.0000001f));
+    }
+
+    TEST(MATH_Quaternion, FromEulerRadiansApprox)
     {
         const AZ::Vector3 testRadians(0.0f, 0.0f, Constants::QuarterPi);
         AZ::Quaternion testQuat;
-        testQuat.SetFromEulerRadians(testRadians);
+        testQuat.SetFromEulerRadiansApprox(testRadians);
         EXPECT_TRUE(testQuat.IsClose(AZ::Quaternion(0.0f, 0.0f, 0.382690936f, 0.924530089f)));
     }
+
+    TEST(MATH_Quaternion, FromEulerRadiansExact)
+    {
+        const AZ::Vector3 testRadians(Constants::QuarterPi, Constants::QuarterPi, Constants::QuarterPi);
+        AZ::Quaternion testQuat;
+        testQuat.SetFromEulerRadiansExact(testRadians);
+        EXPECT_TRUE(testQuat.IsClose(AZ::Quaternion(0.46193981170654296875f, 0.1913417130708694458f, 0.46193981170654296875f, 0.73253774642944335938f), 0.0000001f));
+    }
+
 
     TEST(MATH_Quaternion, FromAxisAngle)
     {

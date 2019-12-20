@@ -100,7 +100,7 @@ namespace EMotionFX
         mDirtyFlag                  = false;
 
         m_physicsSetup              = AZStd::make_shared<PhysicsSetup>();
-        m_simulatedObjectSetup      = AZStd::make_shared<SimulatedObjectSetup>();
+        m_simulatedObjectSetup      = AZStd::make_shared<SimulatedObjectSetup>(this);
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
         mIsOwnedByRuntime           = false;
@@ -1749,7 +1749,15 @@ namespace EMotionFX
     // resize the transform arrays to the current number of nodes
     void Actor::ResizeTransformData()
     {
-        mSkeleton->GetBindPose()->LinkToActor(this, Pose::FLAG_LOCALTRANSFORMREADY, false);
+        Pose& bindPose = *mSkeleton->GetBindPose();
+        bindPose.LinkToActor(this, Pose::FLAG_LOCALTRANSFORMREADY, false);
+
+        const AZ::u32 numMorphs = bindPose.GetNumMorphWeights();
+        for (AZ::u32 i = 0; i < numMorphs; ++i)
+        {
+            bindPose.SetMorphWeight(i, 0.0f);
+        }
+
         mInvBindPoseTransforms.resize(mSkeleton->GetNumNodes());
     }
 

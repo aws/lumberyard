@@ -72,7 +72,6 @@ namespace CommandAdjustSimulatedObjectTests
         class EMotionFXManager;
         class GroupParameter;
         class Parameter;
-        class ValueParameter;
         class SimulatedJoint;
         class SimulatedObject;
         class SimulatedObjectSetup;

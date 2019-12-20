@@ -39,17 +39,15 @@ struct CryLegacySTLAllocatorDescriptor
 };
 
 class CryLegacySTLAllocator
-    : public AZ::AllocatorBase<AZ::HphaSchema, CryLegacySTLAllocatorDescriptor>
+    : public AZ::SimpleSchemaAllocator<AZ::HphaSchema, CryLegacySTLAllocatorDescriptor>
 {
 public:
     AZ_TYPE_INFO(CryLegacySTLAllocator, "{87EE21F1-8215-4979-B493-AF13D8D91DAD}");
     using Descriptor = CryLegacySTLAllocatorDescriptor;
-    using Base = AZ::AllocatorBase<AZ::HphaSchema, CryLegacySTLAllocatorDescriptor>;
+    using Base = AZ::SimpleSchemaAllocator<AZ::HphaSchema, CryLegacySTLAllocatorDescriptor>;
     CryLegacySTLAllocator()
         : Base("CryLegacySTLAllocator", "Allocator used to dodge limits on static init time allocations")
     {
-        // This allocator is lazily created
-        m_schema = new (&m_schemaStorage) AZ::HphaSchema(Descriptor());
     }
 };
 
@@ -59,35 +57,8 @@ public:
 namespace AZ
 {
     template <>
-    class AllocatorInstance<CryLegacySTLAllocator>
+    class AllocatorInstance<CryLegacySTLAllocator> : public Internal::AllocatorInstanceBase<CryLegacySTLAllocator, AllocatorStorage::ModuleStoragePolicy<CryLegacySTLAllocator>>
     {
-    public:
-        using Descriptor = CryLegacySTLAllocator::Descriptor;
-
-        static CryLegacySTLAllocator& Get()
-        {
-            static CryLegacySTLAllocator* s_stlAllocator = nullptr;
-            static AZStd::aligned_storage<sizeof(CryLegacySTLAllocator), AZStd::alignment_of<CryLegacySTLAllocator>::value>::type s_storage;
-            if (!s_stlAllocator)
-            {
-                s_stlAllocator = new(&s_storage) CryLegacySTLAllocator();
-            }
-            return *s_stlAllocator;
-        }
-
-        static void Create(const Descriptor& desc = Descriptor())
-        {
-        }
-
-        static void Destroy()
-        {
-            AZ::AllocatorManager::Instance().UnRegisterAllocator(&Get());
-        }
-
-        AZ_FORCE_INLINE static bool IsReady()
-        {
-            return true;
-        }
     };
 }
 

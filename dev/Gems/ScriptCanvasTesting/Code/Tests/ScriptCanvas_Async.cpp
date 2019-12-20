@@ -23,8 +23,7 @@ using namespace ScriptCanvasEditor;
 
 // Asynchronous ScriptCanvas Behaviors
 
-// TODO #lsempe: Async tests are not available in VS2013 due to some errors with std::promise, enable after problem is solved.
-#if AZ_COMPILER_MSVC && AZ_COMPILER_MSVC >= 1900
+#if AZ_COMPILER_MSVC
 
 #pragma warning(disable: 4355) // The this pointer is valid only within nonstatic member functions. It cannot be used in the initializer list for a base class.
 #include <future>
@@ -322,4 +321,4 @@ TEST_F(ScriptCanvasTestFixture, ComputeFibonacciAsyncGraphTest)
     delete graphEntity;
 }
 
-#endif // AZ_COMPILER_MSVC >= 1900
+#endif // AZ_COMPILER_MSVC

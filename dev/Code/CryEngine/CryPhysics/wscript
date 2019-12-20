@@ -58,6 +58,7 @@ def build(bld):
         configurations     = ['all'],
         exclude_monolithic = True,
         use                = ['AzCore'],
+        includes           = [bld.Path('Code/CryEngine/CryCommon')],
 
         win_x64_clang_cxxflags = ['-Wno-deprecated-declarations'],
 

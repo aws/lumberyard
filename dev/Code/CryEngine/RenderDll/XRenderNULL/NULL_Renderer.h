@@ -11,12 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef NULL_RENDERER_H
-#define NULL_RENDERER_H
-
-#if _MSC_VER > 1000
-# pragma once
-#endif
+#pragma once
 
 /*
 ===========================================
@@ -63,8 +58,9 @@ public:
     virtual bool FX_PushRenderTarget(int nTarget, CTexture* pTarget, SDepthTexture* pDepthTarget, int nCMSide = -1, bool bScreenVP = false, uint32 nTileCount = 1) override;
     virtual bool FX_RestoreRenderTarget(int nTarget) override;
     virtual bool FX_PopRenderTarget(int nTarget) override;
-    virtual void EF_Scissor(bool bEnable, int sX, int sY, int sWdt, int sHgt) override {};
-    virtual void FX_ResetPipe() override {};
+    void FX_SetActiveRenderTargets(bool bAllowDIP = false) override;
+    virtual void EF_Scissor(bool bEnable, int sX, int sY, int sWdt, int sHgt) override {}
+    virtual void FX_ResetPipe() override {}
 
     ////---------------------------------------------------------------------------------------------------------------------
 
@@ -246,6 +242,8 @@ public:
 
     virtual void DrawQuad(const Vec3& right, const Vec3& up, const Vec3& origin, int nFlipMode = 0);
     virtual void DrawQuad(float dy, float dx, float dz, float x, float y, float z);
+    void DrawQuad(float x0, float y0, float x1, float y1, const ColorF& color, float z = 1.0f, float s0 = 0.0f, float t0 = 0.0f, float s1 = 1.0f, float t1 = 1.0f) override {}
+
     // NOTE: deprecated
     virtual void ClearTargetsImmediately(uint32 nFlags);
     virtual void ClearTargetsImmediately(uint32 nFlags, const ColorF& Colors, float fDepth);
@@ -427,6 +425,10 @@ public:
     virtual void StartLoadtimePlayback(ILoadtimeCallback* pCallback) {}
     virtual void StopLoadtimePlayback() {}
 
+    void BeginProfilerSection(const char* name, uint32 eProfileLabelFlags = 0) override {}
+    void EndProfilerSection(const char* name) override {}
+    void AddProfilerLabel(const char* name) override {}
+
 private:
     CNULLRenderAuxGeom* m_pNULLRenderAuxGeom;
     IColorGradingController* m_pNULLColorGradingController;
@@ -438,5 +440,3 @@ private:
 extern CNULLRenderer* gcpNULL;
 
 
-
-#endif //NULL_RENDERER

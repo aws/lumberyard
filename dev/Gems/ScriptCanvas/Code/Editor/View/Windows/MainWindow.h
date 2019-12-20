@@ -278,8 +278,6 @@ namespace ScriptCanvasEditor
 
         //SceneNotificationBus
         void OnSelectionChanged() override;
-
-        void OnNodePositionChanged(const AZ::EntityId& nodeId, const AZ::Vector2& position) override;
         /////////////////////////////////////////////////////////////////////////////////////////////
         
         void OnVariableSelectionChanged(const AZStd::vector<AZ::EntityId>& variablePropertyIds);

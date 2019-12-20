@@ -121,8 +121,8 @@ private: // member functions
 
     void SortCanvasesByDrawOrder();
 
-    UiCanvasComponent* FindCanvasComponentByPathname(const string& name);
-    UiCanvasComponent* FindEditorCanvasComponentByPathname(const string& name);
+    UiCanvasComponent* FindCanvasComponentByPathname(const AZStd::string& name);
+    UiCanvasComponent* FindEditorCanvasComponentByPathname(const AZStd::string& name);
 
     // Handle input event for all loaded canvases
     bool HandleInputEventForLoadedCanvases(const AzFramework::InputChannel::Snapshot& inputSnapshot,
@@ -136,7 +136,7 @@ private: // member functions
     // Generate and handle a mouse position input event for all loaded canvases
     void GenerateMousePositionInputEvent();
 
-    AZ::EntityId LoadCanvasInternal(const string& assetIdPathname, bool forEditor, const string& sourceAssetPathname, UiEntityContext* entityContext,
+    AZ::EntityId LoadCanvasInternal(const AZStd::string& assetIdPathname, bool forEditor, const AZStd::string& fullSourceAssetPathname, UiEntityContext* entityContext,
         const AZ::SliceComponent::EntityIdToEntityIdMap* previousRemapTable = nullptr, AZ::EntityId previousCanvasId = AZ::EntityId());
 
     void QueueCanvasForDeletion(AZ::EntityId canvasEntityId);

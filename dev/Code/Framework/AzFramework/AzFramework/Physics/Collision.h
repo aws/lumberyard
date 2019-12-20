@@ -29,7 +29,9 @@ namespace Physics
         static void Reflect(AZ::ReflectContext* context);
 
         static const CollisionLayer Default; ///< Default collision layer
+#ifdef TOUCHBENDING_LAYER_BIT
         static const CollisionLayer TouchBend; ///< Touch Bendable Vegetation collision layer
+#endif
 
         CollisionLayer(AZ::u8 index = Default.GetIndex());
         CollisionLayer(const AZStd::string& layerName);

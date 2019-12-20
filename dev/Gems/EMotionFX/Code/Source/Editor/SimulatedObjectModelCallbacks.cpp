@@ -23,16 +23,14 @@ namespace EMotionFX
         AZ_UNUSED(command);
         AZ_UNUSED(commandLine);
         m_simulatedObjectModel->PreAddObject();
-
         return true;
     }
 
     bool SimulatedObjectModel::CommandAddSimulatedObjectPreCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
     {
         AZ_UNUSED(commandLine);
-        CommandRemoveSimulatedObject* commandRemoveSimulatedObject = static_cast<CommandRemoveSimulatedObject*>(command);
-        m_simulatedObjectModel->PreRemoveObject(commandRemoveSimulatedObject->GetObjectIndex());
-
+        CommandAddSimulatedObject* commandAddSimulatedObject = static_cast<CommandAddSimulatedObject*>(command);
+        m_simulatedObjectModel->PreRemoveObject(commandAddSimulatedObject->GetObjectIndex());
         return true;
     }
 
@@ -41,7 +39,6 @@ namespace EMotionFX
         AZ_UNUSED(command);
         AZ_UNUSED(commandLine);
         m_simulatedObjectModel->PostAddObject();
-        m_simulatedObjectModel->OnModelModified();
         return true;
     }
 
@@ -51,18 +48,14 @@ namespace EMotionFX
         AZ_UNUSED(commandLine);
 
         m_simulatedObjectModel->PostRemoveObject();
-        m_simulatedObjectModel->OnModelModified();
-
         return true;
     }
 
     bool SimulatedObjectModel::CommandRemoveSimulatedObjectPreCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
     {
         AZ_UNUSED(commandLine);
-
         CommandRemoveSimulatedObject* commandRemoveSimulatedObject = static_cast<CommandRemoveSimulatedObject*>(command);
         m_simulatedObjectModel->PreRemoveObject(commandRemoveSimulatedObject->GetObjectIndex());
-
         return true;
     }
 
@@ -71,7 +64,6 @@ namespace EMotionFX
         AZ_UNUSED(command);
         AZ_UNUSED(commandLine);
         m_simulatedObjectModel->PreAddObject();
-
         return true;
     }
 
@@ -79,10 +71,7 @@ namespace EMotionFX
     {
         AZ_UNUSED(command);
         AZ_UNUSED(commandLine);
-
         m_simulatedObjectModel->PostRemoveObject();
-        m_simulatedObjectModel->OnModelModified();
-
         return true;
     }
 
@@ -91,19 +80,15 @@ namespace EMotionFX
         AZ_UNUSED(command);
         AZ_UNUSED(commandLine);
         m_simulatedObjectModel->PostAddObject();
-        m_simulatedObjectModel->OnModelModified();
-
         return true;
     }
 
     bool SimulatedObjectModel::CommandAdjustSimulatedObjectPostCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
     {
         AZ_UNUSED(commandLine);
-
         CommandAdjustSimulatedObject* commandAdjustSimulatedObject = static_cast<CommandAdjustSimulatedObject*>(command);
         const QModelIndex objectIndex = m_simulatedObjectModel->index(static_cast<int>(commandAdjustSimulatedObject->GetObjectIndex()), 0);
         m_simulatedObjectModel->dataChanged(objectIndex, objectIndex.sibling(objectIndex.row(), m_simulatedObjectModel->columnCount() - 1));
-        m_simulatedObjectModel->OnModelModified();
         return true;
     }
 
@@ -117,6 +102,7 @@ namespace EMotionFX
         AZ_UNUSED(command);
         AZ_UNUSED(commandLine);
         m_simulatedObjectModel->beginResetModel();
+        m_simulatedObjectModel->GetSelectionModel()->clearSelection();
 
         return true;
     }
@@ -126,6 +112,7 @@ namespace EMotionFX
         AZ_UNUSED(command);
         AZ_UNUSED(commandLine);
         m_simulatedObjectModel->beginResetModel();
+        m_simulatedObjectModel->GetSelectionModel()->clearSelection();
 
         return true;
     }
@@ -135,8 +122,6 @@ namespace EMotionFX
         AZ_UNUSED(command);
         AZ_UNUSED(commandLine);
         m_simulatedObjectModel->endResetModel();
-        m_simulatedObjectModel->OnModelModified();
-
         return true;
     }
 
@@ -145,8 +130,6 @@ namespace EMotionFX
         AZ_UNUSED(command);
         AZ_UNUSED(commandLine);
         m_simulatedObjectModel->endResetModel();
-        m_simulatedObjectModel->OnModelModified();
-
         return true;
     }
 
@@ -155,7 +138,7 @@ namespace EMotionFX
         AZ_UNUSED(command);
         AZ_UNUSED(commandLine);
         m_simulatedObjectModel->beginResetModel();
-
+        m_simulatedObjectModel->GetSelectionModel()->clearSelection();
         return true;
     }
 
@@ -164,7 +147,7 @@ namespace EMotionFX
         AZ_UNUSED(command);
         AZ_UNUSED(commandLine);
         m_simulatedObjectModel->beginResetModel();
-
+        m_simulatedObjectModel->GetSelectionModel()->clearSelection();
         return true;
     }
 
@@ -173,8 +156,6 @@ namespace EMotionFX
         AZ_UNUSED(command);
         AZ_UNUSED(commandLine);
         m_simulatedObjectModel->endResetModel();
-        m_simulatedObjectModel->OnModelModified();
-
         return true;
     }
 
@@ -183,8 +164,6 @@ namespace EMotionFX
         AZ_UNUSED(command);
         AZ_UNUSED(commandLine);
         m_simulatedObjectModel->endResetModel();
-        m_simulatedObjectModel->OnModelModified();
-
         return true;
     }
 
@@ -206,60 +185,11 @@ namespace EMotionFX
         }
         const QModelIndex jointIndex = foundIndexes[0];
         m_simulatedObjectModel->dataChanged(jointIndex, jointIndex.sibling(jointIndex.row(), m_simulatedObjectModel->columnCount() - 1));
-        m_simulatedObjectModel->OnModelModified();
         return true;
     }
 
     bool SimulatedObjectModel::CommandAdjustSimulatedJointPostCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
     {
         return this->Execute(command, commandLine);
-    }
-
-    bool SimulatedObjectModel::CommandAddColliderPostCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        AZ_UNUSED(command);
-        AZ_UNUSED(commandLine);
-        m_simulatedObjectModel->OnModelModified();
-        return true;
-    }
-
-    bool SimulatedObjectModel::CommandAddColliderPostCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        AZ_UNUSED(command);
-        AZ_UNUSED(commandLine);
-        m_simulatedObjectModel->OnModelModified();
-        return true;
-    }
-
-    bool SimulatedObjectModel::CommandAdjustColliderPostCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        AZ_UNUSED(command);
-        AZ_UNUSED(commandLine);
-        m_simulatedObjectModel->OnModelModified();
-        return true;
-    }
-
-    bool SimulatedObjectModel::CommandAdjustColliderPostCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        AZ_UNUSED(command);
-        AZ_UNUSED(commandLine);
-        m_simulatedObjectModel->OnModelModified();
-        return true;
-    }
-
-    bool SimulatedObjectModel::CommandRemoveColliderPostCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        AZ_UNUSED(command);
-        AZ_UNUSED(commandLine);
-        m_simulatedObjectModel->OnModelModified();
-        return true;
-    }
-
-    bool SimulatedObjectModel::CommandRemoveColliderPostCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        AZ_UNUSED(command);
-        AZ_UNUSED(commandLine);
-        m_simulatedObjectModel->OnModelModified();
-        return true;
     }
 } // namespace EMotionFX

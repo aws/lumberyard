@@ -43,9 +43,13 @@ CTerrainHolePanel::CTerrainHolePanel(CTerrainHoleTool* tool, QWidget* pParent /*
     connect(m_radius, &QSlider::valueChanged, this, &CTerrainHolePanel::OnReleasedcaptureRadius);
 
     m_removeHole = ui->HOLE_REMOVE;
+    m_removeHole->setChecked(!m_tool->GetMakeHole());
+
     m_makeHole = ui->HOLE_MAKE;
     m_makeHole->setChecked(m_tool->GetMakeHole());
+
     connect(m_makeHole, &QRadioButton::toggled, this, &CTerrainHolePanel::OnHoleMake);
+    connect(m_removeHole, &QRadioButton::toggled, this, &CTerrainHolePanel::OnHoleRemove);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -53,8 +57,14 @@ CTerrainHolePanel::CTerrainHolePanel(CTerrainHoleTool* tool, QWidget* pParent /*
 
 void CTerrainHolePanel::OnHoleMake(bool v)
 {
-    SetMakeHole(v);
+    m_removeHole->setChecked(!v);
     m_tool->SetMakeHole(v);
+}
+
+void CTerrainHolePanel::OnHoleRemove(bool v)
+{
+    m_makeHole->setChecked(!v);
+    m_tool->SetMakeHole(!v);
 }
 
 void CTerrainHolePanel::SetRadius()
@@ -71,4 +81,5 @@ void CTerrainHolePanel::OnReleasedcaptureRadius(int value)
 void CTerrainHolePanel::SetMakeHole(bool bEnable)
 {
     m_makeHole->setChecked(bEnable);
+    m_removeHole->setChecked(!bEnable);
 }

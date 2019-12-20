@@ -72,6 +72,14 @@ namespace EMotionFX
             const char* GetAssetTypeDisplayName() const override;
             const char* GetBrowserIcon() const override;
         };
+
+        class MotionSetAssetBuilderHandler : public MotionSetAssetHandler
+        {
+        public:
+            void InitAsset(const AZ::Data::Asset<AZ::Data::AssetData>& asset, bool loadStageSucceeded, bool isReload) override;
+            bool LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override;
+            bool LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override;
+        };
     } // namespace Integration
 } // namespace EMotionFX
 

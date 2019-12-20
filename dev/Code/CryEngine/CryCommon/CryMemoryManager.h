@@ -28,6 +28,8 @@
         #include "Xenia/CryMemoryManager_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CryMemoryManager_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryMemoryManager_h_salem.inl"
     #endif
 #else
 #if !defined(APPLE)
@@ -162,6 +164,8 @@ struct IMemoryManager
         #include "Xenia/CryMemoryManager_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CryMemoryManager_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryMemoryManager_h_salem.inl"
     #endif
 #endif
     };
@@ -264,9 +268,6 @@ CRYMEMORYMANAGER_API void CryGetIMemoryManagerInterface(void** pIMemoryManager);
 
 #include "CryLegacyAllocator.h"
 
-// These utility functions should be used for allocating objects with specific alignment requirements on the heap.
-// Note: On MSVC before 2013, only zero and one argument are supported, because C++11 support is not complete.
-#if !defined(_MSC_VER) || _MSC_VER >= 1800
 
 template<typename T, typename ... Args>
 inline T* CryAlignedNew(Args&& ... args)
@@ -274,24 +275,6 @@ inline T* CryAlignedNew(Args&& ... args)
     void* pAlignedMemory = CryModuleMemalign(sizeof(T), std::alignment_of<T>::value);
     return new(pAlignedMemory) T(std::forward<Args>(args) ...);
 }
-
-#else
-
-template<typename T>
-inline T* CryAlignedNew()
-{
-    void* pAlignedMemory = CryModuleMemalign(sizeof(T), std::alignment_of<T>::value);
-    return new(pAlignedMemory) T();
-}
-
-template<typename T, typename A1>
-inline T* CryAlignedNew(A1&& a1)
-{
-    void* pAlignedMemory = CryModuleMemalign(sizeof(T), std::alignment_of<T>::value);
-    return new(pAlignedMemory) T(std::forward<A1>(a1));
-}
-
-#endif
 
 // This utility function should be used for allocating arrays of objects with specific alignment requirements on the heap.
 // Note: The caller must remember the number of items in the array, since CryAlignedDeleteArray needs this information.

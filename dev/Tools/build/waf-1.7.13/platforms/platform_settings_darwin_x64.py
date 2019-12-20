@@ -13,10 +13,22 @@ from waflib.Configure import conf
 from lumberyard import deprecated
 
 import subprocess
-
+import os
 
 PLATFORM = 'darwin_x64'
 
+def apple_clang_supports_option(option):
+    '''
+    Test that a compiler switch/option is supported by the apple clang that is in the PATH
+    '''
+    with open(os.devnull, "w") as DEV_NULL:
+        clang_subprocess = subprocess.Popen(['clang', option, '-o-', '-x', 'c++', '-'], 
+            stdin=subprocess.PIPE, stdout=DEV_NULL, stderr=subprocess.STDOUT)
+        clang_subprocess.stdin.write('int main(){}\n')
+        clang_subprocess.communicate()
+        clang_subprocess.stdin.close()
+        return clang_subprocess.returncode == 0
+    return false
 
 # Required load_<PLATFORM>_common_settings(ctx)
 @conf
@@ -42,6 +54,7 @@ def load_darwin_x64_common_settings(ctx):
     env['FRAMEWORK_ST'] = ['-framework']
     env['FRAMEWORKPATH_ST'] = '-F%s'
     env['RPATH_ST'] = '-Wl,-rpath,%s'
+    env['ENABLE_STRICT_OBJC_MSGSEND'] = "NO"
     
     # Setup compiler and linker settings  for mac bundles
     env['CFLAGS_MACBUNDLE'] = env['CXXFLAGS_MACBUNDLE'] = '-fpic'
@@ -63,6 +76,11 @@ def load_darwin_x64_common_settings(ctx):
     env['CC'] = 'clang'
     env['CXX'] = 'clang++'
     env['LINK'] = env['LINK_CC'] = env['LINK_CXX'] = 'clang++'
+    
+    # Add the C++ -fno-aligned-allocation switch for "real" clang versions 7.0.0(AppleClang version 10.0.1) and above for Mac
+    # The MacOS only supports C++17 aligned new/delete when targeting MacOS 10.14 and above
+    if apple_clang_supports_option('-fno-aligned-allocation'):
+        env['CXXFLAGS'] += ['-fno-aligned-allocation']
 
     ctx.load_cryengine_common_settings()
     

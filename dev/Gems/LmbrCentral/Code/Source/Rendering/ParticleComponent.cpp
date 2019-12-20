@@ -127,12 +127,13 @@ namespace LmbrCentral
         if (serializeContext)
         {
             serializeContext->Class<ParticleEmitterSettings>()->
-                Version(5, &VersionConverter)->
+                Version(6, &VersionConverter)->
                 
                 //Particle
                 Field("Visible", &ParticleEmitterSettings::m_visible)->
                 Field("Enable", &ParticleEmitterSettings::m_enable)->
                 Field("SelectedEmitter", &ParticleEmitterSettings::m_selectedEmitter)->
+                Field("Asset", &ParticleEmitterSettings::m_asset)->
                 
                 //Spawn Properties
                 Field("Color", &ParticleEmitterSettings::m_color)->

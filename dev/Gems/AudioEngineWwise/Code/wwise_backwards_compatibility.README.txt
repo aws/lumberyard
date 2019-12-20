@@ -1,0 +1,107 @@
+
+Updated status of backwards compatibility support:
+    Lumberyard 1.18 supports Wwise 2018.1.X is backwards compatible to Wwise 2017.2.X.
+    Lumberyard 1.18 removes support for Wwise 2016.X.X.
+
+Follow these instructions to configure Lumberyard for a 2017 version of Wwise (including Wwise LTX from previous versions of Lumberyard).
+
+*** The instructions that follow assume Wwise version 2017.2.4.6590 ***
+
+
+Steps to configure backwards compatibility to Wwise 2017:
+
+1) Install Wwise 2017 locally via Wwise Launcher.  Be sure to select the 'SDK (C++)' option and deployment platforms as needed, especially Windows Visual Studio 2015/2017.  Make note of the installation directory.
+
+2) Create a folder for this version in the 3rdParty directory, e.g. \3rdParty\Wwise\2017.2.4.6590
+
+3) Copy the 'SDK' folder from the Wwise install location in step 1 to the 3rdPaty path in step 2.
+
+4) Navigate to \dev\Gems\AudioEngineWwise\Code\ (same directory as this README file).
+
+5) Open the 'wscript' file for edit.
+     If your wwise_flavor is 'WWISE', change it to 'WWISE2017'
+     If your wwise_flavor is 'WWISELTX', change it to 'WWISELTX2017'
+     Save the file.
+
+6) Open \dev\SetupAssistantConfig.json for edit.
+
+        If your wwise_flavor is 'WWISE2017', search for 'wwiseName' and replace that section with the following:
+
+        {
+            "identifier" : "wwise",
+            "name" : "wwiseName",
+            "version" : "2017.2.4.6590",
+            "source" : "Wwise/2017.2.4.6590",
+            "optional" : 1,
+            "description" : "wwiseDescriptionSummary",
+            "detailedInstructions" : "wwiseDetailedInstructions",
+            "roles" : ["compilegame", "compileengine", "compilesandbox", "compileandroid", "compileios", "setuplinux"],
+            "hostOS" : ["windows", "macOS", "linux"],
+            "symlinks" :
+            [
+                {
+                    "source" : "Wwise/2017.2.4.6590/SDK",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
+                    "exampleFile" : "include/AK/AkWwiseSDKVersion.h"
+                },
+                {
+                    "compilers" : ["vc140"],
+                    "source" : "Wwise/2017.2.4.6590/SDK",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
+                    "exampleFile" : "x64_vc140/Release/lib/AkSoundEngine.lib"
+                },
+                {
+                    "compilers" : ["vc141"],
+                    "source" : "Wwise/2017.2.4.6590/SDK",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
+                    "exampleFile" : "x64_vc150/Release/lib/AkSoundEngine.lib"
+                }
+            ]
+        },
+        
+        If your wwise_flavor is 'WWISELTX2017', search for 'wwiseLtxName' and replace that section with the following:
+        
+        {
+            "identifier" : "wwiseLtx",
+            "name" : "wwiseLtxName",
+            "version" : "LTX 2017.2.4.6590",
+            "source" : "Wwise/LTX_2017.2.4.6590",
+            "optional" : 0,
+            "description" : "wwiseLtxDescriptionSummary",
+            "detailedInstructions" : "wwiseLtxDetailedInstructions",
+            "roles" : ["compilegame", "compileengine", "compilesandbox", "compileandroid", "compileios", "setuplinux"],
+            "hostOS" : ["windows", "macOS", "linux"],
+            "symlinks" :
+            [
+                {
+                    "source" : "Wwise/LTX_2017.2.4.6590/SDK",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
+                    "exampleFile" : "include/AK/AkWwiseSDKVersion.h"
+                },
+                {
+                    "compilers" : ["vc140"],
+                    "source" : "Wwise/LTX_2017.2.4.6590/SDK",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
+                    "exampleFile" : "x64_vc140/Release/lib/AkSoundEngine.lib"
+                },
+                {
+                    "compilers" : ["vc141"],
+                    "source" : "Wwise/LTX_2017.2.4.6590/SDK",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
+                    "exampleFile" : "x64_vc150/Release/lib/AkSoundEngine.lib"
+                }
+            ]
+        },
+
+        Save the file.
+
+
+7) Run Setup Assistant and make sure your version of Wwise SDK is found.
+        Wwise LTX is listed in the 'Install required SDKs' page
+        Wwise full version is listed in the 'Install optional SDKs' page.
+
+8) Run 'lmbr_waf configure', make sure there are no errors.  Once that's done, build the engine again.
+
+9) For teams using source control, the Wwise 2017 SDK files staged to 3rdParty (step 3) should be added to your depot.
+        Also all files modified (steps 5-6) should be submitted to your depot.
+

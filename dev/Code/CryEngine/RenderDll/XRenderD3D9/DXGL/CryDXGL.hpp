@@ -17,6 +17,11 @@
 #ifndef __CRYDXGL__
 #define __CRYDXGL__
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define CRYDXGL_HPP_SECTION_1 1
+#endif
+
 #if !defined(DXGL_FULL_EMULATION)
 #define DXGL_FULL_EMULATION 0
 #endif //!defined(DXGL_FULL_EMULATION)
@@ -70,8 +75,7 @@
 // TODO: Investigate what prevents framebuffer completeness in some framebuffers with depth stencil bigger than color buffers (which is ok according to the standard)
 #define CRY_OPENGL_DO_NOT_ALLOW_LARGER_RT
 
-//  Confetti BEGIN: Igor Lobanchikov
-//  Igor: need this because the engine needs to know if we are running GL ES 3.0 or GL ES 3.1
+//  need this because the engine needs to know if we are running GL ES 3.0 or GL ES 3.1
 #define DXGL_VERSION_32 320 /* DX 10.1 10.2 */
 #define DXGL_VERSION_41 410
 #define DXGL_VERSION_42 420
@@ -95,7 +99,19 @@
 #define OPENGL_ES
 #endif
 
-#if defined(ANDROID)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYDXGL_HPP_SECTION_1
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryDXGL_hpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryDXGL_hpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryDXGL_hpp_salem.inl"
+    #endif
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(ANDROID)
 #define DXGL_USE_EGL
 #define DXGL_USE_LOADER_GLAD
 #define DXGL_REQUIRED_VERSION 0
@@ -251,7 +267,6 @@ DXGL_EXTERN DXGL_API void DXGLProfileLabelPop(const char* szName);
 //  DXGL Extensions
 ////////////////////////////////////////////////////////////////////////////
 
-//  Confetti BEGIN: Igor Lobanchikov & David Srour
 #if defined(OPENGL_ES)
 void DXGLSetColorDontCareActions(ID3D11RenderTargetView* const rtv,
     bool const loadDontCare = false,
@@ -268,13 +283,15 @@ void DXGLTogglePLS(ID3D11DeviceContext* pDeviceContext, bool const enable);
 
 void DXGLInitializeIHVSpecifix();
 
-//  Confetti End: Igor Lobanchikov
 
 #if !DXGL_FULL_EMULATION
 
 // Statically initialize DXGL. Specify with uNumSharedContexts the maximum
 // number of threads expected to call device methods at the same time.
 void DXGLInitialize(uint32 uNumSharedContexts);
+
+// Finalize DXGL. Free memory and release graphic resources
+void DXGLFinalize();
 
 // Any thread frequently using the device should keep a reserved context
 // to avoid performance penalty of context switching.

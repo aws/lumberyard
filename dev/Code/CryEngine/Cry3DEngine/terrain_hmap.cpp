@@ -14,6 +14,7 @@
 #include "StdAfx.h"
 
 #include "terrain.h"
+#include <Terrain/Bus/TerrainProviderBus.h>
 
 float CTerrain::GetBilinearZ(MeterF xWS, MeterF yWS) const
 {
@@ -406,48 +407,111 @@ namespace
     }
 }
 
-float CTerrain::GetHeightFromUnits_Callback(int ix, int iy)
+float CTerrain::GetHeightFromTerrain_Callback(int ix, int iy)
 {
-    const uint32 idx = encodeby1(ix & ((nHMCacheSize - 1))) | (encodeby1(iy & ((nHMCacheSize - 1))) << 1);
-    CTerrain::SCachedHeight& rCache = m_arrCacheHeight[idx];
-    if (rCache.x == ix && rCache.y == iy)
+#ifdef LY_TERRAIN_RUNTIME
+    if (Terrain::TerrainProviderRequestBus::HasHandlers())
     {
+        float height = 0.0f;
+        Terrain::TerrainProviderRequestBus::BroadcastResult(height, &Terrain::TerrainProviderRequestBus::Events::GetHeightAtIndexedPosition, ix, iy);
+        return height;
+    }
+    else
+#endif
+    {
+        const uint32 idx = encodeby1(ix & ((nHMCacheSize - 1))) | (encodeby1(iy & ((nHMCacheSize - 1))) << 1);
+        CTerrain::SCachedHeight& rCache = m_arrCacheHeight[idx];
+        if (rCache.x == ix && rCache.y == iy)
+        {
+            return rCache.fHeight;
+        }
+
+        rCache.x = ix;
+        rCache.y = iy;
+
+        CTerrain* terrain = CTerrain::GetTerrain();
+
+        if (!terrain)
+        {
+            return 0.0f;
+        }
+
+        rCache.fHeight = terrain->GetZ_Unit(ix, iy);
         return rCache.fHeight;
     }
-
-    rCache.x = ix;
-    rCache.y = iy;
-
-    CTerrain* terrain = CTerrain::GetTerrain();
-
-    if (!terrain)
-    {
-        return 0.0f;
-    }
-
-    rCache.fHeight = terrain->GetZ_Unit(ix, iy);
-    return rCache.fHeight;
 }
 
-unsigned char CTerrain::GetSurfaceTypeFromUnits_Callback(int ix, int iy)
+unsigned char CTerrain::GetSurfaceTypeFromTerrain_Callback(int ix, int iy)
 {
-    const uint32 idx = encodeby1(ix & ((nHMCacheSize - 1))) | (encodeby1(iy & ((nHMCacheSize - 1))) << 1);
-    CTerrain::SCachedSurfType& rCache = m_arrCacheSurfType[idx];
-    if (rCache.x == ix && rCache.y == iy)
+#ifdef LY_TERRAIN_RUNTIME
+    if (Terrain::TerrainProviderRequestBus::HasHandlers())
     {
+        unsigned char surfaceType = 0;
+        Terrain::TerrainProviderRequestBus::BroadcastResult(surfaceType, &Terrain::TerrainProviderRequestBus::Events::GetSurfaceTypeAtIndexedPosition, ix, iy);
+        return surfaceType;
+    }
+    else
+#endif
+    {
+        const uint32 idx = encodeby1(ix & ((nHMCacheSize - 1))) | (encodeby1(iy & ((nHMCacheSize - 1))) << 1);
+        CTerrain::SCachedSurfType& rCache = m_arrCacheSurfType[idx];
+        if (rCache.x == ix && rCache.y == iy)
+        {
+            return rCache.surfType;
+        }
+
+        CTerrain* terrain = CTerrain::GetTerrain();
+        if (!terrain)
+        {
+            return 0;
+        }
+
+        rCache.x = ix;
+        rCache.y = iy;
+        rCache.surfType = terrain->GetSurfaceWeight_Units(ix, iy).PrimaryId();
+
         return rCache.surfType;
     }
+}
 
-    CTerrain* terrain = CTerrain::GetTerrain();
-    if (!terrain)
+float CTerrain::GetSlope(Meter x, Meter y) const
+{
+    if (!m_RootNode)
     {
         return 0;
     }
 
+    return GetSlope_Unit(x >> m_MeterToUnitBitShift, y >> m_MeterToUnitBitShift);
+}
 
-    rCache.x = ix;
-    rCache.y = iy;
-    rCache.surfType = terrain->GetSurfaceWeight_Units(ix, iy).PrimaryId();
+float CTerrain::GetSlope_Unit(Unit nX_units, Unit nY_units) const
+{
+    const float h = GetHeightFromTerrain_Callback(nX_units, nY_units);
 
-    return rCache.surfType;
+    const float xm1_ym1 = GetHeightFromTerrain_Callback(nX_units - 1, nY_units - 1);
+    const float x_ym1 =   GetHeightFromTerrain_Callback(nX_units,     nY_units - 1);
+    const float xp1_ym1 = GetHeightFromTerrain_Callback(nX_units + 1, nY_units - 1);
+
+    const float xm1_y =   GetHeightFromTerrain_Callback(nX_units - 1, nY_units);
+    const float xp1_y =   GetHeightFromTerrain_Callback(nX_units + 1, nY_units);
+
+    const float xm1_yp1 = GetHeightFromTerrain_Callback(nX_units - 1, nY_units + 1);
+    const float x_yp1 =   GetHeightFromTerrain_Callback(nX_units,     nY_units + 1);
+    const float xp1_yp1 = GetHeightFromTerrain_Callback(nX_units + 1, nY_units + 1);
+
+    float fs =
+       (fabs_tpl(xm1_ym1 - h) +
+        fabs_tpl(x_ym1 - h) +
+        fabs_tpl(xp1_ym1 - h) +
+        fabs_tpl(xm1_y - h) +
+        fabs_tpl(xp1_y - h) +
+        fabs_tpl(xm1_yp1 - h) +
+        fabs_tpl(x_yp1 - h) +
+        fabs_tpl(xp1_yp1 - h));
+    fs = fs * 8.0f;
+    if (fs > 255.0f)
+    {
+        fs = 255.0f;
+    }
+    return fs;
 }

@@ -1,0 +1,9 @@
+{
+    "auto":
+    {
+        "AzToolsFramework/Archive":
+        [
+            "AzToolsFramework/Archive/ArchiveComponent_Windows.cpp"
+        ]
+    }
+}

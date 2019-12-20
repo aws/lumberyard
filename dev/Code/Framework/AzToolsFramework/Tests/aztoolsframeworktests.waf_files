@@ -4,26 +4,34 @@
             "Main.cpp"
         ],
         "AzToolsFramework": [
-            "AzToolsFrameworkTestHelpers.cpp",
-            "AzToolsFrameworkTestHelpers.h",
+            "ArchiveTests.cpp",
+            "AssetFileInfoListComparison.cpp",
+            "AssetSeedManager.cpp",
             "ComponentModeTests.cpp",
-            "ComponentModeTestDoubles.cpp",
-            "ComponentModeTestDoubles.h",
             "EditorTransformComponentSelectionTests.cpp",
             "EditorVertexSelectionTests.cpp",
+            "EntityIdQLabelTests.cpp",
+            "EntityInspectorTests.cpp",
+            "FingerprintingTests.cpp",
             "LogLines.cpp",
             "ManipulatorBoundsTests.cpp",
             "ManipulatorCoreTests.cpp",
             "ManipulatorViewTests.cpp",
+            "PlatformAddressedAssetCatalogTests.cpp",
+            "PropertyTreeEditorTests.cpp",
+            "PythonBindingTests.cpp",
             "Slice.cpp",
-            "UndoStack.cpp",
-            "EntityIdQLabelTests.cpp"
+            "UndoStack.cpp"
         ],
         "Entity": [
-          "Entity/EditorEntityContextComponentTests.cpp"
+            "Entity/EditorEntityContextComponentTests.cpp",
+            "Entity/EditorEntitySearchComponentTests.cpp"
         ],
         "ToolsComponents": [
             "ToolsComponents/EditorLayerComponentTests.cpp"
+        ],
+        "UI": [
+            "UI/EntityPropertyEditorTests.cpp"
         ]
     }
 }

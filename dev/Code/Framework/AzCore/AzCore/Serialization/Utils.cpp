@@ -226,6 +226,22 @@ namespace AZ
             return true;
         }
 
+        bool SaveStreamToFile(const AZStd::string& filePath, const AZStd::vector<AZ::u8>& streamData, int platformFlags)
+        {
+            AZ::IO::SystemFile file;
+            file.Open(filePath.c_str(), AZ::IO::SystemFile::SF_OPEN_CREATE | AZ::IO::SystemFile::SF_OPEN_CREATE_PATH | AZ::IO::SystemFile::SF_OPEN_WRITE_ONLY, platformFlags);
+            if (!file.IsOpen())
+            {
+                file.Close();
+                return false;
+            }
+
+            file.Write(streamData.data(), streamData.size());
+
+            file.Close();
+            return true;
+        }
+
         bool SaveObjectToFile(const AZStd::string& filePath, DataStream::StreamType fileType, const void* classPtr, const Uuid& classId, SerializeContext* context, int platformFlags)
         {
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
@@ -239,18 +255,7 @@ namespace AZ
                 return false;
             }
 
-            AZ::IO::SystemFile file;
-            file.Open(filePath.c_str(), AZ::IO::SystemFile::SF_OPEN_CREATE | AZ::IO::SystemFile::SF_OPEN_CREATE_PATH | AZ::IO::SystemFile::SF_OPEN_WRITE_ONLY, platformFlags);
-            if (!file.IsOpen())
-            {
-                file.Close();
-                return false;
-            }
-
-            file.Write(dstData.data(), dstData.size());
-
-            file.Close();
-            return true;
+            return SaveStreamToFile(filePath, dstData, platformFlags);
         }
 
         /*!

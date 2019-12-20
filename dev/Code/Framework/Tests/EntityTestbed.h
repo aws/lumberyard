@@ -229,9 +229,12 @@ namespace UnitTest
         void AddEntity()
         {
             AZStd::string entityName = AZStd::string::format("Entity%u", m_entityCounter);
-            AZ::Entity* entity = nullptr;
-            EBUS_EVENT_RESULT(entity, AzToolsFramework::EditorEntityContextRequestBus, CreateEditorEntity, entityName.c_str());
+            AZ::EntityId entityId;
+            AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(entityId, &AzToolsFramework::EditorEntityContextRequests::CreateNewEditorEntity, entityName.c_str());
             ++m_entityCounter;
+
+            AZ::Entity* entity = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
 
             entity->Deactivate();
             OnEntityAdded(*entity);

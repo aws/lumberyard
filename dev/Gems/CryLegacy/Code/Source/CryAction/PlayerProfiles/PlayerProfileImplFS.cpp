@@ -34,6 +34,8 @@
         #include "Xenia/PlayerProfileImplFS_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/PlayerProfileImplFS_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/PlayerProfileImplFS_cpp_salem.inl"
     #endif
 #endif
 

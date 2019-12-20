@@ -31,15 +31,54 @@
 #include <SphereColliderComponent.h>
 #include <BoxColliderComponent.h>
 #include <CapsuleColliderComponent.h>
+#include <SystemComponent.h>
+#include <TerrainComponent.h>
+#include <ComponentDescriptors.h>
 #include <AzFramework/Physics/CollisionBus.h>
 #include <AzFramework/IO/LocalFileIO.h>
 
-static const char* PVD_HOST = "127.0.0.1";
-
-namespace Physics
+namespace PhysX
 {
-    class PhysXTestEnvironment
-        : public PhysicsTestEnvironment
+    // We can't load the PhysX gem the same way we do LmbrCentral, because that would lead to the AZ::Environment
+    // being create twice.  This is used to initialize the PhysX system component and create the descriptors for all
+    // the PhysX components.
+    class PhysXApplication
+        : public AZ::ComponentApplication
+    {
+    public:
+        AZ::ComponentTypeList GetRequiredSystemComponents() const override
+        {
+            AZ::ComponentTypeList components = AZ::ComponentApplication::GetRequiredSystemComponents();
+            components.insert(components.end(),
+                {
+                    azrtti_typeid<AZ::MemoryComponent>(),
+                    azrtti_typeid<AZ::AssetManagerComponent>(),
+                    azrtti_typeid<AZ::JobManagerComponent>(),
+                    azrtti_typeid<PhysX::SystemComponent>()
+                });
+
+            return components;
+        }
+
+        void CreateReflectionManager() override
+        {
+            AZ::ComponentApplication::CreateReflectionManager();
+            PhysX::SystemComponent::InitializePhysXSDK();
+            for (AZ::ComponentDescriptor* descriptor : GetDescriptors())
+            {
+                RegisterComponentDescriptor(descriptor);
+            }
+        }
+
+        void Destroy() override
+        {
+            AZ::ComponentApplication::Destroy();
+            PhysX::SystemComponent::DestroyPhysXSDK();
+        }
+    };
+
+    class TestEnvironment
+        : public AZ::Test::ITestEnvironment
     {
     protected:
         void SetupEnvironment() override;
@@ -48,18 +87,16 @@ namespace Physics
         // Flag to enable pvd in tests
         static const bool s_enablePvd = true;
 
-        AZ::ComponentApplication* m_application;
+        PhysXApplication* m_application;
         AZ::Entity* m_systemEntity;
         AZStd::unique_ptr<AZ::ComponentDescriptor> m_transformComponentDescriptor;
         AZStd::unique_ptr<AZ::SerializeContext> m_serializeContext;
         AZStd::unique_ptr<AZ::IO::LocalFileIO> m_fileIo;
-        physx::PxPvdTransport* m_pvdTransport = nullptr;
-        physx::PxPvd* m_pvd = nullptr;
     };
 
-    void PhysXTestEnvironment::SetupEnvironment()
+    void TestEnvironment::SetupEnvironment()
     {
-        PhysicsTestEnvironment::SetupEnvironment();
+        AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
 
         m_fileIo = AZStd::make_unique<AZ::IO::LocalFileIO>();
 
@@ -70,16 +107,12 @@ namespace Physics
         m_fileIo->SetAlias("@test@", testDir);
 
         // Create application and descriptor
-        m_application = aznew AZ::ComponentApplication;
+        m_application = aznew PhysXApplication;
         AZ::ComponentApplication::Descriptor appDesc;
         appDesc.m_useExistingAllocator = true;
 
-        // Set up gems for loading
+        // Set up gems other than PhysX for loading
         AZ::DynamicModuleDescriptor dynamicModuleDescriptor;
-        dynamicModuleDescriptor.m_dynamicLibraryPath = "Gem.PhysX.4e08125824434932a0fe3717259caa47.v0.1.0";
-        appDesc.m_modules.push_back(dynamicModuleDescriptor);
-
-        dynamicModuleDescriptor = AZ::DynamicModuleDescriptor();
         dynamicModuleDescriptor.m_dynamicLibraryPath = "Gem.LmbrCentral.ff06785f7145416b9d46fde39098cb0c.v0.1.0";
         appDesc.m_modules.push_back(dynamicModuleDescriptor);
 
@@ -87,9 +120,6 @@ namespace Physics
         AZ::ComponentApplication::StartupParameters startupParams;
         m_systemEntity = m_application->Create(appDesc, startupParams);
         AZ_TEST_ASSERT(m_systemEntity);
-        m_systemEntity->AddComponent(aznew AZ::MemoryComponent());
-        m_systemEntity->AddComponent(aznew AZ::AssetManagerComponent());
-        m_systemEntity->AddComponent(aznew AZ::JobManagerComponent());
         m_systemEntity->Init();
         m_systemEntity->Activate();
 
@@ -100,38 +130,36 @@ namespace Physics
 
         if (s_enablePvd)
         {
-            // set up visual debugger
-            m_pvdTransport = physx::PxDefaultPvdSocketTransportCreate(PVD_HOST, 5425, 10);
-            m_pvd = PxCreatePvd(PxGetFoundation());
-            m_pvd->connect(*m_pvdTransport, physx::PxPvdInstrumentationFlag::eALL);
+            bool pvdConnectionSuccessful;
+            PhysX::SystemRequestsBus::BroadcastResult(pvdConnectionSuccessful, &PhysX::SystemRequests::ConnectToPvd);
         }
     }
 
-    void PhysXTestEnvironment::TeardownEnvironment()
+    void TestEnvironment::TeardownEnvironment()
     {
-        if (m_pvd)
+        if (s_enablePvd)
         {
-            m_pvd->disconnect();
-            m_pvd->release();
-        }
-
-        if (m_pvdTransport)
-        {
-            m_pvdTransport->release();
+            PhysX::SystemRequestsBus::Broadcast(&PhysX::SystemRequests::DisconnectFromPvd);
         }
 
         m_transformComponentDescriptor.reset();
         m_serializeContext.reset();
         m_fileIo.reset();
-
+        m_application->Destroy();
         delete m_application;
-        PhysicsTestEnvironment::TeardownEnvironment();
+
+        AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
     }
 
+    AZ_UNIT_TEST_HOOK(new TestEnvironment);
+} // namespace PhysX
+
+namespace Physics
+{
     void GenericPhysicsInterfaceTest::SetUp()
     {
         Physics::SystemRequestBus::BroadcastResult(m_defaultWorld,
-            &Physics::SystemRequests::CreateWorld, AZ_CRC("UnitTestWorld", 0x39d5e465));
+            &Physics::SystemRequests::CreateWorld, Physics::DefaultPhysicsWorldId);
 
         Physics::DefaultWorldBus::Handler::BusConnect();
     }
@@ -148,7 +176,8 @@ namespace Physics
         return m_defaultWorld;
     }
 
-    AZ::Entity* GenericPhysicsInterfaceTest::AddSphereEntity(const AZ::Vector3& position, const float radius, const CollisionLayer& layer)
+    AZ::Entity* GenericPhysicsInterfaceTest::AddSphereEntity(const AZ::Vector3& position, const float radius,
+        const CollisionLayer& layer)
     {
         auto entity = aznew AZ::Entity("TestSphereEntity");
         entity->CreateComponent(AZ::Uuid::CreateString("{22B10178-39B6-4C12-BB37-77DB45FDD3B6}")); // TransformComponent
@@ -160,10 +189,12 @@ namespace Physics
 
         entity->Deactivate();
 
-        Physics::ColliderConfiguration colliderConfig;
-        colliderConfig.m_collisionLayer = layer;
-        Physics::SphereShapeConfiguration shapeConfig(radius);
-        entity->CreateComponent<PhysX::SphereColliderComponent>(colliderConfig, shapeConfig);
+        auto colliderConfig = AZStd::make_shared<Physics::ColliderConfiguration>();
+        colliderConfig->m_collisionLayer = layer;
+        auto shapeConfig = AZStd::make_shared<Physics::SphereShapeConfiguration>(radius);
+        auto sphereColliderComponent = entity->CreateComponent<PhysX::SphereColliderComponent>();
+        sphereColliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfig, shapeConfig) });
+
         RigidBodyConfiguration rigidBodyConfig;
         entity->CreateComponent<PhysX::RigidBodyComponent>(rigidBodyConfig);
 
@@ -171,7 +202,8 @@ namespace Physics
         return entity;
     }
 
-    AZ::Entity* GenericPhysicsInterfaceTest::AddBoxEntity(const AZ::Vector3& position, const AZ::Vector3& dimensions, const CollisionLayer& layer)
+    AZ::Entity* GenericPhysicsInterfaceTest::AddBoxEntity(const AZ::Vector3& position, const AZ::Vector3& dimensions,
+        const CollisionLayer& layer)
     {
         auto entity = aznew AZ::Entity("TestBoxEntity");
         entity->CreateComponent(AZ::Uuid::CreateString("{22B10178-39B6-4C12-BB37-77DB45FDD3B6}")); // TransformComponent
@@ -183,10 +215,12 @@ namespace Physics
 
         entity->Deactivate();
 
-        Physics::ColliderConfiguration colliderConfig;
-        colliderConfig.m_collisionLayer = layer;
-        Physics::BoxShapeConfiguration shapeConfig(dimensions);
-        entity->CreateComponent<PhysX::BoxColliderComponent>(colliderConfig, shapeConfig);
+        auto colliderConfig = AZStd::make_shared<Physics::ColliderConfiguration>();
+        colliderConfig->m_collisionLayer = layer;
+        auto shapeConfig = AZStd::make_shared<Physics::BoxShapeConfiguration>(dimensions);
+        auto boxColliderComponent = entity->CreateComponent<PhysX::BoxColliderComponent>();
+        boxColliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfig, shapeConfig) });
+
         RigidBodyConfiguration rigidBodyConfig;
         entity->CreateComponent<PhysX::RigidBodyComponent>(rigidBodyConfig);
 
@@ -194,7 +228,8 @@ namespace Physics
         return entity;
     }
 
-    AZ::Entity* GenericPhysicsInterfaceTest::AddStaticBoxEntity(const AZ::Vector3& position, const AZ::Vector3& dimensions, const CollisionLayer& layer)
+    AZ::Entity* GenericPhysicsInterfaceTest::AddStaticBoxEntity(const AZ::Vector3& position,
+        const AZ::Vector3& dimensions, const CollisionLayer& layer)
     {
         auto entity = aznew AZ::Entity("TestStaticBoxEntity");
         entity->CreateComponent(AZ::Uuid::CreateString("{22B10178-39B6-4C12-BB37-77DB45FDD3B6}")); // TransformComponent
@@ -206,10 +241,11 @@ namespace Physics
 
         entity->Deactivate();
 
-        Physics::ColliderConfiguration colliderConfig;
-        colliderConfig.m_collisionLayer = layer;
-        Physics::BoxShapeConfiguration shapeConfig(dimensions);
-        entity->CreateComponent<PhysX::BoxColliderComponent>(colliderConfig, shapeConfig);
+        auto colliderConfig = AZStd::make_shared<Physics::ColliderConfiguration>();
+        colliderConfig->m_collisionLayer = layer;
+        auto shapeConfig = AZStd::make_shared<Physics::BoxShapeConfiguration>(dimensions);
+        auto boxColliderComponent = entity->CreateComponent<PhysX::BoxColliderComponent>();
+        boxColliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfig, shapeConfig) });
 
         entity->Activate();
         return entity;
@@ -228,17 +264,17 @@ namespace Physics
 
         entity->Deactivate();
 
-        Physics::ColliderConfiguration colliderConfig;
-        colliderConfig.m_collisionLayer = layer;
-        Physics::CapsuleShapeConfiguration shapeConfig(height, radius);
-        entity->CreateComponent<PhysX::CapsuleColliderComponent>(colliderConfig, shapeConfig);
+        auto colliderConfig = AZStd::make_shared<Physics::ColliderConfiguration>();
+        colliderConfig->m_collisionLayer = layer;
+        auto shapeConfig = AZStd::make_shared<Physics::CapsuleShapeConfiguration>(height, radius);
+        auto capsuleColliderComponent = entity->CreateComponent<PhysX::CapsuleColliderComponent>();
+        capsuleColliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfig, shapeConfig) });
+
         RigidBodyConfiguration rigidBodyConfig;
         entity->CreateComponent<PhysX::RigidBodyComponent>(rigidBodyConfig);
 
         entity->Activate();
         return entity;
     }
-
-    AZ_UNIT_TEST_HOOK(new PhysXTestEnvironment);
 } // namespace Physics
 #endif // AZ_TESTS_ENABLED

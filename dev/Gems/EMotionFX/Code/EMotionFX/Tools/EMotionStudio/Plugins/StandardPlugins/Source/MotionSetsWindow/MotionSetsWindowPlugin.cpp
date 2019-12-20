@@ -21,7 +21,6 @@
 #include <QMessageBox>
 #include <QContextMenuEvent>
 #include <QTableWidget>
-#include <MCore/Source/DiskTextFile.h>
 #include "../../../../EMStudioSDK/Source/EMStudioCore.h"
 #include "../../../../EMStudioSDK/Source/MainWindow.h"
 #include "../../../../EMStudioSDK/Source/SaveChangedFilesManager.h"

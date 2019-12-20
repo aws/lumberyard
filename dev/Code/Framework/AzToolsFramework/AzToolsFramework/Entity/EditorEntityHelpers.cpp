@@ -686,7 +686,7 @@ namespace AzToolsFramework
 
             bool newVisibilityState = visible ? oldVisibilityState : false;
             EditorVisibilityNotificationBus::Event(
-                entityId, &EditorVisibilityNotificationBus::Events::OnEntityVisibilityFlagChanged,
+                entityId, &EditorVisibilityNotificationBus::Events::OnEntityVisibilityChanged,
                 newVisibilityState);
         }
 

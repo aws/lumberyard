@@ -27,7 +27,7 @@
 
 #include "AttributesWindow.h"
 
-#ifdef HAS_GAME_CONTROLLER
+#if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
 #include "GameController.h"
 #endif
 
@@ -68,7 +68,7 @@ namespace EMStudio
 
         MCORE_INLINE bool GetIsGameControllerValid() const
         {
-            #ifdef HAS_GAME_CONTROLLER
+            #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
             if (mGameController == nullptr)
             {
                 return false;
@@ -161,7 +161,7 @@ namespace EMStudio
         int                             mInterfaceTimerID;
         int                             mGameControllerTimerID;
 
-        #ifdef HAS_GAME_CONTROLLER
+        #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         GameController*             mGameController;
         #endif
         EMotionFX::AnimGraph*          mAnimGraph;

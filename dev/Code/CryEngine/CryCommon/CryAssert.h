@@ -25,7 +25,11 @@
 // even in Profile mode - thus if you want to manage what happens, USE_CRY_ASSERT also needs to be enabled in those cases.
 // if USE_CRY_ASSERT is not enabled, but AZ_ENABLE_TRACING is enabled, then the default behavior for assets will occur instead
 // which is to throw the DEBUG BREAK exception / signal, which tends to end with application shutdown.
-#if defined(AZ_ENABLE_TRACING)
+#if defined(AZ_ENABLE_TRACE_ASSERTS)
+#define USE_AZ_ASSERT
+#endif
+
+#if !defined (USE_AZ_ASSERT) && defined(AZ_ENABLE_TRACING)
 #undef USE_CRY_ASSERT
 #define USE_CRY_ASSERT
 #endif
@@ -36,11 +40,17 @@
 // instead (showing no message box, only a warning).
 #define CRY_ASSERT_DIALOG_ONLY_IN_DEBUG
 
-#if defined(FORCE_STANDARD_ASSERT)
+#if defined(FORCE_STANDARD_ASSERT) || defined(USE_AZ_ASSERT)
 #undef USE_CRY_ASSERT
 #undef CRY_ASSERT_DIALOG_ONLY_IN_DEBUG
 #endif
 
+// Using AZ_Assert for all assert kinds (assert =, CRY_ASSERT, AZ_Assert). This is for Provo and Xenia
+// see Trace::Assert for implementation
+#if defined(USE_AZ_ASSERT)
+#undef assert
+#define assert(condition) AZ_Assert(condition, "")
+#endif //defined(USE_AZ_ASSERT)
 
 //-----------------------------------------------------------------------------------------------------
 // Use like this:
@@ -54,6 +64,8 @@
         #include "Xenia/CryAssert_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CryAssert_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryAssert_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -88,7 +100,9 @@ void CryDebugBreak();
     #undef assert
     #define assert CRY_ASSERT
 #elif !defined(CRY_ASSERT)
+#ifndef USE_AZ_ASSERT
     #include <assert.h>
+#endif //USE_AZ_ASSERT
     #define CRY_ASSERT(condition) assert(condition)
     #define CRY_ASSERT_MESSAGE(condition, message) assert(condition)
     #define CRY_ASSERT_TRACE(condition, parenthese_message) assert(condition)

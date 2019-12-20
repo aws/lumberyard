@@ -58,6 +58,8 @@ public:
         #include "Xenia/GraphicsHelpers_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/GraphicsHelpers_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GraphicsHelpers_h_salem.inl"
     #endif
 #endif
     }

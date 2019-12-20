@@ -314,23 +314,23 @@ namespace Vegetation
         return 0;
     }
 
-    float BlockerComponent::GetAreaPriority() const
+    AZ::u32 BlockerComponent::GetAreaPriority() const
     {
         return m_configuration.m_priority;
     }
 
-    void BlockerComponent::SetAreaPriority(float priority)
+    void BlockerComponent::SetAreaPriority(AZ::u32 priority)
     {
         m_configuration.m_priority = priority;
         LmbrCentral::DependencyNotificationBus::Event(GetEntityId(), &LmbrCentral::DependencyNotificationBus::Events::OnCompositionChanged);
     }
 
-    AreaLayer BlockerComponent::GetAreaLayer() const
+    AZ::u32 BlockerComponent::GetAreaLayer() const
     {
         return m_configuration.m_layer;
     }
 
-    void BlockerComponent::SetAreaLayer(AreaLayer layer)
+    void BlockerComponent::SetAreaLayer(AZ::u32 layer)
     {
         m_configuration.m_layer = layer;
         LmbrCentral::DependencyNotificationBus::Event(GetEntityId(), &LmbrCentral::DependencyNotificationBus::Events::OnCompositionChanged);

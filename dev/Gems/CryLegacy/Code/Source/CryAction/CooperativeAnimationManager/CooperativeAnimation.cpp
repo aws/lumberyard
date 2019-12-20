@@ -127,9 +127,9 @@ bool CCooperativeAnimation::AreActorsValid() const
     }
 
     TCharacterParams::const_iterator itEnd = m_paramsList.end();
-    TCharacterParams::const_iterator it = std::find_if(m_paramsList.begin(), itEnd,
-            std::not1(std::mem_fun_ref(&SCharacterParams::IsActorValid)));
-
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+    TCharacterParams::const_iterator it = std::find_if(m_paramsList.begin(), itEnd, [](const SCharacterParams& charParams) { return !charParams.IsActorValid(); });
+    AZ_POP_DISABLE_WARNING
     return (it == itEnd);
 }
 

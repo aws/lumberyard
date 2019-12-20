@@ -1,0 +1,54 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+#
+# Original file Copyright Crytek GMBH or its affiliates, used under license.
+#
+########################################################################################
+
+
+#
+# The plugins listed here are on a deprecation path.  They will build a stub plugin dll
+# that overwrites the original target.  Once these plugins have gone through an 
+# acceptable number of releases as deprecated, they may be deleted from this list and
+# any applicable WAF specs.
+#
+deprecated_plugins = [
+    'AssetTagging',                 # LUMBERYARD_DEPRECATED(LY-98542)
+    'EditorAudioControlsEditor',    # LUMBERYARD_DEPRECATED(LY-104407)
+]
+
+
+#
+# To deprecate a plugin and turn it into a stub dll:
+# Remove the plugin folder from the ..\Plugins\wscript file to stop WAF from
+# recursing there.
+# Add the name of the target to the deprecated_plugins list above.
+# Make sure the target is still listed in the 'all.json' WAF spec to ensure the stub
+# will be built.
+# Delete the original plugin code.
+#
+def build(bld):
+    # Loop over the deprecated plugin targets and build a CryPlugin for each...
+    for plugin in deprecated_plugins:
+        bld.CryPlugin(
+            # Settings
+            target              = plugin,
+            copyright_org       = 'Amazon-CryTek',
+            vs_filter           = 'Sandbox/Plugins/Deprecated',
+            file_list           = 'deprecatedplugin.waf_files',
+            test_all_file_list  = ['deprecatedplugin_test.waf_files'],
+            platforms           = ['win', 'darwin'],
+            configurations      = ['all'],
+            exclude_monolithic  = True,
+            client_only         = True,
+            disable_pch         = True,
+            use                 = ['AzCore'],
+        )

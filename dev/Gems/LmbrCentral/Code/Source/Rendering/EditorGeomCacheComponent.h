@@ -34,7 +34,7 @@ namespace LmbrCentral
         , public EditorGeometryCacheComponentRequestBus::Handler
     {
     public:
-        AZ_TYPE_INFO(EditorGeometryCacheCommon, "{ACE31D8E-F7BC-48B9-950E-AE191E50A80F}", GeometryCacheCommon);
+        AZ_TYPE_INFO_LEGACY(EditorGeometryCacheCommon, "{ACE31D8E-F7BC-48B9-950E-AE191E50A80F}", GeometryCacheCommon);
         AZ_CLASS_ALLOCATOR(EditorGeometryCacheCommon, AZ::SystemAllocator, 0);
 
         static void Reflect(AZ::ReflectContext* context);

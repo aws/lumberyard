@@ -158,11 +158,11 @@ namespace awsiotsdk {
 			// Delete Default constructor
 			PubackPacket() = delete;
 			// Default Copy constructor
-			PubackPacket(const PubackPacket &) = default;
+			PubackPacket(const PubackPacket &) = delete;
 			// Default Move constructor
             // LY 2013 Fix
 			// Default Copy assignment operator
-			PubackPacket& operator=(const PubackPacket &) = default;
+			PubackPacket& operator=(const PubackPacket &) = delete;
 			// Default Move assignment operator
             // LY 2013 Fix
 			// Default destructor

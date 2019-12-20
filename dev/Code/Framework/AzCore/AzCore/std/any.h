@@ -22,6 +22,7 @@
 #include <AzCore/std/typetraits/is_abstract.h>
 #include <AzCore/std/typetraits/remove_reference.h>
 #include <AzCore/std/typetraits/void_t.h>
+#include <AzCore/std/typetraits/internal/is_template_copy_constructible.h>
 #include <AzCore/std/string/string.h>
 
 namespace AZStd
@@ -30,23 +31,6 @@ namespace AZStd
     {
         // Size of small buffer optimization buffer
         enum { ANY_SBO_BUF_SIZE = 32 };
-
-        //Workaround to get around issue that is_copy_constructible always returns true for containers 
-        //http://stackoverflow.com/questions/18404108/issue-with-is-copy-constructible
-        template<typename ClassType, typename = AZStd::void_t<>>
-        struct template_is_copy_constructible
-        {
-            using type = typename AZStd::is_copy_constructible<ClassType>::type;
-            static const bool value = AZStd::is_copy_constructible<ClassType>::value;
-        };
-
-        template<template<typename...> class ClassTemplate, typename... TemplateArgs>
-        struct template_is_copy_constructible<ClassTemplate<TemplateArgs...>, typename AZStd::make_void<typename ClassTemplate<TemplateArgs...>::value_type>::type>
-        {
-            using ValueType = typename ClassTemplate<TemplateArgs...>::value_type;
-            static const bool value = AZStd::is_copy_constructible<ClassTemplate<TemplateArgs...>>::value && AZStd::is_copy_constructible<ValueType>::value;
-            using type = AZStd::conditional<value, AZStd::true_type, AZStd::false_type>;
-        };
     }
     
     /// distinguishes between any Extension constructor calls
@@ -194,7 +178,7 @@ namespace AZStd
         explicit any(ValueType&& val, allocator alloc = allocator("AZStd::any"))
             : any(alloc)
         {
-            AZ_STATIC_ASSERT(Internal::template_is_copy_constructible<decay_t<ValueType>>::value
+            AZ_STATIC_ASSERT(std::is_copy_constructible<decay_t<ValueType>>::value
                         ||  (std::is_rvalue_reference<ValueType>::value && std::is_move_constructible<decay_t<ValueType>>::value), "ValueType must be copy constructible or a movable rvalue ref.");
 
             // Initialize typeinfo from the type given
@@ -303,14 +287,14 @@ namespace AZStd
     private:
         // Any elements must be copy constructible
         template<typename ValueType, typename ParamType> // ParamType must be deduced to allow universal ref
-        static void construct(AZStd::any* dest, ParamType&& value, AZStd::enable_if_t<!AZStd::is_abstract<ValueType>::value && Internal::template_is_copy_constructible<ValueType>::value, AZStd::true_type*> = nullptr /* AZStd::is_copy_constructible<ValueType>::value*/)
+        static void construct(AZStd::any* dest, ParamType&& value, AZStd::enable_if_t<!AZStd::is_abstract<ValueType>::value && std::is_copy_constructible<ValueType>::value, AZStd::true_type*> = nullptr /* AZStd::is_copy_constructible<ValueType>::value*/)
         {
             new (dest->get_data()) ValueType(forward<ParamType>(value));
         }
 
         // The ValueType is not copy constructible in this case
         template<typename ValueType, typename ParamType>
-        static void construct(AZStd::any* dest, ParamType&&, AZStd::enable_if_t<AZStd::is_abstract<ValueType>::value || !Internal::template_is_copy_constructible<ValueType>::value, AZStd::false_type*> = nullptr /* !AZStd::is_copy_constructible<ValueType>::value*/)
+        static void construct(AZStd::any* dest, ParamType&&, AZStd::enable_if_t<AZStd::is_abstract<ValueType>::value || !std::is_copy_constructible<ValueType>::value, AZStd::false_type*> = nullptr /* !AZStd::is_copy_constructible<ValueType>::value*/)
         {
             AZ_Assert(false, "Contained type %s is not copyable. Any will not attempt to invoke copy constructor", dest->get_type_info().m_id.ToString<AZStd::string>().data());
         }

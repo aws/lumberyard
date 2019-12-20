@@ -14,6 +14,7 @@
 #include <AzCore/Component/Component.h>
 
 #include <AzFramework/API/BootstrapReaderBus.h>
+#include <AzFramework/Asset/CfgFileAsset.h>
 
 namespace AzFramework
 {
@@ -22,11 +23,13 @@ namespace AzFramework
         , private BootstrapReaderRequestBus::Handler
     {
     public:
+        BootstrapReaderComponent();
         ~BootstrapReaderComponent() override = default;
 
         //////////////////////////////////////////////////////////////////////////
         // AZ::Component
         AZ_COMPONENT(BootstrapReaderComponent, "{35F2A89D-ECB0-49ED-8306-E65A358F354B}");
+        static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
         static void Reflect(AZ::ReflectContext* context);
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
 
@@ -45,7 +48,9 @@ namespace AzFramework
 
         bool ReadFieldImpl(const AZStd::string& key, AZStd::string& value);
 
-        AZStd::string m_configFileName = "bootstrap.cfg";
+        // This uses a simple asset reference instead of a full asset reference because there's
+        // an upgrade path from raw string to simple asset reference, but not from raw string to full asset reference.
+        AzFramework::SimpleAssetReference<AzFramework::CfgFileAsset> m_configFile;
         AZStd::string m_fileContents;
         AZStd::unordered_map<AZStd::string, AZStd::string> m_keyValueCache;
     };

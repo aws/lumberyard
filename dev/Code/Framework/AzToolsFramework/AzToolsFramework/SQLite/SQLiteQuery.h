@@ -15,6 +15,24 @@
 #include <AzCore/base.h>
 #include "SQLiteConnection.h"
 #include <tuple>
+#include <sstream>
+
+// Uncomment this line to log all queries
+//#define ENABLE_QUERY_LOGGING
+
+namespace AzToolsFramework
+{
+    namespace SQLite
+    {
+        struct SqlBlob;
+    }
+}
+
+namespace std
+{
+    ostream& operator<<(ostream& out, const AZ::Uuid& uuid);
+    ostream& operator<<(ostream& out, const AzToolsFramework::SQLite::SqlBlob&);
+}
 
 namespace AzToolsFramework
 {
@@ -40,6 +58,9 @@ namespace AzToolsFramework
 
         namespace Internal
         {
+            void LogQuery(const char* statement, const AZStd::string& params);
+            void LogResultId(AZ::s64 rowId);
+
             bool Bind(Statement* statement, int index, const AZ::Uuid& value);
             bool Bind(Statement* statement, int index, double value);
             bool Bind(Statement* statement, int index, AZ::s32 value);
@@ -50,7 +71,7 @@ namespace AzToolsFramework
             bool Bind(Statement* statement, int index, const SqlBlob& value);
         }
 
-        //! Helper object used to provide a query callback that that needs to accept multiple arguments
+        //! Helper object used to provide a query callback that needs to accept multiple arguments
         //! This is just a slightly easier-to-use/less verbose (at the callsite) alternative to AZStd::bind'ing the arguments to the callback
         template<typename T>
         struct SqlQueryResultRunner
@@ -97,7 +118,7 @@ namespace AzToolsFramework
             }
 
             //! Bind both prepares and binds the args - call it on an empty autoFinalizer and it will prepare
-            //! the query for you and return a ready-to-go autoFinalizer that has a valid statment ready to 
+            //! the query for you and return a ready-to-go autoFinalizer that has a valid statement ready to 
             //! step()
             bool Bind(Connection& connection, StatementAutoFinalizer& autoFinalizer, const T&... args) const
             {
@@ -113,7 +134,16 @@ namespace AzToolsFramework
                     return false;
                 }
 
-                return BindInternal<0>(statement, args...);
+                bool result = BindInternal<0>(statement, args...);
+
+#ifdef ENABLE_QUERY_LOGGING
+                AZStd::string debugParams;
+                ArgsToString(debugParams, args...);
+
+                Internal::LogQuery(m_statement, debugParams);
+#endif
+
+                return result;
             }
 
             //! BindAndStep will execute the given statement and then clean up afterwards.  It is for
@@ -129,9 +159,13 @@ namespace AzToolsFramework
 
                 if (autoFinalizer.Get()->Step() == Statement::SqlError)
                 {
-                    AZ_Warning(m_logName, false, "Failed to execute statement %s", m_statementName);
+                    AZStd::string argString;
+                    ArgsToString<0>(argString, args...);
+                    AZ_Warning(m_logName, false, "Failed to execute statement %s.\nQuery: %s\nParams: %s", m_statementName, m_statement, argString.c_str());
                     return false;
                 }
+
+                Internal::LogResultId(connection.GetLastRowID());
 
                 return true;
             }
@@ -168,7 +202,7 @@ namespace AzToolsFramework
 
             // Handles the 0-parameter case
             template<int TIndex>
-            bool BindInternal(Statement*) const
+            static bool BindInternal(Statement*)
             {
                 return true;
             }
@@ -196,6 +230,31 @@ namespace AzToolsFramework
             {
                 return BindInternal<TIndex>(statement, value)
                     && BindInternal<TIndex + 1>(statement, args...);
+            }
+
+            template<int TIndex, typename TArg, typename...TArgs>
+            void ArgsToString(AZStd::string& argsStringOutput, const TArg& arg, const TArgs&... args) const
+            {
+                const SqlParam<TArg>& sqlParam = std::get<TIndex>(m_parameters);
+
+                std::ostringstream paramStringStream;
+
+                if(!argsStringOutput.empty())
+                {
+                    paramStringStream << ", ";
+                }
+
+                paramStringStream << sqlParam.m_parameterName << " = `" << arg << "`";
+                argsStringOutput.append(paramStringStream.str().c_str());
+
+                ArgsToString<TIndex + 1>(argsStringOutput, args...);
+            }
+
+            // Handles 0-parameter case
+            template<int TIndex>
+            static void ArgsToString(AZStd::string&)
+            {
+
             }
 
         public:

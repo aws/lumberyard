@@ -37,21 +37,24 @@ def build(bld):
                            'AWS_CPP_SDK_COGNITO_IDENTITY',
                            'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
                            'AWS_CPP_SDK_MOBILEANALYTICS'],
-         pch            = 'StdAfx.cpp',
+        pch            = 'StdAfx.cpp',
         features        = ['qt5', 'EmbeddedPython'],
         defines         = ['USE_PYTHON_SCRIPTING',
                            'SANDBOX_IMPORTS',
                            'DISABLE_UVMAPPING_WINDOW'],
-        includes        = [ '.',
-                            '..'],
+        includes        = ['.',
+                           bld.Path('Code/CryEngine/CryCommon'),
+                           bld.Path('Code/Sandbox/Editor'),
+                           bld.Path('Code/Sandbox/Editor/Include'),
+                           '..'],
 
-        clang_enable_rtti 	= True,
+        clang_enable_rtti = True,
 
-        darwin_x64_lib  	= ['python2.7'],
+        darwin_x64_lib  = ['python2.7'],
         win_x64_clang_cxxflags 	= ['-fexceptions', #BOOSTPYTHON
                                   '-Wno-inconsistent-dllimport', #BOOSTPYTHON
                                   '-Wno-deprecated-register'], #BOOSTPYTHON
-	darwin_cxxflags 	= ['-Wno-deprecated-register'],
+        darwin_cxxflags = ['-Wno-deprecated-register'],
 
         # Testing
         test_all_file_list = ['crydesigner_test.waf_files'],

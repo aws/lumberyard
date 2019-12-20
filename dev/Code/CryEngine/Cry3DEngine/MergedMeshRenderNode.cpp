@@ -2635,7 +2635,8 @@ IRenderNode* CMergedMeshesManager::AddDynamicInstance(const IMergedMeshesManager
 {
     SProcVegSample s = { sample.pos, sample.q, sample.instGroupId, sample.scale };
     CMergedMeshRenderNode* meshNode = nullptr;
-    IRenderNode* node = AddInstance(s, &meshNode, bRegister);
+    const bool dynamicInstance = true;
+    IRenderNode* node = AddInstance(s, &meshNode, bRegister, dynamicInstance);
     meshNode->m_hasDynamicInstances = 1;
     if (ppNode)
     {
@@ -3371,7 +3372,11 @@ void CMergedMeshRenderNode::RenderRenderMesh(
     if (GetCVars()->e_VegetationUseTerrainColor && bUseTerrainColor)
     {
         float fRadius = GetBBox().GetRadius();
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
         Vec3 vTerrainNormal = GetTerrain()->GetTerrainSurfaceNormal(GetBBox().GetCenter(), fRadius);
+#else
+        Vec3 vTerrainNormal(0.0f, 0.0f, 1.0f);
+#endif
         ucSunDotTerrain = (uint8)(CLAMP((vTerrainNormal.Dot(Get3DEngine()->GetSunDirNormalized()))* 255.0f, 0, 255));
         GetObjManager()->FillTerrainTexInfo(m_pOcNode, distance, pTerrainTexInfo, GetBBox());
     }
@@ -4807,7 +4812,7 @@ bool CMergedMeshesManager::SyncPreparationStep()
     return true;
 }
 
-IRenderNode* CMergedMeshesManager::AddInstance(const SProcVegSample& sample, CMergedMeshRenderNode** ppNode, bool bRegister)
+IRenderNode* CMergedMeshesManager::AddInstance(const SProcVegSample& sample, CMergedMeshRenderNode** ppNode, bool bRegister, bool dynamicInstance)
 {    
     float fExtents = c_MergedMeshesExtent;
     const float fExtentsRec = 1.0f / c_MergedMeshesExtent;
@@ -4823,8 +4828,13 @@ IRenderNode* CMergedMeshesManager::AddInstance(const SProcVegSample& sample, CMe
     {
         if ((* it)->GetInternalBBox().IsContainPoint(vPos))
         {
-            node = * it;
-            break;
+            // Make sure we keep dynamic instances and static instances separate within a merged mesh render
+            // node so that way we can correctly delete static render nodes when necessary.
+            if ((*it)->HasDynamicInstances() == dynamicInstance)
+            {
+                node = *it;
+                break;
+            }
         }
     }
     if (!node)

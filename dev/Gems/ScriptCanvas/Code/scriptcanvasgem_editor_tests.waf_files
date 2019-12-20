@@ -1,0 +1,7 @@
+{
+    "auto": {
+      "Tests/Framework": [
+        "Tests/ScriptCanvasBuilderTests.cpp"
+      ]
+    }
+}

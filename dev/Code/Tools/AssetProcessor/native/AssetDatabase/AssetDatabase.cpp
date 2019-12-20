@@ -87,6 +87,8 @@ namespace AssetProcessor
             "    LastFailLogFile  TEXT collate nocase, "
             "    LastLogTime      INTEGER NOT NULL, "
             "    LastLogFile      TEXT collate nocase, "
+            "    ErrorCount       INTEGER NOT NULL, "
+            "    WarningCount     INTEGER NOT NULL, "
             "    FOREIGN KEY (SourcePK) REFERENCES "
             "       Sources(SourceID) ON DELETE CASCADE);";
 
@@ -143,6 +145,20 @@ namespace AssetProcessor
             "    DependencyFlags              INTEGER NOT NULL, "
             "    UnresolvedPath               TEXT NOT NULL collate nocase, "
             "    UnresolvedDependencyType     INTEGER NOT NULL DEFAULT 0, "
+            "    FOREIGN KEY (ProductPK) REFERENCES "
+            "        Products(ProductID) ON DELETE CASCADE);";
+
+        static const char* CREATE_MISSING_PRODUCT_DEPENDENCY_TABLE = "AssetProcessor::CreateMissingProductDependencyTable";
+        static const char* CREATE_MISSING_PRODUCT_DEPENDENCY_TABLE_STATEMENT =
+            "CREATE TABLE IF NOT EXISTS MissingProductDependencies("
+            "    MissingProductDependencyId   INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "    ProductPK                    INTEGER NOT NULL, "
+            "    ScannerId                    TEXT NOT NULL, "
+            "    ScannerVersion               TEXT NOT NULL, "
+            "    SourceFileFingerprint        TEXT NOT NULL, "
+            "    DependencySourceGuid         BLOB NOT NULL, "
+            "    DependencySubId              INTEGER, "
+            "    MissingDependencyString      TEXT NOT NULL, "
             "    FOREIGN KEY (ProductPK) REFERENCES "
             "        Products(ProductID) ON DELETE CASCADE);";
 
@@ -327,8 +343,8 @@ namespace AssetProcessor
 
         static const char* INSERT_JOB = "AssetProcessor::InsertJob";
         static const char* INSERT_JOB_STATEMENT =
-            "INSERT INTO Jobs (SourcePK, JobKey, Fingerprint, Platform, BuilderGuid, Status, JobRunKey, FirstFailLogTime, FirstFailLogFile, LastFailLogTime, LastFailLogFile, LastLogTime, LastLogFile) "
-            "VALUES (:sourceid, :jobkey, :fingerprint, :platform, :builderguid, :status, :jobrunkey, :firstfaillogtime, :firstfaillogfile, :lastfaillogtime, :lastfaillogfile, :lastlogtime, :lastlogfile);";
+            "INSERT INTO Jobs (SourcePK, JobKey, Fingerprint, Platform, BuilderGuid, Status, JobRunKey, FirstFailLogTime, FirstFailLogFile, LastFailLogTime, LastFailLogFile, LastLogTime, LastLogFile, WarningCount, ErrorCount) "
+            "VALUES (:sourceid, :jobkey, :fingerprint, :platform, :builderguid, :status, :jobrunkey, :firstfaillogtime, :firstfaillogfile, :lastfaillogtime, :lastfaillogfile, :lastlogtime, :lastlogfile, :warningcount, :errorcount);";
 
         static const auto s_InsertJobQuery = MakeSqlQuery(INSERT_JOB, INSERT_JOB_STATEMENT, LOG_NAME,
             SqlParam<AZ::s64>(":sourceid"),
@@ -343,7 +359,10 @@ namespace AssetProcessor
             SqlParam<AZ::s64>(":lastfaillogtime"),
             SqlParam<const char*>(":lastfaillogfile"),
             SqlParam<AZ::s64>(":lastlogtime"),
-            SqlParam<const char*>(":lastlogfile"));
+            SqlParam<const char*>(":lastlogfile"),
+            SqlParam<AZ::u32>(":warningcount"),
+            SqlParam<AZ::u32>(":errorcount")
+        );
 
         static const char* UPDATE_JOB = "AssetProcessor::UpdateJob";
         static const char* UPDATE_JOB_STATEMENT =
@@ -360,8 +379,10 @@ namespace AssetProcessor
             "LastFailLogTime = :lastfaillogtime, "
             "LastFailLogFile = :lastfaillogfile, "
             "LastLogTime = :lastlogtime, "
-            "LastLogFile = :lastlogfile WHERE "
-            "JobID = :jobid;";
+            "LastLogFile = :lastlogfile, "
+            "WarningCount = :warningcount, "
+            "ErrorCount = :errorcount "
+            "WHERE JobID = :jobid;";
 
         static const auto s_UpdateJobQuery = MakeSqlQuery(UPDATE_JOB, UPDATE_JOB_STATEMENT, LOG_NAME,
             SqlParam<AZ::s64>(":sourceid"),
@@ -377,7 +398,10 @@ namespace AssetProcessor
             SqlParam<const char*>(":lastfaillogfile"),
             SqlParam<AZ::s64>(":lastlogtime"),
             SqlParam<const char*>(":lastlogfile"),
-            SqlParam<AZ::s64>(":jobid"));
+            SqlParam<AZ::u32>(":warningcount"),
+            SqlParam<AZ::u32>(":errorcount"),
+            SqlParam<AZ::s64>(":jobid")
+        );
 
         static const char* DELETE_JOB = "AssetProcessor::DeleteJob";
         static const char* DELETE_JOB_STATEMENT =
@@ -553,8 +577,55 @@ namespace AssetProcessor
         static const char* DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID_STATEMENT =
             "DELETE FROM ProductDependencies WHERE "
             "ProductPK = :productpk;";
-
         static const auto s_DeleteProductDependencyByProductIdQuery = MakeSqlQuery(DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID, DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":productpk"));
+
+        static const char* INSERT_MISSING_PRODUCT_DEPENDENCY = "AssetProcessor::InsertMissingProductDependency";
+        static const char* INSERT_MISSING_PRODUCT_DEPENDENCY_STATEMENT =
+            "INSERT INTO MissingProductDependencies (ProductPK, ScannerId, ScannerVersion, SourceFileFingerprint, DependencySourceGuid, DependencySubId, MissingDependencyString) "
+            "VALUES (:productPK, :scannerId, :scannerVersion, :sourceFileFingerprint, :dependencySourceGuid, :dependencySubId, :missingDependencyString);";
+
+        static const char* DELETE_MISSING_PRODUCT_DEPENDENCY_BY_PRODUCTID = "AssetProcessor::DeleteMissingProductDependencyByProductId";
+        static const char* DELETE_MISSING_PRODUCT_DEPENDENCY_BY_PRODUCTID_STATEMENT =
+            "DELETE FROM MissingProductDependencies WHERE "
+            "ProductPK = :productpk;";
+
+        static const char* UPDATE_MISSING_PRODUCT_DEPENDENCY = "AssetProcessor::UpdateMissingProductDependency";
+        static const char* UPDATE_MISSING_PRODUCT_DEPENDENCY_STATEMENT =
+            "UPDATE MissingProductDependencies SET "
+            "ProductPK = :productPK, "
+            "ScannerId = :scannerId, "
+            "ScannerVersion = :scannerVersion, "
+            "SourceFileFingerprint = :sourceFileFingerprint, "
+            "DependencySourceGuid = :dependencySourceGuid, "
+            "DependencySubId = :dependencySubId, "
+            "MissingDependencyString = :missingDependencyString WHERE "
+            "MissingProductDependencyId = :missingProductDependencyId;";
+
+        static const auto s_InsertMissingProductDependencyQuery = MakeSqlQuery(INSERT_MISSING_PRODUCT_DEPENDENCY, INSERT_MISSING_PRODUCT_DEPENDENCY_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":productPK"),
+            SqlParam<const char*>(":scannerId"),
+            SqlParam<const char*>(":scannerVersion"),
+            SqlParam<const char*>(":sourceFileFingerprint"),
+            SqlParam<AZ::Uuid>(":dependencySourceGuid"),
+            SqlParam<AZ::u32>(":dependencySubId"),
+            SqlParam<const char*>(":missingDependencyString"));
+
+        static const auto s_UpdateMissingProductDependencyQuery = MakeSqlQuery(UPDATE_MISSING_PRODUCT_DEPENDENCY, UPDATE_MISSING_PRODUCT_DEPENDENCY_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":missingProductDependencyId"),
+            SqlParam<AZ::s64>(":productPK"),
+            SqlParam<const char*>(":scannerId"),
+            SqlParam<const char*>(":scannerVersion"),
+            SqlParam<const char*>(":sourceFileFingerprint"),
+            SqlParam<AZ::Uuid>(":dependencySourceGuid"),
+            SqlParam<AZ::u32>(":dependencySubId"),
+            SqlParam<const char*>(":missingDependencyString"));
+        
+
+        static const auto s_DeleteMissingProductDependencyByProductIdQuery = MakeSqlQuery(
+            DELETE_MISSING_PRODUCT_DEPENDENCY_BY_PRODUCTID,
+            DELETE_MISSING_PRODUCT_DEPENDENCY_BY_PRODUCTID_STATEMENT,
+            LOG_NAME,
             SqlParam<AZ::s64>(":productpk"));
 
 
@@ -610,6 +681,18 @@ namespace AssetProcessor
         static const char* INSERT_COLUMN_PRODUCTDEPENDENCY_PLATFORM_STATEMENT = 
             "ALTER TABLE ProductDependencies "
             "ADD Platform TEXT NOT NULL collate nocase default('');";
+
+        static const char* INSERT_COLUMNS_JOB_WARNING_COUNT = "AssetProcessor::AddJobs_WarningCount";
+        static const char* INSERT_COLUMNS_JOB_WARNING_COUNT_STATEMENT =
+            "ALTER TABLE Jobs "
+            "ADD WarningCount INTEGER NOT NULL DEFAULT 0; "
+            ;
+
+        static const char* INSERT_COLUMNS_JOB_ERROR_COUNT = "AssetProcessor::AddJobs_ErrorCount";
+        static const char* INSERT_COLUMNS_JOB_ERROR_COUNT_STATEMENT =
+            "ALTER TABLE Jobs "
+            "ADD ErrorCount INTEGER NOT NULL DEFAULT 0;"
+            ;
 
         static const char* INSERT_FILE = "AssetProcessor::InsertFile";
         static const char* INSERT_FILE_STATEMENT =
@@ -822,7 +905,7 @@ namespace AssetProcessor
             }
         }
 
-        if (foundVersion == DatabaseVersion::AddedFileModTimes)
+        if (foundVersion == AssetDatabase::DatabaseVersion::AddedFileModTimes)
         {
             if (m_databaseConnection->ExecuteOneOffStatement(INSERT_COLUMN_PRODUCTDEPENDENCY_UNRESOLVEDPATH))
             {
@@ -855,6 +938,25 @@ namespace AssetProcessor
             {
                 foundVersion = DatabaseVersion::AddedProductDependencyPlatform;
                 AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Upgraded Asset Database to version %i (AddedProductDependencyPlatform)\n", foundVersion)
+            }
+        }
+
+        if (foundVersion == DatabaseVersion::AddedProductDependencyPlatform)
+        {
+            if (m_databaseConnection->ExecuteOneOffStatement(CREATE_MISSING_PRODUCT_DEPENDENCY_TABLE))
+            {
+                foundVersion = DatabaseVersion::AddedMissingProductDependencyTable;
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Upgraded Asset Database to version %i (AddedMissingProductDependencyTable)\n", foundVersion)
+            }
+        }
+
+        if (foundVersion == DatabaseVersion::AddedMissingProductDependencyTable)
+        {
+            if (m_databaseConnection->ExecuteOneOffStatement(INSERT_COLUMNS_JOB_WARNING_COUNT) &&
+                m_databaseConnection->ExecuteOneOffStatement(INSERT_COLUMNS_JOB_ERROR_COUNT))
+            {
+                foundVersion = DatabaseVersion::AddedWarningAndErrorCountToJobs;
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Upgraded Asset Database to version %i (AddedWarningAndErrorCountToJobs)\n", foundVersion)
             }
         }
 
@@ -978,6 +1080,8 @@ namespace AssetProcessor
         //                  Jobs table
         // ---------------------------------------------------------------------------------------------
         m_databaseConnection->AddStatement(CREATE_JOBS_TABLE, CREATE_JOBS_TABLE_STATEMENT);
+        m_databaseConnection->AddStatement(INSERT_COLUMNS_JOB_WARNING_COUNT, INSERT_COLUMNS_JOB_WARNING_COUNT_STATEMENT);
+        m_databaseConnection->AddStatement(INSERT_COLUMNS_JOB_ERROR_COUNT, INSERT_COLUMNS_JOB_ERROR_COUNT_STATEMENT);
         m_createStatements.push_back(CREATE_JOBS_TABLE);
 
         AddStatement(m_databaseConnection, s_GetHighestJobrunkeyQuery);
@@ -1041,13 +1145,23 @@ namespace AssetProcessor
         m_databaseConnection->AddStatement(INSERT_COLUMN_PRODUCTDEPENDENCY_TYPEOFDEPENDENCY, INSERT_COLUMN_PRODUCTDEPENDENCY_TYPEOFDEPENDENCY_STATEMENT);
         m_databaseConnection->AddStatement(INSERT_COLUMN_PRODUCTDEPENDENCY_PLATFORM, INSERT_COLUMN_PRODUCTDEPENDENCY_PLATFORM_STATEMENT);
 
-
         m_createStatements.push_back(CREATE_PRODUCT_DEPENDENCY_TABLE);
 
         AddStatement(m_databaseConnection, s_InsertProductDependencyQuery);
         AddStatement(m_databaseConnection, s_UpdateProductDependencyQuery);
         AddStatement(m_databaseConnection, s_DeleteProductDependencyByProductIdQuery);
+        
+        // ---------------------------------------------------------------------------------------------
+        //                   Missing Product Dependency table
+        // ---------------------------------------------------------------------------------------------
+        m_databaseConnection->AddStatement(CREATE_MISSING_PRODUCT_DEPENDENCY_TABLE, CREATE_MISSING_PRODUCT_DEPENDENCY_TABLE_STATEMENT);
 
+        m_createStatements.push_back(CREATE_MISSING_PRODUCT_DEPENDENCY_TABLE);
+
+        AddStatement(m_databaseConnection, s_InsertMissingProductDependencyQuery);
+        AddStatement(m_databaseConnection, s_UpdateMissingProductDependencyQuery);
+        AddStatement(m_databaseConnection, s_DeleteMissingProductDependencyByProductIdQuery);
+        
         // ---------------------------------------------------------------------------------------------
         //                  Files table
         // ---------------------------------------------------------------------------------------------
@@ -1724,7 +1838,7 @@ namespace AssetProcessor
 
             if (!s_InsertJobQuery.BindAndStep(*m_databaseConnection, entry.m_sourcePK, entry.m_jobKey.c_str(), entry.m_fingerprint, entry.m_platform.c_str(),
                 entry.m_builderGuid, static_cast<int>(entry.m_status), entry.m_jobRunKey, entry.m_firstFailLogTime, entry.m_firstFailLogFile.c_str(),
-                entry.m_lastFailLogTime, entry.m_lastFailLogFile.c_str(), entry.m_lastLogTime, entry.m_lastLogFile.c_str()))
+                entry.m_lastFailLogTime, entry.m_lastFailLogFile.c_str(), entry.m_lastLogTime, entry.m_lastLogFile.c_str(), entry.m_warningCount, entry.m_errorCount))
             {
                 return false;
             }
@@ -1766,7 +1880,7 @@ namespace AssetProcessor
 
             return s_UpdateJobQuery.BindAndStep(*m_databaseConnection, entry.m_sourcePK, entry.m_jobKey.c_str(), entry.m_fingerprint, entry.m_platform.c_str(),
                 entry.m_builderGuid, static_cast<int>(entry.m_status), entry.m_jobRunKey, entry.m_firstFailLogTime, entry.m_firstFailLogFile.c_str(),
-                entry.m_lastFailLogTime, entry.m_lastFailLogFile.c_str(), entry.m_lastLogTime, entry.m_lastLogFile.c_str(), entry.m_jobID);
+                entry.m_lastFailLogTime, entry.m_lastFailLogFile.c_str(), entry.m_lastLogTime, entry.m_lastLogFile.c_str(), entry.m_warningCount, entry.m_errorCount, entry.m_jobID);
         }
     }
 
@@ -2405,7 +2519,7 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::GetProductDependencies(ProductDependencyDatabaseEntryContainer& container)
     {
         bool found = false;
-        bool succeeded = QueryProductDependenciesTable([&](AZ::Data::AssetId& assetId, ProductDependencyDatabaseEntry& entry)
+        bool succeeded = QueryProductDependenciesTable([&](AZ::Data::AssetId& /*assetId*/, ProductDependencyDatabaseEntry& entry)
         {
             found = true;
             container.push_back();
@@ -2533,7 +2647,12 @@ namespace AssetProcessor
             ProductDependencyDatabaseEntry existingEntry;
             if (!GetProductDependencyByProductDependencyID(entry.m_productDependencyID, existingEntry))
             {
-                AZ_Error(LOG_NAME, false, "Failed to write the product into the database.");
+                AZ_Error(
+                    LOG_NAME,
+                    false,
+                    "Failed to read and update the product dependency with ID %d for product key %d from the database.",
+                    entry.m_productDependencyID,
+                    entry.m_productPK);
                 return false;
             }
 
@@ -2545,6 +2664,117 @@ namespace AssetProcessor
 
             return s_UpdateProductDependencyQuery.BindAndStep(*m_databaseConnection, entry.m_productPK, entry.m_dependencySourceGuid, entry.m_dependencySubID, entry.m_dependencyFlags.to_ullong(), entry.m_platform.c_str(), entry.m_unresolvedPath.c_str(), entry.m_productDependencyID, entry.m_dependencyType);
         }
+    }
+
+    bool AssetDatabaseConnection::SetMissingProductDependency(AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry& entry)
+    {
+        if (entry.m_missingProductDependencyId == InvalidEntryId)
+        {
+            // make sure its not already in the database
+            MissingProductDependencyDatabaseEntryContainer existingMissingProductDependencies;
+            if (GetMissingProductDependenciesByProductId(entry.m_productPK, existingMissingProductDependencies))
+            {
+                for (const auto& existingMissingProductDependency : existingMissingProductDependencies)
+                {
+                    if (existingMissingProductDependency == entry)
+                    {
+                        // this missing dependency is already in the database
+                        entry.m_missingProductDependencyId = existingMissingProductDependency.m_missingProductDependencyId;
+                        return true;
+                    }
+                }
+            }
+
+            // Add the new missing dependency to the database
+            if (!s_InsertMissingProductDependencyQuery.BindAndStep(
+                *m_databaseConnection,
+                entry.m_productPK,
+                entry.m_scannerId.c_str(),
+                entry.m_scannerVersion.c_str(),
+                entry.m_sourceFileFingerprint.c_str(),
+                entry.m_dependencySourceGuid,
+                entry.m_dependencySubId,
+                entry.m_missingDependencyString.c_str()))
+            {
+                return false;
+            }
+
+            // Read it from the database to get the ID, and to verify it was written correctly.
+            existingMissingProductDependencies.clear();
+            if (GetMissingProductDependenciesByProductId(entry.m_productPK, existingMissingProductDependencies))
+            {
+                for (const auto& existingMissingProductDependency : existingMissingProductDependencies)
+                {
+                    if (existingMissingProductDependency == entry)
+                    {
+                        entry.m_missingProductDependencyId = existingMissingProductDependency.m_missingProductDependencyId;
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        else
+        {
+            // An ID was supplied, see if it's already in the database
+            MissingProductDependencyDatabaseEntry existingEntry;
+            if (!GetMissingProductDependencyByMissingProductDependencyId(entry.m_missingProductDependencyId, existingEntry))
+            {
+                AZ_Error(
+                    LOG_NAME,
+                    false,
+                    "Failed to read and update the missing product dependency with ID %d for product key %d from the database.",
+                    entry.m_missingProductDependencyId,
+                    entry.m_productPK);
+                return false;
+            }
+
+            // if the entry in the database matches what was passed in, there's nothing else that needs to be done
+            if (existingEntry == entry)
+            {
+                return true;
+            }
+
+            // Update the entry in the database
+            return s_UpdateMissingProductDependencyQuery.BindAndStep(
+                *m_databaseConnection,
+                entry.m_missingProductDependencyId,
+                entry.m_productPK,
+                entry.m_scannerId.c_str(),
+                entry.m_scannerVersion.c_str(),
+                entry.m_sourceFileFingerprint.c_str(),
+                entry.m_dependencySourceGuid,
+                entry.m_dependencySubId,
+                entry.m_missingDependencyString.c_str());
+        }
+
+    }
+
+    bool AssetDatabaseConnection::GetMissingProductDependenciesByProductId(AZ::s64 productId, AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntryContainer& container)
+    {
+        bool found = false;
+        bool succeeded = QueryMissingProductDependencyByProductId(productId,
+            [&](MissingProductDependencyDatabaseEntry& entry)
+        {
+            found = true;
+            container.push_back();
+            container.back() = AZStd::move(entry);
+            return true; // return true to keep iterating over further rows.
+        });
+        return found && succeeded;
+    }
+
+    bool AssetDatabaseConnection::GetMissingProductDependencyByMissingProductDependencyId(AZ::s64 missingProductDependencyId, AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry& missingProductDependencyEntry)
+    {
+        bool found = false;
+        QueryMissingProductDependencyByMissingProductDependencyId(missingProductDependencyId,
+            [&](MissingProductDependencyDatabaseEntry& entry)
+        {
+            found = true;
+            missingProductDependencyEntry = AZStd::move(entry);
+            return false; // stop after the first result
+        });
+        return found;
     }
 
     bool AssetDatabaseConnection::UpdateProductDependencies(AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& container)
@@ -2682,8 +2912,10 @@ namespace AssetProcessor
         return true;
     }
 
-    bool AssetDatabaseConnection::InsertFile(FileDatabaseEntry& entry)
+    bool AssetDatabaseConnection::InsertFile(FileDatabaseEntry& entry, bool& entryAlreadyExists)
     {
+        entryAlreadyExists = false;
+
         //they didn't supply an id, add to database
         if (entry.m_fileID == InvalidEntryId)
         {
@@ -2692,7 +2924,7 @@ namespace AssetProcessor
             if (GetFileByFileNameAndScanFolderId(entry.m_fileName.c_str(), entry.m_scanFolderPK, existingEntry))
             {
                 entry.m_fileID = existingEntry.m_fileID;
-                return UpdateFile(entry); // now update the existing field
+                return UpdateFile(entry, entryAlreadyExists); // now update the existing field
             }
             StatementAutoFinalizer autoFinal;
 
@@ -2716,11 +2948,13 @@ namespace AssetProcessor
             return true;
         }
 
-        return UpdateFile(entry);
+        return UpdateFile(entry, entryAlreadyExists);
     }
 
-    bool AssetDatabaseConnection::UpdateFile(FileDatabaseEntry& entry) 
+    bool AssetDatabaseConnection::UpdateFile(FileDatabaseEntry& entry, bool& entryAlreadyExists) 
     {
+        entryAlreadyExists = false;
+
         //they supplied an id, see if it exists in the database
         FileDatabaseEntry existingEntry;
         if (!GetFileByFileID(entry.m_fileID, existingEntry))
@@ -2737,6 +2971,8 @@ namespace AssetProcessor
             (existingEntry.m_isFolder == entry.m_isFolder) &&
             (existingEntry.m_modTime == entry.m_modTime))
         {
+            entryAlreadyExists = true;
+
             return true;
         }
 

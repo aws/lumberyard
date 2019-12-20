@@ -107,13 +107,13 @@ namespace Vegetation
         AZ::TransformNotificationBus::Handler::BusDisconnect();
         LmbrCentral::ShapeComponentNotificationsBus::Handler::BusDisconnect();
         LmbrCentral::ShapeComponentRequestsBus::Handler::BusDisconnect();
+        LmbrCentral::ShapeComponentRequestsBus::Handler::BusConnect(GetEntityId());
 
         if (m_configuration.m_shapeEntityId.IsValid() && m_configuration.m_shapeEntityId != GetEntityId())
         {
             AZ::EntityBus::Handler::BusConnect(m_configuration.m_shapeEntityId);
             AZ::TransformNotificationBus::Handler::BusConnect(m_configuration.m_shapeEntityId);
             LmbrCentral::ShapeComponentNotificationsBus::Handler::BusConnect(m_configuration.m_shapeEntityId);
-            LmbrCentral::ShapeComponentRequestsBus::Handler::BusConnect(GetEntityId());
         }
     }
 
@@ -216,6 +216,9 @@ namespace Vegetation
 
     void ReferenceShapeComponent::GetTransformAndLocalBounds(AZ::Transform& transform, AZ::Aabb& bounds)
     {
+        transform = AZ::Transform::CreateIdentity();
+        bounds = AZ::Aabb::CreateNull();
+
         AZ_WarningOnce("Vegetation", !m_isRequestInProgress, "Detected cyclic dependences with vegetation entity references");
         if (AllowRequest())
         {
@@ -227,7 +230,7 @@ namespace Vegetation
 
     bool ReferenceShapeComponent::IsPointInside(const AZ::Vector3& point)
     {
-        bool result = {};
+        bool result = false;
 
         AZ_WarningOnce("Vegetation", !m_isRequestInProgress, "Detected cyclic dependences with vegetation entity references");
         if (AllowRequest())
@@ -242,7 +245,7 @@ namespace Vegetation
 
     float ReferenceShapeComponent::DistanceFromPoint(const AZ::Vector3& point)
     {
-        float result = {};
+        float result = FLT_MAX;
 
         AZ_WarningOnce("Vegetation", !m_isRequestInProgress, "Detected cyclic dependences with vegetation entity references");
         if (AllowRequest())
@@ -257,7 +260,7 @@ namespace Vegetation
 
     float ReferenceShapeComponent::DistanceSquaredFromPoint(const AZ::Vector3& point)
     {
-        float result = {};
+        float result = FLT_MAX;
 
         AZ_WarningOnce("Vegetation", !m_isRequestInProgress, "Detected cyclic dependences with vegetation entity references");
         if (AllowRequest())

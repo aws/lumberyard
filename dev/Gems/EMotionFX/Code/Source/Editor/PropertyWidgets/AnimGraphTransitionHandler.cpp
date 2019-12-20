@@ -43,20 +43,7 @@ namespace EMotionFX
 
     AnimGraphTransitionIdSelector::~AnimGraphTransitionIdSelector()
     {
-        EMStudio::EMStudioPlugin* plugin = EMStudio::GetPluginManager()->FindActivePlugin(EMStudio::AnimGraphPlugin::CLASS_ID);
-        EMStudio::AnimGraphPlugin* animGraphPlugin = static_cast<EMStudio::AnimGraphPlugin*>(plugin);
-        if (animGraphPlugin)
-        {
-            animGraphPlugin->GetAttributesWindow()->Unlock();
-            animGraphPlugin->SetActionFilter(EMStudio::AnimGraphActionFilter());
-            animGraphPlugin->GetGraphWidget()->DisableBorderOverwrite();
-
-            EMStudio::NodeGraph* activeGraph = animGraphPlugin->GetGraphWidget()->GetActiveGraph();
-            if (activeGraph)
-            {
-                activeGraph->SetTitleBarText(QString());
-            }
-        }
+        ResetUI();
     }
 
     void AnimGraphTransitionIdSelector::StartSelection(AnimGraphStateMachine* stateMachine, const AZStd::vector<AZ::u64>& transitionIds)
@@ -82,13 +69,9 @@ namespace EMotionFX
                 }
             }
 
-            animGraphPlugin->GetGraphWidget()->EnableBorderOverwrite(s_graphWindowBorderOverwriteColor, s_graphWindowBorderOverwriteWidth);
-
-            EMStudio::NodeGraph* activeGraph = animGraphPlugin->GetGraphWidget()->GetActiveGraph();
-            if (activeGraph)
-            {
-                activeGraph->SetTitleBarText("Select interrupting transitions");
-            }
+            EMStudio::BlendGraphWidget* graphWidget = animGraphPlugin->GetGraphWidget();
+            graphWidget->EnableBorderOverwrite(s_graphWindowBorderOverwriteColor, s_graphWindowBorderOverwriteWidth);
+            graphWidget->SetTitleBarText("Select interrupting transitions");
         }
 
         m_isSelecting = true;
@@ -111,20 +94,26 @@ namespace EMotionFX
                 selectionModel.select(transitionModelIndex, QItemSelectionModel::Rows | QItemSelectionModel::Select);
             }
 
-            animGraphPlugin->GetAttributesWindow()->Unlock();
-
-            animGraphPlugin->SetActionFilter(EMStudio::AnimGraphActionFilter());
-
-            animGraphPlugin->GetGraphWidget()->DisableBorderOverwrite();
-
-            EMStudio::NodeGraph* activeGraph = animGraphPlugin->GetGraphWidget()->GetActiveGraph();
-            if (activeGraph)
-            {
-                activeGraph->SetTitleBarText(QString());
-            }
+            ResetUI();
         }
 
         m_isSelecting = false;
+    }
+
+    void AnimGraphTransitionIdSelector::ResetUI()
+    {
+        EMStudio::EMStudioPlugin* plugin = EMStudio::GetPluginManager()->FindActivePlugin(EMStudio::AnimGraphPlugin::CLASS_ID);
+        EMStudio::AnimGraphPlugin* animGraphPlugin = static_cast<EMStudio::AnimGraphPlugin*>(plugin);
+        if (animGraphPlugin)
+        {
+            EMStudio::AttributesWindow* attributesWindow = animGraphPlugin->GetAttributesWindow();
+            EMStudio::BlendGraphWidget* graphWidget = animGraphPlugin->GetGraphWidget();
+
+            attributesWindow->Unlock();
+            animGraphPlugin->SetActionFilter(EMStudio::AnimGraphActionFilter());
+            graphWidget->DisableBorderOverwrite();
+            graphWidget->SetTitleBarText(QString());
+        }
     }
 
     AnimGraphTransitionIdPicker::AnimGraphTransitionIdPicker(QWidget* parent)
@@ -132,6 +121,32 @@ namespace EMotionFX
     {
         m_mainLayout = new QVBoxLayout();
         setLayout(m_mainLayout);
+
+        EMStudio::EMStudioPlugin* plugin = EMStudio::GetPluginManager()->FindActivePlugin(EMStudio::AnimGraphPlugin::CLASS_ID);
+        EMStudio::AnimGraphPlugin* animGraphPlugin = static_cast<EMStudio::AnimGraphPlugin*>(plugin);
+        if (animGraphPlugin)
+        {
+            connect(&animGraphPlugin->GetAnimGraphModel(), &QAbstractItemModel::rowsAboutToBeRemoved, this, &AnimGraphTransitionIdPicker::OnAboutToBeRemoved);
+        }
+    }
+
+    void AnimGraphTransitionIdPicker::OnAboutToBeRemoved(const QModelIndex &parent, int first, int last)
+    {
+        EMStudio::EMStudioPlugin* plugin = EMStudio::GetPluginManager()->FindActivePlugin(EMStudio::AnimGraphPlugin::CLASS_ID);
+        EMStudio::AnimGraphPlugin* animGraphPlugin = static_cast<EMStudio::AnimGraphPlugin*>(plugin);
+        if (animGraphPlugin)
+        {
+            EMStudio::AttributesWindow* attributesWindow = animGraphPlugin->GetAttributesWindow();
+            for (int i = first; i <= last; ++i)
+            {
+                const QModelIndex modelIndex = parent.child(i, 0);
+                if (modelIndex == attributesWindow->GetModelIndex())
+                {
+                    m_transitionSelector.ResetUI();
+                    attributesWindow->Init();
+                }
+            }
+        }
     }
 
     AnimGraphTransitionIdPicker::~AnimGraphTransitionIdPicker()

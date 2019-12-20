@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzToolsFramework/ComponentMode/EditorBaseComponentMode.h>
+#include <AzToolsFramework/ComponentModes/BoxViewportEdit.h>
 
 namespace AzToolsFramework
 {
@@ -29,17 +30,14 @@ namespace AzToolsFramework
             const AZ::EntityComponentIdPair& entityComponentIdPair, AZ::Uuid componentType);
         BoxComponentMode(const BoxComponentMode&) = delete;
         BoxComponentMode& operator=(const BoxComponentMode&) = delete;
-        BoxComponentMode(BoxComponentMode&&) = default;
-        BoxComponentMode& operator=(BoxComponentMode&&) = default;
+        BoxComponentMode(BoxComponentMode&&) = delete;
+        BoxComponentMode& operator=(BoxComponentMode&&) = delete;
         ~BoxComponentMode();
 
         // EditorBaseComponentMode
         void Refresh() override;
 
     private:
-        void UpdateManipulators();
-
-        using BoxManipulators = AZStd::array<AZStd::shared_ptr<LinearManipulator>, 6>;
-        BoxManipulators m_linearManipulators; ///< Manipulators for editing box size.
+        BoxViewportEdit m_boxEdit;
     };
 } // namespace AzToolsFramework

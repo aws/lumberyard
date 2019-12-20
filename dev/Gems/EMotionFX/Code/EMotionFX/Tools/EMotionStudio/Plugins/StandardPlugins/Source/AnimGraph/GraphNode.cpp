@@ -825,7 +825,7 @@ namespace EMStudio
 
 
     // render all connections of this node
-    void GraphNode::RenderConnections(QPainter& painter, QPen* pen, QBrush* brush, const QRect& invMappedVisibleRect, int32 stepSize)
+    void GraphNode::RenderConnections(const QItemSelectionModel& selectionModel, QPainter& painter, QPen* pen, QBrush* brush, const QRect& invMappedVisibleRect, int32 stepSize)
     {
         const bool alwaysColor = GetAlwaysColor();
 
@@ -853,7 +853,7 @@ namespace EMStudio
                         opacity = 0.15f;
                     }
                 }
-                nodeConnection->Render(painter, pen, brush, stepSize, invMappedVisibleRect, opacity, alwaysColor);
+                nodeConnection->Render(selectionModel, painter, pen, brush, stepSize, invMappedVisibleRect, opacity, alwaysColor);
             }
         }
 

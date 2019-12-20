@@ -513,7 +513,7 @@ bool CActionGame::Init(const SGameStartParams* pGameStartParams)
 
     // Create Physics API World
     Physics::SystemRequestBus::BroadcastResult(m_physicalWorld,
-        &Physics::SystemRequests::CreateWorld, AZ_CRC("AZPhysicalWorld"));
+        &Physics::SystemRequests::CreateWorld, Physics::DefaultPhysicsWorldId);
     if (m_physicalWorld)
     {
         m_physicalWorld->SetEventHandler(this);

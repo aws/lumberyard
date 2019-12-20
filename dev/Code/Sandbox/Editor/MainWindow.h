@@ -174,8 +174,6 @@ public:
     int ViewPaneVersion() const;
     void MatEditSend(int param);
 
-    void SetSelectedEntity(AZ::EntityId& id);
-
     LevelEditorMenuHandler* GetLevelEditorMenuHandler() { return m_levelEditorMenuHandler; }
 
 #ifdef Q_OS_WIN
@@ -312,3 +310,20 @@ private:
     friend class LevelEditorMenuHandler;
 };
 
+namespace AzToolsFramework
+{
+    //! A component to reflect scriptable commands for MainWindow
+    class MainWindowEditorFuncsHandler
+        : public AZ::Component
+    {
+    public:
+        AZ_COMPONENT(MainWindowEditorFuncsHandler, "{C879102B-C767-4349-8F06-B69119CAC462}")
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        // AZ::Component ...
+        void Activate() override {}
+        void Deactivate() override {}
+    };
+
+} // namespace AZ

@@ -14,6 +14,8 @@
 #include <AzCore/PlatformDef.h> ///< Platform/compiler specific defines
 #include <AzCore/base_Platform.h>
 
+#include <AzCore/AzCore_Traits_Platform.h>
+
 #ifndef AZ_ARRAY_SIZE
 /// Return an array size for static arrays.
 #   define  AZ_ARRAY_SIZE(__a)  (sizeof(__a)/sizeof(__a[0]))
@@ -43,26 +45,15 @@ namespace AZ
 } // namespace AZ
 
 
-#if defined(AZ_COMPILER_GCC) && ((AZ_COMPILER_GCC > 3) || ((AZ_COMPILER_GCC == 3) && (__GNUC_MINOR__ >= 4)))
-#define AZSTD_STATIC_ASSERT_BOOL_CAST(_x) ((_x) == 0 ? false : true)
-#else
 #define AZSTD_STATIC_ASSERT_BOOL_CAST(_x) (bool)(_x)
-#endif
 
 #define AZ_JOIN(X, Y) AZSTD_DO_JOIN(X, Y)
 #define AZSTD_DO_JOIN(X, Y) AZSTD_DO_JOIN2(X, Y)
 #define AZSTD_DO_JOIN2(X, Y) X##Y
 
 #ifdef AZ_COMPILER_MSVC
-#   if AZ_COMPILER_MSVC < 1600
-#       define AZ_STATIC_ASSERT(_Exp, _Str)                                        \
-    typedef ::AZ::static_assert_test<                                              \
-    sizeof(::AZ::STATIC_ASSERTION_FAILURE< AZSTD_STATIC_ASSERT_BOOL_CAST(_Exp) >)> \
-        AZ_JOIN (azstd_static_assert_typedef_, __COUNTER__)
-#   else // AZ_COMPILER_MSVC >= 1600
-#       define  AZ_STATIC_ASSERT(_Exp, _Str) static_assert((_Exp), _Str)
-#endif //
-#elif defined(AZ_COMPILER_CLANG) || defined(AZ_COMPILER_GCC)
+#   define  AZ_STATIC_ASSERT(_Exp, _Str) static_assert((_Exp), _Str)
+#elif defined(AZ_COMPILER_CLANG)
 #   define AZ_STATIC_ASSERT(_Exp, _Str) static_assert((_Exp), _Str)
 #else
 // generic version
@@ -318,11 +309,6 @@ namespace AZ
 // with SSE and __force_inline. This is not longer an issue, so we can just deprecate this.
 # define AZ_MATH_FORCE_INLINE AZ_FORCE_INLINE
 
-#if defined(AZ_COMPILER_SNC)
-// warning 1646: two-argument (aligned) member new missing -- using single argument version <-- we handle this in our memory manager
-#pragma diag_suppress=1646
-#endif
-
 
 // \ref AZ::AliasCast
 #define azalias_cast AZ::AliasCast
@@ -355,17 +341,17 @@ namespace AZ
 #define AZ_UNUSED(x) (void)x;
 
 #define AZ_DEFINE_ENUM_BITWISE_OPERATORS(EnumType) \
-inline EnumType operator | (EnumType a, EnumType b) \
+inline constexpr EnumType operator | (EnumType a, EnumType b) \
     { return EnumType(((AZStd::underlying_type<EnumType>::type)a) | ((AZStd::underlying_type<EnumType>::type)b)); } \
-inline EnumType &operator |= (EnumType &a, EnumType b) \
-    { return (EnumType &)(((AZStd::underlying_type<EnumType>::type &)a) |= ((AZStd::underlying_type<EnumType>::type)b)); } \
-inline EnumType operator & (EnumType a, EnumType b) \
+inline constexpr EnumType& operator |= (EnumType &a, EnumType b) \
+    { return a = a | b; } \
+inline constexpr EnumType operator & (EnumType a, EnumType b) \
     { return EnumType(((AZStd::underlying_type<EnumType>::type)a) & ((AZStd::underlying_type<EnumType>::type)b)); } \
-inline EnumType &operator &= (EnumType &a, EnumType b) \
-    { return (EnumType &)(((AZStd::underlying_type<EnumType>::type &)a) &= ((AZStd::underlying_type<EnumType>::type)b)); } \
-inline EnumType operator ~ (EnumType a) \
+inline constexpr EnumType& operator &= (EnumType &a, EnumType b) \
+    { return a = a & b; } \
+inline constexpr EnumType operator ~ (EnumType a) \
     { return EnumType(~((AZStd::underlying_type<EnumType>::type)a)); } \
-inline  EnumType operator ^ (EnumType a, EnumType b) \
+inline constexpr EnumType operator ^ (EnumType a, EnumType b) \
     { return EnumType(((AZStd::underlying_type<EnumType>::type)a) ^ ((AZStd::underlying_type<EnumType>::type)b)); } \
-inline EnumType &operator ^= (EnumType &a, EnumType b) \
-    { return (EnumType &)(((AZStd::underlying_type<EnumType>::type &)a) ^= ((AZStd::underlying_type<EnumType>::type)b)); }
+inline constexpr EnumType& operator ^= (EnumType &a, EnumType b) \
+    { return a = a ^ b; }

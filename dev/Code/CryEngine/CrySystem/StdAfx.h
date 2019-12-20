@@ -35,6 +35,8 @@
         #include "Xenia/StdAfx_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/StdAfx_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/StdAfx_h_salem.inl"
     #endif
 #elif defined(LINUX) // Scrubber friendly negated define pattern
 #elif !defined(APPLE)
@@ -54,6 +56,8 @@
         #include "Xenia/StdAfx_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/StdAfx_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/StdAfx_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

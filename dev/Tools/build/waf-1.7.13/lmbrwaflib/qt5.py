@@ -87,6 +87,7 @@ from collections import defaultdict
 from threading import Lock
 from sets import Set
 import lmbr_setup_tools
+import lumberyard
 
 MOC_H = ['.h', '.hpp', '.hxx', '.hh']
 """
@@ -1664,6 +1665,13 @@ def qtlib_bootstrap(self, platform, configuration):
                           .format(str(copy_timer)))
 
 
-
-
-
+@lumberyard.multi_conf
+def generate_ib_profile_tool_elements(ctx):
+    qt_tool_elements = [
+        '<Tool Filename="moc" AllowIntercept="false" AllowRemote="true" AllowPredictedBatch="true" DeriveCaptionFrom="lastparam"/>',
+        '<Tool Filename="uic" AllowIntercept="false" AllowRemote="true" AllowPredictedBatch="true" DeriveCaptionFrom="lastparam"/>',
+        '<Tool Filename="rcc" AllowIntercept="false" AllowRemote="true" AllowPredictedBatch="true" DeriveCaptionFrom="lastparam"/>',
+        '<Tool Filename="link" AllowRemote="false" AllowIntercept="false" DeriveCaptionFrom="firstparam" IdentifyTaskOutput="true" AllowRestartOnLocal="false" VCCompiler="false"/>',
+        '<Tool Filename="lld-link" AllowRemote="false" AllowIntercept="false" DeriveCaptionFrom="firstparam" IdentifyTaskOutput="true" AllowRestartOnLocal="false" VCCompiler="false"/>'
+    ]
+    return qt_tool_elements

@@ -33,9 +33,7 @@ namespace AZStd
                 : public ncvT
             {
                 d1();
-            #if !defined(AZ_COMPILER_GCC) // this raises warnings with some classes, and buys nothing with GCC
                 ~d1() throw();
-            #endif
                 char padding[256];
             private:
                 // keep some picky compilers happy:

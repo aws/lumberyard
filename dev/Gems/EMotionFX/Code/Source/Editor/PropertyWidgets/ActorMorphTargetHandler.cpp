@@ -94,8 +94,14 @@ namespace EMotionFX
         }
         EMotionFX::Actor* actor = actorInstance->GetActor();
 
-        // Select the previously selected morph targets.
         EMotionFX::MorphSetup* morphSetup = actor->GetMorphSetup(0);
+        if (!morphSetup)
+        {
+            QMessageBox::warning(this, "No Morph Targets", "The actor has no morph targets.");
+            return;
+        }
+
+        // Select the previously selected morph targets.
         AZStd::vector<uint32> selection;
         if (!m_morphTargetNames.empty())
         {

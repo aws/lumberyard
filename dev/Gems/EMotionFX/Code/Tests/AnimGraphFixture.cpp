@@ -11,7 +11,7 @@
 */
 
 #include <AzCore/Math/MathUtils.h>
-#include <AzCore/Math/random.h>
+#include <AzCore/Math/Random.h>
 #include <MCore/Source/ReflectionSerializer.h>
 #include "AnimGraphFixture.h"
 #include <EMotionFX/Source/Actor.h>
@@ -32,6 +32,7 @@ namespace EMotionFX
 {
     void AnimGraphFixture::SetUp()
     {
+        AZ::Debug::TraceMessageBus::Handler::BusConnect();
         SystemComponentFixture::SetUp();
 
         // This fixture sets up the basic pieces to test animation graphs:
@@ -114,6 +115,7 @@ namespace EMotionFX
         }
 
         SystemComponentFixture::TearDown();
+        AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
     }
 
     void AnimGraphFixture::Evaluate()

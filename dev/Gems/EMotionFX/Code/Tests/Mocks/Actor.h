@@ -21,5 +21,7 @@ namespace EMotionFX
         MOCK_CONST_METHOD0(GetSkeleton, Skeleton*());
         MOCK_CONST_METHOD0(GetID, uint32());
         MOCK_CONST_METHOD0(GetSimulatedObjectSetup, const AZStd::shared_ptr<SimulatedObjectSetup>&());
+        MOCK_CONST_METHOD0(GetDirtyFlag, bool());
+        MOCK_CONST_METHOD1(SetDirtyFlag, void(bool));
     };
 } // namespace EMotionFX

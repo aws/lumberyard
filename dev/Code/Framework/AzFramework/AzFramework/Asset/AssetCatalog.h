@@ -27,11 +27,12 @@
 namespace AzFramework
 {
     class AssetRegistry;
+    class AssetBundleManifest;
 
     /*
      * Implements an asset catalog that populates data by scanning an asset root.
      */
-    class AssetCatalog final
+    class AssetCatalog 
         : public AZ::Data::AssetCatalog
         , public AZ::Data::AssetCatalogRequestBus::Handler
         , private AssetSystemBus::Handler
@@ -43,6 +44,8 @@ namespace AzFramework
 
         AssetCatalog();
         ~AssetCatalog() override;
+
+        explicit AssetCatalog(bool useRequestBus);
 
         /// Wipe and reset the catalog.
         void Reset();
@@ -59,14 +62,26 @@ namespace AzFramework
         void StartMonitoringAssets() override;
         void StopMonitoringAssets() override;
         bool LoadCatalog(const char* catalogRegistryFile) override;
+        void ClearCatalog() override;
+
+        bool SaveCatalog(const char* catalogRegistryFile) override;
+        static bool SaveCatalog(const char* catalogRegistryFile, AzFramework::AssetRegistry* catalogRegistry);
+        bool AddDeltaCatalog(AZStd::shared_ptr<AzFramework::AssetRegistry> deltaCatalog) override;
+        bool InsertDeltaCatalog(AZStd::shared_ptr<AzFramework::AssetRegistry> deltaCatalog, size_t slotNum) override;
+        bool InsertDeltaCatalogBefore(AZStd::shared_ptr<AzFramework::AssetRegistry> deltaCatalog, AZStd::shared_ptr<AzFramework::AssetRegistry> afterDeltaCatalog) override;
+        bool RemoveDeltaCatalog(AZStd::shared_ptr<AzFramework::AssetRegistry> deltaCatalog) override;
+        static bool SaveAssetBundleManifest(const char* assetBundleManifestFile, AzFramework::AssetBundleManifest* bundleManifest);
+        bool CreateBundleManifest(const AZStd::string& deltaCatalogPath, const AZStd::vector<AZStd::string>& dependentBundleNames, const AZStd::string& fileDirectory, int bundleVersion) override;
+        bool CreateDeltaCatalog(const AZStd::vector<AZStd::string>& files, const AZStd::string& filePath) override;
         void AddExtension(const char* extension) override;
-        
+
         void RegisterAsset(const AZ::Data::AssetId& id, AZ::Data::AssetInfo& info) override;
         void UnregisterAsset(const AZ::Data::AssetId& id) override;
 
         AZStd::string GetAssetPathById(const AZ::Data::AssetId& id) override;
         AZ::Data::AssetInfo GetAssetInfoById(const AZ::Data::AssetId& id) override;
         AZ::Data::AssetId GetAssetIdByPath(const char* path, const AZ::Data::AssetType& typeToRegister, bool autoRegisterIfNotFound) override;
+        AZStd::vector<AZStd::string> GetRegisteredAssetPaths() override;
         AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> GetDirectProductDependencies(const AZ::Data::AssetId& asset) override;
         AZ::Outcome<AZStd::vector<AZ::Data::ProductDependency>, AZStd::string> GetAllProductDependencies(const AZ::Data::AssetId& asset) override;
 
@@ -86,6 +101,7 @@ namespace AzFramework
         void AssetRemoved(AzFramework::AssetSystem::AssetNotificationMessage message) override;
         //////////////////////////////////////////////////////////////////////////
 
+        static AZStd::shared_ptr<AzFramework::AssetRegistry> LoadCatalogFromFile(const char* catalogFile);
     protected:
 
         /// \return true if the specified filename's extension matches those handled
@@ -94,6 +110,18 @@ namespace AzFramework
 
         /// Helper function that adds all of searchAssetId's dependencies to the depedencySet/List (leaving out ones that are already in the list)
         void AddAssetDependencies(const AZ::Data::AssetId& searchAssetId, AZStd::unordered_set<AZ::Data::AssetId>& assetSet, AZStd::vector<AZ::Data::ProductDependency>& dependencyList);
+        // Called by LoadCatalog to load the base
+        bool LoadBaseCatalogInternal();
+        // Called by RemoveDeltaCatalog - reassemble our registry from loaded catalog files
+        bool ReloadCatalogs();
+        // Add a specific name to the list and check for duplicates
+        void AddCatalogEntry(AZStd::shared_ptr<AzFramework::AssetRegistry> deltaCatalog);
+        // Apply specific catalog to registry by name
+        bool ApplyDeltaCatalog(AZStd::shared_ptr<AzFramework::AssetRegistry> deltaCatalog);
+        // Insert new catalog by position
+        void InsertCatalogEntry(AZStd::shared_ptr<AzFramework::AssetRegistry> deltaCatalog, size_t catalogIndex);
+        // Clear just the registry
+        void ResetRegistry();
 
     private:
 
@@ -102,8 +130,13 @@ namespace AzFramework
         AZStd::string m_assetRoot;                                  ///< Asset root the catalog is bound to.
         AZStd::unordered_set<AZStd::string> m_extensions;           ///< Valid asset extensions.
         mutable AZStd::recursive_mutex m_registryMutex;
-
         AZStd::unique_ptr<AssetRegistry> m_registry;
         AZStd::string m_pathBuffer;
+        mutable AZStd::recursive_mutex m_baseCatalogNameMutex;
+        AZStd::string m_baseCatalogName;
+        mutable AZStd::recursive_mutex m_deltaCatalogMutex;
+        AZStd::vector<AZStd::shared_ptr<AzFramework::AssetRegistry>> m_deltaCatalogList;
+        bool m_useRequestBus{ true };
     };
+
 } // namespace AzFramework

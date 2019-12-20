@@ -15,6 +15,8 @@
 #include <FileTransferSupport/FileTransferSupport.h>
 #include <DynamicContentTransferManager.h>
 
+#include <AWS/ServiceAPI/CloudGemDynamicContentClientComponent.h>
+
 #include <AzCore/std/string/string.h>
 
 #include <platform.h>
@@ -128,6 +130,7 @@ namespace CloudCanvas
             }
 
             ResolveLocalFileName();
+            UpdateLocalHash();
         }
 
         DynamicContentFileInfo::~DynamicContentFileInfo()
@@ -189,6 +192,11 @@ namespace CloudCanvas
             m_bucketHash = AZStd::move(bucketHash);
         }
 
+        void DynamicContentFileInfo::SetBucketHash(const AZStd::string& bucketHash)
+        {
+            m_bucketHash = bucketHash;
+        }
+
         void DynamicContentFileInfo::AddManifest(const AZStd::string& manifestPath)
         {
             m_manifestList.push_back(manifestPath);
@@ -241,6 +249,33 @@ namespace CloudCanvas
                 AZ_TracePrintf("CloudCanvas", "Setting entry %s to status %s (was %s)", GetFileName().c_str(), GetStatusString(newStatus), GetStatusString(m_status));
                 m_status = newStatus; 
             }
+        }
+
+        void DynamicContentFileInfo::SetResultData(const CloudGemDynamicContent::ServiceAPI::FileRequestResult& resultData)
+        {
+            char* parseEnd = nullptr;
+            AZ::u64 fileSize = strtoull(resultData.Size.c_str(), &parseEnd, 0);
+            SetFileSize(fileSize);
+            SetBucketHash(resultData.Hash);
+            SetRequestURL(resultData.PresignedURL);
+            SetSignature(resultData.Signature);
+        }
+
+        void DynamicContentFileInfo::UpdateLocalHash()
+        {
+            if (AZ::IO::FileIOBase::GetDirectInstance()->Exists(m_localFileName.c_str()))
+            {
+                SetLocalHash(FileTransferSupport::CalculateMD5(m_localFileName.c_str()));
+            }
+            else
+            {
+                SetLocalHash("");
+            }
+        }
+
+        bool DynamicContentFileInfo::IsUpdated() const
+        {
+            return m_bucketHash.length() && m_bucketHash != m_localHash;
         }
     }
 }

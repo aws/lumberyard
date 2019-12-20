@@ -47,6 +47,14 @@ namespace AZ
             void NodeTreeSelectionWidget::SetList(const DataTypes::ISceneNodeSelectionList& list)
             {
                 m_list = list.Copy();
+
+                if (m_list->GetSelectedNodeCount() == 0 && m_list->GetUnselectedNodeCount() == 0)
+                {
+                    if (const auto* root = ManifestWidget::FindRoot(this))
+                    {
+                        Utilities::SceneGraphSelector::UnselectAll(root->GetScene()->GetGraph(), *m_list);
+                    }
+                }
             }
 
             void NodeTreeSelectionWidget::CopyListTo(DataTypes::ISceneNodeSelectionList& target)

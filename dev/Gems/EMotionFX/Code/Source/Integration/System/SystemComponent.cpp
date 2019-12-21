@@ -685,12 +685,11 @@ namespace EMotionFX
                         LmbrCentral::CryCharacterPhysicsRequestBus::EventResult(hasCryPhysicsController, entityId, &LmbrCentral::CryCharacterPhysicsRequests::IsCryCharacterControllerPresent);
 
                         // If we have a physics controller.
-                        AZ::TransformInterface* entityTransform = entity->GetTransform();
                         if (hasPhysicsController || hasCryPhysicsController)
                         {
                             const float deltaTimeInv = (timeDelta > 0.0f) ? (1.0f / timeDelta) : 0.0f;
 
-                            AZ::Transform currentTransform = entityTransform->GetWorldTM();
+                            AZ::Transform currentTransform; EBUS_EVENT_ID_RESULT(currentTransform, entityId, AZ::TransformBus, GetWorldTM);
                             const AZ::Vector3 actorInstancePosition = actorInstance->GetWorldSpaceTransform().mPosition;
                             const AZ::Vector3 positionDelta = actorInstancePosition - currentTransform.GetPosition();
 
@@ -715,13 +714,13 @@ namespace EMotionFX
                             if (!rotationDelta.IsIdentity(AZ::g_fltEps))
                             {
                                 currentTransform = currentTransform * AZ::Transform::CreateFromQuaternion(rotationDelta);
-                                entityTransform->SetWorldTM(currentTransform);
+                                EBUS_EVENT_ID(entityId, AZ::TransformBus, SetWorldTM, currentTransform);
                             }
                         }
                         else // There is no physics controller, just use EMotion FX's actor instance transform directly.
                         {                            
                             const AZ::Transform newTransform = MCore::EmfxTransformToAzTransform(actorInstance->GetWorldSpaceTransform());
-                            entityTransform->SetWorldTM(newTransform);
+                            EBUS_EVENT_ID(entityId, AZ::TransformBus, SetWorldTM, newTransform);
                         }
                     }
                 }

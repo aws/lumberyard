@@ -35,12 +35,16 @@ namespace AZ
                     bool());
                 MOCK_CONST_METHOD0(HasTextureCoordinates,
                     bool());
+                MOCK_CONST_METHOD0(HasColorData,
+                    bool());
                 MOCK_CONST_METHOD1(GetPosition,
                     const AZ::Vector3 & (unsigned int index));
                 MOCK_CONST_METHOD1(GetNormal,
                     const AZ::Vector3 & (unsigned int index));
                 MOCK_CONST_METHOD1(GetTextureCoordinates,
                     const AZ::Vector2 & (unsigned int index));
+                MOCK_CONST_METHOD1(GetColor,
+                    const AZ::Vector4 & (unsigned int index));
                 MOCK_CONST_METHOD0(GetFaceCount,
                     unsigned int());
                 MOCK_CONST_METHOD1(GetFaceInfo,

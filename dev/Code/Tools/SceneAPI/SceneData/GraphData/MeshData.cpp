@@ -34,6 +34,11 @@ namespace AZ
                 m_normals.push_back(normal);
             }
 
+            void MeshData::AddColor(const AZ::Vector4& color)
+            {
+                m_colors.push_back(color);
+            }
+
             //assume consistent winding - no stripping or fanning expected (3 index per face)
             //indices can be used for position and normal
             void MeshData::AddFace(unsigned int index1, unsigned int index2, unsigned int index3, unsigned int faceMaterialId)
@@ -76,6 +81,11 @@ namespace AZ
                 return m_controlPointToUsedVertexIndexMap.size();
             }
 
+            bool MeshData::HasColorData() const
+            {
+                return !m_colors.empty();
+            }
+
             int MeshData::GetUsedPointIndexForControlPoint(int controlPointIndex) const
             {
                 auto iter = m_controlPointToUsedVertexIndexMap.find(controlPointIndex);
@@ -109,6 +119,12 @@ namespace AZ
             {
                 AZ_Assert(index < m_normals.size(), "GetNormal index not in range");
                 return m_normals[index];
+            }
+
+            const AZ::Vector4& MeshData::GetColor(unsigned int index) const
+            {
+                AZ_Assert(index < m_colors.size(), "GetColor index not in range");
+                return m_colors[index];
             }
 
             unsigned int MeshData::GetFaceCount() const

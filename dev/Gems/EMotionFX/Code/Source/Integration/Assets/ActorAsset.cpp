@@ -759,6 +759,7 @@ namespace EMotionFX
                 bool hasUVs2 = false;
                 bool hasTangents = false;
                 bool hasBitangents = false;
+                bool hasColors = false;
 
                 // Find the number of submeshes in the full actor.
                 // This will be the number of primitives.
@@ -793,6 +794,8 @@ namespace EMotionFX
                     hasUVs  = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0) != nullptr);
                     hasUVs2 = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 1) != nullptr);
                     hasTangents = (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS) != nullptr);
+                    hasColors |= (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_COLORS32) != nullptr);
+                    hasColors |= (mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_COLORS128) != nullptr);
 
                     const AZ::PackedVector3f*   sourcePositions     = static_cast<AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
                     const AZ::PackedVector3f*   sourceNormals       = static_cast<AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS));
@@ -802,6 +805,7 @@ namespace EMotionFX
                     const AZ::Vector2*          sourceUVs           = static_cast<AZ::Vector2*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0));
                     const AZ::Vector2*          sourceUVs2          = static_cast<AZ::Vector2*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 1));
                     EMotionFX::SkinningInfoVertexAttributeLayer* sourceSkinningInfo = static_cast<EMotionFX::SkinningInfoVertexAttributeLayer*>(mesh->FindSharedVertexAttributeLayer(EMotionFX::SkinningInfoVertexAttributeLayer::TYPE_ID));
+                    const AZ::Vector4* sourceColors = static_cast<AZ::Vector4*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_COLORS32));
 
                     // For each sub-mesh within each mesh, we want to create a separate sub-piece.
                     const uint32 numSubMeshes = mesh->GetNumSubMeshes();
@@ -840,6 +844,10 @@ namespace EMotionFX
                         {
                             primitive.m_mesh->ReallocStream(CMesh::TEXCOORDS, 1, subMesh->GetNumVertices());
                         }
+                        if (hasColors)
+                        {
+                            primitive.m_mesh->ReallocStream(CMesh::COLORS, 0, subMesh->GetNumVertices());
+                        }
 
                         primitive.m_mesh->m_pBoneMapping = primitive.m_vertexBoneMappings.data();
 
@@ -851,6 +859,7 @@ namespace EMotionFX
                         SMeshTexCoord* destTexCoords2 = primitive.m_mesh->GetStreamPtr<SMeshTexCoord>(CMesh::TEXCOORDS, 1);
                         SMeshTangents* destTangents = primitive.m_mesh->GetStreamPtr<SMeshTangents>(CMesh::TANGENTS);
                         SMeshBoneMapping_uint16* destBoneMapping = primitive.m_vertexBoneMappings.data();
+                        SMeshColor* destColor = primitive.m_mesh->GetStreamPtr<SMeshColor>(CMesh::COLORS);
 
                         primitive.m_mesh->m_subsets.push_back();
                         SMeshSubset& subset     = primitive.m_mesh->m_subsets.back();
@@ -975,6 +984,14 @@ namespace EMotionFX
                                     *destTangents = SMeshTangents();
                                     ++destTangents;
                                 }
+                            }
+                        }
+
+                        if (sourceColors)
+                        {
+                            for (uint32 vertexIndex = subMesh->GetStartVertex(); vertexIndex < numSubMeshVertices; ++vertexIndex, ++destColor)
+                            {
+                                *destColor = SMeshColor(AZVec4ToLYVec4(sourceColors[vertexIndex]));
                             }
                         }
 

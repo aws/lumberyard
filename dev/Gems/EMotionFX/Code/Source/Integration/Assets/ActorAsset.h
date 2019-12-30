@@ -209,6 +209,8 @@ namespace EMotionFX
             SSkinningData* GetSkinningData();
             void SetSkinningMethod(SkinningMethod method);
 
+            void EnableFrustumCulling(bool enable);
+
             // Determines if the morph target weights were updated since the last call.
             // It is used to avoid calling UpdateDynamicSkin if the weights have not been
             // updated.

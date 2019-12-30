@@ -22,8 +22,6 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 
-#include <LmbrCentral/Physics/CryCharacterPhysicsBus.h>
-
 #include <Integration/Editor/Components/EditorActorComponent.h>
 #include <Integration/AnimGraphComponentBus.h>
 
@@ -50,6 +48,7 @@ namespace EMotionFX
             {
                 serializeContext->Class<EditorActorComponent, AzToolsFramework::Components::EditorComponentBase>()
                     ->Version(3)
+                    ->Field("DoNotFrustumCull", &EditorActorComponent::m_doNotFrustumCull)
                     ->Field("ActorAsset", &EditorActorComponent::m_actorAsset)
                     ->Field("MaterialPerLOD", &EditorActorComponent::m_materialPerLOD)
                     ->Field("MaterialPerActor", &EditorActorComponent::m_materialPerActor)
@@ -74,6 +73,8 @@ namespace EMotionFX
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-actor.html")
+                        ->DataElement(0, &EditorActorComponent::m_doNotFrustumCull, "DoNotFrustumCull", "Use just for cinematic characters")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorActorComponent::OnDoNotFrustumCullChanged)
                         ->DataElement(0, &EditorActorComponent::m_actorAsset,
                         "Actor asset", "Assigned actor asset")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorActorComponent::OnAssetSelected)
@@ -169,6 +170,11 @@ namespace EMotionFX
             LmbrCentral::AttachmentComponentNotificationBus::Handler::BusConnect(GetEntityId());
             AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(GetEntityId());
             AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusConnect(GetEntityId());
+
+            if (m_attachmentTarget.IsValid())
+            {
+                AttachToEntity(m_attachmentTarget, m_attachmentType);
+            }
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -183,7 +189,9 @@ namespace EMotionFX
             EditorActorComponentRequestBus::Handler::BusDisconnect();
             ActorComponentRequestBus::Handler::BusDisconnect();
 
-            AZ::TransformNotificationBus::Handler::BusDisconnect();
+            AZ::TransformNotificationBus::MultiHandler::BusDisconnect();
+            ActorComponentNotificationBus::Handler::BusDisconnect();
+
             AZ::TickBus::Handler::BusDisconnect();
             AZ::Data::AssetBus::Handler::BusDisconnect();
 
@@ -229,6 +237,8 @@ namespace EMotionFX
         {
             if (m_actorInstance)
             {
+                DetachFromEntity();
+
                 ActorComponentNotificationBus::Event(
                     GetEntityId(),
                     &ActorComponentNotificationBus::Events::OnActorInstanceDestroyed,
@@ -267,8 +277,7 @@ namespace EMotionFX
             {
                 m_materialPerLOD.clear();
 
-                // Only need to refresh the values here.
-                return AZ::Edit::PropertyRefreshLevels::ValuesOnly;
+                return AZ::Edit::PropertyRefreshLevels::EntireTree;
             }
 
             return AZ::Edit::PropertyRefreshLevels::None;
@@ -518,13 +527,14 @@ namespace EMotionFX
             AZ::Transform transform;
             AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
             OnTransformChanged(transform, transform);
-            AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
+            AZ::TransformNotificationBus::MultiHandler::BusConnect(GetEntityId());
 
             // Force an update of node transforms so we can get an accurate bounding box.
             m_actorInstance->UpdateTransformations(0.0f, true, false);
 
             m_renderNode = AZStd::make_unique<ActorRenderNode>(GetEntityId(), m_actorInstance, m_actorAsset, transform);
             m_renderNode->SetMaterials(m_materialPerLOD);
+            m_renderNode->EnableFrustumCulling(!m_doNotFrustumCull);
             m_renderNode->RegisterWithRenderer();
             m_renderNode->Hide(!m_renderCharacter || !m_entityVisible);
             m_renderNode->SetSkinningMethod(m_skinningMethod);
@@ -534,6 +544,10 @@ namespace EMotionFX
             {
                 LmbrCentral::AttachmentComponentRequestBus::Event(attachment, &LmbrCentral::AttachmentComponentRequestBus::Events::Reattach, true);
             }
+
+            LmbrCentral::AttachmentComponentRequestBus::Event(GetEntityId(), &LmbrCentral::AttachmentComponentRequestBus::Events::Reattach, true);
+
+            CheckAttachToEntity();
 
             // Send general mesh creation notification to interested parties.
             LmbrCentral::MeshComponentNotificationBus::Event(GetEntityId(), &LmbrCentral::MeshComponentNotifications::OnMeshCreated, m_actorAsset);
@@ -576,15 +590,149 @@ namespace EMotionFX
         void EditorActorComponent::OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world)
         {
             AZ_UNUSED(local);
-            if (!m_actorInstance)
+
+            const auto* busId = AZ::TransformNotificationBus::GetCurrentBusId();
+            if (!busId || *busId == GetEntityId())
             {
-                return;
+                if (m_actorInstance)
+                {
+                    const auto localTransform = m_actorInstance->GetParentWorldSpaceTransform().Inversed() * MCore::AzTransformToEmfxTransform(world);
+                    m_actorInstance->SetLocalSpacePosition(localTransform.mPosition);
+                    m_actorInstance->SetLocalSpaceRotation(localTransform.mRotation.Normalized());
+                    m_actorInstance->SetActorScale(world.RetrieveScale());
+                }
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        void EditorActorComponent::CheckAttachmentTransformSubscription()
+        {
+            AZ::EntityId parentEntityId;
+            AZ::TransformBus::EventResult(parentEntityId, GetEntityId(), &AZ::TransformBus::Events::GetParentId);
+
+            while (parentEntityId.IsValid() && parentEntityId != m_attachmentTarget)
+            {
+                auto lastId = parentEntityId;
+                parentEntityId.SetInvalid();
+                AZ::TransformBus::EventResult(parentEntityId, lastId, &AZ::TransformBus::Events::GetParentId);
             }
 
-            const AZ::Quaternion entityOrientation = AZ::Quaternion::CreateRotationFromScaledTransform(world);
-            const AZ::Vector3 entityPosition = world.GetTranslation();
-            const AZ::Transform worldTransformNoScale = AZ::Transform::CreateFromQuaternionAndTranslation(entityOrientation, entityPosition);
-            m_actorInstance->SetLocalSpaceTransform(MCore::AzTransformToEmfxTransform(worldTransformNoScale));
+            if (!parentEntityId.IsValid())
+            {
+                AZ::TransformNotificationBus::MultiHandler::BusConnect(m_attachmentTarget);
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        void EditorActorComponent::CheckAttachToEntity() const
+        {
+            if (m_actorInstance && m_attachmentTargetActor)
+            {
+                if (m_attachmentTarget.IsValid())
+                {
+                    auto* transformInterface = AZ::TransformBus::FindFirstHandler(GetEntityId());
+                    if (transformInterface)
+                    {
+                        AZ::Transform transform;
+                        AZ::TransformBus::EventResult(transform, m_attachmentTarget, &AZ::TransformBus::Events::GetWorldTM);
+                        transformInterface->SetWorldTM(transform);
+                    }
+                }
+
+                m_attachmentTargetActor->RemoveAttachment(m_actorInstance.get());
+
+                if (!m_attachmentTargetActor->CheckIfCanHandleAttachment(m_actorInstance.get()))
+                {
+                    AZ_Error("EMotionFX", false, "You cannot attach to yourself or create circular dependencies!\n");
+                    return;
+                }
+
+                AZ_Assert(m_attachmentType == AttachmentType::SkinAttachment, "Expected a skin attachment.");
+
+                Attachment* attachment = AttachmentSkin::Create(m_attachmentTargetActor.get(), m_actorInstance.get());;
+                m_actorInstance->SetLocalSpaceTransform(Transform());
+                m_attachmentTargetActor->AddAttachment(attachment);
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        void EditorActorComponent::AttachToEntity(AZ::EntityId targetEntityId, AttachmentType)
+        {
+            if (targetEntityId.IsValid() && targetEntityId != GetEntityId())
+            {
+                m_attachmentTarget = targetEntityId;
+
+                ActorComponentNotificationBus::Handler::BusDisconnect();
+                ActorComponentNotificationBus::Handler::BusConnect(m_attachmentTarget);
+
+                CheckAttachmentTransformSubscription();
+
+                auto* transformInterface = AZ::TransformBus::FindFirstHandler(GetEntityId());
+                auto* targetTransformInterface = AZ::TransformBus::FindFirstHandler(m_attachmentTarget);
+
+                if (transformInterface && targetTransformInterface)
+                {
+                    AZ::Transform transform;
+                    AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM); // default to using our own TM
+                    AZ::TransformBus::EventResult(transform, m_attachmentTarget, &AZ::TransformBus::Events::GetWorldTM); // attempt to get target's TM
+                    AZ::TransformBus::Event(GetEntityId(), &AZ::TransformBus::Events::SetWorldTM, transform); // set our TM
+                }
+            }
+            else
+            {
+                DetachFromEntity();
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        void EditorActorComponent::DetachFromEntity()
+        {
+            if (m_attachmentTargetActor)
+            {
+                if (m_actorInstance)
+                {
+                    m_attachmentTargetActor->RemoveAttachment(m_actorInstance.get());
+                }
+
+                m_attachmentTargetActor.reset();
+
+                AZ::TransformNotificationBus::MultiHandler::BusDisconnect(m_attachmentTarget);
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        void EditorActorComponent::OnActorInstanceCreated(ActorInstance* actorInstance)
+        {
+            const auto it = AZStd::find(m_attachments.begin(), m_attachments.end(), actorInstance->GetEntityId());
+            if (it != m_attachments.end())
+            {
+                if (m_actorInstance)
+                {
+                    LmbrCentral::AttachmentComponentRequestBus::Event(actorInstance->GetEntityId(), &LmbrCentral::AttachmentComponentRequestBus::Events::Reattach, true);
+                }
+            }
+            else
+            {
+                m_attachmentTargetActor.reset(actorInstance);
+                CheckAttachToEntity();
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        void EditorActorComponent::OnActorInstanceDestroyed(ActorInstance*)
+        {
+            DetachFromEntity();
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        void EditorActorComponent::OnDoNotFrustumCullChanged() const
+        {
+            if (m_renderNode)
+            {
+                m_renderNode->EnableFrustumCulling(!m_doNotFrustumCull);
+                m_renderNode->DeregisterWithRenderer();
+                m_renderNode->RegisterWithRenderer();
+            }
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -730,6 +878,8 @@ namespace EMotionFX
             cfg.m_attachmentJointIndex = m_attachmentJointIndex;
             cfg.m_lodLevel = m_lodLevel;
             cfg.m_skinningMethod = m_skinningMethod;
+
+            cfg.m_doNotFrustumCull = m_doNotFrustumCull;
 
             gameEntity->AddComponent(aznew ActorComponent(&cfg));
         }

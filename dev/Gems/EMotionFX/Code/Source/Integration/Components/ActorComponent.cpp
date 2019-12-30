@@ -47,6 +47,7 @@ namespace EMotionFX
                 serializeContext->Class<Configuration>()
                     ->Version(3)
                     ->Field("ActorAsset", &Configuration::m_actorAsset)
+                    ->Field("DoNotFrustumCull", &Configuration::m_doNotFrustumCull)
                     ->Field("MaterialPerLOD", &Configuration::m_materialPerLOD)
                     ->Field("RenderSkeleton", &Configuration::m_renderSkeleton)
                     ->Field("RenderCharacter", &Configuration::m_renderCharacter)
@@ -305,6 +306,7 @@ namespace EMotionFX
 
                 m_renderNode = AZStd::make_unique<ActorRenderNode>(GetEntityId(), m_actorInstance, m_configuration.m_actorAsset, transform);
                 m_renderNode->SetMaterials(m_configuration.m_materialPerLOD);
+                m_renderNode->EnableFrustumCulling(!m_configuration.m_doNotFrustumCull);
                 m_renderNode->RegisterWithRenderer();
                 m_renderNode->SetSkinningMethod(m_configuration.m_skinningMethod);
                 m_renderNode->Hide(!m_configuration.m_renderCharacter);

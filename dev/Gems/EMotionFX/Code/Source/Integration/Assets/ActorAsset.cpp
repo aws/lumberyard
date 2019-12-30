@@ -712,6 +712,11 @@ namespace EMotionFX
             }
         }
 
+        void ActorRenderNode::EnableFrustumCulling(bool enable)
+        {
+            SetRndFlags(ERF_RENDER_ALWAYS, !enable);
+        }
+
         ActorAsset::ActorAsset()
         {
         }

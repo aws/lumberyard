@@ -72,6 +72,8 @@ namespace EMotionFX
 
                 Configuration();
 
+                bool m_doNotFrustumCull { false };
+
                 AZ::Data::Asset<ActorAsset>     m_actorAsset;               ///< Selected actor asset.
                 ActorAsset::MaterialList        m_materialPerLOD;           ///< Material assignment per LOD.
                 AZ::EntityId                    m_attachmentTarget;         ///< Target entity this actor should attach to.

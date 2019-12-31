@@ -42,7 +42,8 @@ namespace EMotionFX
         class EditorActorComponent
             : public AzToolsFramework::Components::EditorComponentBase
             , private AZ::Data::AssetBus::Handler
-            , private AZ::TransformNotificationBus::Handler
+            , private AZ::TransformNotificationBus::MultiHandler
+            , private ActorComponentNotificationBus::Handler
             , private AZ::TickBus::Handler
             , private LmbrCentral::MeshComponentRequestBus::Handler
             , private LmbrCentral::RenderNodeRequestBus::Handler
@@ -70,6 +71,12 @@ namespace EMotionFX
             EMotionFX::ActorInstance* GetActorInstance() override { return m_actorInstance ? m_actorInstance.get() : nullptr; }
             bool GetRenderCharacter() const override;
             void SetRenderCharacter(bool enable) override;
+            void AttachToEntity(AZ::EntityId targetEntityId, AttachmentType attachmentType) override;
+            void DetachFromEntity() override;
+
+            // ActorComponentNotificationBus::Handler
+            void OnActorInstanceCreated(ActorInstance* actorInstance) override;
+            void OnActorInstanceDestroyed(ActorInstance*) override;
 
             // EditorActorComponentRequestBus::Handler
             const AZ::Data::AssetId& GetActorAssetId() override;
@@ -145,6 +152,8 @@ namespace EMotionFX
             AZStd::string AttachmentJointButtonText();
             void InitializeMaterial(ActorAsset& actorAsset);
 
+            void OnDoNotFrustumCullChanged() const;
+
             void LaunchAnimationEditor(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType&);
 
             // AZ::Data::AssetBus::Handler
@@ -176,6 +185,11 @@ namespace EMotionFX
 
             bool IsValidAttachment(const AZ::EntityId& attachment, const AZ::EntityId& attachTo) const;
  
+            bool m_doNotFrustumCull { false };
+
+            void CheckAttachmentTransformSubscription();
+            void CheckAttachToEntity() const;
+
             AZ::Data::Asset<ActorAsset>         m_actorAsset;               ///< Assigned actor asset.
             AZStd::vector<AZ::EntityId>         m_attachments;              ///< A list of entities that are attached to this entity.
             bool                                m_renderSkeleton;           ///< Toggles rendering of character skeleton.
@@ -198,6 +212,8 @@ namespace EMotionFX
 
             ActorAsset::ActorInstancePtr        m_actorInstance;            ///< Live actor instance.
             AZStd::unique_ptr<ActorRenderNode>  m_renderNode;               ///< Actor render node.
+
+            ActorAsset::ActorInstancePtr        m_attachmentTargetActor;    ///< Target actor instance to attach to.
         };
     } // namespace Integration
 } // namespace EMotionFX

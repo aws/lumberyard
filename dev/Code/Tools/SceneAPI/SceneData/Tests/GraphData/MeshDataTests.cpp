@@ -49,7 +49,7 @@ namespace AZ
         TEST(MeshData_Construction, AddPosition_AddVector3_GetPositionEqual)
         {
             AZ::SceneData::GraphData::MeshData meshData;
-            AZ::Vector3 position(0.1, 0.2, 0.3);
+            AZ::Vector3 position(0.1f, 0.2f, 0.3f);
             meshData.AddPosition(position);
             const AZ::Vector3& storedPosition = meshData.GetPosition(0);
             EXPECT_FLOAT_EQ(position.GetX(), storedPosition.GetX());
@@ -69,7 +69,7 @@ namespace AZ
         TEST(MeshData_Construction, AddNormal_AddVector3_GetNormalEqual)
         {
             AZ::SceneData::GraphData::MeshData meshData;
-            AZ::Vector3 normal(0.1, 0.2, 0.3);
+            AZ::Vector3 normal(0.1f, 0.2f, 0.3f);
             meshData.AddNormal(normal);
             const AZ::Vector3& storedNormal = meshData.GetNormal(0);
             EXPECT_FLOAT_EQ(normal.GetX(), storedNormal.GetX());

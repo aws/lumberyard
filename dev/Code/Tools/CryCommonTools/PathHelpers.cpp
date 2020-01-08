@@ -18,6 +18,7 @@
 
 #include <AzCore/std/string/conversions.h>
 #include <AzFramework/IO/LocalFileIO.h>
+#include <AzCore/IO/SystemFile.h>
 #include <AzCore/PlatformIncl.h>
 
 

@@ -82,7 +82,7 @@ namespace DynamicContent
         SetupUI();
 
         m_platformMap = PlatformMap();
-        QList<QString> platformCheckList = QList<QString>() << "xboxone" << "ps4"; // ACCEPTED_USE
+        QList<QString> platformCheckList = QList<QString>() << "xenia" << "provo";
         for (auto platform : platformCheckList)
         {
             CheckPlatformLicense(platform);
@@ -112,8 +112,8 @@ namespace DynamicContent
         if (pathList.size() >= 2)
         {
             pathList[pathList.size() - 2] = platform;
-            QString ps4FullPath = pathList.join("/"); // ACCEPTED_USE
-            if (!QDir(ps4FullPath).exists()) // ACCEPTED_USE
+            QString provoFullPath = pathList.join("/");
+            if (!QDir(provoFullPath).exists())
             {
                 m_platformMap[platform].LicenseExists = false;
                 QLabel* platformLabel = findChild<QLabel *>(platform);
@@ -272,7 +272,7 @@ namespace DynamicContent
             }
             else if (key == COMMAND_SIGNAL_DONE_UPLOADING)
             {
-                m_packagesModel->stopS3StatusAnimation(value.toString()); // ACCEPTED_USE
+                m_packagesModel->stopS3StatusAnimation(value.toString());
                 return true;
             }
             else if (key == COMMAND_CHECK_EXISTING_KEYS)

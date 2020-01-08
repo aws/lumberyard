@@ -108,6 +108,35 @@ namespace AzFramework
         * \returns Value(s) on success, error message on failure.
         */
         AZ::Outcome<AZStd::string, AZStd::string> GetValueForKeyInCfgFile(const AZStd::string& filePath, const char* key);
+
+        /**
+        * Gets the value(s) for a key in an INI style config file with the given contents.
+        *
+        * \param[in] configFileContents The contents of a config file in a string
+        * \param[in] key                The key of the value to find
+        *
+        * \returns Value(s) on success, error message on failure.
+        */
+        AZ::Outcome<AZStd::string, AZStd::string> GetValueForKeyInCfgFileContents(const AZStd::string& configFileContents, const char* key);
+
+        /**
+        * Gets the contents of an INI style config file as a string.
+        *
+        * \param[in] filePath          The path to the config file
+        *
+        * \returns Contents of filePath on success, error message on failure.
+        */
+        AZ::Outcome<AZStd::string, AZStd::string> GetCfgFileContents(const AZStd::string& filePath);
+
+        /**
+        * Find a list of files using FileIO GetInstance
+        *
+        * \param[in] pathToStart The folder to start at
+        * \param[in] pattern The wildcard pattern to match against
+        * \param[in] recurse - whether to search directories underneath pathToStart recursively
+        * \returns AZ::Success and a list of files of matches found, an error string on an empty list
+        */
+        AZ::Outcome < AZStd::list<AZStd::string>, AZStd::string> FindFileList(const AZStd::string& pathToStart, const char* pattern, bool recurse);
     } // namespace FileFunc
 } // namespace AzFramework
 

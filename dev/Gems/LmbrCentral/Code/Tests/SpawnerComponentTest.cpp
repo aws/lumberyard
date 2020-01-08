@@ -22,7 +22,7 @@
 #include <AzFramework/Components/BootstrapReaderComponent.h>
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzFramework/Entity/GameEntityContextComponent.h>
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 // LmbrCentral/Source
 #include "Scripting/SpawnerComponent.h"
 #include "LmbrCentral.h"
@@ -276,15 +276,15 @@ TEST_F(SpawnerComponentTest, OnSpawnedSliceDestroyed_FiresAfterEntitiesDeleted)
 }
 
 
-TEST_F(SpawnerComponentTest, DISABLED_OnSpawnedSliceDestroyed_FiresWhenSpawningBadAssets) // disabled because AZ_TEST_START_ASSERTTEST isn't currently suppressing the asserts
+TEST_F(SpawnerComponentTest, DISABLED_OnSpawnedSliceDestroyed_FiresWhenSpawningBadAssets) // disabled because AZ_TEST_START_TRACE_SUPPRESSION isn't currently suppressing the asserts
 {
     // ID is made up and not registered with asset manager
     auto nonexistentAsset = AZ::Data::Asset<AZ::SliceAsset>(AZ::Data::AssetId("{9E3862CC-B6DF-485F-A9D8-5F4A966DE88B}"), AZ::AzTypeInfo<AZ::SliceAsset>::Uuid());
     AzFramework::SliceInstantiationTicket ticket = m_spawnerComponent->SpawnSlice(nonexistentAsset);
 
-    AZ_TEST_START_ASSERTTEST;
+    AZ_TEST_START_TRACE_SUPPRESSION;
     bool spawnDestructionFired = TickUntil([this, ticket]() { return m_spawnWatcher->m_tickets[ticket].m_onSpawnedSliceDestroyed; });
-    AZ_TEST_STOP_ASSERTTEST(1);
+    AZ_TEST_STOP_TRACE_SUPPRESSION(1);
     EXPECT_TRUE(spawnDestructionFired);
 }
 

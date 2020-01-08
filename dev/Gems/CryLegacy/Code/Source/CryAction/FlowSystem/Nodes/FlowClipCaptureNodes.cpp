@@ -60,6 +60,8 @@ public:
         #include "Xenia/FlowClipCaptureNodes_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/FlowClipCaptureNodes_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/FlowClipCaptureNodes_cpp_salem.inl"
     #endif
 #endif
         eI_ClipId,
@@ -69,6 +71,8 @@ public:
         #include "Xenia/FlowClipCaptureNodes_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/FlowClipCaptureNodes_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/FlowClipCaptureNodes_cpp_salem.inl"
     #endif
 #endif
         eI_LocalizedClipName,
@@ -94,6 +98,10 @@ public:
 #define AZ_RESTRICTED_SECTION FLOWCLIPCAPTURENODES_CPP_SECTION_3
     #include "Provo/FlowClipCaptureNodes_cpp_provo.inl"
 #endif
+#if defined(TOOLS_SUPPORT_SALEM)
+#define AZ_RESTRICTED_SECTION FLOWCLIPCAPTURENODES_CPP_SECTION_3
+    #include "Salem/FlowClipCaptureNodes_cpp_salem.inl"
+#endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -115,7 +123,7 @@ public:
 
         config.pInputPorts = inputs;
         config.pOutputPorts = outputs;
-        config.sDescription = _HELP("Allows capturing clips while the game is running and (in Xbox One) save them locally or in the cloud");
+        config.sDescription = _HELP("Allows capturing clips while the game is running and, depending on platform, save them locally or in the cloud");
         config.SetCategory(EFLN_APPROVED);
     }
 

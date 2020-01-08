@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/IO/FileIO.h>
 #include <ctype.h>
@@ -482,5 +481,3 @@ namespace AZ
 
     } // namespace IO
 } // namespace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

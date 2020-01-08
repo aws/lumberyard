@@ -20,7 +20,7 @@
 
 
 #include "CryTypeID.h"
-#include <BoostHelpers.h>
+#include <SmartPointersHelpers.h>
 
 struct ICryUnknown;
 DECLARE_SMART_POINTERS(ICryUnknown);

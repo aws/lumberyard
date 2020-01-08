@@ -1,0 +1,30 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "includes": [
+                "."
+            ],
+            "importlibpath": [
+                "lib/windows/x64"
+            ],
+            "sharedlibpath": [
+                "lib/windows/x64"
+            ],
+            "import_debug": [
+                "boost_python-vc140-mt-gd-1_61.lib"
+            ],
+            "import_release": [
+                "boost_python-vc140-mt-1_61.lib"
+            ],
+            "shared_debug": [
+                "boost_python-vc140-mt-gd-1_61.dll"
+            ],
+            "shared_release": [
+                "boost_python-vc140-mt-1_61.dll"
+            ],
+            "pdb_debug": [
+                "boost_python-vc120-mt-gd-1_61.pdb"
+            ]
+        }
+    }
+}

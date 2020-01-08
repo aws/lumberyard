@@ -25,15 +25,17 @@
 #include <AzFramework/Physics/Casts.h>
 #include <AzFramework/Physics/Material.h>
 
-
 namespace Physics
 {
+    static AZ::Crc32 DefaultPhysicsWorldId = AZ_CRC("AZPhysicalWorld", 0x18f33e24);
+    static AZ::Crc32 EditorPhysicsWorldId = AZ_CRC("EditorWorld", 0x8d93f191);
+
     class RigidBody;
     class WorldBody;
     class WorldEventHandler;
     class ITriggerEventCallback;
 
-    /// Default world configuration.
+    //! Default world configuration.
     class WorldConfiguration
     {
     public:
@@ -41,35 +43,40 @@ namespace Physics
         AZ_RTTI(WorldConfiguration, "{3C87DF50-AD02-4746-B19F-8B7453A86243}")
         static void Reflect(AZ::ReflectContext* context);
 
+        static const float s_defaultFixedTimeStep;
+
         virtual ~WorldConfiguration() = default;
 
         AZ::Aabb m_worldBounds = AZ::Aabb::CreateFromMinMax(-AZ::Vector3(1000.f, 1000.f, 1000.f), AZ::Vector3(1000.f, 1000.f, 1000.f));
         float m_maxTimeStep = 1.f / 20.f;
-        float m_fixedTimeStep = 1 / 60.f;
+        float m_fixedTimeStep = s_defaultFixedTimeStep;
         AZ::Vector3 m_gravity = AZ::Vector3(0.f, 0.f, -9.81f);
         void* m_customUserData = nullptr;
-        AZ::u64 m_raycastBufferSize = 32; ///< Maximum number of hits that will be returned from a raycast
-        AZ::u64 m_sweepBufferSize = 32; ///< Maximum number of hits that can be returned from a shapecast
-        AZ::u64 m_overlapBufferSize = 32; ///< Maximum number of overlaps that can be returned from an overlap query
-        bool m_enableCcd = false; ///< Enables continuous collision detection in the world
-        bool m_enableActiveActors = false; ///< Enables pxScene::getActiveActors method
-        bool m_enablePcm = true; ///< Enables the persistent contact manifold algorithm to be used as the narrow phase algorithm
-        bool m_kinematicFiltering = true; ///< Enables filtering between kinematic/kinematic  objects.
-        bool m_kinematicStaticFiltering = true; ///< Enables filtering between kinematic/static objects.
+        AZ::u64 m_raycastBufferSize = 32; //!< Maximum number of hits that will be returned from a raycast
+        AZ::u64 m_sweepBufferSize = 32; //!< Maximum number of hits that can be returned from a shapecast
+        AZ::u64 m_overlapBufferSize = 32; //!< Maximum number of overlaps that can be returned from an overlap query
+        bool m_enableCcd = false; //!< Enables continuous collision detection in the world
+        bool m_enableActiveActors = false; //!< Enables pxScene::getActiveActors method
+        bool m_enablePcm = true; //!< Enables the persistent contact manifold algorithm to be used as the narrow phase algorithm
+        bool m_kinematicFiltering = true; //!< Enables filtering between kinematic/kinematic  objects.
+        bool m_kinematicStaticFiltering = true; //!< Enables filtering between kinematic/static objects.
 
     private:
         static bool VersionConverter(AZ::SerializeContext& context,
             AZ::SerializeContext::DataElementNode& classElement);
+
+        AZ::u32 OnMaxTimeStepChanged();
+        float GetFixedTimeStepMax() const;
     };
 
-    /// Physics world.
+    //! Physics world.
     class World
         : public AZ::EBusTraits
     {
     public:
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        typedef AZ::Crc32 BusIdType;
+        using BusIdType = AZ::Crc32;
 
         AZ_CLASS_ALLOCATOR(World, AZ::SystemAllocator, 0);
         AZ_RTTI(World, "{61832612-9F5C-4A2E-8E11-00655A6DDDD2}");
@@ -78,76 +85,76 @@ namespace Physics
 
         virtual void Update(float deltaTime) = 0;
 
-        /// Perform a raycast in the world returning the closest object that intersected.
+        //! Perform a raycast in the world returning the closest object that intersected.
         virtual RayCastHit RayCast(const RayCastRequest& request) = 0;
 
-        /// Perform a raycast in the world returning all objects that intersected. 
+        //! Perform a raycast in the world returning all objects that intersected. 
         virtual AZStd::vector<Physics::RayCastHit> RayCastMultiple(const RayCastRequest& request) = 0;
 
-        /// Perform a shapecast in the world returning the closest object that intersected.
+        //! Perform a shapecast in the world returning the closest object that intersected.
         virtual RayCastHit ShapeCast(const ShapeCastRequest& request) = 0;
 
-        /// Perform a shapecast in the world returning all objects that intersected.
+        //! Perform a shapecast in the world returning all objects that intersected.
         virtual AZStd::vector<RayCastHit> ShapeCastMultiple(const ShapeCastRequest& request) = 0;
 
-        /// Perform a spherecast in the world returning the closest object that intersected.
+        //! Perform a spherecast in the world returning the closest object that intersected.
         Physics::RayCastHit SphereCast(float radius, 
             const AZ::Transform& startPose, const AZ::Vector3& direction, float distance, 
             QueryType queryType = QueryType::StaticAndDynamic,
             CollisionGroup collisionGroup = CollisionGroup::All, 
-            CustomFilterCallback filterCallback = nullptr);
+            FilterCallback filterCallback = nullptr);
 
-        /// Perform a spherecast in the world returning all objects that intersected.
+        //! Perform a spherecast in the world returning all objects that intersected.
         AZStd::vector<Physics::RayCastHit> SphereCastMultiple(float radius,
             const AZ::Transform& startPose, const AZ::Vector3& direction, float distance,
             QueryType queryType = QueryType::StaticAndDynamic,
             CollisionGroup collisionGroup = CollisionGroup::All,
-            CustomFilterCallback filterCallback = nullptr);
+            FilterCallback filterCallback = nullptr);
 
-        /// Perform a boxcast in the world returning the closest object that intersected.
+        //! Perform a boxcast in the world returning the closest object that intersected.
         Physics::RayCastHit BoxCast(const AZ::Vector3& boxDimensions,
             const AZ::Transform& startPose, const AZ::Vector3& direction, float distance,
             QueryType queryType = QueryType::StaticAndDynamic,
             CollisionGroup collisionGroup = CollisionGroup::All,
-            CustomFilterCallback filterCallback = nullptr);
+            FilterCallback filterCallback = nullptr);
 
-        /// Perform a boxcast in the world returning all objects that intersected.
+        //! Perform a boxcast in the world returning all objects that intersected.
         AZStd::vector<Physics::RayCastHit> BoxCastMultiple(const AZ::Vector3& boxDimensions,
             const AZ::Transform& startPose, const AZ::Vector3& direction, float distance,
             QueryType queryType = QueryType::StaticAndDynamic,
             CollisionGroup collisionGroup = CollisionGroup::All,
-            CustomFilterCallback filterCallback = nullptr);
+            FilterCallback filterCallback = nullptr);
 
-        /// Perform a capsule in the world returning all objects that intersected.
+        //! Perform a capsule in the world returning all objects that intersected.
         Physics::RayCastHit CapsuleCast(float capsuleRadius, float capsuleHeight,
             const AZ::Transform& startPose, const AZ::Vector3& direction, float distance,
             QueryType queryType = QueryType::StaticAndDynamic,
             CollisionGroup collisionGroup = CollisionGroup::All,
-            CustomFilterCallback filterCallback = nullptr);
+            FilterCallback filterCallback = nullptr);
 
-        /// Perform a capsule in the world returning all objects that intersected.
+        //! Perform a capsule in the world returning all objects that intersected.
         AZStd::vector<Physics::RayCastHit> CapsuleCastMultiple(float capsuleRadius, float capsuleHeight,
             const AZ::Transform& startPose, const AZ::Vector3& direction, float distance,
             QueryType queryType = QueryType::StaticAndDynamic,
             CollisionGroup collisionGroup = CollisionGroup::All,
-            CustomFilterCallback filterCallback = nullptr);
+            FilterCallback filterCallback = nullptr);
 
-        /// Perform an overlap query returning all objects that overlapped.
+        //! Perform an overlap query returning all objects that overlapped.
         virtual AZStd::vector<OverlapHit> Overlap(const OverlapRequest& request) = 0;
 
-        /// Perform an overlap sphere query returning all objects that overlapped.
-        AZStd::vector<OverlapHit> OverlapSphere(float radius, const AZ::Transform& pose, CustomFilterCallback customFilterCallback = nullptr);
+        //! Perform an overlap sphere query returning all objects that overlapped.
+        AZStd::vector<OverlapHit> OverlapSphere(float radius, const AZ::Transform& pose, OverlapFilterCallback filterCallback = nullptr);
 
-        /// Perform an overlap box query returning all objects that overlapped.
-        AZStd::vector<OverlapHit> OverlapBox(const AZ::Vector3& dimensions, const AZ::Transform& pose, CustomFilterCallback customFilterCallback = nullptr);
+        //! Perform an overlap box query returning all objects that overlapped.
+        AZStd::vector<OverlapHit> OverlapBox(const AZ::Vector3& dimensions, const AZ::Transform& pose, OverlapFilterCallback filterCallback = nullptr);
 
-        /// Perform an overlap capsule query returning all objects that overlapped.
-        AZStd::vector<OverlapHit> OverlapCapsule(float height, float radius, const AZ::Transform& pose, CustomFilterCallback customFilterCallback = nullptr);
+        //! Perform an overlap capsule query returning all objects that overlapped.
+        AZStd::vector<OverlapHit> OverlapCapsule(float height, float radius, const AZ::Transform& pose, OverlapFilterCallback filterCallback = nullptr);
 
-        /// Registers a pair of world bodies for which collisions should be suppressed.
+        //! Registers a pair of world bodies for which collisions should be suppressed.
         virtual void RegisterSuppressedCollision(const WorldBody& body0, const WorldBody& body1) = 0;
 
-        /// Unregisters a pair of world bodies for which collisions should be suppressed.
+        //! Unregisters a pair of world bodies for which collisions should be suppressed.
         virtual void UnregisterSuppressedCollision(const WorldBody& body0, const WorldBody& body1) = 0;
 
         virtual void AddBody(WorldBody& body) = 0;
@@ -165,22 +172,75 @@ namespace Physics
 
         virtual void DeferDelete(AZStd::unique_ptr<WorldBody> worldBody) = 0;
 
-        /*! @brief Similar to SetEventHandler, relevant for Touch Bending
-         *
-         *  SetEventHandler is useful to catch onTrigger events when the bodies
-         *  involved were created with the standard physics Components attached to
-         *  entities. On the other hand, this method was added since Touch Bending, and it is useful
-         *  for the touch bending simulator to catch onTrigger events of Actors that
-         *  don't have valid AZ:EntityId.
-         *
-         *  @param triggerCallback Pointer to the callback object that will get the On
-         *  @returns Nothing.
-         *
-         */
+        //! @brief Similar to SetEventHandler, relevant for Touch Bending.
+        //!
+        //! SetEventHandler is useful to catch onTrigger events when the bodies
+        //! involved were created with the standard physics Components attached to
+        //! entities. On the other hand, this method was added since Touch Bending, and it is useful
+        //! for the touch bending simulator to catch onTrigger events of Actors that
+        //! don't have valid AZ:EntityId.
+        //! 
+        //! @param triggerCallback Pointer to the callback object that will get the On
+        //! @returns Nothing.
         virtual void SetTriggerEventCallback(ITriggerEventCallback* triggerCallback) = 0;
+
+        //! Returns this world's ID.
+        virtual AZ::Crc32 GetWorldId() const = 0;
     };
 
-    typedef AZ::EBus<World> WorldRequestBus;
+    using WorldRequestBus = AZ::EBus<World>;
     using WorldRequests = World;
 
+    //! Broadcasts notifications for a specific Physics::World.
+    //! This bus is addressed on the id of the world.
+    //! Subscribe to the bus using Physics::DefaultPhysicsWorldId for the default world,
+    //! or Physics::EditorPhysicsWorldId for the editor world.
+    class WorldNotifications
+        : public AZ::EBusTraits
+    {
+    public:
+        enum PhysicsTickOrder
+        {
+            Physics = 0, //!< The physics system itself. Should always be first.
+            Animation = 100, //!< Animation system (ragdolls).
+            Components = 200, //!< C++ components (force region).
+            Scripting = 300, //!< Scripting systems (script canvas).
+            Default = 1000 //!< All other systems (Game code).
+        };
+
+        virtual ~WorldNotifications() = default;
+
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::MultipleAndOrdered;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::Crc32;
+
+        //! Broadcast before each world simulation tick.
+        //! @param fixedDeltaTime the timestep between simulation ticks.
+        virtual void OnPrePhysicsUpdate(float fixedDeltaTime) { AZ_UNUSED(fixedDeltaTime); };
+
+        //! Broadcast after each world simulation tick.
+        //! @param fixedDeltaTime the timestep between simulation ticks.
+        virtual void OnPostPhysicsUpdate(float fixedDeltaTime) { AZ_UNUSED(fixedDeltaTime); };
+
+        //! Specified the order in which a handler receives WorldNotification events.
+        //! Users subscribing to this bus can override this function to change
+        //! the order events are received relative to other systems.
+        //! @return a value specifying this handler'S relative order.
+        virtual int GetPhysicsTickOrder() { return Default; }
+
+        //! Determines the order in which handlers receive events. 
+        struct BusHandlerOrderCompare
+        {
+            //! Compare function used to control physics update order.
+            //! @param left an instance of the handler to compare.
+            //! @param right another instance of the handler to compare.
+            //! @return True if the priority of left is greater than right, false otherwise.
+            AZ_FORCE_INLINE bool operator()(WorldNotifications* left, WorldNotifications* right) const 
+            { 
+                return left->GetPhysicsTickOrder() < right->GetPhysicsTickOrder();
+            }
+        };
+    };
+
+    using WorldNotificationBus = AZ::EBus<WorldNotifications>;
 } // namespace Physics

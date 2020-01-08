@@ -89,7 +89,7 @@ namespace EMotionFX
                 else
                 {
                     // If the name matches and but type doesn't, warns the user.
-                    AZ_Warning("EMotionFX", "Servant parameter %s does not match master parameter %s", m_servantParameterName.c_str(), m_masterParameterName.c_str());
+                    AZ_Warning("EMotionFX", false, "Servant parameter %s does not match master parameter %s", m_servantParameterName.c_str(), m_masterParameterName.c_str());
                 }
 
             }

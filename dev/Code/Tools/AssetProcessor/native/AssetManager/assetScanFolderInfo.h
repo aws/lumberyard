@@ -13,30 +13,12 @@
 #define ASSETSCANFOLDERINFO_H
 
 #include <QString>
+#include <QDateTime>
 #include <AzCore/base.h>
+#include <AssetBuilderSDK/AssetBuilderSDK.h>
 
 namespace AssetProcessor
 {
-    struct AssetFileInfo
-    {
-        AssetFileInfo() = default;
-        AssetFileInfo(QString filePath, AZ::u64 modTime, bool isDirectory) : m_filePath(filePath), m_modTime(modTime), m_isDirectory(isDirectory) {}
-
-        bool operator==(const AssetFileInfo& rhs) const
-        {
-            return m_filePath == rhs.m_filePath && m_modTime == rhs.m_modTime && m_isDirectory == rhs.m_isDirectory;
-        }
-
-        QString m_filePath;
-        AZ::u64 m_modTime;
-        bool m_isDirectory;
-    };
-
-    inline uint qHash(const AssetFileInfo& item)
-    {
-        return qHash(item.m_filePath);
-    }
-
     /** This Class contains information about the folders to be scanned
      * */
     class ScanFolderInfo
@@ -137,6 +119,33 @@ namespace AssetProcessor
         AZ::s64 m_scanFolderID = 0; // this is filled in by the database - don't modify it.
         AZStd::vector<AssetBuilderSDK::PlatformInfo> m_platforms; // This contains the list of platforms that are enabled for the particular scanfolder
     };
+
+    struct AssetFileInfo
+    {
+        AssetFileInfo() = default;
+        AssetFileInfo(QString filePath, QDateTime modTime, AZ::u64 fileSize, const ScanFolderInfo* scanFolder, bool isDirectory)
+            : m_filePath(filePath), m_modTime(modTime), m_fileSize(fileSize), m_scanFolder(scanFolder), m_isDirectory(isDirectory) {}
+
+        bool operator==(const AssetFileInfo& rhs) const
+        {
+            return m_filePath == rhs.m_filePath
+                && m_modTime == rhs.m_modTime
+                && m_fileSize == rhs.m_fileSize
+                && m_isDirectory == rhs.m_isDirectory;
+            // m_scanFolder ignored since m_filePath will already ensure this is the same file
+        }
+
+        QString m_filePath{}; // Absolute path of the file
+        QDateTime m_modTime{};
+        AZ::u64 m_fileSize{};
+        const ScanFolderInfo* m_scanFolder{};
+        bool m_isDirectory{};
+    };
+
+    inline uint qHash(const AssetFileInfo& item)
+    {
+        return qHash(item.m_filePath);
+    }
 } // end namespace AssetProcessor
 
 #endif //ASSETSCANFOLDERINFO_H

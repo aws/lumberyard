@@ -10,13 +10,17 @@
 *
 */
 
+#include <TraceMessageHook.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/Debug/TraceContextLogFormatter.h>
-#include <TraceMessageHook.h>
+#include <AzCore/Debug/Trace.h>
+#include <AzCore/PlatformIncl.h>
 
 namespace AssetBuilder
 {
+    constexpr int MaxMessageLength = 4096;
+
     TraceMessageHook::TraceMessageHook()
         : m_stacks(nullptr)
         , m_inDebugMode(false)
@@ -76,12 +80,21 @@ namespace AssetBuilder
         return !m_inDebugMode;
     }
 
-    bool TraceMessageHook::OnError(const char* /*window*/, const char* message)
+    bool TraceMessageHook::OnPreError(const char* window, const char* fileName, int line, const char* func, const char* message)
     {
-        if (m_skipErrorsCount == 0)
+        if(m_skipErrorsCount == 0)
         {
+            char messageOutput[MaxMessageLength];
+            char header[MaxMessageLength];
+
             DumpTraceContext(stderr);
-            CleanMessage(stderr, "E", message, true);
+
+            azsnprintf(header, MaxMessageLength, "%s: Trace::Error\n>\t%s(%d): '%s'\n", window, fileName, line, func);
+            CleanMessage(stderr, "E", header, false);
+
+            azsnprintf(messageOutput, MaxMessageLength, ">\t%s", message);
+            CleanMessage(stderr, "E", messageOutput, true);
+
             ++m_totalErrorCount;
         }
         else
@@ -92,12 +105,21 @@ namespace AssetBuilder
         return !m_inDebugMode;
     }
 
-    bool TraceMessageHook::OnWarning(const char* /*window*/, const char* message)
+    bool TraceMessageHook::OnPreWarning(const char* window, const char* fileName, int line, const char* func, const char* message)
     {
         if (m_skipWarningsCount == 0)
         {
+            char messageOutput[MaxMessageLength];
+            char header[MaxMessageLength];
+
             DumpTraceContext(stdout);
-            CleanMessage(stdout, "W", message, true);
+
+            azsnprintf(header, MaxMessageLength, "%s: Trace::Warning\n>\t%s(%d): '%s'\n", window, fileName, line, func);
+            CleanMessage(stdout, "W", header, false);
+
+            azsnprintf(messageOutput, MaxMessageLength, ">\t%s", message);
+            CleanMessage(stdout, "W", messageOutput, true);
+
             ++m_totalWarningCount;
         }
         else
@@ -129,18 +151,15 @@ namespace AssetBuilder
         return false;
     }
 
-bool TraceMessageHook::OnOutput(const char* window, const char* message)
+bool TraceMessageHook::OnOutput(const char* /*window*/, const char* message)
 {
     if (m_isInException) // all messages that occur during an exception should be considered an error.
     {
-        CleanMessage(stderr, "E: ", message, true);
+        CleanMessage(stderr, "E", message, true);
+        return true;
     }
-    else
-    {
-        CleanMessage(stdout, "", message, false);
-    }
-
-    return true;
+    
+    return false;
 }
 
     bool TraceMessageHook::OnPrintf(const char* window, const char* message)
@@ -214,11 +233,26 @@ bool TraceMessageHook::OnOutput(const char* window, const char* message)
 
     void TraceMessageHook::CleanMessage(FILE* stream, const char* prefix, const char* message, bool forceFlush)
     {
-        if (message && message[0] != 0)
+        if (message && message[0])
         {
-            fprintf(stream, "%s", prefix);
-            fprintf(stream, ": ");
-            fprintf(stream, "%s", message);
+            AZStd::vector<AZStd::string> lines;
+            AzFramework::StringFunc::Tokenize(message, lines, '\n', true, true); // Make sure to keep empty lines because it could be intentional blank lines someone has added for formatting reasons
+
+            // If the message ended with a newline, remove it, we're adding newlines to each line already
+            if(lines.back().empty())
+            {
+                lines.pop_back();
+            }
+
+            for (const AZStd::string& line : lines)
+            {
+                if (prefix && prefix[0])
+                {
+                    fprintf(stream, "%s: ", prefix);
+                }
+
+                fprintf(stream, "%s\n", line.c_str());
+            }
 
             // Make sure the message ends with a newline
             if (message[AzFramework::StringFunc::StringLength(message) - 1] != '\n')

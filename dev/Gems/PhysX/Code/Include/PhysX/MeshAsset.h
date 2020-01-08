@@ -13,14 +13,10 @@
 
 #pragma once
 
+#include <common/PxBase.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetTypeInfoBus.h>
 #include <AzFramework/Physics/Material.h>
-
-namespace physx
-{
-    class PxBase;
-}
 
 namespace PhysX
 {
@@ -35,6 +31,14 @@ namespace PhysX
 
             AZ_CLASS_ALLOCATOR(MeshAsset, AZ::SystemAllocator, 0);
             AZ_RTTI(MeshAsset, "{7A2871B9-5EAB-4DE0-A901-B0D2C6920DDB}", AZ::Data::AssetData);
+
+            ~MeshAsset()
+            {
+                if (m_meshData)
+                {
+                    m_meshData->release();
+                }
+            }
 
             physx::PxBase* GetMeshData()
             {

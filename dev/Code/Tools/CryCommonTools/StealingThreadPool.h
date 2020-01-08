@@ -17,7 +17,7 @@
 
 
 #include "ThreadUtils.h"
-#include <AzCore/std/parallel/conditional_variable.h>
+#include <AzCore/std/parallel/condition_variable.h>
 #include <AzCore/std/parallel/atomic.h>
 
 namespace ThreadUtils {

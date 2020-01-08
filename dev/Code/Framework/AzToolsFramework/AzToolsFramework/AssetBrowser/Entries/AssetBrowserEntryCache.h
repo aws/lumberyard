@@ -53,6 +53,7 @@ namespace AzToolsFramework
             AZStd::unordered_map<AZ::s64, SourceAssetBrowserEntry*> m_sourceIdMap;
             AZStd::unordered_map<AZ::Data::AssetId, ProductAssetBrowserEntry*> m_productAssetIdMap;
             AZStd::unordered_map<AZ::s64, AZStd::string> m_knownScanFolders;
+            AZStd::unordered_map<AZStd::string, AZ::s64> m_absolutePathToFileId;
 
             AZStd::unordered_set<AssetBrowserEntry*> m_dirtyThumbnailsSet;
             static const char* s_environmentVariableName;

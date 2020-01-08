@@ -353,29 +353,20 @@ namespace GraphCanvas
                 return HasAttribute(Styling::Attribute::TextAlignment) || HasAttribute(Styling::Attribute::TextVerticalAlignment);
             }
 
-            Qt::Alignment GetTextAlignment(Qt::Alignment alignment) const
+            Qt::Alignment GetTextAlignment(Qt::Alignment defaultAlignment) const
             {
                 bool horizontalAlignment = HasAttribute(Styling::Attribute::TextAlignment);
                 bool verticalAlignment = HasAttribute(Styling::Attribute::TextVerticalAlignment);
 
                 if (horizontalAlignment || verticalAlignment)
                 {
-                    Qt::Alignment alignment;
-
-                    if (horizontalAlignment)
-                    {
-                        alignment = alignment | GetAttribute(Styling::Attribute::TextAlignment, Qt::AlignmentFlag::AlignLeft);
-                    }
-
-                    if (verticalAlignment)
-                    {
-                        alignment = alignment | GetAttribute(Styling::Attribute::TextVerticalAlignment, Qt::AlignmentFlag::AlignTop);
-                    }
+                    Qt::Alignment alignment = GetAttribute(Styling::Attribute::TextAlignment, Qt::AlignmentFlag::AlignLeft);
+                    alignment = alignment | GetAttribute(Styling::Attribute::TextVerticalAlignment, Qt::AlignmentFlag::AlignTop);
 
                     return alignment;
                 }
 
-                return alignment;
+                return defaultAlignment;
             }
 
             void AddSelector(const AZStd::string_view& selector)
@@ -500,8 +491,8 @@ namespace GraphCanvas
                 PatternFillConfiguration configuration;
 
                 configuration.m_minimumTileRepetitions = GetAttribute(Styling::Attribute::MinimumRepetitions, 1);
-                configuration.m_evenRowOffsetPercent = GetAttribute(Styling::Attribute::EvenOffsetPercent, 0.0);
-                configuration.m_oddRowOffsetPercent = GetAttribute(Styling::Attribute::OddOffsetPercent, 0.0);
+                configuration.m_evenRowOffsetPercent = GetAttribute(Styling::Attribute::EvenOffsetPercent, 0.0f);
+                configuration.m_oddRowOffsetPercent = GetAttribute(Styling::Attribute::OddOffsetPercent, 0.0f);
 
                 return configuration;
             }

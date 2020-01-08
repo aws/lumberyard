@@ -33,6 +33,7 @@ namespace EMotionFX
 
     BlendTreeSetTransformNode::BlendTreeSetTransformNode()
         : AnimGraphNode()
+        , m_transformSpace(TRANSFORM_SPACE_WORLD)
     {
         // setup the input ports
         InitInputPorts(4);

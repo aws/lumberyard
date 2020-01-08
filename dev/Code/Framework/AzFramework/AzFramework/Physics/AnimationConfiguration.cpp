@@ -28,6 +28,7 @@ namespace Physics
                 ->Field("hitDetectionConfig", &AnimationConfiguration::m_hitDetectionConfig)
                 ->Field("ragdollConfig", &AnimationConfiguration::m_ragdollConfig)
                 ->Field("clothConfig", &AnimationConfiguration::m_clothConfig)
+                ->Field("simulatedObjectColliderConfig", &AnimationConfiguration::m_simulatedObjectColliderConfig)
             ;
         }
     }

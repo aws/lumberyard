@@ -137,6 +137,13 @@ namespace AZ
             * @return The found entityID - this could be NULL if no entity exists that matches.
             */
             virtual AZ::EntityId FindCreatedEntityByExistingObject(const CBaseObject* sourceObject) = 0;
+
+            /**
+            * Generates a physics material library based on the data from Cry Engine surface types
+            * @param targetFilePath - Full path to the file the material library should be written to
+            * @return The success result.
+            */
+            virtual bool CreateSurfaceTypeMaterialLibrary(const AZStd::string& targetFilePath) = 0;
         };
 
         using LegacyConversionRequestBus = AZ::EBus<LegacyConversionRequests>;

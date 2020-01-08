@@ -12,9 +12,11 @@
 
 #pragma once
 
-#include <AzToolsFramework/UI/Logging/LogLine.h>
+#include <AzCore/PlatformDef.h>
 
+AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") // conditional expression is constant
 #include <AzQtComponents/Components/Widgets/TableView.h>
+AZ_POP_DISABLE_WARNING
 
 #include <QVector>
 #include <QAbstractTableModel>
@@ -24,6 +26,8 @@ namespace AzToolsFramework
 {
     namespace Logging
     {
+        class LogLine;
+
         class LogTableModel
             : public AzQtComponents::TableViewModel
         {
@@ -63,7 +67,9 @@ namespace AzToolsFramework
             QString toString(bool details);
 
         private:
+            AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") // conditional expression is constant
             QVector<LogLine> m_lines;
+            AZ_POP_DISABLE_WARNING
             using ContextDetails = QMap<QString, QString>;
             QHash<int, ContextDetails> m_details;
             ContextDetails m_tmpDetails;

@@ -17,8 +17,8 @@
 #include <CloudCanvas/CloudCanvasMappingsBus.h>
 
 /// To use a specific AWS API request you have to include each of these.
-#pragma warning(push)
-#pragma warning(disable: 4355) // <future> includes ppltasks.h which throws a C4355 warning: 'this' used in base member initializer list
+#include <AzCore/PlatformDef.h>
+AZ_PUSH_DISABLE_WARNING(4251 4355 4996, "-Wunknown-warning-option")
 #include <aws/lambda/LambdaClient.h>
 #include <aws/lambda/model/ListFunctionsRequest.h>
 #include <aws/lambda/model/ListFunctionsResult.h>
@@ -26,7 +26,7 @@
 #include <aws/lambda/model/InvokeResult.h>
 #include <aws/core/utils/Outcome.h>
 #include <aws/core/utils/memory/stl/AWSStringStream.h>
-#pragma warning(pop)
+AZ_POP_DISABLE_WARNING
 
 namespace CloudGemAWSScriptBehaviors
 {

@@ -134,7 +134,7 @@ namespace Visibility
                         ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Portal.png")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Portal.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Portal.svg")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/portal-component")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorPortalComponent::m_config, "m_config", "No Description")
@@ -236,7 +236,10 @@ namespace Visibility
         // This means that dynamic slices cannot effectively contain vis-areas until we fix the core rendering system to allow that.
 
         const auto visGUID = static_cast<AZ::u64>(entityId);
-        m_area = GetIEditor()->Get3DEngine()->CreateVisArea(visGUID);
+        if(!m_area)
+        {
+            m_area = GetIEditor()->Get3DEngine()->CreateVisArea(visGUID);
+        }
 #endif
 
         m_AZCachedWorldTransform = AZ::Transform::CreateIdentity();

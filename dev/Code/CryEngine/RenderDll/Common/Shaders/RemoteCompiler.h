@@ -32,19 +32,18 @@ namespace NRemoteCompiler
         ESRecvFailed,
     };
 
-    enum EProvoHardwareModes : int8
-    {
-        PHMInvalidMode  = -1,
-        PHMBaseMode     = 0,
-        PHMCommonMode   = 1,
-        PHMNeoMode      = 2
-    };
+#if defined(AZ_PLATFORM_PROVO) || defined(TOOLS_SUPPORT_PROVO)
+#include "Provo/RemoteCompiler_h_provo.inl"
+#endif
+#if defined(AZ_PLATFORM_XENIA) || defined(TOOLS_SUPPORT_XENIA)
+#include "Xenia/RemoteCompiler_h_xenia.inl"
+#endif
 
     enum EShaderCompiler
     {
         eSC_Unknown,
-        eSC_Orbis_DXC, // ACCEPTED_USE
-        eSC_Durango_FXC, // ACCEPTED_USE
+        eSC_Orbis_DXC,
+        eSC_Durango_FXC,
         eSC_D3D11_FXC,
         eSC_GLSL_HLSLcc,
         eSC_METAL_HLSLcc,

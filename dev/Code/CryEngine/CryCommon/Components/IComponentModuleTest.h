@@ -18,7 +18,7 @@
 #include <IComponent.h>
 
 class IComponentModuleTest;
-DECLARE_COMPONENT_POINTERS(IComponentModuleTest);
+DECLARE_SMART_POINTERS(IComponentModuleTest);
 
 //! Exists to test component functionality when those components are used
 //! across module (DLL) boundaries.

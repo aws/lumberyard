@@ -37,6 +37,8 @@
         #include "Xenia/ProjectDefines_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ProjectDefines_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ProjectDefines_h_salem.inl"
     #endif
 #elif defined(WIN32) || defined(WIN64)
 #if !defined(_RELEASE) || defined(PERFORMANCE_BUILD)
@@ -64,6 +66,8 @@ typedef uint16 vtx_idx;
         #include "Xenia/ProjectDefines_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ProjectDefines_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ProjectDefines_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -113,6 +117,8 @@ typedef uint32 vtx_idx;
         #include "Xenia/ProjectDefines_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ProjectDefines_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ProjectDefines_h_salem.inl"
     #endif
 #else
 #define PROJECTDEFINES_H_TRAIT_DISABLE_MONOLITHIC_PROFILING_MARKERS 1
@@ -203,13 +209,13 @@ typedef uint32 vtx_idx;
 #endif
 
 // Reflect texture slot information - only used in the editor
-#if defined(WIN32) || defined(WIN64) || defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(WIN32) || defined(WIN64) || defined(AZ_PLATFORM_MAC)
 #define SHADER_REFLECT_TEXTURE_SLOTS 1
 #else
 #define SHADER_REFLECT_TEXTURE_SLOTS 0
 #endif
 
-#if (defined(WIN32) || defined(WIN64) || defined(AZ_PLATFORM_APPLE_OSX)) && (!defined(_RELEASE) || defined(RESOURCE_COMPILER))
+#if (defined(WIN32) || defined(WIN64) || defined(AZ_PLATFORM_MAC)) && (!defined(_RELEASE) || defined(RESOURCE_COMPILER))
 #define CRY_ENABLE_RC_HELPER 1
 #endif
 

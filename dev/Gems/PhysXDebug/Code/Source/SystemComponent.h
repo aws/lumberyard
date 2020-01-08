@@ -112,7 +112,7 @@ namespace PhysXDebug
         , public ImGui::ImGuiUpdateListenerBus::Handler
 #endif // IMGUI_ENABLED
 #ifdef PHYSXDEBUG_GEM_EDITOR
-        , public Physics::SystemNotificationBus::Handler
+        , public Physics::WorldNotificationBus::Handler
 #endif // PHYSXDEBUG_GEM_EDITOR
     {
     public:
@@ -151,8 +151,8 @@ namespace PhysXDebug
         void OnCrySystemInitialized(ISystem&, const SSystemInitParams&) override;
 
 #ifdef PHYSXDEBUG_GEM_EDITOR
-        // Physics::SystemNotificationBus
-        void OnPostPhysicsUpdate(float, Physics::World*) override;
+        // Physics::WorldNotificationBus
+        void OnPostPhysicsUpdate(float) override;
 #endif
 
     private:
@@ -226,10 +226,6 @@ namespace PhysXDebug
         AZStd::vector<AZ::u32> m_jointIndexBuffer;
         AZStd::vector<AZ::Vector3> m_jointLineBuffer;
         AZStd::vector<bool> m_jointLineValidityBuffer;
-
-        // imgui curve editor
-        ImGui::CurveEditorWindowParams m_windowParams;
-        int m_maxPoints;
     };
 
     /// Possible console parameters for physx_Debug cvar.

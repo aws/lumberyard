@@ -850,10 +850,22 @@ namespace EMotionFX
         void SetThreadIndex(uint32 index);
 
         void DrawSkeleton(Pose& pose, const AZ::Color& color);
+        static void ApplyMotionExtractionDelta(Transform& inOutTransform, const Transform& trajectoryDelta);
         void ApplyMotionExtractionDelta(const Transform& trajectoryDelta);
         void ApplyMotionExtractionDelta();
         void MotionExtractionCompensate(EMotionExtractionFlags motionExtractionFlags = (EMotionExtractionFlags)0);
-        void MotionExtractionCompensate(Transform& inOutMotionExtractionNodeTransform, EMotionExtractionFlags motionExtractionFlags = (EMotionExtractionFlags)0);
+        void MotionExtractionCompensate(Transform& inOutMotionExtractionNodeTransform,
+            EMotionExtractionFlags motionExtractionFlags = (EMotionExtractionFlags)0);
+
+        /**
+         * Remove the trajectory transform from the input transformation.
+         * @param[out] inOutMotionExtractionNodeTransform Local space transformation of the motion extraction joint.
+         * @param[in] localSpaceBindPoseTransform Bind pose transform of the motion extraction joint in local space.
+         * @param[in] motionExtractionFlags Motion extraction capture options.
+         */
+        static void MotionExtractionCompensate(Transform& inOutMotionExtractionNodeTransform,
+            const Transform& localSpaceBindPoseTransform,
+            EMotionExtractionFlags motionExtractionFlags = (EMotionExtractionFlags)0);
 
         void SetMotionExtractionEnabled(bool enabled);
         bool GetMotionExtractionEnabled() const;

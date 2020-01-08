@@ -12,6 +12,7 @@
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenus/NodeGroupContextMenu.h>
 
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/NodeGroupMenuActions/NodeGroupContextMenuActions.h>
+#include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ConstructMenuActions/ConstructPresetMenuActions.h>
 
 namespace GraphCanvas
 {
@@ -19,17 +20,24 @@ namespace GraphCanvas
     // NodeGroupContextMenu
     /////////////////////////
     
-    NodeGroupContextMenu::NodeGroupContextMenu(QWidget* parent)
-        : EditorContextMenu(parent)
+    NodeGroupContextMenu::NodeGroupContextMenu(EditorId editorId, QWidget* parent)
+        : EditorContextMenu(editorId, parent)
     {
         m_editActionsGroup.PopulateMenu(this);
 
         AddActionGroup(EditGroupTitleMenuAction::GetNodeGroupContextMenuActionGroupId());
         AddMenuAction(aznew EditGroupTitleMenuAction(this));
-
+        
         m_nodeGroupActionsGroup.PopulateMenu(this);
-
         m_alignmentActionsGroup.PopulateMenu(this);
+
+        AddActionGroup(CreatePresetFromSelection::GetCreateConstructContextMenuActionGroupId());
+
+        {
+            // Preset Creation
+            m_createPresetFrom = aznew CreatePresetFromSelection(this);
+            AddMenuAction(m_createPresetFrom);
+        }
     }
     
     void NodeGroupContextMenu::OnRefreshActions(const GraphId& graphId, const AZ::EntityId& targetId)
@@ -38,5 +46,7 @@ namespace GraphCanvas
         AZ_UNUSED(targetId);
 
         m_editActionsGroup.SetPasteEnabled(false);
+
+        m_nodeGroupActionsGroup.RefreshPresets();
     }
 }

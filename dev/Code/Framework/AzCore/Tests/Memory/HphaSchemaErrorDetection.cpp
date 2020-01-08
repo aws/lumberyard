@@ -17,6 +17,10 @@
 
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/Memory/Memory.h>
+#include <AzCore/Debug/StackTracer.h>
+#include <AzCore/Debug/Trace.h>
+#include <AzCore/Math/Sfmt.h>
+
 
 namespace Internal
 {
@@ -34,12 +38,12 @@ namespace Internal
         }
     }
 
+    using AZ::Debug::SymbolStorage;
+    using AZ::Debug::Trace;
+
 #define DEBUG_ALLOCATOR
 #include <AzCore/Memory/HphaSchema.cpp>
 #include <AzCore/Memory/MallocSchema.cpp>
-#include <AzCore/Math/Random.cpp>
-#include <AzCore/Math/Sfmt.cpp>
-#include <AzCore/Debug/StackTracer.cpp>
 #undef DEBUG_ALLOCATOR
 }
 
@@ -49,12 +53,12 @@ namespace UnitTest
     // to avoid SystemAllocator's symbols to be used (since they will call the HphaSchema implementation that does not
     // define DEBUG_ALLOCATOR
     class TestAllocator
-        : public AZ::AllocatorBase<Internal::AZ::HphaSchema>
+        : public AZ::SimpleSchemaAllocator<Internal::AZ::HphaSchema>
     {
     public:
         AZ_TYPE_INFO(TestAllocator, "{ACE2D6E5-4EB8-4DD2-AE95-6BDFD0476801}");
 
-        using Base = AZ::AllocatorBase<Internal::AZ::HphaSchema>;
+        using Base = AZ::SimpleSchemaAllocator<Internal::AZ::HphaSchema>;
         using Descriptor = Base::Descriptor;
 
         TestAllocator()
@@ -64,12 +68,12 @@ namespace UnitTest
 
     // Another allocator to test allocating/deallocating with different allocators
     class AnotherTestAllocator
-        : public AZ::AllocatorBase<Internal::AZ::HphaSchema>
+        : public AZ::SimpleSchemaAllocator<Internal::AZ::HphaSchema>
     {
     public:
         AZ_TYPE_INFO(AnotherTestAllocator, "{83038931-010E-407F-8183-2ACBB50706C2}");
 
-        using Base = AZ::AllocatorBase<Internal::AZ::HphaSchema>;
+        using Base = AZ::SimpleSchemaAllocator<Internal::AZ::HphaSchema>;
         using Descriptor = Base::Descriptor;
 
         AnotherTestAllocator()
@@ -120,7 +124,7 @@ namespace UnitTest
 
             if (m_expectedAsserts > 0)
             {
-                AZ_TEST_STOP_ASSERTTEST(m_expectedAsserts);
+                AZ_TEST_STOP_TRACE_SUPPRESSION(m_expectedAsserts);
             }
         }
 
@@ -170,7 +174,7 @@ namespace UnitTest
             // We print here messages that are not printed by the UnitTest's TraceBusRedirector
             if (AZStd::string_view(window) == "HPHA")
             {
-                testing::internal::ColoredPrintf(testing::internal::COLOR_RED, "[  MEMORY  ] %s", message);
+                ColoredPrintf(COLOR_RED, "[  MEMORY  ] %s", message);
             }
             return true;
         }
@@ -195,7 +199,7 @@ namespace UnitTest
 
     TEST_F(HphaSchemaErrorDetectionTest, BucketLeak)
     {
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         m_nonEmptyBuckets.m_expected = 1;
         m_expectedAsserts = 1;
 
@@ -206,7 +210,7 @@ namespace UnitTest
     // Leak on two different buckets
     TEST_F(HphaSchemaErrorDetectionTest, TwoBucketLeak)
     {
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         m_nonEmptyBuckets.m_expected = 2;
         m_expectedAsserts = 2;
 
@@ -219,7 +223,7 @@ namespace UnitTest
 
     TEST_F(HphaSchemaErrorDetectionTest, DoubleDelete)
     {
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         m_doubleDelete.m_expected = 1;
         m_nonEmptyBuckets.m_expected = 1; // double deletes produce memory tracking to fail since the counters change
         m_expectedAsserts = 3;
@@ -232,11 +236,10 @@ namespace UnitTest
 AZ_PUSH_DISABLE_WARNING(4700, "-Wuninitialized")
     TEST_F(HphaSchemaErrorDetectionTest, InvalidDelete)
     {
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         m_deletePtrNotInBucket.m_expected = 1;
         m_doubleDelete.m_expected = 1; // invalid deletes will also produce this
-        m_overflow.m_expected = 1; // invalid deletes will also produce this
-        m_expectedAsserts = 4;
+        m_expectedAsserts = 3;
 
         AZ::AllocatorInstance<AnotherTestAllocator>::Create();
 
@@ -310,7 +313,7 @@ AZ_POP_DISABLE_WARNING
         pointerToEnd[0] = 0x62;
 
         // delete the object, we should get the overflow detected
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         m_overflow.m_expected = 1;
         m_expectedAsserts = 1;
         delete someObject;

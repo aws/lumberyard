@@ -1,0 +1,9 @@
+{
+    "auto":
+    {
+        "EMotionFXSDK/MCore/Platform/Linux":
+        [
+            "../Common/FileOffsetType/MCore/Source/DiskFile_FileOffsetType.cpp"
+        ]
+    }
+}

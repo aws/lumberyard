@@ -28,9 +28,14 @@ from waflib.Configure import conf, ConfigurationContext, REGISTERED_CONF_FUNCTIO
 from waf_branch_spec import LUMBERYARD_ENGINE_PATH, LMBR_WAF_VERSION_TAG, BINTEMP_CACHE_3RD_PARTY, BINTEMP_CACHE_TOOLS, BINTEMP_MODULE_DEF
 
 import settings_manager
+import lumberyard
 from utils import is_value_true, parse_json_file
 from compile_settings_test import load_test_settings
 from compile_settings_dedicated import load_dedicated_settings
+
+from cry_utils import append_kw_entry
+from lmbr_install_context import LmbrInstallContext
+from runpy import run_path
 
 WAF_TOOL_ROOT_DIR = os.path.join(LUMBERYARD_ENGINE_PATH, "Tools", "build","waf-1.7.13")
 LMBR_WAF_TOOL_DIR = os.path.join(WAF_TOOL_ROOT_DIR, "lmbrwaflib")
@@ -1084,6 +1089,42 @@ def is_valid_configuration_request(ctx, debug_tag='lumberyard', **kw):
     return True
 
 
+@conf
+def process_restricted_settings(ctx, kw):
+
+    is_install_ctx = isinstance(ctx, LmbrInstallContext)
+    target = kw['target']
+
+    for p0, p1, p2, p3 in ctx.env['RESTRICTED_PLATFORMS']:
+
+        # the install context has no used for the file list so don't search for it specifically
+        if not is_install_ctx:
+            restricted_filelist_kw = '{}_file_list'.format(p1)
+
+            # Unless the caller has overridden, look to see if we can automatically attach any waf_files for the platform
+            if restricted_filelist_kw not in kw:
+                waf_file = os.path.join(p0, '{0}_{1}.waf_files'.format(target.lower(), p1))
+                script_dir = os.path.dirname(ctx.cur_script.abspath())
+                if os.path.exists(os.path.join(script_dir, waf_file)):
+                    append_kw_entry(kw, restricted_filelist_kw, waf_file)
+
+        # If a restricted script is specified, try and open a platform-specific version of the base calling script
+        if 'restricted_script' in kw:
+            script_dir, script_base = os.path.split(ctx.cur_script.abspath())
+            script_root, script_ext = os.path.splitext(script_base)
+            restricted_script_filename = ''
+            if len(script_ext) > 0:
+                restricted_script_filename = os.path.join(script_dir, p0, '{0}_{1}.{2}'.format(script_root, p1, script_ext))
+            else:
+                restricted_script_filename = os.path.join(script_dir, p0, '{0}_{1}'.format(script_root, p1))
+            if os.path.exists(restricted_script_filename):
+
+                # Open the script and look for the specific function name passed in. If we find it, call it with our parameters
+                restricted_script = run_path(restricted_script_filename)
+                if kw['restricted_script'] in restricted_script:
+                    restricted_script[kw['restricted_script']](ctx, kw)
+
+
 def initialize_common_compiler_settings(ctx):
     """
     Initialize the common env values that each platform will populate
@@ -1260,6 +1301,8 @@ def load_compile_rules_for_enabled_platforms(ctx):
     # Update the validated platforms so it will be carried over to project_generator commands
     ctx.update_valid_configurations_file()
     Logs.info("[WAF] 'Initialize Build Variants' successful ({})".format(str(configure_timer)))
+
+    ctx.generate_ib_profile_xml()
 
 
 def wrap_execute(execute_method):
@@ -1673,12 +1716,21 @@ def update_platform_availability_from_options(ctx):
             continue
 
         # Check if the platform is enabled in setup assistant (if the platform is filtered by a setup assistant capability of not)
-        sa_capability = enabled_target_platform.attributes.get('sa_capability', None)
-        if sa_capability and enabled_capabilities:
-            capability_key = sa_capability['key']
-            capability_desc = sa_capability['description']
-            if capability_key not in enabled_capabilities:
-                Logs.debug('lumberyard: Removing target platform {} due to "{}" not checked in Setup Assistant.'.format(enabled_target_platform.name(), capability_desc))
+        sa_capabilities = enabled_target_platform.attributes.get('sa_capability', None)
+        if sa_capabilities and enabled_capabilities:
+
+            if not isinstance(sa_capabilities, list):
+                sa_capabilities = [sa_capabilities]
+
+            for sa_capability in sa_capabilities:
+                capability_key = sa_capability['key']
+                capability_desc = sa_capability['description']
+                if capability_key in enabled_capabilities:
+                    break
+
+            else:
+                descriptions = ', '.join([capability['description'] for capability in sa_capabilities])
+                Logs.debug('lumberyard: Removing target platform {} due to none of the following being checked in Setup Assistant: {}.'.format(enabled_target_platform.name(), descriptions))
                 enabled_target_platform.set_enabled(False)
                 continue
 
@@ -1687,3 +1739,103 @@ def update_platform_availability_from_options(ctx):
                 enabled_target_platform.set_enabled(False)
                 continue
 
+
+##
+## The following are the default no-op implementations of various multi_conf functions that can be registered in any number different platform
+## instances and perform platform-specific functionality as needed. The description for each of these registrations will describe their purpose
+##
+
+
+@lumberyard.multi_conf
+def check_ib_flag(ctx, bld_cmd, ib_result, dev_tool_accelerated):
+    """
+    Call to check the bld command, the result of an incredibuild query (xgconsole), and the flag if the dev tool acceleration is enabled
+    to properly print any warning if a specific platform doesnt meet the requirements for incredibuild (licesnes)
+    
+    :param ctx:                     Context
+    :param bld_cmd:                 The build command that is invoking incredibuild
+    :param ib_result:               The result of the xgconsole query (to check the installed licenses)
+    :param dev_tool_accelerated:    Flag that determines of the 'devToolAccelerate' package is installed
+    :return: None expected
+    """
+    return None
+
+
+@lumberyard.multi_conf
+def ib_package_info(ctx, platform):
+    """
+    Call to display the incredibuild information for the package required to accelerate the particular platform
+    :param ctx:         Context
+    :param platform:    The platform to check to see if we need to display the incredibuild package information
+    :return: None expected
+    """
+    return None
+
+
+@lumberyard.multi_conf
+def add_restricted_3rd_party_subpaths(ctx, third_party_subpaths_map):
+    """
+    For grebuilding some 3rd party libraries with WAF for restricted platforms, update the incoming map with the restricted platform name and
+    a subfolder that represents where the waf-built binaries will be built to
+    
+    :param ctx:                         Context
+    :param third_party_subpaths_map:    The third party sub folder to map to the restricted platform name
+    :return:
+    """
+    return None
+
+
+@lumberyard.multi_conf
+def update_host_tool_env_for_restricted_platforms(ctx, host_platform, env):
+    """
+    Update the incoming host tool environment for specifics (like defines) for a restricted platform.
+    
+    :param ctx:             Context
+    :param host_platform:   The host platform who's env we are updating
+    :param env:             The env to update for the restricted platform for the tools host environment
+    :return: Additional string to ultimately add to 'AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS' (the caller function must handle this logic)
+    """
+    return None
+
+
+@lumberyard.multi_conf
+def msvs_restricted_property_group_section(ctx):
+    """
+    Provide the format string parameter to insert into the MSVS template 'PROJECT_TEMPLATE' loop that is specific to the current restricted platform
+    :param ctx: Context
+    :return:    The string fragment for the 'PROJECT_TEMPLATE' to inject
+    """
+    return None
+
+
+@lumberyard.multi_conf
+def msvs_restricted_user_template_section(ctx):
+    """
+    Provide the format string parameter to insert into the MSVS template 'PROJECT_USER_TEMPLATE' loop that is specific to the current restricted platform
+    :param ctx: Context
+    :return:    The string fragment for the 'PROJECT_USER_TEMPLATE' to inject
+    """
+    return None
+
+
+@lumberyard.multi_conf
+def does_support_dx12(ctx):
+    """
+    Determine if DX12 is supported or not
+    :param ctx: Context
+    :return: True if it does, False if it doesnt
+    """
+    if ctx.env['DX12_INCLUDES'] and ctx.env['DX12_LIBPATH']:
+        return True
+    else:
+        return False
+
+
+@lumberyard.multi_conf
+def setup_copy_hosttools(ctx):
+    """
+    Invoke any additional settings processing (during configure) needed to copy additional files for host tools
+    :param ctx: Context
+    :return: None
+    """
+    return None

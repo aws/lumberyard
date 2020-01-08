@@ -21,23 +21,23 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 
+#include <AzFramework/CommandLine/CommandLine.h>
+
+#include <AzToolsFramework/UI/UICore/QWidgetSavedState.h>
+#include <AzToolsFramework/UI/LegacyFramework/Core/EditorFrameworkAPI.h>
+#include "MainWindowSavedState.h"
+
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // '...' needs to have dll-interface to be used by clients of class '...'
 #include <QtWidgets/QApplication>
 #include <QtCore/QTimer>
 #include <QtCore/QDir>
-
-#include <AzFramework/CommandLine/CommandLine.h>
-
-#include <AzToolsFramework/UI/LegacyFramework/Core/EditorFrameworkAPI.h>
-#include "MainWindowSavedState.h"
-#include <AzToolsFramework/UI/UICore/QWidgetSavedState.h>
-
 #include <QThread>
 #include <QAction>
 #include <QMenu>
 #include <QFontDatabase>
 #include <QResource>
-#include <QDir>
 #include <QProxyStyle>
+AZ_POP_DISABLE_WARNING
 
 #include <AzFramework/StringFunc/StringFunc.h>
 
@@ -46,7 +46,7 @@ extern int __argc;
 extern char **__argv;
 #endif
 
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 #include <mach-o/dyld.h>
 #endif
 
@@ -322,7 +322,7 @@ namespace AzToolsFramework
     void Framework::Init()
     {
         char myFileName[MAX_PATH] = {0};
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
         uint32_t bufSize = AZ_ARRAY_SIZE(myFileName);
         _NSGetExecutablePath(myFileName, &bufSize);
         if (strlen(myFileName) > 0)

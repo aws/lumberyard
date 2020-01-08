@@ -10,13 +10,12 @@
 *
 */
 
-#include <Tests/TestTypes.h>
-
 #include <AzCore/Asset/AssetManagerComponent.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Script/ScriptAsset.h>
 #include <AzCore/Script/ScriptSystemComponent.h>
 #include <AzCore/Script/ScriptContext.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzToolsFramework/ToolsComponents/ScriptEditorComponent.h>
 
 #include "EntityTestbed.h"
@@ -106,7 +105,6 @@ namespace UnitTest
                 systemEntity->CreateComponent<StreamerComponent>();
                 systemEntity->CreateComponent<AssetManagerComponent>();
                 systemEntity->CreateComponent("{A316662A-6C3E-43E6-BC61-4B375D0D83B4}"); // Usersettings component
-                systemEntity->CreateComponent("{22FC6380-C34F-4a59-86B4-21C0276BCEE3}"); // ObjectStream component
                 systemEntity->CreateComponent<ScriptSystemComponent>();
 
                 systemEntity->Init();

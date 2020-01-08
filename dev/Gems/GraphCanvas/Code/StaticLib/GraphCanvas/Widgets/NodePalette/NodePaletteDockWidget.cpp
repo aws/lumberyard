@@ -43,6 +43,7 @@ namespace GraphCanvas
     //////////////////////////
     // NodePaletteDockWidget
     //////////////////////////
+
     NodePaletteDockWidget::NodePaletteDockWidget(GraphCanvasTreeItem* treeItem, const EditorId& editorId, const QString& windowLabel, QWidget* parent, const char* mimeType, bool inContextMenu, AZStd::string_view identifier)
         : AzQtComponents::StyledDockWidget(parent)
         , m_ui(new Ui::NodePaletteDockWidget())
@@ -62,6 +63,28 @@ namespace GraphCanvas
         m_ui->nodePaletteWidget->SetupNodePalette(config);
 
         if (inContextMenu)
+        {
+            setTitleBarWidget(new QWidget());
+            setFeatures(NoDockWidgetFeatures);
+            setContentsMargins(15, 0, 0, 0);
+            m_ui->dockWidgetContents->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+        }
+
+        QObject::connect(m_ui->nodePaletteWidget, &NodePaletteWidget::OnCreateSelection, this, &NodePaletteDockWidget::OnContextMenuSelection);
+        QObject::connect(m_ui->nodePaletteWidget, &NodePaletteWidget::OnTreeItemDoubleClicked, this, &NodePaletteDockWidget::OnTreeItemDoubleClicked);
+    }
+
+    NodePaletteDockWidget::NodePaletteDockWidget(QWidget* parent, const QString& windowLabel, const NodePaletteConfig& nodePaletteConfig)
+        : AzQtComponents::StyledDockWidget(parent)
+        , m_ui(new Ui::NodePaletteDockWidget())
+        , m_editorId(nodePaletteConfig.m_editorId)
+    {
+        setWindowTitle(windowLabel);
+        m_ui->setupUi(this);        
+
+        m_ui->nodePaletteWidget->SetupNodePalette(nodePaletteConfig);
+
+        if (nodePaletteConfig.m_isInContextMenu)
         {
             setTitleBarWidget(new QWidget());
             setFeatures(NoDockWidgetFeatures);

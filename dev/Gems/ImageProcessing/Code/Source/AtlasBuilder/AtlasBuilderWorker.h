@@ -3,9 +3,9 @@
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-*or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+* distribution (the "License"). All use of this software is governed by the License,
+*or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 *WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
@@ -106,6 +106,13 @@ namespace TextureAtlasBuilder
     //! The size of the padded sorting units (important for compression)
     const int cellSize = 4;
 
+    //! Indexes of the products
+    enum class Product
+    {
+        TexatlasidxProduct = 0,
+        DdsProduct = 1
+    };
+
     //! An asset builder for texture atlases
     class AtlasBuilderWorker : public AssetBuilderSDK::AssetBuilderCommandBus::Handler
     {
@@ -123,6 +130,9 @@ namespace TextureAtlasBuilder
         //! Called by asset proccessor when it wants us to execute a job
         void ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request,
             AssetBuilderSDK::ProcessJobResponse& response);
+
+        //! Returns the job related information used by the builder
+        static AssetBuilderSDK::JobDescriptor GetJobDescriptor(const AZStd::string& sourceFile, const AtlasBuilderInput& input);
 
         //////////////////////////////////////////////////////////////////////////
         //! AssetBuilderSDK::AssetBuilderCommandBus interface

@@ -11,7 +11,12 @@
 */
 #pragma once
 
+#include <AzCore/PlatformDef.h>
+// qvector2d.h(131): warning C4244: 'initializing': conversion from 'int' to 'float', possible loss of data
+// qevent.h(72): warning C4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option")
 #include <QGraphicsWidget>
+AZ_POP_DISABLE_WARNING
 
 #include <GraphCanvas/GraphicsItems/GraphicsEffect.h>
 

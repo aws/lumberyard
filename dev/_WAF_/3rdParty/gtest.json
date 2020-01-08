@@ -1,0 +1,17 @@
+{
+    "name": [
+        "gtest",
+        "gtest_main",
+        "gmock",
+        "gmock_main"
+    ],
+    "source": "@3P:GoogleTest@",
+    "description": "Google Test",
+    "includes": [
+        "include"
+    ],
+    "defines": [
+        "GTEST_HAS_EXCEPTIONS=0"
+    ],
+    "lib_required": "True"
+}

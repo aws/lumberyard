@@ -73,6 +73,7 @@
 #include "../NodeMap.h"
 #include "LegacyAnimGraphNodeParser.h"
 #include <EMotionFX/CommandSystem/Source/AnimGraphParameterCommands.h>
+#include <EMotionFX/Source/SimulatedObjectSetup.h>
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Serialization/Utils.h>
@@ -1685,16 +1686,50 @@ namespace EMotionFX
         }
 
         AZ::ObjectStream::FilterDescriptor loadFilter(nullptr, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
-        EMotionFX::PhysicsSetup* result = AZ::Utils::LoadObjectFromBuffer<EMotionFX::PhysicsSetup>(buffer.data(), buffer.size(), serializeContext, loadFilter);
-        if (result)
+        EMotionFX::PhysicsSetup* resultPhysicsSetup = AZ::Utils::LoadObjectFromBuffer<EMotionFX::PhysicsSetup>(buffer.data(), buffer.size(), serializeContext, loadFilter);
+        if (resultPhysicsSetup)
         {
-            actor->SetPhysicsSetup(AZStd::shared_ptr<EMotionFX::PhysicsSetup>(result));
+            actor->SetPhysicsSetup(AZStd::shared_ptr<EMotionFX::PhysicsSetup>(resultPhysicsSetup));
         }
 
         return true;
     }
 
     //=================================================================================================
+
+    bool ChunkProcessorActorSimulatedObjectSetup::Process(MCore::File* file, Importer::ImportParameters& importParams)
+    {
+        const MCore::Endian::EEndianType endianType = importParams.mEndianType;
+        Actor* actor = importParams.mActor;
+
+        AZ::u32 bufferSize;
+        file->Read(&bufferSize, sizeof(AZ::u32));
+        MCore::Endian::ConvertUnsignedInt32(&bufferSize, endianType);
+
+        AZStd::vector<AZ::u8> buffer;
+        buffer.resize(bufferSize);
+        file->Read(&buffer[0], bufferSize);
+
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        if (!serializeContext)
+        {
+            AZ_Error("EMotionFX", false, "Can't get serialize context from component application.");
+            return false;
+        }
+
+        AZ::ObjectStream::FilterDescriptor loadFilter(nullptr, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
+        EMotionFX::SimulatedObjectSetup* resultSimulatedObjectSetup = AZ::Utils::LoadObjectFromBuffer<EMotionFX::SimulatedObjectSetup>(buffer.data(), buffer.size(), serializeContext, loadFilter);
+        if (resultSimulatedObjectSetup)
+        {
+            actor->SetSimulatedObjectSetup(AZStd::shared_ptr<EMotionFX::SimulatedObjectSetup>(resultSimulatedObjectSetup));
+        }
+
+        return true;
+    }
+
+    //=================================================================================================
+
 
     bool ChunkProcessorActorStdMaterialLayer::Process(MCore::File* file, Importer::ImportParameters& importParams)
     {
@@ -4453,7 +4488,7 @@ namespace EMotionFX
         //MCore::LogInfo("endian = %d", importParams.mEndianType);
 
         // swap the endian of the chunk data if needed
-    #ifdef MCORE_LITTLE_ENDIAN
+    #if !defined(AZ_BIG_ENDIAN) // LITTLE_ENDIAN
         if (importParams.mEndianType == MCore::Endian::ENDIAN_BIG)
         {
             waveletMotion->SwapChunkDataEndian();

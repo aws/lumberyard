@@ -23,7 +23,6 @@ namespace ScriptCanvasEditor
 {
     class VariableNodeDescriptorComponent
         : public NodeDescriptorComponent
-        , public GraphCanvas::NodeNotificationBus::Handler
         , public GraphCanvas::SceneMemberNotificationBus::Handler
         , public ScriptCanvas::VariableNotificationBus::Handler
         , public ScriptCanvas::VariableNodeNotificationBus::Handler
@@ -49,11 +48,7 @@ namespace ScriptCanvasEditor
 
         // VariableNodeNotificationBus
         void OnVariableIdChanged(const ScriptCanvas::VariableId& oldVariableId, const ScriptCanvas::VariableId& newVariableId) override;
-        ////
-
-        // NodeNotificationBus
-        void OnAddedToScene(const AZ::EntityId& sceneId) override;        
-        ////
+        ////        
 
         // SceneMemberNotifications
         void OnSceneMemberAboutToSerialize(GraphCanvas::GraphSerialization& graphSerialization) override;
@@ -69,6 +64,8 @@ namespace ScriptCanvasEditor
         ////
         
     protected:
+
+        void OnAddedToGraphCanvasGraph(const AZ::EntityId& sceneId, const AZ::EntityId& scriptCanvasEntityId) override;
     
         virtual void UpdateTitle(AZStd::string_view variableName);
 

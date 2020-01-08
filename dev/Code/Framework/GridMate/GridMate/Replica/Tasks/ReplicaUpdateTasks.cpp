@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <GridMate/Replica/Tasks/ReplicaUpdateTasks.h>
 #include <GridMate/Replica/SystemReplicas.h>
@@ -145,5 +144,3 @@ namespace GridMate
         return TaskStatus::Done;
     }
 } // namespace GridMate
-
-#endif // AZ_UNITY_BUILD

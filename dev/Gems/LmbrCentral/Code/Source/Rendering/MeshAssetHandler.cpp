@@ -362,7 +362,7 @@ namespace LmbrCentral
 
     const char* CharacterDefinitionAssetHandler::GetBrowserIcon() const
     {
-        return "Editor/Icons/Components/SkinnedMesh.png";
+        return "Editor/Icons/Components/SkinnedMesh.svg";
     }
 
     AZ::Uuid CharacterDefinitionAssetHandler::GetComponentTypeId() const

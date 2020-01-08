@@ -41,7 +41,7 @@ namespace Vegetation
         AZ_RTTI(StaticVegetationBlockerConfig, "{A4D79248-E264-4E44-9302-0FCBF142FFCB}", AreaConfig);
         static void Reflect(AZ::ReflectContext* context);
         
-        StaticVegetationBlockerConfig() : AreaConfig() { m_priority = s_priorityMax; m_layer = AreaLayer::Foreground; }
+        StaticVegetationBlockerConfig() : AreaConfig() { m_priority = AreaConstants::s_priorityMax; m_layer = AreaConstants::s_foregroundLayer; }
         bool m_showBoundingBox = false;
         bool m_showBlockedPoints = false;
         float m_maxDebugRenderDistance = 50.0f;
@@ -94,10 +94,10 @@ namespace Vegetation
 
         //////////////////////////////////////////////////////////////////////////
         // StaticVegetationBlockerRequestBus::Handler
-        float GetAreaPriority() const override;
-        void SetAreaPriority(float priority) override;
-        AreaLayer GetAreaLayer() const override;
-        void SetAreaLayer(AreaLayer type) override;
+        AZ::u32 GetAreaPriority() const override;
+        void SetAreaPriority(AZ::u32 priority) override;
+        AZ::u32 GetAreaLayer() const override;
+        void SetAreaLayer(AZ::u32 type) override;
         AZ::u32 GetAreaProductCount() const override;
         float GetBoundingBoxPadding() const override;
         void SetBoundingBoxPadding(float padding) override;

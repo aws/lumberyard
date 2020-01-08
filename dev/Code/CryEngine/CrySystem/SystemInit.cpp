@@ -14,7 +14,7 @@
 #include "StdAfx.h"
 #include "SystemInit.h"
 
-#if defined(AZ_RESTRICTED_PLATFORM)
+#if defined(AZ_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #undef AZ_RESTRICTED_SECTION
 #define SYSTEMINIT_CPP_SECTION_1 1
 #define SYSTEMINIT_CPP_SECTION_2 2
@@ -32,6 +32,7 @@
 #define SYSTEMINIT_CPP_SECTION_14 14
 #define SYSTEMINIT_CPP_SECTION_15 15
 #define SYSTEMINIT_CPP_SECTION_16 16
+#define SYSTEMINIT_CPP_SECTION_17 17
 #endif
 
 #if defined(MAP_LOADING_SLICING)
@@ -47,10 +48,13 @@
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzFramework/IO/LocalFileIO.h>
 #include "RemoteFileIO.h"
+#include "RemoteStorageDrive.h"
 
 #include <IEngineModule.h>
 #include <CryExtension/CryCreateClassInstance.h>
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
+#include <AzCore/IO/Streamer.h>
+#include <AzCore/IO/StreamerComponent.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
@@ -63,6 +67,7 @@
 
 #include <LoadScreenBus.h>
 #include <LyShine/Bus/UiSystemBus.h>
+#include <AzFramework/Logging/MissingAssetLogger.h>
 
 #if defined(APPLE) || defined(LINUX) && !defined(DEDICATED_SERVER)
 #include <dlfcn.h>
@@ -135,13 +140,13 @@
 #include "SoftCode/SoftCodeMgr.h"
 #include "ZLibCompressor.h"
 #include "ZLibDecompressor.h"
+#include "ZStdDecompressor.h"
 #include "LZ4Decompressor.h"
 #include "OverloadSceneManager/OverloadSceneManager.h"
 #include "ServiceNetwork.h"
 #include "RemoteCommand.h"
 #include "LevelSystem/LevelSystem.h"
 #include "ViewSystem/ViewSystem.h"
-#include "NullImplementation/NULLAudioSystems.h"
 #include "ISimpleHttpServer.h"
 #include "GemManager.h"
 #include "GameFilePathManager.h"
@@ -175,7 +180,7 @@
 #endif // !defined(AZ_RELEASE_BUILD)
 #endif
 
-#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_IOS)
 #include "MobileDetectSpec.h"
 #endif
 
@@ -205,12 +210,18 @@
 extern LONG WINAPI CryEngineExceptionFilterWER(struct _EXCEPTION_POINTERS* pExceptionPointers);
 #endif
 
-#if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
+#if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_14
-    #include "Provo/SystemInit_cpp_provo.inl"
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemInit_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemInit_cpp_salem.inl"
+    #endif
 #endif
 
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 
 #include <execinfo.h>
 #include <signal.h>
@@ -245,7 +256,7 @@ void CryEngineSignalHandler(int signal)
     abort();
 }
 
-#endif // #ifdef AZ_PLATFORM_APPLE
+#endif // AZ_TRAIT_OS_PLATFORM_APPLE
 
 #if defined(USE_UNIXCONSOLE)
 #if defined(LINUX) && !defined(ANDROID)
@@ -267,7 +278,6 @@ CUNIXConsole* pUnixConsole;
 // System.cfg can then be used to override them
 // This includes the Game DLL, although it is loaded elsewhere
 
-#define DLL_SOUND           "CrySoundSystem"
 #define DLL_NETWORK         "CryNetwork"
 #define DLL_ONLINE          "CryOnline"
 
@@ -303,6 +313,8 @@ CUNIXConsole* pUnixConsole;
         #include "Xenia/SystemInit_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemInit_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemInit_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -362,7 +374,7 @@ static inline void InlineInitializationProcessing(const char* sDescription)
 }
 
 #pragma warning(push)
-#pragma warning(disable:4723) // Allow divide by zero warnings so we can test the exception
+#pragma warning (disable:4723)  //This is the lowest scope that Visual Studio will allow for this warning. It's for case 2, divide by zero, below.
 //////////////////////////////////////////////////////////////////////////
 static void CmdCrashTest(IConsoleCmdArgs* pArgs)
 {
@@ -406,7 +418,7 @@ static void CmdCrashTest(IConsoleCmdArgs* pArgs)
             }
         case 6:
         {
-            CRY_ASSERT_MESSAGE(false, "Testing assert for testing crashes");
+            AZ_Assert(false, "Testing assert for testing crashes");
         }
         break;
         case 7:
@@ -538,7 +550,7 @@ struct SysSpecOverrideSinkConsole
 
 static ESystemConfigPlatform GetDevicePlatform()
 {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_WINDOWS_X64) || defined(AZ_PLATFORM_LINUX)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX)
     return CONFIG_PC;
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
@@ -547,17 +559,19 @@ static ESystemConfigPlatform GetDevicePlatform()
         #include "Xenia/SystemInit_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemInit_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemInit_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_ANDROID)
     return CONFIG_ANDROID;
-#elif defined(AZ_PLATFORM_APPLE_IOS)
+#elif defined(AZ_PLATFORM_IOS)
     return CONFIG_IOS;
 #elif defined(AZ_PLATFORM_APPLE_TV)
     return CONFIG_APPLETV;
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
     return CONFIG_OSX_METAL;
 #else
     AZ_Assert(false, "Platform not supported");
@@ -578,21 +592,17 @@ static void GetSpecConfigFileToLoad(ICVar* pVar, AZStd::string& cfgFile, ESystem
     case CONFIG_IOS:
         cfgFile = "ios";
         break;
-#if defined(AZ_RESTRICTED_PLATFORM)
+#if defined(AZ_PLATFORM_XENIA) || defined(TOOLS_SUPPORT_XENIA)
 #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_3
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemInit_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemInit_cpp_provo.inl"
-    #endif
+#include "Xenia/SystemInit_cpp_xenia.inl"
 #endif
-#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
-    case CONFIG_##PUBLICNAME:\
-        cfgFile = #publicname;\
-        break;
-        AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
-#undef AZ_RESTRICTED_PLATFORM_EXPANSION
+#if defined(AZ_PLATFORM_PROVO) || defined(TOOLS_SUPPORT_PROVO)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_3
+#include "Provo/SystemInit_cpp_provo.inl"
+#endif
+#if defined(AZ_PLATFORM_SALEM) || defined(TOOLS_SUPPORT_SALEM)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_3
+#include "Salem/SystemInit_cpp_salem.inl"
 #endif
     case CONFIG_OSX_METAL:
         cfgFile = "osx_metal";
@@ -629,6 +639,8 @@ static void GetSpecConfigFileToLoad(ICVar* pVar, AZStd::string& cfgFile, ESystem
         #include "Xenia/SystemInit_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemInit_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemInit_cpp_salem.inl"
     #endif
 #endif
         cfgFile += "_veryhigh.cfg";
@@ -742,7 +754,7 @@ static void LoadDetectedSpec(ICVar* pVar)
         }
         case CONFIG_IOS:
         {
-#if defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_IOS)
             AZStd::string file;
             if (MobileSysInspect::GetAutoDetectedSpecName(file))
             {
@@ -772,24 +784,17 @@ static void LoadDetectedSpec(ICVar* pVar)
 #endif
             break;
         }
-#if defined(AZ_RESTRICTED_PLATFORM)
+#if defined(AZ_PLATFORM_XENIA) || defined(TOOLS_SUPPORT_XENIA)
 #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_5
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemInit_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemInit_cpp_provo.inl"
-    #endif
+#include "Xenia/SystemInit_cpp_xenia.inl"
 #endif
-#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
-        case CONFIG_##PUBLICNAME:\
-        {\
-            pVar->Set(CONFIG_LOW_SPEC);\
-            GetISystem()->LoadConfiguration(#publicname "_low.cfg", pSysSpecOverrideSinkConsole);\
-            break;\
-        }
-        AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
-#undef AZ_RESTRICTED_PLATFORM_EXPANSION
+#if defined(AZ_PLATFORM_PROVO) || defined(TOOLS_SUPPORT_PROVO)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_5
+#include "Provo/SystemInit_cpp_provo.inl"
+#endif
+#if defined(AZ_PLATFORM_SALEM) || defined(TOOLS_SUPPORT_SALEM)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_5
+#include "Salem/SystemInit_cpp_salem.inl"
 #endif
         case CONFIG_APPLETV:
         {
@@ -1039,6 +1044,8 @@ bool CSystem::InitializeEngineModule(const char* dllName, const char* moduleClas
 #include "Xenia/SystemInit_cpp_xenia.inl"
 #elif defined(AZ_PLATFORM_PROVO)
 #include "Provo/SystemInit_cpp_provo.inl"
+#elif defined(AZ_PLATFORM_SALEM)
+#include "Salem/SystemInit_cpp_salem.inl"
 #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1168,6 +1175,8 @@ bool CSystem::OpenRenderLibrary(const char* t_rend, const SSystemInitParams& ini
         #include "Xenia/SystemInit_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemInit_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemInit_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1368,6 +1377,8 @@ bool CSystem::OpenRenderLibrary(int type, const SSystemInitParams& initParams)
         #include "Xenia/SystemInit_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemInit_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemInit_cpp_salem.inl"
     #endif
 #endif
 
@@ -1580,7 +1591,7 @@ bool CSystem::InitRenderer(WIN_HINSTANCE hinst, WIN_HWND hwnd, const SSystemInit
         return false;
     }
 
-#if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_ANDROID)
+#if defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_ANDROID)
     if (m_rWidthAndHeightAsFractionOfScreenSize->GetFlags() & VF_WASINCONFIG)
     {
         int displayWidth = 0;
@@ -1623,7 +1634,7 @@ bool CSystem::InitRenderer(WIN_HINSTANCE hinst, WIN_HWND hwnd, const SSystemInit
             m_rHeight->Set(displayHeight);
         }
     }
-#endif // defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_ANDROID)
+#endif // defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_ANDROID)
 
     if (m_env.pRenderer)
     {
@@ -1657,6 +1668,8 @@ bool CSystem::InitRenderer(WIN_HINSTANCE hinst, WIN_HWND hwnd, const SSystemInit
         #include "Xenia/SystemInit_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemInit_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemInit_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1885,6 +1898,8 @@ bool CSystem::InitPhysics(const SSystemInitParams& initParams)
         #include "Xenia/SystemInit_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemInit_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemInit_cpp_salem.inl"
     #endif
 #endif
 #if defined (AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -2259,7 +2274,7 @@ bool CSystem::LaunchAssetProcessor()
 
 #if defined(AZ_PLATFORM_WINDOWS)
     static const char* asset_processor_ext = ".exe";
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
     static const char* asset_processor_ext = ".app";
 #else
     static const char* asset_processor_ext = "";
@@ -2320,7 +2335,7 @@ bool CSystem::LaunchAssetProcessor()
     }
 
     return true;
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
     char full_launch_command[AZ_MAX_PATH_LEN] = { 0 };
     if (appRoot != nullptr)
     {
@@ -2333,7 +2348,7 @@ bool CSystem::LaunchAssetProcessor()
 
     int error = system(full_launch_command);
     return (error == 0);
-#endif // AZ_PLATFORM_APPLE_OSX
+#endif // AZ_PLATFORM_MAC
 #endif // REMOTE_ASSET_PROCESSOR
     AZ_Assert(false, "Could not start Asset Processor; platform not supported");
     return false;
@@ -2406,7 +2421,7 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
             AZStd::chrono::system_clock::time_point start, last;
             start = last = AZStd::chrono::system_clock::now();
             bool isAssetProcessorLaunched = false;
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
+#if defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
             //poll, wait for either connection or failure/timeout
             //we don't care if we actually connected and the negotiation failed until
             //the last check. This will give the user the maximum amount of time to
@@ -2691,8 +2706,32 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
 
         if (allowedRemoteIO)
         {
-            delete m_env.pFileIO;
-            m_env.pFileIO = new AZ::IO::RemoteFileIO();
+            m_env.pFileIO = new AZ::IO::RemoteFileIO(m_env.pFileIO); //use the local file io for exclusion io
+            
+            const AZ::IO::StreamStack::Preferences* preferences = nullptr;
+            AZ::StreamerComponentRequests::Bus::BroadcastResult(preferences, &AZ::StreamerComponentRequests::GetPreferences);
+            AZ_Assert(preferences, "Unable to retrieve AZ::IO::Streamer configuration preferences.");
+            if (preferences)
+            {
+                AZ::u32 fileHandleCacheSize;
+                switch (preferences->m_fileHandleCache)
+                {
+                case AZ::IO::StreamStack::FileHandleCache::Small:
+                    fileHandleCacheSize = 1;
+                    break;
+                case AZ::IO::StreamStack::FileHandleCache::Balanced:
+                    fileHandleCacheSize = 32;
+                    break;
+                case AZ::IO::StreamStack::FileHandleCache::Large:
+                    fileHandleCacheSize = 1024;
+                    break;
+                default:
+                    AZ_Assert(false, "Unsupported FileHandleCache type %i.", preferences->m_fileHandleCache);
+                    return false;
+                }
+                auto remoteDrive = AZStd::make_shared<AZ::IO::RemoteStorageDrive>(fileHandleCacheSize);
+                AZ::IO::Streamer::Instance().ReplaceStreamStackEntry("Virtual File System", remoteDrive);
+            }
         }
 
         if (engineConnection->IsConnected())
@@ -3083,43 +3122,45 @@ bool CSystem::Init3DEngine(const SSystemInitParams& initParams)
 bool CSystem::InitAudioSystem(const SSystemInitParams& initParams)
 {
     LOADING_TIME_PROFILE_SECTION(GetISystem());
-    // Initialize the main Audio system and implementation modules.
-    bool bAudioInitSuccess = false;
+
+    if (!Audio::Gem::AudioSystemGemRequestBus::HasHandlers())
+    {
+        // AudioSystem Gem has not been enabled for this project.
+        // This should not generate an error, but calling scope will warn.
+        return false;
+    }
+
+    bool useRealAudioSystem = false;
     if (!initParams.bPreview
-        && !m_bDedicatedServer
         && !initParams.bShaderCacheGen
+        && !initParams.bMinimal
+        && !m_bDedicatedServer
         && m_sys_audio_disable->GetIVal() == 0)
     {
-        INDENT_LOG_DURING_SCOPE();
-        bAudioInitSuccess = InitializeEngineModule(DLL_SOUND, AUDIO_SYSTEM_MODULE_NAME, initParams);
+        useRealAudioSystem = true;
+    }
+
+    bool result = false;
+    if (useRealAudioSystem)
+    {
+        Audio::Gem::AudioSystemGemRequestBus::BroadcastResult(result, &Audio::Gem::AudioSystemGemRequestBus::Events::Initialize, &initParams);
     }
     else
     {
-        new Audio::CNULLAudioSystem();
-        bAudioInitSuccess = true;
-
-        if (m_bDedicatedServer)
-        {
-            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "<Audio>: Running with NULL Audio System on Dedicated Server.");
-        }
-        else
-        {
-            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "<Audio>: Skipping Audio System Initialization - it was disabled by startup settings!");
-        }
+        Audio::Gem::AudioSystemGemRequestBus::BroadcastResult(result, &Audio::Gem::AudioSystemGemRequestBus::Events::Initialize, nullptr);
     }
 
-    if (bAudioInitSuccess)
+    if (result)
     {
         AZ_Assert(Audio::AudioSystemRequestBus::HasHandlers(),
-            "Initialization of Audio System was a success, yet Audio System is not fully connected to EBus!");
+            "Initialization of the Audio System succeeded, but the Audio System EBus is not connected!\n");
     }
     else
     {
-        AZ_Assert(!Audio::AudioSystemRequestBus::HasHandlers(),
-            "Initialization of Audio System was NOT a success, yet Audio System EBus is connected!");
+        AZ_Error(AZ_TRACE_SYSTEM_WINDOW, result, "The Audio System did not initialize correctly!\n");
     }
 
-    return bAudioInitSuccess;
+    return result;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3283,10 +3324,16 @@ void CSystem::OpenBasicPaks()
     // After game paks to have same search order as with files on disk
     m_env.pCryPak->OpenPack(assetsDir, "Engine.pak");
 
-    #if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
-        #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_15
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_15
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemInit_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemInit_cpp_salem.inl"
     #endif
+#endif
 
     m_env.pCryPak->OpenPack(assetsDir, shaderCachePakDir);
     m_env.pCryPak->OpenPack(assetsDir, shaderCacheStartupPakDir);
@@ -3541,11 +3588,11 @@ static bool CheckCPURequirements(CCpuFeatures* pCpu, CSystem* pSystem)
 /////////////////////////////////////////////////////////////////////////////////
 bool CSystem::Init(const SSystemInitParams& startupParams)
 {
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
     signal(SIGSEGV, CryEngineSignalHandler);
     signal(SIGTRAP, CryEngineSignalHandler);
     signal(SIGILL, CryEngineSignalHandler);
-#endif // #ifdef AZ_PLATFORM_APPLE
+#endif // AZ_TRAIT_OS_PLATFORM_APPLE
 
     LOADING_TIME_PROFILE_SECTION;
 
@@ -3805,6 +3852,8 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         CLoadingProfilerSystem::Init();
 #endif
 
+        m_missingAssetLogger = AZStd::make_unique<AzFramework::MissingAssetLogger>();
+
         //////////////////////////////////////////////////////////////////////////
         // Logging is only available after file system initialization.
         //////////////////////////////////////////////////////////////////////////
@@ -3970,7 +4019,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 
         // Need to load the engine.pak that includes the config files needed during initialization
         m_env.pCryPak->OpenPack("@assets@", "Engine.pak");
-#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_IOS)
         MobileSysInspect::LoadDeviceSpecMapping();
 #endif    
 
@@ -4258,7 +4307,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
                         m_env.pRenderer->EndFrame();
                     }
 
-#if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV) || defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_APPLE_TV) || defined(AZ_PLATFORM_MAC)
                     // Pump system events in order to update the screen
                     AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
 #endif
@@ -4290,15 +4339,15 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         //////////////////////////////////////////////////////////////////////////
         if (!startupParams.bMinimal)
         {
-            if (!InitAudioSystem(startupParams))
+            if (InitAudioSystem(startupParams))
             {
-                // Failure to initialize audio system is no longer a fatal error, warn here...
-                AZ_Warning(AZ_TRACE_SYSTEM_WINDOW, false, "<Audio>: Running without any AudioSystem!");
+                // Pump the Log - Audio initialization happened on a non-main thread, there may be log messages queued up.
+                gEnv->pLog->Update();
             }
             else
             {
-                // Pump the Log - audio initialization happened on a non-main thread, there may be log messages queued up.
-                gEnv->pLog->Update();
+                // Failure to initialize audio system is no longer a fatal or an error.  A warning is sufficient.
+                AZ_Warning(AZ_TRACE_SYSTEM_WINDOW, false, "<Audio>: Running without any AudioSystem!");
             }
         }
 
@@ -4775,11 +4824,16 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         InlineInitializationProcessing("CSystem::Init ZLibDecompressor");
 
         //////////////////////////////////////////////////////////////////////////
-        // Zlib decompressor
+        // LZ4 decompressor
         m_pILZ4Decompressor = new CLZ4Decompressor();
 
         InlineInitializationProcessing("CSystem::Init LZ4Decompressor");
 
+        //////////////////////////////////////////////////////////////////////////
+        // ZStd decompressor
+        m_pIZStdDecompressor = new CZStdDecompressor();
+
+        InlineInitializationProcessing("CSystem::Init ZStdDecompressor");
         //////////////////////////////////////////////////////////////////////////
         // Create PerfHUD
         //////////////////////////////////////////////////////////////////////////
@@ -6108,6 +6162,8 @@ void CSystem::CreateSystemVars()
         #include "Xenia/SystemInit_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemInit_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemInit_cpp_salem.inl"
     #endif
 #endif
         REGISTER_CVAR2("sys_rendersplashscreen", &g_cvars.sys_rendersplashscreen, nDefaultRenderSplashScreen, VF_NULL,
@@ -6268,6 +6324,8 @@ void CSystem::CreateSystemVars()
         #include "Xenia/SystemInit_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemInit_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemInit_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -6278,9 +6336,6 @@ void CSystem::CreateSystemVars()
     m_sys_GraphicsQuality = REGISTER_INT_CB("r_GraphicsQuality", 0, VF_ALWAYSONCHANGE,
         "Specifies the system cfg spec. 1=low, 2=med, 3=high, 4=very high)",
         LoadDetectedSpec);
-    
-    m_sys_SimulateTask = REGISTER_INT("sys_SimulateTask", 0, 0,
-            "Simulate a task in System:Update which takes X ms");
 
     m_sys_firstlaunch = REGISTER_INT("sys_firstlaunch", 0, 0,
             "Indicates that the game was run for the first time.");
@@ -6322,6 +6377,8 @@ void CSystem::CreateSystemVars()
         #include "Xenia/SystemInit_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemInit_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemInit_cpp_salem.inl"
     #endif
 #endif
 
@@ -6341,12 +6398,32 @@ void CSystem::CreateSystemVars()
 
     REGISTER_CVAR2("sys_vtune", &g_cvars.sys_vtune, 0, VF_NULL, "");
 
-    REGISTER_CVAR2("sys_streaming_CPU", &g_cvars.sys_streaming_cpu, 1, VF_NULL, "Specifies the physical CPU file IO thread run on");
-    REGISTER_CVAR2("sys_streaming_CPU_worker", &g_cvars.sys_streaming_cpu_worker, 5, VF_NULL, "Specifies the physical CPU file IO worker thread/s run on");
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_17
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemInit_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemInit_cpp_salem.inl"
+    #endif
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
+#   define SYS_STREAMING_CPU_DEFAULT_VALUE 1
+#   define SYS_STREAMING_CPU_WORKER_DEFAULT_VALUE 5
+#endif
+    REGISTER_CVAR2("sys_streaming_CPU", &g_cvars.sys_streaming_cpu, SYS_STREAMING_CPU_DEFAULT_VALUE, VF_NULL, "Specifies the physical CPU file IO thread run on");
+    REGISTER_CVAR2("sys_streaming_CPU_worker", &g_cvars.sys_streaming_cpu_worker, SYS_STREAMING_CPU_WORKER_DEFAULT_VALUE, VF_NULL, "Specifies the physical CPU file IO worker thread/s run on");
     REGISTER_CVAR2("sys_streaming_memory_budget", &g_cvars.sys_streaming_memory_budget, 10 * 1024, VF_NULL, "Temp memory streaming system can use in KB");
     REGISTER_CVAR2("sys_streaming_max_finalize_per_frame", &g_cvars.sys_streaming_max_finalize_per_frame, 0, VF_NULL,
         "Maximum stream finalizing calls per frame to reduce the CPU impact on main thread (0 to disable)");
     REGISTER_CVAR2("sys_streaming_max_bandwidth", &g_cvars.sys_streaming_max_bandwidth, 0, VF_NULL, "Enables capping of max streaming bandwidth in MB/s");
+    REGISTER_CVAR2("az_streaming_stats", &g_cvars.az_streaming_stats, 0, VF_NULL, "Show stats from AZ::IO::Streamer\n"
+        "0=off\n"
+        "1=on\n"
+    );
     REGISTER_CVAR2("sys_streaming_debug", &g_cvars.sys_streaming_debug, 0, VF_NULL, "Enable streaming debug information\n"
         "0=off\n"
         "1=Streaming Stats\n"
@@ -6435,6 +6512,8 @@ void CSystem::CreateSystemVars()
     REGISTER_CVAR2("sys_maxTimeStepForMovieSystem", &g_cvars.sys_maxTimeStepForMovieSystem, 0.1f, VF_NULL, "Caps the time step for the movie system so that a cut-scene won't be jumped in the case of an extreme stall.");
 
     REGISTER_CVAR2("sys_force_installtohdd_mode", &g_cvars.sys_force_installtohdd_mode, 0, VF_NULL, "Forces install to HDD mode even when doing DVD emulation");
+
+    REGISTER_CVAR2("sys_report_files_not_found_in_paks", &g_cvars.sys_report_files_not_found_in_paks, 0, VF_NULL, "Reports when files are searched for in paks and not found. 1 = log, 2 = warning, 3 = error");
 
     m_sys_preload = REGISTER_INT("sys_preload", 0, 0, "Preload Game Resources");
     REGISTER_COMMAND("sys_crashtest", CmdCrashTest, VF_CHEAT, "Make the game crash\n"
@@ -6539,6 +6618,8 @@ void CSystem::CreateSystemVars()
         #include "Xenia/SystemInit_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemInit_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemInit_cpp_salem.inl"
     #endif
 #endif
 
@@ -6555,11 +6636,15 @@ void CSystem::CreateSystemVars()
     REGISTER_CVAR2("sys_usePlatformSavingAPIEncryption", &g_cvars.sys_usePlatformSavingAPIEncryption, default_sys_usePlatformSavingAPIDefault, VF_CHEAT, "Use encryption cipher when using the platform APIs for saving and loading");
 #endif
 
-    REGISTER_CVAR2("sys_asserts", &g_cvars.sys_asserts, 1, VF_CHEAT,
-        "0 = Disable Asserts\n"
-        "1 = Enable Asserts\n"
-        "2 = Fatal Error on Assert\n"
-        );
+    // adding CVAR to toggle assert verbosity level
+    const int defaultAssertValue = 1;
+    REGISTER_CVAR2_CB("sys_asserts", &g_cvars.sys_asserts, defaultAssertValue, VF_CHEAT, 
+        "0 = Suppress Asserts\n"
+        "1 = Log Asserts\n"
+        "2 = Show Assert Dialog\n"
+        "Note: when set to '0 = Suppress Asserts', assert expressions are still evaluated. To turn asserts into a no-op, undefine AZ_ENABLE_TRACING and recompile.",
+        OnAssertLevelCvarChanged);
+    CSystem::SetAssertLevel(defaultAssertValue);
 
     REGISTER_CVAR2("sys_error_debugbreak", &g_cvars.sys_error_debugbreak, 0, VF_CHEAT, "__debugbreak() if a VALIDATOR_ERROR_DBGBREAK message is hit");
 

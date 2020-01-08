@@ -30,6 +30,7 @@ namespace EMotionFX
     BlendTreeMotionFrameNode::BlendTreeMotionFrameNode()
         : AnimGraphNode()
         , m_normalizedTimeValue(0.0f)
+        , m_emitEventsFromStart(false)
     {
         // setup input ports
         InitInputPorts(2);
@@ -250,6 +251,23 @@ namespace EMotionFX
 
         // output the right synctrack etc
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
+
+        if (uniqueData->m_rewindRequested)
+        {
+            if (m_emitEventsFromStart)
+            {
+                uniqueData->mNewTime = 0.0f;
+                uniqueData->mOldTime = 0.0f;
+            }
+            else
+            {
+                const float newTimeValue = uniqueData->GetDuration() * timeValue;
+                uniqueData->mNewTime = newTimeValue;
+                uniqueData->mOldTime = newTimeValue;
+            }
+            uniqueData->m_rewindRequested = false;
+        }
+
         if (motionConnection)
         {
             AnimGraphNode* motionNode = motionConnection->GetSourceNode();
@@ -280,6 +298,16 @@ namespace EMotionFX
         }
     }
 
+    void BlendTreeMotionFrameNode::Rewind(AnimGraphInstance* animGraphInstance)
+    {
+        AnimGraphNode::Rewind(animGraphInstance);
+
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        if (uniqueData)
+        {
+            uniqueData->m_rewindRequested = true;
+        }
+    }
 
     void BlendTreeMotionFrameNode::Reflect(AZ::ReflectContext* context)
     {
@@ -292,6 +320,7 @@ namespace EMotionFX
         serializeContext->Class<BlendTreeMotionFrameNode, AnimGraphNode>()
             ->Version(1)
             -> Field("normalizedTimeValue", &BlendTreeMotionFrameNode::m_normalizedTimeValue)
+            -> Field("emitEventsFromStart", &BlendTreeMotionFrameNode::m_emitEventsFromStart)
             ;
 
 
@@ -305,15 +334,30 @@ namespace EMotionFX
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeMotionFrameNode::m_normalizedTimeValue, "Normalized Time", "The normalized time value, which must be between 0 and 1. This is used when there is no connection plugged into the Time port.")
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeMotionFrameNode::m_normalizedTimeValue, "Normalized time", "The normalized time value, which must be between 0 and 1. This is used when there is no connection plugged into the Time port.")
                 ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                 ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeMotionFrameNode::m_emitEventsFromStart, "Emit events from start", "On rewinding the motion frame node, all motion events from the start of the motion up to the set normalized time will be emitted.")
             ;
     }
-
 
     void BlendTreeMotionFrameNode::SetNormalizedTimeValue(float value)
     {
         m_normalizedTimeValue = value;
+    }
+
+    float BlendTreeMotionFrameNode::GetNormalizedTimeValue() const
+    {
+        return m_normalizedTimeValue;
+    }
+
+    void BlendTreeMotionFrameNode::SetEmitEventsFromStart(bool emitEventsFromStart)
+    {
+        m_emitEventsFromStart = emitEventsFromStart;
+    }
+
+    bool BlendTreeMotionFrameNode::GetEmitEventsFromStart() const
+    {
+        return m_emitEventsFromStart;
     }
 } // namespace EMotionFX

@@ -173,7 +173,7 @@ namespace CloudsGem
                editContext->Class<EditorCloudComponent>("Sky Cloud", "Attach clouds to the entity.")
                     ->ClassElement(EditorData, "")
                         ->Attribute(Category, "Environment")
-                        ->Attribute(Icon, "Editor/Icons/Components/SkyClouds.png")
+                        ->Attribute(Icon, "Editor/Icons/Components/SkyClouds.svg")
                         ->Attribute(ViewportIcon, "Editor/Icons/Components/Viewport/SkyClouds.png")
                         ->Attribute(PreferNoViewportIcon, true)
                         ->Attribute(AutoExpand, true)

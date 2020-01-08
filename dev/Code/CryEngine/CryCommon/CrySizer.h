@@ -33,7 +33,7 @@
 #include <Cry_Vector3.h>
 #include <Cry_Quat.h>
 #include <Cry_Color.h>
-#include <BoostHelpers.h>
+#include <CryArray2d.h>
 
 // forward declarations for overloads
 struct AABB;
@@ -197,9 +197,9 @@ public:
     template<typename T>
     void AddObject(const _smart_ptr<T>& rObj) { this->AddObject(rObj.get()); }
     template<typename T>
-	void AddObject(const AZStd::shared_ptr<T>& rObj) { this->AddObject(rObj.get()); }
-	template<typename T>
-	void AddObject(const std::shared_ptr<T>& rObj) { this->AddObject(rObj.get()); }
+    void AddObject(const AZStd::shared_ptr<T>& rObj) { this->AddObject(rObj.get()); }
+    template<typename T>
+    void AddObject(const std::shared_ptr<T>& rObj) { this->AddObject(rObj.get()); }
     template<typename T>
     void AddObject(const std::unique_ptr<T>& rObj) { this->AddObject(rObj.get()); }
     template<typename T, typename U>
@@ -250,6 +250,12 @@ public:
     void AddObject(const AZ::Vector3& rObj) {}
     void AddObject(void*) {}
 
+    template<typename T>
+    void AddObject(const Array2d<T>& array2d)
+    {
+        this->AddObject(array2d.m_pData, array2d.GetDataSize());
+    }
+
     // overloads for container, will automaticly traverse the content
     template<typename T, typename Alloc>
     void AddObject(const std::list<T, Alloc>& rList)
@@ -273,6 +279,7 @@ public:
     template<typename K, typename T, typename Comp, typename Equal, typename Alloc>
     void AddObject(const AZStd::unordered_map<K, T, Comp, Equal, Alloc>& rVector)
     {
+
     }
 
     template<typename T, typename Alloc>

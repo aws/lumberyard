@@ -86,8 +86,10 @@ void CD3DStereoRenderer::SelectDefaultDevice()
         #include "Xenia/D3DStereo_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DStereo_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DStereo_cpp_salem.inl"
     #endif
-#elif defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
     device = STEREO_DEVICE_FRAMECOMP;
 #endif
 
@@ -166,6 +168,8 @@ void CD3DStereoRenderer::InitDeviceBeforeD3D()
         #include "Xenia/D3DStereo_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DStereo_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DStereo_cpp_salem.inl"
     #endif
 #endif
 

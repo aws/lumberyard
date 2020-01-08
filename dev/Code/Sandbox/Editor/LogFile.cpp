@@ -33,7 +33,7 @@
 #include <time.h>
 #endif
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
 #include <mach/clock.h>
 #include <mach/mach.h>
 
@@ -299,7 +299,7 @@ void CLogFile::AboutSystem()
     str += szBuffer;
     str += ")";
     CryLog("%s", str.toUtf8().data());
-#elif defined(AZ_PLATFORM_APPLE)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE
     QString operatingSystemName;
     if (QSysInfo::MacintoshVersion >= Q_MV_OSX(10, 12))
     {
@@ -336,7 +336,7 @@ void CLogFile::AboutSystem()
     CryLog("%s", str.toUtf8().data());
 #else
     struct timespec ts;
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
     clock_serv_t cclock;
     mach_timespec_t mts;
     host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &cclock);

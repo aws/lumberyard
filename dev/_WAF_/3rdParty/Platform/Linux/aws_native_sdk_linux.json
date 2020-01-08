@@ -1,0 +1,123 @@
+{
+    "configuration_settings": {
+        "linux_rpath": ["$ORIGIN"]
+    },
+    "platform": {
+        "linux_x64": {
+            "symlink_patterns": [
+                "libaws-c*.so:%s.1.0.0"
+            ],
+            "libpath_debug": [
+                "lib/linux/Debug"
+            ],
+            "libpath_release": [
+                "lib/linux/Release"
+            ],
+            "aws_cpp_sdk_all/lib": [
+                "lib${aws_cpp_sdk_all}.a",
+                "lib${aws_dependencies}.a"
+            ],
+            "aws_cpp_sdk_core/lib": [
+                "lib${aws_cpp_sdk_core}.a",
+                "lib${aws_dependencies}.a",
+                "libcurl.a"
+            ],
+            "aws_cpp_sdk_gamelift/lib": [
+                "lib${aws_cpp_sdk_gamelift}.a"
+            ],
+            "aws_cpp_sdk_s3/lib": [
+                "lib${aws_cpp_sdk_s3}.a"
+            ],
+            "aws_cpp_sdk_sts/lib": [
+                "lib${aws_cpp_sdk_sts}.a"
+            ],
+            "aws_cpp_sdk_mobileanalytics/lib": [
+                "lib${aws_cpp_sdk_mobileanalytics}.a"
+            ],
+            "aws_cpp_sdk_identity_management/lib": [
+                "lib${aws_cpp_sdk_identity_management}.a"
+            ],
+            "aws_cpp_sdk_cognito_identity/lib": [
+                "lib${aws_cpp_sdk_cognito_identity}.a"
+            ],
+            "aws_cpp_sdk_cognito_idp/lib": [
+                "lib${aws_cpp_sdk_cognito_idp}.a"
+            ],
+            "aws_cpp_sdk_kinesis/lib": [
+                "lib${aws_cpp_sdk_kinesis}.a"
+            ],
+            "aws_cpp_sdk_lambda/lib": [
+                "lib${aws_cpp_sdk_lambda}.a"
+            ],
+            "aws_cpp_sdk_identity_lambda/lib": [
+                "lib${aws_cpp_sdk_identity_lambda}.a",
+                "lib${aws_dependencies}.a"
+            ],
+            "aws_cpp_sdk_identity_metrics/lib": [
+                "lib${aws_cpp_sdk_identity_metrics}.a",
+                "lib${aws_dependencies}.a"
+            ],
+            "sharedlibpath_debug": [
+                "bin/linux/Debug"
+            ],
+            "sharedlibpath_release": [
+                "bin/linux/Release"
+            ],
+            "aws_cpp_sdk_all/shared": [
+                "lib${aws_cpp_sdk_all}.so",
+                "lib${aws_dependencies}.so"
+            ],
+            "aws_cpp_sdk_core/shared": [
+                "lib${aws_cpp_sdk_core}.so",
+                "lib${aws_dependencies}.so",
+                "libcurl.so"
+            ],
+	    "aws_cpp_sdk_core/copy_extra": [
+                "bin/linux/Release/libcurl.so.4:."
+            ],
+            "aws_cpp_sdk_core/copy_extra_debug": [
+                "bin/linux/Debug/lib${aws_c_dependencies}.so.0unstable:.",
+		"bin/linux/Debug/libcurl.so.4:."
+            ],
+            "aws_cpp_sdk_core/copy_extra_release": [
+                "bin/linux/Release/lib${aws_c_dependencies}.so.0unstable:.",
+		"bin/linux/Release/libcurl.so.4:."
+            ],
+            "aws_cpp_sdk_gamelift/shared": [
+                "lib${aws_cpp_sdk_gamelift}.so"
+            ],
+            "aws_cpp_sdk_s3/shared": [
+                "lib${aws_cpp_sdk_s3}.so"
+            ],
+            "aws_cpp_sdk_sts/shared": [
+                "lib${aws_cpp_sdk_sts}.so"
+            ],
+            "aws_cpp_sdk_mobileanalytics/shared": [
+                "lib${aws_cpp_sdk_mobileanalytics}.so"
+            ],
+            "aws_cpp_sdk_identity_management/shared": [
+                "lib${aws_cpp_sdk_identity_management}.so"
+            ],
+            "aws_cpp_sdk_cognito_identity/shared": [
+                "lib${aws_cpp_sdk_cognito_identity}.so"
+            ],
+            "aws_cpp_sdk_cognito_idp/shared": [
+                "lib${aws_cpp_sdk_cognito_idp}.so"
+            ],
+            "aws_cpp_sdk_kinesis/shared": [
+                "lib${aws_cpp_sdk_kinesis}.so"
+            ],
+            "aws_cpp_sdk_lambda/shared": [
+                "lib${aws_cpp_sdk_lambda}.so"
+            ],
+            "aws_cpp_sdk_identity_lambda/shared": [
+                "lib${aws_cpp_sdk_identity_lambda}.so",
+                "lib${aws_dependencies}.so"
+            ],
+            "aws_cpp_sdk_identity_metrics/shared": [
+                "lib${aws_cpp_sdk_identity_metrics}.so",
+                "lib${aws_dependencies}.so"
+            ]
+        }
+    }
+}

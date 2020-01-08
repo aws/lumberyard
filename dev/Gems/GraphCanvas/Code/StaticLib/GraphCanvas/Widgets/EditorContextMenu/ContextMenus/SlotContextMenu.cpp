@@ -20,11 +20,13 @@ namespace GraphCanvas
     // SlotContextMenu
     ////////////////////
 
-    SlotContextMenu::SlotContextMenu(QWidget* parent)
-        : EditorContextMenu(parent)
+    SlotContextMenu::SlotContextMenu(EditorId editorId, QWidget* parent)
+        : EditorContextMenu(editorId, parent)
     {
         AddActionGroup(SlotContextMenuAction::GetSlotContextMenuActionGroupId());
 
+        AddMenuAction(aznew RemoveSlotMenuAction(this));
         AddMenuAction(aznew ClearConnectionsMenuAction(this));
+        AddMenuAction(aznew ResetToDefaultValueMenuAction(this));
     }
 }

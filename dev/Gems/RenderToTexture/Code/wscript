@@ -26,11 +26,12 @@ def build(bld):
     bld.DefineGem(
         includes =  [
             bld.Path('Code/CryEngine'),
+            bld.Path('Code/CryEngine/CryCommon'),
             bld.Path('Code/CryEngine/Cry3DEngine'),
             bld.Path('Code/CryEngine/RenderDll'),
             bld.Path('Code/CryEngine/RenderDll/XRenderD3D9'),
             bld.Path('Gems/LmbrCentral/Code/include'),
-            bld.Path('Code/Framework/AzToolsFramework'),
+            bld.Path('Code/Framework/AzToolsFramework')
         ],
 
         win_export_defines = export_defines,
@@ -44,13 +45,14 @@ def build(bld):
         darwin_export_defines      = export_defines,
         darwin_dedicated_export_defines = export_defines_not_supported,
 
-	editor      = dict(
+        editor = dict(
             platforms   = ['win', 'darwin'],
             defines     = ['RENDER_TO_TEXTURE_EDITOR'],
             use	        = [ 'AzToolsFramework' ],
 
             includes    = [ 
                 bld.Path('Code/CryEngine'),
+                bld.Path('Code/CryEngine/CryCommon'),
                 bld.Path('Code/CryEngine/Cry3DEngine'),
                 bld.Path('Code/CryEngine/RenderDll/XRenderD3D9'),
                 bld.Path('Code/CryEngine/RenderDll'),
@@ -61,7 +63,7 @@ def build(bld):
                 bld.Path('Code/Sandbox'),
                 bld.Path('Code/Sandbox/Editor'),
                 bld.Path('Code/Sandbox/Editor/Include'),
-                bld.Path('Code/Sandbox/Plugins/EditorCommon'),
+                bld.Path('Code/Sandbox/Plugins/EditorCommon')
             ],
         ),
     )

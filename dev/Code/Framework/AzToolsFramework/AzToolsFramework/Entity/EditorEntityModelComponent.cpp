@@ -9,17 +9,47 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include "EditorEntityModelComponent.h"
-#include "EditorEntityContextBus.h"
+
+#include <AzToolsFramework/Entity/EditorEntityModel.h>
+
+#include <AzCore/RTTI/BehaviorContext.h>
+
 namespace AzToolsFramework
 {
     namespace Components
     {
+        EditorEntityModelComponent::EditorEntityModelComponent() = default;
+        EditorEntityModelComponent::~EditorEntityModelComponent() = default;
+
         void EditorEntityModelComponent::Reflect(AZ::ReflectContext* context)
         {
             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
                 serializeContext->Class<EditorEntityModelComponent, AZ::Component>(); // Empty class
+            }
+
+            if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+            {
+                behaviorContext->EBus<EditorEntityInfoRequestBus>("EditorEntityInfoRequestBus")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Category, "Entity")
+                    ->Attribute(AZ::Script::Attributes::Module, "editor")
+                    ->Event("GetParent", &EditorEntityInfoRequests::GetParent)
+                    ->Event("GetChildren", &EditorEntityInfoRequests::GetChildren)
+                    ->Event("GetChild", &EditorEntityInfoRequests::GetChild)
+                    ->Event("GetChildCount", &EditorEntityInfoRequests::GetChildCount)
+                    ->Event("GetChildIndex", &EditorEntityInfoRequests::GetChildIndex)
+                    ->Event("GetName", &EditorEntityInfoRequests::GetName)
+                    ;
+
+                behaviorContext->EBus<EditorEntityAPIBus>("EditorEntityAPIBus")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Category, "Entity")
+                    ->Attribute(AZ::Script::Attributes::Module, "editor")
+                    ->Event("SetName", &EditorEntityAPIRequests::SetName)
+                    ;
             }
         }
 
@@ -48,5 +78,5 @@ namespace AzToolsFramework
             m_entityModel.reset();
         }
 
-    }
+    } // namespace Components
 } // namespace AzToolsFramework

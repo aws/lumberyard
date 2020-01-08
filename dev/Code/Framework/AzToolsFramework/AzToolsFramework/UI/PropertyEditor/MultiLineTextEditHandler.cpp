@@ -90,4 +90,5 @@ namespace AzToolsFramework
         EBUS_EVENT(AzToolsFramework::PropertyTypeRegistrationMessages::Bus, RegisterPropertyType, aznew MultiLineTextEditHandler());
     }
 }
+
 #include <UI/PropertyEditor/MultiLineTextEditHandler.moc>

@@ -18,7 +18,7 @@
 #include "GLCommon.hpp"
 #include "METALContext.hpp"
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
 #include <AppKit/AppKit.h>
 using NativeViewType = NSView;
 using NativeViewControllerType = NSViewController;
@@ -106,7 +106,7 @@ namespace NCryMetal
 ////////////////////////////////////////////////////////////////////////////////
 @interface MetalViewController : NativeViewControllerType {}
 - (BOOL)prefersStatusBarHidden;
-#if defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_IOS)
 - (void)viewWillTransitionToSize: (CGSize)size withTransitionCoordinator: (id<UIViewControllerTransitionCoordinator>) coordinator;
 #endif
 @end    // MetalViewController Interface

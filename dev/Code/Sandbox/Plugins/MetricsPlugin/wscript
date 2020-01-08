@@ -26,6 +26,7 @@ def build(bld):
 
         # Common
         includes                    = [ '.',
+                                        bld.Path('Code/CryEngine/CryCommon'),
                                         bld.Path('Code/Sandbox/Editor'),
                                         bld.Path('Code/CryEngine'),
                                         bld.Path('Code/Sandbox/Editor/Include'),

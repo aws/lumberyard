@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/AppleTV":
+        [
+            "AzFrameworkTests_Traits_Platform.h",
+            "AzFrameworkTests_Traits_AppleTV.h"
+        ]
+    }
+}

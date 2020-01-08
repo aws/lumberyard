@@ -26,7 +26,6 @@ namespace Serialization {
     class IArchive;
 
     struct LessStrCmp
-        : std::binary_function<const char*, const char*, bool>
     {
         bool operator()(const char* l, const char* r) const
         {

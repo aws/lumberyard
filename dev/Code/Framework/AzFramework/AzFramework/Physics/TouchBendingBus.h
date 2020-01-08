@@ -145,9 +145,10 @@ namespace Physics
          *         the touch bendable entity.
          *  @param skeletonHandle Opaque pointer that the CStatObjFoliage must keep a copy to. The engine
          *         should should use it later when calling *Skeleton*() named methods of the TouchBendingBus.
-         *  @returns void
+         *  @returns true if the CStatObjFoliage was created successfully. It may return false only for cases where the CStatObj
+         *           was removed and CStatObjFoliage can only be created if CStatObj is not null. 
          */
-        virtual void OnPhysicalizedTouchBendingSkeleton(const void* privateData, TouchBendingSkeletonHandle* skeletonHandle) = 0;
+        virtual bool OnPhysicalizedTouchBendingSkeleton(const void* privateData, TouchBendingSkeletonHandle* skeletonHandle) = 0;
     }; //class ITouchBendingCallback
 
 

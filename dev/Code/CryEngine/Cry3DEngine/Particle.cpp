@@ -16,7 +16,11 @@
 #include "Particle.h"
 #include "ParticleEmitter.h"
 #include "ParticleContainer.h"
+
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
 #include "terrain.h"
+#endif
+
 #include "GeomQuery.h"
 #include "MatMan.h"
 
@@ -879,7 +883,7 @@ void CParticle::InitPos(SParticleUpdateContext const& context, QuatTS const& loc
 
             const float radius = params.fEmitterSizeDiameter(VRANDOM, fEmissionStrength) * 0.5f;
             const float circumference = gf_PI2 * radius;
-            const float percentageToUniformScale = 0.01;
+            const float percentageToUniformScale = 0.01f;
 
             Vec3 positionIncrement = m_pEmitter->GetCurrentPosIncrementXYZ();
 
@@ -1669,6 +1673,7 @@ float CParticle::UpdateAlignment(SParticleState& state, SParticleUpdateContext c
     }
     case ParticleParams::EFacing::Terrain:
     {
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
         if (CTerrain* const pTerrain = GetTerrain())
         {
             // Project center and velocity onto plane.
@@ -1707,6 +1712,7 @@ float CParticle::UpdateAlignment(SParticleState& state, SParticleUpdateContext c
                 }
             }
         }
+#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
         break;
     }
     case ParticleParams::EFacing::Velocity:

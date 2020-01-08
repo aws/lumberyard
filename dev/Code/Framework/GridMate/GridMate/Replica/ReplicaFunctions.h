@@ -19,7 +19,6 @@
 
 namespace GridMate
 {
-#if defined(AZ_HAS_VARIADIC_TEMPLATES)
     /**
         Create a ReplicaChunk that isn't attached to a Replica. To attach it to a replica,
         call replica->AttachReplicaChunk(chunk).
@@ -69,31 +68,6 @@ namespace GridMate
         replica->AttachReplicaChunk(chunk);
         return chunk;
     }
-#else
-    #define GM_FUNCTION_NUM_ARGS 0
-        #include "ReplicaFunctions.inl"
-    #undef GM_FUNCTION_NUM_ARGS
-
-    #define GM_FUNCTION_NUM_ARGS 1
-        #include "ReplicaFunctions.inl"
-    #undef GM_FUNCTION_NUM_ARGS
-
-    #define GM_FUNCTION_NUM_ARGS 2
-        #include "ReplicaFunctions.inl"
-    #undef GM_FUNCTION_NUM_ARGS
-
-    #define GM_FUNCTION_NUM_ARGS 3
-        #include "ReplicaFunctions.inl"
-    #undef GM_FUNCTION_NUM_ARGS
-
-    #define GM_FUNCTION_NUM_ARGS 4
-        #include "ReplicaFunctions.inl"
-    #undef GM_FUNCTION_NUM_ARGS
-
-    #define GM_FUNCTION_NUM_ARGS 5
-        #include "ReplicaFunctions.inl"
-    #undef GM_FUNCTION_NUM_ARGS
-#endif // AZ_HAS_VARIADIC_TEMPLATES
 }
 
 #endif // GM_REPLICA_FUNCTIONS_H

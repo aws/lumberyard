@@ -20,7 +20,8 @@ SUBFOLDERS = [
     'ResourceCompilerXML',
     'ResourceCompilerScene',
     'ResourceCompilerSlice',
-    'ResourceCompilerUiCanvas'
+    'ResourceCompilerUiCanvas',
+    'ResourceCompilerLegacy'
 	]
 
 def build(bld):

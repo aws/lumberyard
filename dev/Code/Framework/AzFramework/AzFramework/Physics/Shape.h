@@ -32,7 +32,9 @@ namespace Physics
         {
             CollisionLayer = 1 << 0,
             MaterialSelection = 1 << 1,
-            IsTrigger = 1 << 2
+            IsTrigger = 1 << 2,
+            IsVisible = 1 << 3, ///< @deprecated This property will be removed in a future release.
+            Offset = 1 << 4 ///< Whether the rotation and position offsets should be visible.
         };
 
         ColliderConfiguration() = default;
@@ -45,6 +47,8 @@ namespace Physics
         AZ::Crc32 GetIsTriggerVisibility() const;
         AZ::Crc32 GetCollisionLayerVisibility() const;
         AZ::Crc32 GetMaterialSelectionVisibility() const;
+        AZ_DEPRECATED(AZ::Crc32 GetIsVisibleVisibility() const, "This function will be removed in a future version");
+        AZ::Crc32 GetOffsetVisibility() const;
 
         Physics::CollisionLayer m_collisionLayer; ///< Which collision layer is this collider on.
         Physics::CollisionGroups::Id m_collisionGroupId; ///< Which layers does this collider collide with.
@@ -56,7 +60,8 @@ namespace Physics
         AZ::u8 m_propertyVisibilityFlags = (std::numeric_limits<AZ::u8>::max)(); ///< Visibility flags for collider.
                                                                                  ///< Note: added parenthesis for std::numeric_limits is
                                                                                  ///< to avoid collision with `max` macro in uber builds.
-        bool m_visible = false; ///< Display the collider in editor view.
+        bool m_visible = false; ///< @deprecated This property will be removed in a future release. Display the collider in editor view.
+        AZStd::string m_tag; ///< Identifaction tag for the collider
     };
 
     using ShapeConfigurationPair = AZStd::pair<AZStd::shared_ptr<ColliderConfiguration>, AZStd::shared_ptr<ShapeConfiguration>>;
@@ -83,5 +88,7 @@ namespace Physics
         virtual void SetLocalPose(const AZ::Vector3& offset, const AZ::Quaternion& rotation) = 0;
 
         virtual void* GetNativePointer() = 0;
+
+        virtual AZ::Crc32 GetTag() const = 0;
     };
 } // namespace Physics

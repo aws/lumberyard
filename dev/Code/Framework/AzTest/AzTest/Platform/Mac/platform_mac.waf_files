@@ -1,0 +1,14 @@
+{
+    "none": {
+        "Platform/Mac": [
+            "../Common/UnixLike/AzTest/ColorizedOutput_UnixLike.cpp"
+        ]
+    },
+    "auto": {
+        "Platform/Mac": [
+            "Platform_Mac.cpp",
+            "AzTest_Traits_Platform.h",
+            "AzTest_Traits_Mac.h"
+        ]
+    }
+}

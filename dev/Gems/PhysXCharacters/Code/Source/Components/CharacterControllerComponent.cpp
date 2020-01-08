@@ -137,9 +137,9 @@ namespace PhysXCharacters
             m_controller = AZStd::make_unique<CharacterControllerCosmeticReplica>(*m_characterConfig,
                 *m_shapeConfig, *defaultWorld);
             AttachColliders(*m_controller);
-            AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         }
 
+        AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         Physics::CharacterRequestBus::Handler::BusConnect(GetEntityId());
     }
 
@@ -195,6 +195,7 @@ namespace PhysXCharacters
         }
 
         m_controller->SetBasePosition(position);
+        AZ::TransformBus::Event(GetEntityId(), &AZ::TransformBus::Events::SetWorldTranslation, position);
     }
 
     AZ::Vector3 CharacterControllerComponent::GetCenterPosition() const
@@ -359,11 +360,24 @@ namespace PhysXCharacters
     // TransformNotificationBus
     void CharacterControllerComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
-        if (auto controllerReplica = static_cast<CharacterControllerCosmeticReplica*>(m_controller.get()))
+        if (!m_controller)
         {
-            AZ::Quaternion rotation = AZ::Quaternion::CreateFromTransform(world);
-            controllerReplica->Move(world.GetTranslation());
-            controllerReplica->SetRotation(rotation);
+            AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
+            return;
+        }
+
+        if (m_characterConfig->m_directControl)
+        {
+            m_controller->SetBasePosition(world.GetPosition());
+        }
+        else
+        {
+            if (auto controllerReplica = static_cast<CharacterControllerCosmeticReplica*>(m_controller.get()))
+            {
+                AZ::Quaternion rotation = AZ::Quaternion::CreateFromTransform(world);
+                controllerReplica->Move(world.GetTranslation());
+                controllerReplica->SetRotation(rotation);
+            }
         }
     }
 

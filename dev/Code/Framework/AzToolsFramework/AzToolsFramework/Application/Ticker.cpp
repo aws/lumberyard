@@ -52,7 +52,7 @@ namespace AzToolsFramework
         if (!m_cancelled)
         {
             Q_EMIT Tick();
-            QTimer::singleShot(m_timeoutMS, Qt::PreciseTimer, this, &Ticker::Loop);
+            QTimer::singleShot(static_cast<int>(m_timeoutMS), Qt::PreciseTimer, this, &Ticker::Loop);
         }
     }
 

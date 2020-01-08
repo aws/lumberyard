@@ -79,6 +79,7 @@ namespace ScriptEventsTests
         AZ::ScriptContext script;
         script.BindTo(m_behaviorContext);
         script.Execute(luaCode);
+        script.GarbageCollect();
     }
 
     //////////////////////////////////////////////////////////////////////////]
@@ -127,6 +128,7 @@ namespace ScriptEventsTests
         AZ::ScriptContext script;
         script.BindTo(m_behaviorContext);
         script.Execute(luaCode);
+        script.GarbageCollect();
     }
 
     //////////////////////////////////////////////////////////////////////////]
@@ -156,6 +158,7 @@ namespace ScriptEventsTests
         AZ::ScriptContext script;
         script.BindTo(m_behaviorContext);
         script.Execute(luaCode);
+        script.GarbageCollect();
 
     }
 
@@ -187,7 +190,100 @@ namespace ScriptEventsTests
         }
     };
 
-    TEST_F(ScriptEventsTestFixture, DISABLED_ScriptEventRefactor_BehaviorContextBinding)
+    class AssetEventHandler
+        : public AZ::Data::AssetBus::Handler
+    {
+
+    public:
+
+        using Callback = AZStd::function<void()>;
+
+        AssetEventHandler(AZ::Data::AssetId assetId, Callback onReady= []() {}, Callback onSaved = []() {})
+            : m_assetId(assetId)
+            , m_onReadyCallback(onReady)
+            , m_onSavedCallback(onSaved)
+            , m_ready(0)
+            , m_saved(0)
+            , m_unloaded(0)
+        {
+        }
+
+        ~AssetEventHandler()
+        {
+            AZ::Data::AssetBus::Handler::BusDisconnect();
+        }
+
+
+        bool IsDone()
+        {
+            AZ::Data::AssetBus::ExecuteQueuedEvents();
+            return !AZ::Data::AssetBus::Handler::BusIsConnected() || m_ready == 1 || m_saved == 1;
+        }
+
+        void OnAssetMoved(AZ::Data::Asset<AZ::Data::AssetData>, void*) override
+        {
+            EXPECT_TRUE(false);
+        }
+
+        void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData>) override
+        {
+
+            EXPECT_TRUE(false);
+        }
+        
+        void OnAssetUnloaded(const AZ::Data::AssetId, const AZ::Data::AssetType) override
+        {
+            m_unloaded++;
+            AZ::Data::AssetBus::Handler::BusDisconnect();
+        }
+        
+        void OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> assetData) override
+        {
+            EXPECT_TRUE(false);
+            AZ::Data::AssetBus::Handler::BusDisconnect();
+        }
+
+        void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData>) override
+        {
+            m_ready++;
+
+            AZ::Data::AssetBus::Handler::BusDisconnect();
+            AZ::Data::AssetManager::Instance().DispatchEvents();
+
+            m_onReadyCallback();
+        }
+
+        void OnAssetSaved(AZ::Data::Asset<AZ::Data::AssetData> asset, bool isSuccessful) override
+        {
+            AZ::Data::AssetBus::Handler::BusDisconnect();
+            AZ::Data::AssetManager::Instance().DispatchEvents();
+
+            m_saved++;
+            m_onSavedCallback();
+        }
+
+        AZStd::atomic_int m_saved;
+        AZStd::atomic_int m_ready;
+        AZStd::atomic_int m_unloaded;
+
+        AZ::Data::AssetId m_assetId;
+        Callback m_onReadyCallback;
+        Callback m_onSavedCallback;
+    };
+
+
+    void WaitForAssetSystem(AZStd::function<bool()> condition)
+    {
+        while (!condition())
+        {
+            AZ::Data::AssetBus::ExecuteQueuedEvents();
+
+            AZ::Data::AssetManager::Instance().DispatchEvents();
+            AZStd::this_thread::yield();
+        }
+    }
+
+    TEST_F(ScriptEventsTestFixture, ScriptEventRefactor_BehaviorContextBinding)
     {
         // Tests the C++ API for Script Event definition, this is meant for testing the core code only
         // Script Events are designed as a data side feature and should not be created using C++
@@ -207,7 +303,7 @@ namespace ScriptEventsTests
 
         // Necessary because when working in the Editor, a change to the property will trigger a backup of the property prior to 
         // creating the new version, it's not really intuitive in the context of this test and API, but it's meant as an editor
-        // side feature moreso than a code feature
+        // side feature more so than a code feature
         method0.GetNameProperty().OnPropertyChange();
         auto& method1name = method0.GetNameProperty().NewVersion();
         method1name.Set("NewMethodName");
@@ -221,20 +317,34 @@ namespace ScriptEventsTests
         auto& parameterNameV1 = parameter0.GetNameProperty().NewVersion();
         parameterNameV1.Set("RenamedParameter");
 
+        AZ::Uuid assetId = AZ::Uuid("{5B933982-7741-47B4-9060-945A6DFF1D75}");
+
         // Create an asset out of our Script Event
-        const AZ::Uuid& assetId = AZ::Uuid::CreateRandom();
-        AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> assetData = AZ::Data::AssetManager::Instance().CreateAsset<ScriptEvents::ScriptEventsAsset>(assetId);
+        const AZ::Data::AssetType type = AZ::AzTypeInfo<ScriptEvents::ScriptEventsAsset>::Uuid();
+        AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> assetData = AZ::Data::AssetManager::Instance().CreateAsset(assetId, type);
+        
         ScriptEvents::ScriptEventsAsset* scriptAsset = assetData.Get();
         scriptAsset->m_definition = definition;
 
-        // Initialize the ScriptEvent
+        EXPECT_TRUE(assetData.Save());
+        
+        AssetEventHandler assetHandler(assetId);
+        assetHandler.BusConnect(assetId);
+
+        WaitForAssetSystem([&]() { return assetHandler.IsDone(); });
+
+        assetHandler.BusDisconnect();
+
         ScriptEvents::Internal::ScriptEvent scriptEventV0;
-        scriptEventV0.Init(assetId, 0);
+
+        assetData = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(assetId, false, nullptr, true);
         scriptEventV0.CompleteRegistration(assetData);
+
+        WaitForAssetSystem([&]() { return scriptEventV0.IsReady(); });
 
         // Install the handler
         AZ::BehaviorEBusHandler* handler = nullptr;
-        AZ::BehaviorEBus* behaviorEbus = scriptEventV0.GetBehaviorBus(0);
+        AZ::BehaviorEBus* behaviorEbus = scriptEventV0.GetBehaviorBus();
         EXPECT_TRUE(behaviorEbus->m_createHandler->InvokeResult(handler));
 
         ScriptEventHandlerHook scriptEventHandler;
@@ -291,20 +401,47 @@ namespace ScriptEventsTests
         }
         else
         {
-            AZ_Error("Script Events", false, "The Script Event for %s does not exist", scriptEventName.c_str());
+            ADD_FAILURE() << "The Script Event for " << scriptEventName.c_str() << " does not exist";
         }
 
         handler->Disconnect();
+        scriptEventV0.BusDisconnect();
 
-        EXPECT_TRUE(behaviorEbus->m_destroyHandler->InvokeResult(handler));
+        EXPECT_TRUE(behaviorEbus->m_destroyHandler->Invoke(handler));
 
-        assetData.Release();
-        AZ::Data::AssetManager::Instance().DispatchEvents();
+        auto onReady = [&assetData, &scriptEventName]() {
+            const char* renamedMethod = "__METHOD__1__";
+
+            ScriptEvents::ScriptEventsAsset* loadedScriptAsset = assetData.GetAs<ScriptEvents::ScriptEventsAsset>();
+            EXPECT_TRUE(loadedScriptAsset);
+
+            const ScriptEvents::ScriptEvent& loadedDefinition = loadedScriptAsset->m_definition;
+
+            EXPECT_EQ(loadedDefinition.GetVersion(), 0);
+            EXPECT_STREQ(loadedDefinition.GetName().data(), scriptEventName.c_str());
+
+
+            ScriptEvents::Method method;
+            bool foundMethod = loadedDefinition.FindMethod(renamedMethod, method);
+            EXPECT_TRUE(foundMethod);
+            EXPECT_EQ(method.GetNameProperty().GetVersion(), 1);
+
+            assetData = {};
+        };
+
+        AssetEventHandler assetHandler2(assetId, []() {}, []() {});
+        assetHandler2.BusConnect(assetId);
+
+        scriptAsset = {};
+        assetData = {};
+
+        WaitForAssetSystem([&]() { return assetHandler2.m_unloaded == 1; });
 
     }
+
     //////////////////////////////////////////////////////////////////////////]
 
-    TEST_F(ScriptEventsTestFixture, DISABLED_ScriptEventRefactor_SerializationAndVersioning)
+    TEST_F(ScriptEventsTestFixture, ScriptEventRefactor_SerializationAndVersioning)
     {
         // Tests serialization to file of the Script Event definition format and 
         // associated data types (i.e. VersionedProperty)
@@ -322,7 +459,7 @@ namespace ScriptEventsTests
         Method& method0 = definition.NewMethod();
         method0.GetNameProperty().Set("__METHOD__0__");
         method0.GetTooltipProperty().Set("This is an example method");
-        
+
         Parameter& parameter0 = method0.NewParameter();
         parameter0.GetNameProperty().Set("__PARAMETER__0__");
         parameter0.GetTooltipProperty().Set("A simple numeric parameter");
@@ -375,37 +512,73 @@ namespace ScriptEventsTests
         tmpOut.Close();
 
         // Create the asset
-        const AZ::Uuid& assetId = AZ::Uuid::CreateRandom();
+        const AZ::Uuid& assetId = AZ::Uuid("{0B4F3716-59D4-4BA6-8982-9C7CCB91C113}");
         AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> assetData = AZ::Data::AssetManager::Instance().CreateAsset<ScriptEvents::ScriptEventsAsset>(assetId);
         ScriptEvents::ScriptEventsAsset* scriptAsset = assetData.Get();
         scriptAsset->m_definition = definition;
+
         EXPECT_TRUE(assetData.Save());
 
-        assetData.Release();
-        AZ::Data::AssetManager::Instance().DispatchEvents();
+        AssetEventHandler assetHandler(assetId);
+        assetHandler.BusConnect(assetId);
 
-        assetData = nullptr;
-        scriptAsset = nullptr;
+        WaitForAssetSystem([&]() { return assetHandler.IsDone(); });
 
-        // Load the asset
-        assetData = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(assetId);
-        
-        ScriptEvents::ScriptEventsAsset* loadedScriptAsset = assetData.GetAs<ScriptEvents::ScriptEventsAsset>();
+        bool result = false;
+        AZ::IO::FileIOStream outFileStream("ScriptEvents_TestAsset.xml", AZ::IO::OpenMode::ModeWrite);
+        if (outFileStream.IsOpen())
+        {
+            EXPECT_TRUE(AZ::Utils::SaveObjectToStream<ScriptEvents::ScriptEventsAsset>(outFileStream,
+                AZ::ObjectStream::ST_XML,
+                assetData.Get(),
+                m_serializeContext));
+        }
 
-        EXPECT_TRUE(loadedScriptAsset);
+        AssetEventHandler assetHandler2(assetId, []() {}, []() {});
+        assetHandler2.BusConnect(assetId);
 
-        const ScriptEvents::ScriptEvent& loadedDefinition = loadedScriptAsset->m_definition;
+        assetData = {};
+        scriptAsset = {};
 
-        EXPECT_EQ(loadedDefinition.GetVersion(), 0);
-        EXPECT_STREQ(loadedDefinition.GetName().data(), scriptEventName.c_str());
+        WaitForAssetSystem([&]() { return assetHandler2.m_unloaded == 1; });
 
-        ScriptEvents::Method method;
-        bool foundMethod = loadedDefinition.FindMethod(renamedMethod, method);
-        EXPECT_TRUE(foundMethod);
-        EXPECT_EQ(method.GetNameProperty().GetVersion(), 1);
+        auto onSaved = [&assetId]()
+        {
+            AZStd::string scriptEventName = "__SCRIPT_EVENT_NAME__";
+            const char* renamedMethod = "__METHOD__1__";
 
-        assetData.Release();
-        AZ::Data::AssetManager::Instance().DispatchEvents();
+            // Load the asset
+            AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> assetData = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(assetId);
+
+            ScriptEvents::ScriptEventsAsset* loadedScriptAsset = assetData.GetAs<ScriptEvents::ScriptEventsAsset>();
+
+            EXPECT_TRUE(loadedScriptAsset);
+
+            const ScriptEvents::ScriptEvent& loadedDefinition = loadedScriptAsset->m_definition;
+
+            EXPECT_EQ(loadedDefinition.GetVersion(), 0);
+            EXPECT_STREQ(loadedDefinition.GetName().data(), scriptEventName.c_str());
+
+            ScriptEvents::Method method;
+            bool foundMethod = loadedDefinition.FindMethod(renamedMethod, method);
+            EXPECT_TRUE(foundMethod);
+            EXPECT_EQ(method.GetNameProperty().GetVersion(), 1);
+
+            AssetEventHandler assetHandler(assetData.GetId());
+            assetHandler.BusConnect(assetId);
+            assetData = {};
+            WaitForAssetSystem([&]() { return assetHandler.m_unloaded == 1; });
+            assetHandler.BusDisconnect();
+
+        };
+
+        AssetEventHandler assetHandler3(assetData.GetId(), []() {}, onSaved);
+        WaitForAssetSystem([&]() { return assetHandler3.IsDone(); });
+        assetHandler3.BusDisconnect();
+
+
+        auto verifyAsset = AZ::Data::AssetManager::Instance().FindAsset(assetId);
+        EXPECT_FALSE(verifyAsset);
 
     }
 }

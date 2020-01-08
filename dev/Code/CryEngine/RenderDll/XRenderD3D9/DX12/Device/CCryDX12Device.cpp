@@ -3,9 +3,9 @@
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-* or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
@@ -736,10 +736,9 @@ HRESULT STDMETHODCALLTYPE CCryDX12Device::CreateStagingResource(
     DX12::Resource& rResource = dx12Resource->GetDX12Resource();
 
     D3D12_RESOURCE_DESC resourceDesc = rResource.GetDesc();
-    UINT64 requiredSize, rowPitch;
-    UINT rowCount;
-    UINT numSubResources = 1;// resourceDesc.MipLevels * (resourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D ? 1 : resourceDesc.DepthOrArraySize);
-    GetD3D12Device()->GetCopyableFootprints(&resourceDesc, 0, numSubResources, 0, nullptr, &rowCount, &rowPitch, &requiredSize);
+    UINT64 requiredSize;
+    UINT numSubResources = resourceDesc.MipLevels * (resourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D ? 1 : resourceDesc.DepthOrArraySize);
+    GetD3D12Device()->GetCopyableFootprints(&resourceDesc, 0, numSubResources, 0, nullptr, nullptr, nullptr, &requiredSize);
 
     D3D12_RESOURCE_STATES initialState = Upload ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COPY_DEST;
     D3D12_HEAP_TYPE heapType = Upload ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_READBACK;

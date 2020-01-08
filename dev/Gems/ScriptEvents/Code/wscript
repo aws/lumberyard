@@ -63,7 +63,7 @@ def build(bld):
 
             file_list       = ['scriptevents_common.waf_files', 'scriptevents_editor.waf_files'],
             use             = ['ScriptEventsStatic','EditorUI_QT','EditorCommon','EditorCore','AzToolsFramework'],
-            configurations  = ['debug', 'profile'],
+            configurations  = ['debug', 'profile','debug_test', 'profile_test'],
 
             win_features    = ['crcfix'],
         ),

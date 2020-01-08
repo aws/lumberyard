@@ -19,13 +19,17 @@
 #include "StatObj.h"
 #include "ObjMan.h"
 #include "VisAreas.h"
+
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
 #include "terrain_sector.h"
+#include "terrain.h"
+#endif
+
 #include "CullBuffer.h"
 #include "3dEngine.h"
 #include "IndexedMesh.h"
 #include "Brush.h"
 #include "Vegetation.h"
-#include "terrain.h"
 #include "ObjectsTree.h"
 #include <IResourceManager.h>
 #include "DecalRenderNode.h"
@@ -164,7 +168,10 @@ void CObjManager::UnloadObjects(bool bDeleteAll)
     //leak and most likely crash the engine across level loads.
     stl::free_container(m_collectedMaterials);
 
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
     stl::free_container(m_lstTmpCastingNodes);
+#endif
+
     stl::free_container(m_decalsToPrecreate);
     stl::free_container(m_tmpAreas0);
     stl::free_container(m_tmpAreas1);
@@ -549,7 +556,7 @@ IStatObj* CObjManager::LoadNewCGF(IStatObj* pObject, int flagCloth, bool bUseStr
     }
 
     // now try to load lods
-    if (!pData)
+    if (!pObject->AreLodsLoaded())
     {
         pObject->LoadLowLODs(bUseStreaming, nLoadingFlags);
     }
@@ -1234,8 +1241,6 @@ void CObjManager::ClearStatObjGarbage()
 {
     FUNCTION_PROFILER_3DENGINE;
 
-    std::vector<IStatObj*> garbage;
-
     // No work? Exit early before attempting to take any locks
     if (m_checkForGarbage.empty())
     {
@@ -1244,7 +1249,23 @@ void CObjManager::ClearStatObjGarbage()
 
     // We have to take the load lock here because InternalDeleteObject needs this lock and loadMutex has to be locked before garbageMutex
     // Additionally, we need to hold one of these locks for the entire duration of this function to prevent the loading thread from using an object that is about to be deleted
-    AZStd::lock_guard<AZStd::recursive_mutex> loadLock(m_loadMutex);
+    // To avoid stalls due to the threads loading files, try to get the lock and if it fails simply try again next frame unless there are too many garbage objects.
+    AZStd::unique_lock<AZStd::recursive_mutex> loadLock(m_loadMutex, AZStd::try_to_lock_t());
+    if (!loadLock.owns_lock())
+    {
+        if (m_checkForGarbage.size() > s_maxPendingGarbageObjects)
+        {
+            AZ_PROFILE_SCOPE_STALL(AZ::Debug::ProfileCategory::ThreeDEngine, "StatObjGarbage overflow");
+            // There are too many objects pending garbage collection so force a clear this frame even if loading is happening.
+            loadLock.lock();
+        }
+        else
+        {
+            return;
+        }
+    }
+
+    AZStd::vector<IStatObj*> garbage;
 
     // We might need to perform the entire garbage collection logic more than once because the call to
     // pStatObj->Shutdown() has the potential to add separate LOD models back onto the m_checkForGarbage list.
@@ -1367,6 +1388,7 @@ void CObjManager::MakeDepthCubemapRenderItemList(CVisArea* pReceiverArea, const 
             Get3DEngine()->GetObjectTree()->FillDepthCubemapRenderList(cubemapAABB, passInfo, objectsList);
         }
 
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
         if (GetTerrain() != nullptr && passInfo.RenderTerrain() && Get3DEngine()->m_bShowTerrainSurface)
         {
             PodArray<CTerrainNode*> terrainNodes;
@@ -1380,6 +1402,7 @@ void CObjManager::MakeDepthCubemapRenderItemList(CVisArea* pReceiverArea, const 
                 objectsList->Add(pNode);
             }
         }
+#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
     }
 }
 

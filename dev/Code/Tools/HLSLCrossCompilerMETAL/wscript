@@ -32,10 +32,10 @@ def build(bld):
         output_folder = 'Tools/CrySCompileServer/Compiler/PCGMETAL/HLSLcc',
         output_file_name = 'HLSLcc',
 
-        win_x64_vs2017_debug_output_file_name             = 'HLSLcc_vc141x64D',
-        win_x64_vs2017_profile_output_file_name           = 'HLSLcc_vc141x64',
-        win_x64_vs2017_debug_dedicated_output_file_name   = 'HLSLcc_dedicated_vc141x64D',
-        win_x64_vs2017_profile_dedicated_output_file_name = 'HLSLcc_dedicated_vc141x64',
+        win_x64_debug_output_file_name             = 'HLSLccD',
+        win_x64_profile_output_file_name           = 'HLSLcc',
+        win_x64_debug_dedicated_output_file_name   = 'HLSLcc_dedicatedD',
+        win_x64_profile_dedicated_output_file_name = 'HLSLcc_dedicated',
 
         win_defines = ['_CRT_SECURE_NO_WARNINGS', '_CONSOLE', 'WIN32'],
         win_lib = ['gdi32'],

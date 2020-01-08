@@ -19,7 +19,7 @@
 #include <ScriptCanvas/CodeGen/CodeGen.h>
 
 // CryCommon
-#include <CryCommon/InputEventBus.h>
+#include <InputEventBus.h>
 
 #include <AzCore/RTTI/TypeInfo.h>
 

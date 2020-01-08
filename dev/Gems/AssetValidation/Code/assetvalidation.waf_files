@@ -1,0 +1,12 @@
+{
+    "auto": {
+        "Include": [
+            "Include/AssetValidation/AssetValidationBus.h"
+        ],
+        "Source": [
+            "Source/AssetValidationModule.cpp",
+            "Source/AssetValidationSystemComponent.cpp",
+            "Source/AssetValidationSystemComponent.h"
+        ]
+    }
+}

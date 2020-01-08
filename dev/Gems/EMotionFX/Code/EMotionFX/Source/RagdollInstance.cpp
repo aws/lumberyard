@@ -111,6 +111,7 @@ namespace EMotionFX
 
     void RagdollInstance::PostPhysicsUpdate(float timeDelta)
     {
+        AZ_UNUSED(timeDelta);
         if (!m_ragdoll)
         {
             return;
@@ -245,14 +246,13 @@ namespace EMotionFX
         return m_ragdoll;
     }
 
-    Physics::World* RagdollInstance::GetRagdollWorld() const
+    AZ::Crc32 RagdollInstance::GetRagdollWorldId() const
     {
         if (m_ragdoll)
         {
-            return m_ragdoll->GetWorld();
+            return m_ragdoll->GetWorldId();
         }
-
-        return nullptr;
+        return AZ::Crc32();
     }
 
     const AZ::Outcome<size_t> RagdollInstance::GetRagdollNodeIndex(size_t jointIndex) const

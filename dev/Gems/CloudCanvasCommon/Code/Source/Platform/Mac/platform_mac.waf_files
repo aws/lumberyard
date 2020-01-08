@@ -1,0 +1,8 @@
+{
+  "auto": {
+    "Platform/Mac": [
+      "CloudCanvasCommon_Traits_Platform.h", 
+      "CloudCanvasCommon_Traits_Mac.h"
+    ]
+  }
+}

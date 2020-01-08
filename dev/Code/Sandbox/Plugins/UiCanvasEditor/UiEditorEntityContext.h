@@ -81,6 +81,9 @@ public: // member functions
     // UiEditorEntityContextRequestBus
     AZ::SliceComponent::SliceInstanceAddress CloneEditorSliceInstance(AZ::SliceComponent::SliceInstanceAddress sourceInstance) override;
     AzFramework::SliceInstantiationTicket InstantiateEditorSlice(const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset, AZ::Vector2 viewportPosition) override;
+    AzFramework::SliceInstantiationTicket InstantiateEditorSliceAtChildIndex(const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset,
+                                                                                AZ::Vector2 viewportPosition,
+                                                                                int childIndex) override;
     void RestoreSliceEntity(AZ::Entity* entity, const AZ::SliceComponent::EntityRestoreInfo& info) override;
     void QueueSliceReplacement(const char* targetPath, 
                                 const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& selectedToAssetMap,
@@ -108,6 +111,20 @@ public: // member functions
 
     AZStd::string GetErrorMessage() const { return m_errorMessage; }
 
+protected: // types
+
+    struct InstantiatingEditorSliceParams
+    {
+        InstantiatingEditorSliceParams(const AZ::Vector2& viewportPosition, int childIndex = -1)
+        {
+            m_viewportPosition = viewportPosition;
+            m_childIndex = childIndex;
+        }
+
+        AZ::Vector2 m_viewportPosition;
+        int m_childIndex;
+    };
+
 protected: // member functions
 
     void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
@@ -120,7 +137,9 @@ protected: // member functions
     void SetupUiEntity(AZ::Entity* entity);
     void InitializeEntities(const AzFramework::EntityContext::EntityList& entities);
 
-    using InstantiatingSlicePair = AZStd::pair<AZ::Data::Asset<AZ::Data::AssetData>, AZ::Vector2>;
+protected: // data
+
+    using InstantiatingSlicePair = AZStd::pair<AZ::Data::Asset<AZ::Data::AssetData>, InstantiatingEditorSliceParams>;
     AZStd::vector<InstantiatingSlicePair> m_instantiatingSlices;
 
 private: // types

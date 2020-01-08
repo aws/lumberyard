@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/iOS":
+        [
+            "AzFrameworkTests_Traits_Platform.h",
+            "AzFrameworkTests_Traits_iOS.h"
+        ]
+    }
+}

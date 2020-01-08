@@ -47,7 +47,10 @@
 
 #include <VertexFormats.h>
 
+AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
 #include <Alembic/Abc/All.h>
+AZ_POP_DISABLE_WARNING
+
 #include <Alembic/AbcGeom/All.h>
 #include <Alembic/AbcCoreFactory/All.h>
 #include <Alembic/AbcCoreHDF5/All.h>

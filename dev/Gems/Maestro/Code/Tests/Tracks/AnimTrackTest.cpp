@@ -94,11 +94,11 @@ namespace AnimTrackTest
 
     TEST_F(TAnimTrackTest, IsKeySelected_InvalidKey_ExpectAssert)
     {
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         m_testTrackA.IsKeySelected(-1);
         // We are expecting 2 asserts as the function does not early-out, so the bad input asserts in both 
         // the TrackView code and the AZStd code that gets called. Early-outs should probably be added in the future.
-        AZ_TEST_STOP_ASSERTTEST(2);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
     }
 
     TEST_F(TAnimTrackTest, IsKeySelected_UnselectedKey_ExpectFalse)
@@ -117,11 +117,11 @@ namespace AnimTrackTest
 
     TEST_F(TAnimTrackTest, SelectKey_InvalidKey)
     {
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         m_testTrackA.SelectKey(-1, true);
         // We are expecting 2 asserts as the function does not early-out, so the bad input asserts in both 
         // the TrackView code and the AZStd code that gets called. Early-outs should probably be added in the future.
-        AZ_TEST_STOP_ASSERTTEST(2);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
     }
 
     TEST_F(TAnimTrackTest, SelectKey_UnselectedKey_Select)
@@ -166,11 +166,11 @@ namespace AnimTrackTest
 
     TEST_F(TAnimTrackTest, IsSortMarkerKey_InvalidKey)
     {
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         m_testTrackA.IsSortMarkerKey(5);
         // We are expecting 2 asserts as the function does not early-out, so the bad input asserts in both 
         // the TrackView code and the AZStd code that gets called. Early-outs should probably be added in the future.
-        AZ_TEST_STOP_ASSERTTEST(2);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
     }
 
     TEST_F(TAnimTrackTest, IsSortMarkerKey_UnmarkedKey_ExpectFalse)
@@ -189,11 +189,11 @@ namespace AnimTrackTest
 
     TEST_F(TAnimTrackTest, SetSortMarkerKey_InvalidKey)
     {
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         m_testTrackA.SetSortMarkerKey(5, true);
         // We are expecting 2 asserts as the function does not early-out, so the bad input asserts in both 
         // the TrackView code and the AZStd code that gets called. Early-outs should probably be added in the future.
-        AZ_TEST_STOP_ASSERTTEST(2);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
     }
 
     TEST_F(TAnimTrackTest, SetSortMarkerKey_UnsetKey_Set)
@@ -254,11 +254,11 @@ namespace AnimTrackTest
     TEST_F(TAnimTrackTest, GetKey_InvalidIndex_ExpectAssert)
     {
         IKey result;
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         m_testTrackA.GetKey(-1, &result);
         // We are expecting 2 asserts as the function does not early-out, so the bad input asserts in both 
         // the TrackView code and the AZStd code that gets called. Early-outs should probably be added in the future.
-        AZ_TEST_STOP_ASSERTTEST(2);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
     }
 
     TEST_F(TAnimTrackTest, GetKey_ValidInputs_ExpectSuccess)
@@ -271,11 +271,11 @@ namespace AnimTrackTest
     TEST_F(TAnimTrackTest, SetKey_InvalidIndex_ExpectAssert)
     {
         ITestKey testKey;
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         m_testTrackA.SetKey(-1, &testKey);
         // We are expecting 2 asserts as the function does not early-out, so the bad input asserts in both 
         // the TrackView code and the AZStd code that gets called. Early-outs should probably be added in the future.
-        AZ_TEST_STOP_ASSERTTEST(2);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
     }
 
     TEST_F(TAnimTrackTest, SetKey_ValidKey_ExpectSuccess)
@@ -290,11 +290,11 @@ namespace AnimTrackTest
 
     TEST_F(TAnimTrackTest, GetKeyTime_InvalidIndex_ExpectAssert)
     {
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         m_testTrackA.GetKeyTime(-1);
         // We are expecting 2 asserts as the function does not early-out, so the bad input asserts in both 
         // the TrackView code and the AZStd code that gets called. Early-outs should probably be added in the future.
-        AZ_TEST_STOP_ASSERTTEST(2);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
     }
 
     TEST_F(TAnimTrackTest, GetKeyTime_ValidInputs_ExpectSuccess)
@@ -306,11 +306,11 @@ namespace AnimTrackTest
 
     TEST_F(TAnimTrackTest, SetKeyTime_InvalidIndex_ExpectAssert)
     {
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         m_testTrackA.SetKeyTime(-1, 5.0f);
         // We are expecting 2 asserts as the function does not early-out, so the bad input asserts in both 
         // the TrackView code and the AZStd code that gets called. Early-outs should probably be added in the future.
-        AZ_TEST_STOP_ASSERTTEST(2);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
     }
 
     TEST_F(TAnimTrackTest, SetKeyTime)

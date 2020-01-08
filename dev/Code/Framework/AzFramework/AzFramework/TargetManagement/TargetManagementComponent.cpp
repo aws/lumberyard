@@ -29,12 +29,14 @@
 #include <GridMate/Replica/ReplicaFunctions.h>
 #include <time.h>
 
-#ifdef AZ_PLATFORM_APPLE_OSX
-#include <libproc.h>
-#endif
-
 namespace AzFramework
 {
+    namespace Platform
+    {
+        AZStd::string GetPersistentName();
+        AZStd::string GetNeighborhoodName();
+    }
+
     bool TargetInfo::IsSelf() const
     {
         return m_flags & TF_SELF && m_networkId == k_selfNetworkId;
@@ -282,26 +284,7 @@ namespace AzFramework
     {
         EBUS_EVENT_RESULT(m_serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
         {
-            AZStd::string persistentName = "Lumberyard";
-
-        #if defined(AZ_PLATFORM_WINDOWS)
-            char procPath[256];
-            const DWORD ret = GetModuleFileName(nullptr, procPath, 256);
-            if (ret > 0)
-            {
-                char procName[256];
-                ::_splitpath_s(procPath, nullptr, 0, nullptr, 0, procName, 256, nullptr, 0);
-                persistentName = procName;
-            }
-        #elif defined(AZ_PLATFORM_APPLE_OSX)
-            char procName[PROC_PIDPATHINFO_MAXSIZE];
-            if (proc_pidpath(getpid(), procName, sizeof(procName)) > 0)
-            {
-                persistentName = procName;
-                size_t slash = persistentName.find_last_of('/');
-                persistentName = persistentName.substr(slash + 1);
-            }
-        #endif
+            AZStd::string persistentName = Platform::GetPersistentName();
 
             AZStd::string targetManagementSettingsKey = AZStd::string::format("TargetManagementSettings::%s", persistentName.c_str());
             m_settings = AZ::UserSettings::CreateFind<TargetManagementSettings>(AZ::Crc32(targetManagementSettingsKey.c_str()), AZ::UserSettings::CT_GLOBAL);
@@ -314,23 +297,7 @@ namespace AzFramework
 
         if (m_settings->m_neighborhoodName.empty())
         {
-        #if defined(AZ_PLATFORM_WINDOWS)
-            // On windows, if the neighborhood name was not provided we
-            // will use the local computer name as the name since most of
-            // the time the hub should be running on the local machine.
-            char localhost[MAX_COMPUTERNAME_LENGTH + 1];
-            DWORD len = AZ_ARRAY_SIZE(localhost);
-            if (GetComputerName(localhost, &len))
-            {
-                m_settings->m_neighborhoodName = localhost;
-            }
-        #elif defined(AZ_PLATFORM_APPLE_OSX)
-            char localhost[512];
-            if (gethostname(localhost, sizeof(localhost)) == 0)
-            {
-                m_settings->m_neighborhoodName = localhost;
-            }
-        #endif
+            m_settings->m_neighborhoodName = Platform::GetNeighborhoodName();
         }
 
         // Always set our desired target to be initially offline

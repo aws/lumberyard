@@ -12,11 +12,10 @@
 
 #pragma once
 
-// include the required headers
+#include <AzCore/std/containers/vector.h>
 #include "StandardHeaders.h"
 #include "CommandLine.h"
 #include "Command.h"
-#include "Array.h"
 
 
 namespace MCore
@@ -41,7 +40,7 @@ namespace MCore
          * @param groupName The name of the command group, which is the name that will appear inside the command history.
          * @param numCommandsToReserve Pre-allocate memory for a given amount of commands. This can be used to prevent memory reallocations.
          */
-        CommandGroup(const AZStd::string& groupName, uint32 numCommandsToReserve = 3);
+        CommandGroup(const AZStd::string& groupName, size_t numCommandsToReserve = 3);
 
         /**
          * The destructor.
@@ -56,6 +55,8 @@ namespace MCore
          */
         void AddCommandString(const char* commandString);
 
+        void AddCommand(MCore::Command* command);
+
         /**
          * Add a command string to the group.
          * This will be added to the back of the list of commands to be executed when executing this group.
@@ -68,14 +69,14 @@ namespace MCore
          * @param index The command number to get the string for. This must be in range of [0..GetNumCommands()-1].
          * @result The command string for the specified command.
          */
-        const char* GetCommandString(uint32 index) const;
+        const char* GetCommandString(size_t index) const;
 
         /**
          * Get the command execution string for a given command inside the group.
          * @param index The command number to get the string for. This must be in range of [0..GetNumCommands()-1].
          * @result The command string for the specified command.
          */
-        const AZStd::string& GetCommandStringAsString(uint32 index) const;
+        const AZStd::string& GetCommandStringAsString(size_t index) const;
 
         /**
          * Get a given command.
@@ -83,7 +84,7 @@ namespace MCore
          * @param index The command number to get the pointer to. This must be in range of [0..GetNumCommands()-1].
          * @result A pointer to the command, which can be nullptr.
          */
-        Command* GetCommand(uint32 index);
+        Command* GetCommand(size_t index);
 
         /**
          * Get the parameter commandline object for the given command.
@@ -91,7 +92,7 @@ namespace MCore
          * @param index The command number ot get the parameter list for. This must be in range of [0..GetNumCommands()-1].
          * @result The CommandLine object which represents the parameter list used during execution of the command.
          */
-        const CommandLine& GetParameters(uint32 index) const;
+        const CommandLine& GetParameters(size_t index) const;
 
         /**
          * Get the name of the group.
@@ -124,7 +125,7 @@ namespace MCore
          * @param index The command number to change the command string for. This must be in range of [0..GetNumCommands()-1].
          * @param commandString The command string to use. This is the string you would pass to CommandManager::ExecuteCommand(...).
          */
-        void SetCommandString(uint32 index, const char* commandString);
+        void SetCommandString(size_t index, const char* commandString);
 
         /**
          * Set the parameter list for a given command.
@@ -133,7 +134,7 @@ namespace MCore
          *              With normal usage you would only specify the command string and nothing more.
          * @param params The parameter list.
          */
-        void SetParameters(uint32 index, const CommandLine& params);
+        void SetParameters(size_t index, const CommandLine& params);
 
         /**
          * Set the command pointer for a given command number.
@@ -141,7 +142,7 @@ namespace MCore
          * @param index The command number to set the command pointer for. This must be in range of [0..GetNumCommands()-1].
          * @param command The command to use.
          */
-        void SetCommand(uint32 index, Command* command);
+        void SetCommand(size_t index, Command* command);
 
         /**
          * Set if we want to continue when one of the internal commands fails.
@@ -161,7 +162,7 @@ namespace MCore
         /**
          * Set whether the group returns false after calling CommandManager::ExecuteCommandGroup().
          * The default value is false.
-         * @param returnAfterError Set to true if you wish the group to fail and return false in case an error occured.
+         * @param returnAfterError Set to true if you wish the group to fail and return false in case an error occurred.
          */
         void SetReturnFalseAfterError(bool returnAfterError);
 
@@ -183,7 +184,7 @@ namespace MCore
         /**
          * Check whether the group returns false after calling CommandManager::ExecuteCommandGroup().
          * The default value is false.
-         * @return Returns true if the group return false in case an error occured.
+         * @return Returns true if the group return false in case an error occurred.
          */
         bool GetReturnFalseAfterError() const;
 
@@ -192,13 +193,16 @@ namespace MCore
          * Using AddCommandString will increase the number returned by this method.
          * @result The number of commands inside this group.
          */
-        uint32 GetNumCommands() const;
+        size_t GetNumCommands() const;
+
+        bool IsEmpty() const { return GetNumCommands() == 0; }
 
         /**
          * Remove all commands from the group.
          * @param delFromMem Set to true if you wish to delete the Command objects from memory as well. Normally you shouldn't do this as the command manager handles this.
          */
         void RemoveAllCommands(bool delFromMem = false);
+        void Clear(bool delFromMem = false) { RemoveAllCommands(delFromMem); }
 
         /**
          * Clone this command group.
@@ -210,7 +214,7 @@ namespace MCore
          * Reserve space for a given amount of commands, to prevent reallocs.
          * @param[in] numToReserve The number of command strings to reserve memory for. This will prevent reallocs when adding new commands.
          */
-        void ReserveCommands(uint32 numToReserve);
+        void ReserveCommands(size_t numToReserve);
 
     private:
         /**
@@ -225,10 +229,10 @@ namespace MCore
 
             CommandEntry()
                 : mCommand(nullptr) {}
-            ~CommandEntry()     { delete mCommand;  }
+            ~CommandEntry() {}
         };
 
-        Array<CommandEntry>     mCommands;              /**< The set of commands inside the group. */
+        AZStd::vector<CommandEntry> mCommands;          /**< The set of commands inside the group. */
         AZStd::string           mGroupName;             /**< The name of the group as it will appear inside the command history. */
         bool                    mContinueAfterError;    /**< */
         bool                    mHistoryAfterError;     /**< */

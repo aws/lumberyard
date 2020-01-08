@@ -13,11 +13,13 @@
 
 // Component includes
 #include <AzFramework/Asset/AssetCatalogComponent.h>
+#include <AzFramework/Asset/CustomAssetTypeComponent.h>
 #include <AzFramework/Asset/AssetSystemComponent.h>
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzFramework/Components/BootstrapReaderComponent.h>
 #include <AzFramework/Driller/RemoteDrillerInterface.h>
 #include <AzFramework/Entity/GameEntityContextComponent.h>
+#include <AzFramework/FileTag/FileTagComponent.h>
 #include <AzFramework/Input/System/InputSystemComponent.h>
 #include <AzFramework/Network/NetBindingComponent.h>
 #include <AzFramework/Network/NetBindingSystemComponent.h>
@@ -33,6 +35,8 @@ namespace AzFramework
         m_descriptors.insert(m_descriptors.end(), {
             AzFramework::BootstrapReaderComponent::CreateDescriptor(),
             AzFramework::AssetCatalogComponent::CreateDescriptor(),
+            AzFramework::CustomAssetTypeComponent::CreateDescriptor(),
+            AzFramework::FileTag::BlackListFileComponent::CreateDescriptor(),
             AzFramework::NetBindingComponent::CreateDescriptor(),
             AzFramework::NetBindingSystemComponent::CreateDescriptor(),
             AzFramework::TransformComponent::CreateDescriptor(),

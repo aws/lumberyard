@@ -12,6 +12,7 @@
 #pragma once
 
 #include <GraphCanvas/Widgets/EditorContextMenu/EditorContextMenu.h>
+#include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ConstructMenuActions/ConstructPresetMenuActions.h>
 
 namespace GraphCanvas
 {
@@ -24,13 +25,13 @@ namespace GraphCanvas
         ~GraphCanvasConstructActionsMenuGroup();
 
         void PopulateMenu(EditorContextMenu* contextMenu);
+        void RefreshGroup();
         
-        void DisableBookmark();
-        void DisableComment();
+        void DisableBookmark();        
         
     private:
     
         ContextMenuAction* m_createBookmark;
-        ContextMenuAction* m_createComment;
+        CommentPresetsMenuActionGroup m_commentPresets;
     };
 }

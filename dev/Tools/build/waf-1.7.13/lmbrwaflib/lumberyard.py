@@ -17,6 +17,7 @@ import zlib
 import json
 import re
 import traceback
+import runpy
 
 from waflib import Logs, Options, Utils, Configure, ConfigSet, Node, Errors
 from waflib.TaskGen import taskgen_method
@@ -24,7 +25,7 @@ from waflib.Configure import conf, conf_event, ConfigurationContext, deprecated
 from waflib.Build import BuildContext, CleanContext, Context
 
 from waf_branch_spec import SUBFOLDERS, VERSION_NUMBER_PATTERN, BINTEMP_MODULE_DEF, \
-                            LUMBERYARD_ENGINE_PATH, ADDITIONAL_WAF_MODULES, AVAILABLE_LAUNCHERS
+                            LUMBERYARD_ENGINE_PATH, ADDITIONAL_WAF_MODULES
 
 from cry_utils import append_to_unique_list
 from utils import parse_json_file, convert_roles_to_setup_assistant_description, write_json_file
@@ -58,7 +59,8 @@ NON_BUILD_COMMANDS = [
     'android_studio',
     'xcode_ios',
     'xcode_appletv',
-    'xcode_mac'
+    'xcode_mac',
+    'info'
 ]
 
 REGEX_PATH_ALIAS = re.compile('@(.+)@')
@@ -102,13 +104,14 @@ LMBR_WAFLIB_MODULES = [
         'lmbr_install_context',
         'packaging',
         'deploy',
+        'run_test',
 
         'generate_uber_files',          # Load support for Uber Files
         'generate_module_dependency_files',  # Load support for Module Dependency Files (Used by ly_integration_toolkit_utils.py)
 
         # Visual Studio support
         'msvs_override_handling:win32',
-        'mscv_helper:win32',
+        'msvc_helper:win32',
         'vscode:win32',
 
         'xcode:darwin',
@@ -124,7 +127,10 @@ LMBR_WAFLIB_MODULES = [
         'winres',
 
         'bootstrap',
-        'lmbr_setup_tools'
+        'lmbr_setup_tools',
+        'artifacts_cache',
+
+        'module_info'
     ])
 ]
 
@@ -501,6 +507,12 @@ def prepare_build_environment(bld):
                 deploy_cmd = 'deploy_{}_{}'.format(platform, configuration)
                 if bld.is_option_true('deploy_projects_automatically') and (deploy_cmd not in Options.commands):
                     Options.commands.append(deploy_cmd)
+                    
+            elif bld.cmd.startswith('deploy') and configuration.endswith('_test'):
+                unittest_cmd = 'run_{}_{}'.format(platform, configuration)
+                if bld.is_option_true('auto_launch_unit_test') and (unittest_cmd not in Options.commands):
+                    if not bld.spec_disable_games():
+                        Options.commands.append(unittest_cmd)
 
 
 @conf
@@ -647,8 +659,6 @@ def get_enabled_capabilities(ctx):
             lmbr_setup_platform = 'Win'
             parsed_capabilities.append('windows')
             parsed_capabilities.append('vc141')
-            parsed_capabilities.append('vc140')
-            parsed_capabilities.append('vc120')
             minimal_setup_assistant_build_command = 'lmbr_waf build_win_x64_vs2017_profile -p lmbr_setup_tools'
         else:
             lmbr_setup_platform = 'Linux'
@@ -1071,9 +1081,16 @@ def update_module_definition(ctx, module_type, build_type, kw):
 
     platforms = list(_to_set(kw.get('platforms',['all'])))
     configurations = list(_to_set(kw.get('configurations',['all'])))
-    use = _to_set(kw.get('use',[]))
-    uselib = _to_set(kw.get('uselib', []))
-    uses = list(use | uselib)
+
+    # Attempt to collect all permutations of the 'use' keyword so we can build the full 'use' dependencies for all cases
+    use_related_keywords = ctx.get_all_eligible_use_keywords()
+    # Include 'uselib' as a module use
+    append_to_unique_list(use_related_keywords, 'uselib')
+    
+    uses = []
+    for use_keyword in use_related_keywords:
+        append_to_unique_list(uses, kw.get(use_keyword, []))
+
     path = ctx.path.path_from(ctx.engine_node)
 
     module_def = {
@@ -1238,6 +1255,10 @@ def get_module_uses(ctx, target, parent_spec):
             if module_use not in module_uses:
                 module_uses.append(module_use)
 
+            # If the module use is non-lumberyard module, it will not be marked as a valid module because it does not
+            # have a module_def file. Skip these modules to avoid the warning
+            if module_use in getattr(ctx, 'non_lumberyard_module', {}):
+                continue
             if ctx.is_third_party_uselib_configured(module_use):
                 # This is a third party uselib, there are no dependencies, so skip
                 continue
@@ -1320,10 +1341,6 @@ def mark_module_exempt(ctx, target):
 def is_module_exempt(ctx, target):
     # Ignore the Exempt modules that are not part of the spec system
     if target in EXEMPT_USE_MODULES:
-        return True
-
-    # Ignore any available launcher derived uses
-    if target in AVAILABLE_LAUNCHERS.get('modules', []):
         return True
 
     return False
@@ -1419,3 +1436,184 @@ def get_engine_node(ctx):
         
     return ctx.engine_node
 
+@conf
+def add_platform_root(ctx, kw, root, export):
+    """
+    Preprocess/update a project definition's keywords (kw) to include platform-specific settings
+    
+    :param ctx:     The current build context
+    :param kw:      The keyword dictionary to preprocess
+    :param root:    The root folder where the platform subfolders will reside. This folder is relative to the current
+                    project folder.
+    :param export:  Flag to include the include paths as an export_includes to add to any dependent project
+    """
+    
+    if not os.path.isabs(root):
+        platform_base_path = os.path.normpath(os.path.join(ctx.path.abspath(), root))
+    else:
+        platform_base_path = root
+        
+    if not os.path.isdir(platform_base_path):
+        Logs.warn("[WARN] platform root '{}' is not a valid folder.".format(platform_base_path))
+        return
+    
+        # Get the current list of platforms
+    target_platforms = ctx.get_all_target_platforms(False)
+    
+    for target_platform in target_platforms:
+        platform_folder = target_platform.attributes.get('platform_folder', None)
+        if not platform_folder:
+            Logs.warn("[WARN] Missing attribute 'platform_folder' for platform setting '{}'".format(target_platform.platform))
+            continue
+        platform_keyword = target_platform.attributes.get('platform_keyword', None)
+        if not platform_keyword:
+            Logs.warn("[WARN] Missing attribute 'platform_keyword' for platform setting '{}'".format(target_platform.platform))
+            continue
+
+        directory = os.path.join(platform_base_path, platform_folder)
+
+        waf_file_list = os.path.join(directory, 'platform_{}.waf_files'.format(platform_keyword))
+        if os.path.isfile(waf_file_list):
+            waf_files_relative_path = os.path.relpath(waf_file_list, ctx.path.abspath())
+            # the platform file list can be a list or a string, since append_to_unique_list expects a list, we convert to a list if it is not
+            file_list = kw.setdefault('{}_file_list'.format(target_platform.platform), [])
+            if not isinstance(file_list, list):
+                file_list = [file_list]
+            append_to_unique_list(file_list, waf_files_relative_path)
+        else:
+            # The platform_<platform>.waf_files file list is REQUIRED for every platform subfolder under the platform root.
+            raise Errors.WafError("Missing required 'platform_{}.waf_files' from path '{}'.".format(platform_keyword, directory))
+
+        append_to_unique_list(kw.setdefault('{}_includes'.format(target_platform.platform),[]),
+                              directory)
+        if export:
+            append_to_unique_list(kw.setdefault('{}_export_includes'.format(target_platform.platform), []),
+                                  directory)
+
+        platform_wscript = os.path.join(directory, 'wscript_{}'.format(platform_keyword))
+        if os.path.isfile(platform_wscript):
+            platform_script = runpy.run_path(platform_wscript)
+            if 'update_platform_parameters' not in platform_script:
+                raise Errors.WafError("Missing required function 'def update_platform_parameters(bld, platform_folder, kw): ... in {}".format(platform_wscript))
+            try:
+                platform_script['update_platform_parameters'](ctx, directory, kw)
+            except Exception as e:
+                raise Errors.WafError("Error running function 'update_platform_parameters' in {}: {}".format(platform_wscript, e))
+
+
+@conf
+def append_kw_value(ctx, kw_dict, key, value, unique=True):
+    """
+    Context helper function to add a value keyword list entry
+    
+    :param ctx:     The context that this function is attached to
+    :param kw_dict: The kw dict to update
+    :param key:     The key in the kw dict to append to. The key must represent a list
+    :param value:   The value to add. If its a list, then add the items in the list individually
+    :param unique:  Option to add uniquely
+
+    """
+    target_kw_value_list = kw_dict.setdefault(key, [])
+    if not isinstance(target_kw_value_list, list):
+        raise ValueError("Cannot append a kw value to a non-list kw entry '{}'".format(key))
+    if unique:
+        append_to_unique_list(target_kw_value_list, value)
+    elif isinstance(value, list):
+        target_kw_value_list += value
+    else:
+        target_kw_value_list.append(value)
+
+
+@conf
+def merge_kw_dictionaries(ctx, kw_target, kw_src, unique=True):
+    """
+    Context helper function to merge an input kw dictionary to an existing kw dictionary. This will only work with
+    keyword entries represented as lists.
+    
+    :param ctx:         The context that this function is attached to
+    :param kw_target:   The target kw dictionary to merge into
+    :param kw_src:      The source kw dictionary to merge from
+    :param unique:      Apply values uniquely
+    """
+    for key_src_key, key_src_value in kw_src.items():
+        ctx.append_kw_value(kw_dict=kw_target,
+                            key=key_src_key,
+                            value=key_src_value,
+                            unique=unique)
+
+
+@conf
+def PlatformRoot(self, root, export_includes=False):
+    return {'root': root, 'export_includes': export_includes}
+
+
+@conf
+def get_all_eligible_use_keywords(ctx):
+    """
+    Build a list of all possible combinations of the 'use' keyword so we can build a better dependency map
+    :param ctx: Context
+    :return: List of all possible 'use' keywords (with test and platforn prefixes)
+    """
+    
+    # Attempt to collect all permutations of the 'use' keyword so we can build the full 'use' dependencies for all cases
+    use_related_keywords = ['use', 'test_use', 'test_all_use']
+    platform_names = ctx.get_all_platform_names()
+    for platform_name in platform_names:
+        append_to_unique_list(use_related_keywords, '{}_use'.format(platform_name))
+        platform_settings = ctx.get_platform_settings(platform_name)
+        for platform_alias in platform_settings.aliases:
+            append_to_unique_list(use_related_keywords, '{}_use'.format(platform_alias))
+    return use_related_keywords
+
+
+@conf
+def register_non_lumberyard_module(ctx, module):
+    """
+    If there are modules that are tagged as 'use' but is not a 3rd party library or any lumberyard build module, it will
+    not have a valid module_def so a warning will appear saying the 'use' is invalid. But there are cases where we want
+    to define a module without using a lumberyard build module. In those cases, we need to declare the module as a non-lumberyard
+    module so suppress that warning
+    
+    :param ctx:     Context
+    :param module:  The non-lumberyard module to register
+
+    """
+    try:
+        ctx.non_lumberyard_module.add(module)
+    except AttributeError:
+        ctx.non_lumberyard_module = set()
+        ctx.non_lumberyard_module.add(module)
+
+
+MULTI_CONF_FUNCTION_MAP = {}
+
+
+def multi_conf(f):
+    """
+    Decorator: Attach one or more functions with the same name and argument list to the different option, configure, and build contexts.
+    
+    The result of a call to a context attached multi_conf decorated function will be a list of one or more results (The list may contain
+    one or more 'None' values). There must be at least one function registered by this decorator in order to work.
+
+    :param f: method to bind
+    :type f: function
+    """
+
+    func_list = MULTI_CONF_FUNCTION_MAP.setdefault(f.__name__, [])
+    func_list.append(f)
+
+    def fun(*k, **kw):
+        result_list = []
+        for func in MULTI_CONF_FUNCTION_MAP[f.__name__]:
+            result = func(*k, **kw)
+            if result is not None:
+                result_list.append(result)
+        return result_list
+            
+    for k in [Options.OptionsContext, ConfigurationContext, BuildContext]:
+        
+        if hasattr(k, f.__name__):
+            continue
+        setattr(k, f.__name__, fun)
+        
+    return f

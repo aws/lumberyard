@@ -46,11 +46,11 @@ namespace awsiotsdk {
 			// Delete Default constructor
 			SubscribePacket() = delete;
 			// Default Copy constructor
-			SubscribePacket(const SubscribePacket &) = default;
+			SubscribePacket(const SubscribePacket &) = delete;
 			// Default Move constructor
             // LY 2013 Fix
 			// Default Copy assignment operator
-			SubscribePacket& operator=(const SubscribePacket &) = default;
+			SubscribePacket& operator=(const SubscribePacket &) = delete;
 			// Default Move assignment operator
             // LY 2013 Fix
 			// Default destructor
@@ -95,11 +95,11 @@ namespace awsiotsdk {
 			// Delete Default constructor
 			SubackPacket() = delete;
 			// Default Copy constructor
-			SubackPacket(const SubackPacket &) = default;
+			SubackPacket(const SubackPacket &) = delete;
 			// Default Move constructor
             // LY 2013 Fix
 			// Default Copy assignment operator
-			SubackPacket& operator=(const SubackPacket &) = default;
+			SubackPacket& operator=(const SubackPacket &) = delete;
 			// Default Move assignment operator
             // LY 2013 Fix
 			// Default destructor
@@ -143,11 +143,11 @@ namespace awsiotsdk {
 			// Delete Default constructor
 			UnsubscribePacket() = delete;
 			// Default Copy constructor
-			UnsubscribePacket(const UnsubscribePacket &) = default;
+			UnsubscribePacket(const UnsubscribePacket &) = delete;
 			// Default Move constructor
             // LY 2013 Fix
 			// Default Copy assignment operator
-			UnsubscribePacket& operator=(const UnsubscribePacket &) = default;
+			UnsubscribePacket& operator=(const UnsubscribePacket &) = delete;
 			// Default Move assignment operator
             // LY 2013 Fix
 			// Default destructor
@@ -189,11 +189,11 @@ namespace awsiotsdk {
 			// Delete Default constructor
 			UnsubackPacket() = delete;
 			// Default Copy constructor
-			UnsubackPacket(const UnsubackPacket &) = default;
+			UnsubackPacket(const UnsubackPacket &) = delete;
 			// Default Move constructor
             // LY 2013 Fix
 			// Default Copy assignment operator
-			UnsubackPacket& operator=(const UnsubackPacket &) = default;
+			UnsubackPacket& operator=(const UnsubackPacket &) = delete;
 			// Default Move assignment operator
             // LY 2013 Fix
 			// Default destructor

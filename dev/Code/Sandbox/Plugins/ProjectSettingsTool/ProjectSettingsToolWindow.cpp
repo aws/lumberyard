@@ -594,7 +594,7 @@ namespace ProjectSettingsTool
                         m_ui->reconfigureLog->show();
                     #if defined(AZ_PLATFORM_WINDOWS)
                         m_reconfigureProcess.start(QString("cmd.exe /C %1").arg("lmbr_waf.bat configure"));
-                    #elif defined(AZ_PLATFORM_APPLE_OSX)
+                    #elif defined(AZ_PLATFORM_MAC)
                         m_reconfigureProcess.start(QString("/bin/sh %1").arg("lmbr_waf.sh configure"));
                     #else
                         #error "Needs to be implemented"

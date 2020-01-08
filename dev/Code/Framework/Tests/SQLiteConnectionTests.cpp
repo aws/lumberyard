@@ -10,11 +10,11 @@
 *
 */
 
-#include <Tests/TestTypes.h>
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/IO/SystemFile.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #include <AzToolsFramework/SQLite/SQLiteConnection.h>
 
@@ -64,13 +64,13 @@ namespace UnitTest
         ASSERT_TRUE(m_database->IsOpen());
 
         // basic tests, bad input:
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         EXPECT_FALSE(m_database->DoesTableExist(""));
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         EXPECT_FALSE(m_database->DoesTableExist(nullptr));
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
     }
 
     // DoesTableExist had an off-by-one error in its string.  It would not always crash.

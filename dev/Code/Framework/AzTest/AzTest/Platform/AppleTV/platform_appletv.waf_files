@@ -1,0 +1,14 @@
+{
+    "none": {
+        "Platform/AppleTV": [
+            "../Common/UnixLike/AzTest/ColorizedOutput_UnixLike.cpp"
+        ]
+    },
+    "auto": {
+        "Platform/AppleTV": [
+            "../Common/Unimplemented/Platform_Unimplemented.cpp",
+            "AzTest_Traits_Platform.h",
+            "AzTest_Traits_AppleTV.h"
+        ]
+    }
+}

@@ -57,7 +57,7 @@ namespace LmbrCentral
                     "Static Physics", "The Static Physics component is the primary method of adding static visual geometry to entities")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Physics (Legacy)")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/StaticPhysics.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/StaticPhysics.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/StaticPhysics.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)

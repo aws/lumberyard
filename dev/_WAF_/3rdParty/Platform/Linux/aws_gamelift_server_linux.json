@@ -1,0 +1,29 @@
+{
+    "platform": {
+        "linux_x64": {
+            "system_lib": [
+                "m",
+                "c"
+            ],
+            "aws_gamelift_server_static/defines": [
+                "AWS_CUSTOM_MEMORY_MANAGEMENT",
+                "BUILD_GAMELIFT_SERVER",
+                "GAMELIFT_USE_STD"
+            ],
+            "aws_gamelift_server_static/libpath_debug": [
+                "lib/linux/intel64/clang-3.8.0/Debug"
+            ],
+            "aws_gamelift_server_static/libpath_release": [
+                "lib/linux/intel64/clang-3.8.0/Release"
+            ],
+            "aws_gamelift_server_static/lib": [
+                "libaws-cpp-sdk-gamelift-server.a",
+                "libsioclient.a",
+                "libboost_date_time.a",
+                "libboost_random.a",
+                "libboost_system.a",
+                "libprotobuf.a"
+            ]
+        }
+    }
+}

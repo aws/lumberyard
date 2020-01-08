@@ -36,7 +36,7 @@ namespace Water
         friend class WaterVolumeConverter; //So that it can access m_displayFilled
 
     public:
-        AZ_TYPE_INFO(EditorWaterVolumeCommon, "{6033CAE2-9FCD-44EF-9D06-DAA86417182B}", WaterVolumeCommon);
+        AZ_TYPE_INFO_LEGACY(EditorWaterVolumeCommon, "{6033CAE2-9FCD-44EF-9D06-DAA86417182B}", WaterVolumeCommon);
         AZ_CLASS_ALLOCATOR(EditorWaterVolumeCommon, AZ::SystemAllocator, 0);
 
         static void Reflect(AZ::ReflectContext* context);

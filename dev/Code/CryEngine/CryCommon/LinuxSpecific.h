@@ -38,9 +38,11 @@
 #if defined(APPLE)
 #include <dirent.h>
 #endif //defined(APPLE)
+#if !defined(SKIP_INET_INCLUDES)
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#endif // defined(SKIP_INET_INCLUDES)
 #include <vector>
 #include <string>
 

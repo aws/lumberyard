@@ -14,6 +14,7 @@
 #include <qcursor.h>
 #include <qgraphicsscene.h>
 #include <qgraphicsview.h>
+#include <QToolTip>
 
 #include <AzCore/Serialization/EditContext.h>
 
@@ -24,10 +25,12 @@
 #include <Components/StylingComponent.h>
 #include <GraphCanvas/Components/Nodes/NodeBus.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
+#include <GraphCanvas/Components/Slots/Extender/ExtenderSlotBus.h>
 #include <GraphCanvas/Editor/AssetEditorBus.h>
 #include <GraphCanvas/Editor/GraphModelBus.h>
 #include <GraphCanvas/Utils/GraphUtils.h>
-#include <Utils/ConversionUtils.h>
+#include <GraphCanvas/Utils/ConversionUtils.h>
+#include <GraphCanvas/Widgets/GraphCanvasGraphicsView/GraphCanvasGraphicsView.h>
 
 namespace GraphCanvas
 {
@@ -514,7 +517,8 @@ namespace GraphCanvas
             SlotRequestBus::Event(GetTargetEndpoint().GetSlotId(), &SlotRequests::AddConnectionId, GetEntityId(), GetSourceEndpoint());
         }
 
-        ConnectionNotificationBus::Event(GetEntityId(), &ConnectionNotifications::OnMoveComplete);
+        const bool isValidConnection = true;
+        ConnectionNotificationBus::Event(GetEntityId(), &ConnectionNotifications::OnMoveFinalized, isValidConnection);
     }
 
     void ConnectionComponent::OnConnectionMoveStart()
@@ -733,7 +737,7 @@ namespace GraphCanvas
         return retVal || !activePoint.IsValid();
     }
 
-    Endpoint ConnectionComponent::FindConnectionCandidateAt(const QPointF& scenePos) const
+    ConnectionComponent::ConnectionCandidate ConnectionComponent::FindConnectionCandidateAt(const QPointF& scenePos) const
     {
         Endpoint knownEndpoint = m_targetEndpoint;
 
@@ -745,8 +749,6 @@ namespace GraphCanvas
         EditorId editorId;
         SceneRequestBus::EventResult(editorId, m_graphId, &SceneRequests::GetEditorId);
 
-        Endpoint retVal;
-
         double snapDist = 10.0;
         AssetEditorSettingsRequestBus::EventResult(snapDist, editorId, &AssetEditorSettingsRequests::GetSnapDistance);
 
@@ -757,8 +759,16 @@ namespace GraphCanvas
         AZStd::vector<Endpoint> endpoints;
         SceneRequestBus::EventResult(endpoints, m_graphId, &SceneRequests::GetEndpointsInRect, rect);
 
+        ConnectionCandidate candidate;
+
         for (Endpoint endpoint : endpoints)
         {
+            // For our tool tips we really only want to focus in on the first element
+            if (!candidate.m_testedTarget.IsValid())
+            {
+                candidate.m_testedTarget = endpoint;
+            }
+
             bool canCreateConnection = false;
 
             if (m_dragContext == DragContext::MoveSource && endpoint == m_sourceEndpoint)
@@ -776,17 +786,32 @@ namespace GraphCanvas
             }
             else
             {
-                SlotRequestBus::EventResult(canCreateConnection, endpoint.GetSlotId(), &SlotRequests::CanCreateConnectionTo, knownEndpoint);
+                // If we are checking against an extender slot. We need to go through special flow.
+                // Since the extender will create a new slot for us to connect to.
+                if (auto extenderHandler = ExtenderSlotRequestBus::FindFirstHandler(endpoint.GetSlotId()))
+                {
+                    Endpoint newConnectionEndpoint = extenderHandler->ExtendForConnectionProposal(GetEntityId(), knownEndpoint);
+
+                    if (newConnectionEndpoint.IsValid())
+                    {
+                        canCreateConnection = true;
+                        endpoint = newConnectionEndpoint;                        
+                    }
+                }
+                else
+                {
+                    SlotRequestBus::EventResult(canCreateConnection, endpoint.GetSlotId(), &SlotRequests::CanCreateConnectionTo, knownEndpoint);
+                }
             }
 
             if (canCreateConnection)
             {
-                retVal = endpoint;
+                candidate.m_connectableTarget = endpoint;                
                 break;
             }
         }
 
-        return retVal;
+        return candidate;
     }
 
     void ConnectionComponent::UpdateMovePosition(const QPointF& position)
@@ -796,7 +821,7 @@ namespace GraphCanvas
         {
             m_mousePoint = position;
 
-            Endpoint newProposal = FindConnectionCandidateAt(m_mousePoint);
+            ConnectionCandidate connectionCandidate = FindConnectionCandidateAt(m_mousePoint);
 
             bool updateConnection = false;
             if (m_dragContext == DragContext::MoveSource)
@@ -808,7 +833,7 @@ namespace GraphCanvas
                     ConnectionNotificationBus::Event(this->GetEntityId(), &ConnectionNotifications::OnSourceSlotIdChanged, oldId, newId);
                 };
 
-                updateConnection = UpdateProposal(m_sourceEndpoint, newProposal, updateFunction);
+                updateConnection = UpdateProposal(m_sourceEndpoint, connectionCandidate.m_connectableTarget, updateFunction);
             }
             else
             {
@@ -818,8 +843,19 @@ namespace GraphCanvas
                     SlotRequestBus::Event(newId, &SlotRequests::DisplayProposedConnection, this->GetEntityId(), this->GetSourceEndpoint());
                     ConnectionNotificationBus::Event(this->GetEntityId(), &ConnectionNotifications::OnTargetSlotIdChanged, oldId, newId);
                 };
-                updateConnection = UpdateProposal(m_targetEndpoint, newProposal, updateFunction);
+
+                updateConnection = UpdateProposal(m_targetEndpoint, connectionCandidate.m_connectableTarget, updateFunction);
             }
+
+            if (connectionCandidate.m_connectableTarget.IsValid())
+            {
+                Endpoint invalidEndpoint;
+                DisplayConnectionToolTip(position, invalidEndpoint);
+            }
+            else
+            {
+                DisplayConnectionToolTip(position, connectionCandidate.m_testedTarget);
+            }            
 
             if (updateConnection)
             {
@@ -835,6 +871,8 @@ namespace GraphCanvas
             AZ_Error("Graph Canvas", false, "Receiving MouseRelease event in invalid drag state.");
             return;
         }
+
+        DisplayConnectionToolTip(scenePos, Endpoint());
 
         DragContext chainContext = m_dragContext;
 
@@ -853,6 +891,9 @@ namespace GraphCanvas
             {
                 GraphModelRequestBus::Event(graphId, &GraphModelRequests::RequestPushPreventUndoStateUpdate);
             }
+
+            const bool isValidConnection = false;
+            ConnectionNotificationBus::Event(GetEntityId(), &ConnectionNotifications::OnMoveFinalized, isValidConnection);
 
             AZStd::unordered_set<AZ::EntityId> deletion;
             deletion.insert(GetEntityId());
@@ -893,6 +934,97 @@ namespace GraphCanvas
                 }
 
                 SceneRequestBus::Event(graphId, &SceneRequests::HandleProposalDaisyChain, nodeId, slotType, connectionType, screenPos, scenePos);
+            }
+        }
+    }
+
+    void ConnectionComponent::DisplayConnectionToolTip(const QPointF& scenePoint, const Endpoint& connectionTarget)
+    {
+        if (m_endpointTooltip != connectionTarget)
+        {
+            GraphId graphId;
+            SceneMemberRequestBus::EventResult(graphId, GetEntityId(), &SceneMemberRequests::GetScene);
+
+            ViewId viewId;
+            SceneRequestBus::EventResult(viewId, graphId, &SceneRequests::GetViewId);
+
+            auto viewHandler = ViewRequestBus::FindFirstHandler(viewId);
+
+            if (viewHandler == nullptr)
+            {
+                return;
+            }
+
+            if (m_toastId.IsValid())
+            {
+                viewHandler->HideToastNotification(m_toastId);
+                m_toastId.SetInvalid();
+            }            
+
+            m_endpointTooltip = connectionTarget;
+
+            // No endpoint I'm going to treat like a valid connection
+            m_validationResult = ConnectionValidationTooltip();
+            m_validationResult.m_isValid = true;
+
+            // If our tooltip target is the same as both our target and source, this means we are trying to connect to the point we started from.
+            // This just looks weird, so we won't do it.
+            if (m_endpointTooltip.IsValid())
+            {
+                // If we are pointing at an extender slot. Don't investigate the reason for a failure.                
+                if (ExtenderSlotRequestBus::FindFirstHandler(m_endpointTooltip.GetSlotId()) != nullptr)
+                {
+                    return;
+                }
+
+                if (m_dragContext == DragContext::MoveTarget)
+                {
+                    if (m_sourceEndpoint != m_endpointTooltip)
+                    {
+                        m_validationResult = GraphUtils::GetModelConnnectionValidityToolTip(graphId, m_sourceEndpoint, m_endpointTooltip);
+                    }
+                }
+                else
+                {
+                    if (m_targetEndpoint != m_endpointTooltip)
+                    {
+                        m_validationResult = GraphUtils::GetModelConnnectionValidityToolTip(graphId, m_endpointTooltip, m_targetEndpoint);
+                    }
+                }
+            }            
+
+            if (!m_validationResult.m_isValid)
+            {
+                QPointF position;
+
+                EditorId editorId;
+                SceneRequestBus::EventResult(editorId, graphId, &SceneRequests::GetEditorId);
+
+                AZ::Vector2 screenVector(0, 0);
+                AZ::Vector2 sceneVector = ConversionUtils::QPointToVector(scenePoint);
+
+                screenVector = viewHandler->MapToGlobal(sceneVector);
+                ViewRequestBus::EventResult(screenVector, viewId, &ViewRequests::MapToGlobal, sceneVector);
+
+                QPointF screenPoint = ConversionUtils::AZToQPoint(screenVector);
+
+                QPointF connectionPoint;
+                SlotUIRequestBus::EventResult(connectionPoint, m_endpointTooltip.GetSlotId(), &SlotUIRequests::GetConnectionPoint);
+                
+                AZ::Vector2 globalConnectionVector = ConversionUtils::QPointToVector(connectionPoint);
+                globalConnectionVector = viewHandler->MapToGlobal(globalConnectionVector);
+
+                QPointF globalConnectionPoint = ConversionUtils::AZToQPoint(globalConnectionVector);
+
+                GraphCanvasGraphicsView* view = viewHandler->AsGraphicsView();
+
+                QPointF anchorPoint(0.0f, 0.0f);
+
+                ToastConfiguration toastConfiguration(ToastType::Error, "Unable to connect to slot", m_validationResult.m_failureReason);
+
+                toastConfiguration.SetCloseOnClick(false);
+
+                m_toastId = viewHandler->ShowToastAtPoint(globalConnectionPoint.toPoint(), anchorPoint, toastConfiguration);
             }
         }
     }

@@ -646,7 +646,7 @@ namespace MCore
         Save(outFile);  // write the huffman tree etc
 
         uint32 decompressedSize = inFileSize;
-    #ifdef MCORE_LITTLE_ENDIAN
+    #if !defined(AZ_BIG_ENDIAN) // LITTLE_ENDIAN
         MCore::Endian::ConvertUnsignedInt32(&decompressedSize);     // store it in big endian
     #endif
 
@@ -701,7 +701,7 @@ namespace MCore
             frequency = mTreeNodes[i].mFrequency;
 
             // convert endian if needed
-        #ifdef MCORE_LITTLE_ENDIAN
+        #if !defined(AZ_BIG_ENDIAN) // LITTLE_ENDIAN
             MCore::Endian::ConvertUnsignedInt32(&frequency);
         #endif
 

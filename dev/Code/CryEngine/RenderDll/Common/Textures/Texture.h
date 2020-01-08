@@ -159,13 +159,11 @@ enum
 #define MIN_DOF_COC_K 6
 
 
-//  Confetti BEGIN: Igor Lobanchikov
 #if defined(OPENGL_ES) || defined(CRY_USE_METAL)
 #define MAX_OCCLUSION_READBACK_TEXTURES 2
 #else
 #define MAX_OCCLUSION_READBACK_TEXTURES 8
 #endif
-//  Confetti End: Igor Lobanchikov
 
 #define DYNTEXTURE_TEXCACHE_LIMIT 32
 
@@ -905,6 +903,8 @@ public:
         #include "Xenia/Texture_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/Texture_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/Texture_h_salem.inl"
     #endif
 #endif
 
@@ -964,6 +964,8 @@ public:
         #include "Xenia/Texture_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/Texture_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/Texture_h_salem.inl"
     #endif
 #endif
 };
@@ -1032,9 +1034,7 @@ struct SPixFormat
     // Pixel format info.
     D3DFormat       DeviceFormat;// Pixel format from Direct3D.
     const char*     Desc;   // Stat: Human readable name for stats.
-    //  Confetti BEGIN: Igor Lobanchikov
     int8            BytesPerBlock;// Total bits per pixel.
-    //  Confetti End: Igor Lobanchikov
     uint8           bCanDS : 1;
     uint8           bCanRT : 1;
     uint8           bCanMultiSampleRT : 1;
@@ -1053,9 +1053,7 @@ struct SPixFormat
     }
     void Init()
     {
-        //  Confetti BEGIN: Igor Lobanchikov
         BytesPerBlock = 0;
-        //  Confetti End: Igor Lobanchikov
         DeviceFormat = (D3DFormat)0;
         Desc = NULL;
         Next = NULL;
@@ -1070,10 +1068,8 @@ struct SPixFormat
     }
     bool IsValid() const
     {
-        //  Confetti BEGIN: Igor Lobanchikov
         if (BytesPerBlock)
         {
-            //  Confetti End: Igor Lobanchikov
             return true;
         }
         return false;
@@ -1093,11 +1089,9 @@ struct SPixFormatSupport
     SPixFormat        m_FormatR10G10B10A2;         //32 bit
 
     SPixFormat        m_FormatR16;                 //16 bit
-    //  Confetti BEGIN: Igor Lobanchikov
     SPixFormat        m_FormatR16U;                //16 bit
     SPixFormat        m_FormatR16G16U;             //32 bit
     SPixFormat        m_FormatR10G10B10A2UI;       //32 bit
-    //  Confetti End: Igor Lobanchikov
     SPixFormat        m_FormatR16F;                //16 bit
     SPixFormat        m_FormatR32F;                //32 bit
     SPixFormat        m_FormatR16G16;              //32 bit
@@ -1138,7 +1132,6 @@ struct SPixFormatSupport
     SPixFormat        m_FormatB8G8R8X8;            //32 bit
     SPixFormat        m_FormatB8G8R8A8;            //32 bit
 
-    //  Confetti BEGIN: Igor Lobanchikov (copied from DriverD3D.h by bosnichd)
 #ifdef CRY_USE_METAL
     SPixFormat        m_FormatPVRTC2;               //ETC2 compressed RGB for mobile
     SPixFormat        m_FormatPVRTC4;               //ETC2a compressed RGBA for mobile
@@ -1159,7 +1152,6 @@ struct SPixFormatSupport
     SPixFormat        m_FormatASTC_12x10;
     SPixFormat        m_FormatASTC_12x12;
 #endif
-    //  Confetti End: Igor Lobanchikov (copied from DriverD3D.h by bosnichd)
 
     SPixFormat*       m_FirstPixelFormat;
 
@@ -1361,6 +1353,8 @@ struct RenderTargetData
         #include "Xenia/Texture_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/Texture_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/Texture_h_salem.inl"
     #endif
 #endif
     TArray<SResourceView> m_ResourceViews;
@@ -1376,6 +1370,8 @@ struct RenderTargetData
         #include "Xenia/Texture_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/Texture_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/Texture_h_salem.inl"
     #endif
 #endif
     }
@@ -1925,6 +1921,8 @@ public:
         #include "Xenia/Texture_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/Texture_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/Texture_h_salem.inl"
     #endif
 #endif
 
@@ -2119,6 +2117,8 @@ public:
         #include "Xenia/Texture_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/Texture_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/Texture_h_salem.inl"
     #endif
 #endif
 #if defined(TEXSTRM_DEFERRED_UPLOAD)
@@ -2265,6 +2265,12 @@ public:
     bool SetClampingMode(int nAddressU, int nAddressV, int nAddressW);
     void UpdateTextureRegion(const uint8_t* data, int nX, int nY, int nZ, int USize, int VSize, int ZSize, ETEX_Format eTFSrc);
     void RT_UpdateTextureRegion(const byte* data, int nX, int nY, int nZ, int USize, int VSize, int ZSize, ETEX_Format eTFSrc);
+
+    // Create2DTextureWithMips is similar to Create2DTexture, but it also propagates the mip argument correctly.
+    // The original Create2DTexture function force sets mips to 1.
+    // This has been separated from Create2DTexture to ensure that we preserve backwards compatibility.
+    bool Create2DTextureWithMips(int nWidth, int nHeight, int nMips, int nFlags, const byte* pData, ETEX_Format eTFSrc, ETEX_Format eTFDst);
+
     bool Create2DTexture(int nWidth, int nHeight, int nMips, int nFlags, const byte* pData, ETEX_Format eTFSrc, ETEX_Format eTFDst);
     bool Create3DTexture(int nWidth, int nHeight, int nDepth, int nMips, int nFlags, const byte* pData, ETEX_Format eTFSrc, ETEX_Format eTFDst);
     bool SetNoTexture( const CTexture* pDefaultTexture );
@@ -2289,22 +2295,18 @@ public:
     static void GenerateNearestShadowMap();
     static void DestroyNearestShadowMap();
 
-    //  Confetti BEGIN: Igor Lobanchikov
     static ILINE Vec2i GetBlockDim(const ETEX_Format eTF)
     {
         return CImageExtensionHelper::GetBlockDim(eTF);
     }
-    //  Confetti End: Igor Lobanchikov
 
     static int CalcNumMips(int nWidth, int nHeight);
     // upload mip data from file regarding to platform specifics
     static bool IsInPlaceFormat(const ETEX_Format fmt);
     static void ExpandMipFromFile(byte* dest, const int destSize, const byte* src, const int srcSize, const ETEX_Format fmt);
 
-    //  Confetti BEGIN: Igor Lobanchikov
     static ILINE bool IsBlockCompressed(const ETEX_Format eTF) { return CImageExtensionHelper::IsBlockCompressed(eTF); }
     static ILINE int BytesPerBlock(ETEX_Format eTF) { return CImageExtensionHelper::BytesPerBlock(eTF); }
-    //  Confetti End: Igor Lobanchikov
     static const char* NameForTextureFormat(ETEX_Format eTF) { return CImageExtensionHelper::NameForTextureFormat(eTF); }
     static const char* NameForTextureType(ETEX_Type eTT) { return CImageExtensionHelper::NameForTextureType(eTT); }
     static ETEX_Format TextureFormatForName(const char* str) { return CImageExtensionHelper::TextureFormatForName(str); }
@@ -2403,6 +2405,8 @@ public:
         #include "Xenia/Texture_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/Texture_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/Texture_h_salem.inl"
     #endif
 #endif
     static CTexture* s_ptexAmbientLookup;
@@ -2431,9 +2435,7 @@ public:
     static CTexture* s_ptexRainDropsRT[2];
 
     static CTexture* s_ptexRT_ShadowPool;
-    //  Confetti BEGIN: Igor Lobanchikov
     static CTexture* s_ptexRT_ShadowStub;
-    //  Confetti End: Igor Lobanchikov
     static CTexture* s_ptexCloudsLM;
 
     static CTexture* s_ptexSceneTarget;  // Shared rt for generic usage (refraction/srgb/diffuse accumulation/hdr motionblur/etc)
@@ -2540,6 +2542,36 @@ public:
         CryModuleMemalignFree(ptr);
     }
 } _ALIGN(128);
+
+////////////////////////////////////////////////////////////////
+
+class CTexAnim : public ITexAnim
+{
+    friend class CShaderMan;
+    friend struct SCGTexture;
+    friend struct STexSamplerRT;
+
+public:
+    CTexAnim();
+    ~CTexAnim();
+
+    AZ_DISABLE_COPY_MOVE(CTexAnim)
+
+    void Release() override;
+    void AddRef() override;
+
+    int Size() const;
+
+private:
+    int m_nRefCount;
+    TArray<CTexture*> m_TexPics;
+    int m_Rand;
+    int m_NumAnimTexs;
+    bool m_bLoop;
+    float m_Time;
+};
+
+
 
 bool WriteTGA(const byte* dat, int wdt, int hgt, const char* name, int src_bits_per_pixel, int dest_bits_per_pixel);
 bool WriteJPG(const byte* dat, int wdt, int hgt, const char* name, int bpp, int nQuality = 100);

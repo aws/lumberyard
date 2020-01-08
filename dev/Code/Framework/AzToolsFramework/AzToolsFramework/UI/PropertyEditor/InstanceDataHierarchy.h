@@ -70,15 +70,21 @@ namespace AzToolsFramework
             , m_matched(false)
             , m_identifier(InvalidIdentifier)
             , m_groupElementData(nullptr)
+            , m_ignoreComparisonResult(false)
         {
         }
 
         /// Read a value into a variable of type T. Returns true if values read are the same across all instances in this node.
         template<class T>
         bool Read(T& value);
+
+        bool ReadRaw(void*& valuePtr, AZ::TypeId valueType);
+
         /// Write a value to the node (same value is written to all instances regardless of their original value).
         template<class T>
         void Write(const T& value);
+
+        void WriteRaw(const void* valuePtr, AZ::TypeId valueType);
 
         /// Check if have more than one instance for this node.
         bool    IsMultiInstance() const             { return m_instances.size() > 1; }
@@ -104,11 +110,13 @@ namespace AzToolsFramework
         void MarkDifferentVersusComparison();               ///< This node differs from that of the comparison instance.
         void MarkRemovedVersusComparison();                 ///< This node does not exist in the target hierarchy.
         void ClearComparisonData();                         ///< Clear comparison flags (for re-computation).
+        void SetIgnoreComparisonResult(bool ignoreResult);  ///< Set whether the comparison should be ignored or not.
         bool IsNewVersusComparison() const;                 ///< Has this node been flagged as new vs. the comparison instance?
         bool IsDifferentVersusComparison() const;           ///< Has this node been flagged as different from the comparison instance?
         bool IsRemovedVersusComparison() const;             ///< Is this node not in the comparison instance?
         const InstanceDataNode* GetComparisonNode() const;  ///< Retrieves the corresopnding node in the comparison hierarchy, if relevant.
         bool HasChangesVersusComparison(bool includeChildren) const;    /// Has this node (or children if specified) changed in any way from their comparison node
+        bool ShouldComparisonBeIgnored() const;             ///< Is the m_forceComparisonResultIdentical flag set?
 
         /*
         //@{ Send notification for read/write events (in specific order)
@@ -157,6 +165,7 @@ namespace AzToolsFramework
         AZ::SerializeContext*                       m_context;
         AZ::u32                                     m_comparisonFlags;
         const InstanceDataNode*                     m_comparisonNode;
+        bool                                        m_ignoreComparisonResult;
         bool                                        m_matched;          // true if this node was matched across all instances, used internally when the hierarchy is built.
         Identifier                                  m_identifier;       // Local identifier for this node (name crc, or persistent Id / index among siblings in container case).
         const AZ::Edit::ElementData*                m_groupElementData; // Group data for this item
@@ -302,7 +311,8 @@ namespace AzToolsFramework
             // if we ended up with anything to display, we need to do another pass to fix up container element nodes.
             if (m_matched)
             {
-                FixupEditData(this, 0);
+                bool foundRootParent = false;
+                FixupEditData(this, 0, foundRootParent);
             }
         };
 
@@ -412,7 +422,16 @@ namespace AzToolsFramework
 
         typedef AZStd::vector<InstanceData> InstanceDataArray;
 
-        void FixupEditData(InstanceDataNode* node, int siblingIdx);
+        /// Utility to tidy up hierarchy after build is complete. Recursive
+        /// \param node node to fix up
+        /// \param siblingIdx index of this child in its parents children
+        /// \param foundRootParent in/out flag indicating whether or not the parentid of the root element has been encountered. Used across recursion.
+        void FixupEditData(InstanceDataNode* node, int siblingIdx, bool& foundRootParent);
+
+        /// Utility to tidy up hierarchy after build is complete. Recursive
+        /// \param node node to fix up
+        /// \param foundRootParent in/out flag indicating whether or not the parentid of the root element has been encountered. Used across recursion.
+        void FixupComparisonData(InstanceDataNode* node, bool& foundRootParent);
 
         void EnumerateUIElements(InstanceDataNode* node, DynamicEditDataProvider dynamicEditDataProvider);
 

@@ -211,12 +211,6 @@ namespace EMotionFX
         MCore::LogInfo("OpenMP enabled:   No");
     #endif
 
-        //#if (defined(MCORE_EVALUATION) && defined(MCORE_PLATFORM_WINDOWS) && !defined(MCORE_NO_LICENSESYSTEM))
-        //  MCore::LogInfo("License System:   Yes");
-        //#else
-        //MCore::LogInfo("License System:   No");
-        //#endif
-
         MCore::LogInfo("-----------------------------------------------");
     }
 

@@ -776,7 +776,7 @@ bool CMovieSystem::InternalStopSequence(IAnimSequence* sequence, bool bAbort, bo
 
     if (FindSequence(sequence, it))
     {
-        if (bAnimate)
+        if (bAnimate && sequence->IsActivated())
         {
             if (m_sequenceStopBehavior == eSSB_GotoEndTime)
             {

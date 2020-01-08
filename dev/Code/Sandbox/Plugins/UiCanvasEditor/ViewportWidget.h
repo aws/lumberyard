@@ -151,6 +151,11 @@ private: // data
 
     void resizeEvent(QResizeEvent* ev) override;
 
+    void dragEnterEvent(QDragEnterEvent* event) override;
+    void dropEvent(QDropEvent* event) override;
+
+    bool AcceptsMimeData(const QMimeData* mimeData);
+
     double WidgetToViewportFactor() const
     {
 #if defined(AZ_PLATFORM_WINDOWS)

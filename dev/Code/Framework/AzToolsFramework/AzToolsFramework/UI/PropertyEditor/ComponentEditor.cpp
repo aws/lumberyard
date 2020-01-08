@@ -32,9 +32,14 @@
 #include <QDesktopWidget>
 #include <QMenu>
 #include <QPushButton>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include <QVBoxLayout>
+AZ_POP_DISABLE_WARNING
 #include <QGraphicsEffect>
+AZ_PUSH_DISABLE_WARNING(4251 4244, "-Wunknown-warning-option") // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
+                                                               // 4244: 'return': conversion from 'qreal' to 'int', possible loss of data
 #include <QContextMenuEvent>
+AZ_POP_DISABLE_WARNING
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
 
 namespace AzToolsFramework
@@ -491,21 +496,27 @@ namespace AzToolsFramework
 
     void ComponentEditor::SetComponentOverridden(const bool overridden)
     {
-        auto entityId = m_components[0]->GetEntityId();
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        const auto entityId = m_components[0]->GetEntityId();
         AZ::SliceComponent::SliceInstanceAddress sliceInstanceAddress;
+        AzFramework::EntityIdContextQueryBus::EventResult(
+            sliceInstanceAddress, entityId, &AzFramework::EntityIdContextQueries::GetOwningSlice);
 
-        AzFramework::EntityIdContextQueryBus::EventResult(sliceInstanceAddress, entityId, &AzFramework::EntityIdContextQueries::GetOwningSlice);
-        auto sliceInstance = sliceInstanceAddress.GetInstance();
-
-        if (sliceInstance)
+        const auto wasOverridden = GetHeader()->titleLabel()->property("IsOverridden");
+        if (wasOverridden.toBool() != overridden)
         {
-            GetHeader()->setTitleProperty("IsOverridden", overridden);
-            GetHeader()->RefreshTitle();
-        }
-        else
-        {
-            GetHeader()->setTitleProperty("IsOverridden", false);
-            GetHeader()->RefreshTitle();
+            auto sliceInstance = sliceInstanceAddress.GetInstance();
+            if (sliceInstance)
+            {
+                GetHeader()->setTitleProperty("IsOverridden", overridden);
+                GetHeader()->RefreshTitle();
+            }
+            else
+            {
+                GetHeader()->setTitleProperty("IsOverridden", false);
+                GetHeader()->RefreshTitle();
+            }
         }
     }
 

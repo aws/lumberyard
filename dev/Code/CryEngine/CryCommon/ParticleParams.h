@@ -1824,7 +1824,7 @@ struct ParticleParams
 
     struct SPlatforms
     {
-        TSmallBoolTrue  PCDX11, PS4, XBoxOne, hasIOS, // ACCEPTED_USE
+        TSmallBoolTrue  PCDX11, Provo, Xenia, Salem, hasIOS,
                         hasAndroid, hasMacOSGL, hasMacOSMetal;
         AUTO_STRUCT_INFO
     } Platforms;                                                    // Platforms this effect runs on

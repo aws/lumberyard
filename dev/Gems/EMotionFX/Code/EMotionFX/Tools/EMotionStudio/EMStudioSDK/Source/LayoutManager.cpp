@@ -10,121 +10,44 @@
 *
 */
 
-#include "EMStudioManager.h"
 #include "LayoutManager.h"
+#include "EMStudioManager.h"
 #include "MainWindow.h"
-#include <EMotionStudio/EMStudioSDK/Source/DockWidgetPlugin.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MetricsEventSender.h>
+#include <EMotionStudio/EMStudioSDK/Source/DockWidgetPlugin.h>
+#include <Editor/InputDialogValidatable.h>
 #include <MCore/Source/LogManager.h>
-#include <MCore/Source/Array.h>
 #include <MCore/Source/MemoryFile.h>
 
 #include <QByteArray>
 #include <QFile>
 #include <QFileInfo>
-#include <QHBoxLayout>
 #include <QMessageBox>
-#include <QVBoxLayout>
-#include <QPushButton>
-#include <QValidator>
-
 
 namespace EMStudio
 {
-    class LayoutFilenameValidator : public QValidator
-    {
-    public:
-        LayoutFilenameValidator(QObject* parent)
-            : QValidator(parent)
-        {
-        }
-
-        QValidator::State validate(QString& input, int& pos) const override
-        {
-            for (const QChar c : m_illegalCharacters)
-            {
-                if (input.contains(c))
-                {
-                    return QValidator::Invalid;
-                }
-            }
-
-            return QValidator::Acceptable;
-        }
-
-        QString m_illegalCharacters = "<>:\"/\\|?*";
-    };
-
-    LayoutManagerSaveAsWindow::LayoutManagerSaveAsWindow(const char* defaultName, QWidget* parent)
-        : QDialog(parent)
-    {
-        setWindowTitle("Save Layout As");
-        setMinimumWidth(300);
-
-        QVBoxLayout* layout = new QVBoxLayout();
-        layout->addWidget(new QLabel("Please enter the layout name:"));
-
-        mLineEdit = new QLineEdit(defaultName);
-        mLineEdit->setValidator(new LayoutFilenameValidator(this));
-        connect(mLineEdit, &QLineEdit::textChanged, this, &LayoutManagerSaveAsWindow::NameEditChanged);
-        mLineEdit->selectAll();
-
-        QHBoxLayout* buttonLayout   = new QHBoxLayout();
-        mOKButton                   = new QPushButton("OK");
-        QPushButton* cancelButton   = new QPushButton("Cancel");
-        buttonLayout->addWidget(mOKButton);
-        buttonLayout->addWidget(cancelButton);
-
-        if (mLineEdit->text().isEmpty())
-        {
-            mOKButton->setEnabled(false);
-            GetManager()->SetWidgetAsInvalidInput(mLineEdit);
-        }
-
-        layout->addWidget(mLineEdit);
-        layout->addLayout(buttonLayout);
-        setLayout(layout);
-
-        connect(mOKButton, &QPushButton::clicked, this, &LayoutManagerSaveAsWindow::accept);
-        connect(cancelButton, &QPushButton::clicked, this, &LayoutManagerSaveAsWindow::reject);
-    }
-
-
-    void LayoutManagerSaveAsWindow::NameEditChanged(const QString& text)
-    {
-        if (text.isEmpty())
-        {
-            mOKButton->setEnabled(false);
-            GetManager()->SetWidgetAsInvalidInput(mLineEdit);
-        }
-        else
-        {
-            mOKButton->setEnabled(true);
-            mLineEdit->setStyleSheet("");
-        }
-    }
-
-
     LayoutManager::LayoutManager()
     {
         mIsSwitching = false;
     }
 
-
     LayoutManager::~LayoutManager()
     {
     }
 
-
     void LayoutManager::SaveLayoutAs()
     {
-        LayoutManagerSaveAsWindow saveAsWindow(GetMainWindow()->GetCurrentLayoutName(), GetMainWindow());
-        if (saveAsWindow.exec() == QDialog::Rejected)
+        InputDialogValidatable inputDialog(GetMainWindow(), /*labelText=*/"Layout name:");
+        inputDialog.SetText(GetMainWindow()->GetCurrentLayoutName());
+        inputDialog.setWindowTitle("New layout name");
+        inputDialog.setMinimumWidth(300);
+
+        if (inputDialog.exec() == QDialog::Rejected)
         {
             return;
         }
 
-        const AZStd::string filename = AZStd::string::format("%sLayouts/%s.layout", MysticQt::GetDataDir().c_str(), saveAsWindow.GetName().toUtf8().data());
+        const AZStd::string filename = AZStd::string::format("%sLayouts/%s.layout", MysticQt::GetDataDir().c_str(), inputDialog.GetText().toUtf8().data());
 
         // If the file already exists, ask to overwrite or not.
         if (QFile::exists(filename.c_str()))
@@ -140,7 +63,7 @@ namespace EMStudio
         // Try to save the layout to a file.
         if (SaveLayout(filename.c_str()))
         {
-            GetMainWindow()->GetOptions().SetApplicationMode(saveAsWindow.GetName().toUtf8().data());
+            GetMainWindow()->GetOptions().SetApplicationMode(inputDialog.GetText().toUtf8().data());
             GetMainWindow()->SavePreferences();
             GetMainWindow()->UpdateLayoutsMenu();
 
@@ -158,7 +81,6 @@ namespace EMStudio
             GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_ERROR, "Layout <font color=red>failed</font> to save");
         }
     }
-
 
     bool LayoutManager::SaveLayout(const char* filename)
     {
@@ -180,14 +102,14 @@ namespace EMStudio
         header.mFileTypeCode[7] = 'U';
         header.mFileTypeCode[8] = 'T';
         header.mEMFXVersionHigh = EMotionFX::GetEMotionFX().GetHighVersion();
-        header.mEMFXVersionLow  = EMotionFX::GetEMotionFX().GetLowVersion();
+        header.mEMFXVersionLow = EMotionFX::GetEMotionFX().GetLowVersion();
 
         azstrcpy(header.mEMFXCompileDate, 64, EMotionFX::GetEMotionFX().GetCompilationDate());
         azstrcpy(header.mCompileDate, 64, MCORE_DATE);
         azstrcpy(header.mDescription, 256, "");
 
-        header.mLayoutVersionHigh   = 0;
-        header.mLayoutVersionLow    = 1;
+        header.mLayoutVersionHigh = 0;
+        header.mLayoutVersionLow = 1;
         header.mNumPlugins = GetPluginManager()->GetNumActivePlugins();
         if (file.write((char*)&header, sizeof(LayoutHeader)) == -1)
         {
@@ -206,8 +128,8 @@ namespace EMStudio
 
             // Save the plugin header.
             LayoutPluginHeader pluginHeader;
-            pluginHeader.mDataSize      = static_cast<uint32>(memFile.GetFileSize());
-            pluginHeader.mDataVersion   = plugin->GetLayoutDataVersion();
+            pluginHeader.mDataSize = static_cast<uint32>(memFile.GetFileSize());
+            pluginHeader.mDataVersion = plugin->GetLayoutDataVersion();
 
             azstrcpy(pluginHeader.mObjectName, 128, FromQtString(plugin->GetObjectName()).c_str());
             azstrcpy(pluginHeader.mPluginName, 128, plugin->GetName());
@@ -247,7 +169,6 @@ namespace EMStudio
         file.flush();
         return true;
     }
-
 
     bool LayoutManager::LoadLayout(const char* filename)
     {
@@ -410,6 +331,4 @@ namespace EMStudio
         mIsSwitching = false;
         return true;
     }
-}   // namespace EMStudio
-
-#include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/LayoutManager.moc>
+} // namespace EMStudio

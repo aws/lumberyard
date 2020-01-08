@@ -11,17 +11,24 @@
 */
 #include "StdAfx.h"
 
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include <QtWidgets/QBoxLayout>
+AZ_POP_DISABLE_WARNING
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QLayout>
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QComboBox>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QFileInfo::d_ptr': class 'QSharedDataPointer<QFileInfoPrivate>' needs to have dll-interface to be used by clients of class 'QFileInfo'
 #include <QtWidgets/QFileDialog>
+AZ_POP_DISABLE_WARNING
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QWidgetAction>
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4144: conversion from 'int' to 'float', possible loss of data
+                                                               // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
 #include <QMouseEvent>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/XML/rapidxml.h>

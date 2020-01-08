@@ -34,6 +34,10 @@ namespace Gestures
             // Type Info
             AZ_RTTI(Type, "{DA483C43-3CAC-4F27-97FD-4024C41E50B1}");
 
+            ////////////////////////////////////////////////////////////////////////////////////////
+            // Reflection
+            static void Reflect(AZ::ReflectContext* context);
+
             ////////////////////////////////////////////////////////////////////////////////////////////
             //! Destructor
             virtual ~Type() = default;

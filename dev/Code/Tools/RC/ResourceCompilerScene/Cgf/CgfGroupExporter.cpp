@@ -26,6 +26,7 @@
 #include <SceneAPI/SceneCore/DataTypes/ManifestBase/ISceneNodeSelectionList.h>
 #include <SceneAPI/SceneCore/DataTypes/Groups/IMeshGroup.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IPhysicsRule.h>
+#include <SceneAPI/SceneCore/DataTypes/Rules/IMaterialRule.h>
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
 #include <SceneAPI/SceneCore/Events/ExportProductList.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
@@ -86,7 +87,19 @@ namespace AZ
                 if (m_assetWriter->WriteCGF(&cgfContent))
                 {
                     static const Data::AssetType staticMeshAssetType("{C2869E3B-DDA0-4E01-8FE3-6770D788866B}"); // from MeshAsset.h
-                    context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), staticMeshAssetType, 0);
+                    AZ::SceneAPI::Events::ExportProduct& exportProduct = context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), staticMeshAssetType, 0);
+
+                    // If the mesh group has a material rule, then add the material path dependency
+                    if (context.m_group.GetRuleContainerConst().FindFirstByType<SceneDataTypes::IMaterialRule>())
+                    {
+                        // All CGFs are assumed to have a single material with their same name in their same folder.
+                        // Add just the material file name as a path dependency for now.
+                        // Note that at this point, the .mtl file may or may not exist, which is fine.
+                        AZStd::string materialName;
+                        AzFramework::StringFunc::Path::GetFullFileName(context.m_scene.GetSourceFilename().c_str(), materialName);
+                        AzFramework::StringFunc::Path::ReplaceExtension(materialName, ".mtl");
+                        exportProduct.m_legacyPathDependencies.push_back(materialName);
+                    }
                 }
                 else
                 {

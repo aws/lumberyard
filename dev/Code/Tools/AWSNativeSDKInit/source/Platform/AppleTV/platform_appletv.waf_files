@@ -1,0 +1,7 @@
+{
+  "auto": {
+    "Platform/AppleTV": [
+        "../Common/Default/AWSNativeSDKInit_Default.cpp"
+    ]
+  }
+}

@@ -78,12 +78,12 @@ void UiSliceManager::OnSliceInstantiationFailed(const AZ::Data::AssetId&, const 
 }
 
 //////////////////////////////////////////////////////////////////////////
-void UiSliceManager::InstantiateSlice(const AZ::Data::AssetId& assetId, AZ::Vector2 viewportPosition)
+void UiSliceManager::InstantiateSlice(const AZ::Data::AssetId& assetId, AZ::Vector2 viewportPosition, int childIndex)
 {
     AZ::Data::Asset<AZ::SliceAsset> sliceAsset;
     sliceAsset.Create(assetId, true);
 
-    EBUS_EVENT_ID(m_entityContextId, UiEditorEntityContextRequestBus, InstantiateEditorSlice, sliceAsset, viewportPosition);
+    EBUS_EVENT_ID(m_entityContextId, UiEditorEntityContextRequestBus, InstantiateEditorSliceAtChildIndex, sliceAsset, viewportPosition, childIndex);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -282,7 +282,8 @@ bool UiSliceManager::MakeNewSlice(
         SliceTransaction::Result result = transaction->Commit(
             sliceFilePath.c_str(), 
             nullptr, 
-            postSaveCallback);
+            postSaveCallback,
+            AzToolsFramework::SliceUtilities::SliceTransaction::SliceCommitFlags::DisableUndoCapture);
 
         if (!result)
         {

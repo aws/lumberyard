@@ -1293,9 +1293,6 @@ namespace EMotionFX
             InvalidateAllModelSpaceTransforms();
             return *this;
         }
-
-        InvalidateAllModelSpaceTransforms();
-        return *this;
     }
 
 

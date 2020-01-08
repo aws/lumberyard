@@ -1,0 +1,3 @@
+<EngineDependencies versionnumber="1.0.0">
+    <Dependency path="dynamiccontent/certificates/dynamiccontent.pub.pem" optional="true" />
+</EngineDependencies>

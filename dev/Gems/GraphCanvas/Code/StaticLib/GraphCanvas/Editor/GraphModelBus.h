@@ -15,6 +15,7 @@
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/EBus/EBus.h>
+#include <AzCore/std/containers/vector.h>
 
 #include <GraphCanvas/Editor/EditorTypes.h>
 #include <GraphCanvas/Types/Endpoint.h>
@@ -60,6 +61,20 @@ namespace GraphCanvas
         //! Request to trigger a redo
         virtual void TriggerRedo() = 0;
 
+        // Enable the specified nodes
+        virtual bool EnableNodes(const AZStd::unordered_set< NodeId >& nodeIds)
+        {
+            AZ_UNUSED(nodeIds);
+            return false;
+        }
+
+        // Disables the specified nodes
+        virtual bool DisableNodes(const AZStd::unordered_set< NodeId >& nodeIds)
+        {
+            AZ_UNUSED(nodeIds);
+            return false;
+        }
+
         //! Request to create a NodePropertyDisplay class for a particular DataSlot.
         virtual NodePropertyDisplay* CreateDataSlotPropertyDisplay(const AZ::Uuid& dataType, const NodeId& nodeId, const SlotId& slotId) const { return nullptr; }
         virtual NodePropertyDisplay* CreateDataSlotVariablePropertyDisplay(const AZ::Uuid& dataType, const NodeId& nodeId, const SlotId& slotId) const { return nullptr; }
@@ -74,8 +89,28 @@ namespace GraphCanvas
         //! This is sent to confirm whether or not a connection can take place.
         virtual bool IsValidConnection(const Endpoint& sourcePoint, const Endpoint& targetPoint) const = 0;
 
+        //! This will return the structure needed to display why a connection could not be created between the specified endpoints.
+        virtual ConnectionValidationTooltip GetConnectionValidityTooltip(const Endpoint& sourcePoint, const Endpoint& targetPoint) const
+        {
+            ConnectionValidationTooltip result;
+
+            result.m_isValid = IsValidConnection(sourcePoint, targetPoint);
+
+            return result;
+        }
+
         //! This is sent to confirm whether or not a variable assignment can take place.
-        virtual bool IsValidVariableAssignment(const AZ::EntityId& variableId, const Endpoint& targetPoint) const = 0;        
+        virtual bool IsValidVariableAssignment(const AZ::EntityId& variableId, const Endpoint& targetPoint) const = 0;
+
+        //! This will return the structure needed to display why a variable could not be assigned to a specific reference inside of GraphCanvas.
+        virtual ConnectionValidationTooltip GetVariableAssignmentValidityTooltip(const AZ::EntityId& variableId, const Endpoint& targetPoint) const
+        {
+            ConnectionValidationTooltip result;
+
+            result.m_isValid = IsValidVariableAssignment(variableId, targetPoint);
+
+            return result;
+        }
 
         //! Get the Display Type name for the given AZ type
         virtual AZStd::string GetDataTypeString(const AZ::Uuid& typeId) = 0;
@@ -86,6 +121,26 @@ namespace GraphCanvas
         // Signals out that the graph was signeld to clean itself up.
         virtual void OnRemoveUnusedNodes() = 0;
         virtual void OnRemoveUnusedElements() = 0;
+
+        virtual void ResetSlotToDefaultValue(const NodeId& nodeId, const SlotId& slotId) = 0;
+
+        virtual void RemoveSlot(const NodeId& nodeId, const SlotId& slotId) = 0;
+
+        virtual bool IsSlotRemovable(const NodeId& nodeId, const SlotId& slotId) const = 0;        
+
+        //////////////////////////////////////
+        // Extender Slot Optional Overrides
+
+        // Request an extension to the node for the specified group from the specific Node and ExtenderId.
+        //
+        // Should return the appropriate slotId for the newly added slots.
+        virtual SlotId RequestExtension(const NodeId& nodeId, const ExtenderId& extenderId)
+        {
+            AZ_UNUSED(nodeId);
+            AZ_UNUSED(extenderId);
+            return SlotId();
+        }
+        ////
         
         //////////////////////////////////////
         // Node Wrapper Optional Overrides

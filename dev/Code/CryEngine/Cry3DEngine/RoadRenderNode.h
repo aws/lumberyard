@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRY3DENGINE_ROADRENDERNODE_H
 #pragma once
 
+struct RoadRenderNodeCompileInfo;
+
 class CRoadRenderNode
     : public IRoadRenderNode
     , public Cry3DEngineBase
@@ -66,10 +68,15 @@ public:
     virtual void SetLayerId(uint16 nLayerId) { m_nLayerId = nLayerId; }
     virtual uint16 GetLayerId() { return m_nLayerId; }
 
-    static void ClipTriangle(PodArray<Vec3>& lstVerts, PodArray<vtx_idx>& lstInds, PodArray<vtx_idx>& lstClippedInds, int nStartIdxId, Plane* pPlanes);
+    static void ClipTriangle(CPolygonClipContext& clipContext, PodArray<Vec3>& lstVerts, PodArray<vtx_idx>& lstInds, PodArray<vtx_idx>& lstClippedInds, int nStartIdxId, Plane* pPlanes);
     using IRenderNode::Physicalize;
     virtual void Dephysicalize(bool bKeepIfReferenced = false);
-    void Compile();
+
+    // Returns true if the rebuild was successful
+    bool Compile();
+    void DoDeferredCompile();
+    void NotifyCompileFinished();
+
     void ScheduleRebuild();
     void OnTerrainChanged();
 
@@ -89,51 +96,24 @@ public:
 
     uint16 m_nLayerId;
 
+private:
+    void MakeRenderMesh();
+
+    RoadRenderNodeCompileInfo* m_pCompileInfo;
+
     // tmp buffers used during road mesh creation
-    static PodArray<SVF_P3F_C4B_T2S> m_lstVerticesMerged;
-    static PodArray<vtx_idx> m_lstIndicesMerged;
-    static PodArray<SPipTangents> m_lstTangMerged;
+    PodArray<SVF_P3F_C4B_T2S> m_lstVerticesMerged;
+    PodArray<vtx_idx> m_lstIndicesMerged;
+    PodArray<SPipTangents> m_lstTangMerged;
 
-    static PodArray<Vec3> m_lstVerts;
-    static PodArray<vtx_idx> m_lstIndices;
-    static PodArray<vtx_idx> m_lstClippedIndices;
+    PodArray<Vec3> m_lstVerts;
+    PodArray<vtx_idx> m_lstIndices;
+    PodArray<vtx_idx> m_lstClippedIndices;
 
-    static PodArray<SPipTangents> m_lstTang;
-    static PodArray<SVF_P3F_C4B_T2S> m_lstVertices;
+    PodArray<SPipTangents> m_lstTang;
+    PodArray<SVF_P3F_C4B_T2S> m_lstVertices;
 
-    static CPolygonClipContext s_tmpClipContext;
-
-    static void GetMemoryUsageStatic(ICrySizer* pSizer)
-    {
-        SIZER_COMPONENT_NAME(pSizer, "RoadRenderNodeStaticData");
-
-        pSizer->AddObject(m_lstVerticesMerged);
-        pSizer->AddObject(m_lstIndicesMerged);
-        pSizer->AddObject(m_lstTangMerged);
-
-        pSizer->AddObject(m_lstVerts);
-        pSizer->AddObject(m_lstIndices);
-
-        pSizer->AddObject(m_lstTang);
-        pSizer->AddObject(m_lstVertices);
-
-        pSizer->AddObject(s_tmpClipContext);
-    }
-
-    static void FreeStaticMemoryUsage()
-    {
-        m_lstVerticesMerged.Reset();
-        m_lstIndicesMerged.Reset();
-        m_lstTangMerged.Reset();
-
-        m_lstVerts.Reset();
-        m_lstIndices.Reset();
-
-        m_lstTang.Reset();
-        m_lstVertices.Reset();
-
-        s_tmpClipContext.Reset();
-    }
+    CPolygonClipContext m_tmpClipContext;
 };
 #endif // CRYINCLUDE_CRY3DENGINE_ROADRENDERNODE_H
 

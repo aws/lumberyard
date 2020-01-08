@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Math/VectorFloat.h>
 
@@ -19,5 +18,3 @@ const VectorFloat AZ::g_simdTolerance(0.01f);
 const VectorFloat AZ::g_fltMax(AZ_FLT_MAX);
 const VectorFloat AZ::g_fltEps(AZ_FLT_EPSILON);
 const VectorFloat AZ::g_fltEpsSq(AZ_FLT_EPSILON* AZ_FLT_EPSILON);
-
-#endif // #ifndef AZ_UNITY_BUILD

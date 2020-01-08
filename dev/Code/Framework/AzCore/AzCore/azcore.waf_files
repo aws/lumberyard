@@ -4,8 +4,11 @@
         "Root":
         [
             "base.h",
+            "base_Common.h",
             "base.cpp",
             "Docs.h",
+            "Platform.cpp",
+            "Platform.h",
             "PlatformDef.h",
             "PlatformIncl.h",
             "AzCoreModule.h",
@@ -80,10 +83,16 @@
         "Compression":
         [
             "Compression/compression.cpp",
-            "Compression/Compression.h"
+            "Compression/Compression.h",
+            "Compression/zstd_compression.cpp",
+            "Compression/zstd_compression.h"
         ],
         "Debug":
         [
+            "Debug/AssetTracking.cpp",
+            "Debug/AssetTracking.h",
+            "Debug/AssetTrackingTypesImpl.h",
+            "Debug/AssetTrackingTypes.h",
             "Debug/FrameProfiler.h",
             "Debug/FrameProfilerBus.h",
             "Debug/FrameProfilerComponent.cpp",
@@ -96,7 +105,6 @@
             "Debug/ProfilerDriller.cpp",
             "Debug/ProfilerDriller.h",
             "Debug/ProfilerDrillerBus.h",
-            "Debug/StackTracer.cpp",
             "Debug/StackTracer.h",
             "Debug/EventTrace.h",
             "Debug/EventTrace.cpp",
@@ -139,15 +147,23 @@
             "EBus/Internal/Handlers.h",
             "EBus/Internal/StoragePolicies.h"
         ],
+        "Interface":
+        [
+            "Interface/Interface.h"
+        ],
         "IO":
         [
             "IO/ByteContainerStream.h",
+            "IO/CompressionBus.h",
+            "IO/CompressionBus.cpp",
             "IO/Compressor.cpp",
             "IO/Compressor.h",
             "IO/CompressorStream.cpp",
             "IO/CompressorStream.h",
             "IO/CompressorZLib.cpp",
             "IO/CompressorZLib.h",
+            "IO/CompressorZStd.cpp",
+            "IO/CompressorZStd.h",
             "IO/Device.cpp",
             "IO/Device.h",
             "IO/DeviceEventBus.h",
@@ -158,12 +174,8 @@
             "IO/IOUtils.cpp",
             "IO/GenericStreams.cpp",
             "IO/GenericStreams.h",
-            "IO/MagneticDevice.cpp",
-            "IO/MagneticDevice.h",
-            "IO/NetworkDevice.cpp",
-            "IO/NetworkDevice.h",
-            "IO/OpticalDevice.cpp",
-            "IO/OpticalDevice.h",
+            "IO/RequestPath.h",
+            "IO/RequestPath.cpp",
             "IO/Streamer.cpp",
             "IO/Streamer.h",
             "IO/StreamerComponent.cpp",
@@ -178,14 +190,35 @@
             "IO/StreamerUtil.h",
             "IO/SystemFile.cpp",
             "IO/SystemFile.h",
-            "IO/TextStreamWriters.h",
-            "IO/VirtualStream.cpp",
-            "IO/VirtualStream.h"
+            "IO/TextStreamWriters.h"
+        ],
+        "IO/Streamer": 
+        [
+            "IO/Streamer/BlockCache.h",
+            "IO/Streamer/BlockCache.cpp",
+            "IO/Streamer/DedicatedCache.h",
+            "IO/Streamer/DedicatedCache.cpp",
+            "IO/Streamer/FileRange.h",
+            "IO/Streamer/FileRange.cpp",
+            "IO/Streamer/FileRequest.h",
+            "IO/Streamer/FileRequest.cpp",
+            "IO/Streamer/FullFileDecompressor.h",
+            "IO/Streamer/FullFileDecompressor.cpp",
+            "IO/Streamer/ReadSplitter.h",
+            "IO/Streamer/ReadSplitter.cpp",
+            "IO/Streamer/Statistics.h",
+            "IO/Streamer/Statistics.cpp",
+            "IO/Streamer/StorageDrive.h",
+            "IO/Streamer/StorageDrive.cpp",
+            "IO/Streamer/StreamerConfiguration.h",
+            "IO/Streamer/StreamerContext.h",
+            "IO/Streamer/StreamerContext.cpp",
+            "IO/Streamer/StreamStackEntry.h",
+            "IO/Streamer/StreamStackEntry.cpp",
+            "IO/Streamer/StreamStackPreferences.h"
         ],
         "IPC":
         [
-            "IPC/DirectSocket.cpp",
-            "IPC/DirectSocket.h",
             "IPC/SharedMemory.cpp",
             "IPC/SharedMemory.h"
         ],
@@ -224,8 +257,6 @@
             "Math/FourVector3.h",
             "Math/Guid.h",
             "Math/Internal/MathTypes.h",
-            "Math/Internal/MathTypesFpu.inl",
-            "Math/Internal/MathTypesWin32.inl",
             "Math/Internal/Matrix3x3Fpu.inl",
             "Math/Internal/Matrix3x3Win32.inl",
             "Math/Internal/Matrix4x4Fpu.inl",
@@ -247,9 +278,12 @@
             "Math/IntersectPoint.h",
             "Math/IntersectSegment.cpp",
             "Math/IntersectSegment.h",
+            "Math/MathIntrinsics.h",
             "Math/MathReflection.cpp",
             "Math/MathReflection.h",
             "Math/MathUtils.h",
+            "Math/MathVectorSerializer.h",
+            "Math/MathVectorSerializer.cpp",
             "Math/Matrix3x3.cpp",
             "Math/Matrix3x3.h",
             "Math/Matrix4x4.cpp",
@@ -261,7 +295,6 @@
             "Math/PolygonPrism.cpp",
             "Math/Quaternion.cpp",
             "Math/Quaternion.h",
-            "Math/Random.cpp",
             "Math/Random.h",
             "Math/Sfmt.cpp",
             "Math/Sfmt.h",
@@ -272,6 +305,8 @@
             "Math/Transform.h",
             "Math/Uuid.cpp",
             "Math/Uuid.h",
+            "Math/UuidSerializer.h",
+            "Math/UuidSerializer.cpp",
             "Math/Vector2.cpp",
             "Math/Vector2.h",
             "Math/Vector3.cpp",
@@ -283,6 +318,9 @@
             "Math/VertexContainerInterface.h",
             "Math/PackedVector3.h",
             "Math/Color.h",
+            "Math/Color.cpp",
+            "Math/ColorSerializer.h",
+            "Math/ColorSerializer.cpp",
             "Math/VectorFloat.cpp",
             "Math/VectorFloat.h",
             "Math/ToString.h",
@@ -295,15 +333,21 @@
             "Memory/AllocatorBase.h",
             "Memory/AllocatorManager.cpp",
             "Memory/AllocatorManager.h",
+            "Memory/AllocatorOverrideShim.cpp",
+            "Memory/AllocatorOverrideShim.h",
+            "Memory/AllocatorWrapper.h",
             "Memory/AllocatorScope.h",
             "Memory/BestFitExternalMapAllocator.cpp",
             "Memory/BestFitExternalMapAllocator.h",
             "Memory/BestFitExternalMapSchema.cpp",
             "Memory/BestFitExternalMapSchema.h",
+            "Memory/Config.h",
             "Memory/dlmalloc.inl",
             "Memory/HeapSchema.h",
             "Memory/HphaSchema.cpp",
             "Memory/HphaSchema.h",
+            "Memory/IAllocator.cpp",
+            "Memory/IAllocator.h",
             "Memory/MallocSchema.cpp",
             "Memory/MallocSchema.h",
             "Memory/Memory.cpp",
@@ -317,10 +361,12 @@
             "Memory/NewAndDelete.inl",
             "Memory/OSAllocator.cpp",
             "Memory/OSAllocator.h",
-            "Memory/PoolAllocator.cpp",
+            "Memory/OverrunDetectionAllocator.cpp",
+            "Memory/OverrunDetectionAllocator.h",
             "Memory/PoolAllocator.h",
             "Memory/PoolSchema.cpp",
             "Memory/PoolSchema.h",
+            "Memory/SimpleSchemaAllocator.h",
             "Memory/SystemAllocator.cpp",
             "Memory/SystemAllocator.h"
         ],
@@ -350,11 +396,6 @@
         [
             "Outcome/Internal/OutcomeStorage.h",
             "Outcome/Internal/OutcomeImpl.h"
-        ],
-        "Platform":
-        [
-            "Platform/Platform.h",
-            "Platform/Platform.cpp"
         ],
         "Preprocessor":
         [
@@ -424,12 +465,50 @@
             "Serialization/Utils.cpp",
             "Serialization/ObjectStream.cpp",
             "Serialization/ObjectStream.h",
-            "Serialization/ObjectStreamComponent.cpp",
-            "Serialization/ObjectStreamComponent.h",
             "Serialization/SerializeContext.cpp",
             "Serialization/SerializeContext.h",
+            "Serialization/SerializeContextEnum.cpp",
+            "Serialization/SerializeContextEnum.inl",
             "Serialization/DataPatch.h",
             "Serialization/DataPatch.cpp"
+        ],
+        "Serialization/Json": [
+            "Serialization/Json/BaseJsonSerializer.h",
+            "Serialization/Json/BaseJsonSerializer.cpp",
+            "Serialization/Json/BasicContainerSerializer.h",
+            "Serialization/Json/BasicContainerSerializer.cpp",
+            "Serialization/Json/BoolSerializer.h",
+            "Serialization/Json/BoolSerializer.cpp",
+            "Serialization/Json/CastingHelpers.h",
+            "Serialization/Json/DoubleSerializer.h",
+            "Serialization/Json/DoubleSerializer.cpp",
+            "Serialization/Json/EnumSerializer.h",
+            "Serialization/Json/EnumSerializer.cpp",
+            "Serialization/Json/IntSerializer.h",
+            "Serialization/Json/IntSerializer.cpp",
+            "Serialization/Json/JsonDeserializer.h",
+            "Serialization/Json/JsonDeserializer.cpp",
+            "Serialization/Json/JsonSerialization.h",
+            "Serialization/Json/JsonSerialization.cpp",
+            "Serialization/Json/JsonSerializationResult.h",
+            "Serialization/Json/JsonSerializationResult.cpp",
+            "Serialization/Json/JsonSerializer.h",
+            "Serialization/Json/JsonSerializer.cpp",
+            "Serialization/Json/JsonStringConversionUtils.h",
+            "Serialization/Json/JsonSystemComponent.h",
+            "Serialization/Json/JsonSystemComponent.cpp",
+            "Serialization/Json/MapSerializer.h",
+            "Serialization/Json/MapSerializer.cpp",
+            "Serialization/Json/RegistrationContext.h",
+            "Serialization/Json/RegistrationContext.cpp",
+            "Serialization/Json/StackedString.h",
+            "Serialization/Json/StackedString.cpp",
+            "Serialization/Json/StringSerializer.h",
+            "Serialization/Json/StringSerializer.cpp",
+            "Serialization/Json/TupleSerializer.h",
+            "Serialization/Json/TupleSerializer.cpp",
+            "Serialization/Json/UnorderedSetSerializer.h",
+            "Serialization/Json/UnorderedSetSerializer.cpp"
         ],
         "Serialization/std":
         [
@@ -439,11 +518,6 @@
         [
             "State/HSM.cpp",
             "State/HSM.h"
-        ],
-        "UnitTest":
-        [
-            "UnitTest/UnitTest.h",
-            "UnitTest/TestTypes.h"
         ],
         "UserSettings":
         [
@@ -483,14 +557,12 @@
             "JSON/error/error.h"
         ],
         "Utils": [
-            "Utils/Utils.h",
-            "Utils/Utils.cpp"
+            "Utils/Utils.h"
         ]
     },
     "none" : {
         "Script/Lua": [
-            "Script/lua/lua.h",
-            "Script/lua/lua.c"
+            "Script/lua/lua.h"
         ],
         "Memory": [
             "Memory/HeapSchema.cpp"

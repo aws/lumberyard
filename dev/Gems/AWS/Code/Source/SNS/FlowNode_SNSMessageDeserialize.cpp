@@ -11,7 +11,15 @@
 */
 #include <AWS_precompiled.h>
 #include <SNS/FlowNode_SNSMessageDeserialize.h>
+// The AWS Native SDK AWSAllocator triggers a warning due to accessing members of std::allocator directly.
+// AWSAllocator.h(70): warning C4996: 'std::allocator<T>::pointer': warning STL4010: Various members of std::allocator are deprecated in C++17.
+// Use std::allocator_traits instead of accessing these members directly.
+// You can define _SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING or _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS to acknowledge that you have received this warning.
+
+#include <AzCore/PlatformDef.h>
+AZ_PUSH_DISABLE_WARNING(4251 4996, "-Wunknown-warning-option")
 #include <aws/core/utils/json/JsonSerializer.h>
+AZ_POP_DISABLE_WARNING
 
 namespace LmbrAWS
 {
@@ -47,13 +55,13 @@ namespace LmbrAWS
         {
             string inputString = GetPortString(pActInfo, EIP_Message);
             auto jsonMessage = Aws::Utils::Json::JsonValue(Aws::String(inputString.c_str()));
-            if (jsonMessage.ValueExists("Message") && jsonMessage.ValueExists("Subject"))
+            if (jsonMessage.View().ValueExists("Message") && jsonMessage.View().ValueExists("Subject"))
             {
                 SFlowAddress messageAddr(pActInfo->myID, EOP_MessageBody, true);
-                pActInfo->pGraph->ActivatePort(messageAddr, string(jsonMessage.GetString("Message").c_str()));
+                pActInfo->pGraph->ActivatePort(messageAddr, string(jsonMessage.View().GetString("Message").c_str()));
 
                 SFlowAddress subjectAddr(pActInfo->myID, EOP_MessageSubject, true);
-                pActInfo->pGraph->ActivatePort(subjectAddr, string(jsonMessage.GetString("Subject").c_str()));
+                pActInfo->pGraph->ActivatePort(subjectAddr, string(jsonMessage.View().GetString("Subject").c_str()));
 
                 SuccessNotify(pActInfo->pGraph, pActInfo->myID);
             }

@@ -31,15 +31,10 @@ namespace GridMate
         switch (endianType)
         {
         case EndianType::BigEndian:
-                #if !defined(AZ_BIG_ENDIAN)
             AZStd::endian_swap(data);
-                #endif
             break;
 
         case EndianType::LittleEndian:
-                #if defined(AZ_BIG_ENDIAN)
-            AZStd::endian_swap(data);
-                #endif
             break;
 
         case EndianType::IgnoreEndian:
@@ -77,7 +72,7 @@ namespace GridMate
     class Marshaler<Type, typename AZStd::Utils::enable_if_c<IsFundamentalMarshalType<Type>::Value>::type>
     {
     public:
-        AZ_TYPE_INFO(Marshaler, "{1AE954E2-67E8-4EDC-A16A-577411F5B876}", Type);
+        AZ_TYPE_INFO_LEGACY(Marshaler, "{1AE954E2-67E8-4EDC-A16A-577411F5B876}", Type);
         typedef Type DataType;
 
         static const AZStd::size_t MarshalSize = sizeof(DataType);
@@ -106,6 +101,8 @@ namespace GridMate
     class Marshaler<bool>
     {
     public:
+        AZ_TYPE_INFO_LEGACY(Marshaler, "{8F3A6078-DE15-4D3F-8795-6FFAF1275AF1}", bool);
+
         typedef bool DataType;
         typedef bool SerializedType;
 

@@ -119,9 +119,20 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
         SourceAssetInfoResponse response;
         if (request->m_assetId.IsValid())
         {
+
             AZStd::string rootFolder;
-            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(response.m_found, &AzToolsFramework::AssetSystem::AssetSystemRequest::GetSourceInfoBySourceUUID, request->m_assetId.m_guid, response.m_assetInfo, rootFolder );
-            response.m_rootFolder = rootFolder.c_str();
+            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(response.m_found, &AzToolsFramework::AssetSystem::AssetSystemRequest::GetSourceInfoBySourceUUID, request->m_assetId.m_guid, response.m_assetInfo, rootFolder);
+ 
+            if (response.m_found)
+            {
+                response.m_assetInfo.m_assetId.m_subId = request->m_assetId.m_subId;
+                response.m_assetInfo.m_assetType = request->m_assetType;
+                response.m_rootFolder = rootFolder.c_str();
+            }
+            else 
+            {
+                response.m_assetInfo.m_assetId.SetInvalid();
+            }
             AssetProcessor::ConnectionBus::Event(key.first, &AssetProcessor::ConnectionBusTraits::SendResponse, key.second, response);
         }
         else if (!request->m_assetPath.empty())
@@ -131,6 +142,35 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
             AzToolsFramework::AssetSystemRequestBus::BroadcastResult(response.m_found, &AzToolsFramework::AssetSystem::AssetSystemRequest::GetSourceInfoBySourcePath, request->m_assetPath.c_str(), response.m_assetInfo, rootFolder);
             response.m_rootFolder = rootFolder.c_str();
         }
+        // note that in the case of an invalid request, response is defaulted to false for m_found, so there is no need to
+        // populate the response in that case.
+
+        AssetProcessor::ConnectionBus::Event(key.first, &AssetProcessor::ConnectionBusTraits::SendResponse, key.second, response);
+        return true;
+    }
+    else if (message->GetMessageType() == AzToolsFramework::AssetSystem::SourceAssetProductsInfoRequest::MessageType())
+    {
+        AzToolsFramework::AssetSystem::SourceAssetProductsInfoRequest* request = 
+            azrtti_cast<AzToolsFramework::AssetSystem::SourceAssetProductsInfoRequest*>(message);
+
+        if (!request)
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, 
+                "Invalid Message Type: Message is not of type %d.  Incoming message type is %d.\n", 
+                AzToolsFramework::AssetSystem::SourceAssetProductsInfoRequest::MessageType(), message->GetMessageType());
+            return true;
+        }
+
+        AzToolsFramework::AssetSystem::SourceAssetProductsInfoResponse response;
+        if (request->m_assetId.IsValid())
+        {
+            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(response.m_found, 
+                &AzToolsFramework::AssetSystem::AssetSystemRequest::GetAssetsProducedBySourceUUID, 
+                request->m_assetId.m_guid, response.m_productsAssetInfo);
+
+            AssetProcessor::ConnectionBus::Event(key.first, &AssetProcessor::ConnectionBusTraits::SendResponse, key.second, response);
+        }
+
         // note that in the case of an invalid request, response is defaulted to false for m_found, so there is no need to
         // populate the response in that case.
 
@@ -255,7 +295,7 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
     }
 }
 
-void AssetRequestHandler::ProcessAssetRequest(NetworkRequestID networkRequestId, BaseAssetProcessorMessage* message, QString platform, bool fencingFailed)
+void AssetRequestHandler::ProcessAssetRequest(NetworkRequestID networkRequestId, BaseAssetProcessorMessage* message, QString platform, bool /*fencingFailed*/)
 {
     using RequestAssetStatus = AzFramework::AssetSystem::RequestAssetStatus;
     RequestAssetStatus* stat = azrtti_cast<RequestAssetStatus*>(message);
@@ -355,7 +395,7 @@ void AssetRequestHandler::OnRequestAssetExistsResponse(NetworkRequestID groupID,
     m_pendingAssetRequests.erase(located);
 }
 
-void AssetRequestHandler::SendAssetStatus(NetworkRequestID groupID, unsigned int type, AssetStatus status)
+void AssetRequestHandler::SendAssetStatus(NetworkRequestID groupID, unsigned int /*type*/, AssetStatus status)
 {
     AzFramework::AssetSystem::ResponseAssetStatus resp;
     resp.m_assetStatus = status;
@@ -372,7 +412,7 @@ void AssetRequestHandler::RegisterRequestHandler(unsigned int messageId, QObject
     m_RequestHandlerMap.insert(messageId, object);
 }
 
-void AssetRequestHandler::DeRegisterRequestHandler(unsigned int messageId, QObject* object)
+void AssetRequestHandler::DeRegisterRequestHandler(unsigned int messageId, QObject* /*object*/)
 {
     auto located = m_RequestHandlerMap.find(messageId);
 

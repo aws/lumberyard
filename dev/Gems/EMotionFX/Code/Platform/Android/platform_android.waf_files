@@ -1,0 +1,9 @@
+{
+    "auto":
+    {
+        "EMotionFXSDK/MCore/Platform/Android":
+        [
+            "../Common/FileOffsetType/MCore/Source/DiskFile_FileOffsetType.cpp"
+        ]
+    }
+}

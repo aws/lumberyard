@@ -293,7 +293,7 @@ namespace AzToolsFramework
             AZStd::vector<AZ::Component*> components;
             ComponentMimeData::GetComponentDataFromMimeData(mimeData, components);
 
-            auto addComponentsOutcome = AddExistingComponentsToEntity(entity, components);
+            auto addComponentsOutcome = AddExistingComponentsToEntityById(entityId, components);
             if (!addComponentsOutcome)
             {
                 AZ_Error("Editor", false, "Pasting components to entity failed to add");
@@ -612,7 +612,7 @@ namespace AzToolsFramework
                         componentsToAddToEntity.push_back(component);
                     }
 
-                    auto addExistingComponentsResult = AddExistingComponentsToEntity(entity, componentsToAddToEntity);
+                    auto addExistingComponentsResult = AddExistingComponentsToEntityById(entityId, componentsToAddToEntity);
                     // This should never fail since we check the preconditions already (entity is non-null and it ignores null components)
                     AZ_Assert(addExistingComponentsResult, "Adding the components created to an entity failed");
                     if (addExistingComponentsResult)
@@ -629,8 +629,9 @@ namespace AzToolsFramework
             return AZ::Success(AZStd::move(entityToAddedComponentsMap));
         }
 
-        EditorEntityActionComponent::AddExistingComponentsOutcome EditorEntityActionComponent::AddExistingComponentsToEntity(AZ::Entity* entity, const AZStd::vector<AZ::Component*>& componentsToAdd)
+        EditorEntityActionComponent::AddExistingComponentsOutcome EditorEntityActionComponent::AddExistingComponentsToEntityById(const AZ::EntityId& entityId, const AZStd::vector<AZ::Component*>& componentsToAdd)
         {
+            AZ::Entity* entity = GetEntityById(entityId);
             if (!entity)
             {
                 return AZ::Failure(AZStd::string("Null entity provided to AddExistingComponentsToEntity"));
@@ -640,7 +641,7 @@ namespace AzToolsFramework
 
             AddComponentsResults addComponentsResults;
 
-            EntityCompositionNotificationBus::Broadcast(&EntityCompositionNotificationBus::Events::OnEntityCompositionChanging, AZStd::vector<AZ::EntityId>{ entity->GetId() });
+            EntityCompositionNotificationBus::Broadcast(&EntityCompositionNotificationBus::Events::OnEntityCompositionChanging, AZStd::vector<AZ::EntityId>{ entityId });
 
             // Add all components to the pending list
             for (auto component : componentsToAdd)
@@ -687,7 +688,7 @@ namespace AzToolsFramework
                     GetEditorComponent(component)->SetEntity(entity);
 
                     // Add component to pending for entity
-                    AzToolsFramework::EditorPendingCompositionRequestBus::Event(entity->GetId(), &AzToolsFramework::EditorPendingCompositionRequests::AddPendingComponent, component);
+                    AzToolsFramework::EditorPendingCompositionRequestBus::Event(entityId, &AzToolsFramework::EditorPendingCompositionRequests::AddPendingComponent, component);
 
                     addComponentsResults.m_componentsAdded.push_back(component);
                 }
@@ -697,9 +698,9 @@ namespace AzToolsFramework
                         addComponentsResults.m_componentsAdded.push_back(nullptr);
                 }
 
-                undo.MarkEntityDirty(entity->GetId());
+                undo.MarkEntityDirty(entityId);
 
-                EntityCompositionNotificationBus::Broadcast(&EntityCompositionNotificationBus::Events::OnEntityComponentAdded, entity->GetId(), component->GetId());
+                EntityCompositionNotificationBus::Broadcast(&EntityCompositionNotificationBus::Events::OnEntityComponentAdded, entityId, component->GetId());
             }
 
             // Run the scrubber!
@@ -725,10 +726,22 @@ namespace AzToolsFramework
             // Any left over validated components are other components that happened to get validated because of our change and return those, but separately
             addComponentsResults.m_additionalValidatedComponents.swap(scrubEntityResult.m_validatedComponents);
 
-            EntityCompositionNotificationBus::Broadcast(&EntityCompositionNotificationBus::Events::OnEntityCompositionChanged, AZStd::vector<AZ::EntityId>{ entity->GetId() });
+            EntityCompositionNotificationBus::Broadcast(&EntityCompositionNotificationBus::Events::OnEntityCompositionChanged, AZStd::vector<AZ::EntityId>{ entityId });
 
             return AZ::Success(AZStd::move(addComponentsResults));
         }
+
+        // LUMBERYARD_DEPRECATED(LY-103316)
+        EditorEntityActionComponent::AddExistingComponentsOutcome EditorEntityActionComponent::AddExistingComponentsToEntity(AZ::Entity* entity, const AZStd::vector<AZ::Component*>& componentsToAdd)
+        {
+            if (!entity)
+            {
+                return AZ::Failure(AZStd::string("Null entity provided to AddExistingComponentsToEntity"));
+            }
+
+            return AddExistingComponentsToEntityById(entity->GetId(), componentsToAdd);
+        }
+        // LUMBERYARD_DEPRECATED(LY-103316)
 
         EntityCompositionRequests::ScrubEntitiesOutcome EditorEntityActionComponent::ScrubEntities(const EntityList& entities)
         {

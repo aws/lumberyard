@@ -15,9 +15,11 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/std/function/function_fwd.h>
 #include <AzCore/std/string/string.h>
-
+// warning C4251: 'QBrush::d': class 'QScopedPointer<QBrushData,QBrushDataPointerDeleter>' needs to have dll-interface to be used by clients of class 'QBrush'
+AZ_PUSH_DISABLE_WARNING(4127 4251, "-Wunknown-warning-option") 
 #include <QIcon>
 #include <QImage>
+AZ_POP_DISABLE_WARNING
 
 class QMimeData;
 class QWidget;
@@ -65,9 +67,23 @@ namespace AzToolsFramework
 
             //! Request File Browser model
             virtual AssetBrowserModel* GetAssetBrowserModel() = 0;
+
+            //! Returns true if entries were populated
+            virtual bool AreEntriesReady() = 0;
         };
 
         using AssetBrowserComponentRequestBus = AZ::EBus<AssetBrowserComponentRequests>;
+
+        //! Sends notifications from AssetBrowserComponent
+        class AssetBrowserComponentNotifications
+            : public AZ::EBusTraits
+        {
+        public:
+            //! Notifies when entries are physically populated in asset browser
+            virtual void OnAssetBrowserComponentReady() {}
+        };
+
+        using AssetBrowserComponentNotificationBus = AZ::EBus<AssetBrowserComponentNotifications>;
 
         //////////////////////////////////////////////////////////////////////////
         // Interaction
@@ -267,6 +283,12 @@ namespace AzToolsFramework
             * \param assetID The asset to select.
             */
             virtual void SelectProduct(AZ::Data::AssetId assetID) = 0;
+
+            /**
+            * Requests the Asset Browser's view to select the given asset.
+            * \param assetPath The path (absolute or relative) of the asset to select.
+            */
+            virtual void SelectFileAtPath(const AZStd::string& assetPath) = 0;
             virtual void ClearFilter() = 0;
         };
         using AssetBrowserViewRequestBus = AZ::EBus<AssetBrowserViewRequests>;

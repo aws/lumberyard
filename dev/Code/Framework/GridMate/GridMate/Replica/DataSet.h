@@ -37,6 +37,31 @@ namespace AzFramework
 
 namespace GridMate
 {
+    /**
+     * \brief Default DataSet callbacks traits.
+     */
+    struct DataSetDefaultTraits
+    {
+        /**
+         * \brief Should a change in DataSet value invoke a callback on a master replica chunk? 
+         * 
+         * By default, DataSet::BindInterface<C, &C::Callback> only invokes on client/non-authoritative replica chunks.
+         * This switch enables the callback on server/authoritative replica chunks.
+         * Warning: this change should not be enabled on existing Lumberyard components as they were not written with this option in mind.
+         * 
+         * New user custom replica chunk will work just fine.
+         */
+        static const bool s_invokeAuthoritativeCallback = false;
+    };
+
+    /**
+     * \brief Turns on DataSet callbacks to be invoked on the master replica as well as client replicas.
+     */
+    struct DataSetInvokeEverywhereTraits : DataSetDefaultTraits
+    {
+        static const bool s_invokeAuthoritativeCallback = true;
+    };
+
     class ReplicaChunkDescriptor;
     class ReplicaChunkBase;
     class ReplicaMarshalTaskBase;
@@ -148,7 +173,7 @@ namespace GridMate
         : public DataSetBase
     {
     public:
-        template<class C, void (C::* FuncPtr)(const DataType&, const TimeContext&)>
+        template<class C, void (C::* FuncPtr)(const DataType&, const TimeContext&), typename CallbackTraits = DataSetDefaultTraits>
         class BindInterface;
 
         template<class C, void (C::* FuncPtr)(const DataType&, const TimeContext&)>
@@ -429,7 +454,7 @@ namespace GridMate
         ReplicaChunkInterface event handler instance.
     **/
     template<typename DataType, typename MarshalerType, typename ThrottlerType>
-    template<class C, void (C::* FuncPtr)(const DataType&, const TimeContext&)>
+    template<class C, void (C::* FuncPtr)(const DataType&, const TimeContext&), typename CallbackTraits>
     class DataSet<DataType, MarshalerType, ThrottlerType>::BindInterface
         : public DataSet<DataType, MarshalerType, ThrottlerType>
     {
@@ -444,10 +469,20 @@ namespace GridMate
                 throttler)
         { }
 
+        void SetDirty() override
+        {
+            DataSet::SetDirty();
+
+            if (CallbackTraits::s_invokeAuthoritativeCallback)
+            {
+                DispatchChangedEvent({});
+            }
+        }
+
     protected:
         void DispatchChangedEvent(const TimeContext& tc) override
         {
-            C* c = static_cast<C*>(m_replicaChunk->GetHandler());
+            C* c = m_replicaChunk ? static_cast<C*>(m_replicaChunk->GetHandler()) : nullptr;
             if (c)
             {
                 TimeContext changeTime;

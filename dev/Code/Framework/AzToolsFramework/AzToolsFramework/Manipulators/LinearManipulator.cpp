@@ -81,7 +81,7 @@ namespace AzToolsFramework
         const AZ::Vector3 localRayDirection = localFromWorldNormalized.Multiply3x3(rayDirection);
         const AZ::Quaternion localRotation = QuaternionFromTransformNoScaling(localTransform);
 
-        // as CalculateRayPlaneIntersectingPoint may fail, ensure localHitPosition is initialized with 
+        // as CalculateRayPlaneIntersectingPoint may fail, ensure localHitPosition is initialized with
         // the starting hit position so the manipulator returns to the original location it was pressed
         // if an invalid ray intersection is attempted
         AZ::Vector3 localHitPosition = startInternal.m_localHitPosition;
@@ -118,6 +118,11 @@ namespace AzToolsFramework
         action.m_modifiers = keyboardModifiers;
 
         return action;
+    }
+
+    AZStd::shared_ptr<LinearManipulator> LinearManipulator::MakeShared(const AZ::Transform& worldFromLocal)
+    {
+        return AZStd::shared_ptr<LinearManipulator>(aznew LinearManipulator(worldFromLocal));
     }
 
     LinearManipulator::LinearManipulator(const AZ::Transform& worldFromLocal)

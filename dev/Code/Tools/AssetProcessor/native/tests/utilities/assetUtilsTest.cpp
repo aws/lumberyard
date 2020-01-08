@@ -12,7 +12,8 @@
 
 #include "native/tests/AssetProcessorTest.h"
 
-#include "native/utilities/assetUtils.h"
+#include <AzToolsFramework/ToolsFileUtils/ToolsFileUtils.h>
+#include <AzCore/IO/SystemFile.h>
 
 #include <QDir>
 #include <QFileInfo>
@@ -127,10 +128,10 @@ TEST_F(AssetUtilitiesTest, UpdateToCorrectCase_ExistingFile_ReturnsTrue_Corrects
     
     for (QString triedThing : thingsToTry)
     {
-        QString lowercaseVersion = triedThing;
+        triedThing = NormalizeFilePath(triedThing);
         EXPECT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath(triedThing)));
 
-        lowercaseVersion = lowercaseVersion.toLower();
+        QString lowercaseVersion = triedThing.toLower();
         // each one should be found.   If it fails, we'll pipe out the name of the file it fails on for extra context.
         
         EXPECT_TRUE(AssetUtilities::UpdateToCorrectCase(canonicalTempDirPath, lowercaseVersion)) << "File being Examined: " << lowercaseVersion.toUtf8().constData();

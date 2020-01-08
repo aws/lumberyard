@@ -1,0 +1,28 @@
+{
+  "auto": {
+    "Achievements/Platform/Linux": [
+      "../Common/Unimplemented/GridMate/Achievements/AchievementMgr_Unimplemented.cpp"
+    ],
+    "Carrier/Platform/Linux": [
+      "../Common/UnixLike/GridMate/Carrier/Utils_UnixLike.cpp",
+      "../Common/UnixLike/GridMate/Carrier/SocketDriver_UnixLike.cpp",
+      "GridMate/Carrier/SocketDriver_Platform.h"
+    ],
+    "Leaderboard/Platform/Linux": [
+      "../Common/Unimplemented/GridMate/Leaderboard/Leaderboard_Unimplemented.cpp"
+    ],
+    "Session/Platform/Linux": [
+      "GridMate/Session/LANSession_Linux.cpp",
+      "GridMate/Session/Session_Platform.h",
+      "GridMate/Session/Session_Linux.h"
+    ],
+    "Storage/Platform/Linux": [
+      "../Common/Unimplemented/GridMate/Storage/StorageService_Unimplemented.cpp"
+    ],
+    "Platform/Linux": [
+      "GridMate_Traits_Platform.h",
+      "GridMate_Traits_Linux.h"
+    ]
+  }
+}
+

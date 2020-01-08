@@ -1,0 +1,12 @@
+{
+    "platform": {
+        "android_armv8_clang": {
+            "libpath": [
+                "lib/android-arm64-v8a"
+            ],
+            "lib": [
+                "libtommath.a"
+            ]
+        }
+    }
+}

@@ -15,11 +15,15 @@ def build(bld):
     bld.DefineGem(
         # Add custom build options here
         includes = [
+            bld.Path('Code/CryEngine/CryCommon'),
             bld.Path('Code/CryEngine/CryAction'),
-            bld.ThirdPartyPath('civetweb', 'include'),
+            bld.ThirdPartyPath('civetweb', 'include')
         ],
         disable_pch = True,
-
+        
+        # Platform Roots
+        platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)],
+    
         win_file_list = ['metastream_win.waf_files'],
         win_defines = ['USE_WEBSOCKET'],
 

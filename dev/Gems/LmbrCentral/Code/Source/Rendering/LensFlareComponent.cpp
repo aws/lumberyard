@@ -89,9 +89,10 @@ namespace LmbrCentral
         if (serializeContext)
         {
             serializeContext->Class<LensFlareConfiguration>()->
-                Version(3, &VersionConverter)->
+                Version(4, &VersionConverter)->
                 Field("Visible", &LensFlareConfiguration::m_visible)->
                 Field("LensFlare", &LensFlareConfiguration::m_lensFlare)->
+                Field("Asset", &LensFlareConfiguration::m_asset)->
 
                 Field("MinimumSpec", &LensFlareConfiguration::m_minSpec)->
                 Field("LensFlareFrustumAngle", &LensFlareConfiguration::m_lensFlareFrustumAngle)->
@@ -180,6 +181,11 @@ namespace LmbrCentral
         {
             TurnOnLensFlare();
         }
+    }
+
+    LensFlareConfiguration LensFlareComponent::GetLensFlareConfiguration()
+    {
+        return m_configuration;
     }
 
     void LensFlareComponent::SetLensFlareState(State state)

@@ -24,7 +24,7 @@
 #include "../Implementation/GLResource.hpp"
 
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
 #include <AppKit/AppKit.h>
 #else
 #include <UIKit/UIKit.h>
@@ -74,7 +74,7 @@ bool CCryDXGLSwapChain::CreateDrawableView()
         NativeWindowType* mainWindow = reinterpret_cast<NativeWindowType*>(m_kDesc.OutputWindow);
         // Use the window's view as our own since the METALDevice class created
         // it and not an outside tool like the editor
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         m_currentView = reinterpret_cast<MetalView*>([mainWindow.contentViewController view]);
 #else
         m_currentView = reinterpret_cast<MetalView*>([mainWindow.rootViewController view]);

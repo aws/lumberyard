@@ -11,12 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#if !defined(AFX_STDAFX_H__8B93AD4E_EE86_4127_9BED_37AC6D0F978B__INCLUDED_3DENGINE)
-#define AFX_STDAFX_H__8B93AD4E_EE86_4127_9BED_37AC6D0F978B__INCLUDED_3DENGINE
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 #pragma warning( disable : 6286 ) // (<non-zero constant> || <expres ion>) is always a non-zero constant. <expression> is never evaluated and might have side
 #pragma warning( disable : 6237 ) // (<zero> && <expression>) is always zero. <expression> is never evaluated and might have side effects
@@ -84,12 +79,22 @@ const int nThreadsNum = 3;
 #include "cvars.h"
 #include <CrySizer.h>
 #include <StlUtils.h>
-#include "Array2d.h"
+#include <CryArray2d.h>
 #include "Material.h"
 #include "3dEngine.h"
 #include "ObjMan.h"
 #include "Vegetation.h"
+
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
 #include "terrain.h"
+#else
+#define OCEAN_IS_VERY_FAR_AWAY 1000000.f
+#include <ISerialize.h>
+#include <IParticles.h>
+#include "BasicArea.h"
+#include "Environment/OceanEnvironmentBus.h"
+#endif
+
 #include "ObjectsTree.h"
 
 // TODO refactor!
@@ -228,4 +233,3 @@ struct TriangleIndex
 #   define INCLUDE_SAVECGF
 #endif
 
-#endif // !defined(AFX_STDAFX_H__8B93AD4E_EE86_4127_9BED_37AC6D0F978B__INCLUDED_3DENGINE)

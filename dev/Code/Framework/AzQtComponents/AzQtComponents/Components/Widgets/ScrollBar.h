@@ -59,7 +59,9 @@ namespace AzQtComponents
         static bool polish(Style* style, QWidget* widget, const Config& config);
         static bool unpolish(Style* style, QWidget* widget, const Config& config);
 
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'AzQtComponents::ScrollBar::s_scrollBarWatcher': class 'QPointer<AzQtComponents::ScrollBarWatcher>' needs to have dll-interface to be used by clients of class 'AzQtComponents::ScrollBar'
         static QPointer<ScrollBarWatcher> s_scrollBarWatcher;
+        AZ_POP_DISABLE_WARNING
         static unsigned int s_watcherReferenceCount;
     };
 

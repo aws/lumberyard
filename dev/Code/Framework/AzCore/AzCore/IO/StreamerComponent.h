@@ -15,6 +15,7 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Math/Crc.h>
+#include <AzCore/IO/Streamer/StreamStackPreferences.h>
 
 namespace AZ
 {
@@ -40,6 +41,7 @@ namespace AZ
         using Bus = AZ::EBus<StreamerComponentRequests>;
 
         virtual AZ::IO::Streamer* GetStreamer() = 0;
+        virtual const AZ::IO::StreamStack::Preferences* GetPreferences() const = 0;
     };
 
     /**
@@ -65,6 +67,7 @@ namespace AZ
         //////////////////////////////////////////////////////////////////////////
         // StreamerComponentRequests::Bus
         AZ::IO::Streamer* GetStreamer() override;
+        const AZ::IO::StreamStack::Preferences* GetPreferences() const override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -81,12 +84,10 @@ namespace AZ
         /// \red ComponentDescriptor::Reflect
         static void Reflect(ReflectContext* reflection);
 
-        unsigned int            m_maxNumOpenLimitedStream;      ///< \ref IO::Streamer::Descriptor
-        unsigned int            m_cacheBlockSize;               ///< \ref IO::Streamer::Descriptor
-        unsigned int            m_numCacheBlocks;               ///< \ref IO::Streamer::Descriptor
+        //! User preferences for configuring the stack behind Streamer. (Not to be confused with the FileIO stack.)
+        AZ::IO::StreamStack::Preferences m_streamStackPreferences;
         int                     m_deviceThreadCpuId;            ///< CPU Id to use for all device threads
         int                     m_deviceThreadPriority;         ///< Priority of the device thread
-        int                     m_deviceThreadSleepTimeMS;      ///< Time to sleep between device operations in milliseconds. Use with caution. -1 to ignore
         Debug::StreamerDriller* m_driller;
     };
 }

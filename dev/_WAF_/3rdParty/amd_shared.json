@@ -10,7 +10,7 @@
     ],
     "lib_required": "True",
     "platform": {
-        "win_x64_vs2013": {
+        "win_x64_vs2017": {
             "importlibpath": [
                 "lib/x64/dll"
             ],
@@ -20,9 +20,7 @@
             "shared": [
                 "amd_ags64.dll"
             ]
-        },
-        "win_x64_vs2015": "@win_x64_vs2013",
-        "win_x64_vs2017": "@win_x64_vs2013"
+        }
     }
 }
 

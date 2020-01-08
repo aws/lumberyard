@@ -72,7 +72,7 @@ public: // member functions
 
     // UiCanvasInterface
 
-    const string& GetPathname() override;
+    const AZStd::string& GetPathname() override;
     LyShine::CanvasId GetCanvasId() override;
 
     AZ::u64 GetUniqueCanvasId() override;
@@ -125,7 +125,7 @@ public: // member functions
     AZ::Vector2 GetCanvasSize() override;
     void SetCanvasSize(const AZ::Vector2& canvasSize) override;
     void SetTargetCanvasSize(bool isInGame, const AZ::Vector2& targetCanvasSize) override;
-    float GetUniformDeviceScale() override;
+    AZ::Vector2 GetDeviceScale() override;
     bool GetIsPixelAligned() override;
     void SetIsPixelAligned(bool isPixelAligned) override;
     bool GetIsTextPixelAligned() override;
@@ -171,6 +171,7 @@ public: // member functions
     AZ::EntityId GetHoverInteractable() override;
     void ForceHoverInteractable(AZ::EntityId interactableId) override;
     void ClearAllInteractables() override;
+    void ForceEnterInputEventOnInteractable(AZ::EntityId interactableId) override;
 
     // ~UiCanvasInterface
 
@@ -246,7 +247,7 @@ public: // member functions
 
     //! Clone this canvas's entity and return the Canvas component
     //! (used when it is loaded from in game or for preview mode etc)
-    UiCanvasComponent* CloneAndInitializeCanvas(UiEntityContext* entityContext, const string& assetIdPathname, const AZ::Vector2* canvasSize = nullptr);
+    UiCanvasComponent* CloneAndInitializeCanvas(UiEntityContext* entityContext, const AZStd::string& assetIdPathname, const AZ::Vector2* canvasSize = nullptr);
 
     //! Deactivate all elements. Used when queuing a canvas up for deletion
     void DeactivateElements();
@@ -313,7 +314,7 @@ public: // static member functions
         const AZ::SliceComponent::EntityIdToEntityIdMap* previousRemapTable = nullptr, AZ::EntityId previousCanvasId = AZ::EntityId());
     static UiCanvasComponent* FixupReloadedCanvasForEditorInternal(AZ::Entity* newCanvasEntity,
         AZ::Entity* rootSliceEntity, UiEntityContext* entityContext,
-        LyShine::CanvasId existingId, const string& existingPathname);
+        LyShine::CanvasId existingId, const AZStd::string& existingPathname);
 
 protected: // member functions
 
@@ -443,7 +444,7 @@ private: // types
 
 private: // data
 
-    string m_pathname;              //! This is an asset ID pathname
+    AZStd::string m_pathname;              //! This is an asset ID pathname
     AZ::u64 m_uniqueId;
     AZ::EntityId m_rootElement;
     LyShine::ElementId m_lastElementId;
@@ -530,7 +531,7 @@ private: // data
     //! In the editor this is always 1.0f
     //! In game it is the closer value to 1.0f of the two values m_viewportSize.x/m_canvasSize.x
     //! and m_viewportSize.y/m_canvasSize.y
-    float m_uniformDeviceScale;
+    AZ::Vector2 m_deviceScale;
 
     //! True if this canvas is loaded in game (including for Ctrl-G in Sandbox), false if open in the UI Editor
     bool m_isLoadedInGame;

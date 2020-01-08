@@ -14,7 +14,7 @@
 #include "StdAfx.h"
 #include <AzCore/Debug/Trace.h>
 #include "TimeOfDay.h"
-#include "terrain_water.h"
+#include "Ocean.h"
 #include "IPostEffectGroup.h"
 #include <ISplines.h>
 #include <IRemoteCommand.h>
@@ -807,8 +807,8 @@ void CTimeOfDay::UpdateEnvLighting(bool forceUpdate)
     }
 
     // set skybox multiplier
-    float skyBoxMulitplier(GetVar(PARAM_SKYBOX_MULTIPLIER).fValue[ 0 ] * m_fHDRMultiplier);
-    p3DEngine->SetGlobalParameter(E3DPARAM_SKYBOX_MULTIPLIER, Vec3(skyBoxMulitplier, 0, 0));
+    float skyBoxMultiplier(GetVar(PARAM_SKYBOX_MULTIPLIER).fValue[ 0 ] * m_fHDRMultiplier);
+    p3DEngine->SetGlobalParameter(E3DPARAM_SKYBOX_MULTIPLIER, Vec3(skyBoxMultiplier, 0, 0));
 
     // Set color grading stuff
     float fValue = GetVar(PARAM_COLORGRADING_FILTERS_GRAIN).fValue[ 0 ];

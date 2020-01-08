@@ -21,17 +21,28 @@
 
 namespace Vegetation
 {
+    namespace AreaDebugUtil
+    {
+        static bool UpdateVersion(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+        {
+            if (classElement.GetVersion() < 1)
+            {
+                classElement.RemoveElementByName(AZ_CRC("PropagateDebug", 0xb5675baa));
+                classElement.RemoveElementByName(AZ_CRC("InheritDebug", 0xd227cd11));
+            }
+            return true;
+        }
+    }
+
     void AreaDebugConfig::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
         if (serialize)
         {
             serialize->Class<AreaDebugConfig, AZ::ComponentConfig>()
-                ->Version(0)
+                ->Version(1, &AreaDebugUtil::UpdateVersion)
                 ->Field("DebugColor", &AreaDebugConfig::m_debugColor)
                 ->Field("CubeSize", &AreaDebugConfig::m_debugCubeSize)
-                ->Field("PropagateDebug", &AreaDebugConfig::m_propagateDebug)
-                ->Field("InheritDebug", &AreaDebugConfig::m_inheritDebug)
                 ->Field("HideInDebug", &AreaDebugConfig::m_hideDebug)
                 ;
 
@@ -43,8 +54,8 @@ namespace Vegetation
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->DataElement(AZ::Edit::UIHandlers::Color, &AreaDebugConfig::m_debugColor, "Debug Visualization Color", "")
                     ->DataElement(AZ::Edit::UIHandlers::Color, &AreaDebugConfig::m_debugCubeSize, "Debug Visualization Cube Size", "")
-                    ->DataElement(AZ::Edit::UIHandlers::CheckBox, &AreaDebugConfig::m_propagateDebug, "Propagate debug flags to child areas", "")
-                    ->DataElement(AZ::Edit::UIHandlers::CheckBox, &AreaDebugConfig::m_inheritDebug, "Inherit debug flags from parent areas", "")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                    ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
                     ->DataElement(AZ::Edit::UIHandlers::CheckBox, &AreaDebugConfig::m_hideDebug, "Hide created instance in the Debug Visualization", "")
                     ;
             }
@@ -58,8 +69,6 @@ namespace Vegetation
                 ->Constructor()
                 ->Property("DebugColor", BehaviorValueProperty(&AreaDebugConfig::m_debugColor))
                 ->Property("DebugCubeSize", BehaviorValueProperty(&AreaDebugConfig::m_debugCubeSize))
-                ->Property("PropagateDebug", BehaviorValueProperty(&AreaDebugConfig::m_propagateDebug))
-                ->Property("InheritDebug", BehaviorValueProperty(&AreaDebugConfig::m_inheritDebug))
                 ->Property("HideInDebug", BehaviorValueProperty(&AreaDebugConfig::m_hideDebug))
                 ;
         }
@@ -100,6 +109,7 @@ namespace Vegetation
 
     void AreaDebugComponent::Activate()
     {
+        ResetBlendedDebugDisplayData();
         AreaDebugBus::Handler::BusConnect(GetEntityId());
     }
 
@@ -128,32 +138,37 @@ namespace Vegetation
         return false;
     }
 
-    void AreaDebugComponent::SetDebugColor(const AZ::Color& color)
+    AreaDebugDisplayData AreaDebugComponent::GetBaseDebugDisplayData() const
     {
-        m_configuration.m_debugColor = color;
+        AreaDebugDisplayData data;
+        data.m_instanceColor = m_configuration.m_debugColor;
+        data.m_instanceSize = m_configuration.m_debugCubeSize;
+        data.m_instanceRender = !m_configuration.m_hideDebug;
+        return data;
     }
 
-    void AreaDebugComponent::SetDebugPropagate(bool propagate)
+    void AreaDebugComponent::ResetBlendedDebugDisplayData()
     {
-        m_configuration.m_propagateDebug = propagate;
+        m_hasBlendedDebugDisplayData = false;
+        m_blendedDebugDisplayData = AreaDebugDisplayData();
     }
 
-    void AreaDebugComponent::SetDebugInherit(bool inherit)
+    void AreaDebugComponent::AddBlendedDebugDisplayData(const AreaDebugDisplayData& data)
     {
-        m_configuration.m_inheritDebug = inherit;
+        m_hasBlendedDebugDisplayData = true;
+
+        //do not render if any render flag is disabled
+        m_blendedDebugDisplayData.m_instanceRender = m_blendedDebugDisplayData.m_instanceRender && data.m_instanceRender;
+
+        //performing a multiply/modulate color blend.
+        m_blendedDebugDisplayData.m_instanceColor *= data.m_instanceColor;
+
+        //setting size to the last size added
+        m_blendedDebugDisplayData.m_instanceSize = data.m_instanceSize;
     }
 
-    void AreaDebugComponent::SetDebugHide(bool hide)
+    AreaDebugDisplayData AreaDebugComponent::GetBlendedDebugDisplayData() const
     {
-        m_configuration.m_hideDebug = hide;
-    }
-
-    void AreaDebugComponent::GetDebugColorOverride(bool& inherit, bool& propagate, bool& hide, AZ::Color& color) const
-    {
-        inherit = m_configuration.m_inheritDebug;
-        propagate = m_configuration.m_propagateDebug;
-        hide = m_configuration.m_hideDebug;
-        color = m_configuration.m_debugColor;
-        color.SetA(m_configuration.m_debugCubeSize);
+        return m_hasBlendedDebugDisplayData ? m_blendedDebugDisplayData : GetBaseDebugDisplayData();
     }
 }

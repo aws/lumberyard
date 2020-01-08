@@ -16,11 +16,17 @@
 #include "native/assetprocessor.h"
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
+#include <AzToolsFramework/Asset/AssetUtils.h>
 #include <AzToolsFramework/AssetDatabase/AssetDatabaseConnection.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/Module/ModuleManager.h>
+
+const char TestAppRoot[] = ":/testdata";
+const char EmptyDummyProjectName[] = "EmptyDummyProject";
+const char DummyProjectName[] = "DummyProject";
 
 // make the internal calls public for the purposes of the unit test!
 class UnitTestPlatformConfiguration : public AssetProcessor::PlatformConfiguration
@@ -28,10 +34,6 @@ class UnitTestPlatformConfiguration : public AssetProcessor::PlatformConfigurati
     friend class GTEST_TEST_CLASS_NAME_(PlatformConfigurationUnitTests, Test_GemHandling);
     friend class GTEST_TEST_CLASS_NAME_(PlatformConfigurationUnitTests, Test_MetaFileTypes);
 protected:
-    bool ReadGems(QList<AssetProcessor::GemInformation>& /*gemInfoList*/) override
-    {
-        return true;
-    }
 };
 
 PlatformConfigurationUnitTests::PlatformConfigurationUnitTests()
@@ -61,10 +63,10 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_BadPlatform)
     using namespace AzToolsFramework::AssetSystem;
     using namespace AssetProcessor;
 
-    const char* configFileName = ":/testdata/config_broken_badplatform.ini";
+    const char* configRoot = ":/testdata/config_broken_badplatform";
     UnitTestPlatformConfiguration config;
     m_absorber.Clear();
-    ASSERT_FALSE(config.InitializeFromConfigFiles(configFileName));
+    ASSERT_FALSE(config.InitializeFromConfigFiles(configRoot, TestAppRoot, EmptyDummyProjectName, false, false));
     ASSERT_GT(m_absorber.m_numErrorsAbsorbed, 0);
 }
 
@@ -74,10 +76,10 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_NoPlatform)
     using namespace AzToolsFramework::AssetSystem;
     using namespace AssetProcessor;
 
-    const char* configFileName = ":/testdata/config_broken_noplatform.ini";
+    const char* configRoot = ":/testdata/config_broken_noplatform";
     UnitTestPlatformConfiguration config;
     m_absorber.Clear();
-    ASSERT_FALSE(config.InitializeFromConfigFiles(configFileName));
+    ASSERT_FALSE(config.InitializeFromConfigFiles(configRoot, TestAppRoot, EmptyDummyProjectName, false, false));
     ASSERT_GT(m_absorber.m_numErrorsAbsorbed, 0);
 }
 
@@ -86,10 +88,10 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_NoScanFolders)
     using namespace AzToolsFramework::AssetSystem;
     using namespace AssetProcessor;
 
-    const char* configFileName = ":/testdata/config_broken_noscans.ini";
+    const char* configRoot = ":/testdata/config_broken_noscans";
     UnitTestPlatformConfiguration config;
     m_absorber.Clear();
-    ASSERT_FALSE(config.InitializeFromConfigFiles(configFileName));
+    ASSERT_FALSE(config.InitializeFromConfigFiles(configRoot, TestAppRoot, EmptyDummyProjectName, false, false));
     ASSERT_GT(m_absorber.m_numErrorsAbsorbed, 0);
 }
 
@@ -98,10 +100,10 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_BrokenRecognizers)
     using namespace AzToolsFramework::AssetSystem;
     using namespace AssetProcessor;
 
-    const char* configFileName = ":/testdata/config_broken_recognizers.ini";
+    const char* configRoot = ":/testdata/config_broken_recognizers";
     UnitTestPlatformConfiguration config;
     m_absorber.Clear();
-    ASSERT_FALSE(config.InitializeFromConfigFiles(configFileName));
+    ASSERT_FALSE(config.InitializeFromConfigFiles(configRoot, TestAppRoot, EmptyDummyProjectName, false, false));
     ASSERT_GT(m_absorber.m_numErrorsAbsorbed, 0);
 }
 
@@ -110,17 +112,17 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_Regular_Platforms)
     using namespace AzToolsFramework::AssetSystem;
     using namespace AssetProcessor;
 
-    const char* configFileName = ":/testdata/config_regular.ini";
+    const char* configRoot = ":/testdata/config_regular";
     UnitTestPlatformConfiguration config;
     m_absorber.Clear();
-    ASSERT_TRUE(config.InitializeFromConfigFiles(configFileName));
+    ASSERT_TRUE(config.InitializeFromConfigFiles(configRoot, TestAppRoot, EmptyDummyProjectName, false, false));
     ASSERT_EQ(m_absorber.m_numErrorsAbsorbed, 0);
 
     // verify the data.
     ASSERT_NE(config.GetPlatformByIdentifier(AzToolsFramework::AssetSystem::GetHostAssetPlatform()), nullptr);
     ASSERT_NE(config.GetPlatformByIdentifier("es3"), nullptr);
     ASSERT_NE(config.GetPlatformByIdentifier("server"), nullptr);
-    ASSERT_EQ(config.GetPlatformByIdentifier("xbone"), nullptr); // ACCEPTED_USE
+    ASSERT_EQ(config.GetPlatformByIdentifier("xenia"), nullptr);
 
     ASSERT_TRUE(config.GetPlatformByIdentifier("es3")->HasTag("mobile"));
     ASSERT_TRUE(config.GetPlatformByIdentifier("es3")->HasTag("renderer"));
@@ -304,14 +306,15 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_RegularScanfolder)
     using namespace AzToolsFramework::AssetSystem;
     using namespace AssetProcessor;
 
-    const char* configFileName = ":/testdata/config_regular.ini";
+    const char* configRoot = ":/testdata/config_regular";
     UnitTestPlatformConfiguration config;
     m_absorber.Clear();
-    ASSERT_TRUE(config.InitializeFromConfigFiles(configFileName));
+    ASSERT_TRUE(config.InitializeFromConfigFiles(configRoot, TestAppRoot, EmptyDummyProjectName, false, false));
     ASSERT_EQ(m_absorber.m_numErrorsAbsorbed, 0);
 
     ASSERT_EQ(config.GetScanFolderCount(), 3); // the two, and then the one that has the same data as prior but different identifier.
-    ASSERT_EQ(config.GetScanFolderAt(0).GetDisplayName(), QString("SamplesProject Scan Folder"));
+    QString scanName = AssetUtilities::ComputeGameName() + " Scan Folder";
+    ASSERT_EQ(config.GetScanFolderAt(0).GetDisplayName(), scanName);
     ASSERT_EQ(config.GetScanFolderAt(0).GetOutputPrefix(), QString());
     ASSERT_EQ(config.GetScanFolderAt(0).RecurseSubFolders(), true);
     ASSERT_EQ(config.GetScanFolderAt(0).GetOrder(), 0);
@@ -338,10 +341,10 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_RegularScanfolderP
     using namespace AzToolsFramework::AssetSystem;
     using namespace AssetProcessor;
 
-    const char* configFileName = ":/testdata/config_regular_platform_scanfolder.ini";
+    const char* configRoot = ":/testdata/config_regular_platform_scanfolder";
     UnitTestPlatformConfiguration config;
     m_absorber.Clear();
-    ASSERT_TRUE(config.InitializeFromConfigFiles(configFileName));
+    ASSERT_TRUE(config.InitializeFromConfigFiles(configRoot, TestAppRoot, EmptyDummyProjectName, false, false));
     ASSERT_EQ(m_absorber.m_numErrorsAbsorbed, 0);
 
     ASSERT_EQ(config.GetScanFolderCount(), 5);
@@ -382,10 +385,10 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_RegularExcludes)
     using namespace AzToolsFramework::AssetSystem;
     using namespace AssetProcessor;
 
-    const char* configFileName = ":/testdata/config_regular.ini";
+    const char* configRoot = ":/testdata/config_regular";
     UnitTestPlatformConfiguration config;
     m_absorber.Clear();
-    ASSERT_TRUE(config.InitializeFromConfigFiles(configFileName));
+    ASSERT_TRUE(config.InitializeFromConfigFiles(configRoot, TestAppRoot, EmptyDummyProjectName, false, false));
     ASSERT_EQ(m_absorber.m_numErrorsAbsorbed, 0);
 
     ASSERT_TRUE(config.IsFileExcluded("blahblah/$tmp_01.test"));
@@ -405,10 +408,10 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_Recognizers)
     const char* platformWhichIsNotCurrentPlatform = "pc";
 #endif
 
-    const char* configFileName = ":/testdata/config_regular.ini";
+    const char* configRoot = ":/testdata/config_regular";
     UnitTestPlatformConfiguration config;
     m_absorber.Clear();
-    ASSERT_TRUE(config.InitializeFromConfigFiles(configFileName));
+    ASSERT_TRUE(config.InitializeFromConfigFiles(configRoot, TestAppRoot, EmptyDummyProjectName, false, false));
     ASSERT_EQ(m_absorber.m_numErrorsAbsorbed, 0);
 
     const AssetProcessor::RecognizerContainer& recogs = config.GetAssetRecognizerContainer();
@@ -478,12 +481,11 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_Overrides)
 {
     using namespace AzToolsFramework::AssetSystem;
     using namespace AssetProcessor;
-
-    const char* configFileName = ":/testdata/config_regular.ini";
-    const char* overrideConfigFileName = ":/testdata/config_overrides.ini";
+    const char* configRoot = ":/testdata/config_regular";
     UnitTestPlatformConfiguration config;
     m_absorber.Clear();
-    ASSERT_TRUE(config.InitializeFromConfigFiles(configFileName, overrideConfigFileName));
+        
+    ASSERT_TRUE(config.InitializeFromConfigFiles(configRoot, TestAppRoot, DummyProjectName, false, false));
     ASSERT_EQ(m_absorber.m_numErrorsAbsorbed, 0);
 
     const AssetProcessor::RecognizerContainer& recogs = config.GetAssetRecognizerContainer();
@@ -493,9 +495,9 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_Overrides)
     // verify the data.
     ASSERT_NE(config.GetPlatformByIdentifier(AzToolsFramework::AssetSystem::GetHostAssetPlatform()), nullptr);
     ASSERT_NE(config.GetPlatformByIdentifier("es3"), nullptr);
-    ASSERT_NE(config.GetPlatformByIdentifier("ps4"), nullptr); // ACCEPTED_USE
-    // this override swaps server with ps4 in that it turns ON ps4, turns off server // ACCEPTED_USE
-    ASSERT_EQ(config.GetPlatformByIdentifier("xbone"), nullptr); // ACCEPTED_USE
+    ASSERT_NE(config.GetPlatformByIdentifier("provo"), nullptr);
+    // this override swaps server with provo in that it turns ON provo, turns off server
+    ASSERT_EQ(config.GetPlatformByIdentifier("xenia"), nullptr);
     ASSERT_EQ(config.GetPlatformByIdentifier("server"), nullptr); // this should be off due to overrides
 
     // there is a rule which only output on server, so that rule should be omitted
@@ -507,13 +509,12 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_Overrides)
     ASSERT_EQ(recogs["i_caf"].m_patternMatcher.GetBuilderPattern().m_type, AssetBuilderSDK::AssetBuilderPattern::Wildcard);
     ASSERT_EQ(recogs["i_caf"].m_platformSpecs.size(), 3);
     ASSERT_TRUE(recogs["i_caf"].m_platformSpecs.contains("es3"));
-    ASSERT_TRUE(recogs["i_caf"].m_platformSpecs.contains("ps4")); // ACCEPTED_USE
+    ASSERT_TRUE(recogs["i_caf"].m_platformSpecs.contains("provo"));
     ASSERT_TRUE(recogs["i_caf"].m_platformSpecs.contains(AzToolsFramework::AssetSystem::GetHostAssetPlatform()));
     ASSERT_FALSE(recogs["i_caf"].m_platformSpecs.contains("server")); // server has been set to skip.
     ASSERT_EQ(recogs["i_caf"].m_platformSpecs["es3"].m_extraRCParams, "mobile");
     ASSERT_EQ(recogs["i_caf"].m_platformSpecs[AzToolsFramework::AssetSystem::GetHostAssetPlatform()].m_extraRCParams, "defaultparams");
-    ASSERT_EQ(recogs["i_caf"].m_platformSpecs["ps4"].m_extraRCParams, "copy"); // ACCEPTED_USE
-
+    ASSERT_EQ(recogs["i_caf"].m_platformSpecs["provo"].m_extraRCParams, "copy");
 
 }
 
@@ -534,24 +535,13 @@ TEST_F(PlatformConfigurationUnitTests, Test_GemHandling)
     ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("Gems/LyShine/AssetProcessorGemConfig.ini"), ";nothing to see here"));
 
     // note that it is expected that the gems system gives us absolute paths.
-    QList<AssetProcessor::GemInformation> fakeGems;
-    fakeGems.push_back({ "0fefab3f13364722b2eab3b96ce2bf20", tempPath.absoluteFilePath("Gems/LyShine").toUtf8().constData(), "Gems/LyShine", "LyShine", true, false });// true = pretend this is a game gem.
-    fakeGems.push_back({ "ff06785f7145416b9d46fde39098cb0c", tempPath.absoluteFilePath("Gems/LmbrCentral/v2").toUtf8().constData(), "Gems/LmbrCentral/v2", "LmbrCentral", false, false });
+    AZStd::vector<AzToolsFramework::AssetUtils::GemInfo> fakeGems;
+    fakeGems.push_back({ "LyShine", "Gems/LyShine", tempPath.absoluteFilePath("Gems/LyShine").toUtf8().constData(), "0fefab3f13364722b2eab3b96ce2bf20", true, false });// true = pretend this is a game gem.
+    fakeGems.push_back({ "LmbrCentral", "Gems/LmbrCentral/v2", tempPath.absoluteFilePath("Gems/LmbrCentral/v2").toUtf8().constData(), "ff06785f7145416b9d46fde39098cb0c", false, false });
 
     // reading gems via the Gems System is already to be tested in the actual Gems API tests.
     // to avoid trying to load those DLLs we avoid calling the acutal ReadGems function
     config.AddGemScanFolders(fakeGems);
-    QStringList allConfigFilesList;
-    bool foundGameGem = false;
-    // it is intentional that you always get sent back the list of all available config files to read from
-    config.AddGemConfigFiles(fakeGems, allConfigFilesList, foundGameGem);
-
-    ASSERT_TRUE(allConfigFilesList.size() == 2);
-    // note the opposite order here.  This ensures the Game Gem is at the end.
-    ASSERT_TRUE(allConfigFilesList[0] == tempPath.absoluteFilePath("Gems/LmbrCentral/v2/AssetProcessorGemConfig.ini"));
-    ASSERT_TRUE(allConfigFilesList[1] == tempPath.absoluteFilePath("Gems/LyShine/AssetProcessorGemConfig.ini"));
-
-    ASSERT_TRUE(foundGameGem);
 
     QString expectedScanFolder = tempPath.absoluteFilePath("Gems/LyShine/Assets");
 
@@ -614,10 +604,10 @@ TEST_F(PlatformConfigurationUnitTests, ReadCheckSever_FromConfig_Valid)
     using namespace AzToolsFramework::AssetSystem;
     using namespace AssetProcessor;
 
-    const char* configFileName = ":/testdata/config_regular.ini";
+    const char* configRoot = ":/testdata/config_regular";
     UnitTestPlatformConfiguration config;
     m_absorber.Clear();
-    ASSERT_TRUE(config.InitializeFromConfigFiles(configFileName));
+    ASSERT_TRUE(config.InitializeFromConfigFiles(configRoot, TestAppRoot, EmptyDummyProjectName, false, false));
     ASSERT_EQ(m_absorber.m_numErrorsAbsorbed, 0);
 
     const AssetProcessor::RecognizerContainer& recogs = config.GetAssetRecognizerContainer();
@@ -625,4 +615,29 @@ TEST_F(PlatformConfigurationUnitTests, ReadCheckSever_FromConfig_Valid)
     // verify that check server flag is set to true for i_caf
     ASSERT_TRUE(recogs.contains("i_caf"));
     ASSERT_TRUE(recogs["i_caf"].m_checkServer);
+}
+
+TEST_F(PlatformConfigurationUnitTests, PlatformConfigFile_IsPresent_Found)
+{
+    UnitTestPlatformConfiguration config;
+    QTemporaryDir tempEngineRoot;
+    QDir tempPath(tempEngineRoot.path());
+    UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("bootstrap.cfg"), QString("sys_game_folder=SamplesProject\n"));
+    AssetUtilities::ResetAssetRoot();
+
+    QDir computedEngineRoot;
+    ASSERT_TRUE(AssetUtilities::ComputeAssetRoot(computedEngineRoot, &tempPath));
+    ASSERT_TRUE(!computedEngineRoot.absolutePath().isEmpty());
+    ASSERT_TRUE(tempPath.absolutePath() == computedEngineRoot.absolutePath());
+
+    // create ONE of the two files - they are optional, but the paths to them should always be checked and generated.
+    QString platformConfigPath{ AssetProcessor::AssetConfigPlatfomrDir };
+    platformConfigPath.append("TestPlatform/");
+    platformConfigPath.append(AssetProcessor::AssetProcessorPlatformConfigFileName);
+
+    QStringList platformConfigList;
+    ASSERT_FALSE(config.AddPlatformConfigFilePaths(platformConfigList));
+    ASSERT_TRUE(UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath(platformConfigPath), ";nothing to see here"));
+    ASSERT_TRUE(config.AddPlatformConfigFilePaths(platformConfigList));
+    ASSERT_EQ(platformConfigList.size(), 1);
 }

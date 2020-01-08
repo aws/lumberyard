@@ -12,6 +12,7 @@
             "EntityTestbed.h",
             "FileFunc.cpp",
             "FileIO.cpp",
+            "FileTagTests.cpp",
             "FrameworkApplicationFixture.h",
             "GenAppDescriptors.cpp",
             "GenericComponentWrapperTest.cpp",
@@ -29,7 +30,10 @@
             "GridMocks.h",
             "InterestManagerComponentTests.cpp",
             "SQLiteConnectionTests.cpp",
-            "Application.cpp"
+            "ProcessLaunchParseTests.cpp",
+            "Statistics.cpp",
+        	"Application.cpp",
+            "PlatformHelper.cpp"
         ]
     }
 }

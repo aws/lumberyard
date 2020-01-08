@@ -9,8 +9,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *
  */
-#include "TestTypes.h"
-
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Outcome/Outcome.h>
 
@@ -462,44 +461,44 @@ namespace UnitTest
     {
         m_behaviorContext.Method("MethodWithVectorParam", &FuncWithAcceptsVectorWithPointerValueTypeByRef);
         AZ::ScriptContext scriptContext;
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         scriptContext.BindTo(&m_behaviorContext);
-        AZ_TEST_STOP_ASSERTTEST(0);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(0);
     }
 
     TEST_F(BehaviorContextTestFixture, MethodReflectionWithConstRefParam_DoesNotCauseAssert_WhenBoundToScriptContext)
     {
         m_behaviorContext.Method("MethodWithVectorParam", &FuncWithAcceptsVectorWithPointerValueTypeByConstRef);
         AZ::ScriptContext scriptContext;
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         scriptContext.BindTo(&m_behaviorContext);
-        AZ_TEST_STOP_ASSERTTEST(0);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(0);
     }
 
     TEST_F(BehaviorContextTestFixture, MethodReflectionWithPointerParam_DoesNotCauseAssert_WhenBoundToScriptContext)
     {
         m_behaviorContext.Method("MethodWithVectorParam", &FuncWithAcceptsVectorWithPointerValueTypeByPointer);
         AZ::ScriptContext scriptContext;
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         scriptContext.BindTo(&m_behaviorContext);
-        AZ_TEST_STOP_ASSERTTEST(0);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(0);
     }
 
     TEST_F(BehaviorContextTestFixture, MethodReflectionWithConstPointerParam_DoesNotCauseAssert_WhenBoundToScriptContext)
     {
         m_behaviorContext.Method("MethodWithVectorParam", &FuncWithAcceptsVectorWithPointerValueTypeByConstPointer);
         AZ::ScriptContext scriptContext;
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         scriptContext.BindTo(&m_behaviorContext);
-        AZ_TEST_STOP_ASSERTTEST(0);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(0);
     }
 
     TEST_F(BehaviorContextTestFixture, MethodReflectionWithConstParam_DoesNotCauseAssert_WhenBoundToScriptContext)
     {
         m_behaviorContext.Method("MethodWithVectorParam", &FuncWithAcceptsVectorWithPointerValueTypeByConst);
         AZ::ScriptContext scriptContext;
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         scriptContext.BindTo(&m_behaviorContext);
-        AZ_TEST_STOP_ASSERTTEST(0);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(0);
     }
 }

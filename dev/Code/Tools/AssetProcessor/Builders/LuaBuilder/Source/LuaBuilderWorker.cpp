@@ -3,9 +3,9 @@
  * its licensors.
  *
  * For complete copyright and license terms please see the LICENSE at the root of this
- * distribution(the "License").All use of this software is governed by the License,
- *or, if provided, by the license below or the license accompanying this file.Do not
- * remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+ * distribution (the "License"). All use of this software is governed by the License,
+ *or, if provided, by the license below or the license accompanying this file. Do not
+ * remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
  *WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *
  */
@@ -24,6 +24,7 @@
 #include <AzFramework/IO/LocalFileIO.h>
 
 #include <AzCore/std/string/conversions.h>
+#include <AzFramework/FileFunc/FileFunc.h>
 
 namespace LuaBuilder
 {
@@ -98,9 +99,14 @@ namespace LuaBuilder
             result = RunCopyJob(request);
         }
 
+        AssetBuilderSDK::ProductPathDependencySet dependencySet;
+
         if (result.IsSuccess())
         {
             response.m_outputProducts.emplace_back(result.TakeValue());
+
+            ParseDependencies(request.m_fullPath, dependencySet);
+            response.m_outputProducts.back().m_pathDependencies.insert(dependencySet.begin(), dependencySet.end());
         }
         else
         {
@@ -110,6 +116,7 @@ namespace LuaBuilder
 
         // Run copy
         response.m_outputProducts.emplace_back(request.m_fullPath, azrtti_typeid<AZ::ScriptAsset>(), AZ::ScriptAsset::CopiedAssetSubId);
+        response.m_outputProducts.back().m_pathDependencies.swap(dependencySet);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -155,6 +162,8 @@ namespace LuaBuilder
             // Parse asset
             LB_VERIFY(scriptContext.LoadFromStream(&inputStream, debugName.c_str()),
                 "%s", lua_tostring(scriptContext.NativeContext(), -1));
+
+            inputStream.Seek(0, AZ::IO::GenericStream::SeekMode::ST_SEEK_BEGIN);
         }
 
         // Write result
@@ -264,5 +273,71 @@ namespace LuaBuilder
 
         return AZ::Success(AssetBuilderSDK::JobProduct{ destFileName, azrtti_typeid<AZ::ScriptAsset>(), AZ::ScriptAsset::CompiledAssetSubId });
     }
+
+    void LuaBuilderWorker::ParseDependencies(const AZStd::string& file, AssetBuilderSDK::ProductPathDependencySet& outDependencies)
+    {
+        AzFramework::FileFunc::ReadTextFileByLine(file, [&outDependencies](const char* line) -> bool
+        {
+            // Regex to match lines looking similar to require("a") or Script.ReloadScript("a") or require "a"
+            // Group 1: require or empty
+            // Group 2: quotation mark ("), apostrophe ('), or empty
+            // Group 3: specified path or variable (variable will be indicated by empty group 2)
+            // Group 4: Same as group 2
+            AZStd::regex requireRegex(R"((?:(require)|Script\.ReloadScript)\s*\(?\s*("|'|)([^"')]*)("|'|)\s*\)?)");
+
+            // Regex to match lines looking like a path (containing a /)
+            // Group 1: the string contents
+            AZStd::regex pathRegex(R"~("((?=[^"]*\/)[^"\n<>:"|?*]{2,})")~");
+
+            // Regex to match lines looking like ExecuteConsoleCommand("exec somefile.cfg")
+            AZStd::regex consoleCommandRegex(R"~(ExecuteConsoleCommand\("exec (.*)"\))~");
+
+            AZStd::smatch match;
+            if (AZStd::regex_search(line, match, requireRegex))
+            {
+                if (!match[2].matched || !match[4].matched)
+                {
+                    // Result is not a string literal, we'll have to rely on the path regex to pick up the dependency
+                }
+                else
+                {
+                    AZStd::string filePath = match[3].str();
+
+                    if (match[1].matched)
+                    {
+                        // This is a "require" include, which has a format that uses . instead of / and has no file extension included
+                        static constexpr char s_luaExtension[] = ".luac";
+
+                        // Replace '.' in module name with '/'
+                        for (auto pos = filePath.find('.'); pos != AZStd::string::npos; pos = filePath.find('.'))
+                        {
+                            filePath.replace(pos, 1, "/", 1);
+                        }
+
+                        // Add file extension to path
+                        if (filePath.find(s_luaExtension) == AZStd::string::npos)
+                        {
+                            filePath += s_luaExtension;
+                        }
+                    }
+
+                    outDependencies.emplace(filePath, AssetBuilderSDK::ProductPathDependencyType::ProductFile);
+                }
+            }
+            else if (AZStd::regex_search(line, match, consoleCommandRegex))
+            {
+                outDependencies.emplace(match[1].str().c_str(), AssetBuilderSDK::ProductPathDependencyType::ProductFile);
+            }
+            else if(AZStd::regex_search(line, match, pathRegex))
+            {
+                AZ_TracePrintf("LuaBuilder", "Found potential dependency on file: %s\n", match[1].str().c_str());
+
+                outDependencies.emplace(match[1].str().c_str(), AssetBuilderSDK::ProductPathDependencyType::ProductFile);
+            }
+
+            return true;
+        });
+    }
+
 #undef LB_VERIFY
 }

@@ -27,6 +27,10 @@
 #include <AzCore/IO/FileIO.h>
 #include <AzFramework/IO/FileOperations.h>
 
+#include "CryArchive.h"
+#include <lz4frame.h>
+#include <zstd.h>
+
 #ifndef OPTIMIZED_READONLY_ZIP_ENTRY
 
 #include "CryZlib.h"  // declaration of Z_OK for ZipRawDecompress
@@ -181,9 +185,26 @@ char* ZipDir::CacheRW::AllocPath(const char* pPath)
     return temp;
 }
 
+unsigned int ZipDir::CacheRW::GetCompressedSizeEstimate(unsigned int uncompressedSize, CompressionCodec::Codec codec)
+{
+    switch (codec)
+    {
+    case CompressionCodec::Codec::ZLIB:
+        return (uncompressedSize + (uncompressedSize >> 3) + 32);
+    case CompressionCodec::Codec::ZSTD:
+        return ZSTD_compressBound(uncompressedSize);
+    case CompressionCodec::Codec::LZ4:
+        return LZ4F_compressFrameBound(uncompressedSize, nullptr);
+    default:
+        AZ_Assert(false, "Unknown codec passed in for size estimate");
+        break;
+    }
+    return 0;
+}
+
 // Adds a new file to the zip or update an existing one
 // adds a directory (creates several nested directories if needed)
-ZipDir::ErrorEnum ZipDir::CacheRW::UpdateFile (const char* szRelativePathSrc, void* pUncompressed, unsigned nSize, unsigned nCompressionMethod, int nCompressionLevel)
+ZipDir::ErrorEnum ZipDir::CacheRW::UpdateFile (const char* szRelativePathSrc, void* pUncompressed, unsigned nSize, unsigned nCompressionMethod, int nCompressionLevel, CompressionCodec::Codec codec)
 {
     char str[_MAX_PATH];
     char* szRelativePath = UnifyPath(str, szRelativePathSrc);
@@ -191,23 +212,35 @@ ZipDir::ErrorEnum ZipDir::CacheRW::UpdateFile (const char* szRelativePathSrc, vo
     SmartPtr pBufferDestroyer(m_pHeap);
 
     // we'll need the compressed data
-    void* pCompressed;
+    void* pCompressed = nullptr;
     unsigned long nSizeCompressed;
-    int nError;
+    int nError = Z_ERRNO;
 
     if (nSize == 0)
     {
         nCompressionMethod = ZipFile::METHOD_STORE;
     }
-
     switch (nCompressionMethod)
     {
     case ZipFile::METHOD_DEFLATE:
-        // allocate memory for compression. Min is nSize * 1.001 + 12
-        nSizeCompressed = nSize + (nSize >> 3) + 32;
+        nSizeCompressed = GetCompressedSizeEstimate(nSize, codec);
         pCompressed = m_pHeap->TempAlloc(nSizeCompressed, "ZipDir::CacheRW::UpdateFile");
         pBufferDestroyer.Attach(pCompressed);
-        nError = ZipRawCompress(m_pHeap, pUncompressed, &nSizeCompressed, pCompressed, nSize, nCompressionLevel);
+
+        switch (codec)
+        {
+        case CompressionCodec::Codec::ZSTD:
+            nError = ZipRawCompressZSTD(m_pHeap, pUncompressed, &nSizeCompressed, pCompressed, nSize, nCompressionLevel);
+            break;
+
+        case CompressionCodec::Codec::ZLIB:
+            nError = ZipRawCompress(m_pHeap, pUncompressed, &nSizeCompressed, pCompressed, nSize, nCompressionLevel);
+            break;
+
+        case CompressionCodec::Codec::LZ4:
+            nError = ZipRawCompressLZ4(m_pHeap, pUncompressed, &nSizeCompressed, pCompressed, nSize, nCompressionLevel);
+            break;
+        }
         if (Z_OK != nError)
         {
             return ZD_ERROR_ZLIB_FAILED;

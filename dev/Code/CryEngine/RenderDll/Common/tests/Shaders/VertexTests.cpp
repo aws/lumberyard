@@ -11,10 +11,11 @@
 */
 #include "StdAfx.h"
 #include <AzTest/AzTest.h>
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/UnitTest/UnitTest.h>
 #include "Common/Shaders/Vertex.h"
 #include "DriverD3D.h"
+
 // General vertex stream stride
 int32 m_cSizeVF[eVF_Max] =
 {
@@ -158,7 +159,7 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
         OOFS(SVF_P2F_C4B_T2F_F4B, color.dcolor),
         -1
     },
-	{     // eVF_P3F_C4B
+    {     // eVF_P3F_C4B
         -1,
         OOFS(SVF_P3F_C4B, color.dcolor),
         -1
@@ -186,9 +187,11 @@ AZStd::vector<D3D11_INPUT_ELEMENT_DESC> Legacy_InitBaseStreamD3DVertexDeclaratio
     D3D11_INPUT_ELEMENT_DESC elemColorF = { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 };   // general color
     D3D11_INPUT_ELEMENT_DESC elemTC0 = { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 };      // texture
     D3D11_INPUT_ELEMENT_DESC elemTC1 = { "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 };      // texture
+    D3D11_INPUT_ELEMENT_DESC elemTC2 = { "TEXCOORD", 2, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 };      // texture
     D3D11_INPUT_ELEMENT_DESC elemTC1_3 = { "TEXCOORD", 1, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 };      // texture
     D3D11_INPUT_ELEMENT_DESC elemTC0_4 = { "TEXCOORD", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 };      // texture
     D3D11_INPUT_ELEMENT_DESC elemTC0_1 = { "TEXCOORD", 0, DXGI_FORMAT_R32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 };      // texture
+    D3D11_INPUT_ELEMENT_DESC elemTC3_4 = { "TEXCOORD", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 };      // texture
 
     AZ::Vertex::Format vertexFormat = AZ::Vertex::Format((EVertexFormat)nFormat);
     AZStd::vector<D3D11_INPUT_ELEMENT_DESC> decl;
@@ -369,11 +372,11 @@ protected:
 TEST_F(VertexFormatAssertTest, VertexFormatConstructor_AssertsOnInvalidInput)
 {
     // The vertex format constructor should assert when an invalid vertex format enum is used
-    AZ_TEST_START_ASSERTTEST;
+    AZ_TEST_START_TRACE_SUPPRESSION;
     AZ::Vertex::Format(static_cast<EVertexFormat>(EVertexFormat::eVF_Max));
     AZ::Vertex::Format(static_cast<EVertexFormat>(EVertexFormat::eVF_Max + 1));
     // Expect 2 asserts
-    AZ_TEST_STOP_ASSERTTEST(2);
+    AZ_TEST_STOP_TRACE_SUPPRESSION(2);
 }
 
 class VertexFormatTest

@@ -102,3 +102,28 @@ def test_get_engine_node_external(tmpdir, external_engine_json, ext_engine_subpa
         lumberyard.get_engine_node(fake_context)
     except expected_error:
         pass
+
+
+def test_get_all_eligible_use_keywords():
+    
+    class MockPlatformSettings(object):
+        def __init__(self):
+            self.aliases = ['alias_foo']
+    
+    class MockContext(object):
+        
+        def get_all_platform_names(self):
+            return ['platform_foo']
+        
+        def get_platform_settings(self,platform_name):
+            assert platform_name == 'platform_foo'
+            return MockPlatformSettings()
+        
+    mockCtx = MockContext()
+    
+    related_keywords = lumberyard.get_all_eligible_use_keywords(mockCtx)
+    
+    expected_use_keywords = ['use', 'test_use', 'test_all_use', 'platform_foo_use', 'alias_foo_use']
+    assert len(related_keywords) == len(expected_use_keywords)
+    for expected_use in expected_use_keywords:
+        assert expected_use in related_keywords

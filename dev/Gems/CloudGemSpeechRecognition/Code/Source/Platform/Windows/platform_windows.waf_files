@@ -1,0 +1,9 @@
+{
+  "auto": {
+    "Platform/Windows": [
+      "CloudGemSpeechRecognition_Traits_Platform.h", 
+      "CloudGemSpeechRecognition_Traits_Windows.h",
+      "../Common/Default/VoiceRecorderSystemComponent_Default.cpp"
+    ]
+  }
+}

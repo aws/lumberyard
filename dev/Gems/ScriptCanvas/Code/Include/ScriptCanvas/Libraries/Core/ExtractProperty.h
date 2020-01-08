@@ -30,7 +30,6 @@ namespace ScriptCanvas
         {
             class ExtractProperty
                 : public Node
-                , public EndpointNotificationBus::Handler
             {
             public:
                 ScriptCanvas_Node(ExtractProperty,
@@ -48,10 +47,10 @@ namespace ScriptCanvas
                 void OnInit() override;
 
                 void OnInputSignal(const SlotId&) override;
-                bool SlotAcceptsType(const SlotId&, const Data::Type&) const override;
 
+                // NodeNotificationBus
                 void OnEndpointConnected(const Endpoint& targetEndpoint) override;
-                void OnEndpointDisconnected(const Endpoint& targetEndpoint) override;
+                ////
 
                 void AddPropertySlots(const Data::Type& type);
                 void ClearPropertySlots();

@@ -671,11 +671,19 @@ namespace EMStudio
             return;
         }
 
-        // Save all selected motions.
+        // Collect motion ids of the motion to be saved.
+        AZStd::vector<AZ::u32> motionIds;
+        motionIds.reserve(numMotions);
         for (AZ::u32 i = 0; i < numMotions; ++i)
         {
-            EMotionFX::Motion* motion = selectionList.GetMotion(i);
-            GetMainWindow()->GetFileManager()->SaveMotion(motion);
+            const EMotionFX::Motion* motion = selectionList.GetMotion(i);
+            motionIds.push_back(motion->GetID());
+        }
+
+        // Save all selected motions.
+        for (AZ::u32 motionId : motionIds)
+        {
+            GetMainWindow()->GetFileManager()->SaveMotion(motionId);
         }
     }
 

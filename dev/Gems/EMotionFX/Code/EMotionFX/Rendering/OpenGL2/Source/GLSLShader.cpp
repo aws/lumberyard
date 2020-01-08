@@ -12,11 +12,10 @@
 
 #include <MCore/Source/Config.h>
 #include "GLInclude.h"
-
 #include "GLSLShader.h"
 #include "GraphicsManager.h"
-#include <MCore/Source/DiskTextFile.h>
-#include <MCore/Source/StringConversions.h>
+#include <QFile>
+#include <QTextStream>
 
 
 namespace RenderGL
@@ -103,13 +102,12 @@ namespace RenderGL
     }
 
 
-    // CompileShader
     bool GLSLShader::CompileShader(const GLenum type, unsigned int* outShader, const char* filename)
     {
-        MCore::DiskTextFile file;
-        if (file.Open(filename, MCore::DiskFile::READ) == false)
+        QFile file(filename);
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
         {
-            MCore::LogError("[GLSL] Failed to open shader file '%s'.", filename);
+            AZ_Error("EMotionFX", false, "[GLSL] Failed to open shader file '%s'.", filename);
             return false;
         }
 
@@ -127,10 +125,8 @@ namespace RenderGL
         }
 
         // read file into a big string
-        AZStd::string fileData;
-        fileData.reserve(1024 * 32); // 32 kb
-        file.ReadAllLinesAsString(fileData, 8192);
-        text += fileData;
+        QTextStream textStream(&file);
+        text += textStream.readAll().toUtf8().data();
 
         // create shader
         const char* textPtr = text.c_str();

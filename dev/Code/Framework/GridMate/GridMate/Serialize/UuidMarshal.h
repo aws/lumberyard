@@ -23,15 +23,17 @@ namespace GridMate
     class Marshaler<AZ::Uuid>
     {
     public:
+        AZ_TYPE_INFO_LEGACY(Marshaler, "{1283D0CB-6B4B-4C69-AB4D-A8442AE14A64}", AZ::Uuid);
+
         typedef AZ::Uuid DataType;
 
         AZ_FORCE_INLINE void Marshal(WriteBuffer& wb, const DataType& value) const
-        { 
-            wb.WriteRaw(value.begin(), value.end() - value.begin()); 
+        {
+            wb.WriteRaw(value.begin(), value.end() - value.begin());
         }
-        
+
         AZ_FORCE_INLINE void Unmarshal(DataType& value, ReadBuffer& rb) const
-        { 
+        {
             rb.ReadRaw(value.begin(), value.end() - value.begin());
         }
     };

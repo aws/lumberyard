@@ -13,7 +13,7 @@
 #include "PostEffectGroup.h"
 #include <AzCore/Asset/AssetManagerBus.h>
 
-class BlendVisitor : public boost::static_visitor<PostEffectGroupParam>
+class BlendVisitor
 {
 private:
     bool m_enable;
@@ -49,7 +49,7 @@ public:
     }
 };
 
-class SyncVisitor : public boost::static_visitor < >
+class SyncVisitor
 {
 private:
     const AZStd::string* m_name;
@@ -193,7 +193,7 @@ void PostEffectGroup::BlendWith(AZStd::unordered_map<AZStd::string, PostEffectGr
                 m_blendOut.InterpolateFloat(m_disableDuration, blendOutAmount);
             }
             blendVisitor.Init(m_enable, blendInAmount * blendOutAmount * (m_fadeDistance ? m_strength : 1.f));
-            paramMap[param.first] = boost::apply_visitor(blendVisitor, paramMap[param.first], param.second);
+            paramMap[param.first] = AZStd::visit(blendVisitor, paramMap[param.first], param.second);
         }
     }
 }
@@ -426,7 +426,7 @@ void PostEffectGroupManager::SyncMainWithRender()
     for (auto& param : m_paramCache)
     {
         syncVisitor.SetName(param.first);
-        param.second.apply_visitor(syncVisitor);
+        AZStd::visit(syncVisitor, param.second);
     }
     // Swap buffers in lower level system
     gEnv->pRenderer->SyncPostEffects();

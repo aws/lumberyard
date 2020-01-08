@@ -435,32 +435,31 @@ namespace UnitTest
         //////////////////////////////////////////////////////////////////////////////////////////
         // Test asserts (which don't cause throw exceptions)
         int_vector10.clear();
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         int_vector10.reserve(1000000);  // too many elements, 1 assert on too many, 1 assert on allocator returning NULL
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
 #ifdef AZSTD_HAS_CHECKED_ITERATORS
         int_vector.clear();
         iter = int_vector.end();
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         int b = *iter; // the end if is valid but can not dereferenced
         (void)b;
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
         int_vector.push_back(1);
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         int_vector.validate_iterator(iter); // The push back should make the end iterator invalid.
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
         iter = int_vector.begin();
         int_vector.clear();
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         int_vector.validate_iterator(iter); // The clear should invalidate all iterators
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 #endif
         //////////////////////////////////////////////////////////////////////////////////////////
         // Vector rvalue refs test
-#ifdef AZ_HAS_RVALUE_REFS
         int_vector.clear();
         int_vector.resize(33, 55);
 
@@ -493,7 +492,6 @@ namespace UnitTest
         AZ_TEST_ASSERT(myclass_vector[1].m_data == 22);
         AZ_TEST_ASSERT(myclass_vector[1].m_isMoved == true);
         AZ_TEST_ASSERT(myclass_vector[2].m_data == 23);
-#endif // AZ_HAS_RVALUE_REFS
 
         // move iterator
         AZStd::vector<VectorMoveOnly> move_only_vector;
@@ -685,21 +683,21 @@ namespace UnitTest
 #ifdef AZSTD_HAS_CHECKED_ITERATORS
         int_vector.clear();
         iter = int_vector.end();
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         int b = *iter;  // the end if is valid but can not dereferenced
         (void)b;
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
         int_vector.push_back(1);
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         int_vector.validate_iterator(iter);  // The push back should make the end iterator invalid.
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
         iter = int_vector.begin();
         int_vector.clear();
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         int_vector.validate_iterator(iter);  // The clear should invalidate all iterators
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 #endif
         // FixedVectorContainerTest-End
     }
@@ -808,12 +806,12 @@ namespace UnitTest
         EXPECT_TRUE(myArr.empty());
         EXPECT_EQ(0, myArr.size());
         EXPECT_EQ(0, myArr.max_size());
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         myArr.front();
         myArr.back();
         myArr.at(0);
         myArr[0];
-        AZ_TEST_STOP_ASSERTTEST(4);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(4);
 
         array<int, 0> myArr2;
         EXPECT_EQ(myArr, myArr2);
@@ -843,14 +841,12 @@ namespace UnitTest
                 , m_data(rhs.m_data)
                 , m_intVector(rhs.m_intVector)
             {}
-#ifdef AZ_HAS_RVALUE_REFS
             MyDeepClass(MyDeepClass&& rhs)
             {
                 m_moved = true;
                 m_data = rhs.m_data;
                 m_intVector = AZStd::move(rhs.m_intVector);
             }
-#endif // AZ_HAS_RVALUE_REFS
 
             MyDeepClass& operator=(const MyDeepClass& rhs)
             {
@@ -871,22 +867,18 @@ namespace UnitTest
 
         deep_vector_type deep_vec_2(10);
         AZ_TEST_VALIDATE_VECTOR(deep_vec_2, 10);
-#ifdef AZ_HAS_RVALUE_REFS
         for (size_t i = 0; i < deep_vec_2.size(); ++i)
         {
             AZ_TEST_ASSERT(deep_vec_2[i].m_moved == false);
         }
-#endif //AZ_HAS_RVALUE_REFS
 
         // reserve some space
         deep_vec_2.set_capacity(15);
 
-#ifdef AZ_HAS_RVALUE_REFS
         for (size_t i = 0; i < deep_vec_2.size(); ++i)
         {
             AZ_TEST_ASSERT(deep_vec_2[i].m_moved == true);
         }
-#endif //AZ_HAS_RVALUE_REFS
 
         // insert at the end
         deep_vec_2.insert(deep_vec_2.end(), MyDeepClass(100));
@@ -911,100 +903,5 @@ namespace UnitTest
 
         deep_vec_2.clear();
         AZ_TEST_VALIDATE_VECTOR(deep_vec_2, 0);
-    }
-
-    TEST_F(Arrays, BitSet)
-    {
-        // BitsetTest-Begin
-        typedef bitset<25> bitset25_type;
-
-        bitset25_type bs;
-        AZ_TEST_ASSERT(bs.count() == 0);
-
-        bitset25_type bs1((unsigned long)5);
-        AZ_TEST_ASSERT(bs1.count() == 2);
-        AZ_TEST_ASSERT(bs1[0] && bs1[2]);
-
-        string str("10110");
-        bitset25_type bs2(str, 0, str.length());
-        AZ_TEST_ASSERT(bs2.count() == 3);
-        AZ_TEST_ASSERT(bs2[1] && bs2[2] && bs2[4]);
-
-        bitset25_type::reference bit0 = bs2[0], bit1 = bs2[1];
-        AZ_TEST_ASSERT(bit0 == false);
-        AZ_TEST_ASSERT(bit1 == true);
-
-        bs &= bs1;
-        AZ_TEST_ASSERT(bs.count() == 0);
-
-        bs |= bs1;
-        AZ_TEST_ASSERT(bs.count() == 2);
-        AZ_TEST_ASSERT(bs[0] && bs[2]);
-
-        bs ^= bs2;
-        AZ_TEST_ASSERT(bs.count() == 3);
-        AZ_TEST_ASSERT(bs[0] && bs[1] && bs[4]);
-
-        bs <<= 4;
-        AZ_TEST_ASSERT(bs.count() == 3);
-        AZ_TEST_ASSERT(bs[4] && bs[5] && bs[8]);
-
-        bs >>= 3;
-        AZ_TEST_ASSERT(bs.count() == 3);
-        AZ_TEST_ASSERT(bs[1] && bs[2] && bs[5]);
-
-        bs.set(3);
-        AZ_TEST_ASSERT(bs.count() == 4);
-        AZ_TEST_ASSERT(bs[1] && bs[2] && bs[3] && bs[5]);
-
-        bs.set(1, false);
-        AZ_TEST_ASSERT(bs.count() == 3);
-        AZ_TEST_ASSERT(!bs[1] && bs[2] && bs[3] && bs[5]);
-
-        bs.set();
-        AZ_TEST_ASSERT(bs.count() == 25);
-
-        bs.reset();
-        AZ_TEST_ASSERT(bs.count() == 0);
-
-        bs.set(0);
-        bs.set(1);
-        AZ_TEST_ASSERT(bs.count() == 2);
-
-        bs.flip();
-        AZ_TEST_ASSERT(bs.count() == 23);
-
-        bs.flip(0);
-        AZ_TEST_ASSERT(bs.count() == 24);
-
-        str = bs.to_string<char>();
-        AZ_TEST_ASSERT(str.length() == 25);
-
-        AZ_TEST_ASSERT(bs != bs1);
-        bs2 = bs;
-        AZ_TEST_ASSERT(bs == bs2);
-
-        bs1.reset();
-        AZ_TEST_ASSERT(bs.any());
-        AZ_TEST_ASSERT(!bs1.any());
-        AZ_TEST_ASSERT(!bs.none());
-        AZ_TEST_ASSERT(bs1.none());
-
-        bs1 = bs >> 1;
-        AZ_TEST_ASSERT(bs1.count() == 23);
-
-        bs1 = bs << 2;
-        AZ_TEST_ASSERT(bs1.count() == 22);
-
-        // extensions
-        bitset25_type bs3(string("10110"));
-        AZ_TEST_ASSERT(bs3.num_words() == 1); // check number of words
-        bitset25_type::word_t tempWord = *bs3.data(); // access the bits data
-        AZ_TEST_ASSERT((tempWord & 0x16) == 0x16); // check values
-        bitset25_type bs4;
-        *bs4.data() = tempWord; // modify the data directly
-        AZ_TEST_ASSERT(bs3 == bs4);
-
-        // BitsetTest-End
     }
 }

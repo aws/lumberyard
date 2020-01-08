@@ -259,7 +259,7 @@ namespace LmbrCentral
                 editContext->Class<EditorGeometryCacheComponent>("Geometry Cache", "Controls playback of baked vertex animations.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
-                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/GeometryCache.png")
+                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/GeometryCache.svg")
                     ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/GeometryCache.png")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))

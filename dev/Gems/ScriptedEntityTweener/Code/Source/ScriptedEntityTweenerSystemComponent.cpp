@@ -149,7 +149,7 @@ namespace ScriptedEntityTweener
         auto animationTask = m_animationTasks.find(ScriptedEntityTweenerTask(entityId));
         if (animationTask == m_animationTasks.end())
         {
-            animationTask = m_animationTasks.insert(ScriptedEntityTweenerTask(entityId, true)).first;
+            animationTask = m_animationTasks.insert(ScriptedEntityTweenerTask(entityId)).first;
         }
 
         animationTask->AddAnimation(params);
@@ -265,7 +265,7 @@ namespace ScriptedEntityTweener
         }
         else
         {
-            ScriptedEntityTweenerTask task(entityId, true);
+            ScriptedEntityTweenerTask task(entityId);
             task.GetVirtualPropertyValue(toReturn, data);
         }
         return toReturn;

@@ -11,48 +11,24 @@
 */
 #pragma once
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#undef AZ_RESTRICTED_SECTION
-#define AZTEST_H_SECTION_1 1
-#endif
+#include <AzCore/PlatformDef.h>
+#include <AzTest_Traits_Platform.h>
+#include <list>
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION AZTEST_H_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/AzTest_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/AzTest_h_provo.inl"
-    #endif
-#elif defined(DARWIN) || defined(ANDROID) || defined(LINUX)
-#define AZTEST_H_TRAITS_UNDEF_STRDUP 1
-#endif
-
-#if AZTEST_H_TRAITS_UNDEF_STRDUP
-// Notes in the Cry* code indicate that strdup may cause memory errors, and shouldn't be
-// used. It's required, however, by googletest, so for test builds, un-hack the strdup removal.
-#   undef strdup
-#endif // AZTEST_H_TRAITS_UNDEF_STRDUP
-
-#pragma warning( push )
-#pragma warning(disable: 4800)  // 'int' : forcing value to bool 'true' or 'false' (performance warning)
+AZ_PUSH_DISABLE_WARNING(4389 4800, "-Wunknown-warning-option"); // 'int' : forcing value to bool 'true' or 'false' (performance warning).
+#undef strdup // platform.h in CryCommon changes this define which is required by googletest
 #include <gtest/gtest.h>
-#pragma warning( pop )
 #include <gmock/gmock.h>
+AZ_POP_DISABLE_WARNING;
+
+#if defined(HAVE_BENCHMARK)
+#include <benchmark/benchmark.h>
+#endif
 
 #include <AzCore/Memory/OSAllocator.h>
 
-#if defined(DARWIN) || defined(ANDROID) || defined(LINUX)
-#   define AZTEST_DLL_PUBLIC __attribute__ ((visibility ("default")))
-#else
-#   define AZTEST_DLL_PUBLIC
-#endif
-
-
-#if defined(DARWIN) || defined(ANDROID) || defined(LINUX)
-#   define AZTEST_EXPORT extern "C" AZTEST_DLL_PUBLIC
-#else
-#   define AZTEST_EXPORT extern "C" __declspec(dllexport)
-#endif
+#define AZTEST_DLL_PUBLIC AZ_DLL_EXPORT
+#define AZTEST_EXPORT extern "C" AZTEST_DLL_PUBLIC
 
 namespace AZ
 {
@@ -85,6 +61,8 @@ namespace AZ
             virtual void SetupEnvironment() = 0;
             virtual void TeardownEnvironment() = 0;
         };
+
+        extern ::testing::Environment* sTestEnvironment;
 
         /*!
         * Monolithic builds will have all the environments available.  Keep a mapping to run the desired envs.
@@ -221,7 +199,41 @@ namespace AZ
             return *benchmarkEnv;
         }
 #endif
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //! listener class to capture and print test output for embedded platforms
+        class OutputEventListener : public ::testing::EmptyTestEventListener
+        {
+        public:
+            std::list<std::string> resultList;
+            
+            void OnTestEnd(const ::testing::TestInfo& test_info)
+            {
+                std::string result;
+                if (test_info.result()->Failed())
+                {
+                    result = "Fail";
+                }
+                else
+                {
+                    result = "Pass";
+                }
+                std::string formattedResult = "[GTEST][" + result + "] " + test_info.test_case_name() + " " + test_info.name() + "\n";
+                resultList.emplace_back(formattedResult);
+            }
 
+            void OnTestProgramEnd(const ::testing::UnitTest& unit_test)
+            {
+                for (std::string testResults : resultList)
+                {
+                    AZ_Printf("", testResults.c_str());
+                }
+                if (unit_test.current_test_info())
+                {
+                    AZ_Printf("", "[GTEST] %s completed %u tests with u% failed test cases.", unit_test.current_test_info()->name(), unit_test.total_test_count(), unit_test.failed_test_case_count());
+                }
+            }
+        };
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     } // Test
 } // AZ
@@ -231,16 +243,21 @@ namespace AZ
 
 #if !defined(AZ_MONOLITHIC_BUILD)
 // Environments should be declared dynamically, framework will handle deletion of resources
-#define AZ_UNIT_TEST_HOOK(...)                                                      \
-    AZTEST_EXPORT int AZ_UNIT_TEST_HOOK_NAME(int argc, char** argv)                 \
-    {                                                                               \
-        ::testing::InitGoogleMock(&argc, argv);                                     \
-        AZ::Test::excludeIntegTests();                                              \
-        AZ::Test::ApplyGlobalParameters(&argc, argv);                               \
-        AZ::Test::printUnusedParametersWarning(argc, argv);                         \
-        AZ::Test::addTestEnvironments({__VA_ARGS__});                               \
-        int result = RUN_ALL_TESTS();                                               \
-        return result;                                                              \
+#define AZ_UNIT_TEST_HOOK(...)                                                                          \
+    AZTEST_EXPORT int AZ_UNIT_TEST_HOOK_NAME(int argc, char** argv)                                     \
+    {                                                                                                   \
+        ::testing::InitGoogleMock(&argc, argv);                                                         \
+        if (AZ_TRAIT_AZTEST_ATTACH_RESULT_LISTENER)                                                     \
+        {                                                                                               \
+            ::testing::TestEventListeners& listeners = testing::UnitTest::GetInstance()->listeners();   \
+            listeners.Append(new AZ::Test::OutputEventListener);                                        \
+        }                                                                                               \
+        AZ::Test::excludeIntegTests();                                                                  \
+        AZ::Test::ApplyGlobalParameters(&argc, argv);                                                   \
+        AZ::Test::printUnusedParametersWarning(argc, argv);                                             \
+        AZ::Test::addTestEnvironments({__VA_ARGS__});                                                   \
+        int result = RUN_ALL_TESTS();                                                                   \
+        return result;                                                                                  \
     }
 
 // Environments should be declared dynamically, framework will handle deletion of resources

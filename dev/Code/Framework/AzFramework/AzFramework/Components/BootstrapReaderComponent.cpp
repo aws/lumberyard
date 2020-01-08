@@ -10,6 +10,7 @@
  *
  */
 #include <AzFramework/Components/BootstrapReaderComponent.h>
+#include <AzFramework/AzFramework_Traits_Platform.h>
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/IO/FileIO.h>
@@ -20,48 +21,54 @@
 #include <AzFramework/Application/Application.h>
 
 #include <AzCore/std/string/regex.h>
-#if defined(AZ_PLATFORM_ANDROID)
-#include <AzCore/Android/Utils.h>
-#endif
 
 namespace AzFramework
 {
-#if defined(AZ_PLATFORM_APPLE_IOS)
-    const char* const CURRENT_PLATFORM = "ios";
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_APPLE_TV)
-    const char* const CURRENT_PLATFORM = "appletv";
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_APPLE_OSX)
-    const char* const CURRENT_PLATFORM = "osx";
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_LINUX)
-    const char* const CURRENT_PLATFORM = "linux";
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/BootstrapReaderComponent_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/BootstrapReaderComponent_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_WINDOWS)
-    const char* const CURRENT_PLATFORM = "windows";
-#elif defined(AZ_PLATFORM_ANDROID)
-    const char* const CURRENT_PLATFORM = "android";
-#else
-#error Unknown or unsupported platform!
-#endif
+    namespace Platform
+    {
+        const char* FindAssetsDirectory();
+    }
+
+    const char* const CURRENT_PLATFORM = AZ_TRAIT_AZFRAMEWORK_BOOTSTRAP_CFG_CURRENT_PLATFORM;
+
+    BootstrapReaderComponent::BootstrapReaderComponent()
+    {
+        // Set the default path, for backward compatibility.
+        // SimpleAssetReference doesn't have a constructor, and expects paths to be set this way.
+        m_configFile.SetAssetPath("bootstrap.cfg");
+    }
+
+    bool BootstrapReaderComponent::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    {
+        // Version 1-> 2: Raw string for bootstrap file reference was replaced with a simple asset reference.
+        if (classElement.GetVersion() <= 1)
+        {
+            AZ::Crc32 configFileCRC("configFileName");
+            int configFileNameIndex = classElement.FindElement(configFileCRC);
+            if (configFileNameIndex != -1)
+            {
+                AZStd::string configFileName;
+                classElement.GetSubElement(configFileNameIndex).GetData(configFileName);
+
+                classElement.RemoveElement(configFileNameIndex);
+
+                AzFramework::SimpleAssetReference<AzFramework::CfgFileAsset> configFileReference;
+                configFileReference.SetAssetPath(configFileName.c_str());
+                classElement.AddElementWithData(context, "configFile", configFileReference);
+            }
+        }
+        return true;
+    }
 
     void BootstrapReaderComponent::Reflect(AZ::ReflectContext* context)
     {
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
+            AzFramework::SimpleAssetReference<AzFramework::CfgFileAsset>::Register(*serializeContext);
+
             serializeContext->Class<BootstrapReaderComponent, AZ::Component>()
-                ->Version(1)
-                ->Field("configFileName", &BootstrapReaderComponent::m_configFileName)
+                ->Version(2, &VersionConverter)
+                ->Field("configFile", &BootstrapReaderComponent::m_configFile)
                 ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
@@ -70,7 +77,7 @@ namespace AzFramework
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Engine")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &BootstrapReaderComponent::m_configFileName, "Config file", "Name of bootstrap configuration file.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &BootstrapReaderComponent::m_configFile, "Config file", "Bootstrap configuration file.")
                     ;
             }
         }
@@ -116,9 +123,7 @@ namespace AzFramework
         }
         else
         {
-#if defined AZ_PLATFORM_ANDROID
-            path = AZ::Android::Utils::FindAssetsDirectory();
-#endif
+            path = Platform::FindAssetsDirectory();
         }
 
         AZStd::string fullPath;
@@ -128,7 +133,7 @@ namespace AzFramework
             if (fileIO->IsDirectory(path.c_str()))
             {
                 // if the path is a directory than check whether the bootstrap file exists in that folder
-                if (!AzFramework::StringFunc::Path::ConstructFull(path.c_str(), m_configFileName.c_str(), fullPath, true))
+                if (!AzFramework::StringFunc::Path::ConstructFull(path.c_str(), m_configFile.GetAssetPath().c_str(), fullPath, true))
                 {
                     return;
                 }

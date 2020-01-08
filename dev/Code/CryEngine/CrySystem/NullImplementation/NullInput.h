@@ -99,7 +99,6 @@ public:
 
     virtual uint32 GetPlatformFlags() const { return 0; }
 
-    virtual IKinectInput* GetKinectInput() {return NULL; }
     virtual INaturalPointInput* GetNaturalPointInput() {return NULL; }
     // Input blocking functionality
     virtual bool SetBlockingInput(const SInputBlockData& inputBlockData) { return false; }

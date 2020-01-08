@@ -31,6 +31,13 @@ namespace Vegetation
 {
     namespace InstanceSystemUtil
     {
+        namespace Constants
+        {
+            static const int s_minTaskTimePerTick = 0;
+            static const int s_maxTaskTimePerTick = 33000; //capping at 33ms presumably to maintain 30fps
+            static const int s_minTaskBatchSize = 1;
+            static const int s_maxTaskBatchSize = 2000; //prevents user from reserving excessive space as batches are processed faster than they can be filled
+        }
 
         void ApplyConfigurationToConsoleVars(ISystem* system, const InstanceSystemConfig& config)
         {
@@ -83,16 +90,26 @@ namespace Vegetation
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(0, &InstanceSystemConfig::m_maxInstanceProcessTimeMicroseconds, "Max Instance Process Time Microseconds", "Maximum number of microseconds allowed for processing instance management tasks each tick")
+                        ->Attribute(AZ::Edit::Attributes::Min, InstanceSystemUtil::Constants::s_minTaskTimePerTick)
+                        ->Attribute(AZ::Edit::Attributes::Max, InstanceSystemUtil::Constants::s_maxTaskTimePerTick)
                     ->DataElement(0, &InstanceSystemConfig::m_maxInstanceTaskBatchSize, "Max Instance Task Batch Size", "Maximum number of instance management tasks that can be batch processed together")
+                        ->Attribute(AZ::Edit::Attributes::Min, InstanceSystemUtil::Constants::s_minTaskBatchSize)
+                        ->Attribute(AZ::Edit::Attributes::Max, InstanceSystemUtil::Constants::s_maxTaskBatchSize)
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Merged Meshes")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->DataElement(0, &InstanceSystemConfig::m_mergedMeshesLodRatio, "LOD Distance Ratio", "Controls the distance where the merged mesh vegetation use less detailed models")
+                            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                            ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
                             ->Attribute(AZ::Edit::Attributes::SoftMin, 1.0f)
                             ->Attribute(AZ::Edit::Attributes::SoftMax, 1024.0f)
                         ->DataElement(0, &InstanceSystemConfig::m_mergedMeshesViewDistanceRatio, "View Distance Ratio", "Controls the maximum view distance for merged mesh vegetation instances")
+                            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                            ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
                             ->Attribute(AZ::Edit::Attributes::SoftMin, 1.0f)
                             ->Attribute(AZ::Edit::Attributes::SoftMax, 1024.0f)
                         ->DataElement(0, &InstanceSystemConfig::m_mergedMeshesInstanceDistance, "Instance Animation Distance", "Relates to the distance at which animated vegetation will be processed")
+                            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                            ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
                             ->Attribute(AZ::Edit::Attributes::SoftMin, 1.0f)
                             ->Attribute(AZ::Edit::Attributes::SoftMax, 1024.0f)
                     ;
@@ -171,13 +188,12 @@ namespace Vegetation
         Cleanup();
         AZ::TickBus::Handler::BusConnect();
         InstanceSystemRequestBus::Handler::BusConnect();
+        InstanceSystemStatsRequestBus::Handler::BusConnect();
         InstanceStatObjEventBus::Handler::BusConnect();
         SystemConfigurationRequestBus::Handler::BusConnect();
         CrySystemEventBus::Handler::BusConnect();
 
         InstanceSystemUtil::ApplyConfigurationToConsoleVars(m_system, m_configuration);
-
-        VEG_PROFILE_METHOD(DebugSystemDataBus::BroadcastResult(m_debugData, &DebugSystemDataBus::Events::GetDebugData));
     }
 
     void InstanceSystemComponent::Deactivate()
@@ -191,6 +207,7 @@ namespace Vegetation
         InstanceStatObjEventBus::Handler::BusDisconnect();
         AZ::TickBus::Handler::BusDisconnect();
         InstanceSystemRequestBus::Handler::BusDisconnect();
+        InstanceSystemStatsRequestBus::Handler::BusDisconnect();
         SystemConfigurationRequestBus::Handler::BusDisconnect();
         CrySystemEventBus::Handler::BusDisconnect();
         Cleanup();
@@ -312,17 +329,12 @@ namespace Vegetation
         // Doing this here risks a slighly inaccurate count if the Create*Node functions fail, but I need this to happen on the vegetation thread so the events are recorded in order.
         VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::CreateInstance, instanceData.m_instanceId, instanceData.m_position, instanceData.m_id));
 
-
         if (instanceData.m_descriptorPtr->m_autoMerge)
         {
             //queue render node related tasks to process on the main thread
             AddTask([this, instanceData]() {
                 CreateMergedMeshInstanceNode(instanceData);
-                if (m_debugData)
-                {
-                    m_debugData->m_instanceRegisterCount.fetch_sub(1, AZStd::memory_order_relaxed);
-                    m_debugData->m_instanceActiveCount.fetch_add(1, AZStd::memory_order_relaxed);
-                }
+                m_createTaskCount--;
             });
         }
         else
@@ -330,18 +342,11 @@ namespace Vegetation
             //queue render node related tasks to process on the main thread
             AddTask([this, instanceData]() {
                 CreateCVegetationInstanceNode(instanceData);
-                if (m_debugData)
-                {
-                    m_debugData->m_instanceRegisterCount.fetch_sub(1, AZStd::memory_order_relaxed);
-                    m_debugData->m_instanceActiveCount.fetch_add(1, AZStd::memory_order_relaxed);
-                }
+                m_createTaskCount--;
             });
         }
 
-        if (m_debugData)
-        {
-            m_debugData->m_instanceRegisterCount.fetch_add(1, AZStd::memory_order_relaxed);
-        }
+        m_createTaskCount++;
     }
 
     void InstanceSystemComponent::DestroyInstance(InstanceId instanceId)
@@ -353,30 +358,21 @@ namespace Vegetation
             return;
         }
 
-        if (m_debugData)
-        {
-            m_debugData->m_instanceUnregisterCount.fetch_add(1, AZStd::memory_order_relaxed);
-        }
-
         // do this here so we retain a correct ordering of events based on the vegetation thread.
         VEG_PROFILE_METHOD(DebugNotificationBus::QueueBroadcast(&DebugNotificationBus::Events::DeleteInstance, instanceId));
 
         //queue render node related tasks to process on the main thread
         AddTask([this, instanceId]() {
-            if (m_debugData)
-            {
-                m_debugData->m_instanceUnregisterCount.fetch_sub(1, AZStd::memory_order_relaxed);
-                m_debugData->m_instanceActiveCount.fetch_sub(1, AZStd::memory_order_relaxed);
-            }
-
             ReleaseInstanceNode(instanceId);
 
             AZStd::lock_guard<decltype(m_instanceDeletionSetMutex)> instanceDeletionSet(m_instanceDeletionSetMutex);
             m_instanceDeletionSet.erase(instanceId);
+            m_destroyTaskCount--;
         });
 
         AZStd::lock_guard<decltype(m_instanceDeletionSetMutex)> instanceDeletionSet(m_instanceDeletionSetMutex);
         m_instanceDeletionSet.insert(instanceId);
+        m_destroyTaskCount++;
     }
 
     void InstanceSystemComponent::DestroyAllInstances()
@@ -400,11 +396,13 @@ namespace Vegetation
                 ReleaseInstanceId(instanceId);
             }
             m_instanceMap.clear();
+            m_instanceCount = 0;
         }
 
         {
             AZStd::lock_guard<decltype(m_instanceDeletionSetMutex)> instanceDeletionSet(m_instanceDeletionSetMutex);
             m_instanceDeletionSet.clear();
+            m_destroyTaskCount = 0;
         }
     }
 
@@ -419,6 +417,26 @@ namespace Vegetation
             m_uniqueDescriptors.clear();
             m_uniqueDescriptorsToDelete.clear();
         }
+    }
+
+    AZ::u32 InstanceSystemComponent::GetInstanceCount() const
+    {
+        return m_instanceCount;
+    }
+
+    AZ::u32 InstanceSystemComponent::GetTotalTaskCount() const
+    {
+        return m_createTaskCount + m_destroyTaskCount;
+    }
+
+    AZ::u32 InstanceSystemComponent::GetCreateTaskCount() const
+    {
+        return m_createTaskCount;
+    }
+
+    AZ::u32 InstanceSystemComponent::GetDestroyTaskCount() const
+    {
+        return m_destroyTaskCount;
     }
 
     void InstanceSystemComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
@@ -542,6 +560,7 @@ namespace Vegetation
         instanceNode->SetUniformScale(instanceData.m_scale);
         instanceNode->SetPosition(AZVec3ToLYVec3(instanceData.m_position));
         instanceNode->SetRotation(Ang3(AZQuaternionToLYQuaternion(instanceData.m_alignment * instanceData.m_rotation)));
+        instanceNode->SetDynamic(true); // this lets us track that this is a dynamic vegetation instance
         instanceNode->PrepareBBox();
         instanceNode->Physicalize();
         m_engine->RegisterEntity(instanceNode);
@@ -550,6 +569,7 @@ namespace Vegetation
         AZStd::lock_guard<decltype(m_instanceMapMutex)> scopedLock(m_instanceMapMutex);
         AZ_Assert(m_instanceMap.find(instanceData.m_instanceId) == m_instanceMap.end(), "InstanceId %llu is already in use!", instanceData.m_instanceId);
         m_instanceMap[instanceData.m_instanceId] = instanceNode;
+        m_instanceCount = m_instanceMap.size();
     }
 
     void InstanceSystemComponent::CreateMergedMeshInstanceNode(const InstanceData& instanceData)
@@ -598,6 +618,7 @@ namespace Vegetation
         AZStd::lock_guard<decltype(m_instanceMapMutex)> scopedLock(m_instanceMapMutex);
         AZ_Assert(m_instanceMap.find(instanceData.m_instanceId) == m_instanceMap.end(), "InstanceId %llu is already in use!", instanceData.m_instanceId);
         m_instanceMap[instanceData.m_instanceId] = instanceNode;
+        m_instanceCount = m_instanceMap.size();
     }
 
     void InstanceSystemComponent::CreateInstanceNodeBegin()
@@ -656,6 +677,7 @@ namespace Vegetation
                 instanceNode = instanceItr->second;
                 m_instanceMap.erase(instanceItr);
             }
+            m_instanceCount = m_instanceMap.size();
         }
 
         if (instanceNode)
@@ -695,11 +717,8 @@ namespace Vegetation
         AZStd::lock_guard<decltype(m_mainThreadTaskMutex)> mainThreadTaskLock(m_mainThreadTaskMutex);
         m_mainThreadTaskQueue.clear();
 
-        if (m_debugData)
-        {
-            m_debugData->m_instanceRegisterCount.store(0, AZStd::memory_order_relaxed);
-            m_debugData->m_instanceUnregisterCount.store(0, AZStd::memory_order_relaxed);
-        }
+        m_createTaskCount = 0;
+        m_destroyTaskCount = 0;
     }
 
     bool InstanceSystemComponent::GetTasks(TaskList& removedTasks)

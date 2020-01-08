@@ -188,12 +188,12 @@ namespace Water
         void SetCausticsDistanceAttenuation(float dist) override;
 
         AZ::Color GetFogColor() const override;
-        float GetFogColorMulitplier() const override;
+        float GetFogColorMultiplier() const override;
         AZ::Color GetNearFogColor() const override;
         AZ::Color GetFogColorPremultiplied() const override;
         float GetFogDensity() const override;
         void SetFogColor(const AZ::Color& fogColor) override;
-        void SetFogColorMulitplier(float fogMulitplier) override;
+        void SetFogColorMultiplier(float fogMultiplier) override;
         void SetNearFogColor(const AZ::Color& nearColor) override;
         void SetFogDensity(float density) override;
 

@@ -34,20 +34,11 @@
 #include <QToolBar>
 #include <QLayout>
 #include <QLabel>
+#include <QScrollArea>
+#include <AzCore/RTTI/BehaviorContext.h>
 
-const int MAX_CLASSVIEWS = 100;
-const int MIN_VIEWPORT_RES = 64;
+#include <AzFramework/StringFunc/StringFunc.h>
 
-enum TitleMenuCommonCommands
-{
-    ID_MAXIMIZED = 50000,
-    ID_LAYOUT_CONFIG,
-
-    FIRST_ID_CLASSVIEW,
-    LAST_ID_CLASSVIEW = FIRST_ID_CLASSVIEW + MAX_CLASSVIEWS - 1
-};
-
-#define VIEW_BORDER 0
 
 /////////////////////////////////////////////////////////////////////////////
 // CLayoutViewPane
@@ -64,6 +55,12 @@ CLayoutViewPane::CLayoutViewPane(QWidget* parent)
     m_bFullscreen = false;
     m_viewportTitleDlg.SetViewPane(this);
 
+    // Set up an optional scrollable area for our viewport.  We'll use this for times that we want a fixed-size
+    // viewport independent of main window size.
+    m_viewportScrollArea = new QScrollArea(this);
+    m_viewportScrollArea->setContentsMargins(QMargins());
+    m_viewportScrollArea->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
     QWidget* viewportContainer = m_viewportTitleDlg.findChild<QWidget*>(QStringLiteral("ViewportTitleDlgContainer"));
     QToolBar* toolbar = CreateToolBarFromWidget(viewportContainer,
                                                 Qt::TopToolBarArea,
@@ -76,6 +73,19 @@ CLayoutViewPane::CLayoutViewPane(QWidget* parent)
     setContextMenuPolicy(Qt::NoContextMenu);
 
     m_id = -1;
+}
+
+CLayoutViewPane::~CLayoutViewPane() 
+{ 
+    if (m_viewportScrollArea)
+    {
+        // We only ever add m_viewport into our scroll area, which we manage separately,
+        // so make sure to take it back before deleting m_scrollArea.  Otherwise it will
+        // try and get deleted as a part of deleting m_scrollArea.
+        m_viewportScrollArea->takeWidget();
+        delete m_viewportScrollArea;
+    }
+    OnDestroy(); 
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -122,6 +132,45 @@ void CLayoutViewPane::SwapViewports(CLayoutViewPane* pView)
     pView->AttachViewport(pViewportOld);
 }
 
+void CLayoutViewPane::SetViewportExpansionPolicy(ViewportExpansionPolicy policy)
+{
+    m_viewportPolicy = policy;
+
+    switch (policy)
+    {
+        // If the requested policy is "FixedSize", wrap our viewport area in a scrollable
+        // region so that we can always make the viewport a guaranteed fixed size regardless of the
+        // main window size.  The scrollable area will auto-resize with the main window, but the
+        // viewport won't.
+        case ViewportExpansionPolicy::FixedSize:
+            {
+                QWidget* scrollViewport = m_viewportScrollArea->viewport();
+                m_viewportScrollArea->setWidget(m_viewport);
+                m_viewport->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+                // For some reason, the QScrollArea is adding a margin all around our viewable area,
+                // so we'll shrink our viewport by an appropriate offset (twice the margin thickness) 
+                // so that it continues to fit without requiring scroll bars after switching size policies.
+                m_viewport->resize(m_viewport->width() - (scrollViewport->x() * 2), m_viewport->height() - (scrollViewport->y() * 2));
+                SetMainWidget(m_viewportScrollArea);
+                update();
+
+            }
+            break;
+        // If the requested policy is "AutoExpand", just put the viewport area directly in the ViewPane.
+        // It will auto-resize with the main window, but requests to change the viewport size might not 
+        // result in the exact size being requested, depending on main window size and layout.
+        case ViewportExpansionPolicy::AutoExpand:
+            {
+                m_viewport->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+                SetMainWidget(m_viewport);
+                update();
+            }
+            break;
+    }
+}
+
+
 //////////////////////////////////////////////////////////////////////////
 void CLayoutViewPane::AttachViewport(QWidget* pViewport)
 {
@@ -134,8 +183,7 @@ void CLayoutViewPane::AttachViewport(QWidget* pViewport)
     m_viewport = pViewport;
     if (pViewport)
     {
-        m_viewport->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        SetMainWidget(m_viewport);
+        SetViewportExpansionPolicy(ViewportExpansionPolicy::AutoExpand);
 
         if (QtViewport* vp = qobject_cast<QtViewport*>(pViewport))
         {
@@ -184,19 +232,6 @@ void CLayoutViewPane::ReleaseViewport()
     }
 }
 
-//////////////////////////////////////////////////////////////////////////
-void CLayoutViewPane::resizeEvent(QResizeEvent* event)
-{
-    AzQtComponents::ToolBarArea::resizeEvent(event);
-
-    int toolHeight = 0;
-
-    if (m_viewport)
-    {
-        m_viewportTitleDlg.OnViewportSizeChanged(m_viewport->width(), m_viewport->height());
-    }
-}
-
 void CLayoutViewPane::DisconnectRenderViewportInteractionRequestBus()
 {
     if (QtViewport* vp = qobject_cast<QtViewport*>(m_viewport))
@@ -211,21 +246,77 @@ void CLayoutViewPane::DisconnectRenderViewportInteractionRequestBus()
 //////////////////////////////////////////////////////////////////////////
 void CLayoutViewPane::ResizeViewport(int width, int height)
 {
-    assert(width >= MIN_VIEWPORT_RES && height >= MIN_VIEWPORT_RES);
     if (!m_viewport)
     {
         return;
     }
 
-    QWidget* mainWindow = MainWindow::instance();
+    // Get our MainWidget, which will either be the viewport or a scrollable area around the
+    // viewport, depending on which expansion policy we've chosen.
+    QWidget* mainWidget = GetMainWidget();
+    if (!mainWidget)
+    {
+        mainWidget = m_viewport;
+    }
+
+    // If our main widget is a scroll area, specifically get the size of the viewable area within the scroll area.
+    // This way, even if we currently have scroll bars visible, we'll try to resize our main window and scroll area
+    // to make the entire viewport visible.
+    QSize mainWidgetSize = mainWidget->size();
+    if (QScrollArea* scrollArea = qobject_cast<QScrollArea*>(mainWidget))
+    {
+        mainWidgetSize = scrollArea->viewport()->size();
+    }
+
+    // Make sure our requestedSize stays within "legal" bounds.
+    const QSize requestedSize = QSize(AZ::GetClamp(width, MIN_VIEWPORT_RES, MAX_VIEWPORT_RES), 
+                                      AZ::GetClamp(height, MIN_VIEWPORT_RES, MAX_VIEWPORT_RES));
+
+    // The delta between our current and requested size is going to be used to try and resize the main window
+    // (either growing or shrinking) by the exact same amount so that the new viewport size is still completely
+    // visible without needing to adjust any other widget sizes.  
+    // Note that we're specifically taking the delta from the main widget, not the viewport.
+    // In the "AutoResize" case, this will still directly take the delta from our viewport, but in the
+    // "FixedSize" case we need to take the delta from the scroll area's viewable area size, since that's actually 
+    // the one we need to grow/shrink proportional to.
+    const QSize deltaSize = requestedSize - mainWidgetSize;
+
+    MainWindow* mainWindow = MainWindow::instance();
+
+    // We need to adjust the main window size to make it larger/smaller as appropriate
+    // to fit the newly-resized viewport, so start by making sure it isn't maximized.
     if (mainWindow->isMaximized())
     {
         mainWindow->showNormal();
     }
 
-    const QSize deltaSize = QSize(width, height) - m_viewport->size();
+    // Resize our main window by the amount that we want our viewport to change.
+    // This is intended to grow our viewport by the same amount.  However, this logic is a 
+    // little flawed and should get revisited at some point:
+    // 1) It's possible that the mainWindow won't actually change to the requested size, if the requested
+    // size is larger than the current display resolution (Qt::SetGeometry will fire a second resize event
+    // that shrinks the mainWindow back to the display resolution and will emit a warning in debug builds),
+    // or smaller than the minimum size allowed by the various widgets in the window.
+    // 2) If LayoutWnd contains multiple viewports, the delta change of the main window will affect the delta
+    // size of LayoutWnd, which is then divided proportionately among the multiple viewports, so the 1:1 size
+    // assumption in the logic below isn't correct in the multi-viewport case.
+    // 3) Sometimes Qt will just change this by 1 pixel (either smaller or bigger) with a second subsequent
+    // resize event for no apparent reason.
+    // 4) The layout of the docked windows *around* the viewport widget can affect how it grows and shrinks,
+    // so even if you try to change the size of the layout widget, it might auto-resize afterwards to fill any
+    // gaps between it and other widgets (console window, entity inspector, etc).
     mainWindow->move(0, 0);
     mainWindow->resize(mainWindow->size() + deltaSize);
+
+    // We can avoid the problems above by using the "FixedSize" policy.  If we've chosen this policy, we'll make
+    // the viewport a scrollable region that's exactly the resolution requested here.  This is useful for screenshots
+    // in automation testing among other things, since this way we can guarantee the resolution of the screenshot matches
+    // the resolution of any golden images we're comparing against.
+    if (m_viewportPolicy == ViewportExpansionPolicy::FixedSize)
+    {
+        m_viewport->resize(requestedSize);
+        update();
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -440,18 +531,24 @@ void CLayoutViewPane::OnFOVChanged(float fov)
 //////////////////////////////////////////////////////////////////////////
 namespace
 {
-    boost::python::tuple PyGetViewPortSize()
+    AZ::Vector2 PyGetViewPortSize()
     {
         CLayoutViewPane* viewPane = MainWindow::instance()->GetActiveView();
-        if (viewPane)
+        if (viewPane && viewPane->GetViewport())
         {
-            const QRect rcViewport = viewPane->rect();
-            return boost::python::make_tuple(rcViewport.width(), rcViewport.height());
+            const QRect rcViewport = viewPane->GetViewport()->rect();
+            return AZ::Vector2(rcViewport.width(), rcViewport.height());
         }
         else
         {
-            return boost::python::make_tuple(0, 0);
+            return AZ::Vector2();
         }
+    }
+
+    boost::python::tuple PyLegacyGetViewPortSize()
+    {
+        AZ::Vector2 viewportSize = PyGetViewPortSize();
+        return boost::python::make_tuple(static_cast<int>(viewportSize.GetX()), static_cast<int>(viewportSize.GetY()));
     }
 
     static void PySetViewPortSize(int width, int height)
@@ -471,7 +568,7 @@ namespace
     void PyResizeViewport(int width, int height)
     {
         CLayoutViewPane* viewPane = MainWindow::instance()->GetActiveView();
-        ;
+
         if (viewPane)
         {
             viewPane->ResizeViewport(width, height);
@@ -487,20 +584,81 @@ namespace
             GetIEditor()->GetViewManager()->GetLayout()->BindViewport(viewPane, viewportName);
         }
     }
+
+    void PySetViewportExpansionPolicy(const char* policy)
+    {
+        CLayoutViewPane* viewPane = MainWindow::instance()->GetActiveView();
+        if (viewPane)
+        {
+            if (AzFramework::StringFunc::Equal(policy, "AutoExpand"))
+            {
+                viewPane->SetViewportExpansionPolicy(CLayoutViewPane::ViewportExpansionPolicy::AutoExpand);
+            }
+            else if (AzFramework::StringFunc::Equal(policy, "FixedSize"))
+            {
+                viewPane->SetViewportExpansionPolicy(CLayoutViewPane::ViewportExpansionPolicy::FixedSize);
+            }
+        }
+    }
+
+    const char *PyGetViewportExpansionPolicy()
+    {
+        CLayoutViewPane* viewPane = MainWindow::instance()->GetActiveView();
+        if (viewPane)
+        {
+            switch (viewPane->GetViewportExpansionPolicy())
+            {
+                case CLayoutViewPane::ViewportExpansionPolicy::AutoExpand: return "AutoExpand";
+                case CLayoutViewPane::ViewportExpansionPolicy::FixedSize: return "FixedSize";
+            }
+        }
+
+        return "";
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
-REGISTER_PYTHON_COMMAND(PyGetViewPortSize, general, get_viewport_size, "Get the width and height of the active viewport.");
+
+namespace AzToolsFramework
+{
+    void ViewPanePythonFuncsHandler::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            // this will put these methods into the 'azlmbr.legacy.general' module
+            auto addLegacyGeneral = [](AZ::BehaviorContext::GlobalMethodBuilder methodBuilder)
+            {
+                methodBuilder->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                    ->Attribute(AZ::Script::Attributes::Category, "Legacy/Editor")
+                    ->Attribute(AZ::Script::Attributes::Module, "legacy.general");
+            };
+            addLegacyGeneral(behaviorContext->Method("get_viewport_size", PyGetViewPortSize, nullptr, "Get the width and height of the active viewport."));
+            addLegacyGeneral(behaviorContext->Method("set_viewport_size", PySetViewPortSize, nullptr, "Set the width and height of the active viewport."));
+            addLegacyGeneral(behaviorContext->Method("update_viewport", PyUpdateViewPort, nullptr, "Update all visible SDK viewports."));
+            addLegacyGeneral(behaviorContext->Method("resize_viewport", PyResizeViewport, nullptr, "Resizes the viewport resolution to a given width & height."));
+            addLegacyGeneral(behaviorContext->Method("bind_viewport", PyBindViewport, nullptr, "Binds the viewport to a specific view like 'Top', 'Front', 'Perspective'."));
+
+        }
+    }
+}
+
+REGISTER_PYTHON_COMMAND(PyLegacyGetViewPortSize, general, get_viewport_size, "Get the width and height of the active viewport.");
 REGISTER_PYTHON_COMMAND(PySetViewPortSize, general, set_viewport_size, "Set the width and height of the active viewport.");
 REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyUpdateViewPort, general, update_viewport,
     "Update all visible SDK viewports.",
     "general.update_viewport()");
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyResizeViewport, general, resize_viewport,
-    "Resizes the viewport resolution to a given width & hegiht.",
+    "Resizes the viewport resolution to a given width & height.",
     "general.resize_viewport(int width, int height)");
 #ifdef FEATURE_ORTHOGRAPHIC_VIEW
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyBindViewport, general, bind_viewport,
     "Binds the viewport to a specific view like 'Top', 'Front', 'Perspective'.",
     "general.bind_viewport(str viewportName)");
 #endif
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetViewportExpansionPolicy, general, get_viewport_expansion_policy,
+    "Returns whether viewports are auto-resized with the main window ('AutoResize') or if they remain a fixed size ('FixedSize').", 
+    "[str] general.get_viewport_expansion_policy()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySetViewportExpansionPolicy, general, set_viewport_expansion_policy,
+    "Sets whether viewports are auto-resized with the main window ('AutoResize') or if they remain a fixed size ('FixedSize').",
+    "general.set_viewport_expansion_policy(str policy)");
 #include <ViewPane.moc>

@@ -47,6 +47,8 @@ namespace AZStd
             : base_type(first, last)   {}
         AZ_FORCE_INLINE fixed_list(const this_type& rhs)
             : base_type(rhs)   {}
+        AZ_FORCE_INLINE fixed_list(std::initializer_list<T> list)
+            : base_type(list) {}
         AZ_FORCE_INLINE this_type& operator=(const this_type& rhs)
         {
             if (this == &rhs)

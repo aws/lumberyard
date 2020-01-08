@@ -30,12 +30,12 @@
 #include <CryLibrary.h>
 #include <IConsole.h>
 
-#if defined(AZ_RESTRICTED_PLATFORM)
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #undef AZ_RESTRICTED_SECTION
 #define SHADERCACHEGEN_CPP_SECTION_1 1
 #endif
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
 #include <fcntl.h>
 #include <errno.h>
 #include <semaphore.h>
@@ -53,7 +53,7 @@ struct COutputPrintSink
     }
 };
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
 CFOptionFlags MessageBox(const char* title, const char* message, CFStringRef defaultButton, CFStringRef alternateButton)
 {
     CFStringRef strHeader = CFStringCreateWithCString(NULL, title, kCFStringEncodingMacRoman);
@@ -85,7 +85,7 @@ CFOptionFlags MessageBox(const char* title, const char* message, CFStringRef def
     }
     return result;
 }
-#endif // defined(AZ_PLATFORM_APPLE_OSX)
+#endif // defined(AZ_PLATFORM_MAC)
 
 bool DisplayYesNoMessageBox(const char* title, const char* message)
 {
@@ -96,7 +96,7 @@ bool DisplayYesNoMessageBox(const char* title, const char* message)
 
 #if defined(AZ_PLATFORM_WINDOWS)
     return MessageBox(0, message, title, MB_YESNO) == IDYES;
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
     return MessageBox(title, message, CFSTR("Yes"), CFSTR("No")) == kCFUserNotificationDefaultResponse;
 #endif
     return false;
@@ -112,7 +112,7 @@ void DisplayErrorMessageBox(const char* message)
 
 #if defined(AZ_PLATFORM_WINDOWS)
     MessageBox(0, message, "Error", MB_OK | MB_DEFAULT_DESKTOP_ONLY);
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
     MessageBox("Error", message, NULL, NULL);
 #endif
 }
@@ -123,8 +123,8 @@ void ClearPlatformCVars(ISystem* pISystem)
     pISystem->GetIConsole()->ExecuteString("r_ShadersMETAL = 0");
     pISystem->GetIConsole()->ExecuteString("r_ShadersGL4 = 0");
     pISystem->GetIConsole()->ExecuteString("r_ShadersGLES3 = 0");
-    pISystem->GetIConsole()->ExecuteString("r_ShadersOrbis = 0");// ACCEPTED_USE
-    pISystem->GetIConsole()->ExecuteString("r_ShadersDurango = 0");// ACCEPTED_USE
+    pISystem->GetIConsole()->ExecuteString("r_ShadersOrbis = 0");
+    pISystem->GetIConsole()->ExecuteString("r_ShadersDurango = 0");
 }
 
 bool IsLumberyardRunning()
@@ -138,7 +138,7 @@ bool IsLumberyardRunning()
     {
         CloseHandle(mutex);
     }
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
     sem_t* mutex = sem_open(mutexName, O_CREAT | O_EXCL);
     if (mutex == SEM_FAILED && errno == EEXIST)
     {
@@ -255,15 +255,7 @@ int main_wrapped(int argc, char* argv[])
         { "pc", AZ::PLATFORM_WINDOWS_64 },
 #if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
-        { #CodeName,       AZ::PLATFORM_##PUBLICNAME },\
-        { #CODENAME,       AZ::PLATFORM_##PUBLICNAME },\
-        { #codename,       AZ::PLATFORM_##PUBLICNAME },\
-        { #PrivateName,    AZ::PLATFORM_##PUBLICNAME },\
-        { #PRIVATENAME,    AZ::PLATFORM_##PUBLICNAME },\
-        { #privatename,    AZ::PLATFORM_##PUBLICNAME },\
-        { #PublicAuxName1, AZ::PLATFORM_##PUBLICNAME },\
-        { #PublicAuxName2, AZ::PLATFORM_##PUBLICNAME },\
-        { #PublicAuxName3, AZ::PLATFORM_##PUBLICNAME },
+        { #codename,    AZ::PLATFORM_##PUBLICNAME },
 #if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM)
         AZ_EXPAND_FOR_RESTRICTED_PLATFORM
 #else
@@ -289,27 +281,7 @@ int main_wrapped(int argc, char* argv[])
         }
 #if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
-        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=" #PrivateName) != 0)    \
-        {                                                                                       \
-            shaderTypeCommand = "r_Shaders" #PrivateName " = 1";                                \
-            platform = AZ::PLATFORM_##PUBLICNAME;                                               \
-        }                                                                                       \
-        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=" #CodeName) != 0)       \
-        {                                                                                       \
-            shaderTypeCommand = "r_Shaders" #PrivateName " = 1";                                \
-            platform = AZ::PLATFORM_##PUBLICNAME;                                               \
-        }                                                                                       \
-        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=" #PublicAuxName1) != 0) \
-        {                                                                                       \
-            shaderTypeCommand = "r_Shaders" #PrivateName " = 1";                                \
-            platform = AZ::PLATFORM_##PUBLICNAME;                                               \
-        }                                                                                       \
-        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=" #PublicAuxName2) != 0) \
-        {                                                                                       \
-            shaderTypeCommand = "r_Shaders" #PrivateName " = 1";                                \
-            platform = AZ::PLATFORM_##PUBLICNAME;                                               \
-        }                                                                                       \
-        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=" #PublicAuxName3) != 0) \
+        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=" #PrivateName) != 0)       \
         {                                                                                       \
             shaderTypeCommand = "r_Shaders" #PrivateName " = 1";                                \
             platform = AZ::PLATFORM_##PUBLICNAME;                                               \
@@ -404,10 +376,17 @@ int main_wrapped(int argc, char* argv[])
 
         pISystem->GetIConsole()->ExecuteString(shaderTypeCommand.c_str());
 
-        #if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
-            #define AZ_RESTRICTED_SECTION SHADERCACHEGEN_CPP_SECTION_1
-            #include "Provo/ShaderCacheGen_cpp_provo.inl"
-        #endif
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+    #if defined(TOOLS_SUPPORT_XENIA)
+        #define AZ_RESTRICTED_SECTION SHADERCACHEGEN_CPP_SECTION_1
+        #include "Xenia/ShaderCacheGen_cpp_xenia.inl"
+    #endif
+    #if defined(TOOLS_SUPPORT_PROVO)
+        #define AZ_RESTRICTED_SECTION SHADERCACHEGEN_CPP_SECTION_1
+        #include "Provo/ShaderCacheGen_cpp_provo.inl"
+    #endif
+#endif
+
     }
 
     // Set the target platform

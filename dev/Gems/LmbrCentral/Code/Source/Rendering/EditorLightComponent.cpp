@@ -755,6 +755,7 @@ namespace LmbrCentral
         , m_cubemapClear(false)
     {
         m_configuration.m_projectorTexture.SetAssetPath("engineassets/textures/defaults/spot_default.dds");
+        m_configuration.SetComponent(nullptr);
     }
 
     EditorLightComponent::~EditorLightComponent()
@@ -885,9 +886,13 @@ namespace LmbrCentral
     {
         if (CanGenerateCubemap())
         {
-            AzToolsFramework::EditorRequestBus::Broadcast(
-                &AzToolsFramework::EditorRequests::GenerateCubemapForEntity,
-                GetEntityId(), nullptr, false);
+            EBUS_EVENT(AzToolsFramework::EditorRequests::Bus,
+                GenerateCubemapWithIDForEntity,
+                GetEntityId(),
+                GetCubemapId(),
+                nullptr,
+                false, 
+                true);
         }
     }
 

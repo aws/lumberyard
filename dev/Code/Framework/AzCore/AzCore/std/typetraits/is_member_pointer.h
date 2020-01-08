@@ -24,22 +24,6 @@ namespace AZStd
 
         template<class R, class ClassType>
         struct is_member_pointer_helper<R ClassType::*> : AZStd::true_type {};
-
-        // VS 2013 does not deduce a member function pointer type to the <R ClassType::*> as above
-        // So explicit specializations are added for it.
-#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
-        template<class R, class ClassType, typename... Args>
-        struct is_member_pointer_helper<R (ClassType::*)(Args...)> : AZStd::true_type {};
-        
-        template<class R, class ClassType, typename... Args>
-        struct is_member_pointer_helper<R(ClassType::*)(Args...) const> : AZStd::true_type {};
-
-        template<class R, class ClassType, typename... Args>
-        struct is_member_pointer_helper<R(ClassType::*)(Args...) volatile> : AZStd::true_type {};
-
-        template<class R, class ClassType, typename... Args>
-        struct is_member_pointer_helper<R(ClassType::*)(Args...) const volatile> : AZStd::true_type {};
-#endif
     }
 
     template<class T>

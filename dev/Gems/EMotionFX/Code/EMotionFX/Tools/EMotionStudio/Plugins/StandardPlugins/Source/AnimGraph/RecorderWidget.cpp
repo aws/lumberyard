@@ -16,6 +16,7 @@
 #include <QPushButton>
 #include <QHBoxLayout>
 #include <QMessageBox>
+#include <QFileDialog>
 #include <EMotionFX/Source/Recorder.h>
 #include <EMotionFX/Source/AnimGraphMotionNode.h>
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
@@ -52,10 +53,9 @@ namespace EMStudio
         mLastFrameButton    = new QPushButton();
         mNextFrameButton    = new QPushButton();
         mOpenButton         = nullptr;
-        mSaveButton         = nullptr;
         mConfigButton       = nullptr;
         //mOpenButton       = new QPushButton();
-        //mSaveButton       = new QPushButton();
+        mSaveButton       = new QPushButton();
         //mConfigButton     = new QPushButton();
 
         EMStudioManager::MakeTransparentButton(mRecordButton,          "/Images/Icons/RecordButton.png",   "Start recording");
@@ -68,7 +68,7 @@ namespace EMStudio
         EMStudioManager::MakeTransparentButton(mLastFrameButton,       "/Images/Icons/SkipForward.png",    "Last frame");
 
         //EMStudioManager::MakeTransparentButton( mOpenButton,          "/Images/Menu/FileOpen.png",        "Open a recording" );
-        //EMStudioManager::MakeTransparentButton( mSaveButton,          "/Images/Menu/FileSave.png",        "Save the current recording" );
+        EMStudioManager::MakeTransparentButton( mSaveButton,          "/Images/Menu/FileSave.png",        "Save the current recording" );
         //EMStudioManager::MakeTransparentButton( mConfigButton,        "/Images/Icons/Edit.png",           "Config the recorder" );
 
         buttonsLayout->addWidget(mRecordButton);
@@ -94,7 +94,7 @@ namespace EMStudio
         buttonsLayout->addWidget(mClearButton);
 
         //buttonsLayout->addWidget(mOpenButton);
-        //buttonsLayout->addWidget(mSaveButton);
+        buttonsLayout->addWidget(mSaveButton);
         //buttonsLayout->addWidget(mConfigButton);
 
         connect(mRecordButton, &QPushButton::released, this, &RecorderWidget::OnRecordButton);
@@ -106,7 +106,7 @@ namespace EMStudio
         connect(mClearButton, &QPushButton::released, this, &RecorderWidget::OnClearButton);
 
         //connect(mOpenButton, SIGNAL(released()), this, SLOT(OnOpenButton()));
-        //connect(mSaveButton, SIGNAL(released()), this, SLOT(OnSaveButton()));
+        connect(mSaveButton, &QPushButton::released, this, &RecorderWidget::OnSaveButton);
         //connect(mConfigButton, SIGNAL(released()), this, SLOT(OnPlayButton()));
 
         spacerWidget = new QWidget();
@@ -375,6 +375,20 @@ namespace EMStudio
     // save recording button pressed
     void RecorderWidget::OnSaveButton()
     {
+        QString filter = "EMotionFX Recordings (*.emfxrecording)";
+        const QString fileName = QFileDialog::getSaveFileName(
+            this,
+            "Save Recording",
+            QString(),
+            filter,
+            &filter
+        );
+
+        if (!fileName.isEmpty())
+        {
+            EMotionFX::GetRecorder().SaveToFile(fileName.toUtf8().constData());
+        }
+
         UpdateButtons();
     }
 
@@ -405,7 +419,7 @@ namespace EMStudio
             mNextFrameButton->setEnabled(false);
             mLastFrameButton->setEnabled(false);
             //mOpenButton->setEnabled(true);
-            //mSaveButton->setEnabled(true);
+            mSaveButton->setEnabled(true);
             //mConfigButton->setEnabled(false);
             mClearButton->setEnabled(false);
             mPlayButton->setEnabled(false);
@@ -422,7 +436,7 @@ namespace EMStudio
             mNextFrameButton->setEnabled(true);
             mLastFrameButton->setEnabled(true);
             //mOpenButton->setEnabled(true);
-            //mSaveButton->setEnabled(true);
+            mSaveButton->setEnabled(true);
             //mConfigButton->setEnabled(true);
             mClearButton->setEnabled(true);
             mPlayButton->setEnabled(true);
@@ -447,7 +461,7 @@ namespace EMStudio
             mNextFrameButton->setEnabled(false);
             mLastFrameButton->setEnabled(false);
             //mOpenButton->setEnabled(true);
-            //mSaveButton->setEnabled(true);
+            mSaveButton->setEnabled(true);
             //mConfigButton->setEnabled(true);
             mClearButton->setEnabled(false);
             mPlayButton->setEnabled(false);
@@ -462,7 +476,7 @@ namespace EMStudio
             mNextFrameButton->setEnabled(true);
             mLastFrameButton->setEnabled(true);
             //mOpenButton->setEnabled(true);
-            //mSaveButton->setEnabled(true);
+            mSaveButton->setEnabled(true);
             //mConfigButton->setEnabled(true);
             mClearButton->setEnabled(true);
             mPlayButton->setEnabled(true);

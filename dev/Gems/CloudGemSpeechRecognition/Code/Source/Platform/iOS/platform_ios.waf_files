@@ -1,0 +1,11 @@
+{
+  "auto": {
+    "Platform/iOS": [
+      "CloudGemSpeechRecognition_Traits_Platform.h", 
+      "CloudGemSpeechRecognition_Traits_iOS.h",
+      "../Common/Apple/VoiceRecorderSystemComponent_Apple.cpp",
+      "../Common/Apple/CocoaAudioRecorder.h",
+      "../Common/Apple/CocoaAudioRecorder.mm"
+    ]
+  }
+}

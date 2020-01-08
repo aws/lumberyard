@@ -1,0 +1,21 @@
+{
+    "platform": {
+        "linux_x64": {
+            "sharedlibpath": [
+                "Linux_x86_64"
+            ],
+            "shared": [
+                "libPVRTexLib.so"
+            ],
+            "copy_extra": [
+                "PVRTexLib_License.txt:."
+            ]
+        }
+    }
+}
+
+
+
+
+
+

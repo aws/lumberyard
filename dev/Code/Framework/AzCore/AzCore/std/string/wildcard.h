@@ -12,6 +12,7 @@
 #ifndef AZSTD_WILDCARD_MATCH_H
 #define AZSTD_WILDCARD_MATCH_H
 
+#include <cctype>
 #include <AzCore/std/string/string.h>
 
 namespace AZStd
@@ -153,6 +154,139 @@ namespace AZStd
     {
         return wildcard_match(pattern, string.c_str());
     }
+
+    /**
+     * Wildcard '*' and '?' matching support.  Case sensitive
+     *
+     * Example:
+     * if (wildcard_match("bl?h.*", "blah.jpg"))
+     * {
+     *      we have a match!
+     *  } else {
+     *      no match
+     *  }
+     * TODO: wchar_t version
+     */
+    inline bool wildcard_match_case(const char* filter, const char* name)
+    {
+        if (!name)
+        {
+            return false;
+        }
+
+        if (!filter)
+        {
+            return true;
+        }
+        if (!filter[0] && !name[0])
+        {
+            return true;
+        }
+
+        // if the filter is empty it matches anything
+        if (!filter[0])
+        {
+            return true;
+        }
+
+        if (!name[0] && !(filter[0] == 0 || filter[0] == '*'))
+        {
+            // if the name is empty and the filter is not one of the always true condition than return false
+            return false;
+        }
+
+        if (strcmp(name, ".") == 0)
+        {
+            return false;
+        }
+
+        if (strcmp(name, "..") == 0)
+        {
+            return false;
+        }
+
+        // early out the "always true" filters
+        if (strcmp(filter, "*.*") == 0)
+        {
+            return true;
+        }
+
+        if (strcmp(filter, "*") == 0)
+        {
+            return true;
+        }
+
+        //if we are here it implies that name is not empty and hence these filter will always match
+        if (strcmp(filter, "*?") == 0 || strcmp(filter, "?*") == 0)
+        {
+            return true;
+        }
+
+        const char* findCharPos = name;
+        const char* findFilterPos = filter;
+
+        if (*findFilterPos == '*')
+        {
+            ++findFilterPos;
+            if (*findFilterPos == '*')
+            {
+                return wildcard_match_case(findFilterPos, findCharPos);
+            }
+
+            const char* findEndCharPos = findCharPos + strlen(findCharPos) - 1;
+            const char* findStartCharPos = findCharPos;
+
+            while (findEndCharPos >= findStartCharPos)
+            {
+                if (*findFilterPos == '?' || (*findFilterPos) == (*findEndCharPos))
+                {
+                    if (wildcard_match_case(findFilterPos, findEndCharPos))
+                    {
+                        return true;
+                    }
+                }
+
+                --findEndCharPos;
+            }
+
+            return false;
+        }
+        else
+        {
+            if (*findFilterPos != '?')
+            {
+                // ordinary character
+                if ((*findCharPos) != (*findFilterPos))
+                {
+                    return false;
+                }
+            }
+            ++findCharPos;
+            ++findFilterPos;
+
+            if (findCharPos[0] && !findFilterPos[0])
+            {
+                return false;
+            }
+        }
+
+        return wildcard_match_case(findFilterPos, findCharPos);
+
+    }
+
+    template<class Element, class Traits, class Allocator>
+    bool wildcard_match_case(const basic_string<Element, Traits, Allocator>& pattern, const basic_string<Element, Traits, Allocator>& string)
+    {
+        return wildcard_match_case(pattern.c_str(), string.c_str());
+    }
+
+    template<class Element, class Traits, class Allocator>
+    bool wildcard_match_case(const char* pattern, const basic_string<Element, Traits, Allocator>& string)
+    {
+        return wildcard_match_case(pattern, string.c_str());
+    }
+
+
 } // namespace AZStd
 
 #endif // AZSTD_WILDCARD_MATCH_H

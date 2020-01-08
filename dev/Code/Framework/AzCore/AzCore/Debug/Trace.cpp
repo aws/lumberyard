@@ -9,46 +9,40 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
+
+#include <AzCore/Debug/Trace.h>
+
 #include <AzCore/base.h>
-#include <AzCore/PlatformIncl.h>
 
 #include <AzCore/Debug/StackTracer.h>
 #include <AzCore/Debug/TraceMessageBus.h>
 #include <AzCore/Debug/TraceMessagesDrillerBus.h>
 
-#include <stdio.h>
 #include <stdarg.h>
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#undef AZ_RESTRICTED_SECTION
-#define TRACE_CPP_SECTION_1 1
-#define TRACE_CPP_SECTION_2 2
-#define TRACE_CPP_SECTION_3 3
-#define TRACE_CPP_SECTION_4 4
-#define TRACE_CPP_SECTION_5 5
+#include <AzCore/NativeUI/NativeUIRequests.h>
+#include <AzCore/Debug/TraceMessageBus.h>
+
+// Used to keep a set of ignored asserts for CRC checking
+#include <AzCore/std/containers/unordered_set.h>
+#include <AzCore/Module/Environment.h>
+
+namespace AZ 
+{
+    namespace Debug
+    {
+        namespace Platform
+        {
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
+            bool IsDebuggerPresent();
+            void HandleExceptions(bool isEnabled);
+            void DebugBreak();
 #endif
+            void Terminate(int exitCode);
+            void OutputToDebugger(const char* window, const char* message);
+        }
+    }
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Trace_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Trace_cpp_provo.inl"
-    #endif
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
-
-#   if defined(AZ_PLATFORM_ANDROID)
-#       include <android/log.h>
-#   endif // AZ_PLATFORM_ANDROID
-
-#   include <AzCore/Debug/TraceCppLinux.inl>
-
-#elif defined(AZ_PLATFORM_APPLE)
-#   include <AzCore/Debug/TraceCppApple.inl>
-#endif
-
-namespace AZ {
     using namespace AZ::Debug;
 
     namespace DebugInternal
@@ -57,7 +51,7 @@ namespace AZ {
         // because its thread local, it does not need to be atomic.
         // its also important that this is inside the cpp file, so that its only in the trace.cpp module and not the header shared by everyone.
         static AZ_THREAD_LOCAL bool g_alreadyHandlingAssertOrFatal = false;
-        static AZ_THREAD_LOCAL bool g_suppressEBusCalls = false; // used when it would be dangerous to use ebus broadcasts.
+        AZ_THREAD_LOCAL bool g_suppressEBusCalls = false; // used when it would be dangerous to use ebus broadcasts.
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -65,20 +59,20 @@ namespace AZ {
     const int       g_maxMessageLength = 4096;
     static const char*    g_dbgSystemWnd = "System";
     Trace Debug::g_tracer;
-    void* g_exceptionInfo = NULL;
-#if defined(AZ_ENABLE_DEBUG_TOOLS)
-    #if defined(AZ_PLATFORM_WINDOWS)
-    LONG WINAPI ExceptionHandler(PEXCEPTION_POINTERS ExceptionInfo);
-    LPTOP_LEVEL_EXCEPTION_FILTER g_previousExceptionHandler = NULL;
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Trace_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Trace_cpp_provo.inl"
-    #endif
-    #endif
-#endif // defined(AZ_ENABLE_DEBUG_TOOLS)
+    void* g_exceptionInfo = nullptr;
+
+    // Environment var needed to track ignored asserts across systems and disable native UI under certain conditions
+    static const char* ignoredAssertUID = "IgnoredAssertSet";
+    static const char* assertVerbosityUID = "assertVerbosityLevel";
+    static const char* logVerbosityUID = "sys_LogLevel";
+    static const int assertLevel_log = 1;
+    static const int assertLevel_nativeUI = 2;
+    static const int logLevel_errorWarning = 1;
+    static const int logLevel_full = 2;
+    static AZ::EnvironmentVariable<AZStd::unordered_set<size_t>> g_ignoredAsserts;
+    static AZ::EnvironmentVariable<int> g_assertVerbosityLevel;
+    static AZ::EnvironmentVariable<int> g_logVerbosityLevel;
+
 
     /**
      * If any listener returns true, store the result so we don't outputs detailed information.
@@ -90,6 +84,36 @@ namespace AZ {
             : m_value(false) {}
         void operator=(bool rhs)     { m_value = m_value || rhs; }
     };
+
+    // definition of init to initialize assert tracking global
+    void Trace::Init()
+    {
+        // if out ignored assert list exists, then another module has init the system
+        g_ignoredAsserts = AZ::Environment::FindVariable<AZStd::unordered_set<size_t>>(ignoredAssertUID);
+        if (!g_ignoredAsserts)
+        {
+            g_ignoredAsserts = AZ::Environment::CreateVariable<AZStd::unordered_set<size_t>>(ignoredAssertUID);
+            g_assertVerbosityLevel = AZ::Environment::CreateVariable<int>(assertVerbosityUID);
+            g_logVerbosityLevel = AZ::Environment::CreateVariable<int>(logVerbosityUID);
+
+            //default assert level is to log/print asserts this can be overriden with the sys_asserts CVAR
+            g_assertVerbosityLevel.Set(assertLevel_log);
+            g_logVerbosityLevel.Set(logLevel_full);
+        }
+    }
+
+    // clean up the ignored assert container
+    void Trace::Destroy()
+    {
+        g_ignoredAsserts = AZ::Environment::FindVariable<AZStd::unordered_set<size_t>>(ignoredAssertUID);
+        if (g_ignoredAsserts)
+        {
+            if (g_ignoredAsserts.IsOwner())
+            {
+                g_ignoredAsserts.Reset();
+            }
+        }
+    }
 
     //=========================================================================
     const char* Trace::GetDefaultSystemWindow()
@@ -105,29 +129,10 @@ namespace AZ {
     Trace::IsDebuggerPresent()
     {
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
-#   if defined(AZ_PLATFORM_WINDOWS)
-        return ::IsDebuggerPresent() ? true : false;
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_3
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Trace_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Trace_cpp_provo.inl"
-    #endif
+        return Platform::IsDebuggerPresent();
+#else
+        return false;
 #endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#   elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
-        return IsDebuggerAttached();
-#   elif defined(AZ_PLATFORM_APPLE)
-        return AmIBeingDebugged();
-#   else
-        return false;
-#   endif
-#else // else if not defined AZ_ENABLE_DEBUG_TOOLS
-        return false;
-#endif// AZ_ENABLE_DEBUG_TOOLS
     }
 
     //=========================================================================
@@ -137,23 +142,15 @@ namespace AZ {
     void
     Trace::HandleExceptions(bool isEnabled)
     {
-        (void)isEnabled;
+        AZ_UNUSED(isEnabled);
         if (IsDebuggerPresent())
         {
             return;
         }
 
-#if defined(AZ_ENABLE_DEBUG_TOOLS) && AZ_TRAIT_COMPILER_USE_UNHANDLED_EXCEPTION_HANDLER
-        if (isEnabled)
-        {
-            g_previousExceptionHandler = ::SetUnhandledExceptionFilter(&ExceptionHandler);
-        }
-        else
-        {
-            ::SetUnhandledExceptionFilter(g_previousExceptionHandler);
-            g_previousExceptionHandler = NULL;
-        }
-#endif // defined(AZ_ENABLE_DEBUG_TOOLS) && AZ_TRAIT_COMPILER_USE_UNHANDLED_EXCEPTION_HANDLER
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
+        Platform::HandleExceptions(isEnabled);
+#endif
     }
 
     //=========================================================================
@@ -164,68 +161,55 @@ namespace AZ {
     Trace::Break()
     {
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
+
 #   if defined(AZ_TESTS_ENABLED)
         if (!IsDebuggerPresent())
         {
             return; // Do not break when tests are running unless debugger is present
         }
 #   endif
-#   if defined(AZ_PLATFORM_WINDOWS)
-        __debugbreak();
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_4
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Trace_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Trace_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#   elif defined(AZ_PLATFORM_LINUX)
-        DEBUG_BREAK;
-#   elif defined(AZ_PLATFORM_ANDROID)
-        raise(SIGINT);
-#elif defined(AZ_PLATFORM_APPLE)
-        __builtin_trap();
-#   else
-        (*((int*)0)) = 1;
-#   endif
+
+        Platform::DebugBreak();
+
 #endif // AZ_ENABLE_DEBUG_TOOLS
+    }
+
+    void Debug::Trace::Crash()
+    {
+        int* p = 0;
+        *p = 1;
     }
 
     void Debug::Trace::Terminate(int exitCode)
     {
-#if defined(AZ_PLATFORM_WINDOWS)
-        ::ExitProcess(exitCode);
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_5
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Trace_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Trace_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-        _exit(exitCode);
-#endif
+        Platform::Terminate(exitCode);
     }
 
     //=========================================================================
     // Assert
     // [8/3/2009]
     //=========================================================================
-    void
-    Trace::Assert(const char* fileName, int line, const char* funcName, const char* format, ...)
+    void Trace::Assert(const char* fileName, int line, const char* funcName, const char* format, ...)
     {
         using namespace DebugInternal;
 
         char message[g_maxMessageLength];
         char header[g_maxMessageLength];
+
+        // Check our set to see if this assert has been previously ignored and early out if so
+        size_t assertHash = line;
+        AZStd::hash_combine(assertHash, AZ::Crc32(fileName));
+        // Find our list of ignored asserts since we probably aren't the same system that initialized it
+        g_ignoredAsserts = AZ::Environment::FindVariable<AZStd::unordered_set<size_t>>(ignoredAssertUID);
+
+        if (g_ignoredAsserts)
+        {
+            auto ignoredAssertIt2 = g_ignoredAsserts->find(assertHash);
+            if (ignoredAssertIt2 != g_ignoredAsserts->end())
+            {
+                return;
+            }
+        }
 
         if (g_alreadyHandlingAssertOrFatal)
         {
@@ -249,27 +233,70 @@ namespace AZ {
             return;
         }
 
-        Output(g_dbgSystemWnd, "\n==================================================================\n");
-        azsnprintf(header, g_maxMessageLength, "Trace::Assert\n %s(%d): (%tu) '%s'\n", fileName, line, (uintptr_t)(AZStd::this_thread::get_id().m_id), funcName);
-        Output(g_dbgSystemWnd, header);
-        azstrcat(message, g_maxMessageLength, "\n");
-        Output(g_dbgSystemWnd, message);
-
-        EBUS_EVENT(TraceMessageDrillerBus, OnAssert, message);
-        EBUS_EVENT_RESULT(result, TraceMessageBus, OnAssert, message);
-        if (result.m_value)
+        int currentLevel = GetAssertVerbosityLevel();
+        if (currentLevel >= assertLevel_log)
         {
+            Output(g_dbgSystemWnd, "\n==================================================================\n");
+            azsnprintf(header, g_maxMessageLength, "Trace::Assert\n %s(%d): (%tu) '%s'\n", fileName, line, (uintptr_t)(AZStd::this_thread::get_id().m_id), funcName);
+            Output(g_dbgSystemWnd, header);
+            azstrcat(message, g_maxMessageLength, "\n");
+            Output(g_dbgSystemWnd, message);
+
+            EBUS_EVENT(TraceMessageDrillerBus, OnAssert, message);
+            EBUS_EVENT_RESULT(result, TraceMessageBus, OnAssert, message);
+            if (result.m_value)
+            {
+                Output(g_dbgSystemWnd, "==================================================================\n");
+                g_alreadyHandlingAssertOrFatal = false;
+                return;
+            }
+
+            Output(g_dbgSystemWnd, "------------------------------------------------\n");
+            PrintCallstack(g_dbgSystemWnd, 1);
             Output(g_dbgSystemWnd, "==================================================================\n");
-            g_alreadyHandlingAssertOrFatal = false;
-            return;
+
+            char dialogBoxText[g_maxMessageLength];
+            azsnprintf(dialogBoxText, g_maxMessageLength, "Assert \n\n %s(%d) \n %s \n\n %s", fileName, line, funcName, message);
+
+            // If we are logging only then ignore the assert after it logs once in order to prevent spam
+            if (currentLevel == 1 && !IsDebuggerPresent())
+            {
+                if (g_ignoredAsserts)
+                {
+                    Output(g_dbgSystemWnd, "====Assert added to ignore list by spec and verbosity setting.====\n");
+                    g_ignoredAsserts->insert(assertHash);
+                }
+            }
+            
+#if AZ_ENABLE_TRACE_ASSERTS
+            //display native UI dialogs at verbosity level 2 or higher
+            if (currentLevel >= assertLevel_nativeUI)
+            {
+                AZ::NativeUI::AssertAction buttonResult;
+                EBUS_EVENT_RESULT(buttonResult, AZ::NativeUI::NativeUIRequestBus, DisplayAssertDialog, dialogBoxText);
+                switch (buttonResult)
+                {
+                case AZ::NativeUI::AssertAction::BREAK:
+                    g_tracer.Break();
+                    break;
+                case AZ::NativeUI::AssertAction::IGNORE_ALL_ASSERTS:
+                    SetAssertVerbosityLevel(1);
+                    g_alreadyHandlingAssertOrFatal = true;
+                    return;
+                case AZ::NativeUI::AssertAction::IGNORE_ASSERT:
+                    //if ignoring this assert then add it to our ignore list so it doesn't interrupt again this run
+                    if (g_ignoredAsserts)
+                    {
+                        g_ignoredAsserts->insert(assertHash);
+                    }
+                    break;
+                default:
+                    break;
+                }
+            }
+#endif //AZ_ENABLE_TRACE_ASSERTS
         }
-
-        Output(g_dbgSystemWnd, "------------------------------------------------\n");
-        PrintCallstack(g_dbgSystemWnd, 1);
-        Output(g_dbgSystemWnd, "==================================================================\n");
         g_alreadyHandlingAssertOrFatal = false;
-
-        g_tracer.Break();
     }
 
     //=========================================================================
@@ -323,16 +350,6 @@ namespace AZ {
             g_alreadyHandlingAssertOrFatal = false;
             return;
         }
-
-#if defined(AZ_PLATFORM_WINDOWS) && defined(AZ_DEBUG_BUILD)
-        //show error message box
-        char fullMsg[8 * 1024];
-        _snprintf_s(fullMsg, AZ_ARRAY_SIZE(fullMsg), _TRUNCATE, "An error has occurred!\n%s(%d): '%s'\n%s\n\nPress OK to continue, or Cancel to debug\n", fileName, line, funcName, message);
-        if (MessageBox(NULL, fullMsg, "Error!", MB_OKCANCEL | MB_SYSTEMMODAL) == IDCANCEL)
-        {
-            Break();
-        }
-#endif // defined(AZ_PLATFORM_WINDOWS) && defined(AZ_DEBUG_BUILD)
 
         g_alreadyHandlingAssertOrFatal = false;
     }
@@ -414,22 +431,7 @@ namespace AZ {
             window = g_dbgSystemWnd;
         }
 
-#if AZ_TRAIT_COMPILER_USE_OUTPUT_DEBUG_STRING  /// Output to the debugger!
-#   ifdef _UNICODE
-        wchar_t messageW[g_maxMessageLength];
-        size_t numCharsConverted;
-        if (mbstowcs_s(&numCharsConverted, messageW, message, g_maxMessageLength - 1) == 0)
-        {
-            OutputDebugStringW(messageW);
-        }
-#   else // !_UNICODE
-        OutputDebugString(message);
-#   endif // !_UNICODE
-#endif
-
-#if defined(AZ_PLATFORM_ANDROID) && !RELEASE
-        __android_log_print(ANDROID_LOG_INFO, window, message);
-#endif // AZ_PLATFORM_ANDROID
+        Platform::OutputToDebugger(window, message);
         
         if (!DebugInternal::g_suppressEBusCalls)
         {
@@ -463,7 +465,7 @@ namespace AZ {
         //printf("Alignment value %d address 0x%08x : 0x%08x\n",bla,frames);
         SymbolStorage::StackLine lines[AZ_ARRAY_SIZE(frames)];
 
-        if (nativeContext == NULL)
+        if (!nativeContext)
         {
             suppressCount += 1; /// If we don't provide a context we will capture in the RecordFunction, so skip us (Trace::PrinCallstack).
         }
@@ -494,100 +496,26 @@ namespace AZ {
         return g_exceptionInfo;
     }
 
-#if defined(AZ_ENABLE_DEBUG_TOOLS) && AZ_TRAIT_COMPILER_USE_UNHANDLED_EXCEPTION_HANDLER
-    //=========================================================================
-    // GetExeptionName
-    // [8/3/2011]
-    //=========================================================================
-    const char* GetExeptionName(DWORD code)
+    // Gets/sets the current verbosity level from the global
+    int Trace::GetAssertVerbosityLevel()
     {
-    #define RETNAME(exc)    case exc: \
-    return (#exc);
-        switch (code)
+        auto val = AZ::Environment::FindVariable<int>(assertVerbosityUID);
+        if (val)
         {
-            RETNAME(EXCEPTION_ACCESS_VIOLATION);
-            RETNAME(EXCEPTION_ARRAY_BOUNDS_EXCEEDED);
-            RETNAME(EXCEPTION_BREAKPOINT);
-            RETNAME(EXCEPTION_DATATYPE_MISALIGNMENT);
-            RETNAME(EXCEPTION_FLT_DENORMAL_OPERAND);
-            RETNAME(EXCEPTION_FLT_DIVIDE_BY_ZERO);
-            RETNAME(EXCEPTION_FLT_INEXACT_RESULT);
-            RETNAME(EXCEPTION_FLT_INVALID_OPERATION);
-            RETNAME(EXCEPTION_FLT_OVERFLOW);
-            RETNAME(EXCEPTION_FLT_STACK_CHECK);
-            RETNAME(EXCEPTION_FLT_UNDERFLOW);
-            RETNAME(EXCEPTION_ILLEGAL_INSTRUCTION);
-            RETNAME(EXCEPTION_IN_PAGE_ERROR);
-            RETNAME(EXCEPTION_INT_DIVIDE_BY_ZERO);
-            RETNAME(EXCEPTION_INT_OVERFLOW);
-            RETNAME(EXCEPTION_INVALID_DISPOSITION);
-            RETNAME(EXCEPTION_NONCONTINUABLE_EXCEPTION);
-            RETNAME(EXCEPTION_PRIV_INSTRUCTION);
-            RETNAME(EXCEPTION_SINGLE_STEP);
-            RETNAME(EXCEPTION_STACK_OVERFLOW);
-            RETNAME(EXCEPTION_INVALID_HANDLE);
-        default:
-            return (char*)("Unknown exception");
+            return val.Get();
         }
-    #undef RETNAME
+        else
+        {
+            return assertLevel_log;
+        }
     }
 
-    //=========================================================================
-    // ExceptionHandler
-    // [8/3/2011]
-    //=========================================================================
-    LONG WINAPI ExceptionHandler(PEXCEPTION_POINTERS ExceptionInfo)
+    void Trace::SetAssertVerbosityLevel(int level)
     {
-        static bool volatile isInExeption = false;
-        if (isInExeption)
+        auto val = AZ::Environment::FindVariable<int>(assertVerbosityUID);
+        if (val)
         {
-            // prevent g_tracer from calling the tracebus:
-            DebugInternal::g_suppressEBusCalls = true;
-            g_tracer.Output(g_dbgSystemWnd, "Exception handler loop!");
-            g_tracer.PrintCallstack(g_dbgSystemWnd, 0, ExceptionInfo->ContextRecord);
-            DebugInternal::g_suppressEBusCalls = false;
-
-            if (g_tracer.IsDebuggerPresent())
-            {
-                g_tracer.Break();
-            }
-            else
-            {
-                _exit(1); // do not proceed any further.  note that _exit(1) is expected to terminate immediately.  exit without the underscore may still execute code.
-            }
+            val.Set(level);
         }
-
-        isInExeption = true;
-        g_exceptionInfo = (void*)ExceptionInfo;
-
-        char message[g_maxMessageLength];
-        g_tracer.Output(g_dbgSystemWnd, "==================================================================\n");
-        azsnprintf(message, g_maxMessageLength, "Exception : 0x%X - '%s' [%p]\n", ExceptionInfo->ExceptionRecord->ExceptionCode, GetExeptionName(ExceptionInfo->ExceptionRecord->ExceptionCode), ExceptionInfo->ExceptionRecord->ExceptionAddress);
-        g_tracer.Output(g_dbgSystemWnd, message);
-
-        EBUS_EVENT(TraceMessageDrillerBus, OnException, message);
-
-        TraceMessageResult result;
-        EBUS_EVENT_RESULT(result, TraceMessageBus, OnException, message);
-        if (result.m_value)
-        {
-            g_tracer.Output(g_dbgSystemWnd, "==================================================================\n");
-            g_exceptionInfo = NULL;
-            // if someone ever returns TRUE we assume that they somehow handled this exception and continue.
-            return EXCEPTION_CONTINUE_EXECUTION;
-        }
-        g_tracer.PrintCallstack(g_dbgSystemWnd, 0, ExceptionInfo->ContextRecord);
-        g_tracer.Output(g_dbgSystemWnd, "==================================================================\n");
-
-        // allowing continue of execution is not valid here.  This handler gets called for serious exceptions.
-        // programs wanting things like a message box can implement them on a case-by-case basis, but we want no such 
-        // default behavior - this code is used in automated build systems and UI applications alike.
-        LONG lReturn = EXCEPTION_CONTINUE_SEARCH;
-        isInExeption = false;
-        g_exceptionInfo = NULL;
-        return lReturn;
     }
-#endif // defined(AZ_ENABLE_DEBUG_TOOLS) && AZ_TRAIT_COMPILER_USE_UNHANDLED_EXCEPTION_HANDLER
 } // namspace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

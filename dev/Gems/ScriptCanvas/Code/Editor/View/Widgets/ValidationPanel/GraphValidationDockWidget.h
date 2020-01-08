@@ -19,6 +19,7 @@
 
 #include <GraphCanvas/Editor/AssetEditorBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
+#include <GraphCanvas/Components/ToastBus.h>
 
 #include <ScriptCanvas/Debugger/ValidationEvents/ValidationEvent.h>
 #include <ScriptCanvas/Debugger/StatusBus.h>
@@ -178,6 +179,7 @@ namespace ScriptCanvasEditor
         : public AzQtComponents::StyledDockWidget
         , public GraphCanvas::AssetEditorNotificationBus::Handler
         , public GraphCanvas::SceneNotificationBus::Handler
+        , public GraphCanvas::ToastNotificationBus::MultiHandler
     {
         Q_OBJECT
     public:
@@ -195,10 +197,15 @@ namespace ScriptCanvasEditor
 
         void OnConnectionDragBegin() override;
         ////
+
+        // ToastNotification
+        void OnToastInteraction() override;
+        void OnToastDismissed() override;
+        ////
         
     public slots:
     
-        void OnRunValidator();
+        void OnRunValidator(bool displayAsNotification = false);
         void OnShowErrors();
         void OnShowWarnings();
         

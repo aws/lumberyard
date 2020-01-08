@@ -72,7 +72,7 @@ namespace LyShine
 
         ////////////////////////////////////////////////////////////////////////
         // UiSystemToolsInterface interface implementation
-        CanvasAssetHandle* LoadCanvasFromStream(AZ::IO::FileIOStream& stream, const AZ::ObjectStream::FilterDescriptor& filterDesc) override;
+        CanvasAssetHandle* LoadCanvasFromStream(AZ::IO::GenericStream& stream, const AZ::ObjectStream::FilterDescriptor& filterDesc) override;
         void SaveCanvasToStream(CanvasAssetHandle* canvas, AZ::IO::FileIOStream& stream) override;
         AZ::SliceComponent* GetRootSliceSliceComponent(CanvasAssetHandle* canvas) override;
         AZ::Entity* GetRootSliceEntity(CanvasAssetHandle* canvas) override;

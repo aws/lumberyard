@@ -1,0 +1,9 @@
+{
+  "auto": {
+    "Platform/Linux": [
+      "CloudGemSpeechRecognition_Traits_Platform.h", 
+      "CloudGemSpeechRecognition_Traits_Linux.h",
+      "../Common/Default/VoiceRecorderSystemComponent_Default.cpp"
+    ]
+  }
+}

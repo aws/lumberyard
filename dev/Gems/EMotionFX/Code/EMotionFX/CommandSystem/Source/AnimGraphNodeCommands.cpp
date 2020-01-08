@@ -1304,7 +1304,7 @@ namespace CommandSystem
         }
 
         // Construct the parent name
-        const AZStd::string parentName = copyPasteData.GetNewNodeName(node->GetParentNode(), cutMode);
+        const AZStd::string parentName = copyPasteData.GetNewNodeName(targetNode, cutMode);
         EMotionFX::AnimGraphNodeId nodeId;
         AZStd::string nodeName = node->GetNameString();
         if (cutMode)
@@ -1351,7 +1351,7 @@ namespace CommandSystem
                 commandString = AZStd::string::format("AnimGraphAdjustNode -animGraphID %d -name \"%s\" -attributesString {%s}",
                     targetAnimGraph->GetID(),
                     nodeName.c_str(),
-                    attributesString);
+                    attributesString.c_str());
                 commandGroup->AddCommandString(commandString);
             }
         }

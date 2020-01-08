@@ -20,7 +20,7 @@
 #include <d3d9types.h>               // D3DFORMAT
 #include <dxgiformat.h>              // DX10+ formats
 #endif
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 #include <AzDXGIFormat.h>
 #endif
 #include "platform.h"                // uint32
@@ -28,7 +28,7 @@
 #include <ImageExtensionHelper.h>
 
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 //These enums are needed to build DDS textures on Mac
 enum
 {
@@ -143,7 +143,6 @@ enum EPixelFormat
     ePixelFormat_3DC,
     ePixelFormat_3DCp,
     ePixelFormat_CTX1,
-    //  Confetti BEGIN: Igor Lobanchikov
     ePixelFormat_ASTC_4x4,
     ePixelFormat_ASTC_5x4,
     ePixelFormat_ASTC_5x5,
@@ -158,7 +157,6 @@ enum EPixelFormat
     ePixelFormat_ASTC_10x10,
     ePixelFormat_ASTC_12x10,
     ePixelFormat_ASTC_12x12,
-    //  Confetti End: Igor Lobanchikov
     ePixelFormat_PVRTC2,
     ePixelFormat_PVRTC4,
     ePixelFormat_EAC_R11,
@@ -219,7 +217,7 @@ struct PixelFormatInfo
     uint32      minHeight;
     int         blockWidth;
     int         blockHeight;
-    int         bitsPerBlock;   //  Igor: bits per pixel for uncompressed
+    int         bitsPerBlock;   //  bits per pixel for uncompressed
     bool        bSquarePow2;
     D3DFORMAT   d3d9Format;
     DXGI_FORMAT d3d10Format;
@@ -250,7 +248,7 @@ struct PixelFormatInfo
         uint32      a_minHeight,
         int         a_blockWidth,
         int         a_blockHeight,
-        int         a_bitsPerBlock, //  Igor: bits per pixel for uncompressed
+        int         a_bitsPerBlock, //  bits per pixel for uncompressed
         bool        a_bSquarePow2,
         D3DFORMAT   a_d3d9Format,
         DXGI_FORMAT a_d3d10Format,
@@ -266,7 +264,7 @@ struct PixelFormatInfo
         , minHeight(a_minHeight)
         , blockWidth(a_blockWidth)
         , blockHeight(a_blockHeight)
-        , bitsPerBlock(a_bitsPerBlock)  //  Igor: bits per pixel for uncompressed
+        , bitsPerBlock(a_bitsPerBlock)  //  bits per pixel for uncompressed
         , bSquarePow2(a_bSquarePow2)
         , szAlpha(a_szAlpha)
         , d3d9Format(a_d3d9Format)
@@ -278,12 +276,10 @@ struct PixelFormatInfo
         , bSelectable(a_bSelectable)
         , etexFormat(a_etexFormat)
     {
-        //  Confetti BEGIN: Igor Lobanchikov
         if (a_bitsPerPixel)
         {
             assert(a_bitsPerPixel * blockWidth * blockHeight == bitsPerBlock);
         }
-        //  Confetti End: Igor Lobanchikov
     }
 };
 
@@ -363,8 +359,7 @@ public:
 #define D3DFMT_3DC       ((D3DFORMAT)(MAKEFOURCC('A', 'T', 'I', '2')))   // two channel compressed normal maps 8bit -> 8 bits per pixel
 #define D3DFMT_3DCp      ((D3DFORMAT)(MAKEFOURCC('A', 'T', 'I', '1')))   // one channel compressed maps 8bit -> 4 bits per pixel
 #define D3DFMT_CTX1      ((D3DFORMAT)(MAKEFOURCC('C', 'T', 'X', '1')))   // two channel compressed normal maps 4bit -> 4 bits per pixel
-//  Confetti BEGIN: Igor Lobanchikov
-// Igor: ASTC codes aren't official
+// ASTC codes aren't official
 #define D3DFMT_ASTC4x4   ((D3DFORMAT)(MAKEFOURCC('A', 'S', '4', '4')))   // ASTC texture compression, 8 bits per pixel, block is 4x4 pixels, 128 bits
 #define D3DFMT_ASTC5x4   ((D3DFORMAT)(MAKEFOURCC('A', 'S', '5', '4')))   // ASTC texture compression, 6.4 bits per pixel, block is 5x4 pixels, 128 bits
 #define D3DFMT_ASTC5x5   ((D3DFORMAT)(MAKEFOURCC('A', 'S', '5', '5')))   // ASTC texture compression, 5.12 bits per pixel, block is 5x5 pixels, 128 bits
@@ -381,7 +376,6 @@ public:
 #define D3DFMT_ASTC12x12 ((D3DFORMAT)(MAKEFOURCC('A', 'S', 'C', 'C')))   // ASTC texture compression, 0.89 bits per pixel, block is 12x10 pixels, 128 bits
 #define D3DFMT_PVRTC2    ((D3DFORMAT)(MAKEFOURCC('P', 'V', 'R', '2')))   // POWERVR texture compression, 2 bits per pixel, block is 8x4 pixels, 64 bits
 #define D3DFMT_PVRTC4    ((D3DFORMAT)(MAKEFOURCC('P', 'V', 'R', '4')))   // POWERVR texture compression, 4 bits per pixel, block is 4x4 pixels, 64 bits
-//  Confetti End: Igor Lobanchikov
 // Sokov: ETC2/EAC fourcc codes below are not official, I made them by myself. Feel free to replace them by better codes.
 #define D3DFMT_ETC2      ((D3DFORMAT)(MAKEFOURCC('E', 'T', '2', ' ')))   // ETC2 RGB texture compression, 4 bits per pixel, block is 4x4 pixels, 64 bits
 #define D3DFMT_ETC2a     ((D3DFORMAT)(MAKEFOURCC('E', 'T', '2', 'A')))   // ETC2 RGBA texture compression, 8 bits per pixel, block is 4x4 pixels, 128 bits

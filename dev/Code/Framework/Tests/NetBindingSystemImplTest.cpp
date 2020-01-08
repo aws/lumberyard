@@ -10,8 +10,6 @@
 *
 */
 
-#include <Tests/TestTypes.h>
-
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzFramework/Network/NetBindingSystemImpl.h>
 #include <AzFramework/Network/NetBindable.h>
@@ -19,6 +17,7 @@
 
 #include <AzCore/Asset/AssetManagerComponent.h>
 #include <AzCore/Memory/AllocationRecords.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <GridMate/Serialize/CompressionMarshal.h>

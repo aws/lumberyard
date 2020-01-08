@@ -3,16 +3,21 @@
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-* or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 */
 
 #pragma once
 
 #if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
+
+#include <AzCore/PlatformDef.h>
+
+AZ_PUSH_DISABLE_WARNING(4251 4996, "-Wunknown-warning-option")
 #include <aws/core/utils/logging/LogSystemInterface.h>
+AZ_POP_DISABLE_WARNING
 #else
 #include <sstream>
 namespace Aws
@@ -61,6 +66,8 @@ namespace AWSNativeSDKInit
         * Writes the stream to the output stream.
         */
         void LogStream(Aws::Utils::Logging::LogLevel logLevel, const char* tag, const Aws::OStringStream &messageStream);
+
+        void Flush();
 
     private:
         bool ShouldLog(Aws::Utils::Logging::LogLevel logLevel);

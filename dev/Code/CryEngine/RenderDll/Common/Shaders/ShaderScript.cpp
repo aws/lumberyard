@@ -19,6 +19,8 @@
 #include <IGameFramework.h>
 #include <MainThreadRenderRequestBus.h>
 
+#include <IMaterial.h>
+
 #ifndef NULL_RENDERER
 #include "DriverD3D.h"
 #endif
@@ -693,7 +695,7 @@ bool CShaderMan::mfModifyGenFlags(CShader* efGen, const CShaderResources* pRes, 
             {
                 // during shader cache gen, disable the special features in non D3D11 mode, and just accept
                 // the lines as they come in D3D11 mode
-                if (CParserBin::m_nPlatform != SF_D3D11 && CParserBin::m_nPlatform != SF_DURANGO && CParserBin::m_nPlatform != SF_GL4 && CParserBin::m_nPlatform != SF_ORBIS) // ACCEPTED_USE
+                if (CParserBin::m_nPlatform != SF_D3D11 && CParserBin::m_nPlatform != SF_DURANGO && CParserBin::m_nPlatform != SF_GL4 && CParserBin::m_nPlatform != SF_ORBIS)
                 {
                     if (pBit->m_nDependencySet & SHGD_HW_WATER_TESSELLATION)
                     {
@@ -1204,4 +1206,6 @@ void CShaderMan::RT_ParseShader(CShader* pSH, uint64 nMaskGen, uint32 flags, CSh
         }
     }
     pSH->m_Flags |= EF_LOADED;
+
+    EBUS_QUEUE_EVENT(AZ::MaterialNotificationEventBus, OnShaderLoaded, pSH);
 }

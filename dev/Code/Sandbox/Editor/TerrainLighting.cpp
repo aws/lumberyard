@@ -19,11 +19,14 @@
 #include "CryEditDoc.h"
 #include "WaitProgress.h"
 #include "GameEngine.h"
-#include "Terrain/TerrainTexGen.h"
 #include "Mission.h"
 #include "QtUtilWin.h"
 #include "QtViewPaneManager.h"
 #include "ITimeOfDay.h"
+
+#ifdef LY_TERRAIN_EDITOR
+#include "Terrain/TerrainTexGen.h"
+#endif // #ifdef LY_TERRAIN_EDITOR
 
 #if defined(Q_OS_WIN)
 #include <QtWinExtras/QtWin>
@@ -118,9 +121,12 @@ CTerrainLighting::CTerrainLighting(QWidget* pParent)
     ////////////////////////////////////////////////////////////////////////
     // Initialize the dialog with the settings from the document
     ////////////////////////////////////////////////////////////////////////
-    m_originalLightSettings = *GetIEditor()->GetDocument()->GetLighting();
+#ifdef LY_TERRAIN_EDITOR
     m_pTexGen = nullptr;
     InitTerrainTexGen();
+#endif // #ifdef LY_TERRAIN_EDITOR
+
+    m_originalLightSettings = *GetIEditor()->GetDocument()->GetLighting();
     GetIEditor()->RegisterNotifyListener(this);
 
     //CLogFile::WriteLine("Loading lighting dialog..."); // TODO: portibng log ?
@@ -233,7 +239,9 @@ CTerrainLighting::CTerrainLighting(QWidget* pParent)
 CTerrainLighting::~CTerrainLighting()
 {
     GetIEditor()->UnregisterNotifyListener(this);
+#ifdef LY_TERRAIN_EDITOR
     delete m_pTexGen;
+#endif // #ifdef LY_TERRAIN_EDITOR
 }
 const GUID& CTerrainLighting::GetClassID()
 {
@@ -256,6 +264,7 @@ void CTerrainLighting::RegisterViewClass()
 
 void CTerrainLighting::InitTerrainTexGen()
 {
+#ifdef LY_TERRAIN_EDITOR
     if (m_pTexGen)
     {
         delete m_pTexGen;
@@ -263,6 +272,7 @@ void CTerrainLighting::InitTerrainTexGen()
 
     m_pTexGen = new CTerrainTexGen;
     m_pTexGen->Init(LIGHTING_PREVIEW_RESOLUTION, true);
+#endif // #ifdef LY_TERRAIN_EDITOR
 }
 
 void CTerrainLighting::showEvent(QShowEvent* event)
@@ -288,6 +298,7 @@ void CTerrainLighting::showEvent(QShowEvent* event)
 
 void CTerrainLighting::GenerateLightmap(bool drawOntoDialog)
 {
+#ifdef LY_TERRAIN_EDITOR
     // Don't try to generate lightmaps if we're refreshing the dialog in-between loading levels.
     if (m_pTexGen == nullptr)
     {
@@ -304,6 +315,7 @@ void CTerrainLighting::GenerateLightmap(bool drawOntoDialog)
     flags |= ETTG_SHOW_WATER;
 
     m_pTexGen->GenerateSurfaceTexture(flags, m_lightmap);
+#endif // #ifdef LY_TERRAIN_EDITOR
 
     //put m_lightmap into m_bmpLightmap
     m_bmpLightmap = QImage(reinterpret_cast<uchar*>(m_lightmap.GetData()), m_lightmap.GetWidth(), m_lightmap.GetHeight(), QImage::Format_RGBX8888);
@@ -833,11 +845,13 @@ void CTerrainLighting::OnEditorNotifyEvent(EEditorNotifyEvent event)
     case eNotify_OnCloseScene:
     case eNotify_OnBeginSWNewScene:
     {
+#ifdef LY_TERRAIN_EDITOR
         if (m_pTexGen)
         {
             delete m_pTexGen;
             m_pTexGen = nullptr;
         }
+#endif // #ifdef LY_TERRAIN_EDITOR
 
         m_sunPathPreview = QPixmap(LIGHTING_PREVIEW_RESOLUTION, LIGHTING_PREVIEW_RESOLUTION);
         m_sunPathPreview.fill(QColor(Qt::blue));

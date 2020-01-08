@@ -118,7 +118,7 @@ void CTerrainNode::RequestTextures(const SRenderingPassInfo& passInfo)
     }
 }
 
-void CTerrainNode::SetSectorTexture(unsigned int nEditorDiffuseTex)
+void CTerrainNode::SetSectorTexture(unsigned int nEditorDiffuseTex, unsigned int nEditorDiffuseTexSizeX, unsigned int nEditorDiffuseTexSizeY)
 {
     FUNCTION_PROFILER_3DENGINE;
 
@@ -127,6 +127,11 @@ void CTerrainNode::SetSectorTexture(unsigned int nEditorDiffuseTex)
 
     // disable texture streaming
     m_nEditorDiffuseTex = nEditorDiffuseTex;
+
+    AZ_Assert((nEditorDiffuseTex == 0) || (nEditorDiffuseTexSizeX > 0), "Texture size is invalid");
+    AZ_Assert((nEditorDiffuseTexSizeX == nEditorDiffuseTexSizeY), "Texture size is invalid");
+
+    m_nEditorDiffuseTexSize = nEditorDiffuseTexSizeX;
 }
 
 void CTerrainNode::SetupTexturing(const SRenderingPassInfo& passInfo)
@@ -144,12 +149,13 @@ void CTerrainNode::SetupTexturing(const SRenderingPassInfo& passInfo)
 
     if (bMacroTextureExists())
     {
-        float tileSizeInPixels = (float)GetMacroTexture()->GetTileSizeInPixels();
         float nodeSizeInUnits = (float)(CTerrain::GetSectorSize() << m_nTreeLevel);
-        InitSectorTextureSet(tileSizeInPixels, nodeSizeInUnits, m_nOriginX, m_nOriginY, m_TextureSet);
 
         if (!m_nEditorDiffuseTex)
         {
+            float tileSizeInPixels = (float)GetMacroTexture()->GetTileSizeInPixels();
+            InitSectorTextureSet(tileSizeInPixels, nodeSizeInUnits, m_nOriginX, m_nOriginY, m_TextureSet);
+
             MacroTexture::TextureTile tile;
             if (GetMacroTexture()->TryGetTextureTile(GetTextureRegion(), m_TextureLOD, tile))
             {
@@ -168,6 +174,9 @@ void CTerrainNode::SetupTexturing(const SRenderingPassInfo& passInfo)
         }
         else // Using editor override texture instead.
         {
+            // Set up the UVs based on the size of the Editor override texture instead of the size stored in the Macro Texture.
+            InitSectorTextureSet(static_cast<float>(m_nEditorDiffuseTexSize), nodeSizeInUnits, m_nOriginX, m_nOriginY, m_TextureSet);
+
             m_TextureSet.nTex0 = m_nEditorDiffuseTex;
 
             renderSet = m_TextureSet;
@@ -206,7 +215,7 @@ void CTerrainNode::SetupTexturing(const SRenderingPassInfo& passInfo)
     pRenderMesh->GetChunks()[0].pRE->m_CustomData = leafData.m_TextureParams;
 }
 
-void CTerrain::SetTerrainSectorTexture(int nTexSectorX, int nTexSectorY, unsigned int textureId, bool bMergeNotAllowed)
+void CTerrain::SetTerrainSectorTexture(int nTexSectorX, int nTexSectorY, unsigned int textureId, unsigned int textureSizeX, unsigned int textureSizeY, bool bMergeNotAllowed)
 {
     int nDiffTexTreeLevelOffset = 0;
 
@@ -220,7 +229,7 @@ void CTerrain::SetTerrainSectorTexture(int nTexSectorX, int nTexSectorY, unsigne
     }
 
     CTerrainNode* pNode = m_NodePyramid[nDiffTexTreeLevelOffset][nTexSectorX][nTexSectorY];
-    pNode->SetSectorTexture(textureId);
+    pNode->SetSectorTexture(textureId, textureSizeX, textureSizeY);
 
     while (pNode)
     {
@@ -275,6 +284,7 @@ bool CTerrain::OpenTerrainTextureFile(const char* szFileName)
     TraverseTree([this](CTerrainNode* node)
         {
             node->m_nEditorDiffuseTex = 0;
+            node->m_nEditorDiffuseTexSize = 0;
             node->m_bForceHighDetail = false;
             node->m_TextureSet = SSectorTextureSet(m_nWhiteTexId);
         });

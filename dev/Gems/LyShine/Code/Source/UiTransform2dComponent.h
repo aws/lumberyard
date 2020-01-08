@@ -55,8 +55,8 @@ public: // member functions
     void SetPivotX(float pivot) override;
     float GetPivotY() override;
     void SetPivotY(float pivot) override;
-    bool GetScaleToDevice() override;
-    void SetScaleToDevice(bool scaleToDevice) override;
+    ScaleToDeviceMode GetScaleToDeviceMode() override;
+    void SetScaleToDeviceMode(ScaleToDeviceMode scaleToDeviceMode) override;
 
     void GetViewportSpacePoints(RectPoints& points) final;
     AZ::Vector2 GetViewportSpacePivot() final;
@@ -161,6 +161,26 @@ protected: // member functions
     //! This just exists to be called from the edit context setup
     bool IsNotControlledByParent() const;
 
+    //! Get the first ancestor that has a scale to device mode affecting the same dimension as this
+    //! element's scale to device mode
+    AZ::EntityId GetAncestorWithSameDimensionScaleToDevice(ScaleToDeviceMode scaleToDeviceMode) const;
+
+    //! Get a list of descendants that have a scale to device mode affecting the same dimension as this
+    //! element's scale to device mode
+    LyShine::EntityArray GetDescendantsWithSameDimensionScaleToDevice(ScaleToDeviceMode scaleToDeviceMode) const;
+
+    //! Return whether there are anchors that are apart affecting the same dimension as this
+    //! element's scale to device mode
+    bool AreAnchorsApartInSameScaleToDeviceDimension(ScaleToDeviceMode scaleToDeviceMode) const;
+
+    //! Return a short one line string that incudes a warning for the currently assigned scale to device mode.
+    //! An empty string indicates no warnings
+    AZStd::string GetScaleToDeviceModeWarningText() const;
+
+    //! Return a tooltip string describing the warning for the currently assigned scale to device mode.
+    //! An empty string indicates no warnings
+    AZStd::string GetScaleToDeviceModeWarningTooltipText() const;
+
     //! This is used to dynamically change the label for the Anchor property in the properties pane
     //! as a way to display a "disabled" stated for this component when the transform is controlled by the
     //! parent.
@@ -209,10 +229,19 @@ private: // member functions
     // Display a warning that the component is not yet fully initialized
     void EmitNotInitializedWarning() const;
 
+    // Given a scale apply the canvases device scale to it according to the m_scaleToDeviceMode setting
+    void ApplyDeviceScale(AZ::Vector2& scale);
+
 private: // static member functions
 
     static bool VersionConverter(AZ::SerializeContext& context,
         AZ::SerializeContext::DataElementNode& classElement);
+
+    //! Determine whether the specified scale to device mode affects horizontal scale
+    static bool DoesScaleToDeviceModeAffectX(ScaleToDeviceMode scaleToDeviceMode);
+
+    //! Determine whether the specified scale to device mode affects vertical scale
+    static bool DoesScaleToDeviceModeAffectY(ScaleToDeviceMode scaleToDeviceMode);
 
 private: // data
 
@@ -244,8 +273,8 @@ private: // data
     //! case m_prevRect will equal m_rect
     bool m_rectChangedByInitialization;
 
-    //! If this is set then the canvas uniform scale is applied in addition to m_scale
-    bool m_scaleToDevice;
+    //! If this is not set to None then the canvas scale is applied, in addition to m_scale, according to this mode
+    ScaleToDeviceMode m_scaleToDeviceMode;
 
     //! If this is true, then the transform stored in m_transformToViewport is dirty and needs to be recomputed
     bool m_recomputeTransformToViewport;

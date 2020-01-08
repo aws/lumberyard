@@ -11,12 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#if !defined(AFX_STDAFX_H__0F62BDE9_4784_4F7A_A265_B7D1A71883D0__INCLUDED_)
-#define AFX_STDAFX_H__0F62BDE9_4784_4F7A_A265_B7D1A71883D0__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -31,8 +26,5 @@
 #include <INetwork.h>
 #include <StlUtils.h>
 
-#if _MSC_VER > 1000
 #pragma intrinsic(memcpy)
-#endif
 
-#endif // !defined(AFX_STDAFX_H__0F62BDE9_4784_4F7A_A265_B7D1A71883D0__INCLUDED_)

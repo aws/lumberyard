@@ -63,7 +63,8 @@ namespace ScriptCanvasEditor
 
     void EditorAssetSystemComponent::Activate()
     {
-        m_editorAssetRegistry.Register();
+        m_editorAssetRegistry.Register<ScriptCanvasAsset, ScriptCanvasAssetHandler>();
+
         AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusConnect();
         EditorAssetConversionBus::Handler::BusConnect();
     }
@@ -75,7 +76,7 @@ namespace ScriptCanvasEditor
         m_editorAssetRegistry.Unregister();
     }
 
-    EditorAssetRegistry& EditorAssetSystemComponent::GetAssetRegistry()
+    ScriptCanvas::AssetRegistry& EditorAssetSystemComponent::GetAssetRegistry()
     {
         return m_editorAssetRegistry;
     }

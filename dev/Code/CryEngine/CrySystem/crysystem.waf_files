@@ -15,6 +15,7 @@
             "CryArchive.cpp",
             "CryAsyncMemcpy.cpp",
             "CryPak.cpp",
+            "MissingFileReport.cpp",
             "CrySizerStats.cpp",
             "CryTomcrypt.cpp",
             "DebugCallStack.cpp",
@@ -91,6 +92,7 @@
             "ConsoleBatchFile.h",
             "ConsoleHelpGen.h",
             "CryPak.h",
+            "MissingFileReport.h",
             "CryPakHandleCache.h",
             "CrySizerStats.h",
             "CryTomcrypt.h",
@@ -121,6 +123,8 @@
         "FileIO": [
             "RemoteFileIO.cpp",
             "RemoteFileIO.h",
+            "RemoteStorageDrive.h",
+            "RemoteStorageDrive.cpp",
             "CryPakFileIO.cpp",
             "CryPakFileIO.h"
         ],
@@ -225,7 +229,6 @@
             "SystemThreading.cpp"
         ],
         "NullImplementation": [
-            "NullImplementation/NULLAudioSystems.h",
             "NullImplementation/NullInput.h",
             "NullImplementation/NullResponseSystem.h"
         ],
@@ -342,6 +345,10 @@
             "ViewSystem/ViewSystem.cpp",
             "ViewSystem/ViewSystem.h"
         ],
+        "ZStdDecompressor": [
+            "ZStdDecompressor.h",
+            "ZStdDecompressor.cpp"
+        ],
         "Serialization": [
             "Serialization/ArchiveHost.cpp",
             "Serialization/BinArchive.cpp",
@@ -370,10 +377,12 @@
             "StreamEngine/StreamEngine.cpp",
             "StreamEngine/StreamIOThread.cpp",
             "StreamEngine/StreamReadStream.cpp",
+            "StreamEngine/AZRequestReadStream.cpp",
             "StreamEngine/StreamAsyncFileRequest.h",
             "StreamEngine/StreamEngine.h",
             "StreamEngine/StreamIOThread.h",
-            "StreamEngine/StreamReadStream.h"
+            "StreamEngine/StreamReadStream.h",
+            "StreamEngine/AZRequestReadStream.h"
         ]
     },
     "CrySystem_Tests_uber.cpp":

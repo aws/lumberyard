@@ -10,7 +10,7 @@
 #
 
 from waflib import Utils, Errors, Configure
-from cry_utils import split_comma_delimited_string, get_waf_host_platform, read_file_list
+from cry_utils import split_comma_delimited_string, get_waf_host_platform, read_file_list, get_output_folders
 
 import json
 import utils
@@ -338,3 +338,33 @@ def mock_globbing_files(fake_waf_context, tmpdir, input_waf_file_list, sample_fi
 
     tmpdir.remove(ignore_errors=True)
 
+
+@pytest.mark.parametrize(
+    "platform,configuration",[        
+        pytest.param('win_x64_vs2017', 'profile')
+    ])
+def test_GetOutputFolders_CaseMismatch_Success(platform, configuration, fake_waf_context):
+
+    # Retreive the path of the output folders
+    for original_path in get_output_folders(fake_waf_context, platform, configuration):
+        parent_path,dir_name = os.path.split(original_path.abspath())
+    
+        # Create the directory with the wrong casing
+        wrong_casing = dir_name.lower()
+        if wrong_casing == dir_name:
+            wrong_casing = dir_name.upper()
+        
+        if os.path.exists(original_path.abspath()):
+            os.remove(original_path.abspath())
+
+        os.makedirs(os.path.join(parent_path, wrong_casing))
+        
+        # If the original path does not exist, then we have a case sensitive OS and can just pass
+        if not os.path.exists(original_path.abspath()):
+            return
+
+    # Retrieve the output folders again and verify paths
+    for verify_path in get_output_folders(fake_waf_context, platform, configuration):
+        parent_path,dir_name = os.path.split(verify_path.abspath())
+        
+        assert dir_name in os.listdir(parent_path)

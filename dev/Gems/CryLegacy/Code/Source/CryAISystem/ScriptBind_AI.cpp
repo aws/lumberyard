@@ -51,6 +51,7 @@
 
 #include <list>
 #include <functional>
+#include <random>
 
 
 #if defined(AZ_RESTRICTED_PLATFORM)
@@ -72,9 +73,6 @@
 #include "Components/IComponentPhysics.h"
 
 #include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
-
-//#pragma optimize("", off)
-//#pragma inline_depth(0)
 
 // AI Object filters: define them as one-bit binary masks (1,2,4,8 etc..)
 #define AIOBJECTFILTER_SAMEFACTION      1 // AI objects of the same species of the querying object.
@@ -595,7 +593,11 @@ CScriptBind_AI::CScriptBind_AI()
     SCRIPT_REG_FUNC(CheckVehicleColision);
     SCRIPT_REG_FUNC(GetFlyingVehicleFlockingPos);
     SCRIPT_REG_FUNC(SetPFBlockerRadius);
-    SCRIPT_REG_FUNC(AssignPFPropertiesToPathType);
+#pragma push_macro("SCRIPT_REG_CLASSNAME")
+#undef SCRIPT_REG_CLASSNAME
+#define SCRIPT_REG_CLASSNAME
+    SCRIPT_REG_FUNC_WITH_NAME("AssignPFPropertiesToPathType", static_cast<int(CScriptBind_AI::*)(IFunctionHandler*)>(&CScriptBind_AI::AssignPFPropertiesToPathType));
+#pragma pop_macro("SCRIPT_REG_CLASSNAME")
     SCRIPT_REG_FUNC(AssignPathTypeToSOUser);
     SCRIPT_REG_FUNC(SetPFProperties);
     SCRIPT_REG_FUNC(GetGroupTarget);
@@ -4032,15 +4034,24 @@ int CScriptBind_AI::FindObjectOfType(IFunctionHandler* pH)
         #include "Xenia/ScriptBind_AI_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ScriptBind_AI_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ScriptBind_AI_cpp_salem.inl"
     #endif
 #endif
-            std::random_shuffle(randomObjs.begin(), randomObjs.end());
+            AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+            std::random_device randomDevice;
+            std::mt19937 uniformRandomGenerator(randomDevice());
+            std::shuffle(randomObjs.begin(), randomObjs.end(), uniformRandomGenerator);
+            AZ_POP_DISABLE_WARNING
+
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SCRIPTBIND_AI_CPP_SECTION_2
     #if defined(AZ_PLATFORM_XENIA)
         #include "Xenia/ScriptBind_AI_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ScriptBind_AI_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ScriptBind_AI_cpp_salem.inl"
     #endif
 #endif
             pFoundObject = randomObjs[0];

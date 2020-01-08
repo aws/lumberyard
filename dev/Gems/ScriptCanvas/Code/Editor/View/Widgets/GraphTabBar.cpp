@@ -12,16 +12,17 @@
 
 #include "precompiled.h"
 
-#include "GraphTabBar.h"
-
-#include <QVariant>
-
-#include <ScriptCanvas/Bus/RequestBus.h>
-
-#include <QVBoxLayout>
 #include <QGraphicsView>
 #include <QLabel>
+#include <QMenu>
+#include <QMouseEvent>
+#include <QVariant>
+#include <QVBoxLayout>
 
+
+#include "GraphTabBar.h"
+
+#include <ScriptCanvas/Bus/RequestBus.h>
 #include <Editor/View/Widgets/CanvasWidget.h>
 
 namespace ScriptCanvasEditor
@@ -40,6 +41,9 @@ namespace ScriptCanvasEditor
             setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
 
             connect(this, &QTabBar::currentChanged, this, &GraphTabBar::currentChangedTab);
+
+            setContextMenuPolicy(Qt::CustomContextMenu);
+            connect(this, &QTabBar::customContextMenuRequested, this, &GraphTabBar::OnContextMenu);
         }
 
         void GraphTabBar::RemoveAllBars()
@@ -119,6 +123,18 @@ namespace ScriptCanvasEditor
                 }
             }
             return -1;
+        }
+
+        AZ::Data::AssetId GraphTabBar::FindAssetId(int tabIndex)
+        {
+            QVariant metadataVariant = tabData(tabIndex);
+            if (metadataVariant.isValid())
+            {
+                auto graphMetadata = metadataVariant.value<GraphTabMetadata>();
+                return graphMetadata.m_assetId;
+            }
+
+            return AZ::Data::AssetId();
         }
 
         void GraphTabBar::AddGraphTab(const AZ::Data::AssetId& assetId, AZStd::string_view tabName)
@@ -208,6 +224,83 @@ namespace ScriptCanvasEditor
                 }
                 removeTab(index);
             }
+        }
+
+        void GraphTabBar::OnContextMenu(const QPoint& point)
+        {
+            QPoint screenPoint = mapToGlobal(point);
+
+            int tabIndex = tabAt(point);
+            bool hasValidTab = (tabIndex >= 0);
+            bool isModified = false;
+
+            QVariant data = tabData(tabIndex);
+            if (data.isValid())
+            {
+                auto graphMetadata = data.value<GraphTabMetadata>();
+
+                isModified = graphMetadata.m_fileState == ScriptCanvasFileState::NEW
+                          || graphMetadata.m_fileState == ScriptCanvasFileState::MODIFIED;
+            }
+
+            QMenu menu;
+
+            QAction* saveAction = menu.addAction("Save");
+            saveAction->setEnabled(hasValidTab && isModified);
+
+            QAction* closeAction = menu.addAction("Close");
+            closeAction->setEnabled(hasValidTab);
+
+            QAction* closeAllAction = menu.addAction("Close All");
+
+            QAction* closeAllButThis = menu.addAction("Close All But This");
+            closeAllButThis->setEnabled(hasValidTab);
+
+            menu.addSeparator();
+            QAction* fullPathAction = menu.addAction("Copy Source Path To Clipboard");
+            fullPathAction->setEnabled(hasValidTab);
+
+            QAction* action = menu.exec(screenPoint);
+
+            if (action)
+            {
+                if (action == saveAction)
+                {
+                    Q_EMIT SaveTab(tabIndex);
+                }
+                else if (action == closeAction)
+                {
+                    tabCloseRequested(tabIndex);
+                }
+                else if (action == closeAllAction)
+                {
+                    Q_EMIT CloseAllTabs();
+                }
+                else if (action == closeAllButThis)
+                {
+                    Q_EMIT CloseAllTabsBut(tabIndex);
+                }
+                else if (action == fullPathAction)
+                {
+                    Q_EMIT CopyPathToClipboard(tabIndex);
+                }
+            }
+        }
+
+        void GraphTabBar::mouseReleaseEvent(QMouseEvent* event)
+        {
+            if (event->button() == Qt::MidButton)
+            {
+                int tabIndex = tabAt(event->localPos().toPoint());
+
+                if (tabIndex >= 0)
+                {
+                    tabCloseRequested(tabIndex);
+                    return;
+                }
+            }
+
+            QTabBar::mouseReleaseEvent(event);
         }
 
         void GraphTabBar::OnAssetModificationStateChanged(ScriptCanvasFileState fileState)

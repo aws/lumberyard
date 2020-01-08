@@ -31,6 +31,9 @@
 #include <Editor/PropertyWidgets/TransitionStateFilterLocalHandler.h>
 #include <Editor/PropertyWidgets/BlendNParamWeightsHandler.h>
 #include <Editor/PropertyWidgets/LODTreeSelectionHandler.h>
+#include <Editor/PropertyWidgets/SimulatedObjectColliderTagHandler.h>
+#include <Editor/PropertyWidgets/SimulatedObjectNameHandler.h>
+#include <Editor/PropertyWidgets/SimulatedObjectSelectionHandler.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 
 
@@ -42,6 +45,7 @@ namespace EMotionFX
         AZStd::vector<AzToolsFramework::PropertyHandlerBase*> propertyHandlers =
         {
             aznew EMotionFX::ActorJointElementHandler(),
+            aznew EMotionFX::ActorWeightedJointElementHandler(),
             aznew EMotionFX::ActorSingleJointHandler(),
             aznew EMotionFX::ActorMultiJointHandler(),
             aznew EMotionFX::ActorMultiWeightedJointHandler(),
@@ -70,7 +74,11 @@ namespace EMotionFX
             aznew EMotionFX::BlendTreeRotationLimitContainerHandler(),
             aznew EMotionFX::Pipeline::UI::LODTreeSelectionHandler(),
             aznew EMotionFX::BlendNParamWeightsHandler(),
-            aznew EMotionFX::BlendNParamWeightElementHandler()
+            aznew EMotionFX::BlendNParamWeightElementHandler(),
+            aznew EMotionFX::SimulatedJointColliderExclusionTagHandler(),
+            aznew EMotionFX::SimulatedObjectColliderTagHandler(),
+            aznew EMotionFX::SimulatedObjectNameHandler(),
+            aznew EMotionFX::SimulatedObjectSelectionHandler()
         };
 
         for (const auto handler : propertyHandlers)

@@ -48,11 +48,7 @@ namespace VirtualGamepad
         //! Constructor
         VirtualGamepadSystemComponent();
 
-        ////////////////////////////////////////////////////////////////////////////////////////////
-        // Disable copying (protected to workaround a VS2013 bug in std::is_copy_constructible)
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
     protected:
-        AZ_DISABLE_COPY_MOVE(VirtualGamepadSystemComponent);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AZ::Component::Init
@@ -79,25 +75,13 @@ namespace VirtualGamepad
         //! The list of button names made available by the virtual gamepad. These can be customized
         //! by editing the virtual gamepad system component, but these default values have been set
         //! (and are used by the provided canvas) so that the gem is able to work "out of the box".
-        AZStd::unordered_set<AZStd::string> m_buttonNames;/* =
-        {
-            // Default values moved to the constructor until we drop support for VS2013
-            "virtual_gamepad_button_a",
-            "virtual_gamepad_button_b",
-            "virtual_gamepad_button_x",
-            "virtual_gamepad_button_y"
-        };*/
+        AZStd::unordered_set<AZStd::string> m_buttonNames;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! The list of thumb-stick names made available by the virtual gamepad. Can be customized
         //! by editing the virtual gamepad system component, but these default values have been set
         //! (and are used by the provided canvas) so that the gem is able to work "out of the box".
-        AZStd::unordered_set<AZStd::string> m_thumbStickNames;/* =
-        {
-            // Default values moved to the constructor until we drop support for VS2013
-            "virtual_gamepad_thumbstick_l",
-            "virtual_gamepad_thumbstick_r"
-        };*/
+        AZStd::unordered_set<AZStd::string> m_thumbStickNames;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Unique pointer to the virtual gamepad device

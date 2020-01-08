@@ -11,7 +11,7 @@
 */
 #include "StdAfx.h"
 #include <AzTest/AzTest.h>
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <Mocks/ISystemMock.h>
 #include <Mocks/IRendererMock.h>
 
@@ -29,7 +29,13 @@ public:
         m_priorRenderer = Cry3DEngineBase::m_pRenderer;
 
         UnitTest::AllocatorsTestFixture::SetUp();
-        AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+
+        // LegacyAllocator is a lazily-created allocator, so it will always exist, but we still manually shut it down and
+        // start it up again between tests so we can have consistent behavior.
+        if (!AZ::AllocatorInstance<AZ::LegacyAllocator>::GetAllocator().IsReady())
+        {
+            AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+        }
 
         m_data = AZStd::make_unique<DataMembers>();
 
@@ -78,11 +84,11 @@ TEST_F(MaterialTest, CMatInfo_SetSubMtl_OutOfRange)
     materialGroup->SetSubMtlCount(1);
     materialGroup->SetSubMtl(0, validSubMaterial);
 
-    AZ_TEST_START_ASSERTTEST;
+    AZ_TEST_START_TRACE_SUPPRESSION;
     // SetSubMtl should fail because the index is beyond the range of material's vector of sub-materials
     materialGroup->SetSubMtl(2, outOfRangeSubMaterial);
     materialGroup->SetSubMtl(-1, outOfRangeSubMaterial);
-    AZ_TEST_STOP_ASSERTTEST(2);
+    AZ_TEST_STOP_TRACE_SUPPRESSION(2);
 
     // Material should still have a 1-size vector of sub-materials, with 'subMaterial' as its only sub-material
     EXPECT_TRUE(materialGroup->IsMaterialGroup());
@@ -108,9 +114,9 @@ TEST_F(MaterialTest, CMatInfo_SetSubMtl_InvalidSubMaterial)
     inValidSubMaterial->SetSubMtl(1, validSubMaterial1);
 
     // SetSubMtl should fail because subMaterial is a material group, and material groups cannot be sub-materials
-    AZ_TEST_START_ASSERTTEST;
+    AZ_TEST_START_TRACE_SUPPRESSION;
     materialGroup->SetSubMtl(1, inValidSubMaterial);
-    AZ_TEST_STOP_ASSERTTEST(1);
+    AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
     // Check that subMaterial is not the material at index 1, since SetSubMtl should have failed
     EXPECT_EQ(materialGroup->GetSubMtl(1), validSubMaterial1);

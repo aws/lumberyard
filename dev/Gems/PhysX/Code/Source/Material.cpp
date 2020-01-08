@@ -11,8 +11,9 @@
 */
 
 #include <PhysX_precompiled.h>
+
+#include "Material.h"
 #include <AzCore/std/smart_ptr/make_shared.h>
-#include <Source/Material.h>
 #include <PxPhysicsAPI.h>
 
 namespace PhysX
@@ -60,11 +61,24 @@ namespace PhysX
 
     Material::Material(const Physics::MaterialConfiguration& materialConfiguration)
     {
-        auto pxMaterial = PxGetPhysics().createMaterial(
-            materialConfiguration.m_staticFriction,
-            materialConfiguration.m_dynamicFriction,
-            materialConfiguration.m_restitution
-        );
+        float staticFriction = materialConfiguration.m_staticFriction;
+        AZ_Warning("PhysX Material", staticFriction >= 0.0f, "Static friction %f for material %s is out of range [0, PX_MAX_F32)",
+            staticFriction, materialConfiguration.m_surfaceType.c_str());
+
+        float dynamicFriction = materialConfiguration.m_dynamicFriction;
+        AZ_Warning("PhysX Material", dynamicFriction >= 0.0f, "Dynamic friction %f for material %s is out of range [0, PX_MAX_F32)",
+            dynamicFriction, materialConfiguration.m_surfaceType.c_str());
+
+        float restitution = materialConfiguration.m_restitution;
+        AZ_Warning("PhysX Material", restitution >= 0 && restitution <= 1.0f, "Restitution %f for material %s is out of range [0, 1]",
+            restitution, materialConfiguration.m_surfaceType.c_str());
+
+        // Clamp the values to valid ranges
+        staticFriction = AZ::GetMax(0.0f, staticFriction);
+        dynamicFriction = AZ::GetMax(0.0f, dynamicFriction);
+        restitution = AZ::GetClamp(restitution, 0.0f, 1.0f);
+
+        auto pxMaterial = PxGetPhysics().createMaterial(staticFriction, dynamicFriction, restitution);
 
         auto materialDestructor = [](auto material)
         {
@@ -90,12 +104,12 @@ namespace PhysX
     {
         AZ_Assert(m_pxMaterial != nullptr, "Material can't be null!");
 
-        m_pxMaterial->setRestitution(configuration.m_restitution);
-        m_pxMaterial->setStaticFriction(configuration.m_staticFriction);
-        m_pxMaterial->setDynamicFriction(configuration.m_dynamicFriction);
+        SetRestitution(configuration.m_restitution);
+        SetStaticFriction(configuration.m_staticFriction);
+        SetDynamicFriction(configuration.m_dynamicFriction);
 
-        m_pxMaterial->setFrictionCombineMode(ToPxCombineMode(configuration.m_frictionCombine));
-        m_pxMaterial->setRestitutionCombineMode(ToPxCombineMode(configuration.m_restitutionCombine));
+        SetFrictionCombineMode(configuration.m_frictionCombine);
+        SetRestitutionCombineMode(configuration.m_restitutionCombine);
 
         m_surfaceType = AZ::Crc32(configuration.m_surfaceType.c_str());
         m_surfaceString = configuration.m_surfaceType;
@@ -128,9 +142,13 @@ namespace PhysX
 
     void Material::SetDynamicFriction(float dynamicFriction)
     {
+        AZ_Warning("PhysX Material", dynamicFriction >= 0.0f, 
+            "SetDynamicFriction: Dynamic friction %f for material %s is out of range [0, PX_MAX_F32)",
+            dynamicFriction, m_surfaceString.c_str());
+
         if (m_pxMaterial)
         {
-            m_pxMaterial->setDynamicFriction(dynamicFriction);
+            m_pxMaterial->setDynamicFriction(AZ::GetMax(0.0f, dynamicFriction));
         }
     }
 
@@ -141,9 +159,13 @@ namespace PhysX
 
     void Material::SetStaticFriction(float staticFriction)
     {
+        AZ_Warning("PhysX Material", staticFriction >= 0.0f, 
+            "SetStaticFriction: Static friction %f for material %s is out of range [0, PX_MAX_F32)",
+            staticFriction, m_surfaceString.c_str());
+        
         if (m_pxMaterial)
         {
-            m_pxMaterial->setStaticFriction(AZStd::clamp(staticFriction, 0.0f, 1.0f));
+            m_pxMaterial->setStaticFriction(AZ::GetMax(0.0f, staticFriction));
         }
     }
 
@@ -154,9 +176,13 @@ namespace PhysX
 
     void Material::SetRestitution(float restitution)
     {
+        AZ_Warning("PhysX Material", restitution >= 0 && restitution <= 1.0f, 
+            "SetRestitution: Restitution %f for material %s is out of range [0, 1]",
+            restitution, m_surfaceString.c_str());
+
         if (m_pxMaterial)
         {
-            m_pxMaterial->setRestitution(AZStd::clamp(restitution, 0.0f, 1.0f));
+            m_pxMaterial->setRestitution(AZ::GetClamp(restitution, 0.0f, 1.0f));
         }
     }
 
@@ -206,32 +232,84 @@ namespace PhysX
 
     void MaterialsManager::Connect()
     {
+        Physics::PhysicsMaterialRequestBus::Handler::BusConnect();
         MaterialManagerRequestsBus::Handler::BusConnect();
     }
 
     void MaterialsManager::Disconnect()
     {
         MaterialManagerRequestsBus::Handler::BusDisconnect();
+        Physics::PhysicsMaterialRequestBus::Handler::BusDisconnect();
     }
 
-    AZStd::vector<AZStd::shared_ptr<Material>> MaterialsManager::GetMaterials(const Physics::MaterialSelection& materialSelection)
+    void MaterialsManager::GetMaterials(const Physics::MaterialSelection& materialSelection
+        , AZStd::vector<AZStd::weak_ptr<Physics::Material>>& outMaterials)
     {
-        AZStd::vector<AZStd::shared_ptr<Material>> materials;
-        materials.reserve(materialSelection.GetMaterialIdsAssignedToSlots().size());
+        outMaterials.clear();
+        outMaterials.reserve(materialSelection.GetMaterialIdsAssignedToSlots().size());
 
-        AZStd::vector<physx::PxMaterial*> pxMaterials;
-        GetPxMaterials(materialSelection, pxMaterials);
+        // Ensure PxMaterial instances are initialized if possible.
+        InitializeMaterials(materialSelection);
 
-        for (auto pxMaterial : pxMaterials)
+        for (const auto& id : materialSelection.GetMaterialIdsAssignedToSlots())
         {
-            Material* material = static_cast<Material*>(pxMaterial->userData);
-            materials.emplace_back(static_cast<Material*>(pxMaterial->userData)->shared_from_this());
+            Physics::MaterialFromAssetConfiguration configuration;
+            if (materialSelection.GetMaterialConfiguration(configuration, id))
+            {
+                auto iterator = m_materialsFromAssets.find(id.GetUuid());
+                if (iterator != m_materialsFromAssets.end())
+                {
+                    outMaterials.push_back(iterator->second);
+                }
+                else
+                {
+                    outMaterials.push_back(GetDefaultMaterial());
+                }
+            }
+            else
+            {
+                // It is important to return exactly the amount of materials specified in materialSelection
+                // If a number of materials different to what was cooked is assigned on a physx mesh it will lead to undefined 
+                // behavior and subtle bugs. Unfortunately, there's no warning or assertion on physx side at the shape creation time, 
+                // nor mention of this in the documentation
+                outMaterials.push_back(GetDefaultMaterial());
+            }
+        }
+    }
+
+    AZ::u32 MaterialsManager::GetFirstSelectedMaterialIndex(const Physics::MaterialSelection& materialSelection)
+    {
+        const AZ::u32 defaultMaterialIndex = 0;
+
+        if (!materialSelection.IsMaterialLibraryValid())
+        {
+            return defaultMaterialIndex;
         }
 
-        return materials;
+        auto materialAsset = AZ::Data::AssetManager::Instance().GetAsset<Physics::MaterialLibraryAsset>(materialSelection.GetMaterialLibraryAssetId()
+            , true
+            , nullptr
+            , true);
+        AZStd::vector<Physics::MaterialFromAssetConfiguration> materialList = materialAsset.Get()->GetMaterialsData();
+        
+        const AZStd::vector<Physics::MaterialId>& selectedMaterials = materialSelection.GetMaterialIdsAssignedToSlots();
+        if (selectedMaterials.size() == 0)
+        {
+            return defaultMaterialIndex;
+        }
+        for (AZ::u32 i=0; i < materialList.size(); ++i)
+        {
+            if (materialList[i].m_id == selectedMaterials[0])
+            {
+                return i + 1; // Index 0 is reserved for Default material.
+            }
+        }
+        
+        return defaultMaterialIndex;
     }
 
-    void MaterialsManager::GetPxMaterials(const Physics::MaterialSelection& materialSelection, AZStd::vector<physx::PxMaterial*>& outMaterials)
+    void MaterialsManager::GetPxMaterials(const Physics::MaterialSelection& materialSelection
+        , AZStd::vector<physx::PxMaterial*>& outMaterials)
     {
         outMaterials.clear();
         if (materialSelection.GetMaterialIdsAssignedToSlots().empty())
@@ -241,33 +319,24 @@ namespace PhysX
             outMaterials.push_back(GetDefaultMaterial()->GetPxMaterial());
             return;
         }
-
         outMaterials.reserve(materialSelection.GetMaterialIdsAssignedToSlots().size());
+
+        // Ensure PxMaterial instances are initialized if possible.
+        InitializeMaterials(materialSelection);
 
         for (const auto& id : materialSelection.GetMaterialIdsAssignedToSlots())
         {
             Physics::MaterialFromAssetConfiguration configuration;
             if (materialSelection.GetMaterialConfiguration(configuration, id))
             {
-                auto materialId = configuration.m_id;
-
-                if (materialId.IsNull())
-                {
-                    materialId = Physics::MaterialId::Create();
-                }
-
-                auto iterator = m_materialsFromAssets.find(materialId.GetUuid());
+                auto iterator = m_materialsFromAssets.find(id.GetUuid());
                 if (iterator != m_materialsFromAssets.end())
                 {
-                    iterator->second->UpdateWithConfiguration(configuration.m_configuration);
                     outMaterials.push_back(iterator->second->GetPxMaterial());
                 }
                 else
                 {
-                    auto newMaterial = AZStd::make_shared<Material>(configuration.m_configuration);
-                    m_materialsFromAssets.emplace(materialId.GetUuid(), newMaterial);
-
-                    outMaterials.push_back(newMaterial->GetPxMaterial());
+                    outMaterials.push_back(GetDefaultMaterial()->GetPxMaterial());
                 }
             }
             else
@@ -279,6 +348,11 @@ namespace PhysX
                 outMaterials.push_back(GetDefaultMaterial()->GetPxMaterial());
             }
         }
+    }
+
+    AZStd::shared_ptr<Physics::Material> MaterialsManager::GetGenericDefaultMaterial()
+    {
+        return GetDefaultMaterial();
     }
 
     const AZStd::shared_ptr<Material>& MaterialsManager::GetDefaultMaterial()
@@ -295,5 +369,37 @@ namespace PhysX
     {
         m_defaultMaterial = nullptr;
         m_materialsFromAssets.clear();
+        Physics::PhysicsMaterialNotificationsBus::Broadcast(&Physics::PhysicsMaterialNotificationsBus::Events::MaterialsReleased);
+    }
+
+    void MaterialsManager::InitializeMaterials(const Physics::MaterialSelection& materialSelection)
+    {
+        const AZStd::vector<Physics::MaterialId>& materialIds = materialSelection.GetMaterialIdsAssignedToSlots();
+        for (const auto& id : materialIds)
+        {
+            Physics::MaterialFromAssetConfiguration configuration;
+            if (!materialSelection.GetMaterialConfiguration(configuration, id))
+            {
+                continue; // Default material skips code below.
+            }
+            
+            auto materialId = configuration.m_id;
+
+            if (materialId.IsNull())
+            {
+                materialId = Physics::MaterialId::Create();
+            }
+
+            auto iterator = m_materialsFromAssets.find(materialId.GetUuid());
+            if (iterator != m_materialsFromAssets.end())
+            {
+                iterator->second->UpdateWithConfiguration(configuration.m_configuration);
+            }
+            else
+            {
+                auto newMaterial = AZStd::make_shared<Material>(configuration.m_configuration);
+                m_materialsFromAssets.emplace(materialId.GetUuid(), newMaterial);
+            }
+        }
     }
 }

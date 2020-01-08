@@ -180,7 +180,6 @@ namespace AZ
         }
     };
 
-#if !defined(AZ_PLATFORM_APPLE) // thread_local storage is not supported for Apple platforms, before iOS 9.
     /**
      * A choice of AZ::EBusTraits::StoragePolicy that specifies
      * that EBus data is stored in a thread_local static variable.
@@ -211,7 +210,6 @@ namespace AZ
             return s_context;
         }
     };
-#endif
 
     template <bool IsEnabled, class Bus, class MutexType>
     struct EBusQueuePolicy
@@ -418,4 +416,24 @@ namespace AZ
 
     /// @endcond
     //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+
+    struct EBusEventProcessingPolicy
+    {
+        template<class Results, class Function, class Interface, class... InputArgs>
+        static void CallResult(Results& results, Function&& func, Interface&& iface, InputArgs&&... args)
+        {
+            results = AZStd::invoke(AZStd::forward<Function>(func), AZStd::forward<Interface>(iface), AZStd::forward<InputArgs>(args)...);
+        }
+
+        template<class Function, class Interface, class... InputArgs>
+        static void Call(Function&& func, Interface&& iface, InputArgs&&... args)
+        {
+            AZStd::invoke(AZStd::forward<Function>(func), AZStd::forward<Interface>(iface), AZStd::forward<InputArgs>(args)...);
+        }
+    };
+
+
 } // namespace AZ

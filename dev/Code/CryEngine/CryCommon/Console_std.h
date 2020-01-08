@@ -22,6 +22,8 @@ namespace std
         #include "Xenia/Console_std_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/Console_std_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/Console_std_h_salem.inl"
     #endif
 #endif
 }

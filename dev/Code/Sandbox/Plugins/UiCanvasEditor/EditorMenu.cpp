@@ -879,7 +879,7 @@ void EditorWindow::AddMenu_PreviewView()
 void EditorWindow::AddMenu_Help()
 {
     const char* documentationUrl = "http://docs.aws.amazon.com/lumberyard/latest/userguide/ui-editor-intro.html";
-    const char* tutorualsUrl = "https://gamedev.amazon.com/forums/tutorials#ui_creation";
+    const char* tutorialsUrl = "https://www.youtube.com/amazonlumberyardtutorials";
     const char* forumUrl = "https://gamedev.amazon.com/forums/spaces/141/ui-2d.html";
 
     QMenu* menu = menuBar()->addMenu("&Help");
@@ -907,9 +907,9 @@ void EditorWindow::AddMenu_Help()
         QObject::connect(action,
             &QAction::triggered,
             this,
-            [tutorualsUrl](bool checked)
+            [tutorialsUrl](bool checked)
             {
-                QDesktopServices::openUrl(QUrl(tutorualsUrl));
+                QDesktopServices::openUrl(QUrl(tutorialsUrl));
             });
         menu->addAction(action);
         addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action

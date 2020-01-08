@@ -57,13 +57,9 @@ namespace LmbrCentral
 
         m_polygonPrismShape.Activate(GetEntityId());
 
-        bool selected = false;
-        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(
-            selected, GetEntityId(), &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSelected);
-
         // placeholder - create initial polygon prism shape if empty
         AZ::VertexContainer<AZ::Vector2>& vertexContainer = m_polygonPrismShape.GetPolygonPrism()->m_vertexContainer;
-        if (selected && vertexContainer.Empty())
+        if (vertexContainer.Empty())
         {
             vertexContainer.AddVertex(AZ::Vector2(-2.0f, -2.0f));
             vertexContainer.AddVertex(AZ::Vector2(2.0f, -2.0f));
@@ -163,7 +159,7 @@ namespace LmbrCentral
                     "Polygon Prism Shape", "Provides polygon prism shape")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Shape")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/PolygonPrism.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/PolygonPrism.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/PolygonPrism.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/polygon-prism-component")

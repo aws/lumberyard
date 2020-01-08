@@ -322,6 +322,26 @@ namespace EMotionFX
     }
 
 
+    AZStd::string BlendTreeMaskNode::GetMask0JointName(int index) const
+    {
+        return m_mask0[index];
+    }
+
+    AZStd::string BlendTreeMaskNode::GetMask1JointName(int index) const
+    {
+        return m_mask1[index];
+    }
+
+    AZStd::string BlendTreeMaskNode::GetMask2JointName(int index) const
+    {
+        return m_mask2[index];
+    }
+
+    AZStd::string BlendTreeMaskNode::GetMask3JointName(int index) const
+    {
+        return m_mask3[index];
+    }
+
 
     void BlendTreeMaskNode::SetMask0(const AZStd::vector<AZStd::string>& mask0)
     {
@@ -390,30 +410,40 @@ namespace EMotionFX
             return;
         }
 
+        // clang-format off
         editContext->Class<BlendTreeMaskNode>("Pose Mask", "Pose mark attributes")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
-            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
             ->DataElement(AZ_CRC("ActorNodes", 0x70504714), &BlendTreeMaskNode::m_mask0, "Mask 1", "The mask to apply on the Pose 1 input port.")
-            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
-            ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
+                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+                ->Attribute(AZ::Edit::Attributes::IndexedChildNameLabelOverride, &BlendTreeMaskNode::GetMask0JointName)
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                ->ElementAttribute(AZ::Edit::Attributes::Handler, AZ_CRC("ActorJointElement", 0xedc8946c))
             ->DataElement(AZ_CRC("ActorNodes", 0x70504714), &BlendTreeMaskNode::m_mask1, "Mask 2", "The mask to apply on the Pose 2 input port.")
-            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
-            ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
+                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+                ->Attribute(AZ::Edit::Attributes::IndexedChildNameLabelOverride, &BlendTreeMaskNode::GetMask1JointName)
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                ->ElementAttribute(AZ::Edit::Attributes::Handler, AZ_CRC("ActorJointElement", 0xedc8946c))
             ->DataElement(AZ_CRC("ActorNodes", 0x70504714), &BlendTreeMaskNode::m_mask2, "Mask 3", "The mask to apply on the Pose 3 input port.")
-            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
-            ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
+                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+                ->Attribute(AZ::Edit::Attributes::IndexedChildNameLabelOverride, &BlendTreeMaskNode::GetMask2JointName)
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                ->ElementAttribute(AZ::Edit::Attributes::Handler, AZ_CRC("ActorJointElement", 0xedc8946c))
             ->DataElement(AZ_CRC("ActorNodes", 0x70504714), &BlendTreeMaskNode::m_mask3, "Mask 4", "The mask to apply on the Pose 4 input port.")
-            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
-            ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
+                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+                ->Attribute(AZ::Edit::Attributes::IndexedChildNameLabelOverride, &BlendTreeMaskNode::GetMask3JointName)
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                ->ElementAttribute(AZ::Edit::Attributes::Handler, AZ_CRC("ActorJointElement", 0xedc8946c))
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeMaskNode::m_outputEvents0, "Output Events 1", "Output events of the first input port?")
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeMaskNode::m_outputEvents1, "Output Events 2", "Output events of the second input port?")
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeMaskNode::m_outputEvents2, "Output Events 3", "Output events of the third input port?")
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeMaskNode::m_outputEvents3, "Output Events 4", "Output events of the forth input port?")
         ;
+        // clang-format on
     }
 } // namespace EMotionFX

@@ -1,0 +1,14 @@
+{
+    "none": {
+        "Platform/iOS": [
+            "../Common/UnixLike/AzTest/ColorizedOutput_UnixLike.cpp"
+        ]
+    },
+    "auto": {
+        "Platform/iOS": [
+            "../Common/Unimplemented/Platform_Unimplemented.cpp",
+            "AzTest_Traits_Platform.h",
+            "AzTest_Traits_iOS.h"
+        ]
+    }
+}

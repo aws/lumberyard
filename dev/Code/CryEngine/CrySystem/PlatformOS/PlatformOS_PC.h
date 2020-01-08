@@ -16,9 +16,6 @@
 
 #pragma once
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#else
-
 #include "IPlatformOS.h"
 #include <CryListenerSet.h>
 
@@ -71,5 +68,3 @@ private:
     int m_cachePakStatus;
     int m_cachePakUser;
 };
-
-#endif

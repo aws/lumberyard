@@ -716,10 +716,10 @@ namespace EMotionFX
     // remove all event handlers
     void AnimGraphInstance::RemoveAllEventHandlers()
     {
-#ifdef DEBUG
+#ifdef AZ_DEBUG_BUILD
         for (const EventHandlerVector& eventHandlers : m_eventHandlersByEventType)
         {
-            AZ_Assert(eventHandlers.empty(), "Expected all events to be removed");
+            AZ_Assert(eventHandlers.empty(), "Expected all event handlers to be removed");
         }
 #endif
         m_eventHandlersByEventType.clear();

@@ -78,7 +78,7 @@ bool CVisualLog::Create()
     }
     else
     {
-        CRY_ASSERT("Trying to Create() the singleton more than once");
+        CRY_ASSERT_MESSAGE(false, "Trying to Create() the singleton more than once");
     }
 
     return(m_pInstance != NULL);

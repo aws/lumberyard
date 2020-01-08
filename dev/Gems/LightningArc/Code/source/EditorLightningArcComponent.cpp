@@ -129,7 +129,7 @@ namespace Lightning
                 editContext->Class<EditorLightningArcComponent>("Lightning Arc", "Produces an arcing effect that jumps to a random target entity.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
-                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/LightningArc.png")
+                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/LightningArc.svg")
                     ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/LightningArc.png")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))

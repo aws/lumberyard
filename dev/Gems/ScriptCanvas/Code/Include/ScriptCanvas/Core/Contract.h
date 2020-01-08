@@ -28,6 +28,11 @@ namespace ScriptCanvas
     class Slot;
     class Contract;
 
+    namespace Data
+    {
+        class Type;
+    }
+
     //! Function which will be invoked when a slot is created to allow the creation of a slot contract object
     using ContractCreationFunction = AZStd::function<Contract*()>;
     struct ContractDescriptor
@@ -55,8 +60,17 @@ namespace ScriptCanvas
         static void Reflect(AZ::ReflectContext* reflection);
 
         AZ::Outcome<void, AZStd::string> Evaluate(const Slot& sourceSlot, const Slot& targetSlot) const;
+        AZ::Outcome<void, AZStd::string> EvaluateForType(const Data::Type& dataType) const;
 
     protected:
         virtual AZ::Outcome<void, AZStd::string> OnEvaluate(const Slot& sourceSlot, const Slot& targetSlot) const = 0;
+
+        // By default accept all Data::Types for each contract
+        // Mainly here for legacy support new contracts should implement this themselves.
+        virtual AZ::Outcome<void, AZStd::string> OnEvaluateForType(const Data::Type& dataType) const
+        {
+            AZ_UNUSED(dataType);
+            return AZ::Success();
+        };
     };
 }

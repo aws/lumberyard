@@ -14,6 +14,7 @@
 
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/std/string/string.h>
+#include <AzCore/std/tuple.h>
 #include <EMotionFX/Source/AnimGraphObjectIds.h>
 #include <EMotionFX/Source/TriggerActionSetup.h>
 #include "EMotionFXConfig.h"
@@ -169,7 +170,7 @@ namespace EMotionFX
         virtual bool GetCanBeInsideStateMachineOnly() const     { return false; }
         virtual bool GetCanBeInsideChildStateMachineOnly() const{ return false; }
         virtual bool GetNeedsNetTimeSync() const                { return false; }
-        virtual AZ::Color GetVisualColor() const                { return AZ::Color(0.28f, 0.24f, 0.93, 1.0f); }
+        virtual AZ::Color GetVisualColor() const                { return AZ::Color(0.28f, 0.24f, 0.93f, 1.0f); }
         virtual AZ::Color GetHasChildIndicatorColor() const     { return AZ::Color(1.0f, 1.0f, 0, 1.0f); }
 
         void InitInternalAttributes(AnimGraphInstance* animGraphInstance) override;
@@ -206,6 +207,7 @@ namespace EMotionFX
         void SyncFullNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode, float weight, bool modifyMasterSpeed = true);
         void SyncPlayTime(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode);
         void SyncUsingSyncTracks(AnimGraphInstance* animGraphInstance, AnimGraphNode* syncWithNode, const AnimGraphSyncTrack* syncTrackA, const AnimGraphSyncTrack* syncTrackB, float weight, bool resync, bool modifyMasterSpeed = true);
+        static AZStd::tuple<float, float, float> SyncPlaySpeeds(float playSpeedA, float durationA, float playSpeedB, float durationB, float weight);
         void SyncPlaySpeeds(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode, float weight, bool modifyMasterSpeed = true);
         virtual void HierarchicalSyncInputNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* inputNode, AnimGraphNodeData* uniqueDataOfThisNode);
         void HierarchicalSyncAllInputNodes(AnimGraphInstance* animGraphInstance, AnimGraphNodeData* uniqueDataOfThisNode);

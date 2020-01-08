@@ -86,7 +86,7 @@ namespace EMStudio
         // motion file dialogs
         AZStd::string LoadMotionFileDialog(QWidget* parent);
         AZStd::vector<AZStd::string> LoadMotionsFileDialog(QWidget* parent);
-        void SaveMotion(EMotionFX::Motion* motion);
+        void SaveMotion(AZ::u32 motionId);
 
         // node mapping files
         AZStd::string LoadNodeMapFileDialog(QWidget* parent);

@@ -64,7 +64,6 @@ bool SPostEffectsUtils::Create()
     static ICVar* DolbyCvar = gEnv->pConsole->GetCVar("r_HDRDolby");
     int DolbyCvarValue = DolbyCvar ? DolbyCvar->GetIVal() : eDVM_Disabled;
 
-    //  Confetti BEGIN: Igor Lobanchikov :END
     ETEX_Format nHDRReducedFormat = gRenDev->UseHalfFloatRenderTargets() ? eTF_R11G11B10F : eTF_R10G10B10A2;
 
     ETEX_Format taaFormat = eTF_R8G8B8A8;
@@ -118,12 +117,10 @@ bool SPostEffectsUtils::Create()
 
         CreateRenderTarget("$BackBufferScaledTemp_d2", CTexture::s_ptexBackBufferScaledTemp[0], nWidth >> 1, nHeight >> 1, Clr_Unknown, 1, 0, eTF_R8G8B8A8, -1, FT_DONT_RELEASE);
 
-        //  Confetti BEGIN: Igor Lobanchikov
         CreateRenderTarget("$WaterVolumeRefl", CTexture::s_ptexWaterVolumeRefl[0], nWidth >> 1, nHeight >> 1, Clr_Unknown, 1, true, nHDRReducedFormat, TO_WATERVOLUMEREFLMAP, FT_DONT_RELEASE);
         //CTexture::s_ptexWaterVolumeRefl[0]->DisableMgpuSync();
         CreateRenderTarget("$WaterVolumeReflPrev", CTexture::s_ptexWaterVolumeRefl[1], nWidth >> 1, nHeight >> 1, Clr_Unknown, 1, true, nHDRReducedFormat, TO_WATERVOLUMEREFLMAPPREV, FT_DONT_RELEASE);
         //CTexture::s_ptexWaterVolumeRefl[1]->DisableMgpuSync();
-        //  Confetti End: Igor Lobanchikov
 
         CreateRenderTarget("$BackBufferScaled_d4", CTexture::s_ptexBackBufferScaled[1], nWidth >> 2, nHeight >> 2, Clr_Unknown, 1, 0, eTF_R8G8B8A8, TO_BACKBUFFERSCALED_D4, FT_DONT_RELEASE);
         CreateRenderTarget("$BackBufferScaledTemp_d4", CTexture::s_ptexBackBufferScaledTemp[1], nWidth >> 2, nHeight >> 2, Clr_Unknown, 1, 0, eTF_R8G8B8A8, -1, FT_DONT_RELEASE);
@@ -141,7 +138,6 @@ bool SPostEffectsUtils::Create()
         // Water phys simulation requires data overframes, need to handle for each GPU in MGPU mode
         CreateRenderTarget("$WaterRipplesDDN_0", CTexture::s_ptexWaterRipplesDDN, 256, 256, Clr_Unknown, 1, true, eTF_R8G8B8A8, TO_WATERRIPPLESMAP);
         //CTexture::s_ptexWaterRipplesDDN->DisableMgpuSync();
-        //  Confetti BEGIN: Igor Lobanchikov
         if (gRenDev->UseHalfFloatRenderTargets())
         {
             CreateRenderTarget("$WaterVolumeDDN", CTexture::s_ptexWaterVolumeDDN, 64, 64, Clr_Unknown, 1, true, eTF_R16G16B16A16F, TO_WATERVOLUMEMAP);
@@ -150,7 +146,6 @@ bool SPostEffectsUtils::Create()
         {
             CreateRenderTarget("$WaterVolumeDDN", CTexture::s_ptexWaterVolumeDDN, 64, 64, Clr_Unknown, 1, true, eTF_R8G8B8A8, TO_WATERVOLUMEMAP);
         }
-        //  Confetti End: Igor Lobanchikov
         //CTexture::s_ptexWaterVolumeDDN->DisableMgpuSync();
 
         if (CRenderer::CV_r_watervolumecaustics && CRenderer::CV_r_watercaustics) //@NOTE: CV_r_watercaustics will be removed when the infinite ocean component feature toggle is removed.

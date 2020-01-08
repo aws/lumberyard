@@ -52,7 +52,7 @@ namespace LmbrCentral
                     "Lens Flare", "The Lens Flare component allows the placement of a lens flare on an entity")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/LensFlare.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/LensFlare.svg")
                         ->Attribute(AZ::Edit::Attributes::PrimaryAssetType, AZ::AzTypeInfo<LmbrCentral::LensFlareAsset>::Uuid())
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/LensFlare.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
@@ -327,14 +327,20 @@ namespace LmbrCentral
 
     void EditorLensFlareComponent::RefreshLensFlare()
     {
-        EditorLensFlareConfiguration temp = m_configuration;
+        m_light.UpdateRenderLight(GetEditorLensFlareConfiguration());
+    }
+
+    EditorLensFlareConfiguration EditorLensFlareComponent::GetEditorLensFlareConfiguration() const
+    {
+        EditorLensFlareConfiguration configuration = m_configuration;
 
         // take the entity's visibility into account
         bool entityVisibility = true;
         AzToolsFramework::EditorVisibilityRequestBus::EventResult(entityVisibility, GetEntityId(), &AzToolsFramework::EditorVisibilityRequestBus::Events::GetCurrentVisibility);
-        temp.m_visible &= entityVisibility;
+        configuration.m_visible &= entityVisibility;
+        configuration.m_asset = m_asset;
 
-        m_light.UpdateRenderLight(temp);
+        return configuration;
     }
 
     void EditorLensFlareComponent::BuildGameEntity(AZ::Entity* gameEntity)
@@ -344,6 +350,7 @@ namespace LmbrCentral
         if (lensFlareComponent)
         {
             lensFlareComponent->m_configuration = m_configuration;
+            lensFlareComponent->m_configuration.m_asset = m_asset;
         }
     }
 

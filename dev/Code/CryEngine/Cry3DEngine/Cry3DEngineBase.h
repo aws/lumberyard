@@ -32,7 +32,12 @@ struct I3DEngine;
 struct IObjManager;
 struct CVars;
 struct CVisAreaManager;
+
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
 class CTerrain;
+#endif
+
+class COcean;
 class C3DEngine;
 class CParticleManager;
 class CDecalManager;
@@ -64,7 +69,12 @@ struct Cry3DEngineBase
     static CVars* m_pCVars;
     static ICryPak* m_pCryPak;
     static IObjManager* m_pObjManager;
+
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
     static CTerrain* m_pTerrain;
+#endif
+
+    static COcean* m_pOcean;
     static IParticleManager* m_pPartManager;
     static IOpticsManager* m_pOpticsManager;
     static CDecalManager* m_pDecalManager;
@@ -109,7 +119,12 @@ struct Cry3DEngineBase
     inline static IConsole* GetConsole() { return m_pConsole; }
     inline static C3DEngine* Get3DEngine() { return m_p3DEngine; }
     inline static IObjManager* GetObjManager() { return m_pObjManager; };
+
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
     inline static CTerrain* GetTerrain() { return m_pTerrain; };
+#endif
+
+    inline static COcean* GetOcean() { return m_pOcean; };
     inline static CVars* GetCVars() { return m_pCVars; }
     inline static CVisAreaManager* GetVisAreaManager() { return m_pVisAreaManager; }
     inline static ICryPak* GetPak() { return m_pCryPak; }

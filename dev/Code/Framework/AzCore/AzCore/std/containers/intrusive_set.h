@@ -176,7 +176,7 @@ namespace AZStd
         typedef typename AZStd::size_t          difference_type;
         typedef typename AZStd::size_t          size_type;
 
-        typedef typename Compare::first_argument_type KeyType;
+        typedef T                               KeyType;
         typedef Compare                         KeyCompare;
 
         // AZSTD extension.
@@ -476,43 +476,6 @@ namespace AZStd
             clear();
         }
 
-#ifdef AZ_HAS_RVALUE_REFS
-        // TODO: LY-87175 Add move and swap operations to intrusive_set
-        /*AZ_FORCE_INLINE intrusive_multiset(this_type&& rhs)
-        {
-            assign_rv(AZStd::forward<this_type>(rhs));
-        }
-
-        this_type& operator=(this_type&& rhs)
-        {
-            assign_rv(AZStd::forward<this_type>(rhs));
-            return *this;
-        }
-
-        void assign_rv(this_type&& rhs)
-        {
-            if (this == &rhs) return;
-            node_ptr_type head = get_head();
-            node_ptr_type rhsHead = rhs.get_head();
-            hook_node_ptr_type headHook = Hook::to_node_ptr(head);
-            hook_node_ptr_type rhsHeadHook = Hook::to_node_ptr(rhsHead);
-
-            Hook::to_node_ptr(rhsHeadHook->m_next)->m_prev = head;
-            Hook::to_node_ptr(rhsHeadHook->m_prev)->m_next = head;
-            headHook->m_next = rhsHeadHook->m_next;
-            headHook->m_prev = rhsHeadHook->m_prev;
-            m_numElements = rhs.m_numElements;
-
-            rhsHeadHook->m_next = rhsHeadHook->m_prev = rhsHead;
-            rhs.m_numElements = 0;
-        }
-
-        void swap(this_type&& rhs)
-        {
-            assign_rv(AZStd::forward(rhs));
-        }*/
-#endif // AZ_HAS_RVALUE_REFS
-
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // We can completely forbid copy/assign operators once we fully switch for containers that require movable only.
         AZ_FORCE_INLINE intrusive_multiset(const this_type& rhs)
@@ -553,8 +516,17 @@ namespace AZStd
 
         AZ_FORCE_INLINE iterator lower_bound(const KeyType& key) { return iterator(DoLowerBound(key)); }
         AZ_FORCE_INLINE const_iterator lower_bound(const KeyType& key) const { return const_iterator(DoLowerBound(key)); }
+        template<class ComparableToKey>
+        enable_if_t<Internal::is_transparent<Compare, ComparableToKey>::value, iterator> lower_bound(const ComparableToKey& key) { return iterator(DoLowerBound(key)); }
+        template<class ComparableToKey>
+        enable_if_t<Internal::is_transparent<Compare, ComparableToKey>::value, const_iterator> lower_bound(const ComparableToKey& key) const { return const_iterator(DoLowerBound(key)); }
+
         AZ_FORCE_INLINE iterator upper_bound(const KeyType& key) { return iterator(DoUpperBound(key)); }
         AZ_FORCE_INLINE const_iterator upper_bound(const KeyType& key) const { return const_iterator(DoUpperBound(key)); }
+        template<class ComparableToKey>
+        enable_if_t<Internal::is_transparent<Compare, ComparableToKey>::value, iterator> upper_bound(const ComparableToKey& key) { return iterator(DoUpperBound(key)); }
+        template<class ComparableToKey>
+        enable_if_t<Internal::is_transparent<Compare, ComparableToKey>::value, const_iterator> upper_bound(const ComparableToKey& key) const { return const_iterator(DoUpperBound(key)); }
         AZ_FORCE_INLINE iterator find(const KeyType& key)
         {
             T* found = DoLowerBound(key);
@@ -828,27 +800,6 @@ namespace AZStd
             return bestNode;
         }
 
-        node_ptr_type DoUpperBound(const KeyType& key)
-        {
-            node_ptr_type endNode = get_head();
-            node_ptr_type bestNode = get_head();
-            node_ptr_type curNode = get_root();
-            while (curNode != endNode)
-            {
-                if (m_keyCompare(key, *curNode))
-                {
-                    bestNode = curNode;
-                    curNode = Hook::to_node_ptr(curNode)->m_children[AZSTD_RBTREE_LEFT];
-                }
-                else
-                {
-                    curNode = Hook::to_node_ptr(curNode)->m_children[AZSTD_RBTREE_RIGHT];
-                }
-            }
-            return bestNode;
-        }
-
-
         const_node_ptr_type DoLowerBound(const KeyType& key) const
         {
             const_node_ptr_type endNode = get_head();
@@ -864,6 +815,53 @@ namespace AZStd
                 {
                     bestNode = curNode;
                     curNode = Hook::to_node_ptr(curNode)->m_children[AZSTD_RBTREE_LEFT];
+                }
+            }
+            return bestNode;
+        }
+
+        template<typename ComparableToKey>
+        enable_if_t<Internal::is_transparent<Compare, ComparableToKey>::value, node_ptr_type> DoLowerBound(const ComparableToKey& key)
+        {
+            node_ptr_type endNode = get_head();
+            node_ptr_type bestNode = get_head();
+            node_ptr_type curNode = get_root();
+            while (curNode != endNode)
+            {
+                if (m_keyCompare(*curNode, key))
+                {
+                    curNode = Hook::to_node_ptr(curNode)->m_children[AZSTD_RBTREE_RIGHT];
+                }
+                else
+                {
+                    bestNode = curNode;
+                    curNode = Hook::to_node_ptr(curNode)->m_children[AZSTD_RBTREE_LEFT];
+                }
+            }
+            return bestNode;
+        }
+
+        template<typename ComparableToKey>
+        enable_if_t<Internal::is_transparent<Compare, ComparableToKey>::value, const_node_ptr_type> DoLowerBound(const ComparableToKey& key) const
+        {
+            return const_cast<const_node_ptr_type>(const_cast<intrusive_multiset*>(this)->DoLowerBound(key));
+        }
+
+        node_ptr_type DoUpperBound(const KeyType& key)
+        {
+            node_ptr_type endNode = get_head();
+            node_ptr_type bestNode = get_head();
+            node_ptr_type curNode = get_root();
+            while (curNode != endNode)
+            {
+                if (m_keyCompare(key, *curNode))
+                {
+                    bestNode = curNode;
+                    curNode = Hook::to_node_ptr(curNode)->m_children[AZSTD_RBTREE_LEFT];
+                }
+                else
+                {
+                    curNode = Hook::to_node_ptr(curNode)->m_children[AZSTD_RBTREE_RIGHT];
                 }
             }
             return bestNode;
@@ -887,6 +885,33 @@ namespace AZStd
                 }
             }
             return bestNode;
+        }
+
+        template<typename ComparableToKey>
+        enable_if_t<Internal::is_transparent<Compare, ComparableToKey>::value, node_ptr_type> DoUpperBound(const ComparableToKey& key)
+        {
+            node_ptr_type endNode = get_head();
+            node_ptr_type bestNode = get_head();
+            node_ptr_type curNode = get_root();
+            while (curNode != endNode)
+            {
+                if (m_keyCompare(key, *curNode))
+                {
+                    bestNode = curNode;
+                    curNode = Hook::to_node_ptr(curNode)->m_children[AZSTD_RBTREE_LEFT];
+                }
+                else
+                {
+                    curNode = Hook::to_node_ptr(curNode)->m_children[AZSTD_RBTREE_RIGHT];
+                }
+            }
+            return bestNode;
+        }
+
+        template<typename ComparableToKey>
+        enable_if_t<Internal::is_transparent<Compare, ComparableToKey>::value, const_node_ptr_type> DoUpperBound(const ComparableToKey& key) const
+        {
+            return const_cast<const_node_ptr_type>(const_cast<intrusive_multiset*>(this)->DoUpperBound(key));
         }
 
         inline void setNil(node_ptr_type node) const

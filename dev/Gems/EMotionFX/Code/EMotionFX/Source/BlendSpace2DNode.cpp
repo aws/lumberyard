@@ -643,7 +643,6 @@ namespace EMotionFX
         AZ_Assert(uniqueDataMotionIndex < uniqueData->m_motionInfos.size(), "Invalid amount of motion infos in unique data");
         MotionInstance* motionInstance = uniqueData->m_motionInfos[uniqueDataMotionIndex].m_motionInstance;
         motionInstance->SetIsInPlace(false);
-        const BlendSpaceManager* blendSpaceManager = GetAnimGraphManager().GetBlendSpaceManager();
 
         position = AZ::Vector2::CreateZero();
 
@@ -818,8 +817,6 @@ namespace EMotionFX
 
     void BlendSpace2DNode::UpdateMotionPositions(UniqueData& uniqueData)
     {
-        const BlendSpaceManager* blendSpaceManager = GetAnimGraphManager().GetBlendSpaceManager();
-
         // Get the motion parameter evaluators.
         BlendSpaceParamEvaluator* evaluatorX = nullptr;
         BlendSpaceParamEvaluator* evaluatorY = nullptr;
@@ -1144,7 +1141,7 @@ namespace EMotionFX
     {
         float   minDistSqr = FLT_MAX;
         AZ::u32 closestEdgeIdx = MCORE_INVALIDINDEX32;
-        float   uOnClosestEdge;
+        float   uOnClosestEdge = 0.0f;
 
         const AZ::u32 numEdges = (AZ::u32)uniqueData.m_outerEdges.size();
         for (AZ::u32 i = 0; i < numEdges; ++i)

@@ -1,0 +1,7 @@
+{
+  "auto": {
+    "Platform/Android": [
+      "CAFile_Android.cpp"
+    ]
+  }
+}

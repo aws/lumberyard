@@ -22,6 +22,17 @@
             "Include/ScriptCanvas/Debugger/Messages/Request.cpp",
             "Include/ScriptCanvas/Debugger/Messages/Request.h"
         ],
+        "Include/ScriptCanvas/Debugger/ValidationEvents": [
+            "Include/ScriptCanvas/Debugger/ValidationEvents/ValidationEvent.h"
+        ],
+        "Include/ScriptCanvas/Debugger/ValidationEvents/GraphTranslationValidation": [
+            "Include/ScriptCanvas/Debugger/ValidationEvents/GraphTranslationValidation/GraphTranslationValidations.h",
+            "Include/ScriptCanvas/Debugger/ValidationEvents/GraphTranslationValidation/GraphTranslationValidationIds.h"
+        ],
+        "Include/ScriptCanvas/Debugger/ValidationEvents/ParsingValidation": [
+            "Include/ScriptCanvas/Debugger/ValidationEvents/ParsingValidation/ParsingValidations.h",
+            "Include/ScriptCanvas/Debugger/ValidationEvents/ParsingValidation/ParsingValidationIds.h"
+        ],
         "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation": [
             "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation/DataValidationEvents.h",
             "Include/ScriptCanvas/Debugger/ValidationEvents/DataValidation/DataValidationIds.h",

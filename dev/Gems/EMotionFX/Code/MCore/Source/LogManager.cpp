@@ -11,8 +11,8 @@
 */
 
 // include the Core headers
+#include <AzCore/PlatformIncl.h>
 #include "LogManager.h"
-#include "LogFile.h"
 
 #include <iostream>
 
@@ -39,42 +39,24 @@ namespace MCore
 
     //-------------------------------------------------------------------------------------------
 
-    // constructor
-    LogFileCallback::LogFileCallback(const char* filename)
-        : LogCallback()
+    void AzLogCallback::Log(const char* text, ELogLevel logLevel)
     {
-        mLog = new LogFile(filename);
-    }
-
-
-    // destructor
-    LogFileCallback::~LogFileCallback()
-    {
-        if (mLog)
+        switch (logLevel)
         {
-            delete mLog;
+            case LogCallback::LOGLEVEL_FATAL:
+            case LogCallback::LOGLEVEL_ERROR:
+                AZ_Error("EMotionFX", false, "%s\n", text);
+                break;
+            case LogCallback::LOGLEVEL_WARNING:
+                AZ_Warning("EMotionFX", false, "%s\n", text);
+                break;
+            case LogCallback::LOGLEVEL_INFO:
+            case LogCallback::LOGLEVEL_DETAILEDINFO:
+            case LogCallback::LOGLEVEL_DEBUG:
+            default:
+                AZ_TracePrintf("EMotionFX", "%s\n", text);
+                break;
         }
-    }
-
-
-    // log callback function
-    void LogFileCallback::Log(const char* text, ELogLevel logLevel)
-    {
-        mLog->LogMessage(text, logLevel);
-    }
-
-
-    // return a pointer to the log file
-    LogFile* LogFileCallback::GetLogFile() const
-    {
-        return mLog;
-    }
-
-
-    // return the unique type identification number of this log file callback
-    uint32 LogFileCallback::GetType() const
-    {
-        return TYPE_ID;
     }
 
     //-------------------------------------------------------------------------------------------
@@ -94,20 +76,6 @@ namespace MCore
     {
         // get rid of the callbacks
         ClearLogCallbacks();
-    }
-
-
-    // creates a log file callback and adds it to the stack
-    LogFile* LogManager::CreateLogFile(const char* filename)
-    {
-        // create log file callback instance
-        LogFileCallback* callback = new LogFileCallback(filename);
-
-        // add log file callback to the stack
-        AddLogCallback(callback);
-
-        // return pointer to the log file of the callback
-        return callback->GetLogFile();
     }
 
 
@@ -140,52 +108,6 @@ namespace MCore
         // collect the enabled log levels
         InitLogLevels();
     }
-
-
-    // remove all given log file callbacks by file names
-    void LogManager::RemoveAllByFileName(const char* fileName)
-    {
-        LockGuard lock(mMutex);
-        // iterate through all log callbacks
-        for (uint32 i = 0; i < mLogCallbacks.GetLength(); )
-        {
-            LogCallback* callback = mLogCallbacks[i];
-
-            // check if we are dealing with a log file
-            if (callback->GetType() == LogFileCallback::TYPE_ID)
-            {
-                LogFileCallback* logFileCallback = static_cast<LogFileCallback*>(callback);
-
-                // check if the log file is valid
-                if (logFileCallback->GetLogFile() == nullptr)
-                {
-                    continue;
-                }
-
-                // compare the file names
-                if (logFileCallback->GetLogFile()->GetFileName() == fileName)
-                {
-                    // get rid of the callback instance
-                    delete callback;
-
-                    // remove the callback from the stack
-                    mLogCallbacks.Remove(i);
-                }
-                else
-                {
-                    i++;
-                }
-            }
-            else
-            {
-                i++;
-            }
-        }
-
-        // collect the enabled log levels
-        InitLogLevels();
-    }
-
 
     // remove all given log callbacks by type
     void LogManager::RemoveAllByType(uint32 type)
@@ -242,43 +164,11 @@ namespace MCore
         return mLogCallbacks[index];
     }
 
-
-    // find the first log file callback by filename
-    LogFileCallback* LogManager::FindByFileName(const char* filename)
-    {
-        LockGuard lock(mMutex);
-
-        // get the number of callbacks and iterate through them
-        const uint32 num = mLogCallbacks.GetLength();
-        for (uint32 i = 0; i < num; ++i)
-        {
-            // get the current log callback and check if it is a log file
-            LogCallback* logCallback = mLogCallbacks[i];
-            if (logCallback->GetType() == LogFileCallback::TYPE_ID)
-            {
-                // typecast to a log file callback
-                LogFileCallback* logFileCallback    = (LogFileCallback*)logCallback;
-                LogFile*        logFile             = logFileCallback->GetLogFile();
-
-                // check if we are dealing with the callback we are searching for
-                if (filename == logFile->GetFileName())
-                {
-                    return logFileCallback;
-                }
-            }
-        }
-
-        // nothing has been found
-        return nullptr;
-    }
-
-
     // return number of log callbacks in the stack
     uint32 LogManager::GetNumLogCallbacks() const
     {
         return mLogCallbacks.GetLength();
     }
-
 
     // collect all enabled log levels
     void LogManager::InitLogLevels()
@@ -481,25 +371,7 @@ namespace MCore
     // print a debug line to the visual studio output, or console output, etc
     void Print(const char* message)
     {
-        // output to the Visual Studio debug window
-    #if (defined(MCORE_PLATFORM_WINDOWS))
-        OutputDebugStringA(message);
-        OutputDebugStringA("\n");
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/LogManager_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/LogManager_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-    #elif (defined(MCORE_PLATFORM_ANDROID))
-        __android_log_print(ANDROID_LOG_INFO, "MCore", message);
-    #else
-        std::cout << message << "\n";
-    #endif
+        AZ_TracePrintf("EMotionFX", "%s\n", message);
     }
 
 

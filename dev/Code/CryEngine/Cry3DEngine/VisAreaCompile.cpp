@@ -17,6 +17,7 @@
 #include "StdAfx.h"
 #include "ObjMan.h"
 #include "VisAreas.h"
+#include <PakLoadDataUtils.h>
 
 #define VISAREA_NODE_CHUNK_VERSION 2
 
@@ -111,14 +112,14 @@ int CVisArea::Load_T(T& f, int& nDataSizeLeft, std::vector<IStatObj*>* pStatObjT
 
     { // get shape points
         int nPointsCount = 0;
-        if (!CTerrain::LoadDataFromFile(&nPointsCount, 1, f, nDataSizeLeft, eEndian))
+        if (!PakLoadDataUtils::LoadDataFromFile(&nPointsCount, 1, f, nDataSizeLeft, eEndian))
         {
             return 0;
         }
 
         // get shape points
         m_lstShapePoints.PreAllocate(nPointsCount, nPointsCount);
-        if (!CTerrain::LoadDataFromFile(m_lstShapePoints.GetElements(), nPointsCount, f, nDataSizeLeft, eEndian))
+        if (!PakLoadDataUtils::LoadDataFromFile(m_lstShapePoints.GetElements(), nPointsCount, f, nDataSizeLeft, eEndian))
         {
             return 0;
         }
@@ -248,7 +249,7 @@ template <class T>
 int CVisArea::LoadHeader_T(T& f, int& nDataSizeLeft, EEndian eEndian, int& objBlockSize)
 {
     SVisAreaChunk chunk;
-    if (!CTerrain::LoadDataFromFile(&chunk, 1, f, nDataSizeLeft, eEndian))
+    if (!PakLoadDataUtils::LoadDataFromFile(&chunk, 1, f, nDataSizeLeft, eEndian))
     {
         return 0;
     }
@@ -338,7 +339,7 @@ int CVisArea::LoadObjectsTree_T(T& f, int& nDataSizeLeft, int nSID, std::vector<
     }
     else if (objBlockSize > 0)
     {
-        CTerrain::LoadDataFromFile_Seek(objBlockSize, f, nDataSizeLeft, eEndian);
+        PakLoadDataUtils::LoadDataFromFile_Seek(objBlockSize, f, nDataSizeLeft, eEndian);
     }
 
     UpdateOcclusionFlagInTerrain();

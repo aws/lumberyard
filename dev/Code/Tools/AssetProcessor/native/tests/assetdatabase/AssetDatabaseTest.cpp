@@ -138,6 +138,22 @@ namespace UnitTests
         AZStd::unique_ptr<StaticData> m_data;
     };
 
+    TEST_F(AssetDatabaseTest, UpdateJob_Succeeds)
+    {
+        using namespace AzToolsFramework::AssetDatabase;
+        CreateCoverageTestData();
+
+        m_data->m_job1.m_warningCount = 11;
+        m_data->m_job1.m_errorCount = 22;
+
+        ASSERT_TRUE(m_data->m_connection.SetJob(m_data->m_job1));
+
+        JobDatabaseEntryContainer jobs;
+        ASSERT_TRUE(m_data->m_connection.GetJobsBySourceID(m_data->m_job1.m_sourcePK, jobs));
+        ASSERT_EQ(jobs.size(), 1);
+        ASSERT_EQ(m_data->m_job1, jobs[0]);
+    }
+
     TEST_F(AssetDatabaseTest, GetProducts_WithEmptyDatabase_Fails_ReturnsNoProducts)
     {
         ProductDatabaseEntryContainer products;
@@ -199,7 +215,7 @@ namespace UnitTests
         // -1 means insert a new product, but the JobPK is an enforced FK constraint, so this should fail since there
         // won't be a Job with the PK of 234234.
 
-        ProductDatabaseEntry product{ -1, 234234, 1, "SomeProduct1.dds", validAssetType1 };
+        ProductDatabaseEntry product{ AzToolsFramework::AssetDatabase::InvalidEntryId, 234234, 1, "SomeProduct1.dds", validAssetType1 };
 
         m_errorAbsorber->Clear();
         EXPECT_FALSE(m_data->m_connection.SetProduct(product));
@@ -225,23 +241,23 @@ namespace UnitTests
         //add a scanfolder.  None of this has to exist in real disk, this is a db test only.
         ScanFolderDatabaseEntry scanFolder {"c:/lumberyard/dev", "dev", "rootportkey", ""};
         EXPECT_TRUE(m_data->m_connection.SetScanFolder(scanFolder));
-        ASSERT_NE(scanFolder.m_scanFolderID, -1); 
+        ASSERT_NE(scanFolder.m_scanFolderID, AzToolsFramework::AssetDatabase::InvalidEntryId); 
 
         SourceDatabaseEntry sourceEntry {scanFolder.m_scanFolderID, "somefile.tif", AZ::Uuid::CreateRandom(), "fingerprint1"};
         EXPECT_TRUE(m_data->m_connection.SetSource(sourceEntry));
-        ASSERT_NE(sourceEntry.m_sourceID, -1);
+        ASSERT_NE(sourceEntry.m_sourceID, AzToolsFramework::AssetDatabase::InvalidEntryId);
 
         JobDatabaseEntry jobEntry{ sourceEntry.m_sourceID, "some job key", 123, "pc", AZ::Uuid::CreateRandom(), AzToolsFramework::AssetSystem::JobStatus::Completed, 1 };
         EXPECT_TRUE(m_data->m_connection.SetJob(jobEntry));
-        ASSERT_NE(jobEntry.m_jobID, -1);
+        ASSERT_NE(jobEntry.m_jobID, AzToolsFramework::AssetDatabase::InvalidEntryId);
 
         // --- set up complete --- perform the test!
 
-        ProductDatabaseEntry product{ -1, jobEntry.m_jobID, 1, "SomeProduct1.dds", validAssetType1 };
+        ProductDatabaseEntry product{ AzToolsFramework::AssetDatabase::InvalidEntryId, jobEntry.m_jobID, 1, "SomeProduct1.dds", validAssetType1 };
 
         m_errorAbsorber->Clear();
         EXPECT_TRUE(m_data->m_connection.SetProduct(product));
-        ASSERT_NE(product.m_productID, -1);
+        ASSERT_NE(product.m_productID, AzToolsFramework::AssetDatabase::InvalidEntryId);
 
         EXPECT_EQ(m_errorAbsorber->m_numErrorsAbsorbed, 0);
         EXPECT_EQ(m_errorAbsorber->m_numAssertsAbsorbed, 0); // not allowed to assert on this
@@ -274,7 +290,7 @@ namespace UnitTests
         ASSERT_TRUE(m_data->m_connection.SetJob(jobEntry));
         ASSERT_TRUE(m_data->m_connection.SetJob(jobEntry2));
 
-        ProductDatabaseEntry product{ -1, jobEntry.m_jobID, 1, "SomeProduct1.dds", validAssetType1 };
+        ProductDatabaseEntry product{ AzToolsFramework::AssetDatabase::InvalidEntryId, jobEntry.m_jobID, 1, "SomeProduct1.dds", validAssetType1 };
         ASSERT_TRUE(m_data->m_connection.SetProduct(product));
         
         // --- set up complete --- perform the test!
@@ -288,7 +304,7 @@ namespace UnitTests
 
         // update the product
         EXPECT_TRUE(m_data->m_connection.SetProduct(newProductData));
-        ASSERT_NE(newProductData.m_productID, -1);
+        ASSERT_NE(newProductData.m_productID, AzToolsFramework::AssetDatabase::InvalidEntryId);
 
         // it should not have entered a new product but instead overwritten the old one.
         ASSERT_EQ(product.m_productID, newProductData.m_productID);
@@ -313,7 +329,7 @@ namespace UnitTests
         ASSERT_TRUE(m_data->m_connection.SetSource(sourceEntry));
         JobDatabaseEntry jobEntry{ sourceEntry.m_sourceID, "some job key", 123, "pc", AZ::Uuid::CreateRandom(), AzToolsFramework::AssetSystem::JobStatus::Completed, 1 };
         ASSERT_TRUE(m_data->m_connection.SetJob(jobEntry));
-        ProductDatabaseEntry product{ -1, jobEntry.m_jobID, 1, "SomeProduct1.dds", AZ::Data::AssetType::CreateRandom() };
+        ProductDatabaseEntry product{ AzToolsFramework::AssetDatabase::InvalidEntryId, jobEntry.m_jobID, 1, "SomeProduct1.dds", AZ::Data::AssetType::CreateRandom() };
         ASSERT_TRUE(m_data->m_connection.SetProduct(product));
 
         // --- set up complete --- perform the test!
@@ -322,12 +338,12 @@ namespace UnitTests
                                                        // now change all the fields:
         newProductData.m_assetType = AZ::Uuid::CreateRandom();
         newProductData.m_productName = "different name.dds";
-        newProductData.m_productID = -1; // wipe out the product ID, so that we can make sure it returns it.
+        newProductData.m_productID = AzToolsFramework::AssetDatabase::InvalidEntryId; // wipe out the product ID, so that we can make sure it returns it.
         // we don't change the subID here or the job ID.
 
         // update the product
         EXPECT_TRUE(m_data->m_connection.SetProduct(newProductData));
-        ASSERT_NE(newProductData.m_productID, -1);
+        ASSERT_NE(newProductData.m_productID, AzToolsFramework::AssetDatabase::InvalidEntryId);
 
         // it should not have entered a new product but instead overwritten the old one.
         EXPECT_EQ(product.m_productID, newProductData.m_productID);
@@ -1119,8 +1135,8 @@ namespace UnitTests
         EXPECT_TRUE(m_data->m_connection.GetProducts(resultProducts));
         size_t newProductCount = resultProducts.size();
 
-        EXPECT_NE(requestProducts[0].m_productID, -1);
-        EXPECT_NE(requestProducts[1].m_productID, -1);
+        EXPECT_NE(requestProducts[0].m_productID, AzToolsFramework::AssetDatabase::InvalidEntryId);
+        EXPECT_NE(requestProducts[1].m_productID, AzToolsFramework::AssetDatabase::InvalidEntryId);
         
         EXPECT_EQ(newProductCount, priorProductCount + 2);
         EXPECT_EQ(m_errorAbsorber->m_numAssertsAbsorbed, 0); // not allowed to assert on this
@@ -1234,8 +1250,8 @@ namespace UnitTests
         EXPECT_TRUE(m_data->m_connection.RemoveProducts(resultProducts));
 
         // its also supposed to clear their ids:
-        EXPECT_EQ(resultProducts[0].m_productID, -1);
-        EXPECT_EQ(resultProducts[1].m_productID, -1);
+        EXPECT_EQ(resultProducts[0].m_productID, AzToolsFramework::AssetDatabase::InvalidEntryId);
+        EXPECT_EQ(resultProducts[1].m_productID, AzToolsFramework::AssetDatabase::InvalidEntryId);
 
         resultProducts.clear();
         EXPECT_TRUE(m_data->m_connection.GetProducts(resultProducts));
@@ -1534,7 +1550,7 @@ namespace UnitTests
 
         for (AZ::u32 productIndex = 0; productIndex < 100; ++productIndex)
         {
-            EXPECT_NE(productDependencies[productIndex].m_productDependencyID, -1);
+            EXPECT_NE(productDependencies[productIndex].m_productDependencyID, AzToolsFramework::AssetDatabase::InvalidEntryId);
             EXPECT_EQ(productDependencies[productIndex].m_productPK, resultProducts[0].m_productID);
             EXPECT_EQ(productDependencies[productIndex].m_dependencySourceGuid, m_data->m_sourceFile1.m_sourceGuid);
             EXPECT_EQ(productDependencies[productIndex].m_dependencySubID, productIndex);
@@ -1551,7 +1567,7 @@ namespace UnitTests
 
         for (AZ::u32 productIndex = 0; productIndex < 100; ++productIndex)
         {
-            EXPECT_NE(productDependencies[productIndex].m_productDependencyID, -1);
+            EXPECT_NE(productDependencies[productIndex].m_productDependencyID, AzToolsFramework::AssetDatabase::InvalidEntryId);
             EXPECT_EQ(productDependencies[productIndex].m_productPK, resultProducts[1].m_productID);
             EXPECT_EQ(productDependencies[productIndex].m_dependencySourceGuid, m_data->m_sourceFile2.m_sourceGuid);
             EXPECT_EQ(productDependencies[productIndex].m_dependencySubID, productIndex);
@@ -1577,7 +1593,7 @@ namespace UnitTests
 
         for (AZ::u32 productIndex = 0; productIndex < 50; ++productIndex)
         {
-            EXPECT_NE(productDependencies[productIndex].m_productDependencyID, -1);
+            EXPECT_NE(productDependencies[productIndex].m_productDependencyID, AzToolsFramework::AssetDatabase::InvalidEntryId);
             EXPECT_EQ(productDependencies[productIndex].m_productPK, resultProducts[0].m_productID);
             EXPECT_EQ(productDependencies[productIndex].m_dependencySourceGuid, m_data->m_sourceFile2.m_sourceGuid); // here we verify that the field has changed.
             EXPECT_EQ(productDependencies[productIndex].m_dependencySubID, productIndex);
@@ -1612,6 +1628,129 @@ namespace UnitTests
         EXPECT_TRUE(m_data->m_connection.SetProductDependencies(productDependencies));
 
         EXPECT_EQ(m_errorAbsorber->m_numAssertsAbsorbed, 0); // not allowed to assert on this
+    }
+
+    TEST_F(AssetDatabaseTest, MissingDependencyTable_WriteAndReadMissingDependencyByDependencyId_ResultsMatch)
+    {
+        CreateCoverageTestData();
+
+        // Use a non-zero sub ID to verify it writes and reads correctly.
+        AZ::Data::AssetId assetId(AZ::Uuid::CreateString("{12209A94-AF18-44BB-8A62-96F35291B2E1}"), 3);
+        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry writeMissingDependency(
+            // The product ID is a link to another table, it will fail to write this entry if this is invalid.
+            m_data->m_product1.m_productID,
+            "Scanner Name",
+            "1.0.0",
+            "Source File Fingerprint",
+            assetId.m_guid,
+            assetId.m_subId,
+            "Source String");
+        EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(writeMissingDependency));
+
+        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry readMissingDependency;
+        EXPECT_TRUE(m_data->m_connection.GetMissingProductDependencyByMissingProductDependencyId(
+            writeMissingDependency.m_missingProductDependencyId,
+            readMissingDependency));
+        
+        EXPECT_EQ(writeMissingDependency, readMissingDependency);
+    }
+
+    TEST_F(AssetDatabaseTest, MissingDependencyTable_UpdateExistingMissingDependencyByDependencyId_ResultsMatch)
+    {
+        CreateCoverageTestData();
+
+        // Use a non-zero sub ID to verify it writes and reads correctly.
+        AZ::Data::AssetId assetId(AZ::Uuid::CreateString("{32C32642-5832-4997-A478-F288C734425D}"), 6);
+        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry writeMissingDependency(
+            // The product ID is a link to another table, it will fail to write this entry if this is invalid.
+            m_data->m_product3.m_productID,
+            "Scanner Name",
+            "1.0.0",
+            "Source File Fingerprint",
+            assetId.m_guid,
+            assetId.m_subId,
+            "Source String");
+        EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(writeMissingDependency));
+
+        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry readMissingDependency;
+        EXPECT_TRUE(m_data->m_connection.GetMissingProductDependencyByMissingProductDependencyId(
+            writeMissingDependency.m_missingProductDependencyId,
+            readMissingDependency));
+
+        EXPECT_EQ(writeMissingDependency, readMissingDependency);
+
+        AZ::Data::AssetId newAssetId(AZ::Uuid::CreateString("{6C3ED7B4-E6F1-4163-9141-54F5DC1D9C35}"), 3);
+        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry updatedWriteMissingDependency(
+            // Write to the same dependency ID
+            writeMissingDependency.m_missingProductDependencyId,
+            // Make everything else different
+            m_data->m_product1.m_productID,
+            "Other Scanner Name",
+            "7.7.7",
+            "New Fingerprint",
+            newAssetId.m_guid,
+            newAssetId.m_subId,
+            "New Source String");
+        EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(updatedWriteMissingDependency));
+
+        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry newReadMissingDependency;
+        EXPECT_TRUE(m_data->m_connection.GetMissingProductDependencyByMissingProductDependencyId(
+            writeMissingDependency.m_missingProductDependencyId,
+            newReadMissingDependency));
+        EXPECT_EQ(updatedWriteMissingDependency, newReadMissingDependency);
+        // MissingProductDependencyDatabaseEntry doesn't override the != operator
+        EXPECT_FALSE(newReadMissingDependency == readMissingDependency);
+
+    }
+
+    TEST_F(AssetDatabaseTest, MissingDependencyTable_WriteAndReadMissingDependenciesByProductId_ResultsMatch)
+    {
+        CreateCoverageTestData();
+
+        AZStd::vector<AZ::Data::AssetId> assetIds;
+        assetIds.push_back(AZ::Data::AssetId(AZ::Uuid::CreateString("{FDAC3A8C-26D1-47D9-88B0-647BCED826DB}"), 10));
+        assetIds.push_back(AZ::Data::AssetId(AZ::Uuid::CreateString("{261E8996-7309-4D18-986F-EC6EDE910A70}"), 20));
+        assetIds.push_back(AZ::Data::AssetId(AZ::Uuid::CreateString("{2FA88E3A-D6E4-4192-B865-4DDD61AE7492}"), 30));
+        // The product ID is a link to another table, it will fail to write this entry if this is invalid.
+        AZ::s64 productPK = m_data->m_product2.m_productID;
+
+        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntryContainer writeMissingDependencies;
+        writeMissingDependencies.push_back(AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry(
+            productPK,
+            "Scanner 0",
+            "0.0.0",
+            "Fingerprint 0",
+            assetIds[0].m_guid,
+            assetIds[0].m_subId,
+            "Source String 0"));
+        writeMissingDependencies.push_back(AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry(
+            productPK,
+            "Scanner 1",
+            "1.1.1",
+            "Fingerprint 1",
+            assetIds[1].m_guid,
+            assetIds[1].m_subId,
+            "Source String 1"));
+        writeMissingDependencies.push_back(AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntry(
+            productPK,
+            "Scanner 2",
+            "2.2.2",
+            "Fingerprint 2",
+            assetIds[2].m_guid,
+            assetIds[2].m_subId,
+            "Source String 2"));
+        EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(writeMissingDependencies[0]));
+        EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(writeMissingDependencies[1]));
+        EXPECT_TRUE(m_data->m_connection.SetMissingProductDependency(writeMissingDependencies[2]));
+
+        AzToolsFramework::AssetDatabase::MissingProductDependencyDatabaseEntryContainer readMissingDependencies;
+        EXPECT_TRUE(m_data->m_connection.GetMissingProductDependenciesByProductId(productPK, readMissingDependencies));
+
+        EXPECT_EQ(readMissingDependencies.size(), writeMissingDependencies.size());
+        for (int dependencyIndex = 0; dependencyIndex < writeMissingDependencies.size(); ++dependencyIndex)
+        {
+            EXPECT_EQ(readMissingDependencies[dependencyIndex], writeMissingDependencies[dependencyIndex]);
+        }
     }
 
     TEST_F(AssetDatabaseTest, AddLargeNumberOfSourceDependencies_PerformanceTest)
@@ -1752,7 +1891,7 @@ namespace UnitTests
         ASSERT_EQ(resultEntries.size(), 1);
         EXPECT_EQ(resultEntries[0].m_builderGuid, builderGuid1);
         EXPECT_STREQ(resultEntries[0].m_source.c_str(), "file2.txt");
-        EXPECT_NE(resultEntries[0].m_sourceDependencyID, -1);
+        EXPECT_NE(resultEntries[0].m_sourceDependencyID, AzToolsFramework::AssetDatabase::InvalidEntryId);
         EXPECT_STREQ(resultEntries[0].m_dependsOnSource.c_str(), "file2dependson1job.txt");
         EXPECT_EQ(resultEntries[0].m_typeOfDependency,  SourceFileDependencyEntry::DEP_JobToJob);
         AZ::s64 entryIdJob = resultEntries[0].m_sourceDependencyID;
@@ -1801,9 +1940,86 @@ namespace UnitTests
         entry.m_fileName = "testfile.txt";
         entry.m_scanFolderPK = m_data->m_scanFolder.m_scanFolderID;
         
-        ASSERT_TRUE(m_data->m_connection.InsertFile(entry));
+        bool entryAlreadyExists;
+        ASSERT_TRUE(m_data->m_connection.InsertFile(entry, entryAlreadyExists));
+        ASSERT_FALSE(entryAlreadyExists);
         ASSERT_TRUE(m_data->m_connection.UpdateFileModTimeByFileNameAndScanFolderId("testfile.txt", m_data->m_scanFolder.m_scanFolderID, 1234));
 
         EXPECT_EQ(m_errorAbsorber->m_numAssertsAbsorbed, 0); // not allowed to assert on this
+    }
+
+    TEST_F(AssetDatabaseTest, QueryCombined_Succeeds)
+    {
+        // This test specifically checks that the legacy subIds returned by QueryCombined are correctly matched to only the one product that they're associated with
+        using namespace AzToolsFramework::AssetDatabase;
+
+        CreateCoverageTestData();
+
+        auto subIds = { 123, 134, 155, 166, 177 };
+        AZStd::vector<LegacySubIDsEntry> createdLegacySubIds;
+
+        for(int subId : subIds)
+        {
+            LegacySubIDsEntry subIdEntry;
+            subIdEntry.m_productPK = m_data->m_product1.m_productID;
+            subIdEntry.m_subID = subId;
+
+            ASSERT_TRUE(m_data->m_connection.CreateOrUpdateLegacySubID(subIdEntry));
+
+            createdLegacySubIds.push_back(subIdEntry);
+        }
+
+        AZStd::vector<CombinedDatabaseEntry> results;
+
+        auto databaseQueryCallback = [&](AzToolsFramework::AssetDatabase::CombinedDatabaseEntry& combined) -> bool
+        {
+            results.push_back(combined);
+
+            return true;
+        };
+
+        ASSERT_TRUE(m_data->m_connection.QueryCombined(databaseQueryCallback, AZ::Uuid::CreateNull(), nullptr, nullptr, AzToolsFramework::AssetSystem::JobStatus::Any, /*includeLegacyIds*/ true));
+
+        bool foundProductWithLegacyIds = false;
+
+        for(const auto& combined : results)
+        {
+            if (combined.m_productID == m_data->m_product1.m_productID)
+            {
+                foundProductWithLegacyIds = true;
+
+                ASSERT_THAT(combined.m_legacySubIDs, testing::UnorderedElementsAreArray(createdLegacySubIds));
+            }
+            else
+            {
+                ASSERT_EQ(combined.m_legacySubIDs.size(), 0);
+            }
+        }
+
+        ASSERT_TRUE(foundProductWithLegacyIds);
+    }
+
+    TEST_F(AssetDatabaseTest, InsertFile_Existing_ReturnsExisting)
+    {
+        CreateCoverageTestData();
+
+        using namespace AzToolsFramework::AssetDatabase;
+
+        FileDatabaseEntry fileEntry;
+        fileEntry.m_fileName = "blah";
+        fileEntry.m_scanFolderPK = m_data->m_scanFolder.m_scanFolderID;
+        bool entryAlreadyExists;
+
+        ASSERT_TRUE(m_data->m_connection.InsertFile(fileEntry, entryAlreadyExists));
+        ASSERT_FALSE(entryAlreadyExists);
+
+        fileEntry.m_fileID = InvalidEntryId; // InsertFile will update the Id, we want to test without a specified Id
+        ASSERT_TRUE(m_data->m_connection.InsertFile(fileEntry, entryAlreadyExists));
+        ASSERT_TRUE(entryAlreadyExists);
+
+        // Test one more time, with the Id set to a specific entry now
+        ASSERT_NE(fileEntry.m_fileID, InvalidEntryId);
+        ASSERT_TRUE(m_data->m_connection.InsertFile(fileEntry, entryAlreadyExists));
+        ASSERT_TRUE(entryAlreadyExists);
     }
 } // end namespace UnitTests

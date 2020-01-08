@@ -33,6 +33,8 @@
         #include "Xenia/DllMain_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DllMain_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DllMain_cpp_salem.inl"
     #endif
 #endif
 
@@ -41,7 +43,7 @@
 
 HMODULE gDLLHandle = NULL;
 
-#if !defined(AZ_MONOLITHIC_BUILD) && defined(AZ_HAS_DLL_SUPPORT) && !defined(AZ_PLATFORM_LINUX) && !defined(AZ_PLATFORM_APPLE) && !defined(AZ_PLATFORM_ANDROID) && !(defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO))
+#if !defined(AZ_MONOLITHIC_BUILD) && defined(AZ_HAS_DLL_SUPPORT) && AZ_TRAIT_LEGACY_CRYSYSTEM_DEFINE_DLLMAIN
 #pragma warning( push )
 #pragma warning( disable : 4447 )
 BOOL APIENTRY DllMain(HANDLE hModule,
@@ -136,6 +138,8 @@ CRYSYSTEM_API ISystem* CreateSystemInterface(const SSystemInitParams& startupPar
         #include "Xenia/DllMain_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DllMain_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DllMain_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_MONOLITHIC_BUILD)
@@ -163,6 +167,8 @@ CRYSYSTEM_API ISystem* CreateSystemInterface(const SSystemInitParams& startupPar
         #include "Xenia/DllMain_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DllMain_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DllMain_cpp_salem.inl"
     #endif
 #endif
     }
@@ -197,6 +203,8 @@ CRYSYSTEM_API void WINAPI CryInstallUnhandledExceptionHandler()
         #include "Xenia/DllMain_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DllMain_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DllMain_cpp_salem.inl"
     #endif
 #endif
 }

@@ -9,10 +9,12 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "ComponentEntityEditorPlugin_precompiled.h"
 
 #include "OutlinerListModel.hxx"
 
+// Qt tends to have private non-exported classes inside exported classes, and this raises 4251
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") 
 #include <QtCore/QMimeData>
 #include <QFontMetrics>
 #include <QtGui/QPainter>
@@ -23,6 +25,7 @@
 #include <QGuiApplication>
 #include <QStyleOptionButton>
 #include <QTimer>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetManagerBus.h>
@@ -39,6 +42,7 @@
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
+#include <AzToolsFramework/API/ComponentEntityObjectBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
@@ -101,6 +105,13 @@ void OutlinerListModel::Initialize()
 
 int OutlinerListModel::rowCount(const QModelIndex& parent) const
 {
+    if (parent.column() > 0)
+    {
+        // only the main tree column has parents.
+        // note that this > 0 is intentional (as opposed to 'not equal') due to
+        // the "root" invalid parent having children (all the root elements)
+        return 0;
+    }
     auto parentId = GetEntityFromIndex(parent);
 
     AZStd::size_t childCount = 0;
@@ -350,7 +361,7 @@ QVariant OutlinerListModel::GetEntityIcon(const AZ::EntityId& id) const
         iconName = "Slice_Entity";
 
         bool hasSliceEntityOverrides = false;
-        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(hasSliceEntityOverrides, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::HasSliceEntityOverrides);
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(hasSliceEntityOverrides, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::HasSliceEntityPropertyOverridesInTopLevel);
 
         if (hasSliceEntityOverrides)
         {
@@ -382,7 +393,7 @@ QVariant OutlinerListModel::GetEntityIcon(const AZ::EntityId& id) const
     bool hasSliceChildrenOverrides = false;
     AzToolsFramework::EditorEntityInfoRequestBus::EventResult(hasSliceChildrenOverrides, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::HasSliceChildrenOverrides);
 
-    if (hasSliceChildrenOverrides)
+    if (hasSliceChildrenOverrides && isSliceEntity)
     {
         QBitmap mask = entityIcon.mask();
         QPainter maskPainter(&mask);
@@ -530,7 +541,7 @@ QVariant OutlinerListModel::dataForLock(const QModelIndex& index, int role) cons
     }
 
     case Qt::ToolTipRole:
-        return QString("Lock/Unlock Entity (Locked means the entity is not selectable)");
+        return QString("Lock/Unlock Entity (Locked means the entity cannot be moved in the viewport)");
     }
 
     return dataForAll(index, role);
@@ -560,16 +571,15 @@ bool OutlinerListModel::setData(const QModelIndex& index, const QVariant& value,
         if (value.canConvert<Qt::CheckState>())
         {
             const auto entityId = GetEntityFromIndex(index);
-
             switch (index.column())
             {
-            case ColumnVisibilityToggle:
-                AzToolsFramework::ToggleEntityVisibility(entityId);
-                break;
+                case ColumnVisibilityToggle:
+                    AzToolsFramework::ToggleEntityVisibility(entityId);
+                    break;
 
-            case ColumnLockToggle:
-                AzToolsFramework::ToggleEntityLockState(entityId);
-                break;
+                case ColumnLockToggle:
+                    AzToolsFramework::ToggleEntityLockState(entityId);
+                    break;
             }
         }
     }
@@ -587,12 +597,18 @@ bool OutlinerListModel::setData(const QModelIndex& index, const QVariant& value,
 
                 if (entity)
                 {
-                    AzToolsFramework::ScopedUndoBatch undo("Rename Entity");
+                    AZStd::string oldName = entity->GetName();
+                    AZStd::string newName = value.toString().toUtf8().constData();
 
-                    entity->SetName(value.toString().toStdString().c_str());
-                    undo.MarkEntityDirty(entity->GetId());
+                    if (oldName != newName)
+                    {
+                        AzToolsFramework::ScopedUndoBatch undo("Rename Entity");
 
-                    EBUS_EVENT(AzToolsFramework::ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, AzToolsFramework::Refresh_EntireTree);
+                        entity->SetName(newName);
+                        undo.MarkEntityDirty(entity->GetId());
+
+                        EBUS_EVENT(AzToolsFramework::ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, AzToolsFramework::Refresh_EntireTree);
+                    }
                 }
                 else
                 {
@@ -611,6 +627,12 @@ bool OutlinerListModel::setData(const QModelIndex& index, const QVariant& value,
 
 QModelIndex OutlinerListModel::parent(const QModelIndex& index) const
 {
+    // invalid indices have no parent.  Column 0 is the only one with a parent (ie, the tree part)
+    if ((!index.isValid())||(index.column() != 0))
+    {
+        return QModelIndex();
+    }
+
     auto id = GetEntityFromIndex(index);
     if (id.IsValid())
     {
@@ -875,6 +897,8 @@ bool OutlinerListModel::DropMimeDataAssets(const QMimeData* data, Qt::DropAction
     AZ::Vector3 viewportCenter = AZ::Vector3::CreateZero();
     EditorRequestBus::BroadcastResult(viewportCenter, &EditorRequestBus::Events::GetWorldPositionAtViewportCenter);
 
+    AZ::EntityId assignParentId = GetEntityFromIndex(parent);
+
     for (const AZ::Data::AssetId& sliceAssetId : sliceAssets)
     {
         // Queue a slice instantiation for each dragged slice.
@@ -882,6 +906,9 @@ bool OutlinerListModel::DropMimeDataAssets(const QMimeData* data, Qt::DropAction
             AZ::Data::AssetManager::Instance().GetAsset<AZ::SliceAsset>(sliceAssetId, false);
         if (sliceAsset)
         {
+            //make sure dropped slices get put in the correct position
+            ToolsApplicationNotificationBus::Broadcast(
+                &ToolsApplicationNotificationBus::Events::SetEntityInstantiationPosition, assignParentId, GetEntityFromIndex(index(row, 0, parent)));
             EditorMetricsEventsBusAction editorMetricsEventsBusActionWrapper(EditorMetricsEventsBusTraits::NavigationTrigger::DragAndDrop);
             AZStd::string idString;
             sliceAsset.GetId().ToString(idString);
@@ -890,8 +917,6 @@ bool OutlinerListModel::DropMimeDataAssets(const QMimeData* data, Qt::DropAction
             EditorEntityContextRequestBus::Broadcast(&EditorEntityContextRequestBus::Events::InstantiateEditorSlice, sliceAsset, AZ::Transform::CreateTranslation(viewportCenter));
         }
     }
-
-    AZ::EntityId assignParentId = GetEntityFromIndex(parent);
 
     if (componentAssetPairs.empty())
     {
@@ -1009,7 +1034,7 @@ bool OutlinerListModel::DropMimeDataAssets(const QMimeData* data, Qt::DropAction
         ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::SetSelectedEntities, selection);
     }
 
-    if (IsSelected(targetEntityId))
+    if (AzToolsFramework::IsSelected(targetEntityId))
     {
         ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::InvalidatePropertyDisplay, Refresh_EntireTree_NewContent);
     }
@@ -1113,14 +1138,6 @@ bool OutlinerListModel::CanReparentEntities(const AZ::EntityId& newParentId, con
         {
             return false;
         }
-
-        //move disallowing drop on locked entities check to allow feedback
-        bool isLocked = false;
-        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isLocked, newParentId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsLocked);
-        if (isLocked)
-        {
-            return false;
-        }
     }
 
     //reject dragging on to yourself or your children
@@ -1160,6 +1177,7 @@ bool OutlinerListModel::ReparentEntities(const AZ::EntityId& newParentId, const 
     AzToolsFramework::EntityIdList processedEntityIds;
     {
         AzToolsFramework::ScopedUndoBatch undo("Reparent Entities");
+        bool isParentVisible = AzToolsFramework::IsEntitySetToBeVisible(newParentId);
 
         for (AZ::EntityId entityId : selectedEntityIds)
         {
@@ -1185,7 +1203,11 @@ bool OutlinerListModel::ReparentEntities(const AZ::EntityId& newParentId, const 
             undo.MarkEntityDirty(entityId);
 
             processedEntityIds.push_back(entityId);
+
+            AzToolsFramework::SetEntityVisibility(entityId, isParentVisible);
+            AzToolsFramework::ComponentEntityEditorRequestBus::Event(entityId, &AzToolsFramework::ComponentEntityEditorRequestBus::Events::RefreshVisibilityAndLock);
         }
+        GetIEditor()->GetObjectManager()->InvalidateVisibleList();
     }
 
     //search for the insertion entity in the order array
@@ -1219,18 +1241,8 @@ bool OutlinerListModel::ReparentEntities(const AZ::EntityId& newParentId, const 
     //update order array
     AzToolsFramework::SetEntityChildOrder(newParentId, entityOrderArray);
 
-    // update the selection
-    {
-        // first select the full hierarchy to expand the clones
-        AzToolsFramework::EntityIdSet entityHierarchiesSet;
-        AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(entityHierarchiesSet, &AzToolsFramework::ToolsApplicationRequestBus::Events::GatherEntitiesAndAllDescendents, processedEntityIds);
-
-        AzToolsFramework::EntityIdList entityHierarchiesList(entityHierarchiesSet.begin(), entityHierarchiesSet.end());
-        AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::SetSelectedEntities, entityHierarchiesList);
-
-        // then reselect the entities that were originally selected
-        AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::SetSelectedEntities, processedEntityIds);
-    }
+    // reselect the entities to ensure they're visible if appropriate
+    AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::SetSelectedEntities, processedEntityIds);
 
     EBUS_EVENT(AzToolsFramework::ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, AzToolsFramework::Refresh_Values);
     return true;
@@ -1353,36 +1365,37 @@ void OutlinerListModel::ProcessEntityUpdates()
         m_entitySelectQueue.clear();
     }
 
+    if (!m_entityChangeQueue.empty())
     {
         AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "OutlinerListModel::ProcessEntityUpdates:ChangeQueue");
 
-        QMap<QModelIndex, ModelIndexRange> parentsToChangedIndices;
+        // its faster to just do a bulk data change than to carefully pick out indices
+        // so we'll just merge all ranges into a single range rather than try to make gaps
+        QModelIndex firstChangeIndex;
+        QModelIndex lastChangeIndex;
 
         for (auto entityId : m_entityChangeQueue)
         {
-            auto myStartIndex = GetIndexFromEntity(entityId, ColumnName);
-            ModelIndexRange& changedRange = parentsToChangedIndices[myStartIndex.parent()];
-
-            // Expand the range around each changed index, even if a sibling between didn't change.
-            // This is faster than emitting a data change for every modified index.
-            if (!changedRange.m_start.isValid() ||
-                myStartIndex.row() < changedRange.m_start.row())
+            auto myIndex = GetIndexFromEntity(entityId, ColumnName);
+            if ((!firstChangeIndex.isValid())||(firstChangeIndex.row() > myIndex.row()))
             {
-                changedRange.m_start = myStartIndex;
+                firstChangeIndex = myIndex;
             }
-            auto myEndIndex = GetIndexFromEntity(entityId, ColumnCount - 1);
-            if (!changedRange.m_end.isValid() ||
-                myEndIndex.row() > changedRange.m_end.row())
+            
+            if ((!lastChangeIndex.isValid())||(lastChangeIndex.row() < myIndex.row()))
             {
-                changedRange.m_end = myEndIndex;
+                // expand it to be the last column:
+                lastChangeIndex = myIndex;
             }
-        };
-        for (const auto& changedGroups : parentsToChangedIndices)
-        {
-            // Not checking for isValid for performance reasons, the scope marker above (ChangeQueue) was showing up
-            // as a high cost in cloning large entity stacks. This data is all good because it was just generated.
-            emit dataChanged(changedGroups.m_start, changedGroups.m_end);
         }
+
+        if (firstChangeIndex.isValid())
+        {
+            // expand to cover all columns:
+            lastChangeIndex = createIndex(lastChangeIndex.row(), columnCount(QModelIndex()) - 1, lastChangeIndex.internalPointer());
+            emit dataChanged(firstChangeIndex, lastChangeIndex);
+        }
+        
         m_entityChangeQueue.clear();
     }
 
@@ -1552,6 +1565,8 @@ QString OutlinerListModel::GetSliceAssetName(const AZ::EntityId& entityId) const
 
 QModelIndex OutlinerListModel::GetIndexFromEntity(const AZ::EntityId& entityId, int column) const
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
     if (entityId.IsValid())
     {
         AZ::EntityId parentId;
@@ -1561,6 +1576,7 @@ QModelIndex OutlinerListModel::GetIndexFromEntity(const AZ::EntityId& entityId, 
         AzToolsFramework::EditorEntityInfoRequestBus::EventResult(row, parentId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildIndex, entityId);
         return createIndex(static_cast<int>(row), column, static_cast<AZ::u64>(entityId));
     }
+
     return QModelIndex();
 }
 
@@ -1711,6 +1727,12 @@ void OutlinerListModel::OnEditorEntitiesReplacedBySlicedEntities(const AZStd::un
         auto expansionIter = m_entityExpansionState.find(replacedPair.first);
         QueueEntityToExpand(replacedPair.second, expansionIter != m_entityExpansionState.end() && expansionIter->second);
     }
+}
+
+void OutlinerListModel::OnEditorEntityDuplicated(const AZ::EntityId& oldEntity, const AZ::EntityId& newEntity)
+{
+    AZStd::list_iterator<AZStd::pair<AZ::EntityId, bool>> expansionIter = m_entityExpansionState.find(oldEntity);
+    QueueEntityToExpand(newEntity, expansionIter != m_entityExpansionState.end() && expansionIter->second);
 }
 
 void OutlinerListModel::ExpandAncestors(const AZ::EntityId& entityId)
@@ -2003,7 +2025,7 @@ bool OutlinerListModel::IsInLayerWithProperty(AZ::EntityId entityId, const Layer
 
 void OutlinerListModel::OnEntityInitialized(const AZ::EntityId& /*entityId*/)
 {
-    if (m_filterString.size() > 0 || m_componentFilters.size() > 0)
+    if (!m_beginStartPlayInEditor && (m_filterString.size() > 0 || m_componentFilters.size() > 0))
     {
         m_isFilterDirty = true;
         emit ReapplyFilter();
@@ -2028,6 +2050,15 @@ void OutlinerListModel::OnContextReset()
     }
 }
 
+void OutlinerListModel::OnStartPlayInEditorBegin()
+{
+    m_beginStartPlayInEditor = true;
+}
+
+void OutlinerListModel::OnStartPlayInEditor()
+{
+    m_beginStartPlayInEditor = false;
+}
 
 ////////////////////////////////////////////////////////////////////////////
 // OutlinerItemDelegate
@@ -2304,6 +2335,41 @@ int OutlinerItemDelegate::GetEntityNameVerticalOffset(const AZ::EntityId& entity
     return -m_layerDividerLineHeight + entityNameOffset;
 }
 
+QString OutlinerItemDelegate::GetColumnHighlightedStylesheet(int column, bool highlighted) const
+{
+    QString stylesheet;
+    QString color;
+    QString checkBoxName;
+
+    static const QColor outlinerHighlightColor(GetIEditor()->GetColorByName("OutlinerSelectionColor"));
+
+    if (column == OutlinerListModel::ColumnVisibilityToggle)
+    {
+        checkBoxName = "OutlinerVisibilityCheckBox";
+    }
+    else if (column == OutlinerListModel::ColumnLockToggle)
+    {
+        checkBoxName = "OutlinerLockCheckBox";
+    }
+    else
+    {
+        return "";
+    }
+
+    if (highlighted)
+    {
+        color = outlinerHighlightColor.name();
+    }
+    else
+    {
+        color = "transparent";
+    }
+
+    stylesheet = QString("%1{background-color: %2} %1::indicator{background-color: %2}").arg(checkBoxName).arg(color);
+
+    return stylesheet;
+}
+
 void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
 {
     static const QColor sliceRootBackgroundColor(GetIEditor()->GetColorByName("SliceRootBackgroundColor"));
@@ -2329,9 +2395,17 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
 
     const bool sliceHasOverrides = (entityHasOverrides || childrenHaveOverrides);
 
+    static const QColor outlinerHighlightColor(GetIEditor()->GetColorByName("OutlinerSelectionColor"));
+
     const bool isSelected = (option.state & QStyle::State_Selected);
     if (isSelected)
     {
+        bool isLayerEntity = false;
+        AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+            isLayerEntity,
+            entityId,
+            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
         QRect selectionRect = option.rect;
         if (isLayerEntity && index.column() == OutlinerListModel::ColumnName)
         {
@@ -2339,10 +2413,14 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
         }
         QPainterPath path;
         path.addRect(selectionRect);
-        painter->fillPath(path, m_outlinerSelectionColor);
+        painter->fillPath(path, outlinerHighlightColor);
     }
 
     DrawLayerUI(painter, option, index, entityId, isSelected);
+
+    QPalette checkboxPalette;
+    QColor transparentColor(0, 0, 0, 0);
+    checkboxPalette.setColor(QPalette::ColorRole::Background, transparentColor);
 
     const bool isSliceRoot = index.data(OutlinerListModel::SliceBackgroundRole).value<bool>();
 
@@ -2351,15 +2429,54 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
 
     // We're only using these check boxes as renderers so their actual state doesn't matter.
     // We can set it right before we draw using information from the model data.
-    if (index.column() == OutlinerListModel::ColumnVisibilityToggle || index.column() == OutlinerListModel::ColumnLockToggle)
+    if (index.column() == OutlinerListModel::ColumnVisibilityToggle)
     {
         painter->save();
         painter->translate(option.rect.topLeft());
 
-        static QColor transparentColor(0, 0, 0, 0);
+        OutlinerVisibilityCheckBox* checkboxToRender = &m_visibilityCheckBox;
 
-        OutlinerCheckBox* box = setupCheckBox(option, index, isSelected ? m_outlinerSelectionColor : transparentColor, isLayerEntity);
-        box->draw(painter);
+        if (index.data(OutlinerListModel::InInvisibleLayerRole).value<bool>())
+        {
+            m_visibilityCheckBoxLayerOverride.setStyleSheet(GetColumnHighlightedStylesheet(index.column(), isSelected));
+            checkboxToRender = &m_visibilityCheckBoxLayerOverride;
+        }
+        else if (index.data(OutlinerListModel::PartiallyVisibleRole).value<bool>())
+        {
+            m_visibilityCheckBoxWithBorder.setStyleSheet(GetColumnHighlightedStylesheet(index.column(), isSelected));
+            checkboxToRender = &m_visibilityCheckBoxWithBorder;
+        }
+        bool checked = index.data(Qt::CheckStateRole).value<Qt::CheckState>() == Qt::Checked;
+        checkboxToRender->setChecked(checked);
+        checkboxToRender->setPalette(checkboxPalette);
+        checkboxToRender->render(painter);
+
+        painter->restore();
+
+        return;
+    }
+
+    if (index.column() == OutlinerListModel::ColumnLockToggle)
+    {
+        painter->save();
+        painter->translate(option.rect.topLeft());
+
+        OutlinerLockCheckBox* checkboxToRender = &m_lockCheckBox;
+
+        if (index.data(OutlinerListModel::InLockedLayerRole).value<bool>())
+        {
+            m_lockCheckBoxLayerOverride.setStyleSheet(GetColumnHighlightedStylesheet(index.column(), isSelected));
+            checkboxToRender = &m_lockCheckBoxLayerOverride;
+        }
+        else if (index.data(OutlinerListModel::PartiallyLockedRole).value<bool>())
+        {
+            m_lockCheckBoxWithBorder.setStyleSheet(GetColumnHighlightedStylesheet(index.column(), isSelected));
+            checkboxToRender = &m_lockCheckBoxWithBorder;
+        }
+        bool checked = index.data(Qt::CheckStateRole).value<Qt::CheckState>() == Qt::Checked;
+        checkboxToRender->setChecked(checked);
+        checkboxToRender->setPalette(checkboxPalette);
+        checkboxToRender->render(painter);
 
         painter->restore();
         return;
@@ -2379,7 +2496,7 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
     backgroundBoxRect.setWidth(backgroundBoxRect.width() - 1.0);
     backgroundBoxRect.setHeight(backgroundBoxRect.height() - 1.0);
 
-    const int sliceBorderHeight = 1;
+    const qreal sliceBorderHeight = 0.8f;
 
     // Draw this Slice Handle Accent if the item is not selected before the
     // entry is drawn.
@@ -2394,7 +2511,6 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
             QPen pen(sliceRootBorderColor, 1);
             painter->setPen(pen);
             painter->fillPath(path, sliceRootBackgroundColor);
-            painter->drawPath(path);
             painter->restore();
         }
 
@@ -2481,7 +2597,7 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
                 // an approximate width is computed by taking the width of the non-HTML portion of the string and padding it a bit.
                 QString htmlStripped = layerInfoString;
                 htmlStripped.remove(htmlMarkupRegex);
-                const float layerInfoPadding = 1.2;
+                const float layerInfoPadding = 1.2f;
                 textWidthAvailable -= fontMetrics.width(htmlStripped) * layerInfoPadding;
             }
 
@@ -2519,9 +2635,21 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
 QSize OutlinerItemDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const
 {
     // Get the height of a tall character...
-    auto textRect = option.fontMetrics.boundingRect("|");
+    // we do this only once per 'tick'
+    if (m_cachedBoundingRectOfTallCharacter.isNull())
+    {
+        m_cachedBoundingRectOfTallCharacter = option.fontMetrics.boundingRect("|");
+        // schedule it to be reset so that if font changes sometime soon, it updates.
+        auto resetFunction = [this]() 
+        { 
+            m_cachedBoundingRectOfTallCharacter = QRect(); 
+        };
+
+        QTimer::singleShot(0, resetFunction);
+    }
+  
     // And add 8 to it gives the outliner roughly the visible spacing we're looking for.
-    QSize sh = QSize(0, textRect.height() + OutlinerListModel::s_OutlinerSpacing);
+    QSize sh = QSize(0, m_cachedBoundingRectOfTallCharacter.height() + OutlinerListModel::s_OutlinerSpacing);
 
     if (index.column() == OutlinerListModel::ColumnVisibilityToggle || index.column() == OutlinerListModel::ColumnLockToggle)
     {

@@ -1,0 +1,8 @@
+{
+    "auto": {
+      "Utils": [
+        "AZTestShared/Utils/Utils.h",
+        "AZTestShared/Utils/Utils.cpp"
+      ]
+    }
+}

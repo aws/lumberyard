@@ -112,7 +112,9 @@ namespace AzQtComponents
         friend class EditorProxyStyle;
         friend class SpinBoxWatcher;
 
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::SpinBox::s_spinBoxWatcher': class 'QPointer<AzQtComponents::SpinBoxWatcher>' needs to have dll-interface to be used by clients of class 'AzQtComponents::SpinBox'
         static QPointer<SpinBoxWatcher> s_spinBoxWatcher;
+        AZ_POP_DISABLE_WARNING
         static unsigned int s_watcherReferenceCount;
         static void initializeWatcher();
         static void uninitializeWatcher();
@@ -215,7 +217,9 @@ namespace AzQtComponents
         internal::SpinBoxLineEdit* m_lineEdit = nullptr;
         
         int m_displayDecimals;
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::DoubleSpinBox::m_options': class 'QFlags<AzQtComponents::DoubleSpinBox::Option>' needs to have dll-interface to be used by clients of class 'AzQtComponents::DoubleSpinBox'
         Options m_options;
+        AZ_POP_DISABLE_WARNING
     };
 
     namespace internal

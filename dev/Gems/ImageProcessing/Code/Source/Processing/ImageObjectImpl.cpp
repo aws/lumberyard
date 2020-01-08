@@ -349,7 +349,7 @@ namespace ImageProcessing
         if (!fileSaveStream.IsOpen())
         {
 
-            AZ_Warning("%s: failed to create file %s", __FUNCTION__, filename);
+            AZ_Warning("Image Processing", false, "%s: failed to create file %s", __FUNCTION__, filename);
             return false;
         }
         
@@ -422,7 +422,7 @@ namespace ImageProcessing
                 }
                 else
                 {
-                    AZ_Warning("%s: failed to create file %s", __FUNCTION__, alphaFile.c_str());
+                    AZ_Warning("Image Processing", false, "%s: failed to create file %s", __FUNCTION__, alphaFile.c_str());
                 }
             }
 
@@ -455,7 +455,7 @@ namespace ImageProcessing
 
         if (!saveFileStream.IsOpen())
         {
-            AZ_Warning("%s: failed to create file %s", __FUNCTION__, filename.c_str());
+            AZ_Warning("Image Processing", false, "%s: failed to create file %s", __FUNCTION__, filename.c_str());
             return false;
         }
 
@@ -1214,7 +1214,7 @@ namespace ImageProcessing
         AZ::IO::SystemFileStream fileLoadStream(&file, true);
         if (!fileLoadStream.IsOpen())
         {
-            AZ_Warning("%s: failed to open file %s", __FUNCTION__, filename.c_str());
+            AZ_Warning("Image Processing", false, "%s: failed to open file %s", __FUNCTION__, filename.c_str());
             return nullptr;
         }
 
@@ -1255,7 +1255,7 @@ namespace ImageProcessing
 
                 if (!mipFileLoadStream.IsOpen())
                 {
-                    AZ_Warning("%s: failed to open mip file %s", __FUNCTION__, mipFileName.c_str());
+                    AZ_Warning("Image Processing", false, "%s: failed to open mip file %s", __FUNCTION__, mipFileName.c_str());
                     break;
                 }
 
@@ -1364,7 +1364,7 @@ namespace ImageProcessing
         AZ::IO::SystemFileStream fileLoadStream(&file, true);
         if (!fileLoadStream.IsOpen())
         {
-            AZ_Warning("%s: failed to open file %s", __FUNCTION__, filename.c_str());
+            AZ_Warning("Image Processing", false, "%s: failed to open file %s", __FUNCTION__, filename.c_str());
             return nullptr;
         }
         

@@ -12,7 +12,7 @@
 #ifndef AZCORE_ENVIRONMENT_INCLUDE_H
 #define AZCORE_ENVIRONMENT_INCLUDE_H 1
 
-#include <AzCore/std/smart_ptr/intrusive_ptr.h>
+#include <AzCore/std/smart_ptr/sp_convertible.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/spin_mutex.h>
 #include <AzCore/std/parallel/lock.h>
@@ -460,7 +460,6 @@ namespace AZ
             return *this;
         }
 
-#if defined(AZ_HAS_RVALUE_REFS)
         EnvironmentVariable(EnvironmentVariable&& rhs)
             : m_data(rhs.m_data)
         {
@@ -471,7 +470,7 @@ namespace AZ
             EnvironmentVariable(static_cast< EnvironmentVariable && >(rhs)).Swap(*this);
             return *this;
         }
-#endif
+
         EnvironmentVariable& operator=(EnvironmentVariable const& rhs)
         {
             EnvironmentVariable(rhs).Swap(*this);

@@ -33,7 +33,6 @@ namespace EMotionFX
 
     public:
         SkeletonSortFilterProxyModel(SkeletonModel* sourceSkeletonModel, QItemSelectionModel* sourceSelectionModel, QObject* parent = nullptr);
-        ~SkeletonSortFilterProxyModel() override {}
 
         enum Filter
         {
@@ -73,7 +72,6 @@ namespace EMotionFX
     private:
         bool m_recursiveMode;           // In recursive mode (true by default), we filter-in (leave) the entries that have any child that matches the filter.
         bool m_filterFlags[FILTER_COUNT];
-        SkeletonModel* m_sourceSkeletonModel;
         SelectionProxyModel* m_selectionProxyModel;
 
         Actor* m_actor;

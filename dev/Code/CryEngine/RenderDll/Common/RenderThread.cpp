@@ -76,6 +76,8 @@ void CRenderThread::Run()
         #include "Xenia/RenderThread_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RenderThread_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RenderThread_cpp_salem.inl"
     #endif
 #endif
     threadID renderThreadId = ::GetCurrentThreadId();
@@ -108,6 +110,8 @@ void CRenderThreadLoading::Run()
         #include "Xenia/RenderThread_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RenderThread_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RenderThread_cpp_salem.inl"
     #endif
 #endif
 
@@ -166,6 +170,8 @@ SRenderThread::SRenderThread()
         #include "Xenia/RenderThread_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RenderThread_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RenderThread_cpp_salem.inl"
     #endif
 #endif
 #if defined(USE_HANDLE_FOR_FINAL_FLUSH_SYNC)
@@ -250,7 +256,7 @@ bool SRenderThread::RC_CreateDevice()
     LOADING_TIME_PROFILE_SECTION;
     AZ_TRACE_METHOD();
 
-#if defined(WIN32) || defined(WIN64) || defined(APPLE) || defined(LINUX)
+#if defined(WIN32) || defined(WIN64) || defined(APPLE) || defined(LINUX) || defined(CREATE_DEVICE_ON_MAIN_THREAD)
     return gRenDev->RT_CreateDevice();
 #else
     if (IsRenderThread())
@@ -270,7 +276,7 @@ bool SRenderThread::RC_CreateDevice()
 void SRenderThread::RC_ResetDevice()
 {
     AZ_TRACE_METHOD();
-#if defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(APPLE)
+#if defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(APPLE) || defined(CREATE_DEVICE_ON_MAIN_THREAD)
     gRenDev->RT_Reset();
 #else
     if (IsRenderThread())
@@ -292,6 +298,8 @@ void SRenderThread::RC_ResetDevice()
         #include "Xenia/RenderThread_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RenderThread_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RenderThread_cpp_salem.inl"
     #endif
 #endif
 
@@ -2248,7 +2256,6 @@ void SRenderThread::ProcessCommands(bool loadTimeProcessing)
         gcpRendD3D->BindContextToThread(CryGetCurrentThreadId());
     }
 # endif
-    //  Confetti BEGIN: Igor Lobanchikov
 #if defined(OPENGL) && !DXGL_FULL_EMULATION && !defined(CRY_USE_METAL)
     if (CRenderer::CV_r_multithreaded)
     {
@@ -2259,7 +2266,6 @@ void SRenderThread::ProcessCommands(bool loadTimeProcessing)
         m_kDXGLDeviceContextHandle.Set(&gcpRendD3D->GetDeviceContext(), !CRenderer::CV_r_multithreaded);
     }
 #endif //defined(OPENGL) && !DXGL_FULL_EMULATION
-    //  Confetti End: Igor Lobanchikov
 
 
 #ifdef DO_RENDERSTATS
@@ -2274,6 +2280,8 @@ void SRenderThread::ProcessCommands(bool loadTimeProcessing)
         #include "Xenia/RenderThread_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RenderThread_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RenderThread_cpp_salem.inl"
     #endif
 #endif
     int n = 0;
@@ -2314,6 +2322,8 @@ void SRenderThread::ProcessCommands(bool loadTimeProcessing)
         #include "Xenia/RenderThread_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RenderThread_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RenderThread_cpp_salem.inl"
     #endif
 #endif
         case eRC_ReleasePostEffects:
@@ -3289,6 +3299,8 @@ void SRenderThread::Process()
         #include "Xenia/RenderThread_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RenderThread_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RenderThread_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -3361,6 +3373,8 @@ void SRenderThread::Process()
         #include "Xenia/RenderThread_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RenderThread_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RenderThread_cpp_salem.inl"
     #endif
 #endif
                     frameId += 1;
@@ -3432,12 +3446,10 @@ void SRenderThread::Process()
         const uint64 elapsed = CryGetTicks() - start;
         gEnv->pSystem->GetCurrentUpdateTimeStats().RenderTime = elapsed;
     }
-    //  Confetti BEGIN: Igor Lobanchikov
 #if defined(OPENGL) && !DXGL_FULL_EMULATION && !defined(CRY_USE_METAL)
     m_kDXGLDeviceContextHandle.Set(NULL, !CRenderer::CV_r_multithreaded);
     m_kDXGLContextHandle.Set(NULL);
 #endif //defined(OPENGL) && !DXGL_FULL_EMULATION
-    //  Confetti End: Igor Lobanchikov
 }
 
 void SRenderThread::ProcessLoading()
@@ -3474,12 +3486,10 @@ void SRenderThread::ProcessLoading()
             SwitchMode(false);
         }
     }
-    //  Confetti BEGIN: Igor Lobanchikov
 #if defined(OPENGL) && !DXGL_FULL_EMULATION && !defined(CRY_USE_METAL)
     m_kDXGLDeviceContextHandle.Set(NULL, !CRenderer::CV_r_multithreaded);
     m_kDXGLContextHandle.Set(NULL);
 #endif //defined(OPENGL) && !DXGL_FULL_EMULATION
-    //  Confetti End: Igor Lobanchikov
 }
 
 #ifndef STRIP_RENDER_THREAD
@@ -3686,7 +3696,7 @@ void SRenderThread::WaitFlushFinishedCond()
 #else
         const int OneHunderdMilliseconds = 100;
         bool timedOut = !(m_FlushFinishedCondition.TimedWait(m_LockFlushNotify, OneHunderdMilliseconds));
-#if defined(AZ_PLATFORM_APPLE_IOS) && !defined(_RELEASE)
+#if defined(AZ_PLATFORM_IOS) && !defined(_RELEASE)
         // When we trigger asserts or warnings from a thread other than the main thread, the dialog box has to be
         // presented from the main thread. So, we need to pump the system event loop while the main thread is waiting.
         // We're using locks for waiting on iOS. This means that once the main thread goes into the wait, it's not
@@ -3709,7 +3719,7 @@ void SRenderThread::WaitFlushFinishedCond()
 #ifdef WIN32
         AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
         Sleep(0);
-#elif defined(AZ_PLATFORM_APPLE_OSX) && !defined(_RELEASE)
+#elif defined(AZ_PLATFORM_MAC) && !defined(_RELEASE)
         // On MacOS, we display blocking alerts(dialogs) to provide notifications to users(eg: assert failed).
         // These alerts(NSAlert) can be triggered only from the main thread. If we run into an assert on the render thread,
         // this block of code ensures that the alert is displayed on the main thread and we're not deadlocked with render thread.

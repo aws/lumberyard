@@ -36,7 +36,6 @@ namespace GridMate
     class ConversionMarshaler
     {
     public:
-        AZ_TYPE_INFO(ConversionMarshaler, "{BC451E40-837C-46F2-B73D-47ADCD3AC42D}", SerializedType, OriginalType);
         typedef OriginalType DataType;
 
         static const AZStd::size_t MarshalSize = sizeof(SerializedType);
@@ -172,6 +171,11 @@ namespace GridMate
 
         static const AZStd::size_t MarshalSize = sizeof(AZ::u32);
     };
+}
+
+namespace AZ
+{
+    AZ_TYPE_INFO_TEMPLATE_WITH_NAME(GridMate::ConversionMarshaler, "ConversionMarshaler", "{BC451E40-837C-46F2-B73D-47ADCD3AC42D}", AZ_TYPE_INFO_CLASS, AZ_TYPE_INFO_CLASS);
 }
 
 #endif //GM_UTILS_UTILITY_MARSHAL

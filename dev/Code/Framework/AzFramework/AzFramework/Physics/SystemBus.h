@@ -31,6 +31,7 @@ namespace Physics
     class Material;
     class MaterialSelection;
     class MaterialConfiguration;
+    class MaterialLibraryAsset;
     class WorldConfiguration;
     class WorldBodyConfiguration;
     class RigidBodyConfiguration;
@@ -92,6 +93,8 @@ namespace Physics
         : public AZ::EBusTraits
     {
     public:
+        using MutexType = AZStd::mutex;
+
         /// Returns the Default world managed by a relevant system.
         virtual AZStd::shared_ptr<World> GetDefaultWorld() = 0;
     };
@@ -166,6 +169,18 @@ namespace Physics
             AZStd::vector<AZ::Vector3>& lineBufferOut,
             AZStd::vector<bool>& lineValidityBufferOut) = 0;
 
+        /// Loads the project wide material library asset
+        virtual bool LoadDefaultMaterialLibrary() = 0;
+
+        /// Gets the current default material library
+        virtual const AZ::Data::Asset<Physics::MaterialLibraryAsset>* GetDefaultMaterialLibraryAssetPtr() = 0;
+
+        /// Updates the collider material selection from the physics asset or sets it to default if there's no asset provided.
+        /// @param shapeConfiguration The shape information
+        /// @param colliderConfiguration The collider information
+        virtual bool UpdateMaterialSelection(const Physics::ShapeConfiguration& shapeConfiguration,
+            Physics::ColliderConfiguration& colliderConfiguration) = 0;
+
         /// Computes parameters such as joint limit local rotations to give the desired initial joint limit orientation.
         /// @param jointLimitTypeId The type ID used to identify the particular kind of joint limit configuration to be created.
         /// @param parentWorldRotation The rotation in world space of the parent world body associated with the joint.
@@ -180,6 +195,10 @@ namespace Physics
             const AZ::Quaternion& childWorldRotation,
             const AZ::Vector3& axis,
             const AZStd::vector<AZ::Quaternion>& exampleLocalRotations) = 0;
+
+        /// Releases the mesh object created by the physics backend.
+        /// @param nativeMeshObject Pointer to the mesh object.
+        virtual void ReleaseNativeMeshObject(void* nativeMeshObject) = 0;
     };
 
     typedef AZ::EBus<SystemRequests> SystemRequestBus;
@@ -234,11 +253,12 @@ namespace Physics
     public:
         virtual ~SystemNotifications() {}
 
-        virtual void OnPrePhysicsUpdate(float /*fixedDeltaTime*/, World*) {};
-        virtual void OnPostPhysicsUpdate(float /*fixedDeltaTime*/, World*) {};
+        AZ_DEPRECATED(virtual void OnPrePhysicsUpdate(float /*fixedDeltaTime*/, World*), "Use WorldNotificationBus instead") {};
+        AZ_DEPRECATED(virtual void OnPostPhysicsUpdate(float /*fixedDeltaTime*/, World*), "Use WorldNotificationBus instead") {};
 
         virtual void OnPreWorldDestroy(World* /*world*/) {};
     };
 
-    typedef AZ::EBus<SystemNotifications> SystemNotificationBus;
+    using SystemNotificationBus = AZ::EBus<SystemNotifications>;
+
 } // namespace Physics

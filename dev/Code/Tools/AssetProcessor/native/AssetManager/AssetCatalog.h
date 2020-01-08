@@ -67,6 +67,7 @@ namespace AssetProcessor
     public Q_SLOTS:
         // incoming message from the AP
         void OnAssetMessage(QString platform, AzFramework::AssetSystem::AssetNotificationMessage message);
+        void OnDependencyResolved(const AZ::Data::AssetId& assetId, const AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& entry);
         void RequestReady(NetworkRequestID requestId, BaseAssetProcessorMessage* message, QString platform, bool fencingFailed = false);
 
         void SaveRegistry_Impl();
@@ -97,6 +98,7 @@ namespace AssetProcessor
         bool GetAssetSafeFolders(AZStd::vector<AZStd::string>& assetSafeFolders) override;
         bool IsAssetPlatformEnabled(const char* platform) override;
         int GetPendingAssetsForPlatform(const char* platform) override;
+        bool GetAssetsProducedBySourceUUID(const AZ::Uuid& sourceUuid, AZStd::vector<AZ::Data::AssetInfo>& productsAssetInfo) override;
         ////////////////////////////////////////////////////////////////////////////////
 
         ///////////////////////////////////////////////////////////////////////////

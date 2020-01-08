@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+        "Source/Platform/AppleTV":
+        [
+            "../Common/Unimplemented/LocalUser_SystemComponent_Unimplemented.cpp"
+        ]
+    }
+}

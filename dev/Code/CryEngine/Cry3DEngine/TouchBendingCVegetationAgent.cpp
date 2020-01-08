@@ -257,10 +257,14 @@ namespace AZ
     }
 
     //Equivalent to CVegetation::PhysicalizeFoliage()
-    void TouchBendingCVegetationAgent::OnPhysicalizedTouchBendingSkeleton(const void* privateData, Physics::TouchBendingSkeletonHandle* skeletonHandle)
+    bool TouchBendingCVegetationAgent::OnPhysicalizedTouchBendingSkeleton(const void* privateData, Physics::TouchBendingSkeletonHandle* skeletonHandle)
     {
         CVegetation* vegetation = static_cast<CVegetation*>(const_cast<void*>(privateData));
         CStatObj* pStatObj = static_cast<CStatObj*>(vegetation->GetStatObj());
+        if (!pStatObj)
+        {
+            return false;
+        }
 
         // we need to create a temporary SRenderingPassInfo structuture here to pass into CheckCreateRNTmpData,
         // CheckCreateRNTmpData, can call OnBecomeVisible, which uses the camera
@@ -280,7 +284,10 @@ namespace AZ
         if (OnPhysicalizedFoliage(pStatObj, worldAabb, vegetation->m_pRNTmpData->userData.m_pFoliage, GetCVars()->e_FoliageBranchesTimeout, skeletonHandle))
         {
             ((CStatObjFoliage*)vegetation->m_pRNTmpData->userData.m_pFoliage)->m_pVegInst = vegetation;
+            return true;
         }
+        //Only happens if we run out of memory.
+        return false;
     }
 
     // Physics::ITouchBendingCallback END **********************************

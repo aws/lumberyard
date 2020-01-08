@@ -113,6 +113,8 @@ union UPipelineState // Pipeline state relevant for shader instantiation
         #include "Xenia/ShaderCache_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ShaderCache_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ShaderCache_h_salem.inl"
     #endif
 #endif
     uint64 opaque;

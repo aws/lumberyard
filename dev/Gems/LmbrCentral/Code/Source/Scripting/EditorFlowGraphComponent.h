@@ -45,10 +45,7 @@ namespace LmbrCentral
         FlowGraphWrapper();
         FlowGraphWrapper(const AZ::EntityId& id, const AZStd::string& flowGraphName);
         FlowGraphWrapper(FlowGraphWrapper&& rhs);
-    private:
-        // Workaround for VS2013 - Delete the copy constructor and make it private
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-        FlowGraphWrapper(const FlowGraphWrapper&) = delete;
+
     public:
         virtual ~FlowGraphWrapper();
 
@@ -136,10 +133,7 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
 
     private:
-        // Workaround for VS2013 - Delete the copy constructor and make it private
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
         EditorFlowGraphComponent(const EditorFlowGraphComponent&) = delete;
-
         //! The FlowGraphs that are managed by this component
         AZStd::list<FlowGraphWrapper> m_flowGraphs;
     };

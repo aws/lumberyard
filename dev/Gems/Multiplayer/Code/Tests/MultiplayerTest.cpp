@@ -44,11 +44,7 @@
 #include <INetwork.h>
 #include <ISystem.h>
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#undef AZ_RESTRICTED_SECTION
-#define MULTIPLAYERTEST_CPP_SECTION_1 1
-#define MULTIPLAYERTEST_CPP_SECTION_2 2
-#endif
+#include <Multiplayer_Traits_Platform.h>
 
 // see also: dev/Code/Framework/AzCore/Tests/TestTypes.h
 namespace UnitTest
@@ -259,20 +255,7 @@ public:
         }
         else if (!strcmp(param, "gm_ipversion"))
         {
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION MULTIPLAYERTEST_CPP_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/MultiplayerTest_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/MultiplayerTest_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-            p.SetValue(GridMate::Driver::BSD_AF_INET);
-#endif
+            p.SetValue(AZ_TRAIT_MULTIPLAYER_ADDRESS_TYPE);
         }
 
         return p;
@@ -492,7 +475,6 @@ namespace UnitTest
         systemEntity->CreateComponent<AZ::StreamerComponent>();
         systemEntity->CreateComponent<AZ::AssetManagerComponent>();
         systemEntity->CreateComponent("{A316662A-6C3E-43E6-BC61-4B375D0D83B4}"); // Usersettings component
-        systemEntity->CreateComponent("{22FC6380-C34F-4a59-86B4-21C0276BCEE3}"); // ObjectStream component
         systemEntity->CreateComponent<AZ::ScriptSystemComponent>();
 
         systemEntity->Init();
@@ -550,19 +532,7 @@ namespace UnitTest
         }
         else if (!strcmp(param, "gm_ipversion"))
         {
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION MULTIPLAYERTEST_CPP_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/MultiplayerTest_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/MultiplayerTest_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-            p.SetValue(GridMate::Driver::BSD_AF_INET);
-#endif
+            p.SetValue(AZ_TRAIT_MULTIPLAYER_ADDRESS_TYPE);
         }
 
         return p;
@@ -661,7 +631,6 @@ return testlua;
         systemEntity->CreateComponent<AZ::StreamerComponent>();
         systemEntity->CreateComponent<AZ::AssetManagerComponent>();
         systemEntity->CreateComponent("{A316662A-6C3E-43E6-BC61-4B375D0D83B4}"); // Usersettings component
-        systemEntity->CreateComponent("{22FC6380-C34F-4a59-86B4-21C0276BCEE3}"); // ObjectStream component
         systemEntity->CreateComponent<AZ::ScriptSystemComponent>();
 
         systemEntity->Init();

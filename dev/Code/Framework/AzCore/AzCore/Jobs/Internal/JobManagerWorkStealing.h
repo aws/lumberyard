@@ -14,8 +14,6 @@
 
 // Included directly from JobManager.h
 
-#ifdef AZCORE_JOBS_IMPL_WORK_STEALING
-
 #include <AzCore/Jobs/Internal/JobManagerBase.h>
 #include <AzCore/Jobs/JobManagerDesc.h>
 #include <AzCore/Memory/PoolAllocator.h>
@@ -97,6 +95,7 @@ namespace AZ
                 AZStd::thread::id m_threadId;
                 bool m_isWorker = false;
                 Job* m_currentJob = nullptr; //job which is currently processing on this thread
+                void* m_owningManager = nullptr; // pointer to the job manager that owns this thread. only used for comparisons, not to call functions.
 
                 // valid only on workers (TODO: Use some lazy initialization as we don't need that data for non worker threads)
                 AZStd::thread m_thread;
@@ -151,7 +150,6 @@ namespace AZ
         };
     }
 }
-#endif // AZCORE_JOBS_IMPL_WORK_STEALING
 
 #endif
 #pragma once

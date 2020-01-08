@@ -18,10 +18,12 @@ namespace AZ
 {
     namespace Test
     {
+        ::testing::Environment* sTestEnvironment = nullptr;
+
         //! Add a single test environment to the framework
         void addTestEnvironment(ITestEnvironment* env)
         {
-            ::testing::AddGlobalTestEnvironment(env);
+            sTestEnvironment = ::testing::AddGlobalTestEnvironment(env);
         }
 
         //! Add a list of test environments to the framework
@@ -152,14 +154,22 @@ namespace AZ
         {
             using namespace AZ::Test;
             m_returnCode = 0;
-            if (ContainsParameter(argc, argv, "--unittest"))
+            if (ContainsParameter(argc, argv, "--unittest") || ContainsParameter(argc, argv, "--unittests"))
             {
                 // the --unittest parameter makes us run tests built inside this executable
 
                 // first, remove the unit test parameter so that it doesn't get passed into google 
                 // test, which would potentially generate warnings since its a non standard param:
                 int unitTestIndex = GetParameterIndex(argc, argv, "--unittest");
-                RemoveParameters(argc, argv, unitTestIndex, unitTestIndex);
+                if (unitTestIndex != -1)
+                {
+                    RemoveParameters(argc, argv, unitTestIndex, unitTestIndex);
+                }
+                unitTestIndex = GetParameterIndex(argc, argv, "--unittests");
+                if (unitTestIndex != -1)
+                {
+                    RemoveParameters(argc, argv, unitTestIndex, unitTestIndex);
+                }
 
                 ::testing::InitGoogleMock(&argc, argv);
                 AZ::Test::excludeIntegTests();

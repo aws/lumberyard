@@ -11,31 +11,37 @@
 */
 #include "CloudGemFramework_precompiled.h"
 
-#include <AzTest/AzTest.h>
+#include <AzCore/UnitTest/UnitTest.h>
 
 #include <AzCore/Jobs/JobManagerBus.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
+#include <CloudGemFramework_Traits_Platform.h>
 #include <CloudGemFramework/AwsApiRequestJob.h>
 #include <CloudGemFramework/ServiceRequestJob.h>
 #include <CloudGemFramework/JsonObjectHandler.h>
 #include <CloudGemFramework/JsonWriter.h>
 #include <CloudGemFramework/HttpRequestJob.h>
 
+#include <CloudGemFramework/AwsApiJobConfig.h>
+#include <CloudGemFramework/CloudGemFrameworkBus.h>
+#include <CloudCanvas/CloudCanvasMappingsBus.h>
+#include <PlayerIdentityComponent.h>
+#include <Mocks/ISystemMock.h>
+
 #include <chrono>
 
-#pragma warning(disable: 4355) // <future> includes ppltasks.h which throws a C4355 warning: 'this' used in base member initializer list
+AZ_PUSH_DISABLE_WARNING(4251 4355 4996, "-Wunknown-warning-option")
 #include <aws/lambda/LambdaClient.h>
 #include <aws/lambda/model/ListFunctionsRequest.h>
 #include <aws/lambda/model/ListFunctionsResult.h>
+#include <aws/core/Aws.h>
 #include <aws/core/utils/Outcome.h>
 #include <aws/core/utils/memory/stl/AWSStringStream.h>
 #include <aws/core/auth/AWSCredentialsProvider.h>
-#pragma warning(default: 4355)
+AZ_POP_DISABLE_WARNING
 
 #include "ServiceApi.h"
-
-using namespace ::testing;
 
 class UnitTestEnvironment : public AZ::Test::ITestEnvironment
 {
@@ -767,6 +773,145 @@ TEST_F(RequestBuilderAddQueryParameterTest, Escaped)
     target.AddQueryParameter(NAME, UNESCAPED);
     AssertUrlParam(ESCAPED);
 }
+
+#if AZ_TRAIT_CLOUDGEMFRAMEWORK_TEST_DEDICATED_SUPPORTED
+
+class MockCloudCanvasMappingsBusHandler
+    : public CloudGemFramework::CloudCanvasMappingsBus::Handler
+{
+public:
+    AZ_CLASS_ALLOCATOR(MockCloudCanvasMappingsBusHandler, AZ::SystemAllocator, 0)
+
+    MOCK_METHOD1(GetLogicalToPhysicalResourceMapping, AZStd::string(const AZStd::string&));
+    MOCK_METHOD3(SetLogicalMapping, void(AZStd::string, AZStd::string, AZStd::string));
+    MOCK_METHOD1(GetMappingsOfType, AZStd::vector<AZStd::string>(const AZStd::string&));
+    MOCK_METHOD1(LoadLogicalMappingsFromFile, bool(const AZStd::string&));
+    MOCK_METHOD0(GetAllMappings, CloudGemFramework::MappingData());
+    MOCK_METHOD0(IsProtectedMapping, bool());
+    MOCK_METHOD1(SetProtectedMapping, void(bool));
+    MOCK_METHOD0(IgnoreProtection, bool());
+    MOCK_METHOD1(SetIgnoreProtection, void(bool));
+};
+
+class MockCloudGemFrameworkRequestBusHandler
+    : public CloudGemFramework::CloudGemFrameworkRequestBus::Handler
+{
+public:
+    AZ_CLASS_ALLOCATOR(MockCloudGemFrameworkRequestBusHandler, AZ::SystemAllocator, 0)
+
+    MOCK_METHOD1(GetServiceUrl, AZStd::string(const AZStd::string&));
+    MOCK_METHOD0(GetDefaultJobContext, AZ::JobContext*());
+    MOCK_METHOD1(GetRootCAFile, CloudCanvas::RequestRootCAFileResult(AZStd::string&));
+    MOCK_METHOD0(GetDefaultConfig, CloudGemFramework::AwsApiJobConfig*());
+
+#ifdef _DEBUG
+    MOCK_METHOD0(IncrementJobCount, void());
+    MOCK_METHOD0(DecrementJobCount, void());
+#endif
+};
+
+class PlayerIdentityComponentTest
+    : public ::testing::Test
+    , public AZ::Debug::TraceMessageBus::Handler
+{
+public:
+    void SetUp() override
+    {
+        m_priorEnv = gEnv;
+        memset(&m_stubEnv, 0, sizeof(SSystemGlobalEnvironment));
+        m_stubEnv.pSystem = &m_system;
+
+        // PlayerIdentityComponent uses GetISystem()->GetGlobalEnvironment() so mock it 
+        ON_CALL(m_system, GetGlobalEnvironment())
+            .WillByDefault(::testing::Return(&m_stubEnv));
+
+        gEnv = &m_stubEnv;
+
+        Aws::InitAPI(m_sdkOptions);
+    }
+
+    void TearDown() override
+    {
+        Aws::ShutdownAPI(m_sdkOptions);
+        gEnv = m_priorEnv;
+    }
+
+    bool OnError(const char* window, const char* message) override
+    {
+        AZ_UNUSED(window);
+        AZ_UNUSED(message);
+
+        m_numErrors++;
+
+        // stop processing
+        return true;
+    }
+
+
+protected:
+    ::testing::NiceMock<SystemMock> m_system;
+    SSystemGlobalEnvironment m_stubEnv;
+    SSystemGlobalEnvironment* m_priorEnv = nullptr;
+
+    Aws::SDKOptions m_sdkOptions;
+    AZ::u32 m_numErrors = 0;
+};
+
+TEST_F(PlayerIdentityComponentTest, GetServerIdentityFailsWithoutCrashing_FT)
+{
+    CloudGemFramework::CloudCanvasPlayerIdentityComponent* playerIdentityComponent = aznew CloudGemFramework::CloudCanvasPlayerIdentityComponent();
+
+    // fake that we are a dedicated server
+    bool prevIsDedicated = m_stubEnv.IsDedicated();
+    m_stubEnv.SetIsDedicated(true);
+
+    // we provide bogus mappings because we are testing error handling 
+    ::testing::NiceMock<MockCloudCanvasMappingsBusHandler> mappingsBusHandler;
+    ON_CALL(mappingsBusHandler, GetLogicalToPhysicalResourceMapping(::testing::_))
+        .WillByDefault(::testing::Invoke([this](const AZStd::string& mapping) -> AZStd::string
+    {
+        return "Invalid";
+    }));
+    mappingsBusHandler.BusConnect();
+
+    // we need to provide a default config to get to the code we want to test
+    ::testing::NiceMock<MockCloudGemFrameworkRequestBusHandler> cloudGemFramworkBusHandler;
+    ON_CALL(cloudGemFramworkBusHandler, GetDefaultConfig())
+        .WillByDefault(::testing::Invoke([]() -> CloudGemFramework::AwsApiJobConfig*
+    {
+        return CloudGemFramework::AwsApiJob::GetDefaultConfig();
+    }));
+    ON_CALL(cloudGemFramworkBusHandler, GetRootCAFile(::testing::_))
+        .WillByDefault(::testing::Invoke([](AZStd::string& path) ->  CloudCanvas::RequestRootCAFileResult
+    {
+        path = "";
+        return CloudCanvas::RequestRootCAFileResult::ROOTCA_USER_FILE_NOT_FOUND;
+    }));
+    cloudGemFramworkBusHandler.BusConnect();
+
+    // because the crash happens inside Trace::Error() we use our own trace message handler to make sure
+    // we run the code that would normally cause a crash.  If we used AZ_TEST_START_TRACE_SUPPRESSION 
+    // the Trace::Error() function would stop at OnPreError and not run the code that tries to print 
+    // the null/corrupted string 
+    m_numErrors = 0;
+
+    // connect to the TraceMessageBus
+    BusConnect();
+    bool resetIdentityResult = playerIdentityComponent->ResetPlayerIdentity();
+    BusDisconnect();
+    EXPECT_EQ(m_numErrors, 1);
+
+    // GetServerIdentity does not change ResetPlayerIdentity's result value, which should be true because the identity was technically "reset"
+    EXPECT_TRUE(resetIdentityResult);
+
+    m_stubEnv.SetIsDedicated(prevIsDedicated);
+
+    // broadcast OnCloudGemFrameworkDeactivated so the static AwsApiJobConfig gets deleted 
+    CloudGemFramework::InternalCloudGemFrameworkNotificationBus::Broadcast(&CloudGemFramework::InternalCloudGemFrameworkNotificationBus::Events::OnCloudGemFrameworkDeactivated);
+
+    delete playerIdentityComponent;
+}
+#endif // AZ_TRAIT_CLOUDGEMFRAMEWORK_TEST_DEDICATED_SUPPORTED
 
 //////////////////////////////////////////////////////////////////////////////
 // AwsApiRequestJob Integration Tests

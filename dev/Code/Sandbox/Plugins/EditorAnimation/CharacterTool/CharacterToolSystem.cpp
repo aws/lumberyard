@@ -33,7 +33,6 @@
 #include <Cry_Geo.h>
 #include <Cry_Math.h>
 #include <ISystem.h>
-#include <boost/shared_ptr.hpp>
 #include <smartptr.h>
 #include "SkeletonContent.h"
 #include "SceneContent.h"

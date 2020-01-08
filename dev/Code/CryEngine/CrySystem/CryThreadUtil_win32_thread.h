@@ -48,6 +48,8 @@ static string GetLastErrorAsString()
         #include "Xenia/CryThreadUtil_win32_thread_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CryThreadUtil_win32_thread_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryThreadUtil_win32_thread_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -203,6 +205,8 @@ namespace CryThreadUtil
         #include "Xenia/CryThreadUtil_win32_thread_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CryThreadUtil_win32_thread_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryThreadUtil_win32_thread_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -434,11 +438,7 @@ namespace CryThreadUtil
     {
         uint temp = 0;
         _clearfp();
-#ifdef AZ_OS32
-        const unsigned int kAllowedBits = _MCW_DN | _MCW_EM | _MCW_RC | _MCW_IC | _MCW_PC;
-#else
         const unsigned int kAllowedBits = _MCW_DN | _MCW_EM | _MCW_RC;
-#endif
         _controlfp_s(&temp, nMask, kAllowedBits);
     }
 }

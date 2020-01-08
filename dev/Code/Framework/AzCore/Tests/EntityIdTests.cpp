@@ -9,9 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <TestTypes.h>
-
 #include <AzCore/Component/EntityId.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 class EntityIdTests
     : public UnitTest::AllocatorsFixture

@@ -292,12 +292,25 @@ namespace ScriptCanvasEditor
 
     void DataTypePaletteModel::AddDataTypeImpl(const AZ::TypeId& typeId)
     {
-        m_variableTypes.emplace_back(typeId);
 
         AZStd::string lowerName = FindTypeNameForTypeId(typeId);
         AZStd::to_lower(lowerName.begin(), lowerName.end());
 
-        m_typeNameMapping[lowerName] = typeId;
+        if (ScriptCanvas::Data::IsNumber(typeId))
+        {
+            const auto numberTypeId = azrtti_typeid<ScriptCanvas::Data::NumberType>();
+            m_variableTypes.emplace_back(numberTypeId);
+
+            lowerName = ScriptCanvas::Data::GetName(ScriptCanvas::Data::Type::Number());
+            AZStd::to_lower(lowerName.begin(), lowerName.end());
+
+            m_typeNameMapping[lowerName] = numberTypeId;
+        }
+        else
+        {
+            m_variableTypes.emplace_back(typeId);
+            m_typeNameMapping[lowerName] = typeId;
+        }
     }
 
     ////////////////////////////////////////

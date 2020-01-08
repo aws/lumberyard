@@ -23,7 +23,6 @@ namespace CoreCPP
     template<typename t_Type>
     struct BehaviorClassReflection
     {
-        AZ_TYPE_INFO((BehaviorClassReflection<t_Type>), "{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}", t_Type);
     };
 
     template<typename t_Type, bool isHashable = ScriptCanvas::Data::Traits<t_Type>::s_isKey>
@@ -161,7 +160,6 @@ namespace ScriptCanvas
         void Core::InitNodeRegistry(NodeRegistry& nodeRegistry)
         {
             using namespace ScriptCanvas::Nodes::Core;
-            AddNodeToRegistry<Core, Assign>(nodeRegistry);
             AddNodeToRegistry<Core, Error>(nodeRegistry);
             AddNodeToRegistry<Core, ErrorHandler>(nodeRegistry);
             AddNodeToRegistry<Core, Method>(nodeRegistry);
@@ -175,12 +173,12 @@ namespace ScriptCanvas
             AddNodeToRegistry<Core, SetVariableNode>(nodeRegistry);
             AddNodeToRegistry<Core, ReceiveScriptEvent>(nodeRegistry);
             AddNodeToRegistry<Core, SendScriptEvent>(nodeRegistry);
+            AddNodeToRegistry<Core, Repeater>(nodeRegistry);
         }
 
         AZStd::vector<AZ::ComponentDescriptor*> Core::GetComponentDescriptors()
         {
             return AZStd::vector<AZ::ComponentDescriptor*>({
-                ScriptCanvas::Nodes::Core::Assign::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::Error::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::ErrorHandler::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::Method::CreateDescriptor(),
@@ -189,12 +187,18 @@ namespace ScriptCanvas
                 ScriptCanvas::Nodes::Core::String::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::EBusEventHandler::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::ExtractProperty::CreateDescriptor(),
-                ScriptCanvas::Nodes::Core::ForEach::CreateDescriptor(),
+                ScriptCanvas::Nodes::Core::ForEach::CreateDescriptor(),                
                 ScriptCanvas::Nodes::Core::GetVariableNode::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::SetVariableNode::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::ReceiveScriptEvent::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::SendScriptEvent::CreateDescriptor(),
+                ScriptCanvas::Nodes::Core::Repeater::CreateDescriptor()
             });
         }
     }
+}
+
+namespace AZ
+{
+    AZ_TYPE_INFO_TEMPLATE_WITH_NAME(CoreCPP::BehaviorClassReflection, "(BehaviorClassReflection<t_Type>)", "{0EADF8F5-8AB8-42E9-9C50-F5C78255C817}", AZ_TYPE_INFO_TYPENAME);
 }

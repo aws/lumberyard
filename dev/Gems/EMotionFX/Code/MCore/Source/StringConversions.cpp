@@ -53,6 +53,23 @@ namespace MCore
 
         return uniqueName;
     }
+
+    AZStd::string ConstructStringSeparatedBySemicolons(const AZStd::vector<AZStd::string>& stringVec)
+    {
+        AZStd::string result;
+
+        for (const AZStd::string& currentString : stringVec)
+        {
+            if (!result.empty())
+            {
+                result += CharacterConstants::semiColon;
+            }
+
+            result += currentString;
+        }
+
+        return result;
+    }
 }
 
 namespace AZStd
@@ -106,8 +123,8 @@ namespace AzFramework
             AzFramework::StringFunc::Tokenize(in, tokens, MCore::CharacterConstants::comma, false, true);
             if (tokens.size() == 2)
             {
-                float x;
-                float y;
+                float x = 0.0f;
+                float y = 0.0f;
                 if (!AzFramework::StringFunc::LooksLikeFloat(tokens[0].c_str(), outVector ? &x : nullptr))
                 {
                     return false;
@@ -138,9 +155,9 @@ namespace AzFramework
             AzFramework::StringFunc::Tokenize(in, tokens, MCore::CharacterConstants::comma, false, true);
             if (tokens.size() == 3)
             {
-                float x;
-                float y;
-                float z;
+                float x = 0.0f;
+                float y = 0.0f;
+                float z = 0.0f;
                 if (!AzFramework::StringFunc::LooksLikeFloat(tokens[0].c_str(), outVector ? &x : nullptr))
                 {
                     return false;
@@ -175,10 +192,10 @@ namespace AzFramework
             AzFramework::StringFunc::Tokenize(in, tokens, MCore::CharacterConstants::comma, false, true);
             if (tokens.size() == 4)
             {
-                float x;
-                float y;
-                float z;
-                float w;
+                float x = 0.0f;
+                float y = 0.0f;
+                float z = 0.0f;
+                float w = 0.0f;
                 if (!AzFramework::StringFunc::LooksLikeFloat(tokens[0].c_str(), outVector ? &x : nullptr))
                 {
                     return false;

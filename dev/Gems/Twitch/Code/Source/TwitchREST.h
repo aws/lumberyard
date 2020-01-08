@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <ITwitchRest.h>
+#include "ITwitchREST.h"
 
 namespace Twitch
 {
@@ -22,7 +22,7 @@ namespace Twitch
         using GetChannelCallback = AZStd::function<void(const ChannelInfo&, const ReceiptID&, ResultCode)>;
 
     public:
-        TwitchREST(const IFuelInterfacePtr& fuelInterface);
+        TwitchREST();
         virtual ~TwitchREST() {}
         void FlushEvents() override;
 
@@ -54,11 +54,10 @@ namespace Twitch
         void GetChannelVideos(ReceiptID& receipt, const AZStd::string& channelID, BroadCastType boradcastType, const AZStd::string& language, AZ::u64 offset) override;
         void StartChannelCommercial(ReceiptID& receipt, const AZStd::string& channelID, CommercialLength length) override;
         void ResetChannelStreamKey(ReceiptID& receipt, const AZStd::string& channelID) override;
-        void GetChannelCommunity(ReceiptID& receipt, const AZStd::string& channelID) override;
-        void SetChannelCommunity(ReceiptID& receipt, const AZStd::string& channelID, const AZStd::string& communityID) override;
-        void DeleteChannelfromCommunity(ReceiptID& receipt, const AZStd::string& channelID) override;
 
         bool IsValidGameContext(const AZStd::string& gameContext) const override;
+        void AddHTTPRequest(const AZStd::string& URI, Aws::Http::HttpMethod method, const HttpRequestor::Headers & headers, const HttpRequestor::Callback & callback) override;
+        void AddHTTPRequest(const AZStd::string& URI, Aws::Http::HttpMethod method, const HttpRequestor::Headers & headers, const AZStd::string& body, const HttpRequestor::Callback& callback) override;
         
     private:
         void InternalGetChannel(const ReceiptID& receipt, const GetChannelCallback& callback);
@@ -72,26 +71,26 @@ namespace Twitch
         void AddToHeader(HttpRequestor::Headers& headers, const AZStd::string& name, const AZStd::string& key) const;
         void AddToHeader(HttpRequestor::Headers& headers, const AZStd::string& name, AZ::s64 key) const;
         void AddToHeader(HttpRequestor::Headers& headers, const AZStd::string& name, AZ::u64 key) const;
-        AZ::u64 SafeGetUserInfoFromUserContainer(UserInfo& userInfo, const Aws::Utils::Json::JsonValue& jsonInfo) const;
-        AZ::u64 SafeGetUserInfo(UserInfo& userInfo, const Aws::Utils::Json::JsonValue& jsonInfo) const;
-        bool SafeGetJSONString(AZStd::string& value, const char*key, const Aws::Utils::Json::JsonValue& json) const;
-        bool SafeGetJSONu64(AZ::u64& value, const char*key, const Aws::Utils::Json::JsonValue& json) const;
-        bool SafeGetJSONs64(AZ::s64& value, const char*key, const Aws::Utils::Json::JsonValue& json) const;
-        bool SafeGetJSONbool(bool& value, const char*key, const Aws::Utils::Json::JsonValue& json) const;
-        bool SafeGetJSONdouble(double& value, const char*key, const Aws::Utils::Json::JsonValue& json) const;
-        AZ::u64 SafeGetUserNotifications(UserNotifications& iserNotifications, const Aws::Utils::Json::JsonValue& json) const;
-        bool SafeGetPresenceActivityType(PresenceActivityType& activityType, const Aws::Utils::Json::JsonValue& json) const;
-        bool SafeGetPresenceAvailability(PresenceAvailability& availability, const Aws::Utils::Json::JsonValue& json) const;
-        AZ::u64 SafeGetChannelInfo(ChannelInfo& channelInfo, const Aws::Utils::Json::JsonValue& json) const;
-        AZ::u64 SafeGetTeamInfo(TeamInfo& teamInfo, const Aws::Utils::Json::JsonValue& json) const;
-        bool SafeGetJSONBroadCastType(BroadCastType& type, const char*key, const Aws::Utils::Json::JsonValue& json) const;
-        bool SafeGetJSONVideoChannel(VideoChannelInfo& channelInfo, const Aws::Utils::Json::JsonValue& json) const;
-        bool SafeGetJSONVideoFPS(FPSInfo& fps, const Aws::Utils::Json::JsonValue& json) const;
-        bool SafeGetJSONVideoPreview(PreviewInfo& preview, const Aws::Utils::Json::JsonValue& json) const;
-        bool SafeGetJSONVideoResolutions(ResolutionsInfo& resolutions, const Aws::Utils::Json::JsonValue& json) const;
-        bool SafeGetJSONVideoThumbnailInfo(ThumbnailInfo& info, const char *key, const Aws::Utils::Json::JsonValue& json) const;
-        bool SafeGetJSONVideoThumbnails(ThumbnailsInfo& thumbnails, const Aws::Utils::Json::JsonValue& json) const;
-        bool SafeGetChannelCommunityInfo(CommunityInfo & info, const Aws::Utils::Json::JsonValue& json) const;
+        AZ::u64 SafeGetUserInfoFromUserContainer(UserInfo& userInfo, const Aws::Utils::Json::JsonView& jsonInfo) const;
+        AZ::u64 SafeGetUserInfo(UserInfo& userInfo, const Aws::Utils::Json::JsonView& jsonInfo) const;
+        bool SafeGetJSONString(AZStd::string& value, const char*key, const Aws::Utils::Json::JsonView& json) const;
+        bool SafeGetJSONu64(AZ::u64& value, const char*key, const Aws::Utils::Json::JsonView& json) const;
+        bool SafeGetJSONs64(AZ::s64& value, const char*key, const Aws::Utils::Json::JsonView& json) const;
+        bool SafeGetJSONbool(bool& value, const char*key, const Aws::Utils::Json::JsonView& json) const;
+        bool SafeGetJSONdouble(double& value, const char*key, const Aws::Utils::Json::JsonView& json) const;
+        AZ::u64 SafeGetUserNotifications(UserNotifications& iserNotifications, const Aws::Utils::Json::JsonView& json) const;
+        bool SafeGetPresenceActivityType(PresenceActivityType& activityType, const Aws::Utils::Json::JsonView& json) const;
+        bool SafeGetPresenceAvailability(PresenceAvailability& availability, const Aws::Utils::Json::JsonView& json) const;
+        AZ::u64 SafeGetChannelInfo(ChannelInfo& channelInfo, const Aws::Utils::Json::JsonView& json) const;
+        AZ::u64 SafeGetTeamInfo(TeamInfo& teamInfo, const Aws::Utils::Json::JsonView& json) const;
+        bool SafeGetJSONBroadCastType(BroadCastType& type, const char*key, const Aws::Utils::Json::JsonView& json) const;
+        bool SafeGetJSONVideoChannel(VideoChannelInfo& channelInfo, const Aws::Utils::Json::JsonView& json) const;
+        bool SafeGetJSONVideoFPS(FPSInfo& fps, const Aws::Utils::Json::JsonView& json) const;
+        bool SafeGetJSONVideoPreview(PreviewInfo& preview, const Aws::Utils::Json::JsonView& json) const;
+        bool SafeGetJSONVideoResolutions(ResolutionsInfo& resolutions, const Aws::Utils::Json::JsonView& json) const;
+        bool SafeGetJSONVideoThumbnailInfo(ThumbnailInfo& info, const char *key, const Aws::Utils::Json::JsonView& json) const;
+        bool SafeGetJSONVideoThumbnails(ThumbnailsInfo& thumbnails, const Aws::Utils::Json::JsonView& json) const;
+        bool SafeGetChannelCommunityInfo(CommunityInfo & info, const Aws::Utils::Json::JsonView& json) const;
 
         AZStd::string GetPresenceAvailabilityName(PresenceAvailability availability) const;
         AZStd::string GetPresenceActivityTypeName(PresenceActivityType activityType) const;
@@ -113,7 +112,6 @@ namespace Twitch
         using PresenceActivityTypeNameMap = AZStd::map<PresenceActivityType, AZStd::string>;
 
     private:
-        IFuelInterfacePtr               m_fuelInterface;
         PresenceAvailabilityMap         m_availabilityMap;
         PresenceActivityTypeNameMap     m_activityTypeMap;
     };

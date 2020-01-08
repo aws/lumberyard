@@ -11,7 +11,18 @@
 */
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzTest/AzTest.h>
-#include <SliceBuilder/Source/TypeFingerprinter.h>
+#include <AzToolsFramework/Slice/SliceUtilities.h>
+#include <AzCore/IO/ByteContainerStream.h>
+#include <AzCore/Slice/SliceAssetHandler.h>
+#include <AzCore/UnitTest/TestTypes.h>
+#include <AzCore/Component/ComponentApplication.h>
+#include <AzFramework/Asset/GenericAssetHandler.h>
+#include <Source/SliceBuilderWorker.h>
+#include <AzCore/Slice/SliceComponent.h>
+#include <AzCore/Slice/SliceMetadataInfoComponent.h>
+#include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
+#include "AzFramework/Asset/SimpleAsset.h"
+#include "Tests/AZTestShared/Utils/Utils.h"
 
 using namespace SliceBuilder;
 
@@ -25,302 +36,543 @@ TEST_F(SliceBuilderTests, Sanity)
     ASSERT_TRUE(true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Fingerprinting tests
+using namespace AZ;
+using namespace UnitTest;
 
-class ReflectedTestClass
+struct MockAsset
+    : public AZ::Data::AssetData
+{
+    AZ_RTTI(MockAsset, "{6A98A05A-5B8B-455B-BA92-508A7CF76024}", AZ::Data::AssetData);
+
+    static void Reflect(ReflectContext* reflection)
+    {
+        SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<MockAsset>()
+                ->Field("value", &MockAsset::m_value);
+        }
+    }
+
+    int m_value = 0;
+};
+
+struct MockAssetRefComponent
+    : public AZ::Component
+{
+    AZ_COMPONENT(MockAssetRefComponent, "{92A6CEC4-BB83-4BED-B062-8A69302E0C9D}");
+
+    static void Reflect(ReflectContext* reflection)
+    {
+        SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<MockAssetRefComponent, AZ::Component>()
+                ->Field("asset", &MockAssetRefComponent::m_asset);
+        }
+    }
+
+    void Activate() override {}
+    void Deactivate() override {}
+
+    Data::Asset<MockAsset> m_asset;
+};
+
+class MockSimpleAsset
 {
 public:
-    AZ_TYPE_INFO(ReflectedTestClass, "{AE55A3D4-845B-457F-94BA-A708BBDD6307}");
-    AZ_CLASS_ALLOCATOR(ReflectedTestClass, AZ::SystemAllocator, 0);
+    AZ_TYPE_INFO(MockSimpleAsset, "{923AE476-3491-49F7-A77C-70C896C1B1FD}");
 
-    ~ReflectedTestClass()
+    static const char* GetFileFilter()
     {
-        delete m_property1AsPointer;
-    }
-
-    int m_property1;
-
-    bool m_property1AsBool;
-    int *m_property1AsPointer = nullptr;
-
-    int m_property2;
-
-    static void ReflectDefault(AZ::SerializeContext& context)
-    {
-        context.Class<ReflectedTestClass>()
-            ->Field("Property1", &ReflectedTestClass::m_property1);
-    }
-
-    static void ReflectHigherVersion(AZ::SerializeContext& context)
-    {
-        context.Class<ReflectedTestClass>()
-            ->Version(2)
-            ->Field("Property1", &ReflectedTestClass::m_property1);
-    }
-
-    static void ReflectRenamedProperty(AZ::SerializeContext& context)
-    {
-        context.Class<ReflectedTestClass>()
-            ->Field("Property1Renamed", &ReflectedTestClass::m_property1);
-    }
-
-    static void ReflectPropertyWithDifferentType(AZ::SerializeContext& context)
-    {
-        context.Class<ReflectedTestClass>()
-            ->Field("Property", &ReflectedTestClass::m_property1AsBool);
-    }
-
-    static void ReflectPropertyAsPointer(AZ::SerializeContext& context)
-    {
-        context.Class<ReflectedTestClass>()
-            ->Field("Property1", &ReflectedTestClass::m_property1AsPointer);
-    }
-
-    static void ReflectTwoProperties(AZ::SerializeContext& context)
-    {
-        context.Class<ReflectedTestClass>()
-            ->Field("Property1", &ReflectedTestClass::m_property1)
-            ->Field("Property2", &ReflectedTestClass::m_property2);
+        return "*.txt;";
     }
 };
 
-class ReflectedBaseClass
+namespace AZ
 {
-public:
-    AZ_TYPE_INFO(ReflectedBaseClass, "{B53DC61E-6E8A-4F0A-82E4-864FA50326E5}");
-    virtual ~ReflectedBaseClass() = default;
+    AZ_TYPE_INFO_SPECIALIZE(AzFramework::SimpleAssetReference<MockSimpleAsset>, "{E21666E3-1943-4C55-BBBF-FA6E62E15942}")
+}
 
-    static void ReflectDefault(AZ::SerializeContext& context)
+struct MockSimpleAssetRefComponent
+    : public AZ::Component
+{
+    AZ_COMPONENT(MockSimpleAssetRefComponent, "{C3B2F100-D08C-4912-AC16-57506B190C2F}");
+
+    static void Reflect(ReflectContext* reflection)
     {
-        context.Class<ReflectedBaseClass>();
+        SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(reflection);
+
+        AzFramework::SimpleAssetReference<MockSimpleAsset>::Register(*serializeContext);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<MockSimpleAssetRefComponent, AZ::Component>()
+                ->Field("asset", &MockSimpleAssetRefComponent::m_asset);
+        }
+    }
+
+    void Activate() override {}
+    void Deactivate() override {}
+
+    AzFramework::SimpleAssetReference<MockSimpleAsset> m_asset;
+};
+
+struct MockEditorComponent
+    : public AzToolsFramework::Components::EditorComponentBase
+{
+    AZ_EDITOR_COMPONENT(MockEditorComponent, "{550BA62B-9A98-4A6E-BF7D-7BC939796CF5}");
+
+    static void Reflect(ReflectContext* reflection)
+    {
+        SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<MockEditorComponent, AzToolsFramework::Components::EditorComponentBase>()
+                ->Field("uuid", &MockEditorComponent::m_uuid);
+        }
+    }
+
+    void BuildGameEntity(AZ::Entity* gameEntity) override
+    {
+        auto* assetComponent = aznew MockAssetRefComponent;
+        assetComponent->m_asset = Data::AssetManager::Instance().CreateAsset<MockAsset>(AZ::Data::AssetId(m_uuid, 0));
+        
+        gameEntity->AddComponent(assetComponent);
+    }
+
+    AZ::Uuid m_uuid;
+};
+
+using namespace AZ::Data;
+
+class SliceBuilderTest_MockCatalog
+    : public AssetCatalog
+    , public AZ::Data::AssetCatalogRequestBus::Handler
+{
+private:
+    AZ::Uuid randomUuid = AZ::Uuid::CreateRandom();
+    AZStd::vector<AssetId> m_mockAssetIds;
+
+public:
+    AZ_CLASS_ALLOCATOR(SliceBuilderTest_MockCatalog, AZ::SystemAllocator, 0);
+
+    SliceBuilderTest_MockCatalog()
+    {
+        AssetCatalogRequestBus::Handler::BusConnect();
+    }
+
+    ~SliceBuilderTest_MockCatalog()
+    {
+        AssetCatalogRequestBus::Handler::BusDisconnect();
+    }
+
+    AssetId GenerateMockAssetId()
+    {
+        AssetId assetId = AssetId(AZ::Uuid::CreateRandom(), 0);
+        m_mockAssetIds.push_back(assetId);
+        return assetId;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // AssetCatalogRequestBus
+    AssetInfo GetAssetInfoById(const AssetId& id) override
+    {
+        AssetInfo result;
+        result.m_assetType = AZ::AzTypeInfo<AZ::SliceAsset>::Uuid();
+        for (const AssetId& assetId : m_mockAssetIds)
+        {
+            if (assetId == id)
+            {
+                result.m_assetId = id;
+                break;
+            }
+        }
+        return result;
+    }
+    //////////////////////////////////////////////////////////////////////////
+
+    AssetStreamInfo GetStreamInfoForLoad(const AssetId& id, const AssetType& type) override
+    {
+        EXPECT_TRUE(type == AzTypeInfo<SliceAsset>::Uuid());
+        AssetStreamInfo info;
+        info.m_dataOffset = 0;
+        info.m_isCustomStreamType = false;
+        info.m_streamFlags = IO::OpenMode::ModeRead;
+
+        for (int i = 0; i < m_mockAssetIds.size(); ++i)
+        {
+            if (m_mockAssetIds[i] == id)
+            {
+                info.m_streamName = AZStd::string::format("MockSliceAssetName%d", i);
+            }
+        }
+
+        if (!info.m_streamName.empty())
+        {
+            // this ensures tha parallel running unit tests do not overlap their files that they use.
+            AZStd::string fullName = AZStd::string::format("%s%s-%s", GetTestFolderPath().c_str(), randomUuid.ToString<AZStd::string>().c_str(), info.m_streamName.c_str());
+            info.m_streamName = fullName;
+            info.m_dataLen = static_cast<size_t>(IO::SystemFile::Length(info.m_streamName.c_str()));
+        }
+        else
+        {
+            info.m_dataLen = 0;
+        }
+
+        return info;
+    }
+
+    AssetStreamInfo GetStreamInfoForSave(const AssetId& id, const AssetType& type) override
+    {
+        AssetStreamInfo info;
+        info = GetStreamInfoForLoad(id, type);
+        info.m_streamFlags = IO::OpenMode::ModeWrite;
+        return info;
+    }
+
+    bool SaveAsset(Asset<SliceAsset>& asset)
+    {
+        volatile bool isDone = false;
+        volatile bool succeeded = false;
+        AssetBusCallbacks callbacks;
+        callbacks.SetCallbacks(nullptr, nullptr, nullptr,
+            [&isDone, &succeeded](const Asset<AssetData>& /*asset*/, bool isSuccessful, AssetBusCallbacks& /*callbacks*/)
+        {
+            isDone = true;
+            succeeded = isSuccessful;
+        }, nullptr, nullptr);
+
+        callbacks.BusConnect(asset.GetId());
+        asset.Save();
+
+        while (!isDone)
+        {
+            AssetManager::Instance().DispatchEvents();
+        }
+        return succeeded;
     }
 };
 
-class ReflectedSubClass : public ReflectedBaseClass
+class DependencyTest
+    : public AllocatorsFixture
+    , public ComponentApplicationBus::Handler
 {
 public:
-    AZ_TYPE_INFO(ReflectedSubClass, "{B95E143C-D97E-44F3-8F38-BAB6F317A03C}");
 
-    static void ReflectWithInheritance(AZ::SerializeContext& context)
-    {
-        context.Class<ReflectedSubClass, ReflectedBaseClass>();
-    }
+    //////////////////////////////////////////////////////////////////////////
+    // ComponentApplicationMessages
+    ComponentApplication* GetApplication() override { return nullptr; }
+    void RegisterComponentDescriptor(const ComponentDescriptor*) override { }
+    void UnregisterComponentDescriptor(const ComponentDescriptor*) override { }
+    bool AddEntity(Entity*) override { return true; }
+    bool RemoveEntity(Entity*) override { return true; }
+    bool DeleteEntity(const EntityId&) override { return true; }
+    Entity* FindEntity(const EntityId&) override { return nullptr; }
+    SerializeContext* GetSerializeContext() override { return m_serializeContext; }
+    BehaviorContext*  GetBehaviorContext() override { return nullptr; }
+    JsonRegistrationContext* GetJsonRegistrationContext() override { return nullptr; }
+    const char* GetExecutableFolder() const override { return nullptr; }
+    const char* GetBinFolder() const { return nullptr; }
+    const char* GetAppRoot() override { return nullptr; }
+    Debug::DrillerManager* GetDrillerManager() override { return nullptr; }
+    void EnumerateEntities(const EntityCallback& /*callback*/) override {}
+    //////////////////////////////////////////////////////////////////////////
 
-    static void ReflectWithoutInheritance(AZ::SerializeContext& context)
-    {
-        context.Class<ReflectedSubClass>();
-    }
-};
-
-class ReflectedClassWithPointer
-{
-public:
-    AZ_TYPE_INFO(ReflectedClassWithPointer, "{03DE24B9-288B-41B5-952D-4749F8F400D2}");
-
-    ~ReflectedClassWithPointer()
-    {
-        delete m_pointer;
-    }
-
-    ReflectedTestClass* m_pointer = nullptr;
-
-    static void Reflect(AZ::SerializeContext& context)
-    {
-        context.Class<ReflectedClassWithPointer>()
-            ->Field("Pointer", &ReflectedClassWithPointer::m_pointer);
-    }
-};
-
-class FingerprintTests
-    : public testing::Test
-{
-protected:
     void SetUp() override
     {
-        AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
+        AllocatorsFixture::SetUp();
+
+        AllocatorInstance<PoolAllocator>::Create();
+        AllocatorInstance<ThreadPoolAllocator>::Create();
+
+        m_serializeContext = aznew SerializeContext(true, true);
+
+        ComponentApplicationBus::Handler::BusConnect();
+
+        m_sliceDescriptor = SliceComponent::CreateDescriptor();
+        m_mockAssetDescriptor = MockAssetRefComponent::CreateDescriptor();
+        m_mockSimpleAssetDescriptor = MockSimpleAssetRefComponent::CreateDescriptor();
+
+        m_sliceDescriptor->Reflect(m_serializeContext);
+        m_mockAssetDescriptor->Reflect(m_serializeContext);
+        m_mockSimpleAssetDescriptor->Reflect(m_serializeContext);
+
+        AzFramework::SimpleAssetReferenceBase::Reflect(m_serializeContext);
+        MockAsset::Reflect(m_serializeContext);
+        MockEditorComponent::Reflect(m_serializeContext);
+        Entity::Reflect(m_serializeContext);
+        DataPatch::Reflect(m_serializeContext);
+        SliceMetadataInfoComponent::Reflect(m_serializeContext);
+        AzToolsFramework::Components::EditorComponentBase::Reflect(m_serializeContext);
+
+        // Create database
+        Data::AssetManager::Descriptor desc;
+        Data::AssetManager::Create(desc);
+        Data::AssetManager::Instance().RegisterHandler(aznew SliceAssetHandler(m_serializeContext), AzTypeInfo<AZ::SliceAsset>::Uuid());
+        Data::AssetManager::Instance().RegisterHandler(aznew AzFramework::GenericAssetHandler<MockAsset>("Mock Asset", "Other", "mockasset"), AZ::AzTypeInfo<MockAsset>::Uuid());
+        m_catalog.reset(aznew SliceBuilderTest_MockCatalog());
+        AssetManager::Instance().RegisterCatalog(m_catalog.get(), AzTypeInfo<AZ::SliceAsset>::Uuid());
     }
 
     void TearDown() override
     {
-        AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
+        m_catalog->DisableCatalog();
+        ComponentApplicationBus::Handler::BusDisconnect();
+
+        Data::AssetManager::Destroy();
+        m_catalog.reset();
+        delete m_mockSimpleAssetDescriptor;
+        delete m_mockAssetDescriptor;
+        delete m_sliceDescriptor;
+        delete m_serializeContext;
+
+        AllocatorInstance<PoolAllocator>::Destroy();
+        AllocatorInstance<ThreadPoolAllocator>::Destroy();
+
+        AllocatorsFixture::TearDown();
     }
+
+    void BuildSliceWithSimpleAssetReference(
+        const char* simpleAssetPath,
+        AZStd::vector<AssetBuilderSDK::ProductDependency>& productDependencies,
+        AssetBuilderSDK::ProductPathDependencySet& productPathDependencies)
+    {
+        auto* assetComponent = aznew MockSimpleAssetRefComponent;
+
+        assetComponent->m_asset.SetAssetPath(simpleAssetPath);
+
+        auto sliceAsset = AZ::Test::CreateSliceFromComponent(assetComponent, m_catalog->GenerateMockAssetId());
+
+        AZ::SliceAssetHandler assetHandler;
+        assetHandler.SetSerializeContext(nullptr);
+
+        AZStd::vector<char> charBuffer;
+        AZ::IO::ByteContainerStream<AZStd::vector<char>> charStream(&charBuffer);
+        assetHandler.SaveAssetData(sliceAsset, &charStream);
+
+        charStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+
+        SliceBuilderWorker worker;
+        AZ::PlatformTagSet platformTags;
+        AZ::Data::Asset<SliceAsset> exportSliceAsset;
+
+        bool result = worker.GetDynamicSliceAssetAndDependencies(
+            &charStream,
+            "MockAsset.slice",
+            platformTags,
+            exportSliceAsset,
+            productDependencies,
+            productPathDependencies);
+
+        ASSERT_TRUE(result);
+    }
+
+    SerializeContext* m_serializeContext;
+    ComponentDescriptor* m_sliceDescriptor;
+    ComponentDescriptor* m_mockAssetDescriptor;
+    ComponentDescriptor* m_mockSimpleAssetDescriptor;
+    AZStd::unique_ptr<SliceBuilderTest_MockCatalog> m_catalog;
 };
 
-TEST_F(FingerprintTests, IntFingerprint_IsValid)
+TEST_F(DependencyTest, SimpleSliceTest)
 {
-    AZ::SerializeContext serializeContext;
-    TypeFingerprinter fingerprinter{ serializeContext };
-    EXPECT_NE(InvalidTypeFingerprint, fingerprinter.GetFingerprint<int>());
+    // Test a slice containing a component that references an asset
+    // Should return a dependency on the asset
+
+    auto* assetComponent = aznew MockAssetRefComponent;
+
+    AZ::Data::AssetId mockAssetId(AZ::Uuid::CreateRandom(), 0);
+    assetComponent->m_asset = Data::AssetManager::Instance().CreateAsset<MockAsset>(mockAssetId);
+
+    auto sliceAsset = AZ::Test::CreateSliceFromComponent(assetComponent, m_catalog->GenerateMockAssetId());
+    
+    AZ::SliceAssetHandler assetHandler;
+    assetHandler.SetSerializeContext(nullptr);
+
+    AZStd::vector<char> charBuffer;
+    AZ::IO::ByteContainerStream<AZStd::vector<char>> charStream(&charBuffer);
+    assetHandler.SaveAssetData(sliceAsset, &charStream);
+
+    charStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+
+    SliceBuilderWorker worker;
+    AZ::PlatformTagSet platformTags;
+    AZ::Data::Asset<SliceAsset> exportSliceAsset;
+    AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
+    AssetBuilderSDK::ProductPathDependencySet productPathDependencySet;
+    
+    bool result = worker.GetDynamicSliceAssetAndDependencies(&charStream, "MockAsset.slice", platformTags, exportSliceAsset, productDependencies, productPathDependencySet);
+
+    ASSERT_TRUE(result);
+    ASSERT_EQ(productDependencies.size(), 1);
+    ASSERT_EQ(productDependencies[0].m_dependencyId, mockAssetId);
 }
 
-TEST_F(FingerprintTests, ClassFingerprint_IsValid)
+TEST_F(DependencyTest, NestedSliceTest)
 {
-    AZ::SerializeContext serializeContext;
-    ReflectedTestClass::ReflectDefault(serializeContext);
+    // Test a slice that references another slice, which contains a reference to an asset.
+    // Should return only a dependency on the asset, and not the inner slice
 
-    TypeFingerprinter fingerprinter{ serializeContext };
-    EXPECT_NE(InvalidTypeFingerprint, fingerprinter.GetFingerprint<ReflectedTestClass>());
+    auto* outerSliceEntity = aznew AZ::Entity;
+    auto* assetComponent = aznew MockAssetRefComponent;
+
+    AZ::Data::AssetId mockAssetId(m_catalog->GenerateMockAssetId());
+    assetComponent->m_asset = Data::AssetManager::Instance().CreateAsset<MockAsset>(mockAssetId);
+
+    auto innerSliceAsset = AZ::Test::CreateSliceFromComponent(assetComponent, m_catalog->GenerateMockAssetId());
+
+    AZ::Data::AssetId outerSliceAssetId(m_catalog->GenerateMockAssetId());
+    auto outerSliceAsset = Data::AssetManager::Instance().CreateAsset<AZ::SliceAsset>(outerSliceAssetId);
+
+    AZ::SliceComponent* outerSlice = outerSliceEntity->CreateComponent<AZ::SliceComponent>();
+    outerSlice->SetIsDynamic(true);
+    outerSliceAsset.Get()->SetData(outerSliceEntity, outerSlice);
+    outerSlice->AddSlice(innerSliceAsset);
+
+    AZ::SliceAssetHandler assetHandler;
+    assetHandler.SetSerializeContext(nullptr);
+
+    AZStd::vector<char> charBuffer;
+    AZ::IO::ByteContainerStream<AZStd::vector<char>> charStream(&charBuffer);
+    assetHandler.SaveAssetData(outerSliceAsset, &charStream);
+
+    charStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+
+    SliceBuilderWorker worker;
+    AZ::PlatformTagSet platformTags;
+    AZ::Data::Asset<SliceAsset> exportSliceAsset;
+    AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
+    AssetBuilderSDK::ProductPathDependencySet productPathDependencySet;
+
+    bool result = worker.GetDynamicSliceAssetAndDependencies(&charStream, "MockAsset.slice", platformTags, exportSliceAsset, productDependencies, productPathDependencySet);
+
+    ASSERT_TRUE(result);
+    ASSERT_EQ(productDependencies.size(), 1);
+    ASSERT_EQ(productDependencies[0].m_dependencyId, mockAssetId);
 }
 
-TEST_F(FingerprintTests, ClassWithNewVersionNumber_ChangesFingerprint)
+TEST_F(DependencyTest, DataPatchTest)
 {
-    AZ::SerializeContext serializeContext1;
-    ReflectedTestClass::ReflectDefault(serializeContext1);
-    TypeFingerprinter fingerprinter1{ serializeContext1 };
+    // Test a slice that references another slice, with the outer slice being data-patched to have a reference to an asset
+    // Should return a dependency on the asset, but not the inner slice
 
-    AZ::SerializeContext serializeContext2;
-    ReflectedTestClass::ReflectHigherVersion(serializeContext2);
-    TypeFingerprinter fingerprinter2{ serializeContext2 };
+    auto* outerSliceEntity = aznew AZ::Entity;
+    auto* assetComponent = aznew MockAssetRefComponent;
 
-    EXPECT_NE(fingerprinter1.GetFingerprint<ReflectedTestClass>(), fingerprinter2.GetFingerprint<ReflectedTestClass>());
+    AZ::Data::AssetId outerSliceAssetId(m_catalog->GenerateMockAssetId());
+    auto outerSliceAsset = Data::AssetManager::Instance().CreateAsset<AZ::SliceAsset>(outerSliceAssetId);
+
+    auto innerSliceAsset = AZ::Test::CreateSliceFromComponent(nullptr, m_catalog->GenerateMockAssetId());
+
+    AZ::SliceComponent* outerSlice = outerSliceEntity->CreateComponent<AZ::SliceComponent>();
+    outerSlice->SetIsDynamic(true);
+    outerSliceAsset.Get()->SetData(outerSliceEntity, outerSlice);
+    outerSlice->AddSlice(innerSliceAsset);
+
+    outerSlice->Instantiate();
+
+    auto* sliceRef = outerSlice->GetSlice(innerSliceAsset);
+    auto& instances = sliceRef->GetInstances();
+
+    AZ::Data::AssetId mockAssetId(m_catalog->GenerateMockAssetId());
+    assetComponent->m_asset = Data::AssetManager::Instance().CreateAsset<MockAsset>(mockAssetId);
+
+    for (const AZ::SliceComponent::SliceInstance& i : instances)
+    {
+        const AZ::SliceComponent::InstantiatedContainer* container = i.GetInstantiated();
+        container->m_entities[0]->AddComponent(assetComponent);
+
+        sliceRef->ComputeDataPatch();
+    }
+
+    AZ::SliceAssetHandler assetHandler;
+    assetHandler.SetSerializeContext(nullptr);
+
+    AZStd::vector<char> charBuffer;
+    AZ::IO::ByteContainerStream<AZStd::vector<char>> charStream(&charBuffer);
+    assetHandler.SaveAssetData(outerSliceAsset, &charStream);
+
+    charStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+
+    SliceBuilderWorker worker;
+    AZ::PlatformTagSet platformTags;
+    AZ::Data::Asset<SliceAsset> exportSliceAsset;
+    AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
+    AssetBuilderSDK::ProductPathDependencySet productPathDependencySet;
+
+    bool result = worker.GetDynamicSliceAssetAndDependencies(&charStream, "MockAsset.slice", platformTags, exportSliceAsset, productDependencies, productPathDependencySet);
+
+    ASSERT_TRUE(result);
+    ASSERT_EQ(productDependencies.size(), 1);
+    ASSERT_EQ(productDependencies[0].m_dependencyId, mockAssetId);
+
+    delete assetComponent;
 }
 
-TEST_F(FingerprintTests, ClassWithRenamedProperty_ChangesFingerprint)
+TEST_F(DependencyTest, DynamicAssetReferenceTest)
 {
-    AZ::SerializeContext serializeContext1;
-    ReflectedTestClass::ReflectDefault(serializeContext1);
-    TypeFingerprinter fingerprinter1{ serializeContext1 };
+    // Test a slice that has a component which synthesizes an asset reference at runtime
+    // Should return a dependency on the asset
 
-    AZ::SerializeContext serializeContext2;
-    ReflectedTestClass::ReflectRenamedProperty(serializeContext2);
-    TypeFingerprinter fingerprinter2{ serializeContext2 };
+    auto* assetComponent = aznew MockEditorComponent;
 
-    EXPECT_NE(fingerprinter1.GetFingerprint<ReflectedTestClass>(), fingerprinter2.GetFingerprint<ReflectedTestClass>());
+    AZ::Data::AssetId mockAssetId(AZ::Uuid::CreateRandom(), 0);
+    assetComponent->m_uuid = mockAssetId.m_guid;
+
+    auto sliceAsset = AZ::Test::CreateSliceFromComponent(assetComponent, m_catalog->GenerateMockAssetId());
+
+    AZ::SliceAssetHandler assetHandler;
+    assetHandler.SetSerializeContext(nullptr);
+
+    AZStd::vector<char> charBuffer;
+    AZ::IO::ByteContainerStream<AZStd::vector<char>> charStream(&charBuffer);
+    assetHandler.SaveAssetData(sliceAsset, &charStream);
+
+    charStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+
+    SliceBuilderWorker worker;
+    AZ::PlatformTagSet platformTags;
+    AZ::Data::Asset<SliceAsset> exportSliceAsset;
+    AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
+    AssetBuilderSDK::ProductPathDependencySet productPathDependencySet;
+
+    bool result = worker.GetDynamicSliceAssetAndDependencies(&charStream, "MockAsset.slice", platformTags, exportSliceAsset, productDependencies, productPathDependencySet);
+
+    ASSERT_TRUE(result);
+    ASSERT_EQ(productDependencies.size(), 1);
+    ASSERT_EQ(productDependencies[0].m_dependencyId, mockAssetId);
 }
 
-TEST_F(FingerprintTests, ClassWithPropertyThatChangesType_ChangesFingerprint)
+TEST_F(DependencyTest, Slice_HasPopulatedSimpleAssetReference_HasCorrectProductDependency)
 {
-    AZ::SerializeContext serializeContext1;
-    ReflectedTestClass::ReflectDefault(serializeContext1);
-    TypeFingerprinter fingerprinter1{ serializeContext1 };
+    // Test a slice containing a component with a simple asset reference
+    // Should return a path dependency
+    AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
+    AssetBuilderSDK::ProductPathDependencySet productPathDependencySet;
+    constexpr char testPath[] = "some/test/path.txt";
+    BuildSliceWithSimpleAssetReference(testPath, productDependencies, productPathDependencySet);
 
-    AZ::SerializeContext serializeContext2;
-    ReflectedTestClass::ReflectPropertyWithDifferentType(serializeContext2);
-    TypeFingerprinter fingerprinter2{ serializeContext2 };
+    ASSERT_EQ(productDependencies.size(), 0);
+    ASSERT_EQ(productPathDependencySet.size(), 1);
 
-    EXPECT_NE(fingerprinter1.GetFingerprint<ReflectedTestClass>(), fingerprinter2.GetFingerprint<ReflectedTestClass>());
+    auto& dependency = *productPathDependencySet.begin();
+    ASSERT_STREQ(dependency.m_dependencyPath.c_str(), testPath);
 }
 
-TEST_F(FingerprintTests, ClassWithPropertyThatChangesToPointer_ChangesFingerprint)
+TEST_F(DependencyTest, Slice_HasEmptySimpleAssetReference_HasNoProductDependency)
 {
-    AZ::SerializeContext serializeContext1;
-    ReflectedTestClass::ReflectDefault(serializeContext1);
-    TypeFingerprinter fingerprinter1{ serializeContext1 };
+    // Test a slice containing a component with an empty simple asset reference
+    // Should not return a path dependency
+    AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
+    AssetBuilderSDK::ProductPathDependencySet productPathDependencySet;
+    BuildSliceWithSimpleAssetReference("", productDependencies, productPathDependencySet);
 
-    AZ::SerializeContext serializeContext2;
-    ReflectedTestClass::ReflectPropertyAsPointer(serializeContext2);
-    TypeFingerprinter fingerprinter2{ serializeContext2 };
-
-    EXPECT_NE(fingerprinter1.GetFingerprint<ReflectedTestClass>(), fingerprinter2.GetFingerprint<ReflectedTestClass>());
-}
-
-TEST_F(FingerprintTests, ClassWithNewProperty_ChangesFingerprint)
-{
-    AZ::SerializeContext serializeContext1;
-    ReflectedTestClass::ReflectDefault(serializeContext1);
-    TypeFingerprinter fingerprinter1{ serializeContext1 };
-
-    AZ::SerializeContext serializeContext2;
-    ReflectedTestClass::ReflectTwoProperties(serializeContext2);
-    TypeFingerprinter fingerprinter2{ serializeContext2 };
-
-    EXPECT_NE(fingerprinter1.GetFingerprint<ReflectedTestClass>(), fingerprinter2.GetFingerprint<ReflectedTestClass>());
-}
-
-TEST_F(FingerprintTests, ClassGainingBaseClass_ChangesFingerprint)
-{
-    AZ::SerializeContext serializeContext1;
-    ReflectedBaseClass::ReflectDefault(serializeContext1);
-    ReflectedSubClass::ReflectWithoutInheritance(serializeContext1);
-    TypeFingerprinter fingerprinter1{ serializeContext1 };
-
-    AZ::SerializeContext serializeContext2;
-    ReflectedBaseClass::ReflectDefault(serializeContext2);
-    ReflectedSubClass::ReflectWithInheritance(serializeContext2);
-    TypeFingerprinter fingerprinter2{ serializeContext2 };
-
-    EXPECT_NE(fingerprinter1.GetFingerprint<ReflectedSubClass>(), fingerprinter2.GetFingerprint<ReflectedSubClass>());
-}
-
-TEST_F(FingerprintTests, GatherAllTypesInObject_FindsCorrectTypes)
-{
-    AZ::SerializeContext serializeContext;
-    ReflectedTestClass::ReflectDefault(serializeContext);
-    TypeFingerprinter fingerprinter{ serializeContext };
-
-    ReflectedTestClass object;
-    TypeCollection typesInObject;
-    fingerprinter.GatherAllTypesInObject(&object, typesInObject);
-
-    EXPECT_EQ(2, typesInObject.size());
-    EXPECT_EQ(1, typesInObject.count(AZ::SerializeTypeInfo<int>::GetUuid()));
-    EXPECT_EQ(1, typesInObject.count(AZ::SerializeTypeInfo<ReflectedTestClass>::GetUuid()));
-}
-
-TEST_F(FingerprintTests, GatherAllTypesInObjectWithBaseClass_FindsCorrectTypes)
-{
-    AZ::SerializeContext serializeContext;
-    ReflectedBaseClass::ReflectDefault(serializeContext);
-    ReflectedSubClass::ReflectWithInheritance(serializeContext);
-    TypeFingerprinter fingerprinter{ serializeContext };
-
-    ReflectedSubClass object;
-    TypeCollection typesInObject;
-    fingerprinter.GatherAllTypesInObject(&object, typesInObject);
-
-    EXPECT_EQ(2, typesInObject.size());
-    EXPECT_EQ(1, typesInObject.count(AZ::SerializeTypeInfo<ReflectedSubClass>::GetUuid()));
-    EXPECT_EQ(1, typesInObject.count(AZ::SerializeTypeInfo<ReflectedBaseClass>::GetUuid()));
-}
-
-TEST_F(FingerprintTests, GatherTypesInObjectWithNullPointer_FindsCorrectTypes)
-{
-    AZ::SerializeContext serializeContext;
-    ReflectedClassWithPointer::Reflect(serializeContext);
-    ReflectedTestClass::ReflectDefault(serializeContext);
-    TypeFingerprinter fingerprinter{ serializeContext };
-
-    ReflectedClassWithPointer classWithPointer;
-    classWithPointer.m_pointer = nullptr;
-
-    TypeCollection typesInObject;
-    fingerprinter.GatherAllTypesInObject(&classWithPointer, typesInObject);
-
-    // shouldn't gather types from ReflectedTestClass, since m_pointer is null
-    EXPECT_EQ(1, typesInObject.size());
-    EXPECT_EQ(1, typesInObject.count(AZ::SerializeTypeInfo<ReflectedClassWithPointer>::GetUuid()));
-}
-
-TEST_F(FingerprintTests, GatherTypesInObjectWithValidPointer_FindsCorrectTypes)
-{
-    AZ::SerializeContext serializeContext;
-    ReflectedClassWithPointer::Reflect(serializeContext);
-    ReflectedTestClass::ReflectDefault(serializeContext);
-    TypeFingerprinter fingerprinter{ serializeContext };
-
-    ReflectedClassWithPointer classWithPointer;
-    classWithPointer.m_pointer = aznew ReflectedTestClass();
-
-    TypeCollection typesInObject;
-    fingerprinter.GatherAllTypesInObject(&classWithPointer, typesInObject);
-
-    // should have followed m_pointer and gathered types from ReflectedTestClass
-    EXPECT_EQ(3, typesInObject.size());
-    EXPECT_EQ(1, typesInObject.count(AZ::SerializeTypeInfo<ReflectedClassWithPointer>::GetUuid()));
-    EXPECT_EQ(1, typesInObject.count(AZ::SerializeTypeInfo<ReflectedTestClass>::GetUuid()));
-    EXPECT_EQ(1, typesInObject.count(AZ::SerializeTypeInfo<int>::GetUuid()));
-}
-
-TEST_F(FingerprintTests, GenerateFingerprintForAllTypesInObject_Works)
-{
-    AZ::SerializeContext serializeContext;
-    ReflectedTestClass::ReflectDefault(serializeContext);
-    TypeFingerprinter fingerprinter{ serializeContext };
-
-    ReflectedTestClass object;
-
-    EXPECT_NE(InvalidTypeFingerprint, fingerprinter.GenerateFingerprintForAllTypesInObject(&object));
+    ASSERT_EQ(productDependencies.size(), 0);
+    ASSERT_EQ(productPathDependencySet.size(), 0);
 }
 
 AZ_UNIT_TEST_HOOK();

@@ -10,8 +10,6 @@
 *
 */
 
-#include "TestTypes.h"
-
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/EBus/Results.h>
 #include <AzCore/std/sort.h>
@@ -24,6 +22,7 @@
 #include <AzCore/Jobs/JobCompletion.h>
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Math/Random.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #include <gtest/gtest.h>
 // For GetTypeName<T>()
@@ -1546,7 +1545,7 @@ namespace UnitTest
 
     TEST_F(EBus, DISABLED_CopyConstructorOfEBusHandlerDoesNotAssertInInternalDestructorOfHandler)
     {
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         {
             MutexBusHandler sourceHandler;
             // Connect source handler to InterfaceWithMutexBus and then copy it over to a new instance
@@ -1555,12 +1554,12 @@ namespace UnitTest
             MutexBusHandler targetHandler(sourceHandler);
             sourceHandler.BusDisconnect();
         }
-        AZ_TEST_STOP_ASSERTTEST(0);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(0);
     }
 
     TEST_F(EBus, DISABLED_CopyAssignmentOfEBusHandlerDoesNotAssertInInternalDestructorOfHandler)
     {
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         {
             MutexBusHandler sourceHandler;
             MutexBusHandler targetHandler;
@@ -1570,7 +1569,7 @@ namespace UnitTest
             targetHandler = sourceHandler;
             sourceHandler.BusDisconnect();
         }
-        AZ_TEST_STOP_ASSERTTEST(0);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(0);
     }
 
     /**
@@ -1710,8 +1709,8 @@ namespace UnitTest
 
         JobManager*                    m_jobManager = nullptr;
         JobContext*                    m_jobContext = nullptr;
-        QueueTestMultiBus::Handler     m_multiHandler;
-        QueueTestSingleBus::Handler    m_singleHandler;
+        QueueTestMultiBus::Handler*    m_multiHandler = nullptr;
+        QueueTestSingleBus::Handler*   m_singleHandler = nullptr;
         QueueTestMultiBus::BusPtr      m_multiPtr = nullptr;
 
         void QueueMessage()
@@ -1742,13 +1741,15 @@ namespace UnitTest
         m_jobManager = aznew JobManager(jobDesc);
         m_jobContext = aznew JobContext(*m_jobManager);
         JobContext::SetGlobalContext(m_jobContext);
+        m_multiHandler = new QueueTestMultiBus::Handler();
+        m_singleHandler = new QueueTestSingleBus::Handler();
 
-        m_singleHandler.m_callCount = 0;
-        m_multiHandler.m_callCount = 0;
+        m_singleHandler->m_callCount = 0;
+        m_multiHandler->m_callCount = 0;
         const int NumCalls = 5000;
         QueueTestMultiBus::Bind(m_multiPtr, 0);
-        m_multiHandler.BusConnect(0);
-        m_singleHandler.BusConnect();
+        m_multiHandler->BusConnect(0);
+        m_singleHandler->BusConnect();
         for (int i = 0; i < NumCalls; ++i)
         {
             Job* job = CreateJobFunction(&QueueMessageTest::QueueMessage, true);
@@ -1756,7 +1757,7 @@ namespace UnitTest
             job = CreateJobFunction(&QueueMessageTest::QueueMessagePtr, true);
             job->Start();
         }
-        while (m_singleHandler.m_callCount < NumCalls * 2 || m_multiHandler.m_callCount < NumCalls * 2)
+        while (m_singleHandler->m_callCount < NumCalls * 2 || m_multiHandler->m_callCount < NumCalls * 2)
         {
             QueueTestMultiBus::ExecuteQueuedEvents();
             QueueTestSingleBus::ExecuteQueuedEvents();
@@ -1766,14 +1767,10 @@ namespace UnitTest
         // use queuing generic functions to disconnect from the bus
 
         // the same as m_singleHandler.BusDisconnect(); but delayed until QueueTestSingleBus::ExecuteQueuedEvents()
-#ifdef AZ_HAS_VARIADIC_TEMPLATES
-        QueueTestSingleBus::QueueFunction(&QueueTestSingleBus::Handler::BusDisconnect, &m_singleHandler);
-#else
+        QueueTestSingleBus::QueueFunction(&QueueTestSingleBus::Handler::BusDisconnect, m_singleHandler);
 
-        EBUS_QUEUE_FUNCTION(QueueTestSingleBus, &QueueTestSingleBus::Handler::BusDisconnect, &m_singleHandler);
-#endif
         // the same as m_multiHandler.BusDisconnect(); but dalayed until QueueTestMultiBus::ExecuteQueuedEvents();
-        EBUS_QUEUE_FUNCTION(QueueTestMultiBus, static_cast<void(QueueTestMultiBus::Handler::*)()>(&QueueTestMultiBus::Handler::BusDisconnect), &m_multiHandler);
+        EBUS_QUEUE_FUNCTION(QueueTestMultiBus, static_cast<void(QueueTestMultiBus::Handler::*)()>(&QueueTestMultiBus::Handler::BusDisconnect), m_multiHandler);
 
         EXPECT_EQ(1, QueueTestSingleBus::GetTotalNumOfEventHandlers());
         EXPECT_EQ(1, QueueTestMultiBus::GetTotalNumOfEventHandlers());
@@ -1783,6 +1780,8 @@ namespace UnitTest
         EXPECT_EQ(0, QueueTestMultiBus::GetTotalNumOfEventHandlers());
 
         // Cleanup
+        delete m_singleHandler;
+        delete m_multiHandler;
         m_multiPtr = nullptr;
         JobContext::SetGlobalContext(nullptr);
         delete m_jobContext;
@@ -2672,18 +2671,18 @@ namespace UnitTest
     TEST_F(EBus, DisconnectInLocklessDispatch)
     {
         LocklessImpl handler;
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         LocklessBus::Broadcast(&LocklessBus::Events::RemoveMe);
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
     }
 
     TEST_F(EBus, DeleteInLocklessDispatch)
     {
         LocklessImpl* handler = new LocklessImpl();
         AZ_UNUSED(handler);
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         LocklessBus::Broadcast(&LocklessBus::Events::DeleteMe);
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
     }
 
     namespace LocklessTest

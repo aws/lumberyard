@@ -23,7 +23,24 @@
 #   define DXGL_UNWRAPPED_FUNCTION(_Name) _Name
 #endif
 
-#if defined(DXGL_USE_LOADER_GLAD)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define GLFEATURES_HPP_SECTION_1 1
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GLFEATURES_HPP_SECTION_1
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GLFeatures_hpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GLFeatures_hpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GLFeatures_hpp_salem.inl"
+    #endif
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(DXGL_USE_LOADER_GLAD)
 #   define DXGL_EXTENSION_LOADER 1
 #   if DXGLES && !defined(DXGL_ES_SUBSET)
 #       include <glad/gles2.h>
@@ -124,11 +141,9 @@
 #  define DXGL_ENABLE_COMPUTE_SHADERS      0
 #endif
 
-//  Confetti BEGIN: Igor Lobanchikov
 #if defined(ANDROID)
 #define USE_FAST_NAMED_APPROXIMATION
 #endif
-//  Confetti End: Igor Lobanchikov
 
 enum
 {

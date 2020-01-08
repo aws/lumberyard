@@ -370,7 +370,7 @@ namespace AZ
 
         /**
          * Get angles in radian for each principle axis around which the local transform is
-         * rotated in the order of z-axis and y-axis and then x-axis.
+         * rotated in the order of x-axis and y-axis and then z-axis.
          * @return A value of type Vector3 indicating how much in radian is rotated around each principle axis.
          */
         virtual AZ::Vector3 GetLocalRotation() { return AZ::Vector3(FLT_MAX); }
@@ -622,6 +622,14 @@ namespace AZ
          * @param newParent The entity ID of the new parent. The entity ID is invalid if there is no new parent.
          */
         virtual void OnParentChanged(EntityId oldParent, EntityId newParent)    { (void)oldParent; (void)newParent; }
+
+        /**
+         * Signals that the transform of the parent of the entity is about to change. Some components will need adjusting before this happens.
+         * To find if an entity ID is valid, use AZ::EntityId::IsValid().
+         * @param oldTransform The transform of the old parent. 
+         * @param newTransform The transform of the new parent. 
+         */
+        virtual void OnParentTransformWillChange(AZ::Transform oldTransform, AZ::Transform newTransform) { (void)oldTransform; (void)newTransform; }
 
         /**
          * Signals that a child was added to the entity.

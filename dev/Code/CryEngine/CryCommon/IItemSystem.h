@@ -21,19 +21,17 @@
 #include "IGameObject.h"
 #include "IItem.h"
 #include "IWeapon.h"
-#include <BoostHelpers.h>
 #include "IActorSystem.h"
 #include <IFlowSystem.h>
-
 
 enum EItemParamMapTypes
 {
     eIPT_None       = -2,
     eIPT_Any        = -1,
-    eIPT_Float  =  boost::mpl::find<TFlowSystemDataTypes, float>::type::pos::value,
-    eIPT_Int        =  boost::mpl::find<TFlowSystemDataTypes, int>::type::pos::value,
-    eIPT_Vec3       =  boost::mpl::find<TFlowSystemDataTypes, Vec3>::type::pos::value,
-    eIPT_String =  boost::mpl::find<TFlowSystemDataTypes, string>::type::pos::value
+    eIPT_Float      = AZStd::find_exactly_one_alternative_v<float, TFlowSystemDataTypes>,
+    eIPT_Int        = AZStd::find_exactly_one_alternative_v<int, TFlowSystemDataTypes>,
+    eIPT_Vec3       = AZStd::find_exactly_one_alternative_v<Vec3, TFlowSystemDataTypes>,
+    eIPT_String     = AZStd::find_exactly_one_alternative_v<string, TFlowSystemDataTypes>
 };
 
 struct IItemParamsNode

@@ -47,10 +47,6 @@ namespace ScriptCanvas
                     }
                 }
 
-                void Visit(NodeVisitor& visitor) const override
-                {
-                    visitor.Visit(*this);
-                }
             };
 
             class Vector3
@@ -80,10 +76,6 @@ namespace ScriptCanvas
                     }
                 }
 
-                void Visit(NodeVisitor& visitor) const override
-                {
-                    visitor.Visit(*this);
-                }
             };
 
             class Vector4
@@ -113,10 +105,6 @@ namespace ScriptCanvas
                     }
                 }
 
-                void Visit(NodeVisitor& visitor) const override
-                {
-                    visitor.Visit(*this);
-                }
             };
         }
     }

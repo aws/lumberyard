@@ -51,13 +51,15 @@ namespace ScriptCanvasEditor
 
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
-        virtual AZ::Outcome<int, AZStd::string> OpenScriptCanvasAssetId(const AZ::Data::AssetId& scriptCanvasAsset) = 0;
-
         //! Opens an existing graph and returns the tab index in which it was open in.
         //! \param Asset structure used for holding ScriptCanvas Graph
         //! \return index of open tab if the asset was able to be open successfully or error message of why the open failed
         virtual AZ::Outcome<int, AZStd::string> OpenScriptCanvasAsset(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset, int tabIndex = -1) = 0;
+        virtual AZ::Outcome<int, AZStd::string> OpenScriptCanvasAssetId(const AZ::Data::AssetId& scriptCanvasAsset) = 0;        
+        
         virtual int CloseScriptCanvasAsset(const AZ::Data::AssetId&) = 0;
+
+        virtual bool CreateScriptCanvasAssetFor(const AZ::EntityId& requestingEntityId) = 0;
 
         virtual bool IsScriptCanvasAssetOpen(const AZ::Data::AssetId& assetId) const = 0;
 

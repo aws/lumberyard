@@ -23,19 +23,11 @@ namespace AZ
         return SuccessValue<void>();
     }
 
-#ifdef AZ_HAS_RVALUE_REFS
     template <class ValueT, class>
     inline SuccessValue<ValueT> Success(ValueT&& rhs)
     {
         return SuccessValue<ValueT>(AZStd::forward<ValueT>(rhs));
     }
-#else // AZ_HAS_RVALUE_REFS
-    template <class ValueT, class>
-    inline SuccessValue<ValueT> Success(const ValueT& rhs)
-    {
-        return SuccessValue<ValueT>(rhs);
-    }
-#endif // AZ_HAS_RVALUE_REFS
 
     //////////////////////////////////////////////////////////////////////////
     // Failure Implementation
@@ -45,19 +37,11 @@ namespace AZ
         return FailureValue<void>();
     }
 
-#ifdef AZ_HAS_RVALUE_REFS
     template <class ValueT, class>
     inline FailureValue<ValueT> Failure(ValueT&& rhs)
     {
         return FailureValue<ValueT>(AZStd::forward<ValueT>(rhs));
     }
-#else // AZ_HAS_RVALUE_REFS
-    template <class ValueT, class>
-    inline FailureValue<ValueT> Failure(const ValueT& rhs)
-    {
-        return FailureValue<ValueT>(AZStd::forward<ValueT>(rhs));
-    }
-#endif // AZ_HAS_RVALUE_REFS
 
     template<typename ErrorT>
     struct DefaultFailure
@@ -93,14 +77,12 @@ namespace AZ
         ConstructSuccess(success);
     }
 
-#ifdef AZ_HAS_RVALUE_REFS
     template <class ValueT, class ErrorT>
     AZ_FORCE_INLINE Outcome<ValueT, ErrorT>::Outcome(SuccessType&& success)
         : m_isSuccess(true)
     {
         ConstructSuccess(AZStd::move(success));
     }
-#endif // AZ_HAS_RVALUE_REFS
 
     template <class ValueT, class ErrorT>
     AZ_FORCE_INLINE Outcome<ValueT, ErrorT>::Outcome(const FailureType& failure)
@@ -109,14 +91,12 @@ namespace AZ
         ConstructFailure(failure);
     }
 
-#ifdef AZ_HAS_RVALUE_REFS
     template <class ValueT, class ErrorT>
     AZ_FORCE_INLINE Outcome<ValueT, ErrorT>::Outcome(FailureType&& failure)
         : m_isSuccess(false)
     {
         ConstructFailure(AZStd::move(failure));
     }
-#endif // AZ_HAS_RVALUE_REFS
 
     template <class ValueT, class ErrorT>
     AZ_FORCE_INLINE Outcome<ValueT, ErrorT>::Outcome(const Outcome& other)
@@ -132,7 +112,6 @@ namespace AZ
         }
     }
 
-#ifdef AZ_HAS_RVALUE_REFS
     template <class ValueT, class ErrorT>
     AZ_FORCE_INLINE Outcome<ValueT, ErrorT>::Outcome(Outcome&& other)
         : m_isSuccess(other.m_isSuccess)
@@ -146,7 +125,6 @@ namespace AZ
             ConstructFailure(AZStd::move(other.GetFailure()));
         }
     }
-#endif // AZ_HAS_RVALUE_REFS
 
     template <class ValueT, class ErrorT>
     AZ_FORCE_INLINE Outcome<ValueT, ErrorT>::~Outcome()
@@ -206,7 +184,6 @@ namespace AZ
         return *this;
     }
 
-#ifdef AZ_HAS_RVALUE_REFS
     template <class ValueT, class ErrorT>
     AZ_FORCE_INLINE Outcome<ValueT, ErrorT>& Outcome<ValueT, ErrorT>::operator=(Outcome&& other)
     {
@@ -251,7 +228,6 @@ namespace AZ
         }
         return *this;
     }
-#endif // AZ_HAS_RVALUE_REFS
 
     template <class ValueT, class ErrorT>
     AZ_FORCE_INLINE bool Outcome<ValueT, ErrorT>::IsSuccess() const
@@ -279,16 +255,13 @@ namespace AZ
         return GetSuccess().m_value;
     }
 
-#ifdef AZ_HAS_RVALUE_REFS
     template <class ValueT, class ErrorT>
     template <class Value_Type, class>
     AZ_FORCE_INLINE Value_Type && Outcome<ValueT, ErrorT>::TakeValue()
     {
         return AZStd::move(GetSuccess().m_value);
     }
-#endif // AZ_HAS_RVALUE_REFS
 
-#ifdef AZ_HAS_RVALUE_REFS
     template <class ValueT, class ErrorT>
     template <class U, class Value_Type, class>
     AZ_FORCE_INLINE Value_Type Outcome<ValueT, ErrorT>::GetValueOr(U&& defaultValue) const
@@ -297,16 +270,6 @@ namespace AZ
             ? GetValue()
             : static_cast<U>(AZStd::forward<U>(defaultValue));
     }
-#else
-    template <class ValueT, class ErrorT>
-    template <class Value_Type, class>
-    AZ_FORCE_INLINE Value_Type Outcome<ValueT, ErrorT>::GetValueOr(const ValueType& defaultValue) const
-    {
-        return m_isSuccess
-            ? GetValue()
-            : defaultValue;
-    }
-#endif // AZ_HAS_RVALUE_REFS
 
     template <class ValueT, class ErrorT>
     template <class Error_Type, class>
@@ -322,14 +285,12 @@ namespace AZ
         return GetFailure().m_value;
     }
 
-#ifdef AZ_HAS_RVALUE_REFS
     template <class ValueT, class ErrorT>
     template <class Error_Type, class>
     AZ_FORCE_INLINE Error_Type && Outcome<ValueT, ErrorT>::TakeError()
     {
         return AZStd::move(GetFailure().m_value);
     }
-#endif // AZ_HAS_RVALUE_REFS
 
     template <class ValueT, class ErrorT>
     typename Outcome<ValueT, ErrorT>::SuccessType & Outcome<ValueT, ErrorT>::GetSuccess()

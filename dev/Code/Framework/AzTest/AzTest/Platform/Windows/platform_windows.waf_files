@@ -1,0 +1,14 @@
+{
+    "none": {
+        "Platform/Windows": [
+            "../Common/WinAPI/AzTest/ColorizedOutput_WinAPI.cpp"
+        ]
+    },
+    "auto": {
+        "Platform/Windows": [
+            "Platform_Windows.cpp",
+            "AzTest_Traits_Platform.h",
+            "AzTest_Traits_Windows.h"
+        ]
+    }
+}

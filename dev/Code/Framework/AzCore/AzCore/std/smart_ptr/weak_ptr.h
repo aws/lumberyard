@@ -62,7 +62,6 @@ namespace AZStd
             : px(r.lock().get())
             , pn(r.pn)                 // never throws
         {}
-#if defined(AZ_HAS_RVALUE_REFS)
         template<class Y>
         weak_ptr(weak_ptr<Y>&& r, typename AZStd::Internal::sp_enable_if_convertible<Y, T>::type = AZStd::Internal::sp_empty())
             : px(r.lock().get())
@@ -84,7 +83,7 @@ namespace AZStd
             this_type(static_cast< weak_ptr && >(r)).swap(*this);
             return *this;
         }
-#endif
+
         template<class Y>
         weak_ptr(shared_ptr<Y> const& r, typename AZStd::Internal::sp_enable_if_convertible<Y, T>::type = AZStd::Internal::sp_empty())
             : px(r.px)
@@ -112,14 +111,14 @@ namespace AZStd
             pn = r.pn;
             return *this;
         }
-#if defined(AZ_HAS_RVALUE_REFS)
+
         template<class Y>
         weak_ptr& operator=(weak_ptr<Y>&& r)
         {
             this_type(static_cast< weak_ptr<Y> && >(r)).swap(*this);
             return *this;
         }
-#endif
+
         template<class Y>
         weak_ptr& operator=(shared_ptr<Y> const& r)   // never throws
         {

@@ -26,10 +26,13 @@
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzToolsFramework/Undo/UndoSystem.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/API/EntityPropertyEditorRequestsBus.h>
 #include <AzToolsFramework/ComponentMode/EditorComponentModeBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/ToolsComponents/ComponentMimeData.h>
 #include <AzToolsFramework/ToolsComponents/EditorInspectorComponentBus.h>
+#include <AzQtComponents/Components/LumberyardStylesheet.h>
+
 #include <QtWidgets/QWidget>
 #include <QtGui/QIcon>
 #include <QComboBox>
@@ -72,6 +75,18 @@ namespace AzToolsFramework
 
     using ComponentEditorVector = AZStd::vector<ComponentEditor*>;
 
+    struct OrderedSortComponentEntry
+    {
+        AZ::Component* m_component;
+        int m_originalOrder;
+
+        OrderedSortComponentEntry(AZ::Component* component, int originalOrder)
+        {
+            m_component = component;
+            m_originalOrder = originalOrder;
+        }
+    };
+
     /**
      * the entity property editor shows all components for a given entity or set of entities.
      * it displays their values and lets you edit them.  The editing actually happens through the sub editor parts, though.
@@ -86,6 +101,7 @@ namespace AzToolsFramework
         , private ToolsApplicationEvents::Bus::Handler
         , public IPropertyEditorNotify
         , public AzToolsFramework::EditorEntityContextNotificationBus::Handler
+        , public AzToolsFramework::EntityPropertyEditorRequestBus::Handler
         , public AzToolsFramework::PropertyEditorEntityChangeNotificationBus::MultiHandler
         , public EditorInspectorComponentNotificationBus::MultiHandler
         , private AzToolsFramework::ComponentModeFramework::EditorComponentModeNotificationBus::Handler
@@ -125,6 +141,11 @@ namespace AzToolsFramework
 
         void SetSystemEntityEditor(bool isSystemEntityEditor);
 
+        static void SortComponentsByPriority(AZ::Entity::ComponentArrayType& componentsOnEntity);
+
+        bool IsLockedToSpecificEntities() const { return !m_overrideSelectedEntityIds.empty(); }
+
+        static bool AreComponentsCopyable(const AZ::Entity::ComponentArrayType& components, const ComponentFilter& filter);
     Q_SIGNALS:
         void SelectedEntityNameChanged(const AZ::EntityId& entityId, const AZStd::string& name);
 
@@ -143,9 +164,10 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
         // ToolsApplicationEvents::Bus::Handler
         void BeforeEntitySelectionChanged() override;
-        void AfterEntitySelectionChanged(const AzToolsFramework::EntityIdList& newlySelectedEntities, const AzToolsFramework::EntityIdList& newlyDeselectedEntities) override;
-
-        virtual void EntityParentChanged(AZ::EntityId, AZ::EntityId, AZ::EntityId) {}
+        void AfterEntitySelectionChanged(
+            const AzToolsFramework::EntityIdList& newlySelectedEntities,
+            const AzToolsFramework::EntityIdList& newlyDeselectedEntities) override;
+        void InvalidatePropertyDisplay(PropertyModificationRefreshLevel level) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -174,6 +196,9 @@ namespace AzToolsFramework
         void LeftComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes) override;
         void ActiveComponentModeChanged(const AZ::Uuid& componentType) override;
 
+        // EntityPropertEditorRequestBus
+        void GetSelectedAndPinnedEntities(EntityIdList& selectedEntityIds) override;
+
         bool IsEntitySelected(const AZ::EntityId& id) const;
         bool IsSingleEntitySelected(const AZ::EntityId& id) const;
 
@@ -183,8 +208,6 @@ namespace AzToolsFramework
         // enable/disable editor
         void EnableEditor(bool enabled);
 
-        virtual void InvalidatePropertyDisplay(PropertyModificationRefreshLevel level);
-
         void MarkPropertyEditorBusyStart();
         void MarkPropertyEditorBusyEnd();
 
@@ -192,15 +215,14 @@ namespace AzToolsFramework
         void ClearInstances(bool invalidateImmediately = true);
 
         void GetAllComponentsForEntityInOrder(const AZ::Entity* entity, AZ::Entity::ComponentArrayType& componentsOnEntity);
-        void SortComponentsByPriority(AZ::Entity::ComponentArrayType& componentsOnEntity);
         void BuildSharedComponentArray(SharedComponentArray& sharedComponentArray, bool containsLayerEntity);
         void BuildSharedComponentUI(SharedComponentArray& sharedComponentArray);
         bool ComponentMatchesCurrentFilter(SharedComponentInfo& sharedComponentInfo) const;
         ComponentEditor* CreateComponentEditor();
         void UpdateEntityIcon();
         void UpdateEntityDisplay();
-        bool DoesComponentPassFilter(const AZ::Component* component) const;
-        bool IsComponentRemovable(const AZ::Component* component) const;
+        static bool DoesComponentPassFilter(const AZ::Component* component, const ComponentFilter& filter);
+        static bool IsComponentRemovable(const AZ::Component* component);
         bool AreComponentsRemovable(const AZ::Entity::ComponentArrayType& components) const;
         bool AreComponentsCopyable(const AZ::Entity::ComponentArrayType& components) const;
 
@@ -280,7 +302,9 @@ namespace AzToolsFramework
          */
         bool CanAddComponentsToSelection(const SelectionEntityTypeInfo& selectionEntityTypeInfo) const;
 
+        AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") // conditional expression is constant
         QVector<QAction*> m_entityComponentActions;
+        AZ_POP_DISABLE_WARNING
         QAction* m_actionToAddComponents = nullptr;
         QAction* m_actionToDeleteComponents = nullptr;
         QAction* m_actionToCutComponents = nullptr;
@@ -400,10 +424,11 @@ namespace AzToolsFramework
 
         // drag and drop events
         QRect GetInflatedRectFromPoint(const QPoint& point, int radius) const;
+        bool GetComponentsAtDropEventPosition(QDropEvent* event, AZ::Entity::ComponentArrayType& targetComponents);
         bool IsDragAllowed(const ComponentEditorVector& componentEditors) const;
         bool IsDropAllowed(const QMimeData* mimeData, const QPoint& posGlobal) const;
         bool IsDropAllowedForComponentReorder(const QMimeData* mimeData, const QPoint& posGlobal) const;
-        bool CreateComponentWithAsset(const AZ::Uuid& componentType, const AZ::Data::AssetId& assetId);
+        bool CreateComponentWithAsset(const AZ::Uuid& componentType, const AZ::Data::AssetId& assetId, AZ::Entity::ComponentArrayType& createdComponents);
 
         // given mimedata, filter it down to only the entries that can actually be spawned in this context.
         void GetCreatableAssetEntriesFromMimeData(const QMimeData* mimeData, ProductCallback callbackFunction) const;
@@ -508,7 +533,6 @@ namespace AzToolsFramework
         EntityIdList m_overrideSelectedEntityIds;
 
         void GetSelectedEntities(EntityIdList& selectedEntityIds);
-        bool IsLockedToSpecificEntities() { return m_overrideSelectedEntityIds.size() > 0; }
 
         // When m_initiatingPropertyChangeNotification is set to true, it means this EntityPropertyEditor is
         // broadcasting a change to all listeners about a property change for a given entity.  This is needed
@@ -525,6 +549,7 @@ namespace AzToolsFramework
         void ScrollToNewComponent();
         void QueueScrollToNewComponent();
         void OnStatusChanged(int index);
+        void OnSearchContextMenu(const QPoint& pos);
         void BuildEntityIconMenu();
 
         void OnSearchTextChanged();

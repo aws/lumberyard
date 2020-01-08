@@ -19,8 +19,7 @@ public:
     void undo() override;
     void redo() override;
 
-    static void Push(bool onCreationOfElement,
-        UndoStack* stack,
+    static void Push(UndoStack* stack,
         HierarchyWidget* hierarchy,
         const HierarchyItemRawPtrList& items,
         const QTreeWidgetItemRawPtrList& itemParents);

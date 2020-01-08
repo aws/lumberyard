@@ -26,12 +26,17 @@
 #include <CloudCanvasCommon/CloudCanvasCommonBus.h>
 #include <CloudGemFramework/AwsApiRequestJob.h>
 
-#pragma warning(disable: 4355)
+// The AWS Native SDK AWSAllocator triggers a warning due to accessing members of std::allocator directly.
+// AWSAllocator.h(70): warning C4996: 'std::allocator<T>::pointer': warning STL4010: Various members of std::allocator are deprecated in C++17.
+// Use std::allocator_traits instead of accessing these members directly.
+// You can define _SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING or _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS to acknowledge that you have received this warning.
+
+AZ_PUSH_DISABLE_WARNING(4251 4355 4996, "-Wunknown-warning-option")
 #include <aws/core/utils/Outcome.h>
 #include <aws/core/utils/memory/stl/AWSStringStream.h>
 #include <aws/core/utils/memory/stl/AWSString.h>
 #include <aws/core/utils/json/JsonSerializer.h>
-#pragma warning(default: 4355)
+AZ_POP_DISABLE_WARNING
 
 namespace {
     const char* AUDIO_FILE_EXT_PCM = ".pcm";
@@ -82,9 +87,9 @@ namespace CloudGemTextToSpeech
     AZStd::string TextToSpeech::GetVoiceFromCharacter(const AZStd::string& character)
     {
         auto characterInfo = LoadCharacterFromMappingsFile(character);
-        if (characterInfo.ValueExists("voice"))
+        if (characterInfo.View().ValueExists("voice"))
         {
-            return characterInfo.GetString("voice").c_str();
+            return characterInfo.View().GetString("voice").c_str();
         }
         return "";
     }
@@ -92,9 +97,9 @@ namespace CloudGemTextToSpeech
     AZStd::string TextToSpeech::GetSpeechMarksFromCharacter(const AZStd::string& character)
     {
         auto characterInfo = LoadCharacterFromMappingsFile(character);
-        if (characterInfo.ValueExists("speechMarks"))
+        if (characterInfo.View().ValueExists("speechMarks"))
         {
-            return characterInfo.GetString("speechMarks").c_str();
+            return characterInfo.View().GetString("speechMarks").c_str();
         }
         return "";
     }
@@ -104,13 +109,13 @@ namespace CloudGemTextToSpeech
         AZStd::vector<AZStd::string> tags;
         auto characterInfo = LoadCharacterFromMappingsFile(character);
 
-        if (characterInfo.ValueExists("ssmlTags"))
+        if (characterInfo.View().ValueExists("ssmlTags"))
         {
-            if (!characterInfo.GetObject("ssmlTags").IsListType())
+            if (!characterInfo.View().GetObject("ssmlTags").IsListType())
             {
                 return tags;
             }
-            auto tagsList = characterInfo.GetArray("ssmlTags");
+            auto tagsList = characterInfo.View().GetArray("ssmlTags");
             for (size_t i = 0; i < tagsList.GetLength(); i++)
             {
                 if (tagsList.GetItem(i).IsString())
@@ -125,9 +130,9 @@ namespace CloudGemTextToSpeech
     AZStd::string TextToSpeech::GetLanguageOverrideFromCharacter(const AZStd::string& character)
     {
         auto characterInfo = LoadCharacterFromMappingsFile(character);
-        if (characterInfo.ValueExists("ssmlLanguage"))
+        if (characterInfo.View().ValueExists("ssmlLanguage"))
         {
-            return characterInfo.GetString("ssmlLanguage").c_str();
+            return characterInfo.View().GetString("ssmlLanguage").c_str();
         }
 
         return "";
@@ -136,9 +141,9 @@ namespace CloudGemTextToSpeech
     int TextToSpeech::GetTimbreFromCharacter(const AZStd::string& character)
     {
         auto characterInfo = LoadCharacterFromMappingsFile(character);
-        if (characterInfo.ValueExists("timbre"))
+        if (characterInfo.View().ValueExists("timbre"))
         {
-            return characterInfo.GetInteger("timbre");
+            return characterInfo.View().GetInteger("timbre");
         }
 
         return 100;
@@ -159,11 +164,11 @@ namespace CloudGemTextToSpeech
         {
             Aws::IFStream inputFile(mappingFile.c_str());
             Aws::Utils::Json::JsonValue characterMapping(inputFile);
-            for (auto const &characterInfo : characterMapping.GetAllObjects())
+            for (auto const &characterInfo : characterMapping.View().GetAllObjects())
             {
                 if (characterInfo.first == character.c_str())
                 {
-                    return characterInfo.second;
+                    return characterInfo.second.Materialize();
                 }
             }
         }

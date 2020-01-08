@@ -68,9 +68,9 @@ namespace EMotionFX
                     editContext->Class<EditorActorComponent>("Actor", "The Actor component manages an instance of an Actor")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Animation")
-                        ->Attribute(AZ::Edit::Attributes::Icon, ":/EMotionFX/ActorComponent.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, ":/EMotionFX/ActorComponent.svg")
                         ->Attribute(AZ::Edit::Attributes::PrimaryAssetType, azrtti_typeid<ActorAsset>())
-                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, ":/EMotionFX/ActorComponent.png")
+                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, ":/EMotionFX/ActorComponent.svg")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-actor.html")
@@ -267,7 +267,8 @@ namespace EMotionFX
             {
                 m_materialPerLOD.clear();
 
-                return AZ::Edit::PropertyRefreshLevels::EntireTree;
+                // Only need to refresh the values here.
+                return AZ::Edit::PropertyRefreshLevels::ValuesOnly;
             }
 
             return AZ::Edit::PropertyRefreshLevels::None;
@@ -819,6 +820,42 @@ namespace EMotionFX
             if (attachment == attachTo)
             {
                 return false;
+            }
+
+            // Detect if attachTo is already in another circular chain.
+            auto AttachmentStep = [](AZ::EntityId attach, int stride) -> AZ::EntityId
+            {
+                AZ_Assert(stride > 0, "Stride value has to be greater than 0.");
+
+                if (attach.IsValid())
+                {
+                    for (int i = 0; i < stride; ++i)
+                    {
+                        AZ::EntityId next;
+                        EditorActorComponentRequestBus::EventResult(next, attach, &EditorActorComponentRequestBus::Events::GetAttachedToEntityId);
+                        if (!next.IsValid())
+                        {
+                            return next;
+                        }
+                        attach = next;
+                    }
+                    return attach;
+                }
+                else
+                {
+                    return attach;
+                }
+            };
+            AZ::EntityId slowWalker = attachTo;
+            AZ::EntityId fastWalker = attachTo;
+            while (fastWalker.IsValid())
+            {
+                slowWalker = AttachmentStep(slowWalker, 1);
+                fastWalker = AttachmentStep(fastWalker, 2);
+                if (fastWalker.IsValid() && fastWalker == slowWalker)
+                {
+                    return false; // Cycle detected if slowWalker meets fastWalker.
+                }
             }
 
             // Walk our way up to the root.

@@ -67,7 +67,7 @@ namespace EMotionFX
          * This can be implemented for say skin attachments, which copy over joint transforms from the actor instance they are attached to.
          * @param outPose The pose that will be modified.
          */
-        virtual void UpdateJointTransforms(Pose& outPose) {}
+        virtual void UpdateJointTransforms(Pose& outPose) { AZ_UNUSED(outPose) };
 
         /**
          * Get the actor instance object of the attachment.

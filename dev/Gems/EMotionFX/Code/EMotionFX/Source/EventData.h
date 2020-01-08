@@ -91,11 +91,7 @@ namespace EMotionFX
          */
         virtual bool Equal(const EventData& rhs, bool ignoreEmptyFields = false) const = 0;
 
-        virtual AZStd::string ToString() const
-        {
-            AZ::Outcome<AZStd::string> eventDataString = MCore::ReflectionSerializer::SerializeIntoCommandLine(this);
-            return eventDataString.GetValueOr("");
-        }
+        virtual AZStd::string ToString() const;
     };
 
     /*

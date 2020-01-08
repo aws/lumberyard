@@ -64,34 +64,16 @@ namespace EMotionFX
         layout->setAlignment(Qt::AlignTop);
         result->setLayout(layout);
 
-        QHBoxLayout* copyFromLayout = new QHBoxLayout();
-        copyFromLayout->setMargin(0);
-
-        QPushButton* copyFromHitDetectionButton = new QPushButton("Copy from ragdoll", result);
-        connect(copyFromHitDetectionButton, &QPushButton::clicked, this, [=]
+        QLayout* copyFromLayout = ColliderHelpers::CreateCopyFromButtonLayout(this, PhysicsSetup::ColliderConfigType::HitDetection,
+        [=](PhysicsSetup::ColliderConfigType copyFrom, PhysicsSetup::ColliderConfigType copyTo)
+        {
+            SkeletonModel* skeletonModel = nullptr;
+            SkeletonOutlinerRequestBus::BroadcastResult(skeletonModel, &SkeletonOutlinerRequests::GetModel);
+            if (skeletonModel)
             {
-                SkeletonModel* skeletonModel = nullptr;
-                SkeletonOutlinerRequestBus::BroadcastResult(skeletonModel, &SkeletonOutlinerRequests::GetModel);
-                if (skeletonModel)
-                {
-                    ColliderHelpers::CopyColliders(skeletonModel->GetModelIndicesForFullSkeleton(), PhysicsSetup::Ragdoll, PhysicsSetup::HitDetection);
-                }
-            });
-        copyFromLayout->addWidget(copyFromHitDetectionButton);
-
-        // Note: Cloth collider editor is disabled as it is in preview
-        /*QPushButton* copyFromRagdollButton = new QPushButton("Copy from cloth", result);
-        connect(copyFromRagdollButton, &QPushButton::clicked, this, [=]
-            {
-                SkeletonModel* skeletonModel = nullptr;
-                SkeletonOutlinerRequestBus::BroadcastResult(skeletonModel, &SkeletonOutlinerRequests::GetModel);
-                if (skeletonModel)
-                {
-                    ColliderHelpers::CopyColliders(skeletonModel->GetModelIndicesForFullSkeleton(), PhysicsSetup::Cloth, PhysicsSetup::HitDetection);
-                }
-            });
-        copyFromLayout->addWidget(copyFromRagdollButton);*/
-
+                ColliderHelpers::CopyColliders(skeletonModel->GetModelIndicesForFullSkeleton(), copyFrom, copyTo);
+            }
+        });
         layout->addLayout(copyFromLayout);
 
         QLabel* noSelectionLabel = new QLabel("Select a joint from the Skeleton Outliner", result);
@@ -101,9 +83,9 @@ namespace EMotionFX
         return result;
     }
 
-    void HitDetectionJointWidget::InternalReinit(Actor* actor, Node* node)
+    void HitDetectionJointWidget::InternalReinit(Actor* actor, Node* joint)
     {
-        if (actor && node)
+        if (actor && joint)
         {
             Physics::CharacterColliderNodeConfiguration* hitDetectionNodeConfig = GetNodeConfig();
             if (hitDetectionNodeConfig)
@@ -112,17 +94,17 @@ namespace EMotionFX
                 AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
                 AZ_Error("EMotionFX", serializeContext, "Can't get serialize context from component application.");
 
-                m_collidersWidget->Update(hitDetectionNodeConfig->m_shapes, serializeContext);
+                m_collidersWidget->Update(actor, joint, PhysicsSetup::ColliderConfigType::HitDetection, hitDetectionNodeConfig->m_shapes, serializeContext);
                 m_collidersWidget->show();
             }
             else
             {
-                m_collidersWidget->Update(Physics::ShapeConfigurationList(), nullptr);
+                m_collidersWidget->Reset();
             }
         }
         else
         {
-            m_collidersWidget->Update(Physics::ShapeConfigurationList(), nullptr);
+            m_collidersWidget->Reset();
         }
     }
 

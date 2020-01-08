@@ -36,6 +36,5 @@ namespace MCore
         default:
             return false;
         }
-        return false;
     }
 }   // namespace MCore

@@ -142,7 +142,6 @@ public:
 protected:
     // String comparison for map
     struct cmp_str
-        : public std::binary_function<const char*, const char*, bool>
     {
         bool operator()(char const* a, char const* b) const
         {

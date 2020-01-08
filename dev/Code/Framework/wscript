@@ -10,9 +10,6 @@
 #
 ########################################################################################
 
-from waflib.Configure import conf
-from waflib import Context, Utils, Logs
-from waflib import Errors
 
 SUBFOLDERS = [ 
     'AzCore', 
@@ -24,9 +21,9 @@ SUBFOLDERS = [
     'Crcfix',
     'GFxFramework',
     'GridMate',
-    'GridMateForTools',
     'Tests'
     ]
+
 
 def build(bld):
 

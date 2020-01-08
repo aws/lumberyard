@@ -12,7 +12,9 @@
         "Include": [
             "Include/ScriptCanvas/ScriptCanvasGem.h"
         ],
-        "Include/ScriptCanvas/Asset" : [
+        "Include/ScriptCanvas/Asset": [
+            "Include/ScriptCanvas/Asset/AssetRegistry.cpp",
+            "Include/ScriptCanvas/Asset/AssetRegistry.h",
             "Include/ScriptCanvas/Asset/ExecutionLogAsset.cpp",
             "Include/ScriptCanvas/Asset/ExecutionLogAsset.h",
             "Include/ScriptCanvas/Asset/ExecutionLogAssetBus.h",
@@ -53,11 +55,13 @@
             "Include/ScriptCanvas/Core/Node.cpp",
             "Include/ScriptCanvas/Core/Node.h",
             "Include/ScriptCanvas/Core/NodeFunctionGeneric.h",
-            "Include/ScriptCanvas/Core/NodeVisitor.h",
             "Include/ScriptCanvas/Core/PureData.cpp",
             "Include/ScriptCanvas/Core/PureData.h",
             "Include/ScriptCanvas/Core/Slot.cpp",
             "Include/ScriptCanvas/Core/Slot.h",
+            "Include/ScriptCanvas/Core/SlotConfigurationDefaults.h",
+            "Include/ScriptCanvas/Core/SlotConfigurations.cpp",
+            "Include/ScriptCanvas/Core/SlotConfigurations.h",
             "Include/ScriptCanvas/Core/SlotMetadata.cpp",
             "Include/ScriptCanvas/Core/SlotMetadata.h",
             "Include/ScriptCanvas/Core/SlotNames.h"
@@ -132,8 +136,6 @@
             "Include/ScriptCanvas/Libraries/Libraries.cpp"
         ],
         "Include/ScriptCanvas/Libraries/Core": [
-            "Include/ScriptCanvas/Libraries/Core/Assign.cpp",
-            "Include/ScriptCanvas/Libraries/Core/Assign.h",
             "Include/ScriptCanvas/Libraries/Core/BehaviorContextObjectNode.cpp",
             "Include/ScriptCanvas/Libraries/Core/BehaviorContextObjectNode.h",
             "Include/ScriptCanvas/Libraries/Core/BinaryOperator.cpp",
@@ -156,6 +158,8 @@
             "Include/ScriptCanvas/Libraries/Core/Method.h",
             "Include/ScriptCanvas/Libraries/Core/MethodUtility.cpp",
             "Include/ScriptCanvas/Libraries/Core/MethodUtility.h",
+            "Include/ScriptCanvas/Libraries/Core/Repeater.cpp",
+            "Include/ScriptCanvas/Libraries/Core/Repeater.h",
             "Include/ScriptCanvas/Libraries/Core/SetVariable.cpp",
             "Include/ScriptCanvas/Libraries/Core/SetVariable.h",
             "Include/ScriptCanvas/Libraries/Core/Start.cpp",
@@ -199,8 +203,12 @@
             "Include/ScriptCanvas/Libraries/Logic/Once.cpp",
             "Include/ScriptCanvas/Libraries/Logic/Once.h",
             "Include/ScriptCanvas/Libraries/Logic/Or.h",
+            "Include/ScriptCanvas/Libraries/Logic/OrderedSequencer.cpp",
+            "Include/ScriptCanvas/Libraries/Logic/OrderedSequencer.h",
             "Include/ScriptCanvas/Libraries/Logic/Sequencer.cpp",
             "Include/ScriptCanvas/Libraries/Logic/Sequencer.h",
+            "Include/ScriptCanvas/Libraries/Logic/TargetedSequencer.cpp",
+            "Include/ScriptCanvas/Libraries/Logic/TargetedSequencer.h",            
             "Include/ScriptCanvas/Libraries/Logic/WeightedRandomSequencer.cpp",
             "Include/ScriptCanvas/Libraries/Logic/WeightedRandomSequencer.h"
         ],
@@ -352,7 +360,9 @@
           "Include/ScriptCanvas/Libraries/Operators/Math/OperatorMul.h",
           "Include/ScriptCanvas/Libraries/Operators/Math/OperatorMul.cpp",
           "Include/ScriptCanvas/Libraries/Operators/Math/OperatorDiv.h",
-          "Include/ScriptCanvas/Libraries/Operators/Math/OperatorDiv.cpp",          
+          "Include/ScriptCanvas/Libraries/Operators/Math/OperatorDiv.cpp",
+          "Include/ScriptCanvas/Libraries/Operators/Math/OperatorDivideByNumber.h",
+          "Include/ScriptCanvas/Libraries/Operators/Math/OperatorDivideByNumber.cpp",
           "Include/ScriptCanvas/Libraries/Operators/Math/OperatorLength.h",
           "Include/ScriptCanvas/Libraries/Operators/Math/OperatorLength.cpp",
           "Include/ScriptCanvas/Libraries/Operators/Math/OperatorLerp.h",
@@ -365,14 +375,14 @@
           "Include/ScriptCanvas/Profiler/DrillerEvents.h",
           "Include/ScriptCanvas/Profiler/DrillerEvents.cpp"
         ],
-        "Include/ScriptCanvas/Traits" :[
+        "Include/ScriptCanvas/Traits": [
           "Include/ScriptCanvas/Data/DataTrait.cpp",
           "Include/ScriptCanvas/Data/DataTrait.h",
           "Include/ScriptCanvas/Data/PropertyTraits.cpp",
           "Include/ScriptCanvas/Data/PropertyTraits.h",
           "Include/ScriptCanvas/Data/Traits.h"
         ],
-        "Include/ScriptCanvas/Variable" :[
+        "Include/ScriptCanvas/Variable": [
           "Include/ScriptCanvas/Variable/VariableBus.h",
           "Include/ScriptCanvas/Variable/GraphVariableManagerComponent.h",
           "Include/ScriptCanvas/Variable/GraphVariableManagerComponent.cpp",
@@ -385,9 +395,10 @@
           "Include/ScriptCanvas/Variable/VariableDatum.h",
           "Include/ScriptCanvas/Variable/VariableDatum.cpp"
         ],
-        "Include/ScriptCanvas/Utils"  :[
+        "Include/ScriptCanvas/Utils": [
           "Include/ScriptCanvas/Utils/NodeUtils.h",
-          "Include/ScriptCanvas/Utils/NodeUtils.cpp"
+          "Include/ScriptCanvas/Utils/NodeUtils.cpp",
+          "Include/ScriptCanvas/Utils/SerializationUtils.h"
         ]
     }
 }

@@ -31,6 +31,12 @@ namespace ScriptCanvas
         ~MathOperatorContract() override = default;        
 
         void SetSupportedNativeTypes(const AZStd::unordered_set< Data::Type >& nativeTypes);
+        void SetSupportedOperator(AZStd::string_view operatorString);
+
+        // Was a versioning mishap with the data in this contract that caused the supported
+        // types and operator to not be serialized. Using this to catch that case and update.
+        // Function will be removed in a future update.
+        bool HasOperatorFunction() const;
 
         static void Reflect(AZ::ReflectContext* reflection);
 
@@ -40,5 +46,6 @@ namespace ScriptCanvas
         AZStd::unordered_set< Data::Type > m_supportedNativeTypes;
 
         AZ::Outcome<void, AZStd::string> OnEvaluate(const Slot& sourceSlot, const Slot& targetSlot) const override;
+        AZ::Outcome<void, AZStd::string> OnEvaluateForType(const Data::Type& dataType) const override;
     };
 }

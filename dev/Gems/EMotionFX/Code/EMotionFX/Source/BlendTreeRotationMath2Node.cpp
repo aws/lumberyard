@@ -132,7 +132,6 @@ namespace EMotionFX
 
         // Apply the operation
         MCore::Quaternion quaternionResult;
-        float floatResult = 0.0f;
         m_calculateFunc(x, y, &quaternionResult);
 
         // Update the output value

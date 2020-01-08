@@ -265,11 +265,11 @@ namespace ChatPlay
     void ChatPlaySystemComponent::Activate()
     {
         m_chatPlayCVars = ChatPlayCVars::GetInstance();
-#if !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE) && !defined(LINUX)
+#if AZ_TRAIT_CHATPLAY_JOIN_AND_BROADCAST
         m_joinInCVars = JoinInCVars::GetInstance();
         m_chatPlay = ChatPlay::CreateInstance();
         m_broadcastAPI = CreateBroadcastAPI();
-#endif // !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE) && !defined(LINUX)
+#endif // AZ_TRAIT_CHATPLAY_JOIN_AND_BROADCAST
 
         ChatPlayRequestBus::Handler::BusConnect();
         AZ::SystemTickBus::Handler::BusConnect();
@@ -280,10 +280,10 @@ namespace ChatPlay
         AZ::SystemTickBus::Handler::BusDisconnect();
         ChatPlayRequestBus::Handler::BusDisconnect();
 
-#if !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE) && !defined(LINUX)
+#if AZ_TRAIT_CHATPLAY_JOIN_AND_BROADCAST
         m_chatPlay.reset();
         m_broadcastAPI.reset();
-#endif // !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE) && !defined(LINUX)
+#endif // AZ_TRAIT_CHATPLAY_JOIN_AND_BROADCAST
         m_chatPlayCVars.reset();
 
     }
@@ -295,12 +295,12 @@ namespace ChatPlay
             m_chatPlay->DispatchEvents();
         }
 
-#if !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE) && !defined(LINUX)
+#if AZ_TRAIT_CHATPLAY_JOIN_AND_BROADCAST
         if (m_broadcastAPI)
         {
             m_broadcastAPI->DispatchEvents();
         }
-#endif // !defined(CONSOLE) && !defined(MOBILE) && !defined(APPLE) && !defined(LINUX)
+#endif // AZ_TRAIT_CHATPLAY_JOIN_AND_BROADCAST
 
     }
 }

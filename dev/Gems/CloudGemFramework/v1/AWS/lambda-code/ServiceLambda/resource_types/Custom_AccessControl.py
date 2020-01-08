@@ -666,7 +666,7 @@ def _get_implicit_role_mappings(resource_info, problems):
     return role_mappings
 
 def _get_explicit_role_mappings(stack, problems):
-    '''Looks for the folling metadata in a stack template:
+    '''Looks for the following metadata in a stack template:
 
           {
             "Resources": {

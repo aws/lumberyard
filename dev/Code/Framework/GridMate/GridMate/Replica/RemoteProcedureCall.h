@@ -466,7 +466,12 @@ namespace GridMate
                 bool Forward(const RpcContext& context, LocalArgs&& ... args)
                 {
                     C* c = ThisResolver::template GetInterface<C>(this);
-                    return (*c.*FuncPtr)(AZStd::forward<LocalArgs>(args) ..., context);
+                    if (c)
+                    {
+                        return (*c.*FuncPtr)(AZStd::forward<LocalArgs>(args) ..., context);
+                    }
+
+                    return false;
                 }
 
             protected:
@@ -479,10 +484,8 @@ namespace GridMate
                     {
                         return (*c.*FuncPtr)(GetStorageFromIndex<Indices, TypeTuple, Args...>(storage) ..., *storage);
                     }
-                    else
-                    {
-                        return false;
-                    }
+                     
+                    return false;
                 }
             };
 
@@ -506,17 +509,20 @@ namespace GridMate
                         TypeTuple* storage = static_cast<TypeTuple*>(request);
                         return (*c.*FuncPtr)(*storage);
                     }
-                    else
-                    {
-                        return false;
-                    }
+                     
+                    return false;
                 }
 
                 // Forward from a direct in-place call
                 bool Forward(const RpcContext& context)
                 {
                     C* c = ThisResolver::template GetInterface<C>(this);
-                    return (*c.*FuncPtr)(context);
+                    if (c)
+                    {
+                        return (*c.*FuncPtr)(context);
+                    }
+
+                    return false;
                 }
             };
 

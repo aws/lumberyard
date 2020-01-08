@@ -1,0 +1,8 @@
+{
+  "auto": {
+    "Platform/Windows": [
+      "CloudGemFramework_Traits_Platform.h",
+      "CloudGemFramework_Traits_Windows.h"
+    ]
+  }
+}

@@ -8,7 +8,7 @@ SET CMD_DIR=%CMD_DIR:~0,-1%
 
 SET ROOT_DIR=%CMD_DIR%\..\..\..
 
-REM Convert to absoulte path
+REM Convert to absolute path
 pushd %ROOT_DIR%
 set ROOT_DIR=%CD%
 popd
@@ -22,6 +22,10 @@ SET PYTHON=%PYTHON_DIR%\python.cmd
 
 SET parsedparams=
 SET skipaztests=0
+
+REM change this to support required tool chain
+SET toolsdir=Bin64vc141.Debug.test
+ECHO Defaulting to %toolsdir%. Please update script for other build targets
 
 :doParse
 if NOT "%1" == "" (
@@ -48,7 +52,7 @@ if %skipaztests% == 1 (
 ECHO Initiating AzTestScanner...
 
 SET LMBR_TEST=%ROOT_DIR%\lmbr_test.cmd
-SET LMBR_TEST_RUNNER=%LMBR_TEST% scan --dir %ROOT_DIR%\Bin64vc140.Debug.test --html-report
+SET LMBR_TEST_RUNNER=%LMBR_TEST% scan --dir %ROOT_DIR%\%toolsdir% --html-report
 ECHO %LMBR_TEST_RUNNER%
 CALL %LMBR_TEST_RUNNER%
 IF ERRORLEVEL 1 GOTO FAILED

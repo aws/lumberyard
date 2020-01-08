@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Memory/BestFitExternalMapAllocator.h>
 #include <AzCore/Memory/BestFitExternalMapSchema.h>
@@ -26,7 +25,8 @@ using namespace AZ;
 // [1/28/2011]
 //=========================================================================
 BestFitExternalMapAllocator::BestFitExternalMapAllocator()
-    : m_schema(NULL)
+    : AllocatorBase(this, "BestFitExternalMapAllocator", "Best fit allocator with external tracking storage!")
+    , m_schema(NULL)
 {}
 
 //=========================================================================
@@ -44,6 +44,7 @@ BestFitExternalMapAllocator::Create(const Descriptor& desc)
 
     bool isReady = true;
 
+    m_desc = desc;
     BestFitExternalMapSchema::Descriptor schemaDesc;
     schemaDesc.m_mapAllocator = desc.m_mapAllocator;
     schemaDesc.m_memoryBlock = desc.m_memoryBlock;
@@ -55,18 +56,7 @@ BestFitExternalMapAllocator::Create(const Descriptor& desc)
         isReady = false;
     }
 
-#ifdef AZCORE_ENABLE_MEMORY_TRACKING
-    if (isReady && desc.m_allocationRecords)
-    {
-        EBUS_EVENT(Debug::MemoryDrillerBus, RegisterAllocator, this, desc.m_stackRecordLevels, false, false);
-    }
-#endif
-    if (isReady)
-    {
-        OnCreated();
-    }
-
-    return IsReady();
+    return isReady;
 }
 
 //=========================================================================
@@ -76,16 +66,17 @@ BestFitExternalMapAllocator::Create(const Descriptor& desc)
 void
 BestFitExternalMapAllocator::Destroy()
 {
-    OnDestroy();
-
     azdestroy(m_schema, SystemAllocator);
     m_schema = NULL;
-#ifdef AZCORE_ENABLE_MEMORY_TRACKING
-    if (m_records)
-    {
-        EBUS_EVENT(Debug::MemoryDrillerBus, UnregisterAllocator, this);
-    }
-#endif
+}
+
+AllocatorDebugConfig BestFitExternalMapAllocator::GetDebugConfig()
+{
+    return AllocatorDebugConfig()
+        .ExcludeFromDebugging(!m_desc.m_allocationRecords)
+        .StackRecordLevels(m_desc.m_stackRecordLevels)
+        .MarksUnallocatedMemory(false)
+        .UsesMemoryGuards(false);
 }
 
 //=========================================================================
@@ -95,8 +86,11 @@ BestFitExternalMapAllocator::Destroy()
 BestFitExternalMapAllocator::pointer_type
 BestFitExternalMapAllocator::Allocate(size_type byteSize, size_type alignment, int flags, const char* name, const char* fileName, int lineNum, unsigned int suppressStackRecord)
 {
+    (void)suppressStackRecord;
+
     AZ_Assert(byteSize > 0, "You can not allocate 0 bytes!");
     AZ_Assert((alignment & (alignment - 1)) == 0, "Alignment must be power of 2!");
+    byteSize = MemorySizeAdjustedUp(byteSize);
 
     BestFitExternalMapAllocator::pointer_type address = m_schema->Allocate(byteSize, alignment, flags);
     if (address == 0)
@@ -104,30 +98,17 @@ BestFitExternalMapAllocator::Allocate(size_type byteSize, size_type alignment, i
         if (!OnOutOfMemory(byteSize, alignment, flags, name, fileName, lineNum))
         {
 #ifdef AZCORE_ENABLE_MEMORY_TRACKING
-            if (m_records)
+            if (GetRecords())
             {
-                // print what allocation we have.
-                m_records->EnumerateAllocations(Debug::PrintAllocationsCB(false));
+                EBUS_EVENT(Debug::MemoryDrillerBus, DumpAllAllocations);
             }
 #endif
         }
     }
 
     AZ_Assert(address != 0, "BestFitExternalMapAllocator: Failed to allocate %d bytes aligned on %d (flags: 0x%08x) %s : %s (%d)!", byteSize, alignment, flags, name ? name : "(no name)", fileName ? fileName : "(no file name)", lineNum);
-#ifdef AZCORE_ENABLE_MEMORY_TRACKING
-    if (m_records)
-    {
-#if defined(AZ_HAS_VARIADIC_TEMPLATES) && defined(AZ_DEBUG_BUILD)
-        ++suppressStackRecord; // one more for the fact the ebus is a function
-#endif // AZ_HAS_VARIADIC_TEMPLATES
-        EBUS_EVENT(Debug::MemoryDrillerBus, RegisterAllocation, this, address, byteSize, alignment, name, fileName, lineNum, suppressStackRecord + 1);
-    }
-#else
-    (void)name;
-    (void)fileName;
-    (void)lineNum;
-    (void)suppressStackRecord;
-#endif
+    AZ_MEMORY_PROFILE(ProfileAllocation(address, byteSize, alignment, name, fileName, lineNum, suppressStackRecord + 1));
+
     return address;
 }
 
@@ -138,12 +119,9 @@ BestFitExternalMapAllocator::Allocate(size_type byteSize, size_type alignment, i
 void
 BestFitExternalMapAllocator::DeAllocate(pointer_type ptr, size_type byteSize, size_type alignment)
 {
-#ifdef AZCORE_ENABLE_MEMORY_TRACKING
-    if (m_records)
-    {
-        EBUS_EVENT(Debug::MemoryDrillerBus, UnregisterAllocation, this, ptr, byteSize, alignment, nullptr);
-    }
-#endif
+    byteSize = MemorySizeAdjustedUp(byteSize);
+    AZ_MEMORY_PROFILE(ProfileDeallocation(ptr, byteSize, alignment, nullptr));
+
     (void)byteSize;
     (void)alignment;
     m_schema->DeAllocate(ptr);
@@ -183,7 +161,7 @@ BestFitExternalMapAllocator::ReAllocate(pointer_type ptr, size_type newSize, siz
 BestFitExternalMapAllocator::size_type
 BestFitExternalMapAllocator::AllocationSize(pointer_type ptr)
 {
-    return m_schema->AllocationSize(ptr);
+    return MemorySizeAdjustedDown(m_schema->AllocationSize(ptr));
 }
 
 //=========================================================================
@@ -225,5 +203,3 @@ BestFitExternalMapAllocator::GetSubAllocator()
 {
     return m_schema->GetSubAllocator();
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

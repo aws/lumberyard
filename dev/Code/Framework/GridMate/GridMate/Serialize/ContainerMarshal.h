@@ -48,6 +48,8 @@ namespace GridMate
     class Marshaler<Type, typename AZStd::Utils::enable_if_c<IsContainerMarshaler<Type>::Value>::type>
     {
     public:
+        AZ_TYPE_INFO_LEGACY(Marshaler, "{93F8FF8B-6437-448B-A231-BDB3BB1448F2}", Type);
+
         typedef Type DataType;
         typedef typename Type::value_type ValueType;
         typedef Marshaler<ValueType> InnerMarshaler;

@@ -113,7 +113,7 @@ struct IComponentScript
     // </interfuscator:shuffle>
 };
 
-DECLARE_COMPONENT_POINTERS(IComponentScript);
+DECLARE_SMART_POINTERS(IComponentScript);
 
 
 #endif // CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTSCRIPT_H

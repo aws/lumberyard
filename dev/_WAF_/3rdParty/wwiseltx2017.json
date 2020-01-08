@@ -1,0 +1,87 @@
+{
+    "name": "wwiseltx2017",
+    "source": "@3P:wwiseLtx@",
+    "description": "Wwise LTX Audio Middleware",
+    "includes": [
+        "SDK/include"
+    ],
+    "aliases": {
+        "ak_core_libs": [
+            "AkMemoryMgr",
+            "AkMusicEngine",
+            "AkSoundEngine",
+            "AkStreamMgr",
+            "AkSpatialAudio"
+        ],
+        "ak_effect_libs": [
+            "AkCompressorFX",
+            "AkDelayFX",
+            "AkExpanderFX",
+            "AkFlangerFX",
+            "AkGainFX",
+            "AkGuitarDistortionFX",
+            "AkHarmonizerFX",
+            "AkMatrixReverbFX",
+            "AkMeterFX",
+            "AkParametricEQFX",
+            "AkPeakLimiterFX",
+            "AkPitchShifterFX",
+            "AkRecorderFX",
+            "AkRoomVerbFX",
+            "AkStereoDelayFX",
+            "AkTimeStretchFX",
+            "AkTremoloFX"
+        ],
+        "ak_source_libs": [
+            "AkAudioInputSource",
+            "AkMotionGeneratorSource",
+            "AkSilenceSource",
+            "AkSineSource",
+            "AkSynthOneSource",
+            "AkToneSource"
+        ],
+        "ak_codec_libs": [
+            "AkVorbisDecoder"
+        ],
+        "communication_libs": [
+            "CommunicationCentral"
+        ],
+        "common_libs": [
+            "${ak_core_libs}",
+            "AkMotionSink",
+            "${ak_effect_libs}",
+            "${ak_codec_libs}",
+            "${ak_source_libs}"
+        ],
+        "common_libs_nix": [
+            "${ak_core_libs}",
+            "${ak_effect_libs}",
+            "${ak_codec_libs}",
+            "${ak_source_libs}"
+        ],
+        "codec_libs_apple": [
+            "AkAACDecoder"
+        ]
+    },
+    "suppress_warning": "False",
+    "lib_required": "False",
+    "engine_configs": "True",
+    "defines_debug": [
+        "WWISE_LTX",
+        "WWISE_FOR_DEBUG"
+    ],
+    "defines_profile": [
+        "WWISE_LTX",
+        "WWISE_FOR_PROFILE"
+    ],
+    "defines_performance": [
+        "WWISE_LTX",
+        "WWISE_FOR_RELEASE",
+        "AK_OPTIMIZED"
+    ],
+    "defines_release": [
+        "WWISE_LTX",
+        "WWISE_FOR_RELEASE",
+        "AK_OPTIMIZED"
+    ]
+}

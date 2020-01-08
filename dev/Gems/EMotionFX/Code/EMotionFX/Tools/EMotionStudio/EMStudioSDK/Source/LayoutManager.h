@@ -10,16 +10,10 @@
 *
 */
 
-#ifndef __EMSTUDIO_LAYOUTMANAGER_H
-#define __EMSTUDIO_LAYOUTMANAGER_H
+#pragma once
 
-//
 #include "EMStudioConfig.h"
-#include <MCore/Source/Array.h>
-#include <QLineEdit>
-#include <QDialog>
-
-class QPushButton;
+#include <MCore/Source/MemoryManager.h>
 
 namespace EMStudio
 {
@@ -42,7 +36,6 @@ namespace EMStudio
         //      int8 mainWindowState[mainWindowStateSize]
     };
 
-
     // the plugin data header
     struct LayoutPluginHeader
     {
@@ -54,30 +47,6 @@ namespace EMStudio
         // followed by:
         //      int8    pluginData[mDataSize]
     };
-
-
-    class LayoutManagerSaveAsWindow
-        : public QDialog
-    {
-        Q_OBJECT
-        MCORE_MEMORYOBJECTCATEGORY(LayoutManagerSaveAsWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
-
-    public:
-        LayoutManagerSaveAsWindow(const char* defaultName, QWidget* parent);
-
-        QString GetName() const
-        {
-            return mLineEdit->text();
-        }
-
-    private slots:
-        void NameEditChanged(const QString& text);
-
-    private:
-        QLineEdit* mLineEdit;
-        QPushButton* mOKButton;
-    };
-
 
     class EMSTUDIO_API LayoutManager
     {
@@ -94,5 +63,3 @@ namespace EMStudio
         bool mIsSwitching;
     };
 }   // namespace EMStudio
-
-#endif

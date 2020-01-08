@@ -21,7 +21,11 @@
 
 #include "StatObj.h"
 #include "../RenderDll/Common/Shadow_Renderer.h"
+
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
 #include "terrain_sector.h"
+#endif
+
 #include "StlUtils.h"
 #include "cbuffer.h"
 #include "CZBufferCuller.h"
@@ -353,6 +357,10 @@ public:
     {
         MaxPrecachePoints = 4,
     };
+    //! The maximum number of objects pending garbage collection before cleanup is forced
+    //! in the current frame instead of delayed until loading has completed.
+    //! This helps reduce spikes when cleaning up render objects.
+    static const size_t s_maxPendingGarbageObjects = 250;
 
 public:
     CObjManager();
@@ -770,7 +778,9 @@ public:
     int m_nNextPrecachePointId;
     bool m_bCameraPrecacheOverridden;
 
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
     PodArray<CTerrainNode*> m_lstTmpCastingNodes;
+#endif
 
 #ifdef POOL_STATOBJ_ALLOCS
     stl::PoolAllocator<sizeof(CStatObj), stl::PSyncMultiThread, alignof(CStatObj)>* m_statObjPool;

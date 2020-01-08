@@ -12,7 +12,8 @@
 
 #pragma once
 
-#include "OperatorArithmetic.h"
+#include <ScriptCanvas/CodeGen/CodeGen.h>
+#include <ScriptCanvas/Core/Node.h>
 #include <Include/ScriptCanvas/Libraries/Operators/Math/OperatorLength.generated.h>
 
 namespace ScriptCanvas
@@ -21,52 +22,50 @@ namespace ScriptCanvas
     {
         namespace Operators
         {
-            class OperatorLength : public OperatorArithmeticUnary
+            class OperatorLength : public Node
             {
             public:
-
                 ScriptCanvas_Node(OperatorLength,
-                    ScriptCanvas_Node::BaseClass("OperatorArithmetic")
                     ScriptCanvas_Node::Name("Length")
                     ScriptCanvas_Node::Uuid("{AEE15BEA-CD51-4C1A-B06D-C09FB9EAA005}")
                     ScriptCanvas_Node::Description("Returns the length of the specified source")
-                    ScriptCanvas_Node::Version(0)
+                    ScriptCanvas_Node::Version(1, OperatorLengthConverter)
                     ScriptCanvas_Node::Category("Math")
-                );
+                );                
 
-                struct LengthOperatorConfiguration
-                    : public UnaryArithmeticOperatorConfiguration
+                enum Version
                 {
-                    LengthOperatorConfiguration()
-                    {
-                        OperatorBase::SourceSlotConfiguration inputSourceConfig;
+                    InitialVersion = 0,
+                    RemoveOperatorBase,
 
-                        inputSourceConfig.m_dynamicDataType = DynamicDataType::Value;
-                        inputSourceConfig.m_name = "Source";
-                        inputSourceConfig.m_tooltip = "The object to take the lenght of";
-                        inputSourceConfig.m_sourceType = OperatorBase::SourceType::SourceInput;
-
-                        m_sourceSlotConfigurations.emplace_back(inputSourceConfig);
-                    }
+                    Current
                 };
 
-                OperatorLength()
-                    : OperatorArithmeticUnary(LengthOperatorConfiguration())
-                {
-                }
+                static bool OperatorLengthConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement);
 
-                virtual AZStd::string_view OperatorFunction() const { return "Length"; }
+                OperatorLength() = default;
+                ~OperatorLength() = default;
 
-                void Operator(Data::eType type, const OperatorOperands& operands, Datum& result) override;
+                // Node
+                void OnInit() override;
+                void OnInputSignal(const SlotId& slotId) override;
+                ////
 
-                void OnSourceTypeChanged() override
-                {
-                    Data::Type type = Data::Type::Number();
-                    m_outputSlots.insert(AddOutputTypeSlot(Data::GetName(type), "Result", type, Node::OutputStorage::Required, false));
-                }
+                ScriptCanvas_In(ScriptCanvas_In::Name("In", ""));
+                ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", ""));
 
-                void ConfigureContracts(SourceType sourceType, AZStd::vector<ContractDescriptor>& contractDescs) override;
+                ScriptCanvas_DynamicDataSlot(ScriptCanvas::DynamicDataType::Value,
+                    ScriptCanvas::ConnectionType::Input,
+                    ScriptCanvas_DynamicDataSlot::Name("Source", "The speed at which to lerp between the start and stop.")
+                    ScriptCanvas_DynamicDataSlot::DynamicGroup("SourceGroup")
+                    ScriptCanvas_DynamicDataSlot::RestrictedTypeContractTag({ Data::Type::Vector2(), Data::Type::Vector3(), Data::Type::Vector4(), Data::Type::Quaternion() })
+                    ScriptCanvas_DynamicDataSlot::SupportsMethodContractTag("Length")
+                );
 
+                ScriptCanvas_Property(int,
+                    ScriptCanvas_Property::Name("Length", "The lengths of the specified object")
+                    ScriptCanvas_Property::Output
+                );
             };
         }
     }

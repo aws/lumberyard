@@ -77,7 +77,7 @@ namespace ScriptEvents
         //AZ_TracePrintf("Script Events", "Script Broadcast Method: %s %s::%s (Arguments: %zu)\n", m_returnType.ToString<AZStd::string>().c_str(), busName.c_str(), m_name.c_str(), method.GetParameters().size());
     }
 
-    bool ScriptEventBroadcast::Call(AZ::BehaviorValueParameter* params, unsigned int paramCount, AZ::BehaviorValueParameter* returnValue)
+    bool ScriptEventBroadcast::Call(AZ::BehaviorValueParameter* params, unsigned int paramCount, AZ::BehaviorValueParameter* returnValue) const
     {
         Internal::BindingRequest::BindingParameters parameters;
         parameters.m_eventName = m_name;

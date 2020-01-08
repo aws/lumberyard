@@ -16,5 +16,30 @@
 def build(bld):
     bld.DefineGem(
         # Add custom build options here
-        includes    = [bld.Path('Code/CryEngine/CryAction')],
+        includes    = ['./Include',
+                       './Source',
+                       bld.Path('Code/CryEngine/CryCommon'),
+                       bld.Path('Code/CryEngine/CryAction')
+                      ],
+        editor = dict(
+            file_list = ['lyshine.waf_files',
+                         'lyshine_editor.waf_files'
+                        ],
+            includes  = ['./Include',
+                         './Pipeline',
+                         './Source',
+                         bld.Path('Code/CryEngine/CryCommon'),
+                         bld.Path('Code/CryEngine/CryAction')
+                        ],
+            use       = ['AzCore',
+                         'AzFramework',
+                         'AzToolsFramework',
+                         'AssetBuilderSDK'
+                        ],
+            uselib    = ['QT5CORE',
+                         'QT5GUI',
+                         'QT5WIDGETS'
+                        ],
+            defines   = ['LYSHINE_EDITOR']
+        )
     )

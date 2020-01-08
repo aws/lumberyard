@@ -172,7 +172,7 @@ namespace GraphCanvas
 
         bool m_allowOpportunisticConnections = false;
         OpportunisticSpliceResult m_opportunisticSpliceResult;
-    };
+    };    
 
     class GraphUtils
     {
@@ -228,6 +228,7 @@ namespace GraphCanvas
         static SubGraphParsingResult ParseSceneMembersIntoSubGraphs(const AZStd::vector< NodeId >& sourceSceneMembers, const SubGraphParsingConfig& subGraphParsingConfig);
 
         static bool IsValidModelConnection(const GraphId& graphId, const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint);
+        static ConnectionValidationTooltip GetModelConnnectionValidityToolTip(const GraphId& graphId, const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint);
 
         static bool CreateModelConnection(const GraphId& graphId, const ConnectionId& connectionId, const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint);
 
@@ -250,6 +251,10 @@ namespace GraphCanvas
         static void FocusOnElements(const AZStd::vector< AZ::EntityId >& memberIds, const FocusConfig& focusConfig);
 
         static void FindConnectedNodes(const AZStd::vector<AZ::EntityId>& seedNodeIds, AZStd::unordered_set<AZ::EntityId>& connectedNodes, const AZStd::unordered_set<ConnectionType>& connectionTypes);
+
+        static AZStd::unordered_set<NodeId> FindTerminalForNodeChain(const AZStd::vector<AZ::EntityId>& nodeIds, ConnectionType searchDirection);
+
+        static void SetNodesEnabledState(const AZStd::unordered_set<NodeId>& nodeIds, RootGraphicsItemEnabledState enabledState);
 
     private:
         static ConnectionId CreateUnknownConnection(const GraphId& graphId, const Endpoint& firstEndpoint, const Endpoint& secondEndpoint);

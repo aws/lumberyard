@@ -43,6 +43,7 @@ namespace PhysX
             // ConfigurationWindowRequestBus
             void ShowCollisionLayersTab() override;
             void ShowCollisionGroupsTab() override;
+            void ShowGlobalSettingsTab() override;
 
         signals:
             void onConfigurationChanged(const PhysX::Configuration&);

@@ -132,6 +132,7 @@ namespace ScriptCanvasEditor
         // Invalid will cause the slots to put themselves into whatever category they belong to by default.
         AZ::EntityId DisplayScriptCanvasSlot(const AZ::EntityId& graphCanvasNodeId, const ScriptCanvas::Slot& slot, GraphCanvas::SlotGroup group = GraphCanvas::SlotGroups::Invalid);
         AZ::EntityId DisplayScriptCanvasPropertySlot(const AZ::EntityId& graphCanvasNodeId, const AZ::Crc32& propertyId, const GraphCanvas::SlotConfiguration& slotConfiguration);
+        AZ::EntityId DisplayExtensionSlot(const AZ::EntityId& graphCanvasNodeId, const ScriptCanvas::ExtendableSlotConfiguration& extenderConfiguration);
 
         void CopySlotTranslationKeyedNamesToDatums(AZ::EntityId graphCanvasNodeId);
     }

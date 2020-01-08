@@ -418,7 +418,7 @@ namespace AzQtComponents
 
         //qDebug() << "WindowDecorationWrapper::childEvent" << this << w << "; flags=" << w->windowFlags()
         //<< "; guest's parent=" << w->parentWidget();
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
         // On macOS, tool windows correspond to the Floating class of windows. This means that the
         // window lives on a level above normal windows making it impossible to put a normal window
         // on top of it. Therefore we need to add Qt::Tool to QDialogs to ensure they are not hidden

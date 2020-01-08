@@ -3,9 +3,9 @@
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-*or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+* distribution (the "License"). All use of this software is governed by the License,
+*or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 *WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
@@ -159,7 +159,7 @@ namespace AssetProcessor
         InternalRecognizerBasedBuilder(QHash<QString, BuilderIdAndName> inputBuilderByIdMap, AZ::Uuid internalBuilderUuid);
 
         // overridden in unit tests.  Searches for RC.EXE
-        virtual bool FindRC(QString& systemRootOut, QString& rcPathOut);
+        virtual bool FindRC(QString& rcAbsolutePathOut);
 
         void CreateLegacyRCJob(
             const AssetBuilderSDK::CreateJobsRequest& request,
@@ -184,6 +184,7 @@ namespace AssetProcessor
         void ProcessCopyJob(
             const AssetBuilderSDK::ProcessJobRequest& request,
             AZ::Uuid productAssetType,
+            bool outputProductDependencies,
             const AssetBuilderSDK::JobCancelListener& jobCancelListener,
             AssetBuilderSDK::ProcessJobResponse& response);
 

@@ -230,6 +230,12 @@
             "_comment": "ImageProcessing"
         },
         {
+            "Path": "Gems/SliceFavorites",
+            "Uuid": "1bfc7270d4a1490daac8aa8b072c4489",
+            "Version": "0.1.0",
+            "_comment": "SliceFavorites"
+        },
+        {
             "Path" : "${ProjectName}/Gem",
             "Uuid" : "${GemId}",
             "Version" : "${GemVersion}",

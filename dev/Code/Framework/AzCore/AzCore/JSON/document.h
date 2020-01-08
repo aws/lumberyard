@@ -14,15 +14,20 @@
 
 #include <AzCore/JSON/rapidjson.h>
 
-#if defined(AZ_PLATFORM_WINDOWS) && defined(AZ_COMPILER_CLANG)
+#if AZ_TRAIT_JSON_CLANG_IGNORE_UNKNOWN_WARNING && defined(AZ_COMPILER_CLANG)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunknown-warning-option"
 #endif
 
-// Make you have available rapidjson/include folder. Currently 3rdParty\rapidjson\rapidjson-1.0.2\include
-#include <rapidjson/document.h>
+// Make sure rapidjson/include folder is available. Currently 3rdParty\rapidjson\rapidjson-1.0.2\
 
-#if defined(AZ_PLATFORM_WINDOWS) && defined(AZ_COMPILER_CLANG)
+// rapidjson GenericMemberIterator class inherits from std::iterator which as of C++17 has been deprecated https://github.com/Tencent/rapidjson/issues/1131
+// Therefore RAPIDJSON_NOMEMBERITERATORCLASS is being defined to have rapidjson fallback to a non std::iterator implementation
+#define RAPIDJSON_NOMEMBERITERATORCLASS
+#include <rapidjson/document.h>
+#undef RAPIDJSON_NOMEMBERITERATORCLASS
+
+#if AZ_TRAIT_JSON_CLANG_IGNORE_UNKNOWN_WARNING && defined(AZ_COMPILER_CLANG)
 #pragma clang diagnostic pop
 #endif
 

@@ -21,7 +21,7 @@
 
 #include <AzFramework/Physics/RagdollPhysicsBus.h>
 #include <AzFramework/Physics/CharacterPhysicsDataBus.h>
-#include <AzFramework/Physics/SystemBus.h>
+#include <AzFramework/Physics/World.h>
 
 #include <Integration/Assets/ActorAsset.h>
 #include <Integration/Assets/MotionSetAsset.h>
@@ -55,7 +55,7 @@ namespace EMotionFX
             , private LmbrCentral::AttachmentComponentNotificationBus::Handler
             , private AzFramework::CharacterPhysicsDataRequestBus::Handler
             , private AzFramework::RagdollPhysicsNotificationBus::Handler
-            , protected Physics::SystemNotificationBus::Handler
+            , protected Physics::WorldNotificationBus::Handler
         {
         public:
 
@@ -207,9 +207,10 @@ namespace EMotionFX
             void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
             int GetTickOrder() override;
 
-            // Physics::SystemNotifications::Handler
-            void OnPostPhysicsUpdate(float fixedDeltaTime, Physics::World* physicsWorld) override;
-
+            // Physics::WorldNotifications::Handler
+            void OnPostPhysicsUpdate(float fixedDeltaTime) override;
+            int GetPhysicsTickOrder() override;
+            
             void CheckActorCreation();
             void DestroyActor();
             void CheckAttachToEntity();

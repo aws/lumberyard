@@ -18,9 +18,9 @@
 #   include <AzCore/std/parallel/config.h>
 #   include <AzCore/std/chrono/types.h>
 
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#elif !AZ_TRAIT_SEMAPHORE_HAS_NATIVE_MAX_COUNT
 #   include <AzCore/std/parallel/mutex.h>
-#   include <AzCore/std/parallel/conditional_variable.h>
+#   include <AzCore/std/parallel/condition_variable.h>
 
 #else
 #   include <AzCore/std/parallel/semaphore.h>
@@ -77,7 +77,7 @@ namespace AZStd
     private:
         HANDLE m_event;
 
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#elif !AZ_TRAIT_SEMAPHORE_HAS_NATIVE_MAX_COUNT
 
         typedef condition_variable::native_handle_type native_handle_type;
 

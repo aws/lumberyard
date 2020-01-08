@@ -10,7 +10,6 @@
 *
 */
 
-#include "TestTypes.h"
 #include "FileIOBaseTestTypes.h"
 
 #include <AzCore/Asset/AssetManager.h>
@@ -65,42 +64,8 @@
 
 #include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/std/string/conversions.h>
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Serialization_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Serialization_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
-#   define AZ_ROOT_TEST_FOLDER  "./"
-#elif defined(AZ_PLATFORM_ANDROID)
-#   define AZ_ROOT_TEST_FOLDER  "/sdcard/"
-#elif defined(AZ_PLATFORM_APPLE_IOS)
-#   define AZ_ROOT_TEST_FOLDER "/Documents/"
-#elif defined(AZ_PLATFORM_APPLE_TV)
-#   define AZ_ROOT_TEST_FOLDER "/Library/Caches/"
-#else
-#   define AZ_ROOT_TEST_FOLDER  ""
-#endif
-
-namespace // anonymous
-{
-#if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
-    AZStd::string GetTestFolderPath()
-    {
-        return AZStd::string(getenv("HOME")) + AZ_ROOT_TEST_FOLDER;
-    }
-#else
-    AZStd::string GetTestFolderPath()
-    {
-        return AZ_ROOT_TEST_FOLDER;
-    }
-#endif
-} // anonymous namespace
+#include <AzCore/UnitTest/TestTypes.h>
+#include <AZTestShared/Utils/Utils.h>
 
 namespace SerializeTestClasses {
     class MyClassBase1
@@ -664,10 +629,6 @@ namespace SerializeTestClasses {
             }
         }
 
-    private:
-        // Workaround for VS2013 - Delete the copy constructor and make it private
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-        Generics(const Generics&) = delete;
     public:
 
         void Set()
@@ -1032,8 +993,8 @@ namespace AZ {
         public:
             AZ_TYPE_INFO(GenericClassGenericInfo, "{7A26F864-DADC-4bdf-8C4C-A162349031C6}");
             GenericClassGenericInfo()
+                : m_classData{ SerializeContext::ClassData::Create<GenericClass>("GenericClass", GetSpecializedTypeId(), &m_factory) }
             {
-                m_classData = SerializeContext::ClassData::Create<GenericClass>("GenericClass", GetSpecializedTypeId(), &m_factory);
             }
 
             SerializeContext::ClassData* GetClassData() override
@@ -1096,8 +1057,8 @@ namespace AZ {
         public:
             AZ_TYPE_INFO(GenericClassGenericInfo, "{D1E1ACC0-7B90-48e9-999B-5825D4D4E397}");
             GenericClassGenericInfo()
+                : m_classData{ SerializeContext::ClassData::Create<GenericChild>("GenericChild", GetSpecializedTypeId(), &m_factory) }
             {
-                m_classData = SerializeContext::ClassData::Create<GenericChild>("GenericChild", GetSpecializedTypeId(), &m_factory);
             }
 
             SerializeContext::ClassData* GetClassData() override
@@ -1171,6 +1132,7 @@ namespace UnitTest
         Entity* FindEntity(const EntityId&) override { return nullptr; }
         SerializeContext* GetSerializeContext() override { return m_serializeContext.get(); }
         BehaviorContext*  GetBehaviorContext() override { return nullptr; }
+        JsonRegistrationContext* GetJsonRegistrationContext() override { return nullptr; }
         const char* GetExecutableFolder() const override { return nullptr; }
         const char* GetAppRoot() override { return nullptr; }
         const char* GetBinFolder() const override { return nullptr; }
@@ -1188,11 +1150,6 @@ namespace UnitTest
             AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Create();
 
             IO::Streamer::Descriptor streamerDesc;
-            AZStd::string testFolder  = GetTestFolderPath();
-            if (testFolder.length() > 0)
-            {
-                streamerDesc.m_fileMountPoint = testFolder.c_str();
-            }
             IO::Streamer::Create(streamerDesc);
         }
 
@@ -1200,12 +1157,40 @@ namespace UnitTest
         {
             m_serializeContext.reset();
 
+            IO::Streamer::Destroy();
+
             AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Destroy();
             AZ::AllocatorInstance<AZ::PoolAllocator>::Destroy();
 
-            IO::Streamer::Destroy();
-
             ComponentApplicationBus::Handler::BusDisconnect();
+        }
+
+        template<typename Container>
+        void ReserveAndFreeWithoutMemLeaks()
+        {
+            Container instance;
+
+            GenericClassInfo* containerInfo = SerializeGenericTypeInfo<decltype(instance)>::GetGenericInfo();
+            EXPECT_NE(nullptr, containerInfo);
+            EXPECT_NE(nullptr, containerInfo->GetClassData());
+            SerializeContext::IDataContainer* container = containerInfo->GetClassData()->m_container;
+            EXPECT_NE(nullptr, container);
+
+            SerializeContext::IEventHandler* eventHandler = containerInfo->GetClassData()->m_eventHandler;
+            if (eventHandler)
+            {
+                eventHandler->OnWriteBegin(&container);
+            }
+
+            void* element = container->ReserveElement(&instance, nullptr);
+            EXPECT_NE(nullptr, element);
+            *reinterpret_cast<float*>(element) = 42.0f;
+            container->FreeReservedElement(&instance, element, nullptr);
+
+            if (eventHandler)
+            {
+                eventHandler->OnWriteEnd(&container);
+            }
         }
 
     protected:
@@ -1508,447 +1493,7 @@ namespace UnitTest
             ObjectStream::LoadBlocking(stream, *m_context, readyCB);
             EXPECT_EQ( 27, cbCount );
         }
-
-        void run()
-        {
-            m_char = -1;
-            m_short = -2;
-            m_int = -3;
-            m_long = -4;
-            m_s64 = -5;
-            m_uchar = 1;
-            m_ushort = 2;
-            m_uint = 3;
-            m_ulong = 4;
-            m_u64 = 5;
-            m_float = 2.f;
-            m_double = 20.0000005;
-            m_true = true;
-            m_false = false;
-
-            // Math
-            m_uuid = AZ::Uuid::CreateString("{16490FB4-A7CE-4a8a-A882-F98DDA6A788F}");
-            m_vectorFloat = 11.0f;
-            m_vector2 = Vector2(1.0f, 2.0f);
-            m_vector3 = Vector3(3.0f, 4.0f, 5.0f);
-            m_vector4 = Vector4(6.0f, 7.0f, 8.0f, 9.0f);
-
-            m_quaternion = Quaternion::CreateRotationZ(0.7f);
-            m_transform = Transform::CreateRotationX(1.1f);
-            m_matrix3x3 = Matrix3x3::CreateRotationY(0.5f);
-            m_matrix4x4 = Matrix4x4::CreateFromQuaternionAndTranslation(m_quaternion, m_vector3);
-
-            m_aabb.Set(-m_vector3, m_vector3);
-            m_plane.Set(m_vector4);
-
-            m_classicEnum = CE_A;
-            m_classEnum = ClassEnum::B;
-
-            TestFileIOBase fileIO;
-            SetRestoreFileIOBaseRAII restoreFileIOScope(fileIO);
-
-            // XML version
-            {
-                AZ_TracePrintf("SerializeBasicTest", "\nWriting as XML...\n");
-                IO::StreamerStream stream("serializebasictest.xml", IO::OpenMode::ModeWrite);
-                TestSave(&stream, ObjectStream::ST_XML);
-            }
-            {
-                AZ_TracePrintf("SerializeBasicTest", "Loading as XML...\n");
-                IO::StreamerStream stream("serializebasictest.xml", IO::OpenMode::ModeRead);
-                TestLoad(&stream);
-            }
-
-            // JSON version
-            {
-                AZ_TracePrintf("SerializeBasicTest", "\nWriting as JSON...\n");
-                IO::StreamerStream stream("serializebasictest.json", IO::OpenMode::ModeWrite);
-                TestSave(&stream, ObjectStream::ST_JSON);
-            }
-            {
-                AZ_TracePrintf("SerializeBasicTest", "Loading as JSON...\n");
-                IO::StreamerStream stream("serializebasictest.json", IO::OpenMode::ModeRead);
-                TestLoad(&stream);
-            }
-
-            // Binary version
-            {
-                AZ_TracePrintf("SerializeBasicTest", "Writing as Binary...\n");
-                IO::StreamerStream stream("serializebasictest.bin", IO::OpenMode::ModeWrite);
-                TestSave(&stream, ObjectStream::ST_BINARY);
-            }
-            {
-                AZ_TracePrintf("SerializeBasicTest", "Loading as Binary...\n");
-                IO::StreamerStream stream("serializebasictest.bin", IO::OpenMode::ModeRead);
-                TestLoad(&stream);
-            }
-        }
     };
-
-    TEST_F(Serialization, BasicTest)
-    {
-        class SerializeBasicTest
-        {
-        protected:
-            enum ClassicEnum
-            {
-                CE_A = 0,
-                CR_B = 1,
-            };
-            enum class ClassEnum : char
-            {
-                A = 0,
-                B = 1,
-            };
-
-            AZStd::unique_ptr<SerializeContext> m_context;
-
-            char            m_char;
-            short           m_short;
-            int             m_int;
-            long            m_long;
-            AZ::s64         m_s64;
-            unsigned char   m_uchar;
-            unsigned short  m_ushort;
-            unsigned int    m_uint;
-            unsigned long   m_ulong;
-            AZ::u64         m_u64;
-            float           m_float;
-            double          m_double;
-            bool            m_true;
-            bool            m_false;
-
-            // Math
-            AZ::Uuid        m_uuid;
-            VectorFloat     m_vectorFloat;
-            Vector2         m_vector2;
-            Vector3         m_vector3;
-            Vector4         m_vector4;
-
-            Transform       m_transform;
-            Matrix3x3       m_matrix3x3;
-            Matrix4x4       m_matrix4x4;
-
-            Quaternion      m_quaternion;
-
-            Aabb            m_aabb;
-            Plane           m_plane;
-
-            ClassicEnum     m_classicEnum;
-            ClassEnum       m_classEnum;
-
-        public:
-            void OnLoadedClassReady(void* classPtr, const Uuid& classId, int* callCount)
-            {
-                switch ((*callCount)++)
-                {
-                case 0:
-                    EXPECT_EQ( SerializeTypeInfo<char>::GetUuid(), classId );
-                    EXPECT_EQ( m_char, *reinterpret_cast<char*>(classPtr) );
-                    azdestroy(classPtr, AZ::SystemAllocator, char);
-                    break;
-                case 1:
-                    EXPECT_EQ( SerializeTypeInfo<short>::GetUuid(), classId );
-                    EXPECT_EQ( m_short, *reinterpret_cast<short*>(classPtr) );
-                    azdestroy(classPtr, AZ::SystemAllocator, short);
-                    break;
-                case 2:
-                    EXPECT_EQ( SerializeTypeInfo<int>::GetUuid(), classId );
-                    EXPECT_EQ( m_int, *reinterpret_cast<int*>(classPtr) );
-                    azdestroy(classPtr, AZ::SystemAllocator, int);
-                    break;
-                case 3:
-                    EXPECT_EQ( SerializeTypeInfo<long>::GetUuid(), classId );
-                    EXPECT_EQ( m_long, *reinterpret_cast<long*>(classPtr) );
-                    azdestroy(classPtr, AZ::SystemAllocator, long);
-                    break;
-                case 4:
-                    EXPECT_EQ( SerializeTypeInfo<AZ::s64>::GetUuid(), classId );
-                    EXPECT_EQ( m_s64, *reinterpret_cast<AZ::s64*>(classPtr) );
-                    azdestroy(classPtr, AZ::SystemAllocator, AZ::s64);
-                    break;
-                case 5:
-                    EXPECT_EQ( SerializeTypeInfo<unsigned char>::GetUuid(), classId );
-                    EXPECT_EQ( m_uchar, *reinterpret_cast<unsigned char*>(classPtr) );
-                    azdestroy(classPtr, AZ::SystemAllocator, unsigned char);
-                    break;
-                case 6:
-                    EXPECT_EQ( SerializeTypeInfo<unsigned short>::GetUuid(), classId );
-                    EXPECT_EQ( m_ushort, *reinterpret_cast<unsigned short*>(classPtr) );
-                    azdestroy(classPtr, AZ::SystemAllocator, unsigned short);
-                    break;
-                case 7:
-                    EXPECT_EQ( SerializeTypeInfo<unsigned int>::GetUuid(), classId );
-                    EXPECT_EQ( m_uint, *reinterpret_cast<unsigned int*>(classPtr) );
-                    azdestroy(classPtr, AZ::SystemAllocator, unsigned int);
-                    break;
-                case 8:
-                    EXPECT_EQ( SerializeTypeInfo<unsigned long>::GetUuid(), classId );
-                    EXPECT_EQ( m_ulong, *reinterpret_cast<unsigned long*>(classPtr) );
-                    azdestroy(classPtr, AZ::SystemAllocator, unsigned long);
-                    break;
-                case 9:
-                    EXPECT_EQ( SerializeTypeInfo<AZ::u64>::GetUuid(), classId );
-                    EXPECT_EQ( m_u64, *reinterpret_cast<AZ::u64*>(classPtr) );
-                    azdestroy(classPtr, AZ::SystemAllocator, AZ::u64);
-                    break;
-                case 10:
-                    EXPECT_EQ( SerializeTypeInfo<float>::GetUuid(), classId );
-                    EXPECT_TRUE(fabsf(*reinterpret_cast<float*>(classPtr) - m_float) < 0.001f);
-                    azdestroy(classPtr, AZ::SystemAllocator, float);
-                    break;
-                case 11:
-                    EXPECT_EQ( SerializeTypeInfo<double>::GetUuid(), classId );
-                    EXPECT_TRUE(fabs(*reinterpret_cast<double*>(classPtr) - m_double) < 0.00000001);
-                    azdestroy(classPtr, AZ::SystemAllocator, double);
-                    break;
-                case 12:
-                    EXPECT_EQ( SerializeTypeInfo<bool>::GetUuid(), classId );
-                    EXPECT_EQ( m_true, *reinterpret_cast<bool*>(classPtr) );
-                    azdestroy(classPtr, AZ::SystemAllocator, bool);
-                    break;
-                case 13:
-                    EXPECT_EQ( SerializeTypeInfo<bool>::GetUuid(), classId );
-                    EXPECT_EQ( m_false, *reinterpret_cast<bool*>(classPtr) );
-                    azdestroy(classPtr, AZ::SystemAllocator, bool);
-                    break;
-                case 14:
-                    EXPECT_EQ( SerializeTypeInfo<AZ::Uuid>::GetUuid(), classId );
-                    EXPECT_EQ( m_uuid, *reinterpret_cast<AZ::Uuid*>(classPtr) );
-                    azdestroy(classPtr, AZ::SystemAllocator, AZ::Uuid);
-                    break;
-                case 15:
-                    EXPECT_EQ( SerializeTypeInfo<AZ::VectorFloat>::GetUuid(), classId );
-                    EXPECT_TRUE(reinterpret_cast<AZ::VectorFloat*>(classPtr)->IsClose(m_vectorFloat, g_fltEps));
-                    azdestroy(classPtr, AZ::SystemAllocator, AZ::VectorFloat);
-                    break;
-                case 16:
-                    EXPECT_EQ( SerializeTypeInfo<AZ::Vector2>::GetUuid(), classId );
-                    EXPECT_TRUE(reinterpret_cast<AZ::Vector2*>(classPtr)->IsClose(m_vector2, g_fltEps));
-                    azdestroy(classPtr, AZ::SystemAllocator, AZ::Vector2);
-                    break;
-                case 17:
-                    EXPECT_EQ( SerializeTypeInfo<AZ::Vector3>::GetUuid(), classId );
-                    EXPECT_TRUE(reinterpret_cast<AZ::Vector3*>(classPtr)->IsClose(m_vector3, g_fltEps));
-                    azdestroy(classPtr, AZ::SystemAllocator, AZ::Vector3);
-                    break;
-                case 18:
-                    EXPECT_EQ( SerializeTypeInfo<AZ::Vector4>::GetUuid(), classId );
-                    EXPECT_TRUE(reinterpret_cast<AZ::Vector4*>(classPtr)->IsClose(m_vector4, g_fltEps));
-                    azdestroy(classPtr, AZ::SystemAllocator, AZ::Vector4);
-                    break;
-                case 19:
-                    EXPECT_EQ( SerializeTypeInfo<AZ::Transform>::GetUuid(), classId );
-                    EXPECT_TRUE(reinterpret_cast<AZ::Transform*>(classPtr)->IsClose(m_transform, g_fltEps));
-                    azdestroy(classPtr, AZ::SystemAllocator, AZ::Transform);
-                    break;
-                case 20:
-                    EXPECT_EQ( SerializeTypeInfo<AZ::Matrix3x3>::GetUuid(), classId );
-                    EXPECT_TRUE(reinterpret_cast<AZ::Matrix3x3*>(classPtr)->IsClose(m_matrix3x3, g_fltEps));
-                    azdestroy(classPtr, AZ::SystemAllocator, AZ::Matrix3x3);
-                    break;
-                case 21:
-                    EXPECT_EQ( SerializeTypeInfo<AZ::Matrix4x4>::GetUuid(), classId );
-                    EXPECT_TRUE(reinterpret_cast<AZ::Matrix4x4*>(classPtr)->IsClose(m_matrix4x4, g_fltEps));
-                    azdestroy(classPtr, AZ::SystemAllocator, AZ::Matrix4x4);
-                    break;
-                case 22:
-                    EXPECT_EQ( SerializeTypeInfo<AZ::Quaternion>::GetUuid(), classId );
-                    EXPECT_TRUE(reinterpret_cast<AZ::Quaternion*>(classPtr)->IsClose(m_quaternion, g_fltEps));
-                    azdestroy(classPtr, AZ::SystemAllocator, AZ::Quaternion);
-                    break;
-                case 23:
-                    EXPECT_EQ( SerializeTypeInfo<AZ::Aabb>::GetUuid(), classId );
-                    EXPECT_TRUE(reinterpret_cast<AZ::Aabb*>(classPtr)->GetMin().IsClose(m_aabb.GetMin(), g_fltEps));
-                    EXPECT_TRUE(reinterpret_cast<AZ::Aabb*>(classPtr)->GetMax().IsClose(m_aabb.GetMax(), g_fltEps));
-                    azdestroy(classPtr, AZ::SystemAllocator, AZ::Aabb);
-                    break;
-                case 24:
-                    EXPECT_EQ( SerializeTypeInfo<AZ::Plane>::GetUuid(), classId );
-                    EXPECT_TRUE(reinterpret_cast<AZ::Plane*>(classPtr)->GetPlaneEquationCoefficients().IsClose(m_plane.GetPlaneEquationCoefficients(), g_fltEps));
-                    azdestroy(classPtr, AZ::SystemAllocator, AZ::Plane);
-                    break;
-                case 25:
-                    EXPECT_EQ( SerializeTypeInfo<ClassicEnum>::GetUuid(), classId );
-                    EXPECT_EQ( CE_A, *reinterpret_cast<ClassicEnum*>(classPtr) );
-                    azdestroy(classPtr, AZ::SystemAllocator, ClassicEnum);
-                    break;
-                case 26:
-                    EXPECT_EQ( SerializeTypeInfo<ClassEnum>::GetUuid(), classId );
-                    EXPECT_EQ( ClassEnum::B, *reinterpret_cast<ClassEnum*>(classPtr) );
-                    azdestroy(classPtr, AZ::SystemAllocator, ClassEnum);
-                    break;
-                }
-            }
-
-            void SaveObjects(ObjectStream* writer)
-            {
-                bool success = true;
-
-                success = writer->WriteClass(&m_char);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_short);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_int);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_long);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_s64);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_uchar);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_ushort);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_uint);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_ulong);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_u64);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_float);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_double);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_true);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_false);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_uuid);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_vectorFloat);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_vector2);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_vector3);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_vector4);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_transform);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_matrix3x3);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_matrix4x4);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_quaternion);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_aabb);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_plane);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_classicEnum);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_classEnum);
-                EXPECT_TRUE(success);
-            }
-
-            void OnDone(ObjectStream::Handle handle, bool success, bool* done)
-            {
-                (void)handle;
-                EXPECT_TRUE(success);
-                *done = true;
-            }
-
-            void TestSave(IO::GenericStream* stream, ObjectStream::StreamType format)
-            {
-                ObjectStream* objStream = ObjectStream::Create(stream, *m_context, format);
-                SaveObjects(objStream);
-                bool done = objStream->Finalize();
-                EXPECT_TRUE(done);
-            }
-
-            void TestLoad(IO::GenericStream* stream)
-            {
-                int cbCount = 0;
-                bool done = false;
-                ObjectStream::ClassReadyCB readyCB(AZStd::bind(&SerializeBasicTest::OnLoadedClassReady, this, AZStd::placeholders::_1, AZStd::placeholders::_2, &cbCount));
-                ObjectStream::CompletionCB doneCB(AZStd::bind(&SerializeBasicTest::OnDone, this, AZStd::placeholders::_1, AZStd::placeholders::_2, &done));
-                ObjectStream::LoadBlocking(stream, *m_context, readyCB);
-                EXPECT_EQ( 27, cbCount );
-            }
-
-            void run()
-            {
-                m_context.reset(aznew SerializeContext());
-
-                m_char = -1;
-                m_short = -2;
-                m_int = -3;
-                m_long = -4;
-                m_s64 = -5;
-                m_uchar = 1;
-                m_ushort = 2;
-                m_uint = 3;
-                m_ulong = 4;
-                m_u64 = 5;
-                m_float = 2.f;
-                m_double = 20.0000005;
-                m_true = true;
-                m_false = false;
-
-                // Math
-                m_uuid = AZ::Uuid::CreateString("{16490FB4-A7CE-4a8a-A882-F98DDA6A788F}");
-                m_vectorFloat = 11.0f;
-                m_vector2 = Vector2(1.0f, 2.0f);
-                m_vector3 = Vector3(3.0f, 4.0f, 5.0f);
-                m_vector4 = Vector4(6.0f, 7.0f, 8.0f, 9.0f);
-
-                m_quaternion = Quaternion::CreateRotationZ(0.7f);
-                m_transform = Transform::CreateRotationX(1.1f);
-                m_matrix3x3 = Matrix3x3::CreateRotationY(0.5f);
-                m_matrix4x4 = Matrix4x4::CreateFromQuaternionAndTranslation(m_quaternion, m_vector3);
-
-                m_aabb.Set(-m_vector3, m_vector3);
-                m_plane.Set(m_vector4);
-
-                m_classicEnum = CE_A;
-                m_classEnum = ClassEnum::B;
-
-                TestFileIOBase fileIO;
-                SetRestoreFileIOBaseRAII restoreFileIOScope(fileIO);
-
-                // XML version
-                {
-                    AZ_TracePrintf("SerializeBasicTest", "\nWriting as XML...\n");
-                    IO::StreamerStream stream("serializebasictest.xml", IO::OpenMode::ModeWrite);
-                    TestSave(&stream, ObjectStream::ST_XML);
-                }
-                {
-                    AZ_TracePrintf("SerializeBasicTest", "Loading as XML...\n");
-                    IO::StreamerStream stream("serializebasictest.xml", IO::OpenMode::ModeRead);
-                    TestLoad(&stream);
-                }
-
-                // JSON version
-                {
-                    AZ_TracePrintf("SerializeBasicTest", "\nWriting as JSON...\n");
-                    IO::StreamerStream stream("serializebasictest.json", IO::OpenMode::ModeWrite);
-                    TestSave(&stream, ObjectStream::ST_JSON);
-                }
-                {
-                    AZ_TracePrintf("SerializeBasicTest", "Loading as JSON...\n");
-                    IO::StreamerStream stream("serializebasictest.json", IO::OpenMode::ModeRead);
-                    TestLoad(&stream);
-                }
-
-                // Binary version
-                {
-                    AZ_TracePrintf("SerializeBasicTest", "Writing as Binary...\n");
-                    IO::StreamerStream stream("serializebasictest.bin", IO::OpenMode::ModeWrite);
-                    TestSave(&stream, ObjectStream::ST_BINARY);
-                }
-                {
-                    AZ_TracePrintf("SerializeBasicTest", "Loading as Binary...\n");
-                    IO::StreamerStream stream("serializebasictest.bin", IO::OpenMode::ModeRead);
-                    TestLoad(&stream);
-                }
-
-                m_context.reset();
-            }
-        };
-
-        SerializeBasicTest test;
-        test.run();
-    }
 
     namespace AdvancedTest
     {
@@ -1998,97 +1543,6 @@ namespace UnitTest
             bool m_doSave;
             int m_data;
         };
-    }
-
-    /*
-    * Test serialization advanced features
-    */
-    TEST_F(Serialization, AdvancedTest)
-    {
-        using namespace AdvancedTest;
-        class SerializeAdvancedTest
-        {
-        protected:
-            AZStd::unique_ptr<SerializeContext> m_context;
-            // TODO: Intrusive automatic events
-
-
-            void TestSave(IO::GenericStream* stream, ObjectStream::StreamType format)
-            {
-                ObjectStream* objStream = ObjectStream::Create(stream, *m_context, format);
-                EXPECT_TRUE(objStream->WriteClass(&m_emptyClass));
-                EXPECT_TRUE(objStream->WriteClass(&m_conditionalSave));
-                EXPECT_TRUE(objStream->Finalize());
-            }
-
-            void OnLoadedClassReady(void* classPtr, const Uuid& classId)
-            {
-                if (classId == SerializeTypeInfo<EmptyClass>::GetUuid())
-                {
-                    EmptyClass* emptyClass = reinterpret_cast<EmptyClass*>(classPtr);
-                    EXPECT_EQ( m_emptyClass.m_data, emptyClass->m_data );
-                    delete emptyClass;
-                }
-                else if (classId == SerializeTypeInfo<ConditionalSave>::GetUuid())
-                {
-                    ConditionalSave* conditionalSave = reinterpret_cast<ConditionalSave*>(classPtr);
-                    EXPECT_EQ( true, m_conditionalSave.m_doSave ); // we should save the class only if we have enable it
-                    EXPECT_EQ( m_conditionalSave.m_data, conditionalSave->m_data );
-                    delete conditionalSave;
-                }
-            }
-
-            void TestLoad(IO::GenericStream* stream)
-            {
-                ObjectStream::ClassReadyCB readyCB(AZStd::bind(&SerializeAdvancedTest::OnLoadedClassReady, this, AZStd::placeholders::_1, AZStd::placeholders::_2));
-                EXPECT_TRUE(ObjectStream::LoadBlocking(stream, *m_context, readyCB));
-            }
-
-            EmptyClass      m_emptyClass;
-            ConditionalSave m_conditionalSave;
-
-        public:
-            void run()
-            {
-                m_context.reset(aznew SerializeContext());
-                EmptyClass::Reflect(*m_context);
-                ConditionalSave::Reflect(*m_context);
-
-                TestFileIOBase fileIO;
-                SetRestoreFileIOBaseRAII restoreFileIOScope(fileIO);
-
-                // save and load
-                {
-                    AZ_TracePrintf("SerializeAdvancedTest", "\nWriting as XML...\n");
-                    IO::StreamerStream stream("serializeadvancedtest.xml", IO::OpenMode::ModeWrite);
-                    TestSave(&stream, ObjectStream::ST_XML);
-                }
-                {
-                    AZ_TracePrintf("SerializeAdvancedTest", "Loading as XML...\n");
-                    IO::StreamerStream stream("serializeadvancedtest.xml", IO::OpenMode::ModeRead);
-                    TestLoad(&stream);
-                }
-
-                // save and load with conditional save
-                m_conditionalSave.m_doSave = false;
-
-                {
-                    AZ_TracePrintf("SerializeAdvancedTest", "\nWriting as XML...\n");
-                    IO::StreamerStream stream("serializeadvancedtest.xml", IO::OpenMode::ModeWrite);
-                    TestSave(&stream, ObjectStream::ST_XML);
-                }
-                {
-                    AZ_TracePrintf("SerializeAdvancedTest", "Loading as XML...\n");
-                    IO::StreamerStream stream("serializeadvancedtest.xml", IO::OpenMode::ModeRead);
-                    TestLoad(&stream);
-                }
-
-                m_context.reset();
-            }
-        };
-
-        SerializeAdvancedTest test;
-        test.run();
     }
 
     namespace ContainersTest
@@ -2209,6 +1663,80 @@ namespace UnitTest
         m_serializeContext->DisableRemoveReflection();
     }
 
+    TEST_F(SerializeBasicTest, BasicTypeTest_Succeed)
+    {
+        m_char = -1;
+        m_short = -2;
+        m_int = -3;
+        m_long = -4;
+        m_s64 = -5;
+        m_uchar = 1;
+        m_ushort = 2;
+        m_uint = 3;
+        m_ulong = 4;
+        m_u64 = 5;
+        m_float = 2.f;
+        m_double = 20.0000005;
+        m_true = true;
+        m_false = false;
+
+        // Math
+        m_uuid = AZ::Uuid::CreateString("{16490FB4-A7CE-4a8a-A882-F98DDA6A788F}");
+        m_vectorFloat = 11.0f;
+        m_vector2 = Vector2(1.0f, 2.0f);
+        m_vector3 = Vector3(3.0f, 4.0f, 5.0f);
+        m_vector4 = Vector4(6.0f, 7.0f, 8.0f, 9.0f);
+
+        m_quaternion = Quaternion::CreateRotationZ(0.7f);
+        m_transform = Transform::CreateRotationX(1.1f);
+        m_matrix3x3 = Matrix3x3::CreateRotationY(0.5f);
+        m_matrix4x4 = Matrix4x4::CreateFromQuaternionAndTranslation(m_quaternion, m_vector3);
+
+        m_aabb.Set(-m_vector3, m_vector3);
+        m_plane.Set(m_vector4);
+
+        m_classicEnum = CE_A;
+        m_classEnum = ClassEnum::B;
+
+        TestFileIOBase fileIO;
+        SetRestoreFileIOBaseRAII restoreFileIOScope(fileIO);
+
+        // XML version
+        {
+            AZ_TracePrintf("SerializeBasicTest", "\nWriting as XML...\n");
+            IO::FileIOStream stream("serializebasictest.xml", IO::OpenMode::ModeWrite);
+            TestSave(&stream, ObjectStream::ST_XML);
+        }
+        {
+            AZ_TracePrintf("SerializeBasicTest", "Loading as XML...\n");
+            IO::FileIOStream stream("serializebasictest.xml", IO::OpenMode::ModeRead);
+            TestLoad(&stream);
+        }
+
+        // JSON version
+        {
+            AZ_TracePrintf("SerializeBasicTest", "\nWriting as JSON...\n");
+            IO::FileIOStream stream("serializebasictest.json", IO::OpenMode::ModeWrite);
+            TestSave(&stream, ObjectStream::ST_JSON);
+        }
+        {
+            AZ_TracePrintf("SerializeBasicTest", "Loading as JSON...\n");
+            IO::FileIOStream stream("serializebasictest.json", IO::OpenMode::ModeRead);
+            TestLoad(&stream);
+        }
+
+        // Binary version
+        {
+            AZ_TracePrintf("SerializeBasicTest", "Writing as Binary...\n");
+            IO::FileIOStream stream("serializebasictest.bin", IO::OpenMode::ModeWrite);
+            TestSave(&stream, ObjectStream::ST_BINARY);
+        }
+        {
+            AZ_TracePrintf("SerializeBasicTest", "Loading as Binary...\n");
+            IO::FileIOStream stream("serializebasictest.bin", IO::OpenMode::ModeRead);
+            TestLoad(&stream);
+        }
+    }
     /*
     * Test serialization of built-in container types
     */
@@ -2306,7 +1834,7 @@ namespace UnitTest
         AssociativePtrContainer testObj;
         testObj.m_setOfPointers.insert(aznew AZ::Entity("Entity1"));
         testObj.m_setOfPointers.insert(aznew AZ::Entity("Entity2"));
-        testObj.m_mapOfFloatPointers.emplace(5, azcreate(float, (3.14), AZ::SystemAllocator, "Bob the Float"));
+        testObj.m_mapOfFloatPointers.emplace(5, azcreate(float, (3.14f), AZ::SystemAllocator, "Bob the Float"));
         testObj.m_sharedEntityPointer.reset(aznew AZ::Entity("Entity3"));
 
         // XML
@@ -2362,465 +1890,6 @@ namespace UnitTest
 
         EXPECT_TRUE(result);
 
-    }
-
-    /*
-    * Test serialization of derived classes
-    */
-    TEST_F(Serialization, InheritanceTest)
-    {
-        class InheritanceTest
-        {
-            AZStd::unique_ptr<SerializeContext> m_context;
-            BaseNoRtti                  m_baseNoRtti;
-            BaseRtti                    m_baseRtti;
-            DerivedNoRtti               m_derivedNoRtti;
-            DerivedRtti                 m_derivedRtti;
-            DerivedMix                  m_derivedMix;
-            MyClassMix                  m_multiRtti;
-            ChildOfUndeclaredBase       m_childOfUndeclaredBase;
-            PolymorphicMemberPointers   m_morphingMemberPointers;
-            DerivedWithProtectedBase    m_exposeBaseClassWithoutReflectingIt;
-            int                         m_enumHierarchyCount;
-
-        public:
-            void OnLoadedClassReady(void* classPtr, const Uuid& classId, int* callCount)
-            {
-                switch ((*callCount)++)
-                {
-                case 0:
-                    EXPECT_EQ( SerializeTypeInfo<BaseNoRtti>::GetUuid(), classId );
-                    EXPECT_EQ( m_baseNoRtti, *reinterpret_cast<BaseNoRtti*>(classPtr) );
-                    delete reinterpret_cast<BaseNoRtti*>(classPtr);
-                    break;
-                case 1:
-                    EXPECT_EQ( SerializeTypeInfo<BaseRtti>::GetUuid(), classId );
-                    EXPECT_EQ( m_baseRtti, *reinterpret_cast<BaseRtti*>(classPtr) );
-                    delete reinterpret_cast<BaseRtti*>(classPtr);
-                    break;
-                case 2:
-                    EXPECT_EQ( SerializeTypeInfo<DerivedNoRtti>::GetUuid(), classId );
-                    EXPECT_EQ( m_derivedNoRtti, *reinterpret_cast<DerivedNoRtti*>(classPtr) );
-                    delete reinterpret_cast<DerivedNoRtti*>(classPtr);
-                    break;
-                case 3:
-                    EXPECT_EQ( SerializeTypeInfo<DerivedRtti>::GetUuid(), classId );
-                    EXPECT_EQ( m_derivedRtti, *reinterpret_cast<DerivedRtti*>(classPtr) );
-                    delete reinterpret_cast<DerivedRtti*>(classPtr);
-                    break;
-                case 4:
-                    EXPECT_EQ( SerializeTypeInfo<DerivedMix>::GetUuid(), classId );
-                    EXPECT_EQ( m_derivedMix, *reinterpret_cast<DerivedMix*>(classPtr) );
-                    delete reinterpret_cast<DerivedMix*>(classPtr);
-                    break;
-                case 5:
-                case 6:
-                case 7:
-                case 8:
-                    EXPECT_EQ( SerializeTypeInfo<MyClassMix>::GetUuid(), classId );
-                    EXPECT_TRUE( m_multiRtti == *reinterpret_cast<MyClassMix*>(classPtr) );
-                    delete reinterpret_cast<MyClassMix*>(classPtr);
-                    break;
-                case 9:
-                case 10:
-                    EXPECT_EQ( SerializeTypeInfo<ChildOfUndeclaredBase>::GetUuid(), classId );
-                    EXPECT_EQ( m_childOfUndeclaredBase.m_data, reinterpret_cast<ChildOfUndeclaredBase*>(classPtr)->m_data );
-                    delete reinterpret_cast<ChildOfUndeclaredBase*>(classPtr);
-                    break;
-                case 11:
-                {
-                    EXPECT_EQ( SerializeTypeInfo<PolymorphicMemberPointers>::GetUuid(), classId );
-                    PolymorphicMemberPointers* obj = reinterpret_cast<PolymorphicMemberPointers*>(classPtr);
-                    AZ_TEST_ASSERT(obj->m_pBase1MyClassMix && obj->m_pBase1MyClassMix->RTTI_GetType() == SerializeTypeInfo<MyClassMix>::GetUuid());
-                    AZ_TEST_ASSERT(*static_cast<MyClassMix*>(obj->m_pBase1MyClassMix) == *static_cast<MyClassMix*>(m_morphingMemberPointers.m_pBase1MyClassMix));
-                    AZ_TEST_ASSERT(obj->m_pBase1MyClassMix2 && obj->m_pBase1MyClassMix2->RTTI_GetType() == SerializeTypeInfo<MyClassMix2>::GetUuid());
-                    AZ_TEST_ASSERT(*static_cast<MyClassMix2*>(obj->m_pBase1MyClassMix2) == *static_cast<MyClassMix2*>(m_morphingMemberPointers.m_pBase1MyClassMix2));
-                    AZ_TEST_ASSERT(obj->m_pBase1MyClassMix3 && obj->m_pBase1MyClassMix3->RTTI_GetType() == SerializeTypeInfo<MyClassMix3>::GetUuid());
-                    AZ_TEST_ASSERT(*static_cast<MyClassMix3*>(obj->m_pBase1MyClassMix3) == *static_cast<MyClassMix3*>(m_morphingMemberPointers.m_pBase1MyClassMix3));
-                    AZ_TEST_ASSERT(obj->m_pBase2MyClassMix && obj->m_pBase2MyClassMix->RTTI_GetType() == SerializeTypeInfo<MyClassMix>::GetUuid());
-                    AZ_TEST_ASSERT(*static_cast<MyClassMix*>(obj->m_pBase2MyClassMix) == *static_cast<MyClassMix*>(m_morphingMemberPointers.m_pBase2MyClassMix));
-                    AZ_TEST_ASSERT(obj->m_pBase2MyClassMix2 && obj->m_pBase2MyClassMix2->RTTI_GetType() == SerializeTypeInfo<MyClassMix2>::GetUuid());
-                    AZ_TEST_ASSERT(*static_cast<MyClassMix2*>(obj->m_pBase2MyClassMix2) == *static_cast<MyClassMix2*>(m_morphingMemberPointers.m_pBase2MyClassMix2));
-                    AZ_TEST_ASSERT(obj->m_pBase2MyClassMix3 && obj->m_pBase2MyClassMix3->RTTI_GetType() == SerializeTypeInfo<MyClassMix3>::GetUuid());
-                    AZ_TEST_ASSERT(*static_cast<MyClassMix3*>(obj->m_pBase2MyClassMix3) == *static_cast<MyClassMix3*>(m_morphingMemberPointers.m_pBase2MyClassMix3));
-                    AZ_TEST_ASSERT(obj->m_pBase3MyClassMix && obj->m_pBase3MyClassMix->RTTI_GetType() == SerializeTypeInfo<MyClassMix>::GetUuid());
-                    AZ_TEST_ASSERT(*static_cast<MyClassMix*>(obj->m_pBase3MyClassMix) == *static_cast<MyClassMix*>(m_morphingMemberPointers.m_pBase3MyClassMix));
-                    AZ_TEST_ASSERT(obj->m_pBase3MyClassMix2 && obj->m_pBase3MyClassMix2->RTTI_GetType() == SerializeTypeInfo<MyClassMix2>::GetUuid());
-                    AZ_TEST_ASSERT(*static_cast<MyClassMix2*>(obj->m_pBase3MyClassMix2) == *static_cast<MyClassMix2*>(m_morphingMemberPointers.m_pBase3MyClassMix2));
-                    AZ_TEST_ASSERT(obj->m_pBase3MyClassMix3 && obj->m_pBase3MyClassMix3->RTTI_GetType() == SerializeTypeInfo<MyClassMix3>::GetUuid());
-                    AZ_TEST_ASSERT(*static_cast<MyClassMix3*>(obj->m_pBase3MyClassMix3) == *static_cast<MyClassMix3*>(m_morphingMemberPointers.m_pBase3MyClassMix3));
-                    AZ_TEST_ASSERT(obj->m_pMemberWithUndeclaredBase && obj->m_pMemberWithUndeclaredBase->RTTI_GetType() == SerializeTypeInfo<ChildOfUndeclaredBase>::GetUuid());
-                    AZ_TEST_ASSERT(static_cast<ChildOfUndeclaredBase*>(obj->m_pMemberWithUndeclaredBase)->m_data == static_cast<ChildOfUndeclaredBase*>(m_morphingMemberPointers.m_pMemberWithUndeclaredBase)->m_data);
-                    delete obj;
-                }
-                break;
-                case 12:
-                {
-                    EXPECT_EQ( SerializeTypeInfo<DerivedWithProtectedBase>::GetUuid(), classId );
-                    DerivedWithProtectedBase* obj = reinterpret_cast<DerivedWithProtectedBase*>(classPtr);
-                    EXPECT_EQ( m_exposeBaseClassWithoutReflectingIt.m_data, obj->m_data );
-                    delete obj;
-                }
-                break;
-                }
-                ;
-            }
-
-            void SaveObjects(ObjectStream* writer)
-            {
-                bool success = writer->WriteClass(&m_baseNoRtti);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_baseRtti);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_derivedNoRtti);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_derivedRtti);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_derivedMix);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_multiRtti);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(static_cast<MyClassBase1*>(&m_multiRtti));                     // serialize with pointer to base 1
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(static_cast<MyClassBase2*>(&m_multiRtti));                     // serialize with pointer to base 2
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(static_cast<MyClassBase3*>(&m_multiRtti));                     // serialize with pointer to base 3
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_childOfUndeclaredBase);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(static_cast<UnregisteredBaseClass*>(&m_childOfUndeclaredBase));// serialize with pointer to unregistered base
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_morphingMemberPointers);
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_exposeBaseClassWithoutReflectingIt);
-            }
-
-            void OnDone(ObjectStream::Handle handle, bool success, bool* done)
-            {
-                (void)handle;
-                EXPECT_TRUE(success);
-                *done = true;
-            }
-
-            bool EnumNoDhrttiDerived(const SerializeContext::ClassData* classData, const Uuid& typeId)
-            {
-                EXPECT_TRUE(typeId.IsNull());
-                // Check if the derived classes are correct
-                AZ_TEST_ASSERT(classData->m_typeId == AzTypeInfo<MyClassMix>::Uuid() ||
-                    classData->m_typeId == AzTypeInfo<MyClassMix2>::Uuid() ||
-                    classData->m_typeId == AzTypeInfo<MyClassMix3>::Uuid());
-                ++m_enumHierarchyCount;
-                return true;
-            }
-
-            bool EnumNoDhrttiBase(const SerializeContext::ClassData* classData, const Uuid& typeId)
-            {
-                EXPECT_TRUE(typeId.IsNull());
-                // Check if the derived classes are correct
-                AZ_TEST_ASSERT(classData->m_typeId == AzTypeInfo<MyClassBase1>::Uuid() ||
-                    classData->m_typeId == AzTypeInfo<MyClassBase2>::Uuid() ||
-                    classData->m_typeId == AzTypeInfo<MyClassBase3>::Uuid());
-                ++m_enumHierarchyCount;
-                return true;
-            }
-
-            void TestSave(IO::GenericStream* stream, ObjectStream::StreamType format)
-            {
-                ObjectStream* objStream = ObjectStream::Create(stream, *m_context, format);
-                SaveObjects(objStream);
-                bool done = objStream->Finalize();
-                EXPECT_TRUE(done);
-            }
-
-            void TestLoad(IO::GenericStream* stream)
-            {
-                int cbCount = 0;
-                ObjectStream::ClassReadyCB readyCB(AZStd::bind(&InheritanceTest::OnLoadedClassReady, this, AZStd::placeholders::_1, AZStd::placeholders::_2, &cbCount));
-                ObjectStream::LoadBlocking(stream, *m_context, readyCB);
-                EXPECT_EQ( 13, cbCount );
-            }
-
-            void run()
-            {
-                m_context.reset(aznew SerializeContext());
-
-                BaseNoRtti::Reflect(*m_context);
-                BaseRtti::Reflect(*m_context);
-                DerivedNoRtti::Reflect(*m_context);
-                DerivedRtti::Reflect(*m_context);
-                DerivedMix::Reflect(*m_context);
-                MyClassBase1::Reflect(*m_context);
-                MyClassBase2::Reflect(*m_context);
-                MyClassBase3::Reflect(*m_context);
-                MyClassMix::Reflect(*m_context);
-                MyClassMix2::Reflect(*m_context);
-                MyClassMix3::Reflect(*m_context);
-                ChildOfUndeclaredBase::Reflect(*m_context);
-                PolymorphicMemberPointers::Reflect(*m_context);
-                // Expose base class field without reflecting the class
-                DerivedWithProtectedBase::Reflect(*m_context);
-
-                //////////////////////////////////////////////////////////////////////////
-                // check reflection enumeration
-                m_enumHierarchyCount = 0;
-                m_context->EnumerateDerived<MyClassBase1>(AZStd::bind(&InheritanceTest::EnumNoDhrttiDerived, this, AZStd::placeholders::_1, AZStd::placeholders::_2));
-                EXPECT_EQ( 3, m_enumHierarchyCount );
-
-                m_enumHierarchyCount = 0;
-                m_context->EnumerateBase<MyClassMix>(AZStd::bind(&InheritanceTest::EnumNoDhrttiBase, this, AZStd::placeholders::_1, AZStd::placeholders::_2));
-                EXPECT_EQ( 3, m_enumHierarchyCount );
-
-                //////////////////////////////////////////////////////////////////////////
-
-                m_baseNoRtti.Set();
-                m_baseRtti.Set();
-                m_derivedNoRtti.Set();
-                m_derivedRtti.Set();
-                m_derivedMix.Set();
-                m_multiRtti.Set(100.f);
-                m_childOfUndeclaredBase.m_data = 1234;
-                m_morphingMemberPointers.Set();
-                m_exposeBaseClassWithoutReflectingIt.m_data = 203;
-
-                TestFileIOBase fileIO;
-                SetRestoreFileIOBaseRAII restoreFileIOScope(fileIO);
-                // XML
-                {
-                    AZ_TracePrintf("InheritanceTest", "\nWriting XML...\n");
-                    IO::StreamerStream stream("serializeinheritancetest.xml", IO::OpenMode::ModeWrite);
-                    TestSave(&stream, ObjectStream::ST_XML);
-                }
-                {
-                    AZ_TracePrintf("InheritanceTest", "Loading XML...\n");
-                    IO::StreamerStream stream("serializeinheritancetest.xml", IO::OpenMode::ModeRead);
-                    TestLoad(&stream);
-                }
-
-                // JSON
-                {
-                    AZ_TracePrintf("InheritanceTest", "\nWriting JSON...\n");
-                    IO::StreamerStream stream("serializeinheritancetest.json", IO::OpenMode::ModeWrite);
-                    TestSave(&stream, ObjectStream::ST_JSON);
-                }
-                {
-                    AZ_TracePrintf("InheritanceTest", "Loading JSON...\n");
-                    IO::StreamerStream stream("serializeinheritancetest.json", IO::OpenMode::ModeRead);
-                    TestLoad(&stream);
-                }
-
-                // Binary
-                {
-                    AZ_TracePrintf("InheritanceTest", "Writing Binary...\n");
-                    IO::StreamerStream stream("serializeinheritancetest.bin", IO::OpenMode::ModeWrite);
-                    TestSave(&stream, ObjectStream::ST_BINARY);
-                }
-                {
-                    AZ_TracePrintf("InheritanceTest", "Loading Binary...\n");
-                    IO::StreamerStream stream("serializeinheritancetest.bin", IO::OpenMode::ModeRead);
-                    TestLoad(&stream);
-                }
-
-                m_morphingMemberPointers.Unset();
-                m_context.reset();
-            }
-        };
-
-        InheritanceTest test;
-        test.run();
-    }
-
-    /*
-    * Test serialization of generic members
-    */
-    TEST_F(Serialization, GenericsTest)
-    {
-        class GenericsTest
-        {
-            AZStd::unique_ptr<SerializeContext>    m_context;
-            Generics            m_generics;
-
-        public:
-            void OnLoadedClassReady(void* classPtr, const Uuid& classId, int* callCount)
-            {
-                (*callCount)++;
-                EXPECT_EQ( SerializeTypeInfo<Generics>::GetUuid(), classId );
-                Generics* obj = reinterpret_cast<Generics*>(classPtr);
-                EXPECT_EQ( m_generics.m_emptyTextData, obj->m_emptyTextData );
-                EXPECT_EQ( m_generics.m_emptyInitTextData, obj->m_emptyInitTextData );
-                EXPECT_EQ( m_generics.m_textData, obj->m_textData );
-                EXPECT_EQ( m_generics.m_vectorInt.size(), obj->m_vectorInt.size() );
-                for (size_t i = 0; i < obj->m_vectorInt.size(); ++i)
-                {
-                    EXPECT_EQ( m_generics.m_vectorInt[i], obj->m_vectorInt[i] );
-                }
-                EXPECT_EQ( m_generics.m_vectorIntVector.size(), obj->m_vectorIntVector.size() );
-                for (size_t i = 0; i < obj->m_vectorIntVector.size(); ++i)
-                {
-                    EXPECT_EQ( m_generics.m_vectorIntVector[i].size(), obj->m_vectorIntVector[i].size() );
-                    for (size_t j = 0; j < obj->m_vectorIntVector[i].size(); ++j)
-                    {
-                        EXPECT_EQ( m_generics.m_vectorIntVector[i][j], obj->m_vectorIntVector[i][j] );
-                    }
-                }
-                EXPECT_EQ(m_generics.m_vectorEnum.size(), obj->m_vectorEnum.size());
-                for (size_t i = 0; i < obj->m_vectorEnum.size(); ++i)
-                {
-                    EXPECT_EQ(m_generics.m_vectorEnum[i], obj->m_vectorEnum[i]);
-                }
-                EXPECT_EQ( m_generics.m_fixedVectorInt.size(), obj->m_fixedVectorInt.size() );
-                for (size_t i = 0; i < obj->m_fixedVectorInt.size(); ++i)
-                {
-                    EXPECT_EQ( m_generics.m_fixedVectorInt[i], obj->m_fixedVectorInt[i] );
-                }
-                EXPECT_EQ( m_generics.m_listInt.size(), obj->m_listInt.size() );
-                for (AZStd::list<int>::const_iterator it1 = obj->m_listInt.begin(), it2 = m_generics.m_listInt.begin(); it1 != obj->m_listInt.end(); ++it1, ++it2)
-                {
-                    EXPECT_EQ( *it2, *it1 );
-                }
-                EXPECT_EQ( m_generics.m_forwardListInt.size(), obj->m_forwardListInt.size() );
-                for (AZStd::forward_list<int>::const_iterator it1 = obj->m_forwardListInt.begin(), it2 = m_generics.m_forwardListInt.begin(); it1 != obj->m_forwardListInt.end(); ++it1, ++it2)
-                {
-                    EXPECT_EQ( *it2, *it1 );
-                }
-                EXPECT_EQ( m_generics.m_setInt.size(), obj->m_setInt.size() );
-                for (auto it1 = obj->m_setInt.begin(), it2 = m_generics.m_setInt.begin(); it1 != obj->m_setInt.end(); ++it1, ++it2)
-                {
-                    EXPECT_EQ( *it2, *it1 );
-                }
-                EXPECT_EQ( m_generics.m_usetInt.size(), obj->m_usetInt.size() );
-                for (auto it1 = obj->m_usetInt.begin(), it2 = m_generics.m_usetInt.begin(); it1 != obj->m_usetInt.end(); ++it1, ++it2)
-                {
-                    EXPECT_EQ( *it2, *it1 );
-                }
-                EXPECT_EQ( m_generics.m_umultisetInt.size(), obj->m_umultisetInt.size() );
-                for (auto it1 = obj->m_umultisetInt.begin(), it2 = m_generics.m_umultisetInt.begin(); it1 != obj->m_umultisetInt.end(); ++it1, ++it2)
-                {
-                    EXPECT_EQ( *it2, *it1 );
-                }
-                EXPECT_EQ( m_generics.m_mapIntFloat.size(), obj->m_mapIntFloat.size() );
-                for (auto it1 = obj->m_mapIntFloat.begin(), it2 = m_generics.m_mapIntFloat.begin(); it1 != obj->m_mapIntFloat.end(); ++it1, ++it2)
-                {
-                    EXPECT_EQ( it2->first, it1->first );
-                    EXPECT_EQ( it2->second, it1->second );
-                }
-                EXPECT_EQ( m_generics.m_umapIntFloat.size(), obj->m_umapIntFloat.size() );
-                for (auto it1 = obj->m_umapIntFloat.begin(), it2 = m_generics.m_umapIntFloat.begin(); it1 != obj->m_umapIntFloat.end(); ++it1, ++it2)
-                {
-                    EXPECT_EQ( it2->first, it1->first );
-                    EXPECT_EQ( it2->second, it1->second );
-                }
-                EXPECT_EQ( m_generics.m_umultimapIntFloat.size(), obj->m_umultimapIntFloat.size() );
-                for (auto it1 = obj->m_umultimapIntFloat.begin(), it2 = m_generics.m_umultimapIntFloat.begin(); it1 != obj->m_umultimapIntFloat.end(); ++it1, ++it2)
-                {
-                    EXPECT_EQ( it2->first, it1->first );
-                    EXPECT_EQ( it2->second, it1->second );
-                }
-                EXPECT_EQ( 3, obj->m_umapPolymorphic.size() );
-                EXPECT_EQ( SerializeTypeInfo<MyClassMix>::GetUuid(), obj->m_umapPolymorphic[1]->RTTI_GetType() );
-                EXPECT_TRUE( *static_cast<MyClassMix*>(m_generics.m_umapPolymorphic[1]) == *static_cast<MyClassMix*>(obj->m_umapPolymorphic[1]) );
-                EXPECT_EQ( SerializeTypeInfo<MyClassMix2>::GetUuid(), obj->m_umapPolymorphic[2]->RTTI_GetType() );
-                EXPECT_TRUE( *static_cast<MyClassMix2*>(m_generics.m_umapPolymorphic[2]) == *static_cast<MyClassMix2*>(obj->m_umapPolymorphic[2]) );
-                EXPECT_EQ( SerializeTypeInfo<MyClassMix3>::GetUuid(), obj->m_umapPolymorphic[3]->RTTI_GetType() );
-                EXPECT_TRUE( *static_cast<MyClassMix3*>(m_generics.m_umapPolymorphic[3]) == *static_cast<MyClassMix3*>(obj->m_umapPolymorphic[3]) );
-                EXPECT_EQ( m_generics.m_byteStream, obj->m_byteStream );
-                EXPECT_EQ( m_generics.m_bitSet, obj->m_bitSet );
-                EXPECT_EQ( m_generics.m_sharedPtr->m_data, obj->m_sharedPtr->m_data );
-                EXPECT_EQ( m_generics.m_intrusivePtr->m_data, obj->m_intrusivePtr->m_data );
-                EXPECT_EQ( m_generics.m_uniquePtr->m_data, obj->m_uniquePtr->m_data );
-                delete obj;
-            }
-
-
-            void SaveObjects(ObjectStream* writer)
-            {
-                bool success = true;
-                success = writer->WriteClass(&m_generics);
-                EXPECT_TRUE(success);
-            }
-
-            void OnDone(ObjectStream::Handle handle, bool success, bool* done)
-            {
-                (void)handle;
-                EXPECT_TRUE(success);
-                *done = true;
-            }
-
-            void TestSave(IO::GenericStream* stream, ObjectStream::StreamType format)
-            {
-                ObjectStream* objStream = ObjectStream::Create(stream, *m_context, format);
-                SaveObjects(objStream);
-                bool done = objStream->Finalize();
-                EXPECT_TRUE(done);
-            }
-
-            void TestLoad(IO::GenericStream* stream)
-            {
-                int cbCount = 0;
-                ObjectStream::ClassReadyCB readyCB(AZStd::bind(&GenericsTest::OnLoadedClassReady, this, AZStd::placeholders::_1, AZStd::placeholders::_2, &cbCount));
-                ObjectStream::LoadBlocking(stream, *m_context, readyCB);
-                EXPECT_EQ( 1, cbCount );
-            }
-
-            void run()
-            {
-                m_context.reset(aznew SerializeContext());
-
-                Generics::Reflect(*m_context);
-                MyClassBase1::Reflect(*m_context);
-                MyClassBase2::Reflect(*m_context);
-                MyClassBase3::Reflect(*m_context);
-                MyClassMix::Reflect(*m_context);
-                MyClassMix2::Reflect(*m_context);
-                MyClassMix3::Reflect(*m_context);
-                SmartPtrClass::Reflect(*m_context);
-
-                m_generics.Set();
-                TestFileIOBase fileIO;
-                SetRestoreFileIOBaseRAII restoreFileIOScope(fileIO);
-
-                // XML
-                {
-                    AZ_TracePrintf("GenericsTest", "\nWriting XML...\n");
-                    IO::StreamerStream stream("serializegenericstest.xml", IO::OpenMode::ModeWrite);
-                    TestSave(&stream, ObjectStream::ST_XML);
-                }
-                {
-                    AZ_TracePrintf("GenericsTest", "Loading XML...\n");
-                    IO::StreamerStream stream("serializegenericstest.xml", IO::OpenMode::ModeRead);
-                    TestLoad(&stream);
-                }
-
-                // JSON
-                {
-                    AZ_TracePrintf("GenericsTest", "\nWriting JSON...\n");
-                    IO::StreamerStream stream("serializegenericstest.json", IO::OpenMode::ModeWrite);
-                    TestSave(&stream, ObjectStream::ST_JSON);
-                }
-                {
-                    AZ_TracePrintf("GenericsTest", "Loading JSON...\n");
-                    IO::StreamerStream stream("serializegenericstest.json", IO::OpenMode::ModeRead);
-                    TestLoad(&stream);
-                }
-
-                // Binary
-                {
-                    AZ_TracePrintf("GenericsTest", "Writing Binary...\n");
-                    IO::StreamerStream stream("serializegenericstest.bin", IO::OpenMode::ModeWrite);
-                    TestSave(&stream, ObjectStream::ST_BINARY);
-                }
-                {
-                    AZ_TracePrintf("GenericsTest", "Loading Binary...\n");
-                    IO::StreamerStream stream("serializegenericstest.bin", IO::OpenMode::ModeRead);
-                    TestLoad(&stream);
-                }
-
-                m_generics.Unset();
-                m_context.reset();
-            }
-        };
-
-        GenericsTest test;
-        test.run();
     }
 
     /*
@@ -2908,6 +1977,89 @@ namespace UnitTest
             OwnerClass() {}
             SimpleBaseClass* m_pointer = nullptr;
         };
+    }
+
+    TEST_F(Serialization, TestDeprecatedClassAtRootLevel_Succeeds)
+    {
+        using namespace Deprecation;
+        // Test a deprecated class at the root level.
+        SerializeContext sc;
+
+        SimpleDerivedClass1 simpleDerivedClass1;
+        sc.Class<SimpleBaseClass>()
+            ->Version(1)
+            ->Field("m_data", &SimpleBaseClass::m_data);
+        sc.Class<SimpleDerivedClass1, SimpleBaseClass>()
+            ->Version(1);
+        sc.Class<SimpleDerivedClass2, SimpleBaseClass>()
+            ->Version(1);
+
+        AZStd::vector<char> xmlBufferRootTest;
+        AZStd::vector<char> jsonBufferRootTest;
+        AZStd::vector<char> binaryBufferRootTest;
+
+        {
+            // XML
+            IO::ByteContainerStream<AZStd::vector<char> > xmlStream(&xmlBufferRootTest);
+            AZ_TracePrintf("SerializeDeprecationTest", "Writing XML\n");
+            ObjectStream* xmlObjStream = ObjectStream::Create(&xmlStream, sc, ObjectStream::ST_XML);
+            xmlObjStream->WriteClass(&simpleDerivedClass1);
+            bool success = xmlObjStream->Finalize();
+            EXPECT_TRUE(success);
+
+            // JSON
+            IO::ByteContainerStream<AZStd::vector<char> > jsonStream(&jsonBufferRootTest);
+            AZ_TracePrintf("SerializeDeprecationTest", "Writing JSON\n");
+            ObjectStream* jsonObjStream = ObjectStream::Create(&jsonStream, sc, ObjectStream::ST_JSON);
+            jsonObjStream->WriteClass(&simpleDerivedClass1);
+            success = jsonObjStream->Finalize();
+            EXPECT_TRUE(success);
+
+            // Binary
+            IO::ByteContainerStream<AZStd::vector<char> > binaryStream(&binaryBufferRootTest);
+            AZ_TracePrintf("SerializeDeprecationTest", "Writing Binary\n");
+            ObjectStream* binaryObjStream = ObjectStream::Create(&binaryStream, sc, ObjectStream::ST_BINARY);
+            binaryObjStream->WriteClass(&simpleDerivedClass1);
+            success = binaryObjStream->Finalize();
+            EXPECT_TRUE(success);
+        }
+
+        sc.EnableRemoveReflection();
+        sc.Class<SimpleDerivedClass1>();
+        sc.DisableRemoveReflection();
+
+        AZ::SerializeContext::VersionConverter converter = [](AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement) -> bool
+        {
+            return classElement.Convert<SimpleDerivedClass2>(context);
+        };
+
+        sc.ClassDeprecate("SimpleDerivedClass1", "{78632262-C303-49BC-ABAD-88B088098311}", converter);
+
+        auto cb = [](void* classPtr, const Uuid& classId, SerializeContext* /*context*/) -> void
+        {
+            EXPECT_EQ(AzTypeInfo<SimpleDerivedClass2>::Uuid(), classId);
+            delete static_cast<SimpleDerivedClass2*>(classPtr);
+        };
+
+        ObjectStream::ClassReadyCB readyCBTest(cb);
+
+        // XML
+        AZ_TracePrintf("SerializeDeprecationTest", "Loading XML with deprecated class\n");
+        IO::ByteContainerStream<const AZStd::vector<char> > xmlStreamUuidTest(&xmlBufferRootTest);
+        xmlStreamUuidTest.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
+        EXPECT_TRUE(ObjectStream::LoadBlocking(&xmlStreamUuidTest, sc, readyCBTest));
+
+        // JSON
+        AZ_TracePrintf("SerializeDeprecationTest", "Loading JSON with deprecated class\n");
+        IO::ByteContainerStream<const AZStd::vector<char> > jsonStream(&jsonBufferRootTest);
+        jsonStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
+        ObjectStream::LoadBlocking(&jsonStream, sc, readyCBTest);
+
+        // Binary
+        AZ_TracePrintf("SerializeDeprecationTest", "Loading Binary with deprecated class\n");
+        IO::ByteContainerStream<const AZStd::vector<char> > binaryStream(&binaryBufferRootTest);
+        binaryStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
+        ObjectStream::LoadBlocking(&binaryStream, sc, readyCBTest);
     }
 
     TEST_F(Serialization, DeprecationRulesTest)
@@ -3129,90 +2281,9 @@ namespace UnitTest
                         xmlStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
 
                         // This should fail!
-                        AZ_TEST_START_ASSERTTEST;
+                        AZ_TEST_START_TRACE_SUPPRESSION;
                         ObjectStream::LoadBlocking(&xmlStream, sc, readyCB);
-                        AZ_TEST_STOP_ASSERTTEST(1);
-                    }
-
-                    // Test a deprecated class at the root level.
-                    {
-                        SerializeContext sc;
-
-                        SimpleDerivedClass1 simpleDerivedClass1;
-                        sc.Class<SimpleBaseClass>()
-                            ->Version(1)
-                            ->Field("m_data", &SimpleBaseClass::m_data);
-                        sc.Class<SimpleDerivedClass1, SimpleBaseClass>()
-                            ->Version(1);
-                        sc.Class<SimpleDerivedClass2, SimpleBaseClass>()
-                            ->Version(1);
-
-                        AZStd::vector<char> xmlBufferRootTest;
-                        AZStd::vector<char> jsonBufferRootTest;
-                        AZStd::vector<char> binaryBufferRootTest;
-
-                        {
-                            // XML
-                            IO::ByteContainerStream<AZStd::vector<char> > xmlStream(&xmlBufferRootTest);
-                            AZ_TracePrintf("SerializeDeprecationTest", "Writing XML\n");
-                            ObjectStream* xmlObjStream = ObjectStream::Create(&xmlStream, sc, ObjectStream::ST_XML);
-                            xmlObjStream->WriteClass(&simpleDerivedClass1);
-                            bool success = xmlObjStream->Finalize();
-                            EXPECT_TRUE(success);
-
-                            // JSON
-                            IO::ByteContainerStream<AZStd::vector<char> > jsonStream(&jsonBufferRootTest);
-                            AZ_TracePrintf("SerializeDeprecationTest", "Writing JSON\n");
-                            ObjectStream* jsonObjStream = ObjectStream::Create(&jsonStream, sc, ObjectStream::ST_JSON);
-                            jsonObjStream->WriteClass(&simpleDerivedClass1);
-                            success = jsonObjStream->Finalize();
-                            EXPECT_TRUE(success);
-
-                            // Binary
-                            IO::ByteContainerStream<AZStd::vector<char> > binaryStream(&binaryBufferRootTest);
-                            AZ_TracePrintf("SerializeDeprecationTest", "Writing Binary\n");
-                            ObjectStream* binaryObjStream = ObjectStream::Create(&binaryStream, sc, ObjectStream::ST_BINARY);
-                            binaryObjStream->WriteClass(&simpleDerivedClass1);
-                            success = binaryObjStream->Finalize();
-                            EXPECT_TRUE(success);
-                        }
-
-                        sc.EnableRemoveReflection();
-                        sc.Class<SimpleDerivedClass1>();
-                        sc.DisableRemoveReflection();
-
-                        AZ::SerializeContext::VersionConverter converter = [](AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement) -> bool
-                        {
-                            return classElement.Convert<SimpleDerivedClass2>(context);
-                        };
-
-                        sc.ClassDeprecate("SimpleDerivedClass1", "{78632262-C303-49BC-ABAD-88B088098311}", converter);
-
-                        auto cb = [](void* classPtr, const Uuid& classId, SerializeContext* /*context*/) -> void
-                        {
-                            EXPECT_EQ( AzTypeInfo<SimpleDerivedClass2>::Uuid(), classId );
-                            delete static_cast<SimpleDerivedClass2*>(classPtr);
-                        };
-
-                        ObjectStream::ClassReadyCB readyCBTest(cb);
-
-                        // XML
-                        AZ_TracePrintf("SerializeDeprecationTest", "Loading XML with deprecated class\n");
-                        IO::ByteContainerStream<const AZStd::vector<char> > xmlStreamUuidTest(&xmlBufferRootTest);
-                        xmlStreamUuidTest.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-                        EXPECT_TRUE(ObjectStream::LoadBlocking(&xmlStreamUuidTest, sc, readyCBTest));
-
-                        // JSON
-                        AZ_TracePrintf("SerializeDeprecationTest", "Loading JSON with deprecated class\n");
-                        IO::ByteContainerStream<const AZStd::vector<char> > jsonStream(&jsonBufferRootTest);
-                        jsonStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-                        ObjectStream::LoadBlocking(&jsonStream, sc, readyCBTest);
-
-                        // Binary
-                        AZ_TracePrintf("SerializeDeprecationTest", "Loading Binary with deprecated class\n");
-                        IO::ByteContainerStream<const AZStd::vector<char> > binaryStream(&binaryBufferRootTest);
-                        binaryStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-                        ObjectStream::LoadBlocking(&binaryStream, sc, readyCBTest);
+                        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
                     }
 
                     // Test a converter that swaps uuid to a castable/compatible type in a deprecation converter.
@@ -3394,182 +2465,7 @@ namespace UnitTest
             TestObj() = default;
             Generics        m_dataOld;
             GenericsNew     m_dataNew;
-        private:
-            TestObj(const TestObj&) = default;
         };
-    }
-
-    TEST_F(Serialization, ConversionTest)
-    {
-        using namespace Conversion;
-        class ConversionTest
-        {
-            TestObj m_testObj;
-
-        public:
-            void OnLoadedClassReady(void* classPtr, const Uuid& classId, int* callCount)
-            {
-                GenericsNew* obj = NULL;
-                switch (*callCount)
-                {
-                case 0:
-                    EXPECT_EQ( SerializeTypeInfo<TestObj>::GetUuid(), classId );
-                    obj = &reinterpret_cast<TestObj*>(classPtr)->m_dataNew;
-                    break;
-                case 1:
-                    EXPECT_EQ( SerializeTypeInfo<GenericsNew>::GetUuid(), classId );
-                    obj = reinterpret_cast<GenericsNew*>(classPtr);
-                    break;
-                }
-                EXPECT_TRUE(obj);
-                EXPECT_EQ(m_testObj.m_dataNew.m_newInt, obj->m_newInt);
-                EXPECT_EQ(m_testObj.m_dataNew.m_string, obj->m_string);
-                EXPECT_EQ(m_testObj.m_dataNew.m_vectorInt2.size(), obj->m_vectorInt2.size());
-                for (size_t i = 0; i < obj->m_vectorInt2.size(); ++i)
-                {
-                    EXPECT_EQ(m_testObj.m_dataNew.m_vectorInt2[i], obj->m_vectorInt2[i]);
-                }
-                EXPECT_EQ(m_testObj.m_dataNew.m_listIntList.size(), obj->m_listIntList.size());
-                for (AZStd::list<AZStd::list<int> >::const_iterator iList1 = obj->m_listIntList.begin(), iList2 = m_testObj.m_dataNew.m_listIntList.begin(); iList1 != obj->m_listIntList.end(); ++iList1, ++iList2)
-                {
-                    const AZStd::list<int>& list1 = *iList1;
-                    const AZStd::list<int>& list2 = *iList2;
-                    EXPECT_EQ(list1.size(), list2.size());
-                    for (AZStd::list<int>::const_iterator i1 = list1.begin(), i2 = list2.begin(); i1 != list1.end(); ++i1, ++i2)
-                    {
-                        EXPECT_EQ(*i1, *i2);
-                    }
-                }
-                EXPECT_EQ(3, obj->m_umapPolymorphic.size());
-                EXPECT_EQ(SerializeTypeInfo<MyClassMixNew>::GetUuid(), obj->m_umapPolymorphic[1]->RTTI_GetType());
-                EXPECT_TRUE( *static_cast<MyClassMixNew*>(m_testObj.m_dataNew.m_umapPolymorphic[1]) == *static_cast<MyClassMixNew*>(obj->m_umapPolymorphic[1]) );
-                EXPECT_EQ( SerializeTypeInfo<MyClassMix2>::GetUuid(), obj->m_umapPolymorphic[2]->RTTI_GetType() );
-                EXPECT_TRUE( *static_cast<MyClassMix2*>(m_testObj.m_dataNew.m_umapPolymorphic[2]) == *static_cast<MyClassMix2*>(obj->m_umapPolymorphic[2]) );
-                EXPECT_EQ( SerializeTypeInfo<MyClassMix3>::GetUuid(), obj->m_umapPolymorphic[3]->RTTI_GetType() );
-                EXPECT_TRUE( *static_cast<MyClassMix3*>(m_testObj.m_dataNew.m_umapPolymorphic[3]) == *static_cast<MyClassMix3*>(obj->m_umapPolymorphic[3]) );
-
-                if (*callCount == 0)
-                {
-                    delete reinterpret_cast<TestObj*>(classPtr);
-                }
-                else
-                {
-                    delete reinterpret_cast<GenericsNew*>(classPtr);
-                }
-                (*callCount)++;
-            }
-
-            void SaveObjects(ObjectStream* writer)
-            {
-                bool success = true;
-                success = writer->WriteClass(&m_testObj);           // for testing non-root conversions
-                EXPECT_TRUE(success);
-                success = writer->WriteClass(&m_testObj.m_dataOld); // for testing root conversions
-                EXPECT_TRUE(success);
-            }
-
-            void OnDone(ObjectStream::Handle handle, bool success, bool* done)
-            {
-                (void)handle;
-                EXPECT_TRUE(success);
-                *done = true;
-            }
-
-            void run()
-            {
-                m_testObj.m_dataOld.Set();
-                m_testObj.m_dataNew.Set();
-                TestFileIOBase fileIO;
-                SetRestoreFileIOBaseRAII restoreFileIOScope(fileIO);
-
-                // write old version out
-                {
-                    SerializeContext context;
-                    context.Class<TestObj>()->
-                        Field("data", &TestObj::m_dataOld);
-                    Generics::Reflect(context);
-                    MyClassBase1::Reflect(context);
-                    MyClassBase2::Reflect(context);
-                    MyClassBase3::Reflect(context);
-                    MyClassMix::Reflect(context);
-                    MyClassMix2::Reflect(context);
-                    MyClassMix3::Reflect(context);
-                    SmartPtrClass::Reflect(context);
-
-
-                    {
-                        AZ_TracePrintf("SerializeConversionTest", "\nWriting XML...\n");
-                        IO::StreamerStream stream("serializeconversiontest.xml", IO::OpenMode::ModeWrite);
-                        ObjectStream* objStream = ObjectStream::Create(&stream, context, ObjectStream::ST_XML);
-                        SaveObjects(objStream);
-                        bool done = objStream->Finalize();
-                        EXPECT_TRUE(done);
-                    }
-                    {
-                        AZ_TracePrintf("SerializeConversionTest", "\nWriting JSON...\n");
-                        IO::StreamerStream stream("serializeconversiontest.json", IO::OpenMode::ModeWrite);
-                        ObjectStream* objStream = ObjectStream::Create(&stream, context, ObjectStream::ST_JSON);
-                        SaveObjects(objStream);
-                        bool done = objStream->Finalize();
-                        EXPECT_TRUE(done);
-                    }
-                    {
-                        AZ_TracePrintf("SerializeConversionTest", "Writing Binary...\n");
-                        IO::StreamerStream stream("serializeconversiontest.bin", IO::OpenMode::ModeWrite);
-                        ObjectStream* objStream = ObjectStream::Create(&stream, context, ObjectStream::ST_BINARY);
-                        SaveObjects(objStream);
-                        bool done = objStream->Finalize();
-                        EXPECT_TRUE(done);
-                    }
-                }
-
-                // load and convert
-                {
-                    SerializeContext context;
-                    context.Class<TestObj>()->
-                        Field("data", &TestObj::m_dataNew);
-                    GenericsNew::Reflect(context);
-                    MyClassBase1::Reflect(context);
-                    MyClassBase2::Reflect(context);
-                    MyClassBase3::Reflect(context);
-                    MyClassMixNew::Reflect(context);
-                    MyClassMix2::Reflect(context);
-                    MyClassMix3::Reflect(context);
-                    SmartPtrClass::Reflect(context);
-
-                    {
-                        AZ_TracePrintf("SerializeConversionTest", "Loading XML...\n");
-                        IO::StreamerStream stream("serializeconversiontest.xml", IO::OpenMode::ModeRead);
-                        int cbCount = 0;
-                        ObjectStream::ClassReadyCB readyCB(AZStd::bind(&ConversionTest::OnLoadedClassReady, this, AZStd::placeholders::_1, AZStd::placeholders::_2, &cbCount));
-                        ObjectStream::LoadBlocking(&stream, context, readyCB);
-                        EXPECT_EQ( 2, cbCount );
-                    }
-                    {
-                        AZ_TracePrintf("SerializeConversionTest", "Loading JSON...\n");
-                        IO::StreamerStream stream("serializeconversiontest.json", IO::OpenMode::ModeRead);
-                        int cbCount = 0;
-                        ObjectStream::ClassReadyCB readyCB(AZStd::bind(&ConversionTest::OnLoadedClassReady, this, AZStd::placeholders::_1, AZStd::placeholders::_2, &cbCount));
-                        ObjectStream::LoadBlocking(&stream, context, readyCB);
-                        EXPECT_EQ( 2, cbCount );
-                    }
-                    {
-                        AZ_TracePrintf("SerializeConversionTest", "Loading Binary...\n");
-                        IO::StreamerStream stream("serializeconversiontest.bin", IO::OpenMode::ModeRead);
-                        int cbCount = 0;
-                        ObjectStream::ClassReadyCB readyCB(AZStd::bind(&ConversionTest::OnLoadedClassReady, this, AZStd::placeholders::_1, AZStd::placeholders::_2, &cbCount));
-                        ObjectStream::LoadBlocking(&stream, context, readyCB);
-                        EXPECT_EQ( 2, cbCount );
-                    }
-                }
-
-                m_testObj.m_dataOld.Unset();
-                m_testObj.m_dataNew.Unset();
-            }
-        };
-
-        ConversionTest test;
-        test.run();
     }
 
     /*
@@ -4117,7 +3013,7 @@ namespace UnitTest
         ClonableAssociativePointerContainer testObj;
         testObj.m_setOfPointers.insert(aznew AZ::Entity("Entity1"));
         testObj.m_setOfPointers.insert(aznew AZ::Entity("Entity2"));
-        testObj.m_mapOfFloatPointers.emplace(5, azcreate(float, (3.14), AZ::SystemAllocator, "Frank the Float"));
+        testObj.m_mapOfFloatPointers.emplace(5, azcreate(float, (3.14f), AZ::SystemAllocator, "Frank the Float"));
         testObj.m_sharedEntityPointer.reset(aznew AZ::Entity("Entity3"));
 
         ClonableAssociativePointerContainer* cloneObj = m_serializeContext->CloneObject(&testObj);
@@ -4299,11 +3195,6 @@ namespace UnitTest
             m_prevFileIO = IO::FileIOBase::GetInstance();
             IO::FileIOBase::SetInstance(&m_fileIO);
             IO::Streamer::Descriptor streamerDesc;
-            AZStd::string testFolder = GetTestFolderPath();
-            if (testFolder.length() > 0)
-            {
-                streamerDesc.m_fileMountPoint = testFolder.c_str();
-            }
             IO::Streamer::Create(streamerDesc);
 
             m_serializeContext.reset(aznew AZ::SerializeContext());
@@ -4446,6 +3337,123 @@ namespace UnitTest
         m_serializeContext->DisableRemoveReflection();
     }
 
+
+    TEST_F(Serialization, Clone_Container_WhereReserveElement_ReturnsNullptr_DoesNotCrash)
+    {
+        struct TestContainerType
+        {
+            AZ_TYPE_INFO(TestContainerType, "{81F20E9F-3F35-4063-BE29-A22EAF10AF59}");
+            int32_t m_value{};
+        };
+
+        struct EmptyDataContainer
+            : AZ::SerializeContext::IDataContainer
+        {
+            EmptyDataContainer()
+            {
+                // Create SerializeContext ClassElement for a int32_t type that is not a pointer
+                m_classElement.m_name = "Test";
+                m_classElement.m_nameCrc = AZ_CRC("Test");
+                m_classElement.m_typeId = azrtti_typeid<int32_t>();
+                m_classElement.m_dataSize = sizeof(int32_t);
+                m_classElement.m_offset = 0;
+                m_classElement.m_azRtti = {};
+                m_classElement.m_editData = {};
+                m_classElement.m_flags = 0;
+            }
+            const AZ::SerializeContext::ClassElement* GetElement(uint32_t) const override
+            {
+                return {};
+            }
+            bool GetElement(AZ::SerializeContext::ClassElement&, const AZ::SerializeContext::DataElement&) const override
+            {
+                return {};
+            }
+            void EnumElements(void* instance, const ElementCB& cb) override
+            {
+                auto dataContainer = reinterpret_cast<TestContainerType*>(instance);
+                cb(&dataContainer->m_value, m_classElement.m_typeId, m_classElement.m_genericClassInfo ? m_classElement.m_genericClassInfo->GetClassData() : nullptr, &m_classElement);
+            }
+            void EnumTypes(const ElementTypeCB& cb) override
+            {
+                cb(m_classElement.m_typeId, &m_classElement);
+            }
+            size_t  Size(void*) const override
+            {
+                return {};
+            }
+            size_t Capacity(void*) const override
+            {
+                return {};
+            }
+            bool IsStableElements() const override
+            {
+                return {};
+            }
+            bool IsFixedSize() const override
+            {
+                return {};
+            }
+            bool IsFixedCapacity() const override
+            {
+                return {};
+            }
+            bool IsSmartPointer() const override
+            {
+                return {};
+            }
+            bool CanAccessElementsByIndex() const override
+            {
+                return {};
+            }
+            void* ReserveElement(void*, const AZ::SerializeContext::ClassElement*) override
+            {
+                return {};
+            }
+            void* GetElementByIndex(void*, const AZ::SerializeContext::ClassElement*, size_t) override
+            {
+                return {};
+            }
+            void StoreElement(void* instance, void* element) override
+            {}
+            bool RemoveElement(void*, const void*, AZ::SerializeContext*  serializeContext) override
+            {
+                return {};
+            }
+            size_t RemoveElements(void*, const void**, size_t, AZ::SerializeContext* serializeContext) override
+            {
+                return {};
+            }
+            void ClearElements(void*, AZ::SerializeContext*) override
+            {}
+
+            AZ::SerializeContext::ClassElement m_classElement;
+        };
+
+        struct ContainerWrapper
+        {
+            AZ_TYPE_INFO(ContainerWrapper, "{F4EE9211-CABE-4D28-8356-2C2ADE6E5315}");
+            TestContainerType m_testContainer;
+        };
+
+        m_serializeContext->Class<TestContainerType>()
+            ->DataContainer<EmptyDataContainer>();
+        m_serializeContext->Class<ContainerWrapper>()
+            ->Field("m_testContainer", &ContainerWrapper::m_testContainer);
+
+        ContainerWrapper expectObject{ {42} };
+        ContainerWrapper resultObject;
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        m_serializeContext->CloneObjectInplace(resultObject, &expectObject);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+        EXPECT_EQ(0, resultObject.m_testContainer.m_value);
+
+        m_serializeContext->EnableRemoveReflection();
+        m_serializeContext->Class<TestContainerType>();
+        m_serializeContext->Class<ContainerWrapper>();
+        m_serializeContext->DisableRemoveReflection();
+    }
+
     /*
     * Error Testing
     */
@@ -4485,9 +3493,9 @@ namespace UnitTest
         };
         struct UnserializableMembers
         {
-            AZ_TYPE_INFO(UnserializableMembers, "{36F0C52A-5CAC-4060-982C-FC9A86D1393A}")
+            AZ_TYPE_INFO(UnserializableMembers, "{36F0C52A-5CAC-4060-982C-FC9A86D1393A}");
 
-                UnserializableMembers() {}
+            UnserializableMembers() {}
             UnserializableMembers(SerializeContext& sc)
                 : m_childOfUnregisteredRttiBase(sc)
                 , m_childOfUnregisteredBase(&m_childOfUnregisteredRttiBase)
@@ -4592,50 +3600,50 @@ namespace UnitTest
                 if (i == 0)
                 {
                     UnregisteredClass unregisteredClass;
-                    AZ_TEST_START_ASSERTTEST;
+                    AZ_TEST_START_TRACE_SUPPRESSION;
                     success = writer->WriteClass(&unregisteredClass);
                     EXPECT_TRUE(!success);
-                    AZ_TEST_STOP_ASSERTTEST(1);
+                    AZ_TEST_STOP_TRACE_SUPPRESSION(1);
                 }
 
                 // test saving root unregistered Rtti class
                 else if (i == 1)
                 {
                     UnregisteredRttiClass unregisteredRttiClass;
-                    AZ_TEST_START_ASSERTTEST;
+                    AZ_TEST_START_TRACE_SUPPRESSION;
                     success = writer->WriteClass(&unregisteredRttiClass);
                     EXPECT_TRUE(!success);
-                    AZ_TEST_STOP_ASSERTTEST(1);
+                    AZ_TEST_STOP_TRACE_SUPPRESSION(1);
                 }
 
                 // test saving root generic class
                 else if (i == 2)
                 {
                     GenericClass genericClass;
-                    AZ_TEST_START_ASSERTTEST;
+                    AZ_TEST_START_TRACE_SUPPRESSION;
                     success = writer->WriteClass(&genericClass);
                     EXPECT_TRUE(!success);
-                    AZ_TEST_STOP_ASSERTTEST(1);
+                    AZ_TEST_STOP_TRACE_SUPPRESSION(1);
                 }
 
                 // test saving as pointer to unregistered base class with no rtti
                 else if (i == 3)
                 {
                     ChildOfUnregisteredClass childOfUnregisteredClass(*sc);
-                    AZ_TEST_START_ASSERTTEST;
+                    AZ_TEST_START_TRACE_SUPPRESSION;
                     success = writer->WriteClass(static_cast<UnregisteredClass*>(&childOfUnregisteredClass));
                     EXPECT_TRUE(!success);
-                    AZ_TEST_STOP_ASSERTTEST(1);
+                    AZ_TEST_STOP_TRACE_SUPPRESSION(1);
                 }
 
                 // test saving unserializable members
                 else if (i == 4)
                 {
                     UnserializableMembers badMembers(*sc);
-                    AZ_TEST_START_ASSERTTEST;
+                    AZ_TEST_START_TRACE_SUPPRESSION;
                     success = writer->WriteClass(&badMembers);
                     EXPECT_TRUE(!success);
-                    AZ_TEST_STOP_ASSERTTEST(8); // 1 failure for each member
+                    AZ_TEST_STOP_TRACE_SUPPRESSION(8); // 1 failure for each member
                 }
                 i++;
             }
@@ -4879,7 +3887,7 @@ namespace UnitTest
                     Value("Two", MyEditStruct3::EditEnumClass::EEC_2)->
                     Value("TwoFiftyFive", MyEditStruct3::EditEnumClass::EEC_255);
 
-                AZ_TEST_START_ASSERTTEST;
+                AZ_TEST_START_TRACE_SUPPRESSION;
                 editContext->Class<MyEditStruct3>("MyEditStruct3", "Used to test enum global reflection")->
                     DataElement("Enum", &MyEditStruct3::m_enum)-> // safe
                     DataElement("Enum2", &MyEditStruct3::m_enum2)-> // safe
@@ -4891,7 +3899,7 @@ namespace UnitTest
                         AZ::Edit::EnumConstant<MyEditStruct3::EditEnum>(MyEditStruct3::EditEnum::ENUM_Test4, "EnumTest4 - ERROR"),
                     })->
                     ElementAttribute(AZ::Edit::InternalAttributes::EnumValue, AZStd::make_pair(MyEditStruct3::EditEnum::ENUM_Test1, "THIS SHOULD ALSO CAUSE AN ERROR"));
-                AZ_TEST_STOP_ASSERTTEST(0);
+                AZ_TEST_STOP_TRACE_SUPPRESSION(0);
             }
         };
 
@@ -5097,142 +4105,6 @@ namespace UnitTest
                 EXPECT_TRUE(done);
             }
         };
-    }
-
-
-
-    TEST_F(Serialization, LargeDataTest)
-    {
-        using namespace LargeData;
-
-        SerializeContext serializeContext;
-
-        InnerPayload::Reflect(serializeContext);
-        Payload::Reflect(serializeContext);
-
-        TestFileIOBase fileIO;
-        SetRestoreFileIOBaseRAII restoreFileIOScope(fileIO);
-
-        bool clone = true;
-        if (clone)
-        {
-            Payload testObj;
-            Payload* payload = serializeContext.CloneObject(&testObj);
-            delete payload;
-        }
-
-        bool write = true;
-        if (write)
-        {
-            Payload testObj;
-            Payload* payload = serializeContext.CloneObject(&testObj);
-
-            AZ_TracePrintf("LargeDataSerializationTest", "\nWriting as XML...\n");
-            IO::StreamerStream stream("LargeDataSerializationTest.xml", IO::OpenMode::ModeWrite);
-            ObjectStream* objStream = ObjectStream::Create(&stream, serializeContext, ObjectStream::ST_XML);
-            objStream->WriteClass(payload);
-            objStream->Finalize();
-
-            delete payload;
-        }
-
-        bool writeJson = true;
-        if (writeJson)
-        {
-            Payload testObj;
-            Payload* payload = serializeContext.CloneObject(&testObj);
-
-            AZ_TracePrintf("LargeDataSerializationTest", "\nWriting as JSON...\n");
-            IO::StreamerStream stream("LargeDataSerializationTest.json", IO::OpenMode::ModeWrite);
-            ObjectStream* objStream = ObjectStream::Create(&stream, serializeContext, ObjectStream::ST_JSON);
-            objStream->WriteClass(payload);
-            objStream->Finalize();
-
-            delete payload;
-        }
-
-
-        bool writeBinary = true;
-        if (writeBinary)
-        {
-            Payload testObj;
-            Payload* payload = serializeContext.CloneObject(&testObj);
-
-            AZ_TracePrintf("LargeDataSerializationTest", "\nWriting as Binary...\n");
-            IO::StreamerStream stream("LargeDataSerializationTest.bin", IO::OpenMode::ModeWrite);
-            ObjectStream* objStream = ObjectStream::Create(&stream, serializeContext, ObjectStream::ST_BINARY);
-            objStream->WriteClass(payload);
-            objStream->Finalize();
-
-            delete payload;
-        }
-
-        auto classReady = [](void* classPtr, const Uuid& classId, SerializeContext*)
-        {
-            if (classId == SerializeTypeInfo<InnerPayload>::GetUuid())
-            {
-                InnerPayload* obj = reinterpret_cast<InnerPayload*>(classPtr);
-                delete obj;
-            }
-
-            if (classId == SerializeTypeInfo<Payload>::GetUuid())
-            {
-                Payload* obj = reinterpret_cast<Payload*>(classPtr);
-                delete obj;
-            }
-        };
-
-        bool read = true;
-        if (read)
-        {
-            bool done = false;
-            auto onDone = [&done](ObjectStream::Handle, bool)
-            {
-                done = true;
-            };
-            ObjectStream::ClassReadyCB readyCB(classReady);
-            ObjectStream::CompletionCB doneCB(onDone);
-            {
-                AZ_TracePrintf("LargeDataSerializationTest", "Loading as XML...\n");
-                IO::StreamerStream stream2("LargeDataSerializationTest.xml", IO::OpenMode::ModeRead);
-                ObjectStream::LoadBlocking(&stream2, serializeContext, readyCB);
-            }
-        }
-
-        bool readJson = true;
-        if (readJson)
-        {
-            bool done = false;
-
-            auto onDone = [&done](ObjectStream::Handle, bool)
-            {
-                done = true;
-            };
-            ObjectStream::ClassReadyCB readyCB(classReady);
-            ObjectStream::CompletionCB doneCB(onDone);
-            {
-                AZ_TracePrintf("LargeDataSerializationTest", "Loading as JSON...\n");
-                IO::StreamerStream stream2("LargeDataSerializationTest.json", IO::OpenMode::ModeRead);
-                ObjectStream::LoadBlocking(&stream2, serializeContext, readyCB);
-            }
-        }
-
-        bool readBinary = true;
-        if (readBinary)
-        {
-            bool done = false;
-            auto onDone = [&done](ObjectStream::Handle, bool)
-            {
-                done = true;
-            };
-            ObjectStream::ClassReadyCB readyCB(classReady);
-            ObjectStream::CompletionCB doneCB(onDone);
-            {
-                AZ_TracePrintf("LargeDataSerializationTest", "Loading as Binary...\n");
-                IO::StreamerStream stream2("LargeDataSerializationTest.bin", IO::OpenMode::ModeRead);
-                ObjectStream::LoadBlocking(&stream2, serializeContext, readyCB);
-            }
-        }
     }
 
     /*
@@ -5999,9 +4871,9 @@ namespace UnitTest
 
         ReflectionWrapper loadReflectionWrapper;
         binaryStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         EXPECT_TRUE(Utils::LoadObjectFromStreamInPlace(binaryStream, loadReflectionWrapper, &sc));
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
     }
 
     class SerializableAnyFieldTest
@@ -6040,6 +4912,8 @@ namespace UnitTest
             MyClassMix::Reflect(*m_serializeContext);
             ReflectedString::Reflect(m_serializeContext.get());
             ReflectedSmartPtr::Reflect(m_serializeContext.get());
+            NonCopyableClass::Reflect(m_serializeContext.get());
+            m_serializeContext->RegisterGenericType<AZStd::shared_ptr<NonCopyableClass>>();
         }
 
         void TearDown() override
@@ -6052,6 +4926,9 @@ namespace UnitTest
             MyClassBase3::Reflect(*m_serializeContext);
             MyClassMix::Reflect(*m_serializeContext);
             ReflectedString::Reflect(m_serializeContext.get());
+            ReflectedSmartPtr::Reflect(m_serializeContext.get());
+            NonCopyableClass::Reflect(m_serializeContext.get());
+            m_serializeContext->RegisterGenericType<AZStd::shared_ptr<NonCopyableClass>>();
             m_serializeContext->DisableRemoveReflection();
 
             m_serializeContext.reset();
@@ -6100,6 +4977,22 @@ namespace UnitTest
 
         private:
             ReflectedSmartPtr(const ReflectedSmartPtr&) = delete;
+        };
+
+        struct NonCopyableClass
+        {
+            AZ_TYPE_INFO(NonCopyableClass, "{5DE8EA5C-9F4A-43F6-9B8B-10EF06319972}");
+            AZ_CLASS_ALLOCATOR(NonCopyableClass, AZ::SystemAllocator, 0);
+            NonCopyableClass() = default;
+            NonCopyableClass(const NonCopyableClass&) = delete;
+            NonCopyableClass& operator=(const NonCopyableClass&) = delete;
+            static void Reflect(ReflectContext* context)
+            {
+                if (auto* serializeContext = azrtti_cast<SerializeContext*>(context))
+                {
+                    serializeContext->Class<NonCopyableClass>();
+                }
+            }
         };
 
     protected:
@@ -6156,6 +5049,32 @@ namespace UnitTest
         EXPECT_TRUE(readAnyDataXml.empty());
     }
 
+    TEST_F(SerializableAnyFieldTest, MultipleContextsAnyTest)
+    {
+        MyClassMix obj;
+        obj.Set(5); // Initialize with some value
+        AZStd::any testData(obj);
+
+        AZStd::vector<char> byteBuffer;
+        IO::ByteContainerStream<AZStd::vector<char> > byteStream(&byteBuffer);
+        ObjectStream* byteObjStream = ObjectStream::Create(&byteStream, *m_serializeContext, ObjectStream::ST_XML);
+        byteObjStream->WriteClass(&testData);
+        byteObjStream->Finalize();
+        byteStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+
+        // create and destroy temporary context to test static context members [ATOM-628]
+        SerializeContext* tmpContext = aznew SerializeContext();
+        delete tmpContext;
+
+        AZStd::any readAnyData;
+        AZ::Utils::LoadObjectFromStreamInPlace(byteStream, readAnyData, m_serializeContext.get());
+        EXPECT_EQ(SerializeTypeInfo<MyClassMix>::GetUuid(), readAnyData.type());
+        EXPECT_NE(nullptr, AZStd::any_cast<void>(&readAnyData));
+        const MyClassMix& anyMixRef = *AZStd::any_cast<MyClassMix>(&testData);
+        const MyClassMix& readAnyMixRef = *AZStd::any_cast<MyClassMix>(&readAnyData);
+        EXPECT_EQ(anyMixRef.m_dataMix, readAnyMixRef.m_dataMix);
+    }
+
     TEST_F(SerializableAnyFieldTest, ReflectedFieldTest)
     {
         MyClassMix obj;
@@ -6193,9 +5112,9 @@ namespace UnitTest
         AZStd::vector<char> byteBuffer;
         IO::ByteContainerStream<AZStd::vector<char> > byteStream(&byteBuffer);
         ObjectStream* byteObjStream = ObjectStream::Create(&byteStream, *m_serializeContext, ObjectStream::ST_BINARY);
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         byteObjStream->WriteClass(&testData);
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
         byteObjStream->Finalize();
 
         byteStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
@@ -6353,6 +5272,12 @@ namespace UnitTest
         const MyClassMix* anyMixRef = AZStd::any_cast<MyClassMix*>(testData);
         const MyClassMix& readAnyMixRef = *AZStd::any_cast<MyClassMix>(&readAnyData);
         EXPECT_EQ(anyMixRef->m_dataMix, readAnyMixRef.m_dataMix);
+    }
+
+    TEST_F(SerializableAnyFieldTest, CreateAnyForSmartPtrWithNonCopyableSmartPtrDoesNotCrash)
+    {
+        AZStd::any nonCopyableSharedPtr = m_serializeContext->CreateAny(azrtti_typeid<AZStd::shared_ptr<NonCopyableClass>>());
+        EXPECT_FALSE(nonCopyableSharedPtr.empty());
     }
 
     class SerializableOptionalFixture
@@ -6666,10 +5591,10 @@ namespace UnitTest
             )";
 
             AZ::IO::MemoryStream versionMaxStream(versionMaxStringXml.data(), versionMaxStringXml.size());
-            AZ_TEST_START_ASSERTTEST;
+            AZ_TEST_START_TRACE_SUPPRESSION;
             bool result = AZ::Utils::LoadObjectFromStreamInPlace(versionMaxStream, loadString, m_serializeContext.get());
             EXPECT_FALSE(result);
-            AZ_TEST_STOP_ASSERTTEST(1);
+            AZ_TEST_STOP_TRACE_SUPPRESSION(1);
             EXPECT_EQ("", loadString);
         }
 
@@ -6689,10 +5614,10 @@ namespace UnitTest
             })";
 
             AZ::IO::MemoryStream versionMaxStream(versionMaxStringJson.data(), versionMaxStringJson.size());
-            AZ_TEST_START_ASSERTTEST;
+            AZ_TEST_START_TRACE_SUPPRESSION;
             bool result = AZ::Utils::LoadObjectFromStreamInPlace(versionMaxStream, loadString, m_serializeContext.get());
             EXPECT_FALSE(result);
-            AZ_TEST_STOP_ASSERTTEST(1);
+            AZ_TEST_STOP_TRACE_SUPPRESSION(1);
             EXPECT_EQ("", loadString);
         }
 
@@ -6705,10 +5630,10 @@ namespace UnitTest
             binarySerializer.reset();
 
             binaryStream.Seek(0, AZ::IO::GenericStream::SeekMode::ST_SEEK_BEGIN);
-            AZ_TEST_START_ASSERTTEST;
+            AZ_TEST_START_TRACE_SUPPRESSION;
             bool result = AZ::Utils::LoadObjectFromStreamInPlace(binaryStream, loadString, m_serializeContext.get());
             EXPECT_FALSE(result);
-            AZ_TEST_STOP_ASSERTTEST(1);
+            AZ_TEST_STOP_TRACE_SUPPRESSION(1);
             EXPECT_EQ("", loadString);
         }
     }
@@ -6985,9 +5910,9 @@ namespace UnitTest
 
         // Attempt to load a RootElementMemoryTracker into an int64_t
         int64_t loadTracker;
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         EXPECT_FALSE(AZ::Utils::LoadObjectFromStreamInPlace(byteStream, loadTracker, m_serializeContext.get()));
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
         EXPECT_EQ(0U, RootElementMemoryTracker::s_allocatedInstance);
     }
 
@@ -7623,6 +6548,11 @@ namespace UnitTest
             EXPECT_EQ(i, events.GetIndex());
             events.Increment();
         }
+        for (size_t i = 16; i > 8; --i)
+        {
+            EXPECT_EQ(i, events.GetIndex());
+            events.Decrement();
+        }
 
         events.OnWriteEnd(&m_array);
         EXPECT_TRUE(events.IsEmpty());
@@ -7636,6 +6566,11 @@ namespace UnitTest
         {
             events.Increment();
         }
+        for (size_t i = 8; i > 4; --i)
+        {
+            EXPECT_EQ(i, events.GetIndex());
+            events.Decrement();
+        }
 
         events.OnWriteBegin(&m_array);
         for (size_t i = 0; i < 16; ++i)
@@ -7643,11 +6578,65 @@ namespace UnitTest
             EXPECT_EQ(i, events.GetIndex());
             events.Increment();
         }
+        for (size_t i = 16; i > 8; --i)
+        {
+            EXPECT_EQ(i, events.GetIndex());
+            events.Decrement();
+        }
         events.OnWriteEnd(&m_array);
-        EXPECT_EQ(8, events.GetIndex()); // The 8 entries on the first entry of the stack.
+        EXPECT_EQ(4, events.GetIndex()); // The 8 entries on the first entry of the stack.
 
         events.OnWriteEnd(&m_array);
         EXPECT_TRUE(events.IsEmpty());
+    }
+
+    TEST_F(SerializableAZStdArrayTest, SingleEntryContainerInterface)
+    {
+        GenericClassInfo* containerInfo = SerializeGenericTypeInfo<decltype(m_array)>::GetGenericInfo();
+        ASSERT_NE(nullptr, containerInfo);
+        ASSERT_NE(nullptr, containerInfo->GetClassData());
+        SerializeContext::IDataContainer* container = containerInfo->GetClassData()->m_container;
+        ASSERT_NE(nullptr, container);
+
+        SerializeContext::IEventHandler* eventHandler = containerInfo->GetClassData()->m_eventHandler;
+        ASSERT_NE(nullptr, eventHandler);
+        eventHandler->OnWriteBegin(&m_array);
+
+        void* element0 = container->ReserveElement(&m_array, nullptr);
+        ASSERT_NE(nullptr, element0);
+        *reinterpret_cast<float*>(element0) = 42.0f;
+        container->StoreElement(&m_array, element0);
+
+        void* element1 = container->ReserveElement(&m_array, nullptr);
+        ASSERT_NE(nullptr, element1);
+        *reinterpret_cast<float*>(element1) = 142.0f;
+        container->StoreElement(&m_array, element1);
+
+        void* deletedElement = container->ReserveElement(&m_array, nullptr);
+        ASSERT_NE(nullptr, deletedElement);
+        *reinterpret_cast<float*>(deletedElement) = 9000.0f;
+        container->RemoveElement(&m_array, deletedElement, nullptr);
+
+        void* element2 = container->ReserveElement(&m_array, nullptr);
+        ASSERT_NE(nullptr, element2);
+        *reinterpret_cast<float*>(element2) = 242.0f;
+        container->StoreElement(&m_array, element2);
+
+        void* element3 = container->ReserveElement(&m_array, nullptr);
+        ASSERT_NE(nullptr, element3);
+        *reinterpret_cast<float*>(element3) = 342.0f;
+        container->StoreElement(&m_array, element2);
+
+        void* overflownElement = container->ReserveElement(&m_array, nullptr);
+        EXPECT_EQ(nullptr, overflownElement);
+
+        eventHandler->OnWriteEnd(&m_array);
+        eventHandler->OnLoadedFromObjectStream(&m_array);
+
+        EXPECT_FLOAT_EQ( 42.0f, m_array[0]);
+        EXPECT_FLOAT_EQ(142.0f, m_array[1]);
+        EXPECT_FLOAT_EQ(242.0f, m_array[2]);
+        EXPECT_FLOAT_EQ(342.0f, m_array[3]);
     }
 
     TEST_F(SerializableAZStdArrayTest, SimpleSerialization)
@@ -7781,6 +6770,16 @@ namespace UnitTest
             return true;
         }
     };
+
+    // Splitting these tests up to make it easier to find memory leaks for specific containers.
+    TEST_F(Serialization, ReserveAndFreeWithoutMemLeaks_Array) { ReserveAndFreeWithoutMemLeaks<AZStd::array<float, 5>>(); }
+    TEST_F(Serialization, ReserveAndFreeWithoutMemLeaks_FixedVector) { ReserveAndFreeWithoutMemLeaks<AZStd::fixed_vector<float, 5>>(); }
+    TEST_F(Serialization, ReserveAndFreeWithoutMemLeaks_ForwardList) { ReserveAndFreeWithoutMemLeaks<AZStd::forward_list<float>>(); }
+    TEST_F(Serialization, ReserveAndFreeWithoutMemLeaks_UnorderedSet) { ReserveAndFreeWithoutMemLeaks<AZStd::unordered_set<float>>(); }
+    TEST_F(Serialization, ReserveAndFreeWithoutMemLeaks_UnorderedMultiSet) { ReserveAndFreeWithoutMemLeaks<AZStd::unordered_multiset<float>>(); }
+    TEST_F(Serialization, ReserveAndFreeWithoutMemLeaks_List) { ReserveAndFreeWithoutMemLeaks<AZStd::list<float>>(); }
+    TEST_F(Serialization, ReserveAndFreeWithoutMemLeaks_Set) { ReserveAndFreeWithoutMemLeaks<AZStd::set<float>>(); }
+    TEST_F(Serialization, ReserveAndFreeWithoutMemLeaks_Vector) { ReserveAndFreeWithoutMemLeaks<AZStd::vector<float>>(); }
 
     TEST_F(Serialization, ConvertVectorContainer)
     {
@@ -8059,6 +7058,47 @@ namespace UnitTest
         }
     };
 
+    // Serializer which sets a reference bool to true on deletion to detect when it's lifetime ends.
+    class TestDeleterSerializer
+        : public SerializeContext::IDataSerializer
+    {
+    public:
+        TestDeleterSerializer(bool& serializerDeleted)
+            : m_serializerDeleted{ serializerDeleted }
+        {}
+        ~TestDeleterSerializer() override
+        {
+            m_serializerDeleted = true;
+        }
+        size_t Save(const void*, IO::GenericStream&, bool) override
+        {
+            return {};
+        }
+
+        size_t DataToText(IO::GenericStream&, IO::GenericStream&, bool) override
+        {
+            return {};
+        }
+
+        size_t TextToData(const char*, unsigned int , IO::GenericStream&, bool) override
+        {
+            return {};
+        }
+
+        bool Load(void*, IO::GenericStream&, unsigned int, bool) override
+        {
+            return true;
+        }
+
+        bool CompareValueData(const void* lhs, const void* rhs) override
+        {
+            return true;
+        }
+
+    private:
+        bool& m_serializerDeleted;
+    };
+
     TEST_F(Serialization, ConvertWithCustomSerializer)
     {
         m_serializeContext->Class<TestContainer>()
@@ -8099,6 +7139,40 @@ namespace UnitTest
         AZ::Utils::LoadObjectFromStreamInPlace(byteStream, test, m_serializeContext.get());
 
         EXPECT_EQ(test.m_node.m_field, testValue);
+    }
+
+    TEST_F(Serialization, CustomSerializerWithDefaultDeleter_IsDeletedOnUnreflect)
+    {
+        bool serializerDeleted = false;
+        AZ::SerializeContext::IDataSerializerPtr customSerializer{ new TestDeleterSerializer{ serializerDeleted }, AZ::SerializeContext::IDataSerializer::CreateDefaultDeleteDeleter() };
+        m_serializeContext->Class<TestLeafNode>()
+            ->Version(1)
+            ->Serializer(AZStd::move(customSerializer));
+
+        EXPECT_FALSE(serializerDeleted);
+
+        m_serializeContext->EnableRemoveReflection();
+        m_serializeContext->Class<TestLeafNode>();
+        m_serializeContext->DisableRemoveReflection();
+        EXPECT_TRUE(serializerDeleted);
+    }
+
+    TEST_F(Serialization, CustomSerializerWithNoDeleteDeleter_IsNotDeletedOnUnreflect)
+    {
+        bool serializerDeleted = false;
+        TestDeleterSerializer* serializerInstance = new TestDeleterSerializer{ serializerDeleted };
+        AZ::SerializeContext::IDataSerializerPtr customSerializer{ serializerInstance, AZ::SerializeContext::IDataSerializer::CreateNoDeleteDeleter() };
+        m_serializeContext->Class<TestLeafNode>()
+            ->Version(1)
+            ->Serializer(AZStd::move(customSerializer));
+
+        EXPECT_FALSE(serializerDeleted);
+
+        m_serializeContext->EnableRemoveReflection();
+        m_serializeContext->Class<TestLeafNode>();
+        m_serializeContext->DisableRemoveReflection();
+        ASSERT_FALSE(serializerDeleted);
+        delete serializerInstance;
     }
 
     TEST_F(Serialization, DefaultCtorThatAllocatesMemoryDoesntLeak)
@@ -8202,108 +7276,382 @@ namespace UnitTest
     > TypesThatShouldBeClearedWhenLoadedInPlace;
     INSTANTIATE_TYPED_TEST_CASE_P(Clears, GenericsLoadInPlaceFixture, TypesThatShouldBeClearedWhenLoadedInPlace);
 
-    //class AssetSerializationTest : public SerializeTest
-    //{
-    //public:
-    //
-    //    void OnLoadedClassReady(void* classPtr, const Uuid& classId, int* callCount)
-    //    {
-    //        (void)callCount;
+    enum TestUnscopedSerializationEnum : int32_t
+    {
+        TestUnscopedSerializationEnum_Option1,
+        TestUnscopedSerializationEnum_Option2,
+        TestUnscopedSerializationEnum_Option3,
+        TestUnscopedSerializationEnum_Option5NotReflected = 4,
+        TestUnscopedSerializationEnum_Option4 = 3,
+    };
 
-    //        if (classId == SerializeTypeInfo<Asset>::GetUuid())
-    //        {
-    //            Asset* obj = reinterpret_cast<Asset*>(classPtr);
-    //            //EXPECT_TRUE();
-    //            delete obj;
-    //        }
-    //    }
+    enum class TestScopedSerializationEnum
+    {
+        Option1,
+        Option2,
+        Option3,
+        Option4,
+        Option5NotReflected,
+    };
 
-    //    void OnDone(ObjectStream::Handle handle, bool success, bool* done)
-    //    {
-    //        (void)handle;
-    //        (void)success;
-    //        *done = true;
-    //    }
+    enum class TestUnsignedEnum : uint32_t
+    {
+        Option42 = 42,
+    };
+}
 
-    //    void run()
-    //    {
-    //        SerializeContext serializeContext;
-    //
-    //        Payload::Reflect(serializeContext);
-    //        TestFileIOBase fileIO;
-    //        SetRestoreFileIOBaseRAII restoreFileIOScope(fileIO);
+AZ_TYPE_INFO_SPECIALIZE(UnitTest::TestUnscopedSerializationEnum, "{83383BFA-F6DA-4124-BE4F-2FAAB7C594E7}");
+AZ_TYPE_INFO_SPECIALIZE(UnitTest::TestScopedSerializationEnum, "{17341C5E-81C3-44CB-A40D-F97D49C2531D}");
 
-    //        bool clone = true;
-    //        if (clone)
-    //        {
-    //            Payload testObj;
-    //            Payload* payload = serializeContext.CloneObject(&testObj);
-    //            delete payload;
-    //        }
+AZ_TYPE_INFO_SPECIALIZE(UnitTest::TestUnsignedEnum, "{0F91A5AE-DADA-4455-B158-8DB79D277495}");
 
-    //        bool write = true;
-    //        if (write)
-    //        {
-    //            Payload testObj;
-    //            Payload* payload = serializeContext.CloneObject(&testObj);
+namespace UnitTest
+{
+    enum class TestNoTypeInfoEnum
+    {
+        Zeroth,
+        Second = 2,
+        Fourth = 4,
+    };
+    struct NoTypeInfoNonReflectedEnumWrapper
+    {
+        AZ_TYPE_INFO(NoTypeInfoNonReflectedEnumWrapper, "{500D534D-4535-46FE-8D0C-7EC0782553F7}");
+        TestNoTypeInfoEnum m_value{};
+    };
+    struct TypeInfoReflectedEnumWrapper
+    {
+        AZ_TYPE_INFO(TypeInfoReflectedEnumWrapper, "{00ACD993-28B4-4951-91E8-16056EA8A8DA}");
+        TestScopedSerializationEnum m_value{};
+    };
 
-    //            AZ_TracePrintf("LargeDataSerializationTest", "\nWriting as XML...\n");
-    //            IO::StreamerStream stream("LargeDataSerializationTest.xml", IO::OpenMode::ModeWrite);
-    //            ObjectStream* objStream = ObjectStream::Create(&stream, serializeContext, ObjectStream::ST_XML);
-    //            objStream->WriteClass(payload);
-    //            objStream->Finalize();
+    class EnumTypeSerialization
+        : public ScopedAllocatorSetupFixture
+    {
+    public:
+        void SetUp() override
+        {
+            ScopedAllocatorSetupFixture::SetUp();
+            m_serializeContext = AZStd::make_unique<AZ::SerializeContext>();
+        }
 
-    //            delete payload;
-    //        }
+        void TearDown() override
+        {
+            m_serializeContext.reset();
+            ScopedAllocatorSetupFixture::TearDown();
+        }
 
-    //        bool writeBinary = true;
-    //        if (writeBinary)
-    //        {
-    //            Payload testObj;
-    //            Payload* payload = serializeContext.CloneObject(&testObj);
+    protected:
+        AZStd::unique_ptr<AZ::SerializeContext> m_serializeContext;
+    };
 
-    //            AZ_TracePrintf("LargeDataSerializationTest", "\nWriting as Binary...\n");
-    //            IO::StreamerStream stream("LargeDataSerializationTest.bin", IO::OpenMode::ModeWrite);
-    //            ObjectStream* objStream = ObjectStream::Create(&stream, serializeContext, ObjectStream::ST_BINARY);
-    //            objStream->WriteClass(payload);
-    //            objStream->Finalize();
+    TEST_F(EnumTypeSerialization, TestUnscopedEnumReflection_Succeeds)
+    {
+        m_serializeContext->Enum<TestUnscopedSerializationEnum>();
+        const AZ::SerializeContext::ClassData* enumClassData = m_serializeContext->FindClassData(azrtti_typeid<TestUnscopedSerializationEnum>());
+        ASSERT_NE(nullptr, enumClassData);
+        AZ::TypeId underlyingTypeId = AZ::TypeId::CreateNull();
+        AttributeReader attrReader(nullptr, enumClassData->FindAttribute(AZ::Serialize::Attributes::EnumUnderlyingType));
+        EXPECT_TRUE(attrReader.Read<AZ::TypeId>(underlyingTypeId));
+        EXPECT_EQ(azrtti_typeid<int32_t>(), underlyingTypeId);
 
-    //            delete payload;
-    //        }
+        // Unreflect Enum type
+        m_serializeContext->EnableRemoveReflection();
+        m_serializeContext->Enum<TestUnscopedSerializationEnum>();
+        m_serializeContext->DisableRemoveReflection();
+        enumClassData = m_serializeContext->FindClassData(azrtti_typeid<TestUnscopedSerializationEnum>());
+        EXPECT_EQ(nullptr, enumClassData);
+    }
 
-    //        bool read = true;
-    //        if (read)
-    //        {
-    //            int cbCount = 0;
-    //            bool done = false;
-    //            ObjectStream::ClassReadyCB readyCB(AZStd::bind(&LargeDataSerializationTest::OnLoadedClassReady, this, AZStd::placeholders::_1, AZStd::placeholders::_2, &cbCount));
-    //            ObjectStream::CompletionCB doneCB(AZStd::bind(&LargeDataSerializationTest::OnDone, this, AZStd::placeholders::_1, AZStd::placeholders::_2, &done));
-    //            {
-    //                AZ_TracePrintf("LargeDataSerializationTest", "Loading as XML...\n");
-    //                IO::StreamerStream stream2("LargeDataSerializationTest.xml", IO::OpenMode::ModeRead);
-    //                ObjectStream::LoadBlocking(&stream2, serializeContext, readyCB);
-    //            }
-    //        }
+    TEST_F(EnumTypeSerialization, TestScopedEnumReflection_Succeeds)
+    {
+        m_serializeContext->Enum<TestScopedSerializationEnum>();
+        const AZ::SerializeContext::ClassData* enumClassData = m_serializeContext->FindClassData(azrtti_typeid<TestScopedSerializationEnum>());
+        ASSERT_NE(nullptr, enumClassData);
 
-    //        bool readBinary = true;
-    //        if (readBinary)
-    //        {
-    //            int cbCount = 0;
-    //            bool done = false;
-    //            ObjectStream::ClassReadyCB readyCB(AZStd::bind(&LargeDataSerializationTest::OnLoadedClassReady, this, AZStd::placeholders::_1, AZStd::placeholders::_2, &cbCount));
-    //            ObjectStream::CompletionCB doneCB(AZStd::bind(&LargeDataSerializationTest::OnDone, this, AZStd::placeholders::_1, AZStd::placeholders::_2, &done));
-    //            {
-    //                AZ_TracePrintf("LargeDataSerializationTest", "Loading as Binary...\n");
-    //                IO::StreamerStream stream2("LargeDataSerializationTest.bin", IO::OpenMode::ModeRead);
-    //                ObjectStream::LoadBlocking(&stream2, serializeContext, readyCB);
-    //            }
-    //        }
-    //    }
-    //};
+        // Unreflect Enum type
+        m_serializeContext->EnableRemoveReflection();
+        m_serializeContext->Enum<TestScopedSerializationEnum>();
+        m_serializeContext->DisableRemoveReflection();
+        enumClassData = m_serializeContext->FindClassData(azrtti_typeid<TestScopedSerializationEnum>());
+        EXPECT_EQ(nullptr, enumClassData);
+    }
 
-    //TEST_F(AssetSerializationTest, Test)
-    //{
-    //    run();
-    //}
+    TEST_F(EnumTypeSerialization, TestEnumReflectionWithValues_Succeeds)
+    {
+        m_serializeContext->Enum<TestUnscopedSerializationEnum>()
+            ->Value("Option1", TestUnscopedSerializationEnum::TestUnscopedSerializationEnum_Option1)
+            ->Value("Option2", TestUnscopedSerializationEnum::TestUnscopedSerializationEnum_Option2)
+            ->Value("Option3", TestUnscopedSerializationEnum::TestUnscopedSerializationEnum_Option3)
+            ->Value("Option4", TestUnscopedSerializationEnum::TestUnscopedSerializationEnum_Option4)
+            ;
+
+        const AZ::SerializeContext::ClassData* enumClassData = m_serializeContext->FindClassData(azrtti_typeid<TestUnscopedSerializationEnum>());
+        ASSERT_NE(nullptr, enumClassData);
+        using EnumConstantBase = AZ::SerializeContextEnumInternal::EnumConstantBase;
+        using EnumConstantBasePtr = AZStd::unique_ptr<EnumConstantBase>;
+        AZStd::vector<AZStd::reference_wrapper<EnumConstantBase>> enumConstants;
+        enumConstants.reserve(4);
+        for (const AZ::AttributeSharedPair& attrPair : enumClassData->m_attributes)
+        {
+            if (attrPair.first == AZ::Serialize::Attributes::EnumValueKey)
+            {
+                auto enumConstantAttribute{ azrtti_cast<AZ::AttributeData<EnumConstantBasePtr>*>(attrPair.second.get()) };
+                ASSERT_NE(nullptr, enumConstantAttribute);
+                const EnumConstantBasePtr& sourceEnumConstant = enumConstantAttribute->Get(nullptr);
+                ASSERT_NE(nullptr, sourceEnumConstant);
+                enumConstants.emplace_back(*sourceEnumConstant);
+            }
+        }
+
+        ASSERT_EQ(4, enumConstants.size());
+        EXPECT_EQ("Option1", static_cast<EnumConstantBase&>(enumConstants[0]).GetEnumValueName());
+        EXPECT_EQ(0, static_cast<EnumConstantBase&>(enumConstants[0]).GetEnumValueAsUInt());
+        EXPECT_EQ("Option2", static_cast<EnumConstantBase&>(enumConstants[1]).GetEnumValueName());
+        EXPECT_EQ(1, static_cast<EnumConstantBase&>(enumConstants[1]).GetEnumValueAsUInt());
+        EXPECT_EQ("Option3", static_cast<EnumConstantBase&>(enumConstants[2]).GetEnumValueName());
+        EXPECT_EQ(2, static_cast<EnumConstantBase&>(enumConstants[2]).GetEnumValueAsUInt());
+        EXPECT_EQ("Option4", static_cast<EnumConstantBase&>(enumConstants[3]).GetEnumValueName());
+        EXPECT_EQ(3, static_cast<EnumConstantBase&>(enumConstants[3]).GetEnumValueAsUInt());
+
+        m_serializeContext->EnableRemoveReflection();
+        m_serializeContext->Enum<TestUnscopedSerializationEnum>();
+        m_serializeContext->DisableRemoveReflection();
+    }
+
+    TEST_F(EnumTypeSerialization, TestEnumFieldWithTypeInfoAndReflectedAsEnum_Succeeds)
+    {
+        m_serializeContext->Enum<TestScopedSerializationEnum>()
+            ->Value("Option1", TestScopedSerializationEnum::Option1)
+            ->Value("Option2", TestScopedSerializationEnum::Option2)
+            ->Value("Option3", TestScopedSerializationEnum::Option3)
+            ->Value("Option4", TestScopedSerializationEnum::Option4)
+            ;
+
+        m_serializeContext->Class<TypeInfoReflectedEnumWrapper>()
+            ->Field("m_value", &TypeInfoReflectedEnumWrapper::m_value)
+            ;
+
+        // The TestScopedSerializationEnum is explicitly reflected as an Enum in the SerializeContext and FindClassData
+        // should return the EnumType class data
+        const AZ::SerializeContext::ClassData* enumClassData = m_serializeContext->FindClassData(azrtti_typeid<TestScopedSerializationEnum>());
+        ASSERT_NE(nullptr, enumClassData);
+        EXPECT_EQ(azrtti_typeid<TestScopedSerializationEnum>(), enumClassData->m_typeId);
+
+        TypeInfoReflectedEnumWrapper testObject;
+        testObject.m_value = TestScopedSerializationEnum::Option3;
+        AZStd::vector<uint8_t> byteBuffer;
+        AZ::IO::ByteContainerStream<decltype(byteBuffer)> byteStream(&byteBuffer);
+        AZ::ObjectStream* objStream = AZ::ObjectStream::Create(&byteStream, *m_serializeContext, AZ::ObjectStream::ST_BINARY);
+        objStream->WriteClass(&testObject);
+        objStream->Finalize();
+
+        byteStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+        TypeInfoReflectedEnumWrapper loadObject;
+        const bool loadResult = AZ::Utils::LoadObjectFromStreamInPlace(byteStream, loadObject, m_serializeContext.get());
+        EXPECT_TRUE(loadResult);
+        EXPECT_EQ(TestScopedSerializationEnum::Option3, loadObject.m_value);
+
+        m_serializeContext->EnableRemoveReflection();
+        m_serializeContext->Class<TypeInfoReflectedEnumWrapper>();
+        m_serializeContext->Enum<TestScopedSerializationEnum>();
+        m_serializeContext->DisableRemoveReflection();
+    }
+
+    TEST_F(EnumTypeSerialization, TestEnumFieldWithTypeInfoAndNotReflectedAsEnum_Succeeds)
+    {
+        m_serializeContext->Class<TypeInfoReflectedEnumWrapper>()
+            ->Field("m_value", &TypeInfoReflectedEnumWrapper::m_value)
+            ;
+
+        // The TestScopedSerializationEnum is not reflected as an Enum in the SerializeContext, but has specialized AzTypeInfo
+        // So FindClassData should return the underlying type in this case, which is an int
+        const AZ::SerializeContext::ClassData* underlyingTypeClassData = m_serializeContext->FindClassData(azrtti_typeid<TestScopedSerializationEnum>());
+        ASSERT_NE(nullptr, underlyingTypeClassData);
+        EXPECT_EQ(azrtti_typeid<int>(), underlyingTypeClassData->m_typeId);
+
+        TypeInfoReflectedEnumWrapper testObject;
+        testObject.m_value = TestScopedSerializationEnum::Option3;
+        AZStd::vector<uint8_t> byteBuffer;
+        AZ::IO::ByteContainerStream<decltype(byteBuffer)> byteStream(&byteBuffer);
+        AZ::ObjectStream* objStream = AZ::ObjectStream::Create(&byteStream, *m_serializeContext, AZ::ObjectStream::ST_BINARY);
+        objStream->WriteClass(&testObject);
+        objStream->Finalize();
+
+        byteStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+        TypeInfoReflectedEnumWrapper loadObject;
+        const bool loadResult = AZ::Utils::LoadObjectFromStreamInPlace(byteStream, loadObject, m_serializeContext.get());
+        EXPECT_TRUE(loadResult);
+        EXPECT_EQ(TestScopedSerializationEnum::Option3, loadObject.m_value);
+
+        m_serializeContext->EnableRemoveReflection();
+        m_serializeContext->Class<TypeInfoReflectedEnumWrapper>();
+        m_serializeContext->DisableRemoveReflection();
+    }
+
+    TEST_F(EnumTypeSerialization, TestEnumFieldWithNoTypeInfo_Succeeds)
+    {
+        m_serializeContext->Class<NoTypeInfoNonReflectedEnumWrapper>()
+            ->Field("m_value", &NoTypeInfoNonReflectedEnumWrapper::m_value)
+            ;
+
+        static_assert(!AZ::Internal::HasAZTypeInfo<TestNoTypeInfoEnum>::value, "Test enum type should not have AzTypeInfo");
+        NoTypeInfoNonReflectedEnumWrapper testObject;
+        testObject.m_value = TestNoTypeInfoEnum::Second;
+        AZStd::vector<uint8_t> byteBuffer;
+        AZ::IO::ByteContainerStream<decltype(byteBuffer)> byteStream(&byteBuffer);
+        AZ::ObjectStream* objStream = AZ::ObjectStream::Create(&byteStream, *m_serializeContext, AZ::ObjectStream::ST_BINARY);
+        objStream->WriteClass(&testObject);
+        objStream->Finalize();
+
+        byteStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+        NoTypeInfoNonReflectedEnumWrapper loadObject;
+        const bool loadResult = AZ::Utils::LoadObjectFromStreamInPlace(byteStream, loadObject, m_serializeContext.get());
+        EXPECT_TRUE(loadResult);
+        EXPECT_EQ(TestNoTypeInfoEnum::Second, loadObject.m_value);
+
+        m_serializeContext->EnableRemoveReflection();
+        m_serializeContext->Class<NoTypeInfoNonReflectedEnumWrapper>();
+        m_serializeContext->DisableRemoveReflection();
+    }
+
+    TEST_F(EnumTypeSerialization, LoadIntIntoEnumTypeInfoSpecialization_Succeeds)
+    {
+        AZStd::string_view typeInfoEnumWrapperObjStreamData = R"(<ObjectStream version="3">
+            <Class name="TypeInfoReflectedEnumWrapper" type="{00ACD993-28B4-4951-91E8-16056EA8A8DA}">
+                <Class name="int" field="m_value" value="72" type="{72039442-EB38-4d42-A1AD-CB68F7E0EEF6}"/>
+            </Class>
+        </ObjectStream>
+        )";
+
+        m_serializeContext->Class<TypeInfoReflectedEnumWrapper>()
+            ->Field("m_value", &TypeInfoReflectedEnumWrapper::m_value)
+            ;
+
+        // Validate that the "m_value" ClassElement reflected to the TypeInfoReflectedEnumWrapper class
+        // is set to the Type of TestScopedSerializationEnum and not the TypeId of int
+        // When using enum types in fields previously it always used the underlying type for reflection
+        // Now if the enum type is being used in a field and has specialized AzTypeInfo, it uses the specialized TypeID
+        const SerializeContext::ClassData* classData = m_serializeContext->FindClassData(azrtti_typeid<TypeInfoReflectedEnumWrapper>());
+        ASSERT_NE(nullptr, classData);
+        ASSERT_EQ(1, classData->m_elements.size());
+        EXPECT_EQ(azrtti_typeid<TestScopedSerializationEnum>(), classData->m_elements[0].m_typeId);
+        EXPECT_NE(azrtti_typeid<int>(), classData->m_elements[0].m_typeId);
+
+        AZ::IO::MemoryStream memStream(typeInfoEnumWrapperObjStreamData.data(), typeInfoEnumWrapperObjStreamData.size());
+        TypeInfoReflectedEnumWrapper testObject;
+        EXPECT_TRUE(AZ::Utils::LoadObjectFromStreamInPlace(memStream, testObject, m_serializeContext.get()));
+        EXPECT_EQ(72, static_cast<int>(testObject.m_value));
+
+        m_serializeContext->EnableRemoveReflection();
+        m_serializeContext->Class<TypeInfoReflectedEnumWrapper>();
+        m_serializeContext->DisableRemoveReflection();
+    }
+
+    TEST_F(EnumTypeSerialization, VersionConverterRunOnEnum_ConvertsTypeSuccessfully)
+    {
+        AZStd::string_view typeInfoEnumWrapperObjStreamData = R"(<ObjectStream version="3">
+            <Class name="TestUnsignedEnumWrapper" type="{A5DD32CD-EC5B-4F0D-9D25-239EC76F1860}">
+                <Class name="unsigned int" field="m_value" value="234343" type="{43DA906B-7DEF-4ca8-9790-854106D3F983}"/>
+            </Class>
+        </ObjectStream>
+        )";
+
+        struct TestUnsignedEnumWrapper
+        {
+            AZ_TYPE_INFO(TestUnsignedEnumWrapper, "{A5DD32CD-EC5B-4F0D-9D25-239EC76F1860}");
+            TestUnsignedEnum m_value{};
+        };
+
+        auto VersionConverter = [](AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement) -> bool
+        {
+            if (classElement.GetVersion() < 1)
+            {
+                int enumIndex = classElement.FindElement(AZ_CRC("m_value"));
+                if (enumIndex == -1)
+                {
+                    return false;
+                }
+
+                AZ::SerializeContext::DataElementNode& enumValueNode = classElement.GetSubElement(enumIndex);
+                TestUnsignedEnum oldValue{};
+                EXPECT_TRUE(enumValueNode.GetData(oldValue));
+                EXPECT_EQ(234343U, static_cast<std::underlying_type_t<TestUnsignedEnum>>(oldValue));
+                EXPECT_TRUE(enumValueNode.Convert<TestUnsignedEnum>(context));
+                EXPECT_TRUE(enumValueNode.SetData(context, TestUnsignedEnum::Option42));
+            }
+            return true;
+        };
+
+        m_serializeContext->Class<TestUnsignedEnumWrapper>()
+            ->Version(1, VersionConverter)
+            ->Field("m_value", &TestUnsignedEnumWrapper::m_value)
+            ;
+
+        AZ::IO::MemoryStream memStream(typeInfoEnumWrapperObjStreamData.data(), typeInfoEnumWrapperObjStreamData.size());
+        TestUnsignedEnumWrapper testObject;
+        EXPECT_TRUE(AZ::Utils::LoadObjectFromStreamInPlace(memStream, testObject, m_serializeContext.get()));
+        EXPECT_EQ(TestUnsignedEnum::Option42, testObject.m_value);
+
+        m_serializeContext->EnableRemoveReflection();
+        m_serializeContext->Class<TestUnsignedEnumWrapper>();
+        m_serializeContext->DisableRemoveReflection();
+    }
+
+    TEST_F(EnumTypeSerialization, LoadingOldVersionOfClassWithEnumFieldStoredUsingTheUnderlying_AndThatClassDoesNotHaveAVersionConverter_Succeeds)
+    {
+        AZStd::string_view testClassWithEnumFieldData = R"(<ObjectStream version="3">
+            <Class name="TestClassWithEnumField" type="{F1F03A45-3E6D-44C3-A615-A556DEE18E94}">
+                <Class name="unsigned int" field="m_value" value="42" type="{43DA906B-7DEF-4ca8-9790-854106D3F983}"/>
+            </Class>
+        </ObjectStream>
+        )";
+
+        struct TestClassWithEnumField
+        {
+            AZ_TYPE_INFO(TestClassWithEnumField, "{F1F03A45-3E6D-44C3-A615-A556DEE18E94}");
+            TestUnsignedEnum m_value{};
+            AZStd::string m_strValue;
+        };
+
+        m_serializeContext->Class<TestClassWithEnumField>()
+            ->Version(1)
+            ->Field("m_value", &TestClassWithEnumField::m_value)
+            ->Field("m_strValue", &TestClassWithEnumField::m_strValue)
+            ;
+
+        AZ::IO::MemoryStream memStream(testClassWithEnumFieldData.data(), testClassWithEnumFieldData.size());
+        TestClassWithEnumField testObject;
+        EXPECT_TRUE(AZ::Utils::LoadObjectFromStreamInPlace(memStream, testObject, m_serializeContext.get()));
+        EXPECT_EQ(TestUnsignedEnum::Option42, testObject.m_value);
+
+        m_serializeContext->EnableRemoveReflection();
+        m_serializeContext->Class<TestClassWithEnumField>();
+        m_serializeContext->DisableRemoveReflection();
+    }
+
+    TEST_F(EnumTypeSerialization, CloneObjectAZStdAnyOfEnum_SucceedsWithoutCrashing)
+    {
+        struct TestClassWithEnumFieldThatSpecializesTypeInfo
+        {
+            AZ_TYPE_INFO(TestClassWithEnumFieldThatSpecializesTypeInfo, "{B7E066F4-3598-4678-A331-5AB8789CE391}");
+            TestUnsignedEnum m_value{};
+        };
+
+        m_serializeContext->Class<TestClassWithEnumFieldThatSpecializesTypeInfo>()
+            ->Version(1)
+            ->Field("m_value", &TestClassWithEnumFieldThatSpecializesTypeInfo::m_value)
+            ;
+
+        AZStd::any testAny(AZStd::make_any<TestUnsignedEnum>(TestUnsignedEnum::Option42));
+        AZStd::any resultAny;
+        m_serializeContext->CloneObjectInplace(resultAny, &testAny);
+        auto resultEnum = AZStd::any_cast<TestUnsignedEnum>(&resultAny);
+        ASSERT_NE(nullptr, resultEnum);
+        EXPECT_EQ(TestUnsignedEnum::Option42, *resultEnum);
+
+        m_serializeContext->EnableRemoveReflection();
+        m_serializeContext->Class<TestClassWithEnumFieldThatSpecializesTypeInfo>();
+        m_serializeContext->DisableRemoveReflection();
+    }
 }
 

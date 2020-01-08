@@ -1,0 +1,9 @@
+{
+    "auto":
+    {
+        "EMotionFXSDK/MCore/Platform/iOS":
+        [
+            "../Common/FileOffsetType/MCore/Source/DiskFile_FileOffsetType.cpp"
+        ]
+    }
+}

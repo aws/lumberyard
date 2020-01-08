@@ -12,14 +12,22 @@
 
 #pragma once
 
-#include <boost/optional.hpp>
+#include <AzCore/std/optional.h>
 #include <AzCore/std/functional.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/Memory/SystemAllocator.h>
+
+// The AWS Native SDK AWSAllocator triggers a warning due to accessing members of std::allocator directly.
+// AWSAllocator.h(70): warning C4996: 'std::allocator<T>::pointer': warning STL4010: Various members of std::allocator are deprecated in C++17.
+// Use std::allocator_traits instead of accessing these members directly.
+// You can define _SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING or _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS to acknowledge that you have received this warning.
+
+AZ_PUSH_DISABLE_WARNING(4251 4996, "-Wunknown-warning-option")
 #include <aws/core/utils/memory/stl/AWSString.h>
 #include <aws/core/http/Scheme.h>
 #include <aws/core/Region.h>
 #include <aws/core/http/HttpTypes.h>
+AZ_POP_DISABLE_WARNING
 #include <CloudGemFramework/CloudGemFrameworkBus.h>
 
 #include <CloudCanvas/CloudCanvasIdentityBus.h>
@@ -114,7 +122,7 @@ namespace CloudGemFramework
 
         /// Type used to encapsulate override values.
         template<typename T>
-        using Override = boost::optional<T>;
+        using Override = AZStd::optional<T>;
 
         // TODO: document the individual configuration settings
         Override<AZ::JobContext*> jobContext;
@@ -171,9 +179,9 @@ namespace CloudGemFramework
         template<typename T>
         static void CheckAndSet(const Override<T>& src, T& dst) 
         {
-            if (src.is_initialized())
+            if (src.has_value())
             {
-                dst = src.get();
+                dst = src.value();
             }
         }
 

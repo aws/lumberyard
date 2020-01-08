@@ -31,7 +31,13 @@ namespace ScriptCanvas
 
                 if (!m_sourceSlot.m_slotId.IsValid())
                 {
-                    m_sourceSlot.m_slotId = AddInputDatumDynamicContainerTypedSlot(GetSourceSlotName());
+                    DynamicDataSlotConfiguration slotConfiguration;
+
+                    slotConfiguration.m_name = GetSourceSlotName();
+                    slotConfiguration.m_dynamicDataType = DynamicDataType::Container;
+                    slotConfiguration.SetConnectionType(ConnectionType::Input);
+
+                    m_sourceSlot.m_slotId = AddSlot(slotConfiguration);
                 }
                 // DYNAMIC_SLOT_VERSION_CONVERTER
                 else
@@ -195,7 +201,7 @@ namespace ScriptCanvas
                 }
 
                 ++m_index;
-                ExecutionRequestBus::Event(m_executionUniqueId, &ExecutionRequests::AddToExecutionStack, *this, SlotId{});
+                ExecutionRequestBus::Event(GetGraphId(), &ExecutionRequests::AddToExecutionStack, *this, SlotId{});
                 SignalOutput(ForEachProperty::GetEachSlotId(this));
             }
 
@@ -292,12 +298,12 @@ namespace ScriptCanvas
 
                             slotConfiguration.m_name = propertyAccount.m_propertyName;
                             slotConfiguration.m_toolTip = "";
-                            slotConfiguration.m_slotType = SlotType::DataOut;
-                            slotConfiguration.m_addUniqueSlotByNameAndType = false;
+                            slotConfiguration.SetConnectionType(ConnectionType::Output);
+                            slotConfiguration.m_addUniqueSlotByNameAndType = false;                            
 
-                            slotConfiguration.m_dataType = types[i];
+                            slotConfiguration.SetType(types[i]);
 
-                            propertyAccount.m_propertySlotId = AddDataSlot(slotConfiguration);
+                            propertyAccount.m_propertySlotId = AddSlot(slotConfiguration);
                             m_propertySlots.push_back(propertyAccount);
                         }
                     }

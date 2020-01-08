@@ -182,10 +182,5 @@ namespace AZ
     };
 }
 
-#ifndef AZ_PLATFORM_WINDOWS // Remove this once all compilers support POD (MSVC already does)
-#   include <AzCore/std/typetraits/is_pod.h>
-AZSTD_DECLARE_POD_TYPE(AZ::Plane);
-#endif
-
 #endif  // AZCORE_MATH_PLANE_H
 #pragma once

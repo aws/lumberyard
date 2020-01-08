@@ -1,0 +1,46 @@
+{
+    "platform": {
+        "darwin_x64": {
+            "includes_debug": [
+                "llvm/include",
+                "xcode/debug/include"
+            ],
+            "includes_release": [
+                "llvm/include",
+                "xcode/release/include"
+            ],
+            "libpath_debug": [
+                "xcode/debug/lib"
+            ],
+            "libpath_release": [
+                "xcode/release/lib"
+            ],
+            "lib": [
+                "libclangFrontend.a",
+                "libclangSerialization.a",
+                "libclangDriver.a",
+                "libclangTooling.a",
+                "libclangParse.a",
+                "libclangSema.a",
+                "libclangAnalysis.a",
+                "libclangRewriteFrontend.a",
+                "libclangRewrite.a",
+                "libclangEdit.a",
+                "libclangAST.a",
+                "libclangLex.a",
+                "libclangBasic.a",
+                "libLLVMBinaryFormat.a",
+                "libLLVMDebugInfoDWARF.a",
+                "libLLVMMC.a",
+                "libLLVMOption.a",
+                "libLLVMBitReader.a",
+                "libLLVMMCParser.a",
+                "libLLVMProfileData.a",
+                "libLLVMDemangle.a",
+                "libLLVMTarget.a",
+                "libLLVMCore.a",
+                "libLLVMSupport.a"
+            ]
+        }
+    }
+}

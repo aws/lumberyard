@@ -77,8 +77,6 @@
         "Editor/GraphCanvas/Components/NodeDescriptors": [
             "Editor/GraphCanvas/Components/NodeDescriptors/ClassMethodNodeDescriptorComponent.cpp",
             "Editor/GraphCanvas/Components/NodeDescriptors/ClassMethodNodeDescriptorComponent.h",
-            "Editor/GraphCanvas/Components/NodeDescriptors/DeprecatedVariableNodeDescriptorComponents.cpp",
-            "Editor/GraphCanvas/Components/NodeDescriptors/DeprecatedVariableNodeDescriptorComponents.h",
             "Editor/GraphCanvas/Components/NodeDescriptors/EBusHandlerEventNodeDescriptorComponent.cpp",
             "Editor/GraphCanvas/Components/NodeDescriptors/EBusHandlerEventNodeDescriptorComponent.h",
             "Editor/GraphCanvas/Components/NodeDescriptors/EBusHandlerNodeDescriptorComponent.cpp",
@@ -89,6 +87,7 @@
             "Editor/GraphCanvas/Components/NodeDescriptors/EntityRefNodeDescriptorComponent.h",
             "Editor/GraphCanvas/Components/NodeDescriptors/GetVariableNodeDescriptorComponent.cpp",
             "Editor/GraphCanvas/Components/NodeDescriptors/GetVariableNodeDescriptorComponent.h",
+            "Editor/GraphCanvas/Components/NodeDescriptors/NodeDescriptorComponent.cpp",
             "Editor/GraphCanvas/Components/NodeDescriptors/NodeDescriptorComponent.h",
             "Editor/GraphCanvas/Components/NodeDescriptors/SetVariableNodeDescriptorComponent.cpp",
             "Editor/GraphCanvas/Components/NodeDescriptors/SetVariableNodeDescriptorComponent.h",
@@ -104,8 +103,9 @@
             "Editor/GraphCanvas/Components/NodeDescriptors/ScriptEventSenderNodeDescriptorComponent.h"
         ],
         "Editor/GraphCanvas/DataInterfaces": [
-            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasBoolDataInterface.h",
+            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasBoolDataInterface.h",            
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasEntityIdDataInterface.h",
+            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasEnumDataInterface.h",
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasDataInterface.h",            
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasColorDataInterface.h",
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasCRCDataInterface.h",
@@ -312,6 +312,14 @@
             "Editor/View/Windows/ScriptCanvasContextMenus.cpp",
             "Editor/View/Windows/ScriptCanvasContextMenus.h",
             "Editor/View/Windows/ScriptCanvasEditorResources.qrc"
+        ],
+        "Editor/View/Windows/Tools": [
+            "Editor/View/Windows/Tools/BatchOperatorTool.cpp",
+            "Editor/View/Windows/Tools/BatchOperatorTool.h"
+        ],
+        "Editor/View/Windows/Tools/BatchConverter": [
+            "Editor/View/Windows/Tools/BatchConverter/BatchConverter.cpp",
+            "Editor/View/Windows/Tools/BatchConverter/BatchConverter.h"
         ],
     	"Editor/Framework": [
       		"Editor/Framework/ScriptCanvasGraphUtilities.inl",

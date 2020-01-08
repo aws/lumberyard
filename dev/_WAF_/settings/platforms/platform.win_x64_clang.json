@@ -35,8 +35,7 @@
             "win32/vc140/qtga.dll",
             "win32/vc140/qtgad.dll",
             "win32/vc140/qtgad.pdb"
-        ],
-        "third_party_alias_platform": "win_x64_vs2015"
+        ]
     },
 
     "settings"      : {

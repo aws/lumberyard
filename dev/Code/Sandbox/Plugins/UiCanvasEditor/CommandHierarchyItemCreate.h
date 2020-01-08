@@ -24,6 +24,7 @@ public:
     static void Push(UndoStack* stack,
         HierarchyWidget* hierarchy,
         const QTreeWidgetItemRawPtrQList& selectedItems,
+        int childIndex = -1,
         PostCreationCallback postCreationCB = [](AZ::Entity* element){});
 
 private:
@@ -31,12 +32,14 @@ private:
     CommandHierarchyItemCreate(UndoStack* stack,
         HierarchyWidget* hierarchy,
         const EntityHelpers::EntityIdList& parents,
+        int childIndex,
         PostCreationCallback postCreationCB);
 
     UndoStack* m_stack;
 
     HierarchyWidget* m_hierarchy;
     EntityHelpers::EntityIdList m_parents;
+    int m_childIndex;
     SerializeHelpers::SerializedEntryList m_entries;
     PostCreationCallback m_postCreationCB;
 };

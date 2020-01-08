@@ -29,6 +29,7 @@ def build(bld):
         client_only         = True,
         features            = ['qt5'],
         includes            = [ '.',
+                                bld.Path('Code/CryEngine/CryCommon'),
                                 '..',
                                 bld.Path('Code/Sandbox/Editor'),
                                 bld.Path('Code/Sandbox/Editor/Include')],
@@ -40,8 +41,7 @@ def build(bld):
                                'QT5GUI',
                                'QTMAIN',
                                'QT5WIDGETS',
-                               'QT5XML',
-                               'BOOST'],
+                               'QT5XML'],
         darwin_uselib       = ['QT5MACEXTRAS'],
         enable_rtti         = True,
 

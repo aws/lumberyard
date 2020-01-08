@@ -166,7 +166,7 @@ void CTiledShading::CreateResources()
     if (!m_specularProbeAtlas.texArray)
     {
         ETEX_Format specProbeAtlasFormat = eTF_BC6UH;
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         specProbeAtlasFormat = eTF_R9G9B9E5;
 #endif
         m_specularProbeAtlas.texArray = CTexture::CreateTextureArray("$TiledSpecProbeTexArr", eTT_Cube, SpecProbeSize, SpecProbeSize, AtlasArrayDim, IntegerLog2(SpecProbeSize) - 1, 0, specProbeAtlasFormat);
@@ -183,6 +183,8 @@ void CTiledShading::CreateResources()
         #include "Xenia/D3DTiledShading_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DTiledShading_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DTiledShading_cpp_salem.inl"
     #endif
 #endif
     }
@@ -190,7 +192,7 @@ void CTiledShading::CreateResources()
     if (!m_diffuseProbeAtlas.texArray)
     {
         ETEX_Format diffuseProbeAtlasFormat = eTF_BC6UH;
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         diffuseProbeAtlasFormat = eTF_R9G9B9E5;
 #endif
         m_diffuseProbeAtlas.texArray = CTexture::CreateTextureArray("$TiledDiffuseProbeTexArr", eTT_Cube, DiffuseProbeSize, DiffuseProbeSize, AtlasArrayDim, 1, 0, diffuseProbeAtlasFormat);
@@ -207,6 +209,8 @@ void CTiledShading::CreateResources()
         #include "Xenia/D3DTiledShading_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DTiledShading_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DTiledShading_cpp_salem.inl"
     #endif
 #endif
     }
@@ -228,6 +232,8 @@ void CTiledShading::CreateResources()
         #include "Xenia/D3DTiledShading_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DTiledShading_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DTiledShading_cpp_salem.inl"
     #endif
 #endif
     }
@@ -924,6 +930,11 @@ void CTiledShading::Render(TArray<SRenderLight>& envProbes, TArray<SRenderLight>
         rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_APPLY_SSDO];
     }
 	
+
+    if (CRenderer::CV_r_DeferredShadingLBuffersFmt == 2)
+    {
+        rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_DEFERRED_RENDER_TARGET_OPTIMIZATION];
+    }
 #if defined(FEATURE_SVO_GI)
     rd->m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_CUBEMAP0];
     rd->m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_DECAL_TEXGEN_2D];

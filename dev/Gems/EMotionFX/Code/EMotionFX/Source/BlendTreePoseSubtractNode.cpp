@@ -102,7 +102,6 @@ namespace EMotionFX
 
         RequestPoses(animGraphInstance);
         AnimGraphPose* outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
-        ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
 
         // Perform the subtraction
         if (inputNode)

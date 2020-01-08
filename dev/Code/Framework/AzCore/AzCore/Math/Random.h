@@ -9,15 +9,12 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZCORE_MATH_RANDOM_H
-#define AZCORE_MATH_RANDOM_H 1
+
+#pragma once
 
 #include <AzCore/base.h>
 #include <AzCore/RTTI/TypeInfo.h>
-
-#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-#   include <stdio.h>
-#endif
+#include <AzCore/Math/Random_Platform.h>
 
 namespace AZ
 {
@@ -42,8 +39,13 @@ namespace AZ
 
         unsigned int GetRandom()
         {
+            return static_cast<unsigned int>(Getu64Random() >> 16);
+        }
+
+        u64 Getu64Random()
+        {
             m_seed = (m_seed * 0x5DEECE66DLL + 0xBLL) & ((1LL << 48) - 1);
-            return static_cast<unsigned int>(m_seed >> 16);
+            return m_seed;
         }
 
         //Gets a random float in the range [0,1)
@@ -70,43 +72,7 @@ namespace AZ
      * The cost of computing one if making it to great for high performance application, but
      * it's a great tool to get a good seed.
      */
-    class BetterPseudoRandom
-    {
-    public:
-        BetterPseudoRandom();
-        ~BetterPseudoRandom();
-
-        /// Fills a buffer with random data, if true is returned. Otherwise the random generator fails to generate random numbers.
-        bool GetRandom(void* data, size_t dataSize);
-
-        /// Template helper for value types \ref GetRandom
-        template<class T>
-        bool GetRandom(T& value)    { return GetRandom(&value, sizeof(T)); }
-
-    private:
-#if defined(AZ_PLATFORM_WINDOWS)
-#   ifdef AZ_OS64
-        unsigned __int64 m_generatorHandle;
-#   else
-        unsigned long m_generatorHandle;
-#   endif // AZ_OS64
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif AZ_TRAIT_PSUEDO_RANDOM_USE_FILE
-        FILE * m_generatorHandle;
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Random_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Random_h_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-#       error Platform not supported
-#endif
-    };
+    using BetterPseudoRandom = BetterPseudoRandom_Platform;
 
     /**
     * An enum representing the different random distributions available
@@ -121,6 +87,3 @@ namespace AZ
         UniformReal
     };
 }
-
-#endif
-#pragma once

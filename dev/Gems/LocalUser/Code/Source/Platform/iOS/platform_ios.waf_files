@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+        "Source/Platform/iOS":
+        [
+            "../Common/Unimplemented/LocalUser_SystemComponent_Unimplemented.cpp"
+        ]
+    }
+}

@@ -10,24 +10,23 @@
 *
 */
 
-#include <AzCore/Serialization/SerializeContext.h>
-#include <AzCore/Serialization/EditContext.h>
-#include <AzCore/Math/Plane.h>
 #include <AzCore/Math/Color.h>
+#include <AzCore/Math/Plane.h>
+#include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Serialization/SerializeContext.h>
 
 #include <MCore/Source/AzCoreConversions.h>
 
-#include <EMotionFX/Source/BlendTreeFootIKNode.h>
 #include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/BlendTreeFootIKNode.h>
 #include <EMotionFX/Source/Node.h>
 #include <EMotionFX/Source/TransformData.h>
 
+#include <EMotionFX/Source/DebugDraw.h>
 #include <EMotionFX/Source/EventDataFootIK.h>
 #include <EMotionFX/Source/MotionEvent.h>
-#include <EMotionFX/Source/DebugDraw.h>
 
 #include <Integration/AnimationBus.h>
-
 
 namespace EMotionFX
 {
@@ -104,7 +103,7 @@ namespace EMotionFX
 
     float BlendTreeFootIKNode::GetFootHeightOffset(AnimGraphInstance* animGraphInstance) const
     {
-        const float actorInstanceScale = animGraphInstance->GetActorInstance()->GetWorldSpaceTransform().mScale.GetZ();       
+        const float actorInstanceScale = animGraphInstance->GetActorInstance()->GetWorldSpaceTransform().mScale.GetZ();
         MCore::AttributeFloat* input = GetInputFloat(animGraphInstance, INPUTPORT_FOOTHEIGHT);
         return input ? input->GetValue() * actorInstanceScale : m_footHeightOffset * actorInstanceScale;
     }
@@ -151,7 +150,7 @@ namespace EMotionFX
     {
         return HasConnectionAtInputPort(INPUTPORT_ADJUSTHIP) ? GetInputNumberAsBool(animGraphInstance, INPUTPORT_ADJUSTHIP) : m_adjustHip;
     }
-    
+
     bool BlendTreeFootIKNode::GetFootLock(AnimGraphInstance* animGraphInstance) const
     {
         return HasConnectionAtInputPort(INPUTPORT_FOOTLOCK) ? GetInputNumberAsBool(animGraphInstance, INPUTPORT_FOOTLOCK) : m_footLock;
@@ -160,9 +159,9 @@ namespace EMotionFX
     // Inititalize the leg by looking up joint indices from their names etc.
     bool BlendTreeFootIKNode::InitLeg(LegId legId, const AZStd::string& footJointName, const AZStd::string& toeJointName, AnimGraphInstance* animGraphInstance, UniqueData* uniqueData)
     {
-        const ActorInstance*  actorInstance   = animGraphInstance->GetActorInstance();
-        const Actor*          actor           = actorInstance->GetActor();
-        const Skeleton*       skeleton        = actor->GetSkeleton();
+        const ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
+        const Actor* actor = actorInstance->GetActor();
+        const Skeleton* skeleton = actor->GetSkeleton();
 
         Leg& leg = uniqueData->m_legs[legId];
 
@@ -170,16 +169,16 @@ namespace EMotionFX
         const Node* footJoint = skeleton->FindNodeAndIndexByName(footJointName, leg.m_jointIndices[LegJointId::Foot]);
         if (!footJoint)
         {
-            AZ_Error("EMotionFX", "Anim graph footplant IK node '%s' cannot find foot joint named '%s'.", GetName(), footJointName.c_str());
+            AZ_Error("EMotionFX", false, "Anim graph footplant IK node '%s' cannot find foot joint named '%s'.", GetName(), footJointName.c_str());
             return false;
         }
         leg.m_footHeight = actorInstance->GetTransformData()->GetBindPose()->GetModelSpaceTransform(leg.m_jointIndices[LegJointId::Foot]).mPosition.GetZ();
-        
+
         // Now grab the parent, assuming this is the knee.
         Node* knee = footJoint->GetParentNode();
         if (!knee)
         {
-            AZ_Error("EMotionFX", "Anim graph footplant IK node '%s' cannot find knee/lower leg joint as the foot has no parent.", GetName());
+            AZ_Error("EMotionFX", false, "Anim graph footplant IK node '%s' cannot find knee/lower leg joint as the foot has no parent.", GetName());
             return false;
         }
         leg.m_jointIndices[LegJointId::Knee] = knee->GetNodeIndex();
@@ -188,7 +187,7 @@ namespace EMotionFX
         Node* upperLeg = knee->GetParentNode();
         if (!upperLeg)
         {
-            AZ_Error("EMotionFX", "Anim graph footplant IK node '%s' cannot find upper leg joint as the knee/lower leg has no parent.", GetName());
+            AZ_Error("EMotionFX", false, "Anim graph footplant IK node '%s' cannot find upper leg joint as the knee/lower leg has no parent.", GetName());
             return false;
         }
         leg.m_jointIndices[LegJointId::UpperLeg] = upperLeg->GetNodeIndex();
@@ -197,12 +196,12 @@ namespace EMotionFX
         const Node* toeJoint = skeleton->FindNodeAndIndexByName(toeJointName, leg.m_jointIndices[LegJointId::Toe]);
         if (!toeJoint)
         {
-            AZ_Error("EMotionFX", "Anim graph footplant IK node '%s' cannot find toe joint named '%s'", GetName(), toeJointName.c_str());
+            AZ_Error("EMotionFX", false, "Anim graph footplant IK node '%s' cannot find toe joint named '%s'", GetName(), toeJointName.c_str());
             return false;
         }
         leg.m_jointIndices[LegJointId::Toe] = toeJoint->GetNodeIndex();
 
-        leg.m_toeHeight = actorInstance->GetTransformData()->GetBindPose()->GetModelSpaceTransform(leg.m_jointIndices[LegJointId::Toe]).mPosition.GetZ();      
+        leg.m_toeHeight = actorInstance->GetTransformData()->GetBindPose()->GetModelSpaceTransform(leg.m_jointIndices[LegJointId::Toe]).mPosition.GetZ();
         leg.m_weight = 0.0f;
         leg.m_targetWeight = 0.0f;
         leg.DisableFlag(LegFlags::FootDown);
@@ -216,17 +215,16 @@ namespace EMotionFX
     {
         if (uniqueData->m_mustUpdate)
         {
-            const ActorInstance*  actorInstance   = animGraphInstance->GetActorInstance();
-            const Actor*          actor           = actorInstance->GetActor();
-            const Skeleton*       skeleton        = actor->GetSkeleton();
+            const ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
+            const Actor* actor = actorInstance->GetActor();
+            const Skeleton* skeleton = actor->GetSkeleton();
 
             uniqueData->m_mustUpdate = false;
             uniqueData->m_isValid = false;
             uniqueData->m_mustUpdate = true;
 
             // Initialize the legs.
-            if (!InitLeg(LegId::Left, m_leftFootJointName, m_leftToeJointName, animGraphInstance, uniqueData) ||
-                !InitLeg(LegId::Right, m_rightFootJointName, m_rightToeJointName, animGraphInstance, uniqueData))
+            if (!InitLeg(LegId::Left, m_leftFootJointName, m_leftToeJointName, animGraphInstance, uniqueData) || !InitLeg(LegId::Right, m_rightFootJointName, m_rightToeJointName, animGraphInstance, uniqueData))
             {
                 return;
             }
@@ -234,7 +232,7 @@ namespace EMotionFX
             // Try to find the hip joint.
             if (m_hipJointName.empty() || !skeleton->FindNodeAndIndexByName(m_hipJointName, uniqueData->m_hipJointIndex))
             {
-                AZ_Error("EMotionFX", "Anim graph footplant IK node '%s' cannot find hip joint named '%s'", GetName(), m_hipJointName.c_str());
+                AZ_Error("EMotionFX", false, "Anim graph footplant IK node '%s' cannot find hip joint named '%s'", GetName(), m_hipJointName.c_str());
                 return;
             }
 
@@ -311,7 +309,7 @@ namespace EMotionFX
         AZ::Vector3 rayStart;
         AZ::Vector3 rayEnd;
         GenerateRayStartEnd(legId, jointId, animGraphInstance, uniqueData, inputPose, rayStart, rayEnd);
- 
+
         // Normalize the ray direction.
         AZ::Vector3 rayDirection = rayEnd - rayStart;
         const float maxDistance = rayDirection.GetLength();
@@ -333,11 +331,11 @@ namespace EMotionFX
         }
 
         Integration::RaycastRequests::RaycastRequest rayRequest;
-        rayRequest.m_start      = rayStart;
-        rayRequest.m_direction  = rayDirection;
-        rayRequest.m_distance   = maxDistance;
-        rayRequest.m_queryType  = Physics::QueryType::Static;
-        rayRequest.m_hint       = Integration::RaycastRequests::UsecaseHint::FootPlant;
+        rayRequest.m_start = rayStart;
+        rayRequest.m_direction = rayDirection;
+        rayRequest.m_distance = maxDistance;
+        rayRequest.m_queryType = Physics::QueryType::Static;
+        rayRequest.m_hint = Integration::RaycastRequests::UsecaseHint::FootPlant;
 
         // Cast a ray, check for intersections.
         Integration::RaycastRequests::RaycastResult rayResult;
@@ -376,13 +374,13 @@ namespace EMotionFX
             drawData->Lock();
             if (raycastResult.m_intersected)
             {
-                drawData->AddLine(rayStart, raycastResult.m_position, AZ::Color(0.6f, 0.6f, 0.6f, 1.0f));
-                drawData->AddLine(raycastResult.m_position, rayEnd, AZ::Color(0.3f, 0.3f, 0.3f, 1.0f));
-                drawData->AddLine(raycastResult.m_position, raycastResult.m_position + raycastResult.m_normal * 0.1f, AZ::Color(1.0f, 1.0f, 0.0f, 1.0f));
+                drawData->DrawLine(rayStart, raycastResult.m_position, AZ::Color(0.6f, 0.6f, 0.6f, 1.0f));
+                drawData->DrawLine(raycastResult.m_position, rayEnd, AZ::Color(0.3f, 0.3f, 0.3f, 1.0f));
+                drawData->DrawLine(raycastResult.m_position, raycastResult.m_position + raycastResult.m_normal * 0.1f, AZ::Color(1.0f, 1.0f, 0.0f, 1.0f));
             }
             else
             {
-                drawData->AddLine(rayStart, rayEnd, AZ::Color(0.3f, 0.3f, 0.3f, 1.0f));
+                drawData->DrawLine(rayStart, rayEnd, AZ::Color(0.3f, 0.3f, 0.3f, 1.0f));
             }
             drawData->Unlock();
         }
@@ -411,7 +409,7 @@ namespace EMotionFX
             {
                 t = 1.0;
             }
-           
+
             leg.m_weight = AZ::Lerp(leg.m_weight, leg.m_targetWeight, t);
         }
         else
@@ -460,8 +458,7 @@ namespace EMotionFX
                 const AZ::Quaternion deltaRot = AZ::Quaternion::CreateShortestArc(oldToToe, newToToe);
                 result = deltaRot * MCore::EmfxQuatToAzQuat(newTransform.mRotation);
             }
-            else
-            if (footDown)
+            else if (footDown)
             {
                 // Get the current vector from the foot to the toe.
                 const AZ::Vector3 footPos = solveParams.m_outputPose->GetWorldSpaceTransform(footIndex).mPosition;
@@ -495,19 +492,19 @@ namespace EMotionFX
                 const AZ::Plane plane = AZ::Plane::CreateFromNormalAndPoint(intersections.m_footResult.m_normal, intersections.m_footResult.m_position);
                 const AZ::Color color = bothPlanted ? AZ::Color(0.0f, 1.0f, 0.0f, 1.0f) : AZ::Color(0.0f, 1.0f, 1.0f, 1.0f);
 
-                drawData->AddLine(p+plane.GetProjected(AZ::Vector3(-s, 0.0f, 0.0f)), p+plane.GetProjected(AZ::Vector3(s, 0.0f, 0.0f)), color);
-                drawData->AddLine(p+plane.GetProjected(AZ::Vector3(-s, -s, 0.0f)), p+plane.GetProjected(AZ::Vector3(-s, s, 0.0f)), color);
-                drawData->AddLine(p+plane.GetProjected(AZ::Vector3(s, -s, 0.0f)), p+plane.GetProjected(AZ::Vector3(s, s, 0.0f)), color);
-                drawData->AddLine(p+plane.GetProjected(AZ::Vector3(0.0f, -s, 0.0f)), p+plane.GetProjected(AZ::Vector3(0.0f, s, 0.0f)), color);
-                drawData->AddLine(p+plane.GetProjected(AZ::Vector3(-s, -s, 0.0f)), p+plane.GetProjected(AZ::Vector3(s, -s, 0.0f)), color);
-                drawData->AddLine(p+plane.GetProjected(AZ::Vector3(-s, s, 0.0f)), p+plane.GetProjected(AZ::Vector3(s, s, 0.0f)), color);
+                drawData->DrawLine(p + plane.GetProjected(AZ::Vector3(-s, 0.0f, 0.0f)), p + plane.GetProjected(AZ::Vector3(s, 0.0f, 0.0f)), color);
+                drawData->DrawLine(p + plane.GetProjected(AZ::Vector3(-s, -s, 0.0f)), p + plane.GetProjected(AZ::Vector3(-s, s, 0.0f)), color);
+                drawData->DrawLine(p + plane.GetProjected(AZ::Vector3(s, -s, 0.0f)), p + plane.GetProjected(AZ::Vector3(s, s, 0.0f)), color);
+                drawData->DrawLine(p + plane.GetProjected(AZ::Vector3(0.0f, -s, 0.0f)), p + plane.GetProjected(AZ::Vector3(0.0f, s, 0.0f)), color);
+                drawData->DrawLine(p + plane.GetProjected(AZ::Vector3(-s, -s, 0.0f)), p + plane.GetProjected(AZ::Vector3(s, -s, 0.0f)), color);
+                drawData->DrawLine(p + plane.GetProjected(AZ::Vector3(-s, s, 0.0f)), p + plane.GetProjected(AZ::Vector3(s, s, 0.0f)), color);
                 if (leg.IsFlagEnabled(LegFlags::Locked) && solveParams.m_footLock && !leg.IsFlagEnabled(LegFlags::FirstUpdate))
                 {
                     const float m = s * 0.5f;
-                    drawData->AddLine(p+plane.GetProjected(AZ::Vector3(-m, -m, 0.0f)), p+plane.GetProjected(AZ::Vector3(-m, m, 0.0f)), color);
-                    drawData->AddLine(p+plane.GetProjected(AZ::Vector3(m, -m, 0.0f)), p+plane.GetProjected(AZ::Vector3(m, m, 0.0f)), color);
-                    drawData->AddLine(p+plane.GetProjected(AZ::Vector3(-m, -m, 0.0f)), p+plane.GetProjected(AZ::Vector3(m, -m, 0.0f)), color);
-                    drawData->AddLine(p+plane.GetProjected(AZ::Vector3(-m, m, 0.0f)), p+plane.GetProjected(AZ::Vector3(m, m, 0.0f)), color);
+                    drawData->DrawLine(p + plane.GetProjected(AZ::Vector3(-m, -m, 0.0f)), p + plane.GetProjected(AZ::Vector3(-m, m, 0.0f)), color);
+                    drawData->DrawLine(p + plane.GetProjected(AZ::Vector3(m, -m, 0.0f)), p + plane.GetProjected(AZ::Vector3(m, m, 0.0f)), color);
+                    drawData->DrawLine(p + plane.GetProjected(AZ::Vector3(-m, -m, 0.0f)), p + plane.GetProjected(AZ::Vector3(m, -m, 0.0f)), color);
+                    drawData->DrawLine(p + plane.GetProjected(AZ::Vector3(-m, m, 0.0f)), p + plane.GetProjected(AZ::Vector3(m, m, 0.0f)), color);
                 }
                 drawData->Unlock();
             }
@@ -516,7 +513,7 @@ namespace EMotionFX
         return result;
     }
 
-/*
+    /*
     bool BlendTreeFootIKNode::IsFootBelowSurface(LegId legId, UniqueData* uniqueData, const AZ::Vector3& upperLegPosition, const AZ::Vector3& position, const AZ::Vector3& intersectionPoint, const AZ::Vector3& intersectionNormal, float threshold) const
     {
         AZ_UNUSED(position);
@@ -537,7 +534,6 @@ namespace EMotionFX
         const AZ::Plane plane = AZ::Plane::CreateFromNormalAndPoint(intersectionNormal, intersectionPoint);
         return (plane.GetPointDist(position) <= threshold);
     }
-
 
     // Calculate the new transforms for a specific leg.
     void BlendTreeFootIKNode::SolveLegIK(LegId legId, const IKSolveParameters& solveParams)
@@ -578,7 +574,7 @@ namespace EMotionFX
         }
 
         leg.SetFlag(LegFlags::FootDown, footDown);
-        leg.SetFlag(LegFlags::ToeDown, toeDown);       
+        leg.SetFlag(LegFlags::ToeDown, toeDown);
 
         // Handle foot locking position.
         if (solveParams.m_footLock)
@@ -708,8 +704,8 @@ namespace EMotionFX
             drawData->Lock();
             if (!solveParams.m_forceIKDisabled && leg.IsFlagEnabled(LegFlags::IkEnabled) && solveParams.m_intersections[legId].m_footResult.m_intersected)
             {
-                drawData->AddLine(inputGlobalTransforms[LegJointId::UpperLeg].mPosition, kneePos, mVisualizeColor);
-                drawData->AddLine(kneePos, footTargetPosition, mVisualizeColor);
+                drawData->DrawLine(inputGlobalTransforms[LegJointId::UpperLeg].mPosition, kneePos, mVisualizeColor);
+                drawData->DrawLine(kneePos, footTargetPosition, mVisualizeColor);
             }
             drawData->Unlock();
         }
@@ -790,7 +786,7 @@ namespace EMotionFX
                 const AZ::Vector3 hipPos = inputPose.GetWorldSpaceTransform(uniqueData->m_hipJointIndex).mPosition;
                 DebugDraw::ActorInstanceData* drawData = GetDebugDraw().GetActorInstanceData(animGraphInstance->GetActorInstance());
                 drawData->Lock();
-                drawData->AddLine(hipPos, hipPos + AZ::Vector3(0.0f, 0.0f, correction), AZ::Color(1.0f, 0.0f, 1.0f, 1.0f));
+                drawData->DrawLine(hipPos, hipPos + AZ::Vector3(0.0f, 0.0f, correction), AZ::Color(1.0f, 0.0f, 1.0f, 1.0f));
                 drawData->Unlock();
             }
         }
@@ -807,7 +803,7 @@ namespace EMotionFX
         uniqueData->m_curHipCorrection = interpolatedCorrection;
         hipTransform.mPosition += animGraphInstance->GetActorInstance()->GetWorldSpaceTransform().mRotation * AZ::Vector3(0.0f, 0.0f, interpolatedCorrection);
         outputPose.SetWorldSpaceTransform(uniqueData->m_hipJointIndex, hipTransform);
-        inputPose = outputPose;   // As we adjusted our hip, the input pose to the IK leg solve has been modified, so update it.
+        inputPose = outputPose; // As we adjusted our hip, the input pose to the IK leg solve has been modified, so update it.
 
         return correction;
     }
@@ -820,7 +816,7 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
         AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
         if (data)
-        {            
+        {
             uniqueData->m_eventBuffer = data->GetEventBuffer();
         }
     }
@@ -902,7 +898,7 @@ namespace EMotionFX
         if (GetEMotionFX().GetIsInEditorMode())
         {
             SetHasError(animGraphInstance, false);
-        }      
+        }
 
         //-----------------------------------
         // Cast rays to find the height at the location of the feet and toes.
@@ -931,7 +927,7 @@ namespace EMotionFX
         uniqueData->m_legs[LegId::Right].DisableFlag(LegFlags::AllowLocking);
 
         // Try to figure out based on our events, whether IK should be active or not and if we should lock the feet in place or not.
-        bool isLocked[2] { false, false };
+        bool isLocked[2]{ false, false };
         bool ikDisabled[2];
 
         if (m_footPlantMethod == FootPlantDetectionMethod::Automatic)
@@ -1003,7 +999,7 @@ namespace EMotionFX
                                 ikDisabled[LegId::Right] = true;
                             }
                         }
-                    } 
+                    }
                     else // We're dealing with both feet.
                     {
                         AZ_Assert(ikEvent->GetFoot() == EventDataFootIK::Foot::Both, "Expected both feet to be down in the IK event foot type.");
@@ -1030,7 +1026,7 @@ namespace EMotionFX
                             }
                         }
                     }
-                } // if we're a foot IK event                
+                } // if we're a foot IK event
             } // for all event datas
         } // for all events
 
@@ -1051,16 +1047,16 @@ namespace EMotionFX
         // Perform the leg IK.
         IKSolveParameters solveParams;
         solveParams.m_animGraphInstance = animGraphInstance;
-        solveParams.m_actorInstance     = animGraphInstance->GetActorInstance();
-        solveParams.m_uniqueData        = uniqueData;
-        solveParams.m_inputPose         = &inputPose->GetPose();
-        solveParams.m_outputPose        = &outputPose->GetPose();
-        solveParams.m_intersections     = intersectionResults;
-        solveParams.m_weight            = weight;
-        solveParams.m_hipHeightAdj      = hipHeightAdjustment;
-        solveParams.m_deltaTime         = uniqueData->m_timeDelta;
-        solveParams.m_forceIKDisabled   = false;
-        solveParams.m_footLock          = GetFootLock(animGraphInstance);
+        solveParams.m_actorInstance = animGraphInstance->GetActorInstance();
+        solveParams.m_uniqueData = uniqueData;
+        solveParams.m_inputPose = &inputPose->GetPose();
+        solveParams.m_outputPose = &outputPose->GetPose();
+        solveParams.m_intersections = intersectionResults;
+        solveParams.m_weight = weight;
+        solveParams.m_hipHeightAdj = hipHeightAdjustment;
+        solveParams.m_deltaTime = uniqueData->m_timeDelta;
+        solveParams.m_forceIKDisabled = false;
+        solveParams.m_footLock = GetFootLock(animGraphInstance);
         SolveLegIK(LegId::Left, solveParams);
         SolveLegIK(LegId::Right, solveParams);
     }
@@ -1122,8 +1118,7 @@ namespace EMotionFX
             ->Field("footBlendSpeed", &BlendTreeFootIKNode::m_footBlendSpeed)
             ->Field("hipBlendSpeed", &BlendTreeFootIKNode::m_hipBlendSpeed)
             ->Field("adjustHip", &BlendTreeFootIKNode::m_adjustHip)
-            ->Field("footLock", &BlendTreeFootIKNode::m_footLock)
-            ;
+            ->Field("footLock", &BlendTreeFootIKNode::m_footLock);
 
         AZ::EditContext* editContext = serializeContext->GetEditContext();
         if (!editContext)
@@ -1139,60 +1134,59 @@ namespace EMotionFX
 
         root->ClassElement(AZ::Edit::ClassElements::Group, "General settings")
             ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-        ->DataElement(AZ_CRC("ActorNode", 0x35d9eb50), &BlendTreeFootIKNode::m_leftFootJointName, "Left foot joint", "The left foot joint.")
+            ->DataElement(AZ_CRC("ActorNode", 0x35d9eb50), &BlendTreeFootIKNode::m_leftFootJointName, "Left foot joint", "The left foot joint.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeFootIKNode::Reinit)
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-        ->DataElement(AZ_CRC("ActorNode", 0x35d9eb50), &BlendTreeFootIKNode::m_leftToeJointName, "Left toe joint", "The left toe joint.")
+            ->DataElement(AZ_CRC("ActorNode", 0x35d9eb50), &BlendTreeFootIKNode::m_leftToeJointName, "Left toe joint", "The left toe joint.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeFootIKNode::Reinit)
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-        ->DataElement(AZ_CRC("ActorNode", 0x35d9eb50), &BlendTreeFootIKNode::m_rightFootJointName, "Right foot joint", "The right foot joint.")
+            ->DataElement(AZ_CRC("ActorNode", 0x35d9eb50), &BlendTreeFootIKNode::m_rightFootJointName, "Right foot joint", "The right foot joint.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeFootIKNode::Reinit)
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-        ->DataElement(AZ_CRC("ActorNode", 0x35d9eb50), &BlendTreeFootIKNode::m_rightToeJointName, "Right toe joint", "The right toe joint.")
+            ->DataElement(AZ_CRC("ActorNode", 0x35d9eb50), &BlendTreeFootIKNode::m_rightToeJointName, "Right toe joint", "The right toe joint.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeFootIKNode::Reinit)
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-        ->DataElement(AZ_CRC("ActorNode", 0x35d9eb50), &BlendTreeFootIKNode::m_hipJointName, "Hip joint", "The hip/pelvis joint. This join will be moved downward in some cases to make the feet reach the surface below.")
+            ->DataElement(AZ_CRC("ActorNode", 0x35d9eb50), &BlendTreeFootIKNode::m_hipJointName, "Hip joint", "The hip/pelvis joint. This join will be moved downward in some cases to make the feet reach the surface below.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeFootIKNode::Reinit)
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-        ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeFootIKNode::m_footPlantMethod, "Footplant method", "The detection method for foot planting.")
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeFootIKNode::m_footPlantMethod, "Footplant method", "The detection method for foot planting.")
             ->EnumAttribute(FootPlantDetectionMethod::Automatic, "Automatic")
             ->EnumAttribute(FootPlantDetectionMethod::MotionEvents, "FootIK motion events")
-        ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeFootIKNode::m_raycastLength, "Raycast length", "The maximum distance from the hips towards the feet.")
-            ->Attribute(AZ::Edit::Attributes::Min,  0.001f)
-            ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeFootIKNode::m_raycastLength, "Raycast length", "The maximum distance from the hips towards the feet.")
+            ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
+            ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
             ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
-        ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeFootIKNode::m_ikBlendSpeed, "Blend speed", "How fast should the leg IK blend in or out?")
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeFootIKNode::m_ikBlendSpeed, "Blend speed", "How fast should the leg IK blend in or out?")
             ->Attribute(AZ::Edit::Attributes::Min, 0.1f)
             ->Attribute(AZ::Edit::Attributes::Max, 10.0f)
             ->Attribute(AZ::Edit::Attributes::Step, 0.01f);
 
         root->ClassElement(AZ::Edit::ClassElements::Group, "Foot settings")
             ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-        ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeFootIKNode::m_footHeightOffset, "Height offset", "The foot height offset, used to move the feet up or down, to align nicely to the surface.")
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeFootIKNode::m_footHeightOffset, "Height offset", "The foot height offset, used to move the feet up or down, to align nicely to the surface.")
             ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
-            ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
-            ->Attribute(AZ::Edit::Attributes::Step, 0.005f)
+            ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
             ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
-        ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeFootIKNode::m_footBlendSpeed, "Blend speed", "How fast should the foot alignment blend in or out?")
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeFootIKNode::m_footBlendSpeed, "Blend speed", "How fast should the foot alignment blend in or out?")
             ->Attribute(AZ::Edit::Attributes::Min, 0.1f)
             ->Attribute(AZ::Edit::Attributes::Max, 10.0f)
             ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
-        ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeFootIKNode::m_maxFootAdjustment, "Max adjustment", "Disable the IK solve for the leg when the foot IK target would be further away than this number of units.")
-            ->Attribute(AZ::Edit::Attributes::Min,  0.001f)
-            ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeFootIKNode::m_maxFootAdjustment, "Max adjustment", "Disable the IK solve for the leg when the foot IK target would be further away than this number of units.")
+            ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
+            ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
             ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
-        ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeFootIKNode::m_footLock, "Enable locking", "Enable foot locking? This locks the feet into fixed positions. Foot locking requires the use of motion events using the EventDataFootIK event data type.");
-            
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeFootIKNode::m_footLock, "Enable locking", "Enable foot locking? This locks the feet into fixed positions. Foot locking requires the use of motion events using the EventDataFootIK event data type.");
+
         root->ClassElement(AZ::Edit::ClassElements::Group, "Hip settings")
             ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-        ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeFootIKNode::m_maxHipAdjustment, "Max adjustment", "The maximum number of units the hip can move when adjust hip is enabled.")
-            ->Attribute(AZ::Edit::Attributes::Min,  0.01f)
-            ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeFootIKNode::m_maxHipAdjustment, "Max adjustment", "The maximum number of units the hip can move when adjust hip is enabled.")
+            ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
+            ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
             ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
-        ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeFootIKNode::m_hipBlendSpeed, "Blend speed", "How fast should the hip changes blend?")
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeFootIKNode::m_hipBlendSpeed, "Blend speed", "How fast should the hip changes blend?")
             ->Attribute(AZ::Edit::Attributes::Min, 0.1f)
             ->Attribute(AZ::Edit::Attributes::Max, 10.0f)
             ->Attribute(AZ::Edit::Attributes::Step, 0.05f)
-        ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeFootIKNode::m_adjustHip, "Enable adjustments", "Allow hip height adjustments?");
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeFootIKNode::m_adjustHip, "Enable adjustments", "Allow hip height adjustments?");
     }
 } // namespace EMotionFX

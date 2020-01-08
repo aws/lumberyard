@@ -51,6 +51,8 @@
             "Rules/ISkinRule.h",
             "Rules/SkinRule.h",
             "Rules/SkinRule.cpp",
+            "Rules/SimulatedObjectSetupRule.h",
+            "Rules/SimulatedObjectSetupRule.cpp",
             "Rules/CoordinateSystemRule.h",
             "Rules/CoordinateSystemRule.cpp",
             "Rules/MotionRangeRule.h",

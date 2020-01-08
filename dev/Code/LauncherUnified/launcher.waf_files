@@ -1,0 +1,12 @@
+{
+    "none" :
+    {
+        "Source" :
+        [
+            "Launcher_precompiled.cpp",
+            "Launcher_precompiled.h",
+            "Launcher.cpp",
+            "Launcher.h"
+        ]
+    }
+}

@@ -71,6 +71,7 @@ namespace Vegetation
 
     void DescriptorWeightSelectorComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& services)
     {
+        services.push_back(AZ_CRC("VegetationDescriptorSelectorService", 0xe684eeec));
     }
 
     void DescriptorWeightSelectorComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& services)

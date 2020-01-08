@@ -27,6 +27,7 @@ namespace RADTelemetry
         : public AZ::Component
         , private AZStd::ThreadEventBus::Handler
         , private AZ::SystemTickBus::Handler
+        , private AZ::Debug::ProfilerRequestBus::Handler
         , private ProfileTelemetryRequestBus::Handler
     {
     public:
@@ -48,15 +49,21 @@ namespace RADTelemetry
         void OnThreadExit(const AZStd::thread_id& id) override;
 
         //////////////////////////////////////////////////////////////////////////
-        // SystemTick event bus
+        // SystemTickBus
         void OnSystemTick() override;
+
+        //////////////////////////////////////////////////////////////////////////
+        // ProfilerRequstBus
+        bool IsActive() override;
+        void FrameAdvance(AZ::Debug::ProfileFrameAdvanceType type) override;
 
         //////////////////////////////////////////////////////////////////////////
         // ProfileTelemetryRequestBus
         void ToggleEnabled() override;
         void SetAddress(const char *address, AZ::u16 port) override;
         void SetCaptureMask(AZ::Debug::ProfileCategoryPrimitiveType mask) override;
-        bool IsEnabled() override;
+        void SetFrameAdvanceType(AZ::Debug::ProfileFrameAdvanceType type) override;
+
         AZ::Debug::ProfileCategoryPrimitiveType GetCaptureMask() override;
         AZ::Debug::ProfileCategoryPrimitiveType GetDefaultCaptureMask() override;
         tm_api* GetApiInstance() override;
@@ -90,7 +97,7 @@ namespace RADTelemetry
         const char* m_address = "127.0.0.1";
         char* m_buffer = nullptr;
         AZ::Debug::ProfileCategoryPrimitiveType m_captureMask = GetDefaultCaptureMaskInternal();
-
+        AZ::Debug::ProfileFrameAdvanceType m_frameAdvanceType = AZ::Debug::ProfileFrameAdvanceType::Game;
         AZ::u16 m_port = 4719;
         bool m_running = false;
         bool m_initialized = false;

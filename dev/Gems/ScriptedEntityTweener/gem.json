@@ -1,20 +1,4 @@
 {
-    "Dependencies": [
-        {
-            "Uuid": "ff06785f7145416b9d46fde39098cb0c",
-            "VersionConstraints": [
-                "~>0.1"
-            ],
-            "_comment": "LmbrCentral"
-        },
-		{
-            "Uuid": "3b9a978ed6f742a1acb99f74379a342c",
-            "VersionConstraints": [
-                "~>0.1"
-            ],
-            "_comment": "Maestro"
-        }
-    ],
     "GemFormatVersion": 3,
     "Uuid": "0d1f5f05559c4a99aaefd30633a0158e",
     "Name": "ScriptedEntityTweener",

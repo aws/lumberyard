@@ -26,8 +26,5 @@ namespace ScriptCanvasEditor
     namespace PropertySlotIds
     {
         static const AZ::Crc32 DefaultValue = AZ_CRC("ScriptCanvas_Property_DefaultValue", 0xf837b153);
-
-        static const AZ::Crc32 GetVariableReference = AZ_CRC("ScriptCanvas_Property_GetVariableReference", 0x67fa0f6e);
-        static const AZ::Crc32 SetVariableReference = AZ_CRC("ScriptCanvas_Property_SetVariableReference", 0xc9d14f12);
     }
 }

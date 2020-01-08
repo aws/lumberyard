@@ -9,10 +9,10 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "TestTypes.h"
 #include "AzCore/Outcome/Outcome.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Memory/PoolAllocator.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 namespace UnitTest
 {
@@ -44,7 +44,6 @@ namespace UnitTest
         {
         }
 
-#ifdef AZ_HAS_RVALUE_REFS
         KnowThyself(KnowThyself&& rhs)
             : m_state(State::MoveConstructor)
             , m_id(rhs.m_id)
@@ -53,7 +52,6 @@ namespace UnitTest
         {
             rhs.m_state = State::StolenFrom;
         }
-#endif // AZ_HAS_RVALUE_REFS
 
 #ifdef AZ_HAS_INITIALIZERS_LIST
         KnowThyself(std::initializer_list<int> lastBecomesId)
@@ -71,7 +69,6 @@ namespace UnitTest
             return *this;
         }
 
-#ifdef AZ_HAS_RVALUE_REFS
         KnowThyself& operator=(KnowThyself&& rhs)
         {
             m_state = State::MoveAssignment;
@@ -81,7 +78,6 @@ namespace UnitTest
             rhs.m_state = State::StolenFrom;
             return *this;
         }
-#endif // AZ_HAS_RVALUE_REFS
 
         ~KnowThyself()
         {
@@ -213,11 +209,7 @@ namespace UnitTest
                 AZ::Outcome<KnowThyself, Error> outcome = AZ::Success(KnowThyself(5));
                 AZ_TEST_ASSERT(outcome.IsSuccess());
                 AZ_TEST_ASSERT(outcome.GetValue().m_id == 5);
-#ifdef AZ_HAS_RVALUE_REFS
                 AZ_TEST_ASSERT(outcome.GetValue().m_state == KnowThyself::State::MoveConstructor);
-#else
-                AZ_TEST_ASSERT(outcome.GetValue().m_state == KnowThyself::State::CopyConstructor);
-#endif // AZ_HAS_RVALUE_REFS
             }
 
             { // test value copy constructor
@@ -242,11 +234,7 @@ namespace UnitTest
                 AZ::Outcome<int, KnowThyself> outcome = AZ::Failure(KnowThyself(5));
                 AZ_TEST_ASSERT(!outcome.IsSuccess());
                 AZ_TEST_ASSERT(outcome.GetError().m_id == 5);
-#ifdef AZ_HAS_RVALUE_REFS
                 AZ_TEST_ASSERT(outcome.GetError().m_state == KnowThyself::State::MoveConstructor);
-#else
-                AZ_TEST_ASSERT(outcome.GetError().m_state == KnowThyself::State::CopyConstructor);
-#endif // AZ_HAS_RVALUE_REFS
             }
 
             { // test copy constructor on successful outcome
@@ -271,22 +259,14 @@ namespace UnitTest
                 AZ::Outcome<KnowThyself, Error> outcome(AZ::Outcome<KnowThyself, Error>(AZ::Success(KnowThyself(5))));
                 AZ_TEST_ASSERT(outcome.IsSuccess());
                 AZ_TEST_ASSERT(outcome.GetValue().m_id == 5);
-#ifdef AZ_HAS_RVALUE_REFS
                 AZ_TEST_ASSERT(outcome.GetValue().m_state == KnowThyself::State::MoveConstructor);
-#else
-                AZ_TEST_ASSERT(outcome.GetValue().m_state == KnowThyself::State::CopyConstructor);
-#endif // AZ_HAS_RVALUE_REFS
             }
 
             { // test move constructor on failed outcome
                 AZ::Outcome<int, KnowThyself> outcome(AZ::Outcome<int, KnowThyself>(AZ::Failure(KnowThyself(5))));
                 AZ_TEST_ASSERT(!outcome.IsSuccess());
                 AZ_TEST_ASSERT(outcome.GetError().m_id == 5);
-#ifdef AZ_HAS_RVALUE_REFS
                 AZ_TEST_ASSERT(outcome.GetError().m_state == KnowThyself::State::MoveConstructor);
-#else
-                AZ_TEST_ASSERT(outcome.GetError().m_state == KnowThyself::State::CopyConstructor);
-#endif // AZ_HAS_RVALUE_REFS
             }
 
             { // test assignment between successful outcomes
@@ -298,12 +278,10 @@ namespace UnitTest
                 AZ_TEST_ASSERT(outcomeDst.GetValue().m_state == KnowThyself::State::CopyAssignment);
                 AZ_TEST_ASSERT(outcomeSrc.GetValue().m_state != KnowThyself::State::StolenFrom);
 
-#ifdef AZ_HAS_RVALUE_REFS
                 outcomeDst = AZStd::move(outcomeSrc); // move from src
                 AZ_TEST_ASSERT(outcomeDst.GetValue().m_id == 5);
                 AZ_TEST_ASSERT(outcomeDst.GetValue().m_state == KnowThyself::State::MoveAssignment);
                 AZ_TEST_ASSERT(outcomeSrc.GetValue().m_state == KnowThyself::State::StolenFrom);
-#endif // AZ_HAS_RVALUE_REFS
             }
 
             { // test assignment between failed outcomes
@@ -315,12 +293,10 @@ namespace UnitTest
                 AZ_TEST_ASSERT(outcomeDst.GetError().m_state == KnowThyself::State::CopyAssignment);
                 AZ_TEST_ASSERT(outcomeSrc.GetError().m_state != KnowThyself::State::StolenFrom);
 
-#ifdef AZ_HAS_RVALUE_REFS
                 outcomeDst = AZStd::move(outcomeSrc); // move from src
                 AZ_TEST_ASSERT(outcomeDst.GetError().m_id == 5);
                 AZ_TEST_ASSERT(outcomeDst.GetError().m_state == KnowThyself::State::MoveAssignment);
                 AZ_TEST_ASSERT(outcomeSrc.GetError().m_state == KnowThyself::State::StolenFrom);
-#endif // AZ_HAS_RVALUE_REFS
             }
 
             { // test assignment operator going from successful to failed outcome
@@ -335,7 +311,6 @@ namespace UnitTest
                 AZ_TEST_ASSERT(successToFailure.GetError().m_id == 5);
                 AZ_TEST_ASSERT(failedOutcome.GetError().m_state != KnowThyself::State::StolenFrom);
 
-#ifdef AZ_HAS_RVALUE_REFS
                 successToFailure = AZ::Success(RefCounter(&counter)); // reset back to success
                 AZ_TEST_ASSERT(counter == 1);
                 successToFailure = AZStd::move(failedOutcome);
@@ -343,7 +318,6 @@ namespace UnitTest
                 AZ_TEST_ASSERT(!successToFailure.IsSuccess());
                 AZ_TEST_ASSERT(successToFailure.GetError().m_id == 5);
                 AZ_TEST_ASSERT(failedOutcome.GetError().m_state == KnowThyself::State::StolenFrom);
-#endif // AZ_HAS_RVALUE_REFS
             }
 
             { // test assignment operator going from failed to successful outcome
@@ -358,7 +332,6 @@ namespace UnitTest
                 AZ_TEST_ASSERT(failureToSuccess.GetValue().m_id == 5);
                 AZ_TEST_ASSERT(successfulOutcome.GetValue().m_state != KnowThyself::State::StolenFrom);
 
-#ifdef AZ_HAS_RVALUE_REFS
                 failureToSuccess = AZ::Failure(RefCounter(&counter)); // reset back to failure
                 AZ_TEST_ASSERT(counter == 1);
                 failureToSuccess = AZStd::move(successfulOutcome);
@@ -366,7 +339,6 @@ namespace UnitTest
                 AZ_TEST_ASSERT(failureToSuccess.IsSuccess());
                 AZ_TEST_ASSERT(failureToSuccess.GetValue().m_id == 5);
                 AZ_TEST_ASSERT(successfulOutcome.GetValue().m_state == KnowThyself::State::StolenFrom);
-#endif // AZ_HAS_RVALUE_REFS
             }
 
             { // test value type with trivial destructor
@@ -379,7 +351,6 @@ namespace UnitTest
                 AZ_TEST_ASSERT(!outcome.IsSuccess());
             }
 
-#ifdef AZ_HAS_RVALUE_REFS
             { // test TakeValue and TakeError
                 AZ::Outcome<KnowThyself, Error> goodOutcome = AZ::Success(KnowThyself(5));
                 KnowThyself fromGoodOutcome = goodOutcome.TakeValue();
@@ -393,7 +364,6 @@ namespace UnitTest
                 AZ_TEST_ASSERT(fromFailedOutcome.m_state == KnowThyself::State::MoveConstructor);
                 AZ_TEST_ASSERT(failedOutcome.GetError().m_state == KnowThyself::State::StolenFrom);
             }
-#endif // AZ_HAS_RVALUE_REFS
 
             { // test GetValueOr()
                 AZ::Outcome<KnowThyself, Error> goodOutcome = AZ::Success(KnowThyself(5));
@@ -405,13 +375,11 @@ namespace UnitTest
                 KnowThyself shouldBeSeven = failedOutcome.GetValueOr(KnowThyself(7));
                 AZ_TEST_ASSERT(shouldBeSeven.m_id == 7);
 
-#ifdef AZ_HAS_RVALUE_REFS
                 // test that GetValueOr properly handles rvalue parameters
                 KnowThyself shouldBeStolenFrom(9);
                 KnowThyself shouldBeNine = failedOutcome.GetValueOr(AZStd::move(shouldBeStolenFrom));
                 AZ_TEST_ASSERT(shouldBeNine.m_id == 9);
                 AZ_TEST_ASSERT(shouldBeStolenFrom.m_state == KnowThyself::State::StolenFrom);
-#endif // AZ_HAS_RVALUE_REFS
 
                 // test that GetValueOr properly handles lvalue parameters
                 KnowThyself shouldEqualGood = failedOutcome.GetValueOr(goodOutcome.GetValue());
@@ -513,8 +481,8 @@ namespace UnitTest
         AZ::GenericClassInfo* outcomeGenericInfo = AZ::SerializeGenericTypeInfo<TestOutcome>::GetGenericInfo();
         ASSERT_NE(nullptr, outcomeGenericInfo);
         outcomeGenericInfo->Reflect(m_serializeContext.get());
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         outcomeGenericInfo->Reflect(m_serializeContext.get());
-        AZ_TEST_STOP_ASSERTTEST(0);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(0);
     }
 } // namespace UnitTest

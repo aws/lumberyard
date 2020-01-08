@@ -38,7 +38,7 @@ namespace Snow
                 editContext->Class<EditorSnowComponent>("Snow", "Defines snow settings for the level ")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Environment")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Snow.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Snow.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Snow.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/snow-component")

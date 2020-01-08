@@ -15,9 +15,32 @@
 #include <AzCore/Component/Component.h>
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzFramework/Asset/AssetCatalog.h>
 
 namespace TestAssetBuilder
 {
+    struct TestDependentAsset
+        : public AZ::Data::AssetData
+    {
+        AZ_CLASS_ALLOCATOR(TestDependentAsset, AZ::SystemAllocator, 0);
+        AZ_RTTI(TestDependentAsset, "{B91BCEFE-1725-47E8-A762-C09F09425904}", AZ::Data::AssetData);
+
+        TestDependentAsset() = default;
+
+    };
+
+    class TestDependentAssetCatalog
+        : public AZ::Data::AssetCatalog
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(TestDependentAssetCatalog, AZ::SystemAllocator, 0);
+
+        TestDependentAssetCatalog() = default;
+
+        AZ::Data::AssetStreamInfo GetStreamInfoForLoad(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& type) override;
+    };
+
     //! TestAssetBuilderComponent handles the lifecycle of the builder.
     class TestAssetBuilderComponent
         : public AZ::Component,
@@ -49,6 +72,8 @@ namespace TestAssetBuilder
         //////////////////////////////////////////////////////////////////////////
 
     private:
+
         bool m_isShuttingDown = false;
+        AZStd::unique_ptr<TestDependentAssetCatalog> m_dependentCatalog;
     };
 } // namespace TestAssetBuilder

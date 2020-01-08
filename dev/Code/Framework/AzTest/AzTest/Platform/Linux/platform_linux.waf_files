@@ -1,0 +1,14 @@
+{
+    "none": {
+        "Platform/Linux": [
+            "../Common/UnixLike/AzTest/ColorizedOutput_UnixLike.cpp"
+        ]
+    },
+    "auto": {
+        "Platform/Linux": [
+            "Platform_Linux.cpp",
+            "AzTest_Traits_Platform.h",
+            "AzTest_Traits_Linux.h"
+        ]
+    }
+}

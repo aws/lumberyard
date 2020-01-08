@@ -1,0 +1,16 @@
+{
+    "platform": {
+        "appletv": {
+            "libpath": [
+                "lib/appletv"
+            ],
+            "lib": [
+                "libtomcrypt.a"
+            ],
+            "linkflags": [
+                "-force_load",
+                "%LIBPATH(libtomcrypt.a)"
+            ]
+        }
+    }
+}

@@ -10,13 +10,13 @@
 *
 */
 
+#pragma once
+
 #include <AzFramework/Physics/Collision.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI_Internals.h>
 #include <AzFramework/Physics/World.h>
 #include <QWidget>
 #include <PhysX/ConfigurationBus.h>
-
-#pragma once
 
 namespace PhysX
 {
@@ -35,11 +35,11 @@ namespace PhysX
 
             explicit SettingsWidget(QWidget* parent = nullptr);
 
-            void SetValue(const PhysX::Settings& configuration, const Physics::WorldConfiguration& worldConfiguration,
+            void SetValue(const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary, const Physics::WorldConfiguration& worldConfiguration,
                 const PhysX::EditorConfiguration& editorConfiguration);
 
         signals:
-            void onValueChanged(const PhysX::Settings& configuration, const Physics::WorldConfiguration& worldConfiguration,
+            void onValueChanged(const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary, const Physics::WorldConfiguration& worldConfiguration,
                 const PhysX::EditorConfiguration& editorConfiguration);
 
         private:
@@ -53,7 +53,7 @@ namespace PhysX
 
             AzToolsFramework::ReflectedPropertyEditor* m_propertyEditor;
             DocumentationLinkWidget* m_documentationLinkWidget;
-            PhysX::Settings m_settings;
+            Physics::DefaultMaterialLibraryAssetReflectionWrapper m_defaultPhysicsMaterialLibrary;
             Physics::WorldConfiguration m_worldConfiguration;
             PhysX::EditorConfiguration m_editorConfiguration;
         };

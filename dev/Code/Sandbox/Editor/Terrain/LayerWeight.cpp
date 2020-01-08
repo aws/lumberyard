@@ -39,7 +39,7 @@ LayerWeight::LayerWeight(const AZStd::vector<uint8>& layerIds, const AZStd::vect
     int weight = 0;
     for (decltype(count)i = 0; i < count; ++i)
     {
-        Ids[i] = sortedLayerIds[i];
+        Ids[i] = (sortedWeights[i] > 0) ? sortedLayerIds[i] : Undefined;
         Weights[i] = sortedWeights[i];
         weight += sortedWeights[i];
     }
@@ -73,7 +73,7 @@ void LayerWeight::SetWeight(uint8 layerId, uint8 weight)
 
     int remainder = static_cast<int>(weight) - static_cast<int>(Weights[foundIndex]);
     Weights[foundIndex] = weight;
-    Ids[foundIndex] = layerId | (Ids[foundIndex] & CLayer::e_hole);
+    Ids[foundIndex] = ((weight > 0) ? layerId : Undefined) | (Ids[foundIndex] & CLayer::e_hole);
 
     Normalize(foundIndex, remainder);
     Sort();

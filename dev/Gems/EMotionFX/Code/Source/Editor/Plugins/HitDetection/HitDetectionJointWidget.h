@@ -42,7 +42,7 @@ namespace EMotionFX
         // SkeletonModelJointWidget
         QWidget* CreateContentWidget(QWidget* parent);
         QWidget* CreateNoSelectionWidget(QWidget* parent);
-        void InternalReinit(Actor* actor, Node* node);
+        void InternalReinit(Actor* actor, Node* joint);
 
         Physics::CharacterColliderNodeConfiguration* GetNodeConfig();
 

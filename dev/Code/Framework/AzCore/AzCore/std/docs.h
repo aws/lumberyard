@@ -510,7 +510,6 @@ namespace AZStd
     /**
      * \page AZStdExamples Examples
      *
-     * \li \subpage TypeTraitExamples "Type traits."
      * \li \subpage AllocatorExamples "Allocators."
      * \li \subpage ArrayExamples "Array container."
      * \li \subpage VectorExamples "Vector and fixed_vector container."
@@ -519,18 +518,6 @@ namespace AZStd
      * \li \subpage QueueAndPriQueueExamples "Queue and priority queue container."
      * \li \subpage StackExamples "Stack container."
      * \li \subpage HashExamples "Unordered containers."
-     */
-
-    /**
-     * \page TypeTraitExamples
-     * Here we will demonstrate some very common type traits used. They are part of
-     * \ref CTR1 and you can find many examples on-line and in the AZStd code.
-     * References: \ref AZSTD_DECLARE_POD_TYPE, \ref UnitTestInternal::MyStruct, \ref UnitTestInternal::MyClass
-     *
-     * \dontinclude examples.cpp
-     *
-     * \skip // TypeTraitExample-Begin
-     * \until // TypeTraitExample-End
      */
 
     /**

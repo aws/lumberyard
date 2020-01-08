@@ -14,30 +14,12 @@
 
 #include <HttpRequestor/HttpRequestorBus.h>
 #include <Twitch/TwitchTypes.h>
-#include <Twitch/FuelTypes.h>
 
 namespace Twitch
 {
-    class IFuelInterface;
-    using IFuelInterfacePtr = std::shared_ptr<IFuelInterface>;
-
-    class IFuelInterface
+    class AZ_DEPRECATED(,"The IFuelInterface has been deprecated. HTTPRequest functionality has been moved to TwitchREST. Auth has been mvoed to TwitchSystemComponent. All remaining has been deprecated.")
+        IFuelInterface
     {
-    public:
-        static IFuelInterfacePtr Alloc();
 
-        virtual ~IFuelInterface() = default;
-
-        virtual ResultCode GetClientID(AZStd::string& clientid) = 0;
-        virtual ResultCode GetOAuthToken(AZStd::string& token) = 0;
-        virtual ResultCode RequestEntitlement(AZStd::string& entitlement) = 0;
-        virtual ResultCode RequestProductCatalog(ProductData& productData) = 0;
-        virtual ResultCode PurchaseProduct(const Twitch::FuelSku& sku, PurchaseReceipt& purchaseReceipt) = 0;
-        virtual ResultCode GetPurchaseUpdates(const AZStd::string& syncToken, PurchaseUpdate& purchaseUpdate) = 0;
-        virtual bool SetApplicationID(const AZStd::string& twitchApplicaitonID) = 0;
-        virtual AZStd::string GetApplicationID() const = 0;
-        virtual AZStd::string GetSessionID() const = 0;
-        virtual void AddHTTPRequest(const AZStd::string& URI, Aws::Http::HttpMethod method, const HttpRequestor::Headers & headers, const HttpRequestor::Callback & callback) = 0;
-        virtual void AddHTTPRequest(const AZStd::string& URI, Aws::Http::HttpMethod method, const HttpRequestor::Headers & headers, const AZStd::string& body, const HttpRequestor::Callback& callback) = 0;
     };
 }

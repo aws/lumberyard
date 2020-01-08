@@ -15,8 +15,11 @@ def build(bld):
         pch         = "",
         disable_pch = True,
         uselib      = ['RAD_TELEMETRY'],
+        includes    = [bld.Path('Code/CryEngine/CryCommon')
+                      ],
         export_internal_3rd_party_libs = True,
         export_includes = [bld.Path('Gems/RADTelemetry/External/Include')],
         debug_export_defines = ['AZ_PROFILE_TELEMETRY'],
-        profile_export_defines =['AZ_PROFILE_TELEMETRY']
+        profile_export_defines =['AZ_PROFILE_TELEMETRY'],
+        platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)]
     )

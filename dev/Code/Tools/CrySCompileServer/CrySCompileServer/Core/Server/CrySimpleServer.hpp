@@ -67,15 +67,20 @@ public:
     std::vector<AZStd::string> m_WhitelistAddresses;
     
     // Shader Compilers ID
-    static const char* m_Orbis_DXC; // ACCEPTED_USE
-    static const char* m_Durango_FXC; // ACCEPTED_USE
+    static const char* m_Orbis_DXC;
+    static const char* m_Durango_FXC;
     static const char* m_D3D11_FXC;
     static const char* m_GLSL_HLSLcc;
     static const char* m_METAL_HLSLcc;
     static const char* m_GLSL_LLVM_DXC;
     static const char* m_METAL_LLVM_DXC;
 
-    int m_ProvoHardwareTarget = -1;
+#if defined(TOOLS_SUPPORT_PROVO)
+#include "Provo/CrySimpleServer_hpp_provo.inl"
+#endif
+#if defined(TOOLS_SUPPORT_XENIA)
+#include "Xenia/CrySimpleServer_hpp_xenia.inl"
+#endif
 
     static void Create();
     static void Destroy();

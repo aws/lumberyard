@@ -1,0 +1,18 @@
+{
+  "platform": {
+    "win_x64_vs2017": {
+      "sharedlibpath": [
+        "External/Dll"
+      ],
+      "importlibpath": [
+        "External/Lib"
+      ],
+      "import": [
+        "rad_tm_win64.lib"
+      ],
+      "shared": [
+        "rad_tm_win64.dll"
+      ]
+    }
+  }
+}

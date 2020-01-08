@@ -107,59 +107,6 @@ namespace UnitTest
         }
     };
 
-    struct MockInstanceSystemRequestBus
-        : public Vegetation::InstanceSystemRequestBus::Handler
-    {
-        int m_count = 0;
-        int m_created = 0;
-        int m_destroyed = 0;
-
-        MockInstanceSystemRequestBus()
-        {
-            Vegetation::InstanceSystemRequestBus::Handler::BusConnect();
-        }
-
-        ~MockInstanceSystemRequestBus() override
-        {
-            Vegetation::InstanceSystemRequestBus::Handler::BusDisconnect();
-        }
-
-        Vegetation::DescriptorPtr RegisterUniqueDescriptor(const Vegetation::Descriptor& descriptor) override
-        {
-            m_count++;
-            return Vegetation::DescriptorPtr();
-        }
-
-        void ReleaseUniqueDescriptor(Vegetation::DescriptorPtr descriptorPtr) override
-        {
-            m_count++;
-        }
-
-        void CreateInstance(Vegetation::InstanceData& instanceData) override
-        {
-            m_created++;
-            m_count++;
-            instanceData.m_instanceId = Vegetation::InstanceId();
-        }
-
-        void DestroyInstance(Vegetation::InstanceId instanceId) override
-        {
-            m_destroyed++;
-            m_count++;
-        }
-
-        void DestroyAllInstances() override
-        {
-            m_destroyed = m_created;
-            m_count++;
-        }
-
-        void Cleanup() override
-        {
-
-        }
-    };
-
     struct MockDescriptorBus
         : public Vegetation::InstanceSystemRequestBus::Handler
     {
@@ -336,7 +283,7 @@ namespace UnitTest
     {
         void ClearData()
         {
-            m_assetData = nullptr;
+            this->m_assetData = nullptr;
         }
     };
 

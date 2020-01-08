@@ -31,7 +31,6 @@ namespace AZ
     class VertexContainer
     {
     public:
-        AZ_TYPE_INFO(VertexContainer, "{39A06CC2-D2C4-4803-A2D1-0E674A61EF4E}", Vertex)
         AZ_CLASS_ALLOCATOR_DECL
 
         VertexContainer() = default;
@@ -106,6 +105,9 @@ namespace AZ
         /// Internal function called when a vertex is modified in the property grid (AZ::Edit::Attributes::ChangeNotify).
         void UpdateNotify(size_t index) const;
     };
+
+    AZ_TYPE_INFO_TEMPLATE(VertexContainer, "{39A06CC2-D2C4-4803-A2D1-0E674A61EF4E}", AZ_TYPE_INFO_TYPENAME);
+
 } // namespace AZ
 
 #include <AzCore/Math/Internal/VertexContainer.inl>

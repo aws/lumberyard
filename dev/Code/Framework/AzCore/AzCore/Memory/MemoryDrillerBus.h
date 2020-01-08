@@ -37,12 +37,15 @@ namespace AZ
             virtual ~MemoryDrillerMessages() {}
 
             /// Register allocation (with customizable tracking settings - TODO: we should centralize this settings and remove them from here)
-            virtual void RegisterAllocator(IAllocator* allocator, unsigned char stackRecordLevels, bool isMemoryGuard, bool isMarkUnallocatedMemory) = 0;
+            virtual void RegisterAllocator(IAllocator* allocator) = 0;
             virtual void UnregisterAllocator(IAllocator* allocator) = 0;
 
             virtual void RegisterAllocation(IAllocator* allocator, void* address, size_t byteSize, size_t alignment, const char* name, const char* fileName, int lineNum, unsigned int stackSuppressCount) = 0;
             virtual void UnregisterAllocation(IAllocator* allocator, void* address, size_t byteSize, size_t alignment, AllocationInfo* info) = 0;
+            virtual void ReallocateAllocation(IAllocator* allocator, void* prevAddress, void* newAddress, size_t newByteSize, size_t newAlignment) = 0;
             virtual void ResizeAllocation(IAllocator* allocator, void* address, size_t newSize) = 0;
+
+            virtual void DumpAllAllocations() = 0;
         };
 
         typedef AZ::EBus<MemoryDrillerMessages> MemoryDrillerBus;

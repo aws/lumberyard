@@ -39,6 +39,7 @@
 
 #include <ScriptCanvas/Data/Data.h>
 #include <ScriptCanvas/Core/Contract.h>
+#include <ScriptCanvas/Core/SlotConfigurations.h>
 
 #if !defined(AZ_CODE_GENERATOR)
 
@@ -122,8 +123,8 @@
 *
 * Supports:
 *     ScriptCanvas_Property::Name             // The friendly name and description to display in the editor
-*     ScriptCanvas_Property::Input            // Will expose this property as an INPUT slot on the node.
-*     ScriptCanvas_Property::Output           // Will expose this property as an OUTPUT slot on the node.
+*     ScriptCanvas_Property::Input            // Exposes this property as an INPUT slot on the node.
+*     ScriptCanvas_Property::Output           // Exposes this property as an OUTPUT slot on the node.
 *     ScriptCanvas_Property::Transient        // Property will not be reflected for serialization, edit or behavior, these properties are useful when the value can only be provided by an connected node.
 *
 * Examples:
@@ -136,6 +137,29 @@
 *
 * ---------------------------------------------------------------------------------------------------------- */
 #define ScriptCanvas_Property(...)
+
+/*
+*----------------------------------------------------------------------------------------------------------
+*
+* ScriptCanvas_DynamicDataSlot
+*
+* This tag must precede a definition of a Dynamically Typed slot.
+*
+* Usage:
+*
+* ScriptCanvas_DynamicDataSlot(<Dynamic PropertyType>, <ConnectionType>, <codegen attributes>);
+* Supports:
+*     ScriptCanvas_Property::Name             // The friendly name and description to display in the editor
+*     ScriptCanvas_Property::DynamicGroup     // A way of grouping multiple dynamically typed slots to all have the same type.
+*
+*
+* Examples:
+*
+*     ScriptCanvas_DynamicProperty(ScriptCanvas::DynamicDataType::Value, ScriptCanvas::ConnectionType::Input, ScriptCanvas_Property::Name("Value", "A generic value"))*
+*     ScriptCanvas_DynamicProperty(ScriptCanvas::DynamicDataType::Any, ScriptCanvas::ConnectionType::Output, ScriptCanvas_Property::Name("Any", "A generic any"))
+*     ScriptCanvas_DynamicProperty(ScriptCanvas::DynamicDataType::Container, ScriptCanvas_Property::Input, ScriptCanvas_Property::Name("Container", "A Generic Container Input"))*
+*/
+#define ScriptCanvas_DynamicDataSlot(DynamicDataType, ConnectionType, ...)
 
 /*
 *----------------------------------------------------------------------------------------------------------
@@ -223,6 +247,8 @@
 #define ScriptCanvas_Property(Type, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_Property, Identifier(Property), ValueType(Type), __VA_ARGS__) Type AZ_JOIN(m_azCodeGenInternal, __COUNTER__);
 #define ScriptCanvas_PropertyWithDefaults(Type, Default, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_Property, Identifier(Property), ValueType(Type), DefaultValue(AZ_STRINGIZE(Default)), __VA_ARGS__) Type AZ_JOIN(m_azCodeGenInternal, __COUNTER__);
 
+#define ScriptCanvas_DynamicDataSlot(DynamicDataType, ConnectionDirectionType, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_DynamicDataSlot, Identifier(DynamicDataSlot), DynamicType(DynamicDataType), ConnectionType(ConnectionDirectionType), __VA_ARGS__) Type AZ_JOIN(m_azCodeGenlInternal, __COUNTER__);
+
 #define ScriptCanvas_SerializeProperty(Type, Name, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_SerializeProperty, SerializedProperty, __VA_ARGS__) Type Name;
 #define ScriptCanvas_EditProperty(Type, Name, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_SerializeProperty, SerializedProperty, EditProperty, __VA_ARGS__) Type Name;
 #define ScriptCanvas_SerializePropertyWithDefaults(Type, Name, DefaultVal, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_SerializeProperty, SerializedProperty, (__VA_ARGS__) Type Name{ DefaultVal };
@@ -257,6 +283,11 @@ namespace ScriptCanvasTags
     struct Category
     {
         Category(const char* category) {}
+    };
+
+    struct DisplayGroup
+    {
+        DisplayGroup(const char* displayGroup) {}
     };
 
     struct Icon
@@ -300,6 +331,21 @@ namespace ScriptCanvasTags
     {
         Deprecated(const char* details) {}
     };
+
+    struct Contracts
+    {
+        explicit Contracts(AZStd::initializer_list<ScriptCanvas::Contract> contracts) {}
+    };
+
+    struct RestrictedTypeContractTag
+    {
+        explicit RestrictedTypeContractTag(AZStd::initializer_list<ScriptCanvas::Data::Type> restrictedType) {}
+    };
+
+    struct SupportsMethodContractTag
+    {
+        explicit SupportsMethodContractTag(const char* methodName) {}
+    };    
 }
 
 namespace ScriptCanvas_Node
@@ -312,7 +358,7 @@ namespace ScriptCanvas_Node
     using ScriptCanvasTags::EventHandler;
     using ScriptCanvasTags::EditAttributes;
     using ScriptCanvasTags::Category;
-    using ScriptCanvasTags::Deprecated;
+    using ScriptCanvasTags::Deprecated;    
     
     struct GraphEntryPoint
     {
@@ -324,26 +370,27 @@ namespace ScriptCanvas_Node
 namespace ScriptCanvas_In
 {
     using ScriptCanvasTags::Name;
-
-    struct Contracts
-    {
-        explicit Contracts(AZStd::initializer_list<ScriptCanvas::Contract> contracts) {}
-    };
+    using ScriptCanvasTags::DisplayGroup;
+    using ScriptCanvasTags::Contracts;    
 }
 
 namespace ScriptCanvas_Out
 {
     using ScriptCanvasTags::Name;
+    using ScriptCanvasTags::DisplayGroup;
 }
 
 namespace ScriptCanvas_OutLatent
 {
     using ScriptCanvasTags::Name;
+    using ScriptCanvasTags::DisplayGroup;
 }
 
 namespace ScriptCanvas_Property
 {
     using ScriptCanvasTags::Name;
+    using ScriptCanvasTags::DisplayGroup;
+
     using ScriptCanvasTags::Edit::UIHandler;
 
     using AzCommon::Attributes::ChangeNotify;
@@ -357,10 +404,10 @@ namespace ScriptCanvas_Property
     // Will produce an untyped input slot.
     using Overloaded = bool;
 
-    // Will expose this property as an INPUT slot on the node.
+    // Exposes this property as an INPUT slot on the node.
     using Input = bool;
 
-    // Will expose this property as an OUTPUT slot on the node.
+    // Exposes this property as an OUTPUT slot on the node.
     using Output = bool;
 
     // Transient properties will not be reflected for serialization, edit or behavior, these are properties whose 
@@ -370,11 +417,24 @@ namespace ScriptCanvas_Property
     using OutputStorageSpec = bool;
 }
 
+namespace ScriptCanvas_DynamicDataSlot
+{
+    using ScriptCanvasTags::Name;
+    using ScriptCanvasTags::DisplayGroup;
+
+    using ScriptCanvasTags::Contracts;
+    using ScriptCanvasTags::RestrictedTypeContractTag;
+    using ScriptCanvasTags::SupportsMethodContractTag;
+
+    using DynamicGroup = AZStd::string;
+}
+
 namespace EditProperty
 {
     using ScriptCanvasTags::Name;
+
     using ScriptCanvasTags::Category;
-    using ScriptCanvasTags::EditAttributes;
+    using ScriptCanvasTags::EditAttributes;    
 
     using AzCommon::Attributes::ChangeNotify;
     using AzCommon::Attributes::Visibility;

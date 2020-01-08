@@ -17,6 +17,7 @@
 #include "LegacyTimeDemoRecorderSystemComponent.h"
 
 #include <IGem.h>
+#include <LegacyTime_Traits_Platform.h>
 
 namespace LegacyTimeDemoRecorder
 {
@@ -50,21 +51,15 @@ namespace LegacyTimeDemoRecorder
 
 #ifndef AZ_MONOLITHIC_BUILD
 #include "Common_TypeInfo.h"
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/LegacyTimeDemoRecorderModule_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/LegacyTimeDemoRecorderModule_cpp_provo.inl"
-    #endif
+
+#if AZ_TRAIT_LEGACY_TIME_RECORDER_DEFINE_COLOR
+STRUCT_INFO_T_INSTANTIATE(Color_tpl, <AZ_TRAIT_LEGACY_TIME_RECORDER_COLOR_ELEMENT_TYPE>)
 #endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-#if !defined(LINUX) && !defined(APPLE)
-STRUCT_INFO_T_INSTANTIATE(Color_tpl, <float>)
+
+#if AZ_TRAIT_LEGACY_TIME_RECORDER_DEFINE_QUAT
+STRUCT_INFO_T_INSTANTIATE(Quat_tpl, <AZ_TRAIT_LEGACY_TIME_RECORDER_QUAT_ELEMENT_TYPE>)
 #endif
-STRUCT_INFO_T_INSTANTIATE(Quat_tpl, <float>)
-#endif
+
 #endif // AZ_MONOLITHIC_BUILD
 
 // DO NOT MODIFY THIS LINE UNLESS YOU RENAME THE GEM

@@ -50,11 +50,6 @@ namespace AZ
             SceneAPI::Events::ProcessingResult ProcessTouchBendableSkinWeights(TouchBendableMeshNodeExportContext& context);
 
         protected:
-#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
-            // Workaround for VS2013 - Delete the copy constructor and make it private
-            // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-            SkinWeightExporter(const SkinWeightExporter&) = delete;
-#endif
             void SetSkinWeights(MeshNodeExportContext& context, BoneNameIdMap boneNameIdMap);
             int GetGlobalBoneId(const AZStd::shared_ptr<const SceneAPI::DataTypes::ISkinWeightData>& skinWeights, BoneNameIdMap boneNameIdMap, int boneId);
         };

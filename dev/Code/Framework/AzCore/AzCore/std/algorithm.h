@@ -12,8 +12,11 @@
 #ifndef AZSTD_ALGORITHM_H
 #define AZSTD_ALGORITHM_H 1
 
+#include <AzCore/std/createdestroy.h>
 #include <AzCore/std/iterator.h>
 #include <AzCore/std/functional_basic.h>
+#include <AzCore/std/typetraits/common_type.h>
+#include <AzCore/std/typetraits/remove_cvref.h>
 
 namespace AZStd
 {
@@ -907,7 +910,96 @@ namespace AZStd
         return last1;
     }
 
+    template <class ForwardIterator>
+    bool is_sorted(ForwardIterator first, ForwardIterator last)
+    {
+        return is_sorted(first, last, AZStd::less<AZStd::remove_cvref_t<decltype(*first)>>());
+    }
+
+    template <class ForwardIterator, class Compare>
+    bool is_sorted(ForwardIterator first, ForwardIterator last, Compare comp)
+    {
+        if (first == last)
+        {
+            return true;
+        }
+        ForwardIterator next = first;
+        while (++next != last)
+        {
+            if (comp(*next, *first))
+            {
+                return false;
+            }
+            ++first;
+        }
+        return true;
+    }
+
+    template<class ForwardIterator>
+    ForwardIterator unique(ForwardIterator first, ForwardIterator last)
+    {
+        return unique(first, last, AZStd::equal_to<AZStd::remove_cvref_t<decltype(*first)>>());
+    }
+
+    template<class ForwardIterator, class BinaryPredicate>
+    ForwardIterator unique(ForwardIterator first, ForwardIterator last, BinaryPredicate pred)
+    {
+        if (first == last)
+        {
+            return last;
+        }
+
+        ForwardIterator result = first;
+        while (++first != last)
+        {
+            if (!pred(*result, *first) && ++result != first)
+            {
+                *result = AZStd::move(*first);
+            }
+        }
+        return ++result;
+    }
+
     // todo search_n
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    // set_difference
+    template <class Compare, class InputIterator1, class InputIterator2, class OutputIterator>
+    OutputIterator set_difference(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2, OutputIterator result, Compare comp)
+    {
+        while (first1 != last1)
+        {
+            if (first2 == last2)
+            {
+                return AZStd::copy(first1, last1, result);
+            }
+
+            if (comp(*first1, *first2))
+            {
+                *result = *first1;
+                ++result;
+                ++first1;
+            }
+            else
+            {
+                if (!comp(*first2, *first1))
+                {
+                    ++first1;
+                }
+                ++first2;
+            }
+        }
+        return result;
+    }
+
+    template <class InputIterator1, class InputIterator2, class OutputIterator>
+    inline OutputIterator set_difference(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2, OutputIterator result)
+    {
+        return AZStd::set_difference(first1, last1, first2, last2, result,
+            AZStd::less<AZStd::common_type_t<typename iterator_traits<InputIterator1>::value_type,
+                                             typename iterator_traits<InputIterator2>::value_type>>());
+    }
     //////////////////////////////////////////////////////////////////////////
 
     template<class InputIterator1, class InputIterator2>

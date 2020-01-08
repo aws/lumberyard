@@ -43,26 +43,5 @@ namespace AZStd
     AZSTD_TYPE_TRAIT_BOOL_DEF1(is_pod, T, ::AZStd::Internal::is_pod_impl<T>::value)
 }
 
-#if defined(AZSTD_HAS_TYPE_TRAITS_INTRINSICS)
-// Supported by compiler.
-    #define AZSTD_DECLARE_POD_TYPE(_Type)
-    #define AZSTD_DECLARE_POD_TYPE_T1(_Type, _T1)
-    #define AZSTD_DECLARE_POD_TYPE_T2(_Type, _T1, _T2)
-    #define AZSTD_DECLARE_POD_TYPE_T3(_Type, _T1, _T2, _T3)
-#else
-    #define AZSTD_DECLARE_POD_TYPE(_Type)                   namespace AZStd { template<>             \
-                                                                              struct is_pod< _Type > \
-                                                                                  : public true_type {}; }
-    #define AZSTD_DECLARE_POD_TYPE_T1(_Type, _T1)            namespace AZStd { template< typename _T1 >    \
-                                                                               struct is_pod< _Type<_T1> > \
-                                                                                   : public true_type {}; }
-    #define AZSTD_DECLARE_POD_TYPE_T2(_Type, _T1, _T2)        namespace AZStd { template< typename _T1, typename _T2 > \
-                                                                                struct is_pod< _Type<_T1, _T2> >       \
-                                                                                    : public true_type {}; }
-    #define AZSTD_DECLARE_POD_TYPE_T3(_Type, _T1, _T2, _T3)    namespace AZStd { template< typename _T1, typename _T2, typename _T3 > \
-                                                                                 struct is_pod< _Type<_T1, _T2, _T3> >                \
-                                                                                     : public true_type {}; }
-#endif
-
 #endif // AZSTD_TYPE_TRAITS_IS_POD_INCLUDED
 #pragma once

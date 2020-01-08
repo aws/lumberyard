@@ -78,6 +78,8 @@ CViewportTitleDlg::CViewportTitleDlg(QWidget* pParent)
 
     m_pViewPane = NULL;
     GetIEditor()->RegisterNotifyListener(this);
+    GetISystem()->GetISystemEventDispatcher()->RegisterListener(this);
+
 
     LoadCustomPresets("FOVPresets", "FOVPreset", m_customFOVPresets);
     LoadCustomPresets("AspectRatioPresets", "AspectRatioPreset", m_customAspectRatioPresets);
@@ -119,6 +121,7 @@ CViewportTitleDlg::CViewportTitleDlg(QWidget* pParent)
 
 CViewportTitleDlg::~CViewportTitleDlg()
 {
+    GetISystem()->GetISystemEventDispatcher()->RemoveListener(this);
     GetIEditor()->UnregisterNotifyListener(this);
     ICVar*  pDisplayInfo(gEnv->pConsole->GetCVar("r_displayInfo"));
     pDisplayInfo->RemoveOnChangeFunctor(m_displayInfoCallbackIndex);
@@ -556,6 +559,27 @@ void CViewportTitleDlg::OnEditorNotifyEvent(EEditorNotifyEvent event)
     case eNotify_OnDisplayRenderUpdate:
         m_ui->m_toggleHelpersBtn->setChecked(GetIEditor()->GetDisplaySettings()->IsDisplayHelpers());
         break;
+    }
+}
+
+void CViewportTitleDlg::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam)
+{
+    if (event == ESYSTEM_EVENT_RESIZE)
+    {
+        if (m_pViewPane)
+        {
+            const int eventWidth = static_cast<int>(wparam);
+            const int eventHeight = static_cast<int>(lparam);
+            const QWidget* viewport = m_pViewPane->GetViewport();
+
+            // This should eventually be converted to an EBus to make it easy to connect to the correct viewport 
+            // sending the event.  But for now, just detect that we've gotten width/height values that match our 
+            // associated viewport
+            if (viewport && (eventWidth == viewport->width()) && (eventHeight == viewport->height()))
+            {
+                OnViewportSizeChanged(eventWidth, eventHeight);
+            }
+        }
     }
 }
 

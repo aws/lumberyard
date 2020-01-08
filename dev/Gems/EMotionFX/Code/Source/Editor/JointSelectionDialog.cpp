@@ -20,7 +20,7 @@
 
 namespace EMotionFX
 {
-    JointSelectionDialog::JointSelectionDialog(bool singleSelection, const char* title, const char* descriptionLabelText, QWidget* parent)
+    JointSelectionDialog::JointSelectionDialog(bool singleSelection, const QString& title, const QString& descriptionLabelText, QWidget* parent)
         : QDialog(parent)
     {
         setWindowTitle(title);

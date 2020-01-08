@@ -42,6 +42,7 @@ namespace ScriptCanvasEditor
 
     void SceneMemberMappingComponent::Activate()
     {
+        GraphCanvas::NodeNotificationBus::Handler::BusConnect(GetEntityId());
         SceneMemberMappingConfigurationRequestBus::Handler::BusConnect(GetEntityId());
         ConfigureMapping(m_sourceId);
     }
@@ -50,6 +51,7 @@ namespace ScriptCanvasEditor
     {
         SceneMemberMappingRequestBus::Handler::BusDisconnect();
         SceneMemberMappingConfigurationRequestBus::Handler::BusDisconnect();
+        GraphCanvas::NodeNotificationBus::Handler::BusDisconnect();
     }
 
     void SceneMemberMappingComponent::ConfigureMapping(const AZ::EntityId& scriptCanvasMemberId)
@@ -70,6 +72,16 @@ namespace ScriptCanvasEditor
     AZ::EntityId SceneMemberMappingComponent::GetGraphCanvasEntityId() const
     {
         return GetEntityId();
+    }
+
+    void SceneMemberMappingComponent::OnBatchedConnectionManipulationBegin()
+    {
+        ScriptCanvas::NodeRequestBus::Event(m_sourceId, &ScriptCanvas::NodeRequests::SignalBatchedConnectionManipulationBegin);
+    }
+
+    void SceneMemberMappingComponent::OnBatchedConnectionManipulationEnd()
+    {
+        ScriptCanvas::NodeRequestBus::Event(m_sourceId, &ScriptCanvas::NodeRequests::SignalBatchedConnectionManipulationEnd);
     }
 
     /////////////////////////

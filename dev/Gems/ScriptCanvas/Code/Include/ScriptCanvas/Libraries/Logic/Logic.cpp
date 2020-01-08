@@ -56,7 +56,9 @@ namespace ScriptCanvas
             AddNodeToRegistry<Logic, Not>(nodeRegistry);
             AddNodeToRegistry<Logic, Once>(nodeRegistry);
             AddNodeToRegistry<Logic, Or>(nodeRegistry);
-            AddNodeToRegistry<Logic, Sequencer>(nodeRegistry);
+            AddNodeToRegistry<Logic, OrderedSequencer>(nodeRegistry);
+            AddNodeToRegistry<Logic, Sequencer>(nodeRegistry);            
+            AddNodeToRegistry<Logic, TargetedSequencer>(nodeRegistry);
             AddNodeToRegistry<Logic, WeightedRandomSequencer>(nodeRegistry);
         }
 
@@ -73,7 +75,9 @@ namespace ScriptCanvas
                 ScriptCanvas::Nodes::Logic::Not::CreateDescriptor(),
                 ScriptCanvas::Nodes::Logic::Once::CreateDescriptor(),
                 ScriptCanvas::Nodes::Logic::Or::CreateDescriptor(),
+                ScriptCanvas::Nodes::Logic::OrderedSequencer::CreateDescriptor(),
                 ScriptCanvas::Nodes::Logic::Sequencer::CreateDescriptor(),
+                ScriptCanvas::Nodes::Logic::TargetedSequencer::CreateDescriptor(),
                 ScriptCanvas::Nodes::Logic::WeightedRandomSequencer::CreateDescriptor(),
             });
         }

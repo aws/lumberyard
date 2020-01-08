@@ -13,7 +13,7 @@
 #ifndef __EMSTUDIO_TIMEVIEWPLUGIN_H
 #define __EMSTUDIO_TIMEVIEWPLUGIN_H
 
-// include MCore
+#include <AzCore/PlatformIncl.h>
 #include "../StandardPluginsConfig.h"
 #include "../../../../EMStudioSDK/Source/DockWidgetPlugin.h"
 #include <EMotionFX/CommandSystem/Source/MotionEventCommands.h>

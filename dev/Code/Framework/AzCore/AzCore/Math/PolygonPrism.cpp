@@ -10,8 +10,6 @@
 *
 */
 
-#ifndef AZ_UNITY_BUILD
-
 #include <AzCore/Math/PolygonPrism.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -111,5 +109,3 @@ namespace AZ
 
     AZ_CLASS_ALLOCATOR_IMPL(PolygonPrism, SystemAllocator, 0)
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

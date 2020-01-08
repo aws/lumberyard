@@ -34,11 +34,14 @@
 #include "NetworkUtils.h"
 
 #include "DeployWorker_android.h"
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     #include "DeployWorker_ios.h"
 #endif
 #include "DeployWorker_devicefarm.h"
+
+AZ_PUSH_DISABLE_WARNING(4251 4996, "-Wunknown-warning-option")
 #include <aws/core/auth/AWSCredentialsProvider.h>
+AZ_POP_DISABLE_WARNING
 #include <CloudCanvas/ICloudCanvasEditor.h>
 #include <aws/core/client/ClientConfiguration.h>
 #include "RealDeviceFarmClient.h"
@@ -287,14 +290,12 @@ void DeploymentToolWindow::OnPlatformChanged(const QString& currentplatform)
 
     if (currentplatform.startsWith("android", Qt::CaseInsensitive))
     {
-        m_deploymentCfg.m_platformOption = (currentplatform.endsWith("armv8", Qt::CaseInsensitive) ?
-                                            PlatformOptions::Android_ARMv8 :
-                                            PlatformOptions::Android_ARMv7);
+        m_deploymentCfg.m_platformOption = PlatformOptions::Android_ARMv8;
 
         hidePlatformOptions = false;
         m_deployWorker.reset(new DeployWorkerAndroid());
     }
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     else if (currentplatform.compare("ios", Qt::CaseInsensitive) == 0)
     {
         m_deploymentCfg.m_platformOption = PlatformOptions::iOS;
@@ -460,7 +461,7 @@ void DeploymentToolWindow::OnLocalDeviceDeployClick()
         return;
     }
 
-    if ((m_deploymentCfg.m_platformOption == PlatformOptions::Android_ARMv7 || m_deploymentCfg.m_platformOption == PlatformOptions::Android_ARMv8)
+    if ((m_deploymentCfg.m_platformOption == PlatformOptions::Android_ARMv8)
         && DeployTool::IsLocalhost(m_deploymentCfg.m_deviceIpAddress))
     {
         m_deploymentCfg.m_hostRemoteLogPort = hostRemoteLogPortRange.GetRandValueInRange();
@@ -1095,7 +1096,7 @@ void DeploymentToolWindow::InitializeUi()
     m_defaultRemoteDeviceOutputBrush = m_ui->remoteOutputTextBox->currentCharFormat().foreground();
 
     // base options
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     // matching by default is case insensitive unless Qt::MatchCaseSensitive specified
     int index = m_ui->platformComboBox->findText("ios", Qt::MatchExactly);
     if (index == -1)
@@ -1105,18 +1106,10 @@ void DeploymentToolWindow::InitializeUi()
 #endif
 
     QString platform = m_deploySettings.value(targetPlatformKey).toString();
-    if (platform.startsWith("android", Qt::CaseInsensitive))
-    {
-        if (!platform.endsWith("armv8", Qt::CaseInsensitive))
-        {
-            platform = "Android ARMv7";
-        }
-    }
-
     m_ui->platformComboBox->setCurrentText(platform);
 
     m_ui->buildConfigComboBox->setCurrentText(m_deploySettings.value(buildConfigKey).toString());
-    m_ui->buildGameCheckBox->setChecked(m_deploySettings.value(buildGameKey).toBool());
+    m_ui->buildGameCheckBox->setChecked(m_deploySettings.value(buildGameKey, true).toBool());
 
     // asset options
     m_ui->assetModeComboBox->setCurrentText(m_deploySettings.value(assetModeKey).toString());

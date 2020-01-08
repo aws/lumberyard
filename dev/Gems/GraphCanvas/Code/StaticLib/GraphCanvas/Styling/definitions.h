@@ -22,8 +22,9 @@ namespace GraphCanvas
             const char* const Graph = "graph";
             const char* const Node = "node";
             const char* const Slot = "slot";
-            const char* const DataSlot = "dataSlot";
+            const char* const DataSlot = "dataSlot";            
             const char* const ExecutionSlot = "executionSlot";
+            const char* const ExtenderSlot = "extenderSlot";
             const char* const PropertySlot = "propertySlot";
             const char* const Group = "group";
             const char* const Connection = "connection";
@@ -85,6 +86,7 @@ namespace GraphCanvas
             const char* const Hovered = ":hovered";
             const char* const Selected = ":selected";
             const char* const Disabled = ":disabled";
+            const char* const PartialDisabled = ":partial_disabled";
             const char* const Collapsed = ":collapsed";
             const char* const Highlighted = ":highlighted";
             const char* const ValidDrop = ":validDrop";
@@ -96,13 +98,6 @@ namespace GraphCanvas
             const char* const Preview = ":preview";
             const char* const InspectionTransparent = ":inspection_transparent";
         } // namespace States
-
-        // Style of curve for connection lines
-        enum class Curves : AZ::u32
-        {
-            Straight,
-            Curved 
-        };
 
         enum class PaletteStyle : AZ::u32
         {

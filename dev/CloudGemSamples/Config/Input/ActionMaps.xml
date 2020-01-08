@@ -2,7 +2,7 @@
 
   <!-- platforms - Used to define which keys to map for each action based on the platform that is in use -->
   <platforms>
-    <PC keyboard="1" xboxpad="1" ps3pad="0" androidkey="0"/>
+    <PC keyboard="1" xeniapad="1" androidkey="0"/>
   </platforms>
 
   <!-- default - Default action key mappings -->
@@ -19,10 +19,10 @@
     <action name="moveback" onPress="1" onRelease="1" retriggerable="1" keyboard="s"/>
     <action name="rotateyaw" keyboard="maxis_x" />
     <action name="rotatepitch" keyboard="maxis_y" />
-    <action name="xi_movey" xboxpad="xi_thumbly"/>
-    <action name="xi_movex" xboxpad="xi_thumblx"/>
-    <action name="xi_rotateyaw" xboxpad="xi_thumbrx"/>
-    <action name="xi_rotatepitch" xboxpad="xi_thumbry"/>
+    <action name="xi_movey" xeniapad="gamepad_stickly"/>
+    <action name="xi_movex" xeniapad="gamepad_sticklx"/>
+    <action name="xi_rotateyaw" xeniapad="gamepad_stickrx"/>
+    <action name="xi_rotatepitch" xeniapad="gamepad_stickry"/>
   </actionmap>
 
 </profile>

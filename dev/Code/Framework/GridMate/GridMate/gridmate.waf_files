@@ -41,7 +41,6 @@
             "Carrier/StreamSocketDriver.cpp",
             "Carrier/StreamSocketDriver.h",
             "Carrier/TrafficControl.h",
-            "Carrier/Utils.cpp",
             "Carrier/Utils.h"
         ],
         "Containers":

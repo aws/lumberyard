@@ -684,19 +684,19 @@ void CFlowSystem::Update()
             */
             return;
         }
-
+        AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
         if (m_bInspectingEnabled)
         {
             // call pre updates
 
             // 1. system inspectors
-            std::for_each (m_systemInspectors.begin(), m_systemInspectors.end(), std::bind2nd (std::mem_fun(&IFlowGraphInspector::PreUpdate), (IFlowGraph*) 0));
+            std::for_each(m_systemInspectors.begin(), m_systemInspectors.end(), [](const IFlowGraphInspectorPtr& flowGraphInspector) { flowGraphInspector->PreUpdate(nullptr); });
 
             // 2. graph inspectors TODO: optimize not to go over all graphs ;-)
             for (TGraphs::Notifier itGraph(m_graphs); itGraph.IsValid(); itGraph.Next())
             {
                 const std::vector<IFlowGraphInspectorPtr>& graphInspectors (itGraph->GetInspectors());
-                std::for_each (graphInspectors.begin(), graphInspectors.end(), std::bind2nd (std::mem_fun(&IFlowGraphInspector::PreUpdate), *itGraph));
+                std::for_each (graphInspectors.begin(), graphInspectors.end(), [&itGraph](const IFlowGraphInspectorPtr& flowGraphInspector) { flowGraphInspector->PreUpdate(*itGraph); });
             }
         }
 
@@ -707,15 +707,16 @@ void CFlowSystem::Update()
             // call post updates
 
             // 1. system inspectors
-            std::for_each (m_systemInspectors.begin(), m_systemInspectors.end(), std::bind2nd (std::mem_fun(&IFlowGraphInspector::PostUpdate), (IFlowGraph*) 0));
+            std::for_each (m_systemInspectors.begin(), m_systemInspectors.end(), [](const IFlowGraphInspectorPtr& flowGraphInspector) { flowGraphInspector->PostUpdate(nullptr); });
 
             // 2. graph inspectors TODO: optimize not to go over all graphs ;-)
             for (TGraphs::Notifier itGraph(m_graphs); itGraph.IsValid(); itGraph.Next())
             {
                 const std::vector<IFlowGraphInspectorPtr>& graphInspectors (itGraph->GetInspectors());
-                std::for_each (graphInspectors.begin(), graphInspectors.end(), std::bind2nd (std::mem_fun(&IFlowGraphInspector::PostUpdate), *itGraph));
+                std::for_each (graphInspectors.begin(), graphInspectors.end(), [&itGraph](const IFlowGraphInspectorPtr& flowGraphInspector) { flowGraphInspector->PostUpdate(*itGraph); });
             }
         }
+        AZ_POP_DISABLE_WARNING
     }
 
     // end of flow system update: remove module instances which are no longer needed

@@ -6,30 +6,5 @@
         "include"
     ],
     "defines": [],
-    "lib_required": "True",
-    "platform": {
-        "win_x64_vs2013": {
-            "libpath": [
-                "lib/x64"
-            ],
-            "lib_debug": [
-                "libszip-vc120-mt-sd.lib"
-            ],
-            "lib_release": [
-                "libszip-vc120-mt-s.lib"
-            ]
-        },
-        "win_x64_vs2015": {
-            "libpath": [
-                "lib/x64"
-            ],
-            "lib_debug": [
-                "libszip-vc140-mt-sd.lib"
-            ],
-            "lib_release": [
-                "libszip-vc140-mt-s.lib"
-            ]
-        },
-        "win_x64_vs2017": "@win_x64_vs2015"
-    }
+    "lib_required": "True"
 }

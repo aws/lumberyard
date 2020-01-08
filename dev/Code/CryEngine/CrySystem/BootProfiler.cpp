@@ -390,18 +390,7 @@ void CBootProfilerSession::CollectResults(const char* filename, const float time
     gEnv->pFileIO->Open(path, AZ::IO::OpenMode::ModeWrite | AZ::IO::OpenMode::ModeBinary, fileHandle);
     if (fileHandle == AZ::IO::InvalidHandle)
     {
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/BootProfiler_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/BootProfiler_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
         return;
-#endif
     }
 
     char buf[512];

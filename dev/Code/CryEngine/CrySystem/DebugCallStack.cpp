@@ -439,7 +439,7 @@ void DebugCallStack::LogExceptionInfo(EXCEPTION_POINTERS* pex)
     // Time and Version.
     char versionbuf[1024];
     azstrcpy(versionbuf, AZ_ARRAY_SIZE(versionbuf), "");
-    PutVersion(versionbuf);
+    PutVersion(versionbuf, AZ_ARRAY_SIZE(versionbuf));
     cry_strcat(errorString, versionbuf);
     cry_strcat(errorString, "\n");
 

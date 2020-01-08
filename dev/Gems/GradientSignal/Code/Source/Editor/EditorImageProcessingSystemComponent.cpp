@@ -3,9 +3,9 @@
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-*or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+* distribution (the "License"). All use of this software is governed by the License,
+*or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 *WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
@@ -24,7 +24,11 @@
 #include <AzToolsFramework/AssetBrowser/EBusFindAssetTypeByName.h>
 #include <AzToolsFramework/AssetEditor/AssetEditorBus.h>
 #include <GradientSignal/ImageSettings.h>
+// warning C4800: 'uint': forcing value to bool 'true' or 'false' (performance warning)
+// warning C4251: 'QBrush::d': class 'QScopedPointer<QBrushData,QBrushDataPointerDeleter>' needs to have dll-interface to be used by clients of class 'QBrush'
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option") 
 #include <QMenu>
+AZ_POP_DISABLE_WARNING
 #include <AzCore/IO/SystemFile.h>
 #include <GradientSignalSystemComponent.h>
 

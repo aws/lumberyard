@@ -32,6 +32,8 @@
         #include "Xenia/BitFiddling_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/BitFiddling_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/BitFiddling_h_salem.inl"
     #endif
 #elif defined(LINUX) || defined(APPLE)
 #define BITFIDDLING_H_TRAIT_HAS_COUNT_LEADING_ZEROS 1
@@ -156,6 +158,8 @@ inline unsigned long int IntegerLog2(unsigned long int x)
         #include "Xenia/BitFiddling_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/BitFiddling_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/BitFiddling_h_salem.inl"
     #endif
 #endif
 

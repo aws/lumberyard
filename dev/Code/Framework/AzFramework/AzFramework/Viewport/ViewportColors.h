@@ -40,5 +40,17 @@ namespace AzFramework
         /// Color to use for hidden
         extern const AZ::Color HiddenColor;
 
+        /// Color to use for x-axis
+        extern const AZ::Color XAxisColor;
+
+        /// Color to use for y-axis
+        extern const AZ::Color YAxisColor;
+
+        /// Color to use for z-axis
+        extern const AZ::Color ZAxisColor;
+
+        /// Color used by QuadBillboard Manipulator View.
+        extern const AZ::Color DefaultManipulatorHandleColor;
+
     } // namespace ViewportColors
 } // namespace AzFramework

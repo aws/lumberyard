@@ -1,0 +1,15 @@
+{
+    "name": "zstd",
+    "source": "@3P:zstd@",
+    "description": "ZStandard Library",
+    "includes": [
+        "lib",
+        "lib/common",
+        "lib/compress",
+        "lib/decompress"
+    ],
+    "defines": [
+        "USE_ZSTD"
+    ],
+    "lib_required": "True"
+}

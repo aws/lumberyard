@@ -135,10 +135,6 @@ namespace AZ
         template<typename ContainerType>
         SizeType ByteContainerStream<ContainerType>::Read(SizeType bytes, void* oBuffer)
         {
-#       ifdef AZ_OS32
-            AZ_Assert(bytes < 1 * 1024 * 1024 * 1024, "You can't read more than 1GB on 32 bit platform!");
-#       endif
-
             size_t len = m_buffer->size();
             size_t bytesToRead = 0;
             if (m_pos + static_cast<size_t>(bytes) < len)

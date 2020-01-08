@@ -46,9 +46,6 @@ namespace DeployTool
 
         // Make sure we can get at least get some values that the Deployment Tool will use
         // from the default settings config files.
-        StringOutcome defaultFolderNameOutcomeAndroidARMv7 = DeployWorkerBase::GetPlatformSpecficDefaultAttributeValue("default_folder_name", PlatformOptions::Android_ARMv7, devRoot);
-
-        ASSERT_TRUE(defaultFolderNameOutcomeAndroidARMv7.IsSuccess());
 
         StringOutcome defaultFolderNameOutcomeAndroidARMv8 = DeployWorkerBase::GetPlatformSpecficDefaultAttributeValue("default_folder_name", PlatformOptions::Android_ARMv8, devRoot);
         ASSERT_TRUE(defaultFolderNameOutcomeAndroidARMv8.IsSuccess());
@@ -90,7 +87,7 @@ namespace DeployTool
             appOutputFolderExtNameOutcomeRelease.GetValue() != appOutputFolderExtNameOutcomeDebug.GetValue()
         );
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         // If this is a Mac, check the iOS settings that will be used by the Deployment Tool
         StringOutcome defaultFolderNameOutcomeiOS = DeployWorkerBase::GetPlatformSpecficDefaultAttributeValue("default_folder_name", PlatformOptions::iOS, devRoot);
         ASSERT_TRUE(defaultFolderNameOutcomeiOS.IsSuccess());

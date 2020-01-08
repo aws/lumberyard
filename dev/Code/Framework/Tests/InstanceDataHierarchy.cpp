@@ -10,7 +10,6 @@
 *
 */
 
-#include <Tests/TestTypes.h>
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/Component.h>
@@ -24,6 +23,9 @@
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzCore/Serialization/ObjectStream.h>
 #include <AzCore/Serialization/Utils.h>
+#include <AzCore/UnitTest/TestTypes.h>
+#include <random>
+
 
 using namespace AZ;
 using namespace AZ::IO;
@@ -1083,6 +1085,57 @@ namespace UnitTest
     TEST_F(InstanceDataHierarchyKeyedContainerTest, Test)
     {
         run();
+    }
+
+    TEST_F(InstanceDataHierarchyKeyedContainerTest, RemovingMultipleItemsFromContainerDoesNotCrash)
+    {
+        using TestMap = AZStd::unordered_map<double, double>;
+        TestMap testMap;
+        AZStd::initializer_list<AZStd::pair<double, double>> valuesToInsert{ {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {7, 0}, {8, 0}, {9, 0} };
+
+        AZ::GenericClassInfo* mapGenericClassInfo = AZ::SerializeGenericTypeInfo<TestMap>::GetGenericInfo();
+        AZ::SerializeContext::ClassData* mapClassData = mapGenericClassInfo->GetClassData();
+        ASSERT_NE(nullptr, mapClassData);
+        AZ::SerializeContext::IDataContainer* mapDataContainer = mapClassData->m_container;
+        ASSERT_NE(nullptr, mapDataContainer);
+        auto associativeInterface = mapDataContainer->GetAssociativeContainerInterface();
+
+        AZ::SerializeContext::ClassElement classElement;
+        AZ::SerializeContext::DataElement dataElement;
+        dataElement.m_nameCrc = mapDataContainer->GetDefaultElementNameCrc();
+        EXPECT_TRUE(mapDataContainer->GetElement(classElement, dataElement));
+
+        AZStd::vector<double> keyRemovalContainer;
+        keyRemovalContainer.reserve(valuesToInsert.size());
+        for (const AZStd::pair<double, double>& valueToInsert : valuesToInsert)
+        {   
+            void* newElement = mapDataContainer->ReserveElement(&testMap, &classElement);
+            *reinterpret_cast<typename TestMap::value_type*>(newElement) = valueToInsert;
+            mapDataContainer->StoreElement(&testMap, newElement);
+            keyRemovalContainer.push_back(valueToInsert.first);
+        }
+
+        EXPECT_EQ(valuesToInsert.size(), testMap.size());
+        for (const AZStd::pair<double, double>& testValue : valuesToInsert)
+        {
+            // Make sure all elements within initializer_list is in the map
+            void* lookupValue = associativeInterface->GetElementByKey(&testMap, &classElement, &testValue.first);
+            EXPECT_NE(nullptr, lookupValue);
+
+        }
+        
+        // Shuffle the keys around and attempt to remove the keys using IDataContainer::RemoveElement
+        SerializeContext serializeContext;
+        const uint32_t rngSeed = std::random_device{}();
+        std::mt19937 mtTwisterRng(rngSeed);
+        std::shuffle(keyRemovalContainer.begin(), keyRemovalContainer.end(), mtTwisterRng);
+        for (double key : keyRemovalContainer)
+        {
+            void* valueToRemove = associativeInterface->GetElementByKey(&testMap, &classElement, &key);
+            EXPECT_TRUE(mapDataContainer->RemoveElement(&testMap, valueToRemove, &serializeContext));
+        }
+
+        EXPECT_EQ(0, mapDataContainer->Size(&testMap));
     }
 
     TEST_F(InstanceDataHierarchyCompareAssociativeContainerTest, Test)

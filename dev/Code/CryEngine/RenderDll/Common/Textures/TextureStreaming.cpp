@@ -154,6 +154,8 @@ void STexStreamOutState::Reset()
         #include "Xenia/TextureStreaming_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/TextureStreaming_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/TextureStreaming_cpp_salem.inl"
     #endif
 #endif
 }
@@ -168,6 +170,8 @@ bool STexStreamOutState::TryCommit()
         #include "Xenia/TextureStreaming_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/TextureStreaming_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/TextureStreaming_cpp_salem.inl"
     #endif
 #endif
 
@@ -267,6 +271,8 @@ void STexStreamInState::StreamAsyncOnComplete(IReadStream* pStream, unsigned nEr
         #include "Xenia/TextureStreaming_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/TextureStreaming_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/TextureStreaming_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -313,6 +319,8 @@ void STexStreamInState::StreamAsyncOnComplete(IReadStream* pStream, unsigned nEr
         #include "Xenia/TextureStreaming_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/TextureStreaming_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/TextureStreaming_cpp_salem.inl"
     #endif
 #endif
 
@@ -419,6 +427,8 @@ bool STexStreamInState::TryCommit()
         #include "Xenia/TextureStreaming_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/TextureStreaming_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/TextureStreaming_cpp_salem.inl"
     #endif
 #endif
 
@@ -796,11 +806,9 @@ bool CTexture::StreamPrepareComposition()
         int nTopMipWidth = m_nWidth;
         int nTopMipHeight = m_nHeight;
 
-        //  Confetti BEGIN: Igor Lobanchikov
         const Vec2i vMipAlign = CTexture::GetBlockDim(m_eTFDst);
         nTopMipWidth = Align(nTopMipWidth, vMipAlign.x);
         nTopMipHeight = Align(nTopMipHeight, vMipAlign.y);
-        //  Confetti End: Igor Lobanchikov
 
         for (int iMip = 0; iMip < m_nMips; ++iMip)
         {
@@ -966,7 +974,7 @@ bool CTexture::StreamPrepare(CImageFile* pIM)
     {
         m_nFlags |= FT_SPLITTED;
     }
-    if (pIM->mfGet_Flags() & FIM_X360_NOT_PRETILED) // ACCEPTED_USE
+    if (pIM->mfGet_Flags() & FIM_X360_NOT_PRETILED)
     {
         m_nFlags |= FT_TEX_WAS_NOT_PRE_TILED;
     }
@@ -1019,11 +1027,9 @@ bool CTexture::StreamPrepare(CImageFile* pIM)
         int nTopMipWidth = m_nWidth;
         int nTopMipHeight = m_nHeight;
 
-        //  Confetti BEGIN: Igor Lobanchikov
         const Vec2i vMipAlign = CTexture::GetBlockDim(m_eTFDst);
         nTopMipWidth = Align(nTopMipWidth, vMipAlign.x);
         nTopMipHeight = Align(nTopMipHeight, vMipAlign.y);
-        //  Confetti End: Igor Lobanchikov
 
         for (int iMip = 0; iMip < m_nMips; ++iMip)
         {
@@ -1094,9 +1100,7 @@ bool CTexture::StreamPrepare(CImageFile* pIM)
         int nOffs = 0;
         assert(nSyncStartMip <= nSyncEndMip);
 
-        //  Confetti BEGIN: Igor Lobanchikov
         const Vec2i vMipAlign = CTexture::GetBlockDim(m_eTFDst);
-        //  Confetti End: Igor Lobanchikov
 
         for (int iSide = 0; iSide < m_CacheFileHeader.m_nSides; iSide++)
         {
@@ -1107,12 +1111,10 @@ bool CTexture::StreamPrepare(CImageFile* pIM)
             {
                 STexMipHeader& mh = m_pFileTexMips->m_pMipHeader[iMip];
                 SMipData* mp = &mh.m_Mips[iSide];
-                //  Confetti BEGIN: Igor Lobanchikov
                 if (!mp->DataArray)
                 {
                     mp->Init(mh.m_SideSize, Align(nMipW, vMipAlign.x), Align(nMipH, vMipAlign.y));
                 }
-                //  Confetti End: Igor Lobanchikov
 
                 if (eTileMode != eTM_None)
                 {
@@ -1440,7 +1442,6 @@ bool CTexture::CanStreamInPlace(int nMip, STexPoolItem* pNewPoolItem)
         case eTF_EAC_RG11:
         case eTF_ETC2:
         case eTF_ETC2A:
-            //  Confetti BEGIN: Igor Lobanchikov
 #ifdef CRY_USE_METAL
         case eTF_PVRTC2:
         case eTF_PVRTC4:
@@ -1461,7 +1462,6 @@ bool CTexture::CanStreamInPlace(int nMip, STexPoolItem* pNewPoolItem)
         case eTF_ASTC_12x10:
         case eTF_ASTC_12x12:
 #endif
-            //  Confetti End: Igor Lobanchikov
             bFormatCompatible = true;
             break;
 
@@ -1487,6 +1487,8 @@ bool CTexture::CanStreamInPlace(int nMip, STexPoolItem* pNewPoolItem)
         #include "Xenia/TextureStreaming_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/TextureStreaming_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/TextureStreaming_cpp_salem.inl"
     #endif
 #endif
 
@@ -1600,6 +1602,8 @@ bool CTexture::StartStreaming(CTexture* pTex, STexPoolItem* pNewPoolItem, const 
         #include "Xenia/TextureStreaming_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/TextureStreaming_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/TextureStreaming_cpp_salem.inl"
     #endif
 #endif
 

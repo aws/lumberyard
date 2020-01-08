@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Linux":
+        [
+            "RemoteConsole_Traits_Platform.h",
+            "RemoteConsole_Traits_Linux.h"
+        ]
+    }
+}

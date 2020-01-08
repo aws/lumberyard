@@ -34,7 +34,6 @@ namespace STLHelpers
 
     template <class Type>
     struct less_strcmp
-        : public std::binary_function<Type, Type, bool>
     {
         bool operator()(const Type& left, const Type& right) const
         {
@@ -44,7 +43,6 @@ namespace STLHelpers
 
     template <class Type>
     struct less_stricmp
-        : public std::binary_function<Type, Type, bool>
     {
         bool operator()(const Type& left, const Type& right) const
         {

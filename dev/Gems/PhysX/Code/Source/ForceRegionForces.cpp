@@ -15,6 +15,8 @@
 namespace PhysX
 {
     static const float s_forceRegionZeroValue = 0.0f;
+    static const float s_forceRegionMaxDamping = 200.0f;
+    static const float s_forceRegionMaxDensity = 1500.0f;
     static const float s_forceRegionMaxValue = 1000000.0f;
     static const float s_forceRegionMinValue = -s_forceRegionMaxValue;
     static const float s_forceRegionMaxDampingRatio = 1.5f;
@@ -300,7 +302,7 @@ namespace PhysX
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ForceSimpleDrag::m_volumeDensity, "Region Density", "Density of the region")
                       ->Attribute(AZ::Edit::Attributes::Min, s_forceRegionZeroValue)
-                      ->Attribute(AZ::Edit::Attributes::Max, s_forceRegionMaxValue)
+                      ->Attribute(AZ::Edit::Attributes::Max, s_forceRegionMaxDensity)
                     ;
             }
         }
@@ -359,7 +361,7 @@ namespace PhysX
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ForceLinearDamping::m_damping, "Damping", "Amount of damping applied to an opposite force")
                       ->Attribute(AZ::Edit::Attributes::Min, s_forceRegionZeroValue)
-                      ->Attribute(AZ::Edit::Attributes::Max, s_forceRegionMaxValue)
+                      ->Attribute(AZ::Edit::Attributes::Max, s_forceRegionMaxDamping)
                     ;
             }
         }

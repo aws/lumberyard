@@ -12,6 +12,7 @@
 #include "Utils.h"
 #include <algorithm>
 #include <cstring>
+#include <AzCore/base.h>
 
 namespace AZ
 {
@@ -23,17 +24,15 @@ namespace AZ
             return index < 0 ? false : true;
         }
 
-#pragma warning( push )
-#pragma warning(disable: 4996)
         void CopyParameters(int argc, char** target, char** source)
         {
             for (int i = 0; i < argc; i++)
             {
-                target[i] = new char[std::strlen(source[i]) + 1];
-                std::strcpy(target[i], source[i]);
+                const size_t dstSize = std::strlen(source[i]) + 1;
+                target[i] = new char[dstSize];
+                azstrcpy(target[i], dstSize, source[i]);
             }
         }
-#pragma warning( pop )
 
         int GetParameterIndex(int argc, char** argv, const std::string& param)
         {
@@ -116,27 +115,26 @@ namespace AZ
             argc -= numRemoved;
         }
 
-#pragma warning( push )
-#pragma warning(disable: 4996)
         char** SplitCommandLine(int& size, char* const cmdLine)
         {
             std::vector<char*> tokens;
-            char* tok = std::strtok(cmdLine, " ");
+            char* next_token = nullptr;
+            char* tok = azstrtok(cmdLine, 0, " ", &next_token);
             while (tok != NULL)
             {
                 tokens.push_back(tok);
-                tok = std::strtok(NULL, " ");
+                tok = azstrtok(NULL, 0, " ", &next_token);
             }
             size = (int)tokens.size();
             char** token_array = new char*[size];
             for (size_t i = 0; i < size; i++)
             {
-                token_array[i] = new char[std::strlen(tokens[i]) + 1];
-                std::strcpy(token_array[i], tokens[i]);
+                const size_t dstSize = std::strlen(tokens[i]) + 1;
+                token_array[i] = new char[dstSize];
+                azstrcpy(token_array[i], dstSize, tokens[i]);
             }
             return token_array;
         }
-#pragma warning( pop )
 
         bool EndsWith(const std::string& s, const std::string& ending)
         {

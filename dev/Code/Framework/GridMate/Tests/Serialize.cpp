@@ -36,9 +36,7 @@ namespace UnitTest
         T EndianInBuffer(const T& data)
         {
             T res = data;
-#if !defined(AZ_BIG_ENDIAN)
             AZStd::endian_swap(res);
-#endif
             return res;
         }
 
@@ -1112,9 +1110,7 @@ namespace UnitTest
         T EndianInBuffer(const T& data)
         {
             T res = data;
-#if !defined(AZ_BIG_ENDIAN)
             AZStd::endian_swap(res);
-#endif
             return res;
         }
 

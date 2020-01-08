@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <limits>
 
@@ -454,7 +453,7 @@ namespace GridMate
 
     struct PendingHandshake
     {
-        struct Hasher : public AZStd::unary_function<PendingHandshake, AZStd::size_t>
+        struct Hasher
         {
             AZ_FORCE_INLINE AZStd::size_t operator()(const PendingHandshake& h) const
             {
@@ -471,7 +470,7 @@ namespace GridMate
             }
         };
 
-        struct EqualTo : public AZStd::binary_function<PendingHandshake, PendingHandshake, bool>
+        struct EqualTo
         {
             AZ_FORCE_INLINE bool operator()(const PendingHandshake& a, const PendingHandshake& b) const
             {
@@ -614,7 +613,7 @@ namespace GridMate
         AZStd::vector<AZStd::unique_ptr<CarrierACKCallback> > m_ackCallbacks;
         union
         {
-            DriverError	        m_driverError;
+            DriverError         m_driverError;
             SecurityError       m_securityError;
         }                       m_error;
         CarrierDisconnectReason m_disconnectReason;
@@ -4956,5 +4955,3 @@ CarrierEventsBase::ReasonToString(CarrierDisconnectReason reason)
 
     return string(reasonStr);
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

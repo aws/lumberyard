@@ -1,0 +1,15 @@
+{
+  "platform": {
+    "ios": {
+      "libpath_debug": [
+        "External/IoTDevice/1.0.0/lib/ios_arm64/Debug"
+      ],
+      "libpath_release": [
+        "External/IoTDevice/1.0.0/lib/ios_arm64/Release"
+      ],
+      "lib": [
+        "libaws-iot-sdk-cpp.a"
+      ]
+    }
+  }
+}

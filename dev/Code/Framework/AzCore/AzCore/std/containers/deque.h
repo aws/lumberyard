@@ -209,11 +209,6 @@ namespace AZStd
             AZ_FORCE_INLINE reference operator[](difference_type offset) const { this_type tmp = *this; tmp += offset; return *tmp; }
         };
 
-#if defined(AZ_COMPILER_GCC) && (AZ_COMPILER_GCC < 4)
-        friend class iterator_impl;
-        friend class const_iterator_impl;
-#endif
-
 #ifdef AZSTD_HAS_CHECKED_ITERATORS
         typedef Debug::checked_randomaccess_iterator<iterator_impl, this_type>           iterator;
         typedef Debug::checked_randomaccess_iterator<const_iterator_impl, this_type> const_iterator;
@@ -572,6 +567,13 @@ namespace AZStd
             }
         }
 
+#ifdef AZ_HAS_INITIALIZERS_LIST
+        AZ_FORCE_INLINE void insert(const_iterator insertPos, std::initializer_list<value_type> list)
+        {
+            insert(insertPos, list.begin(), list.end());
+        }
+#endif // #ifdef AZ_HAS_INITIALIZERS_LIST
+
         template<class InputIterator>
         AZ_FORCE_INLINE void insert(const_iterator insertPos, InputIterator first, InputIterator last)
         {
@@ -670,7 +672,6 @@ namespace AZStd
             }
         }
 
-#ifdef AZ_HAS_RVALUE_REFS
         deque(this_type&& rhs)
             : m_map(0)
             , m_mapSize(0)
@@ -843,7 +844,6 @@ namespace AZStd
         {
             assign_rv(AZStd::forward<this_type>(rhs));
         }
-#endif // AZ_HAS_RVALUE_REFS
 
         /**
         * \anchor DequeExtensions
@@ -1219,7 +1219,6 @@ namespace AZStd
         left.swap(right);
     }
 
-#if defined(AZ_HAS_RVALUE_REFS)
     template <class T, class Allocator, AZStd::size_t NumElementsPerBlock, AZStd::size_t MinMapSize>
     inline void swap(deque<T, Allocator, NumElementsPerBlock, MinMapSize>& left, deque<T, Allocator, NumElementsPerBlock, MinMapSize>&& right)
     {
@@ -1233,7 +1232,6 @@ namespace AZStd
         typedef deque<T, Allocator, NumElementsPerBlock, MinMapSize> this_type;
         right.swap(AZStd::forward<this_type>(left));
     }
-#endif
 }
 
 #endif // AZSTD_DEQUE_H

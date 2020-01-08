@@ -45,15 +45,11 @@ public:
     AZ::Entity* CurrentSelectedElement() const;
 
     void SetUniqueSelectionHighlight(QTreeWidgetItem* item);
-    void SetUniqueSelectionHighlight(AZ::Entity* element);
+    void SetUniqueSelectionHighlight(const AZ::Entity* element);
 
     void AddElement(const QTreeWidgetItemRawPtrQList& selectedItems, const QPoint* optionalPos);
 
     void SignalUserSelectionHasChanged(const QTreeWidgetItemRawPtrQList& selectedItems);
-
-    void ReparentItems(bool onCreationOfElement,
-        const QTreeWidgetItemRawPtrList& baseParentItems,
-        const HierarchyItemRawPtrList& childItems);
 
     //! When we delete the Editor window we call this. It avoid the element Entities
     //! being deleted when the HierarchyItem is deleted
@@ -65,6 +61,13 @@ public:
 
     //! Update the appearance of all hierarchy items to reflect their slice status
     void UpdateSliceInfo();
+
+    //! Drop assets from asset browser
+    void DropMimeDataAssets(const QMimeData* data,
+        const AZ::EntityId& targetEntityId,
+        bool onElement,
+        int childIndex,
+        const QPoint* newElementPosition = nullptr);
 
 public slots:
     void DeleteSelectedItems();
@@ -118,9 +121,21 @@ private:
 
     bool IsEntityInEntityContext(AZ::EntityId entityId);
 
+    void ReparentItems(const QTreeWidgetItemRawPtrList& baseParentItems,
+        const HierarchyItemRawPtrList& childItems);
+
     void ToggleVisibility(HierarchyItem* hierarchyItem);
     void DeleteSelectedItems(const QTreeWidgetItemRawPtrQList& selectedItems);
-    bool AcceptsMimeData(const QMimeData *mimeData);
+
+    bool AcceptsMimeData(const QMimeData* mimeData);
+    
+    // Drag/drop assets from asset browser
+    void DropMimeDataAssetsAtHierarchyPosition(const QMimeData* data, const QPoint& position);
+    void DropMimeDataAssets(const QMimeData* data,
+        QTreeWidgetItem* targetWidgetItem,
+        bool onElement,
+        int childIndex,
+        const QPoint* newElementPosition);
 
     bool m_isDeleting;
 
@@ -143,5 +158,5 @@ private:
     EditTriggers m_editTriggersBeforePickMode;
     QModelIndex m_currentItemBeforePickMode;
 
-    bool m_inited;
+    bool m_isInited;
 };

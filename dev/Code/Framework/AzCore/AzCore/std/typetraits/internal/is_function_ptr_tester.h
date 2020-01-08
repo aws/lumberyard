@@ -31,8 +31,6 @@ namespace AZStd
         
         // specializations for functions with const volatile ref qualifiers
         AZSTD_FUNCTION_POINTER_TESTER(AZSTD_FUNCTION_TESTER_NOARG);
-        // VS2013 does not support const volatile ref-qualifiers on non-member function signatures 
-#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC >= 1900
         AZSTD_FUNCTION_POINTER_TESTER(const);
         AZSTD_FUNCTION_POINTER_TESTER(volatile);
         AZSTD_FUNCTION_POINTER_TESTER(const volatile);
@@ -44,7 +42,6 @@ namespace AZStd
         AZSTD_FUNCTION_POINTER_TESTER(const&&);
         AZSTD_FUNCTION_POINTER_TESTER(volatile&&);
         AZSTD_FUNCTION_POINTER_TESTER(const volatile&&);
-#endif
         #undef AZSTD_FUNCTION_POINTER_TESTER
 
         #undef AZSTD_FUNCTION_TESTER_NOARG

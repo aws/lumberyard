@@ -1,0 +1,22 @@
+{
+    "platform": {
+        "android_armv8_clang": {
+            "sharedlibpath_debug": [
+                "bin/android/arm64-v8a/Debug"
+            ],
+            "sharedlibpath_release": [
+                "bin/android/arm64-v8a/Release"
+            ],
+            "aws_cpp_sdk_gamelift_shared/defines": [
+                "BUILD_GAMELIFT_CLIENT"
+            ],
+            "aws_cpp_sdk_gamelift_shared/shared": [
+                "lib${aws_cpp_sdk_gamelift}.so"
+            ],
+            "aws_cpp_sdk_identity_lambda_shared/shared": [
+                "lib${aws_cpp_sdk_identity_lambda}.so",
+                "lib${aws_dependencies}.so"
+            ]
+        }
+    }
+}

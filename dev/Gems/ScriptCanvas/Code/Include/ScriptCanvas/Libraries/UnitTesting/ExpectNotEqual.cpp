@@ -25,16 +25,32 @@ namespace ScriptCanvas
                 // DYNAMIC_SLOT_VERSION_CONVERTER
                 auto candidateSlot = GetSlot(GetSlotId("Candidate"));
 
-                if (candidateSlot && !candidateSlot->IsDynamicSlot())
+                if (candidateSlot)
                 {
-                    candidateSlot->SetDynamicDataType(DynamicDataType::Any);
+                    if (!candidateSlot->IsDynamicSlot())
+                    {
+                        candidateSlot->SetDynamicDataType(DynamicDataType::Any);
+                    }
+
+                    if (candidateSlot->GetDynamicGroup() == AZ::Crc32())
+                    {
+                        SetDynamicGroup(candidateSlot->GetId(), AZ_CRC("DynamicGroup", 0x219a2e3a));
+                    }
                 }
 
                 auto referenceSlot = GetSlot(GetSlotId("Reference"));
 
-                if (referenceSlot && !referenceSlot->IsDynamicSlot())
+                if (referenceSlot)
                 {
-                    referenceSlot->SetDynamicDataType(DynamicDataType::Any);
+                    if (!referenceSlot->IsDynamicSlot())
+                    {
+                        referenceSlot->SetDynamicDataType(DynamicDataType::Any);
+                    }
+
+                    if (referenceSlot->GetDynamicGroup() == AZ::Crc32())
+                    {
+                        SetDynamicGroup(referenceSlot->GetId(), AZ_CRC("DynamicGroup", 0x219a2e3a));
+                    }
                 }
                 ////
             }

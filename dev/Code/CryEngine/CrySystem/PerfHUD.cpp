@@ -1388,48 +1388,6 @@ void CRenderStatsWidget::Update()
     ZeroStruct(m_runtimeData);
 
     //
-    // Render Type
-    //
-    const char* pRenderType = NULL;
-
-    switch (gEnv->pRenderer->GetRenderType())
-    {
-    case eRT_OpenGL:
-        pRenderType = "PC - OpenGL";
-        break;
-    case eRT_DX11:
-        pRenderType = "PC - DX11";
-        break;
-    case eRT_XboxOne: // ACCEPTED_USE
-        pRenderType = "Xbox One"; // ACCEPTED_USE
-        break;
-    case eRT_PS4: // ACCEPTED_USE
-        pRenderType = "PS4"; // ACCEPTED_USE
-        break;
-    case eRT_Null:
-        pRenderType = "Null";
-        break;
-    case eRT_Undefined:
-    default:
-        assert(0);
-        pRenderType = "Undefined";
-        break;
-    }
-
-    const char* buildType = NULL;
-
-#if defined(_RELEASE)
-    buildType = "RELEASE";
-#elif defined(_DEBUG)
-    buildType = "DEBUG";
-#else
-    buildType = "PROFILE"; //Assume profile?
-#endif
-
-    //sprintf_s(entryBuffer, CMiniInfoBox::MAX_TEXT_LENGTH, "%s - %s - Build: %d", pRenderType, buildType, m_buildNum);
-    //m_pInfoBox->AddEntry(entryBuffer, CPerfHUD::COL_NORM, CPerfHUD::TEXT_SIZE_NORM);
-
-    //
     // FPS
     //
     m_runtimeData.fps = min(9999.f, gEnv->pTimer->GetFrameRate());

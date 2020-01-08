@@ -10,7 +10,6 @@
 *
 */
 
-#include <Tests/TestTypes.h>
 #include "GridMocks.h"
 
 #include <GridMate/Replica/Interest/BitmaskInterestHandler.h>
@@ -18,6 +17,8 @@
 #include <GridMate/Replica/Interest/ProximityInterestHandler.h>
 
 #include <AzFramework/Network/InterestManagerComponent.h>
+#include <AzCore/Socket/AzSocket.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 namespace UnitTest
 {
@@ -58,6 +59,8 @@ namespace UnitTest
 
         void SetUp() override
         {
+            AZ::AzSock::Startup();
+
             AllocatorsFixture::SetUp();
             AZ::AllocatorInstance<GridMate::GridMateAllocatorMP>::Create();
             m_gridMate = GridMate::GridMateCreate(GridMate::GridMateDesc());
@@ -88,6 +91,8 @@ namespace UnitTest
             GridMate::GridMateDestroy(m_gridMate);
             AZ::AllocatorInstance<GridMate::GridMateAllocatorMP>::Destroy();
             AllocatorsFixture::TearDown();
+
+            AZ::AzSock::Cleanup();
         }
 
         AZStd::unique_ptr<UnitTest::MockSessionService> m_sessionService;

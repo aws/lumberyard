@@ -20,7 +20,10 @@
 #include "3dEngine.h"
 #include "ObjMan.h"
 #include "Vegetation.h"
+
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
 #include "terrain.h"
+#endif
 
 IGeometry* CDecal::s_pSphere = 0;
 
@@ -379,6 +382,7 @@ void CDecal::FreeRenderData()
 
 void CDecal::RenderBigDecalOnTerrain(float fAlpha, float fScale, const SRenderingPassInfo& passInfo)
 {
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
     float fRadius = m_fSize * fScale;
 
     // check terrain bounds
@@ -482,4 +486,5 @@ void CDecal::RenderBigDecalOnTerrain(float fAlpha, float fScale, const SRenderin
     // m_pRenderMesh might get updated by the following function
     GetTerrain()->RenderArea(m_vPos, fRadius, m_pRenderMesh,
         pObj, m_pMaterial, "BigDecalOnTerrain", m_arrBigDecalRMCustomData, GetCVars()->e_DecalsClip ? planes : NULL, passInfo);
+#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
 }

@@ -216,15 +216,15 @@ namespace PhysX
     {
         RegionParams regionParams;
         regionParams.m_id = entityId;
-        AZ::TransformBus::EventResult(regionParams.m_rotation
+
+        AZ::Transform worldTransform = AZ::Transform::CreateIdentity();
+        AZ::TransformBus::EventResult(worldTransform
             , entityId
-            , &AZ::TransformBus::Events::GetWorldRotationQuaternion);
-        AZ::TransformBus::EventResult(regionParams.m_position
-            , entityId
-            , &AZ::TransformBus::Events::GetWorldTranslation);
-        AZ::TransformBus::EventResult(regionParams.m_scale
-            , entityId
-            , &AZ::TransformBus::Events::GetWorldScale);
+            , &AZ::TransformBus::Events::GetWorldTM);
+        regionParams.m_position = worldTransform.GetPosition();
+        regionParams.m_scale = worldTransform.ExtractScaleExact();
+        regionParams.m_rotation = AZ::Quaternion::CreateFromTransform(worldTransform);
+
         LmbrCentral::SplineComponentRequestBus::EventResult(regionParams.m_spline
             , entityId
             , &LmbrCentral::SplineComponentRequestBus::Events::GetSpline);

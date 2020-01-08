@@ -694,7 +694,7 @@ namespace EMStudio
     //#define GRAPH_PERFORMANCE_INFO
     //#define GRAPH_PERFORMANCE_FRAMEDURATION
 
-    void NodeGraph::Render(QPainter& painter, int32 width, int32 height, const QPoint& mousePos, float timePassedInSeconds)
+    void NodeGraph::Render(const QItemSelectionModel& selectionModel, QPainter& painter, int32 width, int32 height, const QPoint& mousePos, float timePassedInSeconds)
     {
         // control the scroll speed of the dashed blend tree connections etc
         mDashOffset -= 7.5f * timePassedInSeconds;
@@ -771,7 +771,7 @@ namespace EMStudio
         for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
         {
             GraphNode* graphNode = indexAndGraphNode.second.get();
-            graphNode->RenderConnections(painter, &connectionsPen, &connectionsBrush, scaledVisibleRect, stepSize);
+            graphNode->RenderConnections(selectionModel, painter, &connectionsPen, &connectionsBrush, scaledVisibleRect, stepSize);
         }
 #ifdef GRAPH_PERFORMANCE_INFO
         MCore::LogInfo("   Connections: %.2f ms", connectionsTimer.GetTime() * 1000);
@@ -852,6 +852,7 @@ namespace EMStudio
 
     void NodeGraph::RenderTitlebar(QPainter& painter, int32 width)
     {
+        const QString& titleBarText = m_graphWidget->GetTitleBarText();
         if (m_parentReferenceNode.isValid())
         {
             EMotionFX::AnimGraphNode* node = m_parentReferenceNode.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
@@ -872,9 +873,9 @@ namespace EMStudio
 
             RenderTitlebar(painter, titleLabel, width);
         }
-        else if (!m_titleBarText.isEmpty())
+        else if (!titleBarText.isEmpty())
         {
-            RenderTitlebar(painter, m_titleBarText, width);
+            RenderTitlebar(painter, titleBarText, width);
         }
     }
 
@@ -2158,15 +2159,6 @@ namespace EMStudio
                 }
                 break;
             }
-            case AnimGraphModel::ModelItemType::TRANSITION:
-            {
-                StateConnection* visualStateConnection = FindStateConnection(selectedIndex);
-                if (visualStateConnection)
-                {
-                    visualStateConnection->SetIsSelected(true);
-                }
-                break;
-            }
             case AnimGraphModel::ModelItemType::CONNECTION:
             {
                 NodeConnection* visualNodeConnection = FindNodeConnection(selectedIndex);
@@ -2191,15 +2183,6 @@ namespace EMStudio
                 if (it != m_graphNodeByModelIndex.end())
                 {
                     it->second->SetIsSelected(false);
-                }
-                break;
-            }
-            case AnimGraphModel::ModelItemType::TRANSITION:
-            {
-                StateConnection* visualStateConnection = FindStateConnection(deselectedIndex);
-                if (visualStateConnection)
-                {
-                    visualStateConnection->SetIsSelected(false);
                 }
                 break;
             }

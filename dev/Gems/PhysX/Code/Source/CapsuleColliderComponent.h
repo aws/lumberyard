@@ -18,7 +18,8 @@
 namespace PhysX
 {
     /// Component that provides capsule shape collider.
-    /// Used in conjunction with a PhysX Rigid Body Component.
+    /// May be used in conjunction with a PhysX Rigid Body Component to create a dynamic rigid body, or on its own
+    /// to create a static rigid body.
     class CapsuleColliderComponent
         : public BaseColliderComponent
     {
@@ -28,12 +29,8 @@ namespace PhysX
         static void Reflect(AZ::ReflectContext* context);
 
         CapsuleColliderComponent() = default;
-        explicit CapsuleColliderComponent(const Physics::ColliderConfiguration& colliderConfiguration, const Physics::CapsuleShapeConfiguration& configuration);
 
-        // ColliderComponentRequestBus
-        AZStd::shared_ptr<Physics::ShapeConfiguration> CreateScaledShapeConfig() override;
-
-    protected:
-        Physics::CapsuleShapeConfiguration m_shapeConfiguration; ///< Capsule shape configuration.
+        // BaseColliderComponent
+        void UpdateScaleForShapeConfigs() override;
     };
 }

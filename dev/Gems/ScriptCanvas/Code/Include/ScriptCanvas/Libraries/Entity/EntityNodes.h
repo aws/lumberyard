@@ -27,7 +27,7 @@ namespace ScriptCanvas
         using namespace Data;
 
         template<int t_Index>
-        AZ_INLINE void DefaultScale(Node& node) { Node::SetDefaultValuesByIndex<t_Index>::_(node, Data::One()); }
+        AZ_INLINE void DefaultScale(Node& node) { SetDefaultValuesByIndex<t_Index>::_(node, Data::One()); }
 
         AZ_INLINE Vector3Type GetEntityRight(AZ::EntityId entityId, NumberType scale)
         {

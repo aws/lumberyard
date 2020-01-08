@@ -12,7 +12,7 @@
 
 #include "WindowsAPIImplementation.h"
 
-#if defined(AZ_PLATFORM_APPLE_OSX) || defined(AZ_PLATFORM_LINUX)
+#if defined(AZ_PLATFORM_MAC) || defined(AZ_PLATFORM_LINUX)
 
 #include <cstring>
 #include <errno.h>
@@ -76,7 +76,7 @@ DWORD Sleep(DWORD dwMilliseconds)
     return 0;
 }
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
 
 int32_t InterlockedIncrement(volatile int32_t* valueToIncrement)
 {

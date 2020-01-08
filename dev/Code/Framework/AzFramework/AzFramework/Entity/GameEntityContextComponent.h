@@ -85,6 +85,7 @@ namespace AzFramework
         void OnRootSlicePreDestruction() override;
         void OnContextEntitiesAdded(const EntityList& entities);
         void OnContextReset() override;
+        bool ValidateEntitiesAreValidForContext(const EntityList& entities) override;
         using EntityContext::LoadFromStream;
         //////////////////////////////////////////////////////////////////////////
 

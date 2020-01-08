@@ -299,19 +299,25 @@ namespace ScriptCanvas
             AzFramework::EntityContextRequestBus::EventResult(loadedGameEntityIdMap, owningContextId, &AzFramework::EntityContextRequests::GetLoadedEntityIdMap);
         }
 
-            // Added an entity mapping of the SelfReferenceId Entity to this component's EntityId
-            // Also add a mapping of the InvalidUniqueRuntimeId to the graph uniqueId
-            // as well as an identity mapping for the EntityId and the UniqueId
+        // Added an entity mapping of the GraphOwnerId Entity to this component's EntityId
+        // Also add a mapping of the UniqueId to the graph uniqueId
+        // as well as an identity mapping for the EntityId and the UniqueId
         AZStd::unordered_map<AZ::EntityId, AZ::EntityId> assetToRuntimeEntityIdMap
         {
-            { ScriptCanvas::SelfReferenceId, GetEntityId() },
-            { ScriptCanvas::InvalidUniqueRuntimeId, GetUniqueId() },
+            { ScriptCanvas::GraphOwnerId, GetEntityId() },
+            { ScriptCanvas::UniqueId, GetUniqueId() },
             { GetEntityId(), GetEntityId() },
             { GetUniqueId(), GetUniqueId() },
             { AZ::EntityId(), AZ::EntityId() } // Adds an Identity mapping for InvalidEntityId -> InvalidEntityId since it is valid to set an EntityId field to InvalidEntityId 
         };
         assetToRuntimeEntityIdMap.insert(m_assetIdToRuntimeId.begin(), m_assetIdToRuntimeId.end());
-            assetToRuntimeEntityIdMap.insert(loadedGameEntityIdMap.begin(), loadedGameEntityIdMap.end());
+ 
+        // Copy the smaller map into large map, avoid performance issues of copying large map to small map
+        if (assetToRuntimeEntityIdMap.size() > loadedGameEntityIdMap.size())
+        {
+            AZStd::swap(assetToRuntimeEntityIdMap, loadedGameEntityIdMap);
+        }
+        assetToRuntimeEntityIdMap.insert(loadedGameEntityIdMap.begin(), loadedGameEntityIdMap.end());
 
             // Lambda function remaps any known entities to their correct id otherwise it remaps unknown entity Ids to invalid
         auto assetToRuntimeEnd = assetToRuntimeEntityIdMap.end();

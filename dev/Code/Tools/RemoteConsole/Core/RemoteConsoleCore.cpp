@@ -17,13 +17,8 @@
 #include <ILevelSystem.h>
 
 #include "RemoteConsoleCore.h"
+#include <RemoteConsole_Traits_Platform.h>
 
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #undef AZ_RESTRICTED_SECTION
-    #define REMOTECONSOLECORE_CPP_SECTION_1 1
-    #define REMOTECONSOLECORE_CPP_SECTION_2 2
-#endif
 
 
 const int defaultRemoteConsolePort = 4600; // externed in the header to expose publicly
@@ -156,14 +151,7 @@ void SRemoteServer::Terminate()
 void SRemoteServer::Run()
 {
     SetName(kServerThreadName);
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #define AZ_RESTRICTED_SECTION REMOTECONSOLECORE_CPP_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/RemoteConsoleCore_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/RemoteConsoleCore_cpp_provo.inl"
-    #endif
-#endif
+    AZ_TRAIT_REMOTECONSOLE_SET_THREAD_AFFINITY
 
     AZSOCKET sClient;
     AZ::AzSock::AzSocketAddress local;
@@ -309,23 +297,39 @@ bool SRemoteServer::WriteBuffer(SRemoteClient* pClient,  char* buffer, int& size
 /////////////////////////////////////////////////////////////////////////////////////////////
 bool SRemoteServer::ReadBuffer(const char* buffer, int data)
 {
-    IRemoteEvent* pEvent = SRemoteEventFactory::GetInst()->CreateEventFromBuffer(buffer, data);
-    const bool res = (pEvent != nullptr);
-    if (pEvent)
+    bool result = true;
+    
+    // Sometimes multiple events can come in a single buffer, so make sure we look
+    // at the entire thing.
+    int bytesRemaining = data;
+    const char* curBuffer = buffer;
+    while (bytesRemaining > 0)
     {
-        if (pEvent->GetType() != eCET_Noop)
+        // Create the event from the current sub string in the buffer.
+        IRemoteEvent* event = SRemoteEventFactory::GetInst()->CreateEventFromBuffer(curBuffer, bytesRemaining);
+        
+        result &= (event != nullptr);
+        if (event)
         {
-            m_lock.Lock();
-            m_eventBuffer.push_back(pEvent);
-            m_lock.Unlock();
+            if (event->GetType() != eCET_Noop)
+            {
+                m_lock.Lock();
+                m_eventBuffer.push_back(event);
+                m_lock.Unlock();
+            }
+            else
+            {
+                delete event;
+            }
         }
-        else
-        {
-            delete pEvent;
-        }
+
+        // Advance to the next null terminated string in the buffer
+        const int currentSize = strnlen(curBuffer, bytesRemaining);
+        bytesRemaining -= currentSize + 1;
+        curBuffer += currentSize + 1;
     }
 
-    return res;
+    return result;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -354,14 +358,7 @@ void SRemoteClient::Terminate()
 void SRemoteClient::Run()
 {
     SetName(kClientThreadName);
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #define AZ_RESTRICTED_SECTION REMOTECONSOLECORE_CPP_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/RemoteConsoleCore_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/RemoteConsoleCore_cpp_provo.inl"
-    #endif
-#endif
+    AZ_TRAIT_REMOTECONSOLE_SET_THREAD_AFFINITY
 
     char szBuff[kDefaultBufferSize];
     int size;
@@ -405,9 +402,7 @@ void SRemoteClient::Run()
         {
             ok &= SendPackage(szBuff, size);
             ok &= RecvPackage(szBuff, size);
-            IRemoteEvent* pEvt = SRemoteEventFactory::GetInst()->CreateEventFromBuffer(szBuff, size);
-            ok &= pEvt && pEvt->GetType() == eCET_Noop;
-            delete pEvt;
+            ok &= m_pServer->ReadBuffer(szBuff, size);
         }
     }
 }

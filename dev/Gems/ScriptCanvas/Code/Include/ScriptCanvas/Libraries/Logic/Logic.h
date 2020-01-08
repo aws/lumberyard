@@ -25,6 +25,8 @@
 #include "Not.h"
 #include "Once.h"
 #include "Or.h"
+#include "OrderedSequencer.h"
 #include "Sequencer.h"
+#include "TargetedSequencer.h"
 #include "WeightedRandomSequencer.h"
 

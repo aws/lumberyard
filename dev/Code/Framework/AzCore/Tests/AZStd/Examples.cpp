@@ -64,8 +64,7 @@ namespace UnitTest
             AZ_TEST_ASSERT((AZStd::size_t(&myAlignedBuffer) & 15) == 0);
 
             // POD
-            // Checks if a type is POD (Plain Old Data). Not for this to be correct the compiler should
-            // be TR1 complaint otherwise you need to use AZSTD_DECLARE_POD_TYPE.
+            // Checks if a type is POD (Plain Old Data).
             AZ_TEST_STATIC_ASSERT(is_pod<MyStruct>::value == true);
             AZ_TEST_STATIC_ASSERT(is_pod<MyClass>::value == false);
 
@@ -433,7 +432,6 @@ namespace UnitTest
 
             // KeyTypeCompare
             struct MyExpensiveKeyEqualTo
-                : public binary_function<MyExpensiveKeyType, MyExpensiveKeyType, bool>
             {
                 AZ_FORCE_INLINE bool operator()(const MyExpensiveKeyType& left, const MyExpensiveKeyType& right) const { return left.IsEqual(right); }
                 // We use this class to compare the AZStd::size_t to our key type.

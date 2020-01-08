@@ -35,7 +35,7 @@ namespace ScriptCanvas
 
             return source / Data::ToVectorFloat(divisor);
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(DivideByNumber, "Math/Matrix3x3", "{8B696031-B2C6-463C-A051-B875464859DC}", "returns matrix created from multiply the source matrix by 1/Divisor", "Source", "Divisor");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(DivideByNumber, "Math/Matrix3x3", "{8B696031-B2C6-463C-A051-B875464859DC}", "returns matrix created from multiply the source matrix by 1/Divisor", "Source", "Divisor");
 
         AZ_INLINE Data::Matrix3x3Type FromColumns(const Data::Vector3Type& col0, const Data::Vector3Type& col1, const Data::Vector3Type& col2)
         {

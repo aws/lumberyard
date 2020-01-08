@@ -14,4 +14,6 @@ def build(bld):
     bld.DefineGem(
         file_list                   = ['textureatlas.waf_files'],
         pch                         = 'Source/TextureAtlas_precompiled.cpp',
+        includes                    = [bld.Path('Code/CryEngine/CryCommon')
+                                      ],
     )

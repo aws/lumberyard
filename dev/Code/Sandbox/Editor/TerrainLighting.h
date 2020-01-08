@@ -176,13 +176,16 @@ protected:
     void showEvent(QShowEvent* event);
 
     QImage m_bmpLightmap;
-    class CTerrainTexGen* m_pTexGen;
     CImageEx m_lightmap;
 
     CImageEx m_moonSunTrans;
 
     QPixmap m_moonSunTransitionPreview;
     QPixmap m_sunPathPreview;
+
+#ifdef LY_TERRAIN_EDITOR
+    class CTerrainTexGen* m_pTexGen;
+#endif // #ifdef LY_TERRAIN_EDITOR
 
 protected slots:
     void OnHSlidersScroll();

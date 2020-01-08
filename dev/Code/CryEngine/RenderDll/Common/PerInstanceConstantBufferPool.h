@@ -13,7 +13,9 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 #pragma once
 
-#if (defined(WIN32) || defined(APPLE) || defined(LINUX))
+#include "Defs.h"
+
+#if (defined(WIN32) || defined(APPLE) || defined(LINUX) || defined(USE_FEATURE_SPI_INDEXED_CB_BY_DEFAULT))
     #define FEATURE_SPI_INDEXED_CB
 
     #if defined(DONT_USE_SPI_INDEXED_CB)
@@ -22,7 +24,7 @@
 #endif
 
 // DirectX 11.0
-#if defined(WIN32) || defined(LINUX) || defined(APPLE)
+#if defined(WIN32) || defined(LINUX) || defined(APPLE) || defined(USE_FEATURE_SPI_INDEXED_CB_BY_DEFAULT)
 
     #define SPI_NUM_STATIC_INST_CB_DEFAULT (2048 * 64)
 

@@ -33,14 +33,10 @@ namespace AzToolsFramework
     static const char* const s_deselectVerticesTitle = "Deselect Vertices";
     static const char* const s_deselectVerticesDesc = "Deselect current vertex selection";
 
-    /// Remove a vertex from the container and ensure the associated manipulator is unset and
-    /// property display values are refreshed.
-    template<typename Vertex>
-    static void SafeRemoveVertex(const AZ::EntityId entityId, const size_t vertexIndex)
+    static void RefreshUiAfterAddRemove(const AZ::EntityComponentIdPair& entityComponentIdPair)
     {
-        bool removed = false;
-        AZ::VariableVerticesRequestBus<Vertex>::EventResult(
-            removed, entityId, &AZ::VariableVerticesRequestBus<Vertex>::Handler::RemoveVertex, vertexIndex);
+        // ensure editor entity model (entity inspector) is refreshed
+        OnEntityComponentPropertyChanged(entityComponentIdPair);
 
         // ensure property grid values are refreshed
         ToolsApplicationNotificationBus::Broadcast(
@@ -65,29 +61,8 @@ namespace AzToolsFramework
                     mouseInteraction.m_mouseInteraction.m_keyboardModifiers.Shift() &&
                     mouseInteraction.m_mouseInteraction.m_keyboardModifiers.Ctrl())
                 {
-                    ScopedUndoBatch surfaceSnapUndo("Snap to Surface");
-                    ScopedUndoBatch::MarkEntityDirty(GetEntityId());
-
-                    const int viewportId = mouseInteraction.m_mouseInteraction.m_interactionId.m_viewportId;
-                    // get unsnapped terrain position (world space)
-                    AZ::Vector3 worldSurfacePosition;
-                    ViewportInteraction::MainEditorViewportInteractionRequestBus::EventResult(
-                        worldSurfacePosition, viewportId,
-                        &ViewportInteraction::MainEditorViewportInteractionRequestBus::Events::PickTerrain,
-                        ViewportInteraction::QPointFromScreenPoint(
-                            mouseInteraction.m_mouseInteraction.m_mousePick.m_screenCoordinates));
-
-                    AZ::Transform worldFromLocal;
-                    AZ::TransformBus::EventResult(worldFromLocal, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
-                    const AZ::Transform localFromWorld = worldFromLocal.GetInverseFast();
-
-                    // convert to local space - snap if enabled
-                    const AZ::Vector3 localFinalSurfacePosition = GridSnapping(viewportId)
-                        ? CalculateSnappedTerrainPosition(
-                            worldSurfacePosition, worldFromLocal, viewportId, GridSize(viewportId))
-                        : localFromWorld * worldSurfacePosition;
-
-                    SetSelectedPosition(localFinalSurfacePosition);
+                    SnapVerticesToTerrain(mouseInteraction);
+                    return true;
                 }
 
                 if (mouseInteraction.m_mouseInteraction.m_mouseButtons.Left() &&
@@ -98,9 +73,47 @@ namespace AzToolsFramework
                 }
             }
             break;
+        default:
+            return false;
         }
 
         return false;
+    }
+
+    template<typename Vertex>
+    void EditorVertexSelectionBase<Vertex>::SnapVerticesToTerrain(
+        const ViewportInteraction::MouseInteractionEvent& mouseInteraction)
+    {
+        ScopedUndoBatch surfaceSnapUndo("Snap to Surface");
+        ScopedUndoBatch::MarkEntityDirty(GetEntityId());
+
+        const int viewportId = mouseInteraction.m_mouseInteraction.m_interactionId.m_viewportId;
+        // get unsnapped terrain position (world space)
+        AZ::Vector3 worldSurfacePosition = AZ::Vector3::CreateZero();;
+        ViewportInteraction::MainEditorViewportInteractionRequestBus::EventResult(
+            worldSurfacePosition, viewportId,
+            &ViewportInteraction::MainEditorViewportInteractionRequestBus::Events::PickTerrain,
+            ViewportInteraction::QPointFromScreenPoint(
+                mouseInteraction.m_mouseInteraction.m_mousePick.m_screenCoordinates));
+
+        AZ::Transform worldFromLocal;
+        AZ::TransformBus::EventResult(worldFromLocal, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
+        const AZ::Transform localFromWorld = worldFromLocal.GetInverseFast();
+
+        // convert to local space - snap if enabled
+        const AZ::Vector3 localFinalSurfacePosition = GridSnapping(viewportId)
+            ? CalculateSnappedTerrainPosition(
+                worldSurfacePosition, worldFromLocal, viewportId, GridSize(viewportId))
+            : localFromWorld * worldSurfacePosition;
+
+        SetSelectedPosition(localFinalSurfacePosition);
+
+        OnEntityComponentPropertyChanged(GetEntityComponentIdPair());
+
+        // ensure property grid values are refreshed
+        ToolsApplicationNotificationBus::Broadcast(
+            &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay,
+            Refresh_Values);
     }
 
     /// Iterate over all vertices currently associated with the translation manipulator and update their
@@ -139,18 +152,14 @@ namespace AzToolsFramework
         {
             m_onVertexPositionsUpdated();
         }
-
-        // ensure property grid values are refreshed
-        ToolsApplicationNotificationBus::Broadcast(
-            &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
     }
 
     /// In OnMouseDown for various manipulators (linear/planar/surface), ensure we record the vertex starting position
     /// for each vertex associated with the translation manipulator to use with offset calculations when updating.
     template<typename Vertex>
     void InitializeVertexLookup(
-        IndexedTranslationManipulator<Vertex>& translationManipulator, const AZ::EntityId entityId,
-        const AZ::Vector3& snapOffset)
+        IndexedTranslationManipulator<Vertex>& translationManipulator,
+        const AZ::EntityId entityId, const AZ::Vector3& snapOffset)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
@@ -179,7 +188,8 @@ namespace AzToolsFramework
     /// Create a translation manipulator for a specific vertex and setup its corresponding callbacks etc.
     template<typename Vertex>
     void EditorVertexSelectionBase<Vertex>::CreateTranslationManipulator(
-        const AZ::EntityId entityId, const ManipulatorManagerId managerId,
+        const AZ::EntityComponentIdPair& entityComponentIdPair,
+        const ManipulatorManagerId managerId,
         const Vertex& vertex, size_t vertexIndex)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
@@ -196,7 +206,7 @@ namespace AzToolsFramework
 
         // create a new translation manipulator bound for the selected vertexIndex
         m_translationManipulator = AZStd::make_shared<IndexedTranslationManipulator<Vertex>>(
-            Dimensions(), vertexIndex, vertex, WorldFromLocalWithUniformScale(entityId));
+            Dimensions(), vertexIndex, vertex, WorldFromLocalWithUniformScale(entityComponentIdPair.GetEntityId()));
 
         // setup how the manipulator should look
         m_manipulatorConfiguratorFn(&m_translationManipulator->m_manipulator);
@@ -204,71 +214,71 @@ namespace AzToolsFramework
         m_translationManipulator->m_manipulator.SetLocalPosition(AdaptVertexOut(vertex));
 
         // linear manipulator callbacks
-        m_translationManipulator->m_manipulator.InstallLinearManipulatorMouseDownCallback([this](
-            const LinearManipulator::Action& action)
+        m_translationManipulator->m_manipulator.InstallLinearManipulatorMouseDownCallback(
+            [this](const LinearManipulator::Action& action)
         {
             BeginBatchMovement();
             InitializeVertexLookup(*m_translationManipulator, GetEntityId(), action.m_start.m_positionSnapOffset);
         });
 
-        m_translationManipulator->m_manipulator.InstallLinearManipulatorMouseMoveCallback([this](
-            const LinearManipulator::Action& action)
+        m_translationManipulator->m_manipulator.InstallLinearManipulatorMouseMoveCallback(
+            [this](const LinearManipulator::Action& action)
         {
             UpdateManipulatorsAndVerticesFromOffset(
                 *m_translationManipulator, action.m_start.m_localPosition, action.LocalPositionOffset());
         });
 
-        m_translationManipulator->m_manipulator.InstallLinearManipulatorMouseUpCallback([this](
-            const LinearManipulator::Action& /*action*/)
+        m_translationManipulator->m_manipulator.InstallLinearManipulatorMouseUpCallback(
+            [this](const LinearManipulator::Action& /*action*/)
         {
             EndBatchMovement();
         });
 
         // planar manipulator callbacks
-        m_translationManipulator->m_manipulator.InstallPlanarManipulatorMouseDownCallback([this](
-            const PlanarManipulator::Action& action)
+        m_translationManipulator->m_manipulator.InstallPlanarManipulatorMouseDownCallback(
+            [this](const PlanarManipulator::Action& action)
         {
             BeginBatchMovement();
             InitializeVertexLookup(*m_translationManipulator, GetEntityId(), action.m_start.m_snapOffset);
         });
 
-        m_translationManipulator->m_manipulator.InstallPlanarManipulatorMouseMoveCallback([this](
-            const PlanarManipulator::Action& action)
+        m_translationManipulator->m_manipulator.InstallPlanarManipulatorMouseMoveCallback(
+            [this](const PlanarManipulator::Action& action)
         {
             UpdateManipulatorsAndVerticesFromOffset(
                 *m_translationManipulator, action.m_start.m_localPosition, action.LocalPositionOffset());
         });
 
-        m_translationManipulator->m_manipulator.InstallPlanarManipulatorMouseUpCallback([this](
-            const PlanarManipulator::Action& /*action*/)
+        m_translationManipulator->m_manipulator.InstallPlanarManipulatorMouseUpCallback(
+            [this](const PlanarManipulator::Action& /*action*/)
         {
             EndBatchMovement();
         });
 
         // surface manipulator callbacks
-        m_translationManipulator->m_manipulator.InstallSurfaceManipulatorMouseDownCallback([this](
-            const SurfaceManipulator::Action& action)
+        m_translationManipulator->m_manipulator.InstallSurfaceManipulatorMouseDownCallback(
+            [this](const SurfaceManipulator::Action& action)
         {
             BeginBatchMovement();
             InitializeVertexLookup(*m_translationManipulator, GetEntityId(), action.m_start.m_snapOffset);
         });
 
-        m_translationManipulator->m_manipulator.InstallSurfaceManipulatorMouseMoveCallback([this](
-            const SurfaceManipulator::Action& action)
+        m_translationManipulator->m_manipulator.InstallSurfaceManipulatorMouseMoveCallback(
+            [this](const SurfaceManipulator::Action& action)
         {
             UpdateManipulatorsAndVerticesFromOffset(
                 *m_translationManipulator, action.m_start.m_localPosition, action.LocalPositionOffset());
         });
 
-        m_translationManipulator->m_manipulator.InstallSurfaceManipulatorMouseUpCallback([this](
-            const SurfaceManipulator::Action& /*action*/)
+        m_translationManipulator->m_manipulator.InstallSurfaceManipulatorMouseUpCallback(
+            [this](const SurfaceManipulator::Action& /*action*/)
         {
             EndBatchMovement();
         });
 
         // register the m_translation manipulator so it appears where the selection manipulator previously was
         m_translationManipulator->m_manipulator.Register(managerId);
-        m_translationManipulator->m_manipulator.AddEntityId(entityId);
+        m_translationManipulator->m_manipulator.AddEntityComponentIdPair(entityComponentIdPair);
 
         // update state when in translation mode so we can 'click off' to go back to normal selection mode
         SetState(EditorVertexSelectionBase<Vertex>::State::Translating);
@@ -478,10 +488,10 @@ namespace AzToolsFramework
             const auto& selectionManipulator = m_selectionManipulators.back();
 
             selectionManipulator->Register(managerId);
-            selectionManipulator->AddEntityId(GetEntityId());
+            selectionManipulator->AddEntityComponentIdPair(entityComponentIdPair);
             selectionManipulator->SetPosition(AdaptVertexOut(vertex));
 
-            SetupSelectionManipulator(selectionManipulator, GetEntityId(), managerId, vertexIndex);
+            SetupSelectionManipulator(selectionManipulator, entityComponentIdPair, managerId, vertexIndex);
         }
 
         // lambdas capture shared_ptr by value to increment ref count
@@ -524,7 +534,7 @@ namespace AzToolsFramework
                 typename AZ::FixedVerticesRequestBus<Vertex>::BusPtr fixedVertices;
                 AZ::FixedVerticesRequestBus<Vertex>::Bind(fixedVertices, GetEntityId());
 
-                const AZ::EntityId entityId = GetEntityId();
+                const AZ::EntityComponentIdPair entityComponentIdPair = m_entityComponentIdPair;
                 for (size_t vertexIndex : vertexBoxSelectData->m_deltaSelection)
                 {
                     Vertex vertex;
@@ -543,7 +553,7 @@ namespace AzToolsFramework
                     else
                     {
                         // create a new translation manipulator if one did not already exist with the first vertex
-                        CreateTranslationManipulator(entityId, m_manipulatorManagerId, vertex, vertexIndex);
+                        CreateTranslationManipulator(entityComponentIdPair, m_manipulatorManagerId, vertex, vertexIndex);
                         // default to ensuring selection manipulators are 'selected'
                         m_selectionManipulators[vertexIndex]->Select();
                     }
@@ -787,7 +797,8 @@ namespace AzToolsFramework
             translationManipulator->Process([this](
                 typename IndexedTranslationManipulator<Vertex>::VertexLookup& vertex)
             {
-                SafeRemoveVertex<Vertex>(EditorVertexSelectionBase<Vertex>::GetEntityId(), vertex.m_index);
+                SafeRemoveVertex<Vertex>(
+                    EditorVertexSelectionBase<Vertex>::GetEntityComponentIdPair(), vertex.m_index);
             });
 
             translationManipulator->m_manipulator.Unregister();
@@ -815,7 +826,8 @@ namespace AzToolsFramework
             InitializeVertexLookup(*m_translationManipulator, GetEntityId(), AZ::Vector3::CreateZero());
             // note: AdaptVertexIn/Out is to ensure we clamp the vertex local Z position to 0 if
             // dealing with Vector2s when setting the position of the manipulator.
-            const AZ::Vector3 localOffset = localPosition - m_translationManipulator->m_manipulator.GetPosition();
+            const AZ::Vector3 localOffset =
+                localPosition - m_translationManipulator->m_manipulator.GetLocalTransform().GetTranslation();
             UpdateManipulatorsAndVerticesFromOffset(
                 *m_translationManipulator,
                 AZ::AdaptVertexOut<Vertex>(AZ::AdaptVertexIn<Vertex>(localPosition)),
@@ -957,7 +969,7 @@ namespace AzToolsFramework
     template<typename Vertex>
     void EditorVertexSelectionBase<Vertex>::SelectionManipulatorSelectCallback(
         const size_t vertexIndex, const ViewportInteraction::MouseInteraction& interaction,
-        const AZ::EntityId entityId, const ManipulatorManagerId managerId)
+        const AZ::EntityComponentIdPair& entityComponentIdPair, const ManipulatorManagerId managerId)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
@@ -1016,7 +1028,7 @@ namespace AzToolsFramework
             // if one does not already exist, or we're not holding shift, create a new translation
             // manipulator at this vertex
             CreateTranslationManipulator(
-                entityId, managerId, vertex, vertexIndex);
+                entityComponentIdPair, managerId, vertex, vertexIndex);
         }
     }
 
@@ -1026,7 +1038,8 @@ namespace AzToolsFramework
     template<typename Vertex>
     void EditorVertexSelectionFixed<Vertex>::SetupSelectionManipulator(
         const AZStd::shared_ptr<SelectionManipulator>& selectionManipulator,
-        const AZ::EntityId entityId, const ManipulatorManagerId managerId, const size_t vertexIndex)
+        const AZ::EntityComponentIdPair& entityComponentIdPair,
+        const ManipulatorManagerId managerId, const size_t vertexIndex)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
@@ -1046,11 +1059,11 @@ namespace AzToolsFramework
         }));
 
         selectionManipulator->InstallLeftMouseUpCallback([
-            this, entityId, vertexIndex, managerId](
+            this, entityComponentIdPair, vertexIndex, managerId](
                 const ViewportInteraction::MouseInteraction& interaction)
         {
             EditorVertexSelectionBase<Vertex>::SelectionManipulatorSelectCallback(
-                vertexIndex, interaction, entityId, managerId);
+                vertexIndex, interaction, entityComponentIdPair, managerId);
         });
     }
 
@@ -1060,7 +1073,8 @@ namespace AzToolsFramework
     template<typename Vertex>
     void EditorVertexSelectionVariable<Vertex>::SetupSelectionManipulator(
         const AZStd::shared_ptr<SelectionManipulator>& selectionManipulator,
-        const AZ::EntityId entityId, const ManipulatorManagerId managerId, const size_t vertexIndex)
+        const AZ::EntityComponentIdPair& entityComponentIdPair,
+        const ManipulatorManagerId managerId, const size_t vertexIndex)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
@@ -1088,16 +1102,16 @@ namespace AzToolsFramework
         }));
 
         selectionManipulator->InstallLeftMouseUpCallback(
-            [this, entityId, vertexIndex, managerId](const ViewportInteraction::MouseInteraction& interaction)
+            [this, entityComponentIdPair, vertexIndex, managerId](const ViewportInteraction::MouseInteraction& interaction)
         {
             if (interaction.m_keyboardModifiers.Alt())
             {
-                SafeRemoveVertex<Vertex>(entityId, vertexIndex);
+                SafeRemoveVertex<Vertex>(entityComponentIdPair, vertexIndex);
             }
             else
             {
                 EditorVertexSelectionBase<Vertex>::SelectionManipulatorSelectCallback(
-                    vertexIndex, interaction, entityId, managerId);
+                    vertexIndex, interaction, entityComponentIdPair, managerId);
             }
         });
     }
@@ -1151,9 +1165,7 @@ namespace AzToolsFramework
             EditorVertexSelectionBase<Vertex>::ClearSelected();
         });
 
-        backAction.SetEntityComponentIdPair(AZ::EntityComponentIdPair(
-            EditorVertexSelectionBase<Vertex>::GetEntityId(),
-            EditorVertexSelectionBase<Vertex>::GetComponentId()));
+        backAction.SetEntityComponentIdPair(EditorVertexSelectionBase<Vertex>::GetEntityComponentIdPair());
 
         EditorVertexSelectionBase<Vertex>::m_actionOverrides[static_cast<size_t>(
             EditorVertexSelectionBase<Vertex>::State::Translating)] = AZStd::vector<ActionOverride> { backAction };
@@ -1184,7 +1196,7 @@ namespace AzToolsFramework
 
             // insert vertex after currently selected vertex
             InsertVertexAfter<Vertex>(
-                EditorVertexSelectionBase<Vertex>::GetEntityId(), manipulators[manipulatorIndex].m_index,
+                EditorVertexSelectionBase<Vertex>::GetEntityComponentIdPair(), manipulators[manipulatorIndex].m_index,
                 manipulators[manipulatorIndex].CurrentPosition());
 
             // want to bump the index on to the newly inserted vertex
@@ -1221,7 +1233,7 @@ namespace AzToolsFramework
 
         // create translation manipulator for duplicated vertices at new position
         EditorVertexSelectionBase<Vertex>::CreateTranslationManipulator(
-            EditorVertexSelectionBase<Vertex>::GetEntityId(),
+            EditorVertexSelectionBase<Vertex>::GetEntityComponentIdPair(),
             EditorVertexSelectionBase<Vertex>::GetManipulatorManagerId(),
             localCenterPosition, vertices[0].m_index);
 
@@ -1283,7 +1295,56 @@ namespace AzToolsFramework
             };
     }
 
+    template<typename Vertex>
+    void InsertVertexAfter(
+        const AZ::EntityComponentIdPair& entityComponentIdPair, const size_t vertexIndex, const Vertex& localPosition)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        size_t size = 0;
+        AZ::VariableVerticesRequestBus<Vertex>::EventResult(
+            size, entityComponentIdPair.GetEntityId(), &AZ::VariableVerticesRequestBus<Vertex>::Handler::Size);
+
+        const size_t insertPosition = vertexIndex + 1;
+        if (insertPosition >= size)
+        {
+            AZ::VariableVerticesRequestBus<Vertex>::Event(
+                entityComponentIdPair.GetEntityId(), &AZ::VariableVerticesRequestBus<Vertex>::Handler::AddVertex,
+                localPosition);
+        }
+        else
+        {
+            bool updated = false;
+            AZ::VariableVerticesRequestBus<Vertex>::EventResult(
+                updated, entityComponentIdPair.GetEntityId(),
+                &AZ::VariableVerticesRequestBus<Vertex>::Handler::InsertVertex,
+                insertPosition, localPosition);
+        }
+
+        RefreshUiAfterAddRemove(entityComponentIdPair);
+    }
+
+    template<typename Vertex>
+    void SafeRemoveVertex(const AZ::EntityComponentIdPair& entityComponentIdPair, const size_t vertexIndex)
+    {
+        bool removed = false;
+        AZ::VariableVerticesRequestBus<Vertex>::EventResult(
+            removed, entityComponentIdPair.GetEntityId(),
+            &AZ::VariableVerticesRequestBus<Vertex>::Handler::RemoveVertex, vertexIndex);
+
+        RefreshUiAfterAddRemove(entityComponentIdPair);
+    }
+
     // explicit instantiations
+    template void InsertVertexAfter(
+        const AZ::EntityComponentIdPair& entityComponentIdPair, size_t, const AZ::Vector2&);
+    template void InsertVertexAfter(
+        const AZ::EntityComponentIdPair& entityComponentIdPair, size_t, const AZ::Vector3&);
+    template void SafeRemoveVertex<AZ::Vector2>(
+        const AZ::EntityComponentIdPair& entityComponentIdPair, size_t vertexIndex);
+    template void SafeRemoveVertex<AZ::Vector3>(
+        const AZ::EntityComponentIdPair& entityComponentIdPair, size_t vertexIndex);
+
     template class EditorVertexSelectionBase<AZ::Vector2>;
     template class EditorVertexSelectionBase<AZ::Vector3>;
     template class EditorVertexSelectionFixed<AZ::Vector2>;
@@ -1295,38 +1356,5 @@ namespace AzToolsFramework
     AZ_CLASS_ALLOCATOR_IMPL_TEMPLATE(EditorVertexSelectionFixed<AZ::Vector3>, AZ::SystemAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL_TEMPLATE(EditorVertexSelectionVariable<AZ::Vector2>, AZ::SystemAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL_TEMPLATE(EditorVertexSelectionVariable<AZ::Vector3>, AZ::SystemAllocator, 0)
-
-    template<typename Vertex>
-    void InsertVertexAfter(const AZ::EntityId entityId, const size_t vertexIndex, const Vertex& localPosition)
-    {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
-        size_t size = 0;
-        AZ::VariableVerticesRequestBus<Vertex>::EventResult(
-            size, entityId, &AZ::VariableVerticesRequestBus<Vertex>::Handler::Size);
-
-        const size_t insertPosition = vertexIndex + 1;
-        if (insertPosition >= size)
-        {
-            AZ::VariableVerticesRequestBus<Vertex>::Event(
-                entityId, &AZ::VariableVerticesRequestBus<Vertex>::Handler::AddVertex,
-                localPosition);
-        }
-        else
-        {
-            bool updated = false;
-            AZ::VariableVerticesRequestBus<Vertex>::EventResult(
-                updated, entityId, &AZ::VariableVerticesRequestBus<Vertex>::Handler::InsertVertex,
-                insertPosition, localPosition);
-        }
-
-        // ensure property grid values are refreshed
-        ToolsApplicationNotificationBus::Broadcast(
-            &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay,
-            Refresh_EntireTree);
-    }
-
-    template void InsertVertexAfter(AZ::EntityId, size_t, const AZ::Vector2&);
-    template void InsertVertexAfter(AZ::EntityId, size_t, const AZ::Vector3&);
 
 } // namespace AzToolsFramework

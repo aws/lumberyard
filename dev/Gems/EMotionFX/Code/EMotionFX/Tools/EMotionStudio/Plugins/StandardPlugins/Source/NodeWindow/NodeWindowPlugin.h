@@ -88,8 +88,8 @@ namespace EMStudio
 
         AZStd::string                       mString;
         AZStd::string                       mTempGroupName;
-        MCore::Array<uint32>                mVisibleNodeIndices;
-        MCore::Array<uint32>                mSelectedNodeIndices;
+        AZStd::unordered_set<AZ::u32> m_visibleNodeIndices;
+        AZStd::unordered_set<AZ::u32> m_selectedNodeIndices;
 
         AZStd::unique_ptr<ActorInfo>        m_actorInfo;
         AZStd::unique_ptr<NodeInfo>         m_nodeInfo;

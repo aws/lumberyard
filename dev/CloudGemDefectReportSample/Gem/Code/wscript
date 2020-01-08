@@ -16,11 +16,9 @@ def build(bld):
         # General
         includes                = [ '.',
                                     bld.Path('Code/CryEngine/CryCommon'),
-                                    bld.Path('Code/CryEngine/CryAction')],
+                                    bld.Path('Code/CryEngine/CryAction')
+                                  ],
         use                     = ['AzGameFramework'],
-
-        # Platform Specific
-        android_use             = ['AndroidLauncher'],
 
         # ==============================
         # iOS

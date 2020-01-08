@@ -1,0 +1,15 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "libpath_debug": [
+                "build/win_x64/vc140/debug"
+            ],
+            "libpath_release": [
+                "build/win_x64/vc140/release"
+            ],
+            "lib": [
+                "sqlite.lib"
+            ]
+        }
+    }
+}

@@ -1,0 +1,21 @@
+{
+    "platform": {
+        "darwin_x64": {
+            "sharedlibpath": [
+                "OSX_x86"
+            ],
+            "shared": [
+                "libPVRTexLib.dylib"
+            ],
+            "copy_extra": [
+                "PVRTexLib_License.txt:."
+            ]
+        }
+    }
+}
+
+
+
+
+
+

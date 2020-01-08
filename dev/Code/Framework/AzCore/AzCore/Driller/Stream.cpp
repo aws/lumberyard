@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
+
 #include <AzCore/Driller/Stream.h>
 
 #include <AzCore/Math/Quaternion.h>
@@ -191,7 +191,7 @@ namespace AZ
         DrillerOutputFileStream::DrillerOutputFileStream()
         {
 #if defined(AZ_FILE_STREAM_COMPRESSION)
-            m_zlib = azcreate(ZLib, (&AllocatorInstance<OSAllocator>::Get()), OSAllocator);
+            m_zlib = azcreate(ZLib, (&AllocatorInstance<OSAllocator>::GetAllocator()), OSAllocator);
             m_zlib->StartCompressor(2);
 #endif
         }
@@ -222,10 +222,8 @@ namespace AZ
                 //              ch.SetAZCS();
                 //              ch.m_compressorId = IO::CompressorZLib::TypeId();
                 //              ch.m_uncompressedSize = 0; // will be updated later
-                //# ifndef AZ_BIG_ENDIAN
                 //              AZStd::endian_swap(ch.m_compressorId);
                 //              AZStd::endian_swap(ch.m_uncompressedSize);
-                //# endif // not big endian
                 //              IO::SystemFile::Write(&ch,sizeof(ch));
                 //              IO::CompressorZLibHeader zlibHdr;
                 //              zlibHdr.m_numSeekPoints = 0;
@@ -321,7 +319,7 @@ namespace AZ
         DrillerInputFileStream::DrillerInputFileStream()
         {
 #if defined(AZ_FILE_STREAM_COMPRESSION)
-            m_zlib = azcreate(ZLib, (&AllocatorInstance<OSAllocator>::Get()), OSAllocator);
+            m_zlib = azcreate(ZLib, (&AllocatorInstance<OSAllocator>::GetAllocator()), OSAllocator);
             m_zlib->StartDecompressor();
 #endif
         }
@@ -918,4 +916,3 @@ namespace AZ
         }
     } // namespace Debug
 } // namespace AZ
-#endif // #ifndef AZ_UNITY_BUILD

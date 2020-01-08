@@ -1,4 +1,4 @@
-﻿#
+#
 # All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 # its licensors.
 #
@@ -77,7 +77,7 @@ def load_win_x64_host_settings(conf):
     # Look for the most recent version of the code generator subfolder.  This should be either installed or built by the bootstrap process at this point
     global AZCG_VALIDATED_PATH
     if AZCG_VALIDATED_PATH is None:
-        az_code_gen_subfolders = ['bin/vc141', 'bin/vc140']
+        az_code_gen_subfolders = ['bin/windows']
         validated_azcg_dir = None
         for az_code_gen_subfolder in az_code_gen_subfolders:
             azcg_dir = conf.Path('Tools/AzCodeGenerator/{}'.format(az_code_gen_subfolder))
@@ -88,7 +88,7 @@ def load_win_x64_host_settings(conf):
                 break
         AZCG_VALIDATED_PATH = validated_azcg_dir
         if validated_azcg_dir is None:
-            conf.fatal('Unable to locate the AzCodeGenerator subfolder.  Make sure that you have either the VS2013, VS2015, or VS2017 binaries available')
+            conf.fatal('Unable to locate the AzCodeGenerator subfolder.  Make sure that the Windows binaries are available')
 
     v['CODE_GENERATOR_EXECUTABLE'] = AZ_CODE_GEN_EXECUTABLE
     v['CODE_GENERATOR_PATH'] = [AZCG_VALIDATED_PATH]
@@ -106,11 +106,14 @@ def load_win_x64_host_settings(conf):
     v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('Tools/Python/2.7.12/windows')
     v['CODE_GENERATOR_INCLUDE_PATHS'] = []
 
-    crcfix_dir = conf.Path('Tools/crcfix/bin/vc141')
+    v['EMBEDDED_PYTHON_HOME'] = v['CODE_GENERATOR_PYTHON_HOME']
+    v['EMBEDDED_PYTHON_INCLUDE_PATH'] = os.path.join(v['EMBEDDED_PYTHON_HOME'],'include')
+    v['EMBEDDED_PYTHON_LIBPATH'] = os.path.join(v['EMBEDDED_PYTHON_HOME'], 'libs')
+    v['EMBEDDED_PYTHON_SHARED_OBJECT'] = os.path.join(v['EMBEDDED_PYTHON_HOME'], 'python27.dll')
+
+    crcfix_dir = conf.Path('Tools/crcfix/bin/windows')
     if not os.path.exists(crcfix_dir):
-        crcfix_dir = conf.Path('Tools/crcfix/bin/vc140')
-        if not os.path.exists(crcfix_dir):
-            Logs.warn('Unable to locate the crcfix subfolder.  Make sure that you have VS2017 crcfix binaries available')
+        Logs.warn('Unable to locate the crcfix subfolder.  Make sure that the Windows crcfix binaries are available')
     v['CRCFIX_PATH'] = [crcfix_dir]
     v['CRCFIX_EXECUTABLE'] = 'crcfix.exe'
 

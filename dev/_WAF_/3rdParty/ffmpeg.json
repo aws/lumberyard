@@ -31,7 +31,7 @@
     "lib_required": "True",
     "suppress_warning": "True",
     "platform": {
-        "win_x64_vs2013": {
+        "win_x64_vs2017": {
             "importlibpath": [
                 "lib"
             ],
@@ -44,8 +44,6 @@
             "shared": [
                 "${dll_names}.dll"
             ]
-        },
-        "win_x64_vs2015": "@win_x64_vs2013",
-        "win_x64_vs2017": "@win_x64_vs2013"
+        }
     }
 }

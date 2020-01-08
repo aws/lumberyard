@@ -470,6 +470,8 @@ namespace
         #include "Xenia/ZipDirCacheFactory_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ZipDirCacheFactory_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ZipDirCacheFactory_cpp_salem.inl"
     #endif
 #endif
 }
@@ -510,6 +512,8 @@ ZipDir::CachePtr ZipDir::CacheFactory::MakeCache (const char* szFile)
         #include "Xenia/ZipDirCacheFactory_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ZipDirCacheFactory_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ZipDirCacheFactory_cpp_salem.inl"
     #endif
 #endif
     pCacheInstance->SetZipFileSize(m_nZipFileSize);
@@ -796,7 +800,7 @@ bool ZipDir::CacheFactory::BuildFileEntryMap()
             for (int i = 0; i < pFile->nFileNameLength; i++)
             {
                 str[i] = ::tolower(str[i]);
-#if defined(LINUX) || defined(APPLE)    // On linux and Mac always forward slashes.
+#if AZ_TRAIT_LEGACY_CRYPAK_UNIX_LIKE_FILE_SYSTEM // On linux and Mac always forward slashes.
                 if (str[i] == '\\')
                 {
                     str[i] = '/';

@@ -97,4 +97,43 @@ namespace ScriptCanvas
 
         return AZ::Failure(errorMessage);
     }
+
+    AZ::Outcome<void, AZStd::string> RestrictedTypeContract::OnEvaluateForType(const Data::Type& dataType) const
+    {
+        bool valid = false;
+
+        if (m_flags == Inclusive)
+        {            
+            valid = m_types.empty();
+
+            for (const auto& type : m_types)
+            {
+                if (dataType.IS_A(type))
+                {
+                    valid = true;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            valid = true;
+            for (const auto& type : m_types)
+            {
+                if (dataType.IS_A(type))
+                {
+                    valid = false;
+                    break;
+                }
+            }
+        }
+
+        if (valid)
+        {
+            return AZ::Success();
+        }
+
+        AZStd::string errorMessage = AZStd::string::format("The supplied type(%s) does not satisfy the Type Requirement.", Data::GetName(dataType).data());
+        return AZ::Failure(errorMessage);
+    }
 }

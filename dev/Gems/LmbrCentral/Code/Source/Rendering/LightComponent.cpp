@@ -204,7 +204,8 @@ namespace LmbrCentral
                 ->Field("ShadowUpdateRatio", &LightConfiguration::m_shadowUpdateRatio)
                 ->Field("AnimIndex", &LightConfiguration::m_animIndex)
                 ->Field("AnimSpeed", &LightConfiguration::m_animSpeed)
-                ->Field("AnimPhase", &LightConfiguration::m_animPhase);
+                ->Field("AnimPhase", &LightConfiguration::m_animPhase)
+                ->Field("CubemapId", &LightConfiguration::m_cubemapId);
         }
     }
 
@@ -868,6 +869,7 @@ namespace LmbrCentral
         , m_shadowResScale(1.f)
         , m_shadowUpdateMinRadius(10.f)
         , m_shadowUpdateRatio(1.f)
+        , m_cubemapId(AZ::Uuid::Create())
     {
     }
 } // namespace LmbrCentral

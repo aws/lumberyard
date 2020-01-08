@@ -24,16 +24,29 @@
 #include <Source/Shape.h>
 #include <PhysX/Utils.h>
 #include <PhysX/TriggerEventCallback.h>
+#include <AzFramework/Physics/CollisionNotificationBus.h>
+#include <AzFramework/Physics/TriggerBus.h>
+
 
 namespace PhysX
 {
+    // Helper function to convert AZ hit type to PhysX one.
+    static physx::PxQueryHitType::Enum GetPxHitType(Physics::QueryHitType hitType)
+    {
+        static_assert(static_cast<int>(Physics::QueryHitType::None) == static_cast<int>(physx::PxQueryHitType::eNONE) &&
+            static_cast<int>(Physics::QueryHitType::Touch) == static_cast<int>(physx::PxQueryHitType::eTOUCH) &&
+            static_cast<int>(Physics::QueryHitType::Block) == static_cast<int>(physx::PxQueryHitType::eBLOCK),
+            "PhysX hit types do not match QueryHitTypes");
+        return static_cast<physx::PxQueryHitType::Enum>(hitType);
+    }
+
     //Helper class, responsible for filtering invalid collision candidates prior to more expensive narrow phase checks
     class PhysXQueryFilterCallback
         : public physx::PxQueryFilterCallback
     {
     public:
-        explicit PhysXQueryFilterCallback(const Physics::CollisionGroup& collisionGroup, Physics::CustomFilterCallback filterCallback, physx::PxQueryHitType::Enum hitType)
-            : m_filterCallback(filterCallback)
+        explicit PhysXQueryFilterCallback(const Physics::CollisionGroup& collisionGroup, Physics::FilterCallback filterCallback, physx::PxQueryHitType::Enum hitType)
+            : m_filterCallback(AZStd::move(filterCallback))
             , m_collisionGroup(collisionGroup)
             , m_hitType(hitType)
         {
@@ -51,9 +64,9 @@ namespace PhysX
                 {
                     auto userData = Utils::GetUserData(actor);
                     auto shape = Utils::GetUserData(pxShape);
-                    if (userData != nullptr && userData->GetEntityId().IsValid() && m_filterCallback(userData->GetWorldBody(), shape))
+                    if (userData != nullptr && userData->GetEntityId().IsValid())
                     {
-                        return m_hitType;
+                        return GetPxHitType(m_filterCallback(userData->GetWorldBody(), shape));
                     }
                 }
                 else
@@ -71,7 +84,7 @@ namespace PhysX
         }
 
     private:
-        Physics::CustomFilterCallback m_filterCallback;
+        Physics::FilterCallback m_filterCallback;
         Physics::CollisionGroup m_collisionGroup;
         physx::PxQueryHitType::Enum m_hitType;
     };
@@ -116,16 +129,19 @@ namespace PhysX
         
         if (settings.m_kinematicFiltering)
         {
-            sceneDesc.flags |= physx::PxSceneFlag::eENABLE_KINEMATIC_PAIRS;
+            sceneDesc.kineKineFilteringMode = physx::PxPairFilteringMode::eKEEP;
         }
 
         if (settings.m_kinematicStaticFiltering)
         {
-            sceneDesc.flags |= sceneDesc.flags |= physx::PxSceneFlag::eENABLE_KINEMATIC_STATIC_PAIRS;
+            sceneDesc.staticKineFilteringMode = physx::PxPairFilteringMode::eKEEP;
         }
 
         sceneDesc.filterCallback = this;
-
+#ifdef ENABLE_TGS_SOLVER
+        // Use Temporal Gauss-Seidel solver by default
+        sceneDesc.solverType = physx::PxSolverType::eTGS;
+#endif
         SystemRequestsBus::BroadcastResult(m_world, &SystemRequests::CreateScene, sceneDesc);
         m_world->userData = this;
 
@@ -141,6 +157,7 @@ namespace PhysX
     World::~World()
     {
         Physics::WorldRequestBus::Handler::BusDisconnect();
+        m_deferredDeletions.clear();
         Physics::SystemNotificationBus::Broadcast(&Physics::SystemNotificationBus::Events::OnPreWorldDestroy, this);
         if (m_world)
         {
@@ -192,6 +209,49 @@ namespace PhysX
         return queryFlags;
     }
 
+    // Helper function to make the filter callback always return Block unless the result is None. 
+    // This is needed for queries where we only need the single closest result.
+    static Physics::FilterCallback GetBlockFilterCallback(const Physics::FilterCallback& filterCallback)
+    {
+        if (!filterCallback)
+        {
+            return nullptr;
+        }
+
+        return [filterCallback](const Physics::WorldBody* body, const Physics::Shape* shape)
+        {
+            if (filterCallback(body, shape) != Physics::QueryHitType::None)
+            {
+                return Physics::QueryHitType::Block;
+            }
+            else
+            {
+                return Physics::QueryHitType::None;
+            }
+        };
+    }
+
+    // Helper function to convert the Overlap Filter Callback returning bool to a standard Filter Callback returning QueryHitType
+    static Physics::FilterCallback GetFilterCallbackFromOverlap(const Physics::OverlapFilterCallback& overlapFilterCallback)
+    {
+        if (!overlapFilterCallback)
+        {
+            return nullptr;
+        }
+
+        return [overlapFilterCallback](const Physics::WorldBody* body, const Physics::Shape* shape)
+        {
+            if (overlapFilterCallback(body, shape))
+            {
+                return Physics::QueryHitType::Touch;
+            }
+            else
+            {
+                return Physics::QueryHitType::None;
+            }
+        };
+    }
+
     Physics::RayCastHit World::RayCast(const Physics::RayCastRequest& request)
     {
         const auto orig = PxMathConvert(request.m_start);
@@ -202,7 +262,8 @@ namespace PhysX
         const physx::PxQueryFlags queryFlags = GetPxQueryFlags(request.m_queryType);
         const physx::PxQueryFilterData queryData(queryFlags);
         const physx::PxHitFlags outputFlags = physx::PxHitFlag::eDEFAULT | physx::PxHitFlag::eMESH_BOTH_SIDES;
-        PhysXQueryFilterCallback queryFilterCallback(request.m_collisionGroup, request.m_customFilterCallback, physx::PxQueryHitType::eBLOCK);
+        PhysXQueryFilterCallback queryFilterCallback(request.m_collisionGroup, 
+            GetBlockFilterCallback(request.m_filterCallback), physx::PxQueryHitType::eBLOCK);
         
         // Raycast
         physx::PxRaycastBuffer castResult;
@@ -223,11 +284,11 @@ namespace PhysX
         const auto dir = PxMathConvert(request.m_direction);
 
         // Query flags. 
-        // Note: we specify eTOUCH here as we're interested in all hits that intersect the ray. The block field in result will be invalid.
+        // Note: we specify eTOUCH here as we're interested in all hits that intersect the ray.
         const physx::PxQueryFlags queryFlags = GetPxQueryFlags(request.m_queryType);
         const physx::PxQueryFilterData queryData(queryFlags);
         const physx::PxHitFlags outputFlags = physx::PxHitFlag::eDEFAULT | physx::PxHitFlag::eMESH_BOTH_SIDES;
-        PhysXQueryFilterCallback queryFilterCallback(request.m_collisionGroup, request.m_customFilterCallback, physx::PxQueryHitType::eTOUCH);
+        PhysXQueryFilterCallback queryFilterCallback(request.m_collisionGroup, request.m_filterCallback, physx::PxQueryHitType::eTOUCH);
 
         // Raycast
         physx::PxRaycastBuffer castResult(m_raycastBuffer.begin(), (physx::PxU32)m_raycastBuffer.size());
@@ -237,6 +298,11 @@ namespace PhysX
         AZStd::vector<Physics::RayCastHit> hits;
         if (status)
         {
+            if (castResult.hasBlock)
+            {
+                hits.push_back(GetHitFromPxHit(castResult.block));
+            }
+
             for (auto i = 0u; i < castResult.getNbTouches(); ++i)
             {
                 const auto& pxHit = castResult.getTouch(i);
@@ -254,7 +320,8 @@ namespace PhysX
         const physx::PxQueryFlags queryFlags = GetPxQueryFlags(request.m_queryType);
         const physx::PxQueryFilterData queryData(queryFlags);
         const physx::PxHitFlags outputFlags = physx::PxHitFlag::eDEFAULT | physx::PxHitFlag::eMESH_BOTH_SIDES;
-        PhysXQueryFilterCallback queryFilterCallback(request.m_collisionGroup, request.m_customFilterCallback, physx::PxQueryHitType::eBLOCK);
+        PhysXQueryFilterCallback queryFilterCallback(request.m_collisionGroup, 
+            GetBlockFilterCallback(request.m_filterCallback), physx::PxQueryHitType::eBLOCK);
 
         // Buffer to store results in.
         physx::PxSweepBuffer pxResult;
@@ -289,7 +356,7 @@ namespace PhysX
         const physx::PxQueryFlags queryFlags = GetPxQueryFlags(request.m_queryType);
         const physx::PxQueryFilterData queryData(queryFlags);
         const physx::PxHitFlags outputFlags = physx::PxHitFlag::eDEFAULT | physx::PxHitFlag::eMESH_BOTH_SIDES;
-        PhysXQueryFilterCallback queryFilterCallback(request.m_collisionGroup, request.m_customFilterCallback, physx::PxQueryHitType::eTOUCH);
+        PhysXQueryFilterCallback queryFilterCallback(request.m_collisionGroup, request.m_filterCallback, physx::PxQueryHitType::eTOUCH);
 
         // Buffer to store results in.
         physx::PxSweepBuffer pxResult(m_sweepBuffer.begin(), (physx::PxU32)m_sweepBuffer.size());
@@ -305,6 +372,11 @@ namespace PhysX
             bool status = m_world->sweep(pxGeometry.any(), pose, dir, request.m_distance, pxResult, outputFlags, queryData, &queryFilterCallback);
             if (status)
             {
+                if (pxResult.hasBlock)
+                {
+                    hits.push_back(GetHitFromPxHit(pxResult.block));
+                }
+
                 for (auto i = 0u; i < pxResult.getNbTouches(); ++i)
                 {
                     const auto& pxHit = pxResult.getTouch(i);
@@ -329,7 +401,7 @@ namespace PhysX
 
         const physx::PxQueryFlags queryFlags = GetPxQueryFlags(request.m_queryType);
         const physx::PxQueryFilterData defaultFilterData(queryFlags);
-        PhysXQueryFilterCallback filterCallback(request.m_collisionGroup, request.m_customFilterCallback, physx::PxQueryHitType::eTOUCH);
+        PhysXQueryFilterCallback filterCallback(request.m_collisionGroup, GetFilterCallbackFromOverlap(request.m_filterCallback), physx::PxQueryHitType::eTOUCH);
 
         // Buffer to store results in.
         physx::PxOverlapBuffer queryHits(m_overlapBuffer.begin(), (physx::PxU32)m_overlapBuffer.size());
@@ -427,12 +499,14 @@ namespace PhysX
 
         auto simulateFetch = [this](float simDeltaTime, std::function<void(void * activeAct)> activeActorsLambda)
         {
+            Physics::WorldNotificationBus::Event(m_worldId, &Physics::WorldNotifications::OnPrePhysicsUpdate, simDeltaTime);
             {
                 AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Physics, "World::SimulateFetchResults");
                 m_world->simulate(simDeltaTime);
                 m_world->fetchResults(true);
             }
-            AzFramework::PhysicsComponentNotificationBus::ExecuteQueuedEvents();
+            Physics::CollisionNotificationBus::ExecuteQueuedEvents();
+            Physics::TriggerNotificationBus::ExecuteQueuedEvents();
 
             if (m_world->getFlags() & physx::PxSceneFlag::eENABLE_ACTIVE_ACTORS)
             {
@@ -447,6 +521,7 @@ namespace PhysX
                     }
                 }
             }
+            Physics::WorldNotificationBus::Event(m_worldId, &Physics::WorldNotifications::OnPostPhysicsUpdate, simDeltaTime);
         };
 
         deltaTime = AZ::GetClamp(deltaTime, 0.0f, m_maxDeltaTime);
@@ -457,12 +532,10 @@ namespace PhysX
 
             while (m_accumulatedTime >= m_fixedDeltaTime)
             {
-                Physics::SystemNotificationBus::Broadcast(&Physics::SystemNotificationBus::Events::OnPrePhysicsUpdate, m_fixedDeltaTime, this);
 
                 simulateFetch(m_fixedDeltaTime, m_simFunc);
                 m_accumulatedTime -= m_fixedDeltaTime;
 
-                Physics::SystemNotificationBus::Broadcast(&Physics::SystemNotificationBus::Events::OnPostPhysicsUpdate, m_fixedDeltaTime, this);
             }
         }
         else

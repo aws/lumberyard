@@ -25,7 +25,6 @@ namespace ScriptCanvasEditor
     class EBusHandlerNodeDescriptorComponent
         : public NodeDescriptorComponent
         , public EBusHandlerNodeDescriptorRequestBus::Handler
-        , public GraphCanvas::NodeNotificationBus::Handler
         , public GraphCanvas::WrapperNodeNotificationBus::Handler
         , public GraphCanvas::GraphCanvasPropertyBusHandler
         , public GraphCanvas::WrapperNodeConfigurationRequestBus::Handler
@@ -69,9 +68,7 @@ namespace ScriptCanvasEditor
         void Deactivate() override;
 
         // NodeNotifications
-        void OnNodeActivated() override;
-
-        void OnAddedToScene(const AZ::EntityId& sceneId) override;
+        void OnNodeActivated() override;        
         ////
 
         // SceneMemberNotifications
@@ -111,7 +108,10 @@ namespace ScriptCanvasEditor
         // GraphCanvasPropertyBus
         AZ::Component* GetPropertyComponent() override;
         ////
-        
+
+    protected:
+        void OnAddedToGraphCanvasGraph(const GraphCanvas::GraphId& graphId, const AZ::EntityId& scriptCanvasNodeId);
+
     private:
 
         void OnDisplayConnectionsChanged();

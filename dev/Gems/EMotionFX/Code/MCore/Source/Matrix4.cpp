@@ -12,6 +12,7 @@
 
 // include required headers
 #include "Matrix4.h"
+#include <AzCore/Math/VectorFloat.h>
 #include "Quaternion.h"
 
 
@@ -87,7 +88,7 @@ namespace MCore
     {
         Matrix r;
 
-    #if (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
+    #if (AZ_TRAIT_USE_PLATFORM_SIMD && defined(MCORE_MATRIX_ROWMAJOR))
         const float* m = right.m16;
         const float* n = m16;
         float* t = r.m16;
@@ -212,7 +213,7 @@ namespace MCore
 
     Matrix& Matrix::operator *= (const Matrix& right)
     {
-    #if (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
+    #if (AZ_TRAIT_USE_PLATFORM_SIMD && defined(MCORE_MATRIX_ROWMAJOR))
         const float* m = right.m16;
         const float* n = m16;
         float* t = this->m16;
@@ -591,6 +592,20 @@ namespace MCore
     }
 
 
+    AZ::Vector3 Matrix::ExtractScale()
+    {
+        const AZ::Vector4 x = GetRow4D(0);
+        const AZ::Vector4 y = GetRow4D(1);
+        const AZ::Vector4 z = GetRow4D(2);
+        const AZ::VectorFloat lengthX = x.GetLength();
+        const AZ::VectorFloat lengthY = y.GetLength();
+        const AZ::VectorFloat lengthZ = z.GetLength();
+        SetRow(0, x / lengthX);
+        SetRow(1, y / lengthY);
+        SetRow(2, z / lengthZ);
+
+        return AZ::Vector3(lengthX, lengthY, lengthZ);
+    }
 
     void Matrix::RotateX(float angle)
     {
@@ -674,7 +689,7 @@ namespace MCore
 
     void Matrix::MultMatrix(const Matrix& right)
     {
-    #if (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
+    #if (AZ_TRAIT_USE_PLATFORM_SIMD && defined(MCORE_MATRIX_ROWMAJOR))
         const float* m = right.m16;
         const float* n = m16;
         float* t = this->m16;
@@ -1233,7 +1248,7 @@ namespace MCore
 
     void Matrix::MultMatrix4x3(const Matrix& right)
     {
-    #if (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
+    #if (AZ_TRAIT_USE_PLATFORM_SIMD && defined(MCORE_MATRIX_ROWMAJOR))
         const float* m = right.m16;
         const float* n = m16;
         float* t = this->m16;
@@ -1323,7 +1338,7 @@ namespace MCore
     // *this = left * right
     void Matrix::MultMatrix(const Matrix& left, const Matrix& right)
     {
-    #if (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
+    #if (AZ_TRAIT_USE_PLATFORM_SIMD && defined(MCORE_MATRIX_ROWMAJOR))
         const float* m = right.m16;
         const float* n = left.m16;
         float* t = this->m16;
@@ -1410,7 +1425,7 @@ namespace MCore
 
     void Matrix::MultMatrix4x3(const Matrix& left, const Matrix& right)
     {
-    #if (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
+    #if (AZ_TRAIT_USE_PLATFORM_SIMD && defined(MCORE_MATRIX_ROWMAJOR))
         const float* m = right.m16;
         const float* n = left.m16;
         float* t = this->m16;
@@ -2364,9 +2379,11 @@ namespace MCore
     //
     void Matrix::DecomposeQRGramSchmidt(AZ::Vector3& translation, Quaternion& rot, AZ::Vector3& scale) const
     {
-        Matrix rotMatrix;
-        DecomposeQRGramSchmidt(translation, rotMatrix, scale);
-        rot.FromMatrix(rotMatrix);
+        Matrix noScale = *this;
+        scale = noScale.ExtractScale();
+        rot.FromMatrix(noScale);
+        rot.Normalize();
+        translation = noScale.GetRow(3);
     }
 
 

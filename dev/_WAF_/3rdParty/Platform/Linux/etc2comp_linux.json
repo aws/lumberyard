@@ -1,0 +1,12 @@
+{
+    "platform": {
+        "linux_x64": {
+            "libpath": [
+                "EtcLib/Linux_x64"
+            ],
+            "lib": [
+                "libEtcLib.a"
+            ]
+        }
+    }
+}

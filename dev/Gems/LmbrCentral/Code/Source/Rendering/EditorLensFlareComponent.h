@@ -121,6 +121,9 @@ namespace LmbrCentral
         //! Used to populate the lens flare combo box.
         AZStd::vector<AZStd::string> GetLensFlarePaths() const;
 
+        //! Get a copy of configuration appropriate for use with the lens flare
+        EditorLensFlareConfiguration GetEditorLensFlareConfiguration() const;
+
         //////////////////////////////////////////////////////////////////////////
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {

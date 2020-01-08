@@ -31,9 +31,13 @@
 #include "Terrain/SurfaceType.h"
 #include "Terrain/Heightmap.h"
 
+#include "Util/BoostPythonHelpers.h"
+
 #ifdef AZ_PLATFORM_WINDOWS
 #include <InitGuid.h>
 #endif
+
+#include <AzToolsFramework/Commands/LegacyCommand.h>
 
 // {C3EE67BE-F167-4E48-93B6-47D184DC06F8}
 DEFINE_GUID(TERRAIN_PAINTER_TOOL_GUID, 0xc3ee67be, 0xf167, 0x4e48, 0x93, 0xb6, 0x47, 0xd1, 0x84, 0xdc, 0x6, 0xf8);
@@ -44,16 +48,16 @@ struct CUndoTPSector
 {
     CUndoTPSector()
     {
-        m_pImg = 0;
-        m_pImgRedo = 0;
+        m_img = 0;
+        m_imgRedo = 0;
     }
 
     QPoint tile;
     int x, y;
     int w;
     uint32 dwSize;
-    CImageEx* m_pImg;
-    CImageEx* m_pImgRedo;
+    CImageEx* m_img;
+    CImageEx* m_imgRedo;
 };
 
 
@@ -61,13 +65,13 @@ struct CUndoTPLayerIdSector
 {
     CUndoTPLayerIdSector()
     {
-        m_pImg = 0;
-        m_pImgRedo = 0;
+        m_img = 0;
+        m_imgRedo = 0;
     }
 
     int x, y;
-    Weightmap* m_pImg;
-    Weightmap* m_pImgRedo;
+    Weightmap* m_img;
+    Weightmap* m_imgRedo;
 };
 
 struct CUndoTPElement
@@ -84,11 +88,11 @@ struct CUndoTPElement
     {
         CHeightmap* heightmap = GetIEditor()->GetHeightmap();
 
-        CRGBLayer* pRGBLayer = GetIEditor()->GetTerrainManager()->GetRGBLayer();
-        uint32 dwMaxRes = pRGBLayer->CalcMaxLocalResolution(0, 0, 1, 1);
+        CRGBLayer* rgbLayer = GetIEditor()->GetTerrainManager()->GetRGBLayer();
+        uint32 dwMaxRes = rgbLayer->CalcMaxLocalResolution(0, 0, 1, 1);
 
-        uint32 dwTileCountX = pRGBLayer->GetTileCountX();
-        uint32 dwTileCountY = pRGBLayer->GetTileCountY();
+        uint32 dwTileCountX = rgbLayer->GetTileCountX();
+        uint32 dwTileCountY = rgbLayer->GetTileCountY();
 
         float   gx1 = fpx - radius - 2.0f / dwMaxRes;
         float   gx2 = fpx + radius + 2.0f / dwMaxRes;
@@ -111,8 +115,8 @@ struct CUndoTPElement
         {
             for (uint32 dwTileX = recTiles.left(); dwTileX < recTiles.right(); ++dwTileX)
             {
-                uint32 dwLocalSize = pRGBLayer->GetTileResolution(dwTileX, dwTileY);
-                uint32 dwSize = pRGBLayer->GetTileResolution(dwTileX, dwTileY) * pRGBLayer->GetTileCountX();
+                uint32 dwLocalSize = rgbLayer->GetTileResolution(dwTileX, dwTileY);
+                uint32 dwSize = rgbLayer->GetTileResolution(dwTileX, dwTileY) * rgbLayer->GetTileCountX();
 
                 uint32 gwid = dwSize * radius * 4;
                 if (gwid < 32)
@@ -175,10 +179,10 @@ struct CUndoTPElement
                         bool bFind = false;
                         for (int i = sects.size() - 1; i >= 0; i--)
                         {
-                            CUndoTPSector* pSect = &sects[i];
-                            if (pSect->tile.x() == dwTileX && pSect->tile.y() == dwTileY)
+                            CUndoTPSector* sect = &sects[i];
+                            if (sect->tile.x() == dwTileX && sect->tile.y() == dwTileY)
                             {
-                                if (pSect->x == sx &&  pSect->y == sy)
+                                if (sect->x == sx &&  sect->y == sy)
                                 {
                                     bFind = true;
                                     break;
@@ -195,13 +199,13 @@ struct CUndoTPElement
                             newSect.tile.ry() = dwTileY;
                             newSect.dwSize = dwSize;
 
-                            newSect.m_pImg = new CImageEx;
-                            newSect.m_pImg->Allocate(newSect.w, newSect.w);
+                            newSect.m_img = new CImageEx;
+                            newSect.m_img->Allocate(newSect.w, newSect.w);
 
                             CUndoTPSector* pSect = &newSect;
 
-                            pRGBLayer->GetSubImageStretched((float)pSect->x / pSect->dwSize, (float)pSect->y / pSect->dwSize,
-                                (float)(pSect->x + pSect->w) / pSect->dwSize, (float)(pSect->y + pSect->w) / pSect->dwSize, *pSect->m_pImg);
+                            rgbLayer->GetSubImageStretched((float)pSect->x / pSect->dwSize, (float)pSect->y / pSect->dwSize,
+                                (float)(pSect->x + pSect->w) / pSect->dwSize, (float)(pSect->y + pSect->w) / pSect->dwSize, *pSect->m_img);
 
                             sects.push_back(newSect);
                         }
@@ -226,8 +230,8 @@ struct CUndoTPElement
                 bool bFind = false;
                 for (int i = layerIds.size() - 1; i >= 0; i--)
                 {
-                    CUndoTPLayerIdSector* pSect = &layerIds[i];
-                    if (pSect->x == lx &&  pSect->y == ly)
+                    CUndoTPLayerIdSector* sect = &layerIds[i];
+                    if (sect->x == lx &&  sect->y == ly)
                     {
                         bFind = true;
                         break;
@@ -236,12 +240,12 @@ struct CUndoTPElement
                 if (!bFind)
                 {
                     CUndoTPLayerIdSector newSect;
-                    CUndoTPLayerIdSector* pSect = &newSect;
+                    CUndoTPLayerIdSector* sect = &newSect;
 
-                    pSect->m_pImg = new Weightmap();
-                    pSect->x = lx;
-                    pSect->y = ly;
-                    heightmap->GetWeightmapBlock(pSect->x * layerSize, pSect->y * layerSize, layerSize, layerSize, *pSect->m_pImg);
+                    sect->m_img = new Weightmap();
+                    sect->x = lx;
+                    sect->y = ly;
+                    heightmap->GetWeightmapBlock(sect->x * layerSize, sect->y * layerSize, layerSize, layerSize, *sect->m_img);
 
                     layerIds.push_back(newSect);
                 }
@@ -252,7 +256,7 @@ struct CUndoTPElement
     void Paste(bool bIsRedo = false)
     {
         CHeightmap* heightmap = GetIEditor()->GetHeightmap();
-        CRGBLayer* pRGBLayer = GetIEditor()->GetTerrainManager()->GetRGBLayer();
+        CRGBLayer* rgbLayer = GetIEditor()->GetTerrainManager()->GetRGBLayer();
 
         bool bFirst = true;
         QPoint gminp;
@@ -262,20 +266,20 @@ struct CUndoTPElement
 
         for (int i = sects.size() - 1; i >= 0; i--)
         {
-            CUndoTPSector* pSect = &sects[i];
-            pRGBLayer->SetSubImageStretched((float)pSect->x / pSect->dwSize, (float)pSect->y / pSect->dwSize,
-                (float)(pSect->x + pSect->w) / pSect->dwSize, (float)(pSect->y + pSect->w) / pSect->dwSize, *(bIsRedo ? pSect->m_pImgRedo : pSect->m_pImg));
+            CUndoTPSector* sect = &sects[i];
+            rgbLayer->SetSubImageStretched((float)sect->x / sect->dwSize, (float)sect->y / sect->dwSize,
+                (float)(sect->x + sect->w) / sect->dwSize, (float)(sect->y + sect->w) / sect->dwSize, *(bIsRedo ? sect->m_imgRedo : sect->m_img));
 
-            aabb.Add(Vec3((float)pSect->x / pSect->dwSize, (float)pSect->y / pSect->dwSize, 0));
-            aabb.Add(Vec3((float)(pSect->x + pSect->w) / pSect->dwSize, (float)(pSect->y + pSect->w) / pSect->dwSize, 0));
+            aabb.Add(Vec3((float)sect->x / sect->dwSize, (float)sect->y / sect->dwSize, 0));
+            aabb.Add(Vec3((float)(sect->x + sect->w) / sect->dwSize, (float)(sect->y + sect->w) / sect->dwSize, 0));
         }
 
         // LayerIDs
         for (int i = layerIds.size() - 1; i >= 0; i--)
         {
-            CUndoTPLayerIdSector* pSect = &layerIds[i];
-            heightmap->SetWeightmapBlock(pSect->x * pSect->m_pImg->GetWidth(), pSect->y * pSect->m_pImg->GetHeight(), *(bIsRedo ? pSect->m_pImgRedo : pSect->m_pImg));
-            heightmap->UpdateEngineTerrain(pSect->x * pSect->m_pImg->GetWidth(), pSect->y * pSect->m_pImg->GetHeight(), pSect->m_pImg->GetWidth(), pSect->m_pImg->GetHeight(), true, false);
+            CUndoTPLayerIdSector* sect = &layerIds[i];
+            heightmap->SetWeightmapBlock(sect->x * sect->m_img->GetWidth(), sect->y * sect->m_img->GetHeight(), *(bIsRedo ? sect->m_imgRedo : sect->m_img));
+            heightmap->UpdateEngineTerrain(sect->x * sect->m_img->GetWidth(), sect->y * sect->m_img->GetHeight(), sect->m_img->GetWidth(), sect->m_img->GetHeight(), true, false);
         }
 
         if (!aabb.IsReset())
@@ -294,26 +298,26 @@ struct CUndoTPElement
 
         for (int i = sects.size() - 1; i >= 0; i--)
         {
-            CUndoTPSector* pSect = &sects[i];
-            if (!pSect->m_pImgRedo)
+            CUndoTPSector* sect = &sects[i];
+            if (!sect->m_imgRedo)
             {
-                pSect->m_pImgRedo = new CImageEx();
-                pSect->m_pImgRedo->Allocate(pSect->w, pSect->w);
+                sect->m_imgRedo = new CImageEx();
+                sect->m_imgRedo->Allocate(sect->w, sect->w);
 
-                CRGBLayer* pRGBLayer = GetIEditor()->GetTerrainManager()->GetRGBLayer();
-                pRGBLayer->GetSubImageStretched((float)pSect->x / pSect->dwSize, (float)pSect->y / pSect->dwSize,
-                    (float)(pSect->x + pSect->w) / pSect->dwSize, (float)(pSect->y + pSect->w) / pSect->dwSize, *pSect->m_pImgRedo);
+                CRGBLayer* rgbLayer = GetIEditor()->GetTerrainManager()->GetRGBLayer();
+                rgbLayer->GetSubImageStretched((float)sect->x / sect->dwSize, (float)sect->y / sect->dwSize,
+                    (float)(sect->x + sect->w) / sect->dwSize, (float)(sect->y + sect->w) / sect->dwSize, *sect->m_imgRedo);
             }
         }
 
         // LayerIds
         for (int i = layerIds.size() - 1; i >= 0; i--)
         {
-            CUndoTPLayerIdSector* pSect = &layerIds[i];
-            if (!pSect->m_pImgRedo)
+            CUndoTPLayerIdSector* sect = &layerIds[i];
+            if (!sect->m_imgRedo)
             {
-                pSect->m_pImgRedo = new Weightmap();
-                heightmap->GetWeightmapBlock(pSect->x * pSect->m_pImg->GetWidth(), pSect->y * pSect->m_pImg->GetHeight(), pSect->m_pImg->GetWidth(), pSect->m_pImg->GetHeight(), *pSect->m_pImgRedo);
+                sect->m_imgRedo = new Weightmap();
+                heightmap->GetWeightmapBlock(sect->x * sect->m_img->GetWidth(), sect->y * sect->m_img->GetHeight(), sect->m_img->GetWidth(), sect->m_img->GetHeight(), *sect->m_imgRedo);
             }
         }
     }
@@ -322,22 +326,22 @@ struct CUndoTPElement
     {
         for (int i = 0; i < sects.size(); i++)
         {
-            CUndoTPSector* pSect = &sects[i];
-            delete pSect->m_pImg;
-            pSect->m_pImg = 0;
+            CUndoTPSector* sect = &sects[i];
+            delete sect->m_img;
+            sect->m_img = 0;
 
-            delete pSect->m_pImgRedo;
-            pSect->m_pImgRedo = 0;
+            delete sect->m_imgRedo;
+            sect->m_imgRedo = 0;
         }
 
         for (int i = 0; i < layerIds.size(); i++)
         {
-            CUndoTPLayerIdSector* pSect = &layerIds[i];
-            delete pSect->m_pImg;
-            pSect->m_pImg = 0;
+            CUndoTPLayerIdSector* sect = &layerIds[i];
+            delete sect->m_img;
+            sect->m_img = 0;
 
-            delete pSect->m_pImgRedo;
-            pSect->m_pImgRedo = 0;
+            delete sect->m_imgRedo;
+            sect->m_imgRedo = 0;
         }
     }
 
@@ -346,26 +350,26 @@ struct CUndoTPElement
         int size = 0;
         for (int i = 0; i < sects.size(); i++)
         {
-            CUndoTPSector* pSect = &sects[i];
-            if (pSect->m_pImg)
+            CUndoTPSector* sect = &sects[i];
+            if (sect->m_img)
             {
-                size += pSect->m_pImg->GetSize();
+                size += sect->m_img->GetSize();
             }
-            if (pSect->m_pImgRedo)
+            if (sect->m_imgRedo)
             {
-                size += pSect->m_pImgRedo->GetSize();
+                size += sect->m_imgRedo->GetSize();
             }
         }
         for (int i = 0; i < layerIds.size(); i++)
         {
-            CUndoTPLayerIdSector* pSect = &layerIds[i];
-            if (pSect->m_pImg)
+            CUndoTPLayerIdSector* sect = &layerIds[i];
+            if (sect->m_img)
             {
-                size += pSect->m_pImg->GetSize();
+                size += sect->m_img->GetSize();
             }
-            if (pSect->m_pImgRedo)
+            if (sect->m_imgRedo)
             {
-                size += pSect->m_pImgRedo->GetSize();
+                size += sect->m_imgRedo->GetSize();
             }
         }
         return size;
@@ -378,44 +382,44 @@ class CUndoTexturePainter
     : public IUndoObject
 {
 public:
-    CUndoTexturePainter(CTerrainTexturePainter* pTool)
+    CUndoTexturePainter(CTerrainTexturePainter* tool)
     {
-        m_pUndo = pTool->m_pTPElem;
-        pTool->m_pTPElem = 0;
+        m_undo = tool->m_tpElem;
+        tool->m_tpElem = 0;
     }
 
 protected:
     virtual void Release()
     {
-        delete m_pUndo;
+        delete m_undo;
         delete this;
     };
 
-    virtual int GetSize() { return sizeof(*this) + (m_pUndo ? m_pUndo->GetSize() : 0); };
+    virtual int GetSize() { return sizeof(*this) + (m_undo ? m_undo->GetSize() : 0); };
     virtual QString GetDescription() { return "Terrain Painter Modify"; };
 
     virtual void Undo(bool bUndo)
     {
         if (bUndo)
         {
-            m_pUndo->StoreRedo();
+            m_undo->StoreRedo();
         }
 
-        if (m_pUndo)
+        if (m_undo)
         {
-            m_pUndo->Paste();
+            m_undo->Paste();
         }
     }
     virtual void Redo()
     {
-        if (m_pUndo)
+        if (m_undo)
         {
-            m_pUndo->Paste(true);
+            m_undo->Paste(true);
         }
     }
 
 private:
-    CUndoTPElement* m_pUndo;
+    CUndoTPElement* m_undo;
 };
 
 
@@ -451,8 +455,8 @@ CTerrainTexturePainter::CTerrainTexturePainter()
     SSectorInfo sectorInfo;
     m_heightmap->GetSectorsInfo(sectorInfo);
 
-    m_bIsPainting = false;
-    m_pTPElem = 0;
+    m_isPainting = false;
+    m_tpElem = 0;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -493,13 +497,13 @@ void CTerrainTexturePainter::EndEditParams()
 //////////////////////////////////////////////////////////////////////////
 bool CTerrainTexturePainter::MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags)
 {
-    bool bPainting = false;
+    bool painting = false;
     bool hitTerrain = false;
     m_pointerPos = view->ViewToWorld(point, &hitTerrain, true);
 
-    m_brush.bErase = false;
+    m_brush.erase = false;
 
-    if (m_bIsPainting)
+    if (m_isPainting)
     {
         if (event == eMouseLDown || event == eMouseLUp)
         {
@@ -524,7 +528,7 @@ bool CTerrainTexturePainter::MouseCallback(CViewport* view, EMouseEvent event, Q
         }
     }
 
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
     GetIEditor()->SetStatusText(tr("L-Mouse:Paint   [ ]: Change Brush Radius  Shift+[ ]:Change Brush Hardness   ⌘L-Mouse:Pick LayerId"));
 #else
     GetIEditor()->SetStatusText(tr("L-Mouse:Paint   [ ]: Change Brush Radius  Shift+[ ]:Change Brush Hardness   CTRL+L-Mouse:Pick LayerId"));
@@ -550,7 +554,7 @@ void CTerrainTexturePainter::Display(DisplayContext& dc)
 //////////////////////////////////////////////////////////////////////////
 bool CTerrainTexturePainter::OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags)
 {
-    bool bProcessed = false;
+    bool processed = false;
 
     bool shiftKeyPressed = Qt::ShiftModifier & QApplication::queryKeyboardModifiers();
     bool controlKeyPressed = Qt::ControlModifier & QApplication::queryKeyboardModifiers();
@@ -560,19 +564,19 @@ bool CTerrainTexturePainter::OnKeyDown(CViewport* view, uint32 nChar, uint32 nRe
         if (!shiftKeyPressed && !controlKeyPressed)
         {
             m_brush.radius = clamp_tpl(m_brush.radius + 1, m_brush.minRadius, m_brush.maxRadius);
-            bProcessed = true;
+            processed = true;
         }
 
         // If you press shift & control together, you can adjust both sliders at the same time.
         if (shiftKeyPressed)
         {
             m_brush.colorHardness = clamp_tpl(m_brush.colorHardness + 0.01f, 0.0f, 1.0f);
-            bProcessed = true;
+            processed = true;
         }
         if (controlKeyPressed)
         {
             m_brush.detailHardness = clamp_tpl(m_brush.detailHardness + 0.01f, 0.0f, 1.0f);
-            bProcessed = true;
+            processed = true;
         }
     }
     else if (nChar == VK_OEM_4)
@@ -580,28 +584,28 @@ bool CTerrainTexturePainter::OnKeyDown(CViewport* view, uint32 nChar, uint32 nRe
         if (!shiftKeyPressed && !controlKeyPressed)
         {
             m_brush.radius = clamp_tpl(m_brush.radius - 1, m_brush.minRadius, m_brush.maxRadius);
-            bProcessed = true;
+            processed = true;
         }
 
         // If you press shift & control together, you can adjust both sliders at the same time.
         if (shiftKeyPressed)
         {
             m_brush.colorHardness = clamp_tpl(m_brush.colorHardness - 0.01f, 0.0f, 1.0f);
-            bProcessed = true;
+            processed = true;
         }
         if (controlKeyPressed)
         {
             m_brush.detailHardness = clamp_tpl(m_brush.detailHardness - 0.01f, 0.0f, 1.0f);
-            bProcessed = true;
+            processed = true;
         }
     }
 
-    if (bProcessed && s_toolPanel)
+    if (processed && s_toolPanel)
     {
         s_toolPanel->SetBrush(m_brush);
     }
 
-    return bProcessed;
+    return processed;
 }
 //////////////////////////////////////////////////////////////////////////
 void CTerrainTexturePainter::Action_PickLayerId()
@@ -619,9 +623,9 @@ void CTerrainTexturePainter::Action_PickLayerId()
         {
             LayerWeight weight = m_heightmap->GetLayerWeightAt(iX, iY);
 
-            CLayer* pLayer = GetIEditor()->GetTerrainManager()->FindLayerByLayerId(weight.GetLayerId(0));
+            CLayer* layer = GetIEditor()->GetTerrainManager()->FindLayerByLayerId(weight.GetLayerId(0));
 
-            s_toolPanel->SelectLayer(pLayer);
+            s_toolPanel->SelectLayer(layer);
         }
     }
 }
@@ -632,64 +636,63 @@ void CTerrainTexturePainter::Action_Paint()
     //////////////////////////////////////////////////////////////////////////
     // Paint spot on selected layer.
     //////////////////////////////////////////////////////////////////////////
-    CLayer* pLayer = GetSelectedLayer();
-    if (!pLayer)
+    CLayer* layer = GetSelectedLayer();
+    if (!layer)
     {
         return;
     }
 
     Vec3 center(m_pointerPos.x, m_pointerPos.y, 0);
 
-    static bool bPaintLock = false;
-    if (bPaintLock)
+    static bool paintLock = false;
+    if (paintLock)
     {
         return;
     }
 
-    bPaintLock = true;
+    paintLock = true;
 
-    PaintLayer(pLayer, center, false);
+    PaintLayer(layer, center, false);
 
     GetIEditor()->GetDocument()->SetModifiedFlag(TRUE);
     GetIEditor()->SetModifiedModule(eModifiedTerrain);
     GetIEditor()->UpdateViews(eUpdateHeightmap);
 
-    bPaintLock = false;
+    paintLock = false;
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CTerrainTexturePainter::Action_Flood()
 {
+    if (m_3DEngine->GetTerrainSize() <= 0)
+    {
+        return;
+    }
+
     //////////////////////////////////////////////////////////////////////////
     // Paint spot on selected layer.
     //////////////////////////////////////////////////////////////////////////
-    CLayer* pLayer = GetSelectedLayer();
-    if (!pLayer)
+    CLayer* layer = GetSelectedLayer();
+    if (!layer)
     {
         return;
     }
 
-    float oldRadius = m_brush.radius;
-    float fRadius = m_3DEngine->GetTerrainSize() * 0.5f;
-    m_brush.radius = fRadius;
-    Vec3 center(fRadius, fRadius, 0);
-
-    static bool bPaintLock = false;
-    if (bPaintLock)
+    static bool paintLock = false;
+    if (paintLock)
     {
         return;
     }
 
-    bPaintLock = true;
+    paintLock = true;
 
-    PaintLayer(pLayer, center, true);
+    PaintLayer(layer, Vec3(0.0f), true);
 
     GetIEditor()->GetDocument()->SetModifiedFlag(TRUE);
     GetIEditor()->SetModifiedModule(eModifiedTerrain);
     GetIEditor()->UpdateViews(eUpdateHeightmap);
 
-    m_brush.radius = oldRadius;
-    bPaintLock = false;
+    paintLock = false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -697,21 +700,26 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
 {
     float fTerrainSize = (float)m_3DEngine->GetTerrainSize();                                                                           // in m
 
-    SEditorPaintBrush br(*GetIEditor()->GetHeightmap(), *pLayer, m_brush.bMaskByLayerSettings, m_brush.m_dwMaskLayerId, bFlood);
+    // If we're doing a flood fill, set our paint brush to the center of the terrain with a radius that covers the entire terrain
+    // regardless of what's been passed in.
+    float radius = bFlood ? m_3DEngine->GetTerrainSize() * 0.5f : m_brush.radius;
+    Vec3 brushCenter = bFlood ? Vec3(radius, radius, 0.0f) : center;
 
-    br.m_cFilterColor = m_brush.m_cFilterColor * m_brush.m_fBrightness;
+    SEditorPaintBrush br(*GetIEditor()->GetHeightmap(), *pLayer, m_brush.maskByLayerSettings, m_brush.m_dwMaskLayerId, bFlood);
+
+    br.m_cFilterColor = m_brush.filterColor * m_brush.brightness;
     br.m_cFilterColor.rgb2srgb();
-    br.fRadius = m_brush.radius / fTerrainSize;
+    br.fRadius = radius / fTerrainSize;
     br.color = m_brush.value;
-    if (m_brush.bErase)
+    if (m_brush.erase)
     {
         br.color = 0;
     }
 
     // Paint spot on layer mask.
     {
-        float fX = center.y / fTerrainSize;                         // 0..1
-        float fY = center.x / fTerrainSize;                         // 0..1
+        float fX = brushCenter.y / fTerrainSize;                         // 0..1
+        float fY = brushCenter.x / fTerrainSize;                         // 0..1
 
         // change terrain texture
         if (m_brush.colorHardness > 0.0f)
@@ -744,13 +752,19 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
     }
 
 
-    Vec3 vMin = center - Vec3(m_brush.radius, m_brush.radius, 0);
-    Vec3 vMax = center + Vec3(m_brush.radius, m_brush.radius, 0);
-
     //////////////////////////////////////////////////////////////////////////
     // Update Terrain textures.
     //////////////////////////////////////////////////////////////////////////
     {
+        // For updating our runtime terrain textures, we adjust our minimum "affected" pixel values to 
+        // be one up and to the left from where we've painted.  This is because our runtime textures
+        // use bilinear filtering, which puts a copy of the first pixel in a sector into the last pixel 
+        // in the previous sector.  So if we modified the first pixel of a sector, subtracting
+        // one will cause us to properly update the runtime texture for the previous sector as well.
+        const Vec3 bilinearOffset = Vec3(1.0f, 1.0f, 0.0f);
+        Vec3 vMin = brushCenter - Vec3(radius, radius, 0.0f) - bilinearOffset;
+        Vec3 vMax = brushCenter + Vec3(radius, radius, 0.0f);
+
         int iTerrainSize = m_3DEngine->GetTerrainSize();                                                // in meters
         int iTexSectorSize = m_3DEngine->GetTerrainTextureNodeSizeMeters();         // in meters
 
@@ -760,6 +774,8 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
             return;                             // you need to calculated the surface texture first
         }
 
+        // Get the range of sectors that have been modified so that we can update the runtime textures
+        // currently in use.
         int iMinSecX = (int)floor(vMin.x / (float)iTexSectorSize);
         int iMinSecY = (int)floor(vMin.y / (float)iTexSectorSize);
         int iMaxSecX = (int)ceil (vMax.x / (float)iTexSectorSize);
@@ -773,7 +789,7 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
         float fTerrainSize = (float)m_3DEngine->GetTerrainSize();                                                                           // in m
 
         // update rectangle in 0..1 range
-        float fGlobalMinX = vMin.x / fTerrainSize, fGlobalMinY = vMin.y / fTerrainSize;
+        float fGlobalMinX = max(vMin.x / fTerrainSize, 0.0f), fGlobalMinY = max(vMin.y / fTerrainSize, 0.0f);
         float fGlobalMaxX = vMax.x / fTerrainSize, fGlobalMaxY = vMax.y / fTerrainSize;
 
         for (int iY = iMinSecY; iY < iMaxSecY; ++iY)
@@ -795,21 +811,20 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
         int hmapWidth = m_heightmap->GetWidth();
         int hmapHeight = m_heightmap->GetHeight();
 
-        float fX = center.y * hmapWidth / fTerrainSize;
-        float fY = center.x * hmapHeight / fTerrainSize;
+        float fX = brushCenter.y * hmapWidth / fTerrainSize;
+        float fY = brushCenter.x * hmapHeight / fTerrainSize;
 
         int unitSize = m_heightmap->GetUnitSize();
-        float fHMRadius = m_brush.radius / unitSize;
-        QRect hmaprc;
+        float fHMRadius = radius / unitSize;
 
         // clip against heightmap borders
-        hmaprc.setLeft(max((int)floor(fX - fHMRadius), 0));
-        hmaprc.setTop(max((int)floor(fY - fHMRadius), 0));
-        hmaprc.setRight(min((int)ceil(fX + fHMRadius), hmapWidth));
-        hmaprc.setBottom(min((int)ceil(fY + fHMRadius), hmapHeight));
+        int left = max((int)floor(fX - fHMRadius), 0);
+        int top = max((int)floor(fY - fHMRadius), 0);
+        int width = min((int)ceil(fX + fHMRadius), hmapWidth);
+        int height = min((int)ceil(fY + fHMRadius), hmapHeight);
 
         // Update surface types at 3d engine terrain.
-        m_heightmap->UpdateEngineTerrain(hmaprc.left(), hmaprc.top(), hmaprc.width(), hmaprc.height(), false, true);
+        m_heightmap->UpdateEngineTerrain(left, top, width, height, false, true);
     }
 }
 
@@ -832,53 +847,65 @@ CLayer* CTerrainTexturePainter::GetSelectedLayer() const
 //////////////////////////////////////////////////////////////////////////
 void CTerrainTexturePainter::Action_StartUndo()
 {
-    if (m_bIsPainting)
+    if (m_isPainting)
     {
         return;
     }
 
-    m_pTPElem = new CUndoTPElement;
+    m_tpElem = new CUndoTPElement;
 
-    m_bIsPainting = true;
+    m_isPainting = true;
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CTerrainTexturePainter::Action_CollectUndo(float x, float y, float radius)
 {
-    if (!m_bIsPainting)
+    if (!m_isPainting)
     {
         Action_StartUndo();
     }
 
-    m_pTPElem->AddSector(x, y, radius);
+    m_tpElem->AddSector(x, y, radius);
 }
 
 
 //////////////////////////////////////////////////////////////////////////
 void CTerrainTexturePainter::Action_StopUndo()
 {
-    if (!m_bIsPainting)
+    if (!m_isPainting)
     {
         return;
     }
 
-    GetIEditor()->BeginUndo();
+    AzToolsFramework::UndoSystem::URSequencePoint* undoOperation = nullptr;
+    AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(undoOperation, &AzToolsFramework::ToolsApplicationRequests::BeginUndoBatch, "Texture Layer Painting");
 
-    if (CUndo::IsRecording())
+    if (undoOperation)
     {
-        CUndo::Record(new CUndoTexturePainter(this));
+        auto undoCommand = aznew AzToolsFramework::LegacyCommand<IUndoObject>("Texture Layer Painting Command", AZStd::make_unique<CUndoTexturePainter>(this));
+        undoCommand->SetParent(undoOperation); // This transfers ownership to undoOperation object who will delete undoCommand.
     }
 
-    GetIEditor()->AcceptUndo("Texture Layer Painting");
+    AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::EndUndoBatch);
 
-    m_bIsPainting = false;
+    m_isPainting = false;
+}
+
+void CTerrainTexturePainter::SaveLayer(CLayer* layer)
+{
+    if (layer)
+    {
+        layer->m_cLayerFilterColor = m_brush.filterColor;
+        layer->m_fLayerBrightness = m_brush.brightness;
+        GetIEditor()->Notify(eNotify_OnInvalidateControls);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CTerrainTexturePainter::Command_Activate()
 {
-    CEditTool* pTool = GetIEditor()->GetEditTool();
-    if (pTool && qobject_cast<CTerrainTexturePainter*>(pTool))
+    CEditTool* tool = GetIEditor()->GetEditTool();
+    if (tool && qobject_cast<CTerrainTexturePainter*>(tool))
     {
         // Already active.
         return;
@@ -889,8 +916,8 @@ void CTerrainTexturePainter::Command_Activate()
     // This needs to be done after the terrain tab is selected, because in
     // Cry-Free mode the terrain tool could be closed, whereas in legacy
     // mode the rollupbar is never deleted, it's only hidden
-    pTool = new CTerrainTexturePainter();
-    GetIEditor()->SetEditTool(pTool);
+    tool = new CTerrainTexturePainter();
+    GetIEditor()->SetEditTool(tool);
 
     MainWindow::instance()->update();
 }
@@ -907,5 +934,435 @@ void CTerrainTexturePainter::RegisterTool(CRegistrationContext& rc)
 
     CommandManagerHelper::RegisterCommand(rc.pCommandManager, "edit_tool", "terrain_painter_activate", "", "", functor(CTerrainTexturePainter::Command_Activate));
 }
+
+//////////////////////////////////////////////////////////////////////////
+class CTerrainTexturePainterBindings
+{
+public:
+    //////////////////////////////////////////////////////////////////////////
+    static float PyGetBrushRadius()
+    {
+        return CTerrainTexturePainter::m_brush.radius;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void PySetBrushRadius(float radius)
+    {
+        CTerrainTexturePainter::m_brush.radius = radius;
+        RefreshUI();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static float PyGetBrushColorHardness()
+    {
+        return CTerrainTexturePainter::m_brush.colorHardness;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void PySetBrushColorHardness(float colorHardness)
+    {
+        CTerrainTexturePainter::m_brush.colorHardness = colorHardness;
+        RefreshUI();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static float PyGetBrushDetailHardness()
+    {
+        return CTerrainTexturePainter::m_brush.detailHardness;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void PySetBrushDetailHardness(float detailHardness)
+    {
+        CTerrainTexturePainter::m_brush.detailHardness = detailHardness;
+        RefreshUI();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static bool PyGetBrushMaskByLayerSettings()
+    {
+        return CTerrainTexturePainter::m_brush.maskByLayerSettings;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void PySetBrushMaskByLayerSettings(bool maskByLayerSettings)
+    {
+        CTerrainTexturePainter::m_brush.maskByLayerSettings = maskByLayerSettings;
+        RefreshUI();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static QString PyGetBrushMaskLayer()
+    {
+        IEditor* editor = GetIEditor();
+        AZ_Assert(editor, "Editor instance doesn't exist!");
+
+        if (editor)
+        {
+            CTerrainManager* terrainManager = editor->GetTerrainManager();
+            AZ_Assert(terrainManager, "Terrain Manager instance doesn't exist!");
+
+            if (terrainManager)
+            {
+                CLayer* layer = terrainManager->FindLayerByLayerId(CTerrainTexturePainter::m_brush.m_dwMaskLayerId);
+                return layer ? layer->GetLayerName() : QString{};
+            }
+        }
+
+        return {};
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void PySetBrushMaskLayer(const char* layerName)
+    {
+        CLayer* layer = FindLayer(layerName);
+        CTerrainTexturePainter::m_brush.m_dwMaskLayerId = layer ? layer->GetCurrentLayerId() : CTextureBrush::sInvalidMaskId;
+        RefreshUI();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static boost::python::tuple PyGetLayerBrushColor(const char* layerName)
+    {
+        CLayer* layer = FindLayer(layerName);
+
+        if (layer)
+        {
+            ColorF color = layer->GetLayerFilterColor();
+            return boost::python::make_tuple(color.r, color.g, color.b);
+        }
+
+        return boost::python::make_tuple(0.0f, 0.0f, 0.0f);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void PySetLayerBrushColor(const char* layerName, float red, float green, float blue)
+    {
+        CLayer* layer = FindLayer(layerName);
+
+        if (layer)
+        {
+            CTerrainTexturePainter::m_brush.filterColor = ColorF(red, green, blue);
+            layer->SetLayerFilterColor(CTerrainTexturePainter::m_brush.filterColor);
+            RefreshUI();
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static float PyGetLayerBrushColorBrightness(const char* layerName)
+    {
+        CLayer* layer = FindLayer(layerName);
+
+        if (layer)
+        {
+            return layer->GetLayerBrightness();
+        }
+        else
+        {
+            return 0.0f;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void PySetLayerBrushColorBrightness(const char* layerName, float colorBrightness)
+    {
+        CLayer* layer = FindLayer(layerName);
+
+        if (layer)
+        {
+            CTerrainTexturePainter::m_brush.brightness = colorBrightness;
+            layer->SetLayerBrightness(colorBrightness);
+            RefreshUI();
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void PyPaintLayer(const char* layerName, float centerX, float centerY, float centerZ, bool floodFill)
+    {
+        IEditor* editor = GetIEditor();
+        AZ_Assert(editor, "Editor instance doesn't exist!");
+        if (!editor)
+        {
+            return;
+        }
+
+        CTerrainManager* terrainManager = editor->GetTerrainManager();
+        AZ_Assert(terrainManager, "Terrain Manager instance doesn't exist!");
+        if (!terrainManager)
+        {
+            return;
+        }
+
+        // Select the given layer, deselect the rest.  If more than one layer has the same name,
+        // the first one will be selected.
+        CLayer* brushLayer = nullptr;
+        for (int i = 0; i < terrainManager->GetLayerCount(); i++)
+        {
+            CLayer* layer = terrainManager->GetLayer(i);
+            if ((!brushLayer) && (QString::compare(layer->GetLayerName(), layerName) == 0))
+            {
+                layer->SetSelected(true);
+                brushLayer = layer;
+            }
+            else
+            {
+                layer->SetSelected(false);
+            }
+        }
+
+        if (!brushLayer)
+        {
+            return;
+        }
+
+        CTerrainTexturePainter::Command_Activate();
+        RefreshUI();
+
+        CEditTool* editTool = editor->GetEditTool();
+        if (editTool && qobject_cast<CTerrainTexturePainter*>(editTool))
+        {
+            CTerrainTexturePainter* paintTool = reinterpret_cast<CTerrainTexturePainter*>(editTool);
+
+            paintTool->PaintLayer(brushLayer, Vec3(centerX, centerY, centerZ), floodFill);
+
+            editor->GetDocument()->SetModifiedFlag(TRUE);
+            editor->SetModifiedModule(eModifiedTerrain);
+            editor->UpdateViews(eUpdateHeightmap);
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static float PyGetMinAltitude(const char* layerName)
+    {
+        if (!layerName)
+        {
+            return 0.0f;
+        }
+
+        CLayer* layer = FindLayer(layerName);
+
+        if (!layer)
+        {
+            return 0.0f;
+        }
+
+        return layer->GetLayerStart();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static float PyGetMaxAltitude(const char* layerName)
+    {
+        if (!layerName)
+        {
+            return 0.0f;
+        }
+
+        CLayer* layer = FindLayer(layerName);
+
+        if (!layer)
+        {
+            return 0.0f;
+        }
+
+        return layer->GetLayerEnd();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void PySetMinAltitude(const char* layerName, float minAltitude)
+    {
+        if (!layerName)
+        {
+            return;
+        }
+
+        CLayer* layer = FindLayer(layerName);
+
+        if (!layer)
+        {
+            return;
+        }
+
+        layer->SetLayerStart(minAltitude);
+        RefreshUI();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void PySetMaxAltitude(const char* layerName, float maxAltitude)
+    {
+        if (!layerName)
+        {
+            return;
+        }
+
+        CLayer* layer = FindLayer(layerName);
+
+        if (!layer)
+        {
+            return;
+        }
+
+        layer->SetLayerEnd(maxAltitude);
+        RefreshUI();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static float PyGetMinSlope(const char* layerName)
+    {
+        if (!layerName)
+        {
+            return 0.0f;
+        }
+
+        CLayer* layer = FindLayer(layerName);
+
+        if (!layer)
+        {
+            return 0.0f;
+        }
+
+        return layer->GetLayerMinSlopeAngle();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static float PyGetMaxSlope(const char* layerName)
+    {
+        if (!layerName)
+        {
+            return 0.0f;
+        }
+
+        CLayer* layer = FindLayer(layerName);
+
+        if (!layer)
+        {
+            return 0.0f;
+        }
+
+        return layer->GetLayerMaxSlopeAngle();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void PySetMinSlope(const char* layerName, float minSlope)
+    {
+        if (!layerName)
+        {
+            return;
+        }
+
+        CLayer* layer = FindLayer(layerName);
+
+        if (!layer)
+        {
+            return;
+        }
+
+        layer->SetLayerMinSlopeAngle(minSlope);
+        RefreshUI();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void PySetMaxSlope(const char* layerName, float maxSlope)
+    {
+        if (!layerName)
+        {
+            return;
+        }
+
+        CLayer* layer = FindLayer(layerName);
+
+        if (!layer)
+        {
+            return;
+        }
+
+        layer->SetLayerMaxSlopeAngle(maxSlope);
+        RefreshUI();
+    }
+
+private:
+    //////////////////////////////////////////////////////////////////////////
+    static CLayer* FindLayer(const char* layerName)
+    {
+        IEditor* editor = GetIEditor();
+        AZ_Assert(editor, "Editor instance doesn't exist!");
+        if (editor)
+        {
+            AZ_Assert(editor->GetTerrainManager(), "Terrain Mananger doesn't exist!");
+            if (editor->GetTerrainManager())
+            {
+                return editor->GetTerrainManager()->FindLayer(layerName);
+            }
+        }
+
+        return nullptr;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    static void RefreshUI()
+    {
+        if (s_toolPanel)
+        {
+            s_toolPanel->SetBrush(CTerrainTexturePainter::m_brush);
+            IEditor* editor = GetIEditor();
+            AZ_Assert(editor, "Editor instance doesn't exist!");
+            if (editor)
+            {
+                editor->Notify(eNotify_OnInvalidateControls);
+            }
+        }
+    }
+};
+
+//////////////////////////////////////////////////////////////////////////
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetBrushRadius, terrain, get_layer_painter_brush_radius, 
+    "Get the terrain layer painter brush radius.", "terrain.get_layer_painter_brush_radius()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetBrushRadius, terrain, set_layer_painter_brush_radius,
+    "Set the terrain layer painter brush radius.", "terrain.set_layer_painter_brush_radius(float radius)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetBrushColorHardness, terrain, get_layer_painter_brush_color_opacity,
+    "Get the terrain layer painter brush color opacity.", "terrain.get_layer_painter_brush_color_opacity()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetBrushColorHardness, terrain, set_layer_painter_brush_color_opacity,
+    "Set the terrain layer painter brush color opacity.", "terrain.set_layer_painter_brush_color_opacity(float opacity)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetBrushDetailHardness, terrain, get_layer_painter_brush_detail_intensity,
+    "Get the terrain layer painter brush detail intensity.", "terrain.get_layer_painter_brush_detail_intensity()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetBrushDetailHardness, terrain, set_layer_painter_brush_detail_intensity,
+    "Set the terrain layer painter brush detail intensity.", "terrain.set_layer_painter_brush_detail_intensity(float intensity)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetBrushMaskByLayerSettings, terrain, get_layer_painter_brush_mask_by_layer_settings,
+    "Get the terrain layer painter brush setting for masking by layer settings (altitude, slope).", "terrain.get_layer_painter_brush_mask_by_layer_settings()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetBrushMaskByLayerSettings, terrain, set_layer_painter_brush_mask_by_layer_settings,
+    "Set the terrain layer painter brush setting for masking by layer settings (altitude, slope).", "terrain.set_layer_painter_brush_mask_by_layer_settings(bool enable)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetBrushMaskLayer, terrain, get_layer_painter_brush_mask_layer_name,
+    "Get the terrain layer painter brush 'mask by layer' layer name.", "terrain.get_layer_painter_brush_mask_layer_name()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetBrushMaskLayer, terrain, set_layer_painter_brush_mask_layer_name,
+    "Set the terrain layer painter brush 'mask by layer' layer name.", "terrain.set_layer_painter_brush_mask_layer_name(string layer)");
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetLayerBrushColor, terrain, get_layer_brush_color,
+    "Get the specific terrain layer's brush color.", "terrain.get_layer_brush_color(string layer)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetLayerBrushColor, terrain, set_layer_brush_color,
+    "Set the specific terrain layer's brush color.", "terrain.set_layer_brush_color(string layer, float red, float green, float blue)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetLayerBrushColorBrightness, terrain, get_layer_brush_color_brightness,
+    "Get the specific terrain layer's brush color brightness setting.", "terrain.get_layer_brush_color_brightness(string layer)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetLayerBrushColorBrightness, terrain, set_layer_brush_color_brightness,
+    "Set the specific terrain layer's brush color brightness setting.", "terrain.set_layer_brush_color_brightness(string layer, float brightness)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyPaintLayer, terrain, paint_layer,
+    "Paint the terrain using the brush settings from the given layer and the terrain layer painter.", 
+    "terrain.paint_layer(string layer, float center_x, float center_y, float center_z, bool flood_fill)");
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetMinAltitude, terrain, get_layer_min_altitude,
+    "Returns the min altitude.", "terrain.get_layer_min_altitude(string layer_name)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetMaxAltitude, terrain, get_layer_max_altitude,
+    "Returns the max altitude.", "terrain.get_layer_max_altitude(string layer_name)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetMinAltitude, terrain, set_layer_min_altitude,
+    "Sets the min altitude.", "terrain.set_layer_min_altitude(string layer_name, float min_altitude)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetMaxAltitude, terrain, set_layer_max_altitude,
+    "Sets the max altitude.", "terrain.set_layer_max_altitude(string layer_name, float max_altitude)");
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetMinSlope, terrain, get_layer_min_slope,
+    "Returns the min slope.", "terrain.get_layer_min_slope(string layer_name)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PyGetMaxSlope, terrain, get_layer_max_slope,
+    "Returns the max slope.", "terrain.get_layer_max_slope(string layer_name)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetMinSlope, terrain, set_layer_min_slope,
+    "Sets the min slope.", "terrain.set_layer_min_slope(string layer_name, float min_slope)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainterBindings::PySetMaxSlope, terrain, set_layer_max_slope,
+    "Sets the max slope.", "terrain.set_layer_max_slope(string layer_name, float max_slope)");
 
 #include <TerrainTexturePainter.moc>

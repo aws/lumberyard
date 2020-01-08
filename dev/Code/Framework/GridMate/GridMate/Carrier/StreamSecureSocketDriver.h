@@ -10,18 +10,11 @@
 *
 */
 #pragma once
-#ifndef GM_STREAM_SECURE_SOCKET_DRIVER_H
-#define GM_STREAM_SECURE_SOCKET_DRIVER_H
 
 #include <AzCore/PlatformDef.h>
+#include <GridMate_Traits_Platform.h>
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX)
-#define AZ_ENABLE_OPENSSL 1
-#else
-#define AZ_ENABLE_OPENSSL 0
-#endif
-
-#if AZ_ENABLE_OPENSSL
+#if AZ_TRAIT_GRIDMATE_ENABLE_OPENSSL
 
 #include <GridMate/Carrier/StreamSocketDriver.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
@@ -105,5 +98,4 @@ namespace GridMate
     };
 }
 
-#endif // AZ_ENABLE_OPENSSL
-#endif // GM_STREAM_SECURE_SOCKET_DRIVER_H
+#endif // AZ_TRAIT_GRIDMATE_ENABLE_OPENSSL

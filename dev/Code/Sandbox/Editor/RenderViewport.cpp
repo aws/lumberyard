@@ -34,9 +34,13 @@
 #include "ITestSystem.h"
 #include "IRenderAuxGeom.h"
 #include <IGameFramework.h>
-#include "Terrain/Heightmap.h"
 #include "IPostEffectGroup.h"
 #include <HMDBus.h>
+
+#ifdef LY_TERRAIN_EDITOR
+#include "Terrain/Heightmap.h"
+#include "Terrain/TerrainManager.h"
+#endif //#ifdef LY_TERRAIN_EDITOR
 
 #include "ViewPane.h"
 #include "ViewportTitleDlg.h"
@@ -88,7 +92,7 @@
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
-#   include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_win.h>
+#   include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 #endif // defined(AZ_PLATFORM_WINDOWS)
 
 #include <AzFramework/Input/Buses/Requests/InputChannelRequestBus.h>
@@ -96,7 +100,7 @@
 
 CRenderViewport* CRenderViewport::m_pPrimaryViewport = nullptr;
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 void StopFixedCursorMode();
 void StartFixedCursorMode(QObject *viewport);
 #endif
@@ -1340,9 +1344,14 @@ void CRenderViewport::OnEditorNotifyEvent(EEditorNotifyEvent event)
         PopDisableRendering();
 
         {
+#ifdef LY_TERRAIN_EDITOR
             CHeightmap* pHmap = GetIEditor()->GetHeightmap();
             float sx = pHmap->GetWidth() * pHmap->GetUnitSize();
             float sy = pHmap->GetHeight() * pHmap->GetUnitSize();
+#else
+            float sx = GetIEditor()->Get3DEngine()->GetTerrainSize();
+            float sy = sx;
+#endif //#ifdef LY_TERRAIN_EDITOR
 
             Matrix34 viewTM;
             viewTM.SetIdentity();
@@ -1361,9 +1370,14 @@ void CRenderViewport::OnEditorNotifyEvent(EEditorNotifyEvent event)
         PopDisableRendering();
 
         {
+#ifdef LY_TERRAIN_EDITOR
             CHeightmap* pHmap = GetIEditor()->GetHeightmap();
             float sx = pHmap->GetWidth() * pHmap->GetUnitSize();
             float sy = pHmap->GetHeight() * pHmap->GetUnitSize();
+#else
+            float sx = GetIEditor()->Get3DEngine()->GetTerrainSize();
+            float sy = sx;
+#endif //#ifdef LY_TERRAIN_EDITOR
 
             Matrix34 viewTM;
             viewTM.SetIdentity();
@@ -1579,6 +1593,7 @@ void CRenderViewport::OnRender()
         GetIEditor()->GetSystem()->RenderStatistics();
     }
 
+#ifdef LY_TERRAIN_EDITOR
     //Update the heightmap *after* RenderWorld otherwise RenderWorld will capture the terrain render requests and not handle them properly
     //Actual terrain heightmap data gets rendered later
     CHeightmap* heightmap = GetIEditor()->GetHeightmap();
@@ -1586,6 +1601,7 @@ void CRenderViewport::OnRender()
     {
         heightmap->UpdateModSectors();
     }
+#endif //#ifdef LY_TERRAIN_EDITOR;
 
 
     if (ITestSystem* pTestSystem = GetISystem()->GetITestSystem())
@@ -2281,8 +2297,11 @@ void CRenderViewport::OnTitleMenu(QMenu* menu)
     // Set ourself as the active viewport so the following actions create a camera from this view
     GetIEditor()->GetViewManager()->SelectViewport(this);
 
-    action = menu->addAction(tr("Create camera entity from current view"));
-    connect(action, &QAction::triggered, this, &CRenderViewport::OnMenuCreateCameraEntityFromCurrentView);
+    if (Camera::EditorCameraSystemRequestBus::HasHandlers())
+    {
+        action = menu->addAction(tr("Create camera entity from current view"));
+        connect(action, &QAction::triggered, this, &CRenderViewport::OnMenuCreateCameraEntityFromCurrentView);
+    }
 
     action = menu->addAction(tr("Create legacy camera from current view"));
     connect(action, &QAction::triggered, this, &CRenderViewport::OnMenuCreateCameraFromCurrentView);
@@ -2640,7 +2659,7 @@ void CRenderViewport::keyPressEvent(QKeyEvent* event)
         const ushort* codeUnitsUTF16 = event->text().utf16();
         while (ushort codeUnitUTF16 = *codeUnitsUTF16)
         {
-            EBUS_EVENT(AzFramework::RawInputNotificationBusWin, OnRawInputCodeUnitUTF16Event, codeUnitUTF16);
+            AzFramework::RawInputNotificationBusWindows::Broadcast(&AzFramework::RawInputNotificationsWindows::OnRawInputCodeUnitUTF16Event, codeUnitUTF16);
             ++codeUnitsUTF16;
         }
     }
@@ -2680,11 +2699,44 @@ void CRenderViewport::SetViewTM(const Matrix34& viewTM, bool bMoveOnly)
         if ((GetIEditor()->GetDisplaySettings()->GetSettings() & SETTINGS_NOCOLLISION) == 0)
         {
             Vec3 p = camMatrix.GetTranslation();
-            float z = GetIEditor()->GetTerrainElevation(p.x, p.y);
-            if (p.z < z + 0.25)
+            bool adjustCameraElevation = true;
+
+            if (GetIEditor()->Get3DEngine())
             {
-                p.z = z + 0.25;
-                camMatrix.SetTranslation(p);
+                AZ::Aabb terrainAabb(GetIEditor()->Get3DEngine()->GetTerrainAabb());
+#ifdef LY_TERRAIN_EDITOR
+                if (!GetIEditor()->GetTerrainManager()->GetUseTerrain())
+                {
+                    adjustCameraElevation = false;
+                }
+                else if (!terrainAabb.Contains(LYVec3ToAZVec3(p)))
+                {
+                    adjustCameraElevation = false;
+                }
+                else if (GetIEditor()->Get3DEngine()->GetTerrainHole(p.x, p.y))
+                {
+                    adjustCameraElevation = false;
+                }
+#else
+                if (!terrainAabb.Contains(LYVec3ToAZVec3(p)))
+                {
+                    adjustCameraElevation = false;
+                }
+                else if (GetIEditor()->Get3DEngine()->GetTerrainHole(p.x, p.y))
+                {
+                    adjustCameraElevation = false;
+                }
+#endif //#ifdef LY_TERRAIN_EDITOR
+            }
+
+            if (adjustCameraElevation)
+            {
+                float z = GetIEditor()->GetTerrainElevation(p.x, p.y);
+                if (p.z < z + 0.25)
+                {
+                    p.z = z + 0.25;
+                    camMatrix.SetTranslation(p);
+                }
             }
         }
 
@@ -4290,7 +4342,7 @@ void CRenderViewport::HideCursor()
     }
 
     qApp->setOverrideCursor(Qt::BlankCursor);
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
     StartFixedCursorMode(this);
 #endif
     m_bCursorHidden = true;
@@ -4304,7 +4356,7 @@ void CRenderViewport::ShowCursor()
         return;
     }
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
     StopFixedCursorMode();
 #endif
     qApp->restoreOverrideCursor();

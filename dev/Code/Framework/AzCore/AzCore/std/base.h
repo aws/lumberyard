@@ -28,22 +28,7 @@ namespace AZStd
 
     using std::initializer_list;
 
-#if defined(AZ_HAS_NULLPTR_T)
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/base_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/base_h_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-    #else
     using std::nullptr_t;
-    #endif
-#else
-    typedef int nullptr_t;
-#endif
 
     using sys_time_t = AZ::s64;
 }

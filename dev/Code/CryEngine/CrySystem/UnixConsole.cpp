@@ -2427,6 +2427,8 @@ void CUNIXConsoleSignalHandler::Handler(int signum)
         #include "Xenia/UnixConsole_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/UnixConsole_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/UnixConsole_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

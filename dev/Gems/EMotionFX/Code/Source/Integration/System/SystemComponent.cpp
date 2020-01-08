@@ -28,14 +28,17 @@
 #include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/AnimGraphObjectFactory.h>
 #include <EMotionFX/Source/MotionSet.h>
+#include <EMotionFX/Source/Recorder.h>
 #include <EMotionFX/Source/ConstraintTransformRotationAngles.h>
 #include <EMotionFX/Source/Parameter/ParameterFactory.h>
 #include <EMotionFX/Source/TwoStringEventData.h>
 #include <EMotionFX/Source/EventDataFootIK.h>
 
 #include <EMotionFX/Source/PhysicsSetup.h>
+#include <EMotionFX/Source/SimulatedObjectSetup.h>
 #include <MCore/Source/Command.h>
 #include <EMotionFX/CommandSystem/Source/MotionEventCommands.h>
+#include <EMotionFX/CommandSystem/Source/SimulatedObjectCommands.h>
 
 #include <EMotionFX/Source/PoseData.h>
 #include <EMotionFX/Source/PoseDataRagdoll.h>
@@ -81,7 +84,9 @@
 #   include <Editor/Plugins/SkeletonOutliner/SkeletonOutlinerPlugin.h>
 #   include <Editor/Plugins/Ragdoll/RagdollNodeInspectorPlugin.h>
 #   include <Editor/Plugins/Cloth/ClothJointInspectorPlugin.h>
+#   include <Editor/Plugins/SimulatedObject/SimulatedObjectWidget.h>
 #   include <Source/Editor/PropertyWidgets/PropertyTypes.h>
+#   include <EMotionFX_Traits_Platform.h>
 #endif // EMOTIONFXANIMATION_EDITOR
 
 #include <ISystem.h>
@@ -293,6 +298,7 @@ namespace EMotionFX
 
             // Actor
             EMotionFX::PhysicsSetup::Reflect(context);
+            EMotionFX::SimulatedObjectSetup::Reflect(context);
 
             EMotionFX::PoseData::Reflect(context);
             EMotionFX::PoseDataRagdoll::Reflect(context);
@@ -323,6 +329,13 @@ namespace EMotionFX
             EMotionFX::TwoStringEventData::Reflect(context);
             EMotionFX::EventDataFootIK::Reflect(context);
 
+            EMotionFX::Recorder::Reflect(context);
+
+            EMotionFX::KeyTrackLinearDynamic<AZ::Vector3>::Reflect(context);
+            EMotionFX::KeyTrackLinearDynamic<AZ::Quaternion>::Reflect(context);
+            EMotionFX::KeyFrame<AZ::Vector3>::Reflect(context);
+            EMotionFX::KeyFrame<AZ::Quaternion>::Reflect(context);
+
             MCore::Command::Reflect(context);
             CommandSystem::MotionIdCommandMixin::Reflect(context);
             CommandSystem::CommandAdjustMotion::Reflect(context);
@@ -331,6 +344,9 @@ namespace EMotionFX
             CommandSystem::CommandAdjustMotionEventTrack::Reflect(context);
             CommandSystem::CommandCreateMotionEvent::Reflect(context);
             CommandSystem::CommandAdjustMotionEvent::Reflect(context);
+
+            EMotionFX::CommandAdjustSimulatedObject::Reflect(context);
+            EMotionFX::CommandAdjustSimulatedJoint::Reflect(context);
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -676,13 +692,15 @@ namespace EMotionFX
 
                             AZ::Transform currentTransform = entityTransform->GetWorldTM();
                             const AZ::Vector3 actorInstancePosition = actorInstance->GetWorldSpaceTransform().mPosition;
-
-                            const AZ::Vector3 currentPos = currentTransform.GetPosition();
-                            const AZ::Vector3 positionDelta = actorInstancePosition - currentPos;
+                            const AZ::Vector3 positionDelta = actorInstancePosition - currentTransform.GetPosition();
 
                             if (hasPhysicsController)
                             {
                                 Physics::CharacterRequestBus::Event(entityId, &Physics::CharacterRequests::TryRelativeMove, positionDelta, timeDelta);
+
+                                // Some of the character controller implementations like the PhysX one directly adjust the entity position and are not
+                                // delaying the calculation until the next physics system update. Thus, we will need to get the updated current transform.
+                                currentTransform = entityTransform->GetWorldTM();
                             }
                             else if (hasCryPhysicsController)
                             {
@@ -777,7 +795,7 @@ namespace EMotionFX
 
             // Cast the ray in the physics system.
             Physics::RayCastHit physicsRayResult;
-            Physics::WorldRequestBus::EventResult(physicsRayResult, AZ_CRC("AZPhysicalWorld", 0x18f33e24), &Physics::WorldRequests::RayCast, physicsRayRequest);
+            Physics::WorldRequestBus::EventResult(physicsRayResult, Physics::DefaultPhysicsWorldId, &Physics::WorldRequests::RayCast, physicsRayRequest);
             if (physicsRayResult) // We intersected.
             {
                 rayResult.m_position    = physicsRayResult.m_position;
@@ -813,8 +831,10 @@ namespace EMotionFX
             pluginManager->RegisterPlugin(new EMotionFX::HitDetectionJointInspectorPlugin());
             pluginManager->RegisterPlugin(new EMotionFX::SkeletonOutlinerPlugin());
             pluginManager->RegisterPlugin(new EMotionFX::RagdollNodeInspectorPlugin());
-            // Note: Cloth collider editor is disabled as it is in preview
-            //pluginManager->RegisterPlugin(new EMotionFX::ClothJointInspectorPlugin());
+#ifdef EMOTIONFX_ENABLE_CLOTH
+            pluginManager->RegisterPlugin(new EMotionFX::ClothJointInspectorPlugin());
+#endif
+            pluginManager->RegisterPlugin(new EMotionFX::SimulatedObjectWidget());
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -852,7 +872,7 @@ namespace EMotionFX
             emotionFXWindowOptions.isPreview = true;
             emotionFXWindowOptions.isDeletable = true;
             emotionFXWindowOptions.isDockable = false;
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_EMOTIONFX_MAIN_WINDOW_DETACHED
             emotionFXWindowOptions.detachedWindow = true;
 #endif
             emotionFXWindowOptions.optionalMenuText = "Animation Editor (PREVIEW)";

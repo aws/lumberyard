@@ -30,7 +30,7 @@ namespace ScriptCanvas
 
                 AZStd::vector<AZStd::pair<Node*, const SlotId>> GetSources() const;
 
-                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
+                
 
             protected:
                 static const char* k_sourceName;

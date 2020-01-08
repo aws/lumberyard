@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Serialization/EditContext.h>
 
@@ -163,5 +162,3 @@ namespace AZ
         }
     } // namespace Edit
 } // namespace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

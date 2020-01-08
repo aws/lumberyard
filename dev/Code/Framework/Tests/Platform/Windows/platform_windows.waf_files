@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Windows":
+        [
+            "AzFrameworkTests_Traits_Platform.h",
+            "AzFrameworkTests_Traits_Windows.h"
+        ]
+    }
+}

@@ -224,6 +224,7 @@ namespace EMotionFX
             ActorComponentNotificationBus::Handler::BusDisconnect();
             AZ::Data::AssetBus::MultiHandler::BusDisconnect();
 
+            m_actorInstance.reset();
             DestroyAnimGraphInstance();
             m_configuration.m_animGraphAsset.Release();
         }

@@ -70,6 +70,10 @@ namespace CloudCanvas
             // Convenience call for a single request
             virtual bool RequestFileStatus(const char* fileName, const char* writeFile) override;
 
+            virtual bool UpdateFileStatusList(const AZStd::vector<AZStd::string>& requestList) override;
+            virtual bool UpdateFileStatus(const char* fileName);
+
+            virtual bool RequestDownload(const AZStd::string& fileName, bool forceDownload) override;
             // Clear (And unmount) all pak records from Dynamic Content
             virtual bool ClearAllContent() override;
 
@@ -81,6 +85,7 @@ namespace CloudCanvas
             // for updates or making any calls to aws
             virtual bool LoadManifest(const AZStd::string& manifestName) override;
 
+            virtual bool IsUpdated(const char* fileName) override;
             // Load a specific pak into the dynamic content system
             virtual bool LoadPak(const AZStd::string& manifestName) override;
 

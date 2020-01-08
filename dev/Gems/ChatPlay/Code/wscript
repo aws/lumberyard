@@ -26,8 +26,10 @@ def build(bld):
 
     bld.DefineGem(
         # Add custom build options here
-        includes      = [bld.Path('Code/CryEngine/CryAction'),
-                         bld.Path('Code/CryEngine/CryNetwork')],
+        includes      = [bld.Path('Code/CryEngine/CryCommon'),
+                         bld.Path('Code/CryEngine/CryAction'),
+                         bld.Path('Code/CryEngine/CryNetwork')
+                        ],
 
         use           = ['AzFramework',
                          'HttpRequestor'],
@@ -36,6 +38,9 @@ def build(bld):
                          'DYAD'],
 
         file_list     = file_list,
+
+        # Platform Roots
+        platform_roots=[bld.PlatformRoot('Source/Platform', export_includes=False)],
 
         win_lib       = ['Ws2_32', 'Shell32'],
         win_file_list = 'chatplay_win.waf_files',

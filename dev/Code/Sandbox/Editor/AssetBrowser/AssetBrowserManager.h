@@ -18,7 +18,6 @@
 #include <set>
 #include "IAssetItem.h"
 #include "IAssetItemDatabase.h"
-#include "IAssetTagging.h"
 
 // Asset items vector
 typedef std::vector<IAssetItem*> TAssetItems;
@@ -26,8 +25,7 @@ typedef std::vector<IAssetItem*> TAssetItems;
 typedef std::vector<IAssetItemDatabase*> TAssetDatabases;
 
 class CAssetBrowserManager
-    : public IEditorNotifyListener
-    , public CryThread<CAssetBrowserManager>
+    : public CryThread<CAssetBrowserManager>
 {
 public:
     typedef QStringList StrVector;
@@ -51,49 +49,19 @@ public:
     void MarkUsedInLevelAssets();
 
     //////////////////////////////////////////////////////////////////////////
-    // Asset tagging
-    //////////////////////////////////////////////////////////////////////////
-    void InitializeTagging();
-    int CreateTag(const QString& tag, const QString& category);
-    int CreateAsset(const QString& asset, const QString& project);
-    int CreateProject(const QString& project);
-    void AddAssetsToTag(const QString& tag, const QString& category, const StrVector& assets);
-    void AddTagsToAsset(const QString& asset, const QString& category, const QString& tags);
-    void RemoveAssetsFromTag(const QString& tag, const QString& category, const StrVector& assets);
-    void RemoveTagFromAsset(const QString& tag, const QString& category, const QString& asset);
-    void DestroyTag(const QString& tag);
-    int TagExists(const QString& tag, const QString& category);
-    int AssetExists(const QString& relpath);
-    int ProjectExists(const QString& project);
-    QString GetProjectName();
-    bool GetAssetDescription(const QString& relpath, QString& description);
-    void SetAssetDescription(const QString& relpath, const QString& description);
-    int GetAllTags(StrVector& tags);
-    int GetAllTagCategories(StrVector& categories);
-    int GetTagsForCategory(const QString& category, StrVector& tags);
-    int GetTagsForAsset(StrVector& tags, const QString& asset);
-    int GetTagForAssetInCategory(QString& tag, const QString& asset, const QString& category);
-    int GetAssetsForTag(StrVector& assets, const QString& tag);
-    int GetAssetCountForTag(const QString& tag);
-    int GetAssetsWithDescription(StrVector& assets, const QString& description);
-    bool GetAutocompleteDescription(const QString& partDesc, QString& description);
-
-    //////////////////////////////////////////////////////////////////////////
     // Misc.
     //////////////////////////////////////////////////////////////////////////
     TAssetDatabases& GetAssetDatabases()
     {
         return m_assetDatabases;
     }
+    QString GetProjectName();
 
     static unsigned int HashStringSbdm(const char* pStr);
 
     IAssetItemDatabase* GetDatabaseByName(const char* pName);
 
     void EnqueueAssetForThumbLoad(IAssetItem* pAsset);
-
-    void OnObjectEvent(CBaseObject* pObject, int nEvent);
-    void OnEditorNotifyEvent(EEditorNotifyEvent event);
 
     void Run();
 
@@ -110,7 +78,6 @@ private:
 
     std::set<IAssetItem*> m_thumbLoadQueue;
     TAssetDatabases m_assetDatabases;
-    bool m_bLevelLoading;
     uint32 m_cachedAssetCount;
 };
 

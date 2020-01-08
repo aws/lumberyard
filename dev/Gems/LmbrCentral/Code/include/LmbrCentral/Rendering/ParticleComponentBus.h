@@ -11,6 +11,8 @@
 */
 #pragma once
 
+#include "ParticleAsset.h"
+
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/std/string/string.h>
 
@@ -52,6 +54,7 @@ namespace LmbrCentral
             , m_useVisAreas(true)
         {}
 
+        AZ::Data::Asset<ParticleAsset> m_asset;                 //!< Used at asset compile time to track the dependency. Not used at edit or runtime.
         bool                        m_visible;                  //!< Controls the emitter's visibility.
         bool                        m_enable;                   //!< Controls whether emitter is active.
         AZStd::string               m_selectedEmitter;          //!< Name of the particle emitter to use.

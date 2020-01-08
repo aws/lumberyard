@@ -68,10 +68,10 @@ namespace GridMate
     enum ServiceType : int
     {
         ST_LAN,
-        ST_XLIVE, // ACCEPTED_USE
-        ST_PSN, // ACCEPTED_USE
+        ST_XENIA,
+        ST_PROVO,
+        ST_SALEM,
         ST_STEAM,
-
         ST_MAX // MUST BE LAST
     };
 

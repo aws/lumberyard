@@ -1,0 +1,40 @@
+{
+    "platform": {
+        "android_armv8_clang": {
+            "libpath_debug": [
+                "SDK/Android_arm64-v8a/Debug/lib"
+            ],
+            "libpath_profile": [
+                "SDK/Android_arm64-v8a/Profile/lib"
+            ],
+            "libpath_performance": [
+                "SDK/Android_arm64-v8a/Release/lib"
+            ],
+            "libpath_release": [
+                "SDK/Android_arm64-v8a/Release/lib"
+            ],
+            "lib_debug": [
+                "lib${non_release_libs}.a",
+                "lib${common_libs}.a",
+                "lib${android_libs}.a",
+                "lib${common_extra_libs}.a"
+            ],
+            "lib_profile": [
+                "lib${non_release_libs}.a",
+                "lib${common_libs}.a",
+                "lib${android_libs}.a",
+                "lib${common_extra_libs}.a"
+            ],
+            "lib_performance": [
+                "lib${common_libs}.a",
+                "lib${android_libs}.a",
+                "lib${common_extra_libs}.a"
+            ],
+            "lib_release": [
+                "lib${common_libs}.a",
+                "lib${android_libs}.a",
+                "lib${common_extra_libs}.a"
+            ]
+        }
+    }
+}

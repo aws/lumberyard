@@ -17,15 +17,14 @@
 ////////////////////////////////////////// UI variant data /////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-typedef boost::mpl::vector<
-    int,
-    float,
-    EntityId,
-    Vec3,
-    string,
-    wstring,
+#define TUIDataTypes \
+    int, \
+    float, \
+    EntityId, \
+    Vec3, \
+    string, \
+    wstring, \
     bool
-    > TUIDataTypes;
 
 //  Default conversion uses C++ rules.
 template <class From, class To>
@@ -280,37 +279,34 @@ struct SUIConversion<wstring, string>
     }
 };
 
+typedef AZStd::variant<TUIDataTypes> TUIDataVariant;
 
 enum EUIDataTypes
 {
     eUIDT_Any = -1,
-    eUIDT_Bool =            boost::mpl::find<TUIDataTypes, bool>::type::pos::value,
-    eUIDT_Int =             boost::mpl::find<TUIDataTypes, int>::type::pos::value,
-    eUIDT_Float =           boost::mpl::find<TUIDataTypes, float>::type::pos::value,
-    eUIDT_EntityId =    boost::mpl::find<TUIDataTypes, EntityId>::type::pos::value,
-    eUIDT_Vec3 =            boost::mpl::find<TUIDataTypes, Vec3>::type::pos::value,
-    eUIDT_String =      boost::mpl::find<TUIDataTypes, string>::type::pos::value,
-    eUIDT_WString =     boost::mpl::find<TUIDataTypes, wstring>::type::pos::value
+    eUIDT_Bool =            AZStd::find_exactly_one_alternative_v<bool, TUIDataTypes>,
+    eUIDT_Int =             AZStd::find_exactly_one_alternative_v<int, TUIDataTypes>,
+    eUIDT_Float =           AZStd::find_exactly_one_alternative_v<float, TUIDataTypes>,
+    eUIDT_EntityId =        AZStd::find_exactly_one_alternative_v<EntityId, TUIDataTypes>,
+    eUIDT_Vec3 =            AZStd::find_exactly_one_alternative_v<Vec3, TUIDataTypes>,
+    eUIDT_String =          AZStd::find_exactly_one_alternative_v<string, TUIDataTypes>,
+    eUIDT_WString =         AZStd::find_exactly_one_alternative_v<wstring, TUIDataTypes>
 };
-
-typedef boost::make_variant_over<TUIDataTypes>::type TUIDataVariant;
 
 class TUIData
 {
     class ExtractType
-        : public boost::static_visitor<EUIDataTypes>
     {
     public:
         template <typename T>
         EUIDataTypes operator()(const T& value) const
         {
-            return (EUIDataTypes) boost::mpl::find<TUIDataTypes, T>::type::pos::value;
+            return (EUIDataTypes)AZStd::find_exactly_one_alternative_v<T, TUIDataTypes>;
         }
     };
 
     template <typename To>
     class ConvertType_Get
-        : public boost::static_visitor<bool>
     {
     public:
         ConvertType_Get(To& to_)
@@ -355,15 +351,15 @@ public:
     template <typename T>
     bool GetValueWithConversion(T& value) const
     {
-        return boost::apply_visitor(ConvertType_Get<T>(value), m_variant);
+        return AZStd::visit(ConvertType_Get<T>(value), m_variant);
     }
 
-    EUIDataTypes GetType() const { return boost::apply_visitor(ExtractType(), m_variant); }
+    EUIDataTypes GetType() const { return AZStd::visit(ExtractType(), m_variant); }
 
     template<typename T>
-    T* GetPtr() { return boost::get<T>(&m_variant); }
+    T* GetPtr() { return AZStd::get_if<T>(&m_variant); }
     template<typename T>
-    const T* GetPtr() const { return boost::get<const T>(&m_variant); }
+    const T* GetPtr() const { return AZStd::get_if<T>(&m_variant); }
 
 private:
     TUIDataVariant m_variant;

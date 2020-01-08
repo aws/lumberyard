@@ -68,6 +68,7 @@ namespace AssetProcessor
                     {
                         const AssetBuilderSDK::JobDependency& jobDependency = jobDepedencyInternal.m_jobDependency;
                         QueueElementID elementId(jobDependency.m_sourceFile.m_sourceFileDependencyPath.c_str(), jobDependency.m_platformIdentifier.c_str(), jobDependency.m_jobKey.c_str());
+
                         if (m_sourceModel->isInFlight(elementId) || m_sourceModel->isInQueue(elementId))
                         {
                             canProcessJob = false;
@@ -75,6 +76,10 @@ namespace AssetProcessor
                             {
                                 anyPendingJob = actualJob;
                             }
+                        }
+                        else if(m_sourceModel->isWaitingOnCatalog(elementId))
+                        {
+                            canProcessJob = false;
                         }
                     }
                 }

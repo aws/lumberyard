@@ -36,7 +36,7 @@ struct ISystem;
 // thus allowing const/read-only/cheat cvars to be set at run-time in release, and removing the need to explicitly hard-code your default values for release builds.
 #if defined(_RELEASE)
 #define ALLOW_AUDIT_CVARS 0
-#define ALLOW_CONST_CVAR_MODIFICATIONS 0
+#define ALLOW_CONST_CVAR_MODIFICATIONS AZ_TRAIT_CVARS_ENABLED_FOR_RELEASE_BUILDS
 #define LOG_CVAR_INFRACTIONS 0
 #define LOG_CVAR_USAGE 0
 #else

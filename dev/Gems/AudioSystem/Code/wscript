@@ -1,0 +1,129 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+########################################################################################
+
+
+def build_supports_audio_system(bld):
+    _, configuration = bld.get_platform_and_configuration()
+
+    # client_only = True
+    if 'dedicated' in configuration:
+        return False
+
+    # All other configs are supported
+    return True
+
+
+def build(bld):
+
+    # Check if this is a valid build configuration for this gem...
+    is_gem_valid = build_supports_audio_system(bld)
+
+    non_release_defines = ['ENABLE_AUDIO_LOGGING', 'INCLUDE_AUDIO_PRODUCTION_CODE']
+
+    testing_includes = [bld.Path('Gems/LmbrCentral/Code/include'),
+                        bld.Path('Gems/AudioSystem/Code/Tests')]
+    testing_defines = ['INCLUDE_AUDIO_PRODUCTION_CODE']
+    testing_editor_defines = ['AUDIO_SYSTEM_EDITOR'] + testing_defines
+
+    #
+    #   Editor Module - This is the AudioControlsEditor (editor plugin)
+    #
+    editor_kw = dict(
+        disable_pch         = True,
+        vs_filter           = 'Gems/Audio',
+
+        file_list           = ['audiosystem.waf_files',
+                                'audiosystem_editor.waf_files'],
+
+        includes            = [bld.Path('Code/CryEngine/CryCommon'),
+                                bld.Path('Gems/AudioSystem/Code/Source'),
+                                bld.Path('Gems/AudioSystem/Code/Source/Engine'),
+                                bld.Path('Gems/AudioSystem/Code/Include/Engine'),
+                                bld.Path('Gems/AudioSystem/Code/Source/Editor'),
+                                bld.Path('Gems/AudioSystem/Code/Include/Editor'),
+                                bld.Path('Code/Sandbox/Editor')],
+
+        defines             = ['AUDIO_SYSTEM_EDITOR'] + non_release_defines,
+
+        # Platform Roots
+        platform_roots      = [bld.PlatformRoot('Platform', export_includes=False)],
+
+        platforms           = ['win', 'darwin'],
+
+        use                 = ['AzToolsFramework', 'EditorCommon'],
+        uselib              = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS'],
+        features            = ['qt5'],
+
+        # Testing
+        test_all_file_list  = ['audiosystem_editor_tests.waf_files'],
+        
+        # Note: 'test_all_includes' and 'test_all_defines' are broken.
+        # They don't properly add include search paths or preprocessor defines to the VS projects.
+        debug_test_includes             = testing_includes,
+        profile_test_includes           = testing_includes,
+        debug_test_defines              = testing_editor_defines,
+        profile_test_defines            = testing_editor_defines,
+    )
+
+    #
+    # Game Module
+    #
+    game_kw = dict(
+        # General
+        disable_pch             = True,
+        vs_filter               = 'Gems/Audio',
+
+        file_list               = ['audiosystem.waf_files'],
+        includes                = [bld.Path('Code/CryEngine/CryCommon'),
+                                   bld.Path('Gems/AudioSystem/Code/Source'),
+                                   bld.Path('Gems/AudioSystem/Code/Source/Engine'),
+                                   bld.Path('Gems/AudioSystem/Code/Include/Engine')],
+
+        # Platform Roots
+        platform_roots          = [bld.PlatformRoot('Platform', export_includes=False)],
+
+        debug_defines           = non_release_defines,
+        profile_defines         = non_release_defines,
+
+        # Testing
+        test_all_file_list      = ['audiosystem_tests.waf_files'],
+
+        # Note: 'test_all_includes' and 'test_all_defines' are broken.
+        # They don't properly add include search paths or preprocessor defines to the VS projects.
+        debug_test_includes                 = testing_includes,
+        profile_test_includes               = testing_includes,
+        debug_test_defines                  = testing_defines,
+        profile_test_defines                = testing_defines,
+
+        Editor = editor_kw
+    )
+
+    #
+    # Define a stub Gem module that doesn't contain any real code
+    #
+    stub_kw = dict(
+        # General
+        disable_pch = True,
+        file_list = ['audiosystem_stub.waf_files'],
+        disable_tests = True,
+
+        Editor = dict(
+            disable_pch = True,
+            file_list = ['audiosystem_stub.waf_files'],
+            platforms = ['win', 'darwin'],
+            disable_tests = True,
+        )
+    )
+
+    if is_gem_valid:
+        bld.DefineGem(**game_kw)
+    else:
+        bld.DefineGem(**stub_kw)

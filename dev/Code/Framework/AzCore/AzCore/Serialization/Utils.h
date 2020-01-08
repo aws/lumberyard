@@ -59,6 +59,8 @@ namespace AZ
             return SaveObjectToStream(stream, streamType, classPtr, AzTypeInfo<ObjectType>::Uuid(), context, classData);
         }
 
+        bool SaveStreamToFile(const AZStd::string& filePath, const AZStd::vector<AZ::u8>& streamData, int platformFlags = 0);
+
         bool SaveObjectToFile(const AZStd::string& filePath, DataStream::StreamType fileType, const void* classPtr, const Uuid& classId, SerializeContext* context = nullptr, int platformFlags = 0);
 
         template <typename ObjectType>

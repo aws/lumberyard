@@ -22,12 +22,12 @@ namespace AzQtComponents
         if (QFileInfo(path).isDir())
         {
             // Launch explorer with the directory open and it's contents displayed
-            QProcess::startDetached(QStringLiteral("explorer \"%1\"").arg(QDir::toNativeSeparators(path)));
+            QProcess::startDetached(QStringLiteral("explorer \"\"%1\"\"").arg(QDir::toNativeSeparators(path)));
         }
         else
         {
             // Launch explorer with the path itself selected and shown
-            QProcess::startDetached(QStringLiteral("explorer /select,\"%1\"").arg(QDir::toNativeSeparators(path)));
+            QProcess::startDetached(QStringLiteral("explorer /select,\"\"%1\"\"").arg(QDir::toNativeSeparators(path)));
         }
 #else
         if (QFileInfo(path).isDir())
@@ -50,7 +50,7 @@ namespace AzQtComponents
     {
 #ifdef AZ_PLATFORM_WINDOWS
         const char* exploreActionName = "Open in Explorer";
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
         const char* exploreActionName = "Open in Finder";
 #else
         const char* exploreActionName = "Open in file browser";

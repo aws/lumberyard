@@ -4,12 +4,10 @@
     "description": "LUA Compiler executable",
     "lib_required": "False",
     "platform": {
-        "win_x64_vs2013": {
+        "win_x64_vs2017": {
             "copy_extra": [
                 "win32/LuaCompiler.exe:."
             ]
-        },
-        "win_x64_vs2015": "@win_x64_vs2013",
-        "win_x64_vs2017": "@win_x64_vs2013"
+        }
     }
 }

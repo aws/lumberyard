@@ -21,6 +21,10 @@
 
 namespace PhysXCharacters
 {
+    // this epsilon is deliberately chosen to be somewhat larger than AZ_FLT_EPSILON so that it does not vanish
+    // when compared to the typical height of a character
+    static const float HeightEpsilon = 1e-5f;
+
     void EditorProxyShapeConfig::Reflect(AZ::ReflectContext* context)
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -102,10 +106,12 @@ namespace PhysXCharacters
                         "Configuration", "Configuration for the character controller")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorCharacterControllerComponent::OnControllerConfigChanged)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorCharacterControllerComponent::m_proxyShapeConfiguration,
                         "Shape Configuration", "The configuration for the shape associated with the character controller")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorCharacterControllerComponent::OnShapeConfigChanged)
                     ;
             }
         }
@@ -245,4 +251,38 @@ namespace PhysXCharacters
             break;
         }
     }
-} // namespace PhysXCharacters 
+
+    // editor change notifications
+    AZ::u32 EditorCharacterControllerComponent::OnControllerConfigChanged()
+    {
+        if (m_proxyShapeConfiguration.IsCapsuleConfig())
+        {
+            float capsuleHeight = m_proxyShapeConfiguration.m_capsule.m_height;
+            m_configuration.m_stepHeight = AZ::GetClamp(m_configuration.m_stepHeight, 0.0f, capsuleHeight - HeightEpsilon);
+        }
+        else if (m_proxyShapeConfiguration.IsBoxConfig())
+        {
+            float boxHeight = m_proxyShapeConfiguration.m_box.m_dimensions.GetZ();
+            m_configuration.m_stepHeight = AZ::GetClamp(m_configuration.m_stepHeight, 0.0f, boxHeight - HeightEpsilon);
+        }
+
+        return AZ::Edit::PropertyRefreshLevels::ValuesOnly;
+    }
+
+    AZ::u32 EditorCharacterControllerComponent::OnShapeConfigChanged()
+    {
+        float minHeight = m_configuration.m_stepHeight + HeightEpsilon;
+
+        if (m_proxyShapeConfiguration.IsCapsuleConfig())
+        {
+            m_proxyShapeConfiguration.m_capsule.m_height = AZ::GetMax(m_proxyShapeConfiguration.m_capsule.m_height, minHeight);
+        }
+        else if (m_proxyShapeConfiguration.IsBoxConfig())
+        {
+            float height = m_proxyShapeConfiguration.m_box.m_dimensions.GetZ();
+            m_proxyShapeConfiguration.m_box.m_dimensions.SetZ(AZ::GetMax(height, minHeight));
+        }
+
+        return AZ::Edit::PropertyRefreshLevels::ValuesOnly;
+    }
+} // namespace PhysXCharacters

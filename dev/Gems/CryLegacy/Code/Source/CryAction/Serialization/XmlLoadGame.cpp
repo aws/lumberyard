@@ -20,6 +20,8 @@
         #include "Xenia/XmlLoadGame_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/XmlLoadGame_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/XmlLoadGame_cpp_salem.inl"
     #endif
 #endif
 

@@ -35,8 +35,13 @@ namespace AzToolsFramework
         virtual ~EditorDefaultSelection();
         /// @endcond
 
+        /// Override the default widget used to store QActions while in ComponentMode.
+        /// @note This should not be necessary during normal operation and is provided
+        /// as a customization point to aid with testing.
+        void SetOverridePhantomWidget(QWidget* phantomOverrideWidget);
+
     private:
-        // ViewportInteraction::ViewportSelectionRequests
+        // ViewportInteraction::ViewportSelectionRequests ...
         bool HandleMouseInteraction(
             const ViewportInteraction::MouseInteractionEvent& mouseInteraction) override;
         void DisplayViewportSelection(
@@ -46,14 +51,14 @@ namespace AzToolsFramework
             const AzFramework::ViewportInfo& viewportInfo,
             AzFramework::DebugDisplayRequests& debugDisplay) override;
 
-        // ActionOverrideRequestBus
+        // ActionOverrideRequestBus ...
         void SetupActionOverrideHandler(QWidget* parent) override;
         void TeardownActionOverrideHandler() override;
         void AddActionOverride(const ActionOverride& actionOverride) override;
         void RemoveActionOverride(AZ::Crc32 actionOverrideUri) override;
         void ClearActionOverrides() override;
 
-        // ComponentModeSystemRequestBus
+        // ComponentModeSystemRequestBus ...
         void BeginComponentMode(
             const AZStd::vector<ComponentModeFramework::EntityAndComponentModeBuilders>& entityAndComponentModeBuilders) override;
         void AddComponentModes(const ComponentModeFramework::EntityAndComponentModeBuilders& entityAndComponentModeBuilders) override;
@@ -62,16 +67,24 @@ namespace AzToolsFramework
         void Refresh(const AZ::EntityComponentIdPair& entityComponentIdPair) override;
         bool AddedToComponentMode(const AZ::EntityComponentIdPair& entityComponentIdPair, const AZ::Uuid& componentType) override;
         void AddSelectedComponentModesOfType(const AZ::Uuid& componentType) override;
-        void SelectNextActiveComponentMode() override;
-        void SelectPreviousActiveComponentMode() override;
-        void SelectActiveComponentMode(const AZ::Uuid& componentType) override;
+        bool SelectNextActiveComponentMode() override;
+        bool SelectPreviousActiveComponentMode() override;
+        bool SelectActiveComponentMode(const AZ::Uuid& componentType) override;
+        AZ::Uuid ActiveComponentMode() override;
+        bool ComponentModeInstantiated(const AZ::EntityComponentIdPair& entityComponentIdPair) override;
+        bool HasMultipleComponentTypes() override;
         void RefreshActions() override;
 
-        //  Helpers to deal with moving in and out of ComponentMode
+        /// Helpers to deal with moving in and out of ComponentMode.
         void TransitionToComponentMode();
         void TransitionFromComponentMode();
 
-        QWidget m_overrideWidget; ///< The override (phantom) widget responsible for holding QActions while in ComponentMode
+        /// Accessor used internally to refer to the phantom widget.
+        /// This will either be the default widget or the override if non-null.
+        QWidget& PhantomWidget();
+
+        QWidget m_phantomWidget; ///< The phantom widget responsible for holding QActions while in ComponentMode.
+        QWidget* m_phantomOverrideWidget = nullptr; ///< It's possible to override the phantom widget in special circumstances (eg testing).
         ComponentModeFramework::ComponentModeCollection m_componentModeCollection; ///< Handles all active ComponentMode types.
         AZStd::unique_ptr<EditorTransformComponentSelection> m_transformComponentSelection = nullptr; ///< Viewport selection (responsible for
                                                                                                       ///< manipulators and transform modifications).

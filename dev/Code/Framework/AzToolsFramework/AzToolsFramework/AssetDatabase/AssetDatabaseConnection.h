@@ -32,6 +32,8 @@ namespace AzToolsFramework
 
     namespace AssetDatabase
     {
+        constexpr AZ::s64 InvalidEntryId = -1;
+
         //! List all database version changes here with descriptive naming to explain what was changed in
         //! the database
         enum class DatabaseVersion : int
@@ -57,6 +59,8 @@ namespace AzToolsFramework
             AddedUnresolvedDependencyTypeField = 20,
             AddedTypeOfDependencyIndex = 21,
             AddedProductDependencyPlatform = 22,
+            AddedMissingProductDependencyTable = 23,
+            AddedWarningAndErrorCountToJobs = 24,
             //Add all new versions before this
             DatabaseVersionCount,
             LatestVersion = DatabaseVersionCount - 1
@@ -105,7 +109,7 @@ namespace AzToolsFramework
             AZStd::string ToString() const;
             auto GetColumns();
 
-            AZ::s64 m_scanFolderID = -1; // the database Primary Key row index, not to be used for any logic purpose
+            AZ::s64 m_scanFolderID = InvalidEntryId; // the database Primary Key row index, not to be used for any logic purpose
             AZStd::string m_scanFolder; // the actual local computer path to that scan folder.
             AZStd::string m_displayName; // a display name, blank means it should not show up in UIs
             AZStd::string m_portableKey; // a key that uniquely identifies a scan folder so that we can recognize the same one in other databases/computer
@@ -127,8 +131,8 @@ namespace AzToolsFramework
             AZStd::string ToString() const;
             auto GetColumns();
 
-            AZ::s64 m_sourceID = -1;
-            AZ::s64 m_scanFolderPK = -1;
+            AZ::s64 m_sourceID = InvalidEntryId;
+            AZ::s64 m_scanFolderPK = InvalidEntryId;
             AZStd::string m_sourceName;
             AZ::Uuid m_sourceGuid = AZ::Uuid::CreateNull();
             AZStd::string m_analysisFingerprint;
@@ -142,7 +146,7 @@ namespace AzToolsFramework
         public:
             BuilderInfoEntry() = default;
             BuilderInfoEntry(AZ::s64 builderInfoID, const AZ::Uuid& builderUuid, const char* analysisFingerprint);
-            AZ::s64 m_builderInfoID = -1;
+            AZ::s64 m_builderInfoID = InvalidEntryId;
             AZ::Uuid m_builderUuid = AZ::Uuid::CreateNull();
             AZStd::string m_analysisFingerprint;
 
@@ -158,20 +162,16 @@ namespace AzToolsFramework
         {
         public:
             JobDatabaseEntry() = default;
-            JobDatabaseEntry(AZ::s64 jobID, AZ::s64 sourcePK, const char* jobKey, AZ::u32 fingerprint, const char* platform, AZ::Uuid builderGuid, AssetSystem::JobStatus status, AZ::u64 jobRunKey, AZ::s64 firstFailLogTime = 0, const char* firstFailLogFile = nullptr, AZ::s64 lastFailLogTime = 0, const char* lastFailLogFile = nullptr, AZ::s64 lastLogTime = 0, const char* lastLogFile = nullptr);
-            JobDatabaseEntry(AZ::s64 sourcePK, const char* jobKey, AZ::u32 fingerprint, const char* platform, AZ::Uuid builderGuid, AssetSystem::JobStatus status, AZ::u64 jobRunKey, AZ::s64 firstFailLogTime = 0, const char* firstFailLogFile = nullptr, AZ::s64 lastFailLogTime = 0, const char* lastFailLogFile = nullptr, AZ::s64 lastLogTime = 0, const char* lastLogFile = nullptr);
-            JobDatabaseEntry(const JobDatabaseEntry& other);
-            JobDatabaseEntry(JobDatabaseEntry&& other);
-
-            JobDatabaseEntry& operator=(JobDatabaseEntry&& other);
-            JobDatabaseEntry& operator=(const JobDatabaseEntry& other);
+            JobDatabaseEntry(AZ::s64 jobID, AZ::s64 sourcePK, const char* jobKey, AZ::u32 fingerprint, const char* platform, AZ::Uuid builderGuid, AssetSystem::JobStatus status, AZ::u64 jobRunKey, AZ::s64 firstFailLogTime = 0, const char* firstFailLogFile = nullptr, AZ::s64 lastFailLogTime = 0, const char* lastFailLogFile = nullptr, AZ::s64 lastLogTime = 0, const char* lastLogFile = nullptr, AZ::u32 warningCount = 0, AZ::u32 errorCount = 0);
+            JobDatabaseEntry(AZ::s64 sourcePK, const char* jobKey, AZ::u32 fingerprint, const char* platform, AZ::Uuid builderGuid, AssetSystem::JobStatus status, AZ::u64 jobRunKey, AZ::s64 firstFailLogTime = 0, const char* firstFailLogFile = nullptr, AZ::s64 lastFailLogTime = 0, const char* lastFailLogFile = nullptr, AZ::s64 lastLogTime = 0, const char* lastLogFile = nullptr, AZ::u32 warningCount = 0, AZ::u32 errorCount = 0);
+            
             bool operator==(const JobDatabaseEntry& other) const;
 
             AZStd::string ToString() const;
             auto GetColumns();
 
-            AZ::s64 m_jobID = -1;
-            AZ::s64 m_sourcePK = -1;
+            AZ::s64 m_jobID = InvalidEntryId;
+            AZ::s64 m_sourcePK = InvalidEntryId;
             AZStd::string m_jobKey;
             AZ::u32 m_fingerprint = 0;
             AZStd::string m_platform;
@@ -184,6 +184,8 @@ namespace AzToolsFramework
             AZStd::string m_lastFailLogFile;
             AZ::s64 m_lastLogTime = 0;
             AZStd::string m_lastLogFile;
+            AZ::u32 m_errorCount = 0;
+            AZ::u32 m_warningCount = 0;
         };
 
         typedef AZStd::vector<JobDatabaseEntry> JobDatabaseEntryContainer;
@@ -209,7 +211,7 @@ namespace AzToolsFramework
             AZStd::string ToString() const;
             auto GetColumns();
 
-            AZ::s64 m_sourceDependencyID = -1;
+            AZ::s64 m_sourceDependencyID = InvalidEntryId;
             AZ::Uuid m_builderGuid = AZ::Uuid::CreateNull();
             TypeOfDependency m_typeOfDependency = DEP_SourceToSource;
             AZStd::string m_source;
@@ -238,8 +240,8 @@ namespace AzToolsFramework
             AZStd::string ToString() const;
             auto GetColumns();
 
-            AZ::s64 m_productID = -1;
-            AZ::s64 m_jobPK = -1;
+            AZ::s64 m_productID = InvalidEntryId;
+            AZ::s64 m_jobPK = InvalidEntryId;
             AZ::u32 m_subID = 0;
             AZStd::string m_productName;
             AZ::Data::AssetType m_assetType = AZ::Data::AssetType::CreateNull();
@@ -253,13 +255,13 @@ namespace AzToolsFramework
             LegacySubIDsEntry() = default;
             LegacySubIDsEntry(AZ::s64 subIDsEntryID, AZ::s64 productPK, AZ::u32 subId); // loaded from db, and thus includes the PK
             LegacySubIDsEntry(AZ::s64 productPK, AZ::u32 subId);  // being synthesized does not include the PK.
-            LegacySubIDsEntry(const LegacySubIDsEntry& entry) = default;
-            LegacySubIDsEntry& operator=(const LegacySubIDsEntry& other) = default;
+
+            bool operator==(const LegacySubIDsEntry& other) const;
 
             auto GetColumns();
 
-            AZ::s64 m_subIDsEntryID = -1; // the main ID of this table.
-            AZ::s64 m_productPK = -1; // the foreign key to the Products table.
+            AZ::s64 m_subIDsEntryID = InvalidEntryId; // the main ID of this table.
+            AZ::s64 m_productPK = InvalidEntryId; // the foreign key to the Products table.
             AZ::u32 m_subID = 0; // the legacy subID.
         };
 
@@ -285,8 +287,8 @@ namespace AzToolsFramework
             AZStd::string ToString() const;
             auto GetColumns();
 
-            AZ::s64 m_productDependencyID = -1;
-            AZ::s64 m_productPK = -1;
+            AZ::s64 m_productDependencyID = InvalidEntryId;
+            AZ::s64 m_productPK = InvalidEntryId;
             AZ::Uuid m_dependencySourceGuid = AZ::Uuid::CreateNull();
             AZ::u32 m_dependencySubID = 0;
             AZStd::bitset<64> m_dependencyFlags = 0;
@@ -296,6 +298,47 @@ namespace AzToolsFramework
         };
 
         typedef AZStd::vector<ProductDependencyDatabaseEntry> ProductDependencyDatabaseEntryContainer;
+
+        //////////////////////////////////////////////////////////////////////////
+        //MissingProductDependencyDatabaseEntry
+        class MissingProductDependencyDatabaseEntry
+        {
+        public:
+            MissingProductDependencyDatabaseEntry() = default;
+            MissingProductDependencyDatabaseEntry(
+                AZ::s64 missingProductDependencyId,
+                AZ::s64 productPK,
+                const AZStd::string& scannerId,
+                const AZStd::string& scannerVersion,
+                const AZStd::string& sourceFileFingerprint,
+                AZ::Uuid dependencySourceGuid,
+                AZ::u32 dependencySubId,
+                const AZStd::string& missingDependencyString);
+            MissingProductDependencyDatabaseEntry(
+                AZ::s64 productPK,
+                const AZStd::string& scannerId,
+                const AZStd::string& scannerVersion,
+                const AZStd::string&  sourceFileFingerprint,
+                AZ::Uuid dependencySourceGuid,
+                AZ::u32 dependencySubId,
+                const AZStd::string& missingDependencyString);
+
+            bool operator == (const MissingProductDependencyDatabaseEntry& other) const;
+
+            AZStd::string ToString() const;
+            auto GetColumns();
+
+            AZ::s64 m_missingProductDependencyId = InvalidEntryId;
+            AZ::s64 m_productPK = InvalidEntryId;
+            AZStd::string m_scannerId;
+            AZStd::string m_scannerVersion;
+            AZStd::string m_sourceFileFingerprint;
+            AZ::Uuid m_dependencySourceGuid = AZ::Uuid::CreateNull();
+            AZ::u32 m_dependencySubId = 0;
+            AZStd::string m_missingDependencyString;
+        };
+
+        typedef AZStd::vector<MissingProductDependencyDatabaseEntry> MissingProductDependencyDatabaseEntryContainer;
 
         //////////////////////////////////////////////////////////////////////////
         //CombinedDatabaseEntry
@@ -332,8 +375,8 @@ namespace AzToolsFramework
             AZStd::string ToString() const;
             auto GetColumns();
 
-            AZ::s64 m_fileID = -1;
-            AZ::s64 m_scanFolderPK = -1;
+            AZ::s64 m_fileID = InvalidEntryId;
+            AZ::s64 m_scanFolderPK = InvalidEntryId;
             AZStd::string m_fileName;
             int m_isFolder;
             AZ::u64 m_modTime{};
@@ -410,6 +453,7 @@ namespace AzToolsFramework
             using sourceFileDependencyHandler = AZStd::function<bool(SourceFileDependencyEntry& entry)>;
             using legacySubIDsHandler = AZStd::function<bool(LegacySubIDsEntry& entry)>;
             using productDependencyHandler = AZStd::function<bool(ProductDependencyDatabaseEntry& entry)>;
+            using missingProductDependencyHandler = AZStd::function<bool(MissingProductDependencyDatabaseEntry& entry)>;
             using combinedProductDependencyHandler = AZStd::function<bool(AZ::Data::AssetId& asset, ProductDependencyDatabaseEntry& entry)>;
             // note that AZStd::function cannot handle rvalue-refs at the time of writing this.
             using BuilderInfoHandler = std::function<bool(BuilderInfoEntry&&)>;
@@ -547,6 +591,9 @@ namespace AzToolsFramework
             bool QueryAllProductDependencies(AZ::s64 productID, productHandler handler);
             bool QueryUnresolvedProductDependencies(productDependencyHandler handler);
 
+            bool QueryMissingProductDependencyByProductId(AZ::s64 productId, missingProductDependencyHandler handler);
+            bool QueryMissingProductDependencyByMissingProductDependencyId(AZ::s64 productDependencyId, missingProductDependencyHandler handler);
+
             //FileInfo
             bool QueryFileByFileID(AZ::s64 fileID, fileHandler handler);
             bool QueryFilesByFileNameAndScanFolderID(const char* fileName, AZ::s64 scanfolderID, fileHandler handler);
@@ -592,10 +639,28 @@ namespace AzToolsFramework
             bool GetProductResult(const char* callName, SQLite::Statement* statement, AssetDatabaseConnection::productHandler handler, AZ::Uuid builderGuid = AZ::Uuid::CreateNull(), const char* jobKey = nullptr, AssetSystem::JobStatus status = AssetSystem::JobStatus::Any);
             bool GetLegacySubIDsResult(const char* callname, SQLite::Statement* statement, AssetDatabaseConnection::legacySubIDsHandler handler);
             bool GetProductDependencyResult(const char* callName, SQLite::Statement* statement, AssetDatabaseConnection::productDependencyHandler handler);
+            bool GetMissingProductDependencyResult(const char* callName, SQLite::Statement* statement, AssetDatabaseConnection::missingProductDependencyHandler handler);
             bool GetCombinedDependencyResult(const char* callName, SQLite::Statement* statement, AssetDatabaseConnection::combinedProductDependencyHandler handler);
             bool GetFileResult(const char* callName, SQLite::Statement* statement, AssetDatabaseConnection::fileHandler handler);
         }
     } // namespace AssetDatabase
 }// namespace AzToolsFramework
+
+namespace AZStd
+{
+    template<>
+    struct hash<AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry>
+    {
+        using argument_type = AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry;
+        using result_type = size_t;
+
+        result_type operator() (const argument_type& obj) const
+        {
+            size_t h = 0;
+            hash_combine(h, obj.ToString());
+            return h;
+        }
+    };
+}
 
 #endif // AZTOOLSFRAMEWORK_Connection_H

@@ -112,27 +112,16 @@ private:
     IFlowNodePtr m_pInstance;   // only applies for singleton nodes
 };
 
-#if defined(AZ_PLATFORM_WINDOWS) && defined(AZ_MONOLITHIC_BUILD)
-#define CRY_EXPORT_STATIC_LINK_VARIABLE(Var)                \
-    extern "C" { size_t lib_func_##Var() { return reinterpret_cast<uintptr_t>(&Var); } \
-    }                                                       \
-    __pragma(message("#pragma comment(linker,\"/include:_lib_func_"#Var "\")"))
-#else
-#define CRY_EXPORT_STATIC_LINK_VARIABLE(Var)
-#endif
-
 //////////////////////////////////////////////////////////////////////////
 // Use this define to register a new flow node class. Handles
 //  both instanced and singleton nodes.
 // Ex. REGISTER_FLOW_NODE( "Delay",CFlowDelayNode )
 //////////////////////////////////////////////////////////////////////////
 #define REGISTER_FLOW_NODE(FlowNodeClassName, FlowNodeClass)                        \
-    CAIAutoRegFlowNode<FlowNodeClass> g_AutoReg##FlowNodeClass (FlowNodeClassName); \
-    CRY_EXPORT_STATIC_LINK_VARIABLE(g_AutoReg##FlowNodeClass)
+    CAIAutoRegFlowNode<FlowNodeClass> g_AutoReg##FlowNodeClass (FlowNodeClassName);
 
 #define REGISTER_FLOW_NODE_EX(FlowNodeClassName, FlowNodeClass, RegName)      \
-    CAIAutoRegFlowNode<FlowNodeClass> g_AutoReg##RegName (FlowNodeClassName); \
-    CRY_EXPORT_STATIC_LINK_VARIABLE(g_AutoReg##RegName)
+    CAIAutoRegFlowNode<FlowNodeClass> g_AutoReg##RegName (FlowNodeClassName);
 
 //////////////////////////////////////////////////////////////////////////
 // Internal base class for flow nodes. Node classes shouldn't be

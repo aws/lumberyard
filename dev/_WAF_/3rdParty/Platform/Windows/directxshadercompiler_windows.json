@@ -1,0 +1,12 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "copy_extra": [
+                "bin/win_x64/release/dxcGL.exe:../../Compiler/LLVMGL/release",
+                "bin/win_x64/release/dxcMetal.exe:../../Compiler/LLVMMETAL/release",
+                "bin/win_x64/debug/dxcGL.exe:../../Compiler/LLVMGL/debug",
+                "bin/win_x64/debug/dxcMetal.exe:../../Compiler/LLVMMETAL/debug"
+            ]
+        }
+    }
+}

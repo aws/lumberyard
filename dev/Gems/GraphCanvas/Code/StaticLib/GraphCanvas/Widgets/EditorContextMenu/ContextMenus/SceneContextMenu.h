@@ -23,13 +23,16 @@ namespace GraphCanvas
         : public EditorContextMenu
     {
     public:
-        SceneContextMenu(QWidget* parent = nullptr);
+        SceneContextMenu(EditorId editorId, QWidget* parent = nullptr);
         ~SceneContextMenu() override = default;
+
+        void OnRefreshActions(const GraphId& graphId, const AZ::EntityId& targetMemberId) override;
 
     protected:
 
         EditActionsMenuGroup m_editorActionsGroup;
         GraphCanvasConstructActionsMenuGroup m_graphCanvasConstructGroups;
+        NodeGroupPresetsMenuActionGroup m_nodeGroupPresets;
         AlignmentActionsMenuGroup m_alignmentActionsGroups;
     };
 }

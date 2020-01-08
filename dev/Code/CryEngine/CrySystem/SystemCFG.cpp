@@ -20,6 +20,8 @@
 #include "XConsole.h"
 #include "CryFile.h"
 
+#include <AzFramework/StringFunc/StringFunc.h>
+
 #include <IScriptSystem.h>
 #include "SystemCFG.h"
 
@@ -58,6 +60,8 @@
         #include "Xenia/SystemCFG_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemCFG_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemCFG_cpp_salem.inl"
     #endif
 #endif
 
@@ -202,6 +206,8 @@ void CSystem::LogVersion()
         #include "Xenia/SystemCFG_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemCFG_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemCFG_cpp_salem.inl"
     #endif
 #elif defined(ANDROID)
     CryLogAlways("Running 32 bit Android version API VER:%d", __ANDROID_API__);
@@ -222,7 +228,12 @@ void CSystem::LogVersion()
 #endif
 #if AZ_LEGACY_CRYSYSTEM_TRAIT_SYSTEMCFG_MODULENAME
     GetModuleFileName(NULL, s, sizeof(s));
-    CryLogAlways("Executable: %s", s);
+
+    // Log EXE filename only if possible (not full EXE path which could contain sensitive info)
+    AZStd::string exeName;
+    if (AzFramework::StringFunc::Path::GetFullFileName(s, exeName)) {
+        CryLogAlways("Executable: %s", exeName.c_str());
+    }
 #endif
 
     CryLogAlways("FileVersion: %d.%d.%d.%d", m_fileVersion.v[3], m_fileVersion.v[2], m_fileVersion.v[1], m_fileVersion.v[0]);
@@ -240,6 +251,8 @@ void CSystem::LogVersion()
         #include "Xenia/SystemCFG_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemCFG_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemCFG_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

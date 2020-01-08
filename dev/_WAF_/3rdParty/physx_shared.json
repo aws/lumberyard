@@ -1,0 +1,33 @@
+{
+    "name": "physx_sdk_shared",
+    "source": "@3P:PHYSXSDK@",
+    "description": "NVidia PhysX physics simulation backend.",
+    "defines": [],
+    "non_release_only": "False",
+    "lib_required": "True",
+    "engine_configs": "True",
+    "includes": ["physx/include", "pxshared/include"],
+    "aliases": {
+        "lib_names": [           
+            "PhysX",            
+            "PhysXCooking",
+            "PhysXFoundation",
+            "PhysXCommon"
+        ],
+        "lib_names_ext": [
+            "PhysXVehicle",
+            "PhysXPvdSDK",
+            "PhysXCharacterKinematic",
+            "PhysXExtensions"
+        ],
+        "lib_names_additional": [      
+            "LowLevel",
+            "LowLevelAABB",
+            "LowLevelDynamics",
+            "SimulationController",
+            "PhysXTask",
+            "SceneQuery"
+        ],
+        "lib_paths": ["physx/bin/"]
+    }
+}

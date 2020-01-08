@@ -353,7 +353,7 @@ float UiLayoutGridComponent::GetMinHeight()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-float UiLayoutGridComponent::GetTargetWidth()
+float UiLayoutGridComponent::GetTargetWidth(float maxWidth)
 {
     int numChildElements = 0;
     EBUS_EVENT_ID_RESULT(numChildElements, GetEntityId(), UiElementBus, GetNumChildElements);
@@ -363,16 +363,44 @@ float UiLayoutGridComponent::GetTargetWidth()
         return 0.0f;
     }
 
-    // Calculate number of columns. Since element width/height is unknown at this point, make
-    // target width resemble a square grid
-    int numColumns = static_cast<int>(ceil(sqrt(numChildElements)));
+    // Calculate number of columns
+    int numColumns = 0;
+    if (LyShine::IsUiLayoutCellSizeSpecified(maxWidth))
+    {
+        const int paddingWidth = m_padding.m_left + m_padding.m_right;
+        const float availableWidthForCells = maxWidth - paddingWidth;
+        if (availableWidthForCells > 0.0f)
+        {
+            const float cellAndSpacingWidth = m_cellSize.GetX() + m_spacing.GetX();
+            const int numAvailableColumns = cellAndSpacingWidth > 0.0f ? static_cast<int>((availableWidthForCells + m_spacing.GetX()) / cellAndSpacingWidth) : 1;
+            numColumns = AZ::GetMin(numAvailableColumns, numChildElements);
+        }
+
+        if (numColumns == 0)
+        {
+            return 0.0f;
+        }
+    }
+    else
+    {
+        // Since element width/height is unknown at this point, make target width resemble a square grid
+        numColumns = static_cast<int>(ceil(sqrt(numChildElements)));
+    }
 
     float width = m_padding.m_left + m_padding.m_right + (numColumns * m_cellSize.GetX()) + ((numColumns - 1) * m_spacing.GetX());
+
+    // In order for the number of columns to remain the same after resizing to this new size, the
+    // new size must match the size retrieved from GetCanvasSpacePointsNoScaleRotate. To accommodate
+    // for slight variations, add a small value to ensure that the same number of cells fit per row
+    // after the element has been resized to this target size
+    const float epsilon = 0.01f;
+    width += epsilon;
+
     return width;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-float UiLayoutGridComponent::GetTargetHeight()
+float UiLayoutGridComponent::GetTargetHeight(float /*maxHeight*/)
 {
     int numChildElements = 0;
     EBUS_EVENT_ID_RESULT(numChildElements, GetEntityId(), UiElementBus, GetNumChildElements);

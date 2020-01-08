@@ -15,6 +15,7 @@
 #include <EMotionFX/CommandSystem/Source/ColliderCommands.h>
 #include <EMotionFX/CommandSystem/Source/RagdollCommands.h>
 #include <Editor/Plugins/SkeletonOutliner/SkeletonOutlinerPlugin.h>
+#include <Editor/ReselectingTreeView.h>
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QHeaderView>
@@ -59,7 +60,7 @@ namespace EMotionFX
 
         m_skeletonModel = AZStd::make_unique<SkeletonModel>();
 
-        m_treeView = new QTreeView();
+        m_treeView = new ReselectingTreeView();
 
         m_filterProxyModel = new SkeletonSortFilterProxyModel(m_skeletonModel.get(), &m_skeletonModel->GetSelectionModel(), m_treeView);
         m_filterProxyModel->setFilterKeyColumn(-1);

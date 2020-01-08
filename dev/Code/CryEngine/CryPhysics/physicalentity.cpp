@@ -1423,15 +1423,28 @@ int CPhysicalEntity::GetParams(pe_params* _params) const
 
     if (_params->type == pe_params_ground_plane::type_id)
     {
-        pe_params_ground_plane* params = (pe_params_ground_plane*)_params;
-        SIZEOF_ARRAY_OK
-        if ((unsigned int)params->iPlane >= (unsigned int)(sizeof(m_ground) / sizeof(m_ground[0])))
-        {
-            return 0;
-        }
-        params->ground.origin = m_ground[params->iPlane].origin;
-        params->ground.n = m_ground[params->iPlane].n;
-        return 1;
+        /* Previous Code was performing a sizeof(m_ground) which is a primitives::plane* which results in a value of 8 and sizeof(m_ground[0]) which is a primitives::plane which results in a value of 24.
+         * Therefore the if block in the previous code was always true as if((unsigned int)params->iPlane >= (unsigned int)(8/24))
+         * Since both sides of the condition were type cast to unsigned int the left side is always >=0, while the right side is always 0
+         * The previous code resulted in an warning when building on clang that sizeof a pointer was being performed
+         * error: 'sizeof (this->m_ground)' will return the size of the pointer, not the array itself [-Werror,-Wsizeof-pointer-div]
+         *  if ((unsigned int)params->iPlane >= (unsigned int)(sizeof(m_ground) / sizeof(m_ground[0])))
+         *
+         * The previous code is below
+         * pe_params_ground_plane* params = (pe_params_ground_plane*)_params;
+         * SIZEOF_ARRAY_OK
+         * if ((unsigned int)params->iPlane >= (unsigned int)(sizeof(m_ground) / sizeof(m_ground[0])))
+         * {
+         *     return 0;
+         * }
+         * params->ground.origin = m_ground[params->iPlane].origin;
+         * params->ground.n = m_ground[params->iPlane].n;
+         * return 1;
+         * The code below keeps the same incorrect logic by only the returning 0
+         * The actual correct logic for this code is to check the m_nGroundPlanes variable against the params->iPlane parameter
+         * and remove the SIZEOF_ARRAY_OK macro
+         */
+        return 0;
     }
 
     if (_params->type == pe_params_structural_joint::type_id)

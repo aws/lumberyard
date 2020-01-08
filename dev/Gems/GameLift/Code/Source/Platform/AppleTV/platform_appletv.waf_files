@@ -1,0 +1,7 @@
+{
+  "auto": {
+    "Platform/AppleTV": [
+      "../../CAFile_Default.cpp"
+    ]
+  }
+}

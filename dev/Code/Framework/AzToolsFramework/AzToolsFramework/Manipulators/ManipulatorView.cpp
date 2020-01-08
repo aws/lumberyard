@@ -220,6 +220,8 @@ namespace AzToolsFramework
         return LineWidth(mouseOver, 0.0f, 4.0f);
     };
 
+    ManipulatorView::ManipulatorView() = default;
+
     ManipulatorView::~ManipulatorView()
     {
         Invalidate(m_managerId);
@@ -519,8 +521,18 @@ namespace AzToolsFramework
                 m_radius * ManipulatorViewScaleMultiplier(
                     manipulatorState.m_worldFromLocal * manipulatorState.m_localPosition, cameraState));
 
+        if (m_depthTest)
+        {
+            debugDisplay.DepthTestOn();
+        }
+
         debugDisplay.SetColor(m_decideColorFn(mouseInteraction, manipulatorState.m_mouseOver, m_color).GetAsVector4());
         debugDisplay.DrawBall(sphereBound.m_center, sphereBound.m_radius);
+
+        if (m_depthTest)
+        {
+            debugDisplay.DepthTestOff();
+        }
 
         if (m_screenSizeFixed || m_boundDirty)
         {
@@ -694,12 +706,13 @@ namespace AzToolsFramework
     }
 
     AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewSphere(
-        const AZ::Color& color, const float radius, const DecideColorFn& decideColor)
+        const AZ::Color& color, const float radius, const DecideColorFn& decideColor, bool enableDepthTest)
     {
         AZStd::unique_ptr<ManipulatorViewSphere> viewSphere = AZStd::make_unique<ManipulatorViewSphere>();
         viewSphere->m_radius = radius;
         viewSphere->m_color = color;
         viewSphere->m_decideColorFn = decideColor;
+        viewSphere->m_depthTest = enableDepthTest;
         return AZStd::move(viewSphere);
     }
 
@@ -725,5 +738,18 @@ namespace AzToolsFramework
         viewSplineSelect->m_color = color;
         viewSplineSelect->m_width = width;
         return AZStd::move(viewSplineSelect);
+    }
+
+    AZ::Vector3 CalculateViewDirection(
+        const Manipulators& manipulators, const AZ::Vector3& worldViewPosition)
+    {
+        const AZ::Transform worldFromLocalWithTransform =
+            manipulators.GetSpace() * manipulators.GetLocalTransform();
+
+        AZ::Vector3 lookDirection =
+            (worldFromLocalWithTransform.GetTranslation() - worldViewPosition).GetNormalizedExact();
+
+        return TransformDirectionNoScaling(
+            worldFromLocalWithTransform.GetInverseFast(), lookDirection);
     }
 } // namespace AzToolsFramework

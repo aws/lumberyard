@@ -20,7 +20,7 @@
 #include "../ResourceCompilerPC/PhysWorld.h"
 #include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/parallel/mutex.h>
-#include <AzCore/std/parallel/conditional_variable.h>
+#include <AzCore/std/parallel/condition_variable.h>
 
 #define RC_ABC_AUTOMATIC_UVMAX_DETECTION_VALUE .0f
 

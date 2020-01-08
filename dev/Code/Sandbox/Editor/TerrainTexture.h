@@ -19,6 +19,7 @@
 #include <QAtomicInteger>
 #include <QAbstractTableModel>
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
+#include <AzToolsFramework/Physics/EditorTerrainComponentBus.h>
 #include <IEditor.h>
 
 #include "IDataBaseManager.h"
@@ -65,9 +66,13 @@ class CTerrainTextureDialog
     : public QDialog
     , public IEditorNotifyListener
     , public IDataBaseManagerListener
+    , public Physics::EditorTerrainComponentNotificationBus::Handler
     , private AzToolsFramework::IPropertyEditorNotify
 {
     Q_OBJECT
+
+private:
+    friend class TextureScriptBindings;
 
 public:
     CTerrainTextureDialog(QWidget* parent = nullptr);   // standard constructor
@@ -86,8 +91,11 @@ public:
     //////////////////////////////////////////////////////////////////////////
 
     // IDataBaseManagerListener
-    virtual void OnDataBaseItemEvent(IDataBaseItem* pItem, EDataBaseItemEvent event);
+    virtual void OnDataBaseItemEvent(IDataBaseItem* item, EDataBaseItemEvent event);
     // ~IDataBaseManagerListener
+
+    // EditorTerrainComponentNotificationBus
+    void OnTerrainComponentActive();
 
 protected:
     typedef std::vector<CLayer*> Layers;
@@ -100,7 +108,7 @@ protected:
     void UpdateControlData();
     void EnableControls();
 
-    void SelectLayer(CLayer* pLayer);
+    void SelectLayer(CLayer* layer);
 
     // Assign selected material to the selected layers.
     void OnAssignMaterial();
@@ -143,16 +151,18 @@ protected:
     void SetPropertyEditingComplete(AzToolsFramework::InstanceDataNode* /*node*/) override;
     void SealUndoStack() override;
 
+    void DeleteLayerItem(CLayer* layer);
+
 private:
 
     QScopedPointer<Ui::TerrainTextureDialog> m_ui;
     AzToolsFramework::ReflectedPropertyEditor* m_propertyEditor;
-    AZStd::unique_ptr<Physics::MaterialSelection> m_selection;
+    AZStd::unique_ptr<Physics::MaterialSelection> m_physicsMaterialSelection;
 
     bool m_alive = 1;
 
     TerrainTextureLayerEditModel* m_model;
 
-    bool m_bIgnoreNotify;
+    bool m_ignoreNotify;
 };
 #endif // CRYINCLUDE_EDITOR_TERRAINTEXTURE_H

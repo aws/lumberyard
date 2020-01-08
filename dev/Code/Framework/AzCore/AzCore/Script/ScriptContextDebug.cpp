@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #if !defined(AZCORE_EXCLUDE_LUA)
 
@@ -18,6 +17,7 @@
 #include <AzCore/Math/Crc.h>
 #include <AzCore/Debug/StackTracer.h>  // for CodeStackTrace
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/RTTI/AttributeReader.h>
 
 #include <AzCore/std/string/tokenize.h>
 
@@ -73,11 +73,7 @@ ScriptContextDebug::ScriptContextDebug(ScriptContext& scriptContext, bool isEnab
     , m_currentStackLevel(-1)
     , m_stepStackLevel(-1)
     , m_isRecordCallstack(isEnableStackRecord)
-#if defined(AZ_PLATFORM_WINDOWS)
-    , m_isRecordCodeCallstack(true)   // PC is fast enough to do it all the time.
-#else
-    , m_isRecordCodeCallstack(false)  // On consoles we need to traverse map files (for full stack decode)
-#endif
+    , m_isRecordCodeCallstack(AZ_TRAIT_SCRIPT_RECORD_CALLSTACK_DEFAULT)
     , m_context(scriptContext)
 {
     ConnectHook();
@@ -343,6 +339,13 @@ void ScriptContextDebug::EnumRegisteredEBuses(EnumEBus enumEBus, EnumEBusSender 
     for (auto const &ebusPair : behaviorContext->m_ebuses)
     {
         AZ::BehaviorEBus* ebus = ebusPair.second;
+
+        // Do not enum if this bus should not be available in Lua
+        if (!AZ::Internal::IsAvailableInLua(ebus->m_attributes))
+        {
+            continue;
+        }
+
         bool canBroadcast = EBusCanBroadcast(ebus);
         bool canQueue = EBusCanQueue(ebus);
         bool hasHandler = EBusHasHandler(ebus);
@@ -1545,5 +1548,3 @@ ScriptContextDebug::SetValue(const DebugValue& sourceValue)
 }
 
 #endif // #if !defined(AZCORE_EXCLUDE_LUA)
-
-#endif // #ifndef AZ_UNITY_BUILD

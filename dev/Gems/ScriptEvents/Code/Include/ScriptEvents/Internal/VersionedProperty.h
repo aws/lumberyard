@@ -32,6 +32,7 @@ namespace ScriptEventData
         }
     };
 
+    class VersionedProperty;
 
     //! A VersionedProperty holds a default or starting value and a list of versions.
     //! The list of versions is immutable until the moment the property is flattened.
@@ -70,20 +71,38 @@ namespace ScriptEventData
             m_versions = rhs.m_versions;
         }
 
-        VersionedProperty& operator =(const VersionedProperty& rhs)
+        VersionedProperty(VersionedProperty&& rhs)
         {
-            m_id = rhs.m_id;
-            m_version = rhs.m_version;
-            m_label = rhs.m_label;
+            m_id = AZStd::move(rhs.m_id);
+            m_version = AZStd::move(rhs.m_version);
+            m_label = AZStd::move(rhs.m_label);
 
-            m_data = rhs.m_data;
-            m_versions = rhs.m_versions;
+            m_data = AZStd::move(rhs.m_data);
+            m_versions.swap(rhs.m_versions);
+        }
+
+        VersionedProperty& operator=(const VersionedProperty& rhs)
+        {
+            if (this != &rhs)
+            {
+                m_id = rhs.m_id;
+                m_version = rhs.m_version;
+                m_label = rhs.m_label;
+
+                m_data = rhs.m_data;
+                m_versions.assign(rhs.m_versions.begin(), rhs.m_versions.end());
+            }
 
             return *this;
         }
 
         VersionedProperty(AZ::ScriptDataContext&);
-        virtual ~VersionedProperty() = default;
+        virtual ~VersionedProperty()
+        {
+            m_data.clear();
+            delete m_backup;
+            m_versions.clear();
+        }
 
         AZ::Uuid GetType() const
         {
@@ -200,8 +219,11 @@ namespace ScriptEventData
             if (m_backup)
             {
                 m_backup->m_versions.clear(); // Do not store the backup version history, we only need the property, otherwise this leads to exponential growth
-                m_versions.push_back(*m_backup);
-                m_backup.release();
+                VersionedProperty copy = *m_backup;
+                m_versions.push_back(AZStd::move(copy));
+                delete m_backup;
+                m_backup = nullptr;
+
                 ++m_version;
             }
 
@@ -212,7 +234,7 @@ namespace ScriptEventData
         {
             if (!m_backup)
             {
-                m_backup = AZStd::make_unique<VersionedProperty>(*this);
+                m_backup = aznew VersionedProperty(*this);
             }
         }
 
@@ -263,7 +285,7 @@ namespace ScriptEventData
 
         AZStd::vector<VersionedProperty> m_versions;
 
-        AZStd::unique_ptr<VersionedProperty> m_backup;
+        VersionedProperty* m_backup = nullptr;
     };
 
     //! Given a class that may hold any VersionedProperties, iterate over its elements and 

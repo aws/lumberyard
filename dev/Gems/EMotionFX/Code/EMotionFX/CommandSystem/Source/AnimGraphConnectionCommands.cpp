@@ -1238,6 +1238,19 @@ namespace CommandSystem
 
         const AZStd::string targetName = copyPasteData.GetNewNodeName(targetNode, cutMode);
         const EMotionFX::AnimGraphConnectionId newTransitionId = copyPasteData.GetNewConnectionId(transition->GetId(), cutMode);
+        
+        // Relink the interruption candidates, serialize the transition contents and set it back to its original state.
+        const AZStd::vector<AZ::u64> oldCanBeInterruptedByTransitionIds = transition->GetCanBeInterruptedByTransitionIds();
+        AZStd::vector<AZ::u64> canBeInterruptedByTransitionIds = transition->GetCanBeInterruptedByTransitionIds();
+        for (AZ::u64& id : canBeInterruptedByTransitionIds)
+        {
+            id = copyPasteData.GetNewConnectionId(id, cutMode);
+        }
+        transition->SetCanBeInterruptedBy(canBeInterruptedByTransitionIds);
+
+        const AZStd::string serializedTransition = MCore::ReflectionSerializer::Serialize(transition).GetValue();
+        transition->SetCanBeInterruptedBy(oldCanBeInterruptedByTransitionIds);
+
 
         AZStd::string commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %d -sourceNode \"%s\" -targetNode \"%s\" -sourcePort %d -targetPort %d -transitionType \"%s\" -id %s -contents {%s}",
                 targetAnimGraph->GetID(),
@@ -1247,7 +1260,7 @@ namespace CommandSystem
                 0, // targetPort
                 azrtti_typeid(transition).ToString<AZStd::string>().c_str(),
                 newTransitionId.ToString().c_str(),
-                MCore::ReflectionSerializer::Serialize(transition).GetValue().c_str());
+                serializedTransition.c_str());
         commandGroup->AddCommandString(commandString);
 
         // Find the name of the state machine

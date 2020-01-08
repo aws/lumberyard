@@ -18,7 +18,6 @@
 #include "AssetTypes/Character/AssetCharacterItem.h"
 #include "Include/IAssetItemDatabase.h"
 #include "Include/IAssetItem.h"
-#include "AssetBrowser/AssetBrowserMetaTaggingDlg.h"
 #include "Objects/EntityObject.h"
 #include "AssetBrowserManager.h"
 #include "Util/IndexedFiles.h"
@@ -641,37 +640,6 @@ void CAssetBrowserDialog::OnSelectionChanged()
         // ok, got it, set to false, we did not sent any select operation to the list
         m_bSelectAssetsFromListView = false;
     }
-
-    CAssetBrowserManager::StrVector allTags;
-
-    for (TAssetItems::iterator item = items.begin(), end = items.end(); item != end; ++item)
-    {
-        const QString filename = (*item)->GetRelativePath() + (*item)->GetFilename();
-
-        QString description;
-        CAssetBrowserManager::Instance()->GetAssetDescription(filename, description);
-        allTags.push_back(description);
-
-        CAssetBrowserManager::StrVector tags;
-        int tagCount = CAssetBrowserManager::Instance()->GetTagsForAsset(tags, filename);
-
-        if (tagCount > 0)
-        {
-            allTags.append(tags);
-        }
-    }
-
-    QString tagString;
-
-    for (auto item = allTags.begin(), end = allTags.end(); item != end; ++item)
-    {
-        if (!tagString.isEmpty())
-        {
-            tagString.append(QStringLiteral(" "));
-        }
-
-        tagString.append((*item));
-    }
 }
 
 void CAssetBrowserDialog::OnChangedPreviewedAsset(IAssetItem* pAsset)
@@ -796,21 +764,6 @@ void CAssetBrowserDialog::OnUpdateAssetBrowserShowPreview()
 void CAssetBrowserDialog::OnUpdateAssetBrowserShowFilters()
 {
     m_ui->actionShowFilters->setChecked(m_pDockPaneFilters->isVisible());
-}
-
-void CAssetBrowserDialog::OnUpdateAssetBrowserEditTags()
-{
-    TAssetItems items;
-    m_ui->m_assetViewer->GetSelectedItems(items);
-
-    if (items.size() != 1)
-    {
-        return;
-    }
-
-    CAssetBrowserMetaTaggingDlg taggingDialog(&items);
-    taggingDialog.exec();
-    OnSelectionChanged();
 }
 
 void CAssetBrowserDialog::ApplyAllFiltering()

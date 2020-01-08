@@ -17,6 +17,7 @@
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Asset/AssetManagerComponent.h>
 #include <AzFramework/IO/LocalFileIO.h>
+#include <AzFramework/Asset/AssetCatalogComponent.h>
 
 #include <Integration/System/SystemComponent.h>
 #include <Integration/AnimationBus.h>
@@ -25,9 +26,10 @@
 #include <AzCore/Memory/PoolAllocator.h>
 #include <AzCore/Jobs/JobManagerComponent.h>
 
+#include <AzCore/UnitTest/TestTypes.h>
+
 namespace EMotionFX
 {
-
     //! A fixture that constructs an EMotionFX::Integration::SystemComponent
     /*!
      * This fixture can be used by any test that needs the EMotionFX runtime to
@@ -35,13 +37,15 @@ namespace EMotionFX
      * objects to be successfully instantiated.
     */
     template<class... Components>
-    class ComponentFixture : public ::testing::Test
+    class ComponentFixture : public UnitTest::AllocatorsTestFixture
     {
     public:
         void SetUp() override
         {
+            UnitTest::AllocatorsTestFixture::SetUp();
+
             AZ::ComponentApplication::Descriptor appDesc;
-            appDesc.m_memoryBlocksByteSize = 10 * 1024 * 1024;
+            appDesc.m_enableDrilling = false;
             mSystemEntity = mApp.Create(appDesc);
 
             mLocalFileIO = AZStd::make_unique<AZ::IO::LocalFileIO>();
@@ -50,15 +54,25 @@ namespace EMotionFX
             AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Create();
 
             AZ::IO::FileIOBase::SetInstance(mLocalFileIO.get());
-            const char* dir = mApp.GetExecutableFolder();
-            mLocalFileIO->SetAlias("@assets@", dir);
-            mLocalFileIO->SetAlias("@devassets@", dir);
+
+            m_workingDirectory = mApp.GetExecutableFolder();
+            const AZStd::string assetFolder = GetAssetFolder();
+
+            mLocalFileIO->SetAlias("@root@", m_workingDirectory);
+            mLocalFileIO->SetAlias("@assets@", assetFolder.c_str());
+            mLocalFileIO->SetAlias("@devassets@", assetFolder.c_str());
 
             Activate();
         }
 
         void TearDown() override
         {
+            // If we loaded the asset catalog, call this function to release all the assets that has been loaded internally.
+            if (mSystemEntity->FindComponent<AzFramework::AssetCatalogComponent>())
+            {
+                AZ::Data::AssetManager::Instance().DispatchEvents();
+            }
+
             Deactivate();
 
             // Clean things up in the reverse order that things happened in SetUp
@@ -70,6 +84,8 @@ namespace EMotionFX
             AZ::AllocatorInstance<AZ::PoolAllocator>::Destroy();
 
             mApp.Destroy();
+
+            UnitTest::AllocatorsTestFixture::TearDown();
         }
 
         AZ::SerializeContext* GetSerializeContext() const
@@ -77,7 +93,26 @@ namespace EMotionFX
             return m_serializeContext;
         }
 
+        AZStd::string ResolvePath(const char* path)
+        {
+            AZStd::string result;
+            result.resize(AZ::IO::MaxPathLength);
+            AZ::IO::LocalFileIO::GetInstance()->ResolvePath(path, result.data(), result.size());
+            return result;
+        }
+
+        const char* GetWorkingDirectory()
+        {
+            return m_workingDirectory;
+        }
+
     protected:
+
+        virtual AZStd::string GetAssetFolder() const
+        {
+            return mApp.GetExecutableFolder();
+        }
+
         virtual void Activate()
         {
             // Poor-man's c++11 fold expression
@@ -88,6 +123,11 @@ namespace EMotionFX
 
             m_serializeContext = mApp.GetSerializeContext();
             m_serializeContext->CreateEditContext();
+
+            if (mSystemEntity->FindComponent<AzFramework::AssetCatalogComponent>())
+            {
+                AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::LoadCatalog, "@assets@/assetcatalog.xml");
+            }
         }
 
         virtual void Deactivate()
@@ -107,7 +147,6 @@ namespace EMotionFX
             std::initializer_list<int> {(mApp.UnregisterComponentDescriptor(Components::CreateDescriptor()), 0)...};
         }
 
-    private:
         // The ComponentApplication must not be a pointer, because it cannot be
         // dynamically allocated. Calls to new will try to use the SystemAllocator
         // that has not been created yet. If one is created before
@@ -116,6 +155,7 @@ namespace EMotionFX
         // itself.
         AZ::ComponentApplication mApp;
 
+    private:
         // The destructor of the LocalFileIO object uses the AZ::OSAllocator. Make
         // sure that it still exists when this fixture is destroyed.
         AZStd::unique_ptr<AZ::IO::LocalFileIO> mLocalFileIO;
@@ -123,6 +163,8 @@ namespace EMotionFX
         AZ::Entity* mSystemEntity = nullptr;
 
         AZ::SerializeContext* m_serializeContext = nullptr;
+
+        const char* m_workingDirectory = nullptr;
     };
 
     // Note that the SystemComponent depends on the AssetManagerComponent
@@ -132,4 +174,12 @@ namespace EMotionFX
         EMotionFX::Integration::SystemComponent
     >;
 
+    // Use this fixture if you want to load asset catalog. Some assets (reference anim graph for example)
+    // can only be loaded when asset catalog is loaded.
+    using SystemComponentFixtureWithCatalog = ComponentFixture<
+        AzFramework::AssetCatalogComponent,
+        AZ::AssetManagerComponent,
+        AZ::JobManagerComponent,
+        EMotionFX::Integration::SystemComponent
+    >;
 } // end namespace EMotionFX

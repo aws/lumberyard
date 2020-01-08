@@ -32,11 +32,14 @@ namespace AzQtComponents
         // Does NOT delete sourceWidget
         QToolBar* CreateToolBarFromWidget(QWidget* sourceWidget, Qt::ToolBarArea area = Qt::TopToolBarArea, QString title = {});
 
+        QWidget* GetMainWidget() { return m_mainWidget; }
+
         // Sets the primary widget in the center of the ToolBarArea
         // Differs from QMainWindow::setCentralWidget in that it will not delete a previous main widget
         void SetMainWidget(QWidget* widget);
 
     private:
         QVBoxLayout* m_mainLayout = nullptr;
+        QWidget* m_mainWidget = nullptr;
     };
 }

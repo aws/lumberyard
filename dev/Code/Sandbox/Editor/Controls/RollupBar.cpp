@@ -36,18 +36,19 @@ CRollupBar::CRollupBar(QWidget* parent)
     , m_mainTools(new CMainTools())
 {
     m_objectRollupCtrl = new QRollupCtrl;
-    insertControl(0, m_objectRollupCtrl, "Create");
+    int controlIndex = 0;
+    insertControl(controlIndex++, m_objectRollupCtrl, "Create");
 
     if (!MainWindow::instance()->IsPreview())
     {
         m_terrainRollupCtrl = new QRollupCtrl;
-        insertControl(1, m_terrainRollupCtrl, "Terrain Editing");
+        insertControl(controlIndex++, m_terrainRollupCtrl, "Terrain Editing");
 
         m_modellingRollupCtrl = new QRollupCtrl;
-        insertControl(2, m_modellingRollupCtrl, "Modeling");
+        insertControl(controlIndex++, m_modellingRollupCtrl, "Modeling");
 
         m_displayRollupCtrl = new QRollupCtrl;
-        insertControl(3, m_displayRollupCtrl, "Display Settings");
+        insertControl(controlIndex++, m_displayRollupCtrl, "Display Settings");
 
         //////////////////////////////////////////////////////////////////////////
         // Insert the main rollup
@@ -65,7 +66,7 @@ CRollupBar::CRollupBar(QWidget* parent)
         m_displayRollupCtrl->addItem(new CPanelDisplayRender, "Render Settings");
 
         m_pLayerPanel = new CPanelDisplayLayer();
-        insertControl(4, m_pLayerPanel, "Layers");
+        insertControl(controlIndex++, m_pLayerPanel, "Layers");
 
         m_objectRollupCtrl->expandAllPages(true);
         m_terrainRollupCtrl->expandAllPages(true);

@@ -47,8 +47,6 @@ namespace Vegetation
         virtual void DeleteInstance(InstanceId instanceId) {};
         virtual void DeleteAllInstances() {};
 
-        virtual void SetAreaDebugColor(AZ::EntityId areaId, AZ::Color debugColor, bool render) {};
-
         // input requests
 
         virtual void ExportCurrentReport() {}; // writes out the current report to disk, helper for cvars

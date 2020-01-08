@@ -14,6 +14,11 @@
 
 #include <AzCore/Component/ComponentBus.h>
 
+namespace AZ
+{
+    class Vector3;
+}
+
 namespace AzToolsFramework
 {
     /// Interface for handling box manipulator requests.

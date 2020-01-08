@@ -19,8 +19,9 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Casting/numeric_cast.h>
+#include <VideoPlayback_Traits_Platform.h>
 
-#if AZ_VIDEOPLAYBACK_GEM_TRAIT_ENABLE_DECODER
+#if AZ_TRAIT_VIDEOPLAYBACK_ENABLE_DECODER
 
 namespace AZ
 {
@@ -177,6 +178,7 @@ namespace AZ
                         ->DataElement(AZ::Edit::UIHandlers::Default, &VideoPlaybackGameComponent::m_queueAheadCount, "Frame queue ahead count", "How many frames ahead to buffer the video")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                             ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
+                            ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/VideoPlayback.svg")
                             ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game"))
                             ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ;

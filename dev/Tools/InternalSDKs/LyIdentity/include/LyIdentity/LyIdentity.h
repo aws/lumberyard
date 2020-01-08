@@ -15,8 +15,15 @@
 #include <LyIdentity/LyIdentity_EXPORTS.h>
 
 #include <memory>
-
+// The AWS Native SDK AWSAllocator triggers a warning due to accessing members of std::allocator directly.
+// AWSAllocator.h(70): warning C4996: 'std::allocator<T>::pointer': warning STL4010: Various members of std::allocator are deprecated in C++17.
+// Use std::allocator_traits instead of accessing these members directly.
+// You can define _SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING or _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS to acknowledge that you have received this warning.
+// The LyIdentity_shared library does not use AzCore, therefore the AZ_PUSH_DISABLE_WARNING macro is not available
+#pragma warning(push)
+#pragma warning(disable : 4251 4996)
 #include <aws/core/utils/memory/stl/AWSString.h>
+#pragma warning(pop)
 
 namespace Aws
 {

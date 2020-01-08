@@ -22,14 +22,25 @@
 
 #include <AzCore/EBus/EBus.h>
 
+// MSVC warns that these typedef members are being used and therefore must be acknowledged by using the following macro
+#pragma push_macro("_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
+#ifndef _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
+#define _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
+#endif
+
+// Disabling C++17 warning - warning C5033: 'register' is no longer a supported storage class which occurs in Python 2.7
 // Suppress warning in pymath.h where a conflict with round exists with VS 12.0 math.h ::  pymath.h(22) : warning C4273: 'round' : inconsistent dll linkage
-#pragma warning(disable: 4273)
 // Suppress warning in boost/python/opaque_pointer_converter.hpp, boost/python/return_opaque_pointer.hpp and python/detail/dealloc.hpp
 // for non UTF-8 characters.
-#pragma warning(disable: 4828)
+AZ_PUSH_DISABLE_WARNING(4068 4273 4828 5033, "-Wregister")
+AZ_PUSH_DISABLE_WARNING(, "-Wunused-local-typedef")
+AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
 #include <boost/python.hpp>
-#pragma warning(default: 4828)
-#pragma warning(default: 4273)
+AZ_POP_DISABLE_WARNING
+AZ_POP_DISABLE_WARNING
+AZ_POP_DISABLE_WARNING
+
+#pragma pop_macro("_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
 
 class CloudCanvasLogger;
 

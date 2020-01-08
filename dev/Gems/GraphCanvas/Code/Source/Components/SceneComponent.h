@@ -213,6 +213,7 @@ namespace GraphCanvas
         , public EntitySaveDataRequestBus::Handler
         , public SceneBookmarkActionBus::Handler
         , public StyleManagerNotificationBus::Handler
+        , public AZ::SystemTickBus::Handler
     {
     private:
         friend class GraphCanvasGraphicsScene;
@@ -240,15 +241,7 @@ namespace GraphCanvas
                 BookmarkAnchor,
 
                 Unknown,
-            };
-
-            enum class ConstructType
-            {
-                Unknown,
-                CommentNode,
-                BookmarkAnchor,
-                NodeGroup
-            };
+            };            
 
             virtual ~GraphCanvasConstructSaveData() = default;
 
@@ -317,6 +310,10 @@ namespace GraphCanvas
         void Init() override;
         void Activate() override;
         void Deactivate() override;
+        ////
+
+        // SystemTickBus
+        void OnSystemTick() override;
         ////
 
         // EntityBus
@@ -395,6 +392,14 @@ namespace GraphCanvas
 
         bool Show(const AZ::EntityId& graphMemeber) override;
         bool Hide(const AZ::EntityId& graphMemeber) override;
+
+        bool Enable(const NodeId& nodeId) override;
+        void EnableSelection() override;
+
+        bool Disable(const NodeId& nodeId) override;
+        void DisableSelection() override;
+
+        void ProcessEnableDisableQueue() override;
 
         void ClearSelection() override;
 
@@ -477,6 +482,9 @@ namespace GraphCanvas
         void RemoveUnusedElements() override;
 
         void HandleProposalDaisyChain(const NodeId& startNode, SlotType slotType, ConnectionType connectionType, const QPoint& screenPoint, const QPointF& focusPoint) override;
+
+        QPointF SignalGenericAddPositionUseBegin() override;
+        void SignalGenericAddPositionUseEnd() override;
         ////
 
         // VisualNotificationBus
@@ -507,6 +515,8 @@ namespace GraphCanvas
 
     protected:
 
+        void ConfigureAndAddGraphicsEffect(GraphicsEffectInterface* graphicsEffect);
+
         void OnSceneDragEnter(const QMimeData* mimeData);
         void OnSceneDragMoveEvent(const QPointF& scenePoint, const QMimeData* mimeData);
         void OnSceneDropEvent(const QPointF& scenePoint, const QMimeData* mimeData);
@@ -529,6 +539,8 @@ namespace GraphCanvas
         template<typename Container>
         void DestroyItems(const Container& entities) const;
 
+        void DestroyGraphicsItem(const GraphicsEffectId& effectId, QGraphicsItem* graphicsItem);
+
         void InitConnections();
         void NotifyConnectedSlots();
         void OnSelectionChanged();
@@ -550,7 +562,7 @@ namespace GraphCanvas
         void InitiateSpliceToConnection(const AZStd::vector<ConnectionId>& connectionIds);
 
         bool m_allowReset;
-        QPointF m_pasteOffset;
+        QPointF m_genericAddOffset;
 
         int m_deleteCount;
         AZStd::string m_copyMimeType;
@@ -566,6 +578,9 @@ namespace GraphCanvas
 
         AZStd::unordered_set< QGraphicsItem* > m_hiddenElements;
         GraphData m_graphData;
+
+        AZStd::unordered_set<NodeId> m_queuedEnable;
+        AZStd::unordered_set<NodeId> m_queuedDisable;
 
         AZStd::unordered_set<AZ::EntityId> m_delegates;
         AZStd::unordered_set<AZ::EntityId> m_activeDelegates;

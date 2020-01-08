@@ -137,7 +137,6 @@ namespace AZ
         { };
         template <typename Interface, typename Traits>
         struct HandlerCompare<Interface, Traits, AZ::BusHandlerCompareDefault>
-            : public AZStd::binary_function<Interface*, Interface*, bool>
         {
             bool operator()(const Interface* left, const Interface* right) const { return left->Compare(right); }
         };

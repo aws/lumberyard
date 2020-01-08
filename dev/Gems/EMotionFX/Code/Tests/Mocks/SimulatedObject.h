@@ -26,10 +26,12 @@ namespace EMotionFX
 
         MOCK_METHOD1(AddSimulatedJointAndChildren, void(AZ::u32));
         MOCK_METHOD1(AddSimulatedJoint, SimulatedJoint*(AZ::u32));
+        MOCK_METHOD1(AddSimulatedJoints, void(AZStd::vector<AZ::u32> joints));
 
         MOCK_METHOD2(RemoveSimulatedJoint, void(AZ::u32, bool));
         MOCK_METHOD1(RemoveSimulatedJoint, void(AZ::u32));
 
+        MOCK_CONST_METHOD0(GetNumSimulatedJoints, size_t());
         MOCK_CONST_METHOD1(SetSimulatedJoints, void(const AZStd::vector<SimulatedJoint*>& joints));
         MOCK_CONST_METHOD0(GetSimulatedJoints, const AZStd::vector<SimulatedJoint*>&());
         MOCK_CONST_METHOD1(GetSimulatedJoint, SimulatedJoint*(size_t index));
@@ -42,8 +44,8 @@ namespace EMotionFX
         MOCK_METHOD1(SetStiffnessFactor, void(float));
         MOCK_CONST_METHOD0(GetDampingFactor, float());
         MOCK_METHOD1(SetDampingFactor, void(float));
-        MOCK_CONST_METHOD0(GetCollideWithJoints, AZStd::vector<AZStd::string>&());
-        MOCK_METHOD1(SetCollideWithJoints, void(const AZStd::vector<AZStd::string>&));
+        MOCK_CONST_METHOD0(GetColliderTags, AZStd::vector<AZStd::string>&());
+        MOCK_METHOD1(SetColliderTags, void(const AZStd::vector<AZStd::string>&));
 
         MOCK_METHOD0(Clear, void());
         MOCK_METHOD1(InitAfterLoading, void(SimulatedObjectSetup*));

@@ -34,7 +34,9 @@ struct SFrameLodInfo;
 struct pe_params_area;
 struct pe_articgeomparams;
 
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
 class CTerrainNode;
+#endif
 
 // @NOTE: When removing an item from this enum, replace it with a dummy - ID's from this enum are stored in data and should not change.
 enum EERType
@@ -44,7 +46,7 @@ enum EERType
     eERType_Vegetation,
     eERType_Light,
     eERType_Cloud,
-    eERType_Dummy_1, // used to be eERType_VoxelObject, preserve order for compatibility
+    eERType_TerrainSystem, // used to be eERType_Dummy_1 which used to be eERType_VoxelObject, preserve order for compatibility
     eERType_FogVolume,
     eERType_Decal,
     eERType_ParticleEmitter,
@@ -76,6 +78,7 @@ enum ERNListType
     eRNListType_Brush,
     eRNListType_Vegetation,
     eRNListType_DecalsAndRoads,
+    eRNListType_TerrainSystem,
     eRNListType_ListsNum,
     eRNListType_First = eRNListType_Unknown, // This should be the last member
     // And it counts on eRNListType_Unknown
@@ -494,6 +497,10 @@ struct IRenderNode
         case eERType_Decal:
         case eERType_Road:
             return eRNListType_DecalsAndRoads;
+#ifdef LY_TERRAIN_RUNTIME
+        case eERType_TerrainSystem:
+            return eRNListType_TerrainSystem;
+#endif
         default:
             return eRNListType_Unknown;
         }
@@ -574,6 +581,10 @@ struct IVegetation
     virtual void SetPosition(const Vec3& pos) = 0;
     virtual void SetRotation(const Ang3& rotation) = 0;
     virtual void PrepareBBox() = 0;
+
+    // Query or set whether this is a static or a dynamic vegetation instance
+    virtual bool IsDynamic() const = 0;
+    virtual void SetDynamic(bool isDynamicInstance) = 0;
 };
 
 struct IBrush

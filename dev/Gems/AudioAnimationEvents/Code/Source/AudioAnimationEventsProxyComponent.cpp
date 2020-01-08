@@ -71,11 +71,10 @@ namespace AudioAnimationEvents
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {
-                ec->Class<AudioAnimationEventsProxyComponent>("AudioAnimationEventsProxy", "Provides an audio proxy to play audio_trigger animation events.")
+                ec->Class<AudioAnimationEventsProxyComponent>("Audio Animation Events Proxy", "Provides an audio proxy to play audio_trigger animation events.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Audio")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game"))
-                    ->Attribute(AZ::Edit::Attributes::HideIcon, true)
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
                     ->DataElement(0, &AudioAnimationEventsProxyComponent::m_tracksEntityPosition, "Tracks Entity Position", "Should the audio source position update as the entity moves.")
                     ->DataElement(0, &AudioAnimationEventsProxyComponent::m_audioEventName, "Audio Event Name", "Defaults to audio_trigger")
@@ -101,7 +100,7 @@ namespace AudioAnimationEvents
                 Audio::IAudioProxy* audioProxy = proxy->GetAudioProxy();
                 if (audioProxy != nullptr)
                 {
-                    audioProxy->SetPosition(AZTransformToLYTransform(m_transform * proxy->GetTransform()));
+                    audioProxy->SetPosition(m_transform * proxy->GetTransform());
                 }
             }
         }
@@ -113,21 +112,10 @@ namespace AudioAnimationEvents
         {
             // get the audio trigger id
             Audio::TAudioControlID triggerId = INVALID_AUDIO_CONTROL_ID;
-			Audio::AudioSystemRequestBus::BroadcastResult(triggerId, &Audio::AudioSystemRequestBus::Events::GetAudioTriggerID, event.m_parameter);
+            Audio::AudioSystemRequestBus::BroadcastResult(triggerId, &Audio::AudioSystemRequestBus::Events::GetAudioTriggerID, event.m_parameter);
             if (triggerId == INVALID_AUDIO_CONTROL_ID)
             {
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/AudioAnimationEventsProxyComponent_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/AudioAnimationEventsProxyComponent_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
                 AZ_Warning("AudioAnimationEventProxy", triggerId != INVALID_AUDIO_CONTROL_ID, "AudioAnimationEventsProxy given invalid trigger ID %d", triggerId);
-#endif
                 return;
             }
 
@@ -150,8 +138,8 @@ namespace AudioAnimationEvents
             JointAudioProxy* proxy = stl::find_in_map(m_jointAudioProxies, jointId, nullptr);
             if (proxy == nullptr)
             {
-				Audio::IAudioProxy* audioProxy = nullptr;
-				Audio::AudioSystemRequestBus::BroadcastResult(audioProxy, &Audio::AudioSystemRequestBus::Events::GetFreeAudioProxy);
+                Audio::IAudioProxy* audioProxy = nullptr;
+                Audio::AudioSystemRequestBus::BroadcastResult(audioProxy, &Audio::AudioSystemRequestBus::Events::GetFreeAudioProxy);
                 AZ_Assert(audioProxy, "AudioAnimationEventsProxyComponent::OnAnimationEvent - Failed to get free audio proxy");
                 if (audioProxy)
                 {
@@ -172,7 +160,7 @@ namespace AudioAnimationEvents
                 AZ_Assert(audioProxy, "AudioAnimationEventsProxyComponent::OnAnimationEvent - joint has invalid audio proxy.");
                 if (audioProxy != nullptr)
                 {
-                    audioProxy->SetPosition(AZTransformToLYTransform(m_transform * proxy->GetTransform()));
+                    audioProxy->SetPosition(m_transform * proxy->GetTransform());
                     audioProxy->ExecuteTrigger(triggerId, eLSM_None);
                 }
             }

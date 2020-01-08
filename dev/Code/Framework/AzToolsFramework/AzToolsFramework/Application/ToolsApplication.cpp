@@ -12,6 +12,7 @@
 
 #include "StdAfx.h"
 
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/IO/FileIO.h>
@@ -30,15 +31,18 @@
 #include <AzToolsFramework/ToolsComponents/ComponentAssetMimeDataContainer.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityContextComponent.h>
+#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/Slice/SliceMetadataEntityContextComponent.h>
+#include <AzToolsFramework/Component/EditorComponentAPIComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityActionComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityFixupComponent.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <AzToolsFramework/SourceControl/PerforceComponent.h>
-#include <AzToolsFramework/Archive/SevenZipComponent.h>
+#include <AzToolsFramework/Archive/ArchiveComponent.h>
 #include <AzToolsFramework/Asset/AssetSystemComponent.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/ComponentMode/ComponentModeDelegate.h>
+#include <AzToolsFramework/AssetBundle/AssetBundleComponent.h>
 #include <AzToolsFramework/UI/UICore/QTreeViewStateSaver.hxx>
 #include <AzToolsFramework/UI/UICore/QWidgetSavedState.h>
 #include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
@@ -46,6 +50,7 @@
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/ToolsComponents/EditorInspectorComponent.h>
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
+#include <AzToolsFramework/Entity/EditorEntitySearchComponent.h>
 #include <AzToolsFramework/Entity/EditorEntitySortComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityModelComponent.h>
 #include <AzToolsFramework/Slice/SliceDependencyBrowserComponent.h>
@@ -55,7 +60,9 @@
 #include <AzToolsFramework/ViewportSelection/EditorInteractionSystemComponent.h>
 
 #include <QtWidgets/QMessageBox>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QFileInfo::d_ptr': class 'QSharedDataPointer<QFileInfoPrivate>' needs to have dll-interface to be used by clients of class 'QFileInfo'
 #include <QDir>
+AZ_POP_DISABLE_OVERRIDE_WARNING
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -160,6 +167,24 @@ namespace AzToolsFramework
                 EBUS_EVENT(ToolsApplicationRequests::Bus, EndUndoBatch);
             }
         }
+
+        struct ToolsApplicationNotificationBusHandler final
+            : public ToolsApplicationNotificationBus::Handler
+            , public AZ::BehaviorEBusHandler
+        {
+            AZ_EBUS_BEHAVIOR_BINDER(ToolsApplicationNotificationBusHandler, "{7EB67956-FF86-461A-91E2-7B08279CFACF}", AZ::SystemAllocator,
+                EntityRegistered, EntityDeregistered);
+
+            void EntityRegistered(AZ::EntityId entityId) override
+            {
+                Call(FN_EntityRegistered, entityId);
+            }
+
+            void EntityDeregistered(AZ::EntityId entityId) override
+            {
+                Call(FN_EntityDeregistered, entityId);
+            }
+        };
 
     } // Internal
 
@@ -384,15 +409,18 @@ namespace AzToolsFramework
                 azrtti_typeid<EditorEntityContextComponent>(),
                 azrtti_typeid<SliceMetadataEntityContextComponent>(),
                 azrtti_typeid<EditorEntityFixupComponent>(),
+                azrtti_typeid<Components::EditorComponentAPIComponent>(),
                 azrtti_typeid<Components::EditorEntityActionComponent>(),
                 azrtti_typeid<Components::PropertyManagerComponent>(),
                 azrtti_typeid<AzFramework::TargetManagementComponent>(),
                 azrtti_typeid<AssetSystem::AssetSystemComponent>(),
                 azrtti_typeid<PerforceComponent>(),
-                azrtti_typeid<AzToolsFramework::SevenZipComponent>(),
+                azrtti_typeid<AzToolsFramework::AssetBundleComponent>(),
+                azrtti_typeid<AzToolsFramework::ArchiveComponent>(),
                 azrtti_typeid<AzToolsFramework::SliceDependencyBrowserComponent>(),
                 azrtti_typeid<Components::EditorEntityModelComponent>(),
-                azrtti_typeid<AzToolsFramework::EditorInteractionSystemComponent>()
+                azrtti_typeid<AzToolsFramework::EditorInteractionSystemComponent>(),
+                azrtti_typeid<Components::EditorEntitySearchComponent>()
             });
 
         return components;
@@ -480,6 +508,30 @@ namespace AzToolsFramework
         ComponentModeFramework::ComponentModeDelegate::Reflect(context);
 
         ViewportInteraction::ViewportInteractionReflect(context);
+
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->EBus<ToolsApplicationRequestBus>("ToolsApplicationRequestBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Category, "Editor")
+                ->Attribute(AZ::Script::Attributes::Module, "editor")
+                ->Event("CreateNewEntity", &ToolsApplicationRequests::CreateNewEntity)
+                ->Event("CreateNewEntityAtPosition", &ToolsApplicationRequests::CreateNewEntityAtPosition)
+                ->Event("DeleteEntityById", &ToolsApplicationRequests::DeleteEntityById)
+                ->Event("DeleteEntities", &ToolsApplicationRequests::DeleteEntities)
+                ->Event("DeleteEntityAndAllDescendants", &ToolsApplicationRequests::DeleteEntityAndAllDescendants)
+                ->Event("DeleteEntitiesAndAllDescendants", &ToolsApplicationRequests::DeleteEntitiesAndAllDescendants)
+                ;
+
+            behaviorContext->EBus<ToolsApplicationNotificationBus>("ToolsApplicationNotificationBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Category, "Editor")
+                ->Attribute(AZ::Script::Attributes::Module, "editor")
+                ->Handler<Internal::ToolsApplicationNotificationBusHandler>()
+                ->Event("EntityRegistered", &ToolsApplicationEvents::EntityRegistered)
+                ->Event("EntityDeregistered", &ToolsApplicationEvents::EntityDeregistered)
+                ;
+        }
     }
 
     bool ToolsApplication::AddEntity(AZ::Entity* entity)
@@ -703,10 +755,7 @@ namespace AzToolsFramework
             {
                 AZ_Assert(nowSelectedId.IsValid(), "Invalid entity Id being marked as selected.");
 
-                if (IsSelectable(nowSelectedId))
-                {
-                    selectedEntitiesFiltered.push_back(nowSelectedId);
-                }
+                selectedEntitiesFiltered.push_back(nowSelectedId);
             }
         }
 
@@ -764,6 +813,12 @@ namespace AzToolsFramework
 
             ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::AfterEntitySelectionChanged, newlySelectedIds, newlyDeselectedIds);
         }
+
+        // ensure parent expansion happens if necessary, even if selection hasn't changed
+        for (AZ::EntityId nowSelectedId : selectedEntities)
+        {
+            EditorEntityInfoNotificationBus::Broadcast(&EditorEntityInfoNotificationBus::Events::OnEntityInfoUpdatedSelection, nowSelectedId, true);
+        }
     }
 
     EntityIdSet ToolsApplication::GatherEntitiesAndAllDescendents(const EntityIdList& inputEntities)
@@ -782,11 +837,9 @@ namespace AzToolsFramework
         return output;
     }
 
-    bool ToolsApplication::IsSelectable(const AZ::EntityId& entityId)
+    bool ToolsApplication::IsSelectable(const AZ::EntityId& /*entityId*/)
     {
-        bool locked = false;
-        AzToolsFramework::EditorLockComponentRequestBus::EventResult(locked, entityId, &AzToolsFramework::EditorLockComponentRequests::GetLocked);
-        return !locked;
+        return true;
     }
 
     bool ToolsApplication::IsSelected(const AZ::EntityId& entityId)
@@ -794,9 +847,30 @@ namespace AzToolsFramework
         return m_selectedEntities.end() != AZStd::find(m_selectedEntities.begin(), m_selectedEntities.end(), entityId);
     }
 
+    AZ::EntityId ToolsApplication::CreateNewEntity(AZ::EntityId parentId)
+    {
+        AZ::EntityId createdEntityId;
+        EditorRequestBus::BroadcastResult(createdEntityId, &EditorRequests::CreateNewEntity, parentId);
+
+        return createdEntityId;
+    }
+
+    AZ::EntityId ToolsApplication::CreateNewEntityAtPosition(const AZ::Vector3& pos, AZ::EntityId parentId)
+    {
+        AZ::EntityId createdEntityId;
+        EditorRequestBus::BroadcastResult(createdEntityId, &EditorRequests::CreateNewEntityAtPosition, pos, parentId);
+
+        return createdEntityId;
+    }
+
     void ToolsApplication::DeleteSelected()
     {
         Internal::DeleteEntities(m_selectedEntities);
+    }
+
+    void ToolsApplication::DeleteEntityAndAllDescendants(AZ::EntityId entityId)
+    {
+        DeleteEntitiesAndAllDescendants({ entityId });
     }
 
     void ToolsApplication::DeleteEntitiesAndAllDescendants(const EntityIdList& entities)
@@ -1163,6 +1237,11 @@ namespace AzToolsFramework
         RequestEditForFile(assetPath, resultCallback);
     }
 
+    void ToolsApplication::DeleteEntityById(AZ::EntityId entityId)
+    {
+        DeleteEntities({ entityId });
+    }
+
     void ToolsApplication::DeleteEntities(const EntityIdList& entities)
     {
         Internal::DeleteEntities(entities);
@@ -1399,6 +1478,8 @@ namespace AzToolsFramework
 
     void ToolsApplication::CreateUndosForDirtyEntities()
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         AZ_Assert(!m_isDuringUndoRedo, "Cannot add dirty entities during undo/redo.");
         if (m_dirtyEntities.empty())
         {
@@ -1621,7 +1702,7 @@ namespace AzToolsFramework
         {
 #if defined (AZ_PLATFORM_WINDOWS)
             static const char* toolSubFolder = "Tools/LmbrSetup/Win";
-#elif defined(AZ_PLATFORM_APPLE)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE
             static const char* toolSubFolder = "Tools/LmbrSetup/Mac";
 #else
 #error Unsupported Platform for tools

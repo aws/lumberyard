@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Android":
+        [
+            "AzFrameworkTests_Traits_Platform.h",
+            "AzFrameworkTests_Traits_Android.h"
+        ]
+    }
+}

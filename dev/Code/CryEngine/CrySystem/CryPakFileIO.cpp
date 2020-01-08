@@ -32,7 +32,7 @@ namespace AZ
             while (!m_trackedFiles.empty())
             {
                 HandleType fileHandle = m_trackedFiles.begin()->first;
-                AZ_Warning("File IO", "File handle still open while CryPakFileIO being closed: %s", m_trackedFiles.begin()->second.c_str());
+                AZ_Warning("File IO", false, "File handle still open while CryPakFileIO being closed: %s", m_trackedFiles.begin()->second.c_str());
                 Close(fileHandle);
             }
         }

@@ -103,6 +103,11 @@ namespace ScriptCanvasEditor
     
     void LiveLoggingDataAggregator::OnAssetSwitched(const AZ::NamedEntityId& namedEntityId, const ScriptCanvas::GraphIdentifier& newGraphIdentifier, const ScriptCanvas::GraphIdentifier& oldGraphIdentifier)
     {
+        if (newGraphIdentifier == oldGraphIdentifier)
+        {
+            return;
+        }
+
         if (newGraphIdentifier.m_assetId.IsValid())
         {
             RegisterScriptCanvas(namedEntityId, newGraphIdentifier);

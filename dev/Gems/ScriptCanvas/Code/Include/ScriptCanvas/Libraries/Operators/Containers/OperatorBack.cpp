@@ -37,8 +37,19 @@ namespace ScriptCanvas
                 if (Data::IsVectorContainerType(GetSourceAZType()))
                 {
                     // Add the OUTPUT slots, most of the time there will only be one
-                    Data::Type type = Data::FromAZType(m_sourceTypes[0]);
-                    m_outputSlots.insert(AddOutputTypeSlot(Data::GetName(type), "The value at the specified index", type, Node::OutputStorage::Required, false));
+                    {
+                        Data::Type type = Data::FromAZType(m_sourceTypes[0]);
+
+                        DataSlotConfiguration slotConfiguration;
+
+                        slotConfiguration.m_name = Data::GetName(type);
+                        slotConfiguration.m_toolTip = "The value at the specified index";
+                        slotConfiguration.m_displayGroup = GetSourceDisplayGroup();
+                        slotConfiguration.SetType(type);
+                        slotConfiguration.SetConnectionType(ConnectionType::Output);                        
+
+                        m_outputSlots.insert(AddSlot(slotConfiguration));
+                    }
                 }
             }
 
@@ -49,23 +60,21 @@ namespace ScriptCanvas
                 if (!slotSets.empty())
                 {
                     SlotId sourceSlotId = (*slotSets.begin());
+                    const Datum* containerDatum = GetInput(sourceSlotId);
 
-                    if (const Datum* containerDatum = GetInput(sourceSlotId))
+                    if (Datum::IsValidDatum(containerDatum))
                     {
-                        if (containerDatum && !containerDatum->Empty())
+                        const Datum* inputKeyDatum = GetInput(*m_inputSlots.begin());
+                        AZ::Outcome<Datum, AZStd::string> valueOutcome = BehaviorContextMethodHelper::CallMethodOnDatumUnpackOutcomeSuccess(*containerDatum, "Back", *inputKeyDatum);
+                        if (!valueOutcome.IsSuccess())
                         {
-                            const Datum* inputKeyDatum = GetInput(*m_inputSlots.begin());
-                            AZ::Outcome<Datum, AZStd::string> valueOutcome = BehaviorContextMethodHelper::CallMethodOnDatumUnpackOutcomeSuccess(*containerDatum, "Back", *inputKeyDatum);
-                            if (!valueOutcome.IsSuccess())
-                            {
-                                SCRIPTCANVAS_REPORT_ERROR((*this), "Failed to call Back on container: %s", valueOutcome.GetError().c_str());
-                                return;
-                            }
+                            SCRIPTCANVAS_REPORT_ERROR((*this), "Failed to call Back on container: %s", valueOutcome.GetError().c_str());
+                            return;
+                        }
 
-                            if (Data::IsVectorContainerType(containerDatum->GetType()))
-                            {
-                                PushOutput(valueOutcome.TakeValue(), *GetSlot(*m_outputSlots.begin()));
-                            }
+                        if (Data::IsVectorContainerType(containerDatum->GetType()))
+                        {
+                            PushOutput(valueOutcome.TakeValue(), *GetSlot(*m_outputSlots.begin()));
                         }
                     }
                 }

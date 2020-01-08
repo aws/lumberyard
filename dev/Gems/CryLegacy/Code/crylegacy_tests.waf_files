@@ -12,7 +12,9 @@
             "Source/CryAction/Tests/CryMathTestAux.cpp",
             "Source/CryAction/Tests/CryMathTestAux.h",
             "Source/CryAction/Tests/FlowNodeTestHarness.cpp",
-            "Source/CryAction/Tests/FlowNodeTestHarness.h"
+            "Source/CryAction/Tests/FlowNodeTestHarness.h",
+            "Source/CryAction/Tests/CryVehicleTest.cpp",
+            "Source/CryAction/Tests/GameObjectSystemTest.cpp"
         ],
         "Source/CryAction/Mannequin/Tests":
         [

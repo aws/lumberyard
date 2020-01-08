@@ -514,7 +514,6 @@
             "Source/CryAction/FlowSystem/Nodes/FlowAudioTriggerNode.cpp",
             "Source/CryAction/FlowSystem/Nodes/FlowAttachmentNodes.cpp",
             "Source/CryAction/FlowSystem/Nodes/FlowCustomActionNodes.cpp",
-            "Source/CryAction/FlowSystem/Nodes/FlowKinectNodes.cpp",
             "Source/CryAction/FlowSystem/Nodes/FlowNaturalPointNodes.cpp",
             "Source/CryAction/FlowSystem/Nodes/AnimationEventListenerNode.cpp",
             "Source/CryAction/FlowSystem/Nodes/FlowPrefabNodes.cpp",

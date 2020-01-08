@@ -14,6 +14,8 @@
 
 #include <AzTest/AzTest.h>
 
+#include <AzCore/UserSettings/UserSettingsComponent.h>
+
 #include "BaseAssetProcessorTest.h"
 #include <native/utilities/BatchApplicationManager.h>
 #include <native/utilities/PlatformConfiguration.h>
@@ -48,6 +50,9 @@ namespace AssetProcessor
             
             // tests which use the builder bus plug in their own mock version, so disconnect ours.
             AssetProcessor::AssetBuilderInfoBus::Handler::BusDisconnect();
+
+            // Disable saving global user settings to prevent failure due to detecting file updates
+            AZ::UserSettingsComponentRequestBus::Broadcast(&AZ::UserSettingsComponentRequests::DisableSaveOnFinalize);
 
             m_platformConfig.reset(new AssetProcessor::PlatformConfiguration);
             m_connectionManager.reset(new ConnectionManager(m_platformConfig.get()));

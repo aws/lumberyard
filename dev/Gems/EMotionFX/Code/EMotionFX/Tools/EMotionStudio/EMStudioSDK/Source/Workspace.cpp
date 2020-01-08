@@ -245,6 +245,13 @@ namespace EMStudio
                 continue;
             }
 
+            bool fileAdded = false;
+            if (animGraphFilenames.emplace(animGraph->GetFileNameString()).second)
+            {
+                AddFile(&commands, "LoadAnimGraph", animGraph->GetFileName());
+                fileAdded = true;
+            }
+
             for (ActivationIndicesByActorInstance::value_type& indicesByActorInstance : activationIndicesByActorInstance)
             {
                 EMotionFX::AnimGraphInstance* animGraphInstance = indicesByActorInstance.first->GetAnimGraphInstance();
@@ -257,13 +264,13 @@ namespace EMStudio
                 if (currentActiveAnimGraph->GetFileNameString() == animGraph->GetFileNameString())
                 {
                     indicesByActorInstance.second.m_animGraphCommandIndex = commandIndex;
-                    if (animGraphFilenames.emplace(animGraph->GetFileNameString()).second)
-                    {
-                        AddFile(&commands, "LoadAnimGraph", animGraph->GetFileName());
-                        ++commandIndex;
-                    }
                     break;
                 }
+            }
+
+            if (fileAdded)
+            {
+                ++commandIndex;
             }
         }
 

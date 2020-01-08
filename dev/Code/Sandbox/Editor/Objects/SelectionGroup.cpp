@@ -312,6 +312,11 @@ void CSelectionGroup::Move(const Vec3& offset, EMoveSelectionFlag moveFlag, int 
     {
         CBaseObject* obj = GetFilteredObject(i);
 
+        if(obj->IsFrozen())
+        {
+            continue;
+        }
+
         if (i == 0 && moveFlag == eMS_FollowGeometryPosNorm && bValidFollowGeometryMode)
         {
             Vec3 zaxis = m_LastestMovedObjectRot * Vec3(0, 0, 1);

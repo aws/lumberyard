@@ -19,7 +19,6 @@
 #include "terrain.h"
 #include "terrain_sector.h"
 #include "ObjMan.h"
-#include "terrain_water.h"
 #include "CryThread.h"
 
 #include <AzCore/Jobs/LegacyJobExecutor.h>
@@ -303,6 +302,7 @@ void CTerrainUpdateDispatcher::SyncAllJobs(bool bForceAll, const SRenderingPassI
 
 void CTerrainUpdateDispatcher::GetMemoryUsage(ICrySizer* pSizer) const
 {
+    pSizer->AddObject(this, sizeof(*this));
     pSizer->AddObject(m_pHeapStorage, TempPoolSize);
     pSizer->AddObject(m_arrRunningJobs);
     pSizer->AddObject(m_queuedJobs);

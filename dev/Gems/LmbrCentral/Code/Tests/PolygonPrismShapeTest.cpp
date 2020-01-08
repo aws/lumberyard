@@ -18,7 +18,7 @@
 #include <AzCore/Math/VertexContainerInterface.h>
 #include <AzFramework/Components/TransformComponent.h>
 #include <Shape/PolygonPrismShapeComponent.h>
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 using namespace AZ;
 using namespace AzFramework;
@@ -600,13 +600,13 @@ namespace UnitTest
         sourceShape.Activate(testEntityId);
         // The assignment shouldn't assert in the EBusEventHandler::BusConnect call 
         PolygonPrismShape targetShape;
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         targetShape = sourceShape;
-        AZ_TEST_STOP_ASSERTTEST(0);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(0);
         // The copy constructor also should assert
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         PolygonPrismShape copyShape(sourceShape);
-        AZ_TEST_STOP_ASSERTTEST(0);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(0);
         sourceShape.Deactivate();
     }
 }

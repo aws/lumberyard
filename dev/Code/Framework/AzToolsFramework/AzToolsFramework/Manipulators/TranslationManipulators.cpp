@@ -54,6 +54,8 @@ namespace AzToolsFramework
             AZ_Assert(false, "Invalid dimensions provided");
             break;
         }
+
+        m_space = worldFromLocal;
     }
 
     void TranslationManipulators::InstallLinearManipulatorMouseDownCallback(
@@ -209,6 +211,8 @@ namespace AzToolsFramework
         {
             m_surfaceManipulator->SetSpace(worldFromLocal);
         }
+
+        m_space = worldFromLocal;
     }
 
     void TranslationManipulators::SetAxes(

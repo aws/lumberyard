@@ -28,11 +28,10 @@ def build(bld):
         includes            = ['include' ],
         disable_pch         = True,
         export_includes     = [ bld.Path('Code/Tools/AWSNativeSDKInit/include')],
+        platform_roots      = [bld.PlatformRoot('source/Platform', export_includes=False)],
 
         win_x64_clang_enable_rtti = True,
     )
-    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
-        kw['{}_file_list'.format(p3)] = ['source/{0}/aws_native_sdk_init_{1}.waf_files'.format(p0, p1)]
     bld.CryEngineStaticLibrary(**kw)
 
     kw = dict(
@@ -48,9 +47,8 @@ def build(bld):
         includes            = ['include' ],
         disable_pch         = True,
         export_includes     = [ bld.Path('Code/Tools/AWSNativeSDKInit/include')],
+        platform_roots      = [bld.PlatformRoot('source/Platform', export_includes=False)],
 
         win_x64_clang_enable_rtti = True,
     )
-    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
-        kw['{}_file_list'.format(p3)] = ['source/{0}/aws_native_sdk_init_{1}.waf_files'.format(p0, p1)]
     bld.CryEngineStaticLibrary(**kw)

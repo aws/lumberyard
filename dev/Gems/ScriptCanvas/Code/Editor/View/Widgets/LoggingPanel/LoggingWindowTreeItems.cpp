@@ -395,7 +395,7 @@ namespace ScriptCanvasEditor
 
     void ExecutionLogTreeItem::RegisterExecutionInput(const ScriptCanvas::Endpoint& incitingEndpoint, const ScriptCanvas::SlotId& slotId, AZStd::string_view slotName, AZStd::chrono::milliseconds relativeExecution)
     {
-        m_timeString = QTime::fromMSecsSinceStartOfDay(relativeExecution.count()).toString("mm:ss.zzz");
+        m_timeString = QTime::fromMSecsSinceStartOfDay(aznumeric_cast<int>(relativeExecution.count())).toString("mm:ss.zzz");
 
         m_inputSlot = slotId;
         m_inputName = slotName.data();
@@ -421,7 +421,7 @@ namespace ScriptCanvasEditor
     {
         if (!HasExecutionInput())
         {
-            m_timeString = QTime::fromMSecsSinceStartOfDay(relativeExecution.count()).toString("mm:ss.zzz");
+            m_timeString = QTime::fromMSecsSinceStartOfDay(aznumeric_cast<int>(relativeExecution.count())).toString("mm:ss.zzz");
         }
 
         m_outputSlot = slotId;

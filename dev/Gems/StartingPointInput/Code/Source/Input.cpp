@@ -18,6 +18,7 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/std/containers/set.h>
 #include <AzCore/std/sort.h>
 
 #include <AzFramework/Input/Buses/Requests/InputDeviceRequestBus.h>
@@ -252,15 +253,15 @@ namespace Input
 
     const AZStd::vector<AZStd::string> Input::GetInputDeviceTypes() const
     {
-        AZStd::vector<AZStd::string> retval;
+        AZStd::set<AZStd::string> uniqueInputDeviceTypes;
         AzFramework::InputDeviceRequests::InputDeviceIdSet availableInputDeviceIds;
         AzFramework::InputDeviceRequestBus::Broadcast(&AzFramework::InputDeviceRequests::GetInputDeviceIds,
                                                       availableInputDeviceIds);
         for (const AzFramework::InputDeviceId& inputDeviceId : availableInputDeviceIds)
         {
-            retval.push_back(inputDeviceId.GetName());
+            uniqueInputDeviceTypes.insert(inputDeviceId.GetName());
         }
-        return retval;
+        return AZStd::vector<AZStd::string>(uniqueInputDeviceTypes.begin(), uniqueInputDeviceTypes.end());
     }
 
     const AZStd::vector<AZStd::string> Input::GetInputNamesBySelectedDevice() const

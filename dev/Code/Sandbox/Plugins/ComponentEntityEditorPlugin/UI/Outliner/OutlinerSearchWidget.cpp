@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "ComponentEntityEditorPlugin_precompiled.h"
 
 #include "OutlinerSearchWidget.h"
 
@@ -54,6 +54,11 @@ namespace AzQtComponents
         }
     }
 
+    int OutlinerSearchTypeSelector::GetNumFixedItems()
+    {
+        return static_cast<int>(OutlinerSearchWidget::GlobalSearchCriteria::FirstRealFilter);
+    }
+
     OutlinerCriteriaButton::OutlinerCriteriaButton(QString labelText, QWidget* parent, int index)
         : FilterCriteriaButton(labelText, parent)
     {
@@ -84,7 +89,22 @@ namespace AzQtComponents
             AddTypeFilter(filter.category, filter.displayName, QVariant::fromValue<AZ::Uuid>(AZ::Uuid::Create()), value);
             ++value;
         }
-        m_selector->GetTree()->setItemDelegate(new OutlinerSearchItemDelegate(m_selector->GetTree()));
+    }
+
+    OutlinerSearchWidget::~OutlinerSearchWidget()
+    {
+        delete m_delegate;
+        m_delegate = nullptr;
+
+        delete m_selector;
+        m_selector = nullptr;
+    }
+
+    void OutlinerSearchWidget::SetupPaintDelegates()
+    {
+        m_delegate = new OutlinerSearchItemDelegate(m_selector->GetTree());
+        m_selector->GetTree()->setItemDelegate(m_delegate);
+        m_delegate->SetSelector(m_selector);
     }
 
     FilterCriteriaButton* OutlinerSearchWidget::createCriteriaButton(const SearchTypeFilter& filter, int filterIndex)
@@ -96,18 +116,36 @@ namespace AzQtComponents
     {
     }
 
+    void OutlinerSearchItemDelegate::PaintRichText(QPainter* painter, QStyleOptionViewItemV4& opt, QString& text) const
+    {
+        int textDocDrawYOffset = 3;
+        QPoint paintertextDocRenderOffset = QPoint(1, 4);
+
+        QTextDocument textDoc;
+        textDoc.setDefaultFont(opt.font);
+        opt.palette.color(QPalette::Text);
+        textDoc.setDefaultStyleSheet("body {color: " + opt.palette.color(QPalette::Text).name() + "}");
+        textDoc.setHtml("<body>" + text + "</body>");
+        QRect textRect = opt.widget->style()->proxy()->subElementRect(QStyle::SE_ItemViewItemText, &opt);
+        painter->translate(textRect.topLeft() - paintertextDocRenderOffset);
+        textDoc.setTextWidth(textRect.width());
+        textDoc.drawContents(painter, QRectF(0, textDocDrawYOffset, textRect.width(), textRect.height() + textDocDrawYOffset));
+    }
+
     void OutlinerSearchItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option,
                                            const QModelIndex& index) const
     {
+        bool isGlobalOption = false;
         painter->save();
 
-        QStyleOptionViewItem opt = option;
+        QStyleOptionViewItemV4 opt = option;
         initStyleOption(&opt, index);
 
         const QWidget* widget = option.widget;
         QStyle* style = widget ? widget->style() : QApplication::style();
         if (!opt.icon.isNull())
         {
+            // Draw the icon if there is one.
             QRect r = style->subElementRect(QStyle::SubElement::SE_ItemViewItemDecoration, &opt, widget);
             r.setX(-r.width());
 
@@ -117,17 +155,49 @@ namespace AzQtComponents
 
             opt.icon = QIcon();
             opt.decorationSize = QSize(0, 0);
+            isGlobalOption = true;
         }
 
         // Handle the seperator
         if (opt.text.contains("-------"))
         {
-            painter->setPen(QColor(96, 96, 96));
+            // Draw this item as a solid line.
+            painter->setPen(QColor(FilteredSearchWidget::GetSeparatorColor()));
             painter->drawLine(0, opt.rect.center().y() + 3, opt.rect.right(), opt.rect.center().y() + 4);
         }
         else
         {
-            style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, widget);
+            if (m_selector->GetFilterString().length() > 0 && !isGlobalOption && opt.features & QStyleOptionViewItemV4::ViewItemFeature::HasCheckIndicator)
+            {
+                // Create rich text menu text to show filterstring
+                QString label{ opt.text };
+                opt.text = "";
+
+                style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, widget);
+
+                int highlightTextIndex = 0;
+                do
+                {
+                    // Find filter term within the text.
+                    highlightTextIndex = label.lastIndexOf(m_selector->GetFilterString(), highlightTextIndex - 1, Qt::CaseInsensitive);
+                    if (highlightTextIndex >= 0)
+                    {
+                        // Insert background-color terminator at appropriate place to return to normal text.
+                        label.insert(highlightTextIndex + m_selector->GetFilterString().length(), "</span>");
+                        // Insert background-color command at appropriate place to highlight filter term.
+                        label.insert(highlightTextIndex, "<span style=\"background-color: " + FilteredSearchWidget::GetBackgroundColor() + "\">");
+                    }
+                } while (highlightTextIndex > 0);// Repeat in case there are multiple occurrences.
+                PaintRichText(painter, opt, label);  
+            }
+            else
+            {          
+                // There's no filter to apply, just draw it.
+                QString label = opt.text;
+                opt.text = "";
+                style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, widget);
+                PaintRichText(painter, opt, label);
+            }
         }
 
         painter->restore();

@@ -16,7 +16,7 @@
 #pragma once
 
 
-#if !defined(LINUX) && !defined(APPLE)
+#if !AZ_TRAIT_LEGACY_CRYPAK_UNIX_LIKE_FILE_SYSTEM
 #pragma pack(push)
 #pragma pack(1)
 #define PACK_GCC
@@ -26,6 +26,8 @@
 
 namespace ZipFile
 {
+    using HeaderType = uint32;
+
     // General-purpose bit field flags
     enum
     {
@@ -251,7 +253,7 @@ namespace ZipFile
 
 #undef PACK_GCC
 
-#if !defined(LINUX) && !defined(APPLE)
+#if !AZ_TRAIT_LEGACY_CRYPAK_UNIX_LIKE_FILE_SYSTEM
 #pragma pack(pop)
 #endif
 

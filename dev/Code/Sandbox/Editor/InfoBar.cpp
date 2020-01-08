@@ -155,6 +155,12 @@ CInfoBar::CInfoBar(QWidget* parent)
         ui->m_vectorLock->setVisible(false);
     }
 
+    // hide the terrain collision button if terrain editing has been disabled
+#ifndef LY_TERRAIN_EDITOR
+    ui->m_terrainCollision->setVisible(false);
+#endif //#ifdef LY_TERRAIN_EDITOR
+
+
     using namespace AzToolsFramework::ComponentModeFramework;
     EditorComponentModeNotificationBus::Handler::BusConnect(AzToolsFramework::GetEntityContextId());
 }

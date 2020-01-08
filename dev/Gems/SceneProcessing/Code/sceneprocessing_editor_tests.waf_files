@@ -1,0 +1,9 @@
+{
+    "auto":
+    {
+        "Tests/SceneBuilder":
+        [
+            "Tests/SceneBuilder/SceneBuilderTests.cpp"
+        ]
+    }
+}

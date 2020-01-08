@@ -15,7 +15,7 @@
 #include "VegetationMocks.h"
 
 #include <AzTest/AzTest.h>
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #include <Source/Components/PositionModifierComponent.h>
 #include <Source/Components/RotationModifierComponent.h>

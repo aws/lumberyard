@@ -22,18 +22,6 @@ namespace rapidjson
     using SizeType = std::size_t;
 }
 
-// VS gives us make_unique, but on other compilers with -std=c++11, it's omitted.
-#ifndef _MSC_VER
-namespace std
-{
-    template <typename T, typename ... Args>
-    unique_ptr<T> make_unique(Args&& ... args)
-    {
-        return std::unique_ptr<T>(new T(std::forward<Args>(args) ...));
-    }
-}
-#endif
-
 #define RAPIDJSON_SKIP_AZCORE_ERROR
 
 #include "rapidjson/document.h"

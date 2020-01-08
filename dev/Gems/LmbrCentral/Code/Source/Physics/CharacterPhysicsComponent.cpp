@@ -358,7 +358,7 @@ namespace LmbrCentral
                     "Character Physics", "The Character Physics component adds physical behavior to and configures simulation characteristics for character entities, such as players and enemies")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Physics (Legacy)")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/CharacterPhysics.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/CharacterPhysics.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/CharacterPhysics.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)

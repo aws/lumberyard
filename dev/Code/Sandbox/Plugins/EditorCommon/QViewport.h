@@ -151,7 +151,9 @@ private:
 
     struct SPreviousContext;
     std::vector<SPreviousContext> m_previousContexts;
-    std::auto_ptr<CCamera> m_camera;
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+    std::unique_ptr<CCamera> m_camera;
+    AZ_POP_DISABLE_WARNING
     QElapsedTimer* m_frameTimer;
     QTimer* m_timer;
     int m_width;

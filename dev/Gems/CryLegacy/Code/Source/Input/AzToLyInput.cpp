@@ -119,6 +119,8 @@ bool AzToLyInput::Init()
         #include "Xenia/AzToLyInput_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/AzToLyInput_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/AzToLyInput_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -141,6 +143,10 @@ bool AzToLyInput::Init()
 #if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION AZTOLYINPUT_CPP_SECTION_ADDTOOLSINPUT
     #include "Provo/AzToLyInput_cpp_provo.inl"
+#endif
+#if defined(TOOLS_SUPPORT_SALEM)
+#define AZ_RESTRICTED_SECTION AZTOLYINPUT_CPP_SECTION_ADDTOOLSINPUT
+    #include "Salem/AzToLyInput_cpp_salem.inl"
 #endif
 #endif
 

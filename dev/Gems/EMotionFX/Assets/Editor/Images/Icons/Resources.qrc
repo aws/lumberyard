@@ -1,7 +1,7 @@
 <RCC>
     <qresource prefix="/EMotionFX">
-        <file>ActorComponent.png</file>
-        <file>AnimGraphComponent.png</file>
+        <file>ActorComponent.svg</file>
+        <file>AnimGraphComponent.svg</file>
         <file>ClothCollider_Purple.png</file>
         <file>ClothCollider_PurpleBG.png</file>
         <file>ClothCollider_White.png</file>
@@ -16,6 +16,11 @@
         <file>RagdollJointLimit_OrangeBG.png</file>
         <file>RagdollJointLimit_Orange.png</file>
         <file>RagdollJointLimit_White.png</file>
+        <file>SimulatedObject_BG.png</file>
+        <file>SimulatedObject_White.png</file>
+        <file>SimulatedObject.png</file>
+        <file>SimulatedObjectCollider_BG.png</file>
+        <file>SimulatedObjectCollider.png</file>
         <file>Restore.png</file>
         <file>Trash.png</file>
         <file>ArrowDownGray.png</file>

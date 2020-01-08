@@ -14,12 +14,11 @@
 
 #ifdef AZ_PROFILE_TELEMETRY
 #   include <RADTelemetry/ProfileTelemetryBus.h>
-#   include <RADTelemetry/ProfileTelemetry.h>
-#   ifndef AZ_MONOLITHIC_BUILD
-        // Define the per-module RAD Telemetry instance pointer
-        tm_api* g_radTmApi;
-#   endif
+    // Define the per-module RAD Telemetry instance pointer
+    struct tm_api;
+    tm_api* g_radTmApi;
 #endif
+
 
 namespace AZ
 {
@@ -27,7 +26,7 @@ namespace AZ
     {
         void ProfileModuleInit()
         {
-#if defined(AZ_PROFILE_TELEMETRY) && !defined(AZ_MONOLITHIC_BUILD)
+#if defined(AZ_PROFILE_TELEMETRY)
             {
                 if (!g_radTmApi)
                 {

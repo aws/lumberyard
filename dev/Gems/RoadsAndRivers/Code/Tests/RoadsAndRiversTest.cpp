@@ -18,7 +18,7 @@
 #include <Mocks/IConsoleMock.h>
 #include <Mocks/ISystemMock.h>
 
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Component/Entity.h>

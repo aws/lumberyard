@@ -21,6 +21,8 @@
         #include "Xenia/VMath_hpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/VMath_hpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/VMath_hpp_salem.inl"
     #endif
 #endif
 

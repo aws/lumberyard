@@ -23,6 +23,7 @@
 #include <EMotionFX/Source/EMotionFXManager.h>
 #include <EMotionFX/Source/Parameter/FloatSliderParameter.h>
 #include <EMotionFX/Source/Parameter/ParameterFactory.h>
+#include <Tests/Printers.h>
 
 
 namespace EMotionFX

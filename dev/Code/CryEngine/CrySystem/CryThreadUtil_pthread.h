@@ -85,7 +85,7 @@ namespace CryThreadUtil
         {
             CryLog("<ThreadInfo> CrySetThreadName: input thread name '%s' truncated to '%s'", sThreadName, threadName);
         }
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
         // On OSX the thread name can only be set by the thread itself.
         assert(pthread_equal(pthread_self(), (pthread_t )pThreadHandle));
 
@@ -114,7 +114,7 @@ namespace CryThreadUtil
         // Alternative solution
         // Watch out that android will clear the mask after a core has been switched off hence loosing the affinity mask setting!
         // http://stackoverflow.com/questions/16319725/android-set-thread-affinity
-#elif defined(AZ_PLATFORM_APPLE)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE
 #           pragma message "Warning: <ThreadInfo> CrySetThreadAffinityMask not implemented for platform"
         // Implementation details can be found here
         // https://developer.apple.com/library/mac/releasenotes/Performance/RN-AffinityAPI/

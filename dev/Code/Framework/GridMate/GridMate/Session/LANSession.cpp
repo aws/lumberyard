@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/std/smart_ptr/intrusive_ptr.h>
 #include <AzCore/std/string/conversions.h>
@@ -350,6 +349,14 @@ namespace GridMate
 }
 //////////////////////////////////////////////////////////////////////////
 
+namespace GridMate
+{
+    namespace Platform
+    {
+        void AssignExtendedName(GridMate::string& extendedName);
+    }
+}
+
 using namespace GridMate;
 
 //=========================================================================
@@ -362,39 +369,7 @@ LANMember::LANMember(const LANMemberID& id, LANSession* session)
     , m_memberId(id)
 {
     string extendedName;
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/LANSession_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/LANSession_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-    char hostName[64];
-    gethostname(hostName, AZ_ARRAY_SIZE(hostName));
-
-#ifdef AZ_PLATFORM_WINDOWS
-
-    char procPath[256];
-    char procName[256];
-    DWORD ret = GetModuleFileName(NULL, procPath, 256);
-    if (ret > 0)
-    {
-        ::_splitpath_s(procPath, 0, 0, 0, 0, procName, 256, 0, 0);
-    }
-    else
-    {
-        azsnprintf(procName, AZ_ARRAY_SIZE(procName), "Unknown");
-    }
-
-    extendedName = string::format("%s::%s", hostName, procName);
-#else
-    extendedName = string::format("%s", hostName);
-#endif
-#endif
+    Platform::AssignExtendedName(extendedName);
 
     m_session = session;
     m_clientState = CreateReplicaChunk<LANMemberState>(this);
@@ -1228,5 +1203,3 @@ GridSearch* LANSessionService::StartGridSearch(const LANSearchParams& params)
 {
     return aznew LANSearch(params, this);
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

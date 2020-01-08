@@ -9,7 +9,8 @@
         [
             "Tests/Test_Cry3DEngine.cpp",
             "Tests/MockValidationTest.cpp",
-            "Tests/MaterialTests.cpp"
+            "Tests/MaterialTests.cpp",
+            "Tests/OctreeTest.cpp"
         ]
     }
 }

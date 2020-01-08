@@ -44,30 +44,7 @@ void UiLayoutFitterComponent::ApplyLayoutWidth()
 {
     if (m_horizontalFit)
     {
-        float targetWidth = -1.0f;
-
-        // First check for overriden cell width
-        EBUS_EVENT_ID_RESULT(targetWidth, GetEntityId(), UiLayoutCellBus, GetTargetWidth);
-
-        // If not overriden, get the default cell width
-        if (targetWidth < 0.0f)
-        {
-            targetWidth = 0.0f;
-
-            AZ::EBusAggregateResults<float> results;
-            EBUS_EVENT_ID_RESULT(results, GetEntityId(), UiLayoutCellDefaultBus, GetTargetWidth);
-
-            if (!results.values.empty())
-            {
-                for (float value : results.values)
-                {
-                    if (targetWidth < value)
-                    {
-                        targetWidth = value;
-                    }
-                }
-            }
-        }
+        float targetWidth = UiLayoutHelpers::GetLayoutElementTargetWidth(GetEntityId());
 
         // Recalculate the new horizontal offsets using the pivot
         UiTransform2dInterface::Offsets offsets;
@@ -106,30 +83,7 @@ void UiLayoutFitterComponent::ApplyLayoutHeight()
 {
     if (m_verticalFit)
     {
-        float targetHeight = -1.0f;
-
-        // First check for overriden cell height
-        EBUS_EVENT_ID_RESULT(targetHeight, GetEntityId(), UiLayoutCellBus, GetTargetHeight);
-
-        // If not overriden, get the default cell height
-        if (targetHeight < 0.0f)
-        {
-            targetHeight = 0.0f;
-
-            AZ::EBusAggregateResults<float> results;
-            EBUS_EVENT_ID_RESULT(results, GetEntityId(), UiLayoutCellDefaultBus, GetTargetHeight);
-
-            if (!results.values.empty())
-            {
-                for (float value : results.values)
-                {
-                    if (targetHeight < value)
-                    {
-                        targetHeight = value;
-                    }
-                }
-            }
-        }
+        float targetHeight = UiLayoutHelpers::GetLayoutElementTargetHeight(GetEntityId());
 
         // Recalculate the new vertical offsets using the pivot
         UiTransform2dInterface::Offsets offsets;

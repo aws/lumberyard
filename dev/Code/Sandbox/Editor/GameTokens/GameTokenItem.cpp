@@ -87,7 +87,6 @@ inline const char* FlowTypeToName(EFlowDataTypes tokenType)
 }
 
 class CFlowDataReadVisitorEditor
-    : public boost::static_visitor<void>
 {
 public:
     CFlowDataReadVisitorEditor(const char* data)
@@ -194,7 +193,6 @@ private:
 
 //////////////////////////////////////////////////////////////////////////
 class CFlowDataWriteVisitorEditor
-    : public boost::static_visitor<void>
 {
 public:
     CFlowDataWriteVisitorEditor(string& out)

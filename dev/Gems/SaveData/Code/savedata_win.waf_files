@@ -1,7 +1,0 @@
-{
-    "auto": {
-        "Source": [
-            "Source/Platform/Windows/SaveDataSystemComponent_windows.cpp"
-        ]
-    }
-}

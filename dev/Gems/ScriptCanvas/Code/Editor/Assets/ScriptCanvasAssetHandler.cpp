@@ -205,7 +205,7 @@ namespace ScriptCanvasEditor
 
     const char* ScriptCanvasAssetHandler::GetBrowserIcon() const
     {
-        return "Editor/Icons/ScriptCanvas/Viewport/ScriptCanvas.png";
+        return "Editor/Icons/ScriptCanvas/Viewport/ScriptCanvas.svg";
     }
 
     AZ::Uuid ScriptCanvasAssetHandler::GetComponentTypeId() const

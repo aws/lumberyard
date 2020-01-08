@@ -103,14 +103,9 @@
 /dev/AssetProcessorTemp
 /dev/BinTemp
 /dev/Bin64
-/dev/Bin64vc120
-/dev/Bin64vc120.Debug
-/dev/Bin64vc140
-/dev/Bin64vc140.Debug
 /dev/Bin64vc141
 /dev/Bin64vc141.Debug
 /dev/Cache
-/dev/FeatureTests
 /dev/SamplesProject
 /dev/Code/SDKs
 /dev/Code/Sandbox/SDKs
@@ -125,8 +120,6 @@
 /dev/Gems/Substance
 /dev/Tools/CrySCompileServer/x64
 /dev/Tools/LmbrSetup/Win.vc141.Debug
-/dev/Tools/LmbrSetup/Win.vc140.Debug
-/dev/Tools/LmbrSetup/Win.vc120.Debug
 
 # Ignore ico files from Lumberyard folders but preserve ico files in project folders
 /dev/Code/**/*.ico

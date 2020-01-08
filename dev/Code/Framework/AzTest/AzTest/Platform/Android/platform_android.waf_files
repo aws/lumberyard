@@ -1,0 +1,14 @@
+{
+    "none": {
+        "Platform/Android": [
+            "../Common/UnixLike/AzTest/ColorizedOutput_UnixLike.cpp"
+        ]
+    },
+    "auto": {
+        "Platform/Android": [
+            "Platform_Android.cpp",
+            "AzTest_Traits_Platform.h",
+            "AzTest_Traits_Android.h"
+        ]
+    }
+}

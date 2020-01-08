@@ -23,6 +23,7 @@ namespace ExporterLib
     // write the material attribute set
     void SaveMaterialAttributeSet(MCore::Stream* file, EMotionFX::Material* material, uint32 lodLevel, uint32 materialNumber, MCore::Endian::EEndianType targetEndianType)
     {
+        AZ_UNUSED(material);
         // write the chunk header
         EMotionFX::FileFormat::FileChunk chunkHeader;
         chunkHeader.mChunkID        = EMotionFX::FileFormat::ACTOR_CHUNK_MATERIALATTRIBUTESET;

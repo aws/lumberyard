@@ -38,8 +38,16 @@
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
+
+#include <AzCore/IO/CompressionBus.h>
 
 class CCryPak;
+
+namespace AzFramework
+{
+    class AssetBundleManifest;
+}
 
 // this is the header in the cache of the file data
 struct CCachedFileData
@@ -164,7 +172,7 @@ struct CZipPseudoFile
     char* FGets(char* pBuf, int n);
     int Getc();
     int Ungetc(int c);
-
+     
     uint64 GetModificationTime() { return m_pFileData->GetFileEntry()->GetModificationTime(); }
     const char* GetArchivePath() { return m_pFileData->GetZip()->GetFilePath(); }
 
@@ -232,15 +240,18 @@ TYPEDEF_AUTOPTR(CCryPakFindData);
 class CCryPak
     : public ICryPak
     , public ISystemEventListener
+    , public AZ::IO::CompressionBus::Handler
 {
     friend class CReadStream;
     friend struct CCachedFileData;
+
+    static const uint32_t s_compressionTag = static_cast<uint32_t>('Z') << 24 | static_cast<uint32_t>('C') << 16 | static_cast<uint32_t>('R') << 8 | static_cast<uint32_t>('Y');
 
     // the array of pseudo-files : emulated files in the virtual zip file system
     // the handle to the file is its index inside this array.
     // some of the entries can be free. The entries need to be destructed manually
     CryReadModifyLock m_csOpenFiles;
-    typedef std::vector<CZipPseudoFile> ZipPseudoFileArray;
+    typedef std::vector<CZipPseudoFile*> ZipPseudoFileArray;
     ZipPseudoFileArray m_arrOpenFiles;
 
     // the array of file datas; they are relatively self-contained and can
@@ -314,6 +325,15 @@ protected:
     // given the source relative path, constructs the full path to the file according to the flags
     const char* AdjustFileNameImpl(const char* src, char* dst, size_t dstSize, unsigned nFlags, bool skipMods) override;
 
+    // LY Bundle Management
+    // Handle our initial LY Canonical "Bundles" which contain manifest info and update our Asset Registry as 
+    // Loaded and Unloaded
+    bool OpenBundle(ZipDir::CachePtr zipEntry);
+    bool CloseBundle(ZipDir::CachePtr zipEntry);
+    // Retrieve the manifest from the Bundle if it exists
+    AZStd::unique_ptr<AzFramework::AssetBundleManifest> LoadManifest(ZipDir::CachePtr zipEntry) const;
+    // Retrieve the Catalog name from the bundle
+    AZStd::string GetCatalogName(AZStd::unique_ptr<const AzFramework::AssetBundleManifest>& bundleManifest) const;
 private:
     IMiniLog* m_pLog;
 
@@ -365,6 +385,17 @@ private:
 
     const char* AdjustFileNameInternal(const char* src, char* dst, size_t dstSize, unsigned nFlags);
 
+    /**
+     * Currently access to PseudoFile operations are not thread safe, as we touch variable like m_nCurSeek
+     * without any synchronization. There is also the assumption that only one thread at a time will open/read/close
+     * a single file in a PAK, multiple threads can open different files in a PAK. If requirements change (or turns out this is a bug in CryPAK)
+     * we can add readwrite lock inside the CZipPseudoFile and we can pass a second argument lockForOperation where we can lock
+     * the file specific lock while getting a handle. This way you can safely execute the operation. This is no done by default
+     * because the API implies that this is not the intended use case. e.g. FSeek and FRead are separate operations, if you have multiple threads
+     * reading data, they can both execute FSeek/FRead and unless we lock the operation set, this will not work.
+     */
+    CZipPseudoFile* GetPseudoFile(AZ::IO::HandleType fileHandle) const;
+
 public:
 
     // this is the start of indexation of pseudofiles:
@@ -405,6 +436,10 @@ public: // ---------------------------------------------------------------------
     //////////////////////////////////////////////////////////////////////////
     virtual void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam);
     //////////////////////////////////////////////////////////////////////////
+
+    //@{ CompressionBus Handler implementation.
+    void FindCompressionInfo(bool& found, AZ::IO::CompressionInfo& info, const AZStd::string_view filename) override;
+    //@}
 
     ICryPak::PakInfo* GetPakInfo();
     void FreePakInfo (PakInfo*);
@@ -527,7 +562,10 @@ public: // ---------------------------------------------------------------------
     // the path must be absolute normalized lower-case with forward-slashes
     CCachedFileDataPtr GetFileData(const char* szName, unsigned int& nArchiveFlags);
     CCachedFileDataPtr GetFileData(const char* szName){unsigned int archiveFlags; return GetFileData(szName, archiveFlags); }
+    // Get the data for a file by name within an archive if it exists
+    CCachedFileDataPtr GetFileData(ZipDir::CachePtr pZip, const char* szName);
 
+    AZStd::shared_ptr<AzFramework::AssetBundleManifest> GetBundleManifest(ZipDir::CachePtr pZip);
     // Return cached file data for entries inside pak file.
     CCachedFileDataPtr GetOpenedFileDataInZip(AZ::IO::HandleType file);
 
@@ -641,6 +679,7 @@ public: // ---------------------------------------------------------------------
     CryCriticalSection m_csMissingFiles;
     typedef std::map<string, uint32, std::less<string> > MissingFileMap;
     MissingFileMap m_mapMissingFiles;
+    bool m_warnedCryMissingFilesDeprecated = false;
 
     friend struct SAutoCollectFileAcessTime;
 
@@ -656,7 +695,7 @@ public: // ---------------------------------------------------------------------
 
     virtual void CreatePerfHUDWidget();
 
-#if defined(LINUX) || defined(APPLE)
+#if AZ_TRAIT_LEGACY_CRYPAK_UNIX_LIKE_FILE_SYSTEM
 private:
     intptr_t m_HandleSource;
     std::map<intptr_t, CCryPakFindData* > m_Handles;

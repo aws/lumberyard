@@ -10,7 +10,6 @@
 *
 */
 
-// include required headers
 #include "ActionHistoryCallback.h"
 #include <MCore/Source/LogManager.h>
 #include <EMotionFX/Source/EventManager.h>
@@ -26,22 +25,22 @@ namespace EMStudio
     ActionHistoryCallback::ActionHistoryCallback(QListWidget* list)
         : MCore::CommandManagerCallback()
     {
-        mList               = list;
-        mIndex              = 0;
-        mIsRemoving         = false;
-        mGroupExecuting     = false;
-        mExecutedGroup      = nullptr;
-        mErrorWindow        = nullptr;
-        mNumGroupCommands   = 0;
+        mList = list;
+        mIndex = 0;
+        mIsRemoving = false;
+        mGroupExecuting = false;
+        mExecutedGroup = nullptr;
+        mErrorWindow = nullptr;
+        mNumGroupCommands = 0;
         mCurrentCommandIndex = 0;
+        m_darkenedBrush.setColor(QColor(110, 110, 110));
+        m_brush.setColor(QColor(200, 200, 200));
     }
-
 
     ActionHistoryCallback::~ActionHistoryCallback()
     {
         delete mErrorWindow;
     }
-
 
     // Before executing a command.
     void ActionHistoryCallback::OnPreExecuteCommand(MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine)
@@ -66,7 +65,6 @@ namespace EMStudio
         }
     }
 
-
     // After executing a command.
     void ActionHistoryCallback::OnPostExecuteCommand(MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine, bool wasSuccess, const AZStd::string& outResult)
     {
@@ -89,16 +87,15 @@ namespace EMStudio
         }
     }
 
-
     // Before executing a command group.
     void ActionHistoryCallback::OnPreExecuteCommandGroup(MCore::CommandGroup* group, bool undo)
     {
         if (!mGroupExecuting && group->GetNumCommands() > 64)
         {
-            mGroupExecuting     = true;
-            mExecutedGroup      = group;
+            mGroupExecuting = true;
+            mExecutedGroup = group;
             mCurrentCommandIndex = 0;
-            mNumGroupCommands   = group->GetNumCommands();
+            mNumGroupCommands = group->GetNumCommands();
 
             GetManager()->SetAvoidRendering(true);
 
@@ -114,7 +111,6 @@ namespace EMStudio
             MCore::LogDebugMsg(mTempString.c_str());
         }
     }
-
 
     // After executing a command group.
     void ActionHistoryCallback::OnPostExecuteCommandGroup(MCore::CommandGroup* group, bool wasSuccess)
@@ -138,7 +134,6 @@ namespace EMStudio
         }
     }
 
-
     // Add a new item to the history.
     void ActionHistoryCallback::OnAddCommandToHistory(uint32 historyIndex, MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine)
     {
@@ -149,7 +144,6 @@ namespace EMStudio
         mList->setCurrentRow(historyIndex);
     }
 
-
     // Remove an item from the history.
     void ActionHistoryCallback::OnRemoveCommand(uint32 historyIndex)
     {
@@ -158,7 +152,6 @@ namespace EMStudio
         delete mList->takeItem(historyIndex);
         mIsRemoving = false;
     }
-
 
     // Set the current command.
     void ActionHistoryCallback::OnSetCurrentCommand(uint32 index)
@@ -173,10 +166,10 @@ namespace EMStudio
             mList->setCurrentRow(-1);
 
             // Darken all history items.
-            const uint32 numCommands = GetCommandManager()->GetNumHistoryItems();
-            for (uint32 i = 0; i < numCommands; ++i)
+            const int numCommands = static_cast<int>(GetCommandManager()->GetNumHistoryItems());
+            for (int i = 0; i < numCommands; ++i)
             {
-                mList->item(i)->setForeground(QBrush(QColor(110, 110, 110))); // TODO: use style sheet color
+                mList->item(i)->setForeground(m_darkenedBrush);
             }
             return;
         }
@@ -246,22 +239,21 @@ namespace EMStudio
             index = 0;
         }
 
-        const uint32 numCommands = GetCommandManager()->GetNumHistoryItems();
-        for (uint32 i = index; i < numCommands; ++i)
+        const int numCommands = static_cast<int>(GetCommandManager()->GetNumHistoryItems());
+        for (int i = index; i < numCommands; ++i)
         {
-            mList->item(i)->setForeground(QBrush(QColor(110, 110, 110))); // TODO: use style sheet color
+            mList->item(i)->setForeground(m_darkenedBrush);
         }
 
         // Color enabled ones.
         if (orgIndex != MCORE_INVALIDINDEX32)
         {
-            for (uint32 i = 0; i <= index; ++i)
+            for (int i = 0; i <= static_cast<int>(index); ++i)
             {
-                mList->item(index)->setForeground(QBrush(QColor(200, 200, 200))); // TODO: use style sheet color
+                mList->item(index)->setForeground(m_brush);
             }
         }
     }
-
 
     // Called when the errors shall be shown.
     void ActionHistoryCallback::OnShowErrorReport(const AZStd::vector<AZStd::string>& errors)
@@ -276,6 +268,7 @@ namespace EMStudio
         mErrorWindow->exec();
     }
 
+    ///////////////////////////////////////////////////////////////////////////
 
     ErrorWindow::ErrorWindow(QWidget* parent)
         : QDialog(parent)
@@ -294,11 +287,9 @@ namespace EMStudio
         setStyleSheet("background-color: rgb(30,30,30);");
     }
 
-
     ErrorWindow::~ErrorWindow()
     {
     }
-
 
     void ErrorWindow::Init(const AZStd::vector<AZStd::string>& errors)
     {
@@ -331,5 +322,3 @@ namespace EMStudio
         mTextEdit->setText(text.c_str());
     }
 } // namespace EMStudio
-
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/ActionHistory/ActionHistoryCallback.moc>

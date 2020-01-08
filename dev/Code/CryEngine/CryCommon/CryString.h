@@ -46,12 +46,12 @@ class CConstCharWrapper;    //forward declaration for special const char * witho
 #define CRY_STRING_DEBUG(s)
 
 class CryStringAllocator
-    : public AZ::AllocatorBase<AZ::HphaSchema>
+    : public AZ::SimpleSchemaAllocator<AZ::HphaSchema>
 {
 public:
     AZ_TYPE_INFO(CryStringAllocator, "{763DFC83-8A6E-4FD9-B6BC-BBF56E93E4EE}");
 
-    using Base = AZ::AllocatorBase<AZ::HphaSchema>;
+    using Base = AZ::SimpleSchemaAllocator<AZ::HphaSchema>;
     using Descriptor = Base::Descriptor;
 
     CryStringAllocator()
@@ -2546,13 +2546,8 @@ namespace AZStd
 
         static size_t hash_string(const char* str, size_t length)
         {
-#ifdef AZ_OS64
             size_t hash = 14695981039346656037ULL;
             const size_t fnvPrime = 1099511628211ULL;
-#else
-            size_t hash = 2166136261U;
-            const size_t fnvPrime = 16777619U;
-#endif
             const char* cptr = str;
             for (; length; --length)
             {

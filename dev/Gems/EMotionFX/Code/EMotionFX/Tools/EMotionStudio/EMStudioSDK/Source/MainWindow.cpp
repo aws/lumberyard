@@ -16,6 +16,7 @@
 #include <EMotionStudio/EMStudioSDK/Source/KeyboardShortcutsWindow.h>
 #include <EMotionStudio/EMStudioSDK/Source/LoadActorSettingsWindow.h>
 #include <EMotionStudio/EMStudioSDK/Source/MainWindow.h>
+#include <EMotionStudio/EMStudioSDK/Source/MainWindowEventFilter.h>
 #include <EMotionStudio/EMStudioSDK/Source/PluginManager.h>
 #include <EMotionStudio/EMStudioSDK/Source/PreferencesWindow.h>
 #include <EMotionStudio/EMStudioSDK/Source/RenderPlugin/RenderPlugin.h>
@@ -59,34 +60,14 @@
 #include <EMotionFX/Source/Importer/Importer.h>
 #include <EMotionFX/Source/MotionManager.h>
 #include <EMotionFX/Source/MotionSet.h>
+AZ_PUSH_DISABLE_WARNING(4267, "-Wconversion")
 #include <ISystem.h>
+AZ_POP_DISABLE_WARNING
 #include <LyViewPaneNames.h>
 #include <MysticQt/Source/ComboBox.h>
 
-// Include this on windows to detect device remove and insert messages, used for the game controller support.
-#ifdef MCORE_PLATFORM_WINDOWS
-    #include <dbt.h>
-#endif
-
-
 namespace EMStudio
 {
-    class NativeEventFilter
-        : public QAbstractNativeEventFilter
-    {
-    public:
-        NativeEventFilter(MainWindow* mainWindow)
-            : QAbstractNativeEventFilter(),
-            m_MainWindow(mainWindow)
-        {
-        }
-
-        virtual bool nativeEventFilter(const QByteArray& /*eventType*/, void* message, long* /*result*/) Q_DECL_OVERRIDE;
-
-    private:
-        MainWindow * m_MainWindow;
-    };
-
     class SaveDirtyWorkspaceCallback
         : public SaveDirtyFilesCallback
     {
@@ -312,6 +293,9 @@ namespace EMStudio
 
         setFocusPolicy(Qt::StrongFocus);
 
+        CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
+        selectionList.Clear();
+
         // create the menu bar
         QWidget* menuWidget = new QWidget();
         QHBoxLayout* menuLayout = new QHBoxLayout(menuWidget);
@@ -322,7 +306,6 @@ namespace EMStudio
         menuLayout->setSpacing(0);
         menuLayout->addWidget(menuBar);
 
-        QLabel* modeLabel = new QLabel("Layout: ");
         mApplicationMode = new MysticQt::ComboBox();
         menuLayout->addWidget(mApplicationMode);
 
@@ -392,7 +375,7 @@ namespace EMStudio
             tr("Redo"),
             this,
             &MainWindow::OnRedo,
-            QKeySequence::Redo
+            QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_Z)
         );
         m_undoAction->setDisabled(true);
         m_redoAction->setDisabled(true);
@@ -431,7 +414,8 @@ namespace EMStudio
 
         // load preferences
         PluginOptionsNotificationsBus::Router::BusRouterConnect();
-        LoadPreferences();
+        LoadPreferences();      
+        mAutosaveTimer->setInterval(mOptions.GetAutoSaveInterval() * 60 * 1000);
 
         // Create the dirty file manager and register the workspace callback.
         mDirtyFileManager = new DirtyFileManager;
@@ -524,25 +508,6 @@ namespace EMStudio
     {
         OnPreExecuteCommand(nullptr, command, commandLine);
     }
-
-    bool NativeEventFilter::nativeEventFilter(const QByteArray& /*eventType*/, void* message, long* /*result*/)
-    {
-        #ifdef MCORE_PLATFORM_WINDOWS
-        MSG* msg = static_cast<MSG*>(message);
-        if (msg->message == WM_DEVICECHANGE)
-        {
-            if (msg->wParam == DBT_DEVICEREMOVECOMPLETE || msg->wParam == DBT_DEVICEARRIVAL || msg->wParam == DBT_DEVNODES_CHANGED)
-            {
-                // The reason why there are multiple of such messages is because it emits messages for all related hardware nodes.
-                // But we do not know the name of the hardware to look for here either, so we can't filter that.
-                emit m_MainWindow->HardwareChangeDetected();
-            }
-        }
-        #endif
-
-        return false;
-    }
-
 
     bool MainWindow::CommandImportActorCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
     {
@@ -1577,6 +1542,7 @@ namespace EMStudio
             // Enable or disable the autosave timer
             if (mOptions.GetEnableAutoSave())
             {
+                mAutosaveTimer->setInterval(mOptions.GetAutoSaveInterval() * 60 * 1000);
                 mAutosaveTimer->start();
             }
             else
@@ -2004,13 +1970,10 @@ namespace EMStudio
         AZStd::vector<AZStd::string> motionSetFilenames;
 
         // get the number of urls and iterate over them
-        AZStd::string filename;
         AZStd::string extension;
-        const uint32 numFiles = filenames.size();
-        for (uint32 i = 0; i < numFiles; ++i)
+        for (const AZStd::string& filename : filenames)
         {
             // get the complete file name and extract the extension
-            filename = filenames[i];
             AzFramework::StringFunc::Path::GetExtension(filename.c_str(), extension, false /* include dot */);
 
             if (AzFramework::StringFunc::Equal(extension.c_str(), "actor"))
@@ -2150,6 +2113,9 @@ namespace EMStudio
                     }
                     else
                     {
+                        // result could arrive with some '%', since AZ_Error, assumes that the string being passed is a format, we could
+                        // produce issues. To be safe, here we escape '%'
+                        AzFramework::StringFunc::Replace(result, "%", "%%", true /* case sensitive since it is faster */);
                         AZ_Error("EMotionFX", false, result.c_str());
                     }
                 }
@@ -2276,6 +2242,12 @@ namespace EMStudio
     EMotionFX::ActorInstance* MainWindow::GetSelectedActorInstance()
     {
         return GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
+    }
+
+
+    EMotionFX::Actor* MainWindow::GetSelectedActor()
+    {
+        return GetCommandManager()->GetCurrentSelection().GetSingleActor();
     }
 
 

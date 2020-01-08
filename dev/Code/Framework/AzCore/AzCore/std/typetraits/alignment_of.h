@@ -28,10 +28,6 @@ namespace AZStd
     // get the alignment of some arbitrary type:
     namespace Internal
     {
-        #ifdef AZ_COMPILER_MSVC
-            #pragma warning(push)
-            #pragma warning(disable:4324) // structure was padded due to __declspec(align())
-        #endif
         template <typename T>
         struct alignment_of_hack
         {
@@ -88,10 +84,6 @@ namespace AZStd
     // void has to be treated specially:
     AZSTD_TYPE_TRAITS_SIZE_T_TRAIT_SPEC1(alignment_of, void, 0)
 }
-
-#ifdef AZ_COMPILER_MSVC
-    #pragma warning(pop)
-#endif
 
 #endif // AZSTD_TYPE_TRAITS_ALIGNMENT_OF_INCLUDED
 #pragma once

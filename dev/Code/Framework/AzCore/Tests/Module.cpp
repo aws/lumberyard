@@ -10,15 +10,15 @@
 *
 */
 
-#include "TestTypes.h"
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Module/Module.h>
 #include <AzCore/PlatformIncl.h>
 #include <AzCore/Module/ModuleManagerBus.h>
 #include <AzCore/Memory/AllocationRecords.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include "ModuleTestBus.h"
 
-#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_TEST_SUPPORT_DLOPEN
 #include <dlfcn.h>
 #endif
 
@@ -312,7 +312,7 @@ namespace UnitTest
 
 // the following tests only run on the following platforms which support module loading and unloading
 // as these platforms expand we can always use traits to include the ones that can do so:
-#if defined (AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_LINUX) || defined (AZ_PLATFORM_APPLE_OSX)
+#if AZ_TRAIT_TEST_SUPPORT_MODULE_LOADING
     // this class just attaches to the PrintF stream and watches for a specific message
     // to appear.
     class PrintFCollector : public AZ::Debug::TraceMessageBus::Handler
@@ -382,15 +382,15 @@ namespace UnitTest
             // we need to actually load the module using the operating system loader so that its "already loaded" by OS.
 
             {
-#if defined(AZ_PLATFORM_WINDOWS)
+#if AZ_TRAIT_TEST_SUPPORT_LOADLIBRARY
                 // expect the module to not currently be loaded.
                 EXPECT_EQ(nullptr, GetModuleHandleA(finalPath.c_str())); 
                 HMODULE mod = ::LoadLibraryA(finalPath.c_str());
                 ASSERT_NE(nullptr, mod);
-#elif defined (AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+#elif AZ_TRAIT_TEST_SUPPORT_DLOPEN
                 void* pHandle = dlopen(finalPath.c_str(), RTLD_NOW);
                 ASSERT_NE(nullptr, pHandle);
-#endif // platform switch statement (windows, mac, linux)
+#endif 
 
                 // now that the operating system has an open handle to it, we load it using the 
                 // AZ functions, and make sure that the AZ library correctly attaches even though
@@ -413,11 +413,11 @@ namespace UnitTest
                 EXPECT_TRUE(watchForDestruction.m_foundWhatWeWereWatchingFor); // we have left scope, destroy should have occurred.
 
          // drop the operating systems attachment to the module:
-#if defined(AZ_PLATFORM_WINDOWS)
+#if AZ_TRAIT_TEST_SUPPORT_LOADLIBRARY
                 ::FreeLibrary(mod);
-#elif defined (AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+#elif AZ_TRAIT_TEST_SUPPORT_DLOPEN
                 dlclose(pHandle);
-#endif // platform switch statement (windows, mac, linux)
+#endif // platform switch statement 
             }
         }
         
@@ -431,12 +431,12 @@ namespace UnitTest
         TestCalculateBinFolderClass(const char* testExePath) :
             ComponentApplication()
         {
-            azstrcpy(this->m_exeDirectory, AZ_MAX_PATH_LEN, testExePath);
+            azstrcpy(this->m_exeDirectory, AZ_ARRAY_SIZE(this->m_exeDirectory), testExePath);
         }
 
         void TestCalculateBinFolder()
         {
-            this->CalculateBinFolder();
+            this->PlatformCalculateBinFolder();
         }
 
         MOCK_CONST_METHOD1(CheckPathForEngineMarker, bool(const char*));
@@ -445,7 +445,7 @@ namespace UnitTest
     };
 
 
-#define TEST_BINFOLDER  "bin64vc140"
+#define TEST_BINFOLDER  "bin64vc141"
 
     TEST(ModuleManager, TestCalculateBinFolder)
     {
@@ -510,6 +510,6 @@ namespace UnitTest
             EXPECT_STREQ(TEST_BINFOLDER, app.GetBinFolder());
         }
     }
-#endif // defined (AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_LINUX) || defined (AZ_PLATFORM_APPLE_OSX)
+#endif // AZ_TRAIT_TEST_SUPPORT_MODULE_LOADING
 
 } // namespace UnitTest

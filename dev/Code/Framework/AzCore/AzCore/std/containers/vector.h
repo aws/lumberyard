@@ -183,7 +183,6 @@ namespace AZStd
             m_end   = m_last;
         }
 
-#ifdef AZ_HAS_RVALUE_REFS
         vector(this_type&& rhs)
             : m_start(0)
             , m_last(0)
@@ -336,7 +335,6 @@ namespace AZStd
         {
             assign_rv(AZStd::forward<this_type>(rhs));
         }
-#endif // AZ_HAS_RVALUE_REFS
 
         ~vector()
         {
@@ -886,7 +884,6 @@ namespace AZStd
             else
             {
                 this_type temp(m_allocator);
-#ifdef AZ_HAS_RVALUE_REFS
                 // Different allocators, move elements
                 for (auto& element : * this)
                 {
@@ -902,12 +899,6 @@ namespace AZStd
                 {
                     rhs.emplace_back(AZStd::move(element));
                 }
-#else
-                // Different allocators, use assign.
-                temp = *this;
-                *this = rhs;
-                rhs = temp;
-#endif
             }
         }
 

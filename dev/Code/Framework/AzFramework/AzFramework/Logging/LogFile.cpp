@@ -3,15 +3,16 @@
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-*or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+* distribution (the "License"). All use of this software is governed by the License,
+*or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 *WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
 
+#include <AzFramework/AzFramework_Traits_Platform.h>
 #include "LogFile.h"
-#if defined(_WIN32)
+#if AZ_TRAIT_AZFRAMEWORK_USE_C11_LOCALTIME_S
 #include <direct.h>
 #include <time.h>
 #endif
@@ -67,9 +68,9 @@ namespace AzFramework
             struct tm timeinfo;
 
             time(&rawtime);
-#if defined(_WIN32)
+#if AZ_TRAIT_AZFRAMEWORK_USE_C11_LOCALTIME_S
             localtime_s(&timeinfo, &rawtime);
-#elif defined(__APPLE__)
+#elif AZ_TRAIT_AZFRAMEWORK_USE_POSIX_LOCALTIME_R
             localtime_r(&rawtime, &timeinfo);
 #endif
             // encode as ISO-8601 so that its standard... which is like YYYY-MM-DDTHH-mm-ssTZD e.g., 1997-07-16T19:20:30+01:00

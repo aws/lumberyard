@@ -21,11 +21,8 @@ namespace Vegetation
 {
     struct DebugData
     {
-        AZStd::atomic_int m_instanceActiveCount{ 0 };
         AZStd::atomic_int m_areaTaskQueueCount{ 0 };
         AZStd::atomic_int m_areaTaskActiveCount{ 0 };
-        AZStd::atomic_int m_instanceRegisterCount{ 0 };
-        AZStd::atomic_int m_instanceUnregisterCount{ 0 };
     };
 
     class DebugSystemData

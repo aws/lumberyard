@@ -60,17 +60,11 @@ distribution.
 #define TIXML_SAFE
 
 #ifdef TIXML_SAFE
-	#if defined(_MSC_VER) && (_MSC_VER >= 1400 )
+	#if defined(_MSC_VER)
 		// Microsoft visual studio, version 2005 and higher.
 		#define TIXML_SNPRINTF _snprintf_s
 		#define TIXML_SNSCANF  _snscanf_s
 		#define TIXML_SSCANF   sscanf_s
-	#elif defined(_MSC_VER) && (_MSC_VER >= 1200 )
-		// Microsoft visual studio, version 6 and higher.
-		//#pragma message( "Using _sn* functions." )
-		#define TIXML_SNPRINTF _snprintf
-		#define TIXML_SNSCANF  _snscanf
-		#define TIXML_SSCANF   sscanf
 	#elif defined(__GNUC__) && (__GNUC__ >= 3 )
 		// GCC version 3 and higher.s
 		//#warning( "Using sn* functions." )

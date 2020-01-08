@@ -16,6 +16,7 @@
 // include the EMotion FX config and mem categories on default
 #include <EMotionFX/Source/EMotionFXConfig.h>
 #include <EMotionFX/Source/MemoryCategories.h>
+#include <EMotionFX_Traits_Platform.h>
 
 // when we use DLL files, setup the EMFX_API macro
 #if defined(STANDARDPLUGINS_DLL_EXPORT)
@@ -27,11 +28,6 @@
         #define STANDARDPLUGINS_API
     #endif
 #endif
-
-#ifdef MCORE_PLATFORM_WINDOWS
-    #define HAS_GAME_CONTROLLER
-#endif
-
 
 // memory categories
 enum

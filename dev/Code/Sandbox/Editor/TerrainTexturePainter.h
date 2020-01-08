@@ -30,21 +30,20 @@ enum ETextureBrushType
 */
 struct CTextureBrush
 {
-    ETextureBrushType       type;                               // Type of this brush.
+    ETextureBrushType                   type;                   // Type of this brush.
     float                               radius;                 // Radius of brush in meters
     float                               colorHardness;          // Opacity of layer color in brush painting
     float                               detailHardness;         // Opacity of detail texture in brush painting
     float                               value;                  //
-    bool                                bErase;                 //
+    bool                                erase;                  //
 
-    bool                                bMask_Altitude;         //
-    bool                                bMaskByLayerSettings;   //
+    bool                                maskByLayerSettings;    //
 
     float                               minRadius;              //
-    float                           maxRadius;                  //
-    ColorF                          m_cFilterColor;         //
-    float                               m_fBrightness;          // used together with m_cFilterColor
-    uint32                          m_dwMaskLayerId;        // 0xffffffff if not used
+    float                               maxRadius;              //
+    ColorF                              filterColor;            //
+    float                               brightness;             // used together with filterColor
+    uint32                              m_dwMaskLayerId;        // 0xffffffff if not used
 
     CTextureBrush()
     {
@@ -53,14 +52,16 @@ struct CTextureBrush
         colorHardness = 1.0f;
         detailHardness = 1.0f;
         value = 255;
-        bErase = false;
+        erase = false;
         minRadius = 0.01f;
         maxRadius = 256.0f;
-        bMaskByLayerSettings = true;
-        m_dwMaskLayerId = 0xffffffff;
-        m_cFilterColor = ColorF(1, 1, 1);
-        m_fBrightness = 1.0f;
+        maskByLayerSettings = true;
+        m_dwMaskLayerId = sInvalidMaskId;
+        filterColor = ColorF(1, 1, 1);
+        brightness = 1.0f;
     }
+
+    static constexpr uint32 sInvalidMaskId = 0xffffffff;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -68,6 +69,10 @@ class CTerrainTexturePainter
     : public CEditTool
 {
     Q_OBJECT
+
+private:
+    friend class CTerrainTexturePainterBindings;
+
 public:
     Q_INVOKABLE CTerrainTexturePainter();
     virtual ~CTerrainTexturePainter();
@@ -99,23 +104,23 @@ public:
     void Action_CollectUndo(float x, float y, float radius);
     void Action_StopUndo();
 
+    static void SaveLayer(CLayer* pLayer);
+
     static const GUID& GetClassID();
     static void RegisterTool(CRegistrationContext& rc);
-
 
 private:
     void PaintLayer(CLayer* pLayer, const Vec3& center, bool bFlood);
     CLayer* GetSelectedLayer() const;
     static void Command_Activate();
 
-
 private:
     Vec3 m_pointerPos;
 
     //! Flag is true if painting mode. Used for Undo.
-    bool m_bIsPainting;
+    bool m_isPainting;
 
-    struct CUndoTPElement* m_pTPElem;
+    struct CUndoTPElement* m_tpElem;
 
     // Cache often used interfaces.
     I3DEngine* m_3DEngine;

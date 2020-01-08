@@ -99,7 +99,7 @@ namespace GraphCanvas
         return m_propertyId;
     }
 
-    AZ::Entity* PropertySlotComponent::ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection) const
+    AZ::Entity* PropertySlotComponent::ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection)
     {
         AZ_Error("Graph Canvas", false, "Property slots cannot have connections.");
         return nullptr;

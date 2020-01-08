@@ -15,6 +15,14 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
 
+namespace CloudGemDynamicContent
+{
+    namespace ServiceAPI
+    {
+        struct FileRequestResult;
+    }
+}
+
 namespace CloudCanvas
 {
     namespace DynamicContent
@@ -35,6 +43,7 @@ namespace CloudCanvas
             {
                 MANIFEST = 0, // Top level manifest requests
                 PAK = 1, // Paks requested due to other manifests - may contain non top level manifests
+                STANDALONE
             };
 
             enum FileStatus
@@ -68,8 +77,13 @@ namespace CloudCanvas
 
             void SetLocalHash(AZStd::string&& localHash);
             void SetBucketHash(AZStd::string&& bucketHash);
+            void SetBucketHash(const AZStd::string& bucketHash);
+            void UpdateLocalHash();
+            bool IsUpdated() const;
 
             RequestType GetRequestType() const { return m_requestType; }
+            void SetRequestType(RequestType requestType) { m_requestType = requestType; }
+
             bool IsManifestRequest() const { return m_requestType == RequestType::MANIFEST; }
 
             AZStd::string GetLocalKey() const;
@@ -99,7 +113,14 @@ namespace CloudCanvas
 
             bool IsUserRequested() const { return m_userRequested; }
 
+            uint64_t GetFileSize() const { return m_fileSize; }
+            void SetFileSize(uint64_t fileSize) { m_fileSize = fileSize; }
+
+            AZStd::string GetRequestURL() const { return m_requestURL; }
+            void SetRequestURL(const AZStd::string& requestURL) { m_requestURL = requestURL; }
             static const char* GetStatusString(FileStatus requestStatus);
+
+            void SetResultData(const CloudGemDynamicContent::ServiceAPI::FileRequestResult& resultData);
         private:
             void ResolveLocalFileName();
 
@@ -115,6 +136,7 @@ namespace CloudCanvas
             AZStd::string m_bucketHash;
             AZStd::string m_outputDir;
             AZStd::string m_isManifest;
+            AZStd::string m_requestURL;
 
             // Full resolved path
             AZStd::string m_localFileName;
@@ -133,6 +155,7 @@ namespace CloudCanvas
             RequestType m_requestType{ RequestType::PAK };
 
             bool m_userRequested{ false };
+            AZ::u64 m_fileSize{ 0 };
         };
     }
 }

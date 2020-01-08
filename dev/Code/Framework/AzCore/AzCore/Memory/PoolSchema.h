@@ -25,13 +25,10 @@ namespace AZ
      * Pool Allocator is NOT thread safe, if you if need a thread safe version
      * use ThreadPool Schema or do the sync yourself.
      */
-    class PoolSchema
+    class PoolSchema 
+        : public IAllocatorAllocate
     {
     public:
-        typedef void*       pointer_type;
-        typedef size_t      size_type;
-        typedef ptrdiff_t   difference_type;
-
         /**
         * Pool allocator descriptor.
         * We will create buckets for each allocation size, we will have m_maxAllocationSize / m_minAllocationSize buckets.
@@ -62,22 +59,24 @@ namespace AZ
             IAllocatorAllocate* m_pageAllocator;        ///< If you provide this interface we will use it for page allocations, otherwise SystemAllocator will be used.
         };
 
-        PoolSchema();
+        PoolSchema(const Descriptor& desc = Descriptor());
         ~PoolSchema();
 
         bool Create(const Descriptor& desc);
         bool Destroy();
 
-        pointer_type    Allocate(size_type byteSize, size_type alignment, int flags = 0);
-        void            DeAllocate(pointer_type ptr);
-        size_type       AllocationSize(pointer_type ptr);
+        pointer_type Allocate(size_type byteSize, size_type alignment, int flags, const char* name, const char* fileName, int lineNum, unsigned int suppressStackRecord) override;
+        void DeAllocate(pointer_type ptr, size_type byteSize, size_type alignment) override;
+        size_type Resize(pointer_type ptr, size_type newSize) override;
+        pointer_type ReAllocate(pointer_type ptr, size_type newSize, size_type newAlignment) override;
+        size_type AllocationSize(pointer_type ptr) override;
 
         /// Return unused memory to the OS. Don't call this too often because you will force unnecessary allocations.
-        void            GarbageCollect();
+        void GarbageCollect() override;
 
-        size_type       NumAllocatedBytes() const;
-        size_type       Capacity() const;
-        IAllocatorAllocate* GetPageAllocator();
+        size_type NumAllocatedBytes() const override;
+        size_type Capacity() const override;
+        IAllocatorAllocate* GetSubAllocator() override;
 
     protected:
         PoolSchema(const PoolSchema&);
@@ -94,12 +93,9 @@ namespace AZ
         * for each thread. So there will be some memory overhead, especially if you use fixed pool sizes.
         */
     class ThreadPoolSchema
+        : public IAllocatorAllocate
     {
     public:
-        typedef void*       pointer_type;
-        typedef size_t      size_type;
-        typedef ptrdiff_t   difference_type;
-
         // Functions for getting an instance of a ThreadPoolData when using thread local storage
         typedef ThreadPoolData* (* GetThreadPoolData)();
         typedef void(* SetThreadPoolData)(ThreadPoolData*);
@@ -115,15 +111,17 @@ namespace AZ
         bool Create(const Descriptor& desc);
         bool Destroy();
 
-        pointer_type    Allocate(size_type byteSize, size_type alignment, int flags = 0);
-        void            DeAllocate(pointer_type ptr);
-        size_type       AllocationSize(pointer_type ptr);
+        pointer_type Allocate(size_type byteSize, size_type alignment, int flags, const char* name, const char* fileName, int lineNum, unsigned int suppressStackRecord) override;
+        void DeAllocate(pointer_type ptr, size_type byteSize, size_type alignment) override;
+        size_type Resize(pointer_type ptr, size_type newSize) override;
+        pointer_type ReAllocate(pointer_type ptr, size_type newSize, size_type newAlignment) override;
+        size_type AllocationSize(pointer_type ptr) override;
         /// Return unused memory to the OS. Don't call this too often because you will force unnecessary allocations.
-        void            GarbageCollect();
+        void GarbageCollect() override;
 
-        size_type       NumAllocatedBytes() const;
-        size_type       Capacity() const;
-        IAllocatorAllocate* GetPageAllocator();
+        size_type NumAllocatedBytes() const override;
+        size_type Capacity() const override;
+        IAllocatorAllocate* GetSubAllocator() override;
 
     protected:
         ThreadPoolSchema(const ThreadPoolSchema&);
@@ -143,13 +141,15 @@ namespace AZ
         : public ThreadPoolSchema
     {
     public:
-        ThreadPoolSchemaHelper()
+        ThreadPoolSchemaHelper(const Descriptor& desc = Descriptor())
             : ThreadPoolSchema(&GetThreadPoolData, &SetThreadPoolData)
-        {}
+        {
+            // Descriptor is ignored here; Create() must be called directly on the schema
+            (void)desc;
+        }
 
     protected:
 
-#ifdef AZ_THREAD_LOCAL
         static ThreadPoolData* GetThreadPoolData()
         {
             return m_threadData;
@@ -161,23 +161,10 @@ namespace AZ
         }
 
         static AZ_THREAD_LOCAL ThreadPoolData*  m_threadData;
-#else
-        static ThreadPoolData* GetThreadPoolData()
-        {
-            return nullptr;
-        }
-
-        static void SetThreadPoolData(ThreadPoolData* data)
-        {
-            (void)data;
-        }
-#endif // AZ_THREAD_LOCAL
     };
 
-#ifdef AZ_THREAD_LOCAL
     template<class Allocator>
     AZ_THREAD_LOCAL ThreadPoolData* ThreadPoolSchemaHelper<Allocator>::m_threadData = 0;
-#endif // AZ_THREAD_LOCAL
 }
 
 #endif // AZ_POOL_ALLOCATION_SCHEME_H

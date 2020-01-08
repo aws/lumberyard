@@ -18,133 +18,16 @@
 
 #include "terrain.h"
 #include "terrain_sector.h"
-#include "StatObj.h"
+#include "Ocean.h"
 #include "ObjMan.h"
 #include "3dEngine.h"
-#include "Vegetation.h"
 #include "RoadRenderNode.h"
 #include "MergedMeshRenderNode.h"
-#include "MergedMeshGeometry.h"
-#include "Brush.h"
-#include "DecalRenderNode.h"
-#include "WaterVolumeRenderNode.h"
 #include "IEntitySystem.h"
 #include <MathConversion.h>
-#include <Vegetation/StaticVegetationBus.h>
 
-
-#define RAD2BYTE(x) ((x)* 255.0f / float(g_PI2))
-#define BYTE2RAD(x) ((x)* float(g_PI2) / 255.0f)
 
 //////////////////////////////////////////////////////////////////////////
-IRenderNode* CTerrain::AddVegetationInstance(int nStaticGroupID, const Vec3& vPos, const float fScale, uint8 ucBright,
-    uint8 angle, uint8 angleX, uint8 angleY)
-{
-    if (vPos.x <= 0 || vPos.y <= 0 || vPos.x >= CTerrain::GetTerrainSize() || vPos.y >= CTerrain::GetTerrainSize() || fScale * VEGETATION_CONV_FACTOR < 1.f)
-    {
-        return 0;
-    }
-    IRenderNode* renderNode = NULL;
-
-    assert(DEFAULT_SID >= 0 && DEFAULT_SID < GetObjManager()->GetListStaticTypes().Count());
-
-    if (nStaticGroupID < 0 || nStaticGroupID >= GetObjManager()->GetListStaticTypes()[DEFAULT_SID].Count())
-    {
-        return 0;
-    }
-
-    AZ::Aabb aabb;
-    StatInstGroup& group = GetObjManager()->GetListStaticTypes()[DEFAULT_SID][nStaticGroupID];
-    if (!group.GetStatObj())
-    {
-        Warning("I3DEngine::AddStaticObject: Attempt to add object of undefined type");
-        return 0;
-    }
-    if (!group.bAutoMerged)
-    {
-        CVegetation* pEnt = (CVegetation*)Get3DEngine()->CreateRenderNode(eERType_Vegetation);
-        pEnt->SetScale(fScale);
-        pEnt->m_vPos = vPos;
-        pEnt->SetStatObjGroupIndex(nStaticGroupID);
-        pEnt->m_ucAngle = angle;
-        pEnt->m_ucAngleX = angleX;
-        pEnt->m_ucAngleY = angleY;
-        aabb = LyAABBToAZAabb(pEnt->CalcBBox());
-
-        float fEntLengthSquared = pEnt->GetBBox().GetSize().GetLengthSquared();
-        if (fEntLengthSquared > MAX_VALID_OBJECT_VOLUME || !_finite(fEntLengthSquared) || fEntLengthSquared <= 0)
-        {
-            Warning("CTerrain::AddVegetationInstance: Object has invalid bbox: %s,%s, GetRadius() = %.2f",
-                pEnt->GetName(), pEnt->GetEntityClassName(), sqrt_tpl(fEntLengthSquared) * 0.5f);
-        }
-
-        pEnt->Physicalize();
-        Get3DEngine()->RegisterEntity(pEnt);
-        renderNode = pEnt;
-    }
-    else
-    {
-        SProcVegSample sample;
-        sample.InstGroupId = nStaticGroupID;
-        sample.pos = vPos;
-        sample.scale = (uint8)SATURATEB(fScale * VEGETATION_CONV_FACTOR);
-        Matrix33 mr = Matrix33::CreateRotationXYZ(Ang3(BYTE2RAD(angleX), BYTE2RAD(angleY), BYTE2RAD(angle)));
-
-        if (group.GetAlignToTerrainAmount() != 0.f)
-        {
-            Matrix33 m33;
-            GetTerrain()->GetTerrainAlignmentMatrix(vPos, group.GetAlignToTerrainAmount(), m33);
-            sample.q = Quat(m33) * Quat(mr);
-        }
-        else
-        {
-            sample.q = Quat(mr);
-        }
-        sample.q.NormalizeSafe();
-        renderNode = m_pMergedMeshesManager->AddInstance(sample);
-
-        AZ::Transform transform = LYTransformToAZTransform(mr) * AZ::Transform::CreateScale(AZ::Vector3(fScale));
-        transform.SetTranslation(LYVec3ToAZVec3(sample.pos));
-
-        aabb = LyAABBToAZAabb(group.GetStatObj()->GetAABB());
-        aabb.ApplyTransform(transform);
-    }
-
-    Vegetation::StaticVegetationNotificationBus::Broadcast(&Vegetation::StaticVegetationNotificationBus::Events::InstanceAdded, renderNode, aabb);
-
-    return renderNode;
-}
-
-void CTerrain::RemoveAllStaticObjects()
-{
-    if (!Get3DEngine()->IsObjectTreeReady())
-    {
-        return;
-    }
-
-    PodArray<SRNInfo> lstObjects;
-    Get3DEngine()->GetObjectTree()->MoveObjectsIntoList(&lstObjects, NULL);
-
-    for (int i = 0; i < lstObjects.Count(); i++)
-    {
-        IRenderNode* pNode = lstObjects.GetAt(i).pNode;
-        switch (pNode->GetRenderNodeType())
-        {
-        case eERType_Vegetation:
-            if (!(pNode->GetRndFlags() & ERF_PROCEDURAL))
-            {
-                pNode->ReleaseNode();
-            }
-            break;
-        case eERType_MergedMesh:
-            pNode->ReleaseNode();
-            break;
-        }
-    }
-
-    Vegetation::StaticVegetationNotificationBus::Broadcast(&Vegetation::StaticVegetationNotificationBus::Events::VegetationCleared);
-}
-
 #define GET_Z_VAL(_x, _y) heightmap[(_x) * nTerrainSize + (_y)]
 
 void CTerrain::BuildErrorsTableForArea(
@@ -297,8 +180,15 @@ void CTerrain::SetTerrainElevation(int offsetX, int offsetY, int areaSize, const
     const Sector SectorMaxX = (offsetX + areaSize) >> m_UnitToSectorBitShift;
     const Sector SectorMaxY = (offsetY + areaSize) >> m_UnitToSectorBitShift;
     // TODO : figure out if the water level should be used to calculate the Terrain node's AABB.
-    const float fOceanLevel = OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : GetWaterLevel();
-
+    float fOceanLevel = WATER_LEVEL_UNKNOWN;
+    if (OceanToggle::IsActive())
+    {
+        fOceanLevel = OceanRequest::GetOceanLevel();
+    }
+    else
+    {
+        fOceanLevel = m_pOcean ? m_pOcean->GetWaterLevel() : WATER_LEVEL_UNKNOWN;
+    }
     for (Sector sectorX = SectorMinX; sectorX < SectorMaxX; sectorX++)
     {
         for (Sector sectorY = SectorMinY; sectorY < SectorMaxY; sectorY++)
@@ -420,22 +310,4 @@ void CTerrain::ResetTerrainVertBuffers()
     {
         m_RootNode->ReleaseHeightMapGeometry(true, nullptr);
     }
-}
-
-// defined in CryEngine\Cry3DEngine\3dEngine.cpp
-namespace OceanGlobals
-{
-    extern float g_oceanStep;
-}
-
-void CTerrain::SetOceanWaterLevel(float fOceanWaterLevel)
-{
-    SetWaterLevel(fOceanWaterLevel);
-    pe_params_buoyancy pb;
-    pb.waterPlane.origin.Set(0, 0, fOceanWaterLevel);
-    if (gEnv->pPhysicalWorld)
-    {
-        gEnv->pPhysicalWorld->AddGlobalArea()->SetParams(&pb);
-    }
-    OceanGlobals::g_oceanStep = -1; // if e_PhysOceanCell is used, make it re-apply the params on Update
 }

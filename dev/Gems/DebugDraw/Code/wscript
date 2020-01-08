@@ -13,14 +13,18 @@
 def build(bld):
 
     bld.DefineGem(
-        includes        = [ bld.Path('Code/CryEngine/CryAction') ],
+        includes        = [ bld.Path('Code/CryEngine/CryCommon'),
+                            bld.Path('Code/CryEngine/CryAction')
+                          ],
         file_list       = [ 'debugdraw.waf_files' ],
         test_all_file_list = ['debugdraw_tests.waf_files'],
         disable_tests   = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
 
         editor = dict(
             defines     = ['DEBUGDRAW_GEM_EDITOR'],
-            includes    = [bld.Path('Code/CryEngine/CryAction')],
+            includes    = [ bld.Path('Code/CryEngine/CryCommon'),
+                            bld.Path('Code/CryEngine/CryAction')
+                          ],
             file_list   = [ 'debugdraw_editor.waf_files' ],
             test_all_file_list = ['debugdraw_tests.waf_files']
         ),

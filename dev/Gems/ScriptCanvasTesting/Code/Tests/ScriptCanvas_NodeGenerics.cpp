@@ -117,7 +117,7 @@ namespace ScriptCanvas
         return source.GetNormalizedSafe(Data::ToVectorFloat(tolerance));
     }
 
-    void NormalizeWithDefaultInputOverrides(Node& node) { Node::SetDefaultValuesByIndex< 1, 2 >::_(node, 3.3, true); }
+    void NormalizeWithDefaultInputOverrides(Node& node) { SetDefaultValuesByIndex< 1, 2 >::_(node, 3.3, true); }
     SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(NormalizeWithDefault, NormalizeWithDefaultInputOverrides, "Math/Vector3", "{1A56B08E-7E48-4240-878A-397A912519B6}", "description placeholder", "Vector", "Tolerance", "Fake Testing Default Value");
 }
 

@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Windows":
+        [
+            "ChatPlay_Traits_Platform.h",
+            "ChatPlay_Traits_Windows.h"
+        ]
+    }
+}

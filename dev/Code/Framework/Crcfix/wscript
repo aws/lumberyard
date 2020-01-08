@@ -27,9 +27,7 @@ def build(bld):
         debug_output_file_name       = 'crcfixD',
 
         # Platform Specific
-        win_x64_vs2013_output_folder = ['Tools/crcfix/bin/vc120/'],
-        win_x64_vs2015_output_folder = ['Tools/crcfix/bin/vc140/'],
-        win_x64_vs2017_output_folder = ['Tools/crcfix/bin/vc141/'],
+        win_x64_output_folder = ['Tools/crcfix/bin/windows/'],
         win_x64_clang_output_folder  = ['Tools/crcfix/bin/clang/'],
 
         win_x64_clang_cxxflags       = ['-Wno-int-to-void-pointer-cast',

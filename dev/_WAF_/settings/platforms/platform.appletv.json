@@ -20,10 +20,12 @@
     ],
 
     "attributes"    : {
+        "game_platform"         : "appletv",
         "is_apple"              : true,
         "default_folder_name"   : "BinAppleTV",
-        "default_launcher_name" : "AppleTVLauncher"
-    },
+        "default_launcher_name" : "AppleTVLauncher",
+        "platform_folder"        : "AppleTV",
+        "platform_keyword"       : "appletv"    },
 
     "settings"      : {
         "Apple TV Options" :

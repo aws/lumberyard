@@ -12,6 +12,8 @@
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/std/containers/vector.h>
 
+#include <AzFramework/StringFunc/StringFunc.h>
+
 #include <AzToolsFramework/AssetBrowser/Entries/SourceAssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/Entries/ProductAssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/Thumbnails/SourceThumbnail.h>
@@ -27,6 +29,9 @@ namespace AzToolsFramework
         SourceAssetBrowserEntry::~SourceAssetBrowserEntry()
         {
             EntryCache::GetInstance()->m_fileIdMap.erase(m_fileId);
+            AZStd::string fullPath = m_fullPath;
+            AzFramework::StringFunc::Path::Normalize(fullPath);
+            EntryCache::GetInstance()->m_absolutePathToFileId.erase(fullPath);
 
             if (m_sourceId != -1) 
             {

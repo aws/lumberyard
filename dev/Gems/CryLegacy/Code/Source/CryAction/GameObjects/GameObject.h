@@ -442,6 +442,6 @@ private:
     static CGameObjectSystem* m_pGOS;
 };
 
-DECLARE_COMPONENT_POINTERS(CGameObject);
+DECLARE_SMART_POINTERS(CGameObject);
 
 #endif // CRYINCLUDE_CRYACTION_GAMEOBJECTS_GAMEOBJECT_H

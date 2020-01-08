@@ -1,0 +1,18 @@
+{
+  "platform": {
+    "win_x64_vs2017": {
+      "libpath_debug": [
+        "External/IoTDevice/1.0.0/lib/windows/intel64/vs2015/Debug"
+      ],
+      "lib_debug": [
+        "aws-iot-sdk-cpp.lib"
+      ],
+      "libpath_release": [
+        "External/IoTDevice/1.0.0/lib/windows/intel64/vs2015/Release"
+      ],
+      "lib_release": [
+        "aws-iot-sdk-cpp.lib"
+      ]
+    }
+  }
+}

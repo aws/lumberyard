@@ -65,7 +65,7 @@ namespace
                 return true;
             }
 
-            return (static_cast<AZ::u64>(excludeAttributeData->Get(nullptr)) & exclusionFlags);
+            return (static_cast<AZ::u64>(excludeAttributeData->Get(nullptr)) & exclusionFlags) != 0; // warning C4800: 'AZ::u64': forcing value to bool 'true' or 'false' (performance warning)
         }
         return false;
     }
@@ -75,7 +75,7 @@ namespace
     {
         if (excludeAttributeData)
         {
-            return static_cast<AZ::u64>(excludeAttributeData->Get(nullptr)) & AZ::Script::Attributes::ExcludeFlags::Preview;
+            return (static_cast<AZ::u64>(excludeAttributeData->Get(nullptr)) & AZ::Script::Attributes::ExcludeFlags::Preview) != 0; // warning C4800: 'AZ::u64': forcing value to bool 'true' or 'false' (performance warning)
         }
 
         return false;
@@ -101,7 +101,7 @@ namespace
 
     bool MethodHasAttribute(const AZ::BehaviorMethod* method, AZ::Crc32 attribute)
     {
-        return AZ::FindAttribute(attribute, method->m_attributes);
+        return AZ::FindAttribute(attribute, method->m_attributes) != nullptr; // warning C4800: 'AZ::Attribute *': forcing value to bool 'true' or 'false' (performance warning)
     }
 
     bool HasAttribute(AZ::BehaviorClass* behaviorClass, AZ::Crc32 attribute)
@@ -164,6 +164,7 @@ namespace
             {
                 ScriptCanvasEditor::CategoryInformation categoryInfo;
 
+                bool isDeprecated = false;
                 AZStd::string categoryPath = classData->m_editData ? classData->m_editData->m_name : classData->m_name;
 
                 if (classData->m_editData)
@@ -193,7 +194,7 @@ namespace
                                 {
                                     categoryInfo.m_paletteOverride = categoryAttributeData->Get(nullptr);
                                 }
-                            }
+                            } 
                         }
                     }
 
@@ -215,16 +216,6 @@ namespace
                     if (classData == nullptr)
                     {
                         continue;
-                    }
-
-                    if (auto isDeprecatedAttributePtr = AZ::FindAttribute(AZ::Script::Attributes::Deprecated, classData->m_attributes))
-                    {
-                        bool isDeprecated = false;
-                        AZ::AttributeReader(nullptr, isDeprecatedAttributePtr).Read<bool>(isDeprecated);
-                        if (isDeprecated)
-                        {
-                            continue;
-                        }
                     }
 
                     // Detect primitive types os we avoid making nodes out of them.
@@ -281,6 +272,12 @@ namespace
                 if (IsDeprecated(behaviorClass->m_attributes))
                 {
                     continue;
+                }
+
+                // Only bind Behavior Classes marked with the Scope type of Launcher
+                if (!AZ::Internal::IsInScope(behaviorClass->m_attributes, AZ::Script::Attributes::ScopeFlags::Launcher))
+                {
+                    continue; // skip this class
                 }
 
                 // Check for "ExcludeFrom" attribute for ScriptCanvas
@@ -463,6 +460,12 @@ namespace
                 if (ebusIter.first == ebus->m_deprecatedName)
                 {
                     continue;
+                }
+                
+                // Only bind Behavior Buses marked with the Scope type of Launcher
+                if (!AZ::Internal::IsInScope(ebus->m_attributes, AZ::Script::Attributes::ScopeFlags::Launcher))
+                {
+                    continue; // skip this bus
                 }
 
                 // EBus Handler
@@ -704,6 +707,7 @@ namespace ScriptCanvasEditor
 
             bool isMissingEntry(false);
             bool isMissingTooltip(false);
+            bool isDeprecated(false);
 
             if (classData && classData->m_editData && classData->m_editData->m_name)
             {
@@ -767,6 +771,15 @@ namespace ScriptCanvasEditor
                         }
                     }
 
+
+                    if (auto deprecatedAttribute = editorDataElement->FindAttribute(AZ::Script::Attributes::Deprecated))
+                    {
+                        if (auto deprecatedAttributeData = azdynamic_cast<const AZ::Edit::AttributeData<bool>*>(deprecatedAttribute))
+                        {
+                            isDeprecated = deprecatedAttributeData->Get(nullptr);
+                        }
+                    }
+
                     if (customNodeInformation->m_toolTip.empty() && classData->m_editData->m_description)
                     {
                         customNodeInformation->m_toolTip = classData->m_editData->m_description;
@@ -774,7 +787,14 @@ namespace ScriptCanvasEditor
                 }
             }
 
-            m_registeredNodes.emplace(AZStd::make_pair(nodeIdentifier, customNodeInformation));
+            if (!isDeprecated)
+            {
+                m_registeredNodes.emplace(AZStd::make_pair(nodeIdentifier, customNodeInformation));
+            }
+            else
+            {
+                delete customNodeInformation;
+            }
         }
     }
 

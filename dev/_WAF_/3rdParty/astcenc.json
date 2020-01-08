@@ -1,0 +1,6 @@
+{
+    "name": "astcenc",
+    "source": "@3P:astcenc@",
+    "description": "ASTC Encoder",
+    "lib_required": "False"
+}

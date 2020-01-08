@@ -13,7 +13,10 @@
 
 #include <GraphCanvas/Components/Nodes/Comment/CommentBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
+#include <GraphCanvas/Editor/AssetEditorBus.h>
 #include <GraphCanvas/GraphCanvasBus.h>
+
+#include <GraphCanvas/Utils/ConversionUtils.h>
 
 
 namespace GraphCanvas

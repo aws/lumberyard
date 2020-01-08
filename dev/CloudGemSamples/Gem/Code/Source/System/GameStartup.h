@@ -15,14 +15,6 @@
 #include <IGameFramework.h>
 #include <IWindowMessageHandler.h>
 
-#if defined(APPLE)
-#define GAME_FRAMEWORK_FILENAME  "libCryAction.dylib"
-#elif defined(LINUX)
-#define GAME_FRAMEWORK_FILENAME  "libCryAction.so"
-#else
-#define GAME_FRAMEWORK_FILENAME  "CryAction.dll"
-#endif
-
 #define GAME_WINDOW_CLASSNAME    "CloudGemSamples"
 
 namespace LYGame
@@ -59,10 +51,6 @@ namespace LYGame
         virtual ~GameStartup();
 
     private:
-
-#if defined(WIN32)
-        bool HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT* pResult);
-#endif
         void ExecuteAutoExec();
 
         IGameFramework*         m_Framework;

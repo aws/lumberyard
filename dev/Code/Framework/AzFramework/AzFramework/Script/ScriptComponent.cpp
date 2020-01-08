@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #if !defined(AZCORE_EXCLUDE_LUA)
 
@@ -958,5 +957,3 @@ namespace AzFramework
 }   // namespace AzFramework
 
 #endif // #if !defined(AZCORE_EXCLUDE_LUA)
-
-#endif  // AZ_UNITY_BUILD

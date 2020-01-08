@@ -87,7 +87,7 @@ namespace ScriptEvents
 
     }
 
-    bool ScriptEventMethod::Call(AZ::BehaviorValueParameter* params, unsigned int paramCount, AZ::BehaviorValueParameter* returnValue)
+    bool ScriptEventMethod::Call(AZ::BehaviorValueParameter* params, unsigned int paramCount, AZ::BehaviorValueParameter* returnValue) const
     {
         Internal::BindingRequest::BindingParameters parameters;
         parameters.m_eventName = m_name;

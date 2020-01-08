@@ -35,7 +35,7 @@ namespace Visibility
         : public VisAreaConfiguration
     {
     public:
-        AZ_TYPE_INFO(EditorVisAreaConfiguration, "{C329E65C-1F34-5C80-9A7A-4B568105256B}", VisAreaConfiguration);
+        AZ_TYPE_INFO_LEGACY(EditorVisAreaConfiguration, "{C329E65C-1F34-5C80-9A7A-4B568105256B}", VisAreaConfiguration);
         AZ_CLASS_ALLOCATOR(EditorVisAreaConfiguration, AZ::SystemAllocator,0);
 
         static void Reflect(AZ::ReflectContext* context);

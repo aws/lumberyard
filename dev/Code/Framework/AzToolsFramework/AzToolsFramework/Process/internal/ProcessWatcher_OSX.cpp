@@ -12,7 +12,7 @@
 
 #include "StdAfx.h"
 
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 
 #include <AzToolsFramework/Process/ProcessWatcher.h>
 #include <AzToolsFramework/Process/ProcessCommunicator.h>
@@ -195,7 +195,17 @@ namespace AzToolsFramework
             char currentChar = processLaunchInfo.m_commandlineParameters[pos];
             if (currentChar == '"')
             {
-                inQuotes = !inQuotes;
+                // Allow quote literals to go through as quotes which do NOT alter our "in quotes" bool below
+                // This is to conform with our PC parameter strings which will sometimes include path parameters which
+                // Can have spaces and commas and need to be output as paramname="\"Some pa,ram\"" in order to capture both correctly
+                if(outputString.length() && outputString.back() == '\\')
+                {
+                    outputString.back() = currentChar;
+                }
+                else
+                {
+                    inQuotes = !inQuotes;
+                }
             }
             else if ((currentChar == ' ') && (!inQuotes))
             {
@@ -389,4 +399,4 @@ namespace AzToolsFramework
     }
 } //namespace AzToolsFramework
 
-#endif // AZ_PLATFORM_APPLE
+#endif // AZ_TRAIT_OS_PLATFORM_APPLE

@@ -11,6 +11,7 @@
 */
 
 #include <ImageProcessing_precompiled.h>
+#include <ImageProcessing_Traits_Platform.h>
 #include <Editor/EditorCommon.h>
 #include <Processing/ImageToProcess.h>
 #include <ImageLoader/ImageLoaders.h>
@@ -66,7 +67,7 @@ namespace ImageProcessingEditor
         static AZStd::string mbStr = "MB";
         static AZStd::string gbStr = "GB";
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_IMAGEPROCESSING_USE_BASE10_BYTE_PREFIX
         kb = 1000.0;
         mb = kb * 1000.0;
         gb = mb * 1000.0;
@@ -74,7 +75,7 @@ namespace ImageProcessingEditor
         kbStr = "kB";
         mbStr = "mB";
         gbStr = "gB";
-#endif //AZ_PLATFORM_APPLE
+#endif // AZ_TRAIT_IMAGEPROCESSING_USE_BASE10_BYTE_PREFIX
 
         if (fileSizeInBytes < kb)
         {
@@ -115,13 +116,13 @@ namespace ImageProcessingEditor
         {
             readableString = "macOS";
         }
-        else if (platformStrLowerCase == "xboxone")
+        else if (platformStrLowerCase == "xenia")
         {
-            readableString = "Xbox One";
+            readableString = "Xenia";
         }
-        else if (platformStrLowerCase == "ps4")
+        else if (platformStrLowerCase == "provo")
         {
-            readableString = "PS4";
+            readableString = "Provo";
         }
         else if (platformStrLowerCase == "ios")
         {
@@ -152,9 +153,16 @@ namespace ImageProcessingEditor
         m_fullPath = texturePath;
         AzFramework::StringFunc::Path::GetFullFileName(texturePath.c_str(), m_textureName);
 
+        m_img = IImageObjectPtr(LoadImageFromFile(m_fullPath));
+
+        if (m_img == nullptr)
+        {
+            AZ_Warning("Texture Editor", false, "%s is not a valid texture image.", texturePath.c_str());
+            return;
+        }
+
         bool generatedDefaults = false;
         m_settingsMap = TextureSettings::GetMultiplatformTextureSetting(m_fullPath, generatedDefaults);
-        m_img = IImageObjectPtr(LoadImageFromFile(m_fullPath));
 
         // Get the preset id from one platform. The preset id for each platform should always be same
         AZ_Assert(m_settingsMap.size() > 0, "There is no platform information");

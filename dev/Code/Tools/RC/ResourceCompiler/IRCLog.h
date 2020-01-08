@@ -27,7 +27,8 @@ struct IRCLog
         eType_Info,
         eType_Warning,
         eType_Error,
-        eType_Context
+        eType_Context,
+        eType_Summary
     };
 
     virtual ~IRCLog()
@@ -44,5 +45,6 @@ void RCLog(const char* szFormat, ...);
 void RCLogWarning(const char* szFormat, ...);
 void RCLogError(const char* szFormat, ...);
 void RCLogContext(const char* szMessage);
+void RCLogSummary(const char* szFormat, ...);
 
 #endif // CRYINCLUDE_TOOLS_RC_RESOURCECOMPILER_IRCLOG_H

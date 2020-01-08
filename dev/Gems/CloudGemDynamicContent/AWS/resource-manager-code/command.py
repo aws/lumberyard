@@ -83,6 +83,18 @@ def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
     add_common_args(subparser)
     subparser.set_defaults(func=content_manifest.command_upload_manifest_content)
 
+    subparser = dynamic_content_subparsers.add_parser('upload-folder', help='Upload all of the bundles found in a given folder')
+    subparser.add_argument('--folder', required=True, help='Path to the folder upload bundles from')
+    subparser.add_argument('--deployment-name', required=False, help='Which deployment to upload content to')
+    subparser.add_argument('--staging-status', required=False, help='What staging status should the content and manifest default to (eg PUBLIC/PRIVATE)')
+    subparser.add_argument('--start-date', required=False, help='Start date value for WINDOW staging (NOW or date/time in format January 15 2018 14:30) - UTC time')
+    subparser.add_argument('--end-date', required=False, help='End date value for WINDOW staging (NEVER or date/time in format January 15 2018 14:30) - UTC time')
+    subparser.add_argument('--signing', required=False, action='store_true', help='Add file signatures to the content table for client side verification')
+    subparser.add_argument('--bundle-type', required=False, default='pak', help='Type of bundle (by file extension, pak for example) to search for')
+
+    add_common_args(subparser)
+    subparser.set_defaults(func=content_manifest.upload_folder_command)
+
     subparser = dynamic_content_subparsers.add_parser('upload-cf-key', help='Upload the cloudfront key to the dynamic content access bucket')
     subparser.add_argument('--key-path', required=True, help='Path to the private key file to upload')
     subparser.add_argument('--deployment-name', required=False, help='Which deployment to upload the key to')

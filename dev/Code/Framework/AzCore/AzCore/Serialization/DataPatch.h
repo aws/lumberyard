@@ -99,10 +99,8 @@ namespace AZ
 
         DataPatch();
         DataPatch(const DataPatch& rhs);
-#ifdef AZ_HAS_RVALUE_REFS
         DataPatch(DataPatch&& rhs);
         DataPatch& operator=(DataPatch&& rhs);
-#endif // AZ_HAS_RVALUE_REF
         DataPatch& operator=(const DataPatch& rhs);
 
         /**

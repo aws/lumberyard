@@ -26,7 +26,7 @@ void FloatableDockPanel::onFloatingStatusChanged(bool floating)
     if (floating)
     {
         Qt::WindowFlags flags = Qt::Window | Qt::WindowMaximizeButtonHint;
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
         // On macOS, tool windows correspond to the Floating class of windows. This means that the
         // window lives on a level above normal windows making it impossible to put a normal window
         // on top of it. Therefore we need to add Qt::Tool to floating panels to ensure they are not

@@ -31,6 +31,10 @@ namespace PhysX
 
             /// Shows the collision groups tab in the configuration window
             virtual void ShowCollisionGroupsTab() = 0;
+
+            /// Shows the global settings tab in the configuration window
+            virtual void ShowGlobalSettingsTab() = 0;
+
         };
 
         using ConfigurationWindowRequestBus = AZ::EBus<ConfigurationWindowRequests>;

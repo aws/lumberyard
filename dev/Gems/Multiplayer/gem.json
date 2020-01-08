@@ -22,6 +22,6 @@
     "Version": "1.0.0",
     "LinkType": "Dynamic",
     "Tags": ["GridMate","Multiplayer","Networking", "CertificateManager"],
-    "Summary": "The Multiplayer Gem provides FlowGraph nodes and a public API for multiplayer functionality like connecting and hosting. It also provides FlowGraph nodes for multiplayer events like players connecting and disconnecting.",
+    "Summary": "The Multiplayer Gem provides a public API for multiplayer functionality like connecting and hosting.",
     "IconPath": "preview.png"
 }

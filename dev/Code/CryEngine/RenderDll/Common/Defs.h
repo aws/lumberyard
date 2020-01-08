@@ -22,6 +22,8 @@
         #include "Xenia/Defs_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/Defs_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/Defs_h_salem.inl"
     #endif
 #endif
 #if defined(DEFS_H_NO_SIGNAL_H)

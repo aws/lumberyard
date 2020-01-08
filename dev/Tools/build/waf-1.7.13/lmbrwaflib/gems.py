@@ -233,6 +233,23 @@ def DefineGem(ctx, *k, **kw):
             dep_include = dep.get_include_path()
             if os.path.exists(dep_include):
                 cry_utils.append_to_unique_list(args['includes'], dep_include)
+                
+            # If the dependent Gem has a PAL 'Platform' subfolder in the includes, then assume it will have platform specific folders that were
+            # meant to be exported to any other dependent gem
+            dep_platform_base_dir = os.path.join(dep_include, 'Platform')
+            if os.path.exists(dep_platform_base_dir):
+                # Go through all of the possible platform names to build and determine if they exist. Ideally, if there is a subfolder
+                # in your Gems's Code/Include called 'Platform', and it has sub directories that match the platform names, then it is
+                # meant to be exported, otherwise it would be in the Gem's 'Code/Source'
+                target_platforms = ctx.get_all_target_platforms(False)
+                for target_platform in target_platforms:
+                    platform_folder = target_platform.attributes.get('platform_folder', None)
+                    if not platform_folder:
+                        continue
+                    directory = os.path.join(dep_platform_base_dir, platform_folder)
+                    if os.path.isdir(directory):
+                        cry_utils.append_to_unique_list(kw.setdefault('{}_includes'.format(target_platform.platform), []),directory)
+
             for module in dep.modules:
                 if module.requires_linking(ctx):
                     cry_utils.append_to_unique_list(args['use'], module.target_name)
@@ -271,6 +288,10 @@ def DefineGem(ctx, *k, **kw):
             'export_includes': [],
             'lib': [],
             'libpath': [],
+
+            # Linux debug/profile Gems often cannot find their dependencies in the same folder without specifying this option. So this should be a good default value.
+            'linux_rpath': ['$ORIGIN'],
+
             'features': [],
             'use': [],
             'uselib': []
@@ -620,10 +641,11 @@ class Gem(object):
             for gem_3p_config_file in gem_3p_config_files:
                 gem_3p_config_node = gem_3p_base_node.make_node(os.path.basename(gem_3p_config_file));
                 lib_config, uselib_names,_ = self.ctx.get_3rd_party_config_record(gem_3p_config_node)
-                for uselib_name in uselib_names:
-                    self.local_uselibs.append(uselib_name)
-                if "non_release_only" in lib_config:
-                    self.local_uselib_non_release = lib_config["non_release_only"].lower() == 'true'
+                if uselib_names:
+                    for uselib_name in uselib_names:
+                        self.local_uselibs.append(uselib_name)
+                    if "non_release_only" in lib_config:
+                        self.local_uselib_non_release = lib_config["non_release_only"].lower() == 'true'
 
         found_default_module = False
         modules_list = reader.field_opt('Modules', [])

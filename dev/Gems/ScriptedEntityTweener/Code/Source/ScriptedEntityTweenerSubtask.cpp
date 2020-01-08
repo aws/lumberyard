@@ -12,7 +12,6 @@
 #include "ScriptedEntityTweener_precompiled.h"
 
 #include <AzCore/Math/Color.h>
-#include <AzCore/RTTI/BehaviorContext.h>
 
 #include <ScriptedEntityTweener/ScriptedEntityTweenerBus.h>
 
@@ -21,32 +20,67 @@
 
 namespace ScriptedEntityTweener
 {
-    bool ScriptedEntityTweenerSubtask::Initialize(const AnimationParameterAddressData& addressData, const AZStd::any& targetValue, const AnimationProperties& properties)
+    namespace SubtaskHelper
+    {
+        template <typename T>
+        AZ_INLINE void DoSafeSet(AZ::BehaviorEBus::VirtualProperty* prop, AZ::EntityId entityId, T& data)
+        {
+            if (!prop || !prop->m_setter)
+            {
+                return;
+            }
+            if (prop->m_setter->m_event)
+            {
+                prop->m_setter->m_event->Invoke(entityId, data);
+            }
+            else if (prop->m_setter->m_broadcast)
+            {
+                prop->m_setter->m_broadcast->Invoke(data);
+            }
+        }
+
+        template <typename T>
+        AZ_INLINE void DoSafeGet(AZ::BehaviorEBus::VirtualProperty* prop, AZ::EntityId entityId, T& data)
+        {
+            if (!prop || !prop->m_getter)
+            {
+                return;
+            }
+            if (prop->m_getter->m_event)
+            {
+                prop->m_getter->m_event->InvokeResult(data, entityId);
+            }
+            else if (prop->m_getter->m_broadcast)
+            {
+                prop->m_getter->m_broadcast->InvokeResult(data);
+            }
+        }
+    }
+
+    bool ScriptedEntityTweenerSubtask::Initialize(const AnimationParameterAddressData& animParamData, const AZStd::any& targetValue, const AnimationProperties& properties)
     {
         Reset();
-        if (GetAnimatablePropertyAddress(m_animatableAddress, addressData.m_componentName, addressData.m_virtualPropertyName))
+        if (CacheVirtualProperty(animParamData))
         {
-            Maestro::SequenceAgentComponentRequestBus::EventResult(m_propertyTypeId, *m_sequenceAgentBusId, &Maestro::SequenceAgentComponentRequestBus::Events::GetAnimatedAddressTypeId, m_animatableAddress);
-            if (!m_propertyTypeId.IsNull())
+            // Set initial value
+            if (GetVirtualValue(m_valueInitial))
             {
-                if (GetVirtualValue(m_valueInitial))
+                if (GetValueFromAny(m_valueTarget, targetValue))
                 {
-                    if (GetValueFromAny(m_valueTarget, targetValue))
-                    {
-                        m_isActive = true;
-                        m_animationProperties = properties;
+                    m_isActive = true;
+                    m_animationProperties = properties;
 
-                        if (m_animationProperties.m_isFrom)
-                        {
-                            EntityAnimatedValue initialValue = m_valueInitial;
-                            m_valueInitial = m_valueTarget;
-                            m_valueTarget = initialValue;
-                        }
-                        return true;
+                    if (m_animationProperties.m_isFrom)
+                    {
+                        EntityAnimatedValue initialValue = m_valueInitial;
+                        m_valueInitial = m_valueTarget;
+                        m_valueTarget = initialValue;
                     }
+                    return true;
                 }
             }
         }
+        AZ_Warning("ScriptedEntityTweenerSubtask", false, "ScriptedEntityTweenerSubtask::Initialize - Initialization failed for [%s, %s]", m_animParamData.m_componentName.c_str(), m_animParamData.m_virtualPropertyName.c_str());
         return false;
     }
 
@@ -67,7 +101,7 @@ namespace ScriptedEntityTweener
         }
 
         EntityAnimatedValue currentValue;
-        if (m_propertyTypeId == AZ::AzTypeInfo<float>::Uuid())
+        if (m_virtualPropertyTypeId == AZ::AzTypeInfo<float>::Uuid())
         {
             float initialValue;
             m_valueInitial.GetValue(initialValue);
@@ -79,7 +113,7 @@ namespace ScriptedEntityTweener
 
             SetVirtualValue(currentValue);
         }
-        else if (m_propertyTypeId == AZ::AzTypeInfo<AZ::Vector3>::Uuid() || m_propertyTypeId == AZ::AzTypeInfo<AZ::Color>::Uuid())
+        else if (m_virtualPropertyTypeId == AZ::AzTypeInfo<AZ::Vector3>::Uuid() || m_virtualPropertyTypeId == AZ::AzTypeInfo<AZ::Color>::Uuid())
         {
             AZ::Vector3 initialValue;
             m_valueInitial.GetValue(initialValue);
@@ -91,7 +125,7 @@ namespace ScriptedEntityTweener
 
             SetVirtualValue(currentValue);
         }
-        else if (m_propertyTypeId == AZ::AzTypeInfo<AZ::Quaternion>::Uuid())
+        else if (m_virtualPropertyTypeId == AZ::AzTypeInfo<AZ::Quaternion>::Uuid())
         {
             AZ::Quaternion initialValue;
             m_valueInitial.GetValue(initialValue);
@@ -154,7 +188,7 @@ namespace ScriptedEntityTweener
         m_timeSinceStart += (deltaTime * m_animationProperties.m_playbackSpeedMultiplier);
     }
 
-    bool ScriptedEntityTweenerSubtask::GetAnimatablePropertyAddress(Maestro::SequenceComponentRequests::AnimatablePropertyAddress& outAddress, const AZStd::string& componentName, const AZStd::string& virtualPropertyName)
+    bool ScriptedEntityTweenerSubtask::CacheVirtualProperty(const AnimationParameterAddressData& animParamData)
     {
         /*
         Relies on some behavior context definitions for lookup
@@ -169,48 +203,96 @@ namespace ScriptedEntityTweener
         behaviorContext->EBus<UiFaderNotificationBus>("UiFaderNotificationBus")
             ->Handler<BehaviorUiFaderNotificationBusHandler>();
         */
+
+        m_animParamData = animParamData;
+        m_virtualProperty = nullptr;
+        m_virtualPropertyTypeId = AZ::Uuid::CreateNull();
+
         AZ::BehaviorContext* behaviorContext = nullptr;
         EBUS_EVENT_RESULT(behaviorContext, AZ::ComponentApplicationBus, GetBehaviorContext);
-
-        AZ::Entity* entity = nullptr;
-        EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, m_sequenceAgentBusId->first);
-        if (entity && behaviorContext)
+        if (!behaviorContext)
         {
-            const AZ::Entity::ComponentArrayType& entityComponents = entity->GetComponents();
-            for (AZ::Component* component : entityComponents)
-            {
-                const AZ::Uuid& componentId = (*component).RTTI_GetType();
-                auto findClassIter = behaviorContext->m_typeToClassMap.find(componentId);
-                if (findClassIter != behaviorContext->m_typeToClassMap.end())
-                {
-                    AZ::BehaviorClass* behaviorClass = findClassIter->second;
+            AZ_Error("ScriptedEntityTweenerSubtask", false, "ScriptedEntityTweenerSubtask::CacheVirtualProperty - failed to get behavior context for caching [%s]", animParamData.m_virtualPropertyName.c_str());
+            return false;
+        }
 
-                    if (behaviorClass->m_name == componentName)
-                    {
-                        for (auto reqBusName = behaviorClass->m_requestBuses.begin(); reqBusName != behaviorClass->m_requestBuses.end(); reqBusName++)
-                        {
-                            auto findBusIter = behaviorContext->m_ebuses.find(*reqBusName);
-                            if (findBusIter != behaviorContext->m_ebuses.end())
-                            {
-                                AZ::BehaviorEBus* behaviorEbus = findBusIter->second;
-                                if (behaviorEbus->m_virtualProperties.find(virtualPropertyName) != behaviorEbus->m_virtualProperties.end())
-                                {
-                                    outAddress = Maestro::SequenceComponentRequests::AnimatablePropertyAddress(component->GetId(), virtualPropertyName);
-                                    return true;
-                                }
-                            }
-                        }
-                    }
+        auto findClassIter = behaviorContext->m_classes.find(animParamData.m_componentName);
+        if (findClassIter == behaviorContext->m_classes.end())
+        {
+            AZ_Warning("ScriptedEntityTweenerSubtask", false, "ScriptedEntityTweenerSubtask::CacheVirtualProperty - failed to find behavior component class by component name [%s]", animParamData.m_componentName.c_str());
+            return false;
+        }
+
+        AZ::BehaviorEBus::VirtualProperty* virtualProperty = nullptr;
+        AZ::Uuid virtualPropertyTypeId = AZ::Uuid::CreateNull();
+
+        // Get the virtual property
+        AZ::BehaviorClass* behaviorClass = findClassIter->second;
+        for (auto reqBusName = behaviorClass->m_requestBuses.begin(); reqBusName != behaviorClass->m_requestBuses.end(); reqBusName++)
+        {
+            auto findBusIter = behaviorContext->m_ebuses.find(*reqBusName);
+            if (findBusIter != behaviorContext->m_ebuses.end())
+            {
+                AZ::BehaviorEBus* behaviorEbus = findBusIter->second;
+                auto virtualPropertyIter = behaviorEbus->m_virtualProperties.find(animParamData.m_virtualPropertyName);
+                if (virtualPropertyIter != behaviorEbus->m_virtualProperties.end())
+                {
+                    virtualProperty = &virtualPropertyIter->second;
+                    break;
                 }
             }
         }
-        //AZ_Warning("ScriptedEntityTweenerSubtask", false, "ScriptedEntityTweenerSubtask::GetAnimatablePropertyAddress - failed");
+        AZ_Warning("ScriptedEntityTweenerSubtask", virtualProperty, "ScriptedEntityTweenerSubtask::CacheVirtualProperty - failed to find virtual property by name [%s]", animParamData.m_virtualPropertyName.c_str());
+
+        // Virtual properties with event setters/getters require a valid entityId
+        if (virtualProperty)
+        {
+            if (((virtualProperty->m_setter && virtualProperty->m_setter->m_event)
+                || (virtualProperty->m_getter && virtualProperty->m_getter->m_event))
+                && !m_entityId.IsValid())
+            {
+                AZ_Warning("ScriptedEntityTweenerSubtask", false, "ScriptedEntityTweenerSubtask::CacheVirtualProperty - invalid entityId for virtual property's event setter/getter [%s, %s]", m_animParamData.m_componentName.c_str(), m_animParamData.m_virtualPropertyName.c_str());
+                virtualProperty = nullptr;
+            }
+        }
+
+        // Get the virtual property type
+        if (virtualProperty)
+        {
+            if (virtualProperty->m_getter->m_event)
+            {
+                virtualPropertyTypeId = virtualProperty->m_getter->m_event->GetResult()->m_typeId;
+            }
+            else if (virtualProperty->m_getter->m_broadcast)
+            {
+                virtualPropertyTypeId = virtualProperty->m_getter->m_broadcast->GetResult()->m_typeId;
+            }
+            AZ_Warning("ScriptedEntityTweenerSubtask", !virtualPropertyTypeId.IsNull(), "ScriptedEntityTweenerSubtask::CacheVirtualProperty - failed to find virtual property type Id [%s]", animParamData.m_virtualPropertyName.c_str());
+        }
+
+        if (virtualProperty && !virtualPropertyTypeId.IsNull())
+        {
+            m_virtualProperty = virtualProperty;
+            m_virtualPropertyTypeId = virtualPropertyTypeId;
+            return true;
+        }
+
         return false;
+    }
+
+    bool ScriptedEntityTweenerSubtask::IsVirtualPropertyCached()
+    {
+        return m_virtualProperty && !m_virtualPropertyTypeId.IsNull();
     }
 
     bool ScriptedEntityTweenerSubtask::GetValueFromAny(EntityAnimatedValue& value, const AZStd::any& anyValue)
     {
-        if (m_propertyTypeId == AZ::AzTypeInfo<float>::Uuid())
+        if (!IsVirtualPropertyCached())
+        {
+            return false;
+        }
+
+        if (m_virtualPropertyTypeId == AZ::AzTypeInfo<float>::Uuid())
         {
             float floatVal;
             if (any_numeric_cast(&anyValue, floatVal))
@@ -219,26 +301,26 @@ namespace ScriptedEntityTweener
             }
             else
             {
-                AZ_Warning("ScriptedEntityTweenerSubtask", false, "ScriptedEntityTweenerSubtask::GetValueFromAny - numeric cast to float failed [%s]", m_animatableAddress.GetVirtualPropertyName().c_str());
+                AZ_Warning("ScriptedEntityTweenerSubtask", false, "ScriptedEntityTweenerSubtask::GetValueFromAny - numeric cast to float failed [%s]", m_animParamData.m_virtualPropertyName.c_str());
                 return false;
             }
         }
-        else if (m_propertyTypeId == AZ::AzTypeInfo<AZ::Vector3>::Uuid() && anyValue.is<AZ::Vector3>())
+        else if (m_virtualPropertyTypeId == AZ::AzTypeInfo<AZ::Vector3>::Uuid() && anyValue.is<AZ::Vector3>())
         {
             value.SetValue(AZStd::any_cast<AZ::Vector3>(anyValue));
         }
-        else if (m_propertyTypeId == AZ::AzTypeInfo<AZ::Color>::Uuid() && anyValue.is<AZ::Color>())
+        else if (m_virtualPropertyTypeId == AZ::AzTypeInfo<AZ::Color>::Uuid() && anyValue.is<AZ::Color>())
         {
             AZ::Color color = AZStd::any_cast<AZ::Color>(anyValue);
             value.SetValue(color.GetAsVector3());
         }
-        else if (m_propertyTypeId == AZ::AzTypeInfo<AZ::Quaternion>::Uuid() && anyValue.is<AZ::Quaternion>())
+        else if (m_virtualPropertyTypeId == AZ::AzTypeInfo<AZ::Quaternion>::Uuid() && anyValue.is<AZ::Quaternion>())
         {
             value.SetValue(AZStd::any_cast<AZ::Quaternion>(anyValue));
         }
         else
         {
-            AZ_Warning("ScriptedEntityTweenerSubtask", false, "ScriptedEntityTweenerSubtask::GetValueFromAny - Virtual property type unsupported [%s]", m_animatableAddress.GetVirtualPropertyName().c_str());
+            AZ_Warning("ScriptedEntityTweenerSubtask", false, "ScriptedEntityTweenerSubtask::GetValueFromAny - Virtual property type unsupported [%s]", m_animParamData.m_virtualPropertyName.c_str());
             return false;
         }
         return true;
@@ -246,25 +328,30 @@ namespace ScriptedEntityTweener
 
     bool ScriptedEntityTweenerSubtask::GetValueAsAny(AZStd::any& anyValue, const EntityAnimatedValue& value)
     {
-        if (m_propertyTypeId == AZ::AzTypeInfo<float>::Uuid())
+        if (!IsVirtualPropertyCached())
+        {
+            return false;
+        }
+
+        if (m_virtualPropertyTypeId == AZ::AzTypeInfo<float>::Uuid())
         {
             float floatVal;
             value.GetValue(floatVal);
             anyValue = floatVal;
         }
-        else if (m_propertyTypeId == AZ::AzTypeInfo<AZ::Vector3>::Uuid())
+        else if (m_virtualPropertyTypeId == AZ::AzTypeInfo<AZ::Vector3>::Uuid())
         {
             AZ::Vector3 vectorValue;
             value.GetValue(vectorValue);
             anyValue = vectorValue;
         }
-        else if (m_propertyTypeId == AZ::AzTypeInfo<AZ::Color>::Uuid())
+        else if (m_virtualPropertyTypeId == AZ::AzTypeInfo<AZ::Color>::Uuid())
         {
             AZ::Vector3 vectorValue;
             value.GetValue(vectorValue);
             anyValue = AZ::Color::CreateFromVector3(vectorValue);
         }
-        else if (m_propertyTypeId == AZ::AzTypeInfo<AZ::Quaternion>::Uuid())
+        else if (m_virtualPropertyTypeId == AZ::AzTypeInfo<AZ::Quaternion>::Uuid())
         {
             AZ::Quaternion quatValue;
             value.GetValue(quatValue);
@@ -272,7 +359,7 @@ namespace ScriptedEntityTweener
         }
         else
         {
-            AZ_Warning("ScriptedEntityTweenerSubtask", false, "ScriptedEntityTweenerSubtask::GetValueAsAny - Virtual property type unsupported [%s]", m_animatableAddress.GetVirtualPropertyName().c_str());
+            AZ_Warning("ScriptedEntityTweenerSubtask", false, "ScriptedEntityTweenerSubtask::GetValueAsAny - Virtual property type unsupported [%s]", m_animParamData.m_virtualPropertyName.c_str());
             return false;
         }
         return true;
@@ -280,98 +367,98 @@ namespace ScriptedEntityTweener
 
     bool ScriptedEntityTweenerSubtask::GetVirtualValue(EntityAnimatedValue& animatedValue)
     {
-        if (m_propertyTypeId == AZ::AzTypeInfo<float>::Uuid())
+        if (!IsVirtualPropertyCached())
         {
-            Maestro::SequenceComponentRequests::AnimatedFloatValue toReturnFloat;
-            Maestro::SequenceAgentComponentRequestBus::Event(*m_sequenceAgentBusId, &Maestro::SequenceAgentComponentRequestBus::Events::GetAnimatedPropertyValue, toReturnFloat, m_animatableAddress);
-            animatedValue.SetValue(toReturnFloat.GetFloatValue());
+            return false;
         }
-        else if (m_propertyTypeId == AZ::AzTypeInfo<AZ::Vector3>::Uuid() || m_propertyTypeId == AZ::AzTypeInfo<AZ::Color>::Uuid())
+
+        if (m_virtualPropertyTypeId == AZ::AzTypeInfo<float>::Uuid())
         {
-            Maestro::SequenceComponentRequests::AnimatedVector3Value toReturnVector(AZ::Vector3::CreateZero());
-            Maestro::SequenceAgentComponentRequestBus::Event(*m_sequenceAgentBusId, &Maestro::SequenceAgentComponentRequestBus::Events::GetAnimatedPropertyValue, toReturnVector, m_animatableAddress);
-            animatedValue.SetValue(toReturnVector.GetVector3Value());
+            float floatValue = 0.0f;
+            SubtaskHelper::DoSafeGet(m_virtualProperty, m_entityId, floatValue);
+            animatedValue.SetValue(floatValue);
         }
-        else if (m_propertyTypeId == AZ::AzTypeInfo<AZ::Quaternion>::Uuid())
+        else if (m_virtualPropertyTypeId == AZ::Vector3::TYPEINFO_Uuid())
         {
-            Maestro::SequenceComponentRequests::AnimatedQuaternionValue toReturnQuat(AZ::Quaternion::CreateIdentity());
-            Maestro::SequenceAgentComponentRequestBus::Event(*m_sequenceAgentBusId, &Maestro::SequenceAgentComponentRequestBus::Events::GetAnimatedPropertyValue, toReturnQuat, m_animatableAddress);
-            animatedValue.SetValue(toReturnQuat.GetQuaternionValue());
+            AZ::Vector3 vector3Value(AZ::Vector3::CreateZero());
+            SubtaskHelper::DoSafeGet(m_virtualProperty, m_entityId, vector3Value);
+            animatedValue.SetValue(vector3Value);
+        }
+        else if (m_virtualPropertyTypeId == AZ::Color::TYPEINFO_Uuid())
+        {
+            AZ::Color colorValue(AZ::Color::CreateZero());
+            SubtaskHelper::DoSafeGet(m_virtualProperty, m_entityId, colorValue);
+            AZ::Vector3 vector3Value = colorValue.GetAsVector3();
+            animatedValue.SetValue(vector3Value);
+        }
+        else if (m_virtualPropertyTypeId == AZ::Quaternion::TYPEINFO_Uuid())
+        {
+            AZ::Quaternion quaternionValue(AZ::Quaternion::CreateIdentity());
+            SubtaskHelper::DoSafeGet(m_virtualProperty, m_entityId, quaternionValue);
+            animatedValue.SetValue(quaternionValue);
         }
         else
         {
-            AZ_Warning("ScriptedEntityTweenerSubtask", false, "ScriptedEntityTweenerSubtask::GetVirtualValue - Trying to get unsupported parameter type for [%s]", m_animatableAddress.GetVirtualPropertyName().c_str());
+            AZ_Warning("ScriptedEntityTweenerSubtask", false, "ScriptedEntityTweenerSubtask::GetVirtualValue - Trying to get unsupported parameter type for [%s]", m_animParamData.m_virtualPropertyName.c_str());
             return false;
         }
+
         return true;
     }
 
     bool ScriptedEntityTweenerSubtask::SetVirtualValue(const EntityAnimatedValue& value)
     {
-        bool toReturn = false;
-        if (m_propertyTypeId == AZ::AzTypeInfo<float>::Uuid())
+        if (!IsVirtualPropertyCached())
         {
-            float floatVal;
-            value.GetValue(floatVal);
-            Maestro::SequenceComponentRequests::AnimatedFloatValue animatedValue;
-            animatedValue.SetValue(floatVal);
-            Maestro::SequenceAgentComponentRequestBus::EventResult(toReturn, *m_sequenceAgentBusId, &Maestro::SequenceAgentComponentRequestBus::Events::SetAnimatedPropertyValue, m_animatableAddress, animatedValue);
-        }
-        else if (m_propertyTypeId == AZ::AzTypeInfo<AZ::Vector3>::Uuid() || m_propertyTypeId == AZ::AzTypeInfo<AZ::Color>::Uuid())
-        {
-            AZ::Vector3 vectorValue;
-            value.GetValue(vectorValue);
-            Maestro::SequenceComponentRequests::AnimatedVector3Value animatedValue(AZ::Vector3::CreateZero());
-            animatedValue.SetValue(vectorValue);
-            Maestro::SequenceAgentComponentRequestBus::EventResult(toReturn, *m_sequenceAgentBusId, &Maestro::SequenceAgentComponentRequestBus::Events::SetAnimatedPropertyValue, m_animatableAddress, animatedValue);
-        }
-        else if (m_propertyTypeId == AZ::AzTypeInfo<AZ::Quaternion>::Uuid())
-        {
-            AZ::Quaternion quatValue;
-            value.GetValue(quatValue);
-            Maestro::SequenceComponentRequests::AnimatedQuaternionValue animatedValue(AZ::Quaternion::CreateIdentity());
-            animatedValue.SetValue(quatValue);
-            Maestro::SequenceAgentComponentRequestBus::EventResult(toReturn, *m_sequenceAgentBusId, &Maestro::SequenceAgentComponentRequestBus::Events::SetAnimatedPropertyValue, m_animatableAddress, animatedValue);
-        }
-        else
-        {
-            AZ_Warning("ScriptedEntityTweenerSubtask", false, "ScriptedEntityTweenerSubtask::SetVirtualValue - Trying to set unsupported parameter type");
             return false;
         }
-        return toReturn;
-    }
 
-    void ScriptedEntityTweenerSubtask::ClearCallbacks()
-    {
-        AZStd::vector<int> callbackIds = { m_animationProperties.m_onCompleteCallbackId, m_animationProperties.m_onLoopCallbackId, m_animationProperties.m_onUpdateCallbackId };
-
-        for (const auto& callbackId : callbackIds)
+        if (m_virtualPropertyTypeId == AZ::AzTypeInfo<float>::Uuid())
         {
-            if (callbackId != AnimationProperties::InvalidCallbackId)
-            {
-                ScriptedEntityTweenerNotificationsBus::Broadcast(&ScriptedEntityTweenerNotificationsBus::Events::RemoveCallback, callbackId);
-            }
+            float floatValue;
+            value.GetValue(floatValue);
+            SubtaskHelper::DoSafeSet(m_virtualProperty, m_entityId, floatValue);
         }
-    }
-
-    bool ScriptedEntityTweenerSubtask::GetVirtualPropertyValue(AZStd::any& returnVal, const AnimationParameterAddressData& addressData)
-    {
-        if (m_animatableAddress.GetComponentId() == AZ::InvalidComponentId)
+        else if (m_virtualPropertyTypeId == AZ::Vector3::TYPEINFO_Uuid())
         {
-            if (GetAnimatablePropertyAddress(m_animatableAddress, addressData.m_componentName, addressData.m_virtualPropertyName))
-            {
-                Maestro::SequenceAgentComponentRequestBus::EventResult(m_propertyTypeId, *m_sequenceAgentBusId, &Maestro::SequenceAgentComponentRequestBus::Events::GetAnimatedAddressTypeId, m_animatableAddress);
-                if (!m_propertyTypeId.IsNull())
-                {
-                    EntityAnimatedValue tempVal;
-                    if (GetVirtualValue(tempVal))
-                    {
-                        return GetValueAsAny(returnVal, tempVal);
-                    }
-                }
-            }
+            AZ::Vector3 vector3Value;
+            value.GetValue(vector3Value);
+            SubtaskHelper::DoSafeSet(m_virtualProperty, m_entityId, vector3Value);
+        }
+        else if (m_virtualPropertyTypeId == AZ::Color::TYPEINFO_Uuid())
+        {
+            AZ::Vector3 vector3Value;
+            value.GetValue(vector3Value);
+            AZ::Color colorValue(AZ::Color::CreateFromVector3(vector3Value));
+            SubtaskHelper::DoSafeSet(m_virtualProperty, m_entityId, colorValue);
+        }
+        else if (m_virtualPropertyTypeId == AZ::Quaternion::TYPEINFO_Uuid())
+        {
+            AZ::Quaternion quaternionValue;
+            value.GetValue(quaternionValue);
+            SubtaskHelper::DoSafeSet(m_virtualProperty, m_entityId, quaternionValue);
         }
         else
+        {
+            AZ_Warning("ScriptedEntityTweenerSubtask", false, "ScriptedEntityTweenerSubtask::SetVirtualValue - Trying to set unsupported parameter type for [%s]", m_animParamData.m_virtualPropertyName.c_str());
+            return false;
+        }
+
+        return true;
+    }
+
+    bool ScriptedEntityTweenerSubtask::GetVirtualPropertyValue(AZStd::any& returnVal, const AnimationParameterAddressData& animParamData)
+    {
+        // If this is called before initialization, the virtual property needs to be cached.
+        // This method is available on the ScriptedEntityTweenerBus to retrieve a virtual property value on an entity
+        // regardless of whether a task/subtask for that entity/virtual property has been created (added to an animation).
+        // In that circumstance, a temproary task/subtask is created, but not initialized
+        if (!IsVirtualPropertyCached())
+        {
+            CacheVirtualProperty(animParamData);
+        }
+
+        if (IsVirtualPropertyCached())
         {
             EntityAnimatedValue tempVal;
             if (GetVirtualValue(tempVal))
@@ -379,7 +466,8 @@ namespace ScriptedEntityTweener
                 return GetValueAsAny(returnVal, tempVal);
             }
         }
-        AZ_Warning("ScriptedEntityTweenerSubtask", false, "ScriptedEntityTweenerSubtask::GetVirtualPropertyValue - failed for [%s, %s]", addressData.m_componentName.c_str(), addressData.m_virtualPropertyName.c_str());
+
+        AZ_Warning("ScriptedEntityTweenerSubtask", false, "ScriptedEntityTweenerSubtask::GetVirtualPropertyValue - failed for [%s, %s]", m_animParamData.m_componentName.c_str(), m_animParamData.m_virtualPropertyName.c_str());
         return false;
     }
 }

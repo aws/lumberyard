@@ -12,11 +12,7 @@
 
 #pragma once
 
-#if defined(AZ_PLATFORM_WINDOWS)
-#include <dxgiformat.h>              // DX10+ formats. DXGI_FORMAT
-#else
-#include <AzDXGIFormat.h>            // DXGI_FORMAT for all the other platforms
-#endif
+#include <AzDXGIFormat.h>            // DX10+ formats. DXGI_FORMAT
 
 #include <BuilderSettings/PixelFormats.h>
 

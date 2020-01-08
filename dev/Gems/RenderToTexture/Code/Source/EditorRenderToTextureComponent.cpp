@@ -171,7 +171,7 @@ namespace RenderToTexture
                 editContext->Class<EditorRenderToTextureComponent>("Render to Texture", "Render the world to a texture")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/RenderToTexture.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/RenderToTexture.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/RenderToTexture.png")
                         ->Attribute(AZ::Edit::Attributes::PreferNoViewportIcon, true)
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)

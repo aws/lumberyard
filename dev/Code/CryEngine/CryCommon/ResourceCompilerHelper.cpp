@@ -40,7 +40,7 @@
 #include <shellapi.h> // ShellExecuteW()
 #endif
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 #include <CoreFoundation/CoreFoundation.h>
 #endif
 
@@ -53,7 +53,7 @@ namespace
 #if !defined(AZ_PLATFORM_WINDOWS)
     void MessageBoxW(int, const wchar_t* header, const wchar_t* message, unsigned long)
     {
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
         CFStringEncoding encoding = (CFByteOrderLittleEndian == CFByteOrderGetCurrent()) ?
             kCFStringEncodingUTF32LE : kCFStringEncodingUTF32BE;
         CFStringRef header_ref = CFStringCreateWithBytes(nullptr, reinterpret_cast<const UInt8*>(header), wcslen(header) * sizeof(wchar_t), encoding, false);
@@ -161,7 +161,7 @@ static bool DirectoryExists(const wchar_t* szPathPart0, const wchar_t* szPathPar
 #if defined(AZ_PLATFORM_WINDOWS)
     const DWORD dwAttr = GetFileAttributesW(dir.c_str());
     return (dwAttr != INVALID_FILE_ATTRIBUTES) && ((dwAttr & FILE_ATTRIBUTE_DIRECTORY) != 0);
-#elif defined(AZ_PLATFORM_APPLE)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE
     char dirUTF8[MAX_PATH * 8];
     ConvertUtf16ToUtf8(dir.c_str(), SettingsManagerHelpers::CCharBuffer(dirUTF8, MAX_PATH * 8));
     struct stat sb;
@@ -351,7 +351,7 @@ bool GetRCFolder(wchar_t* pathBuffer, const wchar_t* binFolderFromRegistry, wcha
 #if defined(__APPLE__)
     const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"BinMac64/rc" };
 #elif defined(_WIN32)
-    const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"Bin64vc141/rc", L"Bin64vc140/rc", L"Bin64vc120/rc"};
+    const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"Bin64vc141/rc"};
 #elif defined(LINUX64)
     const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"BinLinux64/rc"};
 #else
@@ -467,7 +467,7 @@ IResourceCompilerHelper::ERcCallResult CResourceCompilerHelper::CallResourceComp
             }
             else
             {
-                swprintf(szRcDirectory, 512, L"%s/Bin64vc120/rc", pathBuffer);
+                swprintf(szRcDirectory, 512, L"%s/Bin64vc141/rc", pathBuffer);
             }
         }
 

@@ -192,6 +192,23 @@ namespace AzFramework
     }
 
     //=========================================================================
+    // GameEntityContextComponent::ValidateEntitiesAreValidForContext
+    //=========================================================================
+    bool GameEntityContextComponent::ValidateEntitiesAreValidForContext(const EntityList& entities)
+    {
+        // All entities in a slice being instantiated in the level editor should
+        // have the TransformComponent on them. Since it is not possible to create
+        // a slice with entities from different contexts, it is OK to check
+        // the first entity only
+        if (entities.size() > 0)
+        {
+            return entities[0]->FindComponent<AzFramework::TransformComponent>() != nullptr;
+        }
+
+        return true;
+    }
+
+    //=========================================================================
     // GameEntityContextComponent::OnContextEntitiesAdded
     //=========================================================================
     void GameEntityContextComponent::OnContextEntitiesAdded(const EntityList& entities)

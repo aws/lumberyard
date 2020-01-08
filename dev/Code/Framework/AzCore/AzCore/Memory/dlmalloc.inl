@@ -545,7 +545,7 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 #include <sys/types.h>  /* For size_t */
 #endif  /* LACKS_SYS_TYPES_H */
 
-#if (defined(__GNUC__) && ((defined(__i386__) || defined(__x86_64__)))) || (defined(_MSC_VER) && _MSC_VER >= 1310)
+#if (defined(__GNUC__) && ((defined(__i386__) || defined(__x86_64__)))) || (defined(_MSC_VER))
 #define SPIN_LOCKS_AVAILABLE 1
 #else
 #define SPIN_LOCKS_AVAILABLE 0
@@ -1292,8 +1292,9 @@ int mspace_mallopt(int, int);
 /*------------------------------ internal #includes ---------------------- */
 
 #ifdef WIN32
+#pragma warning(push)
 #pragma warning( disable : 4146 ) /* no "unsigned" warnings */
-#   ifdef AZ_PLATFORM_WINDOWS_X64
+#   ifdef AZ_PLATFORM_WINDOWS
 #       pragma warning( disable : 4267 )
 #   endif
 #endif /* WIN32 */
@@ -1396,7 +1397,7 @@ unsigned char _BitScanReverse(unsigned long* index, unsigned long mask);
 #pragma intrinsic(_BitScanForward)
 #pragma intrinsic(_BitScanReverse)
 #endif /* BitScanForward */
-#endif /* defined(_MSC_VER) && _MSC_VER>=1300 */
+#endif /* defined(_MSC_VER) */
 
 #ifndef WIN32
 #ifndef malloc_getpagesize
@@ -6364,8 +6365,5 @@ postaction:
     */
 
 #ifdef WIN32
-#pragma warning( default : 4146 ) /* no "unsigned" warnings */
-#   ifdef AZ_PLATFORM_WINDOWS_X64
-#       pragma warning( default : 4267 )
-#   endif
+#pragma warning(pop)
 #endif /* WIN32 */

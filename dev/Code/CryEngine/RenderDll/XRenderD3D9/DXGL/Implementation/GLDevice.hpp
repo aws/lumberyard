@@ -19,6 +19,12 @@
 #ifndef __GLDEVICE__
 #define __GLDEVICE__
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define GLDEVICE_HPP_SECTION_1 1
+#define GLDEVICE_HPP_SECTION_2 2
+#endif
+
 #include "GLCommon.hpp"
 #include "GLContext.hpp"
 
@@ -138,7 +144,19 @@ namespace NCryOpenGL
         uint32 m_uWidth;
         uint32 m_uHeight;
         uint32 m_uFrequency;
-#if defined(WIN32)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GLDEVICE_HPP_SECTION_1
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GLDevice_hpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GLDevice_hpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GLDevice_hpp_salem.inl"
+    #endif
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(WIN32)
         uint32 m_uBitsPerPixel;
 #elif defined(ANDROID)
         int32_t m_nativeFormat;
@@ -159,6 +177,17 @@ namespace NCryOpenGL
     typedef AZStd::shared_ptr<EGLNativePlatform> TNativeDisplay;
 #else
     typedef TWindowContext TNativeDisplay;
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GLDEVICE_HPP_SECTION_2
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GLDevice_hpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GLDevice_hpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GLDevice_hpp_salem.inl"
+    #endif
 #endif
 
 #if defined(DXGL_USE_EGL)

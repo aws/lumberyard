@@ -10,10 +10,15 @@
 #
 ########################################################################################
 
+
 def build(bld):
+
     bld.DefineGem(
         # Add custom build options here
         includes    = [bld.Path('Code/CryEngine/CryAction'),
-                        bld.Path('Gems/LmbrCentral/Code/include')
+                       bld.Path('Gems/LmbrCentral/Code/include'),
+                       bld.Path('Code/CryEngine/CryCommon')
                       ],
+        # Platform Roots
+        platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)],
     )

@@ -59,9 +59,17 @@ namespace Audio
         AZStd::size_t GetData(void** outputData, AZStd::size_t numFrames, const SAudioInputConfig& targetConfig, bool shouldDeinterleave) override;
         ////////////////////////////////////////////////////////////////////////
 
+    public:
+        class Implementation : public MicrophoneRequestBus::Handler
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(Implementation, AZ::SystemAllocator, 0);
+
+            static Implementation* Create();
+        };
+
     private:
-        class Pimpl;
-        Pimpl* m_impl = nullptr;
+        Implementation* m_impl = nullptr;
 
         bool m_initialized = false;
     };

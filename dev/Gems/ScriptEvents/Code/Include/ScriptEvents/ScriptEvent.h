@@ -71,17 +71,22 @@ namespace ScriptEvents
             ScriptEvent() = default;
             virtual ~ScriptEvent();
 
-            ScriptEvent(AZ::Data::AssetId scriptEventAssetId, AZ::u32 version)
+            ScriptEvent(AZ::Data::AssetId scriptEventAssetId)
             {
-                Init(scriptEventAssetId, version);
+                Init(scriptEventAssetId);
             }
 
-            void Init(AZ::Data::AssetId scriptEventAssetId, AZ::u32 version);
+            void Init(AZ::Data::AssetId scriptEventAssetId);
 
             bool GetMethod(AZStd::string_view eventName, AZ::BehaviorMethod*& outMethod);
 
-            AZ::BehaviorEBus* GetBehaviorBus(AZ::u32 version)
+            AZ::BehaviorEBus* GetBehaviorBus(AZ::u32 version = std::numeric_limits<AZ::u32>::max())
             {
+                if (version == std::numeric_limits<AZ::u32>::max())
+                {
+                    return m_behaviorEBus[m_maxVersion];
+                }
+
                 return m_behaviorEBus[version];
             }
 
@@ -92,18 +97,23 @@ namespace ScriptEvents
                 return m_busName;
             }
 
+            bool IsReady() const { return m_isReady; }
+
         private:
 
-            AZ::u32 m_version;
+            AZ::u32 m_maxVersion = 0;
             AZ::Data::AssetId m_assetId;
 
-            AZStd::string m_busName;
+            AZStd::string m_busName;            
             AZStd::unordered_map<AZ::u32, AZ::BehaviorEBus*> m_behaviorEBus; // version, ebus
 
             AZStd::unordered_map<AZ::Data::AssetId, AZStd::unique_ptr<ScriptEventBinding>> m_scriptEventBindings;
 
+            bool m_isReady = false;
+
             // AZ::Data::AssetBus::Handler
             void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
+            void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
             //
 
 

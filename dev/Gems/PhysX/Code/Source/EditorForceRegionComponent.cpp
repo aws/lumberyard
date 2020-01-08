@@ -288,7 +288,7 @@ namespace PhysX
             {
                 PhysX::MeshColliderComponentRequestsBus::Handler* meshColliderHandler = (PhysX::MeshColliderComponentRequestsBus::Handler*)editorColliderComponent;
                 randomPoints = ForceRegionUtil::GenerateMeshPoints(meshColliderHandler->GetMeshAsset()
-                    , shapeConfig.m_physicsAsset.m_assetScale);
+                    , shapeConfig.m_physicsAsset.m_configuration.m_assetScale);
             }
 
             PhysX::Utils::ColliderPointsLocalToWorld(randomPoints
@@ -323,7 +323,7 @@ namespace PhysX
                 totalForce += force.CalculateForce(entityParams, regionParams);
             }
 
-            if (!totalForce.IsZero())
+            if (!totalForce.IsZero() && totalForce.IsFinite())
             {
                 totalForce.Normalize();
                 totalForce *= 0.5f;

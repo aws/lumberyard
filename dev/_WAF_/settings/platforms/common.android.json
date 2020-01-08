@@ -9,7 +9,9 @@
             "key"               : "compileandroid",
             "description"       : "Compile For Android"
         },
-        "default_launcher_name"     : "AndroidLauncher"
+        "default_launcher_name"     : "AndroidLauncher",
+        "platform_folder"           : "Android",
+        "platform_keyword"          : "android"
     },
     "settings": {
         "Android Options" :

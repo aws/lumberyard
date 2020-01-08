@@ -162,17 +162,13 @@ namespace AssetProcessor
 
         virtual ~ProcessingJobInfoBusTraits() {}
 
-        //! Will notify other systems which old product is just about to get removed from the cache 
-        //! before we copy the new product instead along. 
-        //! this path MUST be in normalized format - that is, forward slashes, correct case, absolute full path
-        //! and on windows, drive letter capital.
-        virtual void BeginIgnoringCacheFileDelete(const char* /*productPath*/) {};
-        
-        // Will notify other systems which product we are trying to copy in the cache 
-        // along with status of whether that copy succeeded or failed.
-        //! this path MUST be in normalized format - that is, forward slashes, correct case, absolute full path
-        //! and on windows, drive letter capital.
-        virtual void StopIgnoringCacheFileDelete(const char* /*productPath*/, bool /*queueAgainForProcessing*/) {};
+        // Will notify other systems a product is about to be updated in the cache. This can mean that 
+        // it will be created, overwritten with new data or deleted. BeginCacheFileUpdate is pared with 
+        // EndCacheFileUpdate.
+        virtual void BeginCacheFileUpdate(const char* /*productPath*/) {};
+        // Will notify other systems that a file in the cache has been updated along with status of whether it
+        // succeeded or failed. EndCacheFileUpdate is paired with BeginCacheFileUpdate.
+        virtual void EndCacheFileUpdate(const char* /*productPath*/, bool /*queueAgainForDeletion*/) {};
         virtual AZ::u32 GetJobFingerprint(const AssetProcessor::JobIndentifier& /*jobIndentifier*/) { return 0; };
     };
 
@@ -221,7 +217,7 @@ namespace AssetProcessor
         // Returns true if there is at least `requiredSpace` bytes plus 256kb free disk space at the specified path
         // savePath must be a folder path, not a file path
         // If shutdownIfInsufficient is true, an error will be displayed and the application will be shutdown
-        virtual bool CheckSufficientDiskSpace(const QString& savePath, qint64 requiredSpace, bool shutdownIfInsufficient) { return true; }
+        virtual bool CheckSufficientDiskSpace(const QString& /*savePath*/, qint64 /*requiredSpace*/, bool /*shutdownIfInsufficient*/) { return true; }
     };
 
     using DiskSpaceInfoBus = AZ::EBus<DiskSpaceInfoBusTraits>;
@@ -237,11 +233,13 @@ namespace AssetProcessor
         static const bool LocklessDispatch = true;
         //! This will return true if we were able to verify the server address as being valid, otherwise return false.
         virtual bool IsServerAddressValid() = 0;
-        //! StoreJobResult should store all the files in the temp folder provided by the builderParams to the server, 
+        //! StoreJobResult should store all the files in the temp folder provided by the builderParams to the server
+        //! As well as any outputProducts which are outside the temp folder intended to be copied directly to the 
+        //! Cache without going through the temp folder
         //! It should associate those files with the server key provided by the builderParams because
         //! it will be send the same server key to retrieve these files by the client.
         //! This will return true if it was able to save all the relevant job data to the server, otherwise return false.
-        virtual bool StoreJobResult(const AssetProcessor::BuilderParams& builderParams) = 0;
+        virtual bool StoreJobResult(const AssetProcessor::BuilderParams& builderParams, AZStd::vector<AZStd::string>& sourceFileList) = 0;
         //! RetrieveJobResult should retrieve all the files associated with the server key provided in the builderParams 
         //! and put them in the temporary directory provided by the builderParam.
         //! This will return true if it was able to retrieve all the relevant job data from the server, otherwise return false. 

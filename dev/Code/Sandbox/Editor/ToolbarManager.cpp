@@ -600,11 +600,13 @@ AmazonToolbar ToolbarManager::GetEditorsToolbar() const
 
     t.AddAction(ID_OPEN_AUDIO_CONTROLS_BROWSER, ORIGINAL_TOOLBAR_VERSION);
 
+#ifdef LY_TERRAIN_EDITOR
     if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
     {
         t.AddAction(ID_OPEN_TERRAIN_EDITOR, ORIGINAL_TOOLBAR_VERSION);
         t.AddAction(ID_OPEN_TERRAINTEXTURE_EDITOR, ORIGINAL_TOOLBAR_VERSION);
     }
+#endif // #ifdef LY_TERRAIN_EDITOR
 
     t.AddAction(ID_PARTICLE_EDITOR, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_TERRAIN_TIMEOFDAYBUTTON, ORIGINAL_TOOLBAR_VERSION);
@@ -1289,7 +1291,7 @@ const bool AmazonToolbar::IsSame(const AmazonToolbar& other) const
         return false;
     }
 
-    bool actionListsSame = std::equal(m_actions.cbegin(), m_actions.cend(), other.m_actions.cbegin(), [](const ActionData& l, const ActionData& r) { return l.actionId == r.actionId; });
+    bool actionListsSame = AZStd::equal(m_actions.cbegin(), m_actions.cend(), other.m_actions.cbegin());
     if (!actionListsSame)
     {
         return false;
@@ -1312,7 +1314,7 @@ void AmazonToolbar::InstantiateToolbar(QMainWindow* mainWindow, ToolbarManager* 
     // So hide if we're hidden by default XOR we've toggled the default visibility
     if ((!m_showByDefault) ^ m_showToggled)
     {
-#ifdef AZ_PLATFORM_APPLE_OSX
+#ifdef AZ_PLATFORM_MAC
         // on macOS, initially hidden tool bars result in a white rectangle when
         // attaching a previously detached toolbar LY-66320
         m_toolbar->show();

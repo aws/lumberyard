@@ -248,10 +248,6 @@ namespace AzFramework
         AZStd::string m_extension;
         AZ::Uuid m_componentTypeId = AZ::Uuid::CreateNull();
         AZ::SerializeContext* m_serializeContext;
-
-    private:
-        // Workaround for VS2013 - Delete the copy constructor and make it private
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
         GenericAssetHandler(const GenericAssetHandler&) = delete;
     };
 } // namespace AzFramework

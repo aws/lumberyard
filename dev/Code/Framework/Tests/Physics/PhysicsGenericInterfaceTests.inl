@@ -12,9 +12,18 @@
 
 #include <AzFramework/Physics/Shape.h>
 #include <AzFramework/Physics/RigidBodyBus.h>
+#include <AzFramework/Physics/World.h>
 
 namespace Physics
 {
+    static auto GetEntityInRayCastHitCallBack = [](AZ::EntityId entityId)
+    {
+        return [entityId](const RayCastHit& hit)
+        {
+            return hit.m_body->GetEntityId() == entityId;
+        };
+    };
+
     TEST_F(GenericPhysicsInterfaceTest, World_CreateNewWorld_ReturnsNewWorld)
     {
         EXPECT_TRUE(CreateTestWorld() != nullptr);
@@ -186,6 +195,42 @@ namespace Physics
         delete dynamicSphere;
         delete staticBox;
     }
+    TEST_F(GenericPhysicsInterfaceTest, RayCast_AgainstMultipleTouchAndBlockHits_ReturnsClosestBlockAndTouches)
+    {
+        auto dynamicSphere = AddSphereEntity(AZ::Vector3(20.0f, 0.0f, 0.0f), 10.0f);
+        auto staticBox = AddStaticBoxEntity(AZ::Vector3(40.0f, 0.0f, 0.0f), AZ::Vector3(5.0f, 5.0f, 5.0f));
+        auto blockingSphere = AddSphereEntity(AZ::Vector3(60.0f, 0.0f, 0.0f), 5.0f);
+        auto blockingBox = AddStaticBoxEntity(AZ::Vector3(80.0f, 0.0f, 0.0f), AZ::Vector3(5.0f, 5.0f, 5.0f));
+        auto farSphere = AddSphereEntity(AZ::Vector3(120.0f, 0.0f, 0.0f), 10.0f);
+
+        RayCastRequest request;
+        request.m_start = AZ::Vector3(0.0f, 0.0f, 0.0f);
+        request.m_direction = AZ::Vector3(1.0f, 0.0f, 0.0f);
+        request.m_queryType = Physics::QueryType::StaticAndDynamic;
+        request.m_filterCallback = [&](const Physics::WorldBody* body, const Physics::Shape* shape)
+        {
+            if (body->GetEntityId() == blockingBox->GetId() || body->GetEntityId() == blockingSphere->GetId())
+            {
+                return QueryHitType::Block;
+            }
+            return QueryHitType::Touch;
+        };
+
+        AZStd::vector<RayCastHit> hits;
+        WorldRequestBus::BroadcastResult(hits, &WorldRequests::RayCastMultiple, request);
+
+        ASSERT_EQ(hits.size(), 3);
+
+        ASSERT_EQ(1, AZStd::count_if(hits.begin(), hits.end(), GetEntityInRayCastHitCallBack(dynamicSphere->GetId())));
+        ASSERT_EQ(1, AZStd::count_if(hits.begin(), hits.end(), GetEntityInRayCastHitCallBack(staticBox->GetId())));
+        ASSERT_EQ(1, AZStd::count_if(hits.begin(), hits.end(), GetEntityInRayCastHitCallBack(blockingSphere->GetId())));
+
+        delete dynamicSphere;
+        delete staticBox;
+        delete blockingSphere;
+        delete blockingBox;
+        delete farSphere;
+    }
 
     TEST_F(GenericPhysicsInterfaceTest, ShapeCast_CastAgainstNothing_ReturnsNoHits)
     {
@@ -269,6 +314,44 @@ namespace Physics
         delete entity1;
         delete entity2;
         delete entity3;
+    }
+
+    TEST_F(GenericPhysicsInterfaceTest, ShapeCast_AgainstMultipleTouchAndBlockHits_ReturnsClosestBlockAndTouches)
+    {
+        auto dynamicSphere = AddSphereEntity(AZ::Vector3(20.0f, 0.0f, 0.0f), 10.0f);
+        auto staticBox = AddStaticBoxEntity(AZ::Vector3(40.0f, 0.0f, 0.0f), AZ::Vector3(5.0f, 5.0f, 5.0f));
+        auto blockingSphere = AddSphereEntity(AZ::Vector3(60.0f, 0.0f, 0.0f), 5.0f);
+        auto blockingBox = AddStaticBoxEntity(AZ::Vector3(80.0f, 0.0f, 0.0f), AZ::Vector3(5.0f, 5.0f, 5.0f));
+        auto farSphere = AddSphereEntity(AZ::Vector3(120.0f, 0.0f, 0.0f), 10.0f);
+
+        AZStd::vector<Physics::RayCastHit> hits;
+        WorldRequestBus::BroadcastResult(hits, &WorldRequests::SphereCastMultiple,
+            1.5f,
+            AZ::Transform::CreateTranslation(AZ::Vector3(0.0f, 0.0f, 0.0f)),
+            AZ::Vector3(1.0f, 0.0f, 0.0f),
+            200.0f, Physics::QueryType::StaticAndDynamic,
+            Physics::CollisionGroup::All,
+            [&](const Physics::WorldBody* body, const Physics::Shape* shape)
+            {
+                if (body->GetEntityId() == blockingBox->GetId() || body->GetEntityId() == blockingSphere->GetId())
+                {
+                    return QueryHitType::Block;
+                }
+                return QueryHitType::Touch;
+            }
+        );
+
+        ASSERT_EQ(hits.size(), 3);
+
+        ASSERT_EQ(1, AZStd::count_if(hits.begin(), hits.end(), GetEntityInRayCastHitCallBack(dynamicSphere->GetId())));
+        ASSERT_EQ(1, AZStd::count_if(hits.begin(), hits.end(), GetEntityInRayCastHitCallBack(staticBox->GetId())));
+        ASSERT_EQ(1, AZStd::count_if(hits.begin(), hits.end(), GetEntityInRayCastHitCallBack(blockingSphere->GetId())));
+
+        delete dynamicSphere;
+        delete staticBox;
+        delete blockingSphere;
+        delete blockingBox;
+        delete farSphere;
     }
 
     TEST_F(GenericPhysicsInterfaceTest, Overlap_OverlapMultipleObjects_ReturnsHits)
@@ -541,7 +624,6 @@ namespace Physics
             AZ::Vector3 x = AZ::Vector3::CreateAxisX(0.5f);
 
             EXPECT_TRUE(capsule->GetLinearVelocityAtWorldPoint(position - z).IsClose(AZ::Vector3::CreateZero()));
-            EXPECT_TRUE(capsule->GetLinearVelocityAtWorldPoint(position + z).IsClose(AZ::Vector3(2.0f * speed, 0.0f, 0.0f)));
             EXPECT_TRUE(capsule->GetLinearVelocityAtWorldPoint(position - x).IsClose(AZ::Vector3(speed, 0.0f, speed)));
             EXPECT_TRUE(capsule->GetLinearVelocityAtWorldPoint(position + x).IsClose(AZ::Vector3(speed, 0.0f, -speed)));
         }
@@ -765,18 +847,30 @@ namespace Physics
         
         // boxB and boxC should have the same material (default)
         // so they should both bounce high
-        EXPECT_NEAR(10.0f, boxC->GetPosition().GetZ(), 0.5f);
-        EXPECT_NEAR(10.0f, boxB->GetPosition().GetZ(), 0.5f);
+        EXPECT_NEAR(boxB->GetPosition().GetZ(), boxC->GetPosition().GetZ(), 0.5f);
     }
 
     TEST_F(GenericPhysicsInterfaceTest, World_GetNativePtrByWorldName_ReturnsNativePtr)
     {
         void* validNativePtr = nullptr;
-        WorldRequestBus::EventResult(validNativePtr, AZ_CRC("UnitTestWorld"), &WorldRequests::GetNativePointer);
+        WorldRequestBus::EventResult(validNativePtr, Physics::DefaultPhysicsWorldId, &WorldRequests::GetNativePointer);
         EXPECT_TRUE(validNativePtr != nullptr);
 
         void* invalidNativePtr = nullptr;
         WorldRequestBus::EventResult(invalidNativePtr, AZ_CRC("Bad World Name"), &WorldRequests::GetNativePointer);
         EXPECT_TRUE(invalidNativePtr == nullptr);
+    }
+
+    TEST_F(GenericPhysicsInterfaceTest, Collider_ColliderTag_IsSetFromConfiguration)
+    {
+        const AZStd::string colliderTagName = "ColliderTestTag";
+        Physics::ColliderConfiguration colliderConfig;
+        colliderConfig.m_tag = colliderTagName;
+        Physics::SphereShapeConfiguration shapeConfig;
+
+        AZStd::shared_ptr<Physics::Shape> shape;
+        SystemRequestBus::BroadcastResult(shape, &SystemRequests::CreateShape, colliderConfig, shapeConfig);
+
+        EXPECT_EQ(shape->GetTag(), AZ::Crc32(colliderTagName));
     }
 } // namespace Physics

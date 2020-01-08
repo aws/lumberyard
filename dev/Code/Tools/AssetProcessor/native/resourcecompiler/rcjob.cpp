@@ -38,6 +38,7 @@
 #include "native/utilities/assetUtils.h"
 #include "native/assetprocessor.h"
 #include <AzToolsFramework/Archive/ArchiveAPI.h>
+#include <utilities/JobDiagnosticTracker.h>
 
 
 namespace
@@ -179,7 +180,7 @@ namespace AssetProcessor
 
         if ((wasPending)&&(m_jobState == cancelled))
         {
-            // if we were pending (had not started yet) and we are now cancelled, we sitll have to emit the finished signal
+            // if we were pending (had not started yet) and we are now canceled, we still have to emit the finished signal
             // so that all the various systems waiting for us can do their housekeeping.
             Q_EMIT Finished();
         }
@@ -338,7 +339,7 @@ namespace AssetProcessor
         }
         else
         {
-            AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Job cancelled due to quit being requested.");
+            AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Job canceled due to quit being requested.");
             SetState(terminated);
             Q_EMIT Finished();
         }
@@ -497,6 +498,18 @@ namespace AssetProcessor
             AssetBuilderSDK::JobCancelListener JobCancelListener(builderParams.m_rcJob->m_jobDetails.m_jobEntry.m_jobRunKey);
             result.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed; // failed by default
 
+            auto warningMessage = builderParams.m_processJobRequest.m_jobDescription.m_jobParameters.find(AZ_CRC(AssetProcessor::JobWarningKey));
+            if (warningMessage != builderParams.m_processJobRequest.m_jobDescription.m_jobParameters.end())
+            {
+                // you are allowed to have many lines in your warning message.
+                AZStd::vector<AZStd::string> delimited;
+                AzFramework::StringFunc::Tokenize(warningMessage->second.c_str(), delimited, "\n");
+                for (const AZStd::string& token : delimited)
+                {
+                    AZ_Warning(AssetBuilderSDK::WarningWindow, false, "%s", token.c_str());
+                }
+            }
+
             // create a temporary directory for Builder to work in.
             // lets make it as a subdir of a known temp dir
 
@@ -536,9 +549,14 @@ namespace AssetProcessor
                             runProcessJob = false;
                             if (result.m_resultCode == AssetBuilderSDK::ProcessJobResult_Success)
                             {
-                                if (BeforeStoringJobResult(builderParams, result))
+                                auto beforeStoreResult = BeforeStoringJobResult(builderParams, result);
+                                if (beforeStoreResult.IsSuccess())
                                 {
-                                    AssetProcessor::AssetServerBus::BroadcastResult(operationResult, &AssetProcessor::AssetServerBusTraits::StoreJobResult, builderParams);
+                                    AssetProcessor::AssetServerBus::BroadcastResult(operationResult, &AssetProcessor::AssetServerBusTraits::StoreJobResult, builderParams, beforeStoreResult.GetValue());
+                                }
+                                else
+                                {
+                                    AZ_Warning(AssetBuilderSDK::WarningWindow, false, "Failed preparing store result for %s", builderParams.m_processJobRequest.m_sourceFile.c_str());
                                 }
 
                                 if (!operationResult)
@@ -602,6 +620,25 @@ namespace AssetProcessor
             }
         }
 
+        if(result.m_resultCode == AssetBuilderSDK::ProcessJobResult_Success)
+        {
+            WarningLevel warningLevel = WarningLevel::Default;
+            JobDiagnosticRequestBus::BroadcastResult(warningLevel, &JobDiagnosticRequestBus::Events::GetWarningLevel);
+            const bool hasErrors = jobLogTraceListener.GetErrorCount() > 0;
+            const bool hasWarnings = jobLogTraceListener.GetWarningCount() > 0;
+
+            if(warningLevel == WarningLevel::FatalErrors && hasErrors)
+            {
+                AZ_Error(AssetBuilderSDK::ErrorWindow, false, "Failing job, fatal errors setting is enabled");
+                result.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+            }
+            else if(warningLevel == WarningLevel::FatalErrorsAndWarnings && (hasErrors || hasWarnings))
+            {
+                AZ_Error(AssetBuilderSDK::ErrorWindow, false, "Failing job, fatal errors and warnings setting is enabled");
+                result.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+            }
+        }
+
         switch (result.m_resultCode)
         {
         case AssetBuilderSDK::ProcessJobResult_Success:
@@ -640,6 +677,8 @@ namespace AssetProcessor
         // Setting the job id back to zero for error detection
         AssetProcessor::SetThreadLocalJobId(0);
         listener.BusDisconnect();
+
+        JobDiagnosticRequestBus::Broadcast(&JobDiagnosticRequestBus::Events::RecordDiagnosticInfo, builderParams.m_rcJob->GetJobEntry().m_jobRunKey, JobDiagnosticInfo(jobLogTraceListener.GetWarningCount(), jobLogTraceListener.GetErrorCount()));
     }
 
     bool RCJob::CopyCompiledAssets(BuilderParams& params, AssetBuilderSDK::ProcessJobResponse& response)
@@ -704,9 +743,9 @@ namespace AssetProcessor
 
             QString absolutePathOfSource = fileInfo.absoluteFilePath();
             QString outputFilename = fileInfo.fileName();
-            QString productFile = outputDirectory.filePath(outputFilename.toLower());
+            QString productFile = AssetUtilities::NormalizeFilePath(outputDirectory.filePath(outputFilename.toLower()));
 
-            // Don't make productFile all lowercase for case-insenstive as this
+            // Don't make productFile all lowercase for case-insensitive as this
             // breaks macOS. The case is already setup properly when the job
             // was created.
 
@@ -747,7 +786,7 @@ namespace AssetProcessor
             const QString& productAbsolutePath = filePair.second;
             // note that this absolute path is a real file system path, and the following API requires normalized paths:
             QString normalized = AssetUtilities::NormalizeFilePath(productAbsolutePath);
-            AssetProcessor::ProcessingJobInfoBus::Broadcast(&AssetProcessor::ProcessingJobInfoBus::Events::BeginIgnoringCacheFileDelete, normalized.toUtf8().constData());
+            AssetProcessor::ProcessingJobInfoBus::Broadcast(&AssetProcessor::ProcessingJobInfoBus::Events::BeginCacheFileUpdate, normalized.toUtf8().constData());
         }
 
         // after we do the above notify its important that we do not early exit this function without undoing those locks.
@@ -782,28 +821,59 @@ namespace AssetProcessor
             const QString& productAbsolutePath = filePair.second;
             // note that this absolute path is a real file system path, and the following API requires normalized paths:
             QString normalized = AssetUtilities::NormalizeFilePath(productAbsolutePath);
-            AssetProcessor::ProcessingJobInfoBus::Broadcast(&AssetProcessor::ProcessingJobInfoBus::Events::StopIgnoringCacheFileDelete, normalized.toUtf8().constData(), anyFileFailed);
+            AssetProcessor::ProcessingJobInfoBus::Broadcast(&AssetProcessor::ProcessingJobInfoBus::Events::EndCacheFileUpdate, normalized.toUtf8().constData(), anyFileFailed);
         }
         
         return !anyFileFailed;
     }
 
-    bool RCJob::BeforeStoringJobResult(const BuilderParams& builderParams, AssetBuilderSDK::ProcessJobResponse jobResponse)
+    AZ::Outcome<AZStd::vector<AZStd::string>> RCJob::BeforeStoringJobResult(const BuilderParams& builderParams, AssetBuilderSDK::ProcessJobResponse jobResponse)
     {
         AZStd::string normalizedTempFolderPath = builderParams.m_processJobRequest.m_tempDirPath;
         AzFramework::StringFunc::Path::Normalize(normalizedTempFolderPath);
 
-        //Ensure that ProcessJobResponse do not have any absolute paths 
+        AZStd::vector<AZStd::string> sourceFiles;
         for (AssetBuilderSDK::JobProduct& product : jobResponse.m_outputProducts)
         {
-            AzFramework::StringFunc::Replace(product.m_productFileName, normalizedTempFolderPath.c_str(), s_tempString);
+            // Try to handle Absolute paths within the temp folder
+            if (!AzFramework::StringFunc::Replace(product.m_productFileName, normalizedTempFolderPath.c_str(), s_tempString))
+            {
+                // From CopyCompiledAssets:
+
+                // each Output Product communicated by the builder will either be
+                // * a relative path, which means we assume its relative to the temp folder, and we attempt to move the file
+                // * an absolute path in the temp folder, and we attempt to move also
+                // * an absolute path outside the temp folder, in which we assume you'd like to just copy a file somewhere.
+
+                // We need to handle case 3 here (Case 2 was above, case 1 is treated as relative within temp)
+                // If the path was not absolute within the temp folder and not relative it should be an absolute path beneath our source (Including the source)
+                // meaning a copy job which needs to be added to our archive.  
+                if (!AzFramework::StringFunc::Path::IsRelative(product.m_productFileName.c_str()))
+                {
+                    AZStd::string sourceFile{ builderParams.m_rcJob->GetJobEntry().GetAbsoluteSourcePath().toUtf8().data() };
+                    AzFramework::StringFunc::Path::Normalize(sourceFile);
+                    AzFramework::StringFunc::Path::StripFullName(sourceFile);
+
+                    AzFramework::StringFunc::Path::Normalize(product.m_productFileName);
+                    size_t sourcePathPos = product.m_productFileName.find(sourceFile.c_str());
+                    if(sourcePathPos != AZStd::string::npos)
+                    {
+                        sourceFiles.push_back(product.m_productFileName.substr(sourceFile.size()).c_str());
+                        AzFramework::StringFunc::Path::Join(s_tempString, product.m_productFileName.substr(sourceFile.size()).c_str(), product.m_productFileName);
+                    }
+                    else
+                    {
+                        AZ_Warning(AssetBuilderSDK::WarningWindow, false, "Failed to find source path %s or temp path %s in non relative path in %s", sourceFile.c_str(), normalizedTempFolderPath.c_str(), product.m_productFileName.c_str());
+                    }
+                }
+            }
         }
         AZStd::string responseFilePath;
         AzFramework::StringFunc::Path::ConstructFull(builderParams.m_processJobRequest.m_tempDirPath.c_str(), AssetBuilderSDK::s_processJobResponseFileName, responseFilePath, true);
         //Save ProcessJobResponse to disk
         if (!AZ::Utils::SaveObjectToFile(responseFilePath, AZ::DataStream::StreamType::ST_XML, &jobResponse))
         {
-            return false;
+            return AZ::Failure();
         }
         AzToolsFramework::AssetSystem::JobInfo jobInfo;
         AzToolsFramework::AssetSystem::AssetJobLogResponse jobLogResponse;
@@ -818,7 +888,11 @@ namespace AssetProcessor
         //Save joblog to disk
         AZStd::string jobLogFilePath;
         AzFramework::StringFunc::Path::ConstructFull(builderParams.m_processJobRequest.m_tempDirPath.c_str(), s_jobLogFileName, jobLogFilePath, true);
-        return AZ::Utils::SaveObjectToFile(jobLogFilePath, AZ::DataStream::StreamType::ST_XML, &jobLogResponse);
+        if (!AZ::Utils::SaveObjectToFile(jobLogFilePath, AZ::DataStream::StreamType::ST_XML, &jobLogResponse))
+        {
+            return AZ::Failure();
+        }
+        return AZ::Success(sourceFiles);
     }
 
     bool RCJob::AfterRetrievingJobResult(const BuilderParams& builderParams, AssetUtilities::JobLogTraceListener& jobLogTraceListener, AssetBuilderSDK::ProcessJobResponse& jobResponse)

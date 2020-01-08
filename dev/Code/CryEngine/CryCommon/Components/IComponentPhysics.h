@@ -245,6 +245,6 @@ struct IComponentPhysics
     // </interfuscator:shuffle>
 };
 
-DECLARE_COMPONENT_POINTERS(IComponentPhysics);
+DECLARE_SMART_POINTERS(IComponentPhysics);
 
 #endif // CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTPHYSICS_H

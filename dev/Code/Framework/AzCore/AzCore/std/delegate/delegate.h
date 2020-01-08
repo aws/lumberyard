@@ -51,15 +51,10 @@
 // If so, it needs special treatment.
 // Metrowerks CodeWarrior, Intel, and CodePlay fraudulently define Microsoft's
 // identifier, _MSC_VER. We need to filter Metrowerks out.
-#if defined(_MSC_VER) && !defined(AZ_COMPILER_MWERKS)
+#if defined(_MSC_VER)
 #define FASTDLGT_ISMSVC
 #define FASTDLGT_MICROSOFT_MFP
 #define FASTDLGT_HASINHERITANCE_KEYWORDS
-#endif
-
-#ifdef AZ_COMPILER_GCC // Workaround GCC bug #8271
-// At present, GCC doesn't recognize constness of MFPs in templates
-    #define FASTDELEGATE_GCC_BUG_8271
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -609,16 +604,6 @@ namespace AZStd
                 m_pStaticFunction = 0;
         #endif
             }
-        #ifdef FASTDELEGATE_GCC_BUG_8271    // At present, GCC doesn't recognize constness of MFPs in templates
-            template < class X, class XMemFunc>
-            inline void bindmemfunc(const X* pthis, XMemFunc function_to_bind)
-            {
-                bindconstmemfunc(pthis, function_to_bind);
-        #if !defined(FASTDELEGATE_USESTATICFUNCTIONHACK)
-                m_pStaticFunction = 0;
-        #endif
-            }
-        #endif
             // These functions are required for invoking the stored function
             inline GenericClass*   GetClosureThis() const { return m_pthis; }
             inline GenericMemFunc   GetClosureMemPtr() const { return reinterpret_cast<GenericMemFunc>(m_pFunction); }

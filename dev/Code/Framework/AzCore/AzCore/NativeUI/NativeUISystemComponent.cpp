@@ -60,20 +60,22 @@ namespace AZ
 
     AssertAction NativeUISystemComponent::DisplayAssertDialog(const AZStd::string& message) const
     {
+        static const char* buttonNames[3] = { "Ignore", "Ignore All", "Break" };
         AZStd::vector<AZStd::string> options;
-        options.push_back("Ignore");
-        options.push_back("Ignore All");
-        options.push_back("Break");
+        options.push_back(buttonNames[0]);
+#if AZ_TRAIT_SHOW_IGNORE_ALL_ASSERTS_OPTION
+        options.push_back(buttonNames[1]);
+#endif
+        options.push_back(buttonNames[2]);
         AZStd::string result;
         result = DisplayBlockingDialog("Assert Failed!", message, options);
 
-        for (int i = 0; i < options.size(); i++)
-        {
-            if (result.compare(options[i]) == 0)
-            {
-                return static_cast<AssertAction>(i);
-            }
-        }
+        if (result.compare(buttonNames[0]) == 0)
+            return AssertAction::IGNORE_ASSERT;
+        else if (result.compare(buttonNames[1]) == 0)
+            return AssertAction::IGNORE_ALL_ASSERTS;
+        else if (result.compare(buttonNames[2]) == 0)
+            return AssertAction::BREAK;
 
         return AssertAction::NONE;
     }

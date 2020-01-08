@@ -35,6 +35,6 @@ struct IComponentCamera
     // </interfuscator:shuffle>
 };
 
-DECLARE_COMPONENT_POINTERS(IComponentCamera);
+DECLARE_SMART_POINTERS(IComponentCamera);
 
 #endif // CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTCAMERA_H

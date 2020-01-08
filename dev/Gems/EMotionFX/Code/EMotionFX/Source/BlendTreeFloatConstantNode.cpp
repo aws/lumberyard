@@ -85,6 +85,7 @@ namespace EMotionFX
 
     void BlendTreeFloatConstantNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
+        AZ_UNUSED(timePassedInSeconds);
         GetOutputFloat(animGraphInstance, OUTPUTPORT_RESULT)->SetValue(m_value);
     }
 

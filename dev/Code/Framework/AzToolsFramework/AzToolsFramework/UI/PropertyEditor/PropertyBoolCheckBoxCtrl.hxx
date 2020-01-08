@@ -44,6 +44,8 @@ namespace AzToolsFramework
         QWidget* GetLastInTabOrder();
         void UpdateTabOrder();
 
+        void SetCheckBoxToolTip(const char* text);
+
     signals:
         void valueChanged(bool newValue);
 

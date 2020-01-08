@@ -21,7 +21,7 @@ namespace AzFramework
     {
         Success,
         Error,
-        ErrorWrongNumberOfArguements,
+        ErrorWrongNumberOfArguments,
         ErrorCommandNotFound,
     };
 

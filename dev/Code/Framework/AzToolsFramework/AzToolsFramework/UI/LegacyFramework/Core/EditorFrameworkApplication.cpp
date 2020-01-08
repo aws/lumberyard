@@ -27,7 +27,6 @@
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/Jobs/JobManagerComponent.h>
-#include <AzCore/Serialization/ObjectStreamComponent.h>
 #include <AzCore/Asset/AssetManagerComponent.h>
 #include <AzCore/Script/ScriptSystemComponent.h>
 #include <AzCore/IO/StreamerComponent.h>
@@ -51,11 +50,13 @@
 #include "shlobj.h"
 #endif
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 #   include <mach-o/dyld.h>
 #endif
 
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QFileInfo::d_ptr': class 'QSharedDataPointer<QFileInfoPrivate>' needs to have dll-interface to be used by clients of class 'QFileInfo'
 #include <QFileInfo>
+AZ_POP_DISABLE_OVERRIDE_WARNING
 #include <QSharedMemory>
 #include <QStandardPaths>
 
@@ -512,14 +513,12 @@ namespace LegacyFramework
             AZStd::string tmpFileName(applicationFilePath);
             tmpFileName += ".tmp";
 
-            IO::VirtualStream* fileStream = IO::Streamer::Instance().RegisterFileStream(tmpFileName.c_str(), IO::OpenMode::ModeWrite, false);
-            if (fileStream == nullptr)
+            IO::FileIOStream stream(tmpFileName.c_str(), IO::OpenMode::ModeWrite);
+            if (!stream.IsOpen())
             {
                 return;
             }
-
             AZ::SerializeContext* serializeContext = GetSerializeContext();
-            IO::StreamerStream stream(fileStream, false);
             AZ_Assert(serializeContext, "ComponentApplication::m_serializeContext is NULL!");
             ObjectStream* objStream = ObjectStream::Create(&stream, *serializeContext, ObjectStream::ST_XML);
 
@@ -527,8 +526,7 @@ namespace LegacyFramework
             AZ_Warning("ComponentApplication", entityWriteOk, "Failed to write application entity to application file %s!", applicationFilePath.c_str());
             bool flushOk = objStream->Finalize();
             AZ_Warning("ComponentApplication", flushOk, "Failed finalizing application file %s!", applicationFilePath.c_str());
-            IO::Streamer::Instance().UnRegisterStream(fileStream);
-
+            
             if (entityWriteOk && flushOk)
             {
                 if (IO::SystemFile::Rename(tmpFileName.c_str(), applicationFilePath.c_str(), true))
@@ -553,7 +551,6 @@ namespace LegacyFramework
         EnsureComponentCreated(AZ::MemoryComponent::RTTI_Type());
         EnsureComponentCreated(AZ::JobManagerComponent::RTTI_Type());
         EnsureComponentCreated(AZ::StreamerComponent::RTTI_Type());
-        EnsureComponentCreated(AZ::ObjectStreamComponent::RTTI_Type());
 
         AZ_Assert(!m_desc.m_enableProjectManager || m_desc.m_enableGUI, "Enabling the project manager in the application settings requires enabling the GUI as well.");
 

@@ -12,9 +12,8 @@
 
 #pragma once
 
-// include required headers
 #include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
-
+#include <QItemSelectionModel>
 #include <QModelIndex>
 #include <QPainter>
 
@@ -45,7 +44,7 @@ namespace EMStudio
 
         const QModelIndex& GetModelIndex() const { return m_modelIndex; }
 
-        virtual void Render(QPainter& painter, QPen* pen, QBrush* brush, int32 stepSize, const QRect& visibleRect, float opacity, bool alwaysColor);
+        virtual void Render(const QItemSelectionModel& selectionModel, QPainter& painter, QPen* pen, QBrush* brush, int32 stepSize, const QRect& visibleRect, float opacity, bool alwaysColor);
         virtual bool Intersects(const QRect& rect);
         virtual bool CheckIfIsCloseTo(const QPoint& point);
 
@@ -61,7 +60,7 @@ namespace EMStudio
         QRect CalcCollapsedSourceRect() const;
         QRect CalcCollapsedTargetRect() const;
 
-        MCORE_INLINE void SetIsSelected(bool selected)              { mIsSelected = selected; }
+        virtual void SetIsSelected(bool selected)                   { mIsSelected = selected; }
         MCORE_INLINE bool GetIsSelected() const                     { return mIsSelected; }
         MCORE_INLINE bool GetIsVisible()                            { return mIsVisible; }
 

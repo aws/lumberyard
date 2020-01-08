@@ -40,10 +40,7 @@ namespace AzToolsFramework
         ~SurfaceManipulator() = default;
 
         /// A Manipulator must only be created and managed through a shared_ptr.
-        static AZStd::shared_ptr<SurfaceManipulator> MakeShared(const AZ::Transform& worldFromLocal)
-        {
-            return AZStd::shared_ptr<SurfaceManipulator>(aznew SurfaceManipulator(worldFromLocal));
-        }
+        static AZStd::shared_ptr<SurfaceManipulator> MakeShared(const AZ::Transform& worldFromLocal);
 
         /// The state of the manipulator at the start of an interaction.
         struct Start
@@ -108,7 +105,7 @@ namespace AzToolsFramework
 
         AZ::Vector3 m_position = AZ::Vector3::CreateZero(); ///< Position in local space.
         AZ::Transform m_worldFromLocal = AZ::Transform::CreateIdentity(); ///< Space the manipulator is in (identity is world space).
-        
+
         StartInternal m_startInternal; ///< Internal initial state recorded/created in OnMouseDown.
 
         AZStd::unique_ptr<ManipulatorView> m_manipulatorView = nullptr; ///< Look of manipulator.
@@ -122,7 +119,7 @@ namespace AzToolsFramework
             const AZ::Vector3& localPosition, bool snapping, float gridSize, int viewportId);
 
         static Action CalculateManipulationDataAction(
-            const StartInternal& startInternal, const AZ::Transform& worldFromLocal, 
+            const StartInternal& startInternal, const AZ::Transform& worldFromLocal,
             const AZ::Vector3& worldSurfacePosition, bool snapping, float gridSize,
             ViewportInteraction::KeyboardModifiers keyboardModifiers, int viewportId);
     };

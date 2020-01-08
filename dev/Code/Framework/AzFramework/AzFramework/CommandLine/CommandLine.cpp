@@ -13,6 +13,7 @@
 #include "CommandLine.h"
 #include <AzCore/std/string/conversions.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzFramework/AzFramework_Traits_Platform.h>
 
 namespace AzFramework
 {
@@ -33,20 +34,13 @@ namespace AzFramework
     {
     }
 
-    void CommandLine::Parse()
-    {
-#ifdef AZ_PLATFORM_WINDOWS
-        // On Windows, the __argc and __argv extensions can be used as defaults
-        Parse(__argc, __argv);
-#endif // AZ_PLATFORM_WINDOWS
-    }
-
     void CommandLine::Parse(int argc, char** argv)
     {
         m_switches.clear();
         m_miscValues.clear();
 
         AZStd::string currentSwitch;
+        AZStd::size_t foundPos;
         for (int i = 1; i < argc; ++i)
         {
             if (argv[i])
@@ -55,13 +49,7 @@ namespace AzFramework
                 StringFunc::Strip(currentArg, " ", false, true, true);
                 if (!currentArg.empty())
                 {
-#if defined(AZ_PLATFORM_WINDOWS)
-                    // On windows, either '-' or '/' is accepted
-                    if ((currentArg[0] == '/') || (currentArg[0] == '-'))
-#else
-                    // On non-windows, only '-' is accepted
-                    if (currentArg[0] == '-')
-#endif // AZ_PLATFORM_WINDOWS
+                    if (AZStd::string_view(currentArg.begin(), currentArg.begin() + 1).find_first_of(AZ_TRAIT_AZFRAMEWORK_COMMAND_LINE_OPTION_PREFIX) != AZStd::string_view::npos)
                     {
                         // its possible that its a key-value-pair like /blah=whatever
                         // we support this too, for compatibilty.
@@ -72,9 +60,20 @@ namespace AzFramework
                             currentArg = currentArg.substr(1);
                         }
 
-                        AZStd::size_t foundPos = StringFunc::Find(currentArg.c_str(), '=');
+                        foundPos = StringFunc::Find(currentArg.c_str(), '=');
                         if (foundPos != AZStd::string::npos)
                         {
+                            // Allow argument values wrapped in quotes at both ends to become the value within the quotes 
+                            if (currentArg.length() > (foundPos + 2) && currentArg[foundPos + 1] == '"' && currentArg[currentArg.length() - 1] == '"')
+                            {
+                                AZStd::string argName = currentArg.substr(0, foundPos);
+                                argName = ToLower(argName);
+                                StringFunc::Strip(argName, " ", false, true, true);
+                                m_switches[argName].emplace_back(currentArg.substr(foundPos + 2, currentArg.length() - (foundPos + 2) - 1));
+                                currentSwitch.clear();
+                                continue;
+                            }
+
                             // its in '=' format
                             AZStd::vector<AZStd::string> tokens;
                             StringFunc::Tokenize(currentArg.substr(foundPos + 1).c_str(), tokens, ',');
@@ -109,8 +108,18 @@ namespace AzFramework
                         }
                         else
                         {
+                            // Allow argument values wrapped in quotes at both ends to become the value within the quotes 
+                            if (currentArg[0] == '"' && currentArg.length() >= 2 && currentArg[currentArg.length() - 1] == '"')
+                            {
+                                m_switches[currentSwitch].emplace_back(currentArg.substr(1, currentArg.length() - 2));
+                                currentSwitch.clear();
+                                continue;
+                            }
+
                             AZStd::vector<AZStd::string> tokens;
+
                             StringFunc::Tokenize(currentArg.c_str(), tokens, ',');
+
                             for (AZStd::string& switchValue : tokens)
                             {
                                 StringFunc::Strip(switchValue, " ", false, true, true);
@@ -174,4 +183,8 @@ namespace AzFramework
         return m_miscValues[index];
     }
 
+    const CommandLine::ParamMap& CommandLine::GetSwitchList() const
+    {
+        return m_switches;
+    }
 } // namespace AzFramework

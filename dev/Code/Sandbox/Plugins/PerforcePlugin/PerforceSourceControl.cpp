@@ -64,6 +64,7 @@ CPerforceSourceControl::CPerforceSourceControl()
     m_nextHandle = 0;
     m_lastWorkOfflineResult = true;
     m_lastWorkOfflineBecauseOfConnectionLossResult = true;
+    m_clientInitialized = false;
 }
 
 ULONG STDMETHODCALLTYPE CPerforceSourceControl::Release()
@@ -98,8 +99,15 @@ bool CPerforceSourceControl::Connect()
 
     m_client = new CMyClientApi();
 
-    m_client->Init(&m_e);
-    if (m_e.Test())
+    // Ensure P4PORT is set before calling ClientApi::Init
+    const bool p4PortIsSet = nullptr != m_client->GetEnviro()->Get("P4PORT");
+    if (p4PortIsSet)
+    {
+        m_client->Init(&m_e);
+        m_clientInitialized = true;
+    }
+
+    if (!p4PortIsSet || m_e.Test())
     {
         if (!m_bIsWorkOffline)
         {
@@ -109,7 +117,7 @@ bool CPerforceSourceControl::Connect()
         m_bIsWorkOffline = true;
         if (!m_bIsFailConnectionLogged)
         {
-            GetIEditor()->GetSystem()->GetILog()->Log("\nPerforce plugin: Failed to connect.");
+            GetIEditor()->GetSystem()->GetILog()->Log(p4PortIsSet ? "\nPerforce plugin: Failed to connect." : "\nPerforce plugin: P4PORT must be set to connect.");
             m_bIsFailConnectionLogged = true;
         }
         if (GetIEditor()->IsSourceControlAvailable())
@@ -168,7 +176,11 @@ void CPerforceSourceControl::FreeData()
 
     if (m_client)
     {
-        m_client->Final(&m_e);
+        if (m_clientInitialized)
+        {
+            m_client->Final(&m_e);
+            m_clientInitialized = false;
+        }
         delete m_client;
         m_client = nullptr;
     }

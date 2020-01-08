@@ -36,6 +36,8 @@
         #include "Xenia/VertexCommand_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/VertexCommand_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/VertexCommand_cpp_salem.inl"
     #endif
 #endif
 
@@ -49,6 +51,8 @@
         #include "Xenia/VertexCommand_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/VertexCommand_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/VertexCommand_cpp_salem.inl"
     #endif
 #endif
 ILINE __m128 _mm_dp_ps_emu(const __m128& a, const __m128& b)
@@ -638,6 +642,8 @@ void VertexCommandSkin::ExecuteInternal(VertexCommandSkin& command, CVertexData&
         #include "Xenia/VertexCommand_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/VertexCommand_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/VertexCommand_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

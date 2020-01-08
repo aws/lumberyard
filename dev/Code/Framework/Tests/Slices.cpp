@@ -10,8 +10,6 @@
 *
 */
 
-#include <Tests/TestTypes.h>
-
 #include <AzCore/base.h>
 
 #include <AzCore/Component/ComponentApplication.h>
@@ -26,6 +24,7 @@
 #include <AzCore/Script/ScriptAsset.h>
 #include <AzCore/std/chrono/chrono.h>
 #include <AzCore/RTTI/TypeInfo.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Slice/SliceCompilation.h>
@@ -437,8 +436,8 @@ namespace UnitTest
                             return true;
                         };
 
-                    AZ::AllocatorInstance<AZ::SystemAllocator>::Get().GetRecords()->EnumerateAllocations(cb);
-                    totalAllocs = AZ::AllocatorInstance<AZ::SystemAllocator>::Get().GetRecords()->RequestedAllocs();
+                    AZ::AllocatorInstance<AZ::SystemAllocator>::GetAllocator().GetRecords()->EnumerateAllocations(cb);
+                    totalAllocs = AZ::AllocatorInstance<AZ::SystemAllocator>::GetAllocator().GetRecords()->RequestedAllocs();
                     AZ_TracePrintf("StressTest", "Allocs Before Inst: %u live, %u total\n", liveAllocs, totalAllocs);
 
                     const AZStd::chrono::system_clock::time_point startTime = AZStd::chrono::system_clock::now();
@@ -447,8 +446,8 @@ namespace UnitTest
 
                     liveAllocs = 0;
                     totalAllocs = 0;
-                    AZ::AllocatorInstance<AZ::SystemAllocator>::Get().GetRecords()->EnumerateAllocations(cb);
-                    totalAllocs = AZ::AllocatorInstance<AZ::SystemAllocator>::Get().GetRecords()->RequestedAllocs();
+                    AZ::AllocatorInstance<AZ::SystemAllocator>::GetAllocator().GetRecords()->EnumerateAllocations(cb);
+                    totalAllocs = AZ::AllocatorInstance<AZ::SystemAllocator>::GetAllocator().GetRecords()->RequestedAllocs();
                     AZ_TracePrintf("StressTest", "Allocs AfterInst: %u live, %u total\n", liveAllocs, totalAllocs);
                     // 1023 slices, 2046 entities
                     // Before         -> After          = Delta

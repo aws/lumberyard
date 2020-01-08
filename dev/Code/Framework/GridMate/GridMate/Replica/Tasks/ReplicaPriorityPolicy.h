@@ -24,7 +24,6 @@ namespace GridMate
     {
     public:
         struct Compare
-            : public AZStd::binary_function<ReplicaTask*, ReplicaTask*, bool>
         {
             AZ_FORCE_INLINE bool operator()(const ReplicaTask* left, const ReplicaTask* right) const
             {
@@ -48,7 +47,6 @@ namespace GridMate
     {
     public:
         struct Compare
-            : public AZStd::binary_function<ReplicaTask*, ReplicaTask*, bool>
         {
             AZ_FORCE_INLINE bool operator()(const ReplicaTask* left, const ReplicaTask* right) const
             {
@@ -79,7 +77,6 @@ namespace GridMate
     {
     public:
         struct Compare
-            : public AZStd::binary_function<ReplicaTask*, ReplicaTask*, bool>
         {
             AZ_FORCE_INLINE bool operator()(const ReplicaTask* left, const ReplicaTask* right) const
             {

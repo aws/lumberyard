@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Windows":
+        [
+            "Twitch_Traits_Platform.h",
+            "Twitch_Traits_Windows.h"
+        ]
+    }
+}

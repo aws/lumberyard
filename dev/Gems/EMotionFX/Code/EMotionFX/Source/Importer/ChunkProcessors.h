@@ -337,6 +337,7 @@ namespace EMotionFX
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorAttachmentNodes,      FileFormat::ACTOR_CHUNK_ATTACHMENTNODES,      1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorMaterialAttributeSet, FileFormat::ACTOR_CHUNK_MATERIALATTRIBUTESET, 1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorPhysicsSetup,         FileFormat::ACTOR_CHUNK_PHYSICSSETUP,         1)
+    EMFX_CHUNKPROCESSOR(ChunkProcessorActorSimulatedObjectSetup, FileFormat::ACTOR_CHUNK_SIMULATEDOBJECTSETUP, 1)
 
     // Motion skeletal motion file format chunk processors
     EMFX_CHUNKPROCESSOR(ChunkProcessorMotionInfo,                     FileFormat::MOTION_CHUNK_INFO,                 1)

@@ -51,18 +51,18 @@ STACK_MANAGER = stack_info.StackInfoManager()
 FULL_RESOURCE_PROPERTIES = {
     'ConfigurationBucket': CONFIGURATION_BUCKET,
     'ConfigurationKey': CONFIGURATION_KEY,
-    'SwaggerSettings': { 'SwaggerSettings': '' },
+    'SwaggerSettings': { 'SwaggerSettings': '', 'DeploymentName': '', 'ResourceGroupName': '' },
     'MethodSettings': { 
         'MethodSettingPath': { 
-            'MethodSettingMethod': {  
-                'CacheDataEncrypted': True,
-                'CacheTtlInSeconds': 10,
-                'CachingEnable': True,
-                'DataTraceEnabled': True,
-                'LoggingLevel': 'OFF',
-                'MetricsEnabled': True,
-                'ThrottlingBurstLimit': 20,
-                'ThrottlingRateLimit': 30,
+            'MethodSettingMethod': {
+                'cacheDataEncrypted': True,
+                'cacheTtlInSeconds': 10,
+                'cachingEnabled': True,
+                'dataTraceEnabled': True,
+                'loggingLevel': 'OFF',
+                'metricsEnabled': True,
+                'throttlingBurstLimit': 20,
+                'throttlingRateLimit': 30,
             }
         }
     },
@@ -81,6 +81,7 @@ MINIMAL_PROPS = properties._Properties(MINIMAL_RESOURCE_PROPERTIES, Custom_Servi
 
 PROPS_MATCHER = PropertiesMatcher()
 
+
 class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_RequestTypes(unittest.TestCase):
 
     @mock.patch.object(custom_resource_response, 'success_response')
@@ -89,6 +90,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
     @mock.patch.object(Custom_ServiceApi, 'get_configured_swagger_content', return_value = SWAGGER_CONTENT)
     @mock.patch.object(Custom_ServiceApi, 'create_api_gateway', return_value = REST_API_ID)
     @mock.patch.object(Custom_ServiceApi, 'register_service_interfaces')
+    @mock.patch.object(Custom_ServiceApi, 'update_api_gateway_tags')
     @mock.patch.object(Custom_ServiceApi, 'list_rest_apis', return_value = [])
     def test_Create_with_full_properties(self, *args):
 
@@ -132,6 +134,10 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
                 PROPS_MATCHER,
                 SWAGGER_CONTENT)
 
+            Custom_ServiceApi.update_api_gateway_tags.assert_called_once_with(
+                REST_API_ID,
+                event)
+
             expected_physical_resource_id = '{}-{}::{}'.format(MockResourceGroupInfo.MOCK_STACK_NAME, LOGICAL_RESOURCE_ID, json.dumps({"RestApiId": REST_API_ID}))
 
             custom_resource_response.success_response.assert_called_once_with(
@@ -147,15 +153,15 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
                 ), 
                 SWAGGER_CONTENT)
 
-
     @mock.patch.object(custom_resource_response, 'success_response')
-    @mock.patch.object(role_utils, 'create_access_control_role', return_value = ROLE_ARN)
+    @mock.patch.object(role_utils, 'create_access_control_role', return_value=ROLE_ARN)
     @mock.patch.object(stack_info.StackInfoManager, 'get_stack_info', return_value=RESOURCE_GROUP_INFO)
-    @mock.patch.object(Custom_ServiceApi, 'get_configured_swagger_content', return_value = SWAGGER_CONTENT)
-    @mock.patch.object(Custom_ServiceApi, 'create_api_gateway', return_value = REST_API_ID)
+    @mock.patch.object(Custom_ServiceApi, 'get_configured_swagger_content', return_value=SWAGGER_CONTENT)
+    @mock.patch.object(Custom_ServiceApi, 'create_api_gateway', return_value=REST_API_ID)
     @mock.patch.object(Custom_ServiceApi, 'register_service_interfaces')
-    @mock.patch.object(Custom_ServiceApi, 'list_rest_apis', return_value = [])
-    def test_Create_with_mimimal_properties(self, *args):
+    @mock.patch.object(Custom_ServiceApi, 'update_api_gateway_tags')
+    @mock.patch.object(Custom_ServiceApi, 'list_rest_apis', return_value=[])
+    def test_Create_with_minimal_properties(self, *args):
 
         # Setup
 
@@ -203,21 +209,25 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
                 expected_data,
                 expected_physical_resource_id)
 
+            Custom_ServiceApi.update_api_gateway_tags.assert_called_once_with(
+                REST_API_ID,
+                event)
+
             Custom_ServiceApi.register_service_interfaces.assert_called_once_with(
                 RESOURCE_GROUP_INFO, 
                 'https://{rest_api_id}.execute-api.{region}.amazonaws.com/{stage_name}'.format(
-                    rest_api_id = REST_API_ID,
-                    region = RESOURCE_GROUP_INFO.region,
-                    stage_name = Custom_ServiceApi.STAGE_NAME
+                    rest_api_id=REST_API_ID,
+                    region=RESOURCE_GROUP_INFO.region,
+                    stage_name=Custom_ServiceApi.STAGE_NAME
                 ), 
                 SWAGGER_CONTENT)
-
 
     @mock.patch.object(custom_resource_response, 'success_response')
     @mock.patch.object(role_utils, 'get_access_control_role_arn', return_value = ROLE_ARN)
     @mock.patch.object(stack_info.StackInfoManager, 'get_stack_info', return_value=RESOURCE_GROUP_INFO)
     @mock.patch.object(Custom_ServiceApi, 'get_configured_swagger_content', return_value = SWAGGER_CONTENT)
     @mock.patch.object(Custom_ServiceApi, 'update_api_gateway')
+    @mock.patch.object(Custom_ServiceApi, 'update_api_gateway_tags')
     @mock.patch.object(Custom_ServiceApi, 'create_documentation_version')
     @mock.patch.object(Custom_ServiceApi, 'register_service_interfaces')
     def test_Update_with_full_properties(self, *args):
@@ -271,6 +281,10 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
             expected_data,
             physical_resource_id)
 
+        Custom_ServiceApi.update_api_gateway_tags.assert_called_once_with(
+            REST_API_ID,
+            event)
+
         Custom_ServiceApi.register_service_interfaces.assert_called_once_with(
             RESOURCE_GROUP_INFO, 
             'https://{rest_api_id}.execute-api.{region}.amazonaws.com/{stage_name}'.format(
@@ -281,10 +295,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
             SWAGGER_CONTENT)
 
     @mock.patch.object(custom_resource_response, 'success_response')
-    @mock.patch.object(role_utils, 'get_access_control_role_arn', return_value = ROLE_ARN)
+    @mock.patch.object(role_utils, 'get_access_control_role_arn', return_value=ROLE_ARN)
     @mock.patch.object(stack_info.StackInfoManager, 'get_stack_info', return_value=RESOURCE_GROUP_INFO)
-    @mock.patch.object(Custom_ServiceApi, 'get_configured_swagger_content', return_value = SWAGGER_CONTENT)
+    @mock.patch.object(Custom_ServiceApi, 'get_configured_swagger_content', return_value=SWAGGER_CONTENT)
     @mock.patch.object(Custom_ServiceApi, 'update_api_gateway')
+    @mock.patch.object(Custom_ServiceApi, 'update_api_gateway_tags')
     @mock.patch.object(Custom_ServiceApi, 'create_documentation_version')
     @mock.patch.object(Custom_ServiceApi, 'register_service_interfaces')
     def test_Update_with_minimal_properties(self, *args):
@@ -337,6 +352,10 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
         custom_resource_response.success_response.assert_called_once_with(
             expected_data,
             physical_resource_id)
+
+        Custom_ServiceApi.update_api_gateway_tags.assert_called_once_with(
+            REST_API_ID,
+            event)
 
         Custom_ServiceApi.register_service_interfaces.assert_called_once_with(
             RESOURCE_GROUP_INFO, 

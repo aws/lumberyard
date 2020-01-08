@@ -35,9 +35,15 @@
 #define REMOTECOMPILER_CPP_SECTION_2 2
 #endif
 
-#if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
-    #define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_3
-    #include "Provo/RemoteCompiler_cpp_provo.inl"
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_3
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RemoteCompiler_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RemoteCompiler_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RemoteCompiler_cpp_salem.inl"
+    #endif
 #endif
 
 namespace NRemoteCompiler
@@ -350,12 +356,12 @@ namespace NRemoteCompiler
         EShaderLanguage shaderLanguage = GetShaderLanguage();
         switch (shaderLanguage)
         {
-        case eSL_Orbis: // ACCEPTED_USE
-            shaderCompiler = eSC_Orbis_DXC; // ACCEPTED_USE
+        case eSL_Orbis:
+            shaderCompiler = eSC_Orbis_DXC;
             break;
 
-        case eSL_Durango: // ACCEPTED_USE
-            shaderCompiler = eSC_Durango_FXC; // ACCEPTED_USE
+        case eSL_Durango:
+            shaderCompiler = eSC_Durango_FXC;
             break;
 
         case eSL_D3D11:
@@ -383,8 +389,8 @@ namespace NRemoteCompiler
         static const char *shaderCompilerNames[eSC_MAX] =
         {
             "Unknown",
-            "Orbis_DXC", // ACCEPTED_USE
-            "Durango_FXC", // ACCEPTED_USE
+            "Orbis_DXC",
+            "Durango_FXC",
             "D3D11_FXC",
             "GLSL_HLSLcc",
             "METAL_HLSLcc",
@@ -445,7 +451,7 @@ namespace NRemoteCompiler
         switch (shaderCompiler)
         {
         // ----------------------------------------
-        case eSC_Orbis_DXC: // ACCEPTED_USE
+        case eSC_Orbis_DXC:
         {
             flags = "%s %s \"%s\" \"%s\"";
 
@@ -455,6 +461,8 @@ namespace NRemoteCompiler
                     #include "Xenia/RemoteCompiler_cpp_xenia.inl"
                 #elif defined(AZ_PLATFORM_PROVO)
                     #include "Provo/RemoteCompiler_cpp_provo.inl"
+                #elif defined(AZ_PLATFORM_SALEM)
+                    #include "Salem/RemoteCompiler_cpp_salem.inl"
                 #endif
             #endif
 
@@ -464,6 +472,8 @@ namespace NRemoteCompiler
                     #include "Xenia/RemoteCompiler_cpp_xenia.inl"
                 #elif defined(AZ_PLATFORM_PROVO)
                     #include "Provo/RemoteCompiler_cpp_provo.inl"
+                #elif defined(AZ_PLATFORM_SALEM)
+                    #include "Salem/RemoteCompiler_cpp_salem.inl"
                 #endif
             #endif
 
@@ -471,14 +481,22 @@ namespace NRemoteCompiler
                 #define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_2
                 #include "Provo/RemoteCompiler_cpp_provo.inl"
             #endif
+            #if defined(TOOLS_SUPPORT_XENIA)
+                #define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_2
+                #include "Xenia/RemoteCompiler_cpp_xenia.inl"
+            #endif
+            #if defined(TOOLS_SUPPORT_SALEM)
+                #define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_2
+                #include "Salem/RemoteCompiler_cpp_salem.inl"
+            #endif
         }
         break;
 
         // ----------------------------------------
-        case eSC_Durango_FXC: // ACCEPTED_USE
+        case eSC_Durango_FXC:
         case eSC_D3D11_FXC:
         {
-            const char* extraFlags = (shaderCompiler==eSC_Durango_FXC) ? "/Gis" : ""; // ACCEPTED_USE
+            const char* extraFlags = (shaderCompiler==eSC_Durango_FXC) ? "/Gis" : "";
 
             const char* debugFlags = "";
             if (CRenderer::CV_r_shadersdebug == 3)
@@ -612,7 +630,7 @@ namespace NRemoteCompiler
                 0x800 |  // Global uniforms are not stored in a struct
                 0x2000;  // Do not use an array for temporary registers
 
-            #if defined(AZ_PLATFORM_APPLE_OSX)
+            #if defined(AZ_PLATFORM_MAC)
                 translateFlags |= 0x1000; // Declare dynamically indexed constant buffers as an array of floats
             #endif
 
@@ -745,9 +763,15 @@ namespace NRemoteCompiler
         Nodes.push_back(std::pair<string, string>(string("Entry"), string(pEntry)));
         Nodes.push_back(std::pair<string, string>(string("CompileFlags"), string(pCompileFlags)));
 
-#if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
+#if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_4
-#include "Provo/RemoteCompiler_cpp_provo.inl"
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RemoteCompiler_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RemoteCompiler_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RemoteCompiler_cpp_salem.inl"
+    #endif
 #endif
 
         // Any fields coming after "HashStop" will not contribute to the hash calculated on the Remote Shader Compiler Server for its local cache.
@@ -847,8 +871,12 @@ namespace NRemoteCompiler
 
         #if defined(AZ_RESTRICTED_PLATFORM)
             #define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_4
-            #if defined(AZ_PLATFORM_PROVO)
+            #if defined(AZ_PLATFORM_XENIA)
+                #include "Xenia/RemoteCompiler_cpp_xenia.inl"
+            #elif defined(AZ_PLATFORM_PROVO)
                 #include "Provo/RemoteCompiler_cpp_provo.inl"
+            #elif defined(AZ_PLATFORM_SALEM)
+                #include "Salem/RemoteCompiler_cpp_salem.inl"
             #endif
         #endif
 
@@ -914,10 +942,16 @@ namespace NRemoteCompiler
         std::vector<uint8>  CompileData;
         std::vector<std::pair<string, string> > Nodes;
 
-        #if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
-            #define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_4
-            #include "Provo/RemoteCompiler_cpp_provo.inl"
-        #endif
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_4
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RemoteCompiler_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RemoteCompiler_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RemoteCompiler_cpp_salem.inl"
+    #endif
+#endif
 
         Nodes.push_back(std::pair<string, string>(string("JobType"), string("RequestLine")));
         Nodes.push_back(std::pair<string, string>(string("ShaderRequest"), rString));

@@ -22,6 +22,7 @@ namespace UiLayoutHelpers
 
         float m_minSize;
         float m_targetSize;
+        float m_maxSize;
         float m_extraSizeRatio;
     };
 
@@ -74,6 +75,14 @@ namespace UiLayoutHelpers
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     //! Calculate the rectangle described by the padding inside the element's borders
     void GetSizeInsidePadding(AZ::EntityId elementId, const UiLayoutInterface::Padding& padding, AZ::Vector2& size);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Get the width to apply to an element based on the layout cell properties on that element
+    float GetLayoutElementTargetWidth(AZ::EntityId elementId);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Get the height to apply to an element based on the layout cell properties on that element
+    float GetLayoutElementTargetHeight(AZ::EntityId elementId);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     //! Called on a property change that has caused an element's layout to be invalid.

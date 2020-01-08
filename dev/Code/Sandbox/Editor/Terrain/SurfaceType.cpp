@@ -131,11 +131,11 @@ void CSurfaceType::SaveVegetationIds(XmlNodeRef& node)
     {
         DynArray<struct IStatInstGroup*> statInstGroupTable;
 
-        if (ITerrain* pTerrain = GetIEditor()->Get3DEngine()->GetITerrain())
+        if (I3DEngine* pEngine = GetIEditor()->Get3DEngine())
         {
             uint32 nObjTypeMask = 1 << eERType_Vegetation | 1 << eERType_MergedMesh;
 
-            pTerrain->GetStatObjAndMatTables(NULL, NULL, &statInstGroupTable, nObjTypeMask);
+            pEngine->GetStatObjAndMatTables(NULL, NULL, &statInstGroupTable, nObjTypeMask);
 
             for (int i = 0; i < statInstGroupTable.size(); ++i)
             {

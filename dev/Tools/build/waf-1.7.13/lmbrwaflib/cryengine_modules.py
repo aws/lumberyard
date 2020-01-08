@@ -24,8 +24,8 @@ from gems import Gem
 from settings_manager import LUMBERYARD_SETTINGS
 from build_configurations import ALIAS_TO_PLATFORMS_MAP
 from utils import is_value_true
-import os, stat, errno, json, re, threading, inspect
-from runpy import run_path
+import os, stat, errno, json, re, threading, inspect, copy
+from lumberyard import add_platform_root
 
 COMMON_INPUTS = [
     'additional_settings',
@@ -151,9 +151,11 @@ def is_cxx_file(self, file_name):
 # DX12 detection and configuration.  DX12_INCLUDES and DX12_LIBPATH are set in compile_rules_win_x64_host
 @conf
 def has_dx12(conf):
-
-    if conf.env['DX12_INCLUDES'] and conf.env['DX12_LIBPATH']:
+    
+    result = conf.does_support_dx12()
+    if result and any(result):
         return True
+
     return False
 
 
@@ -482,7 +484,10 @@ def LoadFileLists(ctx, kw, file_lists):
     # Compute final source list based on platform
     if platform == 'project_generator' or ctx.options.file_filter != "":
         # Collect all files plus uber files for project generators and when doing a single file compilation
-        kw['source'] = uber_files | source_files | qt_source_files | objc_source_files | header_files | resource_files | other_files
+        if ctx.cmd == 'info':
+            kw['source'] = source_files | qt_source_files | objc_source_files | header_files | resource_files | other_files
+        else:
+            kw['source'] = uber_files | source_files | qt_source_files | objc_source_files | header_files | resource_files | other_files
         kw['mac_plist'] = list(plist_files)
 
         if platform == 'project_generator' and pch_file != '':
@@ -533,8 +538,11 @@ def LoadFileLists(ctx, kw, file_lists):
     kw['header_files']          = sorted(header_files, key=lambda file: file.abspath())
 
     # In the uber files, paths are relative to the current module path, so make sure the root of the project is included in the include search path
-    if '.' not in kw.get('includes',[]):
-        kw.get('includes', []).append('.')
+    # include it first to avoid wrong files being picked from other modules (e.g. picking stdafx.h from another module)
+    includeList = kw.setdefault('includes', [])
+    if '.' in includeList:
+      includeList.remove('.')
+    includeList.insert(0, '.')
 
 
 def VerifyInput(ctx, kw):
@@ -629,7 +637,7 @@ def apply_cryengine_module_defines(ctx, kw):
 
     additional_defines = []
     ctx.add_aws_native_sdk_platform_defines(additional_defines)
-    additional_defines.append('LY_BUILD={}'.format(ctx.get_lumberyard_build()))
+    #additional_defines.append('LY_BUILD={}'.format(ctx.get_lumberyard_build()))
     append_kw_entry(kw, 'defines', additional_defines)
 
 
@@ -725,32 +733,23 @@ def ConfigureTaskGenerator(ctx, kw):
     if 'name' not in kw:
         kw['name'] = target
 
+    # Process any platform roots
+    platform_roots = kw.get('platform_roots', [])
+    if platform_roots:
+        if not isinstance(platform_roots, list):
+            platform_roots = [platform_roots]
+        for platform_root_param in platform_roots:
+            if not isinstance(platform_root_param,dict):
+                raise Errors.WafError("Invalid keyword value for 'platform_roots' for target '{}'. Expecting a list of "
+                                      "dictionary entries for 'root' (path) and 'export_includes' (boolean)".format(target))
+            platform_root = platform_root_param['root']
+            export_platform_includes = platform_root_param['export_includes']
+            ctx.add_platform_root(kw=kw,
+                                  root=platform_root,
+                                  export=export_platform_includes)
+
     # Deal with restricted platforms
-    for p0, p1, p2, p3 in ctx.env['RESTRICTED_PLATFORMS']:
-        restricted_filelist_kw = '{}_file_list'.format(p3)
-
-        # Unless the caller has overridden, look to see if we can automatically attach any waf_files for the platform
-        if restricted_filelist_kw not in kw:
-            waf_file = os.path.join(p0, '{0}_{1}.waf_files'.format(target.lower(), p1))
-            script_dir = os.path.dirname(ctx.cur_script.abspath())
-            if os.path.exists(os.path.join(script_dir, waf_file)):
-                append_kw_entry(kw, restricted_filelist_kw, waf_file)
-
-        # If a restricted script is specified, try and open a platform-specific version of the base calling script
-        if 'restricted_script' in kw:
-            script_dir, script_base = os.path.split(ctx.cur_script.abspath())
-            script_root, script_ext = os.path.splitext(script_base)
-            restricted_script_filename = ''
-            if len(script_ext) > 0:
-                restricted_script_filename = os.path.join(script_dir, p0, '{0}_{1}.{2}'.format(script_root, p1, script_ext))
-            else:
-                restricted_script_filename = os.path.join(script_dir, p0, '{0}_{1}'.format(script_root, p1))
-            if os.path.exists(restricted_script_filename):
-
-                # Open the script and look for the specific function name passed in. If we find it, call it with our parameters
-                restricted_script = run_path(restricted_script_filename)
-                if kw['restricted_script'] in restricted_script:
-                    restricted_script[kw['restricted_script']](ctx, kw)
+    ctx.process_restricted_settings(kw)
 
     # Determine if this is a build command (vs a platform generator)
     is_configure_cmd = isinstance(ctx, ConfigurationContext)
@@ -987,7 +986,7 @@ def process_extern_engine_lib(self):
             raise Errors.WafError('could not find library %r' % self.output_name)
 
         output_file_node = self.bld.root.find_node(output_file)
-        output_file_node.sig = Utils.h_file(output_file_node.abspath())
+        output_file_node.cache_sig = Utils.h_file(output_file_node.abspath())
         self.link_task = self.create_task('fake_%s' % self.lib_type, [], [output_file_node])
         if not getattr(self, 'target', None):
             self.target = self.name
@@ -1016,7 +1015,7 @@ def MonolithicBuildModule(ctx, *k, **kw):
         ctx.monolithic_build_settings[key] += values
 
     def _append_linker_options():
-        for setting in ['lib', 'libpath', 'linkflags', 'framework']:
+        for setting in ['stlib', 'stlibpath', 'lib', 'libpath', 'linkflags', 'framework']:
             _append(prefix + setting, kw[setting] )
             _append(prefix + setting, ctx.GetPlatformSpecificSettings(kw, setting, ctx.env['PLATFORM'], ctx.env['CONFIGURATION']))
 
@@ -1110,6 +1109,13 @@ def BuildTaskGenerator(ctx, kw):
 
     if not ctx.is_valid_configuration_request(**kw):
         return False
+    
+    # If this is a unit test module for a static library (see CryEngineStaticLibrary), then enable it if its unit test target
+    # is enabled as well
+    unit_test_target = kw.get('unit_test_target')
+    if unit_test_target and ctx.is_target_enabled(unit_test_target):
+        Logs.debug('lumberyard: module {} enabled for platform {}.'.format(target, current_platform))
+        return True
 
     if ctx.is_target_enabled(target):
         Logs.debug('lumberyard: module {} enabled for platform {}.'.format(target, current_platform))
@@ -1146,14 +1152,6 @@ def tg_apply_additional_settings(self):
                 t.env['INCPATHS'] += [ inc ]
             else:
                 t.env['INCPATHS'] += [ self.path.make_node(inc).abspath() ]
-
-###############################################################################
-def set_cryengine_flags(ctx, kw):
-
-    prepend_kw_entry(kw,'includes',['.',
-                                    ctx.ThirdPartyPath('boost'),
-                                    ctx.CreateRootRelativePath('Code/CryEngine/CryCommon')])
-
 
 ###############################################################################
 def find_file_in_content_dict(content_dict, file_name):
@@ -1201,7 +1199,6 @@ def CryEngineModule(ctx, *k, **kw):
     AppendCommonModules(ctx,kw)
 
     # Setup TaskGenerator specific settings
-    set_cryengine_flags(ctx, kw)
     apply_cryengine_module_defines(ctx, kw)
 
     SetupRunTimeLibraries(ctx, kw)
@@ -1253,7 +1250,6 @@ def CryEngineSharedLibrary(ctx, *k, **kw):
     AppendCommonModules(ctx,kw)
 
     # Setup TaskGenerator specific settings
-    set_cryengine_flags(ctx, kw)
     apply_cryengine_module_defines(ctx, kw)
 
     SetupRunTimeLibraries(ctx,kw)
@@ -1278,7 +1274,7 @@ def CryEngineSharedLibrary(ctx, *k, **kw):
 
 ###############################################################################
 @build_stlib
-def CryEngineStaticLibrary(ctx, *k, **kw):
+def CryEngineStaticLibraryLegacy(ctx, *k, **kw):
     """
     CryEngine Static Libraries are static libraries
     Except the build configuration requires a monolithic build
@@ -1287,7 +1283,6 @@ def CryEngineStaticLibrary(ctx, *k, **kw):
     if not InitializeTaskGenerator(ctx, kw):
         return
 
-    set_cryengine_flags(ctx, kw)
     apply_cryengine_module_defines(ctx, kw)
 
     SetupRunTimeLibraries(ctx, kw)
@@ -1322,7 +1317,6 @@ def CryEngine3rdPartyStaticLibrary(ctx, *k, **kw):
     # Initialize the Task Generator
     if not InitializeTaskGenerator(ctx, kw):
         return
-    set_cryengine_flags(ctx, kw)
     apply_cryengine_module_defines(ctx, kw)
 
     SetupRunTimeLibraries(ctx, kw)
@@ -1380,13 +1374,8 @@ def CryLauncher(ctx, *k, **kw):
     active_projects = ctx.get_enabled_game_project_list()
     for project in active_projects:
 
-        kw_per_launcher = dict(kw)
+        kw_per_launcher = copy.deepcopy(kw)
         kw_per_launcher['target'] = project + kw['target'] # rename the target!
-
-        # If there are multiple active projects, the 'use' kw needs to be its own instance
-        if 'use' in kw:
-            kw_per_launcher['use'] = []
-            kw_per_launcher['use'] += kw['use']
 
         CryLauncher_Impl(ctx, project, *k, **kw_per_launcher)
 
@@ -1409,14 +1398,14 @@ def codegen_static_modules_cpp(ctx, static_modules, kw):
 
     # LMBR-30070: We should be generating this file with a waf task. Until then,
     # we need to manually set the cached signature.
-    static_modules_json_node.sig = static_modules_json_node.cache_sig = Utils.h_file(static_modules_json_node.abspath())
+    static_modules_json_node.cache_sig = Utils.h_file(static_modules_json_node.abspath())
 
     # Set up codegen for launcher.
     kw['features'] += ['az_code_gen']
     if 'az_code_gen' not in kw:
         kw['az_code_gen'] = []
         
-    static_modules_py = ctx.engine_node.make_node('Code/Launcher/CodeGen/StaticModules.py')
+    static_modules_py = ctx.engine_node.make_node('Code/LauncherUnified/CodeGen/StaticModules.py')
     static_modules_node_rel = static_modules_py.path_from(ctx.path)
 
     kw['az_code_gen'] += [
@@ -1513,7 +1502,6 @@ def CryLauncher_Impl(ctx, project, *k, **kw_per_launcher):
     AppendCommonModules(ctx, kw_per_launcher)
 
     # Setup TaskGenerator specific settings
-    set_cryengine_flags(ctx, kw_per_launcher)
     SetupRunTimeLibraries(ctx, kw_per_launcher)
 
     LoadSharedSettings(ctx,k,kw_per_launcher)
@@ -1546,10 +1534,7 @@ def CryLauncher_Impl(ctx, project, *k, **kw_per_launcher):
 
     Logs.debug("lumberyard: Generating launcher %s from %s" % (kw_per_launcher['output_file_name'], kw_per_launcher['target']))
 
-    # We can only apply gems to the AndroidLauncher during monolithic builds.  This is due to how the launcher is
-    # loaded at runtime and may not be able to recursively load all "NEEDED" libraries depending on OS version
-    if (not is_android) or (is_android and is_monolithic):
-        ctx.apply_gems_to_context(project, k, kw_per_launcher)
+    ctx.apply_gems_to_context(project, k, kw_per_launcher)
 
     codegen_static_modules_cpp_for_launcher(ctx, project, k, kw_per_launcher)
 
@@ -1584,13 +1569,8 @@ def CryDedicatedServer(ctx, *k, **kw):
     kw.setdefault('use_aslr', True)
 
     for project in active_projects:
-        kw_per_launcher = dict(kw)
+        kw_per_launcher = copy.deepcopy(kw)
         kw_per_launcher['target'] = project + kw['target'] # rename the target!
-
-        # If there are multiple active projects, the 'use' kw needs to be its own instance
-        if 'use' in kw:
-            kw_per_launcher['use'] = []
-            kw_per_launcher['use'] += kw['use']
 
         CryDedicatedserver_Impl(ctx, project, *k, **kw_per_launcher)
 
@@ -1606,7 +1586,6 @@ def CryDedicatedserver_Impl(ctx, project, *k, **kw_per_launcher):
     AppendCommonModules(ctx,kw_per_launcher)
 
     # Setup TaskGenerator specific settings
-    set_cryengine_flags(ctx, kw_per_launcher)
     SetupRunTimeLibraries(ctx,kw_per_launcher)
 
     append_kw_entry(kw_per_launcher,'win_linkflags',[ '/SUBSYSTEM:WINDOWS' ])
@@ -1642,8 +1621,6 @@ def CryDedicatedserver_Impl(ctx, project, *k, **kw_per_launcher):
 
     append_kw_entry(kw_per_launcher, 'features', ['copy_3rd_party_binaries'])
 
-    append_kw_entry(kw_per_launcher, 'features', ['copy_3rd_party_binaries'])
-
     # Make sure that we are actually building a server configuration
     if not isinstance(ctx, ConfigurationContext) and ctx.env['PLATFORM'] != 'project_generator':
 
@@ -1674,7 +1651,6 @@ def CryConsoleApplication(ctx, *k, **kw):
     AppendCommonModules(ctx,kw)
 
     # Setup TaskGenerator specific settings
-    set_cryengine_flags(ctx, kw)
     apply_cryengine_module_defines(ctx, kw)
     SetupRunTimeLibraries(ctx, kw)
 
@@ -1713,7 +1689,6 @@ def LyLauncherApplication(ctx, *k, **kw):
     AppendCommonModules(ctx, kw)
 
     # Setup TaskGenerator specific settings
-    set_cryengine_flags(ctx, kw)
     apply_cryengine_module_defines(ctx, kw)
     SetupRunTimeLibraries(ctx, kw)
 
@@ -1758,12 +1733,9 @@ def LyLauncherApplication(ctx, *k, **kw):
             active_projects = ctx.get_enabled_game_project_list()
             for project in active_projects:
 
-                kw_per_console_app = dict(kw)
+                kw_per_console_app = copy.deepcopy(kw)
                 kw_per_console_app['target'] = project + kw['target']  # rename the target!
-                # If there are multiple active projects, the 'use' kw needs to be its own instance
-                if 'use' in kw:
-                    kw_per_console_app['use'] = []
-                    kw_per_console_app['use'] += kw['use']
+
                 ctx.apply_gems_to_context(project, k, kw_per_console_app)
                 RunTaskGenerator(ctx, *k, **kw_per_console_app)
             return None
@@ -1816,8 +1788,17 @@ def CryFileContainer(ctx, *k, **kw):
     if not BuildTaskGenerator(ctx, kw):
         return
 
-    if ctx.env['PLATFORM'] == 'project_generator':
-        ctx(*k, **kw)
+    # A file container is not supposed to actually generate any build tasks at all, but it still needs
+    # to be a task gen so that it can export includes and export defines (in the 'use' system)
+    # We want the files to show up in the generated projects (xcode and other IDEs) as if they are compile tasks
+    # but when actually building, we want them only to affect use / defines / includes.
+    
+    if ctx.env['PLATFORM'] != 'project_generator':
+        # clear out the 'source' and features so that as little as possible executes.
+        kw['source'] = []
+        kw['features'] = ['use']
+    
+    return ctx(*k, **kw)
 
 
 ###############################################################################
@@ -2364,8 +2345,6 @@ def CryQtApplication(ctx, *k, **kw):
     apply_cryengine_module_defines(ctx, kw)
 
     # Setup TaskGenerator specific settings
-    set_cryengine_flags(ctx, kw)
-
     SetupRunTimeLibraries(ctx,kw)
 
     append_kw_entry(kw,'win_linkflags',[ '/SUBSYSTEM:WINDOWS' ])
@@ -2394,7 +2373,6 @@ def CryQtConsoleApplication(ctx, *k, **kw):
     apply_cryengine_module_defines(ctx, kw)
 
     # Setup TaskGenerator specific settings
-    set_cryengine_flags(ctx, kw)
     SetupRunTimeLibraries(ctx,kw)
 
     append_kw_entry(kw,'win_linkflags',[ '/SUBSYSTEM:CONSOLE' ])
@@ -2489,6 +2467,30 @@ def GetPlatformSpecificSettings(ctx, dict, entry, _platform, configuration):
 
     if configuration == []:
         return [] # Dont try to check for configurations if we dont have any
+
+    # Check for 'test' or 'dedicated' tagged entries
+    if _platform and _platform != 'project_generator':
+    
+        platform_details = ctx.get_target_platform_detail(_platform)
+        configuration_details = platform_details.get_configuration(configuration)
+    
+        if configuration_details.is_test:
+            test_entry = 'test_{}'.format(entry)
+            if test_entry in dict:
+                returnValue += _to_list(dict[test_entry])
+            for platform in platforms:
+                platform_test_entry = '{}_test_{}'.format(platform, entry)
+                if platform_test_entry in dict:
+                    returnValue += _to_list(dict[platform_test_entry])
+    
+        if configuration_details.is_server:
+            test_entry = 'dedicated_{}'.format(entry)
+            if test_entry in dict:
+                returnValue += _to_list(dict[test_entry])
+            for platform in platforms:
+                platform_test_entry = '{}_dedicated_{}'.format(platform, entry)
+                if platform_test_entry in dict:
+                    returnValue += _to_list(dict[platform_test_entry])
 
     # Check for entry in <configuration>_<entry> style
     configuration_entry = configuration + '_' + entry
@@ -2727,11 +2729,17 @@ def apply_monolithic_build_settings(self):
 
     def _apply_monolithic_build_settings(monolithic_dict, prefix=''):
         append_to_unique_list(self.use, list(monolithic_dict[prefix + 'use']))
+        append_to_unique_list(self.uselib, list(monolithic_dict[prefix + 'uselib']))
+        append_to_unique_list(self.framework, list(monolithic_dict[prefix + 'framework']))
+        self.linkflags  += list(monolithic_dict[prefix + 'linkflags'])
+
+        # static libs
+        self.stlib      += list(monolithic_dict[prefix + 'stlib'])
+        append_to_unique_list(self.stlibpath, list(monolithic_dict[prefix + 'stlibpath']))
+
+        # shared libs
         self.lib        += list(monolithic_dict[prefix + 'lib'])
         append_to_unique_list(self.libpath, list(monolithic_dict[prefix + 'libpath']))
-        self.linkflags  += list(monolithic_dict[prefix + 'linkflags'])
-        append_to_unique_list(self.framework, list(monolithic_dict[prefix + 'framework']))
-        append_to_unique_list(self.uselib, list(monolithic_dict[prefix + 'uselib']))
 
     Logs.debug("lumberyard: Applying monolithic build settings for %s ... " % self.name)
 
@@ -2829,63 +2837,6 @@ def apply_custom_flags(self):
             self.env['CXXFLAGS'] = list(filter(lambda r:not r.startswith('-fno-rtti'), self.env['CXXFLAGS']))
 
 
-# handle outputs not in the build directory.  Outputs in the build directory don't cache their signatures,
-# and instead use their parent task signature as their own.  Since their signatures aren't cached, any
-# use of those files as inputs into later tasks will cause a recalc of their signature base on the file
-# contents, which will differ from the previously set parent signature, and cause an overwrite of the signature
-# Instead, this function will modify the runnable_status to check the individual outputs for differences, and
-# modify the post_run to store a cache_sig based on the file signature instead of the parent task signature
-# based on Task.update_outputs(), which acts on a class instead of a class-instantiation
-def allow_non_bld_outputs(self):
-
-    old_post_run = self.post_run
-    def new_post_run():
-        old_post_run()
-        for node in self.outputs:
-            node.sig = node.cache_sig = Utils.h_file(node.abspath())
-            # most of the task_sigs use uid as the key, this is using the node path as the key and storing the uid
-            self.generator.bld.task_sigs[node.abspath()] = self.uid()
-    self.post_run = new_post_run
-
-    old_runnable_status = self.runnable_status
-    def new_runnable_status():
-        status = old_runnable_status()
-        if status != Task.RUN_ME:
-            return status
-
-        try:
-            # by default, we check that the output nodes have the signature of the task
-            # perform a second check, returning 'SKIP_ME' as we are expecting that
-            # the signatures do not match
-            bld = self.generator.bld
-            prev_sig = bld.task_sigs[self.uid()]
-            if prev_sig == self.signature():
-                for x in self.outputs:
-                    # most of the task_sigs use uid as the key, this is using the node path as the key and storing the uid
-                    if not x.sig or bld.task_sigs[x.abspath()] != self.uid():
-                        return Task.RUN_ME
-                return Task.SKIP_ME
-        except KeyError:
-            pass
-        except IndexError:
-            pass
-        except AttributeError:
-            pass
-        return Task.RUN_ME
-    self.runnable_status = new_runnable_status
-
-    # clear signature for nodes not found on disk
-    # this differs from Task.update_outputs() primarily because make_node was used instead of find_node,
-    # the later which clears the signature if the node is not found on disk
-    for node in self.outputs:
-        try:
-            os.stat(node.abspath())
-            # also consider copying node.sig -> node.cache_sig, the signature will be recalculated
-            # in get_bld_sig() is the cache_sig is not set.
-        except OSError:
-            node.sig = None
-
-
 @feature('cxxprogram', 'cxxshlib', 'cprogram', 'cshlib', 'cxx', 'c')
 @after_method('apply_link')
 @before_method('process_use')
@@ -2935,7 +2886,6 @@ def set_link_outputs(self):
         output_nodes = new_output_nodes
 
     # process only the first output, additional outputs will copy from the first.  Its rare that additional copies are needed
-    non_bld_outputs = False
     output_node = output_nodes[0]
     if self._type == 'stlib':
         # add_target() will create an output in the temp/intermediate directory.  Since .libs are not directly executable, they
@@ -2958,9 +2908,6 @@ def set_link_outputs(self):
         target = output_node.make_node(target)
         self.link_task.set_outputs(target)
 
-        # set flag and process later
-        non_bld_outputs = True
-
     # remove extensions to get the name of the target, we will be using it as a base for additional outputs below
     target_node = self.link_task.outputs[0]
     name = os.path.splitext(target_node.name)[0]
@@ -2970,9 +2917,11 @@ def set_link_outputs(self):
     is_secondary_copy_install = getattr(self, 'is_secondary_copy_install', False)
     if is_msvc:
         # add the import library to the output list.  Only add if secondary_copy_install is set
-        if self._type == 'shlib' and is_secondary_copy_install:
+        if self._type == 'shlib' and (self.bld.artifacts_cache or is_secondary_copy_install):
             import_lib_node = output_node.make_node(name + '.lib')
+            import_lib_exp_node = output_node.make_node(name + '.exp')
             self.link_task.set_outputs(import_lib_node)
+            self.link_task.set_outputs(import_lib_exp_node)
 
         # create map files
         if self.bld.is_option_true('generate_map_file'):
@@ -3039,13 +2988,6 @@ def set_link_outputs(self):
                                 _create_sub_folder_copy_task(output_sub_folder_copy_attr_item, output)
                     else:
                         Logs.warn("[WARN] attribute items in 'output_sub_folder_copy' must be a string.")
-
-
-    # setup for outputs that are not in tbe build directory, must be done after link_task.outputs has its members
-    if non_bld_outputs:
-        # modify the task to handle signatures of files outside of the temp directory
-        allow_non_bld_outputs(self.link_task)
-
 
 
 # Use this feature if you want to write to an existing exe/dll that may be currently in use.  The os prevents
@@ -3186,3 +3128,21 @@ def patch_run_method(self):
         # replace the run method with a lambda, save the old run method so we can wrap/call it
         self.link_task.run = patch_run
 
+
+###############################################################################
+@conf
+def CryEngineStaticLibrary(ctx, *k, **kw):
+    """
+    CryEngine Static Libraries are static libraries
+    Except the build configuration requires a monolithic build
+    """
+    
+    # Only create a test driver shared if the 'create_test_driver' is specified and set to true
+    create_test_driver = kw.get('create_test_driver', False)
+    if create_test_driver:
+        kw_static, kw_shared = ctx.split_keywords_from_static_lib_definition_for_test(kw)
+        ctx.CryEngineStaticLibraryLegacy(**kw_static)
+        if kw_shared:
+            ctx.CryEngineSharedLibrary(**kw_shared)
+    else:
+        ctx.CryEngineStaticLibraryLegacy(**kw)

@@ -32,7 +32,7 @@ namespace Lightning
         : public LightningArcConfiguration
     {
     public:
-        AZ_TYPE_INFO(EditorLightningArcConfiguration, "{61810E84-F74E-4EFF-8B23-EB1097C6E1BB}", LightningArcConfiguration);
+        AZ_TYPE_INFO_LEGACY(EditorLightningArcConfiguration, "{61810E84-F74E-4EFF-8B23-EB1097C6E1BB}", LightningArcConfiguration);
         AZ_CLASS_ALLOCATOR(EditorLightningArcConfiguration, AZ::SystemAllocator, 0);
 
         static void Reflect(AZ::ReflectContext* context);

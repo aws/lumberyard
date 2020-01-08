@@ -37,6 +37,7 @@ namespace Ui
 class CViewportTitleDlg
     : public QWidget
     , public IEditorNotifyListener
+    , public ISystemEventListener
 {
     Q_OBJECT
 public:
@@ -80,6 +81,7 @@ protected:
     QMenu *InitializeViewportSearchMenu();
 
     virtual void OnEditorNotifyEvent(EEditorNotifyEvent event);
+    void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam) override;
 
     void OnMaximize();
     void OnToggleHelpers();

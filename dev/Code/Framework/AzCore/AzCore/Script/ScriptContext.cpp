@@ -11,7 +11,6 @@
 */
 #include <AzCore/Script/ScriptContext.h>
 #include <AzCore/Casting/numeric_cast.h>
-#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Script/ScriptContextDebug.h>
 #include <AzCore/Script/ScriptProperty.h>
 #include <AzCore/std/algorithm.h>
@@ -20,6 +19,7 @@
 #include <AzCore/Script/lua/lua.h>
 #include <AzCore/IO/GenericStreams.h>
 #include <AzCore/RTTI/AttributeReader.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 
 #include <AzCore/Script/ScriptPropertyTable.h>
 
@@ -31,6 +31,24 @@ extern "C" {
 
 #include <limits>
 #include <cmath>
+
+
+bool AZ::Internal::IsAvailableInLua(const AttributeArray& attributes)
+{
+    // Check for "ignore" attribute
+    if (FindAttribute(Script::Attributes::Ignore, attributes))
+    {
+        return false;
+    }
+
+    // Only bind if marked with the Scope type of Launcher
+    if (!AZ::Internal::IsInScope(attributes, Script::Attributes::ScopeFlags::Launcher))
+    {
+        return false;
+    }
+
+    return true;
+}
 
 #if defined(AZ_LUA_VALIDATE_STACK)
 
@@ -670,27 +688,28 @@ namespace AZ
             {
                 return limits::infinity();
             }
+            AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") // conditional expression is constant
             else if (limits::is_signed && number == -std::numeric_limits<double>::infinity())
+            AZ_POP_DISABLE_WARNING
             {
-#if defined(AZ_COMPILER_MSVC)
-#   pragma warning(push)
-#   pragma warning(disable: 4146) // negative unsigned value, but we're checking for it above
-#endif // MSVC
+                AZ_PUSH_DISABLE_WARNING(4146, "-Wunknown-warning-option") // unary minus operator applied to unsigned type, result still unsigned
                 return -limits::infinity();
-#if defined(AZ_COMPILER_MSVC)
-#   pragma warning(pop)
-#endif // MSVC
+                AZ_POP_DISABLE_WARNING
             }
         }
 
         // Check for decimal to integer conversion
+        AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") // conditional expression is constant
         if (!std::is_floating_point<T>::value && std::fmod(number, 1.0f) > std::numeric_limits<double>::epsilon())
+        AZ_POP_DISABLE_WARNING
         {
             luaL_error(l, "%s", "integer expected, got floating point");
         }
 
         // Check for proper signed-ness
+        AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") // conditional expression is constant
         if (!limits::is_signed && number < 0.0f)
+        AZ_POP_DISABLE_WARNING
         {
             luaL_error(l, "%s", "unsigned expected, got negative");
         }
@@ -1945,9 +1964,7 @@ LUA_API const Node* lua_getDummyNode()
         {
             u32 magicData;
             u32 storageType;
-#ifdef AZ_OS64
             u64 m_pad;
-#endif
             void* value;
             BehaviorClass* behaviorClass;
         };
@@ -1957,12 +1974,12 @@ LUA_API const Node* lua_getDummyNode()
         // Method bind helper
         typedef bool(*LuaLoadFromStack)(lua_State*, int, BehaviorValueParameter&, BehaviorClass*, ScriptContext::StackVariableAllocator*);
         typedef void(*LuaPushToStack)(lua_State*, BehaviorValueParameter&);
-        typedef void(*LuaPrepareValue)(BehaviorValueParameter&, BehaviorClass*, ScriptContext::StackVariableAllocator&);
+        typedef bool(*LuaPrepareValue)(BehaviorValueParameter&, BehaviorClass*, ScriptContext::StackVariableAllocator&, AZStd::allocator*);
 
         namespace Internal
         {
             template<class T>
-            void AllocateTempStorageLuaNative(BehaviorValueParameter& value, BehaviorClass* valueClass, ScriptContext::StackVariableAllocator& tempAllocator)
+            bool AllocateTempStorageLuaNative(BehaviorValueParameter& value, BehaviorClass* valueClass, ScriptContext::StackVariableAllocator& tempAllocator, AZStd::allocator* backupAllocator = nullptr)
             {
                 AZ_STATIC_ASSERT((AZStd::is_pod<T>::value || AZStd::is_same<T, AZ::VectorFloat>::value), "This should be use only for POD data types, as not ctor/dtor is called!");
                 (void)valueClass;
@@ -1977,12 +1994,24 @@ LUA_API const Node* lua_getDummyNode()
                 }
                 else // even references are stored by value as we need to convert from lua native type, i.e. there is not real reference for NativeTypes (numbers, strings, etc.)
                 {
-                    value.m_value = tempAllocator.allocate(sizeof(T), AZStd::alignment_of<T>::value, 0);
+                    bool usedBackupAlloc = false;
+                    if (backupAllocator != nullptr && sizeof(T) > tempAllocator.get_max_size())
+                    {
+                        value.m_value = backupAllocator->allocate(sizeof(T), AZStd::alignment_of<T>::value, 0);
+                        usedBackupAlloc = true;
+                    }
+                    else
+                    {
+                        value.m_value = tempAllocator.allocate(sizeof(T), AZStd::alignment_of<T>::value, 0);
+                    }
                     memset(value.m_value, 0, sizeof(T));
+                    return usedBackupAlloc;
                 }
+
+                return false;
             }
 
-            void AllocateTempStorage(BehaviorValueParameter& value, BehaviorClass* valueClass, ScriptContext::StackVariableAllocator& tempAllocator)
+            bool AllocateTempStorage(BehaviorValueParameter& value, BehaviorClass* valueClass, ScriptContext::StackVariableAllocator& tempAllocator, AZStd::allocator* backupAllocator = nullptr)
             {
                 if (value.m_traits & BehaviorParameter::TR_POINTER)
                 {
@@ -1999,12 +2028,24 @@ LUA_API const Node* lua_getDummyNode()
                 }
                 else // it's a value type
                 {
-                    value.m_value = tempAllocator.allocate(valueClass->m_size, valueClass->m_alignment, 0);
+                    bool usedBackupAlloc = false;
+                    if (backupAllocator != nullptr && valueClass->m_size > tempAllocator.get_max_size())
+                    {
+                        value.m_value = backupAllocator->allocate(valueClass->m_size, valueClass->m_alignment, 0);
+                        usedBackupAlloc = true;
+                    }
+                    else
+                    {
+                        value.m_value = tempAllocator.allocate(valueClass->m_size, valueClass->m_alignment, 0);
+                    }
                     if (valueClass->m_defaultConstructor)
                     {
                         valueClass->m_defaultConstructor(value.m_value, valueClass->m_userData);
                     }
+                    return usedBackupAlloc;
                 }
+
+                return false;
             }
 
             // Helper to do increment operations, but not for bools
@@ -2454,10 +2495,27 @@ LUA_API const Node* lua_getDummyNode()
                         LuaUserData* userData = reinterpret_cast<LuaUserData*>(lua_touserdata(lua, stackIndex));
                         if (userData->magicData == Internal::AZLuaUserData) // make sure this is our user data (4 bytes userdata required)
                         {
+                            // Handle wrapped base classes
+                            bool unwrap = false;
+                            // If we have an unwrapper, see if it is for the value type
+                            if (userData->behaviorClass->m_unwrapper && value.m_typeId != userData->behaviorClass->m_typeId)
+                            {
+                                unwrap = value.m_typeId == userData->behaviorClass->m_wrappedTypeId;
+                                // If not the exact value type, check to see it is a base class of the value type
+                                if (!unwrap)
+                                {
+                                    AZ::BehaviorContext* behaviorContext{};
+                                    AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
+                                    auto unwrappedClassIter = behaviorContext->m_typeToClassMap.find(value.m_typeId);
+                                    AZ::BehaviorClass* unwrappedClass = unwrappedClassIter != behaviorContext->m_typeToClassMap.end() ? unwrappedClassIter->second : nullptr;
+                                    unwrap = unwrappedClass && unwrappedClass->m_azRtti && unwrappedClass->m_azRtti->ProvidesFullRtti() && unwrappedClass->m_azRtti->IsTypeOf(valueClass->m_typeId);
+                                }
+                            }
+
                             void* valueAddress = nullptr;
 
-                            // Run converter before doing type check
-                            if (userData->behaviorClass->m_unwrapper && value.m_typeId == userData->behaviorClass->m_wrappedTypeId)
+                            // If we found a proper unwrapper, use it
+                            if (unwrap)
                             {
                                 userData->behaviorClass->m_unwrapper(userData->value, valueAddress, value.m_typeId, userData->behaviorClass->m_unwrapperUserData);
                                 value.m_typeId = userData->behaviorClass->m_wrappedTypeId;
@@ -2467,16 +2525,13 @@ LUA_API const Node* lua_getDummyNode()
                                 // Update type name for use in type checking and error messages
                                 value.m_name = userData->behaviorClass->m_name.c_str();
                                 value.m_typeId = userData->behaviorClass->m_typeId;
-                                valueAddress = userData->value;
-                            }
 
-                            // Check that the type of user data is the type requested (or convertible to it)
-                            if (value.m_typeId != valueClass->m_typeId && (!userData->behaviorClass->m_azRtti || !userData->behaviorClass->m_azRtti->IsTypeOf(valueClass->m_typeId)))
-                            {
-                                // Update type name for use in error messages
-                                value.m_name = userData->behaviorClass->m_name.c_str();
-                                value.m_typeId = userData->behaviorClass->m_typeId;
-                                return false;
+                                // Check that the type of user data is the type requested (or convertible to it)
+                                if (value.m_typeId != valueClass->m_typeId && (!userData->behaviorClass->m_azRtti || !userData->behaviorClass->m_azRtti->IsTypeOf(valueClass->m_typeId)))
+                                {
+                                    return false;
+                                }
+                                valueAddress = userData->value;
                             }
 
                             if (value.m_traits & BehaviorParameter::TR_POINTER)
@@ -3057,6 +3112,8 @@ LUA_API const Node* lua_getDummyNode()
                 BehaviorValueParameter arguments[20];
                 BehaviorValueParameter result;
                 ScriptContext::StackVariableAllocator tempData;
+                AZStd::allocator backupAllocator;
+                bool usedBackupAlloc  = false;
 
                 int numArguments = GetMin(static_cast<int>(thisPtr->m_method->GetNumArguments()), numElementsOnStack);
                 AZ_Assert(static_cast<int>(AZ_ARRAY_SIZE(arguments)) >= numArguments, "Increase the argument array size!");
@@ -3089,7 +3146,7 @@ LUA_API const Node* lua_getDummyNode()
 
                     if (thisPtr->m_prepareResult)
                     {
-                        thisPtr->m_prepareResult(result, thisPtr->m_resultClass, tempData); // pass temp memory and class info
+                        usedBackupAlloc  = thisPtr->m_prepareResult(result, thisPtr->m_resultClass, tempData, &backupAllocator); // pass temp memory and class info
                     }
 
                     // TODO: Make it optional for EBuses only, make it light weight too, probably a virtual function for the store result.
@@ -3139,6 +3196,10 @@ LUA_API const Node* lua_getDummyNode()
                 }
 
                 // free temp memory and call any dtors
+                if (usedBackupAlloc)
+                {
+                    backupAllocator.deallocate(result.m_value, thisPtr->m_resultClass->m_size, thisPtr->m_resultClass->m_alignment);
+                }
                 for (int i = 0; i < numArguments; ++i)
                 {
                     BehaviorClass* argClass = thisPtr->m_fromLua[i].second;
@@ -3278,6 +3339,19 @@ LUA_API const Node* lua_getDummyNode()
             return result;
         }
 
+        static void CallDestructorOnBehaviorValueParameter(BehaviorClass* idClass, BehaviorValueParameter* parameter)
+        {
+            if (idClass && idClass->m_destructor && (parameter->m_traits & AZ::BehaviorParameter::TR_POINTER) == 0)
+            {
+                void* valueAddress = parameter->GetValueAddress();
+                if (valueAddress)
+                {
+                    idClass->m_destructor(valueAddress, idClass->m_userData);
+                }
+            }
+
+        }
+
 
         class LuaEBusHandler
         {
@@ -3294,7 +3368,7 @@ LUA_API const Node* lua_getDummyNode()
                 LuaEBusHandler* m_luaHandler;
             };
 
-            LuaEBusHandler(BehaviorContext* behaviorContext, BehaviorEBus* bus, ScriptDataContext& scriptTable, BehaviorValueParameter* connectionId /*= nullptr*/, bool autoConnect)
+            LuaEBusHandler(BehaviorContext* behaviorContext, BehaviorEBus* bus, BehaviorClass* idClass, ScriptDataContext& scriptTable, BehaviorValueParameter* connectionId /*= nullptr*/, bool autoConnect)
                 : m_context(behaviorContext)
                 , m_bus(bus)
                 , m_handler(nullptr)
@@ -3328,6 +3402,8 @@ LUA_API const Node* lua_getDummyNode()
                     if (autoConnect)
                     {
                         m_handler->Connect(connectionId);
+
+                        CallDestructorOnBehaviorValueParameter(idClass, connectionId);
                     }
                 }
             }
@@ -3462,7 +3538,7 @@ LUA_API const Node* lua_getDummyNode()
                         {
                             // create handler
                             new(lua_newuserdata(lua, sizeof(LuaEBusHandler)))
-                                LuaEBusHandler(reinterpret_cast<BehaviorContext*>(lua_touserdata(lua, lua_upvalueindex(1))), ebus, scriptTable, (idFromLua && autoConnect) ? &idParam : nullptr, autoConnect);
+                                LuaEBusHandler(reinterpret_cast<BehaviorContext*>(lua_touserdata(lua, lua_upvalueindex(1))), ebus, idClass, scriptTable, (idFromLua && autoConnect) ? &idParam : nullptr, autoConnect);
                             lua_pushvalue(lua, lua_upvalueindex(3)); // set the metatable for the user data
                             lua_setmetatable(lua, -2);
                         }
@@ -3529,6 +3605,8 @@ LUA_API const Node* lua_getDummyNode()
                         }
 
                         ebusHandler->m_handler->Connect(idFromLua ? &idParam : nullptr);
+
+                        CallDestructorOnBehaviorValueParameter(idClass, &idParam);
                     }
                     else
                     {
@@ -3882,13 +3960,11 @@ LUA_API const Node* lua_getDummyNode()
                 {
                     if (!allocator)
                     {
-                        m_luaAllocator = AZStd::make_unique<Internal::LuaSystemAllocator>();
                         Internal::LuaSystemAllocator::Descriptor desc;
                         // Prevent allocator from growing in small chunks
                         desc.m_heap.m_systemChunkSize = 1024 * 1024;
-
-                        m_luaAllocator->Create(desc);
-                        allocator = m_luaAllocator.get();
+                        m_luaAllocator.Create(desc);
+                        allocator = m_luaAllocator.Get();
                     }
                     m_lua = lua_newstate(&LuaMemoryHook, allocator);
                     AZ_Assert(m_lua, "Failed to create new LUA state!");
@@ -4583,10 +4659,10 @@ LUA_API const Node* lua_getDummyNode()
             {
                 LSV_BEGIN(m_lua, 0);
 
-                // Check for "ignore" attribute
-                if (FindAttribute(Script::Attributes::Ignore, behaviorClass->m_attributes))
+                // Do not bind if this class should not be available in Lua
+                if (!AZ::Internal::IsAvailableInLua(behaviorClass->m_attributes))
                 {
-                    return; // skip this method
+                    return;
                 }
 
                 // set storage type
@@ -4766,10 +4842,10 @@ LUA_API const Node* lua_getDummyNode()
             {
                 LSV_BEGIN(m_lua, 0);
 
-                // Check for "ignore" attribute
-                if (FindAttribute(Script::Attributes::Ignore, ebus->m_attributes))
+                // Do not bind if this bus should not be available in Lua
+                if (!AZ::Internal::IsAvailableInLua(ebus->m_attributes))
                 {
-                    return; // skip this bus
+                    return;
                 }
 
                 lua_createtable(m_lua, 0, 0); // create ebus table
@@ -5306,7 +5382,7 @@ LUA_API const Node* lua_getDummyNode()
             AZStd::vector< ScriptTypeFactory >  m_scriptPropertyFactories;
             AZStd::vector< ScriptTypeFactory >  m_scriptPropertyArrayFactories;
             ScriptTypeFactory                   m_scriptPropertyTableFactory;
-            AZStd::unique_ptr<Internal::LuaSystemAllocator> m_luaAllocator;
+            AllocatorWrapper<Internal::LuaSystemAllocator> m_luaAllocator;
             AZStd::thread::id m_ownerThreadId; // Check if Lua methods (including EBus handlers) are called from background threads.
         };
     } // namespace AZ

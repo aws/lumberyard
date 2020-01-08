@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Android":
+        [
+            "EMotionFX_Traits_Platform.h",
+            "EMotionFX_Traits_Android.h"
+        ]
+    }
+}

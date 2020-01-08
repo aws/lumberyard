@@ -13,7 +13,9 @@
 #include "PropertyVectorCtrl.hxx"
 #include "DHQSpinbox.hxx"
 #include "PropertyQTConstants.h"
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include <QtWidgets/QHBoxLayout>
+AZ_POP_DISABLE_WARNING
 #include <QtWidgets/QLabel>
 #include <AzCore/Math/Transform.h>
 #include <cmath>
@@ -93,7 +95,7 @@ namespace AzToolsFramework
 
         // Adding elements to the layout
         int numberOfElementsRemaining = m_elementCount;
-        int numberOfRowsInLayout = elementsPerRow <= 0 ? 1 : std::ceil(static_cast<float>(m_elementCount) / elementsPerRow);
+        int numberOfRowsInLayout = elementsPerRow <= 0 ? 1 : static_cast<int>(std::ceil(static_cast<float>(m_elementCount) / static_cast<float>(elementsPerRow)));
         int actualElementsPerRow = elementsPerRow <= 0 ? m_elementCount : elementsPerRow;
 
         for (int rowIdx = 0; rowIdx < numberOfRowsInLayout; rowIdx++)
@@ -415,7 +417,7 @@ namespace AzToolsFramework
     {
         VectorElement** elements = GUI->getElements();
 
-        AZ::Vector3 eulerRotation(elements[0]->GetValue(), elements[1]->GetValue(), elements[2]->GetValue());
+        AZ::Vector3 eulerRotation(static_cast<float>(elements[0]->GetValue()), static_cast<float>(elements[1]->GetValue()), static_cast<float>(elements[2]->GetValue()));
         AZ::Quaternion newValue;
         newValue.SetFromEulerDegrees(eulerRotation);
 

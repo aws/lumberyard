@@ -155,7 +155,6 @@ public:
     void OnUpdateAssetBrowserShowList();
     void OnUpdateAssetBrowserShowPreview();
     void OnUpdateAssetBrowserShowFilters();
-    void OnUpdateAssetBrowserEditTags();
     void OnAssetBrowserFromViewportSelection();
     void OnAssetBrowserSelectInViewport();
 

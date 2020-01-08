@@ -16,7 +16,7 @@
 /////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////
 
-#include "CloudGemDynamicContent_precompiled.h"
+
 
 
 #include "AWS/ServiceAPI/CloudGemDynamicContentClientComponent.h"
@@ -92,6 +92,9 @@ namespace ServiceAPI {
             bool ok = true;
             ok = ok && writer.StartObject();
             
+            ok = ok && writer.Key("ManifestData");
+            ok = ok && WriteJson(writer, item.ManifestData);
+            
             ok = ok && writer.Key("FileList");
             ok = ok && WriteJson(writer, item.FileList);
             
@@ -106,17 +109,23 @@ namespace ServiceAPI {
             bool ok = true;
             ok = ok && writer.StartObject();
             
-            ok = ok && writer.Key("FileStatus");
-            ok = ok && WriteJson(writer, item.FileStatus);
-            
-            ok = ok && writer.Key("Signature");
-            ok = ok && WriteJson(writer, item.Signature);
+            ok = ok && writer.Key("Hash");
+            ok = ok && WriteJson(writer, item.Hash);
             
             ok = ok && writer.Key("PresignedURL");
             ok = ok && WriteJson(writer, item.PresignedURL);
             
             ok = ok && writer.Key("FileName");
             ok = ok && WriteJson(writer, item.FileName);
+            
+            ok = ok && writer.Key("FileStatus");
+            ok = ok && WriteJson(writer, item.FileStatus);
+            
+            ok = ok && writer.Key("Signature");
+            ok = ok && WriteJson(writer, item.Signature);
+            
+            ok = ok && writer.Key("Size");
+            ok = ok && WriteJson(writer, item.Size);
             
             ok = ok && writer.EndObject();
             return ok;
@@ -956,6 +965,8 @@ namespace ServiceAPI {
     bool RequestData::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
     {
         
+        if (strcmp(key, "ManifestData") == 0) return reader.Accept(ManifestData);
+        
         if (strcmp(key, "FileList") == 0) return reader.Accept(FileList);
         
         return reader.Ignore();
@@ -977,6 +988,8 @@ namespace ServiceAPI {
             behaviorContext->Class<RequestData>("CloudGemDynamicContent_RequestData")
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
             
+                ->Property("ManifestData", BehaviorValueProperty(&RequestData::ManifestData))
+            
                 ->Property("FileList", BehaviorValueProperty(&RequestData::FileList))
             
             ;
@@ -988,13 +1001,17 @@ namespace ServiceAPI {
     bool FileRequestResult::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
     {
         
-        if (strcmp(key, "FileStatus") == 0) return reader.Accept(FileStatus);
-        
-        if (strcmp(key, "Signature") == 0) return reader.Accept(Signature);
+        if (strcmp(key, "Hash") == 0) return reader.Accept(Hash);
         
         if (strcmp(key, "PresignedURL") == 0) return reader.Accept(PresignedURL);
         
         if (strcmp(key, "FileName") == 0) return reader.Accept(FileName);
+        
+        if (strcmp(key, "FileStatus") == 0) return reader.Accept(FileStatus);
+        
+        if (strcmp(key, "Signature") == 0) return reader.Accept(Signature);
+        
+        if (strcmp(key, "Size") == 0) return reader.Accept(Size);
         
         return reader.Ignore();
     }
@@ -1015,13 +1032,17 @@ namespace ServiceAPI {
             behaviorContext->Class<FileRequestResult>("CloudGemDynamicContent_FileRequestResult")
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
             
-                ->Property("FileStatus", BehaviorValueProperty(&FileRequestResult::FileStatus))
-            
-                ->Property("Signature", BehaviorValueProperty(&FileRequestResult::Signature))
+                ->Property("Hash", BehaviorValueProperty(&FileRequestResult::Hash))
             
                 ->Property("PresignedURL", BehaviorValueProperty(&FileRequestResult::PresignedURL))
             
                 ->Property("FileName", BehaviorValueProperty(&FileRequestResult::FileName))
+            
+                ->Property("FileStatus", BehaviorValueProperty(&FileRequestResult::FileStatus))
+            
+                ->Property("Signature", BehaviorValueProperty(&FileRequestResult::Signature))
+            
+                ->Property("Size", BehaviorValueProperty(&FileRequestResult::Size))
             
             ;
         }

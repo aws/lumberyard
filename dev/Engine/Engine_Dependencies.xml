@@ -1,0 +1,16 @@
+<EngineDependencies versionnumber="1.0.0">
+    <Dependency path="*.ent" optional="false" />
+    <Dependency path="game.cfg" optional="true" />
+    <Dependency path="config/singleplayer.cfg" optional="true" />
+    <Dependency path="singleplayer.cfg" optional="true" />
+    <Dependency path="system_windows_pc.cfg" optional="true" />
+    <Dependency path="default-ui" optional="true" />
+    <Dependency path="fonts/default-ui.fontfamily" optional="true" />
+    <Dependency path="fonts/default-ui/default-ui.fontfamily" optional="true" />
+    <Dependency path="libs/particles/preloadlibs.txt" optional="true" />
+    <Dependency path="libs/smartobjects.xml" optional="true" />
+    <Dependency path="modes/menucommon_sp.pak" optional="true" />
+    <Dependency path="modes/menucommon_mp.pak" optional="true" />
+    <Dependency path="libs/gameaudio/wwise/*.xml" optional="false" />
+    <Dependency path="libs/materialeffects/surfacetypes.xml" optional="true" />
+</EngineDependencies>

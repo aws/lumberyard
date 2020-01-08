@@ -15,6 +15,7 @@
 #include <AzCore/std/string/conversions.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/IO/FileIO.h>
+#include <AzCore/IO/Streamer.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/std/chrono/chrono.h>
 #include <AzCore/std/string/conversions.h>
@@ -22,6 +23,7 @@
 #include <AzFramework/API/BootstrapReaderBus.h>
 #include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
+#include <AzFramework/Asset/AssetSeedList.h>
 #include <AzFramework/Network/AssetProcessorConnection.h>
 
 namespace AzFramework
@@ -59,6 +61,16 @@ namespace AzFramework
                 break;
             case AssetNotificationMessage::AssetRemoved:
                 AssetSystemBus::QueueBroadcast(&AssetSystemBus::Events::AssetRemoved, message);
+                break;
+            case AssetNotificationMessage::JobFileClaimed:
+                if (AZ::IO::Streamer::IsReady())
+                {
+                    AZ::IO::Streamer::Instance().FlushCacheAsync(message.m_data.c_str());
+                }
+                AssetSystemInfoBus::Broadcast(&AssetSystemInfoBus::Events::AssetFileClaimed, message.m_data);
+                break;
+            case AssetNotificationMessage::JobFileReleased:
+                AssetSystemInfoBus::Broadcast(&AssetSystemInfoBus::Events::AssetFileReleased, message.m_data);
                 break;
             case AssetNotificationMessage::JobStarted:
                 AssetSystemInfoBus::Broadcast(&AssetSystemInfoBus::Events::AssetCompilationStarted, message.m_data);
@@ -219,7 +231,8 @@ namespace AzFramework
             SaveAssetCatalogResponse::Reflect(context);
 
             AssetNotificationMessage::Reflect(context);
-
+            AssetSeedListReflector::Reflect(context);
+            SeedInfo::Reflect(context);
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {

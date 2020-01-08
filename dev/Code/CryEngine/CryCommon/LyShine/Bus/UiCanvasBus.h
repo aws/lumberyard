@@ -39,7 +39,7 @@ public: // member functions
     virtual ~UiCanvasInterface() {}
 
     //! Get the asset ID path name of this canvas. If not loaded or saved yet this will be ""
-    virtual const string& GetPathname() = 0;
+    virtual const AZStd::string& GetPathname() = 0;
 
     //! Get the ID of this canvas. This will remain the same while this canvas is loaded.
     virtual LyShine::CanvasId GetCanvasId() = 0;
@@ -210,9 +210,9 @@ public: // member functions
     //! When running in game in full screen mode the target canvas size should be set to the viewport size
     virtual void SetTargetCanvasSize(bool isInGame, const AZ::Vector2& targetCanvasSize) = 0;
 
-    //! Get uniform scale to adjust for the difference between canvas size (authored size)
-    //! and the viewport size when running on current device
-    virtual float GetUniformDeviceScale() = 0;
+    //! Get scale to adjust for the difference between canvas size (authored size)
+    //! and the viewport size (target canvas size) when running on current device
+    virtual AZ::Vector2 GetDeviceScale() = 0;
 
     //! Get flag that indicates whether visual element's vertices should snap to the nearest pixel
     virtual bool GetIsPixelAligned() = 0;
@@ -335,6 +335,10 @@ public: // member functions
     //! Clear all active interactables, and all hover interactables if last input was positional (mouse/touch).
     //! This is intended for internal use by UI components
     virtual void ClearAllInteractables() = 0;
+
+    //! Generate Enter pressed/released input events on an interactable.
+    //! Useful for automated testing to simulate button clicks
+    virtual void ForceEnterInputEventOnInteractable(AZ::EntityId interactableId) = 0;
 
 public: // static member data
 

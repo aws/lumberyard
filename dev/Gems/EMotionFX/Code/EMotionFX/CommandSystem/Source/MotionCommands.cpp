@@ -974,7 +974,7 @@ namespace CommandSystem
         }
 
         // Remove motion from selection list.
-        const AZStd::string commandString = AZStd::string::format("Unselect -motionName \"%s\"", motion->GetFileName());
+        const AZStd::string commandString = AZStd::string::format("Unselect -motionName \"%s\"", motion->GetName());
         GetCommandManager()->ExecuteCommandInsideCommand(commandString, outResult);
 
         // store the previously used id and remove the motion
@@ -1208,8 +1208,6 @@ namespace CommandSystem
         for (size_t i = 0; i < numInst; ++i)
         {
             EMotionFX::AnimGraphInstance* animGraphInstance = EMotionFX::GetAnimGraphManager().GetAnimGraphInstance(i);
-            EMotionFX::AnimGraph* animGraph = animGraphInstance->GetAnimGraph();
-            EMotionFX::MotionSet* motionSet = animGraphInstance->GetMotionSet();
 
             animGraphInstance->UpdateUniqueData();
         }

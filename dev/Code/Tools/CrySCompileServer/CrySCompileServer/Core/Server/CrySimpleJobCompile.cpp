@@ -36,7 +36,7 @@
 #include <fstream>
 #include <sstream>
 
-#if defined(AZ_RESTRICTED_PLATFORM)
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #undef AZ_RESTRICTED_SECTION
 #define CRYSIMPLEJOBCOMPILE_CPP_SECTION_1 1
 #endif
@@ -105,13 +105,8 @@ bool ValidateExecutableStringLegacy(const AZStd::string& executableString)
     if (commandString.find("fxc.exe") == AZStd::string::npos &&
         commandString.find("FXC.exe") == AZStd::string::npos &&
         commandString.find("HLSLcc.exe") == AZStd::string::npos &&
-        commandString.find("HLSLcc_vc120x64.exe") == AZStd::string::npos &&
-        commandString.find("HLSLcc_vc140x64.exe") == AZStd::string::npos &&
-        commandString.find("HLSLcc_vc141x64.exe") == AZStd::string::npos &&
-        commandString.find("HLSLcc_dedicated_vc120x64.exe") == AZStd::string::npos &&
-        commandString.find("HLSLcc_dedicated_vc140x64.exe") == AZStd::string::npos &&
-        commandString.find("HLSLcc_dedicated_vc141x64.exe") == AZStd::string::npos &&
-        commandString.find("DXOrbisShaderCompiler.exe") == AZStd::string::npos && // ACCEPTED_USE
+        commandString.find("HLSLcc_dedicated.exe") == AZStd::string::npos &&
+        commandString.find("DXOrbisShaderCompiler.exe") == AZStd::string::npos &&
         commandString.find("dxcGL") == AZStd::string::npos &&
         commandString.find("dxcMetal") == AZStd::string::npos)
     {
@@ -253,9 +248,9 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
             },{
                 "METAL", SEnviropment::m_METAL_HLSLcc
             },{
-                "ORBIS", SEnviropment::m_Orbis_DXC // ACCEPTED_USE
+                "ORBIS", SEnviropment::m_Orbis_DXC
             },{
-                "DURANGO", SEnviropment::m_Durango_FXC // ACCEPTED_USE
+                "DURANGO", SEnviropment::m_Durango_FXC
             }
         };
         
@@ -380,7 +375,7 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
 
         AZStd::string commandStringToFormat = compilerPath + compilerExecutable;
         
-#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_MAC)
         // Surrounding compiler path+executable with quotes to support spaces in the path.
         // NOTE: Executable has a space at the end on purpose, inserting quote before.
         commandStringToFormat.insert(0, "\"");
@@ -462,10 +457,16 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
 
     AZStd::string hardwareTarget;
 
-    #if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+    #if defined(TOOLS_SUPPORT_XENIA)
+        #define AZ_RESTRICTED_SECTION CRYSIMPLEJOBCOMPILE_CPP_SECTION_1
+        #include "Xenia/CrySimpleJobCompile_cpp_xenia.inl"
+    #endif
+    #if defined(TOOLS_SUPPORT_PROVO)
         #define AZ_RESTRICTED_SECTION CRYSIMPLEJOBCOMPILE_CPP_SECTION_1
         #include "Provo/CrySimpleJobCompile_cpp_provo.inl"
     #endif
+#endif
 
     int64_t t0 = g_Timer.GetTime();
 

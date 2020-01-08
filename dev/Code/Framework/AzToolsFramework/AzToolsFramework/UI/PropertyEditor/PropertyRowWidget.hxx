@@ -13,6 +13,7 @@
 #ifndef PROPERTY_ROW_WIDGET_H
 #define PROPERTY_ROW_WIDGET_H
 
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // class '...' needs to have dll-interface to be used by clients of class '...'
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -22,6 +23,8 @@
 #include <QtWidgets/QPushButton>
 #include <QtCore/QPointer>
 #include <QtCore/QElapsedTimer>
+AZ_POP_DISABLE_WARNING
+
 #include "PropertyEditorAPI.h"
 
 #pragma once

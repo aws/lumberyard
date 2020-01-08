@@ -41,7 +41,7 @@
 #include <EMotionFX/Source/BlendTreeParameterNode.h>
 #include <Editor/AnimGraphEditorBus.h>
 
-#ifdef HAS_GAME_CONTROLLER
+#if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
     #include "GameControllerWindow.h"
 #endif
 
@@ -209,7 +209,7 @@ namespace EMStudio
         mDisableRendering               = false;
         mLastPlayTime                   = -1;
         mTotalTime                      = FLT_MAX;
-#ifdef HAS_GAME_CONTROLLER
+#if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         mGameControllerWindow           = nullptr;
         mGameControllerDock             = nullptr;
 #endif
@@ -275,7 +275,7 @@ namespace EMStudio
         }
 
         // remove the game controller dock
-    #ifdef HAS_GAME_CONTROLLER
+    #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         if (mGameControllerDock)
         {
             EMStudio::GetMainWindow()->removeDockWidget(mGameControllerDock);
@@ -345,7 +345,7 @@ namespace EMStudio
             mDockWindowActions[WINDOWS_NODEGROUPWINDOW]->setCheckable(true);
             mDockWindowActions[WINDOWS_PALETTEWINDOW] = parent->addAction("Palette Window");
             mDockWindowActions[WINDOWS_PALETTEWINDOW]->setCheckable(true);
-#ifdef HAS_GAME_CONTROLLER
+#if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
             mDockWindowActions[WINDOWS_GAMECONTROLLERWINDOW] = parent->addAction("Game Controller Window");
             mDockWindowActions[WINDOWS_GAMECONTROLLERWINDOW]->setCheckable(true);
 #endif
@@ -356,7 +356,7 @@ namespace EMStudio
             connect(mDockWindowActions[WINDOWS_ATTRIBUTEWINDOW], &QAction::triggered, this, &AnimGraphPlugin::UpdateWindowVisibility);
             connect(mDockWindowActions[WINDOWS_NODEGROUPWINDOW], &QAction::triggered, this, &AnimGraphPlugin::UpdateWindowVisibility);
             connect(mDockWindowActions[WINDOWS_PALETTEWINDOW], &QAction::triggered, this, &AnimGraphPlugin::UpdateWindowVisibility);
-#ifdef HAS_GAME_CONTROLLER
+#if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
             connect(mDockWindowActions[WINDOWS_GAMECONTROLLERWINDOW], &QAction::triggered, this, &AnimGraphPlugin::UpdateWindowVisibility);
 #endif
             connect(mDockWindowActions[WINDOWS_RECORDER], &QAction::triggered, this, &AnimGraphPlugin::UpdateWindowVisibility);
@@ -365,7 +365,7 @@ namespace EMStudio
             SetOptionFlag(WINDOWS_ATTRIBUTEWINDOW, GetAttributeDock()->isVisible());
             SetOptionFlag(WINDOWS_PALETTEWINDOW, GetNodePaletteDock()->isVisible());
             SetOptionFlag(WINDOWS_NODEGROUPWINDOW, GetNodeGroupDock()->isVisible());
-#ifdef HAS_GAME_CONTROLLER
+#if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
             SetOptionFlag(WINDOWS_GAMECONTROLLERWINDOW, GetGameControllerDock()->isVisible());
 #endif
             SetOptionFlag(WINDOWS_RECORDER, GetRecorderDock()->isVisible());
@@ -379,7 +379,7 @@ namespace EMStudio
         GetNodeGroupDock()->setVisible(GetOptionFlag(WINDOWS_NODEGROUPWINDOW));
         GetNodePaletteDock()->setVisible(GetOptionFlag(WINDOWS_PALETTEWINDOW));
 
-#ifdef HAS_GAME_CONTROLLER
+#if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         GetGameControllerDock()->setVisible(GetOptionFlag(WINDOWS_GAMECONTROLLERWINDOW));
 #endif
 
@@ -609,7 +609,7 @@ namespace EMStudio
         // it must be init after navigate widget is created because actions are linked to it
         mViewWidget->Init(mGraphWidget);
 
-    #ifdef HAS_GAME_CONTROLLER
+    #if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         // create the game controller dock
         mGameControllerDock = new MysticQt::DockWidget(mainWindow, "Game Controller");
         dockHeader = new MysticQt::DockHeader(mGameControllerDock);
@@ -688,7 +688,7 @@ namespace EMStudio
         SetOptionFlag(WINDOWS_PARAMETERWINDOW, GetParameterDock()->isVisible());
         SetOptionFlag(WINDOWS_ATTRIBUTEWINDOW, GetAttributeDock()->isVisible());
         SetOptionFlag(WINDOWS_PALETTEWINDOW, GetNodePaletteDock()->isVisible());
-#ifdef HAS_GAME_CONTROLLER
+#if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         SetOptionFlag(WINDOWS_GAMECONTROLLERWINDOW, GetGameControllerDock()->isVisible());
 #endif
         SetOptionFlag(WINDOWS_NODEGROUPWINDOW, GetNodeGroupDock()->isVisible());
@@ -705,7 +705,7 @@ namespace EMStudio
         mParameterWindow->Reinit();
         mNodeGroupWindow->Init();
         mViewWidget->UpdateAnimGraphOptions();
-#ifdef HAS_GAME_CONTROLLER
+#if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         mGameControllerWindow->ReInit();
 #endif
     }
@@ -1015,6 +1015,20 @@ namespace EMStudio
     }
 
 
+    void AnimGraphEventHandler::OnDeleteAnimGraph(EMotionFX::AnimGraph* animGraph)
+    {
+        if (mPlugin->GetActiveAnimGraph() == animGraph)
+        {
+            mPlugin->SetActiveAnimGraph(nullptr);
+        }
+    }
+
+    void AnimGraphEventHandler::OnDeleteAnimGraphInstance(EMotionFX::AnimGraphInstance* animGraphInstance)
+    {
+        mPlugin->GetAnimGraphModel().SetAnimGraphInstance(animGraphInstance->GetAnimGraph(), animGraphInstance, nullptr);
+    }
+
+
     // activate a given anim graph
     void AnimGraphPlugin::SetActiveAnimGraph(EMotionFX::AnimGraph* animGraph)
     {
@@ -1022,6 +1036,16 @@ namespace EMStudio
         {
             mActiveAnimGraph = animGraph;
             InitForAnimGraph(animGraph);
+
+            // Focus on the newly actived anim graph if it has already been added to the anim graph model.
+            if (animGraph)
+            {
+                QModelIndex rootModelIndex = m_animGraphModel->FindFirstModelIndex(animGraph->GetRootStateMachine());
+                if (rootModelIndex.isValid())
+                {
+                    m_animGraphModel->Focus(rootModelIndex);
+                }
+            }
         }
     }
 

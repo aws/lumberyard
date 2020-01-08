@@ -25,7 +25,6 @@
 #include <MCore/Source/Matrix4.h>
 #include <MCore/Source/AzCoreConversions.h>
 
-
 class EmotionFXMathLibTests
     : public ::testing::Test
 {
@@ -141,6 +140,26 @@ protected:
         return true;
     }
 
+    bool AZEMQuaternionsAreEqual(AZ::Quaternion& azQuaternion, const MCore::Quaternion& emQuaternion)
+    {
+        if (AZQuaternionCompareExact(azQuaternion, emQuaternion.x, emQuaternion.y,
+            emQuaternion.z, emQuaternion.w))
+        {
+            return true;
+        }
+        return false;
+    }
+
+    bool AZEMQuaternionsAreClose(AZ::Quaternion& azQuaternion, const MCore::Quaternion& emQuaternion, const float tolerance)
+    {
+        if (AZQuaternionCompareClose(azQuaternion, emQuaternion.x, emQuaternion.y,
+            emQuaternion.z, emQuaternion.w, tolerance))
+        {
+            return true;
+        }
+        return false;
+    }
+
     static const float  s_toleranceHigh;
     static const float  s_toleranceMedium;
     static const float  s_toleranceLow;
@@ -218,7 +237,7 @@ TEST_F(EmotionFXMathLibTests, AZEMQuaternionConversion_SetToAxisAngleEquivalent_
     ASSERT_TRUE(AZQuaternionCompareClose(azQuaternion, emQuaternion.x, emQuaternion.y, emQuaternion.z, emQuaternion.w, s_toleranceLow));
 }
 
-// Compare equivalent coversions quaternions -> (axis, angle) between systems
+// Compare equivalent conversions quaternions -> (axis, angle) between systems
 TEST_F(EmotionFXMathLibTests, AZEMQuaternionConversion_ToAxisAngleEquivalent_Success)
 {
     //populate Quaternions with same data
@@ -644,9 +663,226 @@ TEST_F(EmotionFXMathLibTests, AZEMQuaternionConversion_ToMatrix_Success)
     ASSERT_TRUE(same);
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// AZEMQuaternion Compare Output tests
+// Determines the AZ and MCore quaternion outputs are same/close after same math operations.
+///////////////////////////////////////////////////////////////////////////////
+TEST_F(EmotionFXMathLibTests, AZEMQuaternion_CompareOperatorAddEquivalent_Success)
+{
+    // Quaternion test: operator '+' and operator '+='
+    AZ::Quaternion azQuaternion = AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f);
+    AZ::Quaternion azQuaternion2 = AZ::Quaternion(0.8f, 0.7f, 0.6f, 1.0f);
+    azQuaternion.Normalize();
+    azQuaternion2.Normalize();
+    azQuaternion = azQuaternion + azQuaternion2;
+    azQuaternion2 += azQuaternion;
+    
+    MCore::Quaternion emQuaternion = MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f);
+    MCore::Quaternion emQuaternion2 = MCore::Quaternion(0.8f, 0.7f, 0.6f, 1.0f);
+    emQuaternion.Normalize();
+    emQuaternion2.Normalize();
+    emQuaternion = emQuaternion + emQuaternion2;
+    emQuaternion2 += emQuaternion;
+    
+    EXPECT_TRUE(AZEMQuaternionsAreClose(azQuaternion, emQuaternion, s_toleranceLow)) << "AZ/MCore Quaternions should have similar output with operator '+'";
+    EXPECT_TRUE(AZEMQuaternionsAreClose(azQuaternion2, emQuaternion2, s_toleranceLow)) << "AZ/MCore Quaternions should have similar output with operator '+='";
+}
 
+TEST_F(EmotionFXMathLibTests, AZEMQuaternion_CompareOperatorSubtractEquivalent_Success)
+{
+    // Quaternion test: operator '-' and operator '-='
+    AZ::Quaternion azQuaternion = AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f);
+    AZ::Quaternion azQuaternion2 = AZ::Quaternion(0.8f, 0.7f, 0.6f, 1.0f);
+    azQuaternion.Normalize();
+    azQuaternion2.Normalize();
+    azQuaternion = azQuaternion - azQuaternion2;
+    azQuaternion2 -= azQuaternion;
 
-//last test
+    MCore::Quaternion emQuaternion = MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f);
+    MCore::Quaternion emQuaternion2 = MCore::Quaternion(0.8f, 0.7f, 0.6f, 1.0f);
+    emQuaternion.Normalize();
+    emQuaternion2.Normalize();
+    emQuaternion = emQuaternion - emQuaternion2;
+    emQuaternion2 -= emQuaternion;
+
+    EXPECT_TRUE(AZEMQuaternionsAreClose(azQuaternion, emQuaternion, s_toleranceLow)) << "AZ/MCore Quaternions should have similar output with operator '-'";
+    EXPECT_TRUE(AZEMQuaternionsAreClose(azQuaternion2, emQuaternion2, s_toleranceLow)) << "AZ/MCore Quaternions should have similar output with operator '-='";
+}
+
+TEST_F(EmotionFXMathLibTests, AZEMQuaternion_CompareOperatorMultiplyHasSimilarOutput_Success)
+{
+    // Quaternion test: operator '*' and operator '*=' with another quaternion, vector3 and float
+    AZ::Quaternion azQuaternion = AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f);
+    AZ::Quaternion azQuaternion2 = AZ::Quaternion(0.8f, 0.7f, 0.6f, 1.0f);
+    AZ::Quaternion azQuaternion3 = AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f);
+    azQuaternion.Normalize();
+    azQuaternion2.Normalize();
+    azQuaternion3.Normalize();
+    azQuaternion = azQuaternion * azQuaternion2;
+    azQuaternion2 *= azQuaternion;
+    azQuaternion3 *= 0.5f;
+    AZ::Vector3 aztestVec3 = azQuaternion2 * m_azNormalizedVector3_a;
+
+    MCore::Quaternion emQuaternion = MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f);
+    MCore::Quaternion emQuaternion2 = MCore::Quaternion(0.8f, 0.7f, 0.6f, 1.0f);
+    MCore::Quaternion emQuaternion3 = MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f);
+    emQuaternion.Normalize();
+    emQuaternion2.Normalize();
+    emQuaternion3.Normalize();
+    emQuaternion = emQuaternion * emQuaternion2;
+    emQuaternion2 *= emQuaternion;
+    emQuaternion3 *= 0.5f;
+    AZ::Vector3 emtestVec3 = emQuaternion2 * m_azNormalizedVector3_a;
+
+    EXPECT_TRUE(AZEMQuaternionsAreClose(azQuaternion, emQuaternion, s_toleranceLow)) << "AZ/MCore Quaternions should have similar output with operator '*' with another quaternion";
+    EXPECT_TRUE(AZEMQuaternionsAreClose(azQuaternion2, emQuaternion2, s_toleranceLow)) << "AZ/MCore Quaternions should have similar output with operator '*=' with another quaternion";
+    EXPECT_TRUE(AZEMQuaternionsAreClose(azQuaternion3, emQuaternion3, s_toleranceLow)) << "AZ/MCore Quaternions should have similar output with operator '*=' with a float value";
+    EXPECT_TRUE(AZVector3CompareClose(aztestVec3, emtestVec3, s_toleranceLow)) << "AZ/MCore Quaternions should have similar output with operator '*' with a vector3";
+}
+
+TEST_F(EmotionFXMathLibTests, AZEMQuaternion_EquivalentOperatorsHasSameOutput_Success)
+{
+    // Testing Quaternion == Quaternion and operator!=
+    bool azCheck = AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).GetNormalized() == AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).GetNormalized();
+    bool azCheck2 = AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).GetNormalized() == AZ::Quaternion(0.1000001f, 0.2000001f, 0.3000001f, 1.0f).GetNormalized();
+    bool azCheck3 = AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).GetNormalized() != AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).GetNormalized();
+    bool azCheck4 = AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).GetNormalized() != AZ::Quaternion(0.1000001f, 0.2000001f, 0.3000001f, 1.0f).GetNormalized();
+
+    bool emCheck = MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).Normalized() == MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).Normalized();
+    bool emCheck2 = MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).Normalized() == MCore::Quaternion(0.1000001f, 0.2000001f, 0.3000001f, 1.0f).Normalized();
+    bool emCheck3 = MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).Normalized() != MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).Normalized();
+    bool emCheck4 = MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).Normalized() != MCore::Quaternion(0.1000001f, 0.2000001f, 0.3000001f, 1.0f).Normalized();
+
+    EXPECT_TRUE(azCheck == emCheck) << "AZ/MCore Quaternions should have same output of 'true' with operator '=='";
+    EXPECT_TRUE(azCheck2 == emCheck2) << "AZ/MCore Quaternions should have same output of 'false' with operator '=='";
+    EXPECT_TRUE(azCheck3 == emCheck3) << "AZ/MCore Quaternions should have same output of 'false' with operator '!='";
+    EXPECT_TRUE(azCheck4 == emCheck4) << "AZ/MCore Quaternions should have same output of 'true' with operator '!='";
+}
+
+TEST_F(EmotionFXMathLibTests, AZEMQuaternion_InverseHasSimilarOutput_Success)
+{
+    // Test quaternions inverse method
+    AZ::Quaternion azQuaternion = AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).GetNormalized().GetInverseFull();
+    AZ::Quaternion azQuaternion2 = AZ::Quaternion(0.0f, 0.0f, 0.0f, 1.0f).GetNormalized().GetInverseFull();
+
+    MCore::Quaternion emQuaternion = MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).Normalized().Inverse();
+    MCore::Quaternion emQuaternion2 = MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f).Normalized().Inverse();
+
+    EXPECT_TRUE(AZEMQuaternionsAreClose(azQuaternion, emQuaternion, s_toleranceLow)) << "AZ/MCore Quaternions should have similar Inverse output";
+    EXPECT_TRUE(AZEMQuaternionsAreClose(azQuaternion2, emQuaternion2, s_toleranceLow)) << "AZ/MCore Quaternion(0.0f, 0.0f, 0.0f, 1.0f) should have similar Inverse output";
+}
+
+TEST_F(EmotionFXMathLibTests, AZEMQuaternion_ConjugateHasSimilarOutput_Success)
+{
+    // Test quaternion conjugate method
+    AZ::Quaternion azQuaternion = AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).GetNormalized().GetConjugate();
+    AZ::Quaternion azQuaternion2 = AZ::Quaternion(0.0f, 0.0f, 0.0f, 1.0f).GetNormalized().GetConjugate();
+
+    MCore::Quaternion emQuaternion = MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).Normalized().Conjugate();
+    MCore::Quaternion emQuaternion2 = MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f).Normalized().Conjugate();
+
+    EXPECT_TRUE(AZEMQuaternionsAreClose(azQuaternion, emQuaternion, s_toleranceLow)) << "AZ/MCore Quaternions should have similar Conjugate output";
+    EXPECT_TRUE(AZEMQuaternionsAreClose(azQuaternion2, emQuaternion2, s_toleranceLow)) << "AZ/MCore Quaternion(0.0f, 0.0f, 0.0f, 1.0f) should have similar Conjugate output";
+}
+
+TEST_F(EmotionFXMathLibTests, AZEMQuaternion_HasSameSquareLengthOutput_Success)
+{
+    // Test AZ and MCore quaternions to have similar square length
+    float azTest = AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).GetNormalized().GetLengthSq();
+    float azTest2 = AZ::Quaternion(0.0f, 0.0f, 0.0f, 1.0f).GetNormalized().GetLengthSq();
+
+    float emTest = MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).Normalized().SquareLength();
+    float emTest2 = MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f).Normalized().SquareLength();
+    
+    EXPECT_TRUE(AZ::GetAbs(azTest - emTest) < s_toleranceLow) << "AZ/MCore Quaternions should have similar square length output";
+    EXPECT_TRUE(AZ::GetAbs(azTest2 - emTest2) < s_toleranceLow) << "AZ/MCore Quaternion(0.0f, 0.0f, 0.0f, 1.0f) should have similar square length output";
+}
+
+TEST_F(EmotionFXMathLibTests, AZEMQuaternion_HasSameLengthOutput_Success)
+{
+    // Test AZ and MCore quaternions to have similar length
+    // AZ GetLength, GetLengthApprox, GetLengthExact all returns sqrtf(Dot(*this))
+    float azTest = AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).GetNormalized().GetLength();
+    float azTest2 = AZ::Quaternion(0.0f, 0.0f, 0.0f, 1.0f).GetNormalized().GetLength();
+
+    float emTest = MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).Normalized().Length();
+    float emTest2 = MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f).Normalized().Length();
+
+    EXPECT_TRUE(AZ::GetAbs(azTest - emTest) < s_toleranceLow) << "AZ/MCore Quaternions should have similar length output";
+    EXPECT_TRUE(AZ::GetAbs(azTest2 - emTest2) < s_toleranceLow) << "AZ/MCore Quaternion(0.0f, 0.0f, 0.0f, 1.0f) should have similar length output";
+}
+
+TEST_F(EmotionFXMathLibTests, AZEMQuaternion_HasSameDotProductOutput_Success)
+{
+    // Test AZ and MCore quaternions to have similar dot product
+    float azDotTest = AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).GetNormalized().Dot(AZ::Quaternion(0.8f, 0.7f, 0.6f, 1.0f));
+    float azDotTest2 = AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).GetNormalized().Dot(AZ::Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
+    float azDotTest3 = AZ::Quaternion(0.0f, 0.0f, 0.0f, 1.0f).GetNormalized().Dot(AZ::Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
+
+    float emDotTest = MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).Normalized().Dot(MCore::Quaternion(0.8f, 0.7f, 0.6f, 1.0f));
+    float emDotTest2 = MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).Normalized().Dot(MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
+    float emDotTest3 = MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f).Normalized().Dot(MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
+
+    EXPECT_TRUE(AZ::GetAbs(azDotTest - emDotTest) < s_toleranceLow) << "AZ/MCore Quaternions should have similar dot product output";
+    EXPECT_TRUE(AZ::GetAbs(azDotTest2 - emDotTest2) < s_toleranceLow) << "AZ/MCore Quaternions should have similar dot product output";
+    EXPECT_TRUE(AZ::GetAbs(azDotTest3 - emDotTest3) < s_toleranceLow) << "AZ/MCore Quaternion(0.0f, 0.0f, 0.0f, 1.0f) should have similar dot product output";
+}
+
+TEST_F(EmotionFXMathLibTests, AZEMQuaternion_HasSimilarLerpOutput_Success)
+{
+    // Test AZ and MCore quaternions to have similar Linear Interpolated quaternions
+    float testCases[6] = { 0.0f, 0.1f, 0.25f, 0.5f, 0.8f, 1.0f };
+    for (float testVal : testCases)
+    {
+        AZ::Quaternion azQuaternionA = AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).GetNormalized();
+        AZ::Quaternion azQuaternionB = AZ::Quaternion(0.8f, 0.7f, 0.6f, 1.0f).GetNormalized();
+        AZ::Quaternion azQuaternionC = azQuaternionA.Lerp(azQuaternionB, testVal);
+
+        MCore::Quaternion emQuaternionA = MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).Normalized();
+        MCore::Quaternion emQuaternionB = MCore::Quaternion(0.8f, 0.7f, 0.6f, 1.0f).Normalized();
+        MCore::Quaternion emQuaternionC = emQuaternionA.Lerp(emQuaternionB, testVal);
+
+        EXPECT_TRUE(AZEMQuaternionsAreClose(azQuaternionA, emQuaternionA, s_toleranceLow)) << "AZ/MCore Quaternions should have similar Lerp output with given float: " << testVal;
+    }
+}
+
+TEST_F(EmotionFXMathLibTests, AZEMQuaternion_HasSimilarNLerpOutput_Success)
+{
+    // Test AZ and MCore quaternions to have similar Linear Interpolated and then normalized quaternions
+    float testCases[6] = {0.0f, 0.1f, 0.25f, 0.5f, 0.8f, 1.0f};
+    for (float testVal : testCases)
+    {
+        AZ::Quaternion azQuaternionA = AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).GetNormalized();
+        AZ::Quaternion azQuaternionB = AZ::Quaternion(0.8f, 0.7f, 0.6f, 1.0f).GetNormalized();
+        AZ::Quaternion azQuaternionC = azQuaternionA.NLerp(azQuaternionB, testVal);
+
+        MCore::Quaternion emQuaternionA = MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).Normalized();
+        MCore::Quaternion emQuaternionB = MCore::Quaternion(0.8f, 0.7f, 0.6f, 1.0f).Normalized();
+        MCore::Quaternion emQuaternionC = emQuaternionA.NLerp(emQuaternionB, testVal);
+        AZ::g_fltEps;
+        EXPECT_TRUE(AZEMQuaternionsAreClose(azQuaternionA, emQuaternionA, s_toleranceLow)) << "AZ/MCore Quaternions should have similar NLerp output with given float: " << testVal;
+    }
+}
+
+TEST_F(EmotionFXMathLibTests, AZEMQuaternion_HasSimilarSLerpOutput_Success)
+{
+    // Test AZ and MCore quaternions to have similar spherical Linear Interpolated quaternions
+    float testCases[6] = { 0.0f, 0.1f, 0.25f, 0.5f, 0.8f, 1.0f };
+    for (float testVal : testCases)
+    {
+        AZ::Quaternion azQuaternionA = AZ::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).GetNormalized();
+        AZ::Quaternion azQuaternionB = AZ::Quaternion(0.8f, 0.7f, 0.6f, 1.0f).GetNormalized();
+        AZ::Quaternion azQuaternionC = azQuaternionA.Slerp(azQuaternionB, testVal);
+
+        MCore::Quaternion emQuaternionA = MCore::Quaternion(0.1f, 0.2f, 0.3f, 1.0f).Normalized();
+        MCore::Quaternion emQuaternionB = MCore::Quaternion(0.8f, 0.7f, 0.6f, 1.0f).Normalized();
+        MCore::Quaternion emQuaternionC = emQuaternionA.Slerp(emQuaternionB, testVal);
+
+        EXPECT_TRUE(AZEMQuaternionsAreClose(azQuaternionA, emQuaternionA, s_toleranceLow)) << "AZ/MCore Quaternions should have similar Slerp output with given float: " << testVal;
+    }
+}
+
+// Last test
 TEST_F(EmotionFXMathLibTests, LastTest)
 {
     ASSERT_TRUE(true);

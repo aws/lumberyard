@@ -15,8 +15,10 @@ def build(bld):
     bld.DefineGem(
         # Settings
 		use                         = ['GridMate'],
-        includes                    = [bld.Path('Code/CryEngine/CryAction'),
-                                       bld.Path('Code/CryEngine/CryNetwork')],
+        includes                    = [bld.Path('Code/CryEngine/CryCommon'),
+                                       bld.Path('Code/CryEngine/CryAction'),
+                                       bld.Path('Code/CryEngine/CryNetwork')
+                                      ],
         pch                         = '',
         file_list                   = ['CertificateManager.waf_files'],
 

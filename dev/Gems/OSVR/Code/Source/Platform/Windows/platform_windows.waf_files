@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Windows":
+        [
+            "OSVR_Traits_Platform.h",
+            "OSVR_Traits_Windows.h"
+        ]
+    }
+}

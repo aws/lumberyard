@@ -24,16 +24,11 @@ class IComponent;
 
 #include <CryFlags.h>
 #include <Cry_Math.h>
-#include <BoostHelpers.h>
+#include <SmartPointersHelpers.h>
 #include <IMaterial.h>
-#define DECLARE_COMPONENT_POINTERS(name)                  \
-    typedef AZStd::shared_ptr<name> name##Ptr;            \
-    typedef AZStd::shared_ptr<const name> name##ConstPtr; \
-    typedef AZStd::weak_ptr<name> name##WeakPtr;          \
-    typedef AZStd::weak_ptr<const name> name##ConstWeakPtr;
 
 typedef unsigned int EntityId;
-DECLARE_COMPONENT_POINTERS(IComponent)
+DECLARE_SMART_POINTERS(IComponent)
 
 class ComponentType;
 struct SEntityEvent;
@@ -52,8 +47,8 @@ namespace EntityEventPriority
         Substitution,
         FlowGraph,
         Camera,
-        BoidObject,
-        Boids,
+        Reserved1, // formerly BoidObject
+        Reserved2, // formely Boids
         Area,
         AI,
         Audio,

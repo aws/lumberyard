@@ -89,7 +89,6 @@ private:
     string              m_minimapImagePath;
 
     string              m_levelPakFullPath;
-    string              m_levelMMPakFullPath;
 
     TStringVec          m_gamerules;
     int                 m_heightmapSize;

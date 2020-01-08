@@ -32,10 +32,9 @@
 #include <GraphCanvas/GraphCanvasBus.h>
 #include <GraphCanvas/tools.h>
 #include <GraphCanvas/Styling/StyleHelper.h>
+#include <GraphCanvas/Utils/ConversionUtils.h>
 #include <GraphCanvas/Utils/GraphUtils.h>
 #include <GraphCanvas/Utils/QtVectorMath.h>
-
-#include <Utils/ConversionUtils.h>
 
 namespace GraphCanvas
 {
@@ -44,7 +43,7 @@ namespace GraphCanvas
     ////////////////////////////////////
 
     NodeGroupFrameComponent::NodeGroupFrameComponentSaveData::NodeGroupFrameComponentSaveData()
-        : m_color(252.0f/255.0f, 249.0f/255.0f, 166.0f/255.0f, 1.0f)
+        : m_color(AZ::Color::CreateZero())
         , m_displayHeight(-1)
         , m_displayWidth(-1)
         , m_enableAsBookmark(false)
@@ -72,15 +71,6 @@ namespace GraphCanvas
 
         m_isCollapsed = other.m_isCollapsed;
         m_persistentGroupedIds = other.m_persistentGroupedIds;
-    }
-
-    void NodeGroupFrameComponent::NodeGroupFrameComponentSaveData::OnColorChanged()
-    {
-        if (m_callback)
-        {
-            m_callback->OnColorChange();
-            SignalDirty();
-        }
     }
 
     void NodeGroupFrameComponent::NodeGroupFrameComponentSaveData::OnBookmarkStatusChanged()
@@ -182,8 +172,6 @@ namespace GraphCanvas
                 editContext->Class<NodeGroupFrameComponentSaveData>("NodeGroupFrameComponentSaveData", "Structure that stores all of the save information for a Node Group.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "Properties")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &NodeGroupFrameComponentSaveData::m_color, "Group Color", "The color that the Node Group should be rendered using.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &NodeGroupFrameComponentSaveData::OnColorChanged)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &NodeGroupFrameComponentSaveData::m_enableAsBookmark, "Enable as Bookmark", "Toggles whether or not the Node Group is registered as a bookmark.")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &NodeGroupFrameComponentSaveData::OnBookmarkStatusChanged)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &NodeGroupFrameComponentSaveData::m_isCollapsed, "Collapse Group", "Toggles whether or not the specified Node Group is collapsed.")
@@ -301,7 +289,9 @@ namespace GraphCanvas
 
     AZ::Color NodeGroupFrameComponent::GetGroupColor() const
     {
-        return m_saveData.m_color;
+        AZ::Color color;
+        CommentRequestBus::EventResult(color, GetEntityId(), &CommentRequests::GetBackgroundColor);
+        return color;
     }
 
     void NodeGroupFrameComponent::CollapseGroup()
@@ -309,6 +299,8 @@ namespace GraphCanvas
         if (!m_saveData.m_isCollapsed
             || !m_collapsedNodeId.IsValid())
         {
+            CommentUIRequestBus::Event(GetEntityId(), &CommentUIRequests::SetEditable, false);
+
             // Only want to search for new elements if the grouped elements is empty.
             // Otherwise we just want to use whatever we previously found.
             //
@@ -495,7 +487,10 @@ namespace GraphCanvas
 
                 m_frameWidget->ResizeTo(m_saveData.m_displayHeight, m_saveData.m_displayWidth);
 
-                OnColorChange();
+                AZ::Color backgroundColor;
+                CommentRequestBus::EventResult(backgroundColor, GetEntityId(), &CommentRequests::GetBackgroundColor);
+
+                OnBackgroundColorChanged(backgroundColor);
 
                 if (m_saveData.m_enableAsBookmark)
                 {
@@ -504,6 +499,19 @@ namespace GraphCanvas
                 }
 
                 m_saveData.RegisterIds(GetEntityId(), sceneId);
+            }
+        }
+    }
+
+    void NodeGroupFrameComponent::PreOnRemovedFromScene(const AZ::EntityId& sceneId)
+    {
+        const AZ::EntityId* busId = SceneMemberNotificationBus::GetCurrentBusId();
+
+        if (busId != nullptr)
+        {
+            if ((*busId) == GetEntityId())
+            {
+                CommentUIRequestBus::Event(GetEntityId(), &CommentUIRequests::SetEditable, false);
             }
         }
     }
@@ -760,6 +768,14 @@ namespace GraphCanvas
         BookmarkNotificationBus::Event(GetEntityId(), &BookmarkNotifications::OnBookmarkNameChanged);
     }
 
+    void NodeGroupFrameComponent::OnBackgroundColorChanged(const AZ::Color& color)
+    {
+        m_titleWidget->SetColor(color);
+        m_blockWidget->SetColor(color);
+
+        BookmarkNotificationBus::Event(GetEntityId(), &BookmarkNotifications::OnBookmarkColorChanged);
+    }
+
     void NodeGroupFrameComponent::OnSceneMemberDragBegin()
     {
         if (m_frameWidget->IsSelected())
@@ -785,6 +801,7 @@ namespace GraphCanvas
 
         m_movingElements.clear();
         m_externallyControlledStateSetter.ResetStateSetter();
+        EnableGroupedDisplayState(false);
     }
 
     void NodeGroupFrameComponent::OnDragSelectStart()
@@ -807,6 +824,14 @@ namespace GraphCanvas
 
     void NodeGroupFrameComponent::OnGraphLoadComplete()
     {
+        // Version Conversion for background color
+        if (!m_saveData.m_color.IsZero())
+        {
+            CommentRequestBus::Event(GetEntityId(), &CommentRequests::SetBackgroundColor, m_saveData.m_color);
+            m_saveData.m_color = AZ::Color::CreateZero();
+        }
+        ////
+
         RestoreCollapsedState();
     }
 
@@ -986,7 +1011,7 @@ namespace GraphCanvas
         {
             SetupHighlightElementsStateSetters();
             m_highlightDisplayStateStateSetter.SetState(RootGraphicsItemDisplayState::GroupHighlight);
-        }
+        }        
     }
 
     void NodeGroupFrameComponent::EnableGroupedDisplayState(bool enabled)
@@ -1002,15 +1027,6 @@ namespace GraphCanvas
             m_forcedGroupDisplayStateStateSetter.SetState(RootGraphicsItemDisplayState::GroupHighlight);
             m_forcedGroupLayerStateSetter.SetState("grouped");
         }
-    }
-
-    void NodeGroupFrameComponent::OnColorChange()
-    {
-        m_titleWidget->SetColor(m_saveData.m_color);
-        m_blockWidget->SetColor(m_saveData.m_color);
-
-        BookmarkNotificationBus::Event(GetEntityId(), &BookmarkNotifications::OnBookmarkColorChanged);
-        NodeGroupNotificationBus::Event(GetEntityId(), &NodeGroupNotifications::OnColorChanged, m_saveData.m_color);
     }
 
     void NodeGroupFrameComponent::OnBookmarkStatusChanged()
@@ -1162,8 +1178,6 @@ namespace GraphCanvas
         {
             m_frameWidget->SetSelected(true);
         }
-
-        EnableGroupedDisplayState(true);
     }
 
     void NodeGroupFrameComponent::FindElementsForDrag()
@@ -1453,6 +1467,9 @@ namespace GraphCanvas
         , m_allowDraw(true)
         , m_adjustVertical(0)
         , m_adjustHorizontal(0)
+        , m_overTitleWidget(false)
+        , m_isSelected(false)
+        , m_enableHighlight(false)
     {
         setAcceptHoverEvents(true);
         setCacheMode(QGraphicsItem::CacheMode::NoCache);
@@ -1508,9 +1525,10 @@ namespace GraphCanvas
         QPointF point = hoverEvent->scenePos();
 
         UpdateCursor(point);
-        m_allowDraw = m_nodeFrameComponent.m_titleWidget->sceneBoundingRect().contains(point);
+        m_allowDraw = m_nodeFrameComponent.m_titleWidget->sceneBoundingRect().contains(point); 
+        m_overTitleWidget = m_allowDraw;
 
-        m_nodeFrameComponent.EnableInteriorHighlight(true);
+        UpdateHighlightState();        
     }
 
     void NodeGroupFrameGraphicsWidget::hoverMoveEvent(QGraphicsSceneHoverEvent* hoverEvent)
@@ -1525,9 +1543,12 @@ namespace GraphCanvas
 
         if (allowDraw != m_allowDraw)
         {
+            m_overTitleWidget = allowDraw;
             m_allowDraw = allowDraw;
             update();
         }
+
+        UpdateHighlightState();
     }
 
     void NodeGroupFrameGraphicsWidget::hoverLeaveEvent(QGraphicsSceneHoverEvent* hoverEvent)
@@ -1539,8 +1560,9 @@ namespace GraphCanvas
         m_adjustVertical = 0;
 
         m_allowDraw = true;
+        m_overTitleWidget = false;
 
-        m_nodeFrameComponent.EnableInteriorHighlight(false);
+        UpdateHighlightState();
     }
 
     void NodeGroupFrameGraphicsWidget::mousePressEvent(QGraphicsSceneMouseEvent* pressEvent)
@@ -1657,8 +1679,6 @@ namespace GraphCanvas
             updateGeometry();
             
             update();
-
-            m_nodeFrameComponent.EnableInteriorHighlight(true);
         }
         else
         {
@@ -1674,8 +1694,6 @@ namespace GraphCanvas
 
             m_resizeComment = false;
             m_allowCommentReaction = false;
-
-            m_nodeFrameComponent.EnableInteriorHighlight(true);
 
             GraphId graphId;
             SceneMemberRequestBus::EventResult(graphId, GetEntityId(), &SceneMemberRequests::GetScene);
@@ -1697,7 +1715,7 @@ namespace GraphCanvas
             QGraphicsSceneResizeEvent* resizeEvent = static_cast<QGraphicsSceneResizeEvent*>(event);
             OnCommentSizeChanged(resizeEvent->oldSize(), resizeEvent->newSize());
             break;
-        }
+        }        
         default:
             break;
         }
@@ -1919,10 +1937,37 @@ namespace GraphCanvas
         }
     }
 
+    QVariant NodeGroupFrameGraphicsWidget::itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant& value)
+    {
+        QVariant retVal = NodeFrameGraphicsWidget::itemChange(change, value);
+
+        if (change == QGraphicsItem::ItemSelectedChange)
+        {
+            m_isSelected = value.toBool();
+            UpdateHighlightState();
+        }
+
+        return retVal;
+    }
+
     void NodeGroupFrameGraphicsWidget::OnMemberSetupComplete()
     {
         m_allowMovement = true;
         CommentNotificationBus::Handler::BusConnect(GetEntityId());
+    }
+
+    void NodeGroupFrameGraphicsWidget::UpdateHighlightState()
+    {
+        SetHighlightState(m_overTitleWidget || m_isSelected);
+    }
+
+    void NodeGroupFrameGraphicsWidget::SetHighlightState(bool highlightState)
+    {
+        if (highlightState != m_enableHighlight)
+        {
+            m_enableHighlight = highlightState;
+            m_nodeFrameComponent.EnableInteriorHighlight(m_enableHighlight);
+        }
     }
 
     void NodeGroupFrameGraphicsWidget::ResizeTo(float height, float width)

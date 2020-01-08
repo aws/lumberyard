@@ -39,6 +39,7 @@ namespace Physics
         static float m_linearDamping;
         static float m_angularDamping;
         static float m_sleepMinEnergy;
+        static float m_maxAngularVelocity;
     };
 
     class RigidBodyConfiguration
@@ -59,7 +60,8 @@ namespace Physics
             Interpolation = 1 << 4, ///< Whether the interpolation option is visible.
             Gravity = 1 << 5, ///< Whether the effected by gravity option is visible.
             Kinematic = 1 << 6, ///< Whether the option to make the body kinematic is visible.
-            ContinuousCollisionDetection = 1 << 7 ///< Whether the option to enable continuous collision detection is visible.
+            ContinuousCollisionDetection = 1 << 7, ///< Whether the option to enable continuous collision detection is visible.
+            MaxVelocities = 1 << 8 ///< Whether upper limits on velocities are visible.
         };
 
         RigidBodyConfiguration() = default;
@@ -82,6 +84,7 @@ namespace Physics
         AZ::Crc32 GetGravityVisibility() const;
         AZ::Crc32 GetKinematicVisibility() const;
         AZ::Crc32 GetCCDVisibility() const;
+        AZ::Crc32 GetMaxVelocitiesVisibility() const;
 
         // Basic initial settings.
         AZ::Vector3 m_initialLinearVelocity = AZ::Vector3::CreateZero();
@@ -102,6 +105,7 @@ namespace Physics
         bool m_simulated = true;
         bool m_kinematic = false;
         bool m_ccdEnabled = false; ///< Whether continuous collision detection is enabled.
+        float m_maxAngularVelocity = DefaultRigidBodyConfiguration::m_maxAngularVelocity;
 
         // Visibility settings.
         AZ::u16 m_propertyVisibilityFlags = (std::numeric_limits<AZ::u16>::max)();

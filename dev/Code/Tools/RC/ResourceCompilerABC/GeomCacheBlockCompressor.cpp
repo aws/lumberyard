@@ -18,6 +18,7 @@
 #include "zlib.h"
 #include "lz4.h"
 #include "lz4hc.h"
+#include <zstd.h>
 
 bool GeomCacheDeflateBlockCompressor::Compress(std::vector<char>& input, std::vector<char>& output)
 {
@@ -87,6 +88,28 @@ bool GeomCacheLZ4HCBlockCompressor::Compress(std::vector<char>& input, std::vect
     int compressedSize = LZ4_compressHC(input.data(), output.data(), uncompressedSize);
 
     if (compressedSize == 0)
+    {
+        return false;
+    }
+
+    // Resize output to final, compressed size
+    output.resize(compressedSize);
+
+    return true;
+}
+
+bool GeomCacheZStdBlockCompressor::Compress(std::vector<char>& input, std::vector<char>& output)
+{
+    const size_t uncompressedSize = input.size();
+
+    // Reserve compress buffer
+    const size_t maxCompressedSize = ZSTD_compressBound(uncompressedSize);
+    output.resize(maxCompressedSize);
+
+    // Compress
+    int compressedSize = ZSTD_compress(output.data(), output.size(), input.data(), input.size(), 1);
+
+    if (ZSTD_isError(compressedSize))
     {
         return false;
     }

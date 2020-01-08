@@ -14,20 +14,15 @@
 #pragma once
 
 #include <AzCore/base.h>
+#include <AzCore/Math/Transform.h>
 #include <AzCore/RTTI/TypeInfo.h>
+#include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
-#include "Cry_Math.h"
-#include "BaseTypes.h"
-#include "smartptr.h"
 
 
+#define AUDIO_BIT(x)     (1 << (x))
 #define AUDIO_TRIGGER_IMPL_ID_NUM_RESERVED 100// IDs below that value are used for the CATLTriggerImpl_Internal
 
-#define MAX_AUDIO_CONTROL_NAME_LENGTH   64
-#define MAX_AUDIO_FILE_NAME_LENGTH      128
-#define MAX_AUDIO_FILE_PATH_LENGTH      256
-#define MAX_AUDIO_OBJECT_NAME_LENGTH    256
-#define MAX_AUDIO_MISC_STRING_LENGTH    512
 
 namespace Audio
 {
@@ -68,72 +63,95 @@ namespace Audio
 #define INVALID_AUDIO_FILE_COLLECTION_ID (static_cast<Audio::TAudioFileCollectionId>(0))
 #define INVALID_AUDIO_FILE_LANGUAGE_ID (static_cast<Audio::TAudioFileLanguageId>(0))
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    // <title EAudioRequestStatus>
+    // Summary:
+    //      An enum that lists possible statuses of an AudioRequest.
+    //      Used as a return type for many function used by the AudioSystem internally,
+    //      and also for most of the IAudioSystemImplementation calls.
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    enum EAudioRequestStatus : TATLEnumFlagsType
+    {
+        eARS_NONE = 0,
+        eARS_SUCCESS = 1,
+        eARS_PARTIAL_SUCCESS = 2,
+        eARS_FAILURE = 3,
+        eARS_PENDING = 4,
+        eARS_FAILURE_INVALID_OBJECT_ID = 5,
+        eARS_FAILURE_INVALID_CONTROL_ID = 6,
+        eARS_FAILURE_INVALID_REQUEST = 7,
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Converts a boolean value to an EAudioRequestStatus.
+    //! @param result The boolean value to convert.
+    //! @return eARS_SUCCESS if result is true, eARS_FAILURE otherwise.
+    inline EAudioRequestStatus BoolToARS(bool result)
+    {
+        return result ? eARS_SUCCESS : eARS_FAILURE;
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct SATLWorldPosition
     {
         SATLWorldPosition()
-            : mPosition(IDENTITY)
+            : m_transform(AZ::Transform::CreateIdentity())
         {}
 
-        SATLWorldPosition(const Vec3& rPos)
-            : mPosition(Matrix34(IDENTITY, rPos))
+        SATLWorldPosition(const AZ::Vector3& rPos)
+            : m_transform(AZ::Transform::CreateIdentity())
+        {
+            m_transform.SetPosition(rPos);
+        }
+
+        SATLWorldPosition(const AZ::Transform& rTransform)
+            : m_transform(rTransform)
         {}
 
-        SATLWorldPosition(const Matrix34& rPos)
-            : mPosition(rPos)
-        {}
-
-        AZ_FORCE_INLINE const SATLWorldPosition& operator+=(const SATLWorldPosition& ref)
+        inline AZ::Vector3 GetPositionVec() const
         {
-            mPosition += ref.mPosition;
-            return *this;
+            return m_transform.GetPosition();
         }
 
-        AZ_FORCE_INLINE Vec3 GetPositionVec() const
+        inline AZ::Vector3 GetUpVec() const
         {
-            return mPosition.GetColumn3();
+            return m_transform.GetBasisZ();
         }
 
-        AZ_FORCE_INLINE Vec3 GetUpVec() const
+        inline AZ::Vector3 GetForwardVec() const
         {
-            return mPosition.GetColumn2();
+            return m_transform.GetBasisY();
         }
 
-        AZ_FORCE_INLINE Vec3 GetForwardVec() const
+        inline void NormalizeForwardVec()
         {
-            return mPosition.GetColumn1();
-        }
-
-        // Normalize the forward vector
-        // Skip normalization if the vector was already unit length or zero length
-        AZ_FORCE_INLINE void NormalizeForwardVec()
-        {
-            float lengthForwardVecSqr = mPosition.m01 * mPosition.m01 + mPosition.m11 * mPosition.m11 + mPosition.m21 * mPosition.m21;
-            if (fabs_tpl(1.0f - lengthForwardVecSqr) > VEC_EPSILON || fabs_tpl(0.0f - lengthForwardVecSqr) > VEC_EPSILON)
+            auto forward = GetForwardVec();
+            if (forward.IsZero())
             {
-                float lengthInverted = isqrt_fast_tpl(lengthForwardVecSqr);
-                mPosition.m01 *= lengthInverted;
-                mPosition.m11 *= lengthInverted;
-                mPosition.m21 *= lengthInverted;
+                m_transform.SetBasisY(AZ::Vector3::CreateAxisY());
+            }
+            else
+            {
+                forward.Normalize();
+                m_transform.SetBasisY(forward);
             }
         }
 
-        // Normalize the up vector
-        // Skip normalization if the vector was already unit length or zero length
-        AZ_FORCE_INLINE void NormalizeUpVec()
+        inline void NormalizeUpVec()
         {
-            float lengthUpVecSqr = mPosition.m02 * mPosition.m02 + mPosition.m12 * mPosition.m12 + mPosition.m22 * mPosition.m22;
-            if (fabs_tpl(1.0f - lengthUpVecSqr) > VEC_EPSILON || fabs_tpl(0.0f - lengthUpVecSqr) > VEC_EPSILON)
+            auto up = GetUpVec();
+            if (up.IsZero())
             {
-                float lengthInverted = isqrt_fast_tpl(lengthUpVecSqr);
-                mPosition.m02 *= lengthInverted;
-                mPosition.m12 *= lengthInverted;
-                mPosition.m22 *= lengthInverted;
+                m_transform.SetBasisZ(AZ::Vector3::CreateAxisZ());
+            }
+            else
+            {
+                up.Normalize();
+                m_transform.SetBasisZ(up);
             }
         }
 
-        Matrix34 mPosition;
+        AZ::Transform m_transform;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -159,13 +177,13 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     enum EAudioRequestFlags : TATLEnumFlagsType
     {
-        eARF_NONE                   = 0,        // assumes Lowest priority
-        eARF_PRIORITY_NORMAL        = BIT(0),   // will be processed if no high priority requests are pending
-        eARF_PRIORITY_HIGH          = BIT(1),   // will be processed first
-        eARF_EXECUTE_BLOCKING       = BIT(2),   // blocks main thread until the request has been fully handled
-        eARF_SYNC_CALLBACK          = BIT(3),   // callback (ATL's NotifyListener) will happen on the main thread
-        eARF_SYNC_FINISHED_CALLBACK = BIT(4),   // "finished trigger instance" callback will happen on the main thread
-        eARF_THREAD_SAFE_PUSH       = BIT(5),   // use when pushing a request from a non-main thread, e.g. AK::EventManager or AudioThread
+        eARF_NONE                   = 0,                // assumes Lowest priority
+        eARF_PRIORITY_NORMAL        = AUDIO_BIT(0),    // will be processed if no high priority requests are pending
+        eARF_PRIORITY_HIGH          = AUDIO_BIT(1),    // will be processed first
+        eARF_EXECUTE_BLOCKING       = AUDIO_BIT(2),    // blocks main thread until the request has been fully handled
+        eARF_SYNC_CALLBACK          = AUDIO_BIT(3),    // callback (ATL's NotifyListener) will happen on the main thread
+        eARF_SYNC_FINISHED_CALLBACK = AUDIO_BIT(4),    // "finished trigger instance" callback will happen on the main thread
+        eARF_THREAD_SAFE_PUSH       = AUDIO_BIT(5),    // use when pushing a request from a non-main thread, e.g. AK::EventManager or AudioThread
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -398,6 +416,7 @@ namespace Audio
         {}
     };
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct SAudioCallBackInfos
     {
         struct UserData

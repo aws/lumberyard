@@ -10,18 +10,22 @@
 *
 */
 
-#include "EMotionFX_precompiled.h"
+#include <AzCore/PlatformDef.h>
 
-#include <MathConversion.h>
+#include "EMotionFX_precompiled.h"
 
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 
-#include <LmbrCentral/Audio/AudioProxyComponentBus.h>
-#include <LmbrCentral/Rendering/MeshComponentBus.h>
 #include <Integration/Components/AnimAudioComponent.h>
+
+#include <LmbrCentral/Audio/AudioProxyComponentBus.h>
+#include <LmbrCentral/Rendering/MeshComponentBus.h>     // for SkeletalHierarchyRequestBus
+
+#include <MathConversion.h>
+
 
 using namespace LmbrCentral;
 
@@ -64,11 +68,11 @@ namespace EMotionFX
 
         void AnimAudioComponent::RemoveTriggerEvent(const AZStd::string& eventName)
         {
-            AZ::Crc32 eventCrc(eventName.c_str());
+            const AZ::Crc32 eventCrc(eventName.c_str());
 
-            AZ::Entity* entity = GetEntity();
+            const AZ::Entity* entity = GetEntity();
             AZ_Assert(entity, "Component must be added to entity prior to removing an audio trigger event.");
-            if (GetEntity()->GetState() == AZ::Entity::State::ES_ACTIVE)
+            if (entity->GetState() == AZ::Entity::State::ES_ACTIVE)
             {
                 RemoveTriggerEventInternal(eventCrc);
             }
@@ -427,6 +431,8 @@ namespace EMotionFX
 
         void AnimAudioComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
         {
+            AZ_UNUSED(deltaTime);
+            AZ_UNUSED(time);
             for (auto& iter : m_jointProxies)
             {
                 if (Audio::IAudioProxy* proxy = iter.second)
@@ -435,14 +441,15 @@ namespace EMotionFX
                     auto getJointTransform = &SkeletalHierarchyRequestBus::Events::GetJointTransformCharacterRelative;
                     SkeletalHierarchyRequestBus::EventResult(jointTransform, GetEntityId(), getJointTransform, iter.first);
 
-                    Audio::SATLWorldPosition atlTransform(AZTransformToLYTransform(m_transform * jointTransform));
-                    proxy->SetPosition(AZTransformToLYTransform(m_transform * jointTransform));
+                    Audio::SATLWorldPosition atlTransform(m_transform * jointTransform);
+                    proxy->SetPosition(m_transform * jointTransform);
                 }
             }
         }
 
         void AnimAudioComponent::OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world)
         {
+            AZ_UNUSED(local);
             m_transform = world;
         }
 
@@ -482,7 +489,7 @@ namespace EMotionFX
                 const auto getJointTransform = &SkeletalHierarchyRequestBus::Events::GetJointTransformCharacterRelative;
                 SkeletalHierarchyRequestBus::EventResult(jointTransform, GetEntityId(), getJointTransform, jointId);
 
-                const Audio::SATLWorldPosition atlTransform(AZTransformToLYTransform(m_transform * jointTransform));
+                const Audio::SATLWorldPosition atlTransform(m_transform * jointTransform);
                 proxy->SetPosition(atlTransform);
                 proxy->ExecuteTrigger(triggerId, eLSM_None, *m_callbackInfo);
                 AnimAudioComponentNotificationBus::Event(GetEntityId(), &AnimAudioComponentNotificationBus::Events::OnTriggerStarted, triggerId);
@@ -616,6 +623,7 @@ namespace EMotionFX
             : m_jointId(jointId)
             , m_triggerId(triggerId)
         {
+            AZ_UNUSED(entity);
         }
 
         AZ::s32 AnimAudioComponent::TriggerEventData::GetJointId() const

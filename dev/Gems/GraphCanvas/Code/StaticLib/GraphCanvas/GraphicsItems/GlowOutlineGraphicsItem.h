@@ -11,9 +11,13 @@
 */
 #pragma once
 
+#include <AzCore/PlatformDef.h>
+// qbrush.h(118): warning C4251: 'QBrush::d': class 'QScopedPointer<QBrushData,QBrushDataPointerDeleter>' needs to have dll-interface to be used by clients of class 'QBrush'
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option")
 #include <QSequentialAnimationGroup>
 #include <QGraphicsItem>
 #include <QPen>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Component/TickBus.h>
@@ -23,6 +27,7 @@
 #include <GraphCanvas/Components/GeometryBus.h>
 #include <GraphCanvas/Components/ViewBus.h>
 #include <GraphCanvas/GraphicsItems/GraphicsEffect.h>
+#include <GraphCanvas/Editor/AssetEditorBus.h>
 
 namespace GraphCanvas
 {
@@ -60,6 +65,7 @@ namespace GraphCanvas
         , public GeometryNotificationBus::Handler
         , public AZ::TickBus::Handler
         , public GraphCanvas::ViewNotificationBus::Handler
+        , public AssetEditorSettingsNotificationBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(GlowOutlineGraphicsItem, AZ::SystemAllocator, 0);
@@ -86,6 +92,16 @@ namespace GraphCanvas
         void OnZoomChanged(qreal zoomLevel) override;
         ////
 
+        // AssetEditorSettingsNotificationBus
+        void OnSettingsChanged() override;
+        ////
+
+    protected:
+
+        // GraphicsEffectInterface
+        void OnEditorIdSet() override;
+        ////
+
     private:
 
         void ConfigureGlowOutline(const GlowOutlineConfiguration& outlineConfiguration);
@@ -101,6 +117,6 @@ namespace GraphCanvas
         qreal m_opacityEnd;
 
         QPainterPath m_painterPath;        
-        AZ::EntityId m_trackingSceneMember;        
+        AZ::EntityId m_trackingSceneMember;
     };
 }

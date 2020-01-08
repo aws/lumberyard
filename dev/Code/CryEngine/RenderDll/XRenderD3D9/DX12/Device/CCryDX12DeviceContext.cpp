@@ -3,9 +3,9 @@
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-* or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
@@ -2941,19 +2941,41 @@ HRESULT STDMETHODCALLTYPE CCryDX12DeviceContext::CopyStagingResource(
 }
 
 HRESULT STDMETHODCALLTYPE CCryDX12DeviceContext::MapStagingResource(
+    _In_  ID3D11Resource* pTextureResource,
     _In_  ID3D11Resource* pStagingResource,
+    _In_  UINT SubResource,
     _In_  BOOL Upload,
-    _Out_ void** ppStagingMemory)
+    _Out_ void** ppStagingMemory,
+    _Out_ uint32* pRowPitch)
 {
     DX12_FUNC_LOG
 
     ICryDX12Resource* dx12Resource = DX12_EXTRACT_ICRYDX12RESOURCE(pStagingResource);
     DX12::Resource& rResource = dx12Resource->GetDX12Resource();
 
-    const D3D12_RANGE sNoRead = { 0, 0 }; // It is valid to specify the CPU won't read any data by passing a range where End is less than or equal to Begin
-    const D3D12_RANGE sFullRead = { 0, rResource.GetRequiredUploadSize(0, 1) };
+    ICryDX12Resource* dx12TextureResource = DX12_EXTRACT_ICRYDX12RESOURCE(pTextureResource);
+    DX12::Resource& rTextureResource = dx12TextureResource->GetDX12Resource();
 
-    return rResource.GetD3D12Resource()->Map(0, Upload ? &sNoRead : &sFullRead, ppStagingMemory);
+    // If this assert trips, you may need to increase MAX_SUBRESOURCES.  Just be wary of growing the stack too much.
+    AZ_Assert(SubResource < MAX_SUBRESOURCES, "Too many sub resources: (sub ID %d requested, %d allowed)", SubResource, MAX_SUBRESOURCES);
+    D3D12_PLACED_SUBRESOURCE_FOOTPRINT layouts[MAX_SUBRESOURCES];
+
+    // From our source texture resource, get the offset and description information for all the subresources up through the one we're trying
+    // to map.  Our staging resource will contain a buffer large enough for *all* the subresources, so we need to get the correct offset
+    // into this buffer.  If we just get the Layout for the one SubResource, it will come back with an offset of 0, which is incorrect.
+    GetDevice()->GetD3D12Device()->GetCopyableFootprints(&rTextureResource.GetDesc(), 0, SubResource + 1, 0, layouts, nullptr, nullptr, nullptr);
+
+    const D3D12_RANGE sNoRead = { 0, 0 }; // It is valid to specify the CPU won't read any data by passing a range where End is less than or equal to Begin
+    const D3D12_RANGE sFullRead = { 0, rResource.GetRequiredUploadSize(0, 1) }; // Our buffer only has 1 subresource, so get the full size of it to map.
+
+    HRESULT result = rResource.GetD3D12Resource()->Map(0, Upload ? &sNoRead : &sFullRead, ppStagingMemory);
+
+    // Map() will return a pointer to the start of our buffer.  Adjust the pointer to the offset of the desired mapped subresource within the buffer.
+    *ppStagingMemory = *reinterpret_cast<uint8**>(ppStagingMemory) + layouts[SubResource].Offset;
+
+    *pRowPitch = layouts[SubResource].Footprint.RowPitch;
+
+    return result;
 }
 
 void STDMETHODCALLTYPE CCryDX12DeviceContext::UnmapStagingResource(

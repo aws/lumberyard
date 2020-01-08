@@ -4,5 +4,23 @@
             "Source/StdAfx.cpp",
             "Source/StdAfx.h"
         ]
+    },
+    "auto": {
+        "Source": [
+            "Include/ImGuiBus.h",
+            "Source/ImGuiGem.h",
+            "Source/ImGuiGem.cpp",
+            "Source/ImGuiColorDefines.h",
+            "Source/ImGuiManager.h",
+            "Source/ImGuiManager.cpp",
+            "Source/LYCommonMenu/ImGuiLYCommonMenu.h",
+            "Source/LYCommonMenu/ImGuiLYCommonMenu.cpp",
+            "Source/LYCommonMenu/ImGuiLYAssetExplorer.h",
+            "Source/LYCommonMenu/ImGuiLYAssetExplorer.cpp",
+            "Source/LYCommonMenu/ImGuiLYCameraMonitor.h",
+            "Source/LYCommonMenu/ImGuiLYCameraMonitor.cpp",
+            "Source/LYCommonMenu/ImGuiLYEntityOutliner.h",
+            "Source/LYCommonMenu/ImGuiLYEntityOutliner.cpp"
+        ]
     }
 }

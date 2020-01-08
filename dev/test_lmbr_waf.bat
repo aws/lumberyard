@@ -52,4 +52,4 @@ EXIT /b 1
 
 :end
 popd
-
+EXIT $?

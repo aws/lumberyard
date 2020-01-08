@@ -40,6 +40,14 @@ namespace PhysX
         void InertiaPropertyHandler::ConsumeAttribute(AzToolsFramework::PropertyVectorCtrl* GUI, AZ::u32 attrib,
             AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName)
         {
+            if (attrib == AZ::Edit::Attributes::Suffix)
+            {
+                AZStd::string label;
+                if (attrValue->Read<AZStd::string>(label))
+                {
+                    GUI->setSuffix(label);
+                }
+            }
         }
 
         void InertiaPropertyHandler::WriteGUIValuesIntoProperty(size_t index, AzToolsFramework::PropertyVectorCtrl* GUI,

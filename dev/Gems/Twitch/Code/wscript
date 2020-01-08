@@ -13,20 +13,27 @@ def build(bld):
     import lumberyard_sdks
 
     file_list = []
-    if lumberyard_sdks.does_platform_support_aws_native_sdk(bld):
+    if bld.env['PLATFORM'] == 'project_generator':
         file_list.append('twitch.waf_files')
-    else:
         file_list.append('lmbraws_unsupported.waf_files')
-        
+    else:
+        if lumberyard_sdks.does_platform_support_aws_native_sdk(bld):
+            file_list.append('twitch.waf_files')
+        else:
+            file_list.append('lmbraws_unsupported.waf_files')
+
+
     bld.DefineGem(
-        use         =   [   'HttpRequestor',
-                            'LmbrAWS'
+        use         =   [   'HttpRequestor'
                         ],
-        uselib      =   [   'TWITCHFSDK',
-                            'AWS_CPP_SDK_CORE'
-                        ],
+
+        uselib      = ['AWS_CPP_SDK_CORE'],
         includes    =   [],
         
-        file_list   = file_list,
-        win_file_list = ['twitch_win.waf_files']
+        # Platform Roots
+        platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)],
+
+        linux_rpath = ['$ORIGIN'],
+        file_list   = file_list
     )
+

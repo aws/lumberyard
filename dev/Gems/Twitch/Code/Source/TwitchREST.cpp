@@ -20,9 +20,9 @@
 
 namespace Twitch
 {
-    ITwitchRESTPtr ITwitchREST::Alloc(const IFuelInterfacePtr& fuelInterface)
+    ITwitchRESTPtr ITwitchREST::Alloc()
     {
-        return AZStd::make_shared<TwitchREST>(fuelInterface);
+        return AZStd::make_shared<TwitchREST>();
     }
 
     const char * TwitchREST::kProtocol("https");
@@ -32,8 +32,7 @@ namespace Twitch
     const char * TwitchREST::kAuthType("OAuth ");
     const char * TwitchREST::kAcceptType("application/vnd.twitchtv.v5+json");
 
-    TwitchREST::TwitchREST(const IFuelInterfacePtr& fuelInterface)
-        : m_fuelInterface(fuelInterface)
+    TwitchREST::TwitchREST()
     {
         // all names listed below comply with Twitch's naming rules, Do not change the case or 
         // spelling of the return values! Also do not put in the ::Unknown strings, placehold only!
@@ -55,7 +54,7 @@ namespace Twitch
     {
         AZStd::string url( BuildKrakenURL("user") );
 
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonValue& json, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonView& json, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             UserInfo userinfo;
@@ -67,7 +66,7 @@ namespace Twitch
                 SafeGetUserInfo(userinfo, json);
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetUser, UserInfoValue(userinfo, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetUser, UserInfoValue(userinfo, receipt, rc));
         });
     }
     
@@ -75,7 +74,7 @@ namespace Twitch
     {
         AZStd::string url( BuildBaseURL("users", friendID) + "/friends/notifications");
         
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_DELETE, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonValue& /*json*/, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_DELETE, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonView& /*json*/, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
 
@@ -84,7 +83,7 @@ namespace Twitch
                 rc = ResultCode::Success;
             }
         
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, ResetFriendsNotificationCountNotify, Int64Value(static_cast<AZ::s64>(httpCode), receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::ResetFriendsNotificationCountNotify, Int64Value(static_cast<AZ::s64>(httpCode), receipt, rc));
         });
     }
     
@@ -93,7 +92,7 @@ namespace Twitch
     {
         AZStd::string url(BuildBaseURL("users", friendID) + "/friends/notifications");
 
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonValue& json, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonView& json, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             AZ::s64 count = 0;
@@ -108,7 +107,7 @@ namespace Twitch
                 count = static_cast<AZ::s64>(httpCode);
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetFriendNotificationCount, Int64Value(count, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetFriendNotificationCount, Int64Value(count, receipt, rc));
         });
     }
 
@@ -116,7 +115,7 @@ namespace Twitch
     {
         AZStd::string url(BuildBaseURL("users", friendID) + "/friends/recommendations");
 
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             FriendRecommendationList returnRecommendations;
@@ -124,13 +123,13 @@ namespace Twitch
             if (httpCode == Aws::Http::HttpResponseCode::OK)
             {
                 rc = ResultCode::Success;
-                Aws::Utils::Array<Aws::Utils::Json::JsonValue> recommendations = jsonDoc.GetArray("recommendations");
+                Aws::Utils::Array<Aws::Utils::Json::JsonView> recommendations = jsonDoc.GetArray("recommendations");
 
                 for(size_t index =0; index<recommendations.GetLength(); index++)
                 {
                     FriendRecommendation fr;
 
-                    Aws::Utils::Json::JsonValue item = recommendations.GetItem(index);
+                    Aws::Utils::Json::JsonView item = recommendations.GetItem(index);
 
                     fr.Reason = item.GetString("reason").c_str();
                     SafeGetUserInfoFromUserContainer(fr.User, item);
@@ -139,7 +138,7 @@ namespace Twitch
                 }
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetFriendRecommendations, FriendRecommendationValue(returnRecommendations, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetFriendRecommendations, FriendRecommendationValue(returnRecommendations, receipt, rc));
         });
     }
 
@@ -154,7 +153,7 @@ namespace Twitch
         if( !cursor.empty() )
             AddToHeader(headers, "cursor", cursor);
         
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, headers, [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, headers, [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             GetFriendReturn friendReturn;
@@ -165,13 +164,13 @@ namespace Twitch
 
                 SafeGetJSONString(friendReturn.Cursor, "cursor", jsonDoc);
 
-                Aws::Utils::Array<Aws::Utils::Json::JsonValue> recommendations = jsonDoc.GetArray("friends");
+                Aws::Utils::Array<Aws::Utils::Json::JsonView> recommendations = jsonDoc.GetArray("friends");
 
                 for (size_t index = 0; index < recommendations.GetLength(); index++)
                 {
                     FriendInfo fi;
 
-                    Aws::Utils::Json::JsonValue item = recommendations.GetItem(index);
+                    Aws::Utils::Json::JsonView item = recommendations.GetItem(index);
 
                     SafeGetJSONString(fi.CreatedDate, "created_at", item);
                     SafeGetUserInfoFromUserContainer(fi.User, item);
@@ -180,7 +179,7 @@ namespace Twitch
                 }
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetFriends, GetFriendValue(friendReturn, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetFriends, GetFriendValue(friendReturn, receipt, rc));
         });
     }
 
@@ -188,7 +187,7 @@ namespace Twitch
     {
         AZStd::string url(BuildBaseURL("users", sourceFriendID) + "/friends/relationships/" + targetFriendID);
 
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             FriendStatus friendStatus;
@@ -201,7 +200,7 @@ namespace Twitch
                 SafeGetUserInfoFromUserContainer(friendStatus.User, jsonDoc);
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetFriendStatus, FriendStatusValue(friendStatus, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetFriendStatus, FriendStatusValue(friendStatus, receipt, rc));
         });
     }
 
@@ -209,7 +208,7 @@ namespace Twitch
     {
         AZStd::string url(BuildBaseURL("users") + "/friends/relationships/" + friendID);
 
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_PUT, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_PUT, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
 
@@ -218,7 +217,7 @@ namespace Twitch
                 rc = ResultCode::Success;
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, AcceptFriendRequest, Int64Value(static_cast<AZ::s64>(httpCode), receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::AcceptFriendRequest, Int64Value(static_cast<AZ::s64>(httpCode), receipt, rc));
         });
     }
 
@@ -234,7 +233,7 @@ namespace Twitch
         if (!cursor.empty())
             AddToHeader(headers, "cursor", cursor);
 
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, headers, [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, headers, [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             FriendRequestResult requestResult;
@@ -246,11 +245,11 @@ namespace Twitch
                 SafeGetJSONString(requestResult.Cursor, "cursor", jsonDoc);
                 SafeGetJSONu64(requestResult.Total, "total", jsonDoc);
 
-                Aws::Utils::Array<Aws::Utils::Json::JsonValue> recommendations = jsonDoc.GetArray("requests");
+                Aws::Utils::Array<Aws::Utils::Json::JsonView> recommendations = jsonDoc.GetArray("requests");
 
                 for (size_t index = 0; index < recommendations.GetLength(); index++)
                 {
-                    Aws::Utils::Json::JsonValue item = recommendations.GetItem(index);
+                    Aws::Utils::Json::JsonView item = recommendations.GetItem(index);
                     FriendRequest fr;
 
                     SafeGetJSONbool(fr.IsRecommended, "is_recommended", item);
@@ -263,7 +262,7 @@ namespace Twitch
                 }
             }
             
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetFriendRequests, FriendRequestValue(requestResult, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetFriendRequests, FriendRequestValue(requestResult, receipt, rc));
         });
     }
 
@@ -271,7 +270,7 @@ namespace Twitch
     {
         AZStd::string url(BuildBaseURL("users") + "/friends/requests/" + friendID);
 
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_PUT, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_PUT, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
 
@@ -280,7 +279,7 @@ namespace Twitch
                 rc = ResultCode::Success;
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, CreateFriendRequest, Int64Value(static_cast<AZ::s64>(httpCode), receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::CreateFriendRequest, Int64Value(static_cast<AZ::s64>(httpCode), receipt, rc));
         });
     }
 
@@ -288,7 +287,7 @@ namespace Twitch
     {
         AZStd::string url(BuildBaseURL("users") + "/friends/requests/" + friendID);
 
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_DELETE, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_DELETE, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
 
@@ -297,7 +296,7 @@ namespace Twitch
                 rc = ResultCode::Success;
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, DeclineFriendRequest, Int64Value(static_cast<AZ::s64>(httpCode), receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::DeclineFriendRequest, Int64Value(static_cast<AZ::s64>(httpCode), receipt, rc));
         });
     }
     
@@ -313,10 +312,13 @@ namespace Twitch
             HttpRequestor::Headers headers(GetDefaultHeaders());
             AddToHeader(headers, "Content-Type", "application/json");
         
+            AZStd::string appID;
+            TwitchRequestBus::BroadcastResult(appID, &TwitchRequests::GetApplicationID);
+
             Aws::Utils::Json::JsonValue jsonActivity;
             jsonActivity.WithString("type", GetPresenceActivityTypeName(activityType).c_str());
             jsonActivity.WithString("channel_id", channelInfo.Id.c_str());
-            jsonActivity.WithString("game_id", m_fuelInterface->GetApplicationID().c_str());
+            jsonActivity.WithString("game_id", appID.c_str());
 
             if ( (activityType == PresenceActivityType::Playing) && !gameContext.empty() )
             {
@@ -326,14 +328,17 @@ namespace Twitch
                     jsonActivity.WithObject("game_context", AZStd::move(jsonGameContext));
             }
         
+            AZStd::string sessionID;
+            TwitchRequestBus::BroadcastResult(sessionID, &TwitchRequests::GetSessionID);
+
             Aws::Utils::Json::JsonValue jsonBody;
-            jsonBody.WithString("session_id", m_fuelInterface->GetSessionID().c_str());
+            jsonBody.WithString("session_id", sessionID.c_str());
             jsonBody.WithString("availability", GetPresenceAvailabilityName(availability).c_str());
             jsonBody.WithObject("activities", AZStd::move(jsonActivity));
 
-            Aws::String body(jsonBody.WriteCompact());
+            Aws::String body(jsonBody.View().WriteCompact());
                 
-            m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_POST, headers, body.c_str(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+            AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_POST, headers, body.c_str(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
             {
                 ResultCode rc(ResultCode::TwitchRESTError);
                 AZ::s64 pollIntervalSeconds = 0;
@@ -349,7 +354,7 @@ namespace Twitch
                     pollIntervalSeconds = static_cast<AZ::s64>(httpCode);
                 }
 
-                EBUS_QUEUE_EVENT(TwitchNotifyBus, UpdatePresenceStatus, Int64Value(pollIntervalSeconds, receipt, rc));
+                TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::UpdatePresenceStatus, Int64Value(pollIntervalSeconds, receipt, rc));
             });
         });
     }
@@ -358,7 +363,7 @@ namespace Twitch
     {
         AZStd::string url(BuildBaseURL("users") + "/status/friends");
 
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             PresenceStatusList statusList;
@@ -367,11 +372,11 @@ namespace Twitch
             {
                 rc = ResultCode::Success;
 
-                Aws::Utils::Array<Aws::Utils::Json::JsonValue> recommendations = jsonDoc.GetArray("data");
+                Aws::Utils::Array<Aws::Utils::Json::JsonView> recommendations = jsonDoc.GetArray("data");
 
                 for (size_t index = 0; index < recommendations.GetLength(); index++)
                 {
-                    Aws::Utils::Json::JsonValue item = recommendations.GetItem(index);
+                    Aws::Utils::Json::JsonView item = recommendations.GetItem(index);
                     PresenceStatus ps;
 
                     SafeGetJSONs64(ps.Index, "index", item);
@@ -384,7 +389,7 @@ namespace Twitch
                 }
             }
             
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetPresenceStatusofFriends, PresenceStatusValue(statusList, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetPresenceStatusofFriends, PresenceStatusValue(statusList, receipt, rc));
         });
     }
 
@@ -392,7 +397,7 @@ namespace Twitch
     {
         AZStd::string url(BuildBaseURL("users") + "/status/settings");
 
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             PresenceSettings presenceSettings;
@@ -405,7 +410,7 @@ namespace Twitch
                 SafeGetJSONbool(presenceSettings.ShareActivity, "share_activity", jsonDoc);
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetPresenceSettings, PresenceSettingsValue(presenceSettings, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetPresenceSettings, PresenceSettingsValue(presenceSettings, receipt, rc));
         });
     }
 
@@ -420,9 +425,9 @@ namespace Twitch
         jsonBody.WithBool("is_invisible", isInvisible);
         jsonBody.WithBool("share_activity", shareActivity);
 
-        Aws::String body(jsonBody.WriteCompact());
+        Aws::String body(jsonBody.View().WriteCompact());
 
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_POST, headers, body.c_str(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_POST, headers, body.c_str(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             PresenceSettings presenceSettings;
@@ -435,7 +440,7 @@ namespace Twitch
                 SafeGetJSONbool(presenceSettings.ShareActivity, "share_activity", jsonDoc);
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, UpdatePresenceSettings, PresenceSettingsValue(presenceSettings, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::UpdatePresenceSettings, PresenceSettingsValue(presenceSettings, receipt, rc));
         });
     }
 
@@ -443,7 +448,7 @@ namespace Twitch
     {
         InternalGetChannel(receipt, [](const ChannelInfo& channelInfo, const ReceiptID& receipt, ResultCode rc)
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetChannel, ChannelInfoValue(channelInfo, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetChannel, ChannelInfoValue(channelInfo, receipt, rc));
         });
     }
 
@@ -451,7 +456,7 @@ namespace Twitch
     {
         AZStd::string url(BuildKrakenURL("channels") + "/" + (channelID.empty() ? "0000000" : channelID));
 
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetClientIDHeader(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetClientIDHeader(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             ChannelInfo channelInfo;
@@ -463,7 +468,7 @@ namespace Twitch
                 channelInfo.NumItemsRecieved = SafeGetChannelInfo(channelInfo, jsonDoc);
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetChannelbyID, ChannelInfoValue(channelInfo, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetChannelbyID, ChannelInfoValue(channelInfo, receipt, rc));
         });
     }
 
@@ -479,7 +484,7 @@ namespace Twitch
             ( !channelUpdateInfo.GameName.ToBeUpdated()) &&
             ( !channelUpdateInfo.Status.ToBeUpdated()))
         {
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, UpdateChannel, ChannelInfoValue(ChannelInfo(), receipt, ResultCode::TwitchChannelNoUpdatesToMake));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::UpdateChannel, ChannelInfoValue(ChannelInfo(), receipt, ResultCode::TwitchChannelNoUpdatesToMake));
         }
 
         // we need to get the twitch channel this user is on, and that call requires its own receipt
@@ -489,14 +494,7 @@ namespace Twitch
         {
             AZStd::string url(BuildKrakenURL("channels") + "/" + channelInfo.Id);
 
-            HttpRequestor::Headers headers(GetClientIDHeader());
-
-            if ( channelUpdateInfo.Delay.ToBeUpdated() || channelUpdateInfo.ChannelFeedEnabled.ToBeUpdated() )
-            {
-                // we need the o-auth token for these two udpates.
-                AddOAuthtHeader(headers);
-            }
-                        
+            HttpRequestor::Headers headers(GetDefaultHeaders());                  
             AddToHeader(headers, "Content-Type", "application/json");
 
             Aws::Utils::Json::JsonValue jsonChannel;
@@ -525,9 +523,9 @@ namespace Twitch
 
             jsonBody.WithObject("channel", AZStd::move(jsonChannel));
 
-            Aws::String body(jsonBody.WriteCompact());
+            Aws::String body(jsonBody.View().WriteCompact());
 
-            m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_PUT, headers, body.c_str(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+            AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_PUT, headers, body.c_str(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
             {
                 ResultCode rc(ResultCode::TwitchRESTError);
                 ChannelInfo retChannelInfo;
@@ -539,7 +537,7 @@ namespace Twitch
                     retChannelInfo.NumItemsRecieved = SafeGetChannelInfo(retChannelInfo, jsonDoc);
                 }
 
-                EBUS_QUEUE_EVENT(TwitchNotifyBus, UpdateChannel, ChannelInfoValue(retChannelInfo, receipt, rc));
+                TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::UpdateChannel, ChannelInfoValue(retChannelInfo, receipt, rc));
             });
         });
     }
@@ -548,7 +546,7 @@ namespace Twitch
     {
         AZStd::string url(BuildKrakenURL("channels") + "/" + channelID + "/editors");
 
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             UserInfoList userList;
@@ -557,11 +555,11 @@ namespace Twitch
             {
                 rc = ResultCode::Success;
 
-                Aws::Utils::Array<Aws::Utils::Json::JsonValue> jsonUserArray = jsonDoc.GetArray("users");
+                Aws::Utils::Array<Aws::Utils::Json::JsonView> jsonUserArray = jsonDoc.GetArray("users");
 
                 for (size_t index = 0; index < jsonUserArray.GetLength(); index++)
                 {
-                    Aws::Utils::Json::JsonValue item = jsonUserArray.GetItem(index);
+                    Aws::Utils::Json::JsonView item = jsonUserArray.GetItem(index);
                     UserInfo ui;
 
                     SafeGetUserInfo(ui, item);
@@ -570,7 +568,7 @@ namespace Twitch
                 }
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetChannelEditors, UserInfoListValue(userList, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetChannelEditors, UserInfoListValue(userList, receipt, rc));
         });
     }
     
@@ -586,7 +584,7 @@ namespace Twitch
             url += AZStd::to_string(offset);
         }
 
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetClientIDHeader(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetClientIDHeader(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             FollowerResult followerResult;
@@ -594,16 +592,15 @@ namespace Twitch
             if (httpCode == Aws::Http::HttpResponseCode::OK)
             {
                 rc = ResultCode::Success;
-                Follower follower;
 
                 SafeGetJSONString(followerResult.Cursor, "_cursor", jsonDoc);
                 SafeGetJSONu64(followerResult.Total, "_total", jsonDoc);
 
-                Aws::Utils::Array<Aws::Utils::Json::JsonValue> jsonFollowsArray = jsonDoc.GetArray("follows");
+                Aws::Utils::Array<Aws::Utils::Json::JsonView> jsonFollowsArray = jsonDoc.GetArray("follows");
 
                 for (size_t index = 0; index < jsonFollowsArray.GetLength(); index++)
                 {
-                    Aws::Utils::Json::JsonValue item = jsonFollowsArray.GetItem(index);
+                    Aws::Utils::Json::JsonView item = jsonFollowsArray.GetItem(index);
                     Follower follower;
                     
                     SafeGetJSONString(follower.CreatedDate, "created_at", item);
@@ -614,7 +611,7 @@ namespace Twitch
                 }
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetChannelFollowers, FollowerResultValue(followerResult, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetChannelFollowers, FollowerResultValue(followerResult, receipt, rc));
         });
     }
 
@@ -622,7 +619,7 @@ namespace Twitch
     {
         AZStd::string url(BuildKrakenURL("channels") + "/" + channelID + "/teams");
         
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetClientIDHeader(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetClientIDHeader(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             TeamInfoList teamInfoList;
@@ -631,11 +628,11 @@ namespace Twitch
             {
                 rc = ResultCode::Success;
 
-                Aws::Utils::Array<Aws::Utils::Json::JsonValue> jsonArray = jsonDoc.GetArray("teams");
+                Aws::Utils::Array<Aws::Utils::Json::JsonView> jsonArray = jsonDoc.GetArray("teams");
 
                 for (size_t index = 0; index < jsonArray.GetLength(); index++)
                 {
-                    Aws::Utils::Json::JsonValue item = jsonArray.GetItem(index);
+                    Aws::Utils::Json::JsonView item = jsonArray.GetItem(index);
                     TeamInfo teamInfo;
 
                     SafeGetTeamInfo(teamInfo, item);
@@ -644,7 +641,7 @@ namespace Twitch
                 }
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetChannelTeams, ChannelTeamValue(teamInfoList, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetChannelTeams, ChannelTeamValue(teamInfoList, receipt, rc));
         });
     }
 
@@ -658,7 +655,7 @@ namespace Twitch
             url += AZStd::to_string(offset);
         }
 
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             Subscription subscription;
@@ -669,11 +666,11 @@ namespace Twitch
 
                 SafeGetJSONu64(subscription.Total, "_total", jsonDoc);
 
-                Aws::Utils::Array<Aws::Utils::Json::JsonValue> jsonSubscriptionsArray = jsonDoc.GetArray("subscriptions");
+                Aws::Utils::Array<Aws::Utils::Json::JsonView> jsonSubscriptionsArray = jsonDoc.GetArray("subscriptions");
 
                 for (size_t index = 0; index < jsonSubscriptionsArray.GetLength(); index++)
                 {
-                    Aws::Utils::Json::JsonValue item = jsonSubscriptionsArray.GetItem(index);
+                    Aws::Utils::Json::JsonView item = jsonSubscriptionsArray.GetItem(index);
                     SubscriberInfo si;
 
                     SafeGetJSONString(si.ID, "_id", item);
@@ -684,7 +681,7 @@ namespace Twitch
                 }
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetChannelSubscribers, SubscriberValue(subscription, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetChannelSubscribers, SubscriberValue(subscription, receipt, rc));
         });
     }
 
@@ -692,7 +689,7 @@ namespace Twitch
     {
         AZStd::string url(BuildKrakenURL("channels") + "/" + channelID + "/subscriptions/" + userID);
         
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             SubscriberInfo si;
@@ -706,7 +703,7 @@ namespace Twitch
                 SafeGetUserInfoFromUserContainer(si.User, jsonDoc);
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, CheckChannelSubscriptionbyUser, SubscriberbyUserValue(si, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::CheckChannelSubscriptionbyUser, SubscriberbyUserValue(si, receipt, rc));
         });
     }
 
@@ -734,7 +731,7 @@ namespace Twitch
         
         }
         
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             VideoReturn videoReturn;
@@ -745,11 +742,11 @@ namespace Twitch
 
                 SafeGetJSONu64(videoReturn.Total, "_total", jsonDoc);
 
-                Aws::Utils::Array<Aws::Utils::Json::JsonValue> jsonVideosArray = jsonDoc.GetArray("videos");
+                Aws::Utils::Array<Aws::Utils::Json::JsonView> jsonVideosArray = jsonDoc.GetArray("videos");
 
                 for (size_t index = 0; index < jsonVideosArray.GetLength(); index++)
                 {
-                    Aws::Utils::Json::JsonValue item = jsonVideosArray.GetItem(index);
+                    Aws::Utils::Json::JsonView item = jsonVideosArray.GetItem(index);
                     VideoInfo vi;
 
                     SafeGetJSONString(vi.ID, "_id", item);
@@ -779,7 +776,7 @@ namespace Twitch
                 }
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetChannelVideos, VideoReturnValue(videoReturn, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::GetChannelVideos, VideoReturnValue(videoReturn, receipt, rc));
         });
     }
 
@@ -794,9 +791,9 @@ namespace Twitch
         Aws::Utils::Json::JsonValue jsonBody;
         jsonBody.WithInt64("duration", GetComercialLength(length) );
 
-        Aws::String body(jsonBody.WriteCompact());
+        Aws::String body(jsonBody.View().WriteCompact());
         
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_POST, headers, body.c_str(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_POST, headers, body.c_str(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             StartChannelCommercialResult cr;
@@ -810,7 +807,7 @@ namespace Twitch
                 SafeGetJSONu64(cr.RetryAfter, "retryafter", jsonDoc);
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, StartChannelCommercial, StartChannelCommercialValue(cr, receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::StartChannelCommercial, StartChannelCommercialValue(cr, receipt, rc));
         });
     }
 
@@ -818,7 +815,7 @@ namespace Twitch
     {
         AZStd::string url(BuildKrakenURL("channels") + "/" + channelID + "/stream_key");
 
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_DELETE, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_DELETE, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             ChannelInfo ci;
@@ -830,61 +827,7 @@ namespace Twitch
                 SafeGetChannelInfo(ci, jsonDoc);
             }
 
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, ResetChannelStreamKey, ChannelInfoValue(ci, receipt, rc));
-        });
-    }
-
-    void TwitchREST::GetChannelCommunity(ReceiptID& receipt, const AZStd::string& channelID)
-    {
-        AZStd::string url(BuildKrakenURL("channels") + "/" + channelID + "/community");
-
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetClientIDHeader(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
-        {
-            ResultCode rc(ResultCode::TwitchRESTError);
-            CommunityInfo ci;
-
-            if (httpCode == Aws::Http::HttpResponseCode::OK)
-            {
-                rc = ResultCode::Success;
-
-                SafeGetChannelCommunityInfo(ci, jsonDoc);
-            }
-
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, GetChannelCommunity, CommunityInfoValue(ci, receipt, rc));
-        });
-    }
-
-    void TwitchREST::SetChannelCommunity(ReceiptID& receipt, const AZStd::string& channelID, const AZStd::string& communityID)
-    {
-        AZStd::string url(BuildKrakenURL("channels") + "/" + channelID + "/community/" + communityID);
-
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_PUT, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
-        {
-            ResultCode rc(ResultCode::TwitchRESTError);
-
-            if (httpCode == Aws::Http::HttpResponseCode::NO_CONTENT)
-            {
-                rc = ResultCode::Success;
-            }
-
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, SetChannelCommunity, Int64Value(static_cast<AZ::s64>(httpCode), receipt, rc));
-        });
-    }
-
-    void TwitchREST::DeleteChannelfromCommunity(ReceiptID& receipt, const AZStd::string& channelID)
-    {
-        AZStd::string url(BuildKrakenURL("channels") + "/" + channelID + "/community");
-
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_DELETE, GetDefaultHeaders(), [receipt, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
-        {
-            ResultCode rc(ResultCode::TwitchRESTError);
-
-            if (httpCode == Aws::Http::HttpResponseCode::NO_CONTENT)
-            {
-                rc = ResultCode::Success;
-            }
-
-            EBUS_QUEUE_EVENT(TwitchNotifyBus, DeleteChannelfromCommunity, Int64Value(static_cast<AZ::s64>(httpCode), receipt, rc));
+            TwitchNotifyBus::QueueBroadcast(&TwitchNotifyBus::Events::ResetChannelStreamKey, ChannelInfoValue(ci, receipt, rc));
         });
     }
 
@@ -906,12 +849,21 @@ namespace Twitch
         return isValid;
     }
 
+    void TwitchREST::AddHTTPRequest(const AZStd::string& URI, Aws::Http::HttpMethod method, const HttpRequestor::Headers & headers, const HttpRequestor::Callback & callback)
+    {
+        HttpRequestor::HttpRequestorRequestBus::Broadcast(&HttpRequestor::HttpRequestorRequests::AddRequestWithHeaders, URI, method, headers, callback);
+    }
+
+    void TwitchREST::AddHTTPRequest(const AZStd::string& URI, Aws::Http::HttpMethod method, const HttpRequestor::Headers & headers, const AZStd::string& body, const HttpRequestor::Callback & callback)
+    {
+        HttpRequestor::HttpRequestorRequestBus::Broadcast(&HttpRequestor::HttpRequestorRequests::AddRequestWithHeadersAndBody, URI, method, headers, body, callback);
+    }
         
     void TwitchREST::InternalGetChannel(const ReceiptID& receipt, const GetChannelCallback& callback)
     {
         AZStd::string url(BuildKrakenURL("channel"));
 
-        m_fuelInterface->AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, callback, this](const Aws::Utils::Json::JsonValue& jsonDoc, Aws::Http::HttpResponseCode httpCode)
+        AddHTTPRequest(url, Aws::Http::HttpMethod::HTTP_GET, GetDefaultHeaders(), [receipt, callback, this](const Aws::Utils::Json::JsonView& jsonDoc, Aws::Http::HttpResponseCode httpCode)
         {
             ResultCode rc(ResultCode::TwitchRESTError);
             ChannelInfo channelInfo;
@@ -939,7 +891,7 @@ namespace Twitch
         // if user id is empty, then get the current client id for the logged in user.
         if( friendID.empty() )
         {
-            m_fuelInterface->GetClientID(clientID);
+            TwitchRequestBus::BroadcastResult(clientID, &TwitchRequests::GetUserID);
         }
         else
         {
@@ -1000,16 +952,16 @@ namespace Twitch
     void TwitchREST::AddOAuthtHeader(HttpRequestor::Headers& headers)
     {
         AZStd::string oAuthToken;
-
-        m_fuelInterface->GetOAuthToken(oAuthToken);
-
+        TwitchRequestBus::BroadcastResult(oAuthToken, &TwitchRequests::GetOAuthToken);
         headers["Authorization"] = kAuthType + oAuthToken;
     }
     
     // return the application id in a header, the rest docs refer this as the client-id, poorly named)
     void TwitchREST::AddClientIDHeader(HttpRequestor::Headers& headers)
     {
-        headers["Client-ID"] = m_fuelInterface->GetApplicationID();
+        AZStd::string appID;
+        TwitchRequestBus::BroadcastResult(appID, &TwitchRequests::GetApplicationID);
+        headers["Client-ID"] = appID;
     }
 
     void TwitchREST::AddAcceptToHeader(HttpRequestor::Headers& headers)
@@ -1032,13 +984,13 @@ namespace Twitch
         AddToHeader(headers, name, AZStd::to_string(key));
     }
     
-    AZ::u64 TwitchREST::SafeGetUserInfoFromUserContainer(UserInfo& userInfo, const Aws::Utils::Json::JsonValue& jsonInfo) const
+    AZ::u64 TwitchREST::SafeGetUserInfoFromUserContainer(UserInfo& userInfo, const Aws::Utils::Json::JsonView& jsonInfo) const
     {
         AZ::u64 itemCount = 0;
 
         if (jsonInfo.ValueExists("user") )
         {
-            Aws::Utils::Json::JsonValue jsonUser(jsonInfo.GetObject("user"));
+            Aws::Utils::Json::JsonView jsonUser(jsonInfo.GetObject("user"));
 
             itemCount = SafeGetUserInfo(userInfo, jsonUser);
         }
@@ -1046,7 +998,7 @@ namespace Twitch
         return itemCount;
     }
 
-    AZ::u64 TwitchREST::SafeGetUserInfo(UserInfo& userInfo, const Aws::Utils::Json::JsonValue& jsonInfo) const
+    AZ::u64 TwitchREST::SafeGetUserInfo(UserInfo& userInfo, const Aws::Utils::Json::JsonView& jsonInfo) const
     {
         AZ::u64 itemCount = 0;
 
@@ -1069,7 +1021,7 @@ namespace Twitch
         return itemCount;
     }
 
-    bool TwitchREST::SafeGetJSONString(AZStd::string& value, const char *key, const Aws::Utils::Json::JsonValue& json) const
+    bool TwitchREST::SafeGetJSONString(AZStd::string& value, const char *key, const Aws::Utils::Json::JsonView& json) const
     {
         bool success = false;
         if ( (key != nullptr)&& json.ValueExists(key) )
@@ -1081,7 +1033,7 @@ namespace Twitch
         return success;
     }
 
-    bool TwitchREST::SafeGetJSONu64(AZ::u64& value, const char *key, const Aws::Utils::Json::JsonValue& json) const
+    bool TwitchREST::SafeGetJSONu64(AZ::u64& value, const char *key, const Aws::Utils::Json::JsonView& json) const
     {
         bool success = false;
 
@@ -1094,7 +1046,7 @@ namespace Twitch
         return success;
     }
     
-    bool TwitchREST::SafeGetJSONs64(AZ::s64& value, const char *key, const Aws::Utils::Json::JsonValue& json) const
+    bool TwitchREST::SafeGetJSONs64(AZ::s64& value, const char *key, const Aws::Utils::Json::JsonView& json) const
     {
         bool success = false;
 
@@ -1107,7 +1059,7 @@ namespace Twitch
         return success;
     }
 
-    bool TwitchREST::SafeGetJSONbool(bool& value, const char *key, const Aws::Utils::Json::JsonValue& json) const
+    bool TwitchREST::SafeGetJSONbool(bool& value, const char *key, const Aws::Utils::Json::JsonView& json) const
     {
         bool success = false;
 
@@ -1120,7 +1072,7 @@ namespace Twitch
         return success;
     }
 
-    bool TwitchREST::SafeGetJSONdouble(double& value, const char* key, const Aws::Utils::Json::JsonValue& json) const
+    bool TwitchREST::SafeGetJSONdouble(double& value, const char* key, const Aws::Utils::Json::JsonView& json) const
     {
         bool success = false;
 
@@ -1133,7 +1085,7 @@ namespace Twitch
         return success;
     }
 
-    AZ::u64 TwitchREST::SafeGetUserNotifications(UserNotifications& userNotifications, const Aws::Utils::Json::JsonValue& json) const
+    AZ::u64 TwitchREST::SafeGetUserNotifications(UserNotifications& userNotifications, const Aws::Utils::Json::JsonView& json) const
     {
         // assumes the json value contains:
         // "notifications": { "email": false, "push" : true }
@@ -1141,7 +1093,7 @@ namespace Twitch
 
         if (json.ValueExists("notifications"))
         {
-            Aws::Utils::Json::JsonValue jsonNotifications(json.GetObject("notifications"));
+            Aws::Utils::Json::JsonView jsonNotifications(json.GetObject("notifications"));
 
             numItems += SafeGetJSONbool(userNotifications.EMail, "email", jsonNotifications);
             numItems += SafeGetJSONbool(userNotifications.Push, "push", jsonNotifications);
@@ -1150,7 +1102,7 @@ namespace Twitch
         return numItems;
     }
         
-    bool TwitchREST::SafeGetPresenceActivityType(PresenceActivityType& activityType, const Aws::Utils::Json::JsonValue& json) const
+    bool TwitchREST::SafeGetPresenceActivityType(PresenceActivityType& activityType, const Aws::Utils::Json::JsonView& json) const
     {
         bool success = false;
         AZStd::string name;
@@ -1164,7 +1116,7 @@ namespace Twitch
         return success;
     }
 
-    bool TwitchREST::SafeGetPresenceAvailability(PresenceAvailability& availability, const Aws::Utils::Json::JsonValue& json) const
+    bool TwitchREST::SafeGetPresenceAvailability(PresenceAvailability& availability, const Aws::Utils::Json::JsonView& json) const
     {
         // assumes the json doc contains
         //  "activity": { "type": "none"}
@@ -1173,7 +1125,7 @@ namespace Twitch
         
         if( json.ValueExists("activity") )
         {
-            Aws::Utils::Json::JsonValue jsonActivity( json.GetObject("activity") );
+            Aws::Utils::Json::JsonView jsonActivity( json.GetObject("activity") );
             AZStd::string typeName;
             if( SafeGetJSONString(typeName, "type", jsonActivity) )
             {
@@ -1186,7 +1138,7 @@ namespace Twitch
         return success;
     }
 
-    AZ::u64 TwitchREST::SafeGetChannelInfo(ChannelInfo& channelInfo, const Aws::Utils::Json::JsonValue& json) const
+    AZ::u64 TwitchREST::SafeGetChannelInfo(ChannelInfo& channelInfo, const Aws::Utils::Json::JsonView& json) const
     {
         AZ::u64 itemCount = 0;
         
@@ -1214,7 +1166,7 @@ namespace Twitch
         return itemCount;
     }
 
-    AZ::u64 TwitchREST::SafeGetTeamInfo(TeamInfo& teamInfo, const Aws::Utils::Json::JsonValue& json) const
+    AZ::u64 TwitchREST::SafeGetTeamInfo(TeamInfo& teamInfo, const Aws::Utils::Json::JsonView& json) const
     {
         AZ::u64 itemCount = 0;
     
@@ -1231,7 +1183,7 @@ namespace Twitch
         return itemCount;
     }
 
-    bool TwitchREST::SafeGetJSONBroadCastType(BroadCastType& type, const char*key, const Aws::Utils::Json::JsonValue& json) const
+    bool TwitchREST::SafeGetJSONBroadCastType(BroadCastType& type, const char*key, const Aws::Utils::Json::JsonView& json) const
     {
         bool success = false;
         AZStd::string typeName;
@@ -1250,7 +1202,7 @@ namespace Twitch
         return success;
     }
 
-    bool TwitchREST::SafeGetJSONVideoChannel(VideoChannelInfo& channelInfo, const Aws::Utils::Json::JsonValue& json) const
+    bool TwitchREST::SafeGetJSONVideoChannel(VideoChannelInfo& channelInfo, const Aws::Utils::Json::JsonView& json) const
     {
         // assumes the json doc contains
         //  "channel": { "_id": "20694610", "display_name" : "Towelliee", "name" : "towelliee" }
@@ -1259,7 +1211,7 @@ namespace Twitch
 
         if (json.ValueExists("channel"))
         {
-            Aws::Utils::Json::JsonValue jsonChannel(json.GetObject("channel"));
+            Aws::Utils::Json::JsonView jsonChannel(json.GetObject("channel"));
             
             SafeGetJSONString(channelInfo.ID, "_id", jsonChannel);
             SafeGetJSONString(channelInfo.DisplayName, "display_name", jsonChannel);
@@ -1271,7 +1223,7 @@ namespace Twitch
         return success;
     }
 
-    bool TwitchREST::SafeGetJSONVideoFPS(FPSInfo & fps, const Aws::Utils::Json::JsonValue& json) const
+    bool TwitchREST::SafeGetJSONVideoFPS(FPSInfo & fps, const Aws::Utils::Json::JsonView& json) const
     {
         // assumes the json doc contains
         //  "fps": { "chunked": 59.9997939597903, "high" : 30.2491085172346, "low" : 30.249192959941, "medium" : 30.2491085172346, "mobile" : 30.249192959941 }
@@ -1280,7 +1232,7 @@ namespace Twitch
 
         if (json.ValueExists("fps"))
         {
-            Aws::Utils::Json::JsonValue jsonFPS(json.GetObject("fps"));
+            Aws::Utils::Json::JsonView jsonFPS(json.GetObject("fps"));
 
             SafeGetJSONdouble(fps.Chunked, "chunked", jsonFPS);
             SafeGetJSONdouble(fps.High, "high", jsonFPS);
@@ -1294,7 +1246,7 @@ namespace Twitch
         return success;
     }
 
-    bool TwitchREST::SafeGetJSONVideoPreview(PreviewInfo& preview, const Aws::Utils::Json::JsonValue& json) const
+    bool TwitchREST::SafeGetJSONVideoPreview(PreviewInfo& preview, const Aws::Utils::Json::JsonView& json) const
     {
         // assumes the json doc contains
         //  "preview": { "large": "https://.../thumb102381501-640x360.jpg","medium" : "https://s...180.jpg","small" : "https://...81501-80x45.jpg", "template" : "https://.../thumb102381501-{width}x{height}.jpg" }
@@ -1302,7 +1254,7 @@ namespace Twitch
 
         if (json.ValueExists("preview"))
         {
-            Aws::Utils::Json::JsonValue jsonValue(json.GetObject("preview"));
+            Aws::Utils::Json::JsonView jsonValue(json.GetObject("preview"));
 
             SafeGetJSONString(preview.Large, "large", jsonValue);
             SafeGetJSONString(preview.Medium, "medium", jsonValue);
@@ -1315,7 +1267,7 @@ namespace Twitch
         return success;
     }
 
-    bool TwitchREST::SafeGetJSONVideoResolutions(ResolutionsInfo& resolutions, const Aws::Utils::Json::JsonValue& json) const
+    bool TwitchREST::SafeGetJSONVideoResolutions(ResolutionsInfo& resolutions, const Aws::Utils::Json::JsonView& json) const
     {
         // assumes the json doc contains
         //  "resolutions": {"chunked": "1920x1080","high" : "1280x720","low" : "640x360","medium" : "852x480","mobile" : "400x226"}
@@ -1323,7 +1275,7 @@ namespace Twitch
 
         if (json.ValueExists("resolutions"))
         {
-            Aws::Utils::Json::JsonValue jsonValue(json.GetObject("resolutions"));
+            Aws::Utils::Json::JsonView jsonValue(json.GetObject("resolutions"));
 
             SafeGetJSONString(resolutions.Chunked, "chunked", jsonValue);
             SafeGetJSONString(resolutions.High, "high", jsonValue);
@@ -1337,7 +1289,7 @@ namespace Twitch
         return success;
     }
 
-    bool TwitchREST::SafeGetJSONVideoThumbnailInfo(ThumbnailInfo& info, const char *key, const Aws::Utils::Json::JsonValue& json) const
+    bool TwitchREST::SafeGetJSONVideoThumbnailInfo(ThumbnailInfo& info, const char *key, const Aws::Utils::Json::JsonView& json) const
     {
         // assumes the json doc contains
         // "<key>": [{"type": "generated", "url" : "https://.../thumb102381501-640x360.jpg"}],
@@ -1346,11 +1298,11 @@ namespace Twitch
         if (json.ValueExists(key))
         {
             success = true;
-            Aws::Utils::Array<Aws::Utils::Json::JsonValue> jsonArray( json.GetArray(key) );
+            Aws::Utils::Array<Aws::Utils::Json::JsonView> jsonArray( json.GetArray(key) );
 
             for (size_t index = 0; index < jsonArray.GetLength(); index++)
             {
-                Aws::Utils::Json::JsonValue item(jsonArray.GetItem(index));
+                Aws::Utils::Json::JsonView item(jsonArray.GetItem(index));
                 
                 AZStd::string temp;
                 if( SafeGetJSONString(temp, "type", item) )
@@ -1370,7 +1322,7 @@ namespace Twitch
         return success;
     }
 
-    bool TwitchREST::SafeGetJSONVideoThumbnails(ThumbnailsInfo& thumbnails, const Aws::Utils::Json::JsonValue& json) const
+    bool TwitchREST::SafeGetJSONVideoThumbnails(ThumbnailsInfo& thumbnails, const Aws::Utils::Json::JsonView& json) const
     {
         // assumes the json doc contains
         //  "thumbnails": {"large": [{"type": "...", "url" : "..."}],"medium" : [{"type": "...", "url" : "..."}],"small" : [{"type": "...", "url" : "..."}],"template" : [{"type": "...", "url" : "..."}] }
@@ -1378,7 +1330,7 @@ namespace Twitch
 
         if (json.ValueExists("thumbnails"))
         {
-            Aws::Utils::Json::JsonValue jsonValue(json.GetObject("thumbnails"));
+            Aws::Utils::Json::JsonView jsonValue(json.GetObject("thumbnails"));
 
             SafeGetJSONVideoThumbnailInfo(thumbnails.Large, "large", jsonValue);
             SafeGetJSONVideoThumbnailInfo(thumbnails.Medium, "medium", jsonValue);
@@ -1391,7 +1343,7 @@ namespace Twitch
         return success;
     }
 
-    bool TwitchREST::SafeGetChannelCommunityInfo(CommunityInfo & info, const Aws::Utils::Json::JsonValue& json) const
+    bool TwitchREST::SafeGetChannelCommunityInfo(CommunityInfo & info, const Aws::Utils::Json::JsonView& json) const
     {
         // assumes the json doc contains
         // { "_id": "", "avatar_image_url": "", "cover_image_url": "", "description": "","description_html": "","language": "", "name": "", "owner_id": "", "rules": "", "rules_html": "", "summary": "" }

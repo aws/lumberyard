@@ -111,7 +111,6 @@ private:
             return a.usingId == otherId;
         }*/
         class CompareUsingIds
-            : public std::binary_function<SEntityIds, EntityId, bool>
         {
         public:
             bool operator ()(const SEntityIds& self, const EntityId id) const

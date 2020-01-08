@@ -16,8 +16,15 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/ComponentBus.h>
 
+#if defined(AZ_COMPILER_MSVC)
+    #pragma warning(push, 0)
+#endif
+
 #include <IAudioSystem.h>
 
+#if defined(AZ_COMPILER_MSVC)
+    #pragma warning(pop)
+#endif
 
 namespace EMotionFX
 {

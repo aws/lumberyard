@@ -27,6 +27,8 @@ namespace Ui
 
 namespace AzQtComponents
 {
+    class OutlinerSearchItemDelegate;
+
     class OutlinerSearchTypeSelector
         : public SearchTypeSelector
     {
@@ -37,6 +39,7 @@ namespace AzQtComponents
         // can be used to override the logic when adding items in RepopulateDataModel
         bool filterItemOut(int unfilteredDataIndex, bool itemMatchesFilter, bool categoryMatchesFilter) override;
         void initItem(QStandardItem* item, const SearchTypeFilter& filter, int unfilteredDataIndex) override;
+        int GetNumFixedItems() override;
     };
 
     class OutlinerCriteriaButton
@@ -54,6 +57,7 @@ namespace AzQtComponents
         Q_OBJECT
     public:
         explicit OutlinerSearchWidget(QWidget* parent = nullptr);
+        ~OutlinerSearchWidget() override;
 
         FilterCriteriaButton* createCriteriaButton(const SearchTypeFilter& filter, int filterIndex) override;
 
@@ -66,6 +70,10 @@ namespace AzQtComponents
             Separator,
             FirstRealFilter
         };
+    protected:
+        void SetupPaintDelegates() override;
+    private:
+        OutlinerSearchItemDelegate* m_delegate = nullptr;
     };
 
     class OutlinerIcons
@@ -89,9 +97,16 @@ namespace AzQtComponents
     class OutlinerSearchItemDelegate : public QStyledItemDelegate
     {
     public:
-        OutlinerSearchItemDelegate(QWidget* parent = nullptr);
+        explicit OutlinerSearchItemDelegate(QWidget* parent = nullptr);
 
+        void PaintRichText(QPainter* painter, QStyleOptionViewItemV4& opt, QString& text) const;
+        void SetSelector(SearchTypeSelector* selector) { m_selector = selector; }
+
+        // QStyleItemDelegate overrides.
         void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
         QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override;
+
+    private:
+        SearchTypeSelector* m_selector = nullptr;
     };
 }

@@ -40,33 +40,11 @@ namespace ScriptCanvasEditor
         : NodeDescriptorComponent(NodeDescriptorType::EntityRef)
     {
     }
-    
-    void EntityRefNodeDescriptorComponent::Activate()
-    {
-        NodeDescriptorComponent::Activate();
-
-        GraphCanvas::NodeNotificationBus::Handler::BusConnect(GetEntityId());
-    }
-    
-    void EntityRefNodeDescriptorComponent::Deactivate()
-    {
-        NodeDescriptorComponent::Deactivate();
-
-        GraphCanvas::NodeNotificationBus::Handler::BusDisconnect();
-        ScriptCanvas::NodeNotificationsBus::Handler::BusDisconnect();
-    }
 
     void EntityRefNodeDescriptorComponent::OnEntityNameChanged(const AZStd::string& name)
     {
         UpdateNodeTitle();
-    }
-    
-    void EntityRefNodeDescriptorComponent::OnAddedToScene(const AZ::EntityId& sceneId)
-    {
-        PopulateIds();
-        ScriptCanvas::NodeNotificationsBus::Handler::BusConnect(m_endpoint.GetNodeId());
-        UpdateNodeTitle();
-    }
+    }   
 
     void EntityRefNodeDescriptorComponent::OnInputChanged(const ScriptCanvas::SlotId& slotId)    
     {
@@ -85,6 +63,26 @@ namespace ScriptCanvasEditor
         }
     }
 
+    void EntityRefNodeDescriptorComponent::OnAddedToGraphCanvasGraph(const GraphCanvas::GraphId& sceneId, const AZ::EntityId& scriptCanvasNodeId)
+    {
+        ScriptCanvas::SlotId scriptCanvasSlotId;
+        ScriptCanvas::NodeRequestBus::EventResult(scriptCanvasSlotId, scriptCanvasNodeId, &ScriptCanvas::NodeRequests::GetSlotId, ScriptCanvas::PureData::k_setThis);
+
+        m_endpoint = ScriptCanvas::Endpoint(scriptCanvasNodeId, scriptCanvasSlotId);
+
+        if (m_endpoint.IsValid())
+        {
+            AZ::EntityId referencedId = GetReferencedEntityId();
+
+            if (referencedId.IsValid())
+            {
+                AZ::EntityBus::Handler::BusConnect(referencedId);
+            }
+        }
+
+        UpdateNodeTitle();
+    }
+
     AZ::EntityId EntityRefNodeDescriptorComponent::GetReferencedEntityId() const
     {
         AZ::EntityId retVal;
@@ -98,32 +96,7 @@ namespace ScriptCanvasEditor
         }
 
         return retVal;
-    }
-    
-    void EntityRefNodeDescriptorComponent::PopulateIds()
-    {
-        AZStd::any* userData = nullptr;
-        GraphCanvas::NodeRequestBus::EventResult(userData, GetEntityId(), &GraphCanvas::NodeRequests::GetUserData);
-
-        if (userData && userData->is<AZ::EntityId>())
-        {            
-            AZ::EntityId scriptCanvasNodeId = (*AZStd::any_cast<AZ::EntityId>(userData));
-            ScriptCanvas::SlotId scriptCanvasSlotId;
-            ScriptCanvas::NodeRequestBus::EventResult(scriptCanvasSlotId, scriptCanvasNodeId, &ScriptCanvas::NodeRequests::GetSlotId, ScriptCanvas::PureData::k_setThis);
-
-            m_endpoint = ScriptCanvas::Endpoint(scriptCanvasNodeId, scriptCanvasSlotId);
-
-            if (m_endpoint.IsValid())
-            {
-                AZ::EntityId referencedId = GetReferencedEntityId();
-
-                if (referencedId.IsValid())
-                {
-                    AZ::EntityBus::Handler::BusConnect(referencedId);
-                }
-            }
-        }
-    }
+    }    
     
     void EntityRefNodeDescriptorComponent::UpdateNodeTitle()
     {

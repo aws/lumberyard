@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -1014,12 +1013,12 @@ namespace AzFramework
 
     void TransformComponent::OnTick(float /*deltaTime*/, AZ::ScriptTimePoint /*currentTime*/)
     {
-        if (GetEntity() && GetEntity()->GetState() == AZ::Entity::State::ES_ACTIVE && !NetQuery::IsEntityAuthoritative(GetEntityId()))
+        if (GetEntity() && GetEntity()->GetState() == AZ::Entity::State::ES_ACTIVE)
         {
-            if (m_replicaChunk)
+            if (m_replicaChunk && m_replicaChunk->IsProxy())
             {
-                unsigned int localTime = m_replicaChunk->GetReplicaManager()->GetTime().m_localTime;
-                AZ::Transform newXform = GetInterpolatedTransform(localTime);
+                const unsigned int localTime = m_replicaChunk->GetReplicaManager()->GetTime().m_localTime;
+                const AZ::Transform newXform = GetInterpolatedTransform(localTime);
                 SetLocalTMImpl(newXform);
             }
         }
@@ -1452,5 +1451,3 @@ namespace AzFramework
         }
     }
 } // namespace AZ
-
-#endif  // AZ_UNITY_BUILD

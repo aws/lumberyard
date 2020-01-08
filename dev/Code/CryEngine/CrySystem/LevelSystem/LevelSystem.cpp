@@ -27,6 +27,7 @@
 
 #include <LoadScreenBus.h>
 
+#include <AzCore/Debug/AssetTracking.h>
 #include <AzFramework/IO/FileOperations.h>
 #include <AzFramework/Entity/GameEntityContextBus.h>
 #include <AzFramework/Input/Buses/Requests/InputChannelRequestBus.h>
@@ -591,6 +592,7 @@ ILevel* CLevelSystem::LoadLevel(const char* _levelName)
 ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
 {
     gEnv->pSystem->SetSystemGlobalState(ESYSTEM_GLOBAL_STATE_LEVEL_LOAD_START);
+    AZ_ASSET_NAMED_SCOPE("Level: %s", _levelName);
 
     CryLog ("Level system is loading \"%s\"", _levelName);
     INDENT_LOG_DURING_SCOPE();
@@ -736,28 +738,31 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
         {
             const char* controlsPath = nullptr;
             Audio::AudioSystemRequestBus::BroadcastResult(controlsPath, &Audio::AudioSystemRequestBus::Events::GetControlsPath);
-            CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> sAudioLevelPath(controlsPath);
-            sAudioLevelPath.append("levels/");
-            sAudioLevelPath += sLevelNameOnly;
-
-            Audio::SAudioManagerRequestData<Audio::eAMRT_PARSE_CONTROLS_DATA> oAMData(sAudioLevelPath, Audio::eADS_LEVEL_SPECIFIC);
-            Audio::SAudioRequest oAudioRequestData;
-            oAudioRequestData.nFlags = (Audio::eARF_PRIORITY_HIGH | Audio::eARF_EXECUTE_BLOCKING); // Needs to be blocking so data is available for next preloading request!
-            oAudioRequestData.pData = &oAMData;
-            Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
-
-            Audio::SAudioManagerRequestData<Audio::eAMRT_PARSE_PRELOADS_DATA> oAMData2(sAudioLevelPath, Audio::eADS_LEVEL_SPECIFIC);
-            oAudioRequestData.pData = &oAMData2;
-            Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
-
-            Audio::TAudioPreloadRequestID nPreloadRequestID = INVALID_AUDIO_PRELOAD_REQUEST_ID;
-
-            Audio::AudioSystemRequestBus::BroadcastResult(nPreloadRequestID, &Audio::AudioSystemRequestBus::Events::GetAudioPreloadRequestID, sLevelNameOnly.c_str());
-            if (nPreloadRequestID != INVALID_AUDIO_PRELOAD_REQUEST_ID)
+            if (controlsPath)
             {
-                Audio::SAudioManagerRequestData<Audio::eAMRT_PRELOAD_SINGLE_REQUEST> requestData(nPreloadRequestID, true);
-                oAudioRequestData.pData = &requestData;
+                AZStd::string sAudioLevelPath(controlsPath);
+                sAudioLevelPath.append("levels/");
+                sAudioLevelPath += sLevelNameOnly;
+
+                Audio::SAudioManagerRequestData<Audio::eAMRT_PARSE_CONTROLS_DATA> oAMData(sAudioLevelPath.c_str(), Audio::eADS_LEVEL_SPECIFIC);
+                Audio::SAudioRequest oAudioRequestData;
+                oAudioRequestData.nFlags = (Audio::eARF_PRIORITY_HIGH | Audio::eARF_EXECUTE_BLOCKING); // Needs to be blocking so data is available for next preloading request!
+                oAudioRequestData.pData = &oAMData;
                 Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
+
+                Audio::SAudioManagerRequestData<Audio::eAMRT_PARSE_PRELOADS_DATA> oAMData2(sAudioLevelPath.c_str(), Audio::eADS_LEVEL_SPECIFIC);
+                oAudioRequestData.pData = &oAMData2;
+                Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
+
+                Audio::TAudioPreloadRequestID nPreloadRequestID = INVALID_AUDIO_PRELOAD_REQUEST_ID;
+
+                Audio::AudioSystemRequestBus::BroadcastResult(nPreloadRequestID, &Audio::AudioSystemRequestBus::Events::GetAudioPreloadRequestID, sLevelNameOnly.c_str());
+                if (nPreloadRequestID != INVALID_AUDIO_PRELOAD_REQUEST_ID)
+                {
+                    Audio::SAudioManagerRequestData<Audio::eAMRT_PRELOAD_SINGLE_REQUEST> requestData(nPreloadRequestID, true);
+                    oAudioRequestData.pData = &requestData;
+                    Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
+                }
             }
         }
 

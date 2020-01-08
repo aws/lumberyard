@@ -17,13 +17,14 @@
 #include <QBoxLayout>
 #include <Editor/SettingsWidget.h>
 #include <Editor/DocumentationLinkWidget.h>
+#include <Source/NameConstants.h>
 
 namespace PhysX
 {
     namespace Editor
     {
         static const char* const s_settingsDocumentationLink = "Learn more about <a href=%0>configuring PhysX</a>";
-        static const char* const s_settingsDocumentationAddress = "https://docs-aws.amazon.com/console/lumberyard/physx/configuration/global";
+        static const char* const s_settingsDocumentationAddress = "configuration/global";
 
         SettingsWidget::SettingsWidget(QWidget* parent)
             : QWidget(parent)
@@ -31,15 +32,16 @@ namespace PhysX
             CreatePropertyEditor(this);
         }
 
-        void SettingsWidget::SetValue(const PhysX::Settings& settings, const Physics::WorldConfiguration& worldConfiguration,
+        void SettingsWidget::SetValue(const AZ::Data::Asset<Physics::MaterialLibraryAsset>& materialLibrary, const Physics::WorldConfiguration& worldConfiguration,
             const PhysX::EditorConfiguration& editorConfiguration)
         {
-            m_settings = settings;
+            m_defaultPhysicsMaterialLibrary.m_asset = materialLibrary;
             m_worldConfiguration = worldConfiguration;
             m_editorConfiguration = editorConfiguration;
 
             blockSignals(true);
             m_propertyEditor->ClearInstances();
+            m_propertyEditor->AddInstance(&m_defaultPhysicsMaterialLibrary);
             m_propertyEditor->AddInstance(&m_worldConfiguration);
             m_propertyEditor->AddInstance(&m_editorConfiguration);
             m_propertyEditor->InvalidateAll();
@@ -52,7 +54,7 @@ namespace PhysX
             verticalLayout->setContentsMargins(0, 0, 0, 0);
             verticalLayout->setSpacing(0);
 
-            m_documentationLinkWidget = new DocumentationLinkWidget(s_settingsDocumentationLink, s_settingsDocumentationAddress);
+            m_documentationLinkWidget = new DocumentationLinkWidget(s_settingsDocumentationLink, (UXNameConstants::GetPhysXDocsRoot() + s_settingsDocumentationAddress).c_str());
 
             AZ::SerializeContext* m_serializeContext;
             AZ::ComponentApplicationBus::BroadcastResult(m_serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
@@ -74,7 +76,7 @@ namespace PhysX
 
         void SettingsWidget::AfterPropertyModified(AzToolsFramework::InstanceDataNode* /*node*/)
         {
-            emit onValueChanged(m_settings, m_worldConfiguration, m_editorConfiguration);
+            emit onValueChanged(m_defaultPhysicsMaterialLibrary.m_asset, m_worldConfiguration, m_editorConfiguration);
         }
 
         void SettingsWidget::SetPropertyEditingActive(AzToolsFramework::InstanceDataNode* /*node*/)
@@ -83,7 +85,7 @@ namespace PhysX
 
         void SettingsWidget::SetPropertyEditingComplete(AzToolsFramework::InstanceDataNode* /*node*/)
         {
-            emit onValueChanged(m_settings, m_worldConfiguration, m_editorConfiguration);
+            emit onValueChanged(m_defaultPhysicsMaterialLibrary.m_asset, m_worldConfiguration, m_editorConfiguration);
         }
 
         void SettingsWidget::SealUndoStack()

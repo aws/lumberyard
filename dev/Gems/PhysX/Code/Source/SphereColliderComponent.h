@@ -20,7 +20,8 @@
 namespace PhysX
 {
     /// Component that provides sphere shape collider.
-    /// Used in conjunction with a PhysX Rigid Body Component.
+    /// May be used in conjunction with a PhysX Rigid Body Component to create a dynamic rigid body, or on its own
+    /// to create a static rigid body.
     class SphereColliderComponent
         : public BaseColliderComponent
     {
@@ -30,12 +31,8 @@ namespace PhysX
         static void Reflect(AZ::ReflectContext* context);
 
         SphereColliderComponent() = default;
-        explicit SphereColliderComponent(const Physics::ColliderConfiguration& colliderConfiguration, const Physics::SphereShapeConfiguration& configuration);
 
-        // ColliderComponentRequestBus
-        AZStd::shared_ptr<Physics::ShapeConfiguration> CreateScaledShapeConfig() override;
-
-    protected:
-        Physics::SphereShapeConfiguration m_shapeConfiguration; ///< Sphere shape configuration.
+        // BaseColliderComponent
+        void UpdateScaleForShapeConfigs() override;
     };
 }

@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Math/VertexContainer.h>
 #include <AzCore/Math/Vector3.h>
@@ -28,5 +27,3 @@ namespace AZ
     AZ_CLASS_ALLOCATOR_IMPL_TEMPLATE(VertexContainer<Vector2>, AZ::SystemAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL_TEMPLATE(VertexContainer<Vector3>, AZ::SystemAllocator, 0)
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

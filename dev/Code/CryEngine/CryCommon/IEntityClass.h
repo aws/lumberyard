@@ -15,7 +15,7 @@
 #define CRYINCLUDE_CRYCOMMON_IENTITYCLASS_H
 #pragma once
 
-#include "BoostHelpers.h"
+#include "SmartPointersHelpers.h"
 #include "IComponent.h"
 
 struct IEntity;

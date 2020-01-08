@@ -25,7 +25,7 @@ device_policy = custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_s
 client_registry_table = boto3.resource('dynamodb').Table(client_registry_table_name)
  
 iot_client = web_communicator_iot.get_iot_client()
-iot_data = web_communicator_iot.get_iot_client()
+iot_data = web_communicator_iot.get_iot_data_client()
 
 default_connection_type = 'OPENSSL'
 

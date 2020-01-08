@@ -11,19 +11,8 @@
 */
 
 
+#include <AzCore/PlatformDef.h>
+
 #include <GL/glew.h>
 
-#ifdef MCORE_PLATFORM_WINDOWS
-    #include <GL/wglew.h>
-#endif
-
-#ifdef __APPLE__
-    #include <OpenGL/gl.h>
-    #include <OpenGL/glu.h>
-#else
-#ifdef _WIN32
-    #include <AzCore/PlatformIncl.h>
-#endif
-    #include <GL/gl.h>
-    #include <GL/glu.h>
-#endif
+#include <EMotionFX/Rendering/OpenGL2/Source/GLInclude_Platform.h>

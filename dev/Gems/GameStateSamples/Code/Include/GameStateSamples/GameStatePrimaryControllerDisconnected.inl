@@ -12,6 +12,7 @@
 
 #include <GameState/GameStateRequestBus.h>
 #include <GameStateSamples/GameStatePrimaryControllerDisconnected.h>
+#include <GameStateSamples/GameStateSamples_Traits_Platform.h>
 
 #include <MessagePopup/MessagePopupBus.h>
 
@@ -87,12 +88,7 @@ namespace GameStateSamples
         }
 
         string localizedMessage;
-    #if defined(AZ_TRAIT_PRIMARY_CONTROLLER_DISCONNECTED_LOC_KEY)
-        const char* localizationKey = AZ_TRAIT_PRIMARY_CONTROLLER_DISCONNECTED_LOC_KEY;
-    #else
-        const char* localizationKey = "@PRIMARY_CONTROLLER_DISCONNECTED_LOC_KEY";
-    #endif // defined(AZ_TRAIT_PRIMARY_CONTROLLER_DISCONNECTED_LOC_KEY)
-
+        const char* localizationKey = AZ_TRAIT_GAMESTATESAMPLES_PRIMARY_CONTROLLER_DISCONNECTED_LOC_KEY;
         bool wasLocalized = false;
         LocalizationManagerRequestBus::BroadcastResult(wasLocalized,
                                                        &LocalizationManagerRequestBus::Events::LocalizeString_ch,
@@ -100,12 +96,8 @@ namespace GameStateSamples
                                                        localizedMessage,
                                                        false);
         const char* popupMessage = wasLocalized && localizedMessage != localizationKey ?
-                                   localizedMessage.c_str() :
-    #if defined(AZ_TRAIT_PRIMARY_CONTROLLER_DISCONNECTED_DEFAULT_MESSAGE)
-                                   AZ_TRAIT_PRIMARY_CONTROLLER_DISCONNECTED_DEFAULT_MESSAGE;
-    #else
-                                   "Primary profile's controller disconnected\n\nPlease reconnect";
-    #endif // defined(AZ_TRAIT_PRIMARY_CONTROLLER_DISCONNECTED_DEFAULT_MESSAGE)
+            localizedMessage.c_str() :
+            AZ_TRAIT_GAMESTATESAMPLES_PRIMARY_CONTROLLER_DISCONNECTED_DEFAULT_MESSAGE;
 
         MessagePopup::MessagePopupRequestBus::BroadcastResult(m_primaryControllerDisconnectedPopupId,
                                                               &MessagePopup::MessagePopupRequests::ShowPopup,

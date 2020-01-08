@@ -6,10 +6,11 @@
             "dllmain.cpp",
             "ComponentEntityEditorPlugin.h",
             "ComponentEntityEditorPlugin.cpp",
+            "ComponentEntityPythonCommands.cpp",
             "SandboxIntegration.h",
             "SandboxIntegration.cpp",
-            "stdafx.cpp",
-            "stdafx.h"
+            "ComponentEntityEditorPlugin_precompiled.cpp",
+            "ComponentEntityEditorPlugin_precompiled.h"
         ]
     },
 

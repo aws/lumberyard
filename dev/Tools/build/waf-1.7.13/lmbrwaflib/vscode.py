@@ -77,8 +77,7 @@ class GenerateVSCodeWorkspace(Build.BuildContext):
                 self.target_arch = 'win_x64_clang'
             else:
                 vs = {
-                    "15" : 'vs2017',
-                    "14" : 'vs2015'
+                    "15" : 'vs2017'
                 }
                 self.target_arch = "win_x64_" + vs[self.options.msvs_version]
 

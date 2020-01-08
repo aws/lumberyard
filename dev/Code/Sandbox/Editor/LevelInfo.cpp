@@ -15,7 +15,10 @@
 #include "LevelInfo.h"
 #include "Material/MaterialManager.h"
 
+#ifdef LY_TERRAIN_EDITOR
 #include "./Terrain/Heightmap.h"
+#endif //#ifdef LY_TERRAIN_EDITOR
+
 #include "VegetationMap.h"
 #include "QtUI/WaitCursor.h"
 
@@ -106,9 +109,14 @@ void CLevelInfo::ValidateObjects()
     //////////////////////////////////////////////////////////////////////////
     int gridSize = 256;
 
+#ifdef LY_TERRAIN_EDITOR
     SSectorInfo si;
     GetIEditor()->GetHeightmap()->GetSectorsInfo(si);
     float worldSize = si.numSectors * si.sectorSize;
+#else
+    float worldSize = GetIEditor()->Get3DEngine()->GetTerrainSize();
+#endif //#ifdef LY_TERRAIN_EDITOR
+
     float fGridToWorld = worldSize / gridSize;
 
     // Put all objects into parition grid.

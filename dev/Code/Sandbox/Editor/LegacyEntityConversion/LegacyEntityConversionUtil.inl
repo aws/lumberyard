@@ -236,7 +236,7 @@ namespace AZ
                     return true;
                 }
 
-                AZ_Warning("Legacy Entity Converter", "Conversion failed for variable: %s", variableName);
+                AZ_Warning("Legacy Entity Converter", false, "Conversion failed for variable: %s", variableName);
                 return false;
             }
 

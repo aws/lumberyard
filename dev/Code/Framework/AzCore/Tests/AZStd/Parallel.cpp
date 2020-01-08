@@ -20,7 +20,7 @@
 #include <AzCore/std/parallel/spin_mutex.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/parallel/shared_mutex.h>
-#include <AzCore/std/parallel/conditional_variable.h>
+#include <AzCore/std/parallel/condition_variable.h>
 
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/delegate/delegate.h>
@@ -323,13 +323,7 @@ namespace UnitTest
             AZ_TEST_ASSERT(the_id == x_id);
         }
 
-        /*thread make_thread_return_lvalue(boost::thread::id* the_id)
-        {
-            thread t(&Parallel_Thread::do_nothing_id,this,the_id);
-            return AZStd::move(t);
-        }
-
-        void test_move_from_function_return_lvalue()
+        /*void test_move_from_function_return_lvalue()
         {
             thread::id the_id;
             thread x=make_thread_return_lvalue(&the_id);
@@ -583,6 +577,39 @@ namespace UnitTest
     TEST_F(Parallel_Thread, Test)
     {
         run();
+    }
+
+    TEST_F(Parallel_Thread, Hashable)
+    {
+        constexpr size_t ThreadCount = 100;
+
+        // Make sure threadids can be added to a map.
+        AZStd::vector<AZStd::thread*> threadVector;
+        AZStd::unordered_map<AZStd::thread_id, AZStd::thread*> threadMap;
+
+        // Create a bunch of threads and add them to a map
+        for (uint32_t i = 0; i < ThreadCount; ++i)
+        {
+            AZStd::thread* thread = new AZStd::thread([i]() { return i; });
+            threadVector.push_back(thread);
+            threadMap[thread->get_id()] = thread;
+        }
+
+        // Check and make sure they threads can be found by id and match the ones created.
+        for (uint32_t i = 0; i < ThreadCount; ++i)
+        {
+            AZStd::thread* thread = threadVector.at(i);
+            EXPECT_TRUE(threadMap.at(thread->get_id()) == thread);
+        }
+
+        // Clean up the threads
+        AZStd::for_each(threadVector.begin(), threadVector.end(), 
+            [](AZStd::thread* thread)
+            {
+                thread->join();
+                delete thread;
+            }
+        );
     }
 
     class Parallel_Combinable

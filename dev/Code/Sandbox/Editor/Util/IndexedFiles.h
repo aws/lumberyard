@@ -124,7 +124,7 @@ private:
     typedef std::map<QString, int_set, std::less<QString> > TagTable;
 #else
     typedef std::set<int, std::less<int>, stl::STLPoolAllocator<int> > int_set;
-    typedef std::map<QString, int_set, std::less<QString>, stl::STLPoolAllocator<std::pair<QString, int_set> > > TagTable;
+    typedef std::map<QString, int_set, std::less<QString>, stl::STLPoolAllocator<std::pair<const QString, int_set> > > TagTable;
 #endif
     TagTable m_tags;
     QString m_rootPath;

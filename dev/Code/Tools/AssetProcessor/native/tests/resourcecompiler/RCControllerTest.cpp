@@ -18,6 +18,7 @@
 #include "native/resourcecompiler/rcjoblistmodel.h"
 #include "native/resourcecompiler/rccontroller.h"
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
+#include "AzCore/std/parallel/binary_semaphore.h"
 
 TEST_F(RCcontrollerTest, CompileGroupCreatedWithUnknownStatusForFailedJobs)
 {
@@ -162,6 +163,93 @@ TEST_F(RCcontrollerTest_Cancellation, JobSubmitted_DifferentFingerprint_CancelsT
             ASSERT_TRUE(rcJob->GetState() != AssetProcessor::RCJob::JobState::cancelled);
         }
     }
+}
+
+class RCcontrollerTest_Simple
+    : public RCcontrollerTest
+{
+public:
+
+    void SetUp() override
+    {
+        RCcontrollerTest::SetUp();
+        using namespace AssetProcessor;
+        m_rcController.reset(new RCController(/*minJobs*/1, /*maxJobs*/1));
+        m_rcController->SetDispatchPaused(false);
+        m_rcJobListModel = m_rcController->GetQueueModel();
+
+        qRegisterMetaType<AssetBuilderSDK::ProcessJobResponse>("ProcessJobResponse");
+
+        QObject::connect(m_rcController.get(), &RCController::BecameIdle, [this]()
+        {
+            m_wait.release();
+        });
+    }
+
+    void TearDown() override
+    {
+        m_rcJobListModel = nullptr;
+        m_rcController.reset();
+        RCcontrollerTest::TearDown();
+    }
+    void SubmitJob();
+    AZStd::binary_semaphore m_wait;
+    AZStd::unique_ptr<AssetProcessor::RCController> m_rcController;
+    AssetProcessor::RCJobListModel* m_rcJobListModel = nullptr; // convenience pointer into m_rcController->GetQueueModel()
+};
+
+void RCcontrollerTest_Simple::SubmitJob()
+{
+    using namespace AssetBuilderSDK;
+
+    {
+        AssetProcessor::JobDetails jobDetails;
+        jobDetails.m_jobEntry.m_computedFingerprint = 123;
+        jobDetails.m_jobEntry.m_pathRelativeToWatchFolder = jobDetails.m_jobEntry.m_databaseSourceName = "somepath/a.dds";
+        jobDetails.m_jobEntry.m_platformInfo = { "pc",{ "desktop", "renderer" } };
+        jobDetails.m_jobEntry.m_jobKey = "tiff";
+        jobDetails.m_jobEntry.m_jobRunKey = 3;
+        jobDetails.m_assetBuilderDesc.m_processJobFunction = [](const ProcessJobRequest& request, ProcessJobResponse& response)
+        {
+            response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
+        };
+        m_rcController->JobSubmitted(jobDetails);
+    }
+
+    // Numbers are a bit arbitrary but this should result in a max wait time of 5s
+    int retryCount = 100;
+    do
+    {
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+    } while (m_wait.try_acquire_for(AZStd::chrono::milliseconds(5)) == false && --retryCount > 0);
+
+    ASSERT_GT(retryCount, 0);
+}
+
+// This is a regresssion test to ensure the rccontroller can handle multiple jobs for the same file being completed before
+// the APM has a chance to send OnFinishedProcesssingJob events
+TEST_F(RCcontrollerTest_Simple, SameJobIsCompletedMultipleTimes_CompletesWithoutError)
+{
+    using namespace AssetProcessor;
+    
+    AZStd::vector<JobEntry> jobEntries;
+    QObject::connect(m_rcController.get(), &RCController::FileCompiled, [&jobEntries](JobEntry entry, AssetBuilderSDK::ProcessJobResponse response)
+    {
+        jobEntries.push_back(entry);
+    });
+
+    SubmitJob();
+    SubmitJob();
+
+    ASSERT_EQ(jobEntries.size(), 2);
+
+    for (const JobEntry& entry : jobEntries)
+    {
+        m_rcController->OnFinishedProcessingJob(entry);
+    }
+
+    ASSERT_EQ(m_errorAbsorber->m_numAssertsAbsorbed, 4); // Expected that there are 4 errors related to the files not existing on disk.  Error message: GenerateFingerprint was called but no input files were requested for fingerprinting.
+    ASSERT_EQ(m_errorAbsorber->m_numErrorsAbsorbed, 0);
 }
 
 // makes sure to expose parts of RCJob to the unit test

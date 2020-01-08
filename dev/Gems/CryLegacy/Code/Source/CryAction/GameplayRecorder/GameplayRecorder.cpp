@@ -219,7 +219,7 @@ void CGameplayRecorder::CExampleMetadataListener::OnData(const IMetadata* metada
     case eDT_frame:
     {
         CTimeValue tv;
-        if (const int64* temp = boost::get<const int64>(&data.GetValue()))
+        if (const int64* temp = AZStd::get_if<int64>(&data.GetValue()))
         {
             tv = *temp;
         }
@@ -230,17 +230,17 @@ void CGameplayRecorder::CExampleMetadataListener::OnData(const IMetadata* metada
     case eDT_entity:
     {
         string name;
-        if (const string* temp = boost::get<const string>(&data.GetField(eDT_name).GetValue()))
+        if (const string* temp = AZStd::get_if<string>(&data.GetField(eDT_name).GetValue()))
         {
             name = *temp;
         }
         string type;
-        if (const string* temp = boost::get<const string>(&data.GetField(eDT_type).GetValue()))
+        if (const string* temp = AZStd::get_if<string>(&data.GetField(eDT_type).GetValue()))
         {
             type = *temp;
         }
         Vec3 pos;
-        if (const Vec3* temp = boost::get<const Vec3>(&data.GetField(eDT_position).GetValue()))
+        if (const Vec3* temp = AZStd::get_if<Vec3>(&data.GetField(eDT_position).GetValue()))
         {
             pos = *temp;
         }
@@ -252,22 +252,22 @@ void CGameplayRecorder::CExampleMetadataListener::OnData(const IMetadata* metada
     case eDT_actor:
     {
         string name;
-        if (const string* temp = boost::get<const string>(&data.GetField(eDT_name).GetValue()))
+        if (const string* temp = AZStd::get_if<string>(&data.GetField(eDT_name).GetValue()))
         {
             name = *temp;
         }
         Vec3 pos;
-        if (const Vec3* temp = boost::get<const Vec3>(&data.GetField(eDT_position).GetValue()))
+        if (const Vec3* temp = AZStd::get_if<Vec3>(&data.GetField(eDT_position).GetValue()))
         {
             pos = *temp;
         }
         string item;
-        if (const string* temp = boost::get<const string>(&data.GetField(eDT_item).GetField(eDT_name).GetValue()))
+        if (const string* temp = AZStd::get_if<string>(&data.GetField(eDT_item).GetField(eDT_name).GetValue()))
         {
             item = *temp;
         }
         string firemode;
-        if (const string* temp = boost::get<const string>(&data.GetField(eDT_item).GetField(eDT_weapon).GetField(eDT_firemode).GetValue()))
+        if (const string* temp = AZStd::get_if<string>(&data.GetField(eDT_item).GetField(eDT_weapon).GetField(eDT_firemode).GetValue()))
         {
             firemode = *temp;
         }

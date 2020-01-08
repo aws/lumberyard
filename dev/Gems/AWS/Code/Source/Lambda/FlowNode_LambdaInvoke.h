@@ -10,10 +10,17 @@
 *
 */
 #pragma once
-#pragma warning(disable: 4355) // <future> includes ppltasks.h which throws a C4355 warning: 'this' used in base member initializer list
+
+// The AWS Native SDK AWSAllocator triggers a warning due to accessing members of std::allocator directly.
+// AWSAllocator.h(70): warning C4996: 'std::allocator<T>::pointer': warning STL4010: Various members of std::allocator are deprecated in C++17.
+// Use std::allocator_traits instead of accessing these members directly.
+// You can define _SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING or _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS to acknowledge that you have received this warning.
+
+#include <AzCore/PlatformDef.h>
+AZ_PUSH_DISABLE_WARNING(4251 4355 4996, "-Wunknown-warning-option")
 #include <aws/lambda/LambdaClient.h>
-#pragma warning(default: 4355)
 #include <Util/FlowSystem/BaseMaglevFlowNode.h>
+AZ_POP_DISABLE_WARNING
 
 namespace LmbrAWS
 {

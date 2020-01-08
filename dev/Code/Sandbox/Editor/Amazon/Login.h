@@ -22,9 +22,12 @@
 #include <QSpacerItem>
 
 #include <memory>
+#include <AzCore/PlatformDef.h>
+AZ_PUSH_DISABLE_WARNING(4251 4355 4996, "-Wunknown-warning-option")
 #include <aws/core/http/HttpClientFactory.h>
 #include <aws/core/client/ClientConfiguration.h>
 #include <aws/core/utils/json/JsonSerializer.h>
+AZ_POP_DISABLE_WARNING
 
 namespace Amazon {
     class QWidgetWinWrapper

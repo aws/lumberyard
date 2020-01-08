@@ -14,9 +14,15 @@
 #define OUTLINER_VIEW_MODEL_H
 
 #include <AzCore/base.h>
+
+// Qt tends to have private non-exported classes inside exported classes, and this raises 4251
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") 
 #include <QtWidgets/QWidget>
 #include <QtWidgets/QStyledItemDelegate>
 #include <QtWidgets/QCheckBox>
+#include <QtCore/QRect>
+AZ_POP_DISABLE_WARNING
+
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Component/EntityBus.h>
 #include <AzCore/Asset/AssetCommon.h>
@@ -183,7 +189,13 @@ protected:
 
     //! Editor entity context notification bus
     void OnEditorEntitiesReplacedBySlicedEntities(const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& replacedEntitiesMap) override;
+    void OnEditorEntityDuplicated(const AZ::EntityId& oldEntity, const AZ::EntityId& newEntity) override;
     void OnContextReset() override;
+    void OnStartPlayInEditorBegin() override;
+    void OnStartPlayInEditor() override;
+
+    bool m_beginStartPlayInEditor = false;
+
 
     void QueueEntityUpdate(AZ::EntityId entityId);
     void QueueAncestorUpdate(AZ::EntityId entityId);
@@ -286,7 +298,7 @@ private:
 
     const char* circleIconColor = "#ff7b00";
     const int circleIconDiameter = 5;
-    const int maskDiameter = 8;  
+    const int maskDiameter = 8;
 };
 
 class OutlinerCheckBox : public QCheckBox
@@ -364,6 +376,9 @@ private:
     QColor m_outlinerSelectionColor;
 
     OutlinerCheckBox* setupCheckBox(const QStyleOptionViewItem& option, const QModelIndex& index, const QColor& backgroundColor, bool isLayerEntity) const;
+
+    // this is a cache, and is hence mutable
+    mutable QRect m_cachedBoundingRectOfTallCharacter;
 };
 
 Q_DECLARE_METATYPE(AZ::ComponentTypeList); // allows type to be stored by QVariable

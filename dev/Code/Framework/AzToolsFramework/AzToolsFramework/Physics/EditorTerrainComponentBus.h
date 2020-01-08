@@ -23,7 +23,6 @@ namespace Physics
         : public AZ::ComponentBus
     {
     public:
-        virtual ~EditorTerrainComponentRequests() = default;
 
         /// Gets the mesh triangles as a list of verts and indices.
         /// @param verts The list of verts in the mesh
@@ -38,8 +37,27 @@ namespace Physics
 
         /// Loads the height field asset from disk.
         virtual void LoadHeightFieldAsset() = 0;
+
+    protected:
+        ~EditorTerrainComponentRequests() = default;
     };
 
     /// Bus to service the Editor Terrain Component.
     using EditorTerrainComponentRequestsBus = AZ::EBus<EditorTerrainComponentRequests>;
+
+
+    /// Notifications provided by the Editor Terrain Component.
+    class EditorTerrainComponentNotifications
+        : public AZ::EBusTraits 
+    {
+    public:
+        virtual void OnTerrainComponentActive() = 0;
+        
+    protected:
+        ~EditorTerrainComponentNotifications() = default;
+    };
+
+    /// Bus for notifications on the Editor Terrain Component.
+    using EditorTerrainComponentNotificationBus = AZ::EBus<EditorTerrainComponentNotifications>;
+
 } // namespace PhysX

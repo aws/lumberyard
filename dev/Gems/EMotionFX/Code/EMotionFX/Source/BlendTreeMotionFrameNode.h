@@ -54,18 +54,20 @@ namespace EMotionFX
             AZ_CLASS_ALLOCATOR_DECL
 
             UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
-                : AnimGraphNodeData(node, animGraphInstance) { mOldTime = mNewTime = 0.0f; }
+                : AnimGraphNodeData(node, animGraphInstance) { Reset(); }
             ~UniqueData() {}
 
             void Reset() override
             {
                 mOldTime = 0.0f;
                 mNewTime = 0.0f;
+                m_rewindRequested = false;
             }
 
         public:
             float   mOldTime;
             float   mNewTime;
+            bool    m_rewindRequested;
         };
 
         BlendTreeMotionFrameNode();
@@ -78,6 +80,7 @@ namespace EMotionFX
         AZ::Color GetVisualColor() const override                                               { return AZ::Color(0.2f, 0.78f, 0.2f, 1.0f); }
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override     { return GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue(); }
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
+        void Rewind(AnimGraphInstance* animGraphInstance) override;
 
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
@@ -85,11 +88,17 @@ namespace EMotionFX
         static void Reflect(AZ::ReflectContext* context);
 
         void SetNormalizedTimeValue(float value);
+        float GetNormalizedTimeValue() const;
+
+        void SetEmitEventsFromStart(bool emitEventsFromStart);
+        bool GetEmitEventsFromStart() const;
+
     private:
         void Output(AnimGraphInstance* animGraphInstance) override;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
 
         float m_normalizedTimeValue;
+        bool m_emitEventsFromStart;
     };
-}   // namespace EMotionFX
+} // namespace EMotionFX

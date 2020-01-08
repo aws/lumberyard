@@ -66,7 +66,7 @@ MAP_EXT = {
 LMBR_WAF_SCRIPT_REL_PATH = 'Tools/build/waf-1.7.13/lmbr_waf'
 
 XCTEST_WRAPPER_TARGETS = ('ios', )
-XCTEST_WRAPPER_REL_PATH = 'Code/Launcher/AppleLaunchersCommon/XCTestWrapper'
+XCTEST_WRAPPER_REL_PATH = 'Code/Tools/Apple/XCTestWrapper'
 XCTEST_WRAPPER_SOURCE = [
     'LumberyardXCTestWrapperTests.mm',
 ]
@@ -79,6 +79,18 @@ PLATFORM_SDK_NAME = {
 }
 
 FRAMEWORKS_REL_PATH = 'System/Library/Frameworks'
+
+XCODE_WORKSPACE_SETTINGS = r'''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version=\"1.0\">
+<dict>
+    <key>BuildSystemType</key>
+    <string>Original</string>
+    <key>PreviewsEnabled</key>
+    <false/>
+    </dict>
+</plist>
+'''
 
 root_dir = ''
 id = 562000999
@@ -312,7 +324,7 @@ class PBXNativeTarget(XCodeNode):
 
         # For the launchers they do not have the plist info files, but the game project does.
         # Search for the game project and grab its plist info file.
-        launcher_name = ctx.get_default_platform_launcher_name(platform_name)
+        launcher_name = ctx.get_launcher_name(platform_name)
         if launcher_name and target.endswith(launcher_name):
             task_gen_for_plist = ctx.get_tgen_by_name(target[:-len(launcher_name)])
 
@@ -370,7 +382,7 @@ class PBXNativeTarget(XCodeNode):
             '@loader_path/Frameworks'
         ]
         target_settings['COPY_PHASE_STRIP'] = 'NO'
-        target_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++1y'
+        target_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
 
         self._generate_build_config_list(target_settings)
 
@@ -592,6 +604,9 @@ class PBXProject(XCodeNode):
 
 class xcode(Build.BuildContext):
 
+    def get_launcher_name(self, platform_name):
+        return 'ClientLauncher'
+
     def get_settings(self):
         settings = {}
         return settings
@@ -748,7 +763,7 @@ class xcode(Build.BuildContext):
             game_resources_group.children.append(xcode_assets_folder_ref)
 
             for target in project.targets:
-                launcher_name = self.get_default_platform_launcher_name(platform_name) or ''
+                launcher_name = self.get_launcher_name(platform_name) or ''
                 if isinstance(target, PBXNativeTarget) and target.name == game_project + launcher_name:
                     target.add_remove_embedded_provisioning_build_phase_to_target()
                     target.add_resources_build_phase_to_target([xcode_assets_folder_ref])
@@ -760,6 +775,17 @@ class xcode(Build.BuildContext):
         projectDir.mkdir()
         node = projectDir.make_node('project.pbxproj')
         project.write(open(node.abspath(), 'w'))
+
+        # Generate settings to make Xcode use the Legacy Build System
+        project_ws_node = projectDir.make_node('project.xcworkspace')
+        project_ws_node.mkdir()
+
+        shared_data_node = project_ws_node.make_node("xcshareddata")
+        shared_data_node.mkdir()
+        wpfile = shared_data_node.make_node("WorkspaceSettings.xcsettings")
+
+        with open(wpfile.abspath(),"w") as f:
+            f.write(XCODE_WORKSPACE_SETTINGS)
 
 
 class xcode_mac(xcode):

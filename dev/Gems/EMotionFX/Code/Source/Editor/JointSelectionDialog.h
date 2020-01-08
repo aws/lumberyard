@@ -27,7 +27,7 @@ namespace EMotionFX
         Q_OBJECT // AUTOMOC
 
     public:
-        JointSelectionDialog(bool singleSelection, const char* title, const char* descriptionLabelText, QWidget* parent);
+        JointSelectionDialog(bool singleSelection, const QString& title, const QString& descriptionLabelText, QWidget* parent);
         ~JointSelectionDialog();
 
         void SelectByJointNames(const AZStd::vector<AZStd::string>& jointNames);

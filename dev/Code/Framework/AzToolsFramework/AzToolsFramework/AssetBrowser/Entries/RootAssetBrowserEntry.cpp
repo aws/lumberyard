@@ -161,6 +161,9 @@ namespace AzToolsFramework
             }
 
             EntryCache::GetInstance()->m_fileIdMap[fileDatabaseEntry.m_fileID] = file;
+            AZStd::string fullPath = file->m_fullPath;
+            AzFramework::StringFunc::Path::Normalize(fullPath);
+            EntryCache::GetInstance()->m_absolutePathToFileId[fullPath] = fileDatabaseEntry.m_fileID;
         }
 
         bool RootAssetBrowserEntry::RemoveFile(const AZ::s64& fileId) const
@@ -184,6 +187,9 @@ namespace AzToolsFramework
             {
                 parent->RemoveChild(itFile->second);
             }
+            AZStd::string fullPath = itFile->second->GetFullPath();
+            AzFramework::StringFunc::Path::Normalize(fullPath);
+            EntryCache::GetInstance()->m_absolutePathToFileId.erase(fullPath);
             EntryCache::GetInstance()->m_fileIdMap.erase(fileId);
             return true;
         }

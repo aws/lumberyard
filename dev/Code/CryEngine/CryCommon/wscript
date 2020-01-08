@@ -19,7 +19,7 @@ def build(bld):
 
         # Settings
         target             = 'CryCommon',
-        vs_filter          = 'Common',
+        vs_filter          = 'CryEngine',
         copyright_org      = 'Amazon-CryTek',
         file_list          = 'crycommon.waf_files',
         platforms          = ['all'],

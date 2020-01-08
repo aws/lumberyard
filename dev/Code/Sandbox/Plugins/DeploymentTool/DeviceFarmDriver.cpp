@@ -436,7 +436,7 @@ bool DeviceFarmDriver::SendUpload(const Upload& upload)
 
     httpRequest->SetContentType("application/octet-stream");
 
-    const auto httpResponse(httpClient->MakeRequest(*httpRequest, nullptr, nullptr));
+    const auto httpResponse(httpClient->MakeRequest(httpRequest, nullptr, nullptr));
 
     return httpResponse->GetResponseCode() == Aws::Http::HttpResponseCode::OK;
 }

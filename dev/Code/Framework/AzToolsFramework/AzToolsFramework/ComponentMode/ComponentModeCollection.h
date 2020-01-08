@@ -30,6 +30,8 @@ namespace AzToolsFramework
             /// @cond
             ComponentModeCollection() = default;
             ~ComponentModeCollection() = default;
+            ComponentModeCollection(const ComponentModeCollection&) = delete;
+            ComponentModeCollection& operator=(const ComponentModeCollection&) = delete;
             /// @endcond
 
             /// Add a ComponentMode for a given Component type on the EntityId specified.
@@ -65,20 +67,27 @@ namespace AzToolsFramework
                 const AZ::EntityComponentIdPair& entityComponentIdPair, const AZ::Uuid& componentType);
 
             /// Move to the next active ComponentMode so the Actions for that mode become available (it is now 'selected').
-            void SelectNextActiveComponentMode();
+            bool SelectNextActiveComponentMode();
 
             /// Move to the previous active ComponentMode so the Actions for that mode become available (it is now 'selected').
-            void SelectPreviousActiveComponentMode();
+            bool SelectPreviousActiveComponentMode();
 
             /// Pick a specific ComponentMode for a Component (by directly selecting a Component in the EntityInspector - is it now 'selected').
-            void SelectActiveComponentMode(const AZ::Uuid& componentType);
+            bool SelectActiveComponentMode(const AZ::Uuid& componentType);
+
+            /// Return the Uuid of the Component Type that is currently active in Component Mode.
+            AZ::Uuid ActiveComponentMode() const;
+
+            /// Return if the ComponentMode for this specific Entity/Component pair is instantiated.
+            bool ComponentModeInstantiated(const AZ::EntityComponentIdPair& entityComponentIdPair) const;
+
+            /// Return if there is more than one Component type in Component Mode.
+            bool HasMultipleComponentTypes() const;
 
             /// Refresh Actions (shortcuts) for the 'selected' ComponentMode.
             void RefreshActions();
 
         private:
-            AZ_DISABLE_COPY_MOVE(ComponentModeCollection)
-
             // Alias for EditorMetricsEventsBusTraits Enter/LeaveComponentMode notification
             using MetricFn = void (EditorMetricsEventsBusTraits::*)(
                 const AZStd::vector<AZ::EntityId>&, const AZStd::vector<AZ::Uuid>&);
@@ -87,7 +96,7 @@ namespace AzToolsFramework
             void RecordMetrics(MetricFn metricFn);
 
             // Internal helper used by Select[|Prev|Next]ActiveComponentMode
-            void ActiveComponentModeChanged();
+            bool ActiveComponentModeChanged(const AZ::Uuid& previousComponentType);
 
             AZStd::vector<AZ::Uuid> m_activeComponentTypes; ///< What types of ComponentMode are currently active.
             AZStd::vector<EntityAndComponentMode> m_entitiesAndComponentModes; ///< The active ComponentModes (one per Entity).

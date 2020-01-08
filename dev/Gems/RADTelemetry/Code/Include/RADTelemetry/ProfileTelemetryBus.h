@@ -16,6 +16,7 @@
 
 #include <AzCore/base.h>
 #include <AzCore/Debug/Profiler.h>
+#include <AzCore/Debug/ProfilerBus.h>
 #include <AzCore/EBus/EBus.h>
 
 struct tm_api;
@@ -37,7 +38,7 @@ namespace RADTelemetry
 
         virtual void SetCaptureMask(AZ::Debug::ProfileCategoryPrimitiveType mask) = 0;
 
-        virtual bool IsEnabled() = 0;
+        virtual void SetFrameAdvanceType(AZ::Debug::ProfileFrameAdvanceType type) = 0;
 
         virtual AZ::Debug::ProfileCategoryPrimitiveType GetCaptureMask() = 0;
 

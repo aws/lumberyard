@@ -11,8 +11,7 @@
 ########################################################################################
 
 SUBFOLDERS = [ 
-    'AzToolsFramework',
-    'Tests'
+    'AzToolsFramework'
 ]
     
 def build(bld):

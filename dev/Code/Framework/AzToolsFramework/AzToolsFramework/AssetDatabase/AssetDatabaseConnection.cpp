@@ -726,6 +726,24 @@ namespace AzToolsFramework
             static const auto s_queryProductdependencyByProductid = MakeSqlQuery(QUERY_PRODUCTDEPENDENCY_BY_PRODUCTID, QUERY_PRODUCTDEPENDENCY_BY_PRODUCTID_STATEMENT, LOG_NAME,
                     SqlParam<AZ::s64>(":productid"));
 
+            static const char* QUERY_MISSING_PRODUCT_DEPENDENCY_BY_PRODUCTID =
+                "AzToolsFramework::AssetDatabase::QueryMissingProductDependencyByProductId";
+            static const char* QUERY_MISSING_PRODUCT_DEPENDENCY_BY_PRODUCTID_STATEMENT =
+                "SELECT * FROM MissingProductDependencies WHERE "
+                "ProductPK = :productId;";
+            static const auto s_queryMissingProductDependencyByProductId =
+                MakeSqlQuery(QUERY_MISSING_PRODUCT_DEPENDENCY_BY_PRODUCTID, QUERY_MISSING_PRODUCT_DEPENDENCY_BY_PRODUCTID_STATEMENT, LOG_NAME,
+                SqlParam<AZ::s64>(":productId"));
+
+            static const char* QUERY_MISSING_PRODUCT_DEPENDENCY_BY_MISSING_PRODUCT_DEPENDENCYID =
+                "AzToolsFramework::AssetDatabase::QueryMissingProductDependencyByMissingProductDependencyId";
+            static const char* QUERY_MISSING_PRODUCT_DEPENDENCY_BY_MISSING_PRODUCT_DEPENDENCYID_STATEMENT =
+                "SELECT * FROM MissingProductDependencies WHERE "
+                "MissingProductDependencyId = :missingProductDependencyId;";
+            static const auto s_queryMissingProductDependencyByMissingProductDependencyId =
+                MakeSqlQuery(QUERY_MISSING_PRODUCT_DEPENDENCY_BY_MISSING_PRODUCT_DEPENDENCYID, QUERY_MISSING_PRODUCT_DEPENDENCY_BY_MISSING_PRODUCT_DEPENDENCYID_STATEMENT, LOG_NAME,
+                SqlParam<AZ::s64>(":missingProductDependencyId"));
+
             static const char* QUERY_DIRECT_PRODUCTDEPENDENCIES = "AzToolsFramework::AssetDatabase::QueryDirectProductDependencies";
             static const char* QUERY_DIRECT_PRODUCTDEPENDENCIES_STATEMENT =
                 "SELECT * FROM Products "
@@ -826,6 +844,8 @@ namespace AzToolsFramework
                 jobinfo.m_lastLogTime = jobDatabaseEntry.m_lastLogTime;
                 jobinfo.m_lastLogFile = AZStd::move(jobDatabaseEntry.m_lastLogFile);
                 jobinfo.m_jobID = jobDatabaseEntry.m_jobID;
+                jobinfo.m_warningCount = jobDatabaseEntry.m_warningCount;
+                jobinfo.m_errorCount = jobDatabaseEntry.m_errorCount;
             }
         }
         
@@ -878,8 +898,7 @@ namespace AzToolsFramework
             const char* portableKey,
             const char* outputPrefix,
             int isRoot)
-            : m_scanFolderID(-1)
-            , m_outputPrefix(outputPrefix)
+            : m_outputPrefix(outputPrefix)
             , m_isRoot(isRoot)
         {
             if (scanFolder)
@@ -983,8 +1002,7 @@ namespace AzToolsFramework
         }
 
         SourceDatabaseEntry::SourceDatabaseEntry(AZ::s64 scanFolderPK, const char* sourceName, AZ::Uuid sourceGuid, const char* analysisFingerprint)
-            : m_sourceID(-1)
-            , m_scanFolderPK(scanFolderPK)
+            : m_scanFolderPK(scanFolderPK)
             , m_sourceGuid(sourceGuid)
         {
             if (sourceName)
@@ -1070,7 +1088,7 @@ namespace AzToolsFramework
 
         //////////////////////////////////////////////////////////////////////////
         //JobDatabaseEntry
-        JobDatabaseEntry::JobDatabaseEntry(AZ::s64 jobID, AZ::s64 sourcePK, const char* jobKey, AZ::u32 fingerprint, const char* platform, AZ::Uuid builderGuid, AssetSystem::JobStatus status, AZ::u64 jobRunKey, AZ::s64 firstFailLogTime, const char* firstFailLogFile, AZ::s64 lastFailLogTime, const char* lastFailLogFile, AZ::s64 lastLogTime, const char* lastLogFile)
+        JobDatabaseEntry::JobDatabaseEntry(AZ::s64 jobID, AZ::s64 sourcePK, const char* jobKey, AZ::u32 fingerprint, const char* platform, AZ::Uuid builderGuid, AssetSystem::JobStatus status, AZ::u64 jobRunKey, AZ::s64 firstFailLogTime, const char* firstFailLogFile, AZ::s64 lastFailLogTime, const char* lastFailLogFile, AZ::s64 lastLogTime, const char* lastLogFile, AZ::u32 warningCount, AZ::u32 errorCount)
             : m_jobID(jobID)
             , m_sourcePK(sourcePK)
             , m_fingerprint(fingerprint)
@@ -1080,6 +1098,8 @@ namespace AzToolsFramework
             , m_firstFailLogTime(firstFailLogTime)
             , m_lastFailLogTime(lastFailLogTime)
             , m_lastLogTime(lastLogTime)
+            , m_warningCount(warningCount)
+            , m_errorCount(errorCount)
         {
             if (jobKey)
             {
@@ -1103,9 +1123,8 @@ namespace AzToolsFramework
             }
         }
 
-        JobDatabaseEntry::JobDatabaseEntry(AZ::s64 sourcePK, const char* jobKey, AZ::u32 fingerprint, const char* platform, AZ::Uuid builderGuid, AssetSystem::JobStatus status, AZ::u64 jobRunKey, AZ::s64 firstFailLogTime, const char* firstFailLogFile, AZ::s64 lastFailLogTime, const char* lastFailLogFile, AZ::s64 lastLogTime, const char* lastLogFile)
-            : m_jobID(-1)
-            , m_sourcePK(sourcePK)
+        JobDatabaseEntry::JobDatabaseEntry(AZ::s64 sourcePK, const char* jobKey, AZ::u32 fingerprint, const char* platform, AZ::Uuid builderGuid, AssetSystem::JobStatus status, AZ::u64 jobRunKey, AZ::s64 firstFailLogTime, const char* firstFailLogFile, AZ::s64 lastFailLogTime, const char* lastFailLogFile, AZ::s64 lastLogTime, const char* lastLogFile, AZ::u32 warningCount, AZ::u32 errorCount)
+            : m_sourcePK(sourcePK)
             , m_fingerprint(fingerprint)
             , m_builderGuid(builderGuid)
             , m_status(status)
@@ -1113,6 +1132,8 @@ namespace AzToolsFramework
             , m_firstFailLogTime(firstFailLogTime)
             , m_lastFailLogTime(lastFailLogTime)
             , m_lastLogTime(lastLogTime)
+            , m_warningCount(warningCount)
+            , m_errorCount(errorCount)
         {
             if (jobKey)
             {
@@ -1134,71 +1155,6 @@ namespace AzToolsFramework
             {
                 m_lastLogFile = lastLogFile;
             }
-        }
-
-        JobDatabaseEntry::JobDatabaseEntry(const JobDatabaseEntry& other)
-            : m_jobID(other.m_jobID)
-            , m_sourcePK(other.m_sourcePK)
-            , m_jobKey(other.m_jobKey)
-            , m_fingerprint(other.m_fingerprint)
-            , m_platform(other.m_platform)
-            , m_builderGuid(other.m_builderGuid)
-            , m_status(other.m_status)
-            , m_jobRunKey(other.m_jobRunKey)
-            , m_firstFailLogTime(other.m_firstFailLogTime)
-            , m_firstFailLogFile(other.m_firstFailLogFile)
-            , m_lastFailLogTime(other.m_lastFailLogTime)
-            , m_lastFailLogFile(other.m_lastFailLogFile)
-            , m_lastLogTime(other.m_lastLogTime)
-            , m_lastLogFile(other.m_lastLogFile)
-        {
-        }
-
-        JobDatabaseEntry::JobDatabaseEntry(JobDatabaseEntry&& other)
-        {
-            *this = AZStd::move(other);
-        }
-
-        JobDatabaseEntry& JobDatabaseEntry::operator=(JobDatabaseEntry&& other)
-        {
-            if (this != &other)
-            {
-                m_jobID = other.m_jobID;
-                m_sourcePK = other.m_sourcePK;
-                m_jobKey = AZStd::move(other.m_jobKey);
-                m_fingerprint = other.m_fingerprint;
-                m_platform = AZStd::move(other.m_platform);
-                m_builderGuid = other.m_builderGuid;
-                m_status = other.m_status;
-                m_jobRunKey = other.m_jobRunKey;
-                m_firstFailLogTime = other.m_firstFailLogTime;
-                m_firstFailLogFile = AZStd::move(other.m_firstFailLogFile);
-                m_lastFailLogTime = other.m_lastFailLogTime;
-                m_lastFailLogFile = AZStd::move(other.m_lastFailLogFile);
-                m_lastLogTime = other.m_lastLogTime;
-                m_lastLogFile = AZStd::move(other.m_lastLogFile);
-            }
-            return *this;
-        }
-
-        JobDatabaseEntry& JobDatabaseEntry::operator=(const JobDatabaseEntry& other)
-        {
-            m_jobID = other.m_jobID;
-            m_sourcePK = other.m_sourcePK;
-            m_jobKey = other.m_jobKey;
-            m_fingerprint = other.m_fingerprint;
-            m_platform = other.m_platform;
-            m_builderGuid = other.m_builderGuid;
-            m_status = other.m_status;
-            m_jobRunKey = other.m_jobRunKey;
-            m_firstFailLogTime = other.m_firstFailLogTime;
-            m_firstFailLogFile = other.m_firstFailLogFile;
-            m_lastFailLogTime = other.m_lastFailLogTime;
-            m_lastFailLogFile = other.m_lastFailLogFile;
-            m_lastLogTime = other.m_lastLogTime;
-            m_lastLogFile = other.m_lastLogFile;
-
-            return *this;
         }
 
         bool JobDatabaseEntry::operator==(const JobDatabaseEntry& other) const
@@ -1216,12 +1172,17 @@ namespace AzToolsFramework
                    m_lastFailLogTime == other.m_lastFailLogTime &&
                    AzFramework::StringFunc::Equal(m_lastFailLogFile.c_str(), other.m_lastFailLogFile.c_str()) &&
                    m_lastLogTime == other.m_lastLogTime &&
-                   AzFramework::StringFunc::Equal(m_lastLogFile.c_str(), other.m_lastLogFile.c_str());
+                   AzFramework::StringFunc::Equal(m_lastLogFile.c_str(), other.m_lastLogFile.c_str()) &&
+                   m_errorCount == other.m_errorCount &&
+                   m_warningCount == other.m_warningCount;
         }
 
         AZStd::string JobDatabaseEntry::ToString() const
         {
-            return AZStd::string::format("JobDatabaseEntry id:%i sourcepk: %i jobkey: %s fingerprint: %i platform: %s builderguid: %s status: %s", m_jobID, m_sourcePK, m_jobKey.c_str(), m_fingerprint, m_platform.c_str(), m_builderGuid.ToString<AZStd::string>().c_str(), AssetSystem::JobStatusString(m_status));
+            return AZStd::string::format("JobDatabaseEntry id:%i sourcepk: %i jobkey: %s fingerprint: %i platform: %s builderguid: %s status: %s, warnings: %d, errors %d",
+                m_jobID, m_sourcePK, m_jobKey.c_str(), m_fingerprint, m_platform.c_str(),
+                m_builderGuid.ToString<AZStd::string>().c_str(), AssetSystem::JobStatusString(m_status),
+                m_warningCount, m_errorCount);
         }
 
         auto JobDatabaseEntry::GetColumns()
@@ -1240,7 +1201,9 @@ namespace AzToolsFramework
                 MakeColumn("LastFailLogTime", m_lastFailLogTime),
                 MakeColumn("LastFailLogFile", m_lastFailLogFile),
                 MakeColumn("LastLogTime", m_lastLogTime),
-                MakeColumn("LastLogFile", m_lastLogFile)
+                MakeColumn("LastLogFile", m_lastLogFile),
+                MakeColumn("WarningCount", m_warningCount),
+                MakeColumn("ErrorCount", m_errorCount)
             );
         }
 
@@ -1262,8 +1225,7 @@ namespace AzToolsFramework
 
         ProductDatabaseEntry::ProductDatabaseEntry(AZ::s64 jobPK, AZ::u32 subID, const char* productName,
             AZ::Data::AssetType assetType, AZ::Uuid legacyGuid)
-            : m_productID(-1)
-            , m_jobPK(jobPK)
+            : m_jobPK(jobPK)
             , m_subID(subID)
             , m_assetType(assetType)
             , m_legacyGuid(legacyGuid)
@@ -1356,6 +1318,12 @@ namespace AzToolsFramework
         {
         }
 
+        bool LegacySubIDsEntry::operator==(const LegacySubIDsEntry& other) const
+        {
+            return m_productPK == other.m_productPK
+                && m_subID == other.m_subID;
+        }
+
         auto LegacySubIDsEntry::GetColumns()
         {
             return MakeColumns(
@@ -1366,7 +1334,7 @@ namespace AzToolsFramework
         }
 
         //////////////////////////////////////////////////////////////////////////
-        //ProductDepdendencyDatabaseEntry
+        //ProductDependencyDatabaseEntry
         ProductDependencyDatabaseEntry::ProductDependencyDatabaseEntry(AZ::s64 productDependencyID, AZ::s64 productPK, AZ::Uuid dependencySourceGuid, AZ::u32 dependencySubID, AZStd::bitset<64> dependencyFlags, const AZStd::string& platform, const AZStd::string& unresolvedPath, DependencyType dependencyType)
             : m_productDependencyID(productDependencyID)
             , m_productPK(productPK)
@@ -1380,8 +1348,7 @@ namespace AzToolsFramework
         }
 
         ProductDependencyDatabaseEntry::ProductDependencyDatabaseEntry(AZ::s64 productPK, AZ::Uuid dependencySourceGuid, AZ::u32 dependencySubID, AZStd::bitset<64> dependencyFlags, const AZStd::string& platform, const AZStd::string& unresolvedPath, DependencyType dependencyType)
-            : m_productDependencyID(-1)
-            , m_productPK(productPK)
+            : m_productPK(productPK)
             , m_dependencySourceGuid(dependencySourceGuid)
             , m_dependencySubID(dependencySubID)
             , m_dependencyFlags(dependencyFlags)
@@ -1421,6 +1388,89 @@ namespace AzToolsFramework
                 MakeColumn("UnresolvedDependencyType", m_dependencyType)
             );
         }
+
+        //////////////////////////////////////////////////////////////////////////
+        //MissingProductDependencyDatabaseEntry
+        MissingProductDependencyDatabaseEntry::MissingProductDependencyDatabaseEntry(
+            AZ::s64 missingProductDependencyId,
+            AZ::s64 productPK,
+            const AZStd::string& scannerId,
+            const AZStd::string& scannerVersion,
+            const AZStd::string& sourceFileFingerprint,
+            AZ::Uuid dependencySourceGuid,
+            AZ::u32 dependencySubId,
+            const AZStd::string& missingDependencyString)
+            : m_missingProductDependencyId(missingProductDependencyId)
+            , m_productPK(productPK)
+            , m_scannerId(scannerId)
+            , m_scannerVersion(scannerVersion)
+            , m_sourceFileFingerprint(sourceFileFingerprint)
+            , m_dependencySourceGuid(dependencySourceGuid)
+            , m_dependencySubId(dependencySubId)
+            , m_missingDependencyString(missingDependencyString)
+        {
+        }
+
+        MissingProductDependencyDatabaseEntry::MissingProductDependencyDatabaseEntry(
+            AZ::s64 productPK,
+            const AZStd::string& scannerId,
+            const AZStd::string& scannerVersion,
+            const AZStd::string& sourceFileFingerprint,
+            AZ::Uuid dependencySourceGuid,
+            AZ::u32 dependencySubId,
+            const AZStd::string& missingDependencyString)
+            : m_productPK(productPK)
+            , m_scannerId(scannerId)
+            , m_scannerVersion(scannerVersion)
+            , m_sourceFileFingerprint(sourceFileFingerprint)
+            , m_dependencySourceGuid(dependencySourceGuid)
+            , m_dependencySubId(dependencySubId)
+            , m_missingDependencyString(missingDependencyString)
+        {
+        }
+
+        bool MissingProductDependencyDatabaseEntry::operator==(const MissingProductDependencyDatabaseEntry& other) const
+        {
+            //equivalence is when everything but the id is the same
+            return m_productPK == other.m_productPK &&
+                m_scannerId == other.m_scannerId &&
+                m_scannerVersion == other.m_scannerVersion &&
+                m_sourceFileFingerprint == other.m_sourceFileFingerprint &&
+                m_dependencySourceGuid == other.m_dependencySourceGuid &&
+                m_dependencySubId == other.m_dependencySubId &&
+                m_missingDependencyString == other.m_missingDependencyString;
+        }
+
+        AZStd::string MissingProductDependencyDatabaseEntry::ToString() const
+        {
+            return AZStd::string::format(
+                "MissingProductDependencyDatabaseEntry "
+                "id: %i productpk: %i scannerid: %s scannerversion: %s sourceFileFingerprint: %s "
+                "dependencysourceguid: %s dependencysubid: %i missingDependencyString: %s",
+                m_missingProductDependencyId,
+                m_productPK,
+                m_scannerId.c_str(),
+                m_scannerVersion.c_str(),
+                m_sourceFileFingerprint.c_str(),
+                m_dependencySourceGuid.ToString<AZStd::string>().c_str(),
+                m_dependencySubId,
+                m_missingDependencyString.c_str());
+        }
+
+        auto MissingProductDependencyDatabaseEntry::GetColumns()
+        {
+            return MakeColumns(
+                MakeColumn("MissingProductDependencyId", m_missingProductDependencyId),
+                MakeColumn("ProductPK", m_productPK),
+                MakeColumn("ScannerId", m_scannerId),
+                MakeColumn("ScannerVersion", m_scannerVersion),
+                MakeColumn("SourceFileFingerprint", m_sourceFileFingerprint),
+                MakeColumn("DependencySourceGuid", m_dependencySourceGuid),
+                MakeColumn("DependencySubId", m_dependencySubId),
+                MakeColumn("MissingDependencyString", m_missingDependencyString)
+            );
+        }
+
 
         //////////////////////////////////////////////////////////////////////////
         //FileDatabaseEntry
@@ -1662,6 +1712,10 @@ namespace AzToolsFramework
 
             AddStatement(m_databaseConnection, s_queryProductdependencyByProductdependencyid);
             AddStatement(m_databaseConnection, s_queryProductdependencyByProductid);
+            
+            AddStatement(m_databaseConnection, s_queryMissingProductDependencyByProductId);
+            AddStatement(m_databaseConnection, s_queryMissingProductDependencyByMissingProductDependencyId);
+            
             AddStatement(m_databaseConnection, s_queryDirectProductdependencies);
             AddStatement(m_databaseConnection, s_queryAllProductdependencies);
             AddStatement(m_databaseConnection, s_queryUnresolvedProductDependencies);
@@ -2025,8 +2079,10 @@ namespace AzToolsFramework
 
         bool AssetDatabaseConnection::QueryCombined(combinedHandler handler, AZ::Uuid builderGuid, const char* jobKey, const char* platform, AssetSystem::JobStatus status, bool includeLegacySubIDs)
         {
-            using namespace AZStd::placeholders;
-            auto callback = AZStd::bind(&AssetDatabaseConnection::GetCombinedResult, this, _1, _2, _3, builderGuid, jobKey, status, includeLegacySubIDs);
+            auto callback = [this, builderGuid, jobKey, status, includeLegacySubIDs](const char* callName, SQLite::Statement* statement, AssetDatabaseConnection::combinedHandler handler)
+            {
+                return this->GetCombinedResult(callName, statement, handler, builderGuid, jobKey, status, includeLegacySubIDs);
+            };
 
             if (platform && strlen(platform))
             {
@@ -2319,6 +2375,16 @@ namespace AzToolsFramework
             return s_queryProductdependencyByProductid.BindAndQuery(*m_databaseConnection, handler, &GetProductDependencyResult, productID);
         }
 
+        bool AssetDatabaseConnection::QueryMissingProductDependencyByProductId(AZ::s64 productId, missingProductDependencyHandler handler)
+        {
+            return s_queryMissingProductDependencyByProductId.BindAndQuery(*m_databaseConnection, handler, &GetMissingProductDependencyResult, productId);
+        }
+
+        bool AssetDatabaseConnection::QueryMissingProductDependencyByMissingProductDependencyId(AZ::s64 missingProductDependencyId, missingProductDependencyHandler handler)
+        {
+            return s_queryMissingProductDependencyByMissingProductDependencyId.BindAndQuery(*m_databaseConnection, handler, &GetMissingProductDependencyResult, missingProductDependencyId);
+        }
+
         bool AssetDatabaseConnection::QueryDirectProductDependencies(AZ::s64 productID, productHandler handler)
         {
             return s_queryDirectProductdependencies.BindAndQuery(*m_databaseConnection, handler, &GetProductResultSimple, productID);
@@ -2485,6 +2551,7 @@ namespace AzToolsFramework
                     result = statement->Step();
                 }
                 validResult = true;
+                combined.m_legacySubIDs.clear();
             }
 
             if (result == Statement::SqlError)
@@ -2562,6 +2629,11 @@ namespace AzToolsFramework
             }
 
             bool GetProductDependencyResult(const char* callName, Statement* statement, AssetDatabaseConnection::productDependencyHandler handler)
+            {
+                return GetResult(callName, statement, handler);
+            }
+
+            bool GetMissingProductDependencyResult(const char* callName, SQLite::Statement* statement, AssetDatabaseConnection::missingProductDependencyHandler handler)
             {
                 return GetResult(callName, statement, handler);
             }

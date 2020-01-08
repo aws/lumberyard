@@ -37,6 +37,8 @@ namespace EMotionFX
         AZ_RTTI(ParameterMixinActorId, "{EE5FAA4B-FC04-4323-820F-FFE46EFC8038}")
         AZ_CLASS_ALLOCATOR_DECL
 
+        ParameterMixinActorId() = default;
+        explicit ParameterMixinActorId(AZ::u32 actorId);
         virtual ~ParameterMixinActorId() = default;
 
         static void Reflect(AZ::ReflectContext* context);
@@ -48,7 +50,7 @@ namespace EMotionFX
         void SetActorId(AZ::u32 actorId) { m_actorId = actorId; }
         AZ::u32 GetActorId() const { return m_actorId; }
 
-        Actor* GetActor(MCore::Command* command, AZStd::string& outResult) const;
+        Actor* GetActor(const MCore::Command* command, AZStd::string& outResult) const;
     protected:
         AZ::u32 m_actorId = MCORE_INVALIDINDEX32;
     };
@@ -59,6 +61,8 @@ namespace EMotionFX
         AZ_RTTI(ParameterMixinJointName, "{9EFF81B2-4720-449F-8B7E-59C9F437E7E3}")
         AZ_CLASS_ALLOCATOR_DECL
 
+        ParameterMixinJointName() = default;
+        explicit ParameterMixinJointName(const AZStd::string& jointName);
         virtual ~ParameterMixinJointName() = default;
 
         static void Reflect(AZ::ReflectContext* context);

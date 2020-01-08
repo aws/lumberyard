@@ -43,12 +43,12 @@ namespace AzFramework
     using GridMate::WriteBuffer;
     using GridMate::WriteBufferDynamic;
 
-
     ///////////////////////////////////////////////////////////////////////////
     // GridMate ReplicaChunk/ReplicaChunkDescriptors
     ///////////////////////////////////////////////////////////////////////////
     class ReflectedReplicaChunkBase
-        : public ReplicaChunk
+        : public ReplicaChunkBase
+        , public ReplicaChunkInterface
     {
         friend NetworkContext;
     public:
@@ -62,8 +62,8 @@ namespace AzFramework
         /// Returns a pointer to the start of the DataSet/RPC storage allocated with the chunk
         virtual AZ::u8* GetDataStart() const = 0;
         /// Binds an instance of the reflected class to this chunk
-        virtual void Bind(NetBindable* instance) = 0;
-        /// Removes network bindings from the bound NetBinable
+        virtual void Bind(NetBindable* instance, NetworkContextBindMode mode) = 0;
+        /// Removes network bindings from the bound NetBindable
         virtual void Unbind() = 0;
 
         WriteBufferDynamic   m_ctorBuffer; ///< Buffer to hold ctor data before the chunk is bound
@@ -93,7 +93,7 @@ namespace AzFramework
         const char* GetName() const override { return GetChunkName(); }
         size_t GetSize() const override { return GetChunkSize(); }
         AZ::u8* GetDataStart() const override { return const_cast<AZ::u8*>(m_dataSets); }
-        void Bind(NetBindable* instance) override;
+        void Bind(NetBindable* instance, NetworkContextBindMode mode) override;
         void Unbind() override;
 
     private:
@@ -492,7 +492,7 @@ namespace AzFramework
         void DestroyReplicaChunk(ReplicaChunkBase * chunk);
 
         /// Bind an instance and a chunk to each other
-        void Bind(NetBindable * instance, ReplicaChunkPtr chunk = nullptr);
+        void Bind(NetBindable * instance, ReplicaChunkPtr chunk, NetworkContextBindMode mode);
 
         /// Returns whether or not a given type uses a reflected (automatic) ReplicaChunk
         bool UsesSelfAsChunk(const AZ::Uuid & typeId) const;
@@ -839,6 +839,8 @@ namespace AzFramework
             AZ_STATIC_ASSERT((AZStd::is_base_of<ReplicaChunkInterface, InterfaceType>::value), "Cannot bind an RPC call to an object which is not a ReplicaChunkInterface");
             AZ_Assert(!m_binding->m_typeId.IsNull(), "Cannot register an RPC for a class which has not been declared to the NetworkContext");
 
+            m_context->InitReflectedChunkBinding<ClassType>(m_binding);
+
             ptrdiff_t offset = reinterpret_cast<ptrdiff_t>(&(reinterpret_cast<ClassType const volatile*>(0)->*rpc));
             m_binding->m_chunkDesc.m_rpcs.push_back(aznew NetBindableRpcDesc<RpcBindType>(name, offset));
         }
@@ -851,6 +853,8 @@ namespace AzFramework
     {
         if (!m_context->IsRemovingReflection())
         {
+            m_context->InitReflectedChunkBinding<ClassType>(m_binding);
+
             auto get = [getter](NetBindable* nb) -> DataType { return (*static_cast<ClassType*>(nb).*getter)(); };
             auto set = [setter](NetBindable* nb, const DataType& data) { (*static_cast<ClassType*>(nb).*setter)(data); };
             m_binding->m_chunkDesc.m_ctors.push_back(aznew CtorDataDesc<ClassType, DataType, MarshalerType>(name, get, set));
@@ -893,7 +897,7 @@ namespace AzFramework
     }
 
     template <class ClassType>
-    void ReflectedReplicaChunk<ClassType>::Bind(NetBindable* instance)
+    void ReflectedReplicaChunk<ClassType>::Bind(NetBindable* instance, NetworkContextBindMode mode)
     {
         SetHandler(instance);
         ClassType* derivedInstance = azrtti_cast<ClassType*>(instance);
@@ -902,11 +906,11 @@ namespace AzFramework
         NetworkContext* netContext = nullptr;
         EBUS_EVENT_RESULT(netContext, NetSystemRequestBus, GetNetworkContext);
         netContext->EnumerateFields(desc->GetChunkTypeId(),
-            [this, derivedInstance, desc](NetworkContext::FieldDescBase* field)
+            [this, derivedInstance, desc, mode](NetworkContext::FieldDescBase* field)
             {
                 NetBindableFieldBase* bindableField = reinterpret_cast<NetBindableFieldBase*>(reinterpret_cast<AZ::u8*>(derivedInstance) + field->GetOffset());
                 DataSetBase* dataSet = desc->GetDataSet(this, field->GetDataSetIndex());
-                bindableField->Bind(dataSet);
+                bindableField->Bind(dataSet, mode);
             });
         netContext->EnumerateRpcs(desc->GetChunkTypeId(),
             [this, derivedInstance, desc](NetworkContext::RpcDescBase* rpc)
@@ -931,7 +935,7 @@ namespace AzFramework
     template <class ClassType>
     void ReflectedReplicaChunk<ClassType>::Unbind()
     {
-        auto handler = GetHandler();
+        ReplicaChunkInterface* handler = GetHandler();
         if (!handler || handler == this)
         {
             return;
@@ -939,21 +943,27 @@ namespace AzFramework
 
         NetBindable* netBindable = static_cast<NetBindable*>(handler);
         ClassType* derivedInstance = azrtti_cast<ClassType*>(netBindable);
-        AZ_Assert(derivedInstance, "Unable to convert NetBindable to %s", AZ::AzTypeInfo<ClassType>::Name());
-        ReplicaChunkDescriptor* desc = GetDescriptor();
-        NetworkContext* netContext = nullptr;
-        EBUS_EVENT_RESULT(netContext, NetSystemRequestBus, GetNetworkContext);
-        netContext->EnumerateFields(desc->GetChunkTypeId(),
-            [derivedInstance](NetworkContext::FieldDescBase* field)
-            {
-                NetBindableFieldBase* bindableField = reinterpret_cast<NetBindableFieldBase*>(reinterpret_cast<AZ::u8*>(derivedInstance) + field->GetOffset());
-                bindableField->Bind(nullptr);
-            });
-        netContext->EnumerateRpcs(desc->GetChunkTypeId(),
-            [derivedInstance](NetworkContext::RpcDescBase* rpc)
-            {
-                NetBindableRpcBase* bindableRpc = reinterpret_cast<NetBindableRpcBase*>(reinterpret_cast<AZ::u8*>(derivedInstance) + rpc->GetOffset());
-                bindableRpc->Bind(derivedInstance);
-            });
+        AZ_Assert(derivedInstance, "Unable to convert NetBindable to %s. Have you forgotten to derive your component from AzFramework::NetBindable?", AZ::AzTypeInfo<ClassType>::Name());
+        if (derivedInstance)
+        {
+            ReplicaChunkDescriptor* desc = GetDescriptor();
+            NetworkContext* netContext = nullptr;
+            EBUS_EVENT_RESULT(netContext, NetSystemRequestBus, GetNetworkContext);
+            netContext->EnumerateFields(desc->GetChunkTypeId(),
+                [derivedInstance](NetworkContext::FieldDescBase* field)
+                {
+                    NetBindableFieldBase* bindableField = reinterpret_cast<NetBindableFieldBase*>(reinterpret_cast<AZ::u8*>(derivedInstance) + field->GetOffset());
+                    bindableField->Bind(nullptr, NetworkContextBindMode::NonAuthoritative);
+                });
+            netContext->EnumerateRpcs(desc->GetChunkTypeId(),
+                [derivedInstance](NetworkContext::RpcDescBase* rpc)
+                {
+                    NetBindableRpcBase* bindableRpc = reinterpret_cast<NetBindableRpcBase*>(reinterpret_cast<AZ::u8*>(derivedInstance) + rpc->GetOffset());
+                    bindableRpc->Bind(derivedInstance);
+                });
+        }
+
+        // We have disconnected from the handler and erased any connections from DataFields or Rpcs
+        SetHandler(nullptr);
     }
 } // namespace AZ

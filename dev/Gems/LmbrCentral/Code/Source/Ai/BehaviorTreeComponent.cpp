@@ -38,7 +38,7 @@ namespace LmbrCentral
                 editContext->Class<BehaviorTreeComponent>("Behavior Tree", "The Behavior Tree component allows an entity to load and run a behavior tree")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "AI")
-                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/BehaviorTree.png")
+                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/BehaviorTree.svg")
                     ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/BehaviorTree.png")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                     ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-behavior-tree.html")

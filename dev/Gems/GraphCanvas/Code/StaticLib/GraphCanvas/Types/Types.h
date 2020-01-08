@@ -11,9 +11,13 @@
 */
 #pragma once
 
+#include <AzCore/PlatformDef.h>
+// qfont.h(313): warning C4251: 'QFont::d': class 'QExplicitlySharedDataPointer<QFontPrivate>' needs to have dll-interface to be used by clients of class 'QFont'
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option")
 #include <qcolor.h>
 #include <qfont.h>
 #include <qfontinfo.h>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Math/Color.h>
 #include <AzCore/std/string/string.h>
@@ -23,16 +27,60 @@
 
 namespace GraphCanvas
 {
+    enum class ConstructType
+    {
+        Unknown,
+        CommentNode,
+        BookmarkAnchor,
+        NodeGroup
+    };    
+
     enum RootGraphicsItemDisplayState
     {
         // Order of this enum, also determines the priority, and which states
         // are stacked over each other.
         Neutral     = 0,
         Preview,
+        PartialDisabled,
+        Disabled,
         GroupHighlight,
         Inspection,
         InspectionTransparent,
         Deletion
+    };
+
+    enum RootGraphicsItemEnabledState
+    {
+        ES_Enabled = 0,
+
+        // Partial Disabled implies that the node will not be acted upon in the current 
+        // chain because of a previously disabled node in the chain. But the node itself is still in the 'active' state
+        ES_PartialDisabled,
+
+        // A node that has been explicitly disabled and will not run in the specified graph.
+        ES_Disabled
+    };
+
+    class EnumStringifier
+    {
+    public:
+        static AZStd::string GetConstructTypeString(ConstructType constructType)
+        {
+            if (constructType == ConstructType::CommentNode)
+            {
+                return "Comment";
+            }
+            else if (constructType == ConstructType::BookmarkAnchor)
+            {
+                return "Bookmark";
+            }
+            else if (constructType == ConstructType::NodeGroup)
+            {
+                return "Node Group";
+            }
+
+            return "???";
+        }
     };
     
     class CandyStripeConfiguration
@@ -104,7 +152,6 @@ namespace GraphCanvas
                 m_pixelSize = defaultFontInfo.pixelSize();
             }
         }
-
 
         AZ::Color               m_fontColor;
         AZStd::string           m_fontFamily;

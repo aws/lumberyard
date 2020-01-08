@@ -24,11 +24,27 @@
 #include "Interfaces/CCryDXGLGIFactory.hpp"
 #include "Implementation/GLShader.hpp"
 #include "Implementation/GLDevice.hpp"
-//  Confetti BEGIN: Igor Lobanchikov
 #if defined(ANDROID)
 #include "Implementation/GLView.hpp"
 #endif
-//  Confetti End: Igor Lobanchikov
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define CRYDXGL_CPP_SECTION_1 1
+#define CRYDXGL_CPP_SECTION_2 2
+#define CRYDXGL_CPP_SECTION_3 3
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYDXGL_CPP_SECTION_1
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryDXGL_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryDXGL_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryDXGL_cpp_salem.inl"
+    #endif
+#endif
 
 template <typename Factory>
 HRESULT CreateDXGIFactoryInternal(REFIID riid, void** ppFactory)
@@ -293,7 +309,6 @@ DXGL_API void DXGLProfileLabel(const char* szName)
     }
 #endif //DXGL_PROFILE_USE_GREMEDY_STRING_MARKER && DXGL_EXTENSION_LOADER
 #if DXGL_PROFILE_USE_KHR_DEBUG && DXGL_SUPPORT_DEBUG_OUTPUT
-    //  Confetti BEGIN: Igor Lobanchikov
     {
         if (glDebugMessageInsert)
         {
@@ -306,7 +321,6 @@ DXGL_API void DXGLProfileLabel(const char* szName)
         }
 #endif
     }
-    //  Confetti End: Igor Lobanchikov
 #endif //DXGL_PROFILE_USE_KHR_DEBUG && DXGL_SUPPORT_DEBUG_OUTPUT
 }
 
@@ -319,7 +333,6 @@ DXGL_API void DXGLProfileLabelPush(const char* szName)
     }
 #endif //DXGL_PROFILE_USE_GREMEDY_STRING_MARKER && DXGL_EXTENSION_LOADER
 #if DXGL_PROFILE_USE_KHR_DEBUG && DXGL_SUPPORT_DEBUG_OUTPUT
-    //  Confetti BEGIN: Igor Lobanchikov
     {
         if (glPushDebugGroup)
         {
@@ -332,9 +345,8 @@ DXGL_API void DXGLProfileLabelPush(const char* szName)
         }
 #endif
     }
-    //  Confetti End: Igor Lobanchikov
 #endif //DXGL_PROFILE_USE_KHR_DEBUG && DXGL_SUPPORT_DEBUG_OUTPUT
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     glPushGroupMarkerEXT(0, szName);
 #endif
 }
@@ -348,7 +360,6 @@ DXGL_API void DXGLProfileLabelPop(const char* szName)
     }
 #endif //DXGL_PROFILE_USE_GREMEDY_STRING_MARKER && DXGL_EXTENSION_LOADER
 #if DXGL_PROFILE_USE_KHR_DEBUG && DXGL_SUPPORT_DEBUG_OUTPUT
-    //  Confetti BEGIN: Igor Lobanchikov
     {
         if (glPopDebugGroup)
         {
@@ -361,9 +372,8 @@ DXGL_API void DXGLProfileLabelPop(const char* szName)
         }
 #endif
     }
-    //  Confetti End: Igor Lobanchikov
 #endif //DXGL_PROFILE_USE_KHR_DEBUG && DXGL_SUPPORT_DEBUG_OUTPUT
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     glPopGroupMarkerEXT();
 #endif
 }
@@ -384,7 +394,6 @@ inline CCryDXGLDeviceContext* GetDXGLDeviceContext(ID3D11DeviceContext* pDeviceC
 
 #if !DXGL_FULL_EMULATION
 
-//  Confetti BEGIN: Igor Lobanchikov
 #if defined(OPENGL_ES)
 void DXGLSetColorDontCareActions(ID3D11RenderTargetView* const rtv,
     bool const loadDontCare,
@@ -457,12 +466,35 @@ void DXGLInitializeIHVSpecifix()
 {
     NCryOpenGL::SGlobalConfig::SetIHVDefaults();
 }
-//  Confetti End: Igor Lobanchikov
 
 void DXGLInitialize(uint32 uNumSharedContexts)
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYDXGL_CPP_SECTION_2
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryDXGL_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryDXGL_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryDXGL_cpp_salem.inl"
+    #endif
+#endif
     NCryOpenGL::SGlobalConfig::RegisterVariables();
     NCryOpenGL::CDevice::Configure(uNumSharedContexts);
+}
+
+void DXGLFinalize()
+{
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYDXGL_CPP_SECTION_3
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryDXGL_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryDXGL_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryDXGL_cpp_salem.inl"
+    #endif
+#endif
 }
 
 void DXGLReserveContext(ID3D11Device* pDevice)

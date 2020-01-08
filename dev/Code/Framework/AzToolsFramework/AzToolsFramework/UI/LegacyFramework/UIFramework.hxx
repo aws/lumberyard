@@ -19,10 +19,12 @@
 #include "UIFrameworkAPI.h"
 #include <AzToolsFramework/UI/LegacyFramework/Core/EditorFrameworkAPI.h>
 
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // '...' needs to have dll-interface to be used by clients of class '...'
 #include <QtCore/QObject>
 #include <QtWidgets/QWidget>
 #include <QtWidgets/QTableView>
 #include <QtGui/QStandardItemModel>
+AZ_POP_DISABLE_WARNING
 
 class QAction;
 class QUrl;
@@ -127,7 +129,7 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
 
     private:
-		Framework(const Framework&) = delete;
+        Framework(const Framework&) = delete;
         // utilities to make using common GUI elements across component contexts easy
         AZStd::list<MainWindowDescription> m_MainWindowList;
         int m_ApplicationCensusResults;
@@ -153,7 +155,6 @@ namespace AzToolsFramework
             HotkeyData() {}
             HotkeyData(const HotkeyDescription& desc)
                 : m_desc(desc) {}
-#if _MSC_VER >= 1900
             HotkeyData(const HotkeyData& other)
                 : m_desc(other.m_desc)
                 , m_actionsBound(other.m_actionsBound)
@@ -164,7 +165,6 @@ namespace AzToolsFramework
                 m_actionsBound = other.m_actionsBound;
                 return *this;
             }
-#endif
 
             void SelfBindActions();
         };

@@ -32,6 +32,7 @@
             "Source/GesturesSystemComponent.cpp",
             "Source/GesturesSystemComponent.h",
             "Source/InputChannelGesture.h",
+            "Source/InputChannelGesture.cpp",
             "Source/InputChannelGestureClickOrTap.cpp",
             "Source/InputChannelGestureClickOrTap.h",
             "Source/InputChannelGestureDrag.cpp",

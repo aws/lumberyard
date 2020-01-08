@@ -34,6 +34,6 @@ struct IComponentSubstitution
     // </interfuscator:shuffle>
 };
 
-DECLARE_COMPONENT_POINTERS(IComponentSubstitution);
+DECLARE_SMART_POINTERS(IComponentSubstitution);
 
 #endif // CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTSUBSTITUTION_H

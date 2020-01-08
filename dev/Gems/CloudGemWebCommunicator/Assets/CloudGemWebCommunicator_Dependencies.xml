@@ -1,0 +1,5 @@
+<EngineDependencies versionnumber="1.0.0">
+    <Dependency path="certs/aws/deviceinfo.json" optional="true" />
+    <Dependency path="certs/aws/webcommunicatorkey.pem" optional="true" />
+    <Dependency path="certs/aws/webcommunicatordevice.pem" optional="true" />
+</EngineDependencies>

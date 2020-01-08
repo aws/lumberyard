@@ -23,7 +23,6 @@
 #include <Editor/ActorEditorBus.h>
 
 #include <QMainWindow>
-#include <QAbstractNativeEventFilter>
 
 // forward declarations
 QT_FORWARD_DECLARE_CLASS(QPushButton)
@@ -148,6 +147,7 @@ namespace EMStudio
     private:
         // ActorEditorRequests
         EMotionFX::ActorInstance* GetSelectedActorInstance() override;
+        EMotionFX::Actor* GetSelectedActor() override;
 
         void BroadcastSelectionNotifications();
         EMotionFX::Actor*           m_prevSelectedActor;

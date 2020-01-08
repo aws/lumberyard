@@ -16,7 +16,7 @@
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/parallel/mutex.h>
-#include <AzCore/std/parallel/conditional_variable.h>
+#include <AzCore/std/parallel/condition_variable.h>
 #include <AzCore/std/parallel/thread.h>
 
 #include "Include/HttpRequestor/HttpRequestParameters.h"

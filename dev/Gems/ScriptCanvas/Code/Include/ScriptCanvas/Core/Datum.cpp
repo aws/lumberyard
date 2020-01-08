@@ -780,162 +780,6 @@ namespace
     }
 
     template<typename t_Value>
-    AZ_INLINE bool IsDataGreater(const void* lhs, const void* rhs)
-    {
-        return *reinterpret_cast<const t_Value*>(lhs) > *reinterpret_cast<const t_Value*>(rhs);
-    }
-
-    AZ_INLINE bool IsDataGreater(const Data::Type& type, const void* lhs, const void* rhs)
-    {
-        switch (type.GetType())
-        {
-        case Data::eType::BehaviorContextObject:
-            AZ_Error("ScriptCanvas", false, "BehaviorContextObject passed into IsDataGreater, which is invalid, an attempt must be made to call the behavior method");
-            return false;
-
-        case Data::eType::Number:
-            return IsDataGreater<Data::NumberType>(lhs, rhs);
-
-        case Data::eType::Vector2:
-            return reinterpret_cast<const Data::Vector2Type*>(lhs)->IsGreaterThan(*reinterpret_cast<const Data::Vector2Type*>(rhs));
-
-        case Data::eType::Vector3:
-            return reinterpret_cast<const Data::Vector3Type*>(lhs)->IsGreaterThan(*reinterpret_cast<const Data::Vector3Type*>(rhs));
-
-        case Data::eType::Vector4:
-            return reinterpret_cast<const Data::Vector4Type*>(lhs)->IsGreaterThan(*reinterpret_cast<const Data::Vector4Type*>(rhs));
-
-        case Data::eType::Boolean:
-            return IsDataGreater<Data::BooleanType>(lhs, rhs);
-
-        case Data::eType::AABB:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::AABBType>::GetName().c_str());
-            return false;
-
-        case Data::eType::OBB:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::OBBType>::GetName().c_str());
-            return false;
-
-        case Data::eType::Plane:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::PlaneType>::GetName().c_str());
-            return false;
-
-        case Data::eType::Quaternion:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::QuaternionType>::GetName().c_str());
-            return false;
-
-        case Data::eType::String:
-            return IsDataGreater<Data::StringType>(lhs, rhs);
-
-        case Data::eType::Transform:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::TransformType>::GetName().c_str());
-            return false;
-
-        case Data::eType::Color:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::ColorType>::GetName().c_str());
-            return false;
-
-        case Data::eType::CRC:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::CRCType>::GetName().c_str());
-            return false;
-
-        case Data::eType::EntityID:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::EntityIDType>::GetName().c_str());
-            return false;
-
-        case Data::eType::Matrix3x3:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::Matrix3x3Type>::GetName().c_str());
-            return false;
-
-        case Data::eType::Matrix4x4:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::Matrix4x4Type>::GetName().c_str());
-            return false;
-
-        case Data::eType::Invalid:
-            return false;
-
-        default:
-            AZ_Assert(false, "unsupported type found in IsDataGreater");
-            return false;
-        }
-    }
-
-    template<typename t_Value>
-    AZ_INLINE bool IsDataGreaterEqual(const void* lhs, const void* rhs)
-    {
-        return *reinterpret_cast<const t_Value*>(lhs) >= *reinterpret_cast<const t_Value*>(rhs);
-    }
-
-    template<typename t_Value>
-    AZ_INLINE bool IsDataNotEqual(const void* lhs, const void* rhs)
-    {
-        return *reinterpret_cast<const t_Value*>(lhs) != *reinterpret_cast<const t_Value*>(rhs);
-    }
-
-    AZ_INLINE bool IsDataNotEqual(const Data::Type& type, const void* lhs, const void* rhs)
-    {
-        switch (type.GetType())
-        {
-        case Data::eType::AABB:
-            return IsDataNotEqual<Data::AABBType>(lhs, rhs);
-
-        case Data::eType::BehaviorContextObject:
-            return lhs != rhs;
-
-        case Data::eType::Boolean:
-            return IsDataNotEqual<Data::BooleanType>(lhs, rhs);
-
-        case Data::eType::Color:
-            return IsDataNotEqual<Data::ColorType>(lhs, rhs);
-
-        case Data::eType::CRC:
-            return IsDataNotEqual<Data::CRCType>(lhs, rhs);
-
-        case Data::eType::EntityID:
-            return IsDataNotEqual<Data::EntityIDType>(lhs, rhs);
-
-        case Data::eType::Invalid:
-            return false;
-
-        case Data::eType::Matrix3x3:
-            return IsDataNotEqual<Data::Matrix3x3Type>(lhs, rhs);
-
-        case Data::eType::Matrix4x4:
-            return IsDataNotEqual<Data::Matrix4x4Type>(lhs, rhs);
-
-        case Data::eType::Number:
-            return IsDataNotEqual<Data::NumberType>(lhs, rhs);
-
-        case Data::eType::OBB:
-            return IsDataNotEqual<Data::OBBType>(lhs, rhs);
-
-        case Data::eType::Plane:
-            return IsDataNotEqual<Data::PlaneType>(lhs, rhs);
-
-        case Data::eType::Quaternion:
-            return IsDataNotEqual<Data::QuaternionType>(lhs, rhs);
-
-        case Data::eType::String:
-            return IsDataNotEqual<Data::StringType>(lhs, rhs);
-
-        case Data::eType::Transform:
-            return IsDataNotEqual<Data::TransformType>(lhs, rhs);
-
-        case Data::eType::Vector2:
-            return IsDataNotEqual<Data::Vector2Type>(lhs, rhs);
-
-        case Data::eType::Vector3:
-            return IsDataNotEqual<Data::Vector3Type>(lhs, rhs);
-
-        case Data::eType::Vector4:
-            return IsDataNotEqual<Data::Vector4Type>(lhs, rhs);
-
-        default:
-            AZ_Assert(false, "unsupported type found in IsDataNotEqual");
-            return false;
-        }
-    }
-    template<typename t_Value>
     AZ_INLINE bool ToBehaviorContext(AZStd::any& valueOut, const AZ::Uuid& typeIDOut, const void* valueIn)
     {
         if (typeIDOut == azrtti_typeid<t_Value>())
@@ -1348,6 +1192,7 @@ namespace ScriptCanvas
     Datum::Datum()
         : m_isOverloadedStorage(true)
         , m_originality(eOriginality::Copy)
+        , m_isDefaultConstructed(true)
     {
     }
 
@@ -1395,6 +1240,24 @@ namespace ScriptCanvas
             !(value.m_traits & (AZ::BehaviorParameter::TR_POINTER | AZ::BehaviorParameter::TR_REFERENCE)) ? eOriginality::Original : eOriginality::Copy,
             value.m_value)
     {
+    }
+
+    void Datum::ReconfigureDatumTo(Datum&& datum)        
+    {
+        bool isOverloadedStorage = datum.m_isOverloadedStorage;
+
+        const_cast<bool&>(m_isOverloadedStorage) = true;
+        (*this) = AZStd::move(datum);
+        const_cast<bool&>(m_isOverloadedStorage) = isOverloadedStorage;
+    }
+
+    void Datum::ReconfigureDatumTo(const Datum& datum)
+    {
+        bool isOverloadedStorage = datum.m_isOverloadedStorage;
+
+        const_cast<bool&>(m_isOverloadedStorage) = true;
+        (*this) = datum;
+        const_cast<bool&>(m_isOverloadedStorage) = isOverloadedStorage;
     }
 
     ComparisonOutcome Datum::CallComparisonOperator(AZ::Script::Attributes::OperatorType operatorType, const AZ::BehaviorClass& behaviorClass, const Datum& lhs, const Datum& rhs)
@@ -1850,6 +1713,25 @@ namespace ScriptCanvas
         return (source && FromBehaviorContextVector4(sourceTypeID, source, m_storage)) || true;
     }
 
+    void Datum::SetType(const Data::Type& dataType)
+    {
+        if (!GetType().IsValid() && m_isDefaultConstructed)
+        {
+            if (dataType.IsValid())
+            {
+                m_isDefaultConstructed = false;
+                                
+                Datum tempDatum(dataType, ScriptCanvas::Datum::eOriginality::Original);
+                ReconfigureDatumTo(AZStd::move(tempDatum));
+            }
+            else
+            {
+                m_isDefaultConstructed = true;
+                (*this) = AZStd::move(Datum());                
+            }
+        }
+    }
+
     bool Datum::IsConvertibleTo(const AZ::BehaviorParameter& parameterDesc) const
     {
         if (AZ::BehaviorContextHelper::IsStringParameter(parameterDesc) && Data::IsString(GetType()))
@@ -2146,7 +2028,7 @@ namespace ScriptCanvas
         AZ::SerializeContext* serializeContext{};
         AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
         AZStd::unordered_map<AZ::EntityId, AZ::EntityId> uniqueIdMap;
-        uniqueIdMap.emplace(ScriptCanvas::SelfReferenceId, graphOwnerId);
+        uniqueIdMap.emplace(ScriptCanvas::GraphOwnerId, graphOwnerId);
         AZ::IdUtils::Remapper<AZ::EntityId>::RemapIds(this, [&uniqueIdMap](AZ::EntityId sourceId, bool, const AZ::IdUtils::Remapper<AZ::EntityId>::IdGenerator&) -> AZ::EntityId
         {
             auto findIt = uniqueIdMap.find(sourceId);
@@ -2627,7 +2509,7 @@ namespace ScriptCanvas
             , static_cast<float>(source.GetW()));
     }
 
-    AZ::Outcome<void, AZStd::string> Datum::CallBehaviorContextMethod(AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs)
+    AZ::Outcome<void, AZStd::string> Datum::CallBehaviorContextMethod(const AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs)
     {
         AZ_Assert(method, "AZ::BehaviorMethod* method == nullptr in Datum");
         if (method->Call(params, numExpectedArgs))
@@ -2640,7 +2522,7 @@ namespace ScriptCanvas
         }
     }
 
-    AZ::Outcome<Datum, AZStd::string> Datum::CallBehaviorContextMethodResult(AZ::BehaviorMethod* method, const AZ::BehaviorParameter* resultType, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs)
+    AZ::Outcome<Datum, AZStd::string> Datum::CallBehaviorContextMethodResult(const AZ::BehaviorMethod* method, const AZ::BehaviorParameter* resultType, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs)
     {
         AZ_Assert(resultType, "const AZ::BehaviorParameter* resultType == nullptr in Datum");
         AZ_Assert(method, "AZ::BehaviorMethod* method == nullptr in Datum");
@@ -2667,6 +2549,11 @@ namespace ScriptCanvas
             // parameter conversion failed
             return AZ::Failure(parameter.GetError());
         }
+    }
+
+    bool Datum::IsValidDatum(const Datum* datum)
+    {
+        return datum != nullptr && !datum->Empty();
     }
 
 } // namespace ScriptCanvas

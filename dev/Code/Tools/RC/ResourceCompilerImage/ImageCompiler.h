@@ -167,7 +167,7 @@ private:
     bool ProcessWithAzFramework();
 
     //TODO: Need a non windows specific dialog system
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
+#if defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
     // does export-time checks
     void AnalyzeImageAndSuggest(const ImageObject* pSourceImage);
     
@@ -207,7 +207,7 @@ private: // ------------------------------------------------------------------
     string                    m_sLastPreset;                    // last preset used for conversion (used only in AnalyzeImageAndSuggest)
 
     bool                      m_bDialogSystemInitialized;       // true when dialog subsystem is initialized
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
+#if defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
     CImageUserDialog*         m_pImageUserDialog;               // backlink to user dialog for preview calculation handling
 #endif
     bool                      m_bInternalPreview;               // indicates whether currently an internal preview is calculated (true) or results are stored (false)

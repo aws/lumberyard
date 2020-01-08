@@ -37,7 +37,7 @@ const f32 c_pif(3.1415926535897932384626433832795f);
 
 // Machine epsilon is too small to catch rounding error asserts here. We use a large enough number to prevent rounding errors, but small
 // enough to still catch invalid conditions (10^-6).
-static const float floatDiffFactor = 0.000001;
+static const float floatDiffFactor = 0.000001f;
 
 // constants for optical LUT serialization
 const uint32 c_lutFileTag(0x4C594B53);                  // "SKYL"
@@ -91,7 +91,7 @@ static inline f64 exp_fast(f64 arg)
     return((f64)e.d);
 #else // fall back to default exp_sky() implementation for untested/unsupported target platforms
 #   pragma message( "Optimized exp_fast() not available for this platform!" )
-# pragma message(	"If your target CPU is IEEE-754 conformant then please specify it in either the little or big endian branch (see SkyLightNishita.cpp::exp_fast())." )
+#   pragma message( "If your target CPU is IEEE-754 conformant then please specify it in either the little or big endian branch (see SkyLightNishita.cpp::exp_fast())." )
     return(exp(arg));
 #endif
 }
@@ -293,6 +293,17 @@ void CSkyLightNishita::ComputeInScatteringNoPremul(const f32 outScatteringConstM
         SOpticalDepthLUTEntry odAtHeightSky(LookupBilerpedOpticalDepthLUTEntry(cpOptDepthLUT, a, skyDir.Dot(newUp)));
         SOpticalDepthLUTEntry odAtHeightSun(LookupBilerpedOpticalDepthLUTEntry(cpOptDepthLUT, a, cSunDir.Dot(newUp)));
 
+        // when optimized in clang, values seem to drift a bit and under certain edge conditions
+        // raise asserts in SamplePartialInScatteringAtHeight function
+        if (odAtHeightSky.mie > odAtViewerSky.mie)
+        {
+            odAtHeightSky.mie = odAtViewerSky.mie;
+        }
+        if (odAtHeightSky.rayleigh > odAtViewerSky.rayleigh)
+        {
+            odAtHeightSky.rayleigh = odAtViewerSky.rayleigh;
+        }
+        
         // sample partial in-scattering term at new position
         Vec3 newSampleMie, newSampleRayleigh;
         SamplePartialInScatteringAtHeight(osAtHeight, outScatteringConstMie, outScatteringConstRayleigh,

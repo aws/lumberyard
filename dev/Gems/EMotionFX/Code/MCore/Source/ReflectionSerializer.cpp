@@ -429,7 +429,6 @@ namespace MCore
         const AZ::SerializeContext::ClassElement* classElement = RecursivelyFindClassElement(context, classData, nameCrc);
         if (classElement)
         {
-            const AZ::SerializeContext::ClassData* classDataElement = context->FindClassData(classElement->m_typeId);
             return static_cast<char*>(classPtr) + classElement->m_offset;
         }
         return nullptr;

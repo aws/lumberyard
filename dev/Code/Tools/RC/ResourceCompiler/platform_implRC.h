@@ -35,7 +35,7 @@
 #define TLSFREE(k)		(!TlsFree(k))
 #define TLSGET(k)		TlsGetValue(k)
 #define TLSSET(k, a)	(!TlsSetValue(k, a))
-#elif defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
 #define TLSALLOC(k)     pthread_key_create(k, 0)
 #define TLSFREE(k)		pthread_key_delete(k)
 #define TLSGET(k)		pthread_getspecific(k)
@@ -185,6 +185,22 @@ void RCLogContext(const char* szMessage)
     }
 }
 
+void RCLogSummary(const char* szFormat, ...)
+{
+    va_list args;
+    va_start(args, szFormat);
+    if (g_pRCLog)
+    {
+        g_pRCLog->LogV(IRCLog::eType_Summary, szFormat, args);
+    }
+    else
+    {
+        vprintf(szFormat, args);
+        printf("\n");
+        fflush(stdout);
+    }
+    va_end(args);
+}
 
 //////////////////////////////////////////////////////////////////////////
 // Log important data that must be printed regardless verbosity.

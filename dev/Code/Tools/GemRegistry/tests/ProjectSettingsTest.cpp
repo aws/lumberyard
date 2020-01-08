@@ -15,7 +15,7 @@
 
 using Gems::ProjectSettings;
 using Gems::ProjectGemSpecifier;
-using Gems::Specifier;
+using AzFramework::Specifier;
 using Gems::GemVersion;
 
 class ProjectSettingsTest

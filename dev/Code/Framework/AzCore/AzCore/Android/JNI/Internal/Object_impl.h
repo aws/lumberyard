@@ -502,6 +502,10 @@ namespace AZ { namespace Android
             typename Object<Allocator>::string_type Object<Allocator>::InvokeStringMethod(const char* methodName, Args&&... parameters)
             {
                 jstring rawStringValue = InvokeObjectMethod<jstring>(methodName, AZStd::forward<Args>(parameters)...);
+                if (!rawStringValue)
+                {
+                    return "";
+                }
                 string_type returnValue = Internal::ConvertJstringToStringImpl<string_type>(rawStringValue);
                 DeleteRef(rawStringValue);
                 return returnValue;

@@ -139,7 +139,7 @@ void GetCurrentWorkingDirectory(size_t bufferSize, char* buffer)
 {
 #if defined(AZ_PLATFORM_WINDOWS)
     GetCurrentDirectory(DWORD(bufferSize), buffer);
-#elif defined(AZ_PLATFORM_APPLE)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE
     getcwd(buffer, bufferSize);
 #endif
 }

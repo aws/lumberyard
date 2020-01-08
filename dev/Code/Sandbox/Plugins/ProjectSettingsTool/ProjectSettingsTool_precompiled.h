@@ -13,7 +13,7 @@
 
 #include <AzCore/PlatformDef.h>
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     #include <QUuid> // required to be here in order to include CryEdit
 #endif
 

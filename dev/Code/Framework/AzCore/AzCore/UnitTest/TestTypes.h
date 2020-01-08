@@ -50,7 +50,7 @@ namespace UnitTest
             m_drillerManager->Register(aznew AZ::Debug::MemoryDriller);
 
             AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
-            AZ::Debug::AllocationRecords* records = AZ::AllocatorInstance<AZ::SystemAllocator>::Get().GetRecords();
+            AZ::Debug::AllocationRecords* records = AZ::AllocatorInstance<AZ::SystemAllocator>::GetAllocator().GetRecords();
             if (records)
             {
                 records->SetMode(AZ::Debug::AllocationRecords::RECORD_FULL);
@@ -146,14 +146,10 @@ namespace UnitTest
     };
 
     template <AZ::u32 size, AZ::u8 instance, size_t alignment = 16>
-#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC >= 1900
-    struct alignas(alignment) CreationCounter
-#else
     struct CreationCounter
-#endif
     {
         AZ_TYPE_INFO(CreationCounter, "{E9E35486-4366-4066-86E5-1A8CEB44198B}");
-        int test[size / sizeof(int)];
+        AZ_ALIGN(int test[size / sizeof(int)], alignment);
 
         static int s_count;
         static int s_copied;
@@ -199,8 +195,15 @@ namespace UnitTest
             s_copied = 0;
             s_moved = 0;
         }
+    private:
+        // The test member variable has configurable alignment and this class has configurable size
+        // In some cases (when the size < alignment) padding is required. To avoid the compiler warning
+        // us about the padding being added, we added it here for the cases that is required.
+        // '% alignment' in the padding is redundant, but it fixes an 'array is too large' clang error.
+        static constexpr bool sHasPadding = size < alignment;
+        AZStd::enable_if<sHasPadding, char[(alignment - size) % alignment]> mPadding;
     };
-
+    
     template <AZ::u32 size, AZ::u8 instance, size_t alignment>
     int CreationCounter<size, instance, alignment>::s_count = 0;
     template <AZ::u32 size, AZ::u8 instance, size_t alignment>

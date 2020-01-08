@@ -17,6 +17,7 @@
 #include "StdAfx.h"
 #include "System.h"
 #include <time.h>
+#include <AzCore/IO/Streamer.h>
 #include <AzCore/IO/SystemFile.h>
 #include "CryLibrary.h"
 #include "IGemManager.h"
@@ -24,8 +25,10 @@
 #include <CrySystemBus.h>
 #include <ITimeDemoRecorder.h>
 #include <AzFramework/API/ApplicationAPI.h>
-#include <AzFramework/API/ApplicationAPI_win.h>
+#include <AzFramework/API/ApplicationAPI_Platform.h>
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
+#include <AzCore/Debug/Trace.h>
+#include <AzFramework/Logging/MissingAssetLogger.h>
 
 
 #if defined(AZ_RESTRICTED_PLATFORM)
@@ -37,6 +40,7 @@
 #define SYSTEM_CPP_SECTION_5 5
 #define SYSTEM_CPP_SECTION_6 6
 #define SYSTEM_CPP_SECTION_7 7
+#define SYSTEM_CPP_SECTION_8 8
 #endif
 
 #if defined(_RELEASE) && AZ_LEGACY_CRYSYSTEM_TRAIT_USE_EXCLUDEUPDATE_ON_CONSOLE
@@ -112,6 +116,8 @@ static LRESULT WINAPI WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
         #include "Xenia/System_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/System_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/System_cpp_salem.inl"
     #endif
 #endif
 
@@ -127,7 +133,6 @@ static LRESULT WINAPI WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 #include <IInput.h>
 #include <ILog.h>
 #include <IAudioSystem.h>
-#include "NullImplementation/NULLAudioSystems.h"
 #include <ICryAnimation.h>
 #include <IScriptSystem.h>
 #include <IProcess.h>
@@ -180,10 +185,10 @@ static LRESULT WINAPI WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 #include "IZLibCompressor.h"
 #include "IZlibDecompressor.h"
 #include "ILZ4Decompressor.h"
+#include "IZStdDecompressor.h"
 #include "zlib.h"
 #include "RemoteConsole/RemoteConsole.h"
 #include "BootProfiler.h"
-#include "NullImplementation/NULLAudioSystems.h"
 
 #include <PNoise3.h>
 #include <StringUtils.h>
@@ -199,7 +204,7 @@ WATERMARKDATA(_m);
 
 #ifdef WIN32
 
-#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_win.h>
+#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 
 // To enable profiling with vtune (https://software.intel.com/en-us/intel-vtune-amplifier-xe), make sure the line below is not commented out
 //#define  PROFILE_WITH_VTUNE
@@ -357,9 +362,6 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
 #ifdef WIN32
     m_hInst = NULL;
     m_hWnd = NULL;
-#if _MSC_VER < 1000
-    int sbh = _set_sbh_threshold(1016);
-#endif
 #endif
 
     //////////////////////////////////////////////////////////////////////////
@@ -429,6 +431,7 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
     m_pIZLibCompressor = NULL;
     m_pIZLibDecompressor = NULL;
     m_pILZ4Decompressor = NULL;
+    m_pIZStdDecompressor = nullptr;
     m_pLocalizationManager = NULL;
     m_pGemManager = nullptr;
     m_crypto = nullptr;
@@ -440,6 +443,8 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
         #include "Xenia/System_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/System_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/System_cpp_salem.inl"
     #endif
 #endif
     m_sys_min_step = 0;
@@ -556,6 +561,7 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
     {
         m_initedSysAllocator = true;
         AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
+        AZ::Debug::Trace::Instance().Init();
     }
 
     m_UpdateTimesIdx = 0U;
@@ -606,6 +612,7 @@ CSystem::~CSystem()
     AZCoreLogSink::Disconnect();
     if (m_initedSysAllocator)
     {
+        AZ::Debug::Trace::Instance().Destroy();
         AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
     }
     if (m_initedOSAllocator)
@@ -824,6 +831,7 @@ void CSystem::ShutDown()
     SAFE_RELEASE(m_pIZLibCompressor);
     SAFE_RELEASE(m_pIZLibDecompressor);
     SAFE_RELEASE(m_pILZ4Decompressor);
+    SAFE_RELEASE(m_pIZStdDecompressor);
     SAFE_RELEASE(m_pIBudgetingSystem);
     SAFE_RELEASE(m_pViewSystem);
     SAFE_RELEASE(m_pLevelSystem);
@@ -886,6 +894,8 @@ void CSystem::ShutDown()
         #include "Xenia/System_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/System_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/System_cpp_salem.inl"
     #endif
 #endif
 
@@ -934,7 +944,7 @@ void CSystem::ShutDown()
 
     // Audio System Shutdown!
     // Shut down audio as late as possible but before the streaming system and console get released!
-    Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::Release);
+    Audio::Gem::AudioSystemGemRequestBus::Broadcast(&Audio::Gem::AudioSystemGemRequestBus::Events::Release);
 
     // Shut down the streaming system and console as late as possible and after audio!
     SAFE_DELETE(m_pStreamEngine);
@@ -1007,6 +1017,8 @@ void CSystem::Quit()
         #include "Xenia/System_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/System_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/System_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1101,6 +1113,8 @@ public:
         #include "Xenia/System_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/System_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/System_cpp_salem.inl"
     #endif
 #endif
         while (true)
@@ -1281,6 +1295,8 @@ void CSystem::CreatePhysicsThread()
         #include "Xenia/System_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/System_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/System_cpp_salem.inl"
     #endif
 #endif
 
@@ -1656,6 +1672,59 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
     {
         FRAME_PROFILER("StreamEngine::Update()", this, PROFILE_SYSTEM);
         m_pStreamEngine->Update();
+    }
+
+    if (g_cvars.az_streaming_stats)
+    {
+        SDrawTextInfo ti;
+        ti.flags = eDrawText_FixedSize | eDrawText_2D | eDrawText_Monospace;
+        ti.xscale = ti.yscale = 1.2f;
+
+        const int viewportHeight = GetViewCamera().GetViewSurfaceZ();
+        
+#if defined(AZ_RESTRICTED_PLATFORM)
+    #define AZ_RESTRICTED_SECTION SYSTEM_CPP_SECTION_8
+    #if defined(AZ_PLATFORM_XENIA)
+    #include "Xenia/System_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+    #include "Provo/System_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+    #include "Salem/System_cpp_salem.inl"
+    #endif
+#else
+    float y = static_cast<float>(viewportHeight) - 30.0f;
+#endif
+
+        AZStd::vector<AZ::IO::Statistic> stats;
+        AZ::IO::Streamer::Instance().CollectStatistics(stats);
+
+        for (AZ::IO::Statistic& stat : stats)
+        {
+            switch (stat.GetType())
+            {
+            case AZ::IO::Statistic::Type::FloatingPoint:
+                gEnv->pRenderer->DrawTextQueued(Vec3(10, y, 1.0f), ti, 
+                    AZStd::string::format("%s/%s: %.3f", stat.GetOwner().data(), stat.GetName().data(), stat.GetFloatValue()).c_str());
+                break;
+            case AZ::IO::Statistic::Type::Integer:
+                gEnv->pRenderer->DrawTextQueued(Vec3(10, y, 1.0f), ti,
+                    AZStd::string::format("%s/%s: %lli", stat.GetOwner().data(), stat.GetName().data(), stat.GetIntegerValue()).c_str());
+                break;
+            case AZ::IO::Statistic::Type::Percentage:
+                gEnv->pRenderer->DrawTextQueued(Vec3(10, y, 1.0f), ti,
+                    AZStd::string::format("%s/%s: %.2f (percent)", stat.GetOwner().data(), stat.GetName().data(), stat.GetPercentage()).c_str());
+                break;
+            default:
+                gEnv->pRenderer->DrawTextQueued(Vec3(10, y, 1.0f), ti, AZStd::string::format("Unsupported stat type: %i", stat.GetType()).c_str());
+                break;
+            }
+            y -= 12.0f;
+            if (y < 0.0f)
+            {
+                //Exit the loop because there's no purpose on rendering text outside of the visible area.
+                break;
+            }
+        }
     }
 
 #ifndef EXCLUDE_UPDATE_ON_CONSOLE
@@ -2179,32 +2248,8 @@ bool CSystem::UpdatePostTickBus(int updateFlags, int nPauseMode)
         m_pDownloadManager->Update();
     }
 #endif //DOWNLOAD_MANAGER
-#if AZ_LEGACY_CRYSYSTEM_TRAIT_SIMULATE_TASK
-    if (m_sys_SimulateTask->GetIVal() > 0)
-    {
-        // have a chance to win longest Pi calculation content
-        int64 delay = m_sys_SimulateTask->GetIVal();
-        int64 start = CryGetTicks();
-        double a = 1.0, b = 1.0 / sqrt(2.0), t = 1.0 / 4.0, p = 1.0, an, bn, tn, pn, Pi = 0.0;
-        while (CryGetTicks() - start < delay)
-        {
-            // do something
-            an = (a + b) / 2.0;
-            bn = sqrt(a * b);
-            tn = t - p * (a - an) * (a - an);
-            pn = 2 * p;
 
-            a = an;
-            b = bn;
-            t = tn;
-            p = pn;
-
-            Pi = (a + b) * (a + b) / 4 / t;
-        }
-        //CryLog("Task calculate PI = %f ", Pi); // Thats funny , but it works :-)
-    }
-#endif //AZ_LEGACY_CRYSYSTEM_TRAIT_SIMULATE_TASK
-       //Now update frame statistics
+    //Now update frame statistics
     CTimeValue cur_time = gEnv->pTimer->GetAsyncTime();
 
     CTimeValue a_second(g_cvars.sys_update_profile_time);
@@ -2663,6 +2708,8 @@ void CSystem::debug_GetCallStackRaw(void** callstack, uint32& callstackLength)
         #include "Xenia/System_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/System_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/System_cpp_salem.inl"
     #endif
 #endif
 
@@ -3080,6 +3127,39 @@ void CSystem::OnLocalizationFolderCVarChanged(ICVar* const pLocalizationFolder)
     }
 }
 
+// Catch changes to assert verbosity and update the global used to track it
+void CSystem::SetAssertLevel(int _assertlevel)
+{
+    AZ::EnvironmentVariable<int> assertVerbosityLevel = AZ::Environment::FindVariable<int>("assertVerbosityLevel");
+    if (assertVerbosityLevel)
+    {
+        assertVerbosityLevel.Set(_assertlevel);
+    }
+}
+
+void CSystem::OnAssertLevelCvarChanged(ICVar* pArgs)
+{
+    SetAssertLevel(pArgs->GetIVal());
+}
+
+void CSystem::SetLogLevel(int _loglevel)
+{
+    AZ::EnvironmentVariable<int> logVerbosityLevel = AZ::Environment::FindVariable<int>("sys_LogLevel");
+    if (logVerbosityLevel != nullptr)
+    {
+        logVerbosityLevel.Set(_loglevel);
+    }
+}
+
+void CSystem::OnLogLevelCvarChanged(ICVar* pArgs)
+{
+    if (pArgs)
+    {
+        SetLogLevel(pArgs->GetIVal());
+    }
+}
+
+
 void CSystem::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam)
 {
     switch (event)
@@ -3315,7 +3395,7 @@ bool CSystem::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, 
         RAWINPUT* rawInput = (RAWINPUT*)rawInputBytes;
         CRY_ASSERT(rawInput);
 
-        EBUS_EVENT(AzFramework::RawInputNotificationBusWin, OnRawInputEvent, *rawInput);
+        AzFramework::RawInputNotificationBusWindows::Broadcast(&AzFramework::RawInputNotificationsWindows::OnRawInputEvent, *rawInput);
 
         return false;
     }
@@ -3323,14 +3403,14 @@ bool CSystem::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, 
     {
         if (wParam == 0x0007) // DBT_DEVNODES_CHANGED
         {
-            EBUS_EVENT(AzFramework::RawInputNotificationBusWin, OnRawInputDeviceChangeEvent);
+            AzFramework::RawInputNotificationBusWindows::Broadcast(&AzFramework::RawInputNotificationsWindows::OnRawInputDeviceChangeEvent);
         }
         return true;
     }
     case WM_CHAR:
     {
         const unsigned short codeUnitUTF16 = static_cast<unsigned short>(wParam);
-        EBUS_EVENT(AzFramework::RawInputNotificationBusWin, OnRawInputCodeUnitUTF16Event, codeUnitUTF16);
+        AzFramework::RawInputNotificationBusWindows::Broadcast(&AzFramework::RawInputNotificationsWindows::OnRawInputCodeUnitUTF16Event, codeUnitUTF16);
         return true;
     }
 

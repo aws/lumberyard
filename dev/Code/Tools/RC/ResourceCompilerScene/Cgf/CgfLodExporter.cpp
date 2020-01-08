@@ -61,6 +61,9 @@ namespace AZ
                 return SceneEvents::ProcessingResult::Ignored;
             }
 
+            // Create the base CGF name
+            AZStd::string baseCGFfilename = SceneUtil::FileUtilities::CreateOutputFileName(context.m_group.GetName(), context.m_outputDirectory, s_fileExtension);
+
             SceneEvents::ProcessingResultCombiner result;
             
             for (size_t index = 0; index < lodRule->GetLodCount(); ++index)
@@ -99,7 +102,10 @@ namespace AZ
                         static const AZ::Data::AssetType staticMeshLodsAssetType("{9AAE4926-CB6A-4C60-9948-A1A22F51DB23}");
                         // Using the same guid as the parent group/cgf as this needs to be a lod of that cgf.
                         // Setting the lod to index+1 as 0 means the base mesh and 1-6 are lod levels 0-5.
-                        context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), staticMeshLodsAssetType, index + 1);
+                        AZ::SceneAPI::Events::ExportProduct& lodProduct = context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), staticMeshLodsAssetType, index + 1);
+
+                        // Add this LOD as a dependency to the base CGF
+                        context.m_products.AddDependencyToProduct(baseCGFfilename, lodProduct);
                     }
                     else
                     {

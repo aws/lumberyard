@@ -37,11 +37,19 @@ namespace ImGui
         // Toggle the menu on and off
         void ToggleEnabled() { m_enabled = !m_enabled; }
 
+        // Called by the owner to draw a component view sub menu
+        void ImGuiUpdate_DrawComponentViewSubMenu();
+
         // -- ImGuiEntityOutlinerRequestBus::Handler Interface ---------------------
+        void RemoveEntityView(AZ::EntityId entity) override;
         void RequestEntityView(AZ::EntityId entity) override;
+        void RemoveComponentView(ImGuiEntComponentId component) override;
         void RequestComponentView(ImGuiEntComponentId component) override;
+        void RequestAllViewsForComponent(const AZ::TypeId& comType) override;
         void EnableTargetViewMode(bool enabled) override;
-        void EnableComponentDebug(const AZ::TypeId& comType, int priority = 1) override;
+        void EnableComponentDebug(const AZ::TypeId& comType, int priority = 1, bool enableMenuBar = false) override;
+        void SetEnabled(bool enabled) override;
+        void AddAutoEnableSearchString(const AZStd::string& searchString) override;
         // -- ImGuiEntityOutlinerRequestBus::Handler Interface ---------------------
 
     private:
@@ -94,10 +102,14 @@ namespace ImGui
         void ImGuiUpdate_RecursivelyDisplayEntityInfoAndDecendants(EntityInfoNodePtr node, bool justDrawChildren = false, bool drawInspectButton = true, bool drawTargetButton = true, bool drawDebugButton = true, bool sameLine = true, bool drawComponents = false);
         void ImGuiUpdate_RecursivelyDisplayEntityInfoAndDecendants_DrawDisplayOptions(EntityInfoNodePtr node, bool drawInspectButton, bool drawTargetButton, bool drawDebugButton, bool sameLine, bool drawComponents);
 
+        // Update Helper Functions for Entity and Component Views
         bool ImGuiUpdate_DrawEntityView(const AZ::EntityId &ent);
         void ImGuiUpdate_DrawComponent(void *instance, const AZ::SerializeContext::ClassData *classData, const AZ::SerializeContext::ClassElement *classElement);
+        bool ImGuiUpdate_DrawComponentView(const ImGui::ImGuiEntComponentId &entCom);   
 
-        bool ImGuiUpdate_DrawComponentView(const ImGui::ImGuiEntComponentId &entCom);       
+        // Update Helper Functions for the menu bar
+        void ImGuiUpdate_DrawViewOptions();
+        void ImGuiUpdate_DrawAutoEnableOptions();
 
         // Different options for the Outliner Display
         bool m_enabled;
@@ -107,6 +119,7 @@ namespace ImGui
         EntOutlineDisplayOption m_displayName;
         EntOutlineDisplayOption m_displayChildCount;
         EntOutlineDisplayOption m_displayDescentdantCount;
+        EntOutlineDisplayOption m_displayEntityState;
         EntOutlineDisplayOption m_displayParentInfo;
         EntOutlineDisplayOption m_displayLocalPos;
         EntOutlineDisplayOption m_displayLocalRotation;
@@ -127,13 +140,25 @@ namespace ImGui
         AZStd::unordered_set<AZ::EntityId> m_entitiesToView;
         AZStd::unordered_set<ImGui::ImGuiEntComponentId> m_componentsToView;
 
-        // data and interface for dealing with component debug windows and priorities
-        typedef AZStd::pair<AZ::TypeId, int> ComponentPriority;
-        AZStd::vector<ComponentPriority> m_componentDebugPriorities;
-        
+        // data and interface for dealing with component debug windows and priorities, 1 per component types
+        struct ComponentDebugInfo
+        {
+            ComponentDebugInfo(int priority, bool enableMenuBar, bool autoLaunchEnabled)
+                : m_priority(priority)
+                , m_autoLaunchEnabled(autoLaunchEnabled)
+                , m_menuBarEnabled(enableMenuBar) {}
+            ComponentDebugInfo() : ComponentDebugInfo(-1, false, false) {};
+            int m_priority;
+            bool m_autoLaunchEnabled;
+            bool m_menuBarEnabled;
+        };
+        AZStd::list<AZ::TypeId> m_componentDebugSortedList; // list is for quick iteration, sorting and ordering
+        AZStd::map<AZ::TypeId, ComponentDebugInfo> m_componentDebugInfoMap; // map is for quick lookup of debug info without iterating through the above vector
+
+        // A list of strings that are used to find component names to auto enable
+        AZStd::unordered_set<AZStd::string> m_autoEnableComponentSearchStrings;
+        void RefreshAutoEnableBasedOnSearchStrings();
         bool ComponentHasDebug(const AZ::TypeId& comType);
-        int GetComponentDebugPriority(const AZ::TypeId& comType);
-        AZ::TypeId GetHighestPriorityDebugComponent();
     };
 }
 

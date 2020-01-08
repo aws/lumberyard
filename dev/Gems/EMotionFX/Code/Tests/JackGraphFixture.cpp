@@ -40,6 +40,8 @@ namespace EMotionFX
         AzFramework::StringFunc::Base64::Decode(data, base64ActorData.c_str(), base64ActorData.size());
 
         m_actor = EMotionFX::GetImporter().LoadActor(data.begin(), data.size());
+        OnPostActorCreated();
+
         m_actorInstance = ActorInstance::Create(m_actor);
 
         AZ::SerializeContext* serializeContext = nullptr;

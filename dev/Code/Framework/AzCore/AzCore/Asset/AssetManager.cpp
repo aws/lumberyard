@@ -9,11 +9,11 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetInternal/LegacyBlockingAssetTypeManager.h>
 #include <AzCore/Asset/LegacyAssetHandler.h>
+#include <AzCore/Debug/AssetTracking.h>
 #include <AzCore/Math/Crc.h>
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/std/parallel/atomic.h>
@@ -22,8 +22,8 @@
 #include <AzCore/std/string/osstring.h>
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Memory/OSAllocator.h>
-#include <AzCore/IO/Streamer.h>
-#include <AzCore/IO/GenericStreams.h>
+#include <AzCore/IO/FileIO.h>
+
 
 namespace AZ
 {
@@ -120,30 +120,37 @@ namespace AZ
 
             void Process() override
             {
-                m_owner->RegisterAssetLoading(m_asset);
-                
-                const bool loadSucceeded = LoadData();
-
-                // Queue the result for dispatch to main thread.
-                m_assetHandler->InitAsset(m_asset, loadSucceeded, false);
-
-                // Notify any dependent jobs.
-                if (loadSucceeded)
+                // This scope opened here intentionally to prevent stack variables from destructing after the deletion further down
                 {
-                    EBUS_EVENT_ID(m_asset.GetId(), AssetJobBus, OnAssetReady, m_asset);
-                }
-                else
-                {
-                    EBUS_EVENT_ID(m_asset.GetId(), AssetJobBus, OnAssetError, m_asset);
-                }
+                    AZ_ASSET_ATTACH_TO_SCOPE(this);
 
-                m_owner->UnregisterAssetLoading(m_asset);
+                    m_owner->RegisterAssetLoading(m_asset);
+
+                    const bool loadSucceeded = LoadData();
+
+                    // Queue the result for dispatch to main thread.
+                    m_assetHandler->InitAsset(m_asset, loadSucceeded, false);
+
+                    // Notify any dependent jobs.
+                    if (loadSucceeded)
+                    {
+                        EBUS_EVENT_ID(m_asset.GetId(), AssetJobBus, OnAssetReady, m_asset);
+                    }
+                    else
+                    {
+                        EBUS_EVENT_ID(m_asset.GetId(), AssetJobBus, OnAssetError, m_asset);
+                    }
+
+                    m_owner->UnregisterAssetLoading(m_asset);
+                }
 
                 delete this;
             }
 
             bool LoadData()
             {
+                AZ_ASSET_NAMED_SCOPE(m_asset.GetHint().c_str());
+
                 AssetStreamInfo loadInfo = m_owner->GetLoadStreamInfoForAsset(m_asset.GetId(), m_asset.GetType());
                 if (loadInfo.IsValid())
                 {
@@ -153,8 +160,8 @@ namespace AZ
                     }
                     else
                     {
-                        AZ_Assert(IO::Streamer::IsReady(), "We only support streamer IO at the moment. Make sure the streamer has been started!");
-                        IO::StreamerStream stream(loadInfo.m_streamName.c_str(), loadInfo.m_streamFlags, loadInfo.m_dataOffset, loadInfo.m_dataLen);
+                        IO::FileIOStream stream(loadInfo.m_streamName.c_str(), loadInfo.m_streamFlags);
+                        stream.Seek(loadInfo.m_dataOffset, IO::GenericStream::SeekMode::ST_SEEK_BEGIN);
                         return  m_assetHandler->LoadAssetData(m_asset, &stream, m_assetLoadFilterCB);
                     }
                 }
@@ -169,6 +176,7 @@ namespace AZ
          * Base class to handle blocking on an asset load. Takes care connecting to the AssetJobBus
          * and clean up of the object.
          */
+
         class WaitForAsset
             : public AssetJobBus::Handler
         {
@@ -199,6 +207,8 @@ namespace AZ
                 BusConnect(m_assetData.GetId());
 
                 Wait();
+
+                BusDisconnect(m_assetData.GetId());
 
                 delete this;
             }
@@ -326,11 +336,9 @@ namespace AZ
                 AssetStreamInfo saveInfo = m_owner->GetSaveStreamInfoForAsset(m_asset.GetId(), m_asset.GetType());
                 if (saveInfo.IsValid())
                 {
-                    AZ_Assert(IO::Streamer::IsReady(), "We only support streamer IO at the moment. Make sure the streamer has been started!");
-                    {
-                        IO::StreamerStream stream(saveInfo.m_streamName.c_str(), saveInfo.m_streamFlags, saveInfo.m_dataOffset);
-                        isSaved = m_assetHandler->SaveAssetData(m_asset, &stream);
-                    }
+                    IO::FileIOStream stream(saveInfo.m_streamName.c_str(), saveInfo.m_streamFlags);
+                    stream.Seek(saveInfo.m_dataOffset, IO::GenericStream::SeekMode::ST_SEEK_BEGIN);
+                    isSaved = m_assetHandler->SaveAssetData(m_asset, &stream);
                 }
                 // queue broadcast message for delivery on game thread
                 EBUS_QUEUE_EVENT_ID(m_asset.GetId(), AssetBus, OnAssetSaved, m_asset, isSaved);
@@ -683,6 +691,8 @@ namespace AZ
                     assetInfo.m_assetType = assetType;
                 }
 
+                AZ_ASSET_NAMED_SCOPE("GetAsset: %s", assetInfo.m_relativePath.c_str());
+
                 bool isNewEntry = false;
                 AssetHandler* handler = nullptr;
 
@@ -690,7 +700,7 @@ namespace AZ
                 {
                     // check if asset already exists
                     {
-                        
+
                         AssetMap::iterator it = m_assets.find(assetInfo.m_assetId);
                         if (it != m_assets.end())
                         {
@@ -705,31 +715,31 @@ namespace AZ
 
                     {
 
-                    // find the asset type handler
-                    AssetHandlerMap::iterator handlerIt = m_handlers.find(assetInfo.m_assetType);
-                    AZ_Error("AssetDatabase", handlerIt != m_handlers.end(), "No handler was registered for this asset [type:%s id:%s]!",
-                        assetInfo.m_assetType.ToString<AZ::OSString>().c_str(), assetInfo.m_assetId.ToString<AZ::OSString>().c_str());
-                    if (handlerIt != m_handlers.end())
-                    {
-                        // Create the asset ptr and insert it into our asset map.
-                        handler = handlerIt->second;
-                        if (isNewEntry)
+                        // find the asset type handler
+                        AssetHandlerMap::iterator handlerIt = m_handlers.find(assetInfo.m_assetType);
+                        AZ_Error("AssetDatabase", handlerIt != m_handlers.end(), "No handler was registered for this asset [type:%s id:%s]!",
+                            assetInfo.m_assetType.ToString<AZ::OSString>().c_str(), assetInfo.m_assetId.ToString<AZ::OSString>().c_str());
+                        if (handlerIt != m_handlers.end())
                         {
-                            assetData = handler->CreateAsset(assetInfo.m_assetId, assetInfo.m_assetType);
-                            if (assetData)
+                            // Create the asset ptr and insert it into our asset map.
+                            handler = handlerIt->second;
+                            if (isNewEntry)
                             {
-                                assetData->m_assetId = assetInfo.m_assetId;
-                                ++handler->m_nActiveAssets;
-                                assetData->m_creationToken = ++m_creationTokenGenerator;
-                                asset = assetData;
-                            }
-                            else
-                            {
-                                AZ_Error("AssetDatabase", false, "Failed to create asset with (id=%s, type=%s)",
-                                    assetInfo.m_assetId.ToString<AZ::OSString>().c_str(), assetInfo.m_assetType.ToString<AZ::OSString>().c_str());
+                                assetData = handler->CreateAsset(assetInfo.m_assetId, assetInfo.m_assetType);
+                                if (assetData)
+                                {
+                                    assetData->m_assetId = assetInfo.m_assetId;
+                                    ++handler->m_nActiveAssets;
+                                    assetData->m_creationToken = ++m_creationTokenGenerator;
+                                    asset = assetData;
+                                }
+                                else
+                                {
+                                    AZ_Error("AssetDatabase", false, "Failed to create asset with (id=%s, type=%s)",
+                                        assetInfo.m_assetId.ToString<AZ::OSString>().c_str(), assetInfo.m_assetType.ToString<AZ::OSString>().c_str());
+                                }
                             }
                         }
-                    }
                     }
 
                     if (assetData)
@@ -768,15 +778,15 @@ namespace AZ
                                 if (m_blockingAssetTypeManager->HasBlockingHandlersForCurrentThread())
                                 {
                                     blockingWait = aznew WaitForAssetOnThreadWithBlockingJobs(assetData, m_blockingAssetTypeManager);
-                        }
+                                }
                                 else
                                 {
                                     blockingWait = aznew WaitForAssetOnThreadWithNoBlockingJobs(assetData);
                                 }
                             }
+                        }
                     }
                 }
-            }
             }
 
             if (!assetInfo.m_relativePath.empty())
@@ -787,7 +797,7 @@ namespace AZ
             // when AZCORE_JOBS_IMPL_SYNCHRONOUS is defined
             if (loadBlocking)
             {
-                if(loadJob)
+                if (loadJob)
                 {
                     // Process directly within the calling thread if loadBlocking flag is set.
                     loadJob->Process();
@@ -1030,7 +1040,7 @@ namespace AZ
         //=========================================================================
         // GetHandler
         //=========================================================================
-        const AssetHandler* AssetManager::GetHandler(const AssetType& assetType)
+        AssetHandler* AssetManager::GetHandler(const AssetType& assetType)
         {
             auto handlerEntry = m_handlers.find(assetType);
             if (handlerEntry != m_handlers.end())
@@ -1337,5 +1347,3 @@ namespace AZ
         }
     } // namespace Data
 }   // namespace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

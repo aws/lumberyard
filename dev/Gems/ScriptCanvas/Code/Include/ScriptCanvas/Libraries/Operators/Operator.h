@@ -29,8 +29,7 @@ namespace ScriptCanvas
         namespace Operators
         {
             class OperatorBase 
-                : public ScriptCanvas::Node 
-                , public EndpointNotificationBus::MultiHandler
+                : public ScriptCanvas::Node                 
             {
             public:
 
@@ -96,7 +95,15 @@ namespace ScriptCanvas
 
             protected:
 
+                AZ::Crc32 GetSourceDynamicTypeGroup() const { return AZ::Crc32("OperatorGroup"); }
+                AZStd::string GetSourceDisplayGroup() const { return "OperatorGroup"; }
+
                 void OnInit() override;
+                void OnDynamicGroupDisplayTypeChanged(const AZ::Crc32& dynamicGroup, const Data::Type& dataType) override final;
+                void OnSlotRemoved(const SlotId& slotId) override;
+
+                Slot* GetFirstInputSourceSlot() const;
+                Slot* GetFirstOutputSourceSlot() const;
 
                 virtual SlotId AddSourceSlot(SourceSlotConfiguration sourceConfiguration);
                 virtual void ConfigureContracts(SourceType sourceType, AZStd::vector<ContractDescriptor>& contractDescs);
@@ -109,14 +116,12 @@ namespace ScriptCanvas
 
                 virtual void OnInputSlotAdded(const SlotId& inputSlotId) { AZ_UNUSED(inputSlotId); };
                 virtual void OnDataInputSlotConnected(const SlotId& slotId, const Endpoint& endpoint) {}
-                virtual void OnDataInputSlotDisconnected(const SlotId& slotId, const Endpoint& endpoint) {}
+                virtual void OnDataInputSlotDisconnected(const SlotId& slotId, const Endpoint& endpoint) {}                
 
                 AZ::BehaviorMethod* GetOperatorMethod(const char* methodName);
 
                 SlotId AddSlotWithSourceType();
 
-                void SetSourceType(ScriptCanvas::Data::Type dataType);
-                void DisplaySourceType(ScriptCanvas::Data::Type dataType);
                 bool HasSourceConnection() const;
 
                 bool AreSourceSlotsFull(SourceType sourceType) const;
@@ -142,19 +147,50 @@ namespace ScriptCanvas
                 AZ::TypeId m_sourceTypeId;
             };
 
-            struct DefaultContainerOperatorConfiguration
+            struct DefaultContainerManipulationOperatorConfiguration
                 : public OperatorBase::OperatorConfiguration
             {
-                DefaultContainerOperatorConfiguration()
+                DefaultContainerManipulationOperatorConfiguration()
                 {
-                    OperatorBase::SourceSlotConfiguration containerSourceConfig;
+                    {
+                        OperatorBase::SourceSlotConfiguration containerSourceConfig;
 
-                    containerSourceConfig.m_dynamicDataType = DynamicDataType::Container;
-                    containerSourceConfig.m_name = "Source";
-                    containerSourceConfig.m_tooltip = "The source object to operator on.";
-                    containerSourceConfig.m_sourceType = OperatorBase::SourceType::SourceInput;
+                        containerSourceConfig.m_dynamicDataType = DynamicDataType::Container;
+                        containerSourceConfig.m_name = "Source";
+                        containerSourceConfig.m_tooltip = "The source object to operator on.";
+                        containerSourceConfig.m_sourceType = OperatorBase::SourceType::SourceInput;
 
-                    m_sourceSlotConfigurations.emplace_back(containerSourceConfig);
+                        m_sourceSlotConfigurations.emplace_back(containerSourceConfig);
+                    }
+
+                    {
+                        OperatorBase::SourceSlotConfiguration containerSourceConfig;
+
+                        containerSourceConfig.m_dynamicDataType = DynamicDataType::Container;
+                        containerSourceConfig.m_name = "Container";
+                        containerSourceConfig.m_tooltip = "The container that was operated upon.";
+                        containerSourceConfig.m_sourceType = OperatorBase::SourceType::SourceOutput;
+
+                        m_sourceSlotConfigurations.emplace_back(containerSourceConfig);
+                    }
+                }
+            };
+
+            struct DefaultContainerInquiryOperatorConfiguration
+                : public OperatorBase::OperatorConfiguration
+            {
+                DefaultContainerInquiryOperatorConfiguration()
+                {
+                    {
+                        OperatorBase::SourceSlotConfiguration containerSourceConfig;
+
+                        containerSourceConfig.m_dynamicDataType = DynamicDataType::Container;
+                        containerSourceConfig.m_name = "Source";
+                        containerSourceConfig.m_tooltip = "The source object to operator on.";
+                        containerSourceConfig.m_sourceType = OperatorBase::SourceType::SourceInput;
+
+                        m_sourceSlotConfigurations.emplace_back(containerSourceConfig);
+                    }
                 }
             };
 

@@ -9,11 +9,12 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/string/conversions.h>
 
@@ -39,6 +40,29 @@ namespace AZ
             assetId.m_subId = strtoul(&input[separatorIdx + 1], nullptr, 16);
 
             return assetId;
+        }
+
+        void AssetId::Reflect(AZ::ReflectContext* context)
+        {
+            if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context))
+            {
+                serializeContext->Class<Data::AssetId>()
+                    ->Version(1)
+                    ->Field("guid", &Data::AssetId::m_guid)
+                    ->Field("subId", &Data::AssetId::m_subId)
+                    ;
+            }
+
+            if (BehaviorContext* behaviorContext = azrtti_cast<BehaviorContext*>(context))
+            {
+                behaviorContext->Class<Data::AssetId>()
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                    ->Attribute(AZ::Script::Attributes::Category, "Asset")
+                    ->Attribute(AZ::Script::Attributes::Module, "asset")
+                    ->Method("IsValid", &Data::AssetId::IsValid)
+                        ->Attribute(AZ::Script::Attributes::Alias, "is_valid")
+                    ;
+            }
         }
 
         namespace AssetInternal
@@ -130,6 +154,16 @@ namespace AZ
                     return id;
                 }
 
+            }
+        }
+
+        void AssetData::Reflect(AZ::ReflectContext* context)
+        {
+            if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context))
+            {
+                serializeContext->Class<AZ::Data::AssetData>()
+                    ->Version(1)
+                    ;
             }
         }
 
@@ -294,5 +328,3 @@ namespace AZ
 
     }   // namespace Data
 }   // namespace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

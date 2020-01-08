@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #if !defined(AZCORE_EXCLUDE_ZLIB)
 
@@ -31,8 +30,8 @@ ZLib::ZLib(IAllocator* workMemAllocator)
     : m_strDeflate(NULL)
     , m_strInflate(NULL)
 {
-    m_workMemoryAllocator = workMemAllocator;
-    if (m_workMemoryAllocator == NULL)
+    m_workMemoryAllocator = workMemAllocator ? workMemAllocator->GetAllocationSource() : nullptr;
+    if (!m_workMemoryAllocator)
     {
         m_workMemoryAllocator = &AllocatorInstance<SystemAllocator>::Get();
     }
@@ -60,7 +59,7 @@ ZLib::~ZLib()
 //=========================================================================
 void* ZLib::AllocateMem(void* userData, unsigned int items, unsigned int size)
 {
-    IAllocator* allocator = reinterpret_cast<IAllocator*>(userData);
+    IAllocatorAllocate* allocator = reinterpret_cast<IAllocatorAllocate*>(userData);
     return allocator->Allocate(items * size, 4, 0, "ZLib", __FILE__, __LINE__);
 }
 
@@ -70,7 +69,7 @@ void* ZLib::AllocateMem(void* userData, unsigned int items, unsigned int size)
 //=========================================================================
 void ZLib::FreeMem(void* userData, void* address)
 {
-    IAllocator* allocator = reinterpret_cast<IAllocator*>(userData);
+    IAllocatorAllocate* allocator = reinterpret_cast<IAllocatorAllocate*>(userData);
     allocator->DeAllocate(address);
 }
 
@@ -294,5 +293,3 @@ unsigned int ZLib::Decompress(const void* compressedData, unsigned int compresse
 //////////////////////////////////////////////////////////////////////////
 
 #endif // #if !defined(AZCORE_EXCLUDE_ZLIB)
-
-#endif // #ifndef AZ_UNITY_BUILD

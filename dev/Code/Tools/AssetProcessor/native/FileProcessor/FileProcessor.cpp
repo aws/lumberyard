@@ -100,7 +100,7 @@ namespace AssetProcessor
         const ScanFolderInfo* scanFolderInfo = m_platformConfig->GetScanFolderByPath(scanFolderPath);
         if (!scanFolderInfo)
         {
-            AZ_Error(AssetProcessor::ConsoleChannel, false, "Failed to find the scan folder for file %s", filePath);
+            AZ_Error(AssetProcessor::ConsoleChannel, false, "Failed to find the scan folder for file %s", filePath.toUtf8().constData());
             return;
         }
 
@@ -109,7 +109,9 @@ namespace AssetProcessor
         file.m_fileName = relativeFileName.toUtf8().constData();
         file.m_isFolder = QFileInfo(filePath).isDir();
 
-        if (m_connection->InsertFile(file))
+        bool entryAlreadyExists;
+
+        if (m_connection->InsertFile(file, entryAlreadyExists) && !entryAlreadyExists)
         {
             AssetSystem::FileInfosNotificationMessage message;
             message.m_type = AssetSystem::FileInfosNotificationMessage::FileAdded;
@@ -146,7 +148,7 @@ namespace AssetProcessor
         const ScanFolderInfo* scanFolderInfo = m_platformConfig->GetScanFolderByPath(scanFolderPath);
         if (!scanFolderInfo)
         {
-            AZ_Error(AssetProcessor::ConsoleChannel, false, "Failed to find the scan folder for file %s", filePath);
+            AZ_Error(AssetProcessor::ConsoleChannel, false, "Failed to find the scan folder for file %s", filePath.toUtf8().constData());
             return;
         }
 
@@ -197,14 +199,14 @@ namespace AssetProcessor
 
             if (!m_platformConfig->ConvertToRelativePath(fileInfo.m_filePath, relativeFileName, scanFolderName))
             {
-                AZ_Error(AssetProcessor::ConsoleChannel, false, "Failed to convert full path to relative for file %s", fileInfo.m_filePath);
+                AZ_Error(AssetProcessor::ConsoleChannel, false, "Failed to convert full path to relative for file %s", fileInfo.m_filePath.toUtf8().constData());
                 continue;
             }
 
             const ScanFolderInfo* scanFolderInfo = m_platformConfig->GetScanFolderForFile(fileInfo.m_filePath);
             if (!scanFolderInfo)
             {
-                AZ_Error(AssetProcessor::ConsoleChannel, false, "Failed to find the scan folder for file %s", fileInfo.m_filePath);
+                AZ_Error(AssetProcessor::ConsoleChannel, false, "Failed to find the scan folder for file %s", fileInfo.m_filePath.toUtf8().constData());
                 continue;
             }
 
@@ -262,7 +264,7 @@ namespace AssetProcessor
 
         if (!m_platformConfig->ConvertToRelativePath(filePath, relativeFileName, scanFolderPath))
         {
-            AZ_Error(AssetProcessor::ConsoleChannel, false, "Failed to convert full path to relative for file %s", filePath);
+            AZ_Error(AssetProcessor::ConsoleChannel, false, "Failed to convert full path to relative for file %s", filePath.toUtf8().constData());
             return false;
         }
         return true;

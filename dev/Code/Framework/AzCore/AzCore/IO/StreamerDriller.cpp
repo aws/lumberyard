@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/IO/StreamerDriller.h>
 #include <AzCore/Math/Crc.h>
@@ -99,7 +98,7 @@ namespace AZ
             m_output->BeginTag(AZ_CRC("StreamerDriller", 0x2f27ed88));
             m_output->BeginTag(AZ_CRC("OnDeviceMounted", 0xc6bdd55e));
             m_output->Write(AZ_CRC("DeviceId", 0x383bcd03), device);
-            m_output->Write(AZ_CRC("Name", 0x5e237e06), device->GetName());
+            m_output->Write(AZ_CRC("Name", 0x5e237e06), device->GetPhysicalName());
             m_output->EndTag(AZ_CRC("OnDeviceMounted", 0xc6bdd55e));
             m_output->EndTag(AZ_CRC("StreamerDriller", 0x2f27ed88));
         }
@@ -177,7 +176,7 @@ namespace AZ
             m_output->EndTag(AZ_CRC("StreamerDriller", 0x2f27ed88));
         }
 
-        void StreamerDriller::OnAddRequest(IO::Request* request)
+        void StreamerDriller::OnAddRequest(const AZStd::shared_ptr<IO::Request>& request)
         {
             if (m_output == NULL)
             {
@@ -185,8 +184,7 @@ namespace AZ
             }
             m_output->BeginTag(AZ_CRC("StreamerDriller", 0x2f27ed88));
             m_output->BeginTag(AZ_CRC("OnAddRequest", 0xee41c96e));
-            m_output->Write(AZ_CRC("RequestId", 0x34e754a3), request);
-            m_output->Write(AZ_CRC("StreamId", 0x7597546f), request->m_stream);
+            m_output->Write(AZ_CRC("RequestId", 0x34e754a3), request.get());
             m_output->Write(AZ_CRC("Offset", 0x590acad0), request->GetStreamByteOffset());
             m_output->Write(AZ_CRC("Size", 0xf7c0246a), request->m_byteSize);
             m_output->Write(AZ_CRC("Deadline", 0xb74774f2), request->m_deadline.time_since_epoch().count());
@@ -201,7 +199,7 @@ namespace AZ
             m_output->EndTag(AZ_CRC("StreamerDriller", 0x2f27ed88));
         }
 
-        void StreamerDriller::OnCompleteRequest(IO::Request* request, IO::Request::StateType state)
+        void StreamerDriller::OnCompleteRequest(const AZStd::shared_ptr<IO::Request>& request, IO::Request::StateType state)
         {
             if (m_output == NULL)
             {
@@ -209,25 +207,25 @@ namespace AZ
             }
             m_output->BeginTag(AZ_CRC("StreamerDriller", 0x2f27ed88));
             m_output->BeginTag(AZ_CRC("OnCompleteRequest", 0x7f6b66f7));
-            m_output->Write(AZ_CRC("RequestId", 0x34e754a3), request);
+            m_output->Write(AZ_CRC("RequestId", 0x34e754a3), request.get());
             m_output->Write(AZ_CRC("State", 0xa393d2fb), state);
             m_output->WriteTimeMicrosecond(AZ_CRC("Timestamp", 0xa5d6e63e));
             m_output->EndTag(AZ_CRC("OnCompleteRequest", 0x7f6b66f7));
             m_output->EndTag(AZ_CRC("StreamerDriller", 0x2f27ed88));
         }
 
-        void StreamerDriller::OnCancelRequest(IO::Request* request)
+        void StreamerDriller::OnCancelRequest(const AZStd::shared_ptr<IO::Request>& request)
         {
             if (m_output == NULL)
             {
                 return;                     // we can have the driller running without the output (tracking mode)
             }
             m_output->BeginTag(AZ_CRC("StreamerDriller", 0x2f27ed88));
-            m_output->Write(AZ_CRC("OnCancelRequest", 0x89d4ea74), request);
+            m_output->Write(AZ_CRC("OnCancelRequest", 0x89d4ea74), request.get());
             m_output->EndTag(AZ_CRC("StreamerDriller", 0x2f27ed88));
         }
 
-        void StreamerDriller::OnRescheduleRequest(IO::Request* request, AZStd::chrono::system_clock::time_point newDeadline, IO::Request::PriorityType newPriority)
+        void StreamerDriller::OnRescheduleRequest(const AZStd::shared_ptr<IO::Request>& request, AZStd::chrono::system_clock::time_point newDeadline, IO::Request::PriorityType newPriority)
         {
             if (m_output == NULL)
             {
@@ -235,7 +233,7 @@ namespace AZ
             }
             m_output->BeginTag(AZ_CRC("StreamerDriller", 0x2f27ed88));
             m_output->BeginTag(AZ_CRC("OnRescheduleRequest", 0x883b3e85));
-            m_output->Write(AZ_CRC("RequestId", 0x34e754a3), request);
+            m_output->Write(AZ_CRC("RequestId", 0x34e754a3), request.get());
             m_output->Write(AZ_CRC("NewDeadLine", 0x184cc661), newDeadline.time_since_epoch().count());
             m_output->Write(AZ_CRC("NewPriority", 0xcdad6eb4), (char)newPriority);
             m_output->EndTag(AZ_CRC("OnRescheduleRequest", 0x883b3e85));
@@ -367,5 +365,3 @@ namespace AZ
         }
     } // namespace Debug
 } // namespace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

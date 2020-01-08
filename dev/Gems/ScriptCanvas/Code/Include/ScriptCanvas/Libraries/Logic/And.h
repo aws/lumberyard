@@ -55,8 +55,25 @@ namespace ScriptCanvas
 
                 void InitializeBooleanExpression() override
                 {
-                    AddInputDatumSlot(k_lhsName, "", AZStd::move(Data::Type::Boolean()), Datum::eOriginality::Original);
-                    AddInputDatumSlot(k_rhsName, "", AZStd::move(Data::Type::Boolean()), Datum::eOriginality::Original);
+                    {
+                        DataSlotConfiguration slotConfiguration;
+
+                        slotConfiguration.m_name = k_lhsName;
+                        slotConfiguration.SetType(Data::Type::Boolean());
+                        slotConfiguration.SetConnectionType(ConnectionType::Input);
+
+                        AddSlot(slotConfiguration);
+                    }
+
+                    {
+                        DataSlotConfiguration slotConfiguration;
+
+                        slotConfiguration.m_name = k_rhsName;
+                        slotConfiguration.SetType(Data::Type::Boolean());
+                        slotConfiguration.SetConnectionType(ConnectionType::Input);
+
+                        AddSlot(slotConfiguration);
+                    }
                 }
             };
 
@@ -81,7 +98,7 @@ namespace ScriptCanvas
                 }
                 static AZStd::vector<ContractDescriptor> GetSecondArgContractDesc() { return GetFirstArgContractDesc(); }
 
-                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
+                
             };
 #endif // #if defined(EXPRESSION_TEMPLATES_ENABLED)
         }

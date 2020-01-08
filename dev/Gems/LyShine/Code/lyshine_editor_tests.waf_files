@@ -1,0 +1,9 @@
+{
+    "auto":
+    {
+        "Tests":
+        [
+            "Tests/LyShineEditorTest.cpp"
+        ]
+    }
+}

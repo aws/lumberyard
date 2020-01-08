@@ -44,12 +44,13 @@
 #include <AzCore/std/bind/bind.h>
 #include <AzCore/std/string/string.h>
 
-#if defined(AZ_RESTRICTED_PLATFORM)
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #undef AZ_RESTRICTED_SECTION
 #define CRYSIMPLESERVER_CPP_SECTION_1 1
+#define CRYSIMPLESERVER_CPP_SECTION_2 2
 #endif
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
 #include <libproc.h>
 #include <sys/stat.h>
 #endif
@@ -109,8 +110,8 @@ SEnviropment& SEnviropment::Instance()
 
 // Shader Compilers ID
 // NOTE: Values must be in sync with CShaderSrv::GetShaderCompilerName() function in the engine side.
-const char* SEnviropment::m_Orbis_DXC = "Orbis_DXC"; // ACCEPTED_USE
-const char* SEnviropment::m_Durango_FXC = "Durango_FXC"; // ACCEPTED_USE
+const char* SEnviropment::m_Orbis_DXC = "Orbis_DXC";
+const char* SEnviropment::m_Durango_FXC = "Durango_FXC";
 const char* SEnviropment::m_D3D11_FXC = "D3D11_FXC";
 const char* SEnviropment::m_GLSL_HLSLcc = "GLSL_HLSLcc";
 const char* SEnviropment::m_METAL_HLSLcc = "METAL_HLSLcc";
@@ -121,8 +122,9 @@ void SEnviropment::InitializePlatformAttributes()
 {
     // Initialize valid Plaforms
     // NOTE: Values must be in sync with CShaderSrv::GetPlatformName() function in the engine side.
-    m_Platforms.insert("Orbis"); // ACCEPTED_USE
-    m_Platforms.insert("Durango"); // ACCEPTED_USE
+    m_Platforms.insert("Orbis");
+    m_Platforms.insert("Durango");
+    m_Platforms.insert("Nx");
     m_Platforms.insert("PC");
     m_Platforms.insert("Mac");
     m_Platforms.insert("iOS");
@@ -130,8 +132,8 @@ void SEnviropment::InitializePlatformAttributes()
 
     // Initialize valid Shader Languages
     // NOTE: Values must be in sync with GetShaderLanguageName() function in the engine side.
-    m_ShaderLanguages.insert("Orbis"); // ACCEPTED_USE
-    m_ShaderLanguages.insert("Durango"); // ACCEPTED_USE
+    m_ShaderLanguages.insert("Orbis");
+    m_ShaderLanguages.insert("Durango");
     m_ShaderLanguages.insert("D3D11");
     m_ShaderLanguages.insert("METAL");
     m_ShaderLanguages.insert("GL4");
@@ -144,8 +146,17 @@ void SEnviropment::InitializePlatformAttributes()
     
     // Initialize valid Shader Compilers ID and Executables.
     // Intentionally put a space after the executable name so that attackers can't try to change the executable name that we are going to run.
-    m_ShaderCompilersMap[m_Orbis_DXC] = "ORBIS/V030/DXOrbisShaderCompiler.exe "; // ACCEPTED_USE
-    m_ShaderCompilersMap[m_Durango_FXC] = "Durango/FXC.exe "; // ACCEPTED_USE
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#if defined(TOOLS_SUPPORT_XENIA)
+#define AZ_RESTRICTED_SECTION CRYSIMPLESERVER_CPP_SECTION_2
+#include "Xenia/CrySimpleServer_cpp_xenia.inl"
+#endif
+#if defined(TOOLS_SUPPORT_PROVO)
+#define AZ_RESTRICTED_SECTION CRYSIMPLESERVER_CPP_SECTION_2
+#include "Provo/CrySimpleServer_cpp_provo.inl"
+#endif
+#endif
+
     m_ShaderCompilersMap[m_D3D11_FXC] = "PCD3D11/v006/fxc.exe ";
     m_ShaderCompilersMap[m_GLSL_HLSLcc] = "PCGL/V006/HLSLcc ";
     m_ShaderCompilersMap[m_METAL_HLSLcc] = "PCGMETAL/HLSLcc/HLSLcc ";
@@ -173,7 +184,7 @@ bool SEnviropment::IsShaderCompilerValid( const AZStd::string& shaderCompilerID 
     bool validCompiler = (m_ShaderCompilersMap.find(shaderCompilerID) != m_ShaderCompilersMap.end());
     
     // Extra check for Mac: Only GL_LLVM_DXC and METAL_LLVM_DXC compilers are supported.
-    #if defined(AZ_PLATFORM_APPLE_OSX)
+    #if defined(AZ_PLATFORM_MAC)
         if (validCompiler &&
             shaderCompilerID != m_GLSL_LLVM_DXC &&
             shaderCompilerID != m_METAL_LLVM_DXC)
@@ -221,14 +232,14 @@ bool CopyFileOnPlatform(const char* nameOfFileToCopy, const char* copiedFileName
 {
     if (AZ::IO::SystemFile::Exists(copiedFileName) && failIfFileExists)
     {
-        AZ_Warning(0, ("File to copy to, %s, already exists."), copiedFileName);
+        AZ_Warning("CrySimpleServer", false, ("File to copy to, %s, already exists."), copiedFileName);
         return false;
     }
 
     AZ::IO::SystemFile fileToCopy;
     if (fileToCopy.Open(nameOfFileToCopy, AZ::IO::SystemFile::SF_OPEN_READ_ONLY))
     {
-        AZ_Warning(0, ("Unable to open file: %s for copying."), nameOfFileToCopy);
+        AZ_Warning("CrySimpleServer", false, ("Unable to open file: %s for copying."), nameOfFileToCopy);
         return false;
     }
 
@@ -237,7 +248,7 @@ bool CopyFileOnPlatform(const char* nameOfFileToCopy, const char* copiedFileName
     AZ::IO::SystemFile newFile;
     if (newFile.Open(copiedFileName, AZ::IO::SystemFile::SF_OPEN_WRITE_ONLY | AZ::IO::SystemFile::SF_OPEN_CREATE))
     {
-        AZ_Warning(0, ("Unable to open new file: %s for copying."), copiedFileName);
+        AZ_Warning("CrySimpleServer", false, ("Unable to open new file: %s for copying."), copiedFileName);
         return false;
     }
 
@@ -368,10 +379,16 @@ void CompileJob::Process()
                     m_pThreadData->Socket()->WaitForShutDownEvent(true);
                 }
 
-                #if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
-                    #define AZ_RESTRICTED_SECTION CRYSIMPLESERVER_CPP_SECTION_1
-                    #include "Provo/CrySimpleServer_cpp_provo.inl"
-                #endif
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+    #if defined(TOOLS_SUPPORT_XENIA)
+        #define AZ_RESTRICTED_SECTION CRYSIMPLESERVER_CPP_SECTION_1
+        #include "Xenia/CrySimpleJobCompile_cpp_xenia.inl"
+    #endif
+    #if defined(TOOLS_SUPPORT_PROVO)
+        #define AZ_RESTRICTED_SECTION CRYSIMPLESERVER_CPP_SECTION_1
+        #include "Provo/CrySimpleJobCompile_cpp_provo.inl"
+    #endif
+#endif
 
                 if (pJobType)
                 {

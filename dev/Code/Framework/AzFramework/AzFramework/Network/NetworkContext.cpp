@@ -50,11 +50,17 @@ namespace AzFramework
     {
         if (m_context->IsRemovingReflection())
         {
-            m_binding->UnregisterChunkType();
+            if (m_binding->UnregisterChunkType)
+            {
+                m_binding->UnregisterChunkType();
+            }
         }
         else
         {
-            m_binding->RegisterChunkType();
+            if (m_binding->RegisterChunkType)
+            {
+                m_binding->RegisterChunkType();
+            }
         }
     }
 
@@ -120,11 +126,10 @@ namespace AzFramework
 
     ReplicaChunkBase* NetworkContext::CreateReplicaChunk(const AZ::Uuid& typeId)
     {
-        auto it = m_classBindings.find(typeId);
+        const auto it = m_classBindings.find(typeId);
         if (it != m_classBindings.end())
         {
-            ClassDescPtr binding = it->second;
-            AZ_Assert(binding->CreateReplicaChunk, "No chunk type or fields were registered with the NetworkContext for class %s", binding->m_name);
+            const ClassDescPtr binding = it->second;
             if (binding->CreateReplicaChunk)
             {
                 ReplicaChunkDescriptor* descriptor = ReplicaChunkDescriptorTable::Get().FindReplicaChunkDescriptor(binding->m_chunkDesc.m_chunkId);
@@ -137,7 +142,16 @@ namespace AzFramework
             }
         }
 
-        AZ_Warning("NetworkContext", false, "CreateReplicaChunk could not find a binding for %s", typeId.ToString<AZStd::string>().c_str());
+        /*
+         * Special case: empty declarations such as:
+         *
+         * static void Reflect() {
+         *     ....
+         *     NetworkContext->Class<MyComponent>();
+         * }
+         *
+         * Result in no ReplicaChunks being created. It's treated as a no-op. No replication will be performed.
+         */
         return nullptr;
     }
 
@@ -155,7 +169,7 @@ namespace AzFramework
         AZ_Warning("NetworkContext", false, "DestroyReplicaChunk could not find a binding for %s", chunk->GetDescriptor()->GetChunkName());
     }
 
-    void NetworkContext::Bind(NetBindable* instance, ReplicaChunkPtr chunk)
+    void NetworkContext::Bind(NetBindable* instance, ReplicaChunkPtr chunk, NetworkContextBindMode mode)
     {
         const AZ::Uuid& typeId = instance->RTTI_GetType();
         auto it = m_classBindings.find(typeId);
@@ -171,11 +185,8 @@ namespace AzFramework
                     if (!binding->m_chunkDesc.m_external)
                     {
                         ReflectedReplicaChunkBase* refChunk = static_cast<ReflectedReplicaChunkBase*>(chunk.get());
-                        refChunk->Bind(instance);
+                        refChunk->Bind(instance, mode);
                     }
-
-                    // Bind the chunk to the NetBindable
-                    instance->SetNetworkBinding(chunk);
                 }
             }
             else

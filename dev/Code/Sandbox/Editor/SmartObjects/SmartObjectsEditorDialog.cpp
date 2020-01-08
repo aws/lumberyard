@@ -90,7 +90,6 @@ CSOLibrary* CSOLibrary::m_pInstance = NULL;
 // functor used for comparing and ordering data structures by name
 template< class T >
 struct less_name
-    : public std::binary_function < const T&, const T&, bool >
 {
     bool operator() (const T& _Left, const T& _Right) const
     {
@@ -101,7 +100,6 @@ struct less_name
 // functor used for comparing and ordering data structures by name (case insensitive)
 template< class T >
 struct less_name_no_case
-    : public std::binary_function < const T&, const T&, bool >
 {
     bool operator() (const T& _Left, const T& _Right) const
     {
@@ -1372,7 +1370,7 @@ public:
 
         const QByteArray d = data->data(QStringLiteral("x-application/x-smartobjects-rows"));
         QVector<int> rows(d.count() / sizeof(int));
-        std::copy(d.begin(), d.end(), reinterpret_cast<char*>(rows.data()));
+        AZStd::copy(d.begin(), d.end(), reinterpret_cast<char*>(rows.data()));
         const QString path = parent.data(Qt::UserRole).toString();
         for (auto i : rows)
         {
@@ -3383,7 +3381,6 @@ bool CSOLibrary::Save()
 }
 
 struct less_ptr
-    : public std::binary_function < const SmartObjectCondition*, const SmartObjectCondition*, bool >
 {
     bool operator() (const SmartObjectCondition* _Left, const SmartObjectCondition* _Right) const
     {

@@ -3,9 +3,9 @@
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-*or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+* distribution (the "License"). All use of this software is governed by the License,
+*or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 *WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
@@ -48,7 +48,7 @@ namespace SceneBuilder
         builderDescriptor.m_createJobFunction = AZStd::bind(&SceneBuilderWorker::CreateJobs, &m_sceneBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
         builderDescriptor.m_processJobFunction = AZStd::bind(&SceneBuilderWorker::ProcessJob, &m_sceneBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
 
-        builderDescriptor.m_version = 1; // bump this to rebuild everything.
+        builderDescriptor.m_version = 2; // bump this to rebuild everything.
         builderDescriptor.m_analysisFingerprint = m_sceneBuilder.GetFingerprint(); // bump this to at least re-analyze everything.
 
         m_sceneBuilder.BusConnect(builderDescriptor.m_busId);

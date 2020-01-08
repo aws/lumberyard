@@ -4071,7 +4071,7 @@ void CXConsole::ExecuteRegisteredCommand(IConsoleCmdArgs* args)
     const AzFramework::CommandResult output = entry.m_callback(input);
     if (output != AzFramework::CommandResult::Success)
     {
-        if (output == AzFramework::CommandResult::ErrorWrongNumberOfArguements)
+        if (output == AzFramework::CommandResult::ErrorWrongNumberOfArguments)
         {
             AZ_Warning("console", false, "Command does not have the right number of arguments (send = %d)", input.size());
         }

@@ -107,3 +107,37 @@ def test_NodeDelete_FileOrDir(tmpdir, mock_ctx_for_util, is_dir, is_dir_children
         test_node = mock_ctx_for_util.srcnode.make_node('to_delete.json')
         
     test_node.delete()
+
+
+def test_NodeGetBld_idequals_success(tmpdir, mock_ctx_for_util):
+    
+    # LY-98845
+    # Base case for Node.get_bld(), where we don't encounter different id(node) for the same abs path
+    check_node = mock_ctx_for_util.srcnode.make_node('Test/A/B')
+    
+    bld_node = check_node.get_bld()
+    
+    bld_node_abs = os.path.normpath(bld_node.abspath())
+    
+    expected_bld_node_abs = os.path.normpath(os.path.join(mock_ctx_for_util.bintemp_node.abspath(), 'Test', 'A', 'B'))
+    
+    assert bld_node_abs == expected_bld_node_abs
+
+
+def test_NodeGetBld_pathequals_success(tmpdir, mock_ctx_for_util):
+    
+    # LY-98845
+    # To simulate conditions for LY-98845, we need a different context that represents the same path, and replace it's bldnode
+    # with the parameterize mocked one to replicate the id's being different
+    mock_ctx_2 = unit_test.FakeContext(str(tmpdir.realpath()), generate_engine_json=False)
+    check_node = mock_ctx_for_util.srcnode.make_node('Test/A/B')
+    check_node.ctx = mock_ctx_2
+
+    bld_node = check_node.get_bld()
+
+    bld_node_abs = os.path.normpath(bld_node.abspath())
+
+    expected_bld_node_abs = os.path.normpath(os.path.join(mock_ctx_for_util.bintemp_node.abspath(), 'Test', 'A', 'B'))
+
+    assert bld_node_abs == expected_bld_node_abs
+

@@ -88,7 +88,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContextProperties)
 
     graphEntity->Activate();
 
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
 
     if (auto result = vector3NodeC->GetInput_UNIT_TEST<AZ::Vector3>("Set"))
     {
@@ -156,7 +156,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContextObjectGenericConstructor)
     Core::BehaviorContextObjectNode* vector3NodeA = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, vector3IdA);
     vector3NodeA->InitializeObject(azrtti_typeid<TestBehaviorContextObject>());
     
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
     
     if (auto result = vector3NodeA->GetInput_UNIT_TEST<TestBehaviorContextObject>("Set"))
     {
@@ -262,17 +262,17 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandlerNonEntityIdBusId)
     }
 
     graphEntity->Activate();
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);    
 
     TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, true);
     TemplateEventTestBus<AZ::Uuid>::Event(uuidBusId, &TemplateEventTest<AZ::Uuid>::GenericEvent);
     TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, false);
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);    
 
     TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, true);
     TemplateEventTestBus<AZStd::string>::Event(stringBusId, &TemplateEventTest<AZStd::string>::GenericEvent);
     TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, false);
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
 
     // string
     AZStd::string stringResultByUuid;
@@ -282,7 +282,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandlerNonEntityIdBusId)
     TemplateEventTestBus<AZ::Uuid>::EventResult(stringResultByUuid, uuidBusId, &TemplateEventTest<AZ::Uuid>::UpdateNameEvent, hello);
     TemplateEventTestBus<AZStd::string>::EventResult(stringResultByString, stringBusId, &TemplateEventTest<AZStd::string>::UpdateNameEvent, hello);
     TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, false);
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
 
     EXPECT_EQ(hello, stringResultByUuid);
     EXPECT_EQ(hello, stringResultByString);
@@ -297,7 +297,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandlerNonEntityIdBusId)
     TemplateEventTestBus<AZ::Uuid>::EventResult(vectorResultByUuid, uuidBusId, &TemplateEventTest<AZ::Uuid>::VectorCreatedEvent, sevenAteNine);
     TemplateEventTestBus<AZStd::string>::EventResult(vectorResultByString, stringBusId, &TemplateEventTest<AZStd::string>::VectorCreatedEvent, sevenAteNine);
     TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, false);
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
 
     AZStd::string vectorString = Datum(Data::Vector3Type(7, 8, 9)).ToString();
     EXPECT_EQ(sevenAteNine, vectorResultByUuid);
@@ -492,7 +492,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_ClassExposition)
 
     AZ::Entity* graphEntity = graph->GetEntity();
     graphEntity->Activate();
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
 
     if (vectorANodeVector)
     {
@@ -601,7 +601,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_ObjectTrackingByValue)
         graph->GetEntity()->Activate();
     }
 
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
 
     const AZ::u32 destroyedCount = TestBehaviorContextObject::GetDestroyedCount();
     const AZ::u32 createdCount = TestBehaviorContextObject::GetCreatedCount();
@@ -700,7 +700,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_ObjectTrackingByPointer)
         graph->GetEntity()->Activate();
     }
 
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
 
     const AZ::u32 destroyedCount = TestBehaviorContextObject::GetDestroyedCount();
     const AZ::u32 createdCount = TestBehaviorContextObject::GetCreatedCount();
@@ -799,7 +799,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_ObjectTrackingByReference)
         graph->GetEntity()->Activate();
     }
 
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
 
     const AZ::u32 destroyedCount = TestBehaviorContextObject::GetDestroyedCount();
     const AZ::u32 createdCount = TestBehaviorContextObject::GetCreatedCount();
@@ -830,8 +830,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_ObjectTrackingByReference)
 }
 
 TEST_F(ScriptCanvasTestFixture, BehaviorContext_InvalidInputByReference)
-{
-    
+{    
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
@@ -851,54 +850,31 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_InvalidInputByReference)
     const AZ::EntityId& graphEntityId = graph->GetEntityId();
     const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
 
-    AZ::EntityId startID;
-    CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
+    AZ::EntityId startNodeId;
+    CreateTestNode<Nodes::Core::Start>(graphUniqueId, startNodeId);
 
-    AZ::EntityId maxByReferenceID = CreateClassFunctionNode(graphUniqueId, "TestBehaviorContextObject", "MaxReturnByReference");
+    AZ::EntityId maxReferenceNodeId = CreateClassFunctionNode(graphUniqueId, "TestBehaviorContextObject", "MaxReturnByReference");
 
-    AZ::EntityId valueID1, valueID2, valueID3, valueID4, valueID5;
+    AZ::EntityId valueObjectNodeId;
 
-    Core::BehaviorContextObjectNode* valueNode1 = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, valueID1);
-    valueNode1->InitializeObject(azrtti_typeid<TestBehaviorContextObject>());
-    valueNode1->ModInput_UNIT_TEST<TestBehaviorContextObject>("Set")->SetValue(1);
-    EXPECT_EQ(1, valueNode1->GetInput_UNIT_TEST<TestBehaviorContextObject>("Set")->GetValue());
+    Core::BehaviorContextObjectNode* valueNode = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, valueObjectNodeId);
+    valueNode->InitializeObject(azrtti_typeid<TestBehaviorContextObject>());
+    valueNode->ModInput_UNIT_TEST<TestBehaviorContextObject>("Set")->SetValue(1);
 
-    Core::BehaviorContextObjectNode* valueNode2 = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, valueID2);
-    valueNode2->InitializeObject(azrtti_typeid<TestBehaviorContextObject>());
-    valueNode2->ModInput_UNIT_TEST<TestBehaviorContextObject>("Set")->SetValue(2);
-    EXPECT_EQ(2, valueNode2->GetInput_UNIT_TEST<TestBehaviorContextObject>("Set")->GetValue());
-
-    Core::BehaviorContextObjectNode* valueNode3 = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, valueID3);
-    valueNode3->InitializeObject(azrtti_typeid<TestBehaviorContextObject>());
-    valueNode3->ModInput_UNIT_TEST<TestBehaviorContextObject>("Set")->SetValue(3);
-    EXPECT_EQ(3, valueNode3->GetInput_UNIT_TEST<TestBehaviorContextObject>("Set")->GetValue());
-
-    Core::BehaviorContextObjectNode* valueNode4 = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, valueID4);
-    valueNode4->InitializeObject(azrtti_typeid<TestBehaviorContextObject>());
-    valueNode4->ModInput_UNIT_TEST<TestBehaviorContextObject>("Set")->SetValue(4);
-    EXPECT_EQ(4, valueNode4->GetInput_UNIT_TEST<TestBehaviorContextObject>("Set")->GetValue());
-
-    Core::BehaviorContextObjectNode* valueNode5 = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, valueID5);
-    valueNode5->InitializeObject(azrtti_typeid<TestBehaviorContextObject>());
-    valueNode5->ModInput_UNIT_TEST<TestBehaviorContextObject>("Set")->SetValue(5);
-    EXPECT_EQ(5, valueNode5->GetInput_UNIT_TEST<TestBehaviorContextObject>("Set")->GetValue());
-
-    // data
-    EXPECT_TRUE(Connect(*graph, valueID1, "Get", maxByReferenceID, "TestBehaviorContextObject: 0"));
-    // EXPECT_TRUE(Connect(*graph, valueID2, "Get", maxByReferenceID, "TestBehaviorContextObject: 1"));
-    EXPECT_TRUE(Connect(*graph, maxByReferenceID, "Result: TestBehaviorContextObject", valueID3, "Set"));
-    EXPECT_TRUE(Connect(*graph, valueID3, "Get", valueID4, "Set"));
-    EXPECT_TRUE(Connect(*graph, maxByReferenceID, "Result: TestBehaviorContextObject", valueID5, "Set"));
+    EXPECT_TRUE(Connect(*graph, valueObjectNodeId, "Get", maxReferenceNodeId, "TestBehaviorContextObject: 0"));
 
     // execution
-    EXPECT_TRUE(Connect(*graph, startID, "Out", maxByReferenceID, "In"));
+    EXPECT_TRUE(Connect(*graph, startNodeId, "Out", maxReferenceNodeId, "In"));
 
     {
+        // MaxReturnByReferenceNode is missing a an input. So this should error.
         ScopedOutputSuppression suppressOutput;
         graph->GetEntity()->Activate();
     }
 
-    EXPECT_TRUE(graph->IsInErrorState());
+    const bool expectErrors = true;
+    const bool expectIrrecoverableErrors = true;
+    ReportErrors(graph, expectErrors, expectIrrecoverableErrors);
 
     delete graph->GetEntity();
 
@@ -911,8 +887,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_InvalidInputByReference)
 }
 
 TEST_F(ScriptCanvasTestFixture, BehaviorContext_InvalidInputByValue)
-{
-    
+{    
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
@@ -932,54 +907,31 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_InvalidInputByValue)
     const AZ::EntityId& graphEntityId = graph->GetEntityId();
     const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
 
-    AZ::EntityId startID;
-    CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
+    AZ::EntityId startNodeId;
+    CreateTestNode<Nodes::Core::Start>(graphUniqueId, startNodeId);
 
-    AZ::EntityId maxByValueID = CreateClassFunctionNode(graphUniqueId, "TestBehaviorContextObject", "MaxReturnByValue");
+    AZ::EntityId maxValueNodeId = CreateClassFunctionNode(graphUniqueId, "TestBehaviorContextObject", "MaxReturnByValue");
 
-    AZ::EntityId valueID1, valueID2, valueID3, valueID4, valueID5;
+    AZ::EntityId valueObjectNodeId;
 
-    Core::BehaviorContextObjectNode* valueNode1 = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, valueID1);
-    valueNode1->InitializeObject(azrtti_typeid<TestBehaviorContextObject>());
-    valueNode1->ModInput_UNIT_TEST<TestBehaviorContextObject>("Set")->SetValue(1);
-    EXPECT_EQ(1, valueNode1->GetInput_UNIT_TEST<TestBehaviorContextObject>("Set")->GetValue());
+    Core::BehaviorContextObjectNode* valueNode = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, valueObjectNodeId);
+    valueNode->InitializeObject(azrtti_typeid<TestBehaviorContextObject>());
+    valueNode->ModInput_UNIT_TEST<TestBehaviorContextObject>("Set")->SetValue(1);
 
-    Core::BehaviorContextObjectNode* valueNode2 = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, valueID2);
-    valueNode2->InitializeObject(azrtti_typeid<TestBehaviorContextObject>());
-    valueNode2->ModInput_UNIT_TEST<TestBehaviorContextObject>("Set")->SetValue(2);
-    EXPECT_EQ(2, valueNode2->GetInput_UNIT_TEST<TestBehaviorContextObject>("Set")->GetValue());
-
-    Core::BehaviorContextObjectNode* valueNode3 = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, valueID3);
-    valueNode3->InitializeObject(azrtti_typeid<TestBehaviorContextObject>());
-    valueNode3->ModInput_UNIT_TEST<TestBehaviorContextObject>("Set")->SetValue(3);
-    EXPECT_EQ(3, valueNode3->GetInput_UNIT_TEST<TestBehaviorContextObject>("Set")->GetValue());
-
-    Core::BehaviorContextObjectNode* valueNode4 = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, valueID4);
-    valueNode4->InitializeObject(azrtti_typeid<TestBehaviorContextObject>());
-    valueNode4->ModInput_UNIT_TEST<TestBehaviorContextObject>("Set")->SetValue(4);
-    EXPECT_EQ(4, valueNode4->GetInput_UNIT_TEST<TestBehaviorContextObject>("Set")->GetValue());
-
-    Core::BehaviorContextObjectNode* valueNode5 = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, valueID5);
-    valueNode5->InitializeObject(azrtti_typeid<TestBehaviorContextObject>());
-    valueNode5->ModInput_UNIT_TEST<TestBehaviorContextObject>("Set")->SetValue(5);
-    EXPECT_EQ(5, valueNode5->GetInput_UNIT_TEST<TestBehaviorContextObject>("Set")->GetValue());
-
-    // data
-    EXPECT_TRUE(Connect(*graph, valueID1, "Get", maxByValueID, "TestBehaviorContextObject: 0"));
-    // EXPECT_TRUE(Connect(*graph, valueID2, "Get", maxByValueID, "TestBehaviorContextObject: 1"));
-    EXPECT_TRUE(Connect(*graph, maxByValueID, "Result: TestBehaviorContextObject", valueID3, "Set"));
-    EXPECT_TRUE(Connect(*graph, valueID3, "Get", valueID4, "Set"));
-    EXPECT_TRUE(Connect(*graph, maxByValueID, "Result: TestBehaviorContextObject", valueID5, "Set"));
+    EXPECT_TRUE(Connect(*graph, valueObjectNodeId, "Get", maxValueNodeId, "TestBehaviorContextObject: 0"));
 
     // execution
-    EXPECT_TRUE(Connect(*graph, startID, "Out", maxByValueID, "In"));
+    EXPECT_TRUE(Connect(*graph, startNodeId, "Out", maxValueNodeId, "In"));
 
     {
+        // MaxReturnByValue is missing a an input. So this should error.
         ScopedOutputSuppression suppressOutput;
         graph->GetEntity()->Activate();
     }
 
-    EXPECT_TRUE(graph->IsInErrorState());
+    const bool expectErrors = true;
+    const bool expectIrrecoverableErrors = true;
+    ReportErrors(graph, expectErrors, expectIrrecoverableErrors);
 
     delete graph->GetEntity();
 
@@ -1050,7 +1002,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_ScriptCanvasValueDataTypesByValu
         graph->GetEntity()->Activate();
     }
 
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);    
 
     const AZ::u32 destroyedCount = TestBehaviorContextObject::GetDestroyedCount();
     const AZ::u32 createdCount = TestBehaviorContextObject::GetCreatedCount();
@@ -1142,7 +1094,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_ScriptCanvasValueDataTypesByPoin
         graph->GetEntity()->Activate();
     }
 
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
 
     const AZ::u32 destroyedCount = TestBehaviorContextObject::GetDestroyedCount();
     const AZ::u32 createdCount = TestBehaviorContextObject::GetCreatedCount();
@@ -1234,7 +1186,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_ScriptCanvasValueDataTypesByRefe
         graph->GetEntity()->Activate();
     }
 
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
 
     const AZ::u32 destroyedCount = TestBehaviorContextObject::GetDestroyedCount();
     const AZ::u32 createdCount = TestBehaviorContextObject::GetCreatedCount();
@@ -1314,12 +1266,11 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_ScriptCanvasStringToNonAZStdStri
     EXPECT_TRUE(Connect(*graph, startId, "Out", stringViewToStringId, "In"));
 
     {
-        ScopedOutputSuppression suppressOutput;
+        //ScopedOutputSuppression suppressOutput;
         graphEntity->Activate();
     }
 
-    EXPECT_FALSE(graph->IsInErrorState());
-
+    ReportErrors(graph);    
 
     auto constCharToStringValue = resultValueNode1->GetInput_UNIT_TEST<Data::StringType>("Set");
     auto stringViewToStringValue = resultValueNode2->GetInput_UNIT_TEST<Data::StringType>("Set");
@@ -1406,11 +1357,15 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandler)
     // print (for strings, and generic event)
     AZ::EntityId printID;
     TestResult* print = CreateTestNode<TestResult>(graphUniqueId, printID);
-    print->SetText("print was un-initialized");
+    print->SetText("print was un-initialized");    
 
     AZ::EntityId print2ID;
     TestResult* print2 = CreateTestNode<TestResult>(graphUniqueId, print2ID);
     print2->SetText("print was un-initialized");
+
+    AZ::EntityId print3ID;
+    TestResult* print3 = CreateTestNode<TestResult>(graphUniqueId, print3ID);
+    print3->SetText("print was un-initialized");
 
     auto eventEntry = eventHandler->FindEvent("Event");
     EXPECT_NE(nullptr, eventEntry);
@@ -1428,8 +1383,8 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandler)
     EXPECT_NE(nullptr, eventEntry);
     EXPECT_FALSE(eventEntry->m_parameterSlotIds.empty());
     EXPECT_TRUE(graph->Connect(numberHandlerID, eventEntry->m_eventSlotId, sumID, sumNode->GetSlotId(Nodes::BinaryOperator::k_evaluateName)));
-    EXPECT_TRUE(Connect(*graph, sumID, Nodes::BinaryOperator::k_outName, printID, "In"));
-    EXPECT_TRUE(graph->Connect(numberHandlerID, eventEntry->m_parameterSlotIds[0], printID, print->GetSlotId("Value")));
+    EXPECT_TRUE(Connect(*graph, sumID, Nodes::BinaryOperator::k_outName, print3ID, "In"));
+    EXPECT_TRUE(graph->Connect(numberHandlerID, eventEntry->m_parameterSlotIds[0], print3ID, print3->GetSlotId("Value")));
     EXPECT_TRUE(graph->Connect(numberHandlerID, eventEntry->m_parameterSlotIds[0], sumID, sumNode->GetSlotId(Nodes::BinaryOperator::k_lhsName)));
     EXPECT_TRUE(graph->Connect(numberHandlerID, eventEntry->m_resultSlotId, sumID, sumNode->GetSlotId(Nodes::BinaryOperator::k_resultName)));
     EXPECT_TRUE(Connect(*graph, threeID, "Get", sumID, Nodes::BinaryOperator::k_rhsName));
@@ -1448,11 +1403,11 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandler)
     AZ::Entity* graphEntity = graph->GetEntity();
     TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, true);
     graphEntity->Activate();
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
 
     // just don't crash
     EventTestBus::Event(graphEntityID, &EventTest::Event);
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
 
     // string
     AZ::EBusAggregateResults<AZStd::string> stringResults;
@@ -1461,7 +1416,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandler)
     auto iterString = AZStd::find(stringResults.values.begin(), stringResults.values.end(), hello);
     EXPECT_NE(iterString, stringResults.values.end());
     EXPECT_EQ(print->GetText(), hello);
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
 
     // number
     AZ::EBusAggregateResults<int> numberResults;
@@ -1471,8 +1426,8 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandler)
     auto interNumber = AZStd::find(numberResults.values.begin(), numberResults.values.end(), seven);
     EXPECT_NE(interNumber, numberResults.values.end());
     AZStd::string sevenString = AZStd::string("4.000000");
-    EXPECT_EQ(print->GetText(), sevenString);
-    EXPECT_FALSE(graph->IsInErrorState());
+    EXPECT_EQ(print3->GetText(), sevenString);
+    ReportErrors(graph);
 
     // vector
     AZ::EBusAggregateResults<TestBehaviorContextObject> vectorResults;
@@ -1482,7 +1437,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandler)
     allSeven.Normalize();
     auto iterVector = AZStd::find(vectorResults.values.begin(), vectorResults.values.end(), allSeven);
     EXPECT_NE(iterVector, vectorResults.values.end());
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
     TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, false);
 
     graphEntity->Deactivate();
@@ -1580,7 +1535,7 @@ TEST_F(ScriptCanvasTestFixture, GetterSetterProperties)
         TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, true);
         graphEntity->Activate();
         TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, false);
-        EXPECT_FALSE(graph->IsInErrorState());
+        ReportErrors(graph);
         graphEntity->Deactivate();
 
         const float tolerance = 0.00001f;
@@ -1620,7 +1575,7 @@ TEST_F(ScriptCanvasTestFixture, GetterSetterProperties)
         TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, true);
         graphEntity->Activate();
         TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, false);
-        EXPECT_FALSE(graph->IsInErrorState());
+        ReportErrors(graph);
         graphEntity->Deactivate();
 
         const float tolerance = 0.01f;
@@ -1668,7 +1623,7 @@ TEST_F(ScriptCanvasTestFixture, GetterSetterProperties)
         TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, true);
         graphEntity->Activate();
         TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, false);
-        EXPECT_FALSE(graph->IsInErrorState());
+        ReportErrors(graph);
         graphEntity->Deactivate();
 
         auto testYBasisValue = testYBasisNode->GetInput_UNIT_TEST<Data::Vector4Type>("Set");

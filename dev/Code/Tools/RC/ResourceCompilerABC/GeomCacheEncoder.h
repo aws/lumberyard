@@ -21,7 +21,7 @@
 #include "StealingThreadPool.h"
 
 #include <AzCore/std/parallel/atomic.h>
-#include <AzCore/std/parallel/conditional_variable.h>
+#include <AzCore/std/parallel/condition_variable.h>
 #include <AzCore/std/parallel/mutex.h>
 
 class GeomCacheEncoder;

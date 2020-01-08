@@ -15,11 +15,12 @@
 #include <QFont>
 
 #include <GraphCanvas/Styling/definitions.h>
+#include <GraphCanvas/Editor/EditorTypes.h>
 
 Q_DECLARE_METATYPE(QFont::Style);
 Q_DECLARE_METATYPE(QFont::Capitalization);
 Q_DECLARE_METATYPE(Qt::AlignmentFlag);
 Q_DECLARE_METATYPE(Qt::PenCapStyle);
 Q_DECLARE_METATYPE(Qt::PenStyle);
-Q_DECLARE_METATYPE(GraphCanvas::Styling::Curves);
+Q_DECLARE_METATYPE(GraphCanvas::Styling::ConnectionCurveType);
 Q_DECLARE_METATYPE(GraphCanvas::Styling::PaletteStyle);

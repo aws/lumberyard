@@ -24,7 +24,7 @@ def build(bld):
     USE = ['EditorUI_QT','EditorCommon','EditorCore','AzToolsFramework']
     USE = USE + bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity'])
 
-    COMMON_DEFINES = ['SCRIPTCANVAS', 'SCRIPTCANVAS_ERRORS_ENABLED', 'AZCORE_ENABLE_MEMORY_TRACKING', 'ENABLE_EXTENDED_MATH_SUPPORT=0']
+    COMMON_DEFINES = ['SCRIPTCANVAS', 'SCRIPTCANVAS_ERRORS_ENABLED', 'ENABLE_EXTENDED_MATH_SUPPORT=0']
 ########################################################################################
     EXECUTION_NOTIFICATION_DEFINES = [
 			'SC_EXECUTION_TRACE_ENABLED' # this is REQUIRED for debugging/execution logging
@@ -43,19 +43,23 @@ def build(bld):
             'Include/ScriptCanvas/Libraries/Core/EBusEventHandler.h',
             'Include/ScriptCanvas/Libraries/Core/ExtractProperty.h',
             'Include/ScriptCanvas/Libraries/Core/ForEach.h',
+            'Include/ScriptCanvas/Libraries/Core/Repeater.h',
             'Include/ScriptCanvas/Libraries/Core/GetVariable.h',
             'Include/ScriptCanvas/Libraries/Core/SetVariable.h',
             'Include/ScriptCanvas/Libraries/Core/ScriptEventBase.h',
             'Include/ScriptCanvas/Libraries/Core/SendScriptEvent.h',
             'Include/ScriptCanvas/Libraries/Core/ReceiveScriptEvent.h',
             'Include/ScriptCanvas/Libraries/Core/Start.h',
+            'Include/ScriptCanvas/Libraries/Entity/Rotate.h',
             'Include/ScriptCanvas/Libraries/Logic/Any.h',
             'Include/ScriptCanvas/Libraries/Logic/Gate.h',
             'Include/ScriptCanvas/Libraries/Logic/Indexer.h',
             'Include/ScriptCanvas/Libraries/Logic/IsNull.h',
             'Include/ScriptCanvas/Libraries/Logic/Multiplexer.h',
             'Include/ScriptCanvas/Libraries/Logic/Once.h',
+            'Include/ScriptCanvas/Libraries/Logic/OrderedSequencer.h',
             'Include/ScriptCanvas/Libraries/Logic/Sequencer.h',
+            'Include/ScriptCanvas/Libraries/Logic/TargetedSequencer.h',
             'Include/ScriptCanvas/Libraries/Logic/WeightedRandomSequencer.h',
             'Include/ScriptCanvas/Libraries/Math/Random.h',
             'Include/ScriptCanvas/Libraries/String/Format.h',
@@ -97,6 +101,7 @@ def build(bld):
             'Include/ScriptCanvas/Libraries/Operators/Math/OperatorSub.h',
             'Include/ScriptCanvas/Libraries/Operators/Math/OperatorMul.h',
             'Include/ScriptCanvas/Libraries/Operators/Math/OperatorDiv.h',
+            'Include/ScriptCanvas/Libraries/Operators/Math/OperatorDivideByNumber.h',
             'Include/ScriptCanvas/Libraries/Operators/Math/OperatorLength.h',
             'Include/ScriptCanvas/Libraries/Operators/Math/OperatorLerp.h',
         ]
@@ -169,7 +174,10 @@ def build(bld):
         defines         = ['SCRIPTCANVAS_EDITOR'] + COMMON_DEFINES,
         export_defines  = ['SCRIPTCANVAS_ERRORS_ENABLED'],
 
-        includes        = [ 'Editor/Static/Include', 'Editor/Static/Source' ],
+        includes        = [ 'Editor/Static/Include', 
+                            'Editor/Static/Source',
+                            bld.Path('Code/CryEngine/CryCommon')
+                          ],
         export_includes = [ 'Editor/Static/Include' ],
         use             = list(USE) + ['ScriptCanvas'],
         uselib          = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS'],
@@ -218,7 +226,7 @@ def build(bld):
             vs_filter       = 'Gems/ScriptCanvas',
 
             file_list   = ['scriptcanvasgem_editor.waf_files', 'scriptcanvasgem_editor_asset.waf_files', 'scriptcanvasgem_editor_builder.waf_files'],
-            test_all_file_list = ['scriptcanvasgem_tests.waf_files'],
+            test_all_file_list = ['scriptcanvasgem_tests.waf_files', 'scriptcanvasgem_editor_tests.waf_files'],
             includes        = [ 'Include',
                                 'Include/ScriptCanvas',
                                 'Editor/Include',

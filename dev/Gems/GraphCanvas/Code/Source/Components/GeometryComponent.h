@@ -33,19 +33,6 @@ namespace GraphCanvas
     public:
         static const float IS_CLOSE_TOLERANCE;
 
-        class GeometryComponentSaveData
-            : public ComponentSaveData
-        {
-        public:
-            AZ_RTTI(GeometryComponentSaveData, "{7CC444B1-F9B3-41B5-841B-0C4F2179F111}", ComponentSaveData);
-            AZ_CLASS_ALLOCATOR(GeometryComponentSaveData, AZ::SystemAllocator, 0);
-
-            GeometryComponentSaveData();
-            ~GeometryComponentSaveData() = default;
-
-            AZ::Vector2 m_position;
-        };
-
         AZ_COMPONENT(GeometryComponent, "{DFD3FDE1-9856-41C9-AEF1-DD5B647A2B92}");
         static void Reflect(AZ::ReflectContext*);
 
@@ -98,7 +85,7 @@ namespace GraphCanvas
 
     private:
 
-        GeometryComponentSaveData m_saveData;
+        GeometrySaveData m_saveData;
         AZ::Vector2 m_oldPosition;
 
         bool m_animating;

@@ -2505,7 +2505,7 @@ void CRenderViewport::ToggleCameraObject()
 {
     if (m_viewSourceType == ViewSourceType::SequenceCamera)
     {
-        gEnv->p3DEngine->GetPostEffectBaseGroup()->SetParam("Dof_Active", 0);
+        gEnv->p3DEngine->GetPostEffectBaseGroup()->SetParam("Dof_Active", 0.0f);
         ResetToViewSourceType(ViewSourceType::LegacyCamera);
     }
     else

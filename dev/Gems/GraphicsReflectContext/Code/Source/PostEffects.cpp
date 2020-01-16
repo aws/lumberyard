@@ -38,7 +38,7 @@ namespace GraphicsReflectContext
     void PostEffects::EnableDepthOfField(float focusDistance, float FocusRange, float blurAmount, float maxCoC, float centerWeight)
     {
         I3DEngine* pEngine = gEnv->p3DEngine;
-        pEngine->GetPostEffectBaseGroup()->SetParam("Dof_User_Active", true);
+        pEngine->GetPostEffectBaseGroup()->SetParam("Dof_User_Active", 1.0f);
         pEngine->GetPostEffectBaseGroup()->SetParam("Dof_User_FocusDistance", focusDistance);
         pEngine->GetPostEffectBaseGroup()->SetParam("Dof_User_FocusRange", FocusRange);
         pEngine->GetPostEffectBaseGroup()->SetParam("Dof_User_BlurAmount", blurAmount);

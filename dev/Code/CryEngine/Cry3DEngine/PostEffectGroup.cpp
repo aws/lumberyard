@@ -437,6 +437,11 @@ void PostEffectGroupManager::CleanParameterCache()
 void PostEffectGroupManager::SyncMainWithRender()
 {
     AZ_TRACE_METHOD();
+    
+    if (gEnv->IsEditor())
+    {
+        BlendWithParameterCache();
+    }
 
     // Flip our buffers and clear
     m_fillThreadIndex = (m_fillThreadIndex + 1) & 1;

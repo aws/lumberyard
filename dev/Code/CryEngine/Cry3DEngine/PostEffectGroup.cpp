@@ -441,7 +441,7 @@ void PostEffectGroupManager::SyncMainWithRender()
     // Flip our buffers and clear
     m_fillThreadIndex = (m_fillThreadIndex + 1) & 1;
     m_groupsToggledThisFrame[m_fillThreadIndex].clear();
-    }
+    
     SyncVisitor syncVisitor;
     for (auto& param : m_paramCache)
     {

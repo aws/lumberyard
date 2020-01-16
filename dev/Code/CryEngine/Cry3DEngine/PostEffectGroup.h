@@ -102,6 +102,8 @@ public:
     IPostEffectGroup* GetGroup(const unsigned int index) override;
     const unsigned int GetGroupCount() override;
     void SyncMainWithRender() override;
+    void BlendWithParameterCache() override;
+    void CleanParameterCache();
     void Sort();
 
     // Returns a list of PostEFfectGroups that had their enabled state changed this frame

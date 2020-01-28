@@ -22,34 +22,34 @@
 #include <AzFramework/Entity/EntityContextBus.h>
 #include <AzFramework/Entity/GameEntityContextBus.h>
 
-// Text and Color Consts 
-namespace
-{
-    const char* s_OnText = "On:";
-    const char* s_ColorText = "Color:";
-
-    const ImVec4 s_NiceLabelColor = ImColor(1.0f, 0.47f, 0.12f, 1.0f);
-    const ImVec4 s_PlainLabelColor = ImColor(1.0f, 1.0f, 1.0f, 0.56f);
-    const ImVec4 s_DisplayNameDefaultColor = ImColor(1.0f, 0.0f, 1.0f, 0.9f);
-    const ImVec4 s_DisplayChildCountDefaultColor = ImColor(0.32f, 0.38f, 0.16f);
-    const ImVec4 s_DisplayDescendantCountDefaultColor = ImColor(0.32f, 0.64f, 0.38f);
-    const ImVec4 s_DisplayParentInfoDefaultColor = ImColor(0.32f, 0.55f, 1.0f);
-    const ImVec4 s_DisplayLocalPosDefaultColor = ImColor(0.0f, 0.8f, 0.12f);
-    const ImVec4 s_DisplayLocalRotationDefaultColor = ImColor(0.0f, 0.8f, 0.12f, 0.55f);
-    const ImVec4 s_DisplayWorldPosDefaultColor = ImColor(1.0f, 0.8f, 0.12f);
-    const ImVec4 s_DisplayWorldRotationDefaultColor = ImColor(1.0f, 0.8f, 0.12f, 0.55f);
-    const ImVec4 s_ComponentParamColor_Type = ImColor(1.0f, 0.0f, 1.0f, 0.9f);
-    const ImVec4 s_ComponentParamColor_Name = ImColor(1.0f, 0.8f, 0.12f);
-    const ImVec4 s_ComponentParamColor_Value = ImColor(0.32f, 1.0f, 1.0f);
-}
+#include "ImGuiColorDefines.h"
 
 namespace ImGui
 {
+    // Text and Color Consts 
+    static const char* s_OnText =           "On:";
+    static const char* s_ColorText =        "Color:";
+
+    static const ImVec4 s_DisplayNameDefaultColor =             ImColor(1.0f, 0.0f, 1.0f, 0.9f);
+    static const ImVec4 s_DisplayChildCountDefaultColor =       ImColor(0.32f, 0.38f, 0.16f);
+    static const ImVec4 s_DisplayDescendantCountDefaultColor =  ImColor(0.32f, 0.64f, 0.38f);
+    static const ImVec4 s_DisplayEntityStateDefaultColor =      ImColor(0.73f, 0.97f, 0.6f);
+    static const ImVec4 s_DisplayParentInfoDefaultColor =       ImColor(0.32f, 0.55f, 1.0f);
+    static const ImVec4 s_DisplayLocalPosDefaultColor =         ImColor(0.0f, 0.8f, 0.12f);
+    static const ImVec4 s_DisplayLocalRotationDefaultColor =    ImColor(0.0f, 0.8f, 0.12f, 0.55f);
+    static const ImVec4 s_DisplayWorldPosDefaultColor =         ImColor(1.0f, 0.8f, 0.12f);
+    static const ImVec4 s_DisplayWorldRotationDefaultColor =    ImColor(1.0f, 0.8f, 0.12f, 0.55f);
+    static const ImVec4 s_ComponentParamColor_Type =            ImColor(1.0f, 0.0f, 1.0f, 0.9f);
+    static const ImVec4 s_ComponentParamColor_Name =            ImColor(1.0f, 0.8f, 0.12f);
+    static const ImVec4 s_ComponentParamColor_Value =           ImColor(0.32f, 1.0f, 1.0f);
+
+
     ImGuiLYEntityOutliner::ImGuiLYEntityOutliner()
         : m_enabled(false)
         , m_displayName(true, s_DisplayNameDefaultColor)
         , m_displayChildCount(false, s_DisplayChildCountDefaultColor)
         , m_displayDescentdantCount(true, s_DisplayDescendantCountDefaultColor)
+        , m_displayEntityState(false, s_DisplayEntityStateDefaultColor)
         , m_displayParentInfo(false, s_DisplayParentInfoDefaultColor)
         , m_displayLocalPos(false, s_DisplayLocalPosDefaultColor)
         , m_displayLocalRotation(false, s_DisplayLocalRotationDefaultColor)
@@ -80,12 +80,287 @@ namespace ImGui
         ImGuiEntityOutlinerRequestBus::Handler::BusDisconnect();
     }
 
+    void ImGuiLYEntityOutliner::ImGuiUpdate_DrawViewOptions()
+    {
+        // Create a child to help better size the menu
+        ImGui::BeginChild("EntityOutliner_ViewOptionsMenuChild", ImVec2(580.0f, 260.0f));
+
+        // Options for view entity entries
+        ImGui::Columns(3);
+        ImGui::TextColored(m_displayName.m_color, "Display Name"); 
+        ImGui::NextColumn();
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, s_OnText); 
+        ImGui::SameLine();
+        ImGui::Checkbox("##DisplayNameCB", &m_displayName.m_enabled); 
+        ImGui::NextColumn();
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, s_ColorText);
+        ImGui::SameLine();
+        ImGui::ColorEdit4("##DisplayNameCol", reinterpret_cast<float*>(&m_displayName.m_color));
+        ImGui::NextColumn();
+
+        ImGui::TextColored(m_displayChildCount.m_color, "Display Child Count"); 
+        ImGui::NextColumn();
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, s_OnText);
+        ImGui::SameLine();
+        ImGui::Checkbox("##DisplayChildCountCB", &m_displayChildCount.m_enabled);
+        ImGui::NextColumn();
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, s_ColorText);
+        ImGui::SameLine();
+        ImGui::ColorEdit4("##DisplayChildCountCol", reinterpret_cast<float*>(&m_displayChildCount.m_color));
+        ImGui::NextColumn();
+
+        ImGui::TextColored(m_displayDescentdantCount.m_color, "Display Descendant Count");
+        ImGui::NextColumn();
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, s_OnText);
+        ImGui::SameLine();
+        ImGui::Checkbox("##DisplayDescendantCountCB", &m_displayDescentdantCount.m_enabled);
+        ImGui::NextColumn();
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, s_ColorText);
+        ImGui::SameLine();
+        ImGui::ColorEdit4("##DisplayDescendantCountCol", reinterpret_cast<float*>(&m_displayDescentdantCount.m_color));
+        ImGui::NextColumn();
+
+        ImGui::TextColored(m_displayEntityState.m_color, "Display Entity Status");
+        ImGui::NextColumn();
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, s_OnText);
+        ImGui::SameLine();
+        ImGui::Checkbox("##DisplayEntityStateCB", &m_displayEntityState.m_enabled);
+        ImGui::NextColumn();
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, s_ColorText);
+        ImGui::SameLine();
+        ImGui::ColorEdit4("##DisplayEntityStateCol", reinterpret_cast<float*>(&m_displayEntityState.m_color));
+        ImGui::NextColumn();
+
+        ImGui::TextColored(m_displayParentInfo.m_color, "Display Parent Info");
+        ImGui::NextColumn();
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, s_OnText);
+        ImGui::SameLine();
+        ImGui::Checkbox("##DisplayParentInfoCB", &m_displayParentInfo.m_enabled);
+        ImGui::NextColumn();
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, s_ColorText);
+        ImGui::SameLine(); 
+        ImGui::ColorEdit4("##DisplayParentInfoCol", reinterpret_cast<float*>(&m_displayParentInfo.m_color));
+        ImGui::NextColumn();
+
+        ImGui::TextColored(m_displayLocalPos.m_color, "Display Local Position"); 
+        ImGui::NextColumn();
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, s_OnText);
+        ImGui::SameLine();
+        ImGui::Checkbox("##DisplayLocalPosCB", &m_displayLocalPos.m_enabled);
+        ImGui::NextColumn();
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, s_ColorText);
+        ImGui::SameLine();
+        ImGui::ColorEdit4("##DisplayLocalPosCol", reinterpret_cast<float*>(&m_displayLocalPos.m_color));
+        ImGui::NextColumn();
+
+        ImGui::TextColored(m_displayLocalRotation.m_color, "Display Local Rotation");
+        ImGui::NextColumn();
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, s_OnText);
+        ImGui::SameLine();
+        ImGui::Checkbox("##DisplayLocalRotationCB", &m_displayLocalRotation.m_enabled);
+        ImGui::NextColumn();
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, s_ColorText);
+        ImGui::SameLine();
+        ImGui::ColorEdit4("##DisplayLocalRotationCol", reinterpret_cast<float*>(&m_displayLocalRotation.m_color));
+        ImGui::NextColumn();
+
+        ImGui::TextColored(m_displayWorldPos.m_color, "Display World Position"); 
+        ImGui::NextColumn();
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, s_OnText);
+        ImGui::SameLine();
+        ImGui::Checkbox("##DisplayWorldPosCB", &m_displayWorldPos.m_enabled);
+        ImGui::NextColumn();
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, s_ColorText);
+        ImGui::SameLine();
+        ImGui::ColorEdit4("##DisplayWorldPosCol", reinterpret_cast<float*>(&m_displayWorldPos.m_color));
+        ImGui::NextColumn();
+
+        ImGui::TextColored(m_displayWorldRotation.m_color, "Display World Rotation"); 
+        ImGui::NextColumn();
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, s_OnText);
+        ImGui::SameLine();
+        ImGui::Checkbox("##DisplayWorldRotationCB", &m_displayWorldRotation.m_enabled);
+        ImGui::NextColumn();
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, s_ColorText);
+        ImGui::SameLine();
+        ImGui::ColorEdit4("##DisplayWorldRotationCol", reinterpret_cast<float*>(&m_displayWorldRotation.m_color));
+
+        // Set Column positions
+        ImGui::SetColumnOffset(1, 200.0f);
+        ImGui::SetColumnOffset(2, 270.0f);
+
+        ImGui::Columns(1);
+
+        // The 3rd parameter of this Combo box HAS to match the order of ImGuiLYEntityOutliner::HierarchyUpdateType
+        ImGui::Combo("Hierarchy Update Type", reinterpret_cast<int*>(&m_hierarchyUpdateType), "Constant\0Update Tick");
+
+        // Refresh the hierarchy / display further options, based on update type
+        switch (m_hierarchyUpdateType)
+        {
+            default:
+                break;
+
+            case HierarchyUpdateType::UpdateTick:
+                // allow a slider to determine tick time
+                ImGui::SliderFloat("Update Tick Time", &m_hierarchyUpdateTickTimeTotal, 0.1f, 10.0f);
+                ImGui::SameLine();
+                ImGui::ProgressBar(m_hierarchyUpdateTickTimeCurrent / m_hierarchyUpdateTickTimeTotal);
+                break;
+        }
+
+        ImGui::EndChild(); // "EntityOutliner_ViewOptionsMenuChild"
+    }
+
+    void ImGuiLYEntityOutliner::ImGuiUpdate_DrawComponentViewSubMenu()
+    {
+        AZ::SerializeContext *serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+        if (serializeContext != nullptr)
+        {
+            ImGui::TextColored(ImGui::Colors::s_NiceLabelColor, "Open All Debug Component Views for Component:");
+            for (const AZ::TypeId& comDebugInfoEntry : m_componentDebugSortedList)
+            {
+                AZStd::string componentName("**name_not_found**");
+                const AZ::SerializeContext::ClassData* classData = serializeContext->FindClassData(comDebugInfoEntry);
+                if (classData != nullptr)
+                {
+                    componentName = classData->m_name;
+                }
+
+                // Component Name
+                if (ImGui::MenuItem(componentName.c_str()))
+                {
+                    RequestAllViewsForComponent(comDebugInfoEntry);
+                }
+            }
+        }
+    }
+
+    void ImGuiLYEntityOutliner::ImGuiUpdate_DrawAutoEnableOptions()
+    {
+        // Display/Remove Search Strings
+        if (ImGui::CollapsingHeader("Component Auto Enable Search Strings", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed))
+        {
+            ImGui::BeginChild("ComponentSearchStringList", ImVec2(400.0f, 100.0f));
+            ImGui::Columns(2);
+            AZStd::string stringToRemove = ""; // Record if we elect to remove a string in any frame. Don't do anything if it remains ""
+            for (const AZStd::string& searchString : m_autoEnableComponentSearchStrings)
+            {
+                ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, "%s", searchString.c_str());
+                ImGui::NextColumn();
+
+                if (ImGui::Button(AZStd::string::format("Remove##%s", searchString.c_str()).c_str()))
+                {
+                    stringToRemove = searchString;
+                }
+                ImGui::NextColumn();
+            }
+            if (stringToRemove != "")
+            {
+                m_autoEnableComponentSearchStrings.erase(stringToRemove);
+            }
+            ImGui::Columns(1);
+            ImGui::EndChild();
+        
+            // Add Search String
+            static char searchCharArray[128] = "";
+            ImGui::InputText("", searchCharArray, sizeof(searchCharArray));
+            ImGui::SameLine();
+            if (ImGui::Button(AZStd::string::format("Add '%s'", &searchCharArray).c_str()))
+            {
+                const AZStd::string& searchString = searchCharArray;
+                // Don't add an empty string.
+                if (searchString != "")
+                {
+                    AddAutoEnableSearchString(searchString);
+                }
+            }
+        }
+
+        AZ::SerializeContext *serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+        if (serializeContext != nullptr)
+        {
+            if (ImGui::CollapsingHeader("ImGui Registered Components", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed))
+            {
+                ImGui::BeginChild("ImGuiRegisteredComponents", ImVec2(800.0f, 200.0f));
+                ImGui::Columns(4);
+                // Column Headers
+                ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, "Component Name");
+                ImGui::NextColumn();
+                ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, "Priority");
+                ImGui::NextColumn();
+                ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, "Auto Enable");
+                ImGui::NextColumn();
+                ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, "Open All Of Type");
+                ImGui::NextColumn();
+
+                for (const AZ::TypeId& comDebugInfoEntry : m_componentDebugSortedList)
+                {
+                    AZStd::string componentName("**name_not_found**");
+                    const AZ::SerializeContext::ClassData* classData = serializeContext->FindClassData(comDebugInfoEntry);
+                    if (classData != nullptr)
+                    {
+                        componentName = classData->m_name;
+                    }
+                
+                    // Component Name
+                    ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, "%s", componentName.c_str());
+                    ImGui::NextColumn();
+
+                    // Debug Priority
+                    ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, "%d", m_componentDebugInfoMap[comDebugInfoEntry].m_priority);
+                    ImGui::NextColumn();
+
+                    // Auto Enable
+                    ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, "Set:");
+                    ImGui::SameLine();
+                    ImGui::Checkbox(AZStd::string::format("##%s", componentName.c_str()).c_str(), &m_componentDebugInfoMap[comDebugInfoEntry].m_autoLaunchEnabled);
+                    ImGui::NextColumn();
+
+                    // Open All of Type Button
+                    if (ImGui::Button(AZStd::string::format("Open All %s", componentName.c_str()).c_str()))
+                    {
+                        RequestAllViewsForComponent(comDebugInfoEntry);
+                    }
+                    ImGui::NextColumn();
+                }
+
+                // Set the Column Offsets
+                ImGui::SetColumnOffset(1, 290.0f);
+                ImGui::SetColumnOffset(2, 360.0f);
+                ImGui::SetColumnOffset(3, 455.0f);
+
+                // Turn off Columns
+                ImGui::Columns(1);
+                ImGui::EndChild();
+            }
+        }
+    }
+
     void ImGuiLYEntityOutliner::ImGuiUpdate()
     {
         if (m_enabled)
         {
-            if (ImGui::Begin("Entity Outliner", &m_enabled, ImGuiWindowFlags_HorizontalScrollbar))
+            if (ImGui::Begin("Entity Outliner", &m_enabled, ImGuiWindowFlags_MenuBar|ImGuiWindowFlags_HorizontalScrollbar|ImGuiWindowFlags_NoSavedSettings))
             {
+                if (ImGui::BeginMenuBar())
+                {
+                    if (ImGui::BeginMenu("View Options##entityOutliner"))
+                    {
+                        ImGuiUpdate_DrawViewOptions();
+
+                        ImGui::EndMenu();
+                    }
+                    if (ImGui::BeginMenu("Auto-Open Options##entityOutliner"))
+                    {
+                        ImGuiUpdate_DrawAutoEnableOptions();
+
+                        ImGui::EndMenu();
+                    }
+
+                    ImGui::EndMenuBar();
+                }
                 // Refresh the Entity Hierarchy if we are going to
                 // Refresh the hierarchy / display further options, based on update type
                 switch (m_hierarchyUpdateType)
@@ -107,64 +382,8 @@ namespace ImGui
                         break;
                 }
 
-                // See if we should refresh the entity hierarchy
-                if (ImGui::TreeNode("View Options"))
-                {
-                    // Options for view entity entries
-                    ImGui::TextColored(m_displayName.m_color, "Display Name"); ImGui::SameLine();
-                    ImGui::TextColored(s_PlainLabelColor, s_OnText); ImGui::SameLine(); ImGui::Checkbox("##DisplayNameCB", &m_displayName.m_enabled); ImGui::SameLine();
-                    ImGui::TextColored(s_PlainLabelColor, s_ColorText); ImGui::SameLine(); ImGui::ColorEdit4("##DisplayNameCol", reinterpret_cast<float*>(&m_displayName.m_color));
-
-                    ImGui::TextColored(m_displayChildCount.m_color, "Display Child Count"); ImGui::SameLine();
-                    ImGui::TextColored(s_PlainLabelColor, s_OnText); ImGui::SameLine(); ImGui::Checkbox("##DisplayChildCountCB", &m_displayChildCount.m_enabled); ImGui::SameLine();
-                    ImGui::TextColored(s_PlainLabelColor, s_ColorText); ImGui::SameLine(); ImGui::ColorEdit4("##DisplayChildCountCol", reinterpret_cast<float*>(&m_displayChildCount.m_color));
-
-                    ImGui::TextColored(m_displayDescentdantCount.m_color, "Display Descendant Count"); ImGui::SameLine();
-                    ImGui::TextColored(s_PlainLabelColor, s_OnText); ImGui::SameLine(); ImGui::Checkbox("##DisplayDescendantCountCB", &m_displayDescentdantCount.m_enabled); ImGui::SameLine();
-                    ImGui::TextColored(s_PlainLabelColor, s_ColorText); ImGui::SameLine(); ImGui::ColorEdit4("##DisplayDescendantCountCol", reinterpret_cast<float*>(&m_displayDescentdantCount.m_color));
-
-                    ImGui::TextColored(m_displayParentInfo.m_color, "Display Parent Info"); ImGui::SameLine();
-                    ImGui::TextColored(s_PlainLabelColor, s_OnText); ImGui::SameLine(); ImGui::Checkbox("##DisplayParentInfoCB", &m_displayParentInfo.m_enabled); ImGui::SameLine();
-                    ImGui::TextColored(s_PlainLabelColor, s_ColorText); ImGui::SameLine(); ImGui::ColorEdit4("##DisplayParentInfoCol", reinterpret_cast<float*>(&m_displayParentInfo.m_color));
-
-                    ImGui::TextColored(m_displayLocalPos.m_color, "Display Local Position"); ImGui::SameLine();
-                    ImGui::TextColored(s_PlainLabelColor, s_OnText); ImGui::SameLine(); ImGui::Checkbox("##DisplayLocalPosCB", &m_displayLocalPos.m_enabled); ImGui::SameLine();
-                    ImGui::TextColored(s_PlainLabelColor, s_ColorText); ImGui::SameLine(); ImGui::ColorEdit4("##DisplayLocalPosCol", reinterpret_cast<float*>(&m_displayLocalPos.m_color));
-
-                    ImGui::TextColored(m_displayLocalRotation.m_color, "Display Local Rotation"); ImGui::SameLine();
-                    ImGui::TextColored(s_PlainLabelColor, s_OnText); ImGui::SameLine(); ImGui::Checkbox("##DisplayLocalRotationCB", &m_displayLocalRotation.m_enabled); ImGui::SameLine();
-                    ImGui::TextColored(s_PlainLabelColor, s_ColorText); ImGui::SameLine(); ImGui::ColorEdit4("##DisplayLocalRotationCol", reinterpret_cast<float*>(&m_displayLocalRotation.m_color));
-
-                    ImGui::TextColored(m_displayWorldPos.m_color, "Display World Position"); ImGui::SameLine();
-                    ImGui::TextColored(s_PlainLabelColor, s_OnText); ImGui::SameLine(); ImGui::Checkbox("##DisplayWorldPosCB", &m_displayWorldPos.m_enabled); ImGui::SameLine();
-                    ImGui::TextColored(s_PlainLabelColor, s_ColorText); ImGui::SameLine(); ImGui::ColorEdit4("##DisplayWorldPosCol", reinterpret_cast<float*>(&m_displayWorldPos.m_color));
-
-                    ImGui::TextColored(m_displayWorldRotation.m_color, "Display World Rotation"); ImGui::SameLine();
-                    ImGui::TextColored(s_PlainLabelColor, s_OnText); ImGui::SameLine(); ImGui::Checkbox("##DisplayWorldRotationCB", &m_displayWorldRotation.m_enabled); ImGui::SameLine();
-                    ImGui::TextColored(s_PlainLabelColor, s_ColorText); ImGui::SameLine(); ImGui::ColorEdit4("##DisplayWorldRotationCol", reinterpret_cast<float*>(&m_displayWorldRotation.m_color));
-
-                    // The 3rd parameter of this Combo box HAS to match the order of ImGuiLYEntityOutliner::HierarchyUpdateType
-                    ImGui::Combo("Hierarchy Update Type", reinterpret_cast<int*>(&m_hierarchyUpdateType), "Constant\0Update Tick");
-
-                    // Refresh the hierarchy / display further options, based on update type
-                    switch (m_hierarchyUpdateType)
-                    {
-                        default:
-                            break;
-
-                        case HierarchyUpdateType::UpdateTick:
-                            // allow a slider to determine tick time
-                            ImGui::SliderFloat("Update Tick Time", &m_hierarchyUpdateTickTimeTotal, 0.1f, 10.0f);
-                            ImGui::SameLine();
-                            ImGui::ProgressBar(m_hierarchyUpdateTickTimeCurrent / m_hierarchyUpdateTickTimeTotal);
-                            break;
-                    }
-
-                    ImGui::TreePop(); // "View Options" menu
-                }
-
                 // Draw the entity hierarchy
-                ImGui::TextColored(s_NiceLabelColor, "Entity Count: %d   Hierarchy:", m_totalEntitiesFound);
+                ImGui::TextColored(ImGui::Colors::s_NiceLabelColor, "Entity Count: %d   Hierarchy:", m_totalEntitiesFound);
 
                 // Draw the root entity and all its decendants as a collapsable menu
                 ImGuiUpdate_RecursivelyDisplayEntityInfoAndDecendants(m_rootEntityInfo, true);
@@ -220,9 +439,9 @@ namespace ImGui
             AZ::ComponentApplicationBus::BroadcastResult(entityName, &AZ::ComponentApplicationBus::Events::GetEntityName, ent);
 
             AZStd::string windowLabel = AZStd::string::format("Entity View %s%s", entityName.c_str(), ent.ToString().c_str());
-            if (ImGui::Begin(windowLabel.c_str(), &viewWindow, ImGuiWindowFlags_HorizontalScrollbar))
+            if (ImGui::Begin(windowLabel.c_str(), &viewWindow, ImGuiWindowFlags_HorizontalScrollbar|ImGuiWindowFlags_NoSavedSettings))
             {
-                ImGui::TextColored(s_NiceLabelColor, "%s%s", entityName.c_str(), ent.ToString().c_str());
+                ImGui::TextColored(ImGui::Colors::s_NiceLabelColor, "%s%s", entityName.c_str(), ent.ToString().c_str());
 
                 // Draw the same thing that is in the full hierarchy
                 ImGuiUpdate_RecursivelyDisplayEntityInfoAndDecendants(m_entityIdToInfoNodePtrMap[ent], false, false, true, true, false, true);
@@ -244,7 +463,7 @@ namespace ImGui
         {
             AZStd::string componentName("**name_not_found**");
             AZ::SerializeContext *serializeContext = nullptr;
-            EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
+            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
             if (serializeContext != nullptr)
             {
                 const AZ::SerializeContext::ClassData* classData = serializeContext->FindClassData(entCom.second);
@@ -253,17 +472,24 @@ namespace ImGui
                     componentName = classData->m_name;
                 }
             }
-
+            
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, ImVec2(250.0f, 200.0f));
             AZStd::string windowLabel = AZStd::string::format("Component View - %s - on Entity %s%s", componentName.c_str(), entity->GetName().c_str(), entCom.first.ToString().c_str());
-            if (ImGui::Begin(windowLabel.c_str(), &viewWindow, ImGuiWindowFlags_HorizontalScrollbar))
-            {
-                ImGui::TextColored(s_NiceLabelColor, windowLabel.c_str() );
 
+            ImGuiWindowFlags flags = ImGuiWindowFlags_HorizontalScrollbar|ImGuiWindowFlags_NoSavedSettings;
+            if (m_componentDebugInfoMap[entCom.second].m_menuBarEnabled)
+            {
+                flags |= ImGuiWindowFlags_MenuBar;
+            }
+
+            if (ImGui::Begin(windowLabel.c_str(), &viewWindow, flags))
+            {
                 // Attempt to draw any debug information for this component
                 ImGuiUpdateDebugComponentListenerBus::Event(entCom, &ImGuiUpdateDebugComponentListenerBus::Events::OnImGuiDebugLYComponentUpdate);
             }
 
             ImGui::End();
+            ImGui::PopStyleVar();
         }
 
         return viewWindow;
@@ -320,7 +546,7 @@ namespace ImGui
             }
             else if (!justDrawChildren)
             {
-                ImGui::TextColored(s_PlainLabelColor, "->"); ImGui::SameLine();
+                ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, "->"); ImGui::SameLine();
                 ImGui::Text(childTreeNodeStr.c_str());
                 ImGuiUpdate_RecursivelyDisplayEntityInfoAndDecendants_DrawDisplayOptions(node, drawInspectButton, drawTargetButton, drawDebugButton, sameLine, drawComponents);
             }
@@ -368,8 +594,8 @@ namespace ImGui
                 const AZStd::string& targetLabel = AZStd::string::format("View##%s", node->m_entityId.ToString().c_str());
                 if (ImGui::SmallButton(targetLabel.c_str()))
                 {
-                    // Send EBUS event out to Taret an Entity. Up to game code to implement.
-                    EBUS_EVENT(ImGuiEntityOutlinerNotifcationBus, OnImGuiEntityOutlinerTarget, node->m_entityId);
+                    // Send EBUS event out to Target an Entity. Up to game code to implement.
+                    ImGuiEntityOutlinerNotifcationBus::Broadcast(&IImGuiEntityOutlinerNotifcations::OnImGuiEntityOutlinerTarget, node->m_entityId);
                 }
             }
 
@@ -394,7 +620,7 @@ namespace ImGui
                 {
                     ImGui::SameLine();
                 }
-                ImGui::TextColored(m_displayChildCount.m_color, "children: %lu", (long unsigned int)node->m_children.size());
+                ImGui::TextColored(m_displayChildCount.m_color, "children: %zu", node->m_children.size());
             }
 
             // Descendant Entity Count
@@ -405,6 +631,60 @@ namespace ImGui
                     ImGui::SameLine();
                 }
                 ImGui::TextColored(m_displayDescentdantCount.m_color, "descendants: %d", node->m_descendantCount);
+            }
+
+            // Entity State
+            if (m_displayEntityState.m_enabled)
+            {
+                if (sameLine)
+                {
+                    ImGui::SameLine();
+                }
+
+                AZ::Entity* entity(nullptr);
+                AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, node->m_entityId);
+                
+                AZStd::string stateString;
+                
+                if (entity == nullptr)
+                {
+                    stateString = "*invalid_entity_found*";
+                }
+                else
+                {
+                    switch (entity->GetState())
+                    {
+                        default:
+                            stateString = "*unhandled_entity_state_found*";
+                            break;
+
+                        case AZ::Entity::State::ES_ACTIVATING:
+                            stateString = "ACTIVATING";
+                            break;
+
+                        case AZ::Entity::State::ES_ACTIVE:
+                            stateString = "ACTIVE";
+                            break;
+
+                        case AZ::Entity::State::ES_CONSTRUCTED:
+                            stateString = "CONSTRUCTED";
+                            break;
+
+                        case AZ::Entity::State::ES_DEACTIVATING:
+                            stateString = "DEACTIVATING";
+                            break;
+
+                        case AZ::Entity::State::ES_INIT:
+                            stateString = "INIT";
+                            break;
+
+                        case AZ::Entity::State::ES_INITIALIZING:
+                            stateString = "INITIALIZING";
+                            break;
+                    }
+                }
+
+                ImGui::TextColored(m_displayEntityState.m_color, "EntityState: %s", stateString.c_str());
             }
 
             // Parent Entity Information
@@ -523,7 +803,7 @@ namespace ImGui
                                 if (ImGui::TreeNode(uiLabel.c_str(), uiLabel.c_str()))
                                 {
                                     AZ::SerializeContext *serializeContext = nullptr;
-                                    EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
+                                    AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
                                     serializeContext->EnumerateObject(const_cast<AZ::Component *>(component),
                                         // beginElemCB
                                         [this](void *instance, const AZ::SerializeContext::ClassData *classData, const AZ::SerializeContext::ClassElement *classElement) -> bool
@@ -639,7 +919,7 @@ namespace ImGui
         ImGui::SameLine();
         ImGui::TextColored(s_ComponentParamColor_Name, "\"%s\"", classElement->m_name);
         ImGui::SameLine();
-        ImGui::TextColored(s_PlainLabelColor, "(0x%llX)", reinterpret_cast<AZ::u64>(instance));
+        ImGui::TextColored(ImGui::Colors::s_PlainLabelColor, "(0x%llX)", reinterpret_cast<AZ::u64>(instance));
         if (!value.empty())
         {
             ImGui::SameLine();
@@ -756,7 +1036,7 @@ namespace ImGui
             const AZ::Entity::ComponentArrayType& components = entity->GetComponents();
             for (auto c : components)
             {
-                int pri = GetComponentDebugPriority(c->RTTI_GetType());
+                int pri = ComponentHasDebug(c->RTTI_GetType()) ? m_componentDebugInfoMap[c->RTTI_GetType()].m_priority : -1;
                 if (pri > highestPriority)
                 {
                     highestPriority = pri;
@@ -823,10 +1103,38 @@ namespace ImGui
     {
         m_entitiesToView.insert(entity);
     }
+    
+    void ImGuiLYEntityOutliner::RemoveEntityView(AZ::EntityId entity)
+    {
+        m_entitiesToView.erase(entity);
+    }
 
     void ImGuiLYEntityOutliner::RequestComponentView(ImGuiEntComponentId component)
     {
         m_componentsToView.insert(component);
+    }
+
+    void ImGuiLYEntityOutliner::RemoveComponentView(ImGuiEntComponentId component)
+    {
+        m_componentsToView.erase(component);
+    }
+
+    void ImGuiLYEntityOutliner::RequestAllViewsForComponent(const AZ::TypeId& comType)
+    {
+        // To do this, we want to iterate through all component views connected to the bus
+        ImGui::ImGuiUpdateDebugComponentListenerBus::EnumerateHandlers([&comType, this](ImGui::IImGuiUpdateDebugComponentListener* imGuiComListener)
+        {
+            if (AZ::Component* com = azrtti_cast<AZ::Component*>(imGuiComListener))
+            {
+                // If we found a Handler of this component type, open up the component view!
+                if (azrtti_istypeof(comType, com))
+                {
+                    ImGui::ImGuiEntComponentId id(com->GetEntityId(), comType);
+                    RequestComponentView(id);
+                }
+            }
+            return true;
+        });
     }
     
     void ImGuiLYEntityOutliner::EnableTargetViewMode(bool enabled)
@@ -834,52 +1142,86 @@ namespace ImGui
         m_drawTargetViewButton = enabled;
     }
 
-    int ImGuiLYEntityOutliner::GetComponentDebugPriority(const AZ::TypeId& comType)
+    void ImGuiLYEntityOutliner::SetEnabled(bool enabled)
     {
-        auto foundCP = AZStd::find_if(m_componentDebugPriorities.begin(), m_componentDebugPriorities.end(), [comType](const ComponentPriority &cp) -> bool { return cp.first == comType; });
-        if (foundCP != m_componentDebugPriorities.end())
-        {
-            return (*foundCP).second;
-        }
+        m_enabled = enabled;
+    }
 
-        // return invalid / low priority
-        return -1;
+    void ImGuiLYEntityOutliner::AddAutoEnableSearchString(const AZStd::string& searchString)
+    {
+        // Copy off the string and to_lower it
+        AZStd::string stringToAdd = searchString;
+        AZStd::to_lower(stringToAdd.begin(), stringToAdd.end());
+
+        // Insert the lower-cased string into our set
+        m_autoEnableComponentSearchStrings.insert(stringToAdd);
+
+        RefreshAutoEnableBasedOnSearchStrings();
+    }
+
+    void ImGuiLYEntityOutliner::RefreshAutoEnableBasedOnSearchStrings()
+    {
+        AZ::SerializeContext *serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+        if (serializeContext != nullptr)
+        {
+            // Iterate through the auto Enable set and flick on Component debugs
+            for (AZ::TypeId& componentDebugInfoEntry : m_componentDebugSortedList)
+            {
+                // We are only really checking to add components, so if we are already added, then move on!
+                if (!m_componentDebugInfoMap[componentDebugInfoEntry].m_autoLaunchEnabled)
+                {
+                    AZStd::string componentName("**name_not_found**");
+                    const AZ::SerializeContext::ClassData* classData = serializeContext->FindClassData(componentDebugInfoEntry);
+                    if (classData != nullptr)
+                    {
+                        componentName = classData->m_name;
+                        AZStd::to_lower(componentName.begin(), componentName.end());
+                        // Loop through the known Debugable components and see if we find our search string! If so, flick on autoLaunch
+                        for (const AZStd::string& searchString : m_autoEnableComponentSearchStrings)
+                        {
+                            if (componentName.find(searchString) != AZStd::string::npos)
+                            {
+                                m_componentDebugInfoMap[componentDebugInfoEntry].m_autoLaunchEnabled = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     bool ImGuiLYEntityOutliner::ComponentHasDebug(const AZ::TypeId& comType)
     {
-        auto foundCP = AZStd::find_if(m_componentDebugPriorities.begin(), m_componentDebugPriorities.end(), [comType](const ComponentPriority &cp) -> bool { return cp.first == comType; });
-        return (foundCP != m_componentDebugPriorities.end());
+        return m_componentDebugInfoMap.find(comType) != m_componentDebugInfoMap.end();
     }
 
-    AZ::TypeId ImGuiLYEntityOutliner::GetHighestPriorityDebugComponent()
-    {
-        // The list is sorted at insert time, so if we have any entires, the highest priority one is the one at front.
-        if (m_componentDebugPriorities.size() > 0)
-        {
-            return m_componentDebugPriorities[0].first;
-        }
-
-        // else return a blank / invalid type
-        return AZ::TypeId();
-    }
-
-
-    void ImGuiLYEntityOutliner::EnableComponentDebug(const AZ::TypeId& comType, int priority /*= 1*/)
+    void ImGuiLYEntityOutliner::EnableComponentDebug(const AZ::TypeId& comType, int priority /*= 1*/, bool enableMenuBar /*= false*/)
     {
         // if not found, add to vector and sort on priorities!
         if (!ComponentHasDebug(comType))
         {
             // Add to the vector
-            ComponentPriority cp(comType, priority);
-            m_componentDebugPriorities.push_back(cp);
+            ComponentDebugInfo debugInfo(priority, enableMenuBar, false);
+            m_componentDebugSortedList.push_back(comType); // Add the entry to a Vector for 1) Constant Iteration, and 2) Ordering and Sorting
+            m_componentDebugInfoMap[comType] = debugInfo; // Add the entry to a Map for quick access if needed per frame
 
-            // Sort the Vector
-            static auto sortByComponentPriority = [](const ComponentPriority& cp1, const ComponentPriority& cp2)
+            // Sort the list
+            static auto sortByComponentPriority = [this](const AZ::TypeId& type1, const AZ::TypeId& type2)
             {
-                return cp1.second > cp2.second;
-            };
-            AZStd::sort(m_componentDebugPriorities.begin(), m_componentDebugPriorities.end(), sortByComponentPriority);
+                return m_componentDebugInfoMap[type1].m_priority > m_componentDebugInfoMap[type2].m_priority;
+            };            
+            m_componentDebugSortedList.sort(sortByComponentPriority);
+
+            // Loop through the Search Strings and see if we should enable any components
+            RefreshAutoEnableBasedOnSearchStrings();
+        }
+
+        // regardless of if this is a new or existing component debug, this call signifies a new Connection has likely been made
+        //  and thus, a new ImGui Component Debug Panel to display. Check here for the Debug Auto Enable Component flag for this component type
+        if (m_componentDebugInfoMap[comType].m_autoLaunchEnabled)
+        {
+            RequestAllViewsForComponent(comType);
         }
     }
 } // namespace ImGui

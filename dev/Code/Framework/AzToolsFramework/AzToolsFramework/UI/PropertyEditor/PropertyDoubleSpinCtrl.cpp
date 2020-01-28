@@ -70,8 +70,8 @@ namespace AzToolsFramework
 
     void PropertyDoubleSpinCtrl::setValue(double value)
     {
-
         value = AZ::ClampIfCloseMag(value, double(round(value)));
+
         bool notifyLater = false;
         m_pSpinBox->blockSignals(true);
 
@@ -87,10 +87,12 @@ namespace AzToolsFramework
             notifyLater = true;
         }
 
+        const double oldValue = m_pSpinBox->value();
         m_pSpinBox->setValue(value);
         m_pSpinBox->blockSignals(false);
 
-        if (notifyLater)
+        //the value didn't change, so don't send a notify
+        if (!AZ::ClampIfCloseMag(value, oldValue) && notifyLater)
         {
             float newValue = static_cast<float>(m_pSpinBox->value());
             // queue an invocation of value changed next tick after everything is good.)

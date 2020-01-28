@@ -857,7 +857,7 @@ SDirEntryOpen* CResFile::mfOpenEntry(SDirEntry* de)
     }
     pOE = &(*it);
     pOE->curOffset = 0;
-    //assert(pOE->pData);
+    assert(pOE->pData);
     //SAFE_DELETE_ARRAY(pOE->pData);
 
     return pOE;
@@ -1828,7 +1828,7 @@ int CResFile::mfFlush(bool bOptimise)
         SDirEntry* de = &m_Dir[i];
         if (de->offset < 0)
         {
-            //assert(bOptimise);
+            assert(bOptimise);
             assert(de->flags & RF_NOTSAVED);
             bool bFound = false;
             for (j = 0; j < m_Dir.size(); j++)
@@ -1869,7 +1869,7 @@ int CResFile::mfFlush(bool bOptimise)
     for (i = 0; i < nFiles; i++)
     {
         SDirEntry* de = &m_Dir[i];
-        //assert(de->offset >= 0);
+        assert(de->offset >= 0);
         if (de->flags & RF_NOTSAVED)
         {
             SDirEntryOpen* pOE = mfGetOpenEntry(de);

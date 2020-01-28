@@ -37,6 +37,8 @@
         #include "Xenia/WinBase_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/WinBase_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/WinBase_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -449,6 +451,8 @@ long long _atoi64(const char* str)
         #include "Xenia/WinBase_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/WinBase_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/WinBase_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -596,6 +600,8 @@ void GlobalMemoryStatus(LPMEMORYSTATUS lpmem)
         #include "Xenia/WinBase_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/WinBase_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/WinBase_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -848,7 +854,7 @@ const int comparePathNames(const char* cpFirst, const char* cpSecond, unsigned i
     return memicmp(first.c_str(), second.c_str(), length);
 }
 
-#if defined(LINUX) || defined(APPLE)
+#if defined(LINUX) || defined(APPLE) || defined(DEFINE_FIX_ONE_PATH_ELEMENT)
 static bool FixOnePathElement(char* path)
 {
     if (*path == '\0')
@@ -935,6 +941,8 @@ static bool FixOnePathElement(char* path)
         #include "Xenia/WinBase_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/WinBase_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/WinBase_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -987,6 +995,8 @@ DWORD Sleep(DWORD dwMilliseconds)
         #include "Xenia/WinBase_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/WinBase_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/WinBase_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1163,6 +1173,8 @@ void CryLowLatencySleep(unsigned int dwMilliseconds)
         #include "Xenia/WinBase_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/WinBase_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/WinBase_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1338,7 +1350,7 @@ short CryGetAsyncKeyState(int vKey)
     return 0;
 }
 
-#if defined(LINUX) || defined(APPLE)
+#if defined(LINUX) || defined(APPLE) || defined(DEFINE_CRY_INTERLOCKED_INCREMENT)
 //[K01]: http://www.memoryhole.net/kyle/2007/05/atomic_incrementing.html
 //http://forums.devx.com/archive/index.php/t-160558.html
 //////////////////////////////////////////////////////////////////////////
@@ -1457,12 +1469,11 @@ void CryDebugBreak()
 // WinAPI debug functions.
 DLL_EXPORT void OutputDebugString(const char* outputString)
 {
-#ifdef _DEBUG
-    // There is no such thing as a debug console on XCode
-    fprintf(stderr, "debug: %s\n", outputString);
+#if !defined(_RELEASE)
+    // Emulates dev tools output in Xcode and cmd line launch with idevicedebug.
+    fprintf(stdout, "%s", outputString);
 #endif
 }
-
 
 DLL_EXPORT void DebugBreak()
 {
@@ -1472,7 +1483,7 @@ DLL_EXPORT void DebugBreak()
 #endif
 
 // This code does not have a long life span and will be replaced soon
-#if defined(APPLE) || defined(LINUX)
+#if defined(APPLE) || defined(LINUX) || defined(DEFINE_LEGACY_CRY_FILE_OPERATIONS)
 
 typedef DIR* FS_DIR_TYPE;
 typedef dirent FS_DIRENT_TYPE;
@@ -1613,7 +1624,7 @@ const bool GetFilenameNoCase
         name = pAdjustedFilename;
     }
 
-#if !defined(LINUX) && !defined(APPLE)      // fix the parent path anyhow.
+#if !defined(LINUX) && !defined(APPLE) && !defined(DEFINE_SKIP_WILDCARD_CHECK)      // fix the parent path anyhow.
     // Check for wildcards. We'll always return true if the specified filename is
     // a wildcard pattern.
     if (strchr(name, '*') || strchr(name, '?'))

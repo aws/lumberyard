@@ -67,11 +67,23 @@ namespace LumberyardLauncher
         ErrCrySystemLib,        //!< Failed to load required CrySystem library
         ErrCrySystemInterface,  //!< Failed to create the CrySystem interface
         ErrCryEnvironment,      //!< Failed to initialize the CryEngine environment
+        ErrUnitTestFailure,     //!< In Unit Test mode, one or more of the unit tests failed.
+        ErrUnitTestNotSupported,//!< In Unit Test mode is not supported in its current configuration
     };
 
     const char* GetReturnCodeString(ReturnCode code);
 
     //! The main entry point for all lumberyard launchers
     ReturnCode Run(const PlatformMainInfo& mainInfo = PlatformMainInfo());
+
+#if AZ_TESTS_ENABLED
+    /// Launch Unit Tests for modules that are related to the libraries that are involved with the current game project
+    ///
+    /// @param baseExePath     The path of where the executable is being run from in order to resolve the dynamic modules for testing
+    /// @param argc            The count of arguments from the command line to pass to the unit test launcher and individual unit test modules
+    /// @param argv            The arguments to process and pass down to the individual unit test modules
+    /// @return                The ReturnCode results from the unit test launch call
+    ReturnCode RunUnitTests(const char* baseExePath, int argc, char *argv[]);
+#endif // AZ_TESTS_ENABLED
 }
 

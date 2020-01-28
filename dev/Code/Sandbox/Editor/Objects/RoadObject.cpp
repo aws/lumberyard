@@ -18,7 +18,11 @@
 #include "RoadObject.h"
 #include "RoadPanel.h"
 #include "Viewport.h"
+
+#ifdef LY_TERRAIN_EDITOR
 #include "Terrain/Heightmap.h"
+#endif //#ifdef LY_TERRAIN_EDITOR
+
 #include "Material/Material.h"
 #include "../VegetationMap.h"
 #include "../VegetationObject.h"
@@ -546,8 +550,13 @@ void CRoadObject::AlignHeightMap()
         GetIEditor()->BeginUndo();
     }
 
+#ifdef LY_TERRAIN_EDITOR
     CHeightmap* heightmap = GetIEditor()->GetHeightmap();
     int unitSize = heightmap->GetUnitSize();
+#else
+    int unitSize = GetIEditor()->Get3DEngine()->GetHeightMapUnitSize();
+#endif //#ifdef LY_TERRAIN_EDITOR
+
     const Matrix34& wtm = GetWorldTM();
 
     int minx = 0, miny = 0, maxx = 0, maxy = 0;
@@ -601,12 +610,21 @@ void CRoadObject::AlignHeightMap()
             fmaxy = max(fmaxy, p2.y);
         }
 
+#ifdef LY_TERRAIN_EDITOR
         heightmap->RecordUndo(int(fminy / unitSize) - 1, int(fminx / unitSize) - 1, int(fmaxy / unitSize) + unitSize - int(fminy / unitSize) + 1, int(fmaxx / unitSize) + unitSize - int(fminx / unitSize) + 1);
 
         // Note: Heightmap is rotated compared to world coordinates.
         for (int ty = int(fminx / unitSize); ty <= int(fmaxx / unitSize) + unitSize && ty < heightmap->GetHeight(); ++ty)
         {
             for (int tx = int(fminy / unitSize); tx <= int(fmaxy / unitSize) + unitSize && tx < heightmap->GetWidth(); ++tx)
+#else
+        // Note: Heightmap is rotated compared to world coordinates.
+        int heightMapHeight = GetIEditor()->Get3DEngine()->GetTerrainSize() / GetIEditor()->Get3DEngine()->GetHeightMapUnitSize();
+        int heightMapWidth = heightMapHeight;
+        for (int ty = int(fminx / unitSize); ty <= int(fmaxx / unitSize) + unitSize && ty < heightMapHeight; ++ty)
+        {
+            for (int tx = int(fminy / unitSize); tx <= int(fmaxy / unitSize) + unitSize && tx < heightMapWidth; ++tx)
+#endif //#ifdef LY_TERRAIN_EDITOR
             {
                 int x = ty * unitSize;
                 int y = tx * unitSize;
@@ -731,11 +749,18 @@ void CRoadObject::AlignHeightMap()
                             //continue;
                             float kof = (length - (fWidth / 2 + 0.5 * unitSize)) / mv_borderWidth;
                             kof = 1.0f - (cos(kof * 3.141593f) + 1.0f) / 2;
+#ifdef LY_TERRAIN_EDITOR
                             float z1 = heightmap->GetXY(tx, ty);
+#else
+                            //Please note we are using x and y, instead of tx, ty.
+                            float z1 = GetIEditor()->Get3DEngine()->GetTerrainZ(x, y);
+#endif //#ifdef LY_TERRAIN_EDITOR
                             z = kof * z1 + (1.0f - kof) * pos.z;
                         }
 
+#ifdef LY_TERRAIN_EDITOR
                         heightmap->SetXY(tx, ty, clamp_tpl(z, 0.0f, heightmap->GetMaxHeight()));
+#endif
 
                         if (!bIsInitMinMax)
                         {
@@ -768,6 +793,7 @@ void CRoadObject::AlignHeightMap()
         //break;
     }
 
+#ifdef LY_TERRAIN_EDITOR
     int w = maxx - minx;
     if (w < maxy - miny)
     {
@@ -779,6 +805,7 @@ void CRoadObject::AlignHeightMap()
     {
         GetIEditor()->AcceptUndo("Heightmap Aligning");
     }
+#endif //#ifdef LY_TERRAIN_EDITOR
 
     SetRoadSectors();
 }

@@ -9,9 +9,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
-from waflib import Context, Utils, Errors
+from waflib import Configure, Context, Utils, Errors, Node
 from waflib.TaskGen import feature, after_method
-from waflib.Configure import conf, Logs
+from waflib.Configure import ConfigurationContext, conf, Logs
 from waflib.Errors import ConfigurationError, WafError
 
 from waf_branch_spec import BINTEMP_CACHE_3RD_PARTY
@@ -35,11 +35,8 @@ ALIAS_SEARCH_PATTERN = re.compile(r'(\$\{([\w]*)})')
 # Map platforms to their short version names in 3rd party
 PLATFORM_TO_3RD_PARTY_SUBPATH = {
                                     # win_x64 host platform
-                                    'win_x64_vs2013'     : 'win_x64/vc120',
-                                    'win_x64_vs2015'     : 'win_x64/vc140',
                                     'win_x64_clang'      : 'win_x64/vc140',
                                     'win_x64_vs2017'     : 'win_x64/vc140',  # Not an error, VS2017 links with VS2015 binaries
-                                    'android_armv7_clang': 'win_x64/android_ndk_r15/android-19/armeabi-v7a/clang-3.8',
                                     'android_armv8_clang': 'win_x64/android_ndk_r15/android-21/arm64-v8a/clang-3.8',
 
                                     # osx host platform
@@ -53,10 +50,17 @@ PLATFORM_TO_3RD_PARTY_SUBPATH = {
 CONFIGURATION_TO_3RD_PARTY_NAME = {'debug'  : 'debug',
                                    'profile': 'release',
                                    'release': 'release'}
-								   
+
 CONFIG_FILE_SETUP_ASSISTANT_CONFIG = "SetupAssistantConfig.json"
 CONFIG_SETUP_ASSISTANT_USER_PREF = "SetupAssistantUserPreferences.ini"
 
+
+@conf
+def get_platform_to_3rd_party_subpath(ctx):
+    ctx.add_restricted_3rd_party_subpaths(PLATFORM_TO_3RD_PARTY_SUBPATH)
+    return PLATFORM_TO_3RD_PARTY_SUBPATH
+    
+    
 def trim_lib_name(platform, lib_name):
     """
     Trim the libname if it meets certain platform criteria
@@ -65,6 +69,8 @@ def trim_lib_name(platform, lib_name):
     :return:
     """
     if platform.startswith('win_x64'):
+        return lib_name
+    if platform.startswith('xenia'):
         return lib_name
     if not lib_name.startswith('lib'):
         return lib_name
@@ -79,9 +85,9 @@ def get_third_party_platform_name(ctx, waf_platform_key):
     :param waf_platform_key:    The waf platform key
     :return:
     """
-    if waf_platform_key not in PLATFORM_TO_3RD_PARTY_SUBPATH:
+    if waf_platform_key not in ctx.get_platform_to_3rd_party_subpath():
         ctx.fatal('Platform {} does not have a mapped sub path for 3rd Party Static Libraries in {}/wscript'.format(waf_platform_key, ctx.path.abspath()))
-    return PLATFORM_TO_3RD_PARTY_SUBPATH[waf_platform_key]
+    return ctx.get_platform_to_3rd_party_subpath()[waf_platform_key]
 
 
 def get_third_party_configuration_name(ctx, waf_configuration_key):
@@ -162,6 +168,30 @@ CACHE_JSON_MODEL_AND_ALIAS_MAP = {}
 # Keep a cache of the 3rd party uselibs mappings to a tuple of the config file and the alias root map that applies to it
 CONFIGURED_3RD_PARTY_USELIBS = {}
 
+
+@conf
+def get_platform_folder_to_keyword_map(ctx):
+    """
+    Get the cached map of platforms to their PAL platform folder and keyword, so we can
+    attempt to search for platform-specific 3rd party fragments to combine with the input config file
+    :param ctx: Context
+    :return: Map of platform names to their keyword
+    """
+    try:
+        return ctx.platform_folder_to_keyword_map
+    except AttributeError:
+        working_map = {}
+        target_platforms = ctx.get_all_target_platforms(apply_valid_platform_filter=False)
+        for target_platform in target_platforms:
+            assert 'platform_folder' in target_platform.attributes
+            assert 'platform_keyword' in target_platform.attributes
+            platform_folder = target_platform.attributes['platform_folder']
+            platform_keyword = target_platform.attributes['platform_keyword']
+            working_map[platform_folder] = platform_keyword
+        ctx.platform_folder_to_keyword_map = working_map
+        return ctx.platform_folder_to_keyword_map
+
+
 @conf
 def get_3rd_party_config_record(ctx, lib_config_file):
     """
@@ -177,6 +207,54 @@ def get_3rd_party_config_record(ctx, lib_config_file):
 
     lib_info = ctx.parse_json_file(lib_config_file)
     assert "name" in lib_info
+    
+    platform_folder_to_keyword_map = ctx.get_platform_folder_to_keyword_map()
+
+    config_file_name = lib_config_file.name
+    file_base_name, file_ext = os.path.splitext(config_file_name)
+    platform_base_node = lib_config_file.parent.make_node('Platform')
+    
+    # Only the following sections at the root level of the config file is 'mergeable'
+    mergeable_keys = ['platform', 'aliases', 'configuration_settings']
+
+    for platform_folder, platform_keyword in platform_folder_to_keyword_map.items():
+        
+        # For each platform, check if there exists a platform fragment config to attempt to merge
+        check_fragment_filename = '{}_{}{}'.format(file_base_name, platform_keyword, file_ext)
+        check_fragment_path = os.path.join(platform_base_node.abspath(), platform_folder, check_fragment_filename)
+        if not os.path.exists(check_fragment_path):
+            continue
+            
+        # Parse the platform fragment and attempt to merge the mergeable sections together
+        lib_platform_fragment_node = platform_base_node.make_node('{}/{}'.format(platform_folder, check_fragment_filename))
+        
+        config_plaform_fragment_json = ctx.parse_json_file(lib_platform_fragment_node)
+        
+        for level_one_key, level_one_dict in config_plaform_fragment_json.items():
+            # Validate/Match the root (level 1) key for merging
+            if not isinstance(level_one_dict, dict):
+                raise Errors.WafError("3rd Party Platform Fragment file '{}' has an "
+                                      "invalid key '{}'. Fragment files may only contain "
+                                      "dictionaries of values.".format(lib_platform_fragment_node.abspath(),
+                                                                       level_one_key))
+            if level_one_key not in mergeable_keys:
+                raise Errors.WafError("3rd Party Platform Fragment file '{}' has an "
+                                      "unmergeable key '{}'. Valid mergeable keys are : {}".format(lib_platform_fragment_node.abspath(),
+                                                                                                   level_one_key,
+                                                                                                   ','.join(mergeable_keys)))
+
+            target_root_dict = lib_info.setdefault(level_one_key, {})
+            for level_two_key, level_two_values in level_one_dict.items():
+                # For each value in level 2 dictionary, merge new items from the fragment to the base one. This only accepts new keys
+                # and will not attempt to merge down even further
+                if level_two_key in target_root_dict:
+                    raise Errors.WafError("Conflicting values for '{}' in config file '{}' "
+                                          "and fragment file '{}'".format(level_two_key,
+                                                                          lib_config_file.abspath(),
+                                                                          lib_platform_fragment_node.abspath()))
+                else:
+                    target_root_dict[level_two_key] = level_two_values
+
     uselib_names = [userlib_name.upper() for userlib_name in (lib_info["name"] if isinstance(lib_info["name"], list) else [lib_info["name"]])]
 
     alias_map = evaluate_node_alias_map(lib_info, lib_config_file)
@@ -190,10 +268,31 @@ def mark_3rd_party_config_for_autoconf(ctx):
     if not hasattr(ctx, 'additional_files_to_track'):
         ctx.additional_files_to_track = []
 
+    platform_folder_to_keyword_map = ctx.get_platform_folder_to_keyword_map()
+    
     config_3rdparty_folder = ctx.engine_node.make_node('_WAF_/3rdParty')
+    platform_base_node = config_3rdparty_folder.make_node('Platform')
     config_file_nodes = config_3rdparty_folder.ant_glob('*.json')
+    
     for config_file_node in config_file_nodes:
+        
+        # Track each base 3rd party config node
         ctx.additional_files_to_track.append(config_file_node)
+        
+        # Track any platform fragment files for the config
+        config_file_name = config_file_node.name
+        file_base_name, file_ext = os.path.splitext(config_file_name)
+        
+        for platform_folder, platform_keyword in platform_folder_to_keyword_map.items():
+        
+            # For each platform, check if there exists a platform fragment config to attempt to merge
+            check_fragment_filename = '{}_{}{}'.format(file_base_name, platform_keyword, file_ext)
+            check_fragment_path = os.path.join(platform_base_node.abspath(), platform_folder, check_fragment_filename)
+            if not os.path.exists(check_fragment_path):
+                continue
+            # Track the platform fragment file for auto configure as well
+            lib_platform_fragment_node = platform_base_node.make_node('{}/{}'.format(platform_folder, check_fragment_filename))
+            ctx.additional_files_to_track.append(lib_platform_fragment_node)
 
     # Also track Setup Assistant Config File
     setup_assistant_config_node = ctx.engine_node.make_node('SetupAssistantConfig.json')
@@ -295,15 +394,21 @@ class ThirdPartyLibReader:
             platform_root = self.lib_root["platform"]
             if self.platform_key not in platform_root:
 
-                if self.platform_key == 'win_x64_clang' and 'win_x64_vs2015' in platform_root:
-                    vs2015_config = platform_root['win_x64_vs2015']
+                windows_platform = None
+                for platform in ['win_x64_vs2017', 'win_x64_vs2015']:
+                    if platform in platform_root:
+                        windows_platform = platform
+                        break
 
-                    # If vs2015 is also an alias, just copy it
-                    if isinstance(vs2015_config, str):
-                        platform_root[self.platform_key] = vs2015_config
-                    # If vs2015 is a full config, link to it
+                if self.platform_key == 'win_x64_clang' and isisntance(windows_platform, str):
+                    windows_config = platform_root[windows_platform]
+
+                    # If windows is also an alias, just copy it
+                    if isinstance(windows_config, str):
+                        platform_root[self.platform_key] = windows_config
+                    # If windows is a full config, link to it
                     else:
-                        platform_root[self.platform_key] = '@win_x64_vs2015'
+                        platform_root[self.platform_key] = '@' + windows_platform
                 else:
                     # If there was no evaluated platform key, that means the configuration file was valid but did not have entries for this
                     # particular platform.
@@ -355,7 +460,11 @@ class ThirdPartyLibReader:
 
         def _get_optional_boolean_flag(key_name, default):
             if key_name in self.lib_root:
-                required = self.lib_root[key_name].lower() == 'true'
+                # Be robust and accept and actual boolean type or a string representation ('true', 't' ,or '1')
+                if isinstance(self.lib_root[key_name], bool):
+                    required = self.lib_root[key_name]
+                elif isinstance(self.lib_root[key_name], str):
+                    required = self.lib_root[key_name].lower() in ('true', 't', '1')
             else:
                 required = default
             return required
@@ -459,25 +568,29 @@ class ThirdPartyLibReader:
             if header_only_library:
                 # If this is a header only library, then no need to look for libs/binaries
                 return True, None
-
+            
             # Determine what kind of libraries we are using
             static_lib_paths = self.get_most_specific_entry("libpath", uselib_name, lib_configuration)
             static_lib_filenames = self.get_most_specific_entry("lib", uselib_name, lib_configuration)
+            has_static_libs =  bool(static_lib_paths and static_lib_filenames)
 
             import_lib_paths = self.get_most_specific_entry("importlibpath", uselib_name, lib_configuration)
             import_lib_filenames = self.get_most_specific_entry("import", uselib_name, lib_configuration)
+            has_import_libs = bool(import_lib_paths and import_lib_filenames)
 
             shared_lib_paths = self.get_most_specific_entry("sharedlibpath", uselib_name, lib_configuration)
             shared_lib_filenames = self.get_most_specific_entry("shared", uselib_name, lib_configuration)
+            has_shared_libs = bool(shared_lib_paths and shared_lib_filenames)
 
             framework_paths = self.get_most_specific_entry("frameworkpath", uselib_name, lib_configuration)
             frameworks = self.get_most_specific_entry("framework", uselib_name, lib_configuration)
+            has_frameworks = bool(framework_paths and frameworks)
 
             apply_lib_types = []
 
             # since the uselib system will pull all variable variants specified for that lib, we need to make sure the
             # correct version of the library is specified for the current variant.
-            if static_lib_paths and (shared_lib_paths or import_lib_paths):
+            if has_static_libs and (has_shared_libs or has_import_libs):
                 debug_log(' - Detected both STATIC and SHARED libs for {}'.format(uselib_name))
 
                 if self.ctx.is_build_monolithic(self.platform_key, self.configuration_key):
@@ -485,14 +598,32 @@ class ThirdPartyLibReader:
                 else:
                     apply_lib_types.append('shared')
 
-            elif static_lib_paths:
+            elif has_static_libs:
                 apply_lib_types.append('static')
 
-            elif shared_lib_paths or import_lib_paths:
+            elif has_shared_libs or has_import_libs:
                 apply_lib_types.append('shared')
 
             if framework_paths:
                 apply_lib_types.append('framework')
+                
+            # Apply any system libs that may be specified
+            system_lib_names = self.get_most_specific_entry("system_lib", uselib_name, lib_configuration)
+            if system_lib_names:
+                self.apply_uselib_values_general(uselib_env_name, system_lib_names, "LIB")
+                
+            system_framework_names = self.get_most_specific_entry("system_framework", uselib_name, lib_configuration)
+            if system_framework_names:
+                self.apply_framework(uselib_env_name, system_framework_names)
+
+            # Apply any system libs that may be specified
+            system_lib_names = self.get_most_specific_entry("system_lib", uselib_name, lib_configuration)
+            if system_lib_names:
+                self.apply_uselib_values_general(uselib_env_name, system_lib_names, "LIB")
+
+            system_framework_names = self.get_most_specific_entry("system_framework", uselib_name, lib_configuration)
+            if system_framework_names:
+                self.apply_framework(uselib_env_name, system_framework_names)
 
             # apply the static libraries, if specified
             if 'static' in apply_lib_types:
@@ -770,6 +901,10 @@ class ThirdPartyLibReader:
 
             # the windows linker is different in the sense it only takes in .libs regardless of the library type
             if uselib_var == 'LIB':
+                if self.platform_key.startswith('xenia'):
+                    import_lib_path = "{}.lib".format(os.path.splitext(lib_file_path)[0])
+                    if not self.ctx.cached_does_path_exist(import_lib_path):
+                        continue
                 if self.platform_key.startswith('win_x64'):
                     import_lib_path = "{}.lib".format(os.path.splitext(lib_file_path)[0])
                     if not self.ctx.cached_does_path_exist(import_lib_path):
@@ -977,26 +1112,6 @@ def evaluate_node_alias_map(lib_root, lib_name):
     return evaluated_name_alias_map
 
 
-def get_3rd_party_config_record(ctx, lib_config_file):
-    """
-    Read a config and parse its alias map.  Also provide a caching mechanism to retrieve the config dictionary, list of uselib names, and
-    alias map.
-
-    :param ctx:                 Config context
-    :param lib_config_file:     The full pall of the config file to read
-    :return:    The parsed json dictionary, list of uselib names, and the map of alias values if any
-    """
-    if lib_config_file in CACHE_JSON_MODEL_AND_ALIAS_MAP:
-        return CACHE_JSON_MODEL_AND_ALIAS_MAP[lib_config_file]
-
-    lib_info = ctx.parse_json_file(lib_config_file)
-    assert "name" in lib_info
-    uselib_names = [userlib_name.upper() for userlib_name in (lib_info["name"] if isinstance(lib_info["name"], list) else [lib_info["name"]])]
-
-    alias_map = evaluate_node_alias_map(lib_info, lib_config_file)
-    CACHE_JSON_MODEL_AND_ALIAS_MAP[lib_config_file] = (lib_info, uselib_names, alias_map)
-    return lib_info, uselib_names, alias_map
-
 # Maintain a list of all the uselib prefixes that we apply to the env per platform/config
 ALL_3RD_PARTY_USELIB_PREFIXES = (
     'INCLUDES',
@@ -1190,16 +1305,17 @@ THIRD_PARTY_CONFIG_KEY_WEIGHT_TABLE = {
 
     # Will start the key weight at 100 for the platforms just in case
     'win_x64': 100,
-    'win_x64_vs2013': 101,
-    'win_x64_vs2015': 102,
     'win_x64_vs2017': 103,
     'win_x64_clang': 104,
+    'xenia_vs2017': 111,
+    'provo_vs2017': 107,
     'darwin_x64': 108,
     'ios': 109,
     'appletv': 110,
     'android_armv7_clang': 112,
     'android_armv8_clang': 113,
-    'linux_x64': 114
+    'linux_x64': 114,
+    'salem': 115
 }
 
 
@@ -1217,7 +1333,9 @@ def _get_config_key_weight(key):
 
 @feature('generate_3p_static_lib_config')
 @after_method('set_pdb_flags')
-def generate_3p_config(ctx):
+def generate_3p_config(tgen):
+
+    ctx = tgen.bld
 
     def _compare_list(left,right):
         if not isinstance(left, list):
@@ -1233,40 +1351,40 @@ def generate_3p_config(ctx):
     if platform=='project_generator':
         return
 
-    name = getattr(ctx,'target',None)
-    uselib_name = getattr(ctx, 'output_file_name', name)
-    description = getattr(ctx, 'description', uselib_name)
-    base_path = getattr(ctx,'base_path', None)
-    config_includes = getattr(ctx,'config_includes', ['.'])
-    config_defines = getattr(ctx,'config_defines', [])
+    name = getattr(tgen,'target',None)
+    uselib_name = getattr(tgen, 'output_file_name', name)
+    description = getattr(tgen, 'description', uselib_name)
+    base_path = getattr(tgen,'base_path', None)
+    config_includes = getattr(tgen,'config_includes', ['.'])
+    config_defines = getattr(tgen,'config_defines', [])
 
     if name is None or uselib_name is None or base_path is None:
         return
 
     config_filename = '{}.json'.format(uselib_name)
-    config_3rdparty_folder = ctx.bld.root.make_node(Context.launch_dir).make_node('_WAF_/3rdParty')
+    config_3rdparty_folder = ctx.root.make_node(Context.launch_dir).make_node('_WAF_/3rdParty')
     config_file_node = config_3rdparty_folder.make_node(config_filename)
     config_file_abspath = config_file_node.abspath()
 
     # Determine the platform, config_platform, and config_configuration
     platform = ctx.env['PLATFORM']
-    if platform not in PLATFORM_TO_3RD_PARTY_SUBPATH:
+    if platform not in ctx.get_platform_to_3rd_party_subpath():
         return
 
-    config_platform = PLATFORM_TO_3RD_PARTY_SUBPATH[platform]
+    config_platform = ctx.get_platform_to_3rd_party_subpath()[platform]
     configuration = get_configuration(ctx, name)
     config_configuration = LUMBERYARD_SETTINGS.get_build_configuration_setting(configuration).third_party_config
 
     output_filename = ctx.env['cxxstlib_PATTERN'] % uselib_name
     lib_path = 'build/{}/{}'.format(config_platform, config_configuration)
 
-    if ctx.bld.cached_does_path_exist(config_file_abspath):
+    if ctx.cached_does_path_exist(config_file_abspath):
 
         # The file exist, lookup the platform
 
         # open the config file contents
         target_config_file_node = config_3rdparty_folder.make_node('{}.json'.format(uselib_name))
-        config = ctx.bld.parse_json_file(target_config_file_node)
+        config = ctx.parse_json_file(target_config_file_node)
 
         # Track if we need to update the file
         need_update = False
@@ -1370,9 +1488,9 @@ def generate_3p_config(ctx):
         # try to find the third party name from the dictionary based on the path
         third_party_name = ''
         try:
-            third_party_root = ctx.bld.tp.content.get("3rdPartyRoot")
+            third_party_root = ctx.tp.content.get("3rdPartyRoot")
             base_source = os.path.relpath(base_path, third_party_root)
-            content_sdks = ctx.bld.tp.content.get("SDKs")
+            content_sdks = ctx.tp.content.get("SDKs")
             for key, value in content_sdks.iteritems():
                 if os.path.normpath(value['base_source']) == base_source:
                     third_party_name = key
@@ -2445,3 +2563,47 @@ def get_uselib_third_party_reader_map(ctx):
 
     return ctx.uselib_third_party_reader_map
 
+
+COMPATIBILITY_USELIB_PREFIXES = [
+    'INCLUDES',
+    'LIBPATH',
+    'LIB',
+    'STLIBPATH',
+    'STLIB',
+    'DEFINES',
+    'COPY_EXTRA',
+    'PDB',
+    'SHAREDLIBPATH',
+    'SHAREDLIB'
+]
+
+
+@conf
+def check_platform_uselib_compatibility(ctx, uselib):
+    """
+    Check if a uselib is supported on the current platform that is being built
+    
+    :param ctx:     Context
+    :param uselib:  The uselib name to check
+    :return: True if the uselib is supported by the current platform
+             False if the uselib is not supported by the current platform, or the uselib does not exit
+             None If this is a 'project_generator' platform or this call is invoked during configure
+    """
+    
+    platform_name = ctx.env['PLATFORM']
+    if platform_name == 'project_generator' or isinstance(ctx, Configure.ConfigurationContext):
+        return None
+
+    all_configuration_names = ctx.get_all_configuration_names()
+    for configuration_name in all_configuration_names:
+        platform_env_key = '{}_{}'.format(platform_name, configuration_name)
+        if platform_env_key not in ctx.all_envs:
+            continue
+            
+        for compat_uselib_prefix in COMPATIBILITY_USELIB_PREFIXES:
+            check_uselib_key = '{}_{}'.format(compat_uselib_prefix, uselib)
+            if check_uselib_key in ctx.all_envs[platform_env_key]:
+                return True
+
+    return False
+    

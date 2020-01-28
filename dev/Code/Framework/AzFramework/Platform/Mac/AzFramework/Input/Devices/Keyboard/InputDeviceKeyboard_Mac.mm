@@ -49,7 +49,7 @@ namespace
             AZ_Warning("SetInstanceMethodImplementaion", false, "Instance method not found");
             return nullptr;
         }
-
+        
         if (method_getImplementation(instanceMethod) == newImplementation)
         {
             return nullptr;
@@ -122,6 +122,9 @@ namespace
         static void DoCommandBySelectorHook(NSResponder* responder,
                                             SEL methodSelector,
                                             SEL commandSelector);
+
+        using imp_redirector = void (*)(NSResponder* responder, SEL methodSelector,id textString);
+        using cmd_redirector = void (*)(NSResponder* responder, SEL previousSelector,SEL newSelector);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Pointer to the default implementation of the NSResponder::insertText method
@@ -207,7 +210,7 @@ namespace
 
         if (!handled && s_defaultInsertTextImplementation)
         {
-            s_defaultInsertTextImplementation(responder, methodSelector, textString);
+            reinterpret_cast<imp_redirector>(s_defaultInsertTextImplementation)(responder, methodSelector, textString);
         }
     }
 
@@ -225,7 +228,7 @@ namespace
 
         if (!handled && s_defaultNoResponderForImplementation)
         {
-            s_defaultNoResponderForImplementation(responder, methodSelector, eventSelector);
+            reinterpret_cast<cmd_redirector>(s_defaultNoResponderForImplementation)(responder, methodSelector, eventSelector);
         }
     }
 
@@ -243,7 +246,7 @@ namespace
 
         if (!handled && s_defaultDoCommandBySelectorImplementation)
         {
-            s_defaultDoCommandBySelectorImplementation(responder, methodSelector, commandSelector);
+            reinterpret_cast<cmd_redirector>(s_defaultDoCommandBySelectorImplementation)(responder, methodSelector, commandSelector);
         }
     }
 }

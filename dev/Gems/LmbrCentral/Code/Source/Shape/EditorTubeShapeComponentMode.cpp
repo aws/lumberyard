@@ -20,13 +20,12 @@
 #include <LmbrCentral/Shape/SplineComponentBus.h>
 #include <LmbrCentral/Shape/EditorTubeShapeComponentBus.h>
 #include <LmbrCentral/Shape/TubeShapeComponentBus.h>
+#include <AzFramework/Viewport/ViewportColors.h>
+#include <AzFramework/Viewport/ViewportConstants.h>
 
 namespace LmbrCentral
 {
     AZ_CLASS_ALLOCATOR_IMPL(EditorTubeShapeComponentMode, AZ::SystemAllocator, 0)
-
-    static const float s_tubeManipulatorHandleSize = 0.05f;
-    static const AZ::Color s_tubeManipulatorHandleColor = AZ::Color(0.06275f, 0.1647f, 0.1647f, 1.0f);
 
     static const AZ::Crc32 s_resetVariableRadii = AZ_CRC("com.amazon.action.tubeshape.reset_radii", 0x0f2ef8e2);
     static const char* const s_resetRadiiTitle = "Reset Radii";
@@ -137,7 +136,7 @@ namespace LmbrCentral
 
             AzToolsFramework::ManipulatorViews views;
             views.emplace_back(AzToolsFramework::CreateManipulatorViewQuadBillboard(
-                s_tubeManipulatorHandleColor, s_tubeManipulatorHandleSize));
+                AzFramework::ViewportColors::DefaultManipulatorHandleColor, AzFramework::ViewportConstants::DefaultManipulatorHandleSize));
             linearManipulator->SetViews(AZStd::move(views));
             linearManipulator->Register(AzToolsFramework::g_mainManipulatorManagerId);
 

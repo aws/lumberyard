@@ -860,7 +860,7 @@ namespace AZ
                 m_stride = stride;
             }
             
-			
+
 
 #ifdef PARTICLE_MOTION_BLUR
             static const uint32_t kMaxAttributes = 8;

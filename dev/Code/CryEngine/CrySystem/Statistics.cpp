@@ -65,7 +65,6 @@ AZStd::vector<AZStd::string> GetModuleNames()
         moduleNames.push_back("CryFont" MODULE_EXTENSION);
         moduleNames.push_back("CryNetwork" MODULE_EXTENSION);
         moduleNames.push_back("CryPhysics" MODULE_EXTENSION);
-        moduleNames.push_back("CrySoundSystem" MODULE_EXTENSION);
         moduleNames.push_back("CrySystem" MODULE_EXTENSION);
         // K01
         moduleNames.push_back("CryOnline" MODULE_EXTENSION);

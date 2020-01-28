@@ -111,7 +111,7 @@ namespace PhysX
         {
             m_pLineEdit->setValidator(m_pValidator);
             connect(m_pLineEdit, SIGNAL(onFocus()), this, SLOT(OnEditStart()));
-            connect(m_pLineEdit, SIGNAL(editingFinished()), this, SLOT(OnEditEnd()));
+            connect(m_pLineEdit, SIGNAL(onFocusOut()), this, SLOT(OnEditEnd()));
         }
     }
 

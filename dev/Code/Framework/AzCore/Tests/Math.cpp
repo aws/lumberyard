@@ -1923,6 +1923,58 @@ namespace UnitTest
         // make sure a point inside the box returns zero, even if that point isn't the center.
         AZ_TEST_ASSERT(aabb.GetDistance(Vector3(0.5f, 0.0f, 0.0f)).IsClose(0.0f));
 
+        //GetDistanceSq
+        aabb.Set(Vector3(-1.0f), Vector3(1.0f));
+        AZ_TEST_ASSERT(aabb.GetDistanceSq(Vector3(0.0f, 3.0f, 0.0f)).IsClose(4.0f));
+        // make sure a point inside the box returns zero, even if that point isn't the center.
+        AZ_TEST_ASSERT(aabb.GetDistanceSq(Vector3(0.0f, 0.5f, 0.0f)).IsClose(0.0f));
+
+        //GetMaxDistance
+        aabb.Set(Vector3(-1.0f), Vector3(1.0f));
+        // The max distance for all of the following should be the square root of (4^2 + 3^2 + 2^2)
+        AZ_TEST_ASSERT(aabb.GetMaxDistance(Vector3( 3.0f,  2.0f,  1.0f)).IsClose(std::sqrtf(16.0f + 9.0f + 4.0f)));
+        AZ_TEST_ASSERT(aabb.GetMaxDistance(Vector3( 3.0f,  2.0f, -1.0f)).IsClose(std::sqrtf(16.0f + 9.0f + 4.0f)));
+        AZ_TEST_ASSERT(aabb.GetMaxDistance(Vector3( 3.0f, -2.0f,  1.0f)).IsClose(std::sqrtf(16.0f + 9.0f + 4.0f)));
+        AZ_TEST_ASSERT(aabb.GetMaxDistance(Vector3( 3.0f, -2.0f, -1.0f)).IsClose(std::sqrtf(16.0f + 9.0f + 4.0f)));
+        AZ_TEST_ASSERT(aabb.GetMaxDistance(Vector3(-3.0f,  2.0f,  1.0f)).IsClose(std::sqrtf(16.0f + 9.0f + 4.0f)));
+        AZ_TEST_ASSERT(aabb.GetMaxDistance(Vector3(-3.0f,  2.0f, -1.0f)).IsClose(std::sqrtf(16.0f + 9.0f + 4.0f)));
+        AZ_TEST_ASSERT(aabb.GetMaxDistance(Vector3(-3.0f, -2.0f,  1.0f)).IsClose(std::sqrtf(16.0f + 9.0f + 4.0f)));
+        AZ_TEST_ASSERT(aabb.GetMaxDistance(Vector3(-3.0f, -2.0f, -1.0f)).IsClose(std::sqrtf(16.0f + 9.0f + 4.0f)));
+        // make sure points inside the box return a correct max distance as well - sqrt of (1.5^2 + 1.5^2 + 1.5^2)
+        AZ_TEST_ASSERT(aabb.GetMaxDistance(Vector3( 0.5f,  0.5f,  0.5f)).IsClose(std::sqrtf(2.25f + 2.25f + 2.25f)));
+        AZ_TEST_ASSERT(aabb.GetMaxDistance(Vector3( 0.5f,  0.5f, -0.5f)).IsClose(std::sqrtf(2.25f + 2.25f + 2.25f)));
+        AZ_TEST_ASSERT(aabb.GetMaxDistance(Vector3( 0.5f, -0.5f,  0.5f)).IsClose(std::sqrtf(2.25f + 2.25f + 2.25f)));
+        AZ_TEST_ASSERT(aabb.GetMaxDistance(Vector3( 0.5f, -0.5f, -0.5f)).IsClose(std::sqrtf(2.25f + 2.25f + 2.25f)));
+        AZ_TEST_ASSERT(aabb.GetMaxDistance(Vector3(-0.5f,  0.5f,  0.5f)).IsClose(std::sqrtf(2.25f + 2.25f + 2.25f)));
+        AZ_TEST_ASSERT(aabb.GetMaxDistance(Vector3(-0.5f,  0.5f, -0.5f)).IsClose(std::sqrtf(2.25f + 2.25f + 2.25f)));
+        AZ_TEST_ASSERT(aabb.GetMaxDistance(Vector3(-0.5f, -0.5f,  0.5f)).IsClose(std::sqrtf(2.25f + 2.25f + 2.25f)));
+        AZ_TEST_ASSERT(aabb.GetMaxDistance(Vector3(-0.5f, -0.5f, -0.5f)).IsClose(std::sqrtf(2.25f + 2.25f + 2.25f)));
+        // make sure the center returns our minimal max distance (1^2 + 1^2 + 1^2)
+        AZ_TEST_ASSERT(aabb.GetMaxDistance(Vector3(0.0f, 0.0f, 0.0f)).IsClose(std::sqrtf(1.0f + 1.0f + 1.0f)));
+
+        //GetMaxDistanceSq
+        aabb.Set(Vector3(-1.0f), Vector3(1.0f));
+        // The max distance for all of the following should be (4^2 + 3^2 + 2^2)
+        AZ_TEST_ASSERT(aabb.GetMaxDistanceSq(Vector3( 3.0f,  2.0f,  1.0f)).IsClose(16.0f + 9.0f + 4.0f));
+        AZ_TEST_ASSERT(aabb.GetMaxDistanceSq(Vector3( 3.0f,  2.0f, -1.0f)).IsClose(16.0f + 9.0f + 4.0f));
+        AZ_TEST_ASSERT(aabb.GetMaxDistanceSq(Vector3( 3.0f, -2.0f,  1.0f)).IsClose(16.0f + 9.0f + 4.0f));
+        AZ_TEST_ASSERT(aabb.GetMaxDistanceSq(Vector3( 3.0f, -2.0f, -1.0f)).IsClose(16.0f + 9.0f + 4.0f));
+        AZ_TEST_ASSERT(aabb.GetMaxDistanceSq(Vector3(-3.0f,  2.0f,  1.0f)).IsClose(16.0f + 9.0f + 4.0f));
+        AZ_TEST_ASSERT(aabb.GetMaxDistanceSq(Vector3(-3.0f,  2.0f, -1.0f)).IsClose(16.0f + 9.0f + 4.0f));
+        AZ_TEST_ASSERT(aabb.GetMaxDistanceSq(Vector3(-3.0f, -2.0f,  1.0f)).IsClose(16.0f + 9.0f + 4.0f));
+        AZ_TEST_ASSERT(aabb.GetMaxDistanceSq(Vector3(-3.0f, -2.0f, -1.0f)).IsClose(16.0f + 9.0f + 4.0f));
+        // make sure points inside the box return a correct max distance as well: (1.5^2 + 1.5^2 + 1.5^2)
+        AZ_TEST_ASSERT(aabb.GetMaxDistanceSq(Vector3( 0.5f,  0.5f,  0.5f)).IsClose(2.25f + 2.25f + 2.25f));
+        AZ_TEST_ASSERT(aabb.GetMaxDistanceSq(Vector3( 0.5f,  0.5f, -0.5f)).IsClose(2.25f + 2.25f + 2.25f));
+        AZ_TEST_ASSERT(aabb.GetMaxDistanceSq(Vector3( 0.5f, -0.5f,  0.5f)).IsClose(2.25f + 2.25f + 2.25f));
+        AZ_TEST_ASSERT(aabb.GetMaxDistanceSq(Vector3( 0.5f, -0.5f, -0.5f)).IsClose(2.25f + 2.25f + 2.25f));
+        AZ_TEST_ASSERT(aabb.GetMaxDistanceSq(Vector3(-0.5f,  0.5f,  0.5f)).IsClose(2.25f + 2.25f + 2.25f));
+        AZ_TEST_ASSERT(aabb.GetMaxDistanceSq(Vector3(-0.5f,  0.5f, -0.5f)).IsClose(2.25f + 2.25f + 2.25f));
+        AZ_TEST_ASSERT(aabb.GetMaxDistanceSq(Vector3(-0.5f, -0.5f,  0.5f)).IsClose(2.25f + 2.25f + 2.25f));
+        AZ_TEST_ASSERT(aabb.GetMaxDistanceSq(Vector3(-0.5f, -0.5f, -0.5f)).IsClose(2.25f + 2.25f + 2.25f));
+        // make sure the center returns our minimal max distance (1^2 + 1^2 + 1^2)
+        AZ_TEST_ASSERT(aabb.GetMaxDistanceSq(Vector3(0.0f, 0.0f, 0.0f)).IsClose(1.0f + 1.0f + 1.0f));
+
         //GetClamped
         aabb.Set(Vector3(0.0f), Vector3(2.0f));
         aabb2.Set(Vector3(1.0f), Vector3(4.0f));
@@ -5944,8 +5996,7 @@ namespace UnitTest
         // Float
         const float epsilonF = std::numeric_limits<float>::epsilon();
         const float doesntMatterF = std::numeric_limits<float>::signaling_NaN();
-        // volatile keyword required here to prevent spurious vs2013 compile error about division by 0
-        volatile float lowerF = 2.3f, upperF = 2.3f;
+        float lowerF = 2.3f, upperF = 2.3f;
         EXPECT_EQ(0.0f, AZ::LerpInverse(lowerF, upperF, doesntMatterF));
         EXPECT_EQ(0.0f, AZ::LerpInverse(0.0f, 0.5f * epsilonF, doesntMatterF));
         EXPECT_EQ(0.0f, AZ::LerpInverse(0.0f, 5.0f * epsilonF, 0.0f));
@@ -5956,8 +6007,7 @@ namespace UnitTest
         // Double
         const double epsilonD = std::numeric_limits<double>::epsilon();
         const double doesntMatterD = std::numeric_limits<double>::signaling_NaN();
-        // volatile keyword required here to prevent spurious vs2013 compile error about division by 0
-        volatile double lowerD = 2.3, upperD = 2.3;
+        double lowerD = 2.3, upperD = 2.3;
         EXPECT_EQ(0.0, AZ::LerpInverse(lowerD, upperD, doesntMatterD));
         EXPECT_EQ(0.0, AZ::LerpInverse(0.0, 0.5 * epsilonD, doesntMatterD));
         EXPECT_EQ(0.0, AZ::LerpInverse(0.0, 5.0 * epsilonD, 0.0));

@@ -47,8 +47,8 @@ namespace EntityEventPriority
         Substitution,
         FlowGraph,
         Camera,
-        BoidObject,
-        Boids,
+        Reserved1, // formerly BoidObject
+        Reserved2, // formely Boids
         Area,
         AI,
         Audio,

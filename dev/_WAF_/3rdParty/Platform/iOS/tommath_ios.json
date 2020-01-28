@@ -1,0 +1,12 @@
+{
+    "platform": {
+        "ios": {
+            "libpath": [
+                "lib/ios"
+            ],
+            "lib": [
+                "libtommath.a"
+            ]
+        }
+    }
+}

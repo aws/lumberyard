@@ -15,6 +15,7 @@
 #include <AzCore/std/sort.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
 #include <Entity/EditorEntityHelpers.h>
+#include <AzToolsFramework/Entity/EditorEntityModel.h>
 
 namespace AzToolsFramework
 {
@@ -96,13 +97,13 @@ namespace AzToolsFramework
 
     static EntityData EntityDataFromEntityId(const AZ::EntityId entityId)
     {
-        bool visibleFlag = false;
-        EditorVisibilityRequestBus::EventResult(
-            visibleFlag, entityId, &EditorVisibilityRequests::GetVisibilityFlag);
+        bool visible = false;
+        EditorEntityInfoRequestBus::EventResult(
+            visible, entityId, &EditorEntityInfoRequestBus::Events::IsVisible);
 
         bool locked = false;
-        EditorLockComponentRequestBus::EventResult(
-            locked, entityId, &EditorLockComponentRequests::GetLocked);
+        EditorEntityInfoRequestBus::EventResult(
+            locked, entityId, &EditorEntityInfoRequestBus::Events::IsLocked);
 
         bool iconHidden = false;
         EditorEntityIconComponentRequestBus::EventResult(
@@ -112,16 +113,14 @@ namespace AzToolsFramework
         AZ::TransformBus::EventResult(
             worldFromLocal, entityId, &AZ::TransformBus::Events::GetWorldTM);
 
-        return { entityId, worldFromLocal, locked, visibleFlag, IsSelected(entityId), iconHidden };
+        return { entityId, worldFromLocal, locked, visible, IsSelected(entityId), iconHidden };
     }
 
     EditorVisibleEntityDataCache::EditorVisibleEntityDataCache()
         : m_impl(AZStd::make_unique<EditorVisibleEntityDataCacheImpl>())
     {
-        const AzFramework::EntityContextId entityContextId = GetEntityContextId();
-
-        EditorContextVisibilityNotificationBus::Handler::BusConnect(entityContextId);
-        EditorContextLockComponentNotificationBus::Handler::BusConnect(entityContextId);
+        EditorEntityVisibilityNotificationBus::Router::BusRouterConnect();
+        EditorEntityLockComponentNotificationBus::Router::BusRouterConnect();
         AZ::TransformNotificationBus::Router::BusRouterConnect();
         EditorComponentSelectionNotificationsBus::Router::BusRouterConnect();
         EntitySelectionEvents::Bus::Router::BusRouterConnect();
@@ -136,12 +135,25 @@ namespace AzToolsFramework
         EntitySelectionEvents::Bus::Router::BusRouterDisconnect();
         EditorComponentSelectionNotificationsBus::Router::BusRouterDisconnect();
         AZ::TransformNotificationBus::Router::BusRouterDisconnect();
-        EditorContextLockComponentNotificationBus::Handler::BusDisconnect();
-        EditorContextVisibilityNotificationBus::Handler::BusDisconnect();
+        EditorEntityLockComponentNotificationBus::Router::BusRouterConnect();
+        EditorEntityVisibilityNotificationBus::Router::BusRouterConnect();
     }
 
     EditorVisibleEntityDataCache::EditorVisibleEntityDataCache(EditorVisibleEntityDataCache&&) = default;
     EditorVisibleEntityDataCache& EditorVisibleEntityDataCache::operator=(EditorVisibleEntityDataCache&&) = default;
+
+    void EditorVisibleEntityDataCache::AddEntityIds(const EntityIdList& entityIds)
+    {
+        m_impl->m_visibleEntityIds.insert(m_impl->m_visibleEntityIds.end(), entityIds.begin(), entityIds.end());
+
+        m_impl->m_visibleEntityDatas.reserve(m_impl->m_visibleEntityDatas.size() + entityIds.size());
+        for (AZ::EntityId entityId : m_impl->m_visibleEntityIds)
+        {
+            m_impl->m_visibleEntityDatas.push_back(EntityDataFromEntityId(entityId));
+        }
+
+        AZStd::sort(m_impl->m_visibleEntityDatas.begin(), m_impl->m_visibleEntityDatas.end());
+    }
 
     void EditorVisibleEntityDataCache::CalculateVisibleEntityDatas(
         const AzFramework::ViewportInfo& viewportInfo)
@@ -282,10 +294,11 @@ namespace AzToolsFramework
         }
     }
 
-    void EditorVisibleEntityDataCache::OnEntityVisibilityChanged(
-        const AZ::EntityId entityId, const bool visibility)
+    void EditorVisibleEntityDataCache::OnEntityVisibilityChanged(const bool visibility)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        const AZ::EntityId entityId = *EditorEntityVisibilityNotificationBus::GetCurrentBusId();
 
         if (AZStd::optional<size_t> entityIndex = GetVisibleEntityIndexFromId(entityId))
         {
@@ -293,10 +306,11 @@ namespace AzToolsFramework
         }
     }
 
-    void EditorVisibleEntityDataCache::OnEntityLockChanged(
-        const AZ::EntityId entityId, const bool locked)
+    void EditorVisibleEntityDataCache::OnEntityLockChanged(const bool locked)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        const AZ::EntityId entityId = *EditorEntityLockComponentNotificationBus::GetCurrentBusId();
 
         if (AZStd::optional<size_t> entityIndex = GetVisibleEntityIndexFromId(entityId))
         {

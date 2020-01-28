@@ -1464,6 +1464,11 @@ namespace EMotionFX
             return FILETYPE_UNKNOWN;
         }
 
+        if (memoryFile.GetFileSize() == 0)
+        {
+            return FILETYPE_UNKNOWN;
+        }
+
         // check the file type
         return CheckFileType(&memoryFile);
     }

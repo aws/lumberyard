@@ -688,6 +688,10 @@ bool CNULLRenderer::FX_PopRenderTarget(int nTarget)
     return true;
 }
 
+void CNULLRenderer::FX_SetActiveRenderTargets(bool bAllowDIP)
+{
+}
+
 IDynTexture* CNULLRenderer::CreateDynTexture2(uint32 nWidth, uint32 nHeight, uint32 nTexFlags, const char* szSource, ETexPool eTexPool)
 {
     return nullptr;

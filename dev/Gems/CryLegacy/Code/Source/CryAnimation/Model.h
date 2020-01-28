@@ -430,7 +430,8 @@ public:
         {
             return m_arrModelJoints[nJointID].m_strJointName.c_str();
         }
-        CRY_ASSERT("GetJointNameByID - Index out of range!");
+
+        CRY_ASSERT_MESSAGE(false, "GetJointNameByID - Index out of range!");
         return ""; // invalid bone id
     }
     virtual int32 GetJointIDByName(const char* strJointName) const

@@ -1,0 +1,25 @@
+{
+    "platform": {
+        "darwin_x64": {
+            "system_lib": [
+                "curl"
+            ],
+            "sharedlibpath_debug": [
+                "bin/mac/Debug"
+            ],
+            "sharedlibpath_release": [
+                "bin/mac/Release"
+            ],
+            "aws_cpp_sdk_gamelift_shared/shared": [
+                "lib${aws_cpp_sdk_gamelift}.dylib"
+            ],
+            "aws_cpp_sdk_identity_lambda_shared/shared": [
+                "lib${aws_cpp_sdk_identity_lambda}.dylib",
+                "lib${aws_c_dependencies}.dylib",
+                "lib${aws_c_dependencies}.0unstable.dylib",
+                "lib${aws_c_dependencies}.1.0.0.dylib",
+                "libaws-checksums.dylib"
+            ]
+        }
+    }
+}

@@ -19,7 +19,6 @@
 
 enum class PlatformOptions : unsigned char
 {
-    Android_ARMv7,
     Android_ARMv8,
     iOS,
 #if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
@@ -54,7 +53,7 @@ struct DeploymentConfig
         , m_deviceRemoteLogPort(AZStd::string::format("%d", defaultRemoteConsolePort))
         , m_hostRemoteLogPort(static_cast<AZ::u16>(defaultRemoteConsolePort))
 
-        , m_platformOption(PlatformOptions::Android_ARMv7)
+        , m_platformOption(PlatformOptions::Android_ARMv8)
         , m_buildGame(false)
         , m_useVFS(false)
         , m_shaderCompilerUseAP(false)

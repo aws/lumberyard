@@ -84,7 +84,9 @@ namespace PhysXCharacters
         PhysX::SystemRequestsBus::BroadcastResult(m_filterData, &PhysX::SystemRequests::CreateFilterData,
             characterConfig.m_collisionLayer, collisionGroup);
         m_pxControllerFilters = physx::PxControllerFilters(&m_filterData);
-        m_pxControllerFilters.mFilterFlags = physx::PxQueryFlag::eSTATIC;
+        m_pxControllerFilters.mFilterFlags = physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::ePREFILTER;
+        m_pxControllerFilters.mFilterCallback = this;
+        m_pxControllerFilters.mCCTFilterCallback = this;
 
         physx::PxU32 numShapes = m_pxController->getActor()->getNbShapes();
         if (numShapes != 1)
@@ -95,11 +97,14 @@ namespace PhysXCharacters
         {
             physx::PxShape* pxShape = nullptr;
             m_pxController->getActor()->getShapes(&pxShape, 1, 0);
-            pxShape->setQueryFilterData(m_filterData);
-            pxShape->setSimulationFilterData(m_filterData);
 
             // wrap the raw PhysX shape so that it is appropriately configured for raycasts etc.
             PhysX::SystemRequestsBus::BroadcastResult(m_shape, &PhysX::SystemRequests::CreateWrappedNativeShape, pxShape);
+            if (m_shape)
+            {
+                m_shape->SetCollisionLayer(characterConfig.m_collisionLayer);
+                m_shape->SetCollisionGroup(collisionGroup);
+            }
         }
     }
 
@@ -315,6 +320,14 @@ namespace PhysXCharacters
         AZ_Warning("PhysX Character Controller", false, "Not yet supported.");
     }
 
+    void CharacterController::AttachShape(AZStd::shared_ptr<Physics::Shape> shape)
+    {
+        if (m_shadowBody)
+        {
+            m_shadowBody->AddShape(shape);
+        }
+    }
+
     // Physics::WorldBody
     AZ::EntityId CharacterController::GetEntityId() const
     {
@@ -397,13 +410,57 @@ namespace PhysXCharacters
         }
     }
 
-    void CharacterController::AttachShape(AZStd::shared_ptr<Physics::Shape> shape)
+    // physx::PxControllerFilterCallback
+    bool CharacterController::filter(const physx::PxController& controllerA, const physx::PxController& controllerB)
     {
-        if (m_shadowBody)
+        physx::PxRigidDynamic* actorA = controllerA.getActor();
+        physx::PxRigidDynamic* actorB = controllerB.getActor();
+
+        if (actorA && actorA->getNbShapes() > 0 && actorB && actorB->getNbShapes() > 0)
         {
-            m_shadowBody->AddShape(shape);
+            physx::PxShape* shapeA = nullptr;
+            actorA->getShapes(&shapeA, 1, 0);
+            physx::PxFilterData filterDataA = shapeA->getSimulationFilterData();
+            physx::PxShape* shapeB = nullptr;
+            actorB->getShapes(&shapeB, 1, 0);
+            physx::PxFilterData filterDataB = shapeB->getSimulationFilterData();
+            return PhysX::Utils::Collision::ShouldCollide(filterDataA, filterDataB);
         }
+
+        return true;
     }
+
+    // physx::PxQueryFilterCallback
+    physx::PxQueryHitType::Enum CharacterController::preFilter(const physx::PxFilterData& filterData,
+        const physx::PxShape* shape, const physx::PxRigidActor* actor, physx::PxHitFlags& /*queryFlags*/)
+    {
+        // non-kinematic dynamic bodies should not impede the movement of the character
+        if (actor->getConcreteType() == physx::PxConcreteType::eRIGID_DYNAMIC)
+        {
+            const physx::PxRigidDynamic* rigidDynamic = static_cast<const physx::PxRigidDynamic*>(actor);
+            if (!(rigidDynamic->getRigidBodyFlags() & physx::PxRigidBodyFlag::eKINEMATIC))
+            {
+                return physx::PxQueryHitType::eNONE;
+            }
+        }
+
+        // all other cases should be determined by collision filters
+        if (PhysX::Utils::Collision::ShouldCollide(*m_pxControllerFilters.mFilterData, shape->getSimulationFilterData()))
+        {
+            return physx::PxQueryHitType::eBLOCK;
+        }
+
+        return physx::PxQueryHitType::eNONE;
+    }
+
+    physx::PxQueryHitType::Enum CharacterController::postFilter(const physx::PxFilterData& /*filterData*/,
+        const physx::PxQueryHit& /*hit*/)
+    {
+        // return arbitrary value since this function is not being called as the ePOSTFILTER flag is not set in the
+        // filter flags
+        return physx::PxQueryHitType::eNONE;
+    }
+
     // CharacterController specific
     void CharacterController::Resize(float height)
     {

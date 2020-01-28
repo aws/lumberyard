@@ -84,9 +84,9 @@ namespace AZStd
         {
             m_tree.insert_unique(first, last);
         }
-        set(const std::initializer_list<value_type>& list, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
+        set(std::initializer_list<value_type> list, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : set(list.begin(), list.end(), comp, alloc) {}
-        set(const std::initializer_list<value_type>& list, const Allocator& alloc)
+        set(std::initializer_list<value_type> list, const Allocator& alloc)
             : set(list, Compare(), alloc) {}
         AZ_FORCE_INLINE set(const this_type& rhs)
             : m_tree(rhs.m_tree)  {}
@@ -309,9 +309,9 @@ namespace AZStd
         {
             m_tree.insert_equal(first, last);
         }
-        multiset(const std::initializer_list<value_type>& list, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
+        multiset(std::initializer_list<value_type> list, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : multiset(list.begin(), list.end(), comp, alloc) {}
-        multiset(const std::initializer_list<value_type>& list, const Allocator& alloc)
+        multiset(std::initializer_list<value_type> list, const Allocator& alloc)
             : multiset(list, Compare(), alloc) {}
         AZ_FORCE_INLINE multiset(const this_type& rhs)
             : m_tree(rhs.m_tree) {}

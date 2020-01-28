@@ -5,7 +5,6 @@
     "Version": "1.0.0",
     "LinkType": "Dynamic",
     "EditorModule": true,
-    "EditorTargets": ["StaticDataMonitorPlugin"],
     "IconPath": "preview.png",
     "DisplayName": "Static Data",
     "Summary": "System for key/value data parsed from CSVs and accessible through Flow Graph which can be live reloaded.  Used in the Don't Die demo to show how game data can be managed through the cloud.",

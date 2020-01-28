@@ -47,6 +47,7 @@
 #   include <RCExt/Motion/MotionExporter.h>
 #   include <RCExt/Motion/MotionGroupExporter.h>
 #   include <RCExt/Motion/MotionDataBuilder.h>
+#   include <EMotionFXBuilder/EMotionFXBuilderComponent.h>
 #endif // EMOTIONFXANIMATION_EDITOR
 
 namespace EMotionFX
@@ -89,6 +90,9 @@ namespace EMotionFX
                     EditorAnimGraphComponent::CreateDescriptor(),
                     EditorSimpleMotionComponent::CreateDescriptor(),
                     EditorSimpleLODComponent::CreateDescriptor(),
+
+                    // EmotionFX asset builder
+                    EMotionFXBuilder::EMotionFXBuilderComponent::CreateDescriptor(),
 
                     // Actor
                     EMotionFX::Pipeline::Behavior::ActorGroupBehavior::CreateDescriptor(),

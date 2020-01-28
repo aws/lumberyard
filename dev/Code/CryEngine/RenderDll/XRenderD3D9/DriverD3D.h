@@ -29,6 +29,7 @@
 #define DRIVERD3D_H_SECTION_9 9
 #define DRIVERD3D_H_SECTION_10 10
 #define DRIVERD3D_H_SECTION_11 11
+#define DRIVERD3D_H_SECTION_12 12
 #endif
 
 # if !defined(_RELEASE)
@@ -86,19 +87,6 @@ struct SGraphicsPiplinePassContext;
 #include "DeviceInfo.h"
 
 //=======================================================================
-#if CRY_COMPILER_MSVC && CRY_COMPILER_VERSION < 1800
-
-#include <memory> // brings in TEMPLATE macros.
-#define MAKE_UNIQUE(TEMPLATE_LIST, PADDING_LIST, LIST, COMMA, X1, X2, X3, X4) \
-    template<class T COMMA LIST(_CLASS_TYPE)>                                 \
-    inline std::unique_ptr<T> CryMakeUnique(LIST(_TYPE_REFREF_ARG))           \
-    {                                                                         \
-        return std::unique_ptr<T>(new T(LIST(_FORWARD_ARG)));                 \
-    }
-_VARIADIC_EXPAND_0X(MAKE_UNIQUE, , , , )
-#undef MAKE_UNIQUE
-
-#else
 
 #include <memory> // std::unique_ptr
 #include <utility> // std::forward
@@ -106,10 +94,9 @@ _VARIADIC_EXPAND_0X(MAKE_UNIQUE, , , , )
 template<typename T, typename ... TArgs>
 inline std::unique_ptr<T> CryMakeUnique(TArgs&& ... args)
 {
-    return std::unique_ptr<T>(new T(std::forward<TArgs>(args) ...));
+    return std::make_unique<T>(std::forward<TArgs>(args) ...);
 }
 
-#endif
 
 struct SD3DContext
 {
@@ -485,6 +472,8 @@ protected:
         #include "Xenia/DriverD3D_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -756,6 +745,8 @@ public:
         #include "Xenia/DriverD3D_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_h_salem.inl"
     #endif
 #endif
 
@@ -790,7 +781,6 @@ public:
     int16 m_nQuadVBSize;
 
     //////////////////////////////////////////////////////////////////////////
-    //  Confetti BEGIN: Igor Lobanchikov
 #ifdef CRY_USE_METAL
     SPixFormat        m_FormatPVRTC2;     //ETC2 compressed RGB for mobile
     SPixFormat        m_FormatPVRTC4;    //ETC2a compressed RGBA for mobile
@@ -811,7 +801,6 @@ public:
     SPixFormat        m_FormatASTC_12x10;
     SPixFormat        m_FormatASTC_12x12;
 #endif
-    //  Confetti End: Igor Lobanchikov
     SPixFormatSupport m_hwTexFormatSupport;
 
     int m_fontBlendMode;
@@ -828,6 +817,8 @@ public:
         #include "Xenia/DriverD3D_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_h_salem.inl"
     #endif
 #endif
 
@@ -835,12 +826,17 @@ private:
     D3DDevice* m_Device;
     D3DDeviceContext* m_DeviceContext;
 
+    // Used for shadow casting for transparents.
+    CCryNameTSCRC m_techShadowGen;
+
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DRIVERD3D_H_SECTION_5
     #if defined(AZ_PLATFORM_XENIA)
         #include "Xenia/DriverD3D_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_h_salem.inl"
     #endif
     #endif
 
@@ -863,6 +859,8 @@ public:
         #include "Xenia/DriverD3D_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_h_salem.inl"
     #endif
 #endif
 
@@ -878,6 +876,8 @@ public:
         #include "Xenia/DriverD3D_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_h_salem.inl"
     #endif
 #endif
     bool IsDeviceContextValid() { return m_DeviceContext != nullptr; }
@@ -1182,7 +1182,7 @@ public:
     virtual void GetProjectionMatrix(float* mat);
     virtual void SetMatrices(float* pProjMat, float* pViewMat);
 
-    void    DrawQuad(float x0, float y0, float x1, float y1, const ColorF& color, float z = 1.0f, float s0 = 0, float t0 = 0, float s1 = 1, float t1 = 1);
+    void DrawQuad(float x0, float y0, float x1, float y1, const ColorF& color, float z = 1.0f, float s0 = 0.0f, float t0 = 0.0f, float s1 = 1.0f, float t1 = 1.0f) override;
     void DrawQuad3D(const Vec3& v0, const Vec3& v1, const Vec3& v2, const Vec3& v3, const ColorF& color,
         float ftx0 = 0,  float fty0 = 0,  float ftx1 = 1,  float fty1 = 1);
     void DrawFullScreenQuad(CShader* pSH, const CCryNameTSCRC& TechName, float s0, float t0, float s1, float t1, uint32 nState = GS_NODEPTHTEST);
@@ -1344,6 +1344,8 @@ public:
         #include "Xenia/DriverD3D_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1359,6 +1361,8 @@ public:
         #include "Xenia/DriverD3D_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -1626,6 +1630,8 @@ public:
         #include "Xenia/DriverD3D_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_h_salem.inl"
     #endif
 #endif
     void FX_DrawBatches(CShader* pSh, SShaderPass* pPass);
@@ -1633,7 +1639,7 @@ public:
 
     //========================================================================================
 
-    void FX_SetActiveRenderTargets(bool bAllowDIP = false);
+    void FX_SetActiveRenderTargets(bool bAllowDIP = false) override;
 
     void FX_SetViewport();
     void FX_ClearTargets();
@@ -2215,6 +2221,48 @@ public:
     virtual void StartLoadtimePlayback(ILoadtimeCallback* pCallback);
     virtual void StopLoadtimePlayback();
 
+    // macros to implement the platform differences for pushing GPU Markers
+
+#if defined(ENABLE_FRAME_PROFILER_LABELS)
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_H_SECTION_11
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DriverD3D_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DriverD3D_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_h_salem.inl"
+    #endif
+#endif
+
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(OPENGL)
+    #define PROFILE_LABEL_GPU(_NAME) DXGLProfileLabel(_NAME);
+    #define PROFILE_LABEL_PUSH_GPU(_NAME) DXGLProfileLabelPush(_NAME);
+    #define PROFILE_LABEL_POP_GPU(_NAME) DXGLProfileLabelPop(_NAME);
+#elif defined(CRY_USE_DX12)
+    #define PROFILE_LABEL_GPU(_NAME) do { } while (0)
+    #define PROFILE_LABEL_PUSH_GPU(_NAME) do { GetDeviceContext().PushMarker(_NAME); } while (0)
+    #define PROFILE_LABEL_POP_GPU(_NAME) do { GetDeviceContext().PopMarker(); } while (0)
+#else
+
+    #define PROFILE_LABEL_GPU(X) do { wchar_t buf[256]; Unicode::Convert(buf, X); D3DPERF_SetMarker(0xffffffff, buf); } while (0)
+    #define PROFILE_LABEL_PUSH_GPU(X) do { wchar_t buf[128]; Unicode::Convert(buf, X); D3DPERF_BeginEvent(0xff00ff00, buf); } while (0)
+    #define PROFILE_LABEL_POP_GPU(X) do { D3DPERF_EndEvent(); } while (0)
+
+#endif
+#else
+    #define PROFILE_LABEL_GPU(_NAME)
+    #define PROFILE_LABEL_PUSH_GPU(_NAME)
+    #define PROFILE_LABEL_POP_GPU(_NAME)
+#endif
+
+    void AddProfilerLabel(const char* name) override { PROFILE_LABEL_GPU(name); }
+    void BeginProfilerSection(const char* name, uint32 eProfileLabelFlags = 0) override { PROFILE_LABEL_PUSH_GPU(name); if (m_pPipelineProfiler) { m_pPipelineProfiler->BeginSection(name); } }
+    void EndProfilerSection(const char* name) override { PROFILE_LABEL_POP_GPU(name); if (m_pPipelineProfiler) { m_pPipelineProfiler->EndSection(name); } }
+
 private:
     void OnRendererFreeResources(int flags) override;
     void HandleDisplayPropertyChanges();
@@ -2352,11 +2400,13 @@ inline D3DDeviceContext& CD3D9Renderer::GetDeviceContext()
 }
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION DRIVERD3D_H_SECTION_11
+#define AZ_RESTRICTED_SECTION DRIVERD3D_H_SECTION_12
     #if defined(AZ_PLATFORM_XENIA)
         #include "Xenia/DriverD3D_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DriverD3D_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/DriverD3D_h_salem.inl"
     #endif
 #endif
 

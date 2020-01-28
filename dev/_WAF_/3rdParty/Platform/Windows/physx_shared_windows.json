@@ -1,0 +1,31 @@
+{
+    "aliases": {
+        "lib_paths_win_x64_vs2017": ["${lib_paths}/win.x86_64.vc141.md.shared/"]
+    },
+    "platform": {
+        "win_x64_vs2017": {
+            "importlibpath_debug": ["${lib_paths_win_x64_vs2017}/debug"],
+            "importlibpath_profile": ["${lib_paths_win_x64_vs2017}/profile"],
+            "importlibpath_release": ["${lib_paths_win_x64_vs2017}/release"],
+            "importlibpath_performance": ["${lib_paths_win_x64_vs2017}/release"],
+
+            "sharedlibpath_debug": ["${lib_paths_win_x64_vs2017}/debug"],
+            "sharedlibpath_profile": ["${lib_paths_win_x64_vs2017}/profile"],
+            "sharedlibpath_release": ["${lib_paths_win_x64_vs2017}/release"],
+            "sharedlibpath_performance": ["${lib_paths_win_x64_vs2017}/release"],
+
+            "import": [
+                "${lib_names}_64.lib",
+                "${lib_names_ext}_static_64.lib",
+                "${lib_names_additional}_static_64.lib"
+            ],
+            
+            "shared": [
+                "${lib_names}_64.dll",
+                "PhysXGpu_64.dll",
+                "PhysXDevice64.dll"
+            ]
+        },
+        "win_x64_clang": "@win_x64_vs2017"
+    }
+}

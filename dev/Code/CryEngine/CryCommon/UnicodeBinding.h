@@ -536,6 +536,8 @@ namespace Unicode
         #include "Xenia/UnicodeBinding_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/UnicodeBinding_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/UnicodeBinding_h_salem.inl"
     #endif
 #endif
                 return ::wcsnlen(SafeCast<const wchar_t*>(ptr), len);
@@ -545,6 +547,8 @@ namespace Unicode
         #include "Xenia/UnicodeBinding_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/UnicodeBinding_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/UnicodeBinding_h_salem.inl"
     #endif
 #endif
             }

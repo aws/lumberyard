@@ -5,6 +5,7 @@ except ImportError:
     import pickle as cPickle
 from waflib import Build, Logs, ConfigSet, Context, Errors, Utils, Node, Task
 from az_code_generator import az_code_gen
+from msvc_helper import pch_msvc
 
 Build.SAVED_ATTRS.append('cached_engine_path')
 Build.SAVED_ATTRS.append('cached_tp_root_path')
@@ -22,6 +23,7 @@ def options(opt):
     opt.add_option('--artifacts-cache', default='', dest='artifacts_cache')
     opt.add_option('--artifacts-cache-upload', default='False', dest='artifacts_cache_upload')
     opt.add_option('--artifacts-cache-restore', default='False', dest='artifacts_cache_restore')
+    opt.add_option('--artifacts-cache-pch', default='False', dest='artifacts_cache_pch')
     opt.add_option('--artifacts-cache-days-to-keep', default=3, dest='artifacts_cache_days_to_keep')
     opt.add_option('--artifacts-cache-wipeout', default='False', dest='artifacts_cache_wipeout')
 
@@ -267,6 +269,9 @@ def can_retrieve_cache(self):
     #. should an exception occur, ignore the data
     """
     bld = self.generator.bld
+    if not isinstance(bld, Build.BuildContext):
+        return False
+    
     if not getattr(self, 'outputs', None):
         return False
 
@@ -342,6 +347,9 @@ def put_files_cache(self):
 
     # file caching, if possible
     # try to avoid data corruption as much as possible
+    if not isinstance(self.generator.bld, Build.BuildContext):
+        return
+    
     if hasattr(self, 'cached'):
         return
 
@@ -467,3 +475,7 @@ def build(ctx):
             az_code_gen.uid = azcg_uid
             Build.BuildContext.hash_env_vars = hash_env_vars
 
+        if ctx.is_option_true('artifacts_cache_pch'):
+            pch_msvc.nocache = False
+        else:
+            pch_msvc.nocache = True

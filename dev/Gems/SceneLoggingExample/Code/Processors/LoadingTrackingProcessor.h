@@ -45,12 +45,5 @@ namespace SceneLoggingExample
         uint8_t GetPriority() const override;
 
         AZ::SceneAPI::Events::ProcessingResult ContextCallback(AZ::SceneAPI::Events::ICallContext& context);
-
-#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
-    private:
-        // Workaround for VS2013 - Delete the copy constructor and make it private
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-        AZ_DISABLE_COPY(LoadingTrackingProcessor)
-#endif
     };
 } // namespace SceneLoggingExample

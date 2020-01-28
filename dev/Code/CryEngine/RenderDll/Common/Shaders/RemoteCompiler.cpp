@@ -41,6 +41,8 @@
         #include "Xenia/RemoteCompiler_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RemoteCompiler_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RemoteCompiler_cpp_salem.inl"
     #endif
 #endif
 
@@ -354,12 +356,12 @@ namespace NRemoteCompiler
         EShaderLanguage shaderLanguage = GetShaderLanguage();
         switch (shaderLanguage)
         {
-        case eSL_Orbis: // ACCEPTED_USE
-            shaderCompiler = eSC_Orbis_DXC; // ACCEPTED_USE
+        case eSL_Orbis:
+            shaderCompiler = eSC_Orbis_DXC;
             break;
 
-        case eSL_Durango: // ACCEPTED_USE
-            shaderCompiler = eSC_Durango_FXC; // ACCEPTED_USE
+        case eSL_Durango:
+            shaderCompiler = eSC_Durango_FXC;
             break;
 
         case eSL_D3D11:
@@ -387,8 +389,8 @@ namespace NRemoteCompiler
         static const char *shaderCompilerNames[eSC_MAX] =
         {
             "Unknown",
-            "Orbis_DXC", // ACCEPTED_USE
-            "Durango_FXC", // ACCEPTED_USE
+            "Orbis_DXC",
+            "Durango_FXC",
             "D3D11_FXC",
             "GLSL_HLSLcc",
             "METAL_HLSLcc",
@@ -449,7 +451,7 @@ namespace NRemoteCompiler
         switch (shaderCompiler)
         {
         // ----------------------------------------
-        case eSC_Orbis_DXC: // ACCEPTED_USE
+        case eSC_Orbis_DXC:
         {
             flags = "%s %s \"%s\" \"%s\"";
 
@@ -459,6 +461,8 @@ namespace NRemoteCompiler
                     #include "Xenia/RemoteCompiler_cpp_xenia.inl"
                 #elif defined(AZ_PLATFORM_PROVO)
                     #include "Provo/RemoteCompiler_cpp_provo.inl"
+                #elif defined(AZ_PLATFORM_SALEM)
+                    #include "Salem/RemoteCompiler_cpp_salem.inl"
                 #endif
             #endif
 
@@ -468,6 +472,8 @@ namespace NRemoteCompiler
                     #include "Xenia/RemoteCompiler_cpp_xenia.inl"
                 #elif defined(AZ_PLATFORM_PROVO)
                     #include "Provo/RemoteCompiler_cpp_provo.inl"
+                #elif defined(AZ_PLATFORM_SALEM)
+                    #include "Salem/RemoteCompiler_cpp_salem.inl"
                 #endif
             #endif
 
@@ -475,14 +481,22 @@ namespace NRemoteCompiler
                 #define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_2
                 #include "Provo/RemoteCompiler_cpp_provo.inl"
             #endif
+            #if defined(TOOLS_SUPPORT_XENIA)
+                #define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_2
+                #include "Xenia/RemoteCompiler_cpp_xenia.inl"
+            #endif
+            #if defined(TOOLS_SUPPORT_SALEM)
+                #define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_2
+                #include "Salem/RemoteCompiler_cpp_salem.inl"
+            #endif
         }
         break;
 
         // ----------------------------------------
-        case eSC_Durango_FXC: // ACCEPTED_USE
+        case eSC_Durango_FXC:
         case eSC_D3D11_FXC:
         {
-            const char* extraFlags = (shaderCompiler==eSC_Durango_FXC) ? "/Gis" : ""; // ACCEPTED_USE
+            const char* extraFlags = (shaderCompiler==eSC_Durango_FXC) ? "/Gis" : "";
 
             const char* debugFlags = "";
             if (CRenderer::CV_r_shadersdebug == 3)
@@ -755,6 +769,8 @@ namespace NRemoteCompiler
         #include "Xenia/RemoteCompiler_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RemoteCompiler_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RemoteCompiler_cpp_salem.inl"
     #endif
 #endif
 
@@ -855,8 +871,12 @@ namespace NRemoteCompiler
 
         #if defined(AZ_RESTRICTED_PLATFORM)
             #define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_4
-            #if defined(AZ_PLATFORM_PROVO)
+            #if defined(AZ_PLATFORM_XENIA)
+                #include "Xenia/RemoteCompiler_cpp_xenia.inl"
+            #elif defined(AZ_PLATFORM_PROVO)
                 #include "Provo/RemoteCompiler_cpp_provo.inl"
+            #elif defined(AZ_PLATFORM_SALEM)
+                #include "Salem/RemoteCompiler_cpp_salem.inl"
             #endif
         #endif
 
@@ -928,6 +948,8 @@ namespace NRemoteCompiler
         #include "Xenia/RemoteCompiler_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RemoteCompiler_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RemoteCompiler_cpp_salem.inl"
     #endif
 #endif
 

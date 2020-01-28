@@ -18,6 +18,8 @@
         #include "Xenia/D3DHWShader_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DHWShader_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DHWShader_h_salem.inl"
     #endif
 #endif
 

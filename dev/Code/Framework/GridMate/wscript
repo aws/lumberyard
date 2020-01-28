@@ -13,8 +13,6 @@
 
 def build(bld):
     
-    bld.recurse('Tests')
-
     bld.CryEngineStaticLibrary(
         # Settings
         target          = 'GridMate',
@@ -38,9 +36,18 @@ def build(bld):
                           ],
 
         # Platform Specific
-        win_features      = ['crcfix'],
+        win_features    = ['crcfix'],
 
-        darwin_enable_rtti = True
+        darwin_enable_rtti = True,
+        
+        # Tests
+        create_test_driver  = True,
+        test_vs_filter      = 'AZ Framework/TestSuites',
+        test_file_list      = ['Tests/gridmate_test.waf_files'],
+        test_includes       = ['Tests'],
+        test_uselib         = ['GMOCK', 'OPENSSL'],
+        test_platform_roots = [bld.PlatformRoot('Tests/Platform', export_includes=False)],
+        win_test_lib        = ['Ws2_32', 'Mswsock', 'gdi32', 'CRYPT32']
     )
 
     bld.CryEngineStaticLibrary(

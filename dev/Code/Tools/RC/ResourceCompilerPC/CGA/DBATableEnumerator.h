@@ -43,7 +43,9 @@ public:
     const char* FindDBAPath(const char* animationPath, const char* skeleton, const std::vector<string>& tags) const;
 
 private:
-    std::auto_ptr<SDBATable> m_table;
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+    std::unique_ptr<SDBATable> m_table;
+    AZ_POP_DISABLE_WARNING
     typedef std::map<string, size_t> TAnimationDBAMap;
     DBATableEntries m_dbas;
 };

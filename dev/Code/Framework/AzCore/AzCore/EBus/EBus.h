@@ -117,7 +117,6 @@ namespace AZ
          * Used only when the #AddressPolicy is AZ::EBusAddressPolicy::ByIdAndOrdered.
          * If an event is dispatched without an ID, this function determines
          * the order in which each address receives the event.
-         * The function must satisfy `AZStd::binary_function<BusIdType, BusIdType, bool>`.
          *
          * The following example shows a sorting function that meets these requirements.
          * @code{.cpp}
@@ -130,7 +129,6 @@ namespace AZ
          * Sorting function for EBus event handlers.
          * Used only when the #HandlerPolicy is AZ::EBusHandlerPolicy::MultipleAndOrdered.
          * This function determines the order in which handlers at an address receive an event.
-         * The function must satisfy `AZStd::binary_function<Interface*, Interface*, bool>`.
          *
          * By default, the function requires the handler to implement the following comparison
          * function.
@@ -237,6 +235,14 @@ namespace AZ
          */
         template <class Bus>
         using RouterPolicy = EBusRouterPolicy<Bus>;
+
+        /*
+        * Performs the actual call on an Ebus handler.
+        * Enables custom code to be run on a per-callee basis.
+        * Use cases include debugging systems and profiling that need to run custom
+        * code before or after an event.
+        */
+        using EventProcessingPolicy = EBusEventProcessingPolicy;
     };
 
     namespace Internal
@@ -398,7 +404,6 @@ namespace AZ
          * Used only when the address policy is AZ::EBusAddressPolicy::ByIdAndOrdered.
          * If an event is dispatched without an ID, this function determines
          * the order in which each address receives the event.
-         * The function must satisfy `AZStd::binary_function<BusIdType, BusIdType, bool>`.
          *
          * The following example shows a sorting function that meets these requirements.
          * @code{.cpp}
@@ -455,7 +460,7 @@ namespace AZ
         /**
          * Used to manually create a callstack entry for a call (often used by ConnectionPolicy)
          */
-        using CallstackEntry = Internal::CallstackEntry<Interface, Traits>;
+        using CallstackEntry = AZ::Internal::CallstackEntry<Interface, Traits>;
 
         /**
          * Specifies whether the %EBus supports an event queue.
@@ -469,12 +474,12 @@ namespace AZ
         /**
          * Class that implements %EBus routing functionality.
          */
-        using Router = Internal::EBusRouter<ThisType>;
+        using Router = AZ::Internal::EBusRouter<ThisType>;
 
         /**
          * Class that implements an %EBus version router.
          */
-        using NestedVersionRouter = Internal::EBusNestedVersionRouter<ThisType>;
+        using NestedVersionRouter = AZ::Internal::EBusNestedVersionRouter<ThisType>;
 
         /**
          * Controls the flow of %EBus events.
@@ -611,7 +616,7 @@ namespace AZ
         static const char* GetName();
 
         /// @cond EXCLUDE_DOCS
-        class Context : public Internal::ContextBase
+        class Context : public AZ::Internal::ContextBase
         {
             friend ThisType;
             friend Router;

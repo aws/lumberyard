@@ -159,7 +159,7 @@ namespace AssetProcessor
         InternalRecognizerBasedBuilder(QHash<QString, BuilderIdAndName> inputBuilderByIdMap, AZ::Uuid internalBuilderUuid);
 
         // overridden in unit tests.  Searches for RC.EXE
-        virtual bool FindRC(QString& systemRootOut, QString& rcPathOut);
+        virtual bool FindRC(QString& rcAbsolutePathOut);
 
         void CreateLegacyRCJob(
             const AssetBuilderSDK::CreateJobsRequest& request,
@@ -184,6 +184,7 @@ namespace AssetProcessor
         void ProcessCopyJob(
             const AssetBuilderSDK::ProcessJobRequest& request,
             AZ::Uuid productAssetType,
+            bool outputProductDependencies,
             const AssetBuilderSDK::JobCancelListener& jobCancelListener,
             AssetBuilderSDK::ProcessJobResponse& response);
 

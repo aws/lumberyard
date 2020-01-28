@@ -24,12 +24,17 @@ def build(bld):
         file_list           = 'launcher.waf_files',
         pch                 = 'Launcher_precompiled.cpp',
         client_only         = True,
-        exclude_test        = True,
+        exclude_test        = False,
         use                 = ['AzGameFramework'],
         includes            = [bld.Path('Code/CryEngine/CryCommon')],
 
         # Platform Specific
         platform_roots      = [{'root': 'Platform', 'export_includes': False}],
+    
+        test_file_list      = ['launcher_test.waf_files'],
+        test_use            = ['AzTest'],
+        test_uselib         = ['GMOCK'],
+        test_win_linkflags  = ['/SUBSYSTEM:CONSOLE']
     )
 
     bld.CryDedicatedServer(
@@ -61,7 +66,7 @@ def package(pkg):
         target              = 'ClientLauncher',
         platforms           = ['android'],
         client_only         = True,
-        exclude_test        = True,
+        exclude_test        = False,
         restricted_script   = 'update_restricted_package_parameters',
     )
 
@@ -71,6 +76,15 @@ def deploy(ctx):
         target              = 'ClientLauncher',
         platforms           = ['android'],
         client_only         = True,
-        exclude_test        = True,
+        exclude_test        = False,
+        restricted_script   = 'update_restricted_deploy_parameters',
+    )
+    
+
+def run_unit_test(ctx):
+    ctx.run_unit_test(
+        target              = 'ClientLauncher',
+        test_only           = True,
+        platforms           = ['android', 'win'],
         restricted_script   = 'update_restricted_deploy_parameters',
     )

@@ -26,6 +26,7 @@
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
+#include <AzToolsFramework/API/EntityPropertyEditorRequestsBus.h>
 
 #include <LmbrCentral/Shape/BoxShapeComponentBus.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
@@ -301,11 +302,10 @@ namespace CloudsGem
 
     void CloudGenerator::RequestGeneration(GenerationFlag flag)
     {
-        using Tools = AzToolsFramework::ToolsApplicationRequests;
-        using EntityIdList = AzToolsFramework::EntityIdList;
-
-        EntityIdList selectedEntityIds;
-        Tools::Bus::BroadcastResult(selectedEntityIds, &Tools::GetSelectedEntities);
+        // We need to use GetSelectedAndPinnedEntities as we have to handle the pinned inspector.
+        AzToolsFramework::EntityIdList selectedEntityIds;
+        AzToolsFramework::EntityPropertyEditorRequestBus::Broadcast(
+            &AzToolsFramework::EntityPropertyEditorRequestBus::Events::GetSelectedAndPinnedEntities, selectedEntityIds);
         for (auto entityId : selectedEntityIds)
         {
             EditorCloudComponentRequestBus::Event(entityId, &EditorCloudComponentRequestBus::Events::Generate, flag);

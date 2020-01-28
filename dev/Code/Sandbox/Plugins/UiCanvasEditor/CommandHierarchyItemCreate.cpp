@@ -18,11 +18,13 @@
 CommandHierarchyItemCreate::CommandHierarchyItemCreate(UndoStack* stack,
     HierarchyWidget* hierarchy,
     const EntityHelpers::EntityIdList& parents,
+    int childIndex,
     PostCreationCallback postCreationCB)
     : QUndoCommand()
     , m_stack(stack)
     , m_hierarchy(hierarchy)
     , m_parents(parents)
+    , m_childIndex(childIndex)
     , m_entries()
     , m_postCreationCB(postCreationCB)
 {
@@ -46,26 +48,27 @@ void CommandHierarchyItemCreate::redo()
 
         HierarchyItemRawPtrList items;
 
-        for (auto& p : m_parents)
+        for (auto& parentEntityId : m_parents)
         {
-            auto parent = HierarchyHelpers::ElementToItem(m_hierarchy, p, true);
-
             // Find a unique name for the new element
             AZStd::string uniqueName;
             EBUS_EVENT_ID_RESULT(uniqueName,
                 m_hierarchy->GetEditorWindow()->GetCanvas(),
                 UiCanvasBus,
                 GetUniqueChildName,
-                p,
+                parentEntityId,
                 UICANVASEDITOR_ELEMENT_NAME_DEFAULT,
                 nullptr);
 
-            items.push_back(new HierarchyItem(m_hierarchy->GetEditorWindow(),
-                    parent,
-                    QString(uniqueName.c_str()),
-                    nullptr));
-
-            m_hierarchy->ReparentItems(true, QTreeWidgetItemRawPtrList({ parent }), HierarchyItemRawPtrList({ items.back() }));
+            // Create a new hierarchy item which will create a new entity
+            QTreeWidgetItem* parent = HierarchyHelpers::ElementToItem(m_hierarchy, parentEntityId, true);
+            AZ_Assert(parent, "No parent widget item found for parent entity");
+            HierarchyItem* hierarchyItem = new HierarchyItem(m_hierarchy->GetEditorWindow(),
+                *parent,
+                m_childIndex,
+                QString(uniqueName.c_str()),
+                nullptr);
+            items.push_back(hierarchyItem);
 
             AZ::Entity* element = items.back()->GetElement();
             m_postCreationCB(element);
@@ -89,6 +92,7 @@ void CommandHierarchyItemCreate::redo()
 void CommandHierarchyItemCreate::Push(UndoStack* stack,
     HierarchyWidget* hierarchy,
     const QTreeWidgetItemRawPtrQList& selectedItems,
+    int childIndex,
     PostCreationCallback postCreationCB)
 {
     if (stack->GetIsExecuting())
@@ -104,5 +108,6 @@ void CommandHierarchyItemCreate::Push(UndoStack* stack,
                 selectedItems,
                 true
                 ),
+            childIndex,
             postCreationCB));
 }

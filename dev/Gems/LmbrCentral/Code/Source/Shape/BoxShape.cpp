@@ -305,7 +305,7 @@ namespace LmbrCentral
 
             m_obb = obb;
             m_aabb = AZ::Aabb::CreatePoints(boxCorners.begin(), boxCorners.size());
-                
+
             m_axisAligned = false;
         }
     }

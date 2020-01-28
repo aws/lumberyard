@@ -9,15 +9,18 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZCORE_NUMERIC_CAST_H
-#define AZCORE_NUMERIC_CAST_H
 
-#include "AzCore/std/typetraits/is_enum.h"
-#include "AzCore/std/typetraits/is_floating_point.h"
-#include "AzCore/std/typetraits/is_integral.h"
-#include "AzCore/std/typetraits/is_same.h"
-#include "AzCore/std/typetraits/underlying_type.h"
-#include "AzCore/std/utils.h"
+#pragma once
+
+#include <AzCore/RTTI/TypeInfo.h>
+#include <AzCore/std/typetraits/is_enum.h>
+#include <AzCore/std/typetraits/is_floating_point.h>
+#include <AzCore/std/typetraits/is_integral.h>
+#include <AzCore/std/typetraits/is_same.h>
+#include <AzCore/std/typetraits/is_signed.h>
+#include <AzCore/std/typetraits/is_unsigned.h>
+#include <AzCore/std/typetraits/underlying_type.h>
+#include <AzCore/std/utils.h>
 #include <limits>
 
 /*
@@ -50,7 +53,9 @@
 // (K)    Floating      Floating         Y
 */
 
-//#define AZ_NUMERICCAST_ENABLED 1
+// This is disabled by default because it puts in costly runtime checking of casted values.
+// You can either change it here to enable it across the engine, or use push/pop_macro to enable per file/feature.
+// #define AZ_NUMERICCAST_ENABLED 1
 
 #if AZ_NUMERICCAST_ENABLED
 #define AZ_NUMERIC_ASSERT(expr, ...) AZ_Assert(expr, __VA_ARGS__)
@@ -61,10 +66,75 @@
 #pragma push_macro("max")
 #undef max
 
+namespace NumericCastInternal
+{
+    template <typename ToType, typename FromType>
+    inline typename AZStd::enable_if<
+    !AZStd::is_integral<FromType>::value || !AZStd::is_floating_point<ToType>::value
+    , bool> ::type UnderflowsToType(const FromType& value)
+    {
+        return (value < static_cast<FromType>(std::numeric_limits<ToType>::lowest()));
+    }
+
+    template <typename ToType, typename FromType>
+    inline typename AZStd::enable_if<
+    AZStd::is_integral<FromType>::value && AZStd::is_floating_point<ToType>::value
+    , bool> ::type UnderflowsToType(const FromType& value)
+    {
+        return (static_cast<ToType>(value) < std::numeric_limits<ToType>::lowest());
+    }
+
+    template <typename ToType, typename FromType>
+    inline typename AZStd::enable_if<
+    !AZStd::is_integral<FromType>::value || !AZStd::is_floating_point<ToType>::value
+    , bool> ::type OverflowsToType(const FromType& value)
+    {
+        return (value > static_cast<FromType>(std::numeric_limits<ToType>::max()));
+    }
+
+    template <typename ToType, typename FromType>
+    inline typename AZStd::enable_if<
+    AZStd::is_integral<FromType>::value && AZStd::is_floating_point<ToType>::value
+    , bool> ::type OverflowsToType(const FromType& value)
+    {
+        return (static_cast<ToType>(value) > std::numeric_limits<ToType>::max());
+    }
+
+    template <typename ToType, typename FromType>
+    inline typename AZStd::enable_if<
+    AZStd::is_integral<FromType>::value && AZStd::is_integral<ToType>::value
+    && std::numeric_limits<FromType>::digits <= std::numeric_limits<ToType>::digits
+    && AZStd::is_signed<FromType>::value && AZStd::is_unsigned<ToType>::value
+    , bool> ::type FitsInToType(const FromType& value)
+    {
+        return !NumericCastInternal::UnderflowsToType<ToType>(value);
+    }
+
+    template <typename ToType, typename FromType>
+    inline typename AZStd::enable_if<
+    AZStd::is_integral<FromType>::value && AZStd::is_integral<ToType>::value
+    && (std::numeric_limits<FromType>::digits > std::numeric_limits<ToType>::digits)
+    && AZStd::is_unsigned<FromType>::value
+    , bool> ::type FitsInToType(const FromType& value)
+    {
+        return !NumericCastInternal::OverflowsToType<ToType>(value);
+    }
+
+    template <typename ToType, typename FromType>
+    inline typename AZStd::enable_if<
+    (!AZStd::is_integral<FromType>::value || !AZStd::is_integral<ToType>::value)
+    || ((std::numeric_limits<FromType>::digits <= std::numeric_limits<ToType>::digits) && (AZStd::is_unsigned<FromType>::value || AZStd::is_signed<ToType>::value))
+    || ((std::numeric_limits<FromType>::digits > std::numeric_limits<ToType>::digits) && AZStd::is_signed<FromType>::value)
+    , bool> ::type FitsInToType(const FromType& value)
+    {
+        return !NumericCastInternal::OverflowsToType<ToType>(value) && !NumericCastInternal::UnderflowsToType<ToType>(value);
+    }
+} // namespace AZ
+
 // INTEGER -> INTEGER
 // (A) Not losing digits or risking sign loss
 template <typename ToType, typename FromType>
-inline typename AZStd::enable_if<
+inline constexpr typename AZStd::enable_if<
     AZStd::is_integral<FromType>::value&& AZStd::is_integral<ToType>::value
     && std::numeric_limits<FromType>::digits <= std::numeric_limits<ToType>::digits
     && (!std::numeric_limits<FromType>::is_signed || std::numeric_limits<ToType>::is_signed)
@@ -75,51 +145,51 @@ inline typename AZStd::enable_if<
 
 // (B) Not losing digits, but we are losing sign, so make sure we aren't dealing with a negative number
 template <typename ToType, typename FromType>
-inline typename AZStd::enable_if<
+inline constexpr typename AZStd::enable_if<
     AZStd::is_integral<FromType>::value&& AZStd::is_integral<ToType>::value
     && std::numeric_limits<FromType>::digits <= std::numeric_limits<ToType>::digits
     && std::numeric_limits<FromType>::is_signed&& !std::numeric_limits<ToType>::is_signed
     , ToType > ::type aznumeric_cast(FromType value)
 {
     AZ_NUMERIC_ASSERT(
-        value >= static_cast<FromType>(std::numeric_limits<ToType>::lowest()),
-        "Cannot assign a negative number to an unsigned integer!");
+        NumericCastInternal::FitsInToType<ToType>(value),
+        "Attempted cast causes loss of signed value.");
     return static_cast<ToType>(value);
 }
 
 
 // (C) Maybe losing digits from an unsigned type, so make sure we don't exceed the destination max value. No check against zero is necessary.
 template <typename ToType, typename FromType>
-inline typename AZStd::enable_if<
+inline constexpr typename AZStd::enable_if<
     AZStd::is_integral<FromType>::value&& AZStd::is_integral<ToType>::value
     && !(std::numeric_limits<FromType>::digits <= std::numeric_limits<ToType>::digits)
     && !std::numeric_limits<FromType>::is_signed
     , ToType > ::type aznumeric_cast(FromType value)
 {
     AZ_NUMERIC_ASSERT(
-        value <= static_cast<FromType>(std::numeric_limits<ToType>::max()),
-        "Losing unsigned high bits due to type narrowing!");
+        NumericCastInternal::FitsInToType<ToType>(value),
+        "Attempted downcast of unsigned integer causes loss of high bits and type narrowing.");
     return static_cast<ToType>(value);
 }
 
 // (D) Maybe losing digits within signed types, we need to check both the min and max values.
 template <typename ToType, typename FromType>
-inline typename AZStd::enable_if<
+inline constexpr typename AZStd::enable_if<
     AZStd::is_integral<FromType>::value&& AZStd::is_integral<ToType>::value
     && !(std::numeric_limits<FromType>::digits <= std::numeric_limits<ToType>::digits)
     && std::numeric_limits<FromType>::is_signed
     , ToType > ::type aznumeric_cast(FromType value)
 {
     AZ_NUMERIC_ASSERT(
-        value <= static_cast<FromType>(std::numeric_limits<ToType>::max()) && value >= static_cast<FromType>(std::numeric_limits<ToType>::lowest()),
-        "Losing signed high bits due to type narrowing!");
+        NumericCastInternal::FitsInToType<ToType>(value),
+        "Attempted downcast of signed integer causes loss of high bits and type narrowing.");
     return static_cast<ToType>(value);
 }
 
 // ENUMS -> INTEGER
 // (E) handled by changing the enum to its underlying type
 template <typename ToType, typename FromType>
-inline typename AZStd::enable_if<
+inline constexpr typename AZStd::enable_if<
     AZStd::is_enum<FromType>::value&& AZStd::is_integral<ToType>::value
     , ToType > ::type aznumeric_cast(FromType value)
 {
@@ -130,20 +200,20 @@ inline typename AZStd::enable_if<
 // FLOATING -> INTEGER
 // (E) We'll accept precision loss as long as it stays in range
 template <typename ToType, typename FromType>
-inline typename AZStd::enable_if<
+inline constexpr typename AZStd::enable_if<
     AZStd::is_floating_point<FromType>::value&& AZStd::is_integral<ToType>::value
     , ToType > ::type aznumeric_cast(FromType value)
 {
     AZ_NUMERIC_ASSERT(
-        value <= static_cast<FromType>(std::numeric_limits<ToType>::max()) && value >= static_cast<FromType>(std::numeric_limits<ToType>::lowest()),
-        "Floating point value is too big!");
+        NumericCastInternal::FitsInToType<ToType>(value),
+        "Attempted cast of floating point value does not fit in the supplied type.");
     return static_cast<ToType>(value);
 }
 
 // INTEGER -> ENUM
 // (G) We must cast to an enum so go through the backing type
 template <typename ToType, typename FromType>
-inline typename AZStd::enable_if<
+inline constexpr typename AZStd::enable_if<
     AZStd::is_integral<FromType>::value&& AZStd::is_enum<ToType>::value
     , ToType > ::type aznumeric_cast(FromType value)
 {
@@ -154,7 +224,7 @@ inline typename AZStd::enable_if<
 // INTEGER -> FLOATING POINT
 // (H) Perhaps some faster code substitutions could be done here instead of the standard int->float calls
 template <typename ToType, typename FromType>
-inline typename AZStd::enable_if<
+inline constexpr typename AZStd::enable_if<
     AZStd::is_integral<FromType>::value&& AZStd::is_floating_point<ToType>::value
     , ToType > ::type aznumeric_cast(FromType value)
 {
@@ -164,7 +234,7 @@ inline typename AZStd::enable_if<
 // ENUM -> ENUM
 // (I) crossing enums using the underlying type as the transport
 template <typename ToType, typename FromType>
-inline typename AZStd::enable_if<
+inline constexpr typename AZStd::enable_if<
     AZStd::is_enum<FromType>::value&& AZStd::is_enum<ToType>::value
     , ToType > ::type aznumeric_cast(FromType value)
 {
@@ -176,7 +246,7 @@ inline typename AZStd::enable_if<
 // FLOATING POINT -> FLOATING POINT
 // (J) crossing floats with no digit loss
 template <typename ToType, typename FromType>
-inline typename AZStd::enable_if<
+inline constexpr typename AZStd::enable_if<
     AZStd::is_floating_point<FromType>::value&& AZStd::is_floating_point<ToType>::value
     && std::numeric_limits<FromType>::digits <= std::numeric_limits<ToType>::digits
     , ToType > ::type aznumeric_cast(FromType value)
@@ -186,14 +256,14 @@ inline typename AZStd::enable_if<
 
 // (K) crossing floats with digit loss
 template <typename ToType, typename FromType>
-inline typename AZStd::enable_if<
+inline constexpr typename AZStd::enable_if<
     AZStd::is_floating_point<FromType>::value&& AZStd::is_floating_point<ToType>::value
     && !(std::numeric_limits<FromType>::digits <= std::numeric_limits<ToType>::digits)
     , ToType > ::type aznumeric_cast(FromType value)
 {
     AZ_NUMERIC_ASSERT(
-        value <= static_cast<FromType>(std::numeric_limits<ToType>::max()) && value >= static_cast<FromType>(std::numeric_limits<ToType>::lowest()),
-        "Floating point value is too big!");
+        NumericCastInternal::FitsInToType<ToType>(value),
+        "Attempted cast of floating point value does not fit in the supplied type.");
     return static_cast<ToType>(value);
 }
 
@@ -208,7 +278,7 @@ namespace AZ
         explicit NumericCasted(FromType value)
             : m_value(value) { }
         template <typename ToType>
-        operator ToType() const { return aznumeric_cast<ToType>(m_value); }
+        constexpr operator ToType() const { return aznumeric_cast<ToType>(m_value); }
 
     private:
         NumericCasted() = delete;
@@ -221,12 +291,9 @@ namespace AZ
 // This is the primary function we should use when doing numeric casting, since it induces the
 // type we need to cast to from the code rather than requiring an explicit coupling in the source.
 template <typename FromType>
-inline AZ::NumericCasted<FromType> aznumeric_caster(FromType value)
+inline constexpr AZ::NumericCasted<FromType> aznumeric_caster(FromType value)
 {
     return AZ::NumericCasted<FromType>(value);
 }
 
-#endif // AZCORE_NUMERIC_CAST_H
-
 #pragma pop_macro("max")
-#pragma once

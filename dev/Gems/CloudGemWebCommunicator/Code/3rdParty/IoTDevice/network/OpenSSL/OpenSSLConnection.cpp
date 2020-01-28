@@ -41,6 +41,9 @@
 
 namespace awsiotsdk {
 	namespace network {
+
+		static const char* SSL_CTX_CIPHER_LIST = "ECDHE-RSA-AES128-GCM-SHA256";
+
 		OpenSSLConnection::OpenSSLConnection(util::String endpoint, uint16_t endpoint_port,
 											 std::chrono::milliseconds tls_handshake_timeout,
 											 std::chrono::milliseconds tls_read_timeout,
@@ -124,6 +127,11 @@ namespace awsiotsdk {
 
 			if((p_ssl_context_ = SSL_CTX_new(method)) == NULL) {
 				AWS_LOG_ERROR(OPENSSL_WRAPPER_LOG_TAG, " SSL INIT Failed - Unable to create SSL Context");
+				return ResponseCode::NETWORK_SSL_INIT_ERROR;
+			}
+
+			if (!SSL_CTX_set_cipher_list(p_ssl_context_, SSL_CTX_CIPHER_LIST)) {
+				AWS_LOG_ERROR(OPENSSL_WRAPPER_LOG_TAG, "SSL_CTX_set_cipher_list failed");
 				return ResponseCode::NETWORK_SSL_INIT_ERROR;
 			}
 

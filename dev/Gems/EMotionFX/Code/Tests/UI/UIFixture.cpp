@@ -27,8 +27,6 @@ namespace EMotionFX
     {
         UIFixtureBase::SetUp();
 
-        AZ::AllocatorInstance<Integration::EMotionFXAllocator>::Get().GetRecords()->SetMode(AZ::Debug::AllocationRecords::RECORD_NO_RECORDS);
-
         AzQtComponents::PrepareQtPaths();
 
         char arg0[] = {"test"};

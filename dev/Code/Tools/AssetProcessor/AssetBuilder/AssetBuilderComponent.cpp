@@ -28,6 +28,7 @@
 #include <AssetBuilderInfo.h>
 #include <AzFramework/API/BootstrapReaderBus.h>
 #include <AzCore/Memory/AllocatorManager.h>
+#include <AssetBuilderSDK/AssetBuilderBusses.h>
 
 // Command-line parameter options:
 static const char* const s_paramHelp = "help"; // Print help information.
@@ -44,6 +45,7 @@ static const char* const s_paramDebug = "debug"; // Debug mode for the create an
 static const char* const s_paramDebugCreate = "debug_create"; // Debug mode for the create job of the specified file.
 static const char* const s_paramDebugProcess = "debug_process"; // Debug mode for the process job of the specified file.
 static const char* const s_paramPlatformTags = "tags"; // Additional list of tags to add platform tag list.
+static const char* const s_paramPlatform = "platform"; // Platform to use
 
 // Task modes:
 static const char* const s_taskResident = "resident"; // stays up and running indefinitely, accepting jobs via network connection
@@ -75,6 +77,7 @@ void AssetBuilderComponent::PrintHelp()
     AZ_TracePrintf("Help", "%s - Debug mode for the create job of the specified file.\n", s_paramDebugCreate);
     AZ_TracePrintf("Help", "%s - Debug mode for the process job of the specified file.\n", s_paramDebugProcess);
     AZ_TracePrintf("Help", "%s - Additional tags to add to the debug platform for job processing. One tag can be supplied per option\n", s_paramPlatformTags);
+    AZ_TracePrintf("Help", "%s - Platform to use for debugging. ex: pc\n", s_paramPlatform);
 }
 
 bool AssetBuilderComponent::IsInDebugMode(const AzFramework::CommandLine& commandLine)
@@ -228,7 +231,7 @@ bool AssetBuilderComponent::ConnectToAssetProcessor()
 
     if (GetParameter(s_paramPort, port, false))
     {
-        int portNumber = AZStd::stoi(port);
+        AZ::u16 portNumber = aznumeric_caster(AZStd::stoi(port));
         AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystem::AssetSystemRequests::SetAssetProcessorPort, portNumber);
     }
 
@@ -379,7 +382,7 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
 
         if (!LoadBuilders(binDir))
         {
-            AZ_Error("AssetBuilder", false, "Failed to load one or more builders from '%s'.", binDir);
+            AZ_Error("AssetBuilder", false, "Failed to load one or more builders from '%s'.", binDir.c_str());
             return false;
         }
     }
@@ -410,13 +413,21 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
             }
         }
     }
+
+    AZStd::string platform;
+
+    if(!GetParameter(s_paramPlatform, platform, false))
+    {
+        platform = "debug platform";
+    }
+
     auto* fileIO = AZ::IO::FileIOBase::GetInstance();
 
     for (auto& it : m_assetBuilderDescMap)
     {
         AZStd::unique_ptr<AssetBuilderSDK::AssetBuilderDesc>& builder = it.second;
         AZ_Assert(builder, "Invalid description for builder registered.");
-        if (!IsBuilderForFile(debugFile, *builder))
+        if (!IsBuilderForFile(info.m_relativePath, *builder))
         {
             AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Skipping '%s'.\n", builder->m_name.c_str());
             continue;
@@ -429,7 +440,7 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
         AZStd::vector<AssetBuilderSDK::PlatformInfo> enabledDebugPlatformInfos =
         {
             {
-                "debug platform", platformTags
+                platform.c_str(), platformTags
             }
         };
 
@@ -482,7 +493,7 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
             }
 
             AssetBuilderSDK::PlatformInfo enabledDebugPlatformInfo = {
-                "debug platform", { "tools", "debug" }
+                platform.c_str(), { "tools", "debug" }
             };
 
             AssetBuilderSDK::ProcessJobRequest processRequest;
@@ -490,7 +501,7 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
             processRequest.m_sourceFile = info.m_relativePath;
             processRequest.m_platformInfo = enabledDebugPlatformInfo;
             processRequest.m_sourceFileUUID = info.m_assetId.m_guid;
-            AzFramework::StringFunc::Path::Join(processRequest.m_watchFolder.c_str(), processRequest.m_sourceFile.c_str(), processRequest.m_fullPath);
+            AzFramework::StringFunc::AssetDatabasePath::Join(processRequest.m_watchFolder.c_str(), processRequest.m_sourceFile.c_str(), processRequest.m_fullPath);
             processRequest.m_tempDirPath = processJobTempDirPath;
             processRequest.m_jobId = 0;
             processRequest.m_builderGuid = builder->m_busId;
@@ -536,9 +547,6 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
 
 void AssetBuilderComponent::ProcessJob(const AssetBuilderSDK::ProcessJobFunction& job, const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& outResponse)
 {
-    AZ_TraceContext("Source", request.m_fullPath);
-    AZ_TraceContext("Platform", request.m_jobDescription.GetPlatformIdentifier());
-
     namespace Path = AzFramework::StringFunc::Path;
 
     // Setup the alias' as appropriate to the job in question.
@@ -629,7 +637,7 @@ bool AssetBuilderComponent::RunOneShotTask(const AZStd::string& task)
     }
 }
 
-void AssetBuilderComponent::Disconnected(AzFramework::SocketConnection* connection)
+void AssetBuilderComponent::Disconnected(AzFramework::SocketConnection* /*connection*/)
 {
     // If we lose connection to the AP, print out an error and shut down.
     // This prevents builders from running indefinitely if the AP crashes
@@ -739,8 +747,12 @@ void AssetBuilderComponent::JobThread()
             auto* netResponse = azrtti_cast<CreateJobsNetResponse*>(job->m_netResponse.get());
             AZ_Assert(netRequest && netResponse, "Request or response is null");
 
-            AZ_TraceContext("Source", netRequest->m_request.m_sourceFile);
-            AZ_TraceContext("Platforms", AssetBuilderSDK::PlatformInfo::PlatformVectorAsString(netRequest->m_request.m_enabledPlatforms));
+            AZStd::string fullPath;
+            AzFramework::StringFunc::Path::ConstructFull(netRequest->m_request.m_watchFolder.c_str(), netRequest->m_request.m_sourceFile.c_str(), fullPath, true);
+
+            AZ_TracePrintf("AssetBuilder", "Source = %s\n", fullPath.c_str());
+            AZ_TracePrintf("AssetBuilder", "Platforms = %s\n", AssetBuilderSDK::PlatformInfo::PlatformVectorAsString(netRequest->m_request.m_enabledPlatforms).c_str());
+
             m_assetBuilderDescMap.at(netRequest->m_request.m_builderid)->m_createJobFunction(netRequest->m_request, netResponse->m_response);
             break;
         }
@@ -754,8 +766,9 @@ void AssetBuilderComponent::JobThread()
             auto* netResponse = azrtti_cast<ProcessJobNetResponse*>(job->m_netResponse.get());
             AZ_Assert(netRequest && netResponse, "Request or response is null");
 
-            AZ_TraceContext("Source", netRequest->m_request.m_fullPath);
-            AZ_TraceContext("Platforms", netRequest->m_request.m_platformInfo.m_identifier);
+            AZ_TracePrintf("AssetBuilder", "Source = %s\n", netRequest->m_request.m_fullPath.c_str());
+            AZ_TracePrintf("AssetBuilder", "Platform = %s\n", netRequest->m_request.m_jobDescription.GetPlatformIdentifier().c_str());
+
             ProcessJob(m_assetBuilderDescMap.at(netRequest->m_request.m_builderGuid)->m_processJobFunction, netRequest->m_request, netResponse->m_response);
             break;
         }
@@ -763,6 +776,12 @@ void AssetBuilderComponent::JobThread()
             AZ_Error("AssetBuilder", false, "Unhandled job request type");
             continue;
         }
+
+        AZ::u32 warningCount, errorCount;
+        AssetBuilderSDK::AssetBuilderTraceBus::BroadcastResult(warningCount, &AssetBuilderSDK::AssetBuilderTraceBus::Events::GetWarningCount);
+        AssetBuilderSDK::AssetBuilderTraceBus::BroadcastResult(errorCount, &AssetBuilderSDK::AssetBuilderTraceBus::Events::GetErrorCount);
+
+        AZ_TracePrintf("S", "%d errors, %d warnings\n", errorCount, warningCount);
 
         //Flush our output so the AP can properly associate all output with the current job
         std::fflush(stdout);
@@ -776,14 +795,14 @@ void AssetBuilderComponent::JobThread()
     }
 }
 
-void AssetBuilderComponent::CreateJobsResidentHandler(AZ::u32 typeId, AZ::u32 serial, const void* data, AZ::u32 dataLength)
+void AssetBuilderComponent::CreateJobsResidentHandler(AZ::u32 /*typeId*/, AZ::u32 serial, const void* data, AZ::u32 dataLength)
 {
     using namespace AssetBuilderSDK;
 
     ResidentJobHandler<CreateJobsNetRequest, CreateJobsNetResponse>(serial, data, dataLength, JobType::Create);
 }
 
-void AssetBuilderComponent::ProcessJobResidentHandler(AZ::u32 typeId, AZ::u32 serial, const void* data, AZ::u32 dataLength)
+void AssetBuilderComponent::ProcessJobResidentHandler(AZ::u32 /*typeId*/, AZ::u32 serial, const void* data, AZ::u32 dataLength)
 {
     using namespace AssetBuilderSDK;
 
@@ -815,7 +834,7 @@ bool AssetBuilderComponent::HandleTask(const AZStd::string& inputFilePath, const
     return true;
 }
 
-bool AssetBuilderComponent::HandleRegisterBuilder(const AZStd::string& inputFilePath, const AZStd::string& outputFilePath) const
+bool AssetBuilderComponent::HandleRegisterBuilder(const AZStd::string& /*inputFilePath*/, const AZStd::string& outputFilePath) const
 {
     AssetBuilderSDK::RegisterBuilderResponse response;
 
@@ -874,27 +893,32 @@ bool AssetBuilderComponent::LoadBuilders(const AZStd::string& builderFolder)
     bool result = false;
 
     fileIO->FindFiles(builderFolder.c_str(), GetLibraryExtension(), [&result, this](const char* file)
-        {
-            result = LoadBuilder(file);
+    {
+        result = LoadBuilder(file);
 
-            return result;
-        });
+        return result;
+    });
 
     return result;
 }
 
 bool AssetBuilderComponent::LoadBuilder(const AZStd::string& filePath)
 {
+    using AssetBuilder::AssetBuilderType;
     auto assetBuilderInfo = AZStd::make_unique<AssetBuilder::ExternalModuleAssetBuilderInfo>(QString::fromUtf8(filePath.c_str()));
 
-    if (assetBuilderInfo->IsAssetBuilder())
+    if (assetBuilderInfo->GetAssetBuilderType() == AssetBuilderType::Valid)
     {
         if (!assetBuilderInfo->IsLoaded())
         {
             AZ_Warning("AssetBuilder", false, "AssetBuilder was not able to load the library: %s\n", filePath.c_str());
             return false;
         }
+    }
 
+    AssetBuilderType builderType = assetBuilderInfo->GetAssetBuilderType();
+    if (builderType == AssetBuilderType::Valid)
+    {
         AZ_TracePrintf("AssetBuilder", "LoadBuilder - Initializing and registering builder [%s]\n", assetBuilderInfo->GetName().toUtf8().constData());
 
         m_currentAssetBuilder = assetBuilderInfo.get();
@@ -902,6 +926,11 @@ bool AssetBuilderComponent::LoadBuilder(const AZStd::string& filePath)
         m_currentAssetBuilder = nullptr;
 
         m_assetBuilderInfoList.push_back(AZStd::move(assetBuilderInfo));
+        return true;
+    }
+    if (builderType == AssetBuilderType::Invalid)
+    {
+        return false;
     }
     return true;
 }

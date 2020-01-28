@@ -11,6 +11,7 @@
 */
 #pragma once
 
+#include <cstddef>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netinet/tcp.h>

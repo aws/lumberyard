@@ -95,6 +95,7 @@ def run_xcode_build(ctx, target, platform, config):
         '-target', target,
         '-configuration', config,
         '-quiet',
+        '-UseModernBuildSystem=NO',
         'RUN_WAF_BUILD=NO'
     ]
 
@@ -175,16 +176,16 @@ def run_rc_job(ctx, game, job, assets_platform, source_path, target_path, is_obb
     return run_subprocess(rc_cmd, working_dir = ctx.launch_dir, as_shell = True)
 
 
-def get_shader_compiler_ip_and_port(ctx):
-    shader_cache_gen_cfg = ctx.engine_node.find_node('shadercachegen.cfg')
+def get_shader_compiler_ip_and_port(ctx, config_filename):
+    config_file = ctx.engine_node.find_node(config_filename)
 
-    if shader_cache_gen_cfg:
-        shader_cache_gen_cfg_contents = shader_cache_gen_cfg.read()
+    if config_file:
+        cfg_contents = config_file.read()
 
         def parse_config(search_string, default):
             result = ''
             try:
-                result = re.search(search_string, shader_cache_gen_cfg_contents, re.MULTILINE).group(1).strip()
+                result = re.search(search_string, cfg_contents, re.MULTILINE).group(1).strip()
             except:
                 pass
             if not result:
@@ -195,7 +196,7 @@ def get_shader_compiler_ip_and_port(ctx):
         shader_compiler_port = parse_config('^\s*r_ShaderCompilerPort\s*=\s*((\d)*)', '61453')
         asset_processor_shader_compiler = parse_config('^\s*r_AssetProcessorShaderCompiler\s*=\s*(\d+)', '0')
     else:
-        ctx.fatal('[ERROR] Failed to find shadercachegen.cfg in the engine root directory {}'.format(ctx.engine_node.abspath()))
+        ctx.fatal('[ERROR] Failed to find {} in the engine root directory {}'.format(config_filename, ctx.engine_node.abspath()))
 
     # If we're connecting to the shader compiler through the Asset Processor, we need to check if remote_ip is set
     if asset_processor_shader_compiler == '1':
@@ -208,8 +209,28 @@ def get_shader_compiler_ip_and_port(ctx):
     return shader_compiler_ip, int(shader_compiler_port)
 
 
-def is_shader_compiler_valid(ctx):
-    shader_compiler_ip, shader_compiler_port = get_shader_compiler_ip_and_port(ctx)
+def is_shader_compiler_valid(ctx, shader_ip_config_file='shadercachegen.cfg'):
+    shader_compiler_ip, shader_compiler_port = get_shader_compiler_ip_and_port(ctx, shader_ip_config_file)
+
+    shader_compiler_mismatch = False
+    game_platform = ctx.get_game_platform(ctx.platform)
+    sys_config_filename = 'system_{}_{}.cfg'.format(game_platform, ctx.assets_platform)
+    shader_compiler_ip_sys_cfg, shader_compiler_port_sys_cfg = get_shader_compiler_ip_and_port(ctx, sys_config_filename)
+
+    if shader_compiler_ip != shader_compiler_ip_sys_cfg:
+        if shader_compiler_ip.find("127.0.0.") != -1:
+            ip_list = []
+            try:
+                ip_list = socket.gethostbyname_ex(socket.gethostname())[-1]
+            except:
+                Logs.warn('Could not get list of IP addresses associated with the host')
+            if shader_compiler_ip_sys_cfg not in ip_list:
+                shader_compiler_mismatch = True
+        else:
+            shader_compiler_mismatch = True
+
+    if shader_compiler_mismatch:
+        Logs.warn('[WARNING] Possible shader compiler mismatch between ShaderCacheGen({}) and system config file({}). This could result in rendering issues!'.format(shader_compiler_ip, shader_compiler_ip_sys_cfg))
 
     with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
         for i in range(5):
@@ -294,6 +315,10 @@ def get_shader_list(ctx, game, assets_platform, shader_type, shader_list_file=No
 
     shader_cache_gen_path = get_shader_cache_gen_path(ctx)
     get_shader_list_script = ctx.engine_node.find_resource('Tools/PakShaders/get_shader_list.py')
+
+    if not get_shader_list_script:
+        ctx.fatal('[ERROR] Unable to find {}/Tools/PakShaders/get_shader_list.py. Cannot generate shaders!'.format(ctx.engine_node.abspath()))
+
     command_args = [
         get_python_path(ctx),
         '"{}"'.format(get_shader_list_script.abspath()),
@@ -317,7 +342,7 @@ def get_shader_list(ctx, game, assets_platform, shader_type, shader_list_file=No
 
     return
 
-def generate_shaders_pak(ctx, game, assets_platform, shader_type, shader_list_file=None, shaders_pak_dir=None):
+def generate_shaders(ctx, game, assets_platform, shader_type):
     Logs.info('[INFO] Generate Shaders...')
     timer = Utils.Timer()
 
@@ -326,6 +351,10 @@ def generate_shaders_pak(ctx, game, assets_platform, shader_type, shader_list_fi
 
     shader_cache_gen_path = get_shader_cache_gen_path(ctx)
     gen_shaders_script = ctx.engine_node.find_resource('Tools/PakShaders/gen_shaders.py')
+
+    if not gen_shaders_script:
+        ctx.fatal('[ERROR] Unable to find {}/Tools/PakShaders/gen_shaders.py. Cannot generate shaders!'.format(ctx.engine_node.abspath()))
+
     command_args = [
         get_python_path(ctx),
         '"{}"'.format(gen_shaders_script.abspath()),
@@ -339,6 +368,11 @@ def generate_shaders_pak(ctx, game, assets_platform, shader_type, shader_list_fi
 
     if not run_subprocess(command_args, as_shell=True):
         ctx.fatal('[ERROR] Failed to generate {} shaders'.format(shader_type))
+
+    Logs.info('[INFO] Finished Generate Shaders...({})'.format(timer))
+
+def generate_shaders_pak(ctx, game, assets_platform, shader_type, shader_list_file=None, shaders_pak_dir=None):
+    generate_shaders(ctx, game, assets_platform,shader_type)
 
     pak_shaders_script = ctx.engine_node.find_resource('Tools/PakShaders/pak_shaders.py')
 
@@ -358,9 +392,7 @@ def generate_shaders_pak(ctx, game, assets_platform, shader_type, shader_list_fi
     ]
     if not run_subprocess(command_args, as_shell=True):
         ctx.fatal('[ERROR] Failed to pack {} shaders'.format(shader_type))
-
-    Logs.info('[INFO] Finished Generate Shaders...({})'.format(timer))
-
+    
     return shaders_pak_dir
 
 
@@ -507,6 +539,10 @@ class package_task(Task):
                     gem_module_task_gen = ctx.get_tgen_by_name(module.target_name)
                     self.dependencies.update(get_dependencies_recursively_for_task_gen(ctx, gem_module_task_gen))
 
+    def codesign_executable_file(self,path_to_executable):
+        run_subprocess(['codesign', '-s', '-', path_to_executable], fail_on_error=True)
+
+
     def process_executable(self):
         source_root = self.source_exe.parent
         source_dep_nodes = list(set([
@@ -522,7 +558,7 @@ class package_task(Task):
         else:
             self.bld.symlink_dependencies(self.dependencies, source_dep_nodes, self.binaries_out.abspath())
 
-        self.finalize_func(self.bld, self.binaries_out)
+        self.finalize_func(self, self.binaries_out)
 
     def process_qt(self):
         """
@@ -914,29 +950,13 @@ class PackageContext(LmbrInstallContext):
                 if depend_nodes and len(depend_nodes) > 0:
                     source_node = source_location
                     break
-
-                elif 'AWS_CPP_SDK_ALL' == dependency:
-                    # This is a special dependency that requests all AWS libraries to be dependencies.
-                    Logs.debug('package: Processing AWS_CPP_SDK_ALL. Getting all AWS libs...')
-                    depend_nodes = source_location.ant_glob("libaws-cpp*.dylib", ignorecase=True) 
-                    if depend_nodes and len(depend_nodes) > 0:
-                        source_node = source_location
-                        break
-
-                elif 'AWS' in dependency:
-                    # AWS libraries in use/use_lib use _ to separate the name,
-                    # but the actual library uses '-'. Transform the name and try
-                    # the glob again to see if we pick up the dependent library
-                    Logs.debug('package: Processing AWS lib so changing name to lib*{}*.dylib'.format(dependency.replace('_','-')))
-                    depend_nodes = source_location.ant_glob('lib*' + dependency.replace('_','-') + '*.dylib', ignorecase=True)
-                    if depend_nodes and len(depend_nodes) > 0:
-                        source_node = source_location
-                        break
-
-                elif 'PHYSX_SDK_SHARED' == dependency:
-                    # This is a special dependency that requests all PhysX SDK libraries to be dependencies.
-                    Logs.debug('package: Processing PHYSX_SDK. Getting all PhysX SDK libs...')
-                    depend_nodes = source_location.ant_glob("libPhysX*.dylib", ignorecase=True) 
+                libs_key_name = 'SHAREDLIB_{}'.format(dependency)
+                if libs_key_name in self.env:
+                    lib_files = self.env[libs_key_name]
+                    for lib in lib_files: 
+                        lib_node = source_location.find_node(lib)
+                        if lib_node and lib_node not in depend_nodes:
+                            depend_nodes.append(lib_node)
                     if depend_nodes and len(depend_nodes) > 0:
                         source_node = source_location
                         break

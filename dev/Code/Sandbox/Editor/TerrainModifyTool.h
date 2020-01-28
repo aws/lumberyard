@@ -120,6 +120,7 @@ public:
     static void Command_Flatten();
     static void Command_Smooth();
     static void Command_RiseLower();
+    static int Debug_GetCurrentBrushType();
     //////////////////////////////////////////////////////////////////////////
 
 private:
@@ -155,5 +156,24 @@ private:
     QCursor m_hSmoothCursor;
 };
 
+#include <AzCore/Component/Component.h>
+
+namespace AzToolsFramework
+{
+    //! A component to reflect scriptable commands for the Editor
+    class TerrainModifyPythonFuncsHandler
+        : public AZ::Component
+    {
+    public:
+        AZ_COMPONENT(TerrainModifyPythonFuncsHandler, "{50AD3A1B-9431-498F-889F-A9C323741730}")
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        // AZ::Component ...
+        void Activate() override {}
+        void Deactivate() override {}
+    };
+
+} // namespace AzToolsFramework
 
 #endif // CRYINCLUDE_EDITOR_TERRAINMODIFYTOOL_H

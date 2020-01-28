@@ -68,7 +68,7 @@
 //which is not dependent on platform file system
 #define AZ_CORRECT_DATABASE_SEPARATOR '/'
 #define AZ_CORRECT_DATABASE_SEPARATOR_STRING "/"
-#define AZ_DOUBLE_CORRECT_DATABASE_SEPARTOR "//"
+#define AZ_DOUBLE_CORRECT_DATABASE_SEPARATOR "//"
 #define AZ_WRONG_DATABASE_SEPARATOR '\\'
 #define AZ_WRONG_DATABASE_SEPARATOR_STRING "\\"
 #define AZ_CORRECT_AND_WRONG_DATABASE_SEPARATOR "/\\"
@@ -300,18 +300,20 @@ namespace AzFramework
         AZStd::string& TrimWhiteSpace(AZStd::string& value, bool leading, bool trailing);
 
         //! Strip
-        /*! Strip away the first, last or all character(s) or substring(s) in a AZStd::string with
+        /*! Strip away the leading, trailing or all character(s) or substring(s) in a AZStd::string with
         *! case sensitivity.
-        Example: Case Insensitive Strip all 'l' characters
-        StringFunc::Strip(s = "Hello World", 'l'); s == "Heo Word"
-        Example: Case Insensitive Strip first 'l' character
-        StringFunc::Strip(s = "Hello World", 'l', false, true); s == "Helo World"
-        Example: Case Insensitive Strip last 'l' character
-        StringFunc::Strip(s = "Hello World", 'l', false, false, true); s == "Hello Word"
-        Example: Case Insensitive Strip first and last 'l' character
-        StringFunc::Strip(s = "Hello World", 'l', false, true, true); s == "Helo Word"
-        Example: Case Sensitive Strip first and last 'l' character
-        StringFunc::Strip(s = "HeLlo HeLlo HELlO", 'l', true, true, true); s == "HeLo HeLlo HELO"
+        Example: Case Insensitive Strip all 'a' characters
+        StringFunc::Strip(s = "Abracadabra", 'a'); s == "brcdbr"
+        Example: Case Insensitive Strip first 'b' character (No Match)
+        StringFunc::Strip(s = "Abracadabra", 'b', true, false); s == "Abracadabra"
+        Example: Case Sensitive Strip first 'a' character (No Match)
+        StringFunc::Strip(s = "Abracadabra", 'a', true, false); s == "Abracadabra"
+        Example: Case Insensitive Strip last 'a' character
+        StringFunc::Strip(s = "Abracadabra", 'a', false, false, true); s == "Abracadabr"
+        Example: Case Insensitive Strip first and last 'a' character 
+        StringFunc::Strip(s = "Abracadabra", 'a', false, true, true); s == "bracadabr"
+        Example: Case Sensitive Strip first and last 'l' character (No Match)
+        StringFunc::Strip(s = "HeLlo HeLlo HELlO", 'l', true, true, true); s == "HeLlo HeLlo HELlO"
         Example: Case Insensitive Strip first and last "hello" character
         StringFunc::Strip(s = "HeLlo HeLlo HELlO", "hello", false, true, true); s == " HeLlo "
         */
@@ -454,6 +456,27 @@ namespace AzFramework
                 joinTarget += separator;
                 joinTarget += *currentIterator;
             }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        //! StringFunc::NumberFormatting Namespace
+        /*! For string functions supporting string representations of numbers
+        */
+        namespace NumberFormatting
+        {
+            //! GroupDigits
+            /*! Modifies the string representation of a number to add group separators, typically commas in thousands, e.g. 123456789.00 becomes 123,456,789.00
+            *
+            * \param buffer - The buffer containing the number which is to be modified in place
+            * \param bufferSize - The length of the buffer in bytes
+            * \param decimalPosHint - Optional position where the decimal point (or end of the number if there is no decimal) is located, will improve performance if supplied
+            * \param digitSeparator - Grouping separator to use (default is comma ',')
+            * \param decimalSeparator - Decimal separator to use (default is period '.')
+            * \param groupingSize - Number of digits to group together (default is 3, i.e. thousands)
+            * \param firstGroupingSize - If > 0, an alternative grouping size to use for the first group (some languages use this, e.g. Hindi groups 12,34,56,789.00)
+            * \returns The length of the string in the buffer (including terminating null byte) after modifications
+            */
+            int GroupDigits(char* buffer, size_t bufferSize, size_t decimalPosHint = 0, char digitSeparator = ',', char decimalSeparator = '.', int groupingSize = 3, int firstGroupingSize = 0);
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -789,7 +812,7 @@ namespace AzFramework
             *! EX: StringFunc::Path::HasDrive("\\p4\\game\\info\\some.file") == false
             *! EX: StringFunc::Path::HasDrive("\\\\18usernam\\p4\\game\\info\\some.file") == true
             */
-            bool HasDrive(const char* in);
+            bool HasDrive(const char* in, bool bCheckAllFileSystemFormats = false);
 
             //! HasPath
             /*! returns if the c-string has a "path"

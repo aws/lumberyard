@@ -72,20 +72,29 @@ namespace CommandSystem
         parameters.GetValue("filename", this, filename);
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
 
-        // check if we have already loaded the anim graph
-        if (EMotionFX::GetAnimGraphManager().FindAnimGraphByFileName(filename.c_str()))
+        // Check if the anim graph got already loaded via the command system.
+        const AZ::u32 numAnimGraphs = EMotionFX::GetAnimGraphManager().GetNumAnimGraphs();
+        for (AZ::u32 i = 0; i < numAnimGraphs; ++i)
         {
-            outResult = AZStd::string::format("Anim graph '%s' has already been loaded. Skipping.", filename.c_str());
-            return true;
+            EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().GetAnimGraph(i);
+            if (animGraph->GetFileNameString() == filename &&
+                !animGraph->GetIsOwnedByRuntime() &&
+                !animGraph->GetIsOwnedByAsset())
+            {
+                // In case the anim graph is already loaded, place its id into the result string for following command candidates
+                // that might use %LASTRESULT%. As the command is succeeding we have to make sure the output string is valid as well.
+                AZStd::to_string(outResult, animGraph->GetID());
+                return true;
+            }
         }
 
         // load anim graph from file
         EMotionFX::Importer::AnimGraphSettings settings;
         settings.mDisableNodeVisualization = false;
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetImporter().LoadAnimGraph(filename.c_str(), &settings);
-        if (animGraph == nullptr)
+        if (!animGraph)
         {
-            outResult = AZStd::string::format("Failed to load anim graph.", filename.c_str());
+            outResult = AZStd::string::format("Failed to load anim graph from %s.", filename.c_str());
             return false;
         }
 
@@ -440,15 +449,13 @@ namespace CommandSystem
         mOldMotionSetUsed = MCORE_INVALIDINDEX32;
     }
 
-
     CommandActivateAnimGraph::~CommandActivateAnimGraph()
     {
     }
 
-
     bool CommandActivateAnimGraph::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
-        // Get the actor instance either by index or id.
+        // Get the actor instance by id.
         EMotionFX::ActorInstance* actorInstance = nullptr;
         if (parameters.CheckIfHasParameter("actorInstanceID"))
         {
@@ -460,22 +467,9 @@ namespace CommandSystem
                 return false;
             }
         }
-        else if (parameters.CheckIfHasParameter("actorInstanceIndex"))
-        {
-            const uint32 actorInstanceIndex = parameters.GetValueAsInt("actorInstanceIndex", this);
-            if (actorInstanceIndex < EMotionFX::GetActorManager().GetNumActorInstances())
-            {
-                actorInstance = EMotionFX::GetActorManager().GetActorInstance(actorInstanceIndex);
-            }
-            else
-            {
-                outResult = AZStd::string::format("Cannot activate anim graph. Actor instance index '%i' is not valid.", actorInstanceIndex);
-                return false;
-            }
-        }
         else
         {
-            outResult = AZStd::string::format("Cannot activate anim graph. Actor instance parameter must be specified.");
+            outResult = "Cannot activate anim graph. Actor instance parameter must be specified.";
             return false;
         }
 
@@ -494,18 +488,10 @@ namespace CommandSystem
                 }
             }
         }
-        else if (parameters.CheckIfHasParameter("animGraphIndex"))
+        else
         {
-            const uint32 animGraphIndex = parameters.GetValueAsInt("animGraphIndex", this);
-            if (animGraphIndex < EMotionFX::GetAnimGraphManager().GetNumAnimGraphs())
-            {
-                animGraph = EMotionFX::GetAnimGraphManager().GetAnimGraph(animGraphIndex);
-            }
-            else
-            {
-                outResult = AZStd::string::format("Cannot activate anim graph. Anim graph index '%i' is not valid.", animGraphIndex);
-                return false;
-            }
+            outResult = "Cannot activate anim graph. Anim graph parameter must be specified.";
+            return false;
         }
 
         // Get the motion set to use.
@@ -520,18 +506,10 @@ namespace CommandSystem
                 return false;
             }
         }
-        else if (parameters.CheckIfHasParameter("motionSetIndex"))
+        else
         {
-            const uint32 motionSetIndex = parameters.GetValueAsInt("motionSetIndex", this);
-            if (motionSetIndex < EMotionFX::GetMotionManager().GetNumMotionSets())
-            {
-                motionSet = EMotionFX::GetMotionManager().GetMotionSet(motionSetIndex);
-            }
-            else
-            {
-                outResult = AZStd::string::format("Cannot activate anim graph. Motion set index '%i' is not valid.", motionSetIndex);
-                return false;
-            }
+            outResult = "Cannot activate anim graph. Motion set parameter must be specified.";
+            return false;
         }
 
         // store the actor instance ID
@@ -562,9 +540,6 @@ namespace CommandSystem
             mOldAnimGraphUsed = animGraphInstanceAnimGraph->GetID();
             mOldMotionSetUsed = (animGraphInstanceMotionSet) ? animGraphInstanceMotionSet->GetID() : MCORE_INVALIDINDEX32;
             mOldVisualizeScaleUsed = animGraphInstance->GetVisualizeScale();
-
-            // Stores the old anim graph instance. Later in the callback we will use it to validate the model item.
-            m_oldAnimGraphInstance = animGraphInstance;
 
             // check if the anim graph is valid
             if (animGraph)
@@ -600,7 +575,6 @@ namespace CommandSystem
             // store the currently used ID as invalid
             mOldAnimGraphUsed = MCORE_INVALIDINDEX32;
             mOldMotionSetUsed = MCORE_INVALIDINDEX32;
-            m_oldAnimGraphInstance = nullptr;
 
             // check if the anim graph is valid
             if (animGraph)
@@ -644,8 +618,6 @@ namespace CommandSystem
         return true;
     }
 
-
-    // undo the command
     bool CommandActivateAnimGraph::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
@@ -763,32 +735,23 @@ namespace CommandSystem
             GetCommandManager()->ExecuteCommandInsideCommand(AZStd::string::format("Select -animGraphID %d", animGraph->GetID()), resultString);
         }
 
-        // done
         return true;
     }
 
-
-    // init the syntax of the command
     void CommandActivateAnimGraph::InitSyntax()
     {
-        GetSyntax().ReserveParameters(4);
-        GetSyntax().AddParameter("actorInstanceID",     "The id of the actor instance.",    MCore::CommandSyntax::PARAMTYPE_INT,    "-1");
-        GetSyntax().AddParameter("actorInstanceIndex",  "The index of the actor instance.", MCore::CommandSyntax::PARAMTYPE_INT,    "-1");
-        GetSyntax().AddParameter("animGraphID",        "The id of the anim graph.",       MCore::CommandSyntax::PARAMTYPE_INT,    "-1");
-        GetSyntax().AddParameter("animGraphIndex",     "The index of the anim graph.",    MCore::CommandSyntax::PARAMTYPE_INT,    "-1");
-        GetSyntax().AddParameter("motionSetID",         "The id of the motion set.",        MCore::CommandSyntax::PARAMTYPE_INT,    "-1");
-        GetSyntax().AddParameter("motionSetIndex",      "The index of the motion set.",     MCore::CommandSyntax::PARAMTYPE_INT,    "-1");
-        GetSyntax().AddParameter("visualizeScale",      "The visualize scale.",             MCore::CommandSyntax::PARAMTYPE_FLOAT,  "1.0");
-        GetSyntax().AddParameter("startRecording",      "Start a recording as soon as the activation occurs", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");
+        GetSyntax().ReserveParameters(5);
+        GetSyntax().AddParameter("actorInstanceID", "The id of the actor instance.", MCore::CommandSyntax::PARAMTYPE_INT, "-1");
+        GetSyntax().AddParameter("animGraphID", "The id of the anim graph.", MCore::CommandSyntax::PARAMTYPE_INT, "-1");
+        GetSyntax().AddParameter("motionSetID", "The id of the motion set.", MCore::CommandSyntax::PARAMTYPE_INT, "-1");
+        GetSyntax().AddParameter("visualizeScale", "The visualize scale.", MCore::CommandSyntax::PARAMTYPE_FLOAT, "1.0");
+        GetSyntax().AddParameter("startRecording", "Start a recording as soon as the activation occurs.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");
     }
 
-
-    // get the description
     const char* CommandActivateAnimGraph::GetDescription() const
     {
         return "This command activate the given anim graph.";
     }
-
 
     //-------------------------------------------------------------------------------------
     // Helper Functions

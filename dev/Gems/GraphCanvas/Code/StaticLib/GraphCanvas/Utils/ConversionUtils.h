@@ -22,10 +22,11 @@ namespace GraphCanvas
     public:
         static QColor AZToQColor(const AZ::Color& color)
         {
-            return QColor(static_cast<float>(color.GetR()) * 255,
-                          static_cast<float>(color.GetG()) * 255,
-                          static_cast<float>(color.GetB()) * 255,
-                          static_cast<float>(color.GetA()) * 255);
+            return QColor(
+                aznumeric_cast<int>(static_cast<float>(color.GetR()) * 255),
+                aznumeric_cast<int>(static_cast<float>(color.GetG()) * 255),
+                aznumeric_cast<int>(static_cast<float>(color.GetB()) * 255),
+                aznumeric_cast<int>(static_cast<float>(color.GetA()) * 255));
         }
 
         static QPointF AZToQPoint(const AZ::Vector2& vector)
@@ -35,7 +36,7 @@ namespace GraphCanvas
 
         static AZ::Vector2 QPointToVector(const QPointF& point)
         {
-            return AZ::Vector2(point.x(), point.y());
+            return AZ::Vector2(aznumeric_cast<float>(point.x()), aznumeric_cast<float>(point.y()));
         }
     };
 }

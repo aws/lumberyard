@@ -36,6 +36,7 @@ namespace AzRTT
 #define RENDERER_H_SECTION_2 2
 #define RENDERER_H_SECTION_3 3
 #define RENDERER_H_SECTION_4 4
+#define RENDERER_H_SECTION_5 5
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
@@ -44,6 +45,8 @@ namespace AzRTT
         #include "Xenia/Renderer_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/Renderer_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/Renderer_h_salem.inl"
     #endif
 #endif
 
@@ -153,7 +156,7 @@ typedef int (* pDrawModelFunc)(void);
 #define ZPASS_DEPTH_SORT_DEFAULT_VAL 1
 #define TEXSTREAMING_UPDATETYPE_DEFAULT_VAL 1
 
-#if defined(WIN32) || defined(APPLE) || defined(LINUX)
+#if defined(WIN32) || defined(APPLE) || defined(LINUX) || defined(SET_CBUFFER_NATIVE_DEPTH_DEAFULT_VAL_TO_1)
     #define CBUFFER_NATIVE_DEPTH_DEAFULT_VAL 1
 #else
     #define CBUFFER_NATIVE_DEPTH_DEAFULT_VAL 0
@@ -165,6 +168,8 @@ typedef int (* pDrawModelFunc)(void);
         #include "Xenia/Renderer_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/Renderer_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/Renderer_h_salem.inl"
     #endif
 #endif
 
@@ -550,6 +555,8 @@ class CRenderer
         #include "Xenia/Renderer_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/Renderer_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/Renderer_h_salem.inl"
     #endif
 #endif
 {
@@ -792,6 +799,8 @@ public:
         #include "Xenia/Renderer_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/Renderer_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/Renderer_h_salem.inl"
     #endif
 #endif
 
@@ -2041,7 +2050,7 @@ public:
     static int CV_r_DeferredShadingSortLights;
     static int CV_r_DeferredShadingAmbientSClear;
     static int CV_r_batchtype;
-#if defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(APPLE)
+#if defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(APPLE) || defined(USE_SILHOUETTEPOM_CVAR)
     //HACK: make sure we can only use it for dx11
     static int CV_r_SilhouettePOM;
 #else
@@ -2087,15 +2096,22 @@ public:
     static int CV_r_watervolumecausticsdensity;
     static int CV_r_watervolumecausticsresolution;
 #if !defined(CONSOLE)
-    static int CV_r_shadersorbis; // ACCEPTED_USE
+    static int CV_r_shadersorbis;
     static int CV_r_shadersdx10;
     static int CV_r_shadersdx11;
     static int CV_r_shadersGL4;
     static int CV_r_shadersGLES3;
-    static int CV_r_shadersdurango; // ACCEPTED_USE
+    static int CV_r_shadersdurango;
     static int CV_r_shadersMETAL;
     
-    static int CV_r_ProvoHardwareMode;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERER_H_SECTION_5
+#if defined(AZ_PLATFORM_XENIA)
+#include "Xenia/Renderer_h_xenia.inl"
+#elif defined(AZ_PLATFORM_PROVO)
+#include "Provo/Renderer_h_provo.inl"
+#endif
+#endif
 
     static int CV_r_shadersPlatform;
 #endif
@@ -2559,13 +2575,11 @@ public:
     static int CV_r_GMEM_DOF_Gather1_Quality;
     static int CV_r_GMEM_DOF_Gather2_Quality;
 
-    //  Confetti BEGIN: Igor Lobanchikov :END
     static int CV_r_RainUseStencilMasking;
 
     // Confetti Thomas Zeng: 0 = disable, 1 = enable
     static int CV_r_EnableComputeDownSampling;
 
-    //  Confetti BEGIN: Igor Lobanchikov :END is respected by OpenGL ES only
     static int CV_r_ForceFixedPointRenderTargets;
 
     // Confetti Vera

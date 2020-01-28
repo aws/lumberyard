@@ -23,6 +23,7 @@
 #include <AzFramework/Physics/TriggerBus.h>
 #include <AzFramework/Physics/CollisionNotificationBus.h>
 #include <AzFramework/Physics/TerrainBus.h>
+#include <AzFramework/Physics/World.h>
 #include <RigidBodyComponent.h>
 #include <BoxColliderComponent.h>
 #include <RigidBodyStatic.h>
@@ -32,6 +33,7 @@
 #include <Physics/PhysicsTests.inl>
 #include <PhysX/SystemComponentBus.h>
 #include <AzCore/Asset/AssetManager.h>
+#include <Tests/PhysXTestCommon.h>
 
 namespace PhysX
 {
@@ -44,7 +46,7 @@ namespace PhysX
         void SetUp() override
         {
             Physics::SystemRequestBus::BroadcastResult(m_defaultWorld,
-                &Physics::SystemRequests::CreateWorld, AZ_CRC("UnitTestWorld", 0x39d5e465));
+                &Physics::SystemRequests::CreateWorld, Physics::DefaultPhysicsWorldId);
             m_defaultWorld->SetEventHandler(this);
 
             Physics::DefaultWorldBus::Handler::BusConnect();
@@ -105,7 +107,8 @@ namespace PhysX
         float tolerance = 1e-3f;
     };
 
-    using EntityPtr = AZStd::unique_ptr<AZ::Entity>;
+    using PointList = AZStd::vector<AZ::Vector3>;
+    using VertexIndexData = AZStd::pair<PointList, AZStd::vector<AZ::u32>>;
 
     namespace PhysXTests
     {
@@ -128,83 +131,6 @@ namespace PhysX
         {
             world->Update(deltaTime);
         }
-    }
-
-    AZ::Data::Asset<PhysX::Pipeline::HeightFieldAsset> CreateHeightField(const AZStd::vector<uint16_t>& samples, int numRows, int numCols)
-    {
-        AZ_Assert((numRows * numCols) == samples.size(), "Mismatch between rows and cols with num samples");
-
-        physx::PxCooking* cooking = nullptr;
-        PhysX::SystemRequestsBus::BroadcastResult(cooking, &PhysX::SystemRequests::GetCooking);
-        AZ_Assert(cooking != nullptr, "No cooking is present.");
-
-        AZStd::vector<physx::PxHeightFieldSample> pxSamples;
-        pxSamples.resize(numRows * numCols);
-
-        for (size_t i = 0; i < samples.size(); ++i)
-        {
-            pxSamples[i].height = samples[i];
-        }
-
-        physx::PxHeightFieldDesc description;
-        description.format = physx::PxHeightFieldFormat::eS16_TM;
-        description.nbRows = numRows;
-        description.nbColumns = numCols;
-        description.samples.data = pxSamples.begin();
-        description.samples.stride = sizeof(physx::PxHeightFieldSample);
-
-        AZ::Data::Asset<PhysX::Pipeline::HeightFieldAsset> heightFieldAsset(AZ::Data::AssetManager::Instance().CreateAsset<PhysX::Pipeline::HeightFieldAsset>(AZ::Uuid::CreateRandom()));
-        heightFieldAsset.Get()->SetHeightField(cooking->createHeightField(description, PxGetPhysics().getPhysicsInsertionCallback()));
-        return heightFieldAsset;
-    }
-
-    EntityPtr CreateFlatTestTerrain(float width = 1.0f, float depth = 1.0f)
-    {
-        // Creates a single tiled, flat terrain at height 0
-        EntityPtr terrain = AZStd::make_unique<AZ::Entity>("FlatTerrain");
-
-        // 4 Corners, each at height zero
-        AZStd::vector<uint16_t> samples;
-        samples.push_back(0);
-        samples.push_back(0);
-        samples.push_back(0);
-        samples.push_back(0);
-
-        PhysX::TerrainConfiguration configuration;
-        configuration.m_scale = AZ::Vector3(width, depth, 1.0);
-        configuration.m_heightFieldAsset = CreateHeightField(samples, 2, 2);
-        terrain->AddComponent(aznew PhysX::TerrainComponent(configuration));
-
-        terrain->Init();
-        terrain->Activate();
-
-        return terrain;
-    }
-
-    EntityPtr CreateSlopedTestTerrain(float width = 1.0f, float depth = 1.0f, float height = 1.0f)
-    {
-        EntityPtr terrain = AZStd::make_unique<AZ::Entity>("SlopedTerrain");
-
-        // Creates a 3x3 tiled sloped terrain (9 samples), where each sample's height is sum of grid coordinates:
-        // i.e h = x + y
-        AZStd::vector<uint16_t> samples;
-        for (int i = 0; i < 3; ++i)
-        {
-            for (int j = 0; j < 3; ++j)
-            {
-                samples.push_back(i + j);
-            }
-        }
-
-        PhysX::TerrainConfiguration configuration;
-        configuration.m_scale = AZ::Vector3(width, depth, height);
-        configuration.m_heightFieldAsset = CreateHeightField(samples, 3, 3);
-        terrain->AddComponent(aznew PhysX::TerrainComponent(configuration));
-
-        terrain->Init();
-        terrain->Activate();
-
-        return terrain;
     }
 
     void SetCollisionLayerName(AZ::u8 index, const AZStd::string& name)
@@ -316,6 +242,47 @@ namespace PhysX
         AZStd::function<void(const Physics::CollisionEvent& collisionEvent)> m_onCollisionPersist;
         AZStd::function<void(const Physics::CollisionEvent& collisionEvent)> m_onCollisionEnd;
     };
+
+    PointList GeneratePyramidPoints(float length)
+    {
+        const PointList points
+        {
+            AZ::Vector3(length, 0.0f, 0.0f),
+            AZ::Vector3(-length, 0.0f, 0.0f),
+            AZ::Vector3(0.0f, length, 0.0f),
+            AZ::Vector3(0.0f, -length, 0.0f),
+            AZ::Vector3(0.0f, 0.0f, length)
+        };
+
+        return points;
+    }
+
+    VertexIndexData GenerateCubeMeshData(float halfExtent)
+    {
+        const PointList points
+        {
+            AZ::Vector3(-halfExtent, -halfExtent,  halfExtent),
+            AZ::Vector3(halfExtent, -halfExtent,  halfExtent),
+            AZ::Vector3(-halfExtent,  halfExtent,  halfExtent),
+            AZ::Vector3(halfExtent,  halfExtent,  halfExtent),
+            AZ::Vector3(-halfExtent, -halfExtent, -halfExtent),
+            AZ::Vector3(halfExtent, -halfExtent, -halfExtent),
+            AZ::Vector3(-halfExtent,  halfExtent, -halfExtent),
+            AZ::Vector3(halfExtent,  halfExtent, -halfExtent)
+        };
+
+        const AZStd::vector<AZ::u32> indices =
+        {
+            0, 1, 2, 2, 1, 3,
+            2, 3, 7, 2, 7, 6,
+            7, 3, 1, 1, 5, 7,
+            0, 2, 4, 2, 6, 4,
+            0, 4, 1, 1, 4, 5,
+            4, 6, 5, 5, 6, 7
+        };
+
+        return AZStd::make_pair(points, indices);
+    }
 
     TEST_F(PhysXSpecificTest, VectorConversion_ConvertToPxVec3_ConvertedVectorsCorrect)
     {
@@ -476,7 +443,7 @@ namespace PhysX
 
     TEST_F(PhysXSpecificTest, GetTerrainHeight_TestTerrain_CorrectHeightValues)
     {
-        auto terrain = CreateSlopedTestTerrain();
+        auto terrain = TestUtils::CreateSlopedTestTerrain();
 
         // make some height queries
         float heightScale = 0.01f;
@@ -494,7 +461,7 @@ namespace PhysX
 
     TEST_F(PhysXSpecificTest, GetTerrainHeight_RequestNonGridPoint_InterpolatesCorrectly)
     {
-        auto terrain = CreateSlopedTestTerrain();
+        auto terrain = TestUtils::CreateSlopedTestTerrain();
 
         float height = 0.0f;
         Physics::TerrainRequestBus::BroadcastResult(height, &Physics::TerrainRequests::GetHeight, 0.0f, 1.5f);
@@ -509,7 +476,7 @@ namespace PhysX
         float scaleX = 2.0f;
         float scaleY = 1.0f;
         float scaleZ = 10.0f;
-        auto terrain = CreateSlopedTestTerrain(scaleX, scaleY, scaleZ);
+        auto terrain = TestUtils::CreateSlopedTestTerrain(scaleX, scaleY, scaleZ);
 
         // make some height queries
         float error = 0.01f;
@@ -528,7 +495,7 @@ namespace PhysX
     TEST_F(PhysXSpecificTest, GetTerrainHeight_RequestOutsideBounds_ClampedCorrectly)
     {
         float heightScale = 0.01f;
-        auto terrain = CreateSlopedTestTerrain();
+        auto terrain = TestUtils::CreateSlopedTestTerrain();
 
         // make some queries outside the terrain to test co-ordinate clamping
         // All queries will return 0.0f if outside heightmap
@@ -557,7 +524,10 @@ namespace PhysX
         AZ::TransformConfig transformConfig;
         transformConfig.m_worldTransform = AZ::Transform::CreateTranslation(position);
         entity->CreateComponent<AzFramework::TransformComponent>()->SetConfiguration(transformConfig);
-        entity->CreateComponent<ColliderType>();
+        auto colliderComponent = entity->CreateComponent<ColliderType>();
+        auto colliderConfig = AZStd::make_shared<Physics::ColliderConfiguration>();
+        auto shapeConfig = AZStd::make_shared<typename ColliderType::Configuration>();
+        colliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfig, shapeConfig) });
         Physics::RigidBodyConfiguration rigidBodyConfig;
         entity->CreateComponent<RigidBodyComponent>(rigidBodyConfig);
         entity->Init();
@@ -573,7 +543,10 @@ namespace PhysX
         AZ::TransformConfig transformConfig;
         transformConfig.m_worldTransform = AZ::Transform::CreateTranslation(position);
         entity->CreateComponent<AzFramework::TransformComponent>()->SetConfiguration(transformConfig);
-        entity->CreateComponent<ColliderType>();
+        auto colliderComponent = entity->CreateComponent<ColliderType>();
+        auto colliderConfig = AZStd::make_shared<Physics::ColliderConfiguration>();
+        auto shapeConfig = AZStd::make_shared<typename ColliderType::Configuration>();
+        colliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfig, shapeConfig) });
         entity->Init();
         entity->Activate();
         return entity;
@@ -586,7 +559,11 @@ namespace PhysX
         AZ::TransformConfig transformConfig;
         transformConfig.m_worldTransform = AZ::Transform::CreateTranslation(position);
         entity->CreateComponent<AzFramework::TransformComponent>()->SetConfiguration(transformConfig);
-        AZ::Component* boxCollider = entity->CreateComponent<BoxColliderComponent>();
+        Physics::ShapeConfigurationList shapeConfigList = { AZStd::make_pair(
+            AZStd::make_shared<Physics::ColliderConfiguration>(),
+            AZStd::make_shared<Physics::BoxShapeConfiguration>()) };
+        auto boxCollider = entity->CreateComponent<BoxColliderComponent>();
+        boxCollider->SetShapeConfigurationList(shapeConfigList);
 
         Physics::RigidBodyConfiguration rigidBodyConfig;
         entity->CreateComponent<RigidBodyComponent>(rigidBodyConfig);
@@ -595,7 +572,7 @@ namespace PhysX
         // Simulation of user removing one collider and adding another
         entity->RemoveComponent(boxCollider);
         delete boxCollider;
-        entity->CreateComponent<BoxColliderComponent>();
+        entity->CreateComponent<BoxColliderComponent>()->SetShapeConfigurationList(shapeConfigList);
 
         entity->Init();
         entity->Activate();
@@ -606,7 +583,7 @@ namespace PhysX
     TEST_P(PhysXEntityFactoryParamTest, TerrainCollision_RigidBodiesFallingOnTerrain_CollideWithTerrain)
     {
         // set up a flat terrain with height 0 from x, y co-ordinates 0, 0 to 20, 20
-        auto terrain = CreateFlatTestTerrain(20, 20);
+        auto terrain = TestUtils::CreateFlatTestTerrain(20, 20);
 
         auto testEntityFactory = GetParam();
 
@@ -679,10 +656,12 @@ namespace PhysX
         AZ::TransformConfig transformConfig;
         transformConfig.m_worldTransform = AZ::Transform::CreateTranslation(position);
         triggerEntity->CreateComponent<AzFramework::TransformComponent>()->SetConfiguration(transformConfig);
-        typename ColliderT::Configuration config;
-        Physics::ColliderConfiguration colliderConfiguartion;
-        colliderConfiguartion.m_isTrigger = true;
-        triggerEntity->CreateComponent<ColliderT>(colliderConfiguartion, config);
+
+        auto colliderConfiguration = AZStd::make_shared<Physics::ColliderConfiguration>();
+        colliderConfiguration->m_isTrigger = true;
+        auto shapeConfiguration = AZStd::make_shared<typename ColliderT::Configuration>();
+        auto colliderComponent = triggerEntity->CreateComponent<ColliderT>();
+        colliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfiguration, shapeConfiguration) });
 
         triggerEntity->Init();
         triggerEntity->Activate();
@@ -698,10 +677,13 @@ namespace PhysX
         AZ::TransformConfig transformConfig;
         transformConfig.m_worldTransform = AZ::Transform::CreateTranslation(position);
         triggerEntity->CreateComponent<AzFramework::TransformComponent>()->SetConfiguration(transformConfig);
-        typename ColliderT::Configuration config;
-        Physics::ColliderConfiguration colliderConfiguartion;
-        colliderConfiguartion.m_isTrigger = true;
-        triggerEntity->CreateComponent<ColliderT>(colliderConfiguartion, config);
+
+        auto colliderConfiguration = AZStd::make_shared<Physics::ColliderConfiguration>();
+        colliderConfiguration->m_isTrigger = true;
+        auto shapeConfiguration = AZStd::make_shared<typename ColliderT::Configuration>();
+        auto colliderComponent = triggerEntity->CreateComponent<ColliderT>();
+        colliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfiguration, shapeConfiguration) });
+
         triggerEntity->CreateComponent<RigidBodyComponent>();
 
         triggerEntity->Init();
@@ -901,7 +883,7 @@ namespace PhysX
     TEST_F(PhysXSpecificTest, RigidBody_CollisionCallback_SimpleCallbackSphereFallingOnTerrain)
     {
         // Create terrain
-        auto terrain = CreateSlopedTestTerrain();
+        auto terrain = TestUtils::CreateSlopedTestTerrain();
 
         // Create sphere
         auto sphere = AZStd::shared_ptr<AZ::Entity>(AddUnitTestObject<SphereColliderComponent>(AZ::Vector3(0.0f, 0.0f, 10.0f), "TestSphere77"));
@@ -928,7 +910,7 @@ namespace PhysX
     TEST_F(PhysXSpecificTest, Terrain_Raycast_ReturnsHit)
     {
         // Create terrain
-        auto terrain = CreateFlatTestTerrain();
+        auto terrain = TestUtils::CreateFlatTestTerrain();
         Physics::RigidBodyStatic* terrainBody;
         Physics::TerrainRequestBus::BroadcastResult(terrainBody, &Physics::TerrainRequests::GetTerrainTile, 0.0f, 0.0f);
 
@@ -948,16 +930,16 @@ namespace PhysX
     TEST_F(PhysXSpecificTest, Terrain_RaycastCustomFilter_ReturnsHit)
     {
         // Create terrain
-        auto terrain = CreateFlatTestTerrain();
+        auto terrain = TestUtils::CreateFlatTestTerrain();
         Physics::RigidBodyStatic* terrainBody;
         Physics::TerrainRequestBus::BroadcastResult(terrainBody, &Physics::TerrainRequests::GetTerrainTile, 0.0f, 0.0f);
         Physics::RayCastRequest request;
         request.m_start = AZ::Vector3(0.5f, 0.5f, 1.0f);
         request.m_direction = AZ::Vector3(0.0f, 0.0f, -1.0f);
         request.m_distance = 2.0f;
-        request.m_customFilterCallback = [](const Physics::WorldBody* body, const Physics::Shape* shape)
+        request.m_filterCallback = [](const Physics::WorldBody* body, const Physics::Shape* shape)
         {
-            return true;
+            return Physics::QueryHitType::Block;
         };
 
         Physics::RayCastHit hit;
@@ -1268,5 +1250,138 @@ namespace PhysX
         ASSERT_TRUE(true);
     }
 
+    TEST_F(PhysXSpecificTest, RigidBody_ConvexRigidBodyCreatedFromCookedMesh_CachedMeshObjectCreated)
+    {
+        // Create rigid body
+        Physics::RigidBodyConfiguration rigidBodyConfiguration;
+        AZStd::unique_ptr<Physics::RigidBody> rigidBody;
+        Physics::SystemRequestBus::BroadcastResult(rigidBody, &Physics::SystemRequests::CreateRigidBody, rigidBodyConfiguration);
+        ASSERT_TRUE(rigidBody != nullptr);
+
+        // Generate input data
+        const PointList testPoints = GeneratePyramidPoints(1.0f);
+        AZStd::vector<AZ::u8> cookedData;
+        bool cookingResult = false;
+        PhysX::SystemRequestsBus::BroadcastResult(cookingResult, &PhysX::SystemRequests::CookConvexMeshToMemory,
+            testPoints.data(), static_cast<AZ::u32>(testPoints.size()), cookedData);
+        EXPECT_TRUE(cookingResult);
+
+        // Setup shape & collider configurations
+        Physics::CookedMeshShapeConfiguration shapeConfig;
+        shapeConfig.SetCookedMeshData(cookedData.data(), cookedData.size(), 
+            Physics::CookedMeshShapeConfiguration::MeshType::Convex);
+
+        Physics::ColliderConfiguration colliderConfig;
+
+        // Create the first shape
+        AZStd::shared_ptr<Physics::Shape> firstShape;
+        Physics::SystemRequestBus::BroadcastResult(firstShape, &Physics::SystemRequests::CreateShape, colliderConfig, shapeConfig);
+        ASSERT_TRUE(firstShape != nullptr);
+
+        rigidBody->AddShape(firstShape);
+
+        // Validate the cached mesh is there
+        EXPECT_NE(shapeConfig.GetCachedNativeMesh(), nullptr);
+
+        // Make some changes in the configuration for the second shape
+        colliderConfig.m_position.SetX(1.0f);
+        shapeConfig.m_scale = AZ::Vector3(2.0f, 2.0f, 2.0f);
+
+        // Create the second shape
+        AZStd::shared_ptr<Physics::Shape> secondShape;
+        Physics::SystemRequestBus::BroadcastResult(secondShape, &Physics::SystemRequests::CreateShape, colliderConfig, shapeConfig);
+        ASSERT_TRUE(secondShape != nullptr);
+        
+        rigidBody->AddShape(secondShape);
+
+        // Add the rigid body to the physics world
+        AZStd::shared_ptr<Physics::World> world;
+        Physics::DefaultWorldBus::BroadcastResult(world, &Physics::DefaultWorldRequests::GetDefaultWorld);
+        world->AddBody(*rigidBody);
+
+        AZ::Vector3 initialPosition = rigidBody->GetPosition();
+
+        // Tick the world
+        for (int timeStep = 0; timeStep < 20; timeStep++)
+        {
+            world->Update(1.0f / 60.0f);
+        }
+
+        // Verify the actor has moved
+        EXPECT_NE(rigidBody->GetPosition(), initialPosition);
+
+        // Clean up
+        world->RemoveBody(*rigidBody);
+        rigidBody = nullptr;
+    }
+
+    TEST_F(PhysXSpecificTest, RigidBody_TriangleMeshRigidBodyCreatedFromCookedMesh_CachedMeshObjectCreated)
+    {
+        // Create static rigid body
+        Physics::RigidBodyConfiguration rigidBodyConfiguration;
+        AZStd::unique_ptr<Physics::RigidBodyStatic> rigidBody;
+        Physics::SystemRequestBus::BroadcastResult(rigidBody, &Physics::SystemRequests::CreateStaticRigidBody, rigidBodyConfiguration);
+
+        // Generate input data
+        VertexIndexData cubeMeshData = GenerateCubeMeshData(3.0f);
+        AZStd::vector<AZ::u8> cookedData;
+        bool cookingResult = false;
+        PhysX::SystemRequestsBus::BroadcastResult(cookingResult, &PhysX::SystemRequests::CookTriangleMeshToMemory,
+            cubeMeshData.first.data(), static_cast<AZ::u32>(cubeMeshData.first.size()),
+            cubeMeshData.second.data(), static_cast<AZ::u32>(cubeMeshData.second.size()),
+            cookedData);
+        EXPECT_TRUE(cookingResult);
+
+        // Setup shape & collider configurations
+        Physics::CookedMeshShapeConfiguration shapeConfig;
+        shapeConfig.SetCookedMeshData(cookedData.data(), cookedData.size(),
+            Physics::CookedMeshShapeConfiguration::MeshType::TriangleMesh);
+
+        Physics::ColliderConfiguration colliderConfig;
+
+        // Create the first shape
+        AZStd::shared_ptr<Physics::Shape> firstShape;
+        Physics::SystemRequestBus::BroadcastResult(firstShape, &Physics::SystemRequests::CreateShape, colliderConfig, shapeConfig);
+        AZ_Assert(firstShape != nullptr, "Failed to create a shape from cooked data");
+
+        rigidBody->AddShape(firstShape);
+
+        // Validate the cached mesh is there
+        EXPECT_NE(shapeConfig.GetCachedNativeMesh(), nullptr);
+
+        // Make some changes in the configuration for the second shape
+        colliderConfig.m_position.SetX(4.0f);
+        shapeConfig.m_scale = AZ::Vector3(2.0f, 2.0f, 2.0f);
+
+        // Create the second shape
+        AZStd::shared_ptr<Physics::Shape> secondShape;
+        Physics::SystemRequestBus::BroadcastResult(secondShape, &Physics::SystemRequests::CreateShape, colliderConfig, shapeConfig);
+        AZ_Assert(secondShape != nullptr, "Failed to create a shape from cooked data");
+        
+        rigidBody->AddShape(secondShape);
+
+        // Add the rigid body to the physics world
+        AZStd::shared_ptr<Physics::World> world;
+        Physics::DefaultWorldBus::BroadcastResult(world, &Physics::DefaultWorldRequests::GetDefaultWorld);
+        world->AddBody(*rigidBody);
+
+        // Drop a sphere
+        auto sphereActor = AZStd::shared_ptr<AZ::Entity>(AddUnitTestObject<SphereColliderComponent>(AZ::Vector3(0.0f, 0.0f, 8.0f), "TestSphere01"));
+        Physics::RigidBody* sphereRigidBody = sphereActor->FindComponent<RigidBodyComponent>()->GetRigidBody();
+
+        // Tick the world
+        for (int timeStep = 0; timeStep < 120; timeStep++)
+        {
+            world->Update(1.0f / 60.0f);
+        }
+
+        // Verify the sphere is lying on top of the mesh
+        AZ::Vector3 spherePosition = sphereRigidBody->GetPosition();
+        EXPECT_TRUE(spherePosition.GetZ().IsClose(6.5f));
+
+        // Clean up
+        world->RemoveBody(*rigidBody);
+        rigidBody = nullptr;
+    }
 } // namespace PhysX
 

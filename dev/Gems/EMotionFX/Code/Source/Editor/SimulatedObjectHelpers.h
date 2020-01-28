@@ -17,6 +17,8 @@
 #include <QModelIndexList>
 
 
+namespace MCore { class CommandGroup; }
+
 namespace EMotionFX
 {
     class SimulatedObjectHelpers

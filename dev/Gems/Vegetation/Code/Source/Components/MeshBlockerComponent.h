@@ -43,7 +43,7 @@ namespace Vegetation
         AZ_RTTI(MeshBlockerConfig, "{1D00F234-8134-4A42-A357-ADAC865CF63A}", AreaConfig);
         static void Reflect(AZ::ReflectContext* context);
 
-        MeshBlockerConfig() : AreaConfig() { m_priority = s_priorityMax; m_layer = AreaLayer::Foreground; }
+        MeshBlockerConfig() : AreaConfig() { m_priority = AreaConstants::s_priorityMax; m_layer = AreaConstants::s_foregroundLayer; }
         bool m_inheritBehavior = true;
         float m_meshHeightPercentMin = 0.0f;
         float m_meshHeightPercentMax = 1.0f;
@@ -110,10 +110,10 @@ namespace Vegetation
     protected:
         ////////////////////////////////////////////////////////////////////////
         // MeshBlockerRequestBus
-        float GetAreaPriority() const override;
-        void SetAreaPriority(float priority) override;
-        AreaLayer GetAreaLayer() const override;
-        void SetAreaLayer(AreaLayer type) override;
+        AZ::u32 GetAreaPriority() const override;
+        void SetAreaPriority(AZ::u32 priority) override;
+        AZ::u32 GetAreaLayer() const override;
+        void SetAreaLayer(AZ::u32 type) override;
         AZ::u32 GetAreaProductCount() const override;
         bool GetInheritBehavior() const override;
         void SetInheritBehavior(bool value) override;

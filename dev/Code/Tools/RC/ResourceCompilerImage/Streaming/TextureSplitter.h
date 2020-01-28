@@ -48,6 +48,10 @@ struct D3DBaseTexture;
 #define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_DEFINES
     #include "Provo/TextureSplitter_h_provo.inl"
 #endif
+#if defined(TOOLS_SUPPORT_SALEM)
+#define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_DEFINES
+    #include "Salem/TextureSplitter_h_salem.inl"
+#endif
 #endif
 
 namespace TextureHelper
@@ -93,8 +97,9 @@ protected:
     // applied to attached images recursively after processing
     // necessary to correctly swap all endians according to the current platform
     void ProcessPlatformSpecificConversions(std::vector<STexture>& resourcesOut, byte* fileContent, const size_t fileSize);
-    void ProcessPlatformSpecificConversions_Orbis(STexture& resource, DWORD dwSides, DWORD dwWidth, DWORD dwHeight, DWORD dwDepth, DWORD dwMips, ETEX_Format format, bool bDXTCompressed, uint32 nBitsPerPixel); // ACCEPTED_USE
-    void ProcessPlatformSpecificConversions_Durango(STexture& resource, DWORD dwSides, DWORD dwWidth, DWORD dwHeight, DWORD dwDepth, DWORD dwMips, ETEX_Format format, bool bDXTCompressed, uint32 nBitsPerPixel); // ACCEPTED_USE
+    void ProcessPlatformSpecificConversions_Nx(STexture& resource, DWORD dwSides, DWORD dwWidth, DWORD dwHeight, DWORD dwDepth, DWORD dwMips, ETEX_Format format, bool bDXTCompressed, uint32 nBitsPerPixel);
+    void ProcessPlatformSpecificConversions_Orbis(STexture& resource, DWORD dwSides, DWORD dwWidth, DWORD dwHeight, DWORD dwDepth, DWORD dwMips, ETEX_Format format, bool bDXTCompressed, uint32 nBitsPerPixel);
+    void ProcessPlatformSpecificConversions_Durango(STexture& resource, DWORD dwSides, DWORD dwWidth, DWORD dwHeight, DWORD dwDepth, DWORD dwMips, ETEX_Format format, bool bDXTCompressed, uint32 nBitsPerPixel);
 
     // process single texture
     void ProcessResource(
@@ -135,8 +140,9 @@ public:
     {
         eTT_None,
         eTT_PC,
-        eTT_Orbis, // ACCEPTED_USE
-        eTT_Durango, // ACCEPTED_USE
+        eTT_Nx,
+        eTT_Orbis,
+        eTT_Durango,
     };
 
 protected:
@@ -163,6 +169,10 @@ protected:
 #if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_CTEXTURE
     #include "Provo/TextureSplitter_h_provo.inl"
+#endif
+#if defined(TOOLS_SUPPORT_SALEM)
+#define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_CTEXTURE
+    #include "Salem/TextureSplitter_h_salem.inl"
 #endif
 #endif
 
@@ -232,6 +242,10 @@ protected:
 #if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_SMARTPOINTER
     #include "Provo/TextureSplitter_h_provo.inl"
+#endif
+#if defined(TOOLS_SUPPORT_SALEM)
+#define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_SMARTPOINTER
+    #include "Salem/TextureSplitter_h_salem.inl"
 #endif
 #endif
 

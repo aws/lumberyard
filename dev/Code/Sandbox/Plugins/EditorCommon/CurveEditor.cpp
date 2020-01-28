@@ -216,8 +216,6 @@ namespace
 
         if (curve.m_customInterpolator && curve.m_keys.size() > 1)
         {
-            assert(curve.m_customInterpolator->GetKeyCount() > 1);
-
             const float range_start = curve.m_customInterpolator->GetKeyTime(0);
             const float range_end = curve.m_customInterpolator->GetKeyTime(curve.m_customInterpolator->GetKeyCount() - 1);
             const float range_delta = range_end - range_start;

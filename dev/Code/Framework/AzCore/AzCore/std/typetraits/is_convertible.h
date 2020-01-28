@@ -22,11 +22,6 @@
     #include <AzCore/std/typetraits/is_arithmetic.h>
     #include <AzCore/std/typetraits/is_void.h>
     #include <AzCore/std/typetraits/is_abstract.h>
-#if defined(AZ_COMPILER_MWERKS)
-    #include <AzCore/std/typetraits/is_function.h>
-    #include <AzCore/std/typetraits/remove_reference.h>
-#endif
-
 #endif // AZSTD_IS_CONVERTIBLE
 
 #include <AzCore/std/typetraits/bool_trait_def.h>
@@ -45,74 +40,6 @@ namespace AZStd
     //
     namespace Internal
     {
-        #if defined(AZ_COMPILER_GCC)
-        // special version for gcc compiler + recent Borland versions
-        // note that this does not pass UDT's through (...)
-        struct any_conversion
-        {
-            template <typename T>
-            any_conversion(const volatile T&);
-            template <typename T>
-            any_conversion(T&);
-        };
-
-        template <typename T>
-        struct checker
-        {
-            static AZStd::type_traits::no_type _m_check(any_conversion ...);
-            static AZStd::type_traits::yes_type _m_check(T, int);
-        };
-
-        template <typename From, typename To>
-        struct is_convertible_basic_impl
-        {
-            static From _m_from;
-            static bool const value = sizeof(Internal::checker<To>::_m_check(_m_from, 0)) == sizeof(::AZStd::type_traits::yes_type);
-        };
-        #elif defined(AZ_COMPILER_MWERKS)
-        //
-        // CW works with the technique implemented above for EDG, except when From
-        // is a function type (or a reference to such a type), in which case
-        // any_conversion won't be accepted as a valid conversion. We detect this
-        // exceptional situation and channel it through an alternative algorithm.
-        //
-
-        template <typename From, typename To, bool FromIsFunctionRef>
-        struct is_convertible_basic_impl_aux;
-
-        struct any_conversion
-        {
-            template <typename T>
-            any_conversion(const volatile T&);
-        };
-
-        template <typename From, typename To>
-        struct is_convertible_basic_impl_aux<From, To, false /*FromIsFunctionRef*/>
-        {
-            static ::AZStd::type_traits::no_type AZSTD_TYPE_TRAITS_DECL _m_check(any_conversion ...);
-            static ::AZStd::type_traits::yes_type AZSTD_TYPE_TRAITS_DECL _m_check(To, int);
-            static From _m_from;
-
-            AZSTD_STATIC_CONSTANT(bool, value = sizeof(_m_check(_m_from, 0)) == sizeof(::AZStd::type_traits::yes_type));
-        };
-
-        template <typename From, typename To>
-        struct is_convertible_basic_impl_aux<From, To, true /*FromIsFunctionRef*/>
-        {
-            static ::AZStd::type_traits::no_type AZSTD_TYPE_TRAITS_DECL _m_check(...);
-            static ::AZStd::type_traits::yes_type AZSTD_TYPE_TRAITS_DECL _m_check(To);
-            static From _m_from;
-            AZSTD_STATIC_CONSTANT(bool, value = sizeof(_m_check(_m_from)) == sizeof(::AZStd::type_traits::yes_type));
-        };
-
-        template <typename From, typename To>
-        struct is_convertible_basic_impl
-            : is_convertible_basic_impl_aux<
-                From, To,
-                    ::AZStd::is_function<typename ::AZStd::remove_reference<From>::type>::value
-                >
-        {};
-        #else
         //
         // This version seems to work pretty well for a wide spectrum of compilers,
         // however it does rely on undefined behaviour by passing UDT's through (...).
@@ -136,7 +63,6 @@ namespace AZStd
                 #pragma warning(pop)
             #endif
         };
-        #endif // is_convertible_impl
 
         template <typename From, typename To>
         struct is_convertible_impl

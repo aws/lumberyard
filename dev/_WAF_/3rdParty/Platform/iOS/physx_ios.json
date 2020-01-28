@@ -1,0 +1,17 @@
+{
+    "aliases": {
+        "lib_paths_ios": ["${lib_paths}/ios.arm_64/"]
+    },
+    "platform": {
+        "ios": {
+            "importlibpath_debug": ["${lib_paths_ios}/debug"],
+            "importlibpath_profile": ["${lib_paths_ios}/profile"],
+            "importlibpath_release": ["${lib_paths_ios}/release"],
+            "importlibpath_performance": ["${lib_paths_ios}/release"],
+
+            "import": [
+                "lib${lib_names}_static_64.a"
+            ]
+        }
+    }
+}

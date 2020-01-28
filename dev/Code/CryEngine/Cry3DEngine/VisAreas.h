@@ -326,7 +326,7 @@ struct CVisAreaManager
 
     // -------------------------------------
 
-    void GetObjectsByType(PodArray<IRenderNode*>& lstObjects, EERType objType, const AABB* pBBox);
+    void GetObjectsByType(PodArray<IRenderNode*>& lstObjects, EERType objType, const AABB* pBBox, ObjectTreeQueryFilterCallback filterCallback = nullptr) override;
     void GetObjectsByFlags(uint dwFlags, PodArray<IRenderNode*>& lstObjects);
 
     void GetNearestCubeProbe(float& fMinDistance, int& nMaxPriority, CLightEntity*& pNearestLight, const AABB* pBBox);

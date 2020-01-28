@@ -636,39 +636,6 @@ namespace AZStd
             }
         }
 
-#if defined(AZ_COMPILER_GCC) && AZ_COMPILER_GCC >= 3
-        // GCC 3.3 and newer cannot copy with the global operator==, due to
-        // problems with instantiation of function return types before it
-        // has been verified that the argument types match up.
-        template<typename Functor>
-        AZSTD_FUNCTION_ENABLE_IF_NOT_INTEGRAL(Functor, bool)
-        operator==(Functor g) const
-        {
-            if (const Functor* fp = target<Functor>())
-            {
-                return function_equal(*fp, g);
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-        template<typename Functor>
-        AZSTD_FUNCTION_ENABLE_IF_NOT_INTEGRAL(Functor, bool)
-        operator!=(Functor g) const
-        {
-            if (const Functor* fp = target<Functor>())
-            {
-                return !function_equal(*fp, g);
-            }
-            else
-            {
-                return true;
-            }
-        }
-#endif
-
     protected:
         Internal::function_util::vtable_base* vtable;
         mutable Internal::function_util::function_buffer functor;

@@ -301,7 +301,6 @@ namespace NCryOpenGL
     _COMPR_TEX(BC7_UNORM_SRGB, GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM_ARB, GL_RGBA,  4,  4,  1,     16, true)
     #endif //DXGL_SUPPORT_BPTC
 #endif //!DXGLES
-       //  Confetti BEGIN: Igor Lobanchikov
        //        | FORMAT_ID              | GL_INTERNAL_FORMAT                        | GL_FORMAT  |      BLOCK        | SRGB  |
        //        |                        |                                           |            | X | Y | Z | BYTES |       |
 #if defined(ANDROID) && DXGLES
@@ -334,7 +333,6 @@ namespace NCryOpenGL
     _COMPR_TEX(ASTC_12x12_UNORM, GL_COMPRESSED_RGBA_ASTC_12x12_KHR, GL_RGBA, 12, 12,  1,     16, false)
     _COMPR_TEX(ASTC_12x12_UNORM_SRGB, GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR, GL_RGBA, 12, 12,  1,     16, true)
 #endif
-    //  Confetti End: Igor Lobanchikov
 
 #undef _TEX
 #undef _UNCOMPR_TEX

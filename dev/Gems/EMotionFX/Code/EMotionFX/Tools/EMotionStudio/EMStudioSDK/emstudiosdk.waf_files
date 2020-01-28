@@ -23,6 +23,7 @@
             "Source/KeyboardShortcutsWindow.h",
             "Source/LayoutManager.cpp",
             "Source/LayoutManager.h",
+            "Source/MainWindowEventFilter.h",
             "Source/MainWindow.cpp",
             "Source/MainWindow.h",
             "Source/MetricsEventSender.cpp",

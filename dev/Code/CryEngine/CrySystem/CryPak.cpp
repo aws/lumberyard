@@ -40,12 +40,22 @@
 #include <AzCore/NativeUI/NativeUIRequests.h>
 #include <AzCore/std/functional.h>
 #include <AzCore/std/string/conversions.h>
+#include <AzCore/std/string/string_view.h>
 #include <AzCore/Casting/numeric_cast.h>
+#include <AzFramework/Asset/AssetBundleManifest.h>
 #include <AzFramework/IO/FileOperations.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+
+#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/Utils.h>
+
+#include <CryPakBus.h>
 #include <LoadScreenBus.h>
+#include <AzFramework/Logging/MissingAssetNotificationBus.h>
 
 #include "System.h"
+#include "MissingFileReport.h"
 
 #if AZ_LEGACY_CRYSYSTEM_TRAIT_CRYPAK_POSIX
 #include <unistd.h>
@@ -524,7 +534,7 @@ CCryPak::CCryPak(IMiniLog* pLog, PakVars* pPakVars, const bool bLvlRes, const IG
 {
     LOADING_TIME_PROFILE_SECTION;
 
-#if defined(LINUX) || defined(APPLE)
+#if AZ_TRAIT_LEGACY_CRYPAK_UNIX_LIKE_FILE_SYSTEM
     m_HandleSource = 0;
 #endif
     m_pITimer = gEnv->pTimer;
@@ -1282,7 +1292,7 @@ const char* CCryPak::AdjustFileNameInternal(const char* src, char* dst, size_t d
 
     char* pEnd = dst + dstLen;
 
-#if defined(LINUX) || AZ_TRAIT_OS_PLATFORM_APPLE
+#if AZ_TRAIT_LEGACY_CRYPAK_UNIX_LIKE_FILE_SYSTEM
     if ((nFlags & FLAGS_ADD_TRAILING_SLASH) && pEnd > dst && (pEnd[-1] != g_cNativeSlash && pEnd[-1] != g_cNonNativeSlash))
 #else
     // p now points to the end of string
@@ -1532,7 +1542,7 @@ AZ::IO::HandleType CCryPak::FOpen(const char* pName, const char* szMode, unsigne
         ;
     }
 
-#if defined(LINUX) || defined(APPLE)
+#if AZ_TRAIT_LEGACY_CRYPAK_UNIX_LIKE_FILE_SYSTEM
     unsigned nOSFlags = _O_RDONLY;
 #else
     unsigned nOSFlags = _O_BINARY | _O_RDONLY;
@@ -1659,6 +1669,15 @@ AZ::IO::HandleType CCryPak::FOpen(const char* pName, const char* szMode, unsigne
                 CryLog("<PAK LOG FILE ACCESS> CCryPak::FOpen() has directly opened requested file %s with FileFirst priority", szFullPath);
             }
 #endif
+            if (g_cvars.sys_report_files_not_found_in_paks)
+            {
+                // Only look for asset loads.
+                if ((szFullPath[0] != '@') || (_strnicmp(szFullPath, "@assets@", 8) == 0))
+                {
+                    unsigned int archiveFlags = 0;
+                    GetFileData(szFullPath, archiveFlags);
+                }                
+            }
             RecordFile(fileHandle, pName);
 
 #if AZ_LOADSCREENCOMPONENT_ENABLED
@@ -1672,7 +1691,7 @@ AZ::IO::HandleType CCryPak::FOpen(const char* pName, const char* szMode, unsigne
         }
     }
 
-    unsigned int archiveFlags;
+    unsigned int archiveFlags = 0;
     CCachedFileData_AutoPtr pFileData = GetFileData(szFullPath, archiveFlags);
     if (pFileData)
     {
@@ -1782,6 +1801,24 @@ CCachedFileDataPtr CCryPak::GetFileData(const char* szName, unsigned int& nArchi
     {
         pResult = new CCachedFileData(this, pZip, nArchiveFlags, pFileEntry, szName);
     }
+    else
+    {
+        CryPakInternal::ReportFileMissingFromPak(szName, g_cvars);
+    }
+    return pResult;
+}
+
+CCachedFileDataPtr CCryPak::GetFileData(ZipDir::CachePtr zipFile, const char* fileName)
+{
+    FUNCTION_PROFILER(gEnv->pSystem, PROFILE_SYSTEM);
+
+    CCachedFileData* pResult = 0;
+    ZipDir::FileEntry* pFileEntry = zipFile->FindFile(fileName);
+
+    if (pFileEntry)
+    {
+        pResult = new CCachedFileData(this, zipFile, 0, pFileEntry, fileName);
+    }
     return pResult;
 }
 
@@ -1812,6 +1849,7 @@ bool CCryPak::WillOpenFromPak(const char* szPath)
 
     return true;
 }
+
 
 //////////////////////////////////////////////////////////////////////////
 // tests if the given file path refers to an existing file inside registered (opened) packs
@@ -1868,6 +1906,7 @@ ZipDir::FileEntry* CCryPak::FindPakFileEntry(const char* szPath, unsigned int& n
         }
     }
     nArchiveFlags = 0;
+
     return NULL;
 }
 
@@ -2290,7 +2329,7 @@ intptr_t CCryPak::FindFirst(const char* pDir, _finddata_t* fd,
 
     pFindData->Fetch(fd);
 
-#if defined(LINUX) || defined(APPLE)
+#if AZ_TRAIT_LEGACY_CRYPAK_UNIX_LIKE_FILE_SYSTEM
     //[K01]: you can't just cast a pointer...if it's negative, we'll think it failed!
     m_HandleSource++;
     if (m_HandleSource < 0)
@@ -2312,7 +2351,7 @@ int CCryPak::FindNext(intptr_t handle, struct _finddata_t* fd)
     //if (m_setFindData.find ((CCryPakFindData*)handle) == m_setFindData.end())
     //  return -1; // invalid handle
 
-#if defined(LINUX) || defined(APPLE)
+#if AZ_TRAIT_LEGACY_CRYPAK_UNIX_LIKE_FILE_SYSTEM
     //[K01]: linux fixes
     std::map<intptr_t, CCryPakFindData*>::iterator lookup = m_Handles.find(handle);
     if (lookup == m_Handles.end())
@@ -2345,7 +2384,7 @@ int CCryPak::FindClose(intptr_t handle)
 {
     AUTO_MODIFYLOCK(m_csFindData);
 
-#if defined(LINUX) || defined(APPLE)
+#if AZ_TRAIT_LEGACY_CRYPAK_UNIX_LIKE_FILE_SYSTEM
     std::map<intptr_t, CCryPakFindData*>::iterator lookup = m_Handles.find(handle);
     if (lookup == m_Handles.end())
     {
@@ -2590,6 +2629,7 @@ bool CCryPak::OpenPackCommon(const char* szBindRoot, const char* szFullPath, uns
         // All we have to do is name the pak appropriately to make
         // sure later paks added to the current set of paks sort higher
         // and therefore get used instead of lower sorted paks
+        AZStd::string_view nextBundle;
         ZipArray::reverse_iterator revItZip = m_arrZips.rbegin();
         if ((nPakFlags& ICryArchive::FLAGS_OVERRIDE_PAK) == 0)
         {
@@ -2597,6 +2637,7 @@ bool CCryPak::OpenPackCommon(const char* szBindRoot, const char* szFullPath, uns
             {
                 if ((revItZip->pArchive->GetFlags() & ICryArchive::FLAGS_OVERRIDE_PAK) == 0)
                 {
+                    nextBundle = revItZip->GetFullPath();
                     if (azstricmp(desc.GetFullPath(), revItZip->GetFullPath()) > 0)
                     {
                         break;
@@ -2604,9 +2645,11 @@ bool CCryPak::OpenPackCommon(const char* szBindRoot, const char* szFullPath, uns
                 }
             }
         }
-        ZipArray::iterator itZipPlace = revItZip.base();
+        ZipArray::const_iterator itZipPlace = revItZip.base();
         m_arrZips.insert(itZipPlace, desc);
 
+        auto bundleManifest = GetBundleManifest(desc.pZip);
+        CryPak::CryPakNotificationBus::Broadcast(&CryPak::CryPakNotificationBus::Events::BundleOpened, desc.strFileName, bundleManifest, nextBundle.data());
 #if 0
         CryLog("---START Pack List: OpenPackCommon '%s' 0x%X---", szFullPath, nPakFlags);
         for (ZipArray::iterator it = m_arrZips.begin(); it != m_arrZips.end(); ++it)
@@ -2644,6 +2687,8 @@ bool CCryPak::ClosePack(const char* pName, unsigned nFlags)
             bool bResult = (it->pZip->NumRefs() == 2) && it->pArchive->NumRefs() == 1;
             if (bResult)
             {
+                CryPak::CryPakNotificationBus::Broadcast(&CryPak::CryPakNotificationBus::Events::BundleClosed, it->GetFullPath());
+
                 m_arrZips.erase(it);
             }
 #if 0
@@ -3554,7 +3599,7 @@ CCryPakFindData::FileDesc::FileDesc(struct __finddata64_t* fd)
 CCryPakFindData::FileDesc::FileDesc(ZipDir::FileEntry* fe)
 {
     nSize = fe->desc.lSizeUncompressed;
-#if defined(LINUX) || defined(APPLE)
+#if AZ_TRAIT_LEGACY_CRYPAK_UNIX_LIKE_FILE_SYSTEM
     nAttrib = _A_IN_CRYPAK; // files in zip are read-only, and
 #else
     nAttrib = _A_RDONLY | _A_IN_CRYPAK; // files in zip are read-only, and
@@ -3567,7 +3612,7 @@ CCryPakFindData::FileDesc::FileDesc(ZipDir::FileEntry* fe)
 CCryPakFindData::FileDesc::FileDesc()
 {
     nSize = 0;
-#if defined(LINUX) || defined(APPLE)
+#if AZ_TRAIT_LEGACY_CRYPAK_UNIX_LIKE_FILE_SYSTEM
     nAttrib = _A_SUBDIR;
 #else
     nAttrib = _A_SUBDIR | _A_RDONLY;
@@ -4281,6 +4326,7 @@ void CCryPak::RecordFile(AZ::IO::HandleType inFileHandle, const char* szFilename
     //if (m_pLog)
     //      CryComment( "File open: %s",szFilename );
 
+    bool checkFileAccess = false;
     if (m_eRecordFileOpenList != ICryPak::RFOM_Disabled)
     {
         // we only want to record ASSET access
@@ -4295,7 +4341,18 @@ void CCryPak::RecordFile(AZ::IO::HandleType inFileHandle, const char* szFilename
             {
                 pList->Add(szFilename);
             }
+
+            checkFileAccess = true;
         }
+    }
+
+    // In the Editor we want to avoid emitting warnings about Editor only files
+    // In the launcher there should be no access of Editor only files
+    if (checkFileAccess || !gEnv->IsEditor())
+    {
+#if !defined(_RELEASE)
+        CryPak::CryPakNotificationBus::Broadcast(&CryPak::CryPakNotificationBus::Events::FileAccess, szFilename);
+#endif
     }
 
     std::vector<ICryPakFileAcesssSink*>::iterator it, end = m_FileAccessSinks.end();
@@ -4323,6 +4380,14 @@ void CCryPak::OnMissingFile(const char* szPath)
             AZ::IO::HandleType fileHandle;
             if (AZ::IO::FileIOBase::GetDirectInstance()->Open(szFileName, AZ::IO::OpenMode::ModeAppend, fileHandle))
             {
+                if(!m_warnedCryMissingFilesDeprecated)
+                {
+                    AZ::IO::Print(fileHandle, "---------------------------------------------------------------------------------------------------\n");
+                    AZ::IO::Print(fileHandle, "sys_PakLogMissingFiles has been deprecated.  Please use sys_report_files_not_found_in_paks instead.\n");
+                    AZ::IO::Print(fileHandle, "---------------------------------------------------------------------------------------------------\n");
+                    m_warnedCryMissingFilesDeprecated = true;
+                }
+
                 AZ::IO::Print(fileHandle, "%s\n", szPath);
                 AZ::IO::FileIOBase::GetDirectInstance()->Close(fileHandle);
             }
@@ -4461,10 +4526,14 @@ ILINE bool IsDirSep(const char c)
 //////////////////////////////////////////////////////////////////////////
 bool CCryPak::IsAbsPath(const char* pPath)
 {
+#if AZ_TRAIT_IS_ABS_PATH_IF_COLON_FOUND_ANYWHERE
+    return strchr(pPath, ':') != nullptr;
+#else
     return (pPath && ((pPath[0] && pPath[1] == ':' && IsDirSep(pPath[2]))
                       || IsDirSep(pPath[0])
                       )
             );
+#endif
 }
 
 CCryPakFindData* CCryPak::CreateFindData()
@@ -4797,5 +4866,20 @@ void CCryPak::CPakFileWidget::Update()
     }
 }
 
+AZStd::shared_ptr<AzFramework::AssetBundleManifest> CCryPak::GetBundleManifest(ZipDir::CachePtr pZip)
+{
+    CCachedFileDataPtr fileData = GetFileData(pZip, AzFramework::AssetBundleManifest::s_manifestFileName);
 
+    // Legacy bundles will not have manifests
+    if (!fileData)
+    {
+        return {};
+    }
 
+    AZ::SerializeContext* serializeContext = nullptr;
+    AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+    AZ_Assert(serializeContext, "Failed to retrieve serialize context.");
+    auto manifestInfo = AZStd::shared_ptr<AzFramework::AssetBundleManifest>(AZ::Utils::LoadObjectFromBuffer<AzFramework::AssetBundleManifest>(fileData->GetData(), fileData->GetFileEntry()->desc.lSizeUncompressed));
+
+    return manifestInfo;
+}

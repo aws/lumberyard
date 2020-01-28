@@ -38,10 +38,16 @@
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
 
 #include <AzCore/IO/CompressionBus.h>
 
 class CCryPak;
+
+namespace AzFramework
+{
+    class AssetBundleManifest;
+}
 
 // this is the header in the cache of the file data
 struct CCachedFileData
@@ -319,6 +325,15 @@ protected:
     // given the source relative path, constructs the full path to the file according to the flags
     const char* AdjustFileNameImpl(const char* src, char* dst, size_t dstSize, unsigned nFlags, bool skipMods) override;
 
+    // LY Bundle Management
+    // Handle our initial LY Canonical "Bundles" which contain manifest info and update our Asset Registry as 
+    // Loaded and Unloaded
+    bool OpenBundle(ZipDir::CachePtr zipEntry);
+    bool CloseBundle(ZipDir::CachePtr zipEntry);
+    // Retrieve the manifest from the Bundle if it exists
+    AZStd::unique_ptr<AzFramework::AssetBundleManifest> LoadManifest(ZipDir::CachePtr zipEntry) const;
+    // Retrieve the Catalog name from the bundle
+    AZStd::string GetCatalogName(AZStd::unique_ptr<const AzFramework::AssetBundleManifest>& bundleManifest) const;
 private:
     IMiniLog* m_pLog;
 
@@ -547,7 +562,10 @@ public: // ---------------------------------------------------------------------
     // the path must be absolute normalized lower-case with forward-slashes
     CCachedFileDataPtr GetFileData(const char* szName, unsigned int& nArchiveFlags);
     CCachedFileDataPtr GetFileData(const char* szName){unsigned int archiveFlags; return GetFileData(szName, archiveFlags); }
+    // Get the data for a file by name within an archive if it exists
+    CCachedFileDataPtr GetFileData(ZipDir::CachePtr pZip, const char* szName);
 
+    AZStd::shared_ptr<AzFramework::AssetBundleManifest> GetBundleManifest(ZipDir::CachePtr pZip);
     // Return cached file data for entries inside pak file.
     CCachedFileDataPtr GetOpenedFileDataInZip(AZ::IO::HandleType file);
 
@@ -661,6 +679,7 @@ public: // ---------------------------------------------------------------------
     CryCriticalSection m_csMissingFiles;
     typedef std::map<string, uint32, std::less<string> > MissingFileMap;
     MissingFileMap m_mapMissingFiles;
+    bool m_warnedCryMissingFilesDeprecated = false;
 
     friend struct SAutoCollectFileAcessTime;
 
@@ -676,7 +695,7 @@ public: // ---------------------------------------------------------------------
 
     virtual void CreatePerfHUDWidget();
 
-#if defined(LINUX) || defined(APPLE)
+#if AZ_TRAIT_LEGACY_CRYPAK_UNIX_LIKE_FILE_SYSTEM
 private:
     intptr_t m_HandleSource;
     std::map<intptr_t, CCryPakFindData* > m_Handles;

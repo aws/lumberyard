@@ -27,6 +27,7 @@
 #include "IAIActor.h"
 #include "IAIActorProxy.h"
 #include "Components/IComponentAudio.h"
+#include "MathConversion.h"
 
 static const float LOOKAT_TIMEOUT   = 1.0f;
 static const float ANIM_TIMEOUT     = 1.0f;
@@ -654,7 +655,7 @@ void CDialogActorContext::UpdateAuxProxyPosition()
         tmHead = Matrix34(IDENTITY, Vec3(0.0f, 1.80f, 0.0f));
     }
 
-    pActorAudioComponent->SetAuxAudioProxyOffset(Audio::SATLWorldPosition(tmHead), m_SpeechAuxProxy);
+    pActorAudioComponent->SetAuxAudioProxyOffset(Audio::SATLWorldPosition(LYTransformToAZTransform(tmHead)), m_SpeechAuxProxy);
 }
 
 ////////////////////////////////////////////////////////////////////////////

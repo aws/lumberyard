@@ -10,7 +10,8 @@
 *
 */
 
-#include "stdafx.h"
+#include "ComponentEntityEditorPlugin_precompiled.h"
+
 #include "UI/QComponentLevelEntityEditorMainWindow.h"
 
 #include <AzCore/Component/Entity.h>

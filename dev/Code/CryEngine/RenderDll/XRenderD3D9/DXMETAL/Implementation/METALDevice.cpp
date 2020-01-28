@@ -300,7 +300,6 @@ namespace NCryMetal
             nativeWindow.contentViewController = m_viewController;
             [nativeWindow makeFirstResponder: m_currentView];
 #else
-            [nativeWindow addSubview : m_currentView];
             nativeWindow.rootViewController = m_viewController;
 #endif
         }

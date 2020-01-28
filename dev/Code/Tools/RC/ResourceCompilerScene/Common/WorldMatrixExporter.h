@@ -50,11 +50,6 @@ namespace AZ
             SceneAPI::Events::ProcessingResult ProcessNode(NodeExportContext& context);
 
         protected:
-#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
-            // Workaround for VS2013 - Delete the copy constructor and make it private
-            // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-            WorldMatrixExporter(const WorldMatrixExporter&) = delete;
-#endif
             using HierarchyStorageIterator = SceneAPI::Containers::SceneGraph::HierarchyStorageConstIterator;
 
             bool ConcatenateMatricesUpwards(Transform& transform, const HierarchyStorageIterator& nodeIterator, const SceneAPI::Containers::SceneGraph& graph) const;

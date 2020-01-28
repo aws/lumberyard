@@ -1,0 +1,23 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "system_lib": [
+                "crypt32",
+                "ws2_32"
+            ],
+            "libpath_debug": [
+                "lib/vc140_x64_debug"
+            ],
+            "libpath_release": [
+                "lib/vc140_x64_release"
+            ],
+            "lib": [
+                "libssl.lib",
+                "libcrypto.lib"
+            ],
+            "linkflags" : [
+                "/ignore:4099"
+            ]
+        }
+    }
+}

@@ -210,6 +210,32 @@ namespace EMotionFX
         {
             return "Editor/Images/AssetBrowser/MotionSet_16.png";
         }
+        //////////////////////////////////////////////////////////////////////////
+        void MotionSetAssetBuilderHandler::InitAsset(const AZ::Data::Asset<AZ::Data::AssetData>& asset, bool loadStageSucceeded, bool isReload)
+        {
+            // Don't need to load the referenced motionset and motion assets since we only care about the product ID ot relative path of the product dependency
+            AZ_UNUSED(asset);
+            AZ_UNUSED(loadStageSucceeded);
+            AZ_UNUSED(isReload);
+        }
+
+        bool MotionSetAssetBuilderHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB)
+        {
+            AZ_UNUSED(asset);
+            AZ_UNUSED(stream);
+            AZ_UNUSED(assetLoadFilterCB);
+
+            return true;
+        }
+
+        bool MotionSetAssetBuilderHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& assetLoadFilterCB)
+        {
+            AZ_UNUSED(asset);
+            AZ_UNUSED(assetPath);
+            AZ_UNUSED(assetLoadFilterCB);
+
+            return true;
+        }
 
     } // namespace Integration
 } // namespace EMotionFX

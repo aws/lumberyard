@@ -907,6 +907,16 @@ namespace EMotionFX
         SetCurrentPlayTime(animGraphInstance, normalizedTime * duration);
     }
 
+    AZStd::tuple<float, float, float> AnimGraphNode::SyncPlaySpeeds(float playSpeedA, float durationA, float playSpeedB, float durationB, float weight)
+    {
+        const float timeRatio = (durationB > MCore::Math::epsilon) ? durationA / durationB : 0.0f;
+        const float timeRatio2 = (durationA > MCore::Math::epsilon) ? durationB / durationA : 0.0f;
+        const float factorA = AZ::Lerp(1.0f, timeRatio, weight);
+        const float factorB = AZ::Lerp(timeRatio2, 1.0f, weight);
+        const float interpolatedSpeed = AZ::Lerp(playSpeedA, playSpeedB, weight);
+
+        return AZStd::make_tuple(interpolatedSpeed, factorA, factorB);
+    }
 
     // sync blend the play speed of two nodes
     void AnimGraphNode::SyncPlaySpeeds(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode, float weight, bool modifyMasterSpeed)
@@ -914,13 +924,13 @@ namespace EMotionFX
         AnimGraphNodeData* uniqueDataA = masterNode->FindUniqueNodeData(animGraphInstance);
         AnimGraphNodeData* uniqueDataB = FindUniqueNodeData(animGraphInstance);
 
-        const float durationA   = uniqueDataA->GetDuration();
-        const float durationB   = uniqueDataB->GetDuration();
-        const float timeRatio   = (durationB > MCore::Math::epsilon) ? durationA / durationB : 0.0f;
-        const float timeRatio2  = (durationA > MCore::Math::epsilon) ? durationB / durationA : 0.0f;
-        const float factorA     = MCore::LinearInterpolate<float>(1.0f, timeRatio, weight);
-        const float factorB     = MCore::LinearInterpolate<float>(timeRatio2, 1.0f, weight);
-        const float interpolatedSpeed   = MCore::LinearInterpolate<float>(uniqueDataA->GetPlaySpeed(), uniqueDataB->GetPlaySpeed(), weight);
+        float factorA;
+        float factorB;
+        float interpolatedSpeed;
+        AZStd::tie(interpolatedSpeed, factorA, factorB) = SyncPlaySpeeds(
+            uniqueDataA->GetPlaySpeed(), uniqueDataA->GetDuration(),
+            uniqueDataB->GetPlaySpeed(), uniqueDataB->GetDuration(),
+            weight);
 
         if (modifyMasterSpeed)
         {
@@ -944,15 +954,19 @@ namespace EMotionFX
         float servantPlaySpeed, const AnimGraphSyncTrack* servantSyncTrack, uint32 servantSyncTrackIndex, float servantDuration,
         ESyncMode syncMode, float weight, float* outMasterFactor, float* outServantFactor, float* outPlaySpeed)
     {
-        *outPlaySpeed = AZ::Lerp(masterPlaySpeed, servantPlaySpeed, weight);
-
         // exit if we don't want to sync or we have no master node to sync to
         if (syncMode == SYNCMODE_DISABLED)
         {
             *outMasterFactor = 1.0f;
             *outServantFactor = 1.0f;
+
+            // Use the master/source state playspeed when transitioning, do not blend playspeeds if syncing is disabled.
+            *outPlaySpeed = masterPlaySpeed;
             return;
         }
+
+        // Blend playspeeds only if syncing is enabled.
+        *outPlaySpeed = AZ::Lerp(masterPlaySpeed, servantPlaySpeed, weight);
 
         // if one of the tracks is empty, sync the full clip
         if (syncMode == SYNCMODE_TRACKBASED)

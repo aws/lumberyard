@@ -14,10 +14,8 @@
 ########################################################################################
 
 SUBFOLDERS = [
-    'AssetTaggingPlugin',
     'CryDesigner',
     'EditorAnimation',
-    'EditorAudioControlsEditor',
     'EditorCommon',
     'EditorAssetImporter',
     'EditorModularBehaviorTree',
@@ -33,6 +31,12 @@ SUBFOLDERS = [
     'UiCanvasEditor',
     'DeploymentTool',
     'ProjectSettingsTool',
+
+    # Important: do not remove the 'Deprecated' subfolder.
+    # It is part of the deprecation path for Editor Plugins,
+    # and it ensures deprecated plugins are being built as stubs.
+    'Deprecated',
+
     #'Legacy',
     #'_ExampleQMLViewPane',
     #'_ExampleQtViewPane',
@@ -44,6 +48,5 @@ SUBFOLDERS = [
 def build(bld):
     # Recursive into all sub projects:
     for subfolder in SUBFOLDERS:
-        bld.recurse(subfolder,
-                mandatory=False)
+        bld.recurse(subfolder, mandatory=False)
 

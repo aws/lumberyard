@@ -1586,6 +1586,14 @@ namespace UnitTest
         EXPECT_EQ(1, uniqueMap.count(4));
     }
 
+    TEST_F(HashedContainers, CheckADL)
+    {
+        // ensure this compiles and not does fail due to ADL (Koenig Lookup)
+        std::vector<AZStd::unordered_map<int, int>> test_adl;
+
+        EXPECT_TRUE(test_adl.empty());
+    }
+
     template <typename ContainerType>
     class HashedMapDifferentAllocatorFixture
         : public AllocatorsFixture

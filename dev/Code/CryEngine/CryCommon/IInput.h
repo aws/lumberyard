@@ -24,6 +24,12 @@
 #include <CryName.h>
 #include <AzCore/EBus/EBus.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#undef AZ_RESTRICTED_SECTION
+#define IINPUT_H_SECTION_ENUM 1
+#define IINPUT_H_SECTION_2 2
+#endif
+
 struct ISystem;
 
 namespace AzFramework
@@ -133,7 +139,8 @@ inline bool operator>(const char* str, const TKeyName& n) { return n > str; }
 #define KI_KEYBOARD_BASE  0
 #define KI_MOUSE_BASE     256
 #define KI_XINPUT_BASE    512
-#define KI_ORBIS_BASE     1024
+#define KI_PROVO_BASE     1024
+#define KI_XENIA_BASE     1536
 #define KI_MOTION_BASE    2048
 #define KI_SYS_BASE       4096
 
@@ -283,7 +290,6 @@ enum EKeyId
     eKI_Touch9,
     eKI_TouchLast,
 
-    // Durango controller. // ACCEPTED_USE
     eKI_XI_DPadUp = KI_XINPUT_BASE,
     eKI_XI_DPadDown,
     eKI_XI_DPadLeft,
@@ -317,37 +323,20 @@ enum EKeyId
     eKI_XI_Connect,     // should be deprecated because all devices can be connected, use eKI_SYS_ConnectDevice instead
     eKI_XI_Disconnect,  // should be deprecated because all devices can be disconnected, use eKI_SYS_DisconnectDevice instead
 
-    // Orbis controller. // ACCEPTED_USE
-    eKI_Orbis_Options = KI_ORBIS_BASE,
-    eKI_Orbis_L3,
-    eKI_Orbis_R3,
-    eKI_Orbis_Start,
-    eKI_Orbis_Up,
-    eKI_Orbis_Right,
-    eKI_Orbis_Down,
-    eKI_Orbis_Left,
-    eKI_Orbis_L2, // L2 as button, for trigger use LeftTrigger
-    eKI_Orbis_R2, // R2 as button, for trigger use RightTrigger
-    eKI_Orbis_L1,
-    eKI_Orbis_R1,
-    eKI_Orbis_Triangle,
-    eKI_Orbis_Circle,
-    eKI_Orbis_Cross,
-    eKI_Orbis_Square,
-    eKI_Orbis_StickLX,
-    eKI_Orbis_StickLY,
-    eKI_Orbis_StickRX,
-    eKI_Orbis_StickRY,
-    eKI_Orbis_RotX,
-    eKI_Orbis_RotY,
-    eKI_Orbis_RotZ,
-    eKI_Orbis_RotX_KeyL,
-    eKI_Orbis_RotX_KeyR,
-    eKI_Orbis_RotZ_KeyD,
-    eKI_Orbis_RotZ_KeyU,
+#if defined(AZ_PLATFORM_XENIA) || defined(TOOLS_SUPPORT_XENIA)
+    #define AZ_RESTRICTED_SECTION IINPUT_H_SECTION_ENUM
+    #include "Xenia/IInput_h_xenia.inl"
+#endif
 
-    // Orbis specific // ACCEPTED_USE
-    eKI_Orbis_Touch,
+#if defined(AZ_PLATFORM_PROVO) || defined(TOOLS_SUPPORT_PROVO)
+    #define AZ_RESTRICTED_SECTION IINPUT_H_SECTION_ENUM
+    #include "Provo/IInput_h_provo.inl"
+#endif
+
+#if defined(AZ_PLATFORM_SALEM) || defined(TOOLS_SUPPORT_SALEM)
+    #define AZ_RESTRICTED_SECTION IINPUT_H_SECTION_ENUM
+    #include "Salem/IInput_h_salem.inl"
+#endif
 
     // Normal inputs should be added above
     // eKI_SYS_Commit and below will be ignored by input blocking functionality
@@ -744,488 +733,6 @@ struct IFFParams
 };
 
 //////////////////////////////////////////////////////////////////////////
-// KINECT
-
-#define KIN_SKELETON_COUNT 6
-#define KIN_SKELETON_INVALID_TRACKING_ID KIN_SKELETON_COUNT
-
-enum KIN_SKELETON_TRACKING_STATE
-{
-    KIN_SKELETON_NOT_TRACKED = 0,
-    KIN_SKELETON_POSITION_ONLY,
-    KIN_SKELETON_TRACKED
-};
-
-enum KIN_SKELETON_POSITION_INDEX
-{
-    KIN_SKELETON_POSITION_HIP_CENTER = 0,
-    KIN_SKELETON_POSITION_SPINE,
-    KIN_SKELETON_POSITION_SHOULDER_CENTER,
-    KIN_SKELETON_POSITION_HEAD,
-    KIN_SKELETON_POSITION_SHOULDER_LEFT,
-    KIN_SKELETON_POSITION_ELBOW_LEFT,
-    KIN_SKELETON_POSITION_WRIST_LEFT,
-    KIN_SKELETON_POSITION_HAND_LEFT,
-    KIN_SKELETON_POSITION_SHOULDER_RIGHT,
-    KIN_SKELETON_POSITION_ELBOW_RIGHT,
-    KIN_SKELETON_POSITION_WRIST_RIGHT,
-    KIN_SKELETON_POSITION_HAND_RIGHT,
-    KIN_SKELETON_POSITION_HIP_LEFT,
-    KIN_SKELETON_POSITION_KNEE_LEFT,
-    KIN_SKELETON_POSITION_ANKLE_LEFT,
-    KIN_SKELETON_POSITION_FOOT_LEFT,
-    KIN_SKELETON_POSITION_HIP_RIGHT,
-    KIN_SKELETON_POSITION_KNEE_RIGHT,
-    KIN_SKELETON_POSITION_ANKLE_RIGHT,
-    KIN_SKELETON_POSITION_FOOT_RIGHT,
-    KIN_SKELETON_POSITION_HAND_REFINED_LEFT,
-    KIN_SKELETON_POSITION_HAND_REFINED_RIGHT,
-    KIN_SKELETON_POSITION_COUNT
-};
-
-#define KIN_IDENTITY_MAX_ENROLLMENT_COUNT 8
-
-enum KIN_IDENTITY_ENROLLMENT
-{
-    KIN_IDENTITY_ENROLLMENT_INDEX_CALL_IDENTIFY = 0xFFFFFFFF,
-    KIN_IDENTITY_ENROLLMENT_INDEX_UNKNOWN       = 0xFFFFFFFE,
-    KIN_IDENTITY_ENROLLMENT_INDEX_BUSY          = 0xFFFFFFFC,
-    KIN_IDENTITY_ENROLLMENT_INDEX_FAILURE       = 0xFFFFFFFB,
-};
-
-
-enum KIN_SKELETON_POSITION_TRACKING_STATE
-{
-    KIN_SKELETON_POSITION_NOT_TRACKED = 0,
-    KIN_SKELETON_POSITION_INFERRED,
-    KIN_SKELETON_POSITION_TRACKED
-};
-
-struct SHandPositions
-{
-    Vec3 vLeftHand;
-    Vec3 vRightHand;
-};
-
-struct SKinSkeletonRawData
-{
-    KIN_SKELETON_TRACKING_STATE eTrackingState;
-    DWORD dwTrackingId;
-    DWORD dwEnrollmentIndex;
-    DWORD dwUserIndex;
-    SHandPositions screenHands; // x and y range from -1 to +1 - z from 0 to 1
-    Vec4 vPosition;
-    Vec4 vSkeletonPositions[KIN_SKELETON_POSITION_COUNT];
-
-    KIN_SKELETON_POSITION_TRACKING_STATE eSkeletonPositionTrackingState[KIN_SKELETON_POSITION_COUNT];
-    DWORD dwQualityFlags;
-};
-
-//Interface for different joint filtering types
-class ISkeletonFilter
-{
-public:
-    // <interfuscator:shuffle>
-    // default virtual destructor
-    virtual ~ISkeletonFilter() {}
-
-    //Resets all internal state of the filter
-    virtual void Reset() = 0;
-
-    //Apply smoothing to current skeleton data
-    virtual void Update(const SKinSkeletonRawData& pSkeletonData, const float fDeltaTime) = 0;
-
-    //Retrieve smoothed/filtered joints
-    virtual Vec4* GetFilteredJoints() = 0;
-    // </interfuscator:shuffle>
-};
-
-struct SKinSkeletonDefaultData
-{
-    //Alignment data updated each time skeleton is detected
-    Vec4 vPosition;
-    Vec4 vSkeletonPositions[KIN_SKELETON_POSITION_COUNT];
-};
-
-struct SKinSkeletonFrame
-{
-    int64 liTimeStamp;
-    DWORD dwFrameNumber;
-    DWORD dwFlags;
-    Vec4 vFloorClipPlane;
-    Vec4 vNormalToGravity;
-    SKinSkeletonRawData skeletonRawData[KIN_SKELETON_COUNT];
-
-    // add extra skeleton frame data after this point, all data
-    // before needs to be reflected in the Xbox Kinect sync app! // ACCEPTED_USE
-    SKinSkeletonDefaultData skeletonDefaultData[KIN_SKELETON_COUNT];
-};
-
-
-enum KIN_GRIP_TYPE
-{
-    KIN_GRIP_ANALOG_STICK,
-    KIN_GRIP_ARC,
-    KIN_GRIP_GEARSHIFT,
-    KIN_GRIP_HOVERTIME,
-    KIN_GRIP_INVALID
-};
-
-struct SKinRailStateAnalogStick
-{
-    float fAngle; //Radians
-    float fDistance;
-
-    SKinRailStateAnalogStick()
-        : fAngle(0.f)
-        , fDistance(0.f){}
-};
-
-struct SKinRailStateArc
-{
-    float fProgress; // Range 0 - 1
-    float fDenormalizedProgress; // progress in radians 0 - pi
-
-    SKinRailStateArc()
-        : fProgress(0.f)
-        , fDenormalizedProgress(0.f){}
-};
-
-struct SKinRailStateGearShift
-{
-    int nIndex;
-    float fToothProgress;
-    float fSpineProgress;
-    float fSpineProgressAtToothCommit;
-
-    SKinRailStateGearShift()
-        : nIndex(0)
-        , fToothProgress(0.f)
-        , fSpineProgress(0.f)
-        , fSpineProgressAtToothCommit(0.f){}
-};
-
-struct SKinRailStateHoverTime
-{
-    float fTimePassed;
-    float fPercentageComplete;
-
-    SKinRailStateHoverTime()
-        : fTimePassed(0.f)
-        , fPercentageComplete(0.f){}
-};
-
-struct SKinRailState
-{
-    bool bAttached; // True if playes is going over this grip
-    bool bCommited; // True if the player has committed in going on a certain rail (check the rail id)
-    int nGripId;
-    int nRailId;
-    KIN_GRIP_TYPE eGripType; // Use this enum to see which struct you need to check. Other data will be invalid
-    SKinRailStateAnalogStick analogState;
-    SKinRailStateArc arcState;
-    SKinRailStateGearShift gearShiftState;
-    SKinRailStateHoverTime hovertimeState;
-
-    SKinRailState()
-        : bAttached(false)
-        , bCommited(false)
-        , nGripId(-1)
-        , nRailId(-1)
-        , eGripType(KIN_GRIP_INVALID){}
-};
-
-
-struct SKinGripShape
-{
-    float fFastAttachRadius;
-    float fSlowAttachRadius;
-    float fApproachRadius;
-    float fSlowDetachRadius;
-};
-
-
-struct SKinBodyShapeHandles
-{
-    Vec3 vOrigin; // origin of the PHIZ space
-    Vec3 vForward; // Forward vector in the body space as it's positioned in cam space
-    Vec3 vRight; // Right vector in the the body space as it's positioned in cam space
-    Vec3 vUp; // Up vector in the the body space as it's positioned in cam space
-    Vec3 vRightShoulder; // Position of right shoulder in camera space
-    Vec3 vLeftShoulder; // Position of left shoulder in camera space
-    Vec3 vRefinedRightHand; // Position of the refined right-hand position in camera space
-    Vec3 vRefinedLeftHand; // Position of the refined left-hand position in camera space
-};
-
-enum EKinIdentityMessageId
-{
-    E_KinIdentityMessageId_Frame_Processed, // This message-type identifier is sent every time the system has completed processing a single frame, during the identification or enrollment process
-    E_KinIdentityMessageId_Id_Complete, // This message-type identifier is sent when the entire identification or enrollment process is complete
-};
-
-enum EKinIdentityOperationId
-{
-    E_KinIdentityOperationId_None, // A no-op or an invalid value. The identity engine should never generate a message with this value.
-    E_KinIdentityOperationId_Identify, // A pending IdentityIdentify operation
-    E_KinIdentityOperationId_Enroll, // A pending IdentityEnroll operation
-    E_KinIdentityOperationId_Tuner, // This value is available only if the skeleton tracking part of the Kinect tuner is tested when you captured a XED file
-};
-
-enum EKinIdentityQuality
-{
-    EKinIdentityQuality_FACE_DETECT_FAILURE         = 0x00000001,
-    EKinIdentityQuality_USER_BODY_TURNED                = 0x00000002,
-    EKinIdentityQuality_USER_NOT_UPRIGHT                = 0x00000004,
-    EKinIdentityQuality_USER_OCCLUDED_FACE          = 0x00000008,
-    EKinIdentityQuality_USER_OCCLUDED_BODY          = 0x00000010,
-    EKinIdentityQuality_USER_FAR_AWAY                       = 0x00000020,
-    EKinIdentityQuality_USER_CLOSE                          = 0x00000040,
-    EKinIdentityQuality_USER_CLIPPED_AT_LEFT        = 0x00000080,
-    EKinIdentityQuality_USER_CLIPPED_AT_RIGHT       = 0x00000100,
-    EKinIdentityQuality_USER_CLIPPED_AT_TOP         = 0x00000200,
-    EKinIdentityQuality_USER_CLIPPED_AT_BOTTOM  = 0x00000400,
-    EKinIdentityQuality_ENVIRONMENT_TOO_DARK        = 0x00000800,
-    EKinIdentityQuality_ENVIRONMENT_TOO_BRIGHT  = 0x00001000,
-};
-
-struct SKinIdentityMessageFrameProcessed
-{
-    DWORD dwQualityFlags; // EKinIdentityQuality flags
-};
-
-enum EKinIdentityMessageCompleteResult
-{
-    EKinIdentityMessageCompleteResult_Ok,
-    EKinIdentityMessageCompleteResult_Busy,
-    EKinIdentityMessageCompleteResult_LostTrack,
-    EKinIdentityMessageCompleteResult_QualityIssue,
-    EKinIdentityMessageCompleteResult_Abort,
-};
-
-struct SKinIdentityMessageComplete
-{
-    EKinIdentityMessageCompleteResult eResult;
-    DWORD dwEnrollementIndex;
-    bool bProfileMatched;
-};
-
-struct SKinIdentityMessage
-{
-    EKinIdentityMessageId messageId;
-    EKinIdentityOperationId operationId;
-    DWORD dwTrackingId;
-    DWORD dwSkeletonFrameNumber;
-    union
-    {
-        SKinIdentityMessageFrameProcessed frameProcessed;
-        SKinIdentityMessageComplete complete;
-    } Data;
-};
-
-typedef bool(* KinIdentifyCallback)(const SKinIdentityMessage& message, void* pData);
-
-typedef void* KIN_SPEECH_HANDLE;
-
-enum KIN_SPEECH_CONFIDENCE
-{
-    KIN_SPEECH_CONFIDENCE_LOW,
-    KIN_SPEECH_CONFIDENCE_NORMAL,
-    KIN_SPEECH_CONFIDENCE_HIGHT,
-};
-
-#define KIN_SPEECH_EVENT_START_STREAM        0x00000001
-#define KIN_SPEECH_EVENT_END_STREAM          0x00000002
-#define KIN_SPEECH_EVENT_SOUND_START         0x00000004
-#define KIN_SPEECH_EVENT_SOUND_END           0x00000008
-#define KIN_SPEECH_EVENT_PHRASE_START        0x00000010
-#define KIN_SPEECH_EVENT_HYPOTHESIS          0x00000020
-#define KIN_SPEECH_EVENT_RECOGNITION         0x00000040
-#define KIN_SPEECH_EVENT_FALSE_RECOGNITION   0x00000080
-#define KIN_SPEECH_EVENT_INTERFERENCE        0x00000100
-#define KIN_SPEECH_EVENT_BOOKMARK            0x00000200
-#define KIN_SPEECH_EVENT_RETAINEDAUDIO       0x00000400
-
-#define KIN_SPEECH_ALL_RECOGNITION_EVENTS   (KIN_SPEECH_EVENT_HYPOTHESIS | KIN_SPEECH_EVENT_RECOGNITION | KIN_SPEECH_EVENT_FALSE_RECOGNITION)
-#define KIN_SPEECH_ALL_EVENTS 0xFFFFFFFF
-
-/*struct KIN_SPEECH_INIT_PROPERTIES
-{
-    KIN_SPEECH_LANGUAGE Language;
-    KIN_SPEECH_MICTYPE Microp
-};*/
-
-struct KIN_SPEECH_ELEMENT
-{
-    unsigned long ulAudioTimeOffset;
-    unsigned long ulAudioSizeTime;
-    unsigned long ulAudioStreamOffset;
-    unsigned long ulAudioSizeBytes;
-    unsigned long ulRetainedStreamOffset;
-    unsigned long ulRetainedSizeBytes;
-    wchar_t* pcwszDisplayText;
-    wchar_t* pcwszLexicalForm;
-    wchar_t* pcwszPronunciation;
-    KIN_SPEECH_CONFIDENCE eRequiredConfidence;
-    KIN_SPEECH_CONFIDENCE eActualConfidence;
-    float fSREngineConfidence;
-};
-
-struct KIN_SPEECH_GRAMMAR
-{
-    unsigned long ulId;
-    KIN_SPEECH_HANDLE hGrammar;
-};
-
-struct IKinectInputAudioListener;
-struct IKinectInputListener;
-
-struct IKinectInput
-{
-    // <interfuscator:shuffle>
-    virtual ~IKinectInput(){};
-
-    virtual bool Init() = 0;
-    virtual void Update() = 0;
-    virtual bool IsEnabled() = 0;
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/IInput_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/IInput_h_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-    virtual void RegisterInputListener(IKinectInputListener* pInputListener, const char* name) = 0;
-    virtual void UnregisterInputListener(IKinectInputListener* pInputListener) = 0;
-#endif
-
-    virtual const char* GetUserStatusMessage() = 0;
-    // Summary:
-    //      Adds an Arc rail - The most common used way for menu navigation
-    // Return value:
-    //      Returns true if the rail is successfully added
-    virtual bool RegisterArcRail(int gripId, int railId, const Vec2& vScreenPos, const Vec3& vDir, float fLenght, float fDeadzoneLength, float fToleranceConeAngle) = 0;
-
-    virtual void UnregisterArcRail(int gripId) = 0;
-
-    // Summary:
-    //      Adds a Hover time item. fTimeToCommit is the time it from when the player is hovering over the item up until it starts counting
-    // Return value:
-    //      Returns true if the rail is successfully added
-    virtual bool RegisterHoverTimeRail(int gripId, int railId, const Vec2& vScreenPos, float fHoverTime, float fTimeTillCommit, SKinGripShape* pGripShape = NULL) = 0;
-
-    // Summary:
-    //  Unregister a specific grip. You can only remove the full grip, not one rail at a time
-    virtual void UnregisterHoverTimeRail(int gripId) = 0;
-
-    // Summary:
-    //      Clears all rails
-    virtual void UnregisterAllRails() = 0;
-
-    // Summary:
-    //      Describes the body space coordinate system relative to camera space
-    virtual bool GetBodySpaceHandles(SKinBodyShapeHandles& bodyShapeHandles) = 0;
-
-    // Summary;:
-    //      Enables/Disables seated skeleton tracking
-    virtual void EnableSeatedSkeletonTracking(bool bValue) = 0;
-
-    // Summary;:
-    //      Get raw skeleton data
-    virtual bool GetSkeletonRawData(uint32 iUser, SKinSkeletonRawData& skeletonRawData) const = 0;
-
-    // Summary;:
-    //      Get default skeleton data
-    virtual bool GetSkeletonDefaultData(uint32 iUser, SKinSkeletonDefaultData& skeletonDefaultData) const = 0;
-
-    // Summary;:
-    //      Get the skeleton that is closest to the camera
-    virtual uint32 GetClosestTrackedSkeleton() const = 0;
-
-    // Summary:
-    //      Draws skeleton, depth & image buffer info on screen
-    virtual void DebugDraw() = 0;
-
-    // Summary:
-    //      Enable wave gesture tracking
-    virtual void EnableWaveGestureTracking(bool bEnable) = 0;
-
-    // Summary:
-    //      Get wave progress
-    virtual float GetWaveGestureProgress(DWORD* pTrackingId) = 0;
-
-    // Summary:
-    //      Detected intent to play
-    virtual bool IdentityDetectedIntentToPlay(DWORD dwTrackingId) = 0;
-
-    // Summary:
-    //      Call this function to start identifying a player
-    virtual bool IdentityIdentify(DWORD dwTrackingId, KinIdentifyCallback callbackFunc, void* pData) = 0;
-
-    // Summary:
-    //      Enable the Kinect speech features
-    virtual bool SpeechEnable() = 0;
-
-    // Summary:
-    //      Disable the Kinect speech features
-    virtual void SpeechDisable() = 0;
-
-    // Summary:
-    //      Enables / Disables a particular grammar
-    virtual void SetEnableGrammar(const string& grammarName, bool enable) = 0;
-
-    // Summary:
-    //      Set the kinect speech event interests
-    virtual bool KinSpeechSetEventInterest(unsigned long ulEvents) = 0;
-
-    // Summary:
-    //      Load the default grammar
-    virtual bool KinSpeechLoadDefaultGrammar() = 0;
-
-    // Summary:
-    //      Start voice recognition
-    virtual bool KinSpeechStartRecognition() = 0;
-
-    // Summary:
-    //      Stop voice recognition
-    virtual void KinSpeechStopRecognition() = 0;
-
-    // Summary:
-    //      Updates stored alignment data to current skeletal data
-    virtual void UpdateSkeletonAlignment(uint32 skeletonIndex){}
-    // </interfuscator:shuffle>
-};
-
-//////////////////////////////////////////////////////////////////////////
-struct IKinectInputListener
-{
-    // <interfuscator:shuffle>
-    virtual ~IKinectInputListener() {}
-    virtual bool OnKinectRawInputEvent(const SKinSkeletonFrame& skeletonFrame) = 0;
-    virtual void OnRailProgress(const SKinRailState& railState) = 0;
-    virtual void OnVoiceCommand(string voiceCommand) = 0;
-    virtual void OnKinectClosestSkeletonChanged(uint32 skeletonIndex) = 0;
-    virtual void OnKinectSkeletonMoved(uint32 skeletonIndex, float distanceMoved) = 0;
-    // </interfuscator:shuffle>
-};
-
-struct IKinectInputAudioListener
-{
-    enum eGrammaChange
-    {
-        eGC_Enabled = 0,
-        eGC_Disabled,
-        eGC_NotLoaded
-    };
-
-    virtual ~IKinectInputAudioListener() {}
-    virtual void OnVoiceCommand(const char* voiceCommand) = 0;
-    virtual void OnGrammarChange(const char* grammarName, eGrammaChange change) = 0;
-};
-
-//////////////////////////////////////////////////////////////////////////
 ///Natural Point Device Interfaces
 
 //////////////////////////////////////////////////////////////////////////
@@ -1549,10 +1056,6 @@ struct IInput
     // Return Value:
     //   True if on-screen keyboard is supported, false otherwise
     virtual bool IsScreenKeyboardSupported() const = 0;
-
-    //////////////////////////////////////////////////////////////////////////
-    // KINECT
-    virtual IKinectInput* GetKinectInput() = 0;
 
     //////////////////////////////////////////////////////////////////////////
     // TrackIR

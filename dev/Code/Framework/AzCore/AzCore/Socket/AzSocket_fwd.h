@@ -14,10 +14,6 @@
 
 #include <AzCore/base.h>
 
-#if !AZ_TRAIT_OS_USE_SOCKETS
-#   error Platform not supported!
-#endif
-
 #define SOCKET_ERROR (-1)
 #define AZ_SOCKET_INVALID (-1)
 

@@ -308,25 +308,6 @@ namespace EMotionFX
     }
 
 
-    void BlendTreeParameterNode::RenameParameterName(const AZStd::string& currentName, const AZStd::string& newName)
-    {
-        bool somethingChanged = false;
-        for (AZStd::string& parameterName : m_parameterNames)
-        {
-            if (parameterName == currentName)
-            {
-                somethingChanged = true;
-                parameterName = newName;
-                break; // we should have only one parameter with this name
-            }
-        }
-        if (somethingChanged && mAnimGraph)
-        {
-            Reinit();
-        }
-    }
-
-
     void BlendTreeParameterNode::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -425,21 +406,35 @@ namespace EMotionFX
 
     void BlendTreeParameterNode::ParameterRenamed(const AZStd::string& oldParameterName, const AZStd::string& newParameterName)
     {
-        bool somethingChanged = false;
-        AZStd::vector<AZStd::string> newOutputPorts = m_parameterNames;
-        for (AZStd::string& outputPort : newOutputPorts)
+        // Check if the renamed parameter is part of the mask and rename
+        // the mask entry in this case.
+        bool parameterMaskChanged = false;
+        AZStd::vector<AZStd::string> newOutputPortNames = m_parameterNames;
+        for (AZStd::string& outputPortName : newOutputPortNames)
         {
-            if (outputPort == oldParameterName)
+            if (outputPortName == oldParameterName)
             {
-                outputPort = newParameterName;
-                somethingChanged = true;
+                outputPortName = newParameterName;
+                parameterMaskChanged = true;
                 break;
             }
         }
 
-        if (somethingChanged)
+        // Rename the actual output ports in all cases
+        // (also when the parameter mask is empty and showing all parameters).
+        const size_t numOutputPorts = mOutputPorts.size();
+        for (size_t i = 0; i < numOutputPorts; ++i)
         {
-            GetEventManager().OnOutputPortsChanged(this, newOutputPorts, sParameterNamesMember, newOutputPorts);
+            AnimGraphNode::Port& outputPort = mOutputPorts[i];
+            if (outputPort.GetNameString() == oldParameterName)
+            {
+                SetOutputPortName(static_cast<AZ::u32>(i), newParameterName.c_str());
+            }
+        }
+
+        if (parameterMaskChanged)
+        {
+            GetEventManager().OnOutputPortsChanged(this, newOutputPortNames, sParameterNamesMember, newOutputPortNames);
         }
     }
 

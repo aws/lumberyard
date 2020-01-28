@@ -16,16 +16,10 @@
 #include <AzCore/std/typetraits/alignment_of.h>
 #include <AzCore/std/chrono/types.h>
 
-#define AFFINITY_MASK_ALL                  -1       // All cores
-#define AFFINITY_MASK_MAINTHREAD           (1 << 0) // Core 0
-#define AFFINITY_MASK_JOBTHREAD_0          (1 << 1) // Core 1
-#define AFFINITY_MASK_RENDERTHREAD         (1 << 2) // Core 2
-#define AFFINITY_MASK_JOBTHREAD_1          (1 << 3) // Core 3
-#define AFFINITY_MASK_PHYSICSTHREAD        (1 << 4) // Core 4
-#define AFFINITY_MASK_JOBTHREAD_2          (1 << 5) // Core 5
-#define AFFINITY_MASK_JOBTHREAD_3          (1 << 6) // Core 6
-
-#define AFFINITY_MASK_USERTHREADS  AZ_TRAIT_THREAD_WORKERTHREAD_AFFINITY_MASK
+#define AFFINITY_MASK_ALL          AZ_TRAIT_THREAD_AFFINITY_MASK_ALLTHREADS
+#define AFFINITY_MASK_MAINTHREAD   AZ_TRAIT_THREAD_AFFINITY_MASK_MAINTHREAD
+#define AFFINITY_MASK_RENDERTHREAD AZ_TRAIT_THREAD_AFFINITY_MASK_RENDERTHREAD
+#define AFFINITY_MASK_USERTHREADS  AZ_TRAIT_THREAD_AFFINITY_MASK_WORKERTHREADS
 
 namespace AZStd
 {
@@ -163,7 +157,7 @@ namespace AZStd
 
         // Extensions
         //thread(AZStd::delegate<void ()> d,const thread_desc* desc = 0);
-
+        
     private:
         thread(thread&);
         thread& operator=(thread&);
@@ -276,6 +270,19 @@ namespace AZStd
             }
         }
     }
+    
+    template <>
+    struct hash<thread_id>
+    {
+        size_t operator()(const thread_id& value) const
+        {
+            static_assert(sizeof(thread_id) <= sizeof(size_t), "thread_id should less than size_t");
+            size_t hash{};
+            *reinterpret_cast<thread_id*>(&hash) = value;
+            return hash;
+        }
+    };
+
 }
 
 #include <AzCore/std/parallel/internal/thread_Platform.h>

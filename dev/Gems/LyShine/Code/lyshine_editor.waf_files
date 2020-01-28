@@ -1,0 +1,12 @@
+{
+    "none":
+    {
+        "Pipeline/LyShineBuilder": 
+        [
+            "Pipeline/LyShineBuilder/LyShineBuilderComponent.h",
+            "Pipeline/LyShineBuilder/LyShineBuilderComponent.cpp",
+            "Pipeline/LyShineBuilder/UiCanvasBuilderWorker.h",
+            "Pipeline/LyShineBuilder/UiCanvasBuilderWorker.cpp"
+        ]
+    }
+}

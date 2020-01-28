@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "ComponentEntityEditorPlugin_precompiled.h"
 
 #include "SandboxIntegration.h"
 
@@ -25,12 +25,14 @@
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Outcome/Outcome.h>
 #include <AzFramework/API/ApplicationAPI.h>
+#include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzFramework/Entity/EntityContextBus.h>
 #include <AzFramework/Physics/Material.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
 #include <AzToolsFramework/Commands/EntityStateCommand.h>
@@ -776,6 +778,36 @@ void SandboxIntegrationManager::SetupLayerContextMenu(QMenu* menu)
     QAction* saveLayerAction = menu->addAction(saveTitle);
     saveLayerAction->setToolTip(QObject::tr("Save the selected layers."));
     QObject::connect(saveLayerAction, &QAction::triggered, [this, layersInSelection] { ContextMenu_SaveLayers(layersInSelection); });
+
+    if (layersInSelection.size() == 1)
+    {
+        const AZ::EntityId& id = *layersInSelection.begin();
+        AZ::Outcome<AZStd::string, AZStd::string> layerFullFilePathResult = AZ::Failure(AZStd::string());
+        AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+            layerFullFilePathResult,
+            id,
+            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::GetLayerFullFilePath,
+            Path::GetPath(GetIEditor()->GetDocument()->GetActivePathName()));
+
+        // Only add option to find the layer in the Asset Browser if the layer has been saved to disk
+        if (layerFullFilePathResult.IsSuccess())
+        {
+            AZStd::string fullFilePath = layerFullFilePathResult.GetValue();
+
+            QAction* findLayerAssetAction = menu->addAction(QObject::tr("Find layer in Asset Browser"));
+            findLayerAssetAction->setToolTip(QObject::tr("Selects this layer in the Asset Browser"));
+            QObject::connect(findLayerAssetAction, &QAction::triggered, [this, fullFilePath] {
+                QtViewPaneManager::instance()->OpenPane(LyViewPane::AssetBrowser);
+
+                AzToolsFramework::AssetBrowser::AssetBrowserViewRequestBus::Broadcast(
+                    &AzToolsFramework::AssetBrowser::AssetBrowserViewRequestBus::Events::ClearFilter);
+
+                AzToolsFramework::AssetBrowser::AssetBrowserViewRequestBus::Broadcast(
+                    &AzToolsFramework::AssetBrowser::AssetBrowserViewRequestBus::Events::SelectFileAtPath,
+                    fullFilePath);
+            });
+        }
+    }
 }
 
 void SandboxIntegrationManager::SetupSliceContextMenu(QMenu* menu)
@@ -823,14 +855,14 @@ void SandboxIntegrationManager::SetupSliceContextMenu(QMenu* menu)
         if (!layerInSelection)
         {
             QAction* createAction = menu->addAction(QObject::tr("Create slice..."));
-            createAction->setToolTip(QObject::tr("Creates a slice out of the currently selected entities"));
-            QObject::connect(createAction, &QAction::triggered, createAction, [this, selectedEntities] { ContextMenu_InheritSlice(selectedEntities); });
-
+            createAction->setToolTip(QObject::tr("Creates a slice out of the currently selected entities."));
             if (anySelectedEntityFromExistingSlice)
             {
-                QAction* createAction = menu->addAction(QObject::tr("Create detached slice..."));
-                createAction->setToolTip(QObject::tr("Creates a slice out of the currently selected entities. This action does not nest any existing slice that might be associated with the selected entities."));
                 QObject::connect(createAction, &QAction::triggered, createAction, [this, selectedEntities] { ContextMenu_MakeSlice(selectedEntities); });
+            }
+            else
+            {
+                QObject::connect(createAction, &QAction::triggered, createAction, [this, selectedEntities] { ContextMenu_InheritSlice(selectedEntities); });
             }
         }
     }
@@ -1250,7 +1282,20 @@ void SandboxIntegrationManager::DeleteSelectedEntities(const bool includeDescend
 AZ::EntityId SandboxIntegrationManager::CreateNewEntity(AZ::EntityId parentId)
 {
     AZ::Vector3 position = AZ::Vector3::CreateZero();
-    if (!parentId.IsValid())
+
+    bool parentIsValid = parentId.IsValid();
+    if (parentIsValid)
+    {
+        // If a valid parent is a Layer, we should get our position from the viewport as all Layers are positioned at 0,0,0.
+        bool parentIsLayer = false;
+        AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+            parentIsLayer,
+            parentId,
+            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+        parentIsValid = !parentIsLayer;
+    }
+    // If we have an invalid parent, base new entity's position on the viewport.
+    if (!parentIsValid)
     {
         position = GetWorldPositionAtViewportCenter();
     }
@@ -1269,33 +1314,35 @@ AZ::EntityId SandboxIntegrationManager::CreateNewEntityAsChild(AZ::EntityId pare
 
 AZ::EntityId SandboxIntegrationManager::CreateNewEntityAtPosition(const AZ::Vector3& pos, AZ::EntityId parentId)
 {
-    AzToolsFramework::ScopedUndoBatch undo("New Entity");
+    using namespace AzToolsFramework;
 
-    AZ::Entity* newEntity = nullptr;
+    ScopedUndoBatch undo("New Entity");
+
+    AZ::EntityId newEntityId;
 
     const AZStd::string name = AZStd::string::format("Entity%d", GetIEditor()->GetObjectManager()->GetObjectCount() + 1);
 
-    EBUS_EVENT_RESULT(newEntity, AzToolsFramework::EditorEntityContextRequestBus, CreateEditorEntity, name.c_str());
+    EditorEntityContextRequestBus::BroadcastResult(newEntityId, &EditorEntityContextRequests::CreateNewEditorEntity, name.c_str());
 
-    if (newEntity)
+    if (newEntityId.IsValid())
     {
-        m_unsavedEntities.insert(newEntity->GetId());
-        EBUS_EVENT(AzToolsFramework::EditorMetricsEventsBus, EntityCreated, newEntity->GetId());
+        m_unsavedEntities.insert(newEntityId);
+        EditorMetricsEventsBus::Broadcast(&EditorMetricsEventsBusTraits::EntityCreated, newEntityId);
 
         AZ::Transform transform = AZ::Transform::CreateIdentity();
         transform.SetPosition(pos);
         if (parentId.IsValid())
         {
-            EBUS_EVENT_ID(newEntity->GetId(), AZ::TransformBus, SetParent, parentId);
-            EBUS_EVENT_ID(newEntity->GetId(), AZ::TransformBus, SetLocalTM, transform);
+            AZ::TransformBus::Event(newEntityId, &AZ::TransformInterface::SetParent, parentId);
+            AZ::TransformBus::Event(newEntityId, &AZ::TransformInterface::SetLocalTM, transform);
         }
         else
         {
-            EBUS_EVENT_ID(newEntity->GetId(), AZ::TransformBus, SetWorldTM, transform);
+            AZ::TransformBus::Event(newEntityId, &AZ::TransformInterface::SetWorldTM, transform);
         }
 
         // Select the new entity (and deselect others).
-        AzToolsFramework::EntityIdList selection = { newEntity->GetId() };
+        AzToolsFramework::EntityIdList selection = { newEntityId };
 
         auto selectionCommand =
             AZStd::make_unique<AzToolsFramework::SelectionCommand>(selection, "");
@@ -1305,12 +1352,7 @@ AZ::EntityId SandboxIntegrationManager::CreateNewEntityAtPosition(const AZ::Vect
         EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, SetSelectedEntities, selection);
     }
 
-    if (newEntity)
-    {
-        return newEntity->GetId();
-    }
-
-    return AZ::EntityId();
+    return newEntityId;
 }
 
 AzFramework::EntityContextId SandboxIntegrationManager::GetEntityContextId()
@@ -1612,14 +1654,15 @@ AZ::EntityId SandboxIntegrationManager::ContextMenu_NewLayer()
         AZ::VectorFloat(newLayerDefaultColor.blueF()),
         AZ::VectorFloat(newLayerDefaultColor.alphaF()));
 
-    AZ::Entity* newEntity = AzToolsFramework::Layers::EditorLayerComponent::CreateLayerEntity(name, newLayerColor);
-    if (newEntity == nullptr)
+    AZ::EntityId newEntityId = AzToolsFramework::Layers::EditorLayerComponent::CreateLayerEntity(
+        name, newLayerColor, AzToolsFramework::Layers::LayerProperties::SaveFormat::Xml);
+    if (!newEntityId.IsValid())
     {
         // CreateLayerEntity already handled reporting errors if it couldn't make a new layer.
         return AZ::EntityId();
     }
-    m_unsavedEntities.insert(newEntity->GetId());
-    return newEntity->GetId();
+    m_unsavedEntities.insert(newEntityId);
+    return newEntityId;
 }
 
 void SandboxIntegrationManager::ContextMenu_SaveLayers(const AZStd::unordered_set<AZ::EntityId>& layers)
@@ -1727,7 +1770,30 @@ void SandboxIntegrationManager::ContextMenu_SaveLayers(const AZStd::unordered_se
 
 void SandboxIntegrationManager::ContextMenu_MakeSlice(AzToolsFramework::EntityIdList entities)
 {
-    MakeSliceFromEntities(entities, false, GetIEditor()->GetEditorSettings()->sliceSettings.dynamicByDefault);
+    QChar bulletChar(0x2022);
+
+    QMessageBox createSliceBox(GetMainWindow());
+    createSliceBox.setWindowTitle(QObject::tr("Create Slice"));
+    createSliceBox.setText(QString(QObject::tr("Your selection contains slice instances. What kind of slice do you want to create?"))
+        + "\n\n" + QString(bulletChar) + " " + "Fresh slice that doesn't inherit existing slice references."
+        + "\n" + QString(bulletChar) + " " + "Nested slice that inherits existing slice references."
+        + "\n\n");
+    createSliceBox.setIcon(QMessageBox::Warning);
+    
+    QPushButton* freshSliceButton = createSliceBox.addButton(QObject::tr("Fresh Slice"), QMessageBox::ActionRole);
+    QPushButton* nestedSliceButton = createSliceBox.addButton(QObject::tr("Nested Slice"), QMessageBox::ActionRole);
+    createSliceBox.addButton(QMessageBox::Cancel);
+
+    createSliceBox.exec();
+
+    if (createSliceBox.clickedButton() == freshSliceButton)
+    {
+        MakeSliceFromEntities(entities, false, GetIEditor()->GetEditorSettings()->sliceSettings.dynamicByDefault);
+    }
+    else if (createSliceBox.clickedButton() == nestedSliceButton)
+    {
+        ContextMenu_InheritSlice(entities);
+    }
 }
 
 void SandboxIntegrationManager::ContextMenu_InheritSlice(AzToolsFramework::EntityIdList entities)
@@ -3230,57 +3296,43 @@ AZ::Outcome<AZ::Entity*, AZ::LegacyConversion::CreateEntityResult> SandboxIntegr
         if (!parentEntityId.IsValid())
         {
             // we need to create one that "represents" the layer...
-            AZ::Entity* layerEntity = nullptr;
-            EBUS_EVENT_RESULT(layerEntity, AzToolsFramework::EditorEntityContextRequestBus, CreateEditorEntity, (layerName + "_layer").c_str());
-            if (layerEntity)
+            AZ::EntityId layerEntityId;
+            EditorEntityContextRequestBus::BroadcastResult(layerEntityId, &EditorEntityContextRequests::CreateNewEditorEntity, (layerName + "_layer").c_str());
+            if (layerEntityId.IsValid())
             {
-                // deactivate the entity in order to add components:
-                if (layerEntity->GetState() == AZ::Entity::ES_ACTIVE)
-                {
-                    layerEntity->Deactivate();
-                }
-
-                layerEntity->CreateComponent("{5272B56C-6CCC-4118-8539-D881F463ACD1}"); // add the tag component
-
-                layerEntity->Activate();
+                EntityCompositionRequestBus::Broadcast(&EntityCompositionRequests::AddComponentsToEntities, EntityIdList{ layerEntityId }, AZ::ComponentTypeList{ "{5272B56C-6CCC-4118-8539-D881F463ACD1}" }); // add the tag component
 
                 AZStd::string conversionGUIDTag = AZStd::string::format("Original CryEntity ID: %s", layerGUID.ToString<AZStd::string>().c_str());
                 AZStd::string conversionNameTag = AZStd::string::format("Original CryEntity Name: %s", layerName.c_str());
 
                 // add the layer tags.
                 // First, a tag which indicates that this entity comes from a converted layer, not an entity:
-                EditorTagComponentRequestBus::Event(layerEntity->GetId(), &EditorTagComponentRequests::AddTag, "ConvertedLayer");
-                EditorTagComponentRequestBus::Event(layerEntity->GetId(), &EditorTagComponentRequests::AddTag, conversionGUIDTag.c_str());
-                EditorTagComponentRequestBus::Event(layerEntity->GetId(), &EditorTagComponentRequests::AddTag, conversionNameTag.c_str());
-                AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::AddDirtyEntity, layerEntity->GetId());
+                EditorTagComponentRequestBus::Event(layerEntityId, &EditorTagComponentRequests::AddTag, "ConvertedLayer");
+                EditorTagComponentRequestBus::Event(layerEntityId, &EditorTagComponentRequests::AddTag, conversionGUIDTag.c_str());
+                EditorTagComponentRequestBus::Event(layerEntityId, &EditorTagComponentRequests::AddTag, conversionNameTag.c_str());
+                AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::AddDirtyEntity, layerEntityId);
 
-                parentEntityId = layerEntity->GetId();
+                parentEntityId = layerEntityId;
             }
         }
     }
 
-    AZ::Entity* newEntity = nullptr;
-    EBUS_EVENT_RESULT(newEntity, AzToolsFramework::EditorEntityContextRequestBus, CreateEditorEntity, entityName.c_str());
+    AZ::EntityId newEntityId;
+    EditorEntityContextRequestBus::BroadcastResult(newEntityId, &EditorEntityContextRequests::CreateNewEditorEntity, entityName.c_str());
 
-    if (!newEntity)
+    if (!newEntityId.IsValid())
     {
         AZ_Error("SandboxIntegration", false, "Failed to create a new entity during legacy conversion.");
         return AZ::Failure(AZ::LegacyConversion::CreateEntityResult::Failed);
     }
-    m_unsavedEntities.insert(newEntity->GetId());
-
-    // deactivate the entity in order to add components:
-    if (newEntity->GetState() == AZ::Entity::ES_ACTIVE)
-    {
-        newEntity->Deactivate(); // must happen in order to talk to its transform component.
-    }
+    m_unsavedEntities.insert(newEntityId);
 
     AZ::ComponentTypeList actualComponentsToAdd = componentsToAdd;
     actualComponentsToAdd.push_back("{5272B56C-6CCC-4118-8539-D881F463ACD1}");  // add the tag component
 
     EntityIdList entityList;
     EntityCompositionRequests::AddComponentsOutcome outcome = AZ::Failure(AZStd::string("Failed to call AddComponentsToEntities on EntityCompositionRequestBus"));
-    entityList.push_back(newEntity->GetId());
+    entityList.push_back(newEntityId);
     EntityCompositionRequestBus::BroadcastResult(outcome, &EntityCompositionRequests::AddComponentsToEntities, entityList, actualComponentsToAdd);
     if (!outcome.IsSuccess())
     {
@@ -3288,19 +3340,14 @@ AZ::Outcome<AZ::Entity*, AZ::LegacyConversion::CreateEntityResult> SandboxIntegr
         return AZ::Failure(AZ::LegacyConversion::CreateEntityResult::FailedInvalidComponent);
     }
 
-    if (newEntity->GetState() != AZ::Entity::ES_ACTIVE)
-    {
-        newEntity->Activate(); // must happen in order to talk to its transform component.
-    }
-
     if (parentEntityId.IsValid())
     {
-        EBUS_EVENT_ID(newEntity->GetId(), AZ::TransformBus, SetParent, parentEntityId);
+        AZ::TransformBus::Event(newEntityId, &AZ::TransformInterface::SetParent, parentEntityId);
     }
 
     // Move entity to same transform.
     const AZ::Transform transform = LYTransformToAZTransform(sourceObject->GetWorldTM());
-    EBUS_EVENT_ID(newEntity->GetId(), AZ::TransformBus, SetWorldTM, transform);
+    AZ::TransformBus::Event(newEntityId, &AZ::TransformInterface::SetWorldTM, transform);
 
     // add the tags.  we basically tag as much information as we can just in case there's something we can do later to convert even more data across.
     // there's no point in losing the information we have if we can preserve it.
@@ -3311,13 +3358,15 @@ AZ::Outcome<AZ::Entity*, AZ::LegacyConversion::CreateEntityResult> SandboxIntegr
     AZStd::string originalLayerUuidTag = AZStd::string::format("Original Layer ID: %s", layerGUID.ToString<AZStd::string>().c_str());
     AZStd::string originalClassNameTag = AZStd::string::format("Original CryEntity ClassName: %s", sourceObject->GetClassDesc()->ClassName().toUtf8().data());
 
-    EditorTagComponentRequestBus::Event(newEntity->GetId(), &EditorTagComponentRequests::AddTag, "ConvertedEntity");
-    EditorTagComponentRequestBus::Event(newEntity->GetId(), &EditorTagComponentRequests::AddTag, entityIdTag.c_str());
-    EditorTagComponentRequestBus::Event(newEntity->GetId(), &EditorTagComponentRequests::AddTag, entityNameTag.c_str());
-    EditorTagComponentRequestBus::Event(newEntity->GetId(), &EditorTagComponentRequests::AddTag, originalLayerNameTag.c_str());
-    EditorTagComponentRequestBus::Event(newEntity->GetId(), &EditorTagComponentRequests::AddTag, originalLayerUuidTag.c_str());
-    EditorTagComponentRequestBus::Event(newEntity->GetId(), &EditorTagComponentRequests::AddTag, originalClassNameTag.c_str());
+    EditorTagComponentRequestBus::Event(newEntityId, &EditorTagComponentRequests::AddTag, "ConvertedEntity");
+    EditorTagComponentRequestBus::Event(newEntityId, &EditorTagComponentRequests::AddTag, entityIdTag.c_str());
+    EditorTagComponentRequestBus::Event(newEntityId, &EditorTagComponentRequests::AddTag, entityNameTag.c_str());
+    EditorTagComponentRequestBus::Event(newEntityId, &EditorTagComponentRequests::AddTag, originalLayerNameTag.c_str());
+    EditorTagComponentRequestBus::Event(newEntityId, &EditorTagComponentRequests::AddTag, originalLayerUuidTag.c_str());
+    EditorTagComponentRequestBus::Event(newEntityId, &EditorTagComponentRequests::AddTag, originalClassNameTag.c_str());
 
+    AZ::Entity* newEntity = nullptr;
+    AZ::ComponentApplicationBus::BroadcastResult(newEntity, &AZ::ComponentApplicationRequests::FindEntity, newEntityId);
     return AZ::Success(newEntity);
 }
 
@@ -3399,9 +3448,9 @@ bool SandboxIntegrationManager::CreateSurfaceTypeMaterialLibrary(const AZStd::st
 
                     Physics::MaterialFromAssetConfiguration configuration;
                     configuration.m_configuration = Physics::MaterialConfiguration();
-                    configuration.m_configuration.m_dynamicFriction = physicalParams.friction;
-                    configuration.m_configuration.m_staticFriction = physicalParams.friction;
-                    configuration.m_configuration.m_restitution = physicalParams.bouncyness;
+                    configuration.m_configuration.m_dynamicFriction = AZ::GetMax(0.0f, physicalParams.friction);
+                    configuration.m_configuration.m_staticFriction = AZ::GetMax(0.0f, physicalParams.friction);
+                    configuration.m_configuration.m_restitution = AZ::GetClamp(physicalParams.bouncyness, 0.0f, 1.0f);
                     configuration.m_configuration.m_surfaceType = pSurfaceType->GetType();
                     configuration.m_id = Physics::MaterialId::Create();
 

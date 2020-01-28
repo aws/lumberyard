@@ -66,11 +66,6 @@ namespace AZStd
             //
             AZ_STATIC_ASSERT(sizeof(T) != 0, "T must be a complete type, size can't be 0");
 
-            // GCC2 won't even parse this template if we embed the computation
-            // of s1 in the computation of value.
-#ifdef AZ_COMPILER_GCC
-            AZSTD_STATIC_CONSTANT(unsigned, s1 = sizeof(is_abstract_imp2<T>::template check_sig<T>(0)));
-#else
 #if defined(_MSC_FULL_VER) && (_MSC_FULL_VER >= 140050000)
 #   pragma warning(push)
 #   pragma warning(disable:6334)
@@ -78,7 +73,6 @@ namespace AZStd
             AZSTD_STATIC_CONSTANT(unsigned, s1 = sizeof(check_sig<T>(0)));
 #if defined(_MSC_FULL_VER) && (_MSC_FULL_VER >= 140050000)
 #   pragma warning(pop)
-#endif
 #endif
             AZSTD_STATIC_CONSTANT(bool, value = (s1 == sizeof(type_traits::yes_type)));
         };

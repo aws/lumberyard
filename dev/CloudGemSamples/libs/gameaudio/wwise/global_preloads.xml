@@ -7,8 +7,8 @@
     <Platform atl_name="linux" atl_config_group_name="default"/>
     <Platform atl_name="android" atl_config_group_name="default"/>
     <Platform atl_name="ios" atl_config_group_name="default"/>
-    <Platform atl_name="xboxone" atl_config_group_name="default"/>
-    <Platform atl_name="ps4" atl_config_group_name="default"/>
+    <Platform atl_name="xenia" atl_config_group_name="default"/>
+    <Platform atl_name="provo" atl_config_group_name="default"/>
    </ATLPlatforms>
    <ATLConfigGroup atl_name="default">
     <WwiseFile wwise_name="content.bnk"/>

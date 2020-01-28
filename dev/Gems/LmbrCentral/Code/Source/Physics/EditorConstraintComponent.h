@@ -26,7 +26,7 @@ namespace LmbrCentral
     class EditorConstraintConfiguration : public ConstraintConfiguration
     {
     public:
-        AZ_TYPE_INFO(EditorConstraintConfiguration, "{43ECDE4D-BCFE-4F5A-9F15-70EAA9F9A757}", ConstraintConfiguration);
+        AZ_TYPE_INFO_LEGACY(EditorConstraintConfiguration, "{43ECDE4D-BCFE-4F5A-9F15-70EAA9F9A757}", ConstraintConfiguration);
 
         void Init(const AZ::EntityId& self);
 

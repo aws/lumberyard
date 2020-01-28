@@ -66,6 +66,7 @@ namespace AzToolsFramework
             m_productAssetIdMap.clear();
             m_dirtyThumbnailsSet.clear();
             m_knownScanFolders.clear();
+            m_absolutePathToFileId.clear();
         }
     }
 }

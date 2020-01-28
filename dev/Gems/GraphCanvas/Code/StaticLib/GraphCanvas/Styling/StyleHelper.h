@@ -491,8 +491,8 @@ namespace GraphCanvas
                 PatternFillConfiguration configuration;
 
                 configuration.m_minimumTileRepetitions = GetAttribute(Styling::Attribute::MinimumRepetitions, 1);
-                configuration.m_evenRowOffsetPercent = GetAttribute(Styling::Attribute::EvenOffsetPercent, 0.0);
-                configuration.m_oddRowOffsetPercent = GetAttribute(Styling::Attribute::OddOffsetPercent, 0.0);
+                configuration.m_evenRowOffsetPercent = GetAttribute(Styling::Attribute::EvenOffsetPercent, 0.0f);
+                configuration.m_oddRowOffsetPercent = GetAttribute(Styling::Attribute::OddOffsetPercent, 0.0f);
 
                 return configuration;
             }

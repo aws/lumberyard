@@ -22,6 +22,12 @@ namespace EMotionFX
     {
     }
 
+    void MakeOneRangedEvent(MotionEventTrack* track)
+    {
+        AZStd::shared_ptr<const TwoStringEventData> data = GetEMotionFX().GetEventManager()->FindOrCreateEventData<TwoStringEventData>("subject", "params");
+        track->AddEvent(0.25f, 0.75f, data);
+    }
+
     void MakeOneEvent(MotionEventTrack* track)
     {
         AZStd::shared_ptr<const TwoStringEventData> data = GetEMotionFX().GetEventManager()->FindOrCreateEventData<TwoStringEventData>("subject", "params");

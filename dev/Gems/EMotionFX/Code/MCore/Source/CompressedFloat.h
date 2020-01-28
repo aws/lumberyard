@@ -37,8 +37,6 @@ namespace MCore
     class TCompressedFloat
     {
     public:
-        AZ_TYPE_INFO(MCore::TCompressedFloat, "{BFA1578B-66F8-4536-8CA6-FF5CC3E441AD}", StorageType)
-
         /**
          * Default constructor.
          * This leaves the member uninitialized, so if you get the uncompressed version, the result is unknown.
@@ -104,3 +102,8 @@ namespace MCore
     typedef TCompressedFloat<uint16>    Compressed16BitFloat;
     typedef TCompressedFloat<uint8>     Compressed8BitFloat;
 } // namespace MCore
+
+namespace AZ
+{
+    AZ_TYPE_INFO_TEMPLATE(MCore::TCompressedFloat, "{BFA1578B-66F8-4536-8CA6-FF5CC3E441AD}", AZ_TYPE_INFO_CLASS);
+}

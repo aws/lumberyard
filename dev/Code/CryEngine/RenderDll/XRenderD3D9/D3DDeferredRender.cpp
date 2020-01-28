@@ -26,6 +26,8 @@
         #include "Xenia/D3DDeferredRender_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/D3DDeferredRender_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/D3DDeferredRender_cpp_salem.inl"
     #endif
 #endif
 
@@ -367,8 +369,9 @@ void CD3D9Renderer::FX_DeferredShadowPass(const SRenderLight* pLight, ShadowMapF
     if (bShadowPass)
     {
         newState &= ~(GS_COLMASK_NONE | GS_STENCIL);
-
-        if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr)) // A component write mask of GMEM light diffuse RT
+       
+        // When optimizations are on, we need only the R channel.
+        if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && (CRenderer::CV_r_DeferredShadingLBuffersFmt != 2)) // A component write mask of GMEM light diffuse RT
         {
             newState |= GS_NOCOLMASK_R | GS_NOCOLMASK_G | GS_NOCOLMASK_B;
         }
@@ -1562,6 +1565,11 @@ bool CD3D9Renderer::FX_DeferredShadows(SRenderLight* pLight, int maskRTWidth, in
     CShader* pSH(CShaderMan::s_ShaderShadowMaskGen);
     uint32 nPasses = 0;
     static CCryNameR TechName("DeferredShadowPass");
+    
+    if (CRenderer::CV_r_DeferredShadingLBuffersFmt == 2)
+    {
+        m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_DEFERRED_RENDER_TARGET_OPTIMIZATION];
+    }
 
     static ICVar* pCascadesDebugVar = iConsole->GetCVar("e_ShadowsCascadesDebug");
     const bool bDebugShadowCascades = pCascadesDebugVar && pCascadesDebugVar->GetIVal() > 0;

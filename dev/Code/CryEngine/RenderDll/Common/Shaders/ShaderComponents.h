@@ -21,15 +21,11 @@
         #include "Xenia/ShaderComponents_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ShaderComponents_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ShaderComponents_h_salem.inl"
     #endif
 #endif
 
-#if defined(PF_LOCAL) && !(PF_LOCAL == 1)
-// e.g.: In Mac OS X it is defined in a system header
-#error "PF_LOCAL defined somewhere else with a different value"
-#elif !defined(PF_LOCAL)
-#define PF_LOCAL      1
-#endif
 #define PF_SINGLE_COMP 2
 #define PF_DONTALLOW_DYNMERGE 4
 #define PF_INTEGER    8
@@ -458,6 +454,8 @@ enum ECGTexture
     ECGT_COUNT
 };
 
+class CTexAnim;
+
 //-----------------------------------------------------------------------------
 // This is the binding structure for texture data parsed by the shader parser 
 // as well as its binding to the shader (bind slot).
@@ -465,7 +463,7 @@ enum ECGTexture
 struct SCGTexture : SCGBind
 {
     CTexture* m_pTexture;
-    STexAnim* m_pAnimInfo;
+    CTexAnim* m_pAnimInfo;
     ECGTexture m_eCGTextureType;
     bool m_bSRGBLookup;
     bool m_bGlobal;

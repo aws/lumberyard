@@ -11,10 +11,6 @@
 */
 
 #include <AzCore/PlatformDef.h>
-#if defined(AZ_COMPILER_MSVC)
-    #pragma warning(push)
-    #pragma warning(disable : 4714)
-#endif
 
 #include "EMotionFX_precompiled.h"
 
@@ -25,18 +21,11 @@
 
 #include <Integration/Components/AnimAudioComponent.h>
 
-#if defined(AZ_COMPILER_MSVC)
-    #pragma warning(push, 0)
-#endif
-
 #include <LmbrCentral/Audio/AudioProxyComponentBus.h>
-#include <LmbrCentral/Rendering/MeshComponentBus.h>
+#include <LmbrCentral/Rendering/MeshComponentBus.h>     // for SkeletalHierarchyRequestBus
 
 #include <MathConversion.h>
 
-#if defined(AZ_COMPILER_MSVC)
-    #pragma warning(pop)
-#endif
 
 using namespace LmbrCentral;
 
@@ -452,8 +441,8 @@ namespace EMotionFX
                     auto getJointTransform = &SkeletalHierarchyRequestBus::Events::GetJointTransformCharacterRelative;
                     SkeletalHierarchyRequestBus::EventResult(jointTransform, GetEntityId(), getJointTransform, iter.first);
 
-                    Audio::SATLWorldPosition atlTransform(AZTransformToLYTransform(m_transform * jointTransform));
-                    proxy->SetPosition(AZTransformToLYTransform(m_transform * jointTransform));
+                    Audio::SATLWorldPosition atlTransform(m_transform * jointTransform);
+                    proxy->SetPosition(m_transform * jointTransform);
                 }
             }
         }
@@ -500,7 +489,7 @@ namespace EMotionFX
                 const auto getJointTransform = &SkeletalHierarchyRequestBus::Events::GetJointTransformCharacterRelative;
                 SkeletalHierarchyRequestBus::EventResult(jointTransform, GetEntityId(), getJointTransform, jointId);
 
-                const Audio::SATLWorldPosition atlTransform(AZTransformToLYTransform(m_transform * jointTransform));
+                const Audio::SATLWorldPosition atlTransform(m_transform * jointTransform);
                 proxy->SetPosition(atlTransform);
                 proxy->ExecuteTrigger(triggerId, eLSM_None, *m_callbackInfo);
                 AnimAudioComponentNotificationBus::Event(GetEntityId(), &AnimAudioComponentNotificationBus::Events::OnTriggerStarted, triggerId);
@@ -648,7 +637,3 @@ namespace EMotionFX
         }
     } // namespace Integration
 } // namespace EMotionFX
-
-#if defined(AZ_COMPILER_MSVC)
-    #pragma warning(pop)
-#endif

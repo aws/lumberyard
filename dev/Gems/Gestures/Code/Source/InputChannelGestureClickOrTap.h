@@ -36,7 +36,7 @@ namespace Gestures
 
             ////////////////////////////////////////////////////////////////////////////////////////
             // Type Info
-            AZ_RTTI(TypeAndConfig, "{C401A49C-6D88-4268-8E2D-6BAECFD7146E}", Type, Config);
+            AZ_RTTI(TypeAndConfig, "{A1E1F82E-8418-4B75-A20F-DD34467CF252}", Type, Config);
 
             ////////////////////////////////////////////////////////////////////////////////////////
             // Reflection

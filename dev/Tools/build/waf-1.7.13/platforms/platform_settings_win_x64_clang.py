@@ -34,12 +34,12 @@ def load_win_x64_clang_common_settings(conf):
     v['PLATFORM'] = PLATFORM
 
     # Load MSVC settings for non-build stuff (AzCG, CrcFix, etc)
-    # load_win_x64_win_x64_vs2015_common_settings(conf)
+    # load_win_x64_win_x64_vs2017_common_settings(conf)
     conf.load_windows_common_settings()
 
-    conf.load_win_x64_vs2015_common_settings()
+    conf.load_win_x64_vs2017_common_settings()
     
-    windows_kit = conf.options.win_vs2015_winkit
+    windows_kit = conf.options.win_vs2017_winkit
     try:
         _, _, _, system_includes, _, _ = conf.detect_msvc(windows_kit, True)
     except:
@@ -52,6 +52,14 @@ def load_win_x64_clang_common_settings(conf):
     
     # Start with a blank platform slate
     conf.undefine('AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS')
+
+    tool_list_macro_parts = conf.update_host_tool_env_for_restricted_platforms('win_x64_vs2015', v)
+    if tool_list_macro_parts:
+        restricted_tool_list_macro += ''.join(tool_list_macro_parts)
+
+    if len(restricted_tool_list_macro) > len(restricted_tool_list_macro_header):
+        v['DEFINES'] += [restricted_tool_list_macro]
+
     if len(restricted_tool_list_macro) > len(restricted_tool_list_macro_header):
         v['DEFINES'] += [restricted_tool_list_macro]
     

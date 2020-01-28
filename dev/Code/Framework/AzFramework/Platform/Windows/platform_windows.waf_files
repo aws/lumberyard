@@ -24,6 +24,10 @@
             "../Common/WinAPI/AzFramework/IO/LocalFileIO_WinAPI.cpp",
             "AzFramework/IO/LocalFileIO_Windows.cpp"
         ],
+        "Network/Platform/Windows":
+        [
+            "../Common/WinAPI/AzFramework/Network/AssetProcessorConnection_WinAPI.cpp"
+        ],
         "TargetManagement/Platform/Windows":
         [
             "AzFramework/TargetManagement/TargetManagementComponent_Windows.cpp"

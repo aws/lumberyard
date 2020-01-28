@@ -40,10 +40,7 @@ namespace AzToolsFramework
         ~PlanarManipulator() = default;
 
         /// A Manipulator must only be created and managed through a shared_ptr.
-        static AZStd::shared_ptr<PlanarManipulator> MakeShared(const AZ::Transform& worldFromLocal)
-        {
-            return AZStd::shared_ptr<PlanarManipulator>(aznew PlanarManipulator(worldFromLocal));
-        }
+        static AZStd::shared_ptr<PlanarManipulator> MakeShared(const AZ::Transform& worldFromLocal);
 
         /// The state of the manipulator at the start of an interaction.
         struct Start

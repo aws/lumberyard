@@ -724,7 +724,7 @@ namespace AZStd
         // \todo Check iterators.
         for (; first1 != last1; ++first1, ++first2)
         {
-            if (!binaryPredicate(*first1 == *first2))
+            if (!binaryPredicate(*first1, *first2))
             {
                 return false;
             }

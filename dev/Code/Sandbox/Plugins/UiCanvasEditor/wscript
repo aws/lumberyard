@@ -43,6 +43,9 @@ def build(bld):
         features                    = ['qt5'],
         defines                     = [ 'QT_QML_DEBUG',
                                         'EDITOR_COMMON_IMPORTS'],
+        includes                    = [bld.Path('Code/CryEngine/CryCommon'),
+                                       bld.Path('Code/Sandbox/Editor'),
+                                       bld.Path('Code/Sandbox/Editor/Include')],
 
         # Platform Specific
         win_features            = ['ExternalLyMetrics'],

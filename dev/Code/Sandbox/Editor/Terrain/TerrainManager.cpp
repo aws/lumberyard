@@ -217,6 +217,12 @@ CLayer* CTerrainManager::FindLayerByLayerId(const uint32 dwLayerId) const
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CTerrainManager::AddLayer(CLayer* layer)
+{
+    m_layers.push_back(layer);
+};
+
+//////////////////////////////////////////////////////////////////////////
 void CTerrainManager::RemoveLayer(CLayer* layer)
 {
     assert(m_layers.size() > 1 && "Removing last layer of terrain");
@@ -271,6 +277,18 @@ void CTerrainManager::SwapLayers(int layer1, int layer2)
         CSurfaceType& surfaceType2 = *m_surfaceTypes[st2];
         std::swap(surfaceType1, surfaceType2);
         m_heightmap.UpdateEngineTerrain();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTerrainManager::MoveLayer(int oldIndex, int newIndex)
+{
+    int dir = ((newIndex - oldIndex) < 0) ? -1 : 1;
+
+    while (oldIndex != newIndex)
+    {
+        SwapLayers(oldIndex, oldIndex + dir);
+        oldIndex += dir;
     }
 }
 

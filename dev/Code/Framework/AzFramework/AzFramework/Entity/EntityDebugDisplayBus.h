@@ -37,15 +37,9 @@ namespace AzFramework
     /// EntityDebugDisplayRequests provides a debug draw api to be used by components.
     /// @deprecated The EntityDebugDisplayRequests interface has been deprecated - the
     /// DebugDisplayRequests interface and DebugDisplayRequestBus should be used instead.
-    class
-    // MSVC++ 14.15 _MSC_VER == 1915 (Visual Studio 2017 version 15.8)
-    // (https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B#Internal_version_numbering)
-    // Work around known issue with older MSVC compiler where erroneous deprecation warning is generated.
-#if AZ_COMPILER_MSVC > 1915
-        AZ_DEPRECATED(,
+    class AZ_DEPRECATED(,
         "The EntityDebugDisplayRequests interface has been deprecated."
         "The DebugDisplayRequests interface and DebugDisplayRequestBus should be used instead.")
-#endif
         EntityDebugDisplayRequests
         : public AZ::EBusTraits
     {

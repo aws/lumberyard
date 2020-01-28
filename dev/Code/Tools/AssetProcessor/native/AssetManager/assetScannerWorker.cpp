@@ -42,9 +42,10 @@ void AssetScannerWorker::StartScan()
 
     for (int idx = 0; idx < m_platformConfiguration->GetScanFolderCount(); idx++)
     {
-        ScanFolderInfo scanFolderInfo = m_platformConfiguration->GetScanFolderAt(idx);
-        ScanForSourceFiles(scanFolderInfo);
+        const ScanFolderInfo& scanFolderInfo = m_platformConfiguration->GetScanFolderAt(idx);
+        ScanForSourceFiles(scanFolderInfo, scanFolderInfo);
     }
+
     // we want not to emit any signals until we're finished scanning
     // so that we don't interleave directory tree walking (IO access to the file table)
     // with file access (IO access to file data) caused by sending signals to other classes.
@@ -74,7 +75,7 @@ void AssetScannerWorker::StopScan()
     m_doScan = false;
 }
 
-void AssetScannerWorker::ScanForSourceFiles(ScanFolderInfo scanFolderInfo)
+void AssetScannerWorker::ScanForSourceFiles(const ScanFolderInfo& scanFolderInfo, const ScanFolderInfo& rootScanFolder)
 {
     if (!m_doScan)
     {
@@ -104,20 +105,23 @@ void AssetScannerWorker::ScanForSourceFiles(ScanFolderInfo scanFolderInfo)
 
         QString absPath = entry.absoluteFilePath();
         const bool isDirectory = entry.isDir();
+        QDateTime modTime = entry.lastModified();
+        AZ::u64 fileSize = isDirectory ? 0 : entry.size();
+        AssetFileInfo assetFileInfo(absPath, modTime, fileSize, &rootScanFolder, isDirectory);
 
         // Filtering out excluded files
         if (m_platformConfiguration->IsFileExcluded(absPath))
         {
+            m_excludedList.insert(AZStd::move(assetFileInfo));
             continue;
         }
 
         if (isDirectory)
         {
             //Entry is a directory
-            AZ::u64 modTime = entry.lastModified().toMSecsSinceEpoch();
-            m_folderList.insert(AssetFileInfo(absPath, modTime, isDirectory));
+            m_folderList.insert(AZStd::move(assetFileInfo));
             ScanFolderInfo tempScanFolderInfo(absPath, "", "", "", false, true);
-            ScanForSourceFiles(tempScanFolderInfo);
+            ScanForSourceFiles(tempScanFolderInfo, rootScanFolder);
         }
         else
         {
@@ -137,12 +141,12 @@ void AssetScannerWorker::ScanForSourceFiles(ScanFolderInfo scanFolderInfo)
 
             if (isMetaFile)
             {
+                m_excludedList.insert(AZStd::move(assetFileInfo));
                 continue;
             }
 
             //Entry is a file
-            AZ::u64 modTime = entry.lastModified().toMSecsSinceEpoch();
-            m_fileList.insert(AssetFileInfo(absPath, modTime, isDirectory));
+            m_fileList.insert(AZStd::move(assetFileInfo));
         }
     }
 }
@@ -154,6 +158,9 @@ void AssetScannerWorker::EmitFiles()
     m_fileList.clear();
     Q_EMIT FoldersFound(m_folderList);
     m_folderList.clear();
+    Q_EMIT ExcludedFound(m_excludedList);
+    m_excludedList.clear();
+    
 }
 
 

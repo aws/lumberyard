@@ -12,10 +12,12 @@
 
 #if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
 
+#include <AzCore/Component/TickBus.h>
 #include <GameLift/Session/GameLiftClientService.h>
 #include <GameLift/Session/GameLiftClientSession.h>
 #include <GameLift/Session/GameLiftSearch.h>
 #include <GameLift/Session/GameLiftSessionRequest.h>
+#include <AzCore/IO/FileIO.h>
 
 #pragma warning(push)
 #pragma warning(disable:4251)
@@ -33,6 +35,11 @@ namespace
 
 namespace GridMate
 {
+    namespace Platform
+    {
+        void ResolveCaCertFilePath(Aws::String& caFile);
+    }
+
     GameLiftClientService::GameLiftClientService(const GameLiftClientServiceDesc& desc)
         : SessionService(desc)
         , m_serviceDesc(desc)
@@ -147,7 +154,12 @@ namespace GridMate
                     AZ_TracePrintf("GameLift", "Failed to initialize GameLift client: %s\n", errorMessage.c_str());
 
                     m_clientStatus = GameLift_Failed;
-                    EBUS_EVENT_ID(m_gridMate, GameLiftClientServiceEventsBus, OnGameLiftSessionServiceFailed, this, errorMessage.c_str());
+
+                    // defer the notification so Gridmate doesn't destroy this service while updating
+                    AZ::TickBus::QueueFunction([this, errorMessage]()
+                    {
+                        GameLiftClientServiceEventsBus::Event(m_gridMate, &GameLiftClientServiceEventsBus::Events::OnGameLiftSessionServiceFailed, this, errorMessage.c_str());
+                    });
                 }
             }
         }
@@ -274,6 +286,8 @@ namespace GridMate
             {
                 config.verifySSL = true;
                 config.scheme = Aws::Http::Scheme::HTTPS;
+
+                Platform::ResolveCaCertFilePath(config.caFile);
             }
 
             Aws::String accessKey(m_serviceDesc.m_accessKey.c_str());

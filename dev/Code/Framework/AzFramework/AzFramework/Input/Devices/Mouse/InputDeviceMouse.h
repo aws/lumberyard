@@ -119,11 +119,8 @@ namespace AzFramework
         explicit InputDeviceMouse();
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        // Disable copying (protected to workaround a VS2013 bug in std::is_copy_constructible)
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-    protected:
+        // Disable copying
         AZ_DISABLE_COPY_MOVE(InputDeviceMouse);
-    public:
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Destructor
@@ -285,7 +282,7 @@ namespace AzFramework
             ////////////////////////////////////////////////////////////////////////////////////////
             // Variables
             InputDeviceMouse&            m_inputDevice;                //!< Reference to the device
-            AZStd::sys_time_t	         m_rawMovementSampleRate;      //!< Raw movement sample rate
+            AZStd::sys_time_t            m_rawMovementSampleRate;      //!< Raw movement sample rate
             RawButtonEventQueueByIdMap   m_rawButtonEventQueuesById;   //!< Raw button events by id
             RawMovementEventQueueByIdMap m_rawMovementEventQueuesById; //!< Raw movement events by id
             AZStd::chrono::system_clock::time_point m_timeOfLastRawMovementSample; //!< Time of the last raw movement sample

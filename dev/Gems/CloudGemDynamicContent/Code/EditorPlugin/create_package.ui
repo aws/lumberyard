@@ -242,7 +242,7 @@
     <string notr="true">platformGroup</string>
    </attribute>
   </widget>
-  <widget class="QRadioButton" name="ps4">
+  <widget class="QRadioButton" name="provo">
    <property name="geometry">
     <rect>
      <x>240</x>
@@ -264,13 +264,13 @@
     </size>
    </property>
    <property name="text">
-    <string>PlayStation®4</string>
+    <string>Provo</string>
    </property>
    <attribute name="buttonGroup">
     <string notr="true">platformGroup</string>
    </attribute>
   </widget>
-  <widget class="QRadioButton" name="xboxone">
+  <widget class="QRadioButton" name="xenia">
    <property name="geometry">
     <rect>
      <x>370</x>
@@ -292,7 +292,7 @@
     </size>
    </property>
    <property name="text">
-    <string>Xbox One</string>
+    <string>Xenia</string>
    </property>
    <attribute name="buttonGroup">
     <string notr="true">platformGroup</string>

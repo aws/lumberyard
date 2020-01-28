@@ -1,0 +1,11 @@
+{
+    "auto":
+    {
+        "Platform/Windows":
+        [
+            "AudioSystem_Traits_Platform.h",
+            "AudioSystem_Traits_Windows.h",
+            "../Common/Unimplemented/AudioSystem_Unimplemented.cpp"
+        ]
+    }
+}

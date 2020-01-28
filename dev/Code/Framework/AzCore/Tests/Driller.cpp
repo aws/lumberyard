@@ -32,7 +32,7 @@
 #   include <AzCore/Serialization/SerializeContext.h>
 #endif
 
-#include "Utils.h"
+#include <AZTestShared/Utils/Utils.h>
 
 using namespace AZ;
 using namespace AZ::Debug;
@@ -906,6 +906,7 @@ namespace UnitTest
         // Create application environment code driven
         ComponentApplication::Descriptor appDesc;
         appDesc.m_memoryBlocksByteSize = 10 * 1024 * 1024;
+        appDesc.m_enableDrilling = true;
         Entity* systemEntity = app.Create(appDesc);
 
         systemEntity->CreateComponent<MemoryComponent>();

@@ -1,0 +1,7 @@
+{
+  "auto": {
+    "Platform/iOS": [
+      "../../CAFile_Default.cpp"
+    ]
+  }
+}

@@ -57,13 +57,9 @@ namespace LmbrCentral
 
         m_polygonPrismShape.Activate(GetEntityId());
 
-        bool selected = false;
-        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(
-            selected, GetEntityId(), &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSelected);
-
         // placeholder - create initial polygon prism shape if empty
         AZ::VertexContainer<AZ::Vector2>& vertexContainer = m_polygonPrismShape.GetPolygonPrism()->m_vertexContainer;
-        if (selected && vertexContainer.Empty())
+        if (vertexContainer.Empty())
         {
             vertexContainer.AddVertex(AZ::Vector2(-2.0f, -2.0f));
             vertexContainer.AddVertex(AZ::Vector2(2.0f, -2.0f));

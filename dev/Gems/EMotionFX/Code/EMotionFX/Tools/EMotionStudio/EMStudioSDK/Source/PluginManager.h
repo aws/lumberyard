@@ -33,10 +33,7 @@ namespace EMStudio
         PluginManager();
         ~PluginManager();
 
-        // overloaded
-        bool LoadPlugins(const char* filename);
         void RegisterPlugin(EMStudioPlugin* plugin);
-        void LoadPluginsFromDirectory(const char* directory);
         EMStudioPlugin* CreateWindowOfType(const char* pluginType, const char* objectName = nullptr);
         uint32 FindPluginByTypeString(const char* pluginType) const;
         EMStudioPlugin* GetActivePluginByTypeString(const char* pluginType) const;
@@ -59,15 +56,9 @@ namespace EMStudio
     private:
         PluginVector mPlugins;
 
-        #if defined(AZ_PLATFORM_WINDOWS)
-        AZStd::vector<HMODULE>       mPluginLibs;
-        #else
-        AZStd::vector<void*>         mPluginLibs;
-        #endif
-
         PluginVector mActivePlugins;
 
-        void UnloadPluginLibs();
+        void UnloadPlugins();
     };
 }   // namespace EMStudio
 

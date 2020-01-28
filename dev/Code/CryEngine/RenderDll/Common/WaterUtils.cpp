@@ -26,6 +26,8 @@
         #include "Xenia/WaterUtils_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/WaterUtils_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/WaterUtils_cpp_salem.inl"
     #endif
 #endif
 
@@ -462,6 +464,8 @@ public:
         #include "Xenia/WaterUtils_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/WaterUtils_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/WaterUtils_cpp_salem.inl"
     #endif
 #endif
                 sincos_tpl((f32)fAngularFreq, (f32*) &fAngularFreqSin, (f32*)&fAngularFreqCos);

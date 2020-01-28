@@ -1274,7 +1274,7 @@
 									<Class name="float" field="ParticleLifeVariation" value="0.5000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
 									<Class name="AzFramework::SimpleAssetReference&lt;LmbrCentral::TextureAsset&gt;" field="SpritePathname" version="1" type="{68E92460-5C0C-4031-9620-6F1A08763243}">
 										<Class name="SimpleAssetReferenceBase" field="BaseClass1" version="1" type="{E16CA6C5-5C78-4AD9-8E9B-F8C1FB4D1DB8}">
-											<Class name="AZStd::string" field="AssetPath" value="ui/textures/lyshineexamples/circle_mask.dds" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+											<Class name="AZStd::string" field="AssetPath" value="ui/textures/lyshineexamples/CircleMask.dds" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 										</Class>
 									</Class>
 									<Class name="bool" field="IsSpriteSheetAnimated" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>

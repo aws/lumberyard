@@ -23,15 +23,6 @@
  * \defgroup TypeTraitsDefines Type Traits Defines
  * @{
  *
- * \def AZSTD_DECLARE_POD_TYPE
- * This macro and it's version for 1,2,3 template parameters are very useful when you use POD user structures in
- * AZStd containers. For \ref C++14 compilers this macro does nothing, otherwise it indicated that the provided class/struct is POD.
- * This might lead to significant performance increase when you manipulate many of them at a time, because no constructors or destructors will be called.
- * They do have trivial assign, which for instance when we use AZStd::vector enables AZStd move and copy to use memcpy on the entire data block, instead of
- * copying it element by element.
- *
- * \def AZSTD_DECLARE_UNION
- *
  */
 #include <AzCore/std/typetraits/add_const.h>
 #include <AzCore/std/typetraits/add_cv.h>

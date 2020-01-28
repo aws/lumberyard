@@ -1425,28 +1425,31 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
         {
             const char* controlsPath = nullptr;
             Audio::AudioSystemRequestBus::BroadcastResult(controlsPath, &Audio::AudioSystemRequestBus::Events::GetControlsPath);
-            CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> sAudioLevelPath(controlsPath);
-            sAudioLevelPath.append("levels/");
-            sAudioLevelPath += sLevelNameOnly;
-
-            Audio::SAudioManagerRequestData<Audio::eAMRT_PARSE_CONTROLS_DATA> oAMData(sAudioLevelPath, Audio::eADS_LEVEL_SPECIFIC);
-            Audio::SAudioRequest oAudioRequestData;
-            oAudioRequestData.nFlags = (Audio::eARF_PRIORITY_HIGH | Audio::eARF_EXECUTE_BLOCKING); // Needs to be blocking so data is available for next preloading request!
-            oAudioRequestData.pData = &oAMData;
-            Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
-
-            Audio::SAudioManagerRequestData<Audio::eAMRT_PARSE_PRELOADS_DATA> oAMData2(sAudioLevelPath, Audio::eADS_LEVEL_SPECIFIC);
-            oAudioRequestData.pData = &oAMData2;
-            Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
-
-            Audio::TAudioPreloadRequestID nPreloadRequestID = INVALID_AUDIO_PRELOAD_REQUEST_ID;
-
-            Audio::AudioSystemRequestBus::BroadcastResult(nPreloadRequestID, &Audio::AudioSystemRequestBus::Events::GetAudioPreloadRequestID, sLevelNameOnly.c_str());
-            if (nPreloadRequestID != INVALID_AUDIO_PRELOAD_REQUEST_ID)
+            if (controlsPath)
             {
-                Audio::SAudioManagerRequestData<Audio::eAMRT_PRELOAD_SINGLE_REQUEST> requestData(nPreloadRequestID, true);
-                oAudioRequestData.pData = &requestData;
+                AZStd::string sAudioLevelPath(controlsPath);
+                sAudioLevelPath.append("levels/");
+                sAudioLevelPath += sLevelNameOnly;
+
+                Audio::SAudioManagerRequestData<Audio::eAMRT_PARSE_CONTROLS_DATA> oAMData(sAudioLevelPath.c_str(), Audio::eADS_LEVEL_SPECIFIC);
+                Audio::SAudioRequest oAudioRequestData;
+                oAudioRequestData.nFlags = (Audio::eARF_PRIORITY_HIGH | Audio::eARF_EXECUTE_BLOCKING); // Needs to be blocking so data is available for next preloading request!
+                oAudioRequestData.pData = &oAMData;
                 Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
+
+                Audio::SAudioManagerRequestData<Audio::eAMRT_PARSE_PRELOADS_DATA> oAMData2(sAudioLevelPath.c_str(), Audio::eADS_LEVEL_SPECIFIC);
+                oAudioRequestData.pData = &oAMData2;
+                Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
+
+                Audio::TAudioPreloadRequestID nPreloadRequestID = INVALID_AUDIO_PRELOAD_REQUEST_ID;
+
+                Audio::AudioSystemRequestBus::BroadcastResult(nPreloadRequestID, &Audio::AudioSystemRequestBus::Events::GetAudioPreloadRequestID, sLevelNameOnly.c_str());
+                if (nPreloadRequestID != INVALID_AUDIO_PRELOAD_REQUEST_ID)
+                {
+                    Audio::SAudioManagerRequestData<Audio::eAMRT_PRELOAD_SINGLE_REQUEST> requestData(nPreloadRequestID, true);
+                    oAudioRequestData.pData = &requestData;
+                    Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequestBlocking, oAudioRequestData);
+                }
             }
         }
 
@@ -1945,15 +1948,6 @@ bool CLevelInfo::OpenLevelPak()
     CryFixedStringT<ICryPak::g_nMaxPath> fullLevelPakPath;
     bool bOk = gEnv->pCryPak->OpenPack(levelpak, (unsigned)0, NULL, &fullLevelPakPath);
     m_levelPakFullPath.assign(fullLevelPakPath.c_str());
-    if (bOk)
-    {
-        string levelmmpak = m_levelPath + string("/levelmm.pak");
-        if (gEnv->pCryPak->IsFileExist(levelmmpak))
-        {
-            gEnv->pCryPak->OpenPack(levelmmpak, (unsigned)0, NULL, &fullLevelPakPath);
-            m_levelMMPakFullPath.assign(fullLevelPakPath.c_str());
-        }
-    }
 
     gEnv->pCryPak->SetPacksAccessibleForLevel(GetName());
 
@@ -1968,12 +1962,6 @@ void CLevelInfo::CloseLevelPak()
     {
         gEnv->pCryPak->ClosePack(m_levelPakFullPath.c_str(), ICryPak::FLAGS_PATH_REAL);
         stl::free_container(m_levelPakFullPath);
-    }
-
-    if (!m_levelMMPakFullPath.empty())
-    {
-        gEnv->pCryPak->ClosePack(m_levelMMPakFullPath.c_str(), ICryPak::FLAGS_PATH_REAL);
-        stl::free_container(m_levelMMPakFullPath);
     }
 }
 

@@ -351,7 +351,9 @@ namespace AZ
                         for (size_t iClassElem = 0; iClassElem < elementClass->m_elements.size(); ++iClassElem)
                         {
                             const SerializeContext::ClassElement& classElem = elementClass->m_elements[iClassElem];
-                            if (classElem.m_nameCrc == subElem.m_nameCrc && m_sc->CanDowncast(subElem.m_id, classElem.m_typeId, classData->m_azRtti, classElem.m_azRtti))
+                            const TypeId underlyingTypeId = sc.GetUnderlyingTypeId(classElem.m_typeId);
+                            if (classElem.m_nameCrc == subElem.m_nameCrc && (m_sc->CanDowncast(subElem.m_id, classElem.m_typeId, classData->m_azRtti, classElem.m_azRtti)
+                                || subElem.m_id == underlyingTypeId))
                             {
                                 keep = true;
                                 break;
@@ -768,7 +770,7 @@ namespace AZ
                     AZ_Assert(classData->m_serializer, "Asset references should always have a serializer defined");
 
                     // Intercept asset references so we can forward asset load filter information.
-                    static_cast<AssetSerializer*>(classData->m_serializer)->LoadWithFilter(
+                    static_cast<AssetSerializer*>(classData->m_serializer.get())->LoadWithFilter(
                         dataAddress,
                         *element.m_stream,
                         element.m_version,

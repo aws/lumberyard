@@ -12,8 +12,7 @@
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/UnitTest/TestTypes.h>
-
-#include "Utils.h"
+#include <AZTestShared/Utils/Utils.h>
 
 using namespace AZ;
 using namespace AZ::IO;

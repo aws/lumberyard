@@ -11,6 +11,11 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
+// Uncomment this to support restricted platforms.
+// Restricted platforms have been unsupported since Lumberyard Beta 1.1 (R3).
+// Attempts to restore its use may have to contend with engine changes that have occurred since then.
+// #define SUPPORT_RESTRICTED_PLATFORMS
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -50,6 +55,10 @@ namespace LuaRemoteDebugger
 		Unknown,
 		Win32,
 		Win64,
+#if (SUPPORT_RESTRICTED_PLATFORMS)
+		Xenia,
+		Provo
+#endif
 	};
 
 	public enum LuaVariableType : byte
@@ -389,7 +398,7 @@ namespace LuaRemoteDebugger
 			sendBufferWriter.Write(breakpoints.Count);
 			foreach (Breakpoint breakpoint in breakpoints)
 			{
-				WriteString(sendBufferWriter, breakpoint.FileName);
+				sendBufferWriter.WriteString(breakpoint.FileName);
 				sendBufferWriter.Write(breakpoint.Line);
 			}
 			SendPacket();
@@ -401,7 +410,7 @@ namespace LuaRemoteDebugger
 			if (hostVersion >= 2)
 			{
 				sendBufferWriter.Write((byte)PacketType.FileMD5);
-				WriteString(sendBufferWriter, fileName);
+				sendBufferWriter.WriteString(fileName);
 				SendPacket();
 			}
 		}
@@ -412,7 +421,7 @@ namespace LuaRemoteDebugger
 			if (hostVersion >= 2)
 			{
 				sendBufferWriter.Write((byte)PacketType.FileContents);
-				WriteString(sendBufferWriter, fileName);
+				sendBufferWriter.WriteString(fileName);
 				SendPacket();
 			}
 		}
@@ -423,7 +432,7 @@ namespace LuaRemoteDebugger
 			{
 				// Request the module information if necessary
 
-                // removed old code - keeping it commented as we add new platforms which have remote symbols
+				// removed old code - keeping it commented as we add new platforms which have remote symbols
 				/*if (mode != CppCallStackMode.Disabled && /*hostPlatform == Platform.??? && symbolsManager == null) // ACCEPTED_USE
 				{
 					sendBufferWriter.Write((byte)PacketType.ModulesInformation);
@@ -464,13 +473,13 @@ namespace LuaRemoteDebugger
 
 		private void ReceiveLogMessage(EndianBinaryReader reader)
 		{
-			string message = ReadString(reader);
+			string message = reader.ReadString();
 			LogMessage(message);
 		}
 
 		private void ReceiveExecutionLocation(EndianBinaryReader reader)
 		{
-			string source = ReadString(reader);
+			string source = reader.ReadString();
 			int line = reader.ReadInt32();
 
 			// Lua callstack
@@ -480,12 +489,12 @@ namespace LuaRemoteDebugger
 			{
 				CallStackItem item;
 				item.FrameIndex = i;
-				item.Source = ReadString(reader);
+				item.Source = reader.ReadString();
 				item.Line = reader.ReadInt32();
-				item.Description = ReadString(reader);
+				item.Description = reader.ReadString();
 				if (hostVersion < 6)
 				{
-					ReadString(reader);
+					reader.ReadString();
 				}
 				callstack.Add(item);
 			}
@@ -497,7 +506,7 @@ namespace LuaRemoteDebugger
 				int cppCallstackLength = reader.ReadInt32();
 				for (int i = 0; i < cppCallstackLength; ++i)
 				{
-					string cppItem = ReadString(reader);
+					string cppItem = reader.ReadString();
 					cppCallstack.Add(cppItem.Trim());
 				}
 
@@ -523,8 +532,8 @@ namespace LuaRemoteDebugger
 						callstack.Add(item);
 					}
 				}
-                // the following is removed until we have other non-pc platforms - for example, android with remote symbols:
-				/*else if (hostPlatform == Platform.Xbox || hostPlatform == Platform.PS3) // ACCEPTED_USE
+				// the following is removed until we have other non-pc platforms - for example, android with remote symbols:
+				/*else if (hostPlatform == ...)
 				{
 					// For consoles we need to resolve the symbols using the symbols manager
 					if (symbolsManager != null)
@@ -591,7 +600,7 @@ namespace LuaRemoteDebugger
 				case LuaVariableType.Number:
 						return new LuaNumber(reader.ReadDouble());//This needs paired with the size of ScriptAnyValue.number's type on the Editor side!!!
 				case LuaVariableType.String:
-					return new LuaString(ReadString(reader));
+					return new LuaString(reader.ReadString());
 				case LuaVariableType.Table:
 					return ReadLuaTable(reader, pointerSize);
 				case LuaVariableType.Function:
@@ -629,11 +638,11 @@ namespace LuaRemoteDebugger
 			{
 				ILuaAnyValue key = ReadLuaAnyValue(reader, pointerSize);
 				ILuaAnyValue value = ReadLuaAnyValue(reader, pointerSize);
-                if (!table.Value.ContainsKey(key))
-                {
-                    table.Value[key] = value;
-                }
-            }
+				if (!table.Value.ContainsKey(key))
+				{
+					table.Value[key] = value;
+				}
+			}
 			return table;
 		}
 
@@ -659,7 +668,7 @@ namespace LuaRemoteDebugger
 
 		private void ReceiveGameFolder(EndianBinaryReader reader)
 		{
-			string gameFolder = ReadString(reader);
+			string gameFolder = reader.ReadString();
 			if (GameFolderReceived != null)
 			{
 				GameFolderReceived(gameFolder);
@@ -668,7 +677,7 @@ namespace LuaRemoteDebugger
 
 		private void ReceiveFileMD5(EndianBinaryReader reader)
 		{
-			string fileName = ReadString(reader);
+			string fileName = reader.ReadString();
 			byte[] md5 = new byte[16];
 			for (int i=0; i<16; ++i)
 			{
@@ -682,7 +691,7 @@ namespace LuaRemoteDebugger
 
 		private void ReceiveFileContents(EndianBinaryReader reader)
 		{
-			string fileName = ReadString(reader);
+			string fileName = reader.ReadString();
 			UInt32 length = reader.ReadUInt32();
 			byte[] buffer = new byte[length];
 			reader.Read(buffer, 0, (int)length);
@@ -697,33 +706,20 @@ namespace LuaRemoteDebugger
 		{
 			switch (hostPlatform)
 			{
-                    // removed for now - but when we have android or IOS we'll need this back: // ACCEPTED_USE
-                    /*
-				case Platform.Xbox: // ACCEPTED_USE
-					XboxSymbolsManager xboxSymbolsManager = new XboxSymbolsManager(); // ACCEPTED_USE
-					int numModules = reader.ReadInt32();
-					for (int i = 0; i < numModules; ++i)
-					{
-						string path = ReadString(reader);
-						UInt32 baseAddress = reader.ReadUInt32();
-						UInt32 size = reader.ReadUInt32();
-						Int32 a = reader.ReadInt32();
-						Int16 b = reader.ReadInt16();
-						Int16 c = reader.ReadInt16();
-						Byte[] d = reader.ReadBytes(8);
-						Guid guid = new Guid(a, b, c, d);
-						UInt32 age = reader.ReadUInt32();
-						try
-						{
-							xboxSymbolsManager.AddModuleInformation(path, baseAddress, size, guid, age); // ACCEPTED_USE
-						}
-						catch (System.IO.FileNotFoundException)
-						{
-							// This can happen if Dia2Lib.dll cannot be found
-						}
-					}
-					symbolsManager = xboxSymbolsManager; // ACCEPTED_USE
-					break;*/
+#if (SUPPORT_RESTRICTED_PLATFORMS)
+				case Platform.Xenia:
+					XeniaSymbolsManager xeniaSymbolsManager = new XeniaSymbolsManager();
+					xeniaSymbolsManager.LoadModules(reader);
+					symbolsManager = xeniaSymbolsManager;
+					break;
+
+				case Platform.Provo:
+					ProvoSymbolsManager provoSymbolsManager = new ProvoSymbolsManager();
+					provoSymbolsManager.LoadModules(reader);
+					symbolsManager = provoSymbolsManager;
+					break;
+#endif
+
 				default:
 					LogMessage("Received module information for platform {0} but this is not interpreted yet", hostPlatform);
 					break;
@@ -732,7 +728,7 @@ namespace LuaRemoteDebugger
 
 		private void ReceiveScriptError(EndianBinaryReader reader)
 		{
-			string error = ReadString(reader);
+			string error = reader.ReadString();
 			LogMessage("Script Error: " + error);
 			if (ScriptError != null)
 			{
@@ -786,7 +782,7 @@ namespace LuaRemoteDebugger
 				}
 			}
 		}
-
+		/*
 		private static string ReadString(EndianBinaryReader reader)
 		{
 			int length;
@@ -806,7 +802,7 @@ namespace LuaRemoteDebugger
 			writer.Write(data);
 			writer.Write((byte)0);	// NULL terminator
 		}
-
+*/
 		private void LogMessage(string format, params object[] args)
 		{
 			LogMessage(string.Format(format, args));

@@ -974,7 +974,7 @@ namespace CommandSystem
         }
 
         // Remove motion from selection list.
-        const AZStd::string commandString = AZStd::string::format("Unselect -motionName \"%s\"", motion->GetFileName());
+        const AZStd::string commandString = AZStd::string::format("Unselect -motionName \"%s\"", motion->GetName());
         GetCommandManager()->ExecuteCommandInsideCommand(commandString, outResult);
 
         // store the previously used id and remove the motion

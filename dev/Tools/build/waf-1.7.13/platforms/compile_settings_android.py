@@ -12,7 +12,7 @@ import os
 from waflib import Logs
 from waflib.Configure import conf
 from cry_utils import append_to_unique_list
-from lumberyard import deprecated
+import lumberyard
 
 
 @conf
@@ -174,3 +174,16 @@ def load_android_common_settings(conf):
     env['KEYSTORE_ALIAS'] = conf.get_android_env_keystore_alias()
     env['KEYSTORE'] = conf.get_android_env_keystore_path()
 
+
+@lumberyard.multi_conf
+def generate_ib_profile_tool_elements(ctx):
+    android_tool_elements = [
+        '<Tool Filename="arm-linux-androideabi-gcc" AllowRemoteIf="-c" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>',
+        '<Tool Filename="arm-linux-androideabi-g++" AllowRemoteIf="-c" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>',
+        # The Android deploy command uses 'adb shell' to check files on the device and will return non 0 exit codes if the files don't exit.  XGConsole will flag those processes as
+        # failures and since we are gracefully handing those cases, WAF will continue to execute till it exits naturally (we don't use /stoponerror).  In most cases, this is causing
+        # false build failures even though the deploy command completes sucessfully.  Whitelist the known return codes we handle internally.
+        #
+        '<Tool Filename="adb" AllowRemote="false" AllowIntercept="false" SuccessExitCodes="-1,0,1"/>'
+    ]
+    return android_tool_elements

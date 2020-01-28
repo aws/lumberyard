@@ -348,7 +348,6 @@
             "Include/IAnimationCompressionManager.h",
             "Include/IAssetItem.h",
             "Include/IAssetItemDatabase.h",
-            "Include/IAssetTagging.h",
             "Include/IAssetViewer.h",
             "Include/IBackgroundScheduleManager.h",
             "Include/IBackgroundTaskManager.h",
@@ -377,11 +376,6 @@
             "Include/ITransformManipulator.h",
             "Include/IViewPane.h",
             "Include/ObjectEvent.h"
-        ],
-        "TerrainTools/TexturePainter": [
-            "TerrainPainterPanel.cpp",
-            "TerrainPainterPanel.h",
-            "TerrainPainterPanel.ui"
         ],
         "Util": [
             "Util/AffineParts.cpp"
@@ -570,9 +564,6 @@
             "AssetBrowser/AssetBrowserFiltersDlg.h",
             "AssetBrowser/AssetBrowserManager.cpp",
             "AssetBrowser/AssetBrowserManager.h",
-            "AssetBrowser/AssetBrowserMetaTaggingDlg.cpp",
-            "AssetBrowser/AssetBrowserMetaTaggingDlg.h",
-            "AssetBrowser/AssetBrowserMetaTaggingDlg.ui",
             "AssetBrowser/AssetBrowserPreviewDlg.cpp",
             "AssetBrowser/AssetBrowserPreviewDlg.h",
             "AssetBrowser/AssetBrowserPreviewDlg.ui",
@@ -1036,16 +1027,10 @@
             "NewLevelDialog.cpp",
             "NewLevelDialog.h",
             "NewLevelDialog.ui",
-            "NewTerrainDialog.cpp",
-            "NewTerrainDialog.h",
-            "NewTerrainDialog.ui",
             "Dialogs/PythonScriptsDialog.cpp",
             "Dialogs/PythonScriptsDialog.h",
             "Dialogs/PythonScriptsDialog.ui",
-            "ScriptTermDialog.ui",
-            "TerrainTextureExport.cpp",
-            "TerrainTextureExport.h",
-            "TerrainTextureExport.ui"
+            "ScriptTermDialog.ui"
         ],
         "Dialogs/Generic/Overwrite": [
             "Dialogs/Generic/UserOptions.cpp",
@@ -1422,6 +1407,7 @@
             "Material/MaterialPickTool.h",
             "MaterialSender.h",
             "MaterialSender.cpp",
+            "Material/MaterialPythonFuncs.h",
             "Material/MaterialPythonFuncs.cpp"
         ],
         "Mission": [
@@ -1622,7 +1608,10 @@
         "Python": [
             "Util/BoostPythonHelpers.cpp",
             "Util/BoostPythonHelpers.h",
-            "PythonEditorFuncs.cpp"
+            "PythonToAZOut.cpp",
+            "PythonToAZOut.h",
+            "PythonEditorFuncs.cpp",
+            "PythonEditorFuncs.h"
         ],
         "QtUI": [
             "QtUI/QCollapsibleGroupBox.h",
@@ -1761,6 +1750,7 @@
             "Dialogs/ErrorsDlg.ui",
             "DisplaySettings.cpp",
             "DisplaySettings.h",
+            "DisplaySettingsPythonFuncs.h",
             "DisplaySettingsPythonFuncs.cpp",
             "ErrorReport.cpp",
             "ErrorReport.h",
@@ -1779,54 +1769,9 @@
             "SurfaceTypeValidator.h"
         ],
         "Terrain": [
-            "Terrain/Clouds.cpp",
-            "Terrain/GenerationParam.cpp",
-            "Terrain/GenerationParam.ui",
-            "Terrain/Heightmap.cpp",
-            "Terrain/Layer.cpp",
-            "Terrain/Noise.cpp",
-            "Terrain/PythonTerrainFuncs.cpp",
-            "Terrain/PythonTerrainLayerFuncs.cpp",
-            "Terrain/RGBLayer.cpp",
-            "Terrain/SurfaceType.cpp",
-            "Terrain/TerrainConverter.cpp",
-            "Terrain/TerrainGrid.cpp",
-            "Terrain/TerrainLayerTexGen.cpp",
-            "Terrain/TerrainLightGen.cpp",
-            "Terrain/TerrainManager.cpp",
-            "Terrain/TerrainTexGen.cpp",
-            "Terrain/TextureCompression.cpp",
-            "Terrain/MacroTextureExporter.cpp",
-            "Terrain/Clouds.h",
-            "Terrain/GenerationParam.h",
-            "Terrain/Heightmap.h",
-            "Terrain/Layer.h",
-            "Terrain/LayerWeight.h",
-            "Terrain/Noise.h",
-            "Terrain/RGBLayer.h",
-            "Terrain/SurfaceType.h",
-            "Terrain/TerrainConverter.h",
-            "Terrain/TerrainGrid.h",
-            "Terrain/TerrainLayerTexGen.h",
-            "Terrain/TerrainLightGen.h",
-            "Terrain/TerrainManager.h",
-            "Terrain/TerrainTexGen.h",
-            "Terrain/LayerWeight.cpp",
-            "Terrain/TextureCompression.h",
-            "Terrain/MacroTextureExporter.h",
-            "TerrainDialog.cpp",
-            "TerrainDialog.h",
-            "TerrainDialog.ui",
             "TerrainLighting.cpp",
             "TerrainLighting.h",
-            "TerrainLighting.ui",
-            "TerrainTexture.cpp",
-            "TerrainTexture.h",
-            "TerrainTexture.ui"
-        ],
-        "Terrain/Sky Accessiblity": [
-            "Terrain/Sky Accessibility/HeightmapAccessibility.h",
-            "Terrain/Sky Accessibility/HorizonTracker.h"
+            "TerrainLighting.ui"
         ],
         "TerrainTools/Environment": [
             "EnvironmentPanel.cpp",
@@ -1834,36 +1779,6 @@
             "EnvironmentPanel.h",
             "EnvironmentPanel.ui",
             "EnvironmentTool.h"
-        ],
-        "TerrainTools/Hole": [
-            "TerrainHolePanel.cpp",
-            "TerrainHoleTool.cpp",
-            "TerrainHolePanel.h",
-            "TerrainHolePanel.ui",
-            "TerrainHoleTool.h"
-        ],
-        "TerrainTools/MiniMap": [
-            "TerrainMiniMapTool.cpp",
-            "TerrainMiniMapTool.h",
-            "TerrainMiniMapPanel.ui"
-        ],
-        "TerrainTools/Modify": [
-            "TerrainModifyPanel.cpp",
-            "TerrainModifyPanel.h",
-            "TerrainModifyPanel.ui",
-            "TerrainModifyTool.cpp",
-            "TerrainModifyTool.h"
-        ],
-        "TerrainTools/MoveTool": [
-            "TerrainMoveTool.cpp",
-            "TerrainMoveToolPanel.cpp",
-            "TerrainMoveTool.h",
-            "TerrainMoveToolPanel.h",
-            "TerrainMoveToolPanel.ui"
-        ],
-        "TerrainTools/TexturePainter": [
-            "TerrainTexturePainter.cpp",
-            "TerrainTexturePainter.h"
         ],
         "TrackView": [
             "TrackView/TrackViewDialog.qrc",
@@ -1873,6 +1788,7 @@
             "TrackView/TrackViewDopeSheetBase.h",
             "TrackView/TrackViewDoubleSpinBox.cpp",
             "TrackView/TrackViewDoubleSpinBox.h",
+            "TrackView/TrackViewPythonFuncs.h",
             "TrackView/TrackViewPythonFuncs.cpp",
             "TrackView/TrackViewSequenceManager.cpp",
             "TrackView/TrackViewSequenceManager.h",
@@ -2059,8 +1975,6 @@
             "Util/Image_DXTC.h",
             "Util/ImageGif.cpp",
             "Util/ImageGif.h",
-            "Util/ImagePainter.cpp",
-            "Util/ImagePainter.h",
             "Util/ImageTIF.cpp",
             "Util/ImageTIF.h"
         ],

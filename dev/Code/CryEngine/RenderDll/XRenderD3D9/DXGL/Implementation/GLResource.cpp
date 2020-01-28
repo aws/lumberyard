@@ -957,7 +957,6 @@ namespace NCryOpenGL
 
 #if DXGL_USE_PBO_FOR_STAGING_TEXTURES
             uint32 uSubResource(D3D11CalcSubresource(kSubID.m_iMipLevel, kSubID.m_uElement, pTexture->m_uNumMipLevels));
-            //  Confetti BEGIN: Igor Lobanchikov :END
             GLvoid* pvMappedData(pContext->MapNamedBufferRangeFast(pTexture->m_akPixelBuffers[uSubResource], 0, (GLsizei)kDstLayout.m_uTextureSize, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT));
             uint8* puDstData(static_cast<uint8*>(pvMappedData) + kPackedRange.m_kOffset.x);
 #else
@@ -982,7 +981,6 @@ namespace NCryOpenGL
             }
 
 #if DXGL_USE_PBO_FOR_STAGING_TEXTURES
-            //  Confetti BEGIN: Igor Lobanchikov :END
             pContext->UnmapNamedBufferFast(pTexture->m_akPixelBuffers[uSubResource]);
 #endif //DXGL_USE_PBO_FOR_STAGING_TEXTURES
         }
@@ -1005,12 +1003,10 @@ namespace NCryOpenGL
             GLint iPixelBufferName(pTexture->m_akPixelBuffers[uSubResource].GetName());
             if (bDownload)
             {
-                //  Confetti BEGIN: Igor Lobanchikov :END
                 kMappedSubTex.m_pBuffer = static_cast<uint8*>(pContext->MapNamedBufferRangeFast(pTexture->m_akPixelBuffers[uSubResource], 0, kPackedLayout.m_uTextureSize, GL_MAP_READ_BIT));
             }
             else
             {
-                //  Confetti BEGIN: Igor Lobanchikov :END
                 kMappedSubTex.m_pBuffer = static_cast<uint8*>(pContext->MapNamedBufferRangeFast(pTexture->m_akPixelBuffers[uSubResource], 0, kPackedLayout.m_uTextureSize, GL_MAP_WRITE_BIT));
             }
 #else
@@ -1022,12 +1018,10 @@ namespace NCryOpenGL
             kMappedSubTex.m_uDataOffset = 0;
         }
 
-        //  Confetti BEGIN: Igor Lobanchikov :END
         static void Unmap(STexture* pTexture, STexSubresourceID kSubID, const SMappedSubTexture& kMappedSubTex, CContext* pContext, const SGIFormatInfo*)
         {
 #if DXGL_USE_PBO_FOR_STAGING_TEXTURES
             uint32 uSubResource(D3D11CalcSubresource(kSubID.m_iMipLevel, kSubID.m_uElement, pTexture->m_uNumMipLevels));
-            //  Confetti BEGIN: Igor Lobanchikov :END
             pContext->UnmapNamedBufferFast(pTexture->m_akPixelBuffers[uSubResource]);
 #endif //DXGL_USE_PBO_FOR_STAGING_TEXTURES
         }
@@ -1225,7 +1219,7 @@ namespace NCryOpenGL
         }
     };
 
-#if DXGLES || MAC
+#if DXGLES || MAC || defined(DXGL_SUPPORTS_NAMED_FRAMEBUFFER_EXTENSION_FUNCTIONS)
 #define CryGlCheckFramebufferStatus glCheckNamedFramebufferStatusEXT
 #define CryGlNamedFramebufferTexture glNamedFramebufferTextureEXT
 #define CryGlNamedFramebufferTextureLayer glNamedFramebufferTextureLayerEXT
@@ -1257,7 +1251,7 @@ namespace NCryOpenGL
     {
         // Making the function empty for DXGLES support since we just define the CryGL
         // functions as the correct gl es functions.
-#if !DXGLES && !MAC
+#if !DXGLES && !MAC && !defined(DXGL_SUPPORTS_NAMED_FRAMEBUFFER_EXTENSION_FUNCTIONS)
         static bool sAreCryGlFunctionsSet = false;
         if (sAreCryGlFunctionsSet == false)
         {
@@ -1691,7 +1685,6 @@ namespace NCryOpenGL
 #endif //DXGL_SUPPORT_STENCIL_TEXTURES
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov
     void STextureState::ApplyFormatMode(GLenum eTarget)
     {
         GLint aiSwizzleRGBA[4];
@@ -1754,7 +1747,6 @@ namespace NCryOpenGL
 
 #endif
     }
-    //  Confetti End: Igor Lobanchikov
 
     // Default value of -1000 is from the OpenGL spec and is the default value
     // it uses when the min LOD is not specified.
@@ -1781,11 +1773,9 @@ namespace NCryOpenGL
 #if DXGL_FULL_EMULATION
         m_uNumElements = max(1u, m_uNumElements);
 #endif //DXGL_FULL_EMULATION
-       //  Confetti BEGIN: Igor Lobanchikov
 #if defined(ANDROID)
         ResetDontCareActionFlags();
 #endif
-        //  Confetti End: Igor Lobanchikov
     }
 
     STexture::~STexture()
@@ -1881,7 +1871,6 @@ namespace NCryOpenGL
         return CreateOutputMergerView(kConfiguration, pContext);
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov
 #if defined(ANDROID)
     void STexture::ResetDontCareActionFlags()
     {
@@ -1905,7 +1894,7 @@ namespace NCryOpenGL
         m_bDepthStoreDontCareWhenUnbound = m_bDepthStoreDontCare;
         m_bStencilStoreDontCareWhenUnbound = m_bStencilStoreDontCare;
 
-        //  Igor: open gl marks buffer invalid until it is cleared or something is rendered into it.
+        //  open gl marks buffer invalid until it is cleared or something is rendered into it.
         //  If you bump into one of these asserts this means that you've dsicarded buffer content on
         //  resolve and try to restore. Although this behaviur is perfectly ok for Metal
         //  this won't work for GL. Render buffer won't be restored and might be either cleared
@@ -1936,7 +1925,6 @@ namespace NCryOpenGL
         m_bStencilStoreDontCareWhenUnbound = false;
     }
 #endif
-    //  Confetti End: Igor Lobanchikov
 
 #if DXGL_SUPPORT_APITRACE && defined(WIN32)
 
@@ -3016,7 +3004,6 @@ namespace NCryOpenGL
 #endif
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov
     void NamedBufferSubDataAsyncFast(CContext* pContext, CResourceName kBufferName, GLintptr iOffset, GLsizeiptr iSize, const GLvoid* pvData)
     {
 #if defined(glNamedBufferSubDataEXT) || !defined(USE_FAST_NAMED_APPROXIMATION)
@@ -3044,7 +3031,6 @@ namespace NCryOpenGL
 #endif
 #endif
     }
-    //  Confetti End: Igor Lobanchikov
 
     struct SDefaultBufferImpl
     {
@@ -3057,7 +3043,6 @@ namespace NCryOpenGL
 
             assert(uSubresource == 0);
 
-            //  Confetti BEGIN: Igor Lobanchikov
             if (pDstBox != NULL)
             {
                 NamedBufferSubDataAsyncFast(pContext, pBuffer->m_kName, pDstBox->left, pDstBox->right - pDstBox->left, pSrcData);
@@ -3066,7 +3051,6 @@ namespace NCryOpenGL
             {
                 NamedBufferSubDataAsyncFast(pContext, pBuffer->m_kName, 0, pBuffer->m_uSize, pSrcData);
             }
-            //  Confetti End: Igor Lobanchikov
         }
     };
 
@@ -3100,7 +3084,6 @@ namespace NCryOpenGL
                 {
                     uAccess |= GL_MAP_PERSISTENT_BIT;
                 }
-                //  Confetti BEGIN: Igor Lobanchikov :END
                 pMappedResource->pData = pContext->MapNamedBufferRangeFast(pBuffer->m_kName, (GLintptr)uOffset, (GLsizeiptr)uSize, uAccess);
             }
             else
@@ -3108,7 +3091,6 @@ namespace NCryOpenGL
             if (eMapType == D3D11_MAP_WRITE_NO_OVERWRITE)
             {
                 pBuffer->m_bMapped = true;
-                //  Confetti BEGIN: Igor Lobanchikov :END
                 pMappedResource->pData = pContext->MapNamedBufferRangeFast(pBuffer->m_kName, (GLintptr)uOffset, (GLsizeiptr)uSize, GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
             }
             else
@@ -3121,15 +3103,13 @@ namespace NCryOpenGL
                 {
                     pBuffer->m_bMapped = false;
                     pMappedResource->pData = pBuffer->m_pSystemMemoryCopy;
-                    //  Confetti BEGIN: Igor Lobanchikov :END
                     pContext->NamedBufferDataFast(pBuffer->m_kName, pBuffer->m_uSize, NULL, pBuffer->m_eUsage);
                 }
                 else
                 {
                     pBuffer->m_bMapped = true;
-                    //  Igor: when GL_MAP_INVALIDATE_BUFFER_BIT is set GL_MAP_UNSYNCHRONIZED_BIT will be ignored.
+                    //  when GL_MAP_INVALIDATE_BUFFER_BIT is set GL_MAP_UNSYNCHRONIZED_BIT will be ignored.
                     //  Remove GL_MAP_UNSYNCHRONIZED_BIT to reduce Qualcomm driver's debug spew
-                    //  Confetti BEGIN: Igor Lobanchikov :END
                     pMappedResource->pData = pContext->MapNamedBufferRangeFast(pBuffer->m_kName, (GLintptr)uOffset, (GLsizeiptr)uSize, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
                 }
             }
@@ -3152,7 +3132,6 @@ namespace NCryOpenGL
             return MapBufferRange(pBuffer, (size_t)0, (size_t)pBuffer->m_uSize, eMapType, uMapFlags, pMappedResource, pContext);
         }
 
-        //  Confetti BEGIN: Igor Lobanchikov :END
         static void UnmapBuffer(SResource* pResource, UINT Subresource, CContext* pContext)
         {
             DXGL_SCOPED_PROFILE("SDynamicBufferImpl::UnmapBuffer")
@@ -3170,20 +3149,17 @@ namespace NCryOpenGL
 
             if (uSize > 0)
             {
-                //  Confetti BEGIN: Igor Lobanchikov :END
                 NamedBufferSubDataAsyncFast(pContext, pBuffer->m_kName, uOffset, uSize, pBuffer->m_kDynamicCopy.m_pData + uOffset);
             }
 #else
             if (pBuffer->m_bMapped)
             {
-                //  Confetti BEGIN: Igor Lobanchikov :END
                 pContext->UnmapNamedBufferFast(pBuffer->m_kName);
                 pBuffer->m_bMapped = false;
             }
             else
             {
                 // This was mapped with D3D11_MAP_WRITE_DISCARD - orphan the current storage and upload the system memory buffer
-                //  Confetti BEGIN: Igor Lobanchikov :END
                 NamedBufferSubDataAsyncFast(pContext, pBuffer->m_kName, pBuffer->m_uMapOffset, pBuffer->m_uMapSize, pBuffer->m_pSystemMemoryCopy);
             }
 #endif
@@ -3209,7 +3185,6 @@ namespace NCryOpenGL
                 uDstOffset = 0;
                 uDstSize   = pBuffer->m_uSize;
             }
-            //  Confetti BEGIN: Igor Lobanchikov :END
             NamedBufferSubDataAsyncFast(pContext, pBuffer->m_kName, uDstOffset, uDstSize, pSrcData);
             cryMemcpy(pBuffer->m_pSystemMemoryCopy, static_cast<const uint8*>(pSrcData) + uDstOffset, uDstSize);
         }

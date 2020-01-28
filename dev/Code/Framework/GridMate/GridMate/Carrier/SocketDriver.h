@@ -81,7 +81,6 @@ namespace GridMate
         SocketDriverAddress();
     public:
         struct Hasher
-            : public AZStd::unary_function<SocketDriverAddress, AZStd::size_t>
         {
             AZStd::size_t operator()(const SocketDriverAddress& v) const;
         };

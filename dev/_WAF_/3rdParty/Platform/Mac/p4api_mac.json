@@ -1,0 +1,12 @@
+{
+    "platform": {
+        "darwin_x64": {
+            "libpath": [
+                "macos"
+            ],
+            "lib": [
+                "${lib_names}.a"
+            ]
+        }
+    }
+}

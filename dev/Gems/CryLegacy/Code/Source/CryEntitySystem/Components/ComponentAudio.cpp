@@ -14,6 +14,7 @@
 #include "ComponentAudio.h"
 #include <IAudioSystem.h>
 #include <ICryAnimation.h>
+#include <MathConversion.h>
 #include "Entity.h"
 
 #include <IEntity.h>
@@ -49,7 +50,7 @@ CComponentAudio::CComponentAudio()
 CComponentAudio::~CComponentAudio()
 {
     m_pEntity = nullptr;
-    std::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SReleaseAudioProxy());
+    AZStd::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SReleaseAudioProxy());
     m_mapAuxAudioProxies.clear();
 }
 
@@ -77,12 +78,12 @@ void CComponentAudio::Reload(IEntity* pEntity, SEntitySpawnParams& params)
 
     UpdateHideStatus();
 
-    std::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SResetAudioProxy());
+    AZStd::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SResetAudioProxy());
 
 #if defined(INCLUDE_ENTITYSYSTEM_PRODUCTION_CODE)
-    std::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SInitializeAudioProxy(m_pEntity->GetName()));
+    AZStd::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SInitializeAudioProxy(m_pEntity->GetName()));
 #else
-    std::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SInitializeAudioProxy(nullptr));
+    AZStd::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SInitializeAudioProxy(nullptr));
 #endif // INCLUDE_ENTITYSYSTEM_PRODUCTION_CODE
 
     SetObstructionCalcType(Audio::eAOOCT_IGNORE);
@@ -96,10 +97,10 @@ void CComponentAudio::OnMove()
 
     if (tm.IsValid())
     {
-        const Audio::SATLWorldPosition oPosition(tm);
+        const Audio::SATLWorldPosition oPosition(LYTransformToAZTransform(tm));
 
         //  Update all proxies with the eEACF_CAN_MOVE_WITH_ENTITY flag set.
-        std::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SRepositionAudioProxy(oPosition));
+        AZStd::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SRepositionAudioProxy(oPosition));
 
         if ((m_pEntity->GetFlagsExtended() & ENTITY_FLAG_EXTENDED_AUDIO_LISTENER) != 0)
         {
@@ -464,7 +465,7 @@ bool CComponentAudio::ExecuteTrigger(
 
         if ((m_nFlags & eEACF_HIDDEN) == 0 || (m_pEntity->GetFlags() & ENTITY_FLAG_UPDATE_HIDDEN) != 0)
         {
-            const Audio::SATLWorldPosition oPosition(tm);
+            const Audio::SATLWorldPosition oPosition(LYTransformToAZTransform(tm));
 
             if (nAudioProxyLocalID != INVALID_AUDIO_PROXY_ID)
             {
@@ -534,7 +535,7 @@ void CComponentAudio::StopTrigger(const Audio::TAudioControlID nTriggerID, const
     }
     else
     {
-        std::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SStopTrigger(nTriggerID));
+        AZStd::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SStopTrigger(nTriggerID));
     }
 }
 
@@ -552,7 +553,7 @@ void CComponentAudio::SetSwitchState(const Audio::TAudioControlID nSwitchID, con
     }
     else
     {
-        std::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SSetSwitchState(nSwitchID, nStateID));
+        AZStd::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SSetSwitchState(nSwitchID, nStateID));
     }
 }
 
@@ -570,7 +571,7 @@ void CComponentAudio::SetRtpcValue(const Audio::TAudioControlID nRtpcID, const f
     }
     else
     {
-        std::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SSetRtpcValue(nRtpcID, fValue));
+        AZStd::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SSetRtpcValue(nRtpcID, fValue));
     }
 }
 
@@ -589,7 +590,7 @@ void CComponentAudio::ResetRtpcValues(const Audio::TAudioProxyID nAudioProxyLoca
     }
     else
     {
-        std::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SResetRtpcValues());
+        AZStd::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SResetRtpcValues());
     }
 }
 
@@ -607,7 +608,7 @@ void CComponentAudio::SetObstructionCalcType(const Audio::EAudioObjectObstructio
     }
     else
     {
-        std::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SSetObstructionCalcType(eObstructionType));
+        AZStd::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SSetObstructionCalcType(eObstructionType));
     }
 }
 
@@ -625,7 +626,7 @@ void CComponentAudio::SetEnvironmentAmount(const Audio::TAudioEnvironmentID nEnv
     }
     else
     {
-        std::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SSetEnvironmentAmount(nEnvironmentID, fAmount));
+        AZStd::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SSetEnvironmentAmount(nEnvironmentID, fAmount));
     }
 }
 
@@ -643,7 +644,7 @@ void CComponentAudio::SetCurrentEnvironments(const Audio::TAudioProxyID nAudioPr
     }
     else
     {
-        std::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SSetCurrentEnvironments(m_pEntity->GetId()));
+        AZStd::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SSetCurrentEnvironments(m_pEntity->GetId()));
     }
 }
 
@@ -661,7 +662,7 @@ void CComponentAudio::AuxAudioProxiesMoveWithEntity(const bool bCanMoveWithEntit
     }
     else
     {
-        std::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SSetFlag(eEACF_CAN_MOVE_WITH_ENTITY, bCanMoveWithEntity));
+        AZStd::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SSetFlag(eEACF_CAN_MOVE_WITH_ENTITY, bCanMoveWithEntity));
     }
 }
 
@@ -694,7 +695,7 @@ void CComponentAudio::RemoveAsListenerFromAuxAudioProxy(const Audio::TAudioProxy
 //////////////////////////////////////////////////////////////////////////
 void CComponentAudio::StopAllTriggers()
 {
-    std::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SStopAllTriggers());
+    AZStd::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SStopAllTriggers());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -711,7 +712,7 @@ void CComponentAudio::SetAuxAudioProxyOffset(const Audio::SATLWorldPosition& rOf
     }
     else
     {
-        std::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SSetAuxAudioProxyOffset(rOffset, m_pEntity->GetWorldTM()));
+        AZStd::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SSetAuxAudioProxyOffset(rOffset, m_pEntity->GetWorldTM()));
     }
 }
 
@@ -747,14 +748,14 @@ Audio::TAudioProxyID CComponentAudio::CreateAuxAudioProxy()
             CryFatalError("<Audio> NULL entity pointer during CComponentAudio::CreateAudioProxy!");
         }
 
-        CryFixedStringT<MAX_AUDIO_OBJECT_NAME_LENGTH> sFinalName(m_pEntity->GetName());
+        AZStd::string sFinalName(m_pEntity->GetName());
         const size_t nNumAuxAudioProxies = m_mapAuxAudioProxies.size();
 
         if (nNumAuxAudioProxies > 0)
         {
             // First AuxAudioProxy is not explicitly identified, it keeps the entity's name.
             // All additionally AuxaudioProxies however are being explicitly identified.
-            sFinalName.Format("%s_auxaudioproxy_#%" PRISIZE_T, m_pEntity->GetName(), nNumAuxAudioProxies + 1);
+            sFinalName = AZStd::string::format("%s_auxaudioproxy_#%zu", m_pEntity->GetName(), nNumAuxAudioProxies + 1);
         }
 
         pIAudioProxy->Initialize(sFinalName.c_str());
@@ -762,7 +763,7 @@ Audio::TAudioProxyID CComponentAudio::CreateAuxAudioProxy()
         pIAudioProxy->Initialize(nullptr);
     #endif // INCLUDE_ENTITYSYSTEM_PRODUCTION_CODE
 
-        pIAudioProxy->SetPosition(m_pEntity->GetWorldPos());
+        pIAudioProxy->SetPosition(LYVec3ToAZVec3(m_pEntity->GetWorldPos()));
         pIAudioProxy->SetObstructionCalcType(Audio::eAOOCT_IGNORE);
         pIAudioProxy->SetCurrentEnvironments(m_pEntity->GetId());
 
@@ -846,7 +847,7 @@ void CComponentAudio::UpdateHideStatus()
 void CComponentAudio::Done()
 {
     StopAllTriggers();
-    std::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SResetAudioProxy());
+    AZStd::for_each(m_mapAuxAudioProxies.begin(), m_mapAuxAudioProxies.end(), SResetAudioProxy());
     m_pEntity = nullptr;
 }
 

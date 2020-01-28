@@ -37,8 +37,10 @@ namespace EMotionFX
         void StopSelection(AnimGraphStateTransition* transition);
 
         bool IsSelecting() const { return m_isSelecting; }
+        void ResetUI();
 
     private:
+
         bool m_isSelecting = false;
 
         static const QColor s_graphWindowBorderOverwriteColor;
@@ -64,6 +66,7 @@ namespace EMotionFX
 
     private slots:
         void OnPickClicked();
+        void OnAboutToBeRemoved(const QModelIndex &parent, int first, int last);
 
     private:
         AnimGraphStateMachine* GetStateMachine() const;

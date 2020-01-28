@@ -128,7 +128,8 @@ namespace EMotionFX
         AZ::SceneAPI::Events::ProcessingResult Process(EMotionFX::Pipeline::Group::ActorGroup& actorGroup)
         {
             AZ::SceneAPI::Events::ProcessingResultCombiner result;
-            EMotionFX::Pipeline::ActorBuilderContext actorBuilderContext(*m_scene, "tmp", actorGroup, m_actor.get(), AZ::RC::Phase::Construction);
+            AZStd::vector<AZStd::string> materialReferences;
+            EMotionFX::Pipeline::ActorBuilderContext actorBuilderContext(*m_scene, "tmp", actorGroup, m_actor.get(), materialReferences, AZ::RC::Phase::Construction);
             result += AZ::SceneAPI::Events::Process(actorBuilderContext);
             result += AZ::SceneAPI::Events::Process<EMotionFX::Pipeline::ActorBuilderContext>(actorBuilderContext, AZ::RC::Phase::Filling);
             result += AZ::SceneAPI::Events::Process<EMotionFX::Pipeline::ActorBuilderContext>(actorBuilderContext, AZ::RC::Phase::Finalizing);

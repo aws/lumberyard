@@ -51,15 +51,16 @@ namespace EMotionFX
     // reset the sync related data
     void AnimGraphNodeData::Clear()
     {
-        mDuration       = 0.0f;
-        mCurrentTime    = 0.0f;
-        mPreSyncTime    = 0.0f;
-        mPlaySpeed      = 1.0f;
-        mGlobalWeight   = 1.0f;
-        mLocalWeight    = 1.0f;
-        mInheritFlags   = 0;
+        mDuration = 0.0f;
+        mCurrentTime = 0.0f;
+        mPreSyncTime = 0.0f;
+        mPlaySpeed = 1.0f;
+        mGlobalWeight = 1.0f;
+        mLocalWeight = 1.0f;
+        mInheritFlags = 0;
         m_isMirrorMotion = false;
-        mSyncIndex      = MCORE_INVALIDINDEX32;
+        mSyncIndex = MCORE_INVALIDINDEX32;
+        mSyncTrack = nullptr;
     }
 
 
@@ -73,15 +74,15 @@ namespace EMotionFX
     // init from existing node data
     void AnimGraphNodeData::Init(AnimGraphNodeData* nodeData)
     {
-        mDuration       = nodeData->mDuration;
-        mCurrentTime    = nodeData->mCurrentTime;
-        mPreSyncTime    = nodeData->mPreSyncTime;
-        mPlaySpeed      = nodeData->mPlaySpeed;
-        mSyncIndex      = nodeData->mSyncIndex;
-        mGlobalWeight   = nodeData->mGlobalWeight;
-        mInheritFlags   = nodeData->mInheritFlags;
+        mDuration = nodeData->mDuration;
+        mCurrentTime = nodeData->mCurrentTime;
+        mPreSyncTime = nodeData->mPreSyncTime;
+        mPlaySpeed = nodeData->mPlaySpeed;
+        mSyncIndex = nodeData->mSyncIndex;
+        mGlobalWeight = nodeData->mGlobalWeight;
+        mInheritFlags = nodeData->mInheritFlags;
         m_isMirrorMotion = nodeData->m_isMirrorMotion;
-        mSyncTrack      = nodeData->mSyncTrack;
+        mSyncTrack = nodeData->mSyncTrack;
     }
 
 
@@ -91,6 +92,12 @@ namespace EMotionFX
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void NodeDataAutoRefCountMixin::ClearRefCounts()
+    {
+        m_dataRefCountIncreasedNodes.clear();
+        m_poseRefCountIncreasedNodes.clear();
+    }
 
     void NodeDataAutoRefCountMixin::IncreaseDataRefCountForNode(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
     {

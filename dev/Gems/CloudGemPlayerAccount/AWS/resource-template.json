@@ -397,7 +397,7 @@
                         "Runtime"
                     ]
                 },
-                "Timeout": 6
+                "Timeout": 20
             },
             "Type": "AWS::Lambda::Function"
         },
@@ -465,7 +465,7 @@
                         "Runtime"
                     ]
                 },
-                "Timeout": 6
+                "Timeout": 20
             },
             "Type": "AWS::Lambda::Function"
         },

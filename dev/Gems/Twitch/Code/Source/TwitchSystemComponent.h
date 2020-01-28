@@ -16,7 +16,6 @@
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/std/parallel/atomic.h>
 #include <Twitch/TwitchBus.h>
-#include <IFuelInterface.h>
 #include <ITwitchREST.h>
 
 namespace Twitch
@@ -45,13 +44,16 @@ namespace Twitch
         ////////////////////////////////////////////////////////////////////////
         // TwitchRequestBus interface implementation
         ////////////////////////////////////////////////////////////////////////
+
         void SetApplicationID(const AZStd::string& twitchApplicationID) override;
+        void SetUserID(ReceiptID& receipt, const AZStd::string& userId) override;
+        void SetOAuthToken(ReceiptID& receipt, const AZStd::string& token) override;
         void RequestUserID(ReceiptID& receipt) override;
         void RequestOAuthToken(ReceiptID& receipt) override;
-        void RequestEntitlement(ReceiptID& receipt) override;
-        void RequestProductCatalog(ReceiptID& receipt) override;
-        void PurchaseProduct(ReceiptID& receipt, const Twitch::FuelSku& sku) override;
-        void GetPurchaseUpdates(ReceiptID& receipt, const AZStd::string& syncToken) override;
+        AZStd::string GetApplicationID() const override;
+        AZStd::string GetUserID() const override;
+        AZStd::string GetOAuthToken() const override;
+        AZStd::string GetSessionID() const override;
 
         void GetUser(ReceiptID& receipt) override;
         void ResetFriendsNotificationCount(ReceiptID & receipt, const AZStd::string& friendID) override;
@@ -79,12 +81,9 @@ namespace Twitch
         void GetChannelTeams(ReceiptID& receipt, const AZStd::string& channelID) override;
         void GetChannelSubscribers(ReceiptID& receipt, const AZStd::string& channelID, AZ::u64 offset) override;
         void CheckChannelSubscriptionbyUser(ReceiptID& receipt, const AZStd::string& channelID, const AZStd::string& userID) override;
-        void GetChannelVideos(ReceiptID& receipt, const AZStd::string& channelID, BroadCastType boradcastType, const AZStd::string& language, AZ::u64 offset) override;
+        void GetChannelVideos(ReceiptID& receipt, const AZStd::string& channelID, BroadCastType broadcastType, const AZStd::string& language, AZ::u64 offset) override;
         void StartChannelCommercial(ReceiptID& receipt, const AZStd::string& channelID, CommercialLength length) override;
         void ResetChannelStreamKey(ReceiptID& receipt, const AZStd::string& channelID) override;
-        void GetChannelCommunity(ReceiptID& receipt, const AZStd::string& channelID) override;
-        void SetChannelCommunity(ReceiptID& receipt, const AZStd::string& channelID, const AZStd::string& communityID) override;
-        void DeleteChannelfromCommunity(ReceiptID& receipt, const AZStd::string& channelID) override;
 
         ////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
@@ -99,13 +98,19 @@ namespace Twitch
         TwitchSystemComponent(const TwitchSystemComponent&) = delete;
         bool IsValidString(const AZStd::string& str, AZStd::size_t minLength, AZStd::size_t maxLength) const;
         bool IsValidFriendID(const AZStd::string& friendID) const;
+        bool IsValidOAuthToken(const AZStd::string& oAuthToken) const;
         bool IsValidSyncToken(const AZStd::string& syncToken) const;
         bool IsValidChannelID(const AZStd::string& channelID) const { return IsValidFriendID(channelID); }
         bool IsValidCommunityID(const AZStd::string& communityID) const { return IsValidFriendID(communityID); }
-        bool IsValidSku(const Twitch::FuelSku& sku) const { return IsValidFriendID(sku); }
+        bool IsValidTwitchAppID(const AZStd::string& twitchAppID) const;
 
      private:
-        IFuelInterfacePtr           m_fuelInterface;
+         AZStd::string           m_applicationID;
+         AZStd::string           m_cachedClientID;
+         AZStd::string           m_cachedOAuthToken;
+         AZStd::string           m_cachedSessionID;
+         AZ::u64                 m_refreshTokenExpireTime;
+
         ITwitchRESTPtr              m_twitchREST;
         AZStd::atomic<AZ::u64>      m_receiptCounter;
     };

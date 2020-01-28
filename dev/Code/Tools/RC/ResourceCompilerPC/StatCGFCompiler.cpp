@@ -16,6 +16,18 @@
 #include "IConfig.h"
 #include "StatCGFCompiler.h"
 
+#include <AssetBuilderSDK/AssetBuilderSDK.h>
+#include <AzCore/Component/ComponentApplication.h>
+#include <AzCore/UserSettings/UserSettingsComponent.h>
+#include <AzFramework/StringFunc/StringFunc.h>
+#include <AzFramework/Components/BootstrapReaderComponent.h>
+#include <AzCore/Memory/AllocatorManager.h>
+#include <AzCore/Memory/MemoryComponent.h>
+#include <AzCore/IO/StreamerComponent.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
+#include <AzFramework/TargetManagement/TargetManagementComponent.h>
+#include <AzToolsFramework/SourceControl/PerforceComponent.h>
+
 #include "../CryEngine/Cry3DEngine/CGF/CGFLoader.h"
 #include "CGF/CGFSaver.h"
 #include "CryVersion.h"
@@ -27,7 +39,31 @@
 #include "UpToDateFileHelpers.h"
 #include "MetricsScope.h"
 
-//////////////////////////////////////////////////////////////////////////
+void CGFToolApplication::AddSystemComponents(AZ::Entity* systemEntity)
+{
+    AZ::ComponentApplication::AddSystemComponents(systemEntity);
+    EnsureComponentAdded<AZ::MemoryComponent>(systemEntity);
+}
+
+AZ::ComponentTypeList CGFToolApplication::GetRequiredSystemComponents() const
+{
+    AZ::ComponentTypeList components = AzToolsFramework::ToolsApplication::GetRequiredSystemComponents();
+
+    auto removed = AZStd::remove_if(components.begin(), components.end(),
+        [](const AZ::Uuid& id) -> bool
+    {
+        return id == azrtti_typeid<AzFramework::TargetManagementComponent>()
+            || id == azrtti_typeid<AzToolsFramework::PerforceComponent>()
+            || id == azrtti_typeid<AZ::UserSettingsComponent>()
+            || id == azrtti_typeid<AZ::StreamerComponent>()
+            || id == azrtti_typeid<AzToolsFramework::AssetBrowser::AssetBrowserComponent>();
+    });
+    components.erase(removed, components.end());
+
+    return components;
+}
+
+/////////////////////////////////////////////////////////////////////////
 CStatCGFCompiler::CStatCGFCompiler()
 {
     m_pPhysicsInterface = NULL;
@@ -65,6 +101,23 @@ string CStatCGFCompiler::GetOutputFileNameOnly() const
     }
 
     return sourceFileFinal;
+}
+
+//////////////////////////////////////////////////////////////////////////
+AZStd::string CStatCGFCompiler::GetDependencyAbsolutePath(const AZStd::string& fileName) const
+{
+    AZStd::string cgfSourcePath = PathHelpers::GetDirectory(m_CC.GetSourcePath().c_str()).c_str();
+    EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePath, cgfSourcePath);
+                        
+    // register the absolute path of the file as the dependency here, as the asset catalog will take care
+    //  of resolving it to its proper scan folder and path relative to that scan folder.
+    AZStd::string absoluteFilePath = fileName.c_str();
+    if (!cgfSourcePath.empty())
+    {
+        AzFramework::StringFunc::AssetDatabasePath::Join(cgfSourcePath.c_str(), fileName.c_str(), absoluteFilePath);
+        AzFramework::StringFunc::AssetDatabasePath::Normalize(absoluteFilePath);
+    }
+    return absoluteFilePath;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -229,9 +282,9 @@ static string getTextPhysicalizeFlags(int const flags)
     return text;
 }
 
-static bool debugDumpCGF(const char* a_filename)
+bool CStatCGFCompiler::DebugDumpCGF(const char* sourceFileName, const char* outputFilePath)
 {
-    RCLog("Dumping geometry file %s...", a_filename);
+    RCLog("Dumping geometry file %s...", sourceFileName);
 
     class Listener
         : public ILoaderCGFListener
@@ -253,36 +306,39 @@ static bool debugDumpCGF(const char* a_filename)
     Listener listener;
     CChunkFile chunkFile;
     CLoaderCGF cgfLoader;
-    CContentCGF* pCGF = cgfLoader.LoadCGF(a_filename, chunkFile, &listener);
+    CContentCGF* pCGF = cgfLoader.LoadCGF(sourceFileName, chunkFile, &listener);
 
     if (!pCGF)
     {
-        RCLogError("Dump: Failed to load geometry file %s - %s", a_filename, cgfLoader.GetLastError());
+        RCLogError("Dump: Failed to load geometry file %s - %s", sourceFileName, cgfLoader.GetLastError());
         return false;
     }
 
     if (pCGF->GetConsoleFormat())
     {
-        RCLogError("Dump: Cannot dump geometry file %s because it's in console format.", a_filename);
+        RCLogError("Dump: Cannot dump geometry file %s because it's in console format.", sourceFileName);
         delete pCGF;
         return false;
     }
 
-    string dumpFilename = a_filename;
-    dumpFilename += ".dump";
+    string dumpFilename = outputFilePath;
+    dumpFilename += ".dump";    
+
+    char resolvedPath[AZ_MAX_PATH_LEN];
+    AZ::IO::FileIOBase::GetInstance()->ResolvePath(dumpFilename.c_str(), resolvedPath, AZ_MAX_PATH_LEN);
 
     FILE* f = nullptr; 
-    azfopen(&f, dumpFilename.c_str(), "wt");
+    azfopen(&f, resolvedPath, "wt");
 
     if (f == 0)
     {
-        RCLogError("Dump: Cannot create dump file %s.", dumpFilename.c_str());
+        RCLogError("Dump: Cannot create dump file %s.", resolvedPath);
         delete pCGF;
         return false;
     }
 
 
-    fprintf(f, "<<< Dump of '%s' >>>\n", a_filename);
+    fprintf(f, "<<< Dump of '%s' >>>\n", sourceFileName);
     fprintf(f, "\n");
 
     fprintf(f, "---------------------------------------------\n");
@@ -684,7 +740,7 @@ static bool debugDumpCGF(const char* a_filename)
         fprintf(f, "** ATTENTION! At least one mesh has fatal errors in geometry. Search for '** ERROR **' above\n");
     }
 
-    fprintf(f, "<<< End of dump of '%s' >>>\n", a_filename);
+    fprintf(f, "<<< End of dump of '%s' >>>\n", sourceFileName);
 
     fclose(f);
     f = 0;
@@ -692,7 +748,7 @@ static bool debugDumpCGF(const char* a_filename)
     delete pCGF;
     pCGF = 0;
 
-    RCLog("Finished dumping geometry file %s.", a_filename);
+    RCLog("Finished dumping geometry file %s.", sourceFileName);
 
     return true;
 }
@@ -731,12 +787,55 @@ bool debugValidateCGF(CContentCGF* pCGF, const char* a_filename)
 //////////////////////////////////////////////////////////////////////////
 bool CStatCGFCompiler::Process()
 {
-    //  _CrtSetDbgFlag(_CRTDBG_CHECK_ALWAYS_DF | _CRTDBG_CHECK_CRT_DF | _CRTDBG_DELAY_FREE_MEM_DF | _CRTDBG_REPORT_FLAG);
-    
+    // Register the AssetBuilderSDK structures needed later on.
+    CGFToolApplication application;
+    AZ::ComponentApplication::Descriptor descriptor;
+    application.Start(descriptor);
+
+    AssetBuilderSDK::InitializeSerializationContext();
+    AssetBuilderSDK::ProcessJobResponse response;
+
+    // We want to query the watch folder here for cases where we have to build a material relative path dependency.
+    // This is necessary for cases where the source assets lie outside of the game project directory
+    AZStd::string sourceWatchFolder = m_CC.config->GetAsString("watchfolder", "", "").c_str();
+    if (sourceWatchFolder.empty())
+    {
+        // Fallbacks just in case watchfolder is not set for some reason
+        sourceWatchFolder = m_CC.config->GetAsString("sourceroot", "", "").c_str();
+        if (sourceWatchFolder.empty())
+        {
+            sourceWatchFolder = m_CC.config->GetAsString("gameroot", "", "").c_str();
+        }
+    }
+
+    bool compileSuccess = CompileCGF(response, sourceWatchFolder);
+
+    return WriteResponse(m_CC.GetOutputFolder(), response, compileSuccess);
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+bool CStatCGFCompiler::CompileCGF(AssetBuilderSDK::ProcessJobResponse& response, AZStd::string assetRoot, AZStd::string gameFolder)
+{
 #if defined(AZ_PLATFORM_WINDOWS)
     // _EM_INVALID is used to avoid Floating Point Exception inside CryPhysics
     MathHelpers::AutoFloatingPointExceptions autoFpe(~(_EM_INEXACT | _EM_UNDERFLOW | _EM_INVALID));
 #endif
+
+    // If no game project was specified, then query it from the tools application bootstrap reader
+    if (gameFolder.length() == 0)
+    {
+        bool checkPlatform = false;
+        bool result;
+        AzFramework::BootstrapReaderRequestBus::BroadcastResult(result, &AzFramework::BootstrapReaderRequestBus::Events::SearchConfigurationForKey, "sys_game_folder", checkPlatform, gameFolder);
+    }
+
+    // If no asset root was specified, then query it from the application
+    if (assetRoot.length() == 0)
+    {
+        EBUS_EVENT_RESULT(assetRoot, AzFramework::ApplicationRequests::Bus, GetAssetRoot);
+        assetRoot += gameFolder;
+    }
     
     const string sourceFile = m_CC.GetSourcePath();
     const string outputFile = GetOutputPath();
@@ -748,21 +847,8 @@ bool CStatCGFCompiler::Process()
         metrics.RecordDccName(this, m_CC.config, "StatCGFCompiler", sourceFile.c_str());
     }
 
-    if (!m_CC.bForceRecompiling && UpToDateFileHelpers::FileExistsAndUpToDate(GetOutputPath(), m_CC.GetSourcePath()))
-    {
-        // The file is up-to-date
-        m_CC.pRC->AddInputOutputFilePair(m_CC.GetSourcePath(), GetOutputPath());
-        return true;
-    }
-
     try
     {
-        if (m_CC.config->GetAsBool("debugdump", false, true))
-        {
-            debugDumpCGF(sourceFile.c_str());
-            return true;
-        }
-
         const bool bStripMeshData = m_CC.config->HasKey("StripMesh");
         const bool bStripNonMeshData = m_CC.config->GetAsBool("StripNonMesh", false, true);
         const bool bCompactVertexStreams = m_CC.config->GetAsBool("CompactVertexStreams", false, true);
@@ -771,31 +857,10 @@ bool CStatCGFCompiler::Process()
         const bool bComputeSubsetTexelDensity = m_CC.config->GetAsBool("ComputeSubsetTexelDensity", false, true);
         const bool bSplitLods = m_CC.config->GetAsBool("SplitLODs", false, true);
 
-        /*
-        if (bStripMeshData && bSplitLods)
+        if (m_CC.config->GetAsBool("debugdump", false, true))
         {
-            RCLog("Unsupported combination of command line parameters: both 'StripMesh' and 'SplitLODs' are specified");
-            return false;
-        }
-        */
-
-        /*
-        if (bStripMeshData && IsLodFile(sourceFile))
-        {
-            // Ignore _lod files for striped meshes.
-            return true;
-        }
-        */
-
-        if (m_CC.config->GetAsBool("SkipMissing", false, true))
-        {
-            // Skip missing source files.
-            const DWORD dwFileSpecAttr = GetFileAttributes(sourceFile.c_str());
-            if (dwFileSpecAttr == INVALID_FILE_ATTRIBUTES)
-            {
-                // Skip missing file.
-                return true;
-            }
+            // Write a debug .dump file into the cache
+            DebugDumpCGF(sourceFile.c_str(), GetOutputPath());
         }
 
         class Listener
@@ -846,11 +911,15 @@ bool CStatCGFCompiler::Process()
         }
 
         //////////////////////////////////////////////////////////////////////////
+        // Validate mesh, but abort compilation if validation fails
         if (m_CC.config->GetAsBool("debugvalidate", false, true))
         {
-            debugValidateCGF(pCGF, sourceFile.c_str());
-            delete pCGF;
-            return true;
+            bool isValid = debugValidateCGF(pCGF, sourceFile.c_str());
+            if (!isValid)
+            {
+                delete pCGF;
+                return false;
+            }
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -1011,6 +1080,45 @@ bool CStatCGFCompiler::Process()
             m_CC.pRC->AddInputOutputFilePair(m_CC.GetSourcePath(), GetOutputPath());
         }
 
+        // Add base CGF product
+        static AZ::Data::AssetType meshAssetType("{C2869E3B-DDA0-4E01-8FE3-6770D788866B}"); // from MeshAsset.h
+        {
+            // Add our base job product.  
+            // This accepts either the full path or the path relative to the Asset Processor temp directory, which is just the filename in this case
+            AssetBuilderSDK::JobProduct baseJobProduct(m_CC.sourceFileNameOnly.c_str(), meshAssetType, 0); // sub-id 0
+
+            // Add material product dependencies
+            {
+                CMaterialCGF* commonMaterial = pCGF->GetCommonMaterial();
+                if (commonMaterial != nullptr)
+                {
+                    // Append .mtl to the material name
+                    AZStd::string materialName = AZStd::string::format("%s.mtl", commonMaterial->name);
+
+                    // Check if our material name is just a name, or if it contains a path
+                    if (strstr(materialName.c_str(), "/") || strstr(materialName.c_str(), "\\"))
+                    {
+                        // The material path is already relative to devroot, for example "samplesproject/materials/foo.mtl"
+                        // We need to convert this to the cache path AP generates.  In this case, cut off the game project name.
+                        AZStd::string materialRelativePath = materialName;
+                        EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePath, gameFolder);
+                        EBUS_EVENT(AzFramework::ApplicationRequests::Bus, MakePathRelative, materialRelativePath, gameFolder.c_str());
+                        baseJobProduct.m_pathDependencies.emplace(materialRelativePath, AssetBuilderSDK::ProductPathDependencyType::ProductFile);
+                    }
+                    else
+                    {
+                        // In this case, we just have the name of the material.  The material is assumed to be in the same directory as the CGF.
+                        // Now we need to generate that directory...
+                        baseJobProduct.m_pathDependencies.emplace(GetDependencyAbsolutePath(materialName), AssetBuilderSDK::ProductPathDependencyType::SourceFile);
+                    }
+                }
+            }
+
+            response.m_outputProducts.push_back(baseJobProduct);
+        }
+
+        AssetBuilderSDK::JobProduct& baseJobProductRef = response.m_outputProducts.back();
+
         bool bHaveSplitLods = false;
         if (bSplitLods)
         {
@@ -1019,18 +1127,19 @@ bool CStatCGFCompiler::Process()
             // Save split LODs
             for (int lodIndex = 1; lodIndex < CStaticObjectCompiler::MAX_LOD_COUNT; ++lodIndex)
             {
-                string lodFilename = PathHelpers::RemoveExtension(outputFile);
-                lodFilename += "_lod";
-                lodFilename += '0' + lodIndex;
-                lodFilename += '.';
-                lodFilename += PathHelpers::FindExtension(outputFile);
+                string lodFileName = PathHelpers::RemoveExtension(GetOutputFileNameOnly());
+                lodFileName += "_lod";
+                lodFileName += '0' + lodIndex;
+                lodFileName += '.';
+                lodFileName += PathHelpers::FindExtension(outputFile);
+                string lodFullPath = PathHelpers::Join(m_CC.GetOutputFolder(), lodFileName);
 
                 CContentCGF* const pLodCgf = statCgfCompiler.m_pLODs[lodIndex];
                 if (!pLodCgf)
                 {
-                    if (FileUtil::FileExists(lodFilename.c_str()))
+                    if (FileUtil::FileExists(lodFullPath.c_str()))
                     {
-                        unusedFiles.push_back(lodFilename);
+                        unusedFiles.push_back(lodFullPath);
                     }
                     continue;
                 }
@@ -1070,10 +1179,19 @@ bool CStatCGFCompiler::Process()
                     lodCgfSaver.SetSubsetTexelDensityComputing(bComputeSubsetTexelDensity);
                     lodCgfSaver.SaveContent(pLodCgf, bNeedEndianSwap, bStorePositionsAsF16, bUseQuaternions, bStoreIndicesAsU16);
 #if defined(AZ_PLATFORM_WINDOWS)
-                    SetFileAttributes(lodFilename, FILE_ATTRIBUTE_ARCHIVE);
+                    SetFileAttributes(lodFullPath, FILE_ATTRIBUTE_ARCHIVE);
 #endif
-                    lodChunkFile.Write(lodFilename);
-                    m_CC.pRC->AddInputOutputFilePair(m_CC.GetSourcePath(), lodFilename);
+                    lodChunkFile.Write(lodFullPath);
+
+                    // Each LOD writes to a CGF which is an output product
+                    static const AZ::Data::AssetType staticMeshLodsAssetType("{9AAE4926-CB6A-4C60-9948-A1A22F51DB23}");
+                    AssetBuilderSDK::JobProduct lodJobProduct(lodFileName.c_str(), staticMeshLodsAssetType, lodIndex); // sub-id is the lod index
+                    response.m_outputProducts.push_back(lodJobProduct);
+                    response.m_outputProducts.at(0).m_pathDependencies.emplace(
+                        GetDependencyAbsolutePath(lodFileName.c_str()),
+                        AssetBuilderSDK::ProductPathDependencyType::ProductFile);
+
+                    m_CC.pRC->AddInputOutputFilePair(m_CC.GetSourcePath(), lodFullPath);
                 }
 
                 bHaveSplitLods = true;
@@ -1089,6 +1207,7 @@ bool CStatCGFCompiler::Process()
         {
             return false;
         }
+        
         m_CC.pRC->AddInputOutputFilePair(m_CC.GetSourcePath(), GetOutputPath());
 
         delete pCGF;
@@ -1142,3 +1261,21 @@ bool CStatCGFCompiler::IsLodFile(const string& filename) const
     return (s && s[4] >= '0' && s[4] <= '9' && s[5] == '.');
 }
 
+//////////////////////////////////////////////////////////////////////////
+bool CStatCGFCompiler::WriteResponse(const char* cacheFolder, AssetBuilderSDK::ProcessJobResponse& response, bool success) const
+{
+    AZStd::string responseFilePath;
+    AzFramework::StringFunc::Path::ConstructFull(cacheFolder, AssetBuilderSDK::s_processJobResponseFileName, responseFilePath);
+
+    response.m_requiresSubIdGeneration = false;
+    response.m_resultCode = success ? AssetBuilderSDK::ProcessJobResult_Success : AssetBuilderSDK::ProcessJobResult_Failed;
+
+    bool result = AZ::Utils::SaveObjectToFile(responseFilePath, AZ::DataStream::StreamType::ST_XML, &response);
+
+    if (!result)
+    {
+        AZ_Error("CStatCGFCompiler", false, "Unable to save ProcessJobResponse file to %s.\n", responseFilePath.c_str());
+    }
+
+    return result && success;
+}

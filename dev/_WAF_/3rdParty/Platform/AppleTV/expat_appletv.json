@@ -1,0 +1,15 @@
+{
+    "platform": {
+        "appletv": {
+            "libpath_debug": [
+                "build/osx/appletv-clang-703.0.31/debug"
+            ],
+            "libpath_release": [
+                "build/osx/appletv-clang-703.0.31/release"
+            ],
+            "lib": [
+                "libexpat.a"
+            ]
+        }
+    }
+}

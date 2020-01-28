@@ -129,7 +129,6 @@ namespace AZ
              * Used only when the AddressPolicy is AZ::EBusAddressPolicy::ByIdAndOrdered.
              * If an event is dispatched without an ID, this function determines
              * the order in which each address receives the event.
-             * The function must satisfy `AZStd::binary_function<BusIdType, BusIdType, bool>`.
              *
              * The following example shows a sorting function that meets these requirements.
              * @code{.cpp}

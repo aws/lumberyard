@@ -37,10 +37,7 @@ namespace AzToolsFramework
         ~LineSegmentSelectionManipulator();
 
         /// A Manipulator must only be created and managed through a shared_ptr.
-        static AZStd::shared_ptr<LineSegmentSelectionManipulator> MakeShared()
-        {
-            return AZStd::shared_ptr<LineSegmentSelectionManipulator>(aznew LineSegmentSelectionManipulator());
-        }
+        static AZStd::shared_ptr<LineSegmentSelectionManipulator> MakeShared();
 
         /// Mouse action data used by MouseActionCallback.
         struct Action

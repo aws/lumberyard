@@ -90,11 +90,15 @@ function DynamicContentTest:OnAction(entityId, actionName)
     elseif actionName == "DeletePak" then
         DynamicContentRequestBus.Event.DeletePak(DynamicContent.ModuleEntity,self.Properties.UserRequestedPak)
         self:RefreshStatus()
+    elseif actionName == "RequestPakStatusList" then
+        DynamicContentRequestBus.Event.UpdateFileStatus(DynamicContent.ModuleEntity, self.Properties.UserRequestedPak)
+    elseif actionName == "RequestDownload" then
+        DynamicContentRequestBus.Event.RequestDownload(DynamicContent.ModuleEntity, self.Properties.UserRequestedPak, false)
     end
 end
 
 
-function DynamicContentTest:OnDeactivate()
+function DynamicContentTest:OnDeactivate() 
     DynamicContentRequestBus.Event.ClearAllContent(DynamicContent.ModuleEntity)
     self.buttonHandler:Disconnect()
     self.dynamicContentUpdateBus:Disconnect()

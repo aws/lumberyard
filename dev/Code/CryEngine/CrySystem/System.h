@@ -37,6 +37,11 @@
 
 #include <AzCore/Module/DynamicModuleHandle.h>
 
+namespace AzFramework
+{
+    class MissingAssetLogger;
+}
+
 struct IConsoleCmdArgs;
 class CServerThrottle;
 struct ICryFactoryRegistryImpl;
@@ -77,6 +82,8 @@ namespace minigui
         #include "Xenia/System_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/System_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/System_h_salem.inl"
     #endif
 #else
 #if defined(WIN32) || defined(LINUX) || defined(APPLE)
@@ -183,10 +190,6 @@ namespace minigui
 #endif
 //////////////////////////////////////////////////////////////////////////
 
-#if !defined(LINUX)
-#define AZ_LEGACY_CRYSYSTEM_TRAIT_SIMULATE_TASK 1
-#endif
-
 #if defined(APPLE) || defined(LINUX)
 #define AZ_LEGACY_CRYSYSTEM_TRAIT_FACTORY_REGISTRY_USE_PRINTF_FOR_FATAL 1
 #endif
@@ -289,6 +292,7 @@ struct SSystemCVars
     int sys_MaxFPS;
     float sys_maxTimeStepForMovieSystem;
     int sys_force_installtohdd_mode;
+    int sys_report_files_not_found_in_paks = 0;
 
 #ifdef USE_HTTP_WEBSOCKETS
     int sys_simple_http_base_port;
@@ -325,6 +329,8 @@ struct SSystemCVars
         #include "Xenia/System_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/System_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/System_h_salem.inl"
     #endif
 #endif
 };
@@ -414,6 +420,11 @@ public:
     static void OnLanguageCVarChanged(ICVar* language);
     static void OnLanguageAudioCVarChanged(ICVar* language);
     static void OnLocalizationFolderCVarChanged(ICVar* const pLocalizationFolder);
+    // adding CVAR to toggle assert verbosity level
+    static void OnAssertLevelCvarChanged(ICVar* pArgs);
+    static void SetAssertLevel(int _assertlevel);
+    static void OnLogLevelCvarChanged(ICVar* pArgs);
+    static void SetLogLevel(int _logLevel);
 
     // interface ILoadConfigurationEntrySink ----------------------------------
 
@@ -829,6 +840,8 @@ private:
         #include "Xenia/System_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/System_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/System_h_salem.inl"
     #endif
 #elif defined(WIN32)
     bool GetWinGameFolder(char* szMyDocumentsPath, int maxPathSize);
@@ -1091,12 +1104,12 @@ private: // ------------------------------------------------------
         #include "Xenia/System_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/System_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/System_h_salem.inl"
     #endif
 #endif
 
     ICVar* m_sys_audio_disable;
-
-    ICVar* m_sys_SimulateTask;
 
     ICVar* m_sys_min_step;
     ICVar* m_sys_max_step;
@@ -1174,6 +1187,8 @@ private: // ------------------------------------------------------
     int sys_ProfileLevelLoading, sys_ProfileLevelLoadingDump;
 
     bool m_executedCommandLine = false;
+
+    AZStd::unique_ptr<AzFramework::MissingAssetLogger> m_missingAssetLogger;
 
 public:
     //! Pointer to the download manager

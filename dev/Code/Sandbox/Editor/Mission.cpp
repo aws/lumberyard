@@ -363,8 +363,6 @@ void CMission::SyncContent(bool bRetrieve, bool bIgnoreObjects, bool bSkipLoadin
 
         gameEngine->ReloadEnvironment();
 
-        GetIEditor()->GetSystem()->GetI3DEngine()->CompleteObjectsGeometry();
-
         // refresh positions of vegetation objects since voxel mesh is defined only now
         if (CVegetationMap* pVegetationMap = GetIEditor()->GetVegetationMap())
         {

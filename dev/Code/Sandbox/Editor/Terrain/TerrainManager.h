@@ -73,7 +73,8 @@ public:
     CLayer* FindLayer(const char* sLayerName) const;
     CLayer* FindLayerByLayerId(const uint32 dwLayerId) const;
     void SwapLayers(int layer1, int layer2);
-    void AddLayer(CLayer* layer) { m_layers.push_back(layer); };
+    void MoveLayer(int oldIndex, int newIndex);
+    void AddLayer(CLayer* layer);
     void RemoveLayer(CLayer* layer);
     void ClearLayers();
     void SerializeLayerSettings(CXmlArchive& xmlAr);

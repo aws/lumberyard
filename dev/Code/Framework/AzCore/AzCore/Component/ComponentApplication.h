@@ -28,7 +28,6 @@
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/string/osstring.h>
 #include <AzCore/std/string/conversions.h>
-
 #define BIN_FOLDER_NAME_MAX_SIZE    128
 
 namespace AZ
@@ -41,6 +40,27 @@ namespace AZ
     {
         class DrillerManager;
     }
+
+    class ReflectionEnvironment
+    {
+    public:
+
+        ReflectionEnvironment()
+        {
+            m_reflectionManager = AZStd::make_unique<ReflectionManager>();
+        }
+
+        static void Init();
+        static void Reset();
+        static ReflectionManager* GetReflectionManager();
+
+        ReflectionManager* Get() { return m_reflectionManager.get(); }
+
+    private:
+
+        AZStd::unique_ptr<ReflectionManager> m_reflectionManager;
+
+    };
 
     /**
      * A main class that can be used directly or as a base to start a
@@ -75,6 +95,19 @@ namespace AZ
             AZ_TYPE_INFO(ComponentApplication::Descriptor, "{70277A3E-2AF5-4309-9BBF-6161AFBDE792}");
             AZ_CLASS_ALLOCATOR(ComponentApplication::Descriptor, SystemAllocator, 0);
 
+            struct AllocatorRemapping
+            {
+                AZ_TYPE_INFO(ComponentApplication::Descriptor::AllocatorRemapping, "{4C865590-4506-4B76-BF14-6CCB1B83019A}");
+                AZ_CLASS_ALLOCATOR(ComponentApplication::Descriptor::AllocatorRemapping, OSAllocator, 0);
+
+                static void Reflect(ReflectContext* context, ComponentApplication* app);
+
+                OSString m_from;
+                OSString m_to;
+            };
+
+            typedef AZStd::vector<AllocatorRemapping, OSStdAllocator> AllocatorRemappings;
+
             ///////////////////////////////////////////////
             // SerializeContext::IObjectFactory
             void* Create(const char* name) override;
@@ -108,19 +141,13 @@ namespace AZ
             Debug::AllocationRecords::Mode m_recordingMode; ///< When to record stack traces (default: AZ::Debug::AllocationRecords::RECORD_STACK_IF_NO_FILE_LINE)
             AZ::u64         m_stackRecordLevels;        ///< If stack recording is enabled, how many stack levels to record. (default: 5)
             bool            m_enableDrilling;           ///< True to enabled drilling support for the application. RegisterDrillers will be called. Ignored in release. (default: true)
+            bool            m_useOverrunDetection;      ///< True to use the overrun detection memory management scheme. Only available on some platforms; greatly increases memory consumption.
+            bool            m_useMalloc;                ///< True to use malloc instead of the internal memory manager. Intended for debugging purposes only.
+
+            AllocatorRemappings m_allocatorRemappings;  ///< List of remappings of allocators to perform, so that they can alias each other.
 
             ModuleDescriptorList m_modules;             ///< Dynamic modules used by the application.
                                                         ///< These will be loaded on startup.
-
-            ///////////////////////////////////////////////
-            /// PLATFORM
-            /**
-             * Used only on X360 to indicate is we want to allocate physical memory. The page size is determined by m_pageSize // ACCEPTED_USE
-             * so if m_pageSize >= 64 KB we will use MEM_LARGE_PAGES otherwise small 4 KB pages.
-             * default: false
-             */
-            bool            m_x360IsPhysicalMemory; // ACCEPTED_USE
-            ///////////////////////////////////////////////
         };
 
         /// Application settings.
@@ -181,6 +208,8 @@ namespace AZ
         SerializeContext* GetSerializeContext() override;
         /// Returns the behavior context that has been registered with the app, if there is one.
         BehaviorContext* GetBehaviorContext() override;
+        /// Returns the json registration context that has been registered with the app, if there is one.
+        JsonRegistrationContext* GetJsonRegistrationContext() override;
         /// Returns the working root folder that has been registered with the app, if there is one.
         /// It's expected that derived applications will implement an application root.
         const char* GetAppRoot() override { return ""; }
@@ -317,7 +346,6 @@ namespace AZ
         AZStd::chrono::system_clock::time_point     m_currentTime;
         float                                       m_deltaTime;
         AZStd::unique_ptr<ModuleManager>            m_moduleManager;
-        AZStd::unique_ptr<ReflectionManager>        m_reflectionManager;
         Descriptor                                  m_descriptor;
         bool                                        m_isStarted;
         bool                                        m_isSystemAllocatorOwner;
@@ -331,9 +359,6 @@ namespace AZ
         Debug::DrillerManager*                      m_drillerManager;
 
         StartupParameters                           m_startupParameters;
-
-private:
-        AZ::Debug::ProfileModuleInitializer m_moduleProfilerInit;
     };
 }
 

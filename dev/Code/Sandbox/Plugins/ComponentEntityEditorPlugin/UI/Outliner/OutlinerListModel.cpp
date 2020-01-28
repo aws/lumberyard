@@ -9,10 +9,12 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "ComponentEntityEditorPlugin_precompiled.h"
 
 #include "OutlinerListModel.hxx"
 
+// Qt tends to have private non-exported classes inside exported classes, and this raises 4251
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") 
 #include <QtCore/QMimeData>
 #include <QFontMetrics>
 #include <QtGui/QPainter>
@@ -23,6 +25,7 @@
 #include <QGuiApplication>
 #include <QStyleOptionButton>
 #include <QTimer>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetManagerBus.h>
@@ -102,6 +105,13 @@ void OutlinerListModel::Initialize()
 
 int OutlinerListModel::rowCount(const QModelIndex& parent) const
 {
+    if (parent.column() > 0)
+    {
+        // only the main tree column has parents.
+        // note that this > 0 is intentional (as opposed to 'not equal') due to
+        // the "root" invalid parent having children (all the root elements)
+        return 0;
+    }
     auto parentId = GetEntityFromIndex(parent);
 
     AZStd::size_t childCount = 0;
@@ -499,7 +509,7 @@ QVariant OutlinerListModel::dataForVisibility(const QModelIndex& index, int role
     {
     case Qt::CheckStateRole:
     {
-        return IsEntityVisible(id) ? Qt::Checked : Qt::Unchecked;
+        return AzToolsFramework::IsEntitySetToBeVisible(id) ? Qt::Checked : Qt::Unchecked;
     }
 
     case Qt::ToolTipRole:
@@ -554,27 +564,22 @@ QVariant OutlinerListModel::dataForSortIndex(const QModelIndex& index, int role)
 
 bool OutlinerListModel::setData(const QModelIndex& index, const QVariant& value, int role)
 {
-    auto id = GetEntityFromIndex(index);
-
     switch (role)
     {
     case Qt::CheckStateRole:
     {
         if (value.canConvert<Qt::CheckState>())
         {
+            const auto entityId = GetEntityFromIndex(index);
             switch (index.column())
             {
                 case ColumnVisibilityToggle:
-                {
-                    ToggleEditorVisibility(id);
-                }
-                break;
+                    AzToolsFramework::ToggleEntityVisibility(entityId);
+                    break;
 
                 case ColumnLockToggle:
-                {
-                    ToggleEditorLockState(id);
-                }
-                break;
+                    AzToolsFramework::ToggleEntityLockState(entityId);
+                    break;
             }
         }
     }
@@ -592,12 +597,18 @@ bool OutlinerListModel::setData(const QModelIndex& index, const QVariant& value,
 
                 if (entity)
                 {
-                    AzToolsFramework::ScopedUndoBatch undo("Rename Entity");
+                    AZStd::string oldName = entity->GetName();
+                    AZStd::string newName = value.toString().toUtf8().constData();
 
-                    entity->SetName(value.toString().toStdString().c_str());
-                    undo.MarkEntityDirty(entity->GetId());
+                    if (oldName != newName)
+                    {
+                        AzToolsFramework::ScopedUndoBatch undo("Rename Entity");
 
-                    EBUS_EVENT(AzToolsFramework::ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, AzToolsFramework::Refresh_EntireTree);
+                        entity->SetName(newName);
+                        undo.MarkEntityDirty(entity->GetId());
+
+                        EBUS_EVENT(AzToolsFramework::ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, AzToolsFramework::Refresh_EntireTree);
+                    }
                 }
                 else
                 {
@@ -616,6 +627,12 @@ bool OutlinerListModel::setData(const QModelIndex& index, const QVariant& value,
 
 QModelIndex OutlinerListModel::parent(const QModelIndex& index) const
 {
+    // invalid indices have no parent.  Column 0 is the only one with a parent (ie, the tree part)
+    if ((!index.isValid())||(index.column() != 0))
+    {
+        return QModelIndex();
+    }
+
     auto id = GetEntityFromIndex(index);
     if (id.IsValid())
     {
@@ -624,13 +641,6 @@ QModelIndex OutlinerListModel::parent(const QModelIndex& index) const
         return GetIndexFromEntity(parentId, index.column());
     }
     return QModelIndex();
-}
-
-bool OutlinerListModel::IsSelected(const AZ::EntityId& entityId) const
-{
-    bool isSelected = false;
-    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSelected, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSelected);
-    return isSelected;
 }
 
 Qt::ItemFlags OutlinerListModel::flags(const QModelIndex& index) const
@@ -887,6 +897,8 @@ bool OutlinerListModel::DropMimeDataAssets(const QMimeData* data, Qt::DropAction
     AZ::Vector3 viewportCenter = AZ::Vector3::CreateZero();
     EditorRequestBus::BroadcastResult(viewportCenter, &EditorRequestBus::Events::GetWorldPositionAtViewportCenter);
 
+    AZ::EntityId assignParentId = GetEntityFromIndex(parent);
+
     for (const AZ::Data::AssetId& sliceAssetId : sliceAssets)
     {
         // Queue a slice instantiation for each dragged slice.
@@ -894,6 +906,9 @@ bool OutlinerListModel::DropMimeDataAssets(const QMimeData* data, Qt::DropAction
             AZ::Data::AssetManager::Instance().GetAsset<AZ::SliceAsset>(sliceAssetId, false);
         if (sliceAsset)
         {
+            //make sure dropped slices get put in the correct position
+            ToolsApplicationNotificationBus::Broadcast(
+                &ToolsApplicationNotificationBus::Events::SetEntityInstantiationPosition, assignParentId, GetEntityFromIndex(index(row, 0, parent)));
             EditorMetricsEventsBusAction editorMetricsEventsBusActionWrapper(EditorMetricsEventsBusTraits::NavigationTrigger::DragAndDrop);
             AZStd::string idString;
             sliceAsset.GetId().ToString(idString);
@@ -902,8 +917,6 @@ bool OutlinerListModel::DropMimeDataAssets(const QMimeData* data, Qt::DropAction
             EditorEntityContextRequestBus::Broadcast(&EditorEntityContextRequestBus::Events::InstantiateEditorSlice, sliceAsset, AZ::Transform::CreateTranslation(viewportCenter));
         }
     }
-
-    AZ::EntityId assignParentId = GetEntityFromIndex(parent);
 
     if (componentAssetPairs.empty())
     {
@@ -1021,7 +1034,7 @@ bool OutlinerListModel::DropMimeDataAssets(const QMimeData* data, Qt::DropAction
         ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::SetSelectedEntities, selection);
     }
 
-    if (IsSelected(targetEntityId))
+    if (AzToolsFramework::IsSelected(targetEntityId))
     {
         ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::InvalidatePropertyDisplay, Refresh_EntireTree_NewContent);
     }
@@ -1164,7 +1177,7 @@ bool OutlinerListModel::ReparentEntities(const AZ::EntityId& newParentId, const 
     AzToolsFramework::EntityIdList processedEntityIds;
     {
         AzToolsFramework::ScopedUndoBatch undo("Reparent Entities");
-        bool isParentVisible = IsEntityVisible(newParentId);
+        bool isParentVisible = AzToolsFramework::IsEntitySetToBeVisible(newParentId);
 
         for (AZ::EntityId entityId : selectedEntityIds)
         {
@@ -1191,7 +1204,7 @@ bool OutlinerListModel::ReparentEntities(const AZ::EntityId& newParentId, const 
 
             processedEntityIds.push_back(entityId);
 
-            SetEditorVisibility(entityId, isParentVisible);
+            AzToolsFramework::SetEntityVisibility(entityId, isParentVisible);
             AzToolsFramework::ComponentEntityEditorRequestBus::Event(entityId, &AzToolsFramework::ComponentEntityEditorRequestBus::Events::RefreshVisibilityAndLock);
         }
         GetIEditor()->GetObjectManager()->InvalidateVisibleList();
@@ -1347,41 +1360,42 @@ void OutlinerListModel::ProcessEntityUpdates()
         AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "OutlinerListModel::ProcessEntityUpdates:SelectQueue");
         for (auto entityId : m_entitySelectQueue)
         {
-            emit SelectEntity(entityId, IsSelected(entityId));
+            emit SelectEntity(entityId, AzToolsFramework::IsSelected(entityId));
         };
         m_entitySelectQueue.clear();
     }
 
+    if (!m_entityChangeQueue.empty())
     {
         AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "OutlinerListModel::ProcessEntityUpdates:ChangeQueue");
 
-        QMap<QModelIndex, ModelIndexRange> parentsToChangedIndices;
+        // its faster to just do a bulk data change than to carefully pick out indices
+        // so we'll just merge all ranges into a single range rather than try to make gaps
+        QModelIndex firstChangeIndex;
+        QModelIndex lastChangeIndex;
 
         for (auto entityId : m_entityChangeQueue)
         {
-            auto myStartIndex = GetIndexFromEntity(entityId, ColumnName);
-            ModelIndexRange& changedRange = parentsToChangedIndices[myStartIndex.parent()];
-
-            // Expand the range around each changed index, even if a sibling between didn't change.
-            // This is faster than emitting a data change for every modified index.
-            if (!changedRange.m_start.isValid() ||
-                myStartIndex.row() < changedRange.m_start.row())
+            auto myIndex = GetIndexFromEntity(entityId, ColumnName);
+            if ((!firstChangeIndex.isValid())||(firstChangeIndex.row() > myIndex.row()))
             {
-                changedRange.m_start = myStartIndex;
+                firstChangeIndex = myIndex;
             }
-            auto myEndIndex = GetIndexFromEntity(entityId, ColumnCount - 1);
-            if (!changedRange.m_end.isValid() ||
-                myEndIndex.row() > changedRange.m_end.row())
+            
+            if ((!lastChangeIndex.isValid())||(lastChangeIndex.row() < myIndex.row()))
             {
-                changedRange.m_end = myEndIndex;
+                // expand it to be the last column:
+                lastChangeIndex = myIndex;
             }
-        };
-        for (const auto& changedGroups : parentsToChangedIndices)
-        {
-            // Not checking for isValid for performance reasons, the scope marker above (ChangeQueue) was showing up
-            // as a high cost in cloning large entity stacks. This data is all good because it was just generated.
-            emit dataChanged(changedGroups.m_start, changedGroups.m_end);
         }
+
+        if (firstChangeIndex.isValid())
+        {
+            // expand to cover all columns:
+            lastChangeIndex = createIndex(lastChangeIndex.row(), columnCount(QModelIndex()) - 1, lastChangeIndex.internalPointer());
+            emit dataChanged(firstChangeIndex, lastChangeIndex);
+        }
+        
         m_entityChangeQueue.clear();
     }
 
@@ -1444,7 +1458,7 @@ void OutlinerListModel::OnEntityInfoUpdatedAddChildEnd(AZ::EntityId parentId, AZ
     endInsertRows();
 
     //expand ancestors if a new descendant is already selected
-    if ((IsSelected(childId) || HasSelectedDescendant(childId)) && !m_dropOperationInProgress)
+    if ((AzToolsFramework::IsSelected(childId) || HasSelectedDescendant(childId)) && !m_dropOperationInProgress)
     {
         ExpandAncestors(childId);
     }
@@ -1721,261 +1735,6 @@ void OutlinerListModel::OnEditorEntityDuplicated(const AZ::EntityId& oldEntity, 
     QueueEntityToExpand(newEntity, expansionIter != m_entityExpansionState.end() && expansionIter->second);
 }
 
-//! Editor lock component interface to enable/disable selection capabilities in the viewport.
-void OutlinerListModel::ToggleEditorLockState(const AZ::EntityId& entityId)
-{
-    if (entityId.IsValid())
-    {
-        bool isLocked = false;
-        AzToolsFramework::EditorLockComponentRequestBus::EventResult(isLocked, entityId, &AzToolsFramework::EditorLockComponentRequests::GetLocked);
-
-        AzToolsFramework::ScopedUndoBatch undo("Toggle Entity Lock State");
-
-        if (IsSelected(entityId))
-        {
-            AzToolsFramework::EntityIdList selectedEntityIds;
-            AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(selectedEntityIds, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
-
-            for (auto selectedId : selectedEntityIds)
-            {
-                SetEditorLockState(selectedId, !isLocked);
-            }
-        }
-        else
-        {
-            SetEditorLockState(entityId, !isLocked);
-        }
-    }
-}
-
-void OutlinerListModel::SetEditorLockState(const AZ::EntityId& entityId, bool isLocked)
-{
-    // When an entity is unlocked, if it was in a locked layer(s), unlock those layers.
-    // Layers are checked for recursively because lock status for a layer is currently saved in the level and not the layer itself.
-    // When lock status can be saved in the layer, then this should only unlock the most immediate layer.
-    if (!isLocked)
-    {
-        AZ::EntityId parentLayerCheck = entityId;
-        while (parentLayerCheck.IsValid())
-        {
-            AZ::EntityId parentId;
-            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(parentId, parentLayerCheck, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetParent);
-
-            bool isParentLayer = false;
-            AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
-                isParentLayer,
-                parentId,
-                &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
-
-            if (isParentLayer)
-            {
-                bool isParentLayerLocked = false;
-                AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isParentLayerLocked, parentId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsJustThisEntityLocked);
-                if (isParentLayerLocked)
-                {
-                    // If a child of a layer has its lock state changed to false, change that layer to no longer be locked.
-                    // Do this for all layers in the hierarchy.
-                    AzToolsFramework::EditorLockComponentRequestBus::Event(parentId, &AzToolsFramework::EditorLockComponentRequests::SetLocked, false);
-                }
-            }
-
-            parentLayerCheck = parentId;
-        }
-    }
-
-    bool isLayer = false;
-    AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
-        isLayer,
-        entityId,
-        &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
-    SetEditorLockStateRecursively(entityId, isLocked, entityId, isLayer);
-}
-
-void OutlinerListModel::SetEditorLockStateRecursively(const AZ::EntityId& entityId, bool isLocked, const AZ::EntityId& toggledEntityId, bool toggledEntityWasLayer)
-{
-    if (!entityId.IsValid())
-    {
-        return;
-    }
-    if (!toggledEntityWasLayer || toggledEntityId == entityId)
-    {
-        AzToolsFramework::EditorLockComponentRequestBus::Event(entityId, &AzToolsFramework::EditorLockComponentRequests::SetLocked, isLocked);
-    }
-    else
-    {
-        bool oldLockState = false;
-        AzToolsFramework::EditorLockComponentRequestBus::EventResult(oldLockState, entityId, &AzToolsFramework::EditorLockComponentRequests::GetLocked);
-
-        bool newLockState = isLocked ? true : oldLockState;
-        AzToolsFramework::EditorLockComponentNotificationBus::Event(
-            entityId,
-            &AzToolsFramework::EditorLockComponentNotificationBus::Events::OnEntityLockChanged,
-            newLockState);
-    }
-
-    AzToolsFramework::EntityIdList children;
-    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
-
-    for (auto childId : children)
-    {
-        SetEditorLockStateRecursively(childId, isLocked, toggledEntityId, toggledEntityWasLayer);
-    }
-}
-
-//! Editor Visibility interface to enable/disable rendering in the viewport.
-void OutlinerListModel::ToggleEditorVisibility(const AZ::EntityId& entityId)
-{
-    if (entityId.IsValid())
-    {
-        bool isVisible = IsEntityVisible(entityId);
-
-        AzToolsFramework::ScopedUndoBatch undo("Toggle Entity Visibility");
-
-        if (IsSelected(entityId))
-        {
-            AzToolsFramework::EntityIdList selectedEntityIds;
-            AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(selectedEntityIds, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
-
-            for (AZ::EntityId selectedId : selectedEntityIds)
-            {
-                SetEditorVisibility(selectedId, !isVisible);
-            }
-        }
-        else
-        {
-            SetEditorVisibility(entityId, !isVisible);
-        }
-        GetIEditor()->GetObjectManager()->InvalidateVisibleList();
-    }
-}
-
-void OutlinerListModel::SetEditorVisibility(const AZ::EntityId& entityId, bool isVisible)
-{
-    // When an entity is set to visible, if it was in an invisible layer(s), make that layer visible.
-    if (isVisible)
-    {
-        AZ::EntityId parentLayerCheck = entityId;
-        while (parentLayerCheck.IsValid())
-        {
-            AZ::EntityId parentId;
-            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(parentId, parentLayerCheck, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetParent);
-
-            bool isParentLayer = false;
-            AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
-                isParentLayer,
-                parentId,
-                &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
-
-            if (isParentLayer)
-            {
-                if (!IsEntityVisible(parentId))
-                {
-                    // If a child of a layer has its visibility state changed to true, change that layer to be visible.
-                    // Do this for all layers in the hierarchy.
-                    SetEntityVisibility(parentId, true);
-                    // Even though layer visibility is saved to each layer individually, parents still need to be checked recursively so
-                    // that the entity that was toggled can become visible.
-                }
-            }
-
-            parentLayerCheck = parentId;
-        }
-    }
-    bool isLayer = false;
-    AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
-        isLayer,
-        entityId,
-        &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
-    SetEditorVisibilityStateRecursively(entityId, isVisible, entityId, isLayer);
-}
-
-void OutlinerListModel::SetEditorVisibilityStateRecursively(const AZ::EntityId& entityId, bool isVisible, const AZ::EntityId& toggledEntityId, bool toggledEntityWasLayer)
-{
-    if (!entityId.IsValid())
-    {
-        return;
-    }
-    if (!toggledEntityWasLayer || toggledEntityId == entityId)
-    {
-        SetEntityVisibility(entityId, isVisible);
-    }
-    else
-    {
-        bool oldVisibilityState = IsEntityVisible(entityId);
-
-        bool newVisibilityState = isVisible ? oldVisibilityState : false;
-        AzToolsFramework::EditorVisibilityNotificationBus::Event(
-            entityId,
-            &AzToolsFramework::EditorVisibilityNotificationBus::Events::OnEntityVisibilityChanged,
-            newVisibilityState);
-    }
-
-    AzToolsFramework::ComponentEntityEditorRequestBus::Event(entityId, &AzToolsFramework::ComponentEntityEditorRequestBus::Events::RefreshVisibilityAndLock);
-
-    AzToolsFramework::EntityIdList children;
-    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
-
-    for (auto childId : children)
-    {
-        SetEditorVisibilityStateRecursively(childId, isVisible, toggledEntityId, toggledEntityWasLayer);
-    }
-}
-
-bool OutlinerListModel::IsEntityVisible(const AZ::EntityId& entityId) const
-{
-    // Visibility state is tracked in 5 places, see dataForLock for info on 3 of these ways.
-    // Visibility's fourth state over lock is the EditorVisibilityRequestBus has two sets of
-    // setting and getting functions for visibility. Get/SetVisibilityFlag is what should be used in most cases.
-    // The fifth state is tracked on layers. Layers are always invisible to other systems, so the visibility flag
-    // is set false there. However, layers need to be able to toggle visibility to hide/show their children, so
-    // layers have a unique flag.
-    bool isVisible = true;
-    bool isLayerEntity = false;
-    AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
-        isLayerEntity,
-        entityId,
-        &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
-    if (isLayerEntity)
-    {
-        AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
-            isVisible,
-            entityId,
-            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::AreLayerChildrenVisible);
-    }
-    else
-    {
-        AzToolsFramework::EditorVisibilityRequestBus::EventResult(
-            isVisible,
-            entityId,
-            &AzToolsFramework::EditorVisibilityRequestBus::Events::GetVisibilityFlag);
-    }
-    return isVisible;
-}
-
-void OutlinerListModel::SetEntityVisibility(const AZ::EntityId& entityId, bool visibility) const
-{
-    bool isLayerEntity = false;
-    AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
-        isLayerEntity,
-        entityId,
-        &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
-
-    if (isLayerEntity)
-    {
-        AzToolsFramework::Layers::EditorLayerComponentRequestBus::Event(
-            entityId,
-            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::SetLayerChildrenVisibility,
-            visibility);
-    }
-    else
-    {
-        AzToolsFramework::EditorVisibilityRequestBus::Event(
-            entityId,
-            &AzToolsFramework::EditorVisibilityRequestBus::Events::SetVisibilityFlag,
-            visibility);
-    }
-}
-
 void OutlinerListModel::ExpandAncestors(const AZ::EntityId& entityId)
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
@@ -2206,13 +1965,13 @@ bool OutlinerListModel::AreAllDescendantsSameVisibleState(const AZ::EntityId& en
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
     //TODO result can be cached in mutable map and cleared when any descendant changes to avoid recursion in deep hierarchies
 
-    bool isVisible = IsEntityVisible(entityId);
+    bool isVisible = AzToolsFramework::IsEntitySetToBeVisible(entityId);
 
     AzToolsFramework::EntityIdList children;
     AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
     for (auto childId : children)
     {
-        bool isVisibleChild = IsEntityVisible(childId);
+        bool isVisibleChild = AzToolsFramework::IsEntitySetToBeVisible(childId);
         if (isVisible != isVisibleChild || !AreAllDescendantsSameVisibleState(childId))
         {
             return false;
@@ -2250,7 +2009,7 @@ bool OutlinerListModel::IsInLayerWithProperty(AZ::EntityId entityId, const Layer
             }
             else if (layerProperty == LayerProperty::Invisible)
             {
-                bool isParentVisible = IsEntityVisible(parentId);
+                bool isParentVisible = AzToolsFramework::IsEntitySetToBeVisible(parentId);
                 if (!isParentVisible)
                 {
                     return true;
@@ -2266,7 +2025,7 @@ bool OutlinerListModel::IsInLayerWithProperty(AZ::EntityId entityId, const Layer
 
 void OutlinerListModel::OnEntityInitialized(const AZ::EntityId& /*entityId*/)
 {
-    if (m_filterString.size() > 0 || m_componentFilters.size() > 0)
+    if (!m_beginStartPlayInEditor && (m_filterString.size() > 0 || m_componentFilters.size() > 0))
     {
         m_isFilterDirty = true;
         emit ReapplyFilter();
@@ -2291,6 +2050,15 @@ void OutlinerListModel::OnContextReset()
     }
 }
 
+void OutlinerListModel::OnStartPlayInEditorBegin()
+{
+    m_beginStartPlayInEditor = true;
+}
+
+void OutlinerListModel::OnStartPlayInEditor()
+{
+    m_beginStartPlayInEditor = false;
+}
 
 ////////////////////////////////////////////////////////////////////////////
 // OutlinerItemDelegate
@@ -2597,7 +2365,7 @@ QString OutlinerItemDelegate::GetColumnHighlightedStylesheet(int column, bool hi
         color = "transparent";
     }
 
-    stylesheet = QString("%1{background-color: %2} %1::indicator{background-color: %2)").arg(checkBoxName).arg(color);
+    stylesheet = QString("%1{background-color: %2} %1::indicator{background-color: %2}").arg(checkBoxName).arg(color);
 
     return stylesheet;
 }
@@ -2867,9 +2635,21 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
 QSize OutlinerItemDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const
 {
     // Get the height of a tall character...
-    auto textRect = option.fontMetrics.boundingRect("|");
+    // we do this only once per 'tick'
+    if (m_cachedBoundingRectOfTallCharacter.isNull())
+    {
+        m_cachedBoundingRectOfTallCharacter = option.fontMetrics.boundingRect("|");
+        // schedule it to be reset so that if font changes sometime soon, it updates.
+        auto resetFunction = [this]() 
+        { 
+            m_cachedBoundingRectOfTallCharacter = QRect(); 
+        };
+
+        QTimer::singleShot(0, resetFunction);
+    }
+  
     // And add 8 to it gives the outliner roughly the visible spacing we're looking for.
-    QSize sh = QSize(0, textRect.height() + OutlinerListModel::s_OutlinerSpacing);
+    QSize sh = QSize(0, m_cachedBoundingRectOfTallCharacter.height() + OutlinerListModel::s_OutlinerSpacing);
 
     if (index.column() == OutlinerListModel::ColumnVisibilityToggle || index.column() == OutlinerListModel::ColumnLockToggle)
     {

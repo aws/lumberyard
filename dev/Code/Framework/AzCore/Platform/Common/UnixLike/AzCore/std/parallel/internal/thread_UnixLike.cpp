@@ -129,6 +129,6 @@ namespace AZStd
 
     unsigned thread::hardware_concurrency()
     {
-        return static_cast<unsigned int>(sysconf(_SC_NPROCESSORS_ONLN));
+        return AZ_TRAIT_THREAD_HARDWARE_CONCURRENCY_RETURN_VALUE;
     }
 }

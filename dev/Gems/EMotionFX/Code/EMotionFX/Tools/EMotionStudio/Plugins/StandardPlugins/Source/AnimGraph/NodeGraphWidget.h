@@ -101,6 +101,9 @@ namespace EMStudio
 
         void DisableBorderOverwrite() { m_borderOverwrite = false; }
 
+        const QString& GetTitleBarText() const { return m_titleBarText; }
+        void SetTitleBarText(const QString& text) { m_titleBarText = text; }
+
     protected:
         //virtual void paintEvent(QPaintEvent* event);
         void mouseMoveEvent(QMouseEvent* event) override;
@@ -153,5 +156,6 @@ namespace EMStudio
         bool                        m_borderOverwrite = false;
         QColor                      m_borderOverwriteColor;
         float                       m_borderOverwriteWidth;
+        QString                     m_titleBarText;
     };
 }   // namespace EMStudio

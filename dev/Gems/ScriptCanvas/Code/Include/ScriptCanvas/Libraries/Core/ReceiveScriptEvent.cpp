@@ -366,8 +366,16 @@ namespace ScriptCanvas
                     }
                 }
 
-                // now, this should pass execution off to the nodes that will push their output into this result input
-                SignalOutput(scriptEventEntry.m_eventSlotId);
+                {
+                    // We need to defer disconnection in case something in the execution of this event
+                    // causes this node to be deactivated (i.e. Destroy Game Entity on Self)
+                    m_deferDisconnect = true;
+
+                    // now, this should pass execution off to the nodes that will push their output into this result input
+                    SignalOutput(scriptEventEntry.m_eventSlotId);
+
+                    m_deferDisconnect = false;
+                }
 
                 // route executed nodes output to my input, and my input to the result
                 if (scriptEventEntry.IsExpectingResult())
@@ -397,6 +405,8 @@ namespace ScriptCanvas
 
             void ReceiveScriptEvent::OnActivate()
             {
+                m_deferDisconnect = false;
+
                 ScriptEventBase::OnActivate();
 
                 if (m_ebus && m_handler)
@@ -407,8 +417,7 @@ namespace ScriptCanvas
 
             void ReceiveScriptEvent::OnDeactivate()
             {
-                bool queueDisconnect = false;
-                Disconnect(queueDisconnect);
+                Disconnect(m_deferDisconnect);
 
                 ScriptEventBase::OnDeactivate();
             }
@@ -466,15 +475,18 @@ namespace ScriptCanvas
             void ReceiveScriptEvent::Disconnect(bool queueDisconnect)
             {
                 AZStd::string busName = m_definition.GetName();
-
+                
                 auto disconnectFunc = [this, busName]() {
                     if (!m_handler)
                     {
-                        AZ_Error("Script Canvas", false, "Cannot disconnect from an EBus Handler for Script Event: %s", busName.c_str());
+                        // The bus was already disconnected, nothing to do
                         return;
                     }
 
-                    m_handler->Disconnect();
+                    if (m_handler->IsConnected())
+                    {
+                        m_handler->Disconnect();
+                    }
                 };
 
                 if (queueDisconnect)

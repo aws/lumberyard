@@ -72,10 +72,6 @@ namespace EMotionFX
         CommandSystem::GetCommandManager()->RegisterCommandCallback<CommandRemoveSimulatedJointsPostCallback>(CommandRemoveSimulatedJoints::s_commandName, m_commandCallbacks, this);
 
         CommandSystem::GetCommandManager()->RegisterCommandCallback<CommandAdjustSimulatedJointPostCallback>(CommandAdjustSimulatedJoint::s_commandName, m_commandCallbacks, this, false, false);
-
-        CommandSystem::GetCommandManager()->RegisterCommandCallback<CommandAddColliderPostCallback>(CommandAddCollider::s_commandName, m_commandCallbacks, this, /*executePreUndo=*/false, /*executePreCommandfalse=*/false);
-        CommandSystem::GetCommandManager()->RegisterCommandCallback<CommandAdjustColliderPostCallback>(CommandAdjustCollider::s_commandName, m_commandCallbacks, this, /*executePreUndo=*/false, /*executePreCommandfalse=*/false);
-        CommandSystem::GetCommandManager()->RegisterCommandCallback<CommandRemoveColliderPostCallback>(CommandRemoveCollider::s_commandName, m_commandCallbacks, this, /*executePreUndo=*/false, /*executePreCommandfalse=*/false);
     }
 
     void SimulatedObjectModel::SetActor(Actor* actor)
@@ -395,23 +391,5 @@ namespace EMotionFX
         }
 
         endRemoveRows();
-    }
-
-    // Update the unique data on any blend tree simulated object node because the objects / joints has been modified.
-    void SimulatedObjectModel::OnModelModified()
-    {
-        if (m_actorInstance)
-        {
-            AnimGraphInstance* animGraphInstance = m_actorInstance->GetAnimGraphInstance();
-            if (animGraphInstance)
-            {
-                AZStd::vector<EMotionFX::AnimGraphNode*> simulatedObjectNodes;
-                animGraphInstance->GetAnimGraph()->RecursiveCollectNodesOfType(azrtti_typeid<EMotionFX::BlendTreeSimulatedObjectNode>(), &simulatedObjectNodes);
-                for (EMotionFX::AnimGraphNode* simulatedObjectNode : simulatedObjectNodes)
-                {
-                    simulatedObjectNode->OnUpdateUniqueData(animGraphInstance);
-                }
-            }
-        }
     }
 }

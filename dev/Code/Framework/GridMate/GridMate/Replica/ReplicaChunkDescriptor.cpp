@@ -130,11 +130,9 @@ namespace GridMate
         {
             return reinterpret_cast<RpcBase*>(reinterpret_cast<size_t>(base)+m_vrt[index].m_offset);
         }
-        else
-        {
-            AZ_Assert(false, "Invalid RPC index!");
-            return nullptr;
-        }
+
+        AZ_Warning("GridMate", false, "Invalid RPC index!");
+        return nullptr;
     }
     //-----------------------------------------------------------------------------
     size_t ReplicaChunkDescriptor::GetRpcIndex(const ReplicaChunkBase* base, const RpcBase* rpc) const

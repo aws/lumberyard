@@ -208,6 +208,8 @@ void CVegetationDataBasePage::OnDistribute()
         else
         {
             CVegetationTool* pTool = new CVegetationTool;
+            
+            pTool->AddRef();
             pTool->Distribute();
             pTool->Release();
         }
@@ -928,6 +930,11 @@ void CVegetationDataBasePage::OnSelectionChange()
 //////////////////////////////////////////////////////////////////////////
 void CVegetationDataBasePage::AddLayerVars(CVarBlock* pVarBlock, CVegetationObject* pObject)
 {
+    if (!GetIEditor() || !GetIEditor()->GetTerrainManager())
+    {
+        return;
+    }
+
     IVariable* pTable = new CVariableArray();
     pTable->SetName("Use On Terrain Layers");
     pVarBlock->AddVariable(pTable);

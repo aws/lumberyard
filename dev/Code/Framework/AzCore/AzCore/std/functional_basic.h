@@ -9,154 +9,327 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_FUNCTIONAL_BASIC_H
-#define AZSTD_FUNCTIONAL_BASIC_H 1
+#pragma once
 
 #include <AzCore/std/base.h>
+#include <AzCore/std/typetraits/void_t.h>
+#include <AzCore/std/utils.h>
 
 namespace AZStd
 {
-    // Functors as required by the standard.
+    namespace Internal
+    {
+        // The second template parameter is to the template parameter of the operator function that called is_transparent to to trigger SFINAE
+        // error instead of a hard error
+        // i.e 
+        // template<typename ComparableToKey>
+        // node_ptr_type DoUpperBound(const ComparableToKey& key, Internal::is_transparent<Compare>::value) const
+        // will not cause a substitution failure if ComparableToKey is not used as part of the is_transparent template and therefore will cause a hard error
+        //
+        // template<typename ComparableToKey>
+        // node_ptr_type DoUpperBound(const ComparableToKey& key, Internal::is_transparent<Compare, ComparableToKey>::value) const
+        // will cause a substitution error in this case if the Compare function is missing the is_transparent type alias and therefore can proceed
+        // to use the next template candidate
+        template <class T, class Unused, class = void>
+        struct is_transparent
+            : false_type {};
 
-    // 20.3.1, base:
-    template <class Arg, class Result>
-    struct unary_function
-    {
-        typedef Arg     argument_type;
-        typedef Result  result_type;
-    };
-    template <class Arg1, class Arg2, class Result>
-    struct binary_function
-    {
-        typedef Arg1    first_argument_type;
-        typedef Arg2    second_argument_type;
-        typedef Result  result_type;
-    };
+        template <class T, class Unused>
+        struct is_transparent<T, Unused, void_t<typename T::is_transparent>>
+            : true_type {};
+    }
+    // Functors as required by the standard as of C++17.
 
     // 20.3.2, arithmetic operations:
-    template <class T>
+    template <class T = void>
     struct plus
-        : public binary_function<T, T, T>
     {
-        AZ_FORCE_INLINE T operator()(const T& left, const T& right) const { return left + right; }
+        constexpr T operator()(const T& left, const T& right) const { return left + right; }
     };
-    template <class T>
+    template <>
+    struct plus<void>
+    {
+        template <class T, class U>
+        constexpr auto operator()(T&& left, U&& right) const -> decltype(AZStd::forward<T>(left) + AZStd::forward<U>(right))
+        {
+            return AZStd::forward<T>(left) + AZStd::forward<U>(right);
+        }
+        using is_transparent = void;
+    };
+    template <class T = void>
     struct minus
-        : public binary_function<T, T, T>
     {
-        AZ_FORCE_INLINE T operator()(const T& left, const T& right) const { return left - right; }
+        constexpr T operator()(const T& left, const T& right) const { return left - right; }
     };
-    template <class T>
+    template <>
+    struct minus<void>
+    {
+        template <class T, class U>
+        constexpr auto operator()(T&& left, U&& right) const -> decltype(AZStd::forward<T>(left) - AZStd::forward<U>(right))
+        {
+            return AZStd::forward<T>(left) - AZStd::forward<U>(right);
+        }
+        using is_transparent = void;
+    };
+    template <class T = void>
     struct multiplies
-        : public binary_function<T, T, T>
     {
-        AZ_FORCE_INLINE T operator()(const T& left, const T& right) const { return left * right; }
+        constexpr T operator()(const T& left, const T& right) const { return left * right; }
     };
-    template <class T>
+    template <>
+    struct multiplies<void>
+    {
+        template <class T, class U>
+        constexpr auto operator()(T&& left, U&& right) const -> decltype(AZStd::forward<T>(left) * AZStd::forward<U>(right))
+        {
+            return AZStd::forward<T>(left) * AZStd::forward<U>(right);
+        }
+        using is_transparent = void;
+    };
+    template <class T = void>
     struct divides
-        : public binary_function<T, T, T>
     {
-        AZ_FORCE_INLINE T operator()(const T& left, const T& right) const { return left / right; }
+        constexpr T operator()(const T& left, const T& right) const { return left / right; }
     };
-    template <class T>
+    template <>
+    struct divides<void>
+    {
+        template <class T, class U>
+        constexpr auto operator()(T&& left, U&& right) const -> decltype(AZStd::forward<T>(left) / AZStd::forward<U>(right))
+        {
+            return AZStd::forward<T>(left) / AZStd::forward<U>(right);
+        }
+        using is_transparent = void;
+    };
+    template <class T = void>
     struct modulus
-        : public binary_function<T, T, T>
     {
-        AZ_FORCE_INLINE T operator()(const T& left, const T& right) const { return left % right; }
+        constexpr T operator()(const T& left, const T& right) const { return left % right; }
     };
-    template <class T>
+    template <>
+    struct modulus<void>
+    {
+        template <class T, class U>
+        constexpr auto operator()(T&& left, U&& right) const -> decltype(AZStd::forward<T>(left) % AZStd::forward<U>(right))
+        {
+            return AZStd::forward<T>(left) % AZStd::forward<U>(right);
+        }
+        using is_transparent = void;
+    };
+    template <class T = void>
     struct negate
-        : public unary_function<T, T>
     {
-        AZ_FORCE_INLINE T operator()(const T& left) const { return -left; }
+        constexpr T operator()(const T& left) const { return -left; }
     };
+    template <>
+    struct negate<void>
+    {
+        template <class T>
+        constexpr auto operator()(T&& left) const -> decltype(-AZStd::forward<T>(left))
+        {
+            return -AZStd::forward<T>(left);
+        }
+        using is_transparent = void;
+    };
+
     // 20.3.3, comparisons:
-    template <class T>
+    template <class T = void>
     struct equal_to
-        : public binary_function<T, T, bool>
     {
-        AZ_FORCE_INLINE bool operator()(const T& left, const T& right) const { return left == right; }
+        constexpr bool operator()(const T& left, const T& right) const { return left == right; }
     };
-    template <class T>
+    template <>
+    struct equal_to<void>
+    {
+        template <class T, class U>
+        constexpr auto operator()(T&& left, U&& right) const -> decltype(AZStd::forward<T>(left) == AZStd::forward<U>(right))
+        {
+            return AZStd::forward<T>(left) == AZStd::forward<U>(right);
+        }
+        using is_transparent = void;
+    };
+    template <class T = void>
     struct not_equal_to
-        : public binary_function<T, T, bool>
     {
-        AZ_FORCE_INLINE bool operator()(const T& left, const T& right) const { return left != right; }
+        constexpr bool operator()(const T& left, const T& right) const { return left != right; }
     };
-    template <class T>
+    template <>
+    struct not_equal_to<void>
+    {
+        template <class T, class U>
+        constexpr auto operator()(T&& left, U&& right) const -> decltype(AZStd::forward<T>(left) != AZStd::forward<U>(right))
+        {
+            return AZStd::forward<T>(left) != AZStd::forward<U>(right);
+        }
+        using is_transparent = void;
+    };
+    template <class T = void>
     struct greater
-        : public binary_function<T, T, bool>
     {
-        AZ_FORCE_INLINE bool operator()(const T& left, const T& right) const { return left > right; }
+        constexpr bool operator()(const T& left, const T& right) const { return left > right; }
     };
-    template <class T>
+    template <>
+    struct greater<void>
+    {
+        template <class T, class U>
+        constexpr auto operator()(T&& left, U&& right) const -> decltype(AZStd::forward<T>(left) > AZStd::forward<U>(right))
+        {
+            return AZStd::forward<T>(left) > AZStd::forward<U>(right);
+        }
+        using is_transparent = void;
+    };
+    template <class T = void>
     struct less
-        : public binary_function<T, T, bool>
     {
-        AZ_FORCE_INLINE bool operator()(const T& left, const T& right) const { return left < right; }
+        constexpr bool operator()(const T& left, const T& right) const { return left < right; }
     };
-    template <class T>
+    template <>
+    struct less<void>
+    {
+        template <class T, class U>
+        constexpr auto operator()(T&& left, U&& right) const -> decltype(AZStd::forward<T>(left) < AZStd::forward<U>(right))
+        {
+            return AZStd::forward<T>(left) < AZStd::forward<U>(right);
+        }
+        using is_transparent = void;
+    };
+    template <class T = void>
     struct greater_equal
-        : public binary_function<T, T, bool>
     {
-        AZ_FORCE_INLINE bool operator()(const T& left, const T& right) const { return left >= right; }
+        constexpr bool operator()(const T& left, const T& right) const { return left >= right; }
     };
-    template <class T>
-    struct less_equal
-        : public binary_function<T, T, bool>
+    template <>
+    struct greater_equal<void>
     {
-        AZ_FORCE_INLINE bool operator()(const T& left, const T& right) const { return left <= right; }
+        template <class T, class U>
+        constexpr auto operator()(T&& left, U&& right) const -> decltype(AZStd::forward<T>(left) >= AZStd::forward<U>(right))
+        {
+            return AZStd::forward<T>(left) >= AZStd::forward<U>(right);
+        }
+        using is_transparent = void;
+    };
+    template <class T = void>
+    struct less_equal
+    {
+        constexpr bool operator()(const T& left, const T& right) const { return left <= right; }
+    };
+    template <>
+    struct less_equal<void>
+    {
+        template <class T, class U>
+        constexpr auto operator()(T&& left, U&& right) const -> decltype(AZStd::forward<T>(left) <= AZStd::forward<U>(right))
+        {
+            return AZStd::forward<T>(left) <= AZStd::forward<U>(right);
+        }
+        using is_transparent = void;
     };
 
     // 20.3.4, logical operations:
-    template <class T>
+    template <class T = void>
     struct logical_and
-        : public binary_function<T, T, bool>
     {
-        AZ_FORCE_INLINE bool operator()(const T& left, const T& right) const { return left && right; }
+        constexpr bool operator()(const T& left, const T& right) const { return left && right; }
     };
-    template <class T>
+    template <>
+    struct logical_and<void>
+    {
+        template <class T, class U>
+        constexpr auto operator()(T&& left, U&& right) const -> decltype(AZStd::forward<T>(left) && AZStd::forward<U>(right))
+        {
+            return AZStd::forward<T>(left) && AZStd::forward<U>(right);
+        }
+        using is_transparent = void;
+    };
+    template <class T = void>
     struct logical_or
-        : public binary_function<T, T, bool>
     {
-        AZ_FORCE_INLINE bool operator()(const T& left, const T& right) const { return left || right; }
+        constexpr bool operator()(const T& left, const T& right) const { return left || right; }
     };
-    template <class T>
+    template <>
+    struct logical_or<void>
+    {
+        template <class T, class U>
+        constexpr auto operator()(T&& left, U&& right) const -> decltype(AZStd::forward<T>(left) || AZStd::forward<U>(right))
+        {
+            return AZStd::forward<T>(left) || AZStd::forward<U>(right);
+        }
+        using is_transparent = void;
+    };
+    template <class T = void>
     struct logical_not
-        : public unary_function<T, bool>
     {
-        AZ_FORCE_INLINE bool operator()(const T& left) const { return !left; }
+        constexpr bool operator()(const T& left) const { return !left; }
     };
-    // 20.3.5, negators:
-    template <class Functor>
-    class unary_negate
-        : public unary_function<typename Functor::argument_type, bool>
+    template <>
+    struct logical_not<void>
     {
-    public:
-        unary_negate() = default;
-        AZ_FORCE_INLINE explicit unary_negate(const Functor& funct)
-            : m_functor(funct) {}
-        AZ_FORCE_INLINE bool operator()(const typename Functor::argument_type& left) const { return !m_functor(left); }
-    protected:
-        Functor m_functor;
+        template <class T>
+        constexpr auto operator()(T&& left) const -> decltype(!AZStd::forward<T>(left))
+        {
+            return !AZStd::forward<T>(left);
+        }
+        using is_transparent = void;
     };
-    template <class Functor>
-    AZ_FORCE_INLINE unary_negate<Functor> not1(const Functor& funct) { return AZStd::unary_negate<Functor>(funct); }
-    template <class Functor>
-    struct binary_negate
-        : public binary_function<typename Functor::first_argument_type, typename Functor::second_argument_type, bool>
-    {
-    public:
-        binary_negate() = default;
-        AZ_FORCE_INLINE explicit binary_negate(const Functor& funct)
-            : m_functor(funct) {}
-        AZ_FORCE_INLINE bool operator()(const typename Functor::first_argument_type& left, const typename Functor::second_argument_type& right) const { return !m_functor(left, right); }
-    protected:
-        Functor m_functor;
-    };
-    template <class Functor>
-    AZ_FORCE_INLINE binary_negate<Functor> not2(const Functor& func)    { return AZStd::binary_negate<Functor>(func); }
-}
 
-#endif // AZSTD_FUNCTIONAL_BASIC_H
-#pragma once
+    // 20.14.10 bitwise operations:
+    template <class T = void>
+    struct bit_and
+    {
+        constexpr T operator()(const T& left, const T& right) const { return left & right; }
+    };
+    template <>
+    struct bit_and<void>
+    {
+        template <class T, class U>
+        constexpr auto operator()(T&& left, U&& right) const -> decltype(AZStd::forward<T>(left) & AZStd::forward<U>(right))
+        {
+            return AZStd::forward<T>(left) & AZStd::forward<U>(right);
+        }
+        using is_transparent = void;
+    };
+    template <class T = void>
+    struct bit_or
+    {
+        constexpr T operator()(const T& left, const T& right) const { return left | right; }
+    };
+    template <>
+    struct bit_or<void>
+    {
+        template <class T, class U>
+        constexpr auto operator()(T&& left, U&& right) const -> decltype(AZStd::forward<T>(left) | AZStd::forward<U>(right))
+        {
+            return AZStd::forward<T>(left) | AZStd::forward<U>(right);
+        }
+        using is_transparent = void;
+    };
+    template <class T = void>
+    struct bit_xor
+    {
+        constexpr T operator()(const T& left, const T& right) const { return left ^ right; }
+    };
+    template <>
+    struct bit_xor<void>
+    {
+        template <class T, class U>
+        constexpr auto operator()(T&& left, U&& right) const -> decltype(AZStd::forward<T>(left) ^ AZStd::forward<U>(right))
+        {
+            return AZStd::forward<T>(left) ^ AZStd::forward<U>(right);
+        }
+        using is_transparent = void;
+    };
+    template <class T = void>
+    struct bit_not
+    {
+        constexpr T operator()(const T& left) const { return ~left; }
+    };
+    template <>
+    struct bit_not<void>
+    {
+        template <class T>
+        constexpr auto operator()(T&& left) const -> decltype(~AZStd::forward<T>(left))
+        {
+            return ~AZStd::forward<T>(left);
+        }
+        using is_transparent = void;
+    };
+}

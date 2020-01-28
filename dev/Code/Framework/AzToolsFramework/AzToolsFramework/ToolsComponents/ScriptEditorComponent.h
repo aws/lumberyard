@@ -69,8 +69,6 @@ namespace AzToolsFramework
             void LaunchLuaEditor(const AZ::Data::AssetId&, const AZ::Data::AssetType&);
 
         protected:
-            //! Workaround for VS2013 is_copy_constructible returning true for deleted copy constructors
-            //! https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
             ScriptEditorComponent(const ScriptEditorComponent&) = delete;
             struct ElementInfo
             {

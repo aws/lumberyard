@@ -1,0 +1,9 @@
+{
+    "platform": {
+        "darwin_x64": {
+            "copy_extra": [
+                "Binary/mac-x64/astcenc:."
+            ]
+        }
+    }
+}

@@ -71,13 +71,11 @@ DeviceInfo::DeviceInfo()
     , m_driverType(D3D_DRIVER_TYPE_NULL)
     , m_creationFlags(0)
     , m_featureLevel(D3D_FEATURE_LEVEL_9_1)
-    //  Confetti BEGIN: Igor Lobanchikov
 #ifdef CRY_USE_METAL
     , m_autoDepthStencilFmt(DXGI_FORMAT_R32G8X24_TYPELESS)
 #else
     , m_autoDepthStencilFmt(DXGI_FORMAT_R24G8_TYPELESS)
 #endif
-    //  Confetti End: Igor Lobanchikov
     , m_outputIndex(0)
     , m_syncInterval(0)
     , m_presentFlags(0)
@@ -483,9 +481,9 @@ bool DeviceInfo::CreateDevice(bool windowed, int width, int height, int backbuff
 
     // Get SDK level D3D device pointer
 #ifdef CRY_INTEGRATE_DX12
-	IUnknown* d3dDevice = static_cast<CCryDX12Device*>(m_pDevice)->GetD3D12Device();
+        IUnknown* d3dDevice = static_cast<CCryDX12Device*>(m_pDevice)->GetD3D12Device();
 #else
-	IUnknown* d3dDevice = m_pDevice;
+        IUnknown* d3dDevice = m_pDevice;
 #endif
 
 #if defined(WIN32) || defined(WIN64)
@@ -633,9 +631,9 @@ void DeviceInfo::SnapSettings()
 
         DXGI_MODE_DESC match;
 #ifdef CRY_INTEGRATE_DX12
-		IUnknown* d3dDevice = static_cast<CCryDX12Device*>(m_pDevice)->GetD3D12Device();
+        IUnknown* d3dDevice = static_cast<CCryDX12Device*>(m_pDevice)->GetD3D12Device();
 #else
-		IUnknown* d3dDevice = m_pDevice;
+        IUnknown* d3dDevice = m_pDevice;
 #endif
         if (m_pOutput && SUCCEEDED(m_pOutput->FindClosestMatchingMode(&desc, &match, d3dDevice)))
         {

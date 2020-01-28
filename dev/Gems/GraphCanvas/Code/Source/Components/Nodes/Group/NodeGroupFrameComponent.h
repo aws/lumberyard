@@ -246,11 +246,8 @@ namespace GraphCanvas
         void SetupGroupedElementsStateSetters();
         void SetupSubGraphGroupedElementsStateSetters(const GraphSubGraph& subGraph);
 
-        // Fix for VS2013
         NodeGroupFrameComponent(const NodeGroupFrameComponent&) = delete;
         const NodeGroupFrameComponent& operator=(const NodeGroupFrameComponent&) = delete;
-        ////
-
         void OnExpanded();
 
         void FindElementsForDrag();

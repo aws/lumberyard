@@ -33,7 +33,10 @@ def build(bld):
                            'QT5GUI',
                            'QT5WIDGETS'],
         features        = ['qt5'],
-        includes        = [bld.Path('Code/Sandbox/Plugins/EditorUI_QT')],
+        includes        = [bld.Path('Code/CryEngine/CryCommon'),
+                           bld.Path('Code/Sandbox/Editor'),
+                           bld.Path('Code/Sandbox/Editor/Include'),
+                           bld.Path('Code/Sandbox/Plugins/EditorUI_QT')],
         use_required_gems  = True,
 
         # Testing

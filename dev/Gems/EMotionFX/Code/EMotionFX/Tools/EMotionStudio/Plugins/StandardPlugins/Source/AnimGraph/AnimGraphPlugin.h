@@ -31,7 +31,6 @@
 #include <EMotionFX/Source/BlendTree.h>
 #include <EMotionFX/Source/AnimGraphTransitionCondition.h>
 #include <EMotionFX/Source/Recorder.h>
-#include <EMotionFX/Source/EventHandler.h>
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphActionManager.h>
 
 #include <QDockWidget>
@@ -81,11 +80,13 @@ namespace EMStudio
 
         AnimGraphEventHandler(AnimGraphPlugin* plugin);
 
-        const AZStd::vector<EMotionFX::EventTypes> GetHandledEventTypes() const override { return { EMotionFX::EVENT_TYPE_ON_SET_VISUAL_MANIPULATOR_OFFSET, EMotionFX::EVENT_TYPE_ON_INPUT_PORTS_CHANGED, EMotionFX::EVENT_TYPE_ON_OUTPUT_PORTS_CHANGED, EMotionFX::EVENT_TYPE_ON_RAY_INTERSECTION_TEST }; }
+        const AZStd::vector<EMotionFX::EventTypes> GetHandledEventTypes() const override { return { EMotionFX::EVENT_TYPE_ON_SET_VISUAL_MANIPULATOR_OFFSET, EMotionFX::EVENT_TYPE_ON_INPUT_PORTS_CHANGED, EMotionFX::EVENT_TYPE_ON_OUTPUT_PORTS_CHANGED, EMotionFX::EVENT_TYPE_ON_RAY_INTERSECTION_TEST, EMotionFX::EVENT_TYPE_ON_DELETE_ANIM_GRAPH, EMotionFX::EVENT_TYPE_ON_DELETE_ANIM_GRAPH_INSTANCE }; }
         void OnSetVisualManipulatorOffset(EMotionFX::AnimGraphInstance* animGraphInstance, uint32 paramIndex, const AZ::Vector3& offset) override;
         void OnInputPortsChanged(EMotionFX::AnimGraphNode* node, const AZStd::vector<AZStd::string>& newInputPorts, const AZStd::string& memberName, const AZStd::vector<AZStd::string>& memberValue) override;
         void OnOutputPortsChanged(EMotionFX::AnimGraphNode* node, const AZStd::vector<AZStd::string>& newOutputPorts, const AZStd::string& memberName, const AZStd::vector<AZStd::string>& memberValue) override;
         bool OnRayIntersectionTest(const AZ::Vector3& start, const AZ::Vector3& end, EMotionFX::IntersectionInfo* outIntersectInfo) override;
+        void OnDeleteAnimGraph(EMotionFX::AnimGraph* animGraph) override;
+        void OnDeleteAnimGraphInstance(EMotionFX::AnimGraphInstance* animGraphInstance) override;
 
     private:
         AnimGraphPlugin* mPlugin;
@@ -196,7 +197,7 @@ namespace EMStudio
         MysticQt::DockWidget* GetParameterDock()               { return mParameterDock; }
         MysticQt::DockWidget* GetNodeGroupDock()               { return mNodeGroupDock; }
 
-#ifdef HAS_GAME_CONTROLLER
+#if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         GameControllerWindow* GetGameControllerWindow()        { return mGameControllerWindow; }
         MysticQt::DockWidget* GetGameControllerDock()          { return mGameControllerDock; }
 #endif
@@ -280,7 +281,7 @@ namespace EMStudio
         QAction*                                    mDockWindowActions[NUM_DOCKWINDOW_OPTIONS];
         EMotionFX::AnimGraph*                       mActiveAnimGraph;
 
-#ifdef HAS_GAME_CONTROLLER
+#if AZ_TRAIT_EMOTIONFX_HAS_GAME_CONTROLLER
         GameControllerWindow*                       mGameControllerWindow;
         QPointer<MysticQt::DockWidget>              mGameControllerDock;
 #endif

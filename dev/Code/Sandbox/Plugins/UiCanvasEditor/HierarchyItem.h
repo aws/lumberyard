@@ -24,7 +24,8 @@ class HierarchyItem
 public:
 
     explicit HierarchyItem(EditorWindow* editWindow,
-        QTreeWidgetItem* parent,
+        QTreeWidgetItem& parent,
+        int childIndex,
         const QString label,
         AZ::Entity* optionalElement);
     virtual ~HierarchyItem();

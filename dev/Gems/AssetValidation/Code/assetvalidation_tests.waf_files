@@ -1,0 +1,8 @@
+{
+    "auto": {
+        "Tests": [
+            "Tests/AssetValidationTest.cpp",
+            "Tests/AssetValidationTestShared.h"
+        ]
+    }
+}

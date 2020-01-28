@@ -76,11 +76,8 @@ namespace GraphCanvas
 
     private:
 
-        // Fix for VS2013
         GeneralNodeFrameComponent(const GeneralNodeFrameComponent&) = delete;
         const GeneralNodeFrameComponent& operator=(const GeneralNodeFrameComponent&) = delete;
-        ////
-
         bool                            m_shouldDeleteFrame;
         GeneralNodeFrameGraphicsWidget* m_frameWidget;
     };

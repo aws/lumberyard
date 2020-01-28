@@ -17,14 +17,31 @@
 
 
 #include "Cry_Color.h"
-#include "IConvertor.h"
+#include <IConvertor.h>
+#include <AzCore/Asset/AssetCommon.h>
 #include "../../CryEngine/Cry3DEngine/MeshCompiler/MeshCompiler.h"
+#include <AzToolsFramework/Application/ToolsApplication.h>
 
 struct ConvertContext;
 class CContentCGF;
 class CChunkFile;
 class CPhysicsInterface;
 struct CMaterialCGF;
+namespace AssetBuilderSDK
+{
+    struct ProcessJobResponse;
+}
+
+
+class CGFToolApplication : public AzToolsFramework::ToolsApplication
+{
+public:
+    CGFToolApplication() = default;
+
+    void AddSystemComponents(AZ::Entity* systemEntity) override;
+    AZ::ComponentTypeList GetRequiredSystemComponents() const override;
+};
+
 
 class CStatCGFCompiler
     : public IConvertor
@@ -70,9 +87,19 @@ public:
     // ICompiler + IConvertor methods.
     virtual void Release();
 
+    // Helper function to dump detailed debug information for a CGF
+    static bool DebugDumpCGF(const char* sourceFileName, const char* outputFilePath);
+
+    // Do the entire compilation process for the CGF source asset, populating the ProcessJobResponse
+    bool CompileCGF(AssetBuilderSDK::ProcessJobResponse& response, AZStd::string assetRoot = "", AZStd::string gameFolder = "");
+
+    // Write the JobProduct response file
+    bool WriteResponse(const char* folder, AssetBuilderSDK::ProcessJobResponse& response, bool success = true) const;
+
 private:
     string GetOutputFileNameOnly() const;
     string GetOutputPath() const;
+    AZStd::string GetDependencyAbsolutePath(const AZStd::string& fileName) const;
     void DeleteOldChunks(CContentCGF* pCGF, CChunkFile& chunkFile);
     bool IsLodFile(const string& filename) const;
 

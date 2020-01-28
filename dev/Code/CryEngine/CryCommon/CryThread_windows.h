@@ -287,6 +287,8 @@ private:
         #include "Xenia/CryThread_windows_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CryThread_windows_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryThread_windows_h_salem.inl"
     #endif
 #endif
         CrySimpleThread<Runnable>* const self = (CrySimpleThread<Runnable>*)thisPtr;
@@ -313,6 +315,8 @@ private:
         #include "Xenia/CryThread_windows_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CryThread_windows_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryThread_windows_h_salem.inl"
     #endif
 #endif
         CrySimpleThread<Runnable>* const self = (CrySimpleThread<Runnable>*)thisPtr;

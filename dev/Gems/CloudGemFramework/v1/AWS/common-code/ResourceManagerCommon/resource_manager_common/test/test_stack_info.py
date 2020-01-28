@@ -622,13 +622,16 @@ class UnitTest_CloudGemFramework_ResourceManagerCommon_stack_info_ProjectInfo(un
         mock_resource = mock.MagicMock(physical_id=expected_configuration_bucket_id)
         mock_resources = mock.MagicMock()
         mock_resources.get_by_logical_id.return_value = mock_resource
-        with mock.patch('resource_manager_common.stack_info.ProjectInfo.resources',
-                        new=mock.PropertyMock(return_value=mock_resources)):
-            stack_manager = stack_info.StackInfoManager(mock.MagicMock().session)
-            target = stack_info.ProjectInfo(stack_manager=stack_manager, project_stack_arn=MOCK_STACK_ARN)
-            actual_configuration_bucket_id = target.configuration_bucket
-            self.assertEquals(actual_configuration_bucket_id, expected_configuration_bucket_id)
-            mock_resources.get_by_logical_id.assert_called_once_with('Configuration', expected_type='AWS::S3::Bucket')
+        mock_response = make_describe_stacks_response(make_stack_description(stack_info.StackInfo.STACK_TYPE_PROJECT))
+
+        with mock_session('cloudformation', 'list_stack_resources',
+                          return_value=mock_response) as mock_list_stack_resources:
+            with mock.patch('resource_manager_common.stack_info.ProjectInfo.get_resources', return_value=mock_resources):
+                stack_manager = stack_info.StackInfoManager(mock.MagicMock().session)
+                target = stack_info.ProjectInfo(stack_manager=stack_manager, project_stack_arn=MOCK_STACK_ARN, session=mock_list_stack_resources)
+                actual_configuration_bucket_id = target.configuration_bucket
+                self.assertEquals(actual_configuration_bucket_id, expected_configuration_bucket_id)
+                mock_resources.get_by_logical_id.assert_called_once_with('Configuration', expected_type='AWS::S3::Bucket')
 
     def test_project_settings(self):
         mock_project_settings = {
@@ -674,12 +677,16 @@ class UnitTest_CloudGemFramework_ResourceManagerCommon_stack_info_ProjectInfo(un
 
 class UnitTest_CloudGemFramework_ResourceManagerCommon_stack_info_DeploymentInfo(unittest.TestCase):
     def test_constructor(self):
-        stack_manager = stack_info.StackInfoManager(mock.MagicMock().session)
-        target = stack_info.DeploymentInfo(stack_manager=stack_manager, deployment_stack_arn=MOCK_STACK_ARN,
+        mock_response = make_describe_stacks_response(make_stack_description(stack_info.StackInfo.STACK_TYPE_PROJECT))
+
+        with mock_session('cloudformation', 'list_stack_resources',
+                          return_value=mock_response) as mock_list_stack_resources:
+            stack_manager = stack_info.StackInfoManager(mock.MagicMock().session)
+            target = stack_info.DeploymentInfo(stack_manager=stack_manager, deployment_stack_arn=MOCK_STACK_ARN,
                                            session=MOCK_SESSION, stack_description=MOCK_STACK_DESCRIPTION)
-        self.assertEquals(target.stack_type, stack_info.StackInfo.STACK_TYPE_DEPLOYMENT)
-        self.assertIs(target.session, MOCK_SESSION)
-        self.assertIs(target.stack_description, MOCK_STACK_DESCRIPTION)
+            self.assertEquals(target.stack_type, stack_info.StackInfo.STACK_TYPE_DEPLOYMENT)
+            self.assertIs(target.session, MOCK_SESSION)
+            self.assertIs(target.stack_description, MOCK_STACK_DESCRIPTION)
 
     def test_deployment_name(self):
         mock_deployment_name = 'test-deployment'

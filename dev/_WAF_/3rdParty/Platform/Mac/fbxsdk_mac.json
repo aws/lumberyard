@@ -1,0 +1,16 @@
+{
+    "platform": {
+        "darwin_x64": {
+            "sharedlib_required": "True",
+            "ccflags": [
+                "-Wno-null-dereference"
+            ],
+            "sharedlibpath": [
+                "lib/clang/release"
+            ],
+            "shared": [
+                "libfbxsdk.dylib"
+            ]
+        }
+    }
+}

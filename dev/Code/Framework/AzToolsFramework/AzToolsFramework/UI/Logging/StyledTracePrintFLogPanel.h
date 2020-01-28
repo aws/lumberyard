@@ -56,7 +56,7 @@ namespace AzToolsFramework
 
         protected:
             // Log a message received from the TraceMessageBus
-            void LogTraceMessage(Logging::LogLine::LogType type, const char* window, const char* message);
+            void LogTraceMessage(Logging::LogLine::LogType type, const char* window, const char* message, bool alwaysShowMessage = false);
 
             // note that we actually buffer the lines up since we could receive them at any time from this bus, even on another thread
             // so we dont push them to the GUI immediately.  Instead we connect to the tickbus and drain the queue on tick.

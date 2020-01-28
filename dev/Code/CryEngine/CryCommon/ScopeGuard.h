@@ -61,6 +61,8 @@ namespace std17
         #include "Xenia/ScopeGuard_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ScopeGuard_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ScopeGuard_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -99,6 +101,8 @@ namespace std17
         #include "Xenia/ScopeGuard_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ScopeGuard_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ScopeGuard_h_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

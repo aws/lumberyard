@@ -96,6 +96,7 @@ namespace LmbrCentral
     {
         AZStd::chrono::system_clock::time_point now = AZStd::chrono::system_clock::now();
         m_currentTime = AZ::ScriptTimePoint(now).GetSeconds();
+        RandomTimedSpawnerComponentRequestBus::Handler::BusConnect(GetEntityId());
 
         CalculateNextSpawnTime();
 
@@ -111,6 +112,8 @@ namespace LmbrCentral
         {
             AZ::TickBus::Handler::BusDisconnect();
         }
+
+        RandomTimedSpawnerComponentRequestBus::Handler::BusDisconnect();
     }
 
     void RandomTimedSpawnerComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)

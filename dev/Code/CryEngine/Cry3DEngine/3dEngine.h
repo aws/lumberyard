@@ -29,6 +29,17 @@ struct ITerrain;
 struct STerrainInfo;
 class CCullBuffer;
 class IDeformableNode;
+class CRoadRenderNode;
+
+struct STerrainChunkHeader;
+struct StatInstGroup;
+struct StatInstGroupChunk;
+
+
+namespace LegacyProceduralVegetation
+{
+    class VegetationPoolManager;
+}
 
 struct SEntInFoliage
 {
@@ -620,6 +631,64 @@ private:
 };
 #endif //_RELEASE
 
+#pragma pack(push,4)
+
+//! structure to vegetation group properties loading/saving
+struct StatInstGroupChunk
+{
+    StatInstGroupChunk()
+    {
+        ZeroStruct(*this);
+    }
+    char  szFileName[256];
+    float fBending;
+    float fSpriteDistRatio;
+    float fShadowDistRatio;
+    float fMaxViewDistRatio;
+    float   fBrightness;
+    int32 nRotationRangeToTerrainNormal; // applied to a vegetation object that has been realigned in the terrain's Y/X direction
+    float fAlignToTerrainCoefficient;
+    uint32  nMaterialLayers;
+
+    float fDensity;
+    float fElevationMax;
+    float fElevationMin;
+    float fSize;
+    float fSizeVar;
+    float fSlopeMax;
+    float fSlopeMin;
+
+    float fStatObjRadius_NotUsed;
+    int nIDPlusOne; // For backward compatibility, we need to save ID + 1
+
+    float fLodDistRatio;
+    uint32  nReserved;
+
+    int nFlags;
+    int nMaterialId;
+
+    //! flags similar to entity render flags
+    int m_dwRndFlags;
+
+    float fStiffness;
+    float fDamping;
+    float fVariance;
+    float fAirResistance;
+
+    AUTO_STRUCT_INFO_LOCAL
+};
+
+struct SNameChunk
+{
+    SNameChunk() { memset(this, 0, sizeof(SNameChunk)); }
+
+    char szFileName[256];
+
+    AUTO_STRUCT_INFO_LOCAL
+};
+
+#pragma pack(pop)
+
 
 //////////////////////////////////////////////////////////////////////
 class C3DEngine
@@ -663,6 +732,7 @@ public:
 
     virtual void LoadStatObjAsync(LoadStaticObjectAsyncResult resultCallback, const char* szFileName, const char* szGeomName = nullptr, bool bUseStreaming = true, unsigned long nLoadingFlags = 0);
     virtual void ProcessAsyncStaticObjectLoadRequests() override;
+    LegacyProceduralVegetation::IVegetationPoolManager& GetIVegetationPoolManager() override;
 
 #ifndef _RELEASE
     virtual void AddObjToDebugDrawList(SObjectInfoToAddToDebugDrawList& objInfo);
@@ -705,6 +775,7 @@ public:
     virtual float GetTerrainElevation(float x, float y, int nSID = GetDefSID());
     virtual float GetTerrainElevation3D(Vec3 vPos);
     virtual float GetTerrainZ(int x, int y);
+    virtual float GetTerrainSlope(int x, int y);
     virtual int GetTerrainSurfaceId(int x, int y);
     virtual bool GetTerrainHole(int x, int y);
     virtual int GetHeightMapUnitSize();
@@ -787,6 +858,7 @@ public:
     virtual bool IsTerrainBurnedOut(int x, int y);
     virtual int GetTerrainSectorSize();
     virtual void LoadTerrainSurfacesFromXML(XmlNodeRef pDoc, bool bUpdateTerrain, int nSID);
+    virtual bool LoadCompiledTerrainForEditor();
     virtual bool SetStatInstGroup(int nGroupId, const IStatInstGroup& siGroup, int nSID);
     virtual bool GetStatInstGroup(int nGroupId, IStatInstGroup& siGroup, int nSID);
     virtual void ActivatePortal(const Vec3& vPos, bool bActivate, const char* szEntityName);
@@ -827,7 +899,6 @@ public:
     virtual void GetStreamingSubsystemData(int subsystem, SStremaingBandwidthData& outData);
     virtual void DeleteEntityDecals(IRenderNode* pEntity);
     virtual void DeleteDecalsInRange(AABB* pAreaBox, IRenderNode* pEntity);
-    virtual void CompleteObjectsGeometry();
     virtual void LockCGFResources();
     virtual void UnlockCGFResources();
     virtual void FreeUnusedCGFResources();
@@ -893,9 +964,9 @@ public:
     int GetShadowsCascadeCount(const CDLight* pLight) const;
 
     virtual uint32 GetObjectsByType(EERType objType, IRenderNode** pObjects);
-    virtual uint32 GetObjectsByTypeInBox(EERType objType, const AABB& bbox, IRenderNode** pObjects);
+    uint32 GetObjectsByTypeInBox(EERType objType, const AABB& bbox, IRenderNode** pObjects, ObjectTreeQueryFilterCallback filterCallback = nullptr) override;
     virtual uint32 GetObjectsInBox(const AABB& bbox, IRenderNode** pObjects = 0);
-    virtual void GetObjectsByTypeInBox(EERType objType, const AABB& bbox, PodArray<IRenderNode*>* pLstObjects);
+    void GetObjectsByTypeInBox(EERType objType, const AABB& bbox, PodArray<IRenderNode*>* pLstObjects, ObjectTreeQueryFilterCallback filterCallback = nullptr) override;
     virtual uint32 GetObjectsByFlags(uint dwFlags, IRenderNode** pObjects = 0);
     virtual void OnObjectModified(IRenderNode* pRenderNode, uint dwFlags);
 
@@ -1199,8 +1270,6 @@ public:
     PodArray<SEntInFoliage> m_arrEntsInFoliage;
     void RemoveEntInFoliage(int i, IPhysicalEntity* pent = 0);
 
-    PodArray<class CRoadRenderNode*> m_lstRoadRenderNodesForUpdate;
-
     struct ILightSource* GetSunEntity();
 
     void OnCasterDeleted(IShadowCaster* pCaster);
@@ -1239,13 +1308,23 @@ public:
 
     void InitMaterialDefautMappingAxis(_smart_ptr<IMaterial> pMat);
 
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
     virtual ITerrain* GetITerrain() { return (ITerrain*)m_pTerrain; }
+#else
+    virtual ITerrain* GetITerrain() { return nullptr; }
+#endif
+
     virtual IVisAreaManager* GetIVisAreaManager() { return (IVisAreaManager*)m_pVisAreaManager; }
     virtual IMergedMeshesManager* GetIMergedMeshesManager() { return (IMergedMeshesManager*)m_pMergedMeshesManager; }
+    bool CreateOcean(_smart_ptr<IMaterial> pTerrainWaterMat, float waterLevel) override;
+    void DeleteOcean() override;
+    void ChangeOceanMaterial(_smart_ptr<IMaterial> pMat) override;
+    void ChangeOceanWaterLevel(float fWaterLevel) override;
 
-    virtual ITerrain* CreateTerrain(const STerrainInfo& TerrainInfo);
+    //! Creates the terrain and destroys and recreates the Octree so it is at least as large as the terrain.
+    ITerrain* CreateTerrain(const STerrainInfo& TerrainInfo) override;
     void DeleteTerrain();
-    bool LoadTerrain(XmlNodeRef pDoc, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, int nSID);
+    bool LoadOctree(XmlNodeRef pDoc, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, int nSID);
     bool LoadVisAreas(std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable);
     bool LoadUsedShadersList();
     bool PrecreateDecals();
@@ -1298,7 +1377,7 @@ public:
     void MarkRNTmpDataPoolForReset() { m_bResetRNTmpDataPool = true; }
     SBending* GetBendingEntry(SBending*, const SRenderingPassInfo& passInfo);
 
-    static void GetObjectsByTypeGlobal(PodArray<IRenderNode*>& lstObjects, EERType objType, const AABB* pBBox);
+    static void GetObjectsByTypeGlobal(PodArray<IRenderNode*>& lstObjects, EERType objType, const AABB* pBBox, ObjectTreeQueryFilterCallback filterCallback = nullptr);
     static void MoveObjectsIntoListGlobal(PodArray<SRNInfo>* plstResultEntities, const AABB* pAreaBox, bool bRemoveObjects = false, bool bSkipDecals = false, bool bSkip_ERF_NO_DECALNODE_DECALS = false, bool bSkipDynamicObjects = false, EERType eRNType = eERType_TypesNum);
 
     inline bool IsObjectTreeReady()
@@ -1439,7 +1518,28 @@ public:
         return m_PhysicsAreaUpdates;
     }
 
+    // RoadRenderNode Recompile Queue
+    void RoadRenderNodeRebuildQueue_Add(CRoadRenderNode* roadRenderNodePtr);
+    void RoadRenderNodeRebuildQueue_Remove(CRoadRenderNode* roadRenderNodePtr);
+
+    //I3DEngine Overrides START
+    int GetOctreeCompiledDataSize(SHotUpdateInfo* pExportInfo) override;
+    bool SetOctreeCompiledData(byte* pData, int nDataSize, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, bool bHotUpdate, SHotUpdateInfo* pExportInfo, bool loadTerrainMacroTexture) override;
+    bool GetOctreeCompiledData(byte* pData, int nDataSize, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, std::vector<struct IStatInstGroup*>** ppStatInstGroupTable, EEndian eEndian, SHotUpdateInfo* pExportInfo) override;
+    void GetStatObjAndMatTables(DynArray<IStatObj*>* pStatObjTable, DynArray<_smart_ptr<IMaterial> >* pMatTable, DynArray<IStatInstGroup*>* pStatInstGroupTable, uint32 nObjTypeMask) override;
+    IRenderNode* AddVegetationInstance(int nStaticGroupID, const Vec3& vPos, const float fScale, uint8 ucBright, uint8 angle, uint8 angleX, uint8 angleY) override;
+    //I3DEngine Overrides END
+
 private:
+
+    // RoadRenderNode Management
+    PodArray<CRoadRenderNode*> m_lstRoadRenderNodesForUpdate;
+
+    // Update any pending RoadRenderNodes
+    // Standalone Client: updates one RoadRenderNode at a time
+    // Editor: updates all RoadRenderNodes
+    // Returns true if the RoadRenderNode update queue is not empty
+    bool RoadRenderNodeRebuildQueue_Update();
 
     // IProcess Implementation
     void    SetFlags(int flags) { m_nFlags = flags; }
@@ -1513,6 +1613,8 @@ private:
 
     ICVar*                  m_pLightQuality;
 
+    AZStd::unique_ptr<LegacyProceduralVegetation::VegetationPoolManager> m_vegetationPoolManager;
+
     // FPS for savelevelstats
 
     float m_fAverageFPS;
@@ -1578,7 +1680,7 @@ private:
     void UpdateMoonDirection();
 
     // Copy objects from tree
-    void CopyObjectsByType(EERType objType, const AABB* pBox, PodArray<IRenderNode*>* plistObjects);
+    void CopyObjectsByType(EERType objType, const AABB* pBox, PodArray<IRenderNode*>* plistObjects, ObjectTreeQueryFilterCallback filterCallback = nullptr);
     void CopyObjects(const AABB* pBox, PodArray<IRenderNode*>* plistObjects);
 
     void CleanUpOldDecals();
@@ -1589,6 +1691,45 @@ private:
     template<typename TReturn>
     TReturn LoadStatObjInternal(const char* fileName, const char* geomName, IStatObj::SSubObject** subObject, bool useStreaming, 
         unsigned long loadingFlags, LoadStatObjFunc<TReturn> loadStatObjFunc, const void* data = nullptr, int dataSize = 0);
+
+    bool RemoveObjectsInArea(Vec3 vExploPos, float fExploRadius);
+
+    //! Creates the terrain and has nothing to do with the size of the octree.
+    void CreateTerrainInternal(const STerrainInfo& TerrainInfo);
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Octree Loading/Saving related START
+    ///////////////////////////////////////////////////////////////////////////
+
+    //! initialWorldSize: in Meters.
+    bool CreateOctree(float initialWorldSize);
+    
+    void DestroyOctree();
+
+#ifndef LY_TERRAIN_LEGACY_RUNTIME
+
+    //!Returns the number of nodes in the Quadtree as if the terrain was actually loaded.
+    template <class T>
+    int SkipTerrainData_T(T& f, int& nDataSize, const STerrainInfo& terrainInfo, bool bHotUpdate, bool bHMap, bool bSectorPalettes, EEndian eEndian, SHotUpdateInfo* pExportInfo);
+    
+    void GetEmptyTerrainCompiledData(byte*& pData, int &nDataSize, EEndian eEndian);
+#endif
+
+    template <class T>
+    bool LoadOctreeInternal_T(XmlNodeRef pDoc, T& f, int& nDataSize, STerrainChunkHeader* pOctreeChunkHeader, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable, bool bHotUpdate, SHotUpdateInfo* pExportInfo, bool loadTerrainMacroTexture = true);
+  
+    bool LoadOctreeInternal(XmlNodeRef pDoc, AZ::IO::HandleType fileHandle, int nDataSize, STerrainChunkHeader* pOctreeChunkHeader, std::vector<struct IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial> >** ppMatTable);
+
+
+    void GetVegetationMaterials(std::vector<_smart_ptr<IMaterial> >*& pMatTable);
+    void LoadVegetationData(PodArray<StatInstGroup>& rTable, PodArray<StatInstGroupChunk>& lstFileChunks, int i);
+
+    int GetTablesSize(SHotUpdateInfo* pExportInfo);
+    void SaveTables(byte*& pData, int& nDataSize, std::vector<struct IStatObj*>*& pStatObjTable, std::vector<_smart_ptr<IMaterial> >*& pMatTable, std::vector<IStatInstGroup*>*& pStatInstGroupTable, EEndian eEndian, SHotUpdateInfo* pExportInfo);
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Octree Loading/Saving related END
+    ///////////////////////////////////////////////////////////////////////////
 };
 
 #endif // CRYINCLUDE_CRY3DENGINE_3DENGINE_H

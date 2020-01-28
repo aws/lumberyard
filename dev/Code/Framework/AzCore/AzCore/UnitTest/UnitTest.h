@@ -27,24 +27,18 @@
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/Debug/TraceMessageBus.h>
 
- // FW declare some GTest internal symbol so we can add to the gtest output
-namespace testing
-{
-    namespace internal
-    {
-        enum GTestColor {
-            COLOR_DEFAULT,
-            COLOR_RED,
-            COLOR_GREEN,
-            COLOR_YELLOW
-        };
-
-        extern void ColoredPrintf(GTestColor color, const char* fmt, ...);
-    }
-}
-
 namespace UnitTest
 {
+    enum GTestColor
+    {
+        COLOR_DEFAULT,
+        COLOR_RED,
+        COLOR_GREEN,
+        COLOR_YELLOW
+    };
+
+    extern void ColoredPrintf(GTestColor color, const char* fmt, ...);
+
     class TestRunner
     {
     public:
@@ -139,7 +133,7 @@ namespace UnitTest
             }
             else
             {
-                GTEST_TEST_BOOLEAN_(false, message, false, true, GTEST_NONFATAL_FAILURE_);
+                GTEST_MESSAGE_AT_(file, line, message, ::testing::TestPartResult::kNonFatalFailure);
             }
             return true;
         }
@@ -164,7 +158,7 @@ namespace UnitTest
             }
             else
             {
-                GTEST_TEST_BOOLEAN_(false, message, false, true, GTEST_NONFATAL_FAILURE_);
+                GTEST_MESSAGE_(message, ::testing::TestPartResult::kNonFatalFailure);
             }
             return true; // stop processing
         }
@@ -186,7 +180,7 @@ namespace UnitTest
         {
             if (AZStd::string_view(window) == "Memory") // We want to print out the memory leak's stack traces
             {
-                testing::internal::ColoredPrintf(testing::internal::COLOR_RED, "[  MEMORY  ] %s", message); 
+                ColoredPrintf(COLOR_RED, "[  MEMORY  ] %s", message); 
             }
             return true; 
         }
@@ -202,32 +196,58 @@ namespace UnitTest
             AZ::AllocatorInstance<AZ::OSAllocator>::Create(); // used by the bus
 
             BusConnect();
+
+            m_environmentSetup = true;
         }
 
         void TeardownEnvironment() override
         {
-            BusDisconnect();
-
-            AZ::AllocatorInstance<AZ::OSAllocator>::Destroy(); // used by the bus
-
-            // At this point, the AllocatorManager should not have any allocators left. If we happen to have any,
-            // we exit the test with an error code (this way the test process does not return 0 and the test run
-            // is considered a failure).
-            AZ::AllocatorManager& allocatorManager = AZ::AllocatorManager::Instance();
-            const int numAllocators = allocatorManager.GetNumAllocators();
-            if (numAllocators)
+            if (m_environmentSetup)
             {
-                // Print the name of the allocators still in the AllocatorManager
-                testing::internal::ColoredPrintf(testing::internal::COLOR_RED, "[     FAIL ] There are still %d registered allocators:\n", numAllocators);
+                BusDisconnect();
+
+                AZ::AllocatorInstance<AZ::OSAllocator>::Destroy(); // used by the bus
+
+                // At this point, the AllocatorManager should not have any allocators left. If we happen to have any,
+                // we exit the test with an error code (this way the test process does not return 0 and the test run
+                // is considered a failure).
+                AZ::AllocatorManager& allocatorManager = AZ::AllocatorManager::Instance();
+                const int numAllocators = allocatorManager.GetNumAllocators();
+                int invalidAllocatorCount = 0;
+
                 for (int i = 0; i < numAllocators; ++i)
                 {
-                    testing::internal::ColoredPrintf(testing::internal::COLOR_RED, "\t\t%s\n", allocatorManager.GetAllocator(i)->GetName());
+                    if (!allocatorManager.GetAllocator(i)->IsLazilyCreated())
+                    {
+                        invalidAllocatorCount++;
+                    }
                 }
 
-                // Force a death test
-                std::raise(SIGTERM);
+                if (invalidAllocatorCount)
+                {
+                    // Print the name of the allocators still in the AllocatorManager
+                    ColoredPrintf(COLOR_RED, "[     FAIL ] There are still %d registered non-lazy allocators:\n", invalidAllocatorCount);
+                    for (int i = 0; i < numAllocators; ++i)
+                    {
+                        if (!allocatorManager.GetAllocator(i)->IsLazilyCreated())
+                        {
+                            ColoredPrintf(COLOR_RED, "\t\t%s\n", allocatorManager.GetAllocator(i)->GetName());
+                        }
+                    }
+
+                    AZ::AllocatorManager::Destroy();
+                    m_environmentSetup = false;
+
+                    std::raise(SIGTERM);
+                }
+
+                AZ::AllocatorManager::Destroy();
+                m_environmentSetup = false;
             }
         }
+
+    private:
+        bool m_environmentSetup = false;
     };
 
 }
@@ -253,6 +273,7 @@ namespace UnitTest
 */
 #   define AZ_TEST_START_TRACE_SUPPRESSION                      UnitTest::TestRunner::Instance().StartAssertTests()
 #   define AZ_TEST_STOP_TRACE_SUPPRESSION(_NumTriggeredTraceMessages) GTEST_ASSERT_EQ(_NumTriggeredTraceMessages, UnitTest::TestRunner::Instance().StopAssertTests())
+#   define AZ_TEST_STOP_TRACE_SUPPRESSION_NO_COUNT              UnitTest::TestRunner::Instance().StopAssertTests()
 #   define AZ_TEST_START_ASSERTTEST                             AZ_TEST_START_TRACE_SUPPRESSION
 #   define AZ_TEST_STOP_ASSERTTEST(_NumTriggeredTraceMessages)  AZ_TEST_STOP_TRACE_SUPPRESSION(_NumTriggeredTraceMessages)
 #else

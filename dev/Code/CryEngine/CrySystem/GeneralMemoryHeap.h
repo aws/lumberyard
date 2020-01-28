@@ -74,6 +74,8 @@ public: // IGeneralMemoryHeap Members
     void* Memalign(size_t boundary, size_t size, const char* sUsage = NULL);
     size_t UsableSize(void* ptr) const;
 
+    AZ::IAllocator* GetAllocator() const override;
+
 private:
     CGeneralMemoryHeap(const CGeneralMemoryHeap&) = delete;
     CGeneralMemoryHeap& operator = (const CGeneralMemoryHeap&) = delete;
@@ -82,7 +84,7 @@ private:
     void RecordFree(void* ptr, size_t size);
 
 private:
-    AZStd::unique_ptr<GeneralMemoryHeapAllocator> m_allocator;
+    AZStd::unique_ptr<AZ::AllocatorWrapper<GeneralMemoryHeapAllocator>> m_allocator;
     AZStd::atomic_int m_refCount;
     void* m_block;
     size_t m_blockSize;

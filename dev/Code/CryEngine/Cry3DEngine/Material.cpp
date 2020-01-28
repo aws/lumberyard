@@ -277,12 +277,20 @@ void CMatInfo::UpdateFlags()
 
         // Make sure to refresh sectors
         static int nLastUpdateFrameId = 0;
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
         if (gEnv->IsEditing() && GetTerrain() && GetVisAreaManager() && nLastUpdateFrameId != GetRenderer()->GetFrameID())
         {
             GetTerrain()->MarkAllSectorsAsUncompiled();
             GetVisAreaManager()->MarkAllSectorsAsUncompiled();
             nLastUpdateFrameId = GetRenderer()->GetFrameID();
         }
+#else
+        if (gEnv->IsEditing() && GetVisAreaManager() && nLastUpdateFrameId != GetRenderer()->GetFrameID())
+        {
+            GetVisAreaManager()->MarkAllSectorsAsUncompiled();
+            nLastUpdateFrameId = GetRenderer()->GetFrameID();
+        }
+#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
     }
 }
 

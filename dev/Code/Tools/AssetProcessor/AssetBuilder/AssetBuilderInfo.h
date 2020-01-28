@@ -33,6 +33,10 @@ namespace AZ
 
 namespace AssetBuilder
 {
+    enum class AssetBuilderType
+    {
+        Invalid, Valid, None
+    };
     /**
     * Class to manage external module builders for AssetBuilder.  Note that this is similar
     * to a class in Asset Processor, because both AssetProcessor.exe and AssetBuilder.exe both load builders in a similar manner.
@@ -62,10 +66,10 @@ namespace AssetBuilder
         void RegisterComponentDesc(AZ::ComponentDescriptor* descriptor);
 
         //! Check to see if the builder has the required functions defined.
-        bool IsAssetBuilder();
+        AssetBuilder::AssetBuilderType GetAssetBuilderType();
 
     protected:
-        bool Load();
+        AssetBuilderType Load();
         void Unload();
 
         AZStd::set<AZ::Uuid>    m_registeredBuilderDescriptorIDs;
@@ -82,7 +86,7 @@ namespace AssetBuilder
         ModuleRegisterDescriptorsFunction m_moduleRegisterDescriptorsFunction;
         ModuleAddComponentsFunction m_moduleAddComponentsFunction;
         UninitializeModuleFunction m_uninitializeModuleFunction;
-        QVector<AZ::ComponentDescriptor*> m_componentDescriptorList;
+        AZStd::vector<AZ::ComponentDescriptor*> m_componentDescriptorList;
         AZ::Entity* m_entity = nullptr;
 
         QString m_builderName;

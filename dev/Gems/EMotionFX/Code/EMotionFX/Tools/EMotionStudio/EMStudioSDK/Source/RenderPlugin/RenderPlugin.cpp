@@ -384,13 +384,16 @@ namespace EMStudio
     // try to locate the helper actor for a given one
     RenderPlugin::EMStudioRenderActor* RenderPlugin::FindEMStudioActor(EMotionFX::Actor* actor)
     {
-        // get the number of emstudio actors and iterate through them
+        if (!actor)
+        {
+            return nullptr;
+        }
+
         const uint32 numEMStudioRenderActors = mActors.GetLength();
         for (uint32 i = 0; i < numEMStudioRenderActors; ++i)
         {
             EMStudioRenderActor* EMStudioRenderActor = mActors[i];
 
-            // is the actor the same as the one in the emstudio actor?
             if (EMStudioRenderActor->mActor == actor)
             {
                 return EMStudioRenderActor;
@@ -471,13 +474,7 @@ namespace EMStudio
             EMStudioRenderActor* emstudioActor = mActors[i];
             EMotionFX::Actor* actor = emstudioActor->mActor;
 
-            if (actor->GetIsOwnedByRuntime())
-            {
-                continue;
-            }
-
             bool found = false;
-
             for (uint32 j = 0; j < numActors; ++j)
             {
                 EMotionFX::Actor* curActor = EMotionFX::GetActorManager().GetActor(j);
@@ -487,7 +484,9 @@ namespace EMStudio
                 }
             }
 
-            if (found == false)
+            // At this point the render actor could point to an already deleted actor.
+            // In case the actor got deleted we might get an unexpected flag as result.
+            if (!found || (found && actor->GetIsOwnedByRuntime()))
             {
                 DestroyEMStudioActor(actor);
             }

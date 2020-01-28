@@ -61,7 +61,7 @@ namespace DynamicContent
         void SetPakStatus(const QString& key, int status);
 
         void startS3StatusAnimation(QString key);
-        void stopS3StatusAnimation(QString message); // ACCEPTED_USE
+        void stopS3StatusAnimation(QString message);
 
     private:
         const int NameRole = Qt::UserRole + 1;

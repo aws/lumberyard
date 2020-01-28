@@ -12,11 +12,13 @@
 
 #pragma once
 
-// include the required headers
-#include "EMotionFXConfig.h"
-#include "BaseObject.h"
+#include <AzCore/Debug/Trace.h>
+#include <AzCore/Memory/Memory.h>
 #include <MCore/Source/Array.h>
+#include <MCore/Source/Config.h>
 #include <MCore/Source/MultiThreadManager.h>
+#include <EMotionFX/Source/BaseObject.h>
+#include <EMotionFX/Source/EMotionFXConfig.h>
 
 
 namespace EMotionFX
@@ -254,10 +256,5 @@ namespace EMotionFX
          * Default constructor.
          */
         MotionManager();
-
-        /**
-         * Destructor.
-         */
-        ~MotionManager();
     };
 } // namespace EMotionFX

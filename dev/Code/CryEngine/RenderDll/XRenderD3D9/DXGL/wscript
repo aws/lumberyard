@@ -12,13 +12,21 @@
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
 ########################################################################################
+import os
+from runpy import run_path
 
 def build(bld):
 
+    restricted_scripts = {}
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        platform_wscript = os.path.join(bld.path.abspath(), p0, 'wscript_{0}'.format(p1))
+        if os.path.exists(platform_wscript):
+            restricted_scripts[p3] = run_path(platform_wscript)
+	
     #==============================
     # Build CryRenderGL
     #==============================
-    bld.CryEngineModule(
+    kw = dict(
 
         # Settings
         target              = 'CryRenderGL',
@@ -93,6 +101,7 @@ def build(bld):
         test_all_file_list  = ['opengl_test.waf_files'],
 
     )
-
-
-
+    for p in restricted_scripts:
+        if 'update_opengl_restricted_parameters' in restricted_scripts[p]:
+            restricted_scripts[p]['update_opengl_restricted_parameters'](bld, kw)
+    bld.CryEngineModule(**kw)

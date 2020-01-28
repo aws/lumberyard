@@ -46,7 +46,6 @@ _EXCLUDED_PATH_PATTERNS = [
     re.compile('dev/Gems/PBSreferenceMaterials($|/.*)', re.I),
     re.compile('dev/Gems/LyShineExamples($|/.*)', re.I),
     re.compile('dev/Gems/Clouds($|/.*)', re.I),
-    re.compile('dev/Gems/Boids($|/.*)', re.I),
     re.compile('dev/Gems/EMotionFX($|/.*)', re.I),
     re.compile('dev/Tools/3dsmax($|/.*)', re.I),
     re.compile('dev/Tools/AWSNativeSDK($|/.*)', re.I),
@@ -66,6 +65,18 @@ _EXCLUDED_PATH_PATTERNS = [
     re.compile('dev/Tools/RemoteConsole($|/.*)', re.I),
     re.compile('(3rdparty|dev)/.+?/(lib|bin)/(ios|steamos|android|appletv|mac|osx|vc12|vc14|x86|x64|win|msvc)([^/]*?)($|/.*)', re.I),
 ]
+
+try:
+    import provo.access
+    _EXCLUDED_PATH_PATTERNS.append(re.compile(provo.access._get_provo_regex(), re.I))
+except ImportError:
+    pass
+
+try:
+    import xenia.access
+    _EXCLUDED_PATH_PATTERNS.append(re.compile(xenia.access._get_xenia_regex(), re.I))
+except ImportError:
+    pass
 
 _EXCLUDED_EXTENSIONS = set([
     '.0svn',

@@ -136,6 +136,8 @@ namespace ScriptCanvas
 
             void SendScriptEvent::AddInputSlot(size_t argIndex, const AZStd::string_view argName, const AZStd::string_view tooltip, AZ::BehaviorMethod* method, const AZ::BehaviorParameter* argument, AZ::Uuid slotKey, SlotIdMapping& populationMapping)
             {
+                bool signalAdd = true;
+
                 ScriptCanvas::SlotId slotId;
 
                 DataSlotConfiguration slotConfiguration;
@@ -150,18 +152,19 @@ namespace ScriptCanvas
                 if (mappingIter != m_eventSlotMapping.end())
                 {
                     slotConfiguration.m_slotId = mappingIter->second;
+                    signalAdd = false;
                 }
 
                 if (argument->m_typeId == azrtti_typeid<AZ::EntityId>())
                 {
                     slotConfiguration.SetDefaultValue(ScriptCanvas::GraphOwnerId);
 
-                    slotId = AddSlot(slotConfiguration);
+                    slotId = AddSlot(slotConfiguration, signalAdd);
                 }
                 else
                 {
                     slotConfiguration.ConfigureDatum(AZStd::move(Datum(*argument, Datum::eOriginality::Copy, nullptr)));
-                    slotId = AddSlot(slotConfiguration);
+                    slotId = AddSlot(slotConfiguration, signalAdd);
 
                     if (auto defaultValue = method->GetDefaultValue(argIndex))
                     {
@@ -472,9 +475,22 @@ namespace ScriptCanvas
                         SlotId slotId = slotIter->second;
                         Datum* datum = ModInput(slotId);
 
+                        // If our types are the same. Maintain our connections.
                         if (datum->GetType() == datumPair.second.GetType())
                         {
                             *datum = datumPair.second;
+                        }
+                        // Otherwise we'll want to try to update our type.
+                        else
+                        {
+                            RemoveConnectionsForSlot(slotId);
+                        }
+
+                        Slot* slot = GetSlot(slotId);
+
+                        if (slot)
+                        {
+                            slot->SetDisplayType(datum->GetType());
                         }
                     }
                 }

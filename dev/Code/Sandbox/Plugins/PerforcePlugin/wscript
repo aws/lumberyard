@@ -34,6 +34,9 @@ def build(bld):
                                    'P4API',
                                    'OPENSSL'],
         features                = ['qt5'],
+        includes                = [bld.Path('Code/CryEngine/CryCommon'),
+                                   bld.Path('Code/Sandbox/Editor'),
+                                   bld.Path('Code/Sandbox/Editor/Include')],
 
         # Platform Specific
         win_debug_all_linkflags = ['/NODEFAULTLIB:libcmtd.lib','/NODEFAULTLIB:libcd.lib'],

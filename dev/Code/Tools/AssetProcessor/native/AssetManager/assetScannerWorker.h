@@ -37,19 +37,23 @@ Q_SIGNALS:
         void ScanningStateChanged(AssetProcessor::AssetScanningStatus status);
         void FilesFound(QSet<AssetFileInfo> files); // QSet<QString> is a refcounted copy-on-write object, do not pass by ref.
         void FoldersFound(QSet<AssetFileInfo> folders); // QSet<QString> is a refcounted copy-on-write object, do not pass by ref.
+        void ExcludedFound(QSet<AssetFileInfo> excluded); // QSet<QString> is a refcounted copy-on-write object, do not pass by ref.
 
     public Q_SLOTS:
         void StartScan();
         void StopScan();
 
     protected:
-        void ScanForSourceFiles(ScanFolderInfo scanFolderInfo);
+        // scanFolderInfo - the folder we're currently scanning (this will sometimes be a fake scanfolder created when recursing through directories)
+        // rootScanFolder - the actual scan folder we started with, which will either be the same as scanFolderInfo or a parent folder
+        void ScanForSourceFiles(const ScanFolderInfo& scanFolderInfo, const ScanFolderInfo& rootScanFolder);
         void EmitFiles();
 
     private:
         volatile bool m_doScan = true;
         QSet<AssetFileInfo> m_fileList; // note:  neither QSet nor QString are qobject-derived
         QSet<AssetFileInfo> m_folderList;
+        QSet<AssetFileInfo> m_excludedList;
         PlatformConfiguration* m_platformConfiguration;
     };
 } // end namespace AssetProcessor

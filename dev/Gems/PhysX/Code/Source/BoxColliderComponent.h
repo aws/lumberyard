@@ -19,7 +19,8 @@
 namespace PhysX
 {
     /// Component that provides box shape collider.
-    /// Used in conjunction with a PhysX Rigid Body Component.
+    /// May be used in conjunction with a PhysX Rigid Body Component to create a dynamic rigid body, or on its own
+    /// to create a static rigid body.
     class BoxColliderComponent
         : public BaseColliderComponent
     {
@@ -29,12 +30,8 @@ namespace PhysX
         static void Reflect(AZ::ReflectContext* context);
 
         BoxColliderComponent() = default;
-        explicit BoxColliderComponent(const Physics::ColliderConfiguration& colliderConfiguration, const Physics::BoxShapeConfiguration& configuration);
 
-        // ColliderComponentRequestBus
-        AZStd::shared_ptr<Physics::ShapeConfiguration> CreateScaledShapeConfig() override;
-
-    protected:
-        Physics::BoxShapeConfiguration m_shapeConfiguration; ///< Box shape configuration.
+        // BaseColliderComponent
+        void UpdateScaleForShapeConfigs() override;
     };
 }

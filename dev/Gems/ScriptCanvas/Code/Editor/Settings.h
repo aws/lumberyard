@@ -15,8 +15,12 @@
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/UserSettings/UserSettings.h>
 
+// qdatastream.h(173): warning C4251: 'QDataStream::d': class 'QScopedPointer<QDataStreamPrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QDataStream'
+// qwidget.h(858): warning C4800: 'uint': forcing value to bool 'true' or 'false' (performance warning)
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option")
 #include <QByteArray>
 #include <QMainWindow>
+AZ_POP_DISABLE_WARNING
 
 #include <GraphCanvas/Editor/AssetEditorBus.h>
 #include <GraphCanvas/Types/ConstructPresets.h>
@@ -160,7 +164,9 @@ namespace ScriptCanvasEditor
                 : m_zoomInSetting(2.0f)
             {
 
-            }            
+            }
+
+            virtual ~ZoomSettings() = default;
 
             float GetMaxZoom() const
             {
@@ -212,6 +218,7 @@ namespace ScriptCanvasEditor
             static void Reflect(AZ::ReflectContext* reflectContext);
 
             StylingSettings() = default;
+            virtual ~StylingSettings() = default;
 
             GraphCanvas::Styling::ConnectionCurveType GetConnectionCurveType() const
             {

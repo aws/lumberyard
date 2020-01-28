@@ -366,7 +366,7 @@ namespace InAppPurchases
             {
                 InputPortConfig_Void("Activate"),
                 InputPortConfig<string>("TransactionId", _HELP("The transaction id(order id) you received in the receipt after the purchase.")),
-                InputPortConfig<string>("DownloadHostedContent", _HELP("If you have content hosted on Apple/Sony/Microsoft servers, setting this to true will download the content before finishing the transaction. Defaults to false.")),
+                InputPortConfig<string>("DownloadHostedContent", _HELP("If you have content hosted on 3rd-Party Platform servers, setting this to true will download the content before finishing the transaction. Defaults to false.")),
                 { 0 }
             };
 

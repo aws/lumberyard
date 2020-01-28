@@ -3324,6 +3324,8 @@ void CPhysicalWorld::ThreadProc(int ithread, SPhysTask* pTask)
         #include "Xenia/physicalworld_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/physicalworld_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/physicalworld_cpp_salem.inl"
     #endif
 #endif
     while (true)
@@ -3400,6 +3402,8 @@ void CPhysicalWorld::TimeStep(float time_interval, int flags)
         #include "Xenia/physicalworld_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/physicalworld_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/physicalworld_cpp_salem.inl"
     #endif
 #endif
             GetISystem()->GetIThreadTaskManager()->RegisterTask(m_threads[i] = new SPhysTask(this, i + FIRST_WORKER_THREAD), ttp);
@@ -4164,6 +4168,13 @@ void CPhysicalWorld::DetachEntityGridThunks(CPhysicalPlaceholder* pobj)
 void CPhysicalWorld::SortThunks()
 {
     WriteLock lock(m_lockGrid);
+
+    if (!m_thunkPoolSz)
+    {
+        //Nothing to sort.
+        return;
+    }
+
     int i, j, icell, nthunks = 1;
     int* new2old = new int[m_thunkPoolSz], * old2new = new int[m_thunkPoolSz];
 

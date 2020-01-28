@@ -160,7 +160,7 @@ namespace GraphCanvas
             m_parent = nullptr;
             ClearModel();
         }
-    }	
+    }
 
     void GraphCanvasTreeItem::AddChild(GraphCanvasTreeItem* item, bool signalAdd)
     {
@@ -185,7 +185,7 @@ namespace GraphCanvas
 
         AZStd::vector< GraphCanvasTreeItem* >::iterator insertPoint = AZStd::lower_bound(m_childItems.begin(), m_childItems.end(), item, k_insertionComparator);
 
-        int rowNumber = AZStd::distance(m_childItems.begin(), insertPoint);
+        int rowNumber = aznumeric_cast<int>(AZStd::distance(m_childItems.begin(), insertPoint));
 
         if (m_abstractItemModel && signalAdd)
         {

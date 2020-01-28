@@ -16,12 +16,7 @@
 //      are changed infrequently
 //
 
-#if !defined(AFX_STDAFX_H__4AA14050_1B79_4A11_9D24_4E209BF87E2C__INCLUDED_)
-#define AFX_STDAFX_H__4AA14050_1B79_4A11_9D24_4E209BF87E2C__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 #include <vector>
 #include <map>
@@ -160,4 +155,3 @@ int get_iCaller_int();
 #define FIRST_WORKER_THREAD 0
 #endif
 
-#endif // !defined(AFX_STDAFX_H__4AA14050_1B79_4A11_9D24_4E209BF87E2C__INCLUDED_)

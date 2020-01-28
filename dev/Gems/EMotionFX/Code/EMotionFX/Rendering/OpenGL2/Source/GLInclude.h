@@ -15,14 +15,4 @@
 
 #include <GL/glew.h>
 
-#ifdef AZ_PLATFORM_APPLE
-    #include <OpenGL/gl.h>
-    #include <OpenGL/glu.h>
-#else
-
-#ifdef AZ_PLATFORM_WINDOWS
-    #include <GL/wglew.h>
-#endif
-    #include <GL/gl.h>
-    #include <GL/glu.h>
-#endif
+#include <EMotionFX/Rendering/OpenGL2/Source/GLInclude_Platform.h>

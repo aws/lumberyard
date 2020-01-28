@@ -33,6 +33,7 @@ namespace PhysX
             {
                 EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, picker);
             });
+            picker->setStyleSheet(":disabled { color: rgb(180, 180, 180); }");
 
             return picker;
         }
@@ -72,7 +73,7 @@ namespace PhysX
 
             auto lockToDefault = [gui]()
             {
-                static const char* defaultLabel = "Default (Empty Library)";
+                static const char* defaultLabel = "Default";
                 gui->addItem(defaultLabel);
                 gui->setCurrentIndex(0);
                 return false;

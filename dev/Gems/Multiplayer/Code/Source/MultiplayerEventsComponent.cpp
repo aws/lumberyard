@@ -24,16 +24,6 @@
 #include <AzFramework/Network/NetBindingHandlerBus.h>
 #include <Multiplayer_Traits_Platform.h>
 
-// Template specialization to not destroy a GridSession; work around for VS2013 where std::is_destructable<> does not detect a hidden destructor
-namespace AZ
-{
-template<>
-    void BehaviorContext::DefaultDestruct<GridMate::GridSession>(void* object, void* userData)
-{
-    (void)userData;
-    (void)object;
-}
-}
 
 namespace Multiplayer
 {

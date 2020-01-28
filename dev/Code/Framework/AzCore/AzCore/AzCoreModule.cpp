@@ -16,10 +16,10 @@
 #include <AzCore/Debug/FrameProfilerComponent.h>
 #include <AzCore/IO/StreamerComponent.h>
 #include <AzCore/Jobs/JobManagerComponent.h>
+#include <AzCore/Serialization/Json/JsonSystemComponent.h>
 #include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/NativeUI/NativeUISystemComponent.h>
 #include <AzCore/Script/ScriptSystemComponent.h>
-#include <AzCore/Serialization/ObjectStreamComponent.h>
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/Slice/SliceSystemComponent.h>
 #include <AzCore/Slice/SliceMetadataInfoComponent.h>
@@ -34,8 +34,8 @@ namespace AZ
             MemoryComponent::CreateDescriptor(),
             StreamerComponent::CreateDescriptor(),
             JobManagerComponent::CreateDescriptor(),
+            JsonSystemComponent::CreateDescriptor(),
             AssetManagerComponent::CreateDescriptor(),
-            ObjectStreamComponent::CreateDescriptor(),
             UserSettingsComponent::CreateDescriptor(),
             Debug::FrameProfilerComponent::CreateDescriptor(),
             NativeUI::NativeUISystemComponent::CreateDescriptor(),

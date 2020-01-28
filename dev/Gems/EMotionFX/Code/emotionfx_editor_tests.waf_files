@@ -3,10 +3,14 @@
     {
         "Tests": 
         [
-            "Tests/EMotionFXEditorTest.cpp",
+            "Tests/ActorBuilderTests.cpp",
+            "Tests/CommandRemoveMotionTests.cpp",
+            "Tests/EMotionFXTest.cpp",
             "Tests/InitSceneAPIFixture.h",
             "Tests/MetaDataRuleTests.cpp",
             "Tests/MorphTargetPipelineTests.cpp",
+            "Tests/Printers.cpp",
+            "Tests/SimulatedObjectModelTests.cpp",
             "Tests/SystemComponentFixture.h",
             "Tests/Bugs/CanDeleteMotionSetWhenSameMotionInTwoMotionSets.cpp",
             "Tests/UI/CommandRunnerFixture.cpp",
@@ -19,7 +23,14 @@
         ],
         "Tests/Bugs": 
         [
+            "Tests/Bugs/CanDeleteMotionWhenMotionIsBeingBlended.cpp",
             "Tests/Bugs/LY-92860.cpp"
+        ],
+        "Tests/EMotionFXBuilder": 
+        [
+            "Tests/EMotionFXBuilderTests.cpp",
+            "Tests/EMotionFXBuilderFixture.h",
+            "Tests/EMotionFXBuilderFixture.cpp"
         ]
     }
 }

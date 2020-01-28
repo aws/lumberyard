@@ -796,18 +796,14 @@ bool ResourceParticleParams::IsActive() const
     if (!Platforms.PCDX11 && platform_spec== CONFIG_PC ||
         !Platforms.hasMacOSMetal && platform_spec == CONFIG_OSX_METAL ||
         !Platforms.hasAndroid && platform_spec == CONFIG_ANDROID ||
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/ParticleEffect_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/ParticleEffect_cpp_provo.inl"
-    #endif
+#if defined(AZ_PLATFORM_XENIA) || defined(TOOLS_SUPPORT_XENIA)
+#include "Xenia/ParticleEffect_cpp_xenia.inl"
 #endif
-#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
-        !Platforms.PublicAuxName1 && platform_spec == CONFIG_##PUBLICNAME ||
-        AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
-#undef AZ_RESTRICTED_PLATFORM_EXPANSION
+#if defined(AZ_PLATFORM_PROVO) || defined(TOOLS_SUPPORT_PROVO)
+#include "Provo/ParticleEffect_cpp_provo.inl"
+#endif
+#if defined(AZ_PLATFORM_SALEM) || defined(TOOLS_SUPPORT_SALEM)
+#include "Salem/ParticleEffect_cpp_salem.inl"
 #endif
         !Platforms.hasIOS && platform_spec == CONFIG_IOS)
     {

@@ -438,8 +438,9 @@ class lmbr_aws_TestCase(unittest.TestCase):
         self.__copy_root_dir_file(temp_dir, 'engine.json')
         self.__copy_root_dir_file(temp_dir, 'engineroot.txt')
         self.__copy_root_dir_file(temp_dir, 'LyzardConfig.xml')
-        self.__make_root_dir_link(temp_dir, 'Bin64vc140.Debug.Test')
-        self.__make_root_dir_link(temp_dir, 'Bin64vc140.Debug')
+        # Link both VS 2015 and 2017 potential outputs
+        self.__make_root_dir_link(temp_dir, 'Bin64vc141.Debug.Test')
+        self.__make_root_dir_link(temp_dir, 'Bin64vc141.Debug')
         self.__make_root_dir_link(temp_dir, '_WAF_')
         self.__make_root_dir_link(temp_dir, 'Tools')
         self.__make_file(game_dir, 'project.json', PROJECT_JSON_CONTENT)
@@ -1273,6 +1274,11 @@ class lmbr_aws_TestCase(unittest.TestCase):
         mappings = release_mappings_contents.get('LogicalMappings', {})
         self.__verify_mappings(mappings, deployment_name, logical_ids, expected_physical_resource_ids = expected_physical_resource_ids)
 
+        if role == 'Server':
+            self.assertIn('server_role_arn', mappings)
+            self.assertEquals(mappings['server_role_arn']['ResourceType'], 'Configuration')
+            self.assertIn('PhysicalResourceId', mappings['server_role_arn'])
+
     def __verify_mappings(self, mappings, deployment_name, logical_ids, expected_physical_resource_ids):
 
         print 'mappings', mappings
@@ -1328,7 +1334,7 @@ class lmbr_aws_TestCase(unittest.TestCase):
         self.assertEquals(mappings['PlayerAccessTokenExchange']['PhysicalResourceId'], physical_resource_id, 'for mapping PlayerAccessTokenExchange')
 
         for logical_id in mappings.keys():
-            if logical_id not in ['account_id', 'region', 'PlayerAccessIdentityPool', 'PlayerLoginIdentityPool', 'PlayerAccessTokenExchange']:
+            if logical_id not in ['account_id', 'region', 'PlayerAccessIdentityPool', 'PlayerLoginIdentityPool', 'PlayerAccessTokenExchange', 'server_role_arn']:
                 self.assertIn(logical_id, logical_ids, 'unexpected mapping: ' + logical_id)
 
     def get_gem_path(self, gem_name, *args):

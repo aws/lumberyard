@@ -50,7 +50,7 @@ namespace EMStudio
         StateConnection(const QModelIndex& modelIndex, GraphNode* sourceNode, GraphNode* targetNode, bool isWildcardConnection);
         ~StateConnection();
 
-        void Render(QPainter& painter, QPen* pen, QBrush* brush, int32 stepSize, const QRect& visibleRect, float opacity, bool alwaysColor) override;
+        void Render(const QItemSelectionModel& selectionModel, QPainter& painter, QPen* pen, QBrush* brush, int32 stepSize, const QRect& visibleRect, float opacity, bool alwaysColor) override;
         bool Intersects(const QRect& rect) override;
         bool CheckIfIsCloseTo(const QPoint& point) override;
         void CalcStartAndEndPoints(QPoint& start, QPoint& end) const override;
@@ -63,6 +63,7 @@ namespace EMStudio
         EMotionFX::AnimGraphTransitionCondition* FindCondition(const QPoint& mousePos);
 
         bool GetIsWildcardTransition() const override       { return mIsWildcardConnection; }
+        void SetIsSelected(bool selected) override;
 
         static void RenderTransition(QPainter& painter, QBrush& brush, QPen& pen,
             QPoint start, QPoint end,

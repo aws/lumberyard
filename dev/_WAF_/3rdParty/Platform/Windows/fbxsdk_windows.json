@@ -1,0 +1,16 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "lib_required": "True",
+            "libpath_debug": [
+                "lib/vs2015/x64/debug"
+            ],
+            "libpath_release": [
+                "lib/vs2015/x64/release"
+            ],
+            "lib": [
+                "libfbxsdk-md.lib"
+            ]
+        }
+    }
+}

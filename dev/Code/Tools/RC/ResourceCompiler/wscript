@@ -41,6 +41,7 @@ def build(bld):
                            'OPENGL32'],
         defines         = defines,
         includes        = ['.',
+                           bld.Path('Code/CryEngine/CryCommon'), 
                            bld.Path('Code/Tools/CryCommonTools'),
                            bld.Path('Code/Tools/CryXML'),
                            bld.Path('Code/CryEngine/CrySystem/XML')],

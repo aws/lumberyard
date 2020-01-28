@@ -80,6 +80,18 @@ PLATFORM_SDK_NAME = {
 
 FRAMEWORKS_REL_PATH = 'System/Library/Frameworks'
 
+XCODE_WORKSPACE_SETTINGS = r'''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version=\"1.0\">
+<dict>
+    <key>BuildSystemType</key>
+    <string>Original</string>
+    <key>PreviewsEnabled</key>
+    <false/>
+    </dict>
+</plist>
+'''
+
 root_dir = ''
 id = 562000999
 uintmax = 2147483647
@@ -370,7 +382,7 @@ class PBXNativeTarget(XCodeNode):
             '@loader_path/Frameworks'
         ]
         target_settings['COPY_PHASE_STRIP'] = 'NO'
-        target_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++1y'
+        target_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
 
         self._generate_build_config_list(target_settings)
 
@@ -593,10 +605,7 @@ class PBXProject(XCodeNode):
 class xcode(Build.BuildContext):
 
     def get_launcher_name(self, platform_name):
-        if self.is_option_true('use_unified_launcher'):
-            return 'ClientLauncher'
-        else:
-            return self.get_default_platform_launcher_name(platform_name)
+        return 'ClientLauncher'
 
     def get_settings(self):
         settings = {}
@@ -766,6 +775,17 @@ class xcode(Build.BuildContext):
         projectDir.mkdir()
         node = projectDir.make_node('project.pbxproj')
         project.write(open(node.abspath(), 'w'))
+
+        # Generate settings to make Xcode use the Legacy Build System
+        project_ws_node = projectDir.make_node('project.xcworkspace')
+        project_ws_node.mkdir()
+
+        shared_data_node = project_ws_node.make_node("xcshareddata")
+        shared_data_node.mkdir()
+        wpfile = shared_data_node.make_node("WorkspaceSettings.xcsettings")
+
+        with open(wpfile.abspath(),"w") as f:
+            f.write(XCODE_WORKSPACE_SETTINGS)
 
 
 class xcode_mac(xcode):

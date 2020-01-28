@@ -234,6 +234,20 @@ namespace AZStd
             insert_after(before_begin(), rhs.begin(), rhs.end());
         }
 
+        AZ_FORCE_INLINE forward_list(std::initializer_list<T> list)
+            : m_numElements(0)
+        {
+            m_head.m_next = m_lastNode = &m_head;
+            insert_after_iter(before_begin(), list.begin(), list.end(), is_integral<std::initializer_list<T>>());
+        }
+        AZ_FORCE_INLINE forward_list(std::initializer_list<T> list, const allocator_type& allocator)
+            : m_numElements(0)
+            , m_allocator(allocator)
+        {
+            m_head.m_next = m_lastNode = &m_head;
+            insert_after_iter(before_begin(), list.begin(), list.end(), is_integral<std::initializer_list<T>>());
+        }
+
         AZ_FORCE_INLINE ~forward_list()
         {
             clear();

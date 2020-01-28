@@ -18,6 +18,25 @@ namespace AzToolsFramework
     {
         namespace Internal
         {
+            void LogQuery(const char* statement, const AZStd::string& params)
+            {
+                AZ_UNUSED(statement);
+                AZ_UNUSED(params);
+
+#ifdef ENABLE_QUERY_LOGGING
+                AZ_TracePrintf("SQLiteQuery", "%s %.*s = Params %s\n", statement, params.c_str());
+#endif
+            }
+
+            void LogResultId(AZ::s64 rowId)
+            {
+                AZ_UNUSED(rowId);
+
+#ifdef ENABLE_QUERY_LOGGING
+                AZ_TracePrintf("SQLiteQuery", "Last Insert Row Id: %d\n", rowId);
+#endif
+            }
+
             bool Bind(Statement* statement, int index, const AZ::Uuid& value)
             {
                 return statement->BindValueUuid(index, value);
@@ -60,3 +79,13 @@ namespace AzToolsFramework
         } // namespace Internal
     } // namespace SQLite
 } // namespace AZFramework
+
+std::ostream& std::operator<<(ostream& out, const AZ::Uuid& uuid)
+{
+    return out << uuid.ToString<AZStd::string>().c_str();
+}
+
+std::ostream& std::operator<<(ostream& out, const AzToolsFramework::SQLite::SqlBlob&)
+{
+    return out << "[Blob]";
+}

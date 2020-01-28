@@ -40,7 +40,7 @@
             "-fvisibility-inlines-hidden"
         ],
         "CXXFLAGS": [
-            "-std=c++1y",           # C++14
+            "-std=c++1z",           # C++17
             "-fno-rtti",            # Disable RTTI
             "-fno-exceptions"       # Disable Exceptions
         ]

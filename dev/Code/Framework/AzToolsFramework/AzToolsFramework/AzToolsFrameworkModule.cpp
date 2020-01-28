@@ -15,13 +15,17 @@
  // Component includes
 #include <AzFramework/TargetManagement/TargetManagementComponent.h>
 
-#include <AzToolsFramework/Archive/SevenZipComponent.h>
+#include <AzToolsFramework/Archive/ArchiveComponent.h>
 #include <AzToolsFramework/Asset/AssetSystemComponent.h>
+#include <AzToolsFramework/AssetBundle/AssetBundleComponent.h>
+#include <AzToolsFramework/Component/EditorComponentAPIComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityActionComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityContextComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityFixupComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityModelComponent.h>
+#include <AzToolsFramework/Entity/EditorEntitySearchComponent.h>
 #include <AzToolsFramework/Entity/EditorEntitySortComponent.h>
+#include <AzToolsFramework/PropertyTreeEditor/PropertyTreeEditorComponent.h>
 #include <AzToolsFramework/Slice/SliceDependencyBrowserComponent.h>
 #include <AzToolsFramework/Slice/SliceMetadataEntityContextComponent.h>
 #include <AzToolsFramework/SourceControl/PerforceComponent.h>
@@ -72,12 +76,16 @@ namespace AzToolsFramework
             Components::EditorEntityModelComponent::CreateDescriptor(),
             AssetSystem::AssetSystemComponent::CreateDescriptor(),
             PerforceComponent::CreateDescriptor(),
-            AzToolsFramework::SevenZipComponent::CreateDescriptor(),
+            AzToolsFramework::ArchiveComponent::CreateDescriptor(),
+            AzToolsFramework::AssetBundleComponent::CreateDescriptor(),
             AzToolsFramework::SliceDependencyBrowserComponent::CreateDescriptor(),
             AzToolsFramework::Thumbnailer::ThumbnailerComponent::CreateDescriptor(),
             AzToolsFramework::AssetBrowser::AssetBrowserComponent::CreateDescriptor(),
             AzToolsFramework::MaterialBrowser::MaterialBrowserComponent::CreateDescriptor(),
             AzToolsFramework::EditorInteractionSystemComponent::CreateDescriptor(),
+            AzToolsFramework::Components::EditorComponentAPIComponent::CreateDescriptor(),
+            AzToolsFramework::Components::PropertyTreeEditorComponent::CreateDescriptor(),
+            AzToolsFramework::Components::EditorEntitySearchComponent::CreateDescriptor(),
         });
     }
 }

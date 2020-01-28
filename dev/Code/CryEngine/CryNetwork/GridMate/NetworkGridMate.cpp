@@ -43,6 +43,8 @@
         #include "Xenia/NetworkGridMate_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/NetworkGridMate_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/NetworkGridMate_cpp_salem.inl"
     #endif
 #endif
 
@@ -613,6 +615,8 @@ namespace GridMate
         #include "Xenia/NetworkGridMate_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/NetworkGridMate_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/NetworkGridMate_cpp_salem.inl"
     #endif
 #endif
     }

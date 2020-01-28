@@ -26,8 +26,11 @@ namespace Vegetation
         //! allows multiple threads to call
         using MutexType = AZStd::recursive_mutex;
 
-        //! to handle overlapping vegetation regions
-        virtual float GetPriority() const = 0;
+        //! to handle overlapping vegetation layers
+        virtual AZ::u32 GetLayer() const = 0;
+
+        //! to handle overlapping vegetation layers
+        virtual AZ::u32 GetPriority() const = 0;
 
         //! Get bounds of volume affected by placement
         virtual AZ::Aabb GetEncompassingAabb() const = 0;

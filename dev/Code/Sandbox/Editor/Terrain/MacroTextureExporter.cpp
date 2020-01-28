@@ -19,6 +19,8 @@
 #include <qfile.h>
 #include <qdir.h>
 
+#include <AzCore/IO/Streamer.h>
+
 class MacroTextureExporter::Context
 {
 public:
@@ -224,49 +226,6 @@ void MacroTextureExporter::Context::DownSampleWithBordersPreserved(const CImageE
     }
 }
 
-namespace
-{
-    class ScopedFileMap
-    {
-    public:
-        ScopedFileMap(QFile& file, uint64 totalSize)
-            : m_File(file)
-            , m_MappedMemory(nullptr)
-        {
-            if (!m_File.isOpen())
-            {
-                m_File.open(QIODevice::WriteOnly | QIODevice::ReadOnly);
-            }
-
-            m_MappedMemory = m_File.map(0, totalSize);
-        }
-
-        ~ScopedFileMap()
-        {
-            if (m_MappedMemory)
-            {
-                m_File.unmap(m_MappedMemory);
-                m_MappedMemory = nullptr;
-            }
-            m_File.close();
-        }
-
-        bool bIsOpen() const
-        {
-            return m_File.isOpen() && m_MappedMemory != nullptr;
-        }
-
-        inline uchar* GetMemory()
-        {
-            return m_MappedMemory;
-        }
-
-    private:
-        QFile& m_File;
-        uchar* m_MappedMemory;
-    };
-}
-
 bool MacroTextureExporter::Export(const char* ctcFilename)
 {
     IEditor* editor = GetIEditor();
@@ -425,38 +384,34 @@ bool MacroTextureExporter::Context::ExportTiles(const char* ctcFilename, const C
 
     char resolvedCoverPath[AZ_MAX_PATH_LEN];
     AZ::IO::FileIOBase::GetInstance()->ResolvePath(adjustedCoverPath, resolvedCoverPath, AZ_MAX_PATH_LEN);
-    QFile outputFile = {
-        QString{ resolvedCoverPath }
-    };
 
-    // macOS and Linux need to open the file, otherwise resize fails for non-existing files.
-    if (!outputFile.open(QIODevice::WriteOnly | QIODevice::ReadOnly))
+    // Before we write any new data, make sure the Streamer flushes any cached data or operations for this file,
+    // and closes the file handle if it's open.
+    AZ::IO::Streamer::Instance().FlushCache(resolvedCoverPath);
+
+    AZ::IO::HandleType fileHandle;
+    AZ::IO::Result result = AZ::IO::FileIOBase::GetDirectInstance()->Open(resolvedCoverPath, AZ::IO::OpenMode::ModeWrite | AZ::IO::OpenMode::ModeBinary, fileHandle);
+
+    if (!result)
     {
         Error("Error generating macro texture: Failed to create destination file %s", resolvedCoverPath);
         return false;
     }
 
-
-    if (!outputFile.resize(totalFileSize))
+    bool successfulExport = true;
+    AZ::u64 bytesWritten = 0;
+    result = AZ::IO::FileIOBase::GetDirectInstance()->Write(fileHandle, m_FileMemory.data(), m_FileMemory.size(), &bytesWritten);
+    if (!result || (bytesWritten < totalFileSize))
     {
-        Error("Error generating macro texture: Failed to resize destination file %s", resolvedCoverPath);
-        return false;
+        Error("Error generating macro texture: Failed to write to destination file %s", resolvedCoverPath);
+        successfulExport = false;
     }
 
-    {
-        ScopedFileMap scopedFile(outputFile, totalFileSize);
-        if (!scopedFile.bIsOpen())
-        {
-            Error("Error generating macro texture: Failed to open destination file %s", resolvedCoverPath);
-            return false;
-        }
-
-        memcpy(scopedFile.GetMemory(), m_FileMemory.data(), m_FileMemory.size());
-    }
+    AZ::IO::FileIOBase::GetDirectInstance()->Close(fileHandle);
 
     m_FileMemory.clear();
     editor.SetStatusText("Ready");
-    return true;
+    return successfulExport;
 }
 
 void MacroTextureExporter::Context::ExportTiles(

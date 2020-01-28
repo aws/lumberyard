@@ -264,6 +264,7 @@
             "typetraits/internal/is_function_ptr_tester.h",
             "typetraits/internal/is_mem_fun_pointer_tester.h",
             "typetraits/internal/type_sequence_traits.h",
+            "typetraits/internal/is_template_copy_constructible.h",
             "typetraits/internal/wrap.h",
             "typetraits/internal/yes_no_type.h"
         ]

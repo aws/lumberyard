@@ -37,6 +37,8 @@
         #include "Xenia/SystemThreading_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemThreading_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemThreading_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -142,6 +144,8 @@ private:
         #include "Xenia/SystemThreading_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemThreading_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemThreading_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
@@ -194,6 +198,8 @@ unsigned __stdcall CThreadManager::RunThread(void* thisPtr)
         #include "Xenia/SystemThreading_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemThreading_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/SystemThreading_cpp_salem.inl"
     #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

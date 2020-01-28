@@ -58,6 +58,7 @@ namespace AzToolsFramework
             // AssetBrowserViewRequestBus
             //////////////////////////////////////////////////////////////////////////
             void SelectProduct(AZ::Data::AssetId assetID) override;
+            void SelectFileAtPath(const AZStd::string& assetPath) override;
             void ClearFilter() override;
             //////////////////////////////////////////////////////////////////////////
 
@@ -73,6 +74,7 @@ namespace AzToolsFramework
         Q_SIGNALS:
             void selectionChangedSignal(const QItemSelection& selected, const QItemSelection& deselected);
             void ClearStringFilter();
+            void ClearTypeFilter();
 
         protected:
             void startDrag(Qt::DropActions supportedActions) override;
@@ -93,6 +95,7 @@ namespace AzToolsFramework
             const int m_scUpdateInterval = 100;
 
             bool SelectProduct(const QModelIndex& idxParent, AZ::Data::AssetId assetID);
+            bool SelectEntry(const QModelIndex& idxParent, const AZStd::vector<AZStd::string>& entryPathTokens, const uint32_t entryPathIndex = 0);
             void SendMetricsEvent(AssetBrowserActionType actionType, const QModelIndex& index);
 
             // Grab one entry for the source thumbnail list and update it

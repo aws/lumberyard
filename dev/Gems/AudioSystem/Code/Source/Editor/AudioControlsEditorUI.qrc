@@ -1,0 +1,20 @@
+<RCC>
+  <qresource prefix="/Editor/Icons">
+    <file alias="Bank_Icon.png">Icons/Bank_Icon.png</file>
+    <file alias="Config_Blue_Icon.png">Icons/Config_Blue_Icon.png</file>
+    <file alias="Config_Green_Icon.png">Icons/Config_Green_Icon.png</file>
+    <file alias="Config_Purple_Icon.png">Icons/Config_Purple_Icon.png</file>
+    <file alias="Config_Red_Icon.png">Icons/Config_Red_Icon.png</file>
+    <file alias="Config_Yellow_Icon.png">Icons/Config_Yellow_Icon.png</file>
+    <file alias="Environment_Icon.png">Icons/Environment_Icon.png</file>
+    <file alias="Folder_Icon.png">Icons/Folder_Icon.png</file>
+    <file alias="Property_Icon.png">Icons/Property_Icon.png</file>
+    <file alias="RTPC_Icon.png">Icons/RTPC_Icon.png</file>
+    <file alias="Search_Icon.png">Icons/Search_Icon.png</file>
+    <file alias="Switch_Icon.png">Icons/Switch_Icon.png</file>
+    <file alias="Trigger_Icon.png">Icons/Trigger_Icon.png</file>
+    <file alias="Preload_Icon.png">Icons/Preload_Icon.png</file>
+    <file alias="Load_Icon.png">Icons/Load_Icon.png</file>
+    <file alias="Save_Icon.png">Icons/Save_Icon.png</file>
+  </qresource>
+</RCC>

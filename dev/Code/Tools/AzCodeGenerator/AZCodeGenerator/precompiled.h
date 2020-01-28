@@ -9,8 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#if defined(AZCG_COMPILER_MSVC)
 #pragma once
+#if defined(AZCG_COMPILER_MSVC)
 
 // We want NO warnings because we run with all warnings and warnings as errors. We are not modifying Clang to make our builds succeed in this configuration.
 
@@ -28,6 +28,10 @@
 
 #endif
 
+#pragma push_macro("_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
+#ifndef _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
+#define _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
+#endif
 #include "clang/AST/Stmt.h"
 #include "clang/AST/Type.h"
 #include "clang/AST/Decl.h"
@@ -49,7 +53,7 @@
 #include "clang/Tooling/CommonOptionsParser.h"
 
 #include "llvm/Support/CommandLine.h"
-
+#pragma pop_macro("_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS")
 #include <unordered_map>
 #include <functional>
 

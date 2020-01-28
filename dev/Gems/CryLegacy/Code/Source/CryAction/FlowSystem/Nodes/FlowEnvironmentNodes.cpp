@@ -14,7 +14,6 @@
 #include "CryLegacy_precompiled.h"
 #include <FlowSystem/Nodes/FlowBaseNode.h>
 #include "I3DEngine.h"
-#include "ITerrain.h"
 #include "ITimeOfDay.h"
 
 class CFlowNode_EnvLighting
@@ -595,7 +594,7 @@ public:
                 _smart_ptr<IMaterial> pMat = gEnv->p3DEngine->GetMaterialManager()->LoadMaterial(mat.c_str(), false);
                 if (pMat)
                 {
-                    gEnv->p3DEngine->GetITerrain()->ChangeOceanMaterial(pMat);
+                    gEnv->p3DEngine->ChangeOceanMaterial(pMat);
                     ActivateOutput(pActInfo, eOP_Success, 0);
                 }
                 else

@@ -1,0 +1,246 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "system_lib": [
+                "shlwapi",
+                "Winhttp",
+                "Userenv",
+                "Ws2_32"
+            ],
+            "libpath_debug": [
+                "lib/windows/Debug"
+            ],
+            "libpath_release": [
+                "lib/windows/Release"
+            ],
+            "aws_cpp_sdk_all/lib": [
+                "${aws_cpp_sdk_all}.lib",
+                "${aws_dependencies}.lib"
+            ],
+            "aws_cpp_sdk_core/lib": [
+                "${aws_cpp_sdk_core}.lib",
+                "${aws_dependencies}.lib"
+            ],
+            "aws_cpp_sdk_devicefarm/lib": [
+                "${aws_cpp_sdk_devicefarm}.lib",
+                "${aws_dependencies}.lib"
+            ],
+            "aws_cpp_sdk_gamelift/defines": [
+                "BUILD_GAMELIFT_CLIENT"
+            ],
+            "aws_cpp_sdk_gamelift/lib": [
+                "${aws_cpp_sdk_gamelift}.lib"
+            ],
+            "aws_cpp_sdk_s3/lib": [
+                "${aws_cpp_sdk_s3}.lib"
+            ],
+            "aws_cpp_sdk_sts/lib": [
+                "${aws_cpp_sdk_sts}.lib"
+            ],
+            "aws_cpp_sdk_mobileanalytics/lib": [
+                "${aws_cpp_sdk_mobileanalytics}.lib"
+            ],
+            "aws_cpp_sdk_identity_management/lib": [
+                "${aws_cpp_sdk_identity_management}.lib"
+            ],
+            "aws_cpp_sdk_cognito_identity/lib": [
+                "${aws_cpp_sdk_cognito_identity}.lib"
+            ],
+            "aws_cpp_sdk_cognito_idp/lib": [
+                "${aws_cpp_sdk_cognito_idp}.lib"
+            ],
+            "aws_cpp_sdk_kinesis/lib": [
+                "${aws_cpp_sdk_kinesis}.lib"
+            ],
+            "aws_cpp_sdk_lambda/lib": [
+                "${aws_cpp_sdk_lambda}.lib"
+            ],
+            "aws_cpp_sdk_access_management/lib": [
+                "${aws_cpp_sdk_access_management}.lib"
+            ],
+            "aws_cpp_sdk_transfer/lib": [
+                "${aws_cpp_sdk_transfer}.lib"
+            ],
+            "aws_cpp_sdk_identity_lambda/lib": [
+                "${aws_cpp_sdk_identity_lambda}.lib",
+                "${aws_dependencies}.lib"
+            ],
+            "aws_cpp_sdk_identity_metrics/lib": [
+                "${aws_cpp_sdk_identity_metrics}.lib",
+                "${aws_dependencies}.lib"
+            ],
+
+            "importlibpath_debug": [
+                "bin/windows/Debug"
+            ],
+            "importlibpath_release": [
+                "bin/windows/Release"
+            ],
+            "aws_cpp_sdk_all/import": [
+                "${aws_cpp_sdk_all}.lib",
+                "${aws_dependencies}.lib"
+            ],
+            "aws_cpp_sdk_core/import": [
+                "${aws_cpp_sdk_core}.lib",
+                "${aws_dependencies}.lib"
+            ],
+            "aws_cpp_sdk_devicefarm/import": [
+                "${aws_cpp_sdk_devicefarm}.lib",
+                "${aws_dependencies}.lib"
+            ],
+            "aws_cpp_sdk_gamelift/defines": [
+                "BUILD_GAMELIFT_CLIENT"
+            ],
+            "aws_cpp_sdk_gamelift/import": [
+                "${aws_cpp_sdk_gamelift}.lib"
+            ],
+            "aws_cpp_sdk_s3/import": [
+                "${aws_cpp_sdk_s3}.lib"
+            ],
+            "aws_cpp_sdk_sts/import": [
+                "${aws_cpp_sdk_sts}.lib"
+            ],
+            "aws_cpp_sdk_mobileanalytics/import": [
+                "${aws_cpp_sdk_mobileanalytics}.lib"
+            ],
+            "aws_cpp_sdk_identity_management/import": [
+                "${aws_cpp_sdk_identity_management}.lib"
+            ],
+            "aws_cpp_sdk_cognito_identity/import": [
+                "${aws_cpp_sdk_cognito_identity}.lib"
+            ],
+            "aws_cpp_sdk_cognito_idp/import": [
+                "${aws_cpp_sdk_cognito_idp}.lib"
+            ],
+            "aws_cpp_sdk_kinesis/import": [
+                "${aws_cpp_sdk_kinesis}.lib"
+            ],
+            "aws_cpp_sdk_lambda/import": [
+                "${aws_cpp_sdk_lambda}.lib"
+            ],
+            "aws_cpp_sdk_access_management/import": [
+                "${aws_cpp_sdk_access_management}.lib"
+            ],
+            "aws_cpp_sdk_transfer/import": [
+                "${aws_cpp_sdk_transfer}.lib"
+            ],
+            "aws_cpp_sdk_identity_lambda/import": [
+                "${aws_cpp_sdk_identity_lambda}.lib",
+                "${aws_dependencies}.lib"
+            ],
+            "aws_cpp_sdk_identity_metrics/import": [
+                "${aws_cpp_sdk_identity_metrics}.lib",
+                "${aws_dependencies}.lib"
+            ],
+
+            "sharedlibpath_debug": [
+                "bin/windows/Debug"
+            ],
+            "sharedlibpath_release": [
+                "bin/windows/Release"
+            ],
+            "aws_cpp_sdk_all/shared": [
+                "${aws_cpp_sdk_all}.dll",
+                "${aws_dependencies}.dll"
+            ],
+            "aws_cpp_sdk_core/shared": [
+                "${aws_cpp_sdk_core}.dll",
+                "${aws_dependencies}.dll"
+            ],
+            "aws_cpp_sdk_devicefarm/shared": [
+                "${aws_cpp_sdk_devicefarm}.dll",
+                "${aws_dependencies}.dll"
+            ],
+            "aws_cpp_sdk_gamelift/shared": [
+                "${aws_cpp_sdk_gamelift}.dll"
+            ],
+            "aws_cpp_sdk_s3/shared": [
+                "${aws_cpp_sdk_s3}.dll"
+            ],
+            "aws_cpp_sdk_sts/shared": [
+                "${aws_cpp_sdk_sts}.dll"
+            ],
+            "aws_cpp_sdk_mobileanalytics/shared": [
+                "${aws_cpp_sdk_mobileanalytics}.dll"
+            ],
+            "aws_cpp_sdk_identity_management/shared": [
+                "${aws_cpp_sdk_identity_management}.dll"
+            ],
+            "aws_cpp_sdk_cognito_identity/shared": [
+                "${aws_cpp_sdk_cognito_identity}.dll"
+            ],
+            "aws_cpp_sdk_cognito_idp/shared": [
+                "${aws_cpp_sdk_cognito_idp}.dll"
+            ],
+            "aws_cpp_sdk_kinesis/shared": [
+                "${aws_cpp_sdk_kinesis}.dll"
+            ],
+            "aws_cpp_sdk_lambda/shared": [
+                "${aws_cpp_sdk_lambda}.dll"
+            ],
+            "aws_cpp_sdk_access_management/shared": [
+                "${aws_cpp_sdk_access_management}.dll"
+            ],
+            "aws_cpp_sdk_transfer/shared": [
+                "${aws_cpp_sdk_transfer}.dll"
+            ],
+            "aws_cpp_sdk_identity_lambda/shared": [
+                "${aws_cpp_sdk_identity_lambda}.dll",
+                "${aws_dependencies}.dll"
+            ],
+            "aws_cpp_sdk_identity_metrics/shared": [
+                "${aws_cpp_sdk_identity_metrics}.dll",
+                "${aws_dependencies}.dll"
+            ],
+            "aws_cpp_sdk_all/pdb": [
+                "${aws_cpp_sdk_all}.pdb"
+            ],
+            "aws_cpp_sdk_core/pdb": [
+                "${aws_cpp_sdk_core}.pdb"
+            ],
+            "aws_cpp_sdk_devicefarm/pdb": [
+                "${aws_cpp_sdk_devicefarm}.pdb"
+            ],
+            "aws_cpp_sdk_gamelift/pdb": [
+                "${aws_cpp_sdk_gamelift}.pdb"
+            ],
+            "aws_cpp_sdk_s3/pdb": [
+                "${aws_cpp_sdk_s3}.pdb"
+            ],
+            "aws_cpp_sdk_sts/pdb": [
+                "${aws_cpp_sdk_sts}.pdb"
+            ],
+            "aws_cpp_sdk_mobileanalytics/pdb": [
+                "${aws_cpp_sdk_mobileanalytics}.pdb"
+            ],
+            "aws_cpp_sdk_identity_management/pdb": [
+                "${aws_cpp_sdk_identity_management}.pdb"
+            ],
+            "aws_cpp_sdk_cognito_identity/pdb": [
+                "${aws_cpp_sdk_cognito_identity}.pdb"
+            ],
+            "aws_cpp_sdk_cognito_idp/pdb": [
+                "${aws_cpp_sdk_cognito_idp}.pdb"
+            ],
+            "aws_cpp_sdk_kinesis/pdb": [
+                "${aws_cpp_sdk_kinesis}.pdb"
+            ],
+            "aws_cpp_sdk_lambda/pdb": [
+                "${aws_cpp_sdk_lambda}.pdb"
+            ],
+            "aws_cpp_sdk_access_management/pdb": [
+                "${aws_cpp_sdk_access_management}.pdb"
+            ],
+            "aws_cpp_sdk_transfer/pdb": [
+                "${aws_cpp_sdk_transfer}.pdb"
+            ],
+            "aws_cpp_sdk_identity_lambda/pdb": [
+                "${aws_cpp_sdk_identity_lambda}.pdb"
+            ],
+            "aws_cpp_sdk_identity_metrics/pdb": [
+                "{aws_cpp_sdk_identity_metrics}.pdb"
+            ]
+        },
+        "win_x64_clang": "@win_x64_vs2017"
+    }
+}

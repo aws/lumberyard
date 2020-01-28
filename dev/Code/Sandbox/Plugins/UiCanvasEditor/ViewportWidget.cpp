@@ -27,6 +27,8 @@
 #include "ViewportElement.h"
 #include "RulerWidget.h"
 #include "CanvasHelpers.h"
+#include "AssetDropHelpers.h"
+#include "QtHelpers.h"
 
 #define UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_ELEMENT_BORDERS_KEY         "ViewportWidget::m_drawElementBordersFlags"
 #define UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_ELEMENT_BORDERS_DEFAULT     ( ViewportWidget::DrawElementBorders_Unselected )
@@ -224,6 +226,8 @@ ViewportWidget::ViewportWidget(EditorWindow* parent)
 
         SetSettings(tweakedSettings);
     }
+
+    setAcceptDrops(true);
 
     SetUseArrowsForNavigation(false);
 
@@ -774,6 +778,46 @@ void ViewportWidget::resizeEvent(QResizeEvent* ev)
     }
 
     QViewport::resizeEvent(ev);
+}
+
+bool ViewportWidget::AcceptsMimeData(const QMimeData* mimeData)
+{
+    bool canvasLoaded = m_editorWindow->GetCanvas().IsValid();
+    if (!canvasLoaded)
+    {
+        return false;
+    }
+
+    return AssetDropHelpers::DoesMimeDataContainSliceOrComponentAssets(mimeData);
+}
+
+void ViewportWidget::dragEnterEvent(QDragEnterEvent* event)
+{
+    if (AcceptsMimeData(event->mimeData()))
+    {
+        event->accept();
+    }
+    else
+    {
+        event->ignore();
+    }
+}
+
+void ViewportWidget::dropEvent(QDropEvent* event)
+{
+    if (AcceptsMimeData(event->mimeData()))
+    {
+        const AZ::EntityId targetEntityId;
+        const bool onElement = false;
+        const int childIndex = -1;
+        const QPoint pos = event->pos();
+        m_editorWindow->GetHierarchy()->DropMimeDataAssets(event->mimeData(), targetEntityId, onElement, childIndex, &pos);
+        event->accept();
+
+        // Put focus on the viewport widget
+        activateWindow();
+        setFocus();
+    }
 }
 
 void ViewportWidget::OnEntityPickModeStarted()

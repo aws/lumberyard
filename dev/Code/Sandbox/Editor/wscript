@@ -14,6 +14,9 @@
 ########################################################################################
 
 
+def should_build_darwin_editor(ctx):
+    return ctx.engine_root_version == '0.0.0.0' or ctx.options.enable_experimental_features.lower() == 'true'
+
 def build(bld):
 
     qt_version = None
@@ -55,7 +58,9 @@ def build(bld):
                                    'QT5WINEXTRAS',
                                    'ZLIB'],
         features                = ['qt5'],
-        includes                = [bld.ThirdPartyPath('squish'),
+        includes                = [bld.Path('Code/CryEngine/CryCommon'),
+                                   bld.Path('Code/Sandbox/Plugins/EditorCommon'),
+                                   bld.ThirdPartyPath('squish'),
                                    'Include',
                                    bld.Path('Code/CryEngine/CryAction'),
                                    bld.Path('Code/Tools')],
@@ -76,13 +81,28 @@ def build(bld):
         test_all_file_list  = ['editor_core_test.waf_files'],
     )
 
+    #By default the Editor is built with tools to edit Terrain.
+    #If you remove the LY_TERRAIN_EDITOR macro constant, then all of those
+    #Terrain editing tools will be removed from Editor.exe.
+    #This is useful for customers who author Terrain assets through external
+    #tools, or simply make games that don't require a terrain system at all.
+    enableTerrainEditing = getattr(bld, 'enable_legacy_terrain', True)
+
+    fileList = ['editor_lib.waf_files']
+    testFileList = ['editor_lib_test.waf_files']
+
+    if enableTerrainEditing:
+        additionalDefines.append('LY_TERRAIN_EDITOR')
+        fileList.append('editor_lib_terrain.waf_files')
+        testFileList.append('editor_lib_test_terrain.waf_files')
+
     kw = dict(
         # Settings
         target                              = 'EditorLib',
         vs_filter                           = 'Sandbox',
         copyright_org                       = 'Amazon-CryTek',
         pch                                 = 'StdAfx.cpp',
-        file_list                           = 'editor_lib.waf_files',
+        file_list                           = fileList,
         darwin_file_list                    = 'editor_lib_darwin.waf_files',
         win_file_list                       = [ ],
         platforms                           = ['win', 'darwin'],
@@ -90,6 +110,8 @@ def build(bld):
         exclude_monolithic                  = True,
         client_only                         = True,
         includes                            = ['.',
+                                               bld.Path('Code/CryEngine/CryCommon'),
+                                               bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                                                '..',
                                                'Include',
                                                bld.ThirdPartyPath('squish'),
@@ -128,7 +150,6 @@ def build(bld):
                                                'QT5WINEXTRAS',
                                                'QT5XML',
                                                'QT5CONCURRENT',
-                                               'BOOSTPYTHON',
                                                'TIFF',
                                                'AWS_CPP_SDK_STS',
                                                'AWS_CPP_SDK_CORE',
@@ -181,7 +202,7 @@ def build(bld):
 
 
         # Testing
-        test_all_file_list  = ['editor_lib_test.waf_files'],
+        test_all_file_list  = testFileList,
     )
     
     for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
@@ -189,17 +210,22 @@ def build(bld):
 
     bld.CryEditorLib(**kw)
 
+    enabled_platforms = ['win']
+    if should_build_darwin_editor(bld):
+        enabled_platforms.append('darwin') 
+
     tsk_gen = bld.CryEditor(
         # Settings
         target                              = 'Editor',
         vs_filter                           = 'Sandbox',
         copyright_org                       = 'Amazon-CryTek',
         file_list                           = 'editor.waf_files',
-        platforms                           = ['win', 'darwin'],
+        platforms                           = enabled_platforms,
         configurations                      = ['all'],
         exclude_monolithic                  = True,
         client_only                         = True,
         includes                            = ['.',
+                                               bld.Path('Code/CryEngine/CryCommon'),
                                                '..',
                                                'Include',
                                                bld.Path('Code/CryEngine'),
@@ -237,7 +263,6 @@ def build(bld):
                                                'QT5CONCURRENT',
                                                'QT5XML',
                                                'QTMAIN',
-                                               'BOOSTPYTHON',
                                                'AWS_CPP_SDK_STS',
                                                'AWS_CPP_SDK_CORE',
                                                'AWS_CPP_SDK_COGNITO_IDENTITY',
@@ -249,8 +274,7 @@ def build(bld):
                                                'D3D_COMPILER',
                                                'OPENSSL',
                                                'MSVC90',
-                                               'LUA_COMPILER',
-                                               'FFMPEG_EXE'
+                                               'LUA_COMPILER'
                                                ],
 
         use_required_gems                   = True,
@@ -297,11 +321,12 @@ def build(bld):
 
 
 def package(pkg):
-    build(pkg) # Need to call this to generate our task_generator
-    pkg.package_tool(
-        target           = 'Editor',
-        platforms        = ['darwin'],
-        configurations   = ['debug', 'profile'],
-        include_all_libs = True,
-        dir_resources    = ['qtlibs', 'EditorPlugins'],
-    )
+    if should_build_darwin_editor(pkg):
+        build(pkg) # Need to call this to generate our task_generator
+        pkg.package_tool(
+            target           = 'Editor',
+            platforms        = ['darwin'],
+            configurations   = ['debug', 'profile'],
+            include_all_libs = True,
+            dir_resources    = ['qtlibs', 'EditorPlugins'],
+        )

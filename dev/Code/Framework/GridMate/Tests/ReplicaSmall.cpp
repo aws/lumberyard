@@ -586,6 +586,190 @@ public:
     }
 };
 
+class ReplicaChunkDescriptor_Rpc_Crash_Test
+    : public UnitTest::GridMateMPTestFixture
+{
+public:
+    GM_CLASS_ALLOCATOR(ReplicaChunkDescriptor_Rpc_Crash_Test);
+
+    class Handler
+        : public GridMate::ReplicaChunkInterface
+    {
+    public:
+        bool OnRpc(const RpcContext& rc)
+        {
+            AZ_UNUSED(rc);
+            return false;
+        }
+    };
+
+    class JustRpcChunk
+        : public ReplicaChunk
+    {
+        friend class DataSet_ACKTest;
+    public:
+        GM_CLASS_ALLOCATOR(JustRpcChunk);
+
+        JustRpcChunk()
+            : Rpc1("rpc")
+        {
+        }
+
+        bool IsReplicaMigratable() override
+        {
+            return false;
+        }
+
+        static const char* GetChunkName()
+        {
+            return "JustRpcChunk";
+        }
+
+        GridMate::Rpc<>::BindInterface<Handler, &Handler::OnRpc> Rpc1;
+    };
+
+    void run()
+    {
+        ReplicaPtr replica = Replica::CreateReplica("TestReplica");
+
+        ReplicaChunkDescriptorTable::Get().RegisterChunkType<JustRpcChunk>();
+        AZStd::unique_ptr<JustRpcChunk> chunk(CreateReplicaChunk<JustRpcChunk>());
+        replica->AttachReplicaChunk(chunk.get());
+
+        chunk->SetHandler(nullptr);
+
+        /*
+         * Testing that calling GetRpc with bad index won't crash GridMate.
+         */
+        RpcBase* rpcBase = chunk->GetDescriptor()->GetRpc( chunk.get(), 100 );
+
+        AZ_TEST_ASSERT(!rpcBase);
+
+        chunk.release(); // chunks are owned by replica
+    }
+};
+
+class DataSet_AuthoritativeCallback_Test
+    : public UnitTest::GridMateMPTestFixture
+{
+public:
+    GM_CLASS_ALLOCATOR(DataSet_AuthoritativeCallback_Test);
+
+    class Handler
+        : public GridMate::ReplicaChunkInterface
+    {
+    public:
+        void OnDataOnServer(const int& /*value*/, const TimeContext& /*tc*/)
+        {
+            ++m_invokes;
+        }
+
+        int m_invokes = 0;
+    };
+
+    class DataWithCustomTraitsChunk
+        : public ReplicaChunk
+    {
+        friend class DataSet_ACKTest;
+    public:
+        GM_CLASS_ALLOCATOR(DataWithCustomTraitsChunk);
+
+        DataWithCustomTraitsChunk()
+            : m_dataSet1("dataset 1")
+        {
+        }
+
+        bool IsReplicaMigratable() override
+        {
+            return false;
+        }
+
+        static const char* GetChunkName()
+        {
+            return "DataWithCustomTraitsChunk";
+        }
+
+        // DataSetInvokeEverywhereTraits leads to the callback being invoked on the server, i.e. authoritative handler
+        GridMate::DataSet<int>::BindInterface<Handler, &Handler::OnDataOnServer, DataSetInvokeEverywhereTraits> m_dataSet1;
+    };
+
+    void run()
+    {
+        ReplicaPtr replica = Replica::CreateReplica("TestReplica");
+
+        ReplicaChunkDescriptorTable::Get().RegisterChunkType<DataWithCustomTraitsChunk>();
+        AZStd::unique_ptr<DataWithCustomTraitsChunk> chunk(CreateReplicaChunk<DataWithCustomTraitsChunk>());
+        replica->AttachReplicaChunk(chunk.get());
+
+        Handler handler;
+
+        chunk->SetHandler(&handler);
+
+        // This call should invoke OnDataOnServer because we specified DataSetInvokeEverywhereTraits
+        chunk->m_dataSet1.Set(1);
+        AZ_TEST_ASSERT(handler.m_invokes == 1);
+
+        chunk.release();
+    }
+};
+
+class DataSet_AuthoritativeCallback_Without_Handler_Test
+    : public UnitTest::GridMateMPTestFixture
+{
+public:
+    GM_CLASS_ALLOCATOR(DataSet_AuthoritativeCallback_Without_Handler_Test);
+    
+    class Handler
+        : public GridMate::ReplicaChunkInterface
+    {
+    public:
+        void OnDataOnServer(const int& /*value*/, const TimeContext& /*tc*/)
+        {
+        }
+    };
+
+    class DataWithCustomTraitsAndCallingSetChunk
+        : public ReplicaChunk
+    {
+        friend class DataSet_ACKTest;
+    public:
+        GM_CLASS_ALLOCATOR(DataWithCustomTraitsAndCallingSetChunk);
+
+        DataWithCustomTraitsAndCallingSetChunk()
+            : m_dataSet1("dataset 1")
+        {
+            m_dataSet1.Set(1); // also testing very early Set() invocation
+        }
+
+        bool IsReplicaMigratable() override
+        {
+            return false;
+        }
+
+        static const char* GetChunkName()
+        {
+            return "DataWithCustomTraitsAndCallingSetChunk";
+        }
+
+        // DataSetInvokeEverywhereTraits leads to the callback being invoked on the server, i.e. authoritative handler
+        GridMate::DataSet<int>::BindInterface<Handler, &Handler::OnDataOnServer, DataSetInvokeEverywhereTraits> m_dataSet1;
+    };
+
+    void run()
+    {
+        ReplicaPtr replica = Replica::CreateReplica("TestReplica");
+
+        ReplicaChunkDescriptorTable::Get().RegisterChunkType<DataWithCustomTraitsAndCallingSetChunk>();
+        AZStd::unique_ptr<DataWithCustomTraitsAndCallingSetChunk> chunk(CreateReplicaChunk<DataWithCustomTraitsAndCallingSetChunk>());
+        replica->AttachReplicaChunk(chunk.get());
+
+        // This should not crash on nullptr access (a handler isn't set)
+        chunk->m_dataSet1.Set(1);
+
+        chunk.release();
+    }
+};
+
 }; // namespace UnitTest
 
 GM_TEST_SUITE(ReplicaSmallSuite)
@@ -596,4 +780,7 @@ GM_TEST(OfflineModeTest);
 GM_TEST(DataSet_PrepareTest);
 GM_TEST(DataSet_ACKTest);
 GM_TEST(RpcNullHandlerCrash_Test);
+GM_TEST(ReplicaChunkDescriptor_Rpc_Crash_Test);
+GM_TEST(DataSet_AuthoritativeCallback_Test);
+GM_TEST(DataSet_AuthoritativeCallback_Without_Handler_Test);
 GM_TEST_SUITE_END()

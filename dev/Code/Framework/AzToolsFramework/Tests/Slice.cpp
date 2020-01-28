@@ -22,6 +22,7 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#include <AzToolsFramework/Entity/EditorEntitySortComponent.h>
 
 namespace UnitTest
 {
@@ -302,6 +303,131 @@ namespace UnitTest
         AZ_TEST_ASSERT(newChildEntityIdAncestorPairs.size() == 2);
         AZ_TEST_ASSERT(unpushableEntityIdsPerAsset.size() == 0);
         AZ_TEST_ASSERT(newChildEntityIdAncestorPairs.size() == 2);
+
+        RemoveAllSlices();
+    }
+
+    // Test pushing slice with children that aren't going to be in the pushed version
+    // either because the user has chosen to leave them out, or they are unpushable for some reason
+    // (e.g. they would create a circular dependency).
+    TEST_F(SlicePushCyclicDependencyTest, SlicePush_DontPushSomeChildren_ChildrenRemovedFromChildOrderArray)
+    {
+        AZ::Data::AssetManager& assetManager = AZ::Data::AssetManager::Instance();
+        
+        // Create a slice
+        AZ::Entity* entity = aznew AZ::Entity("TestEntity0");
+        entity->CreateComponent<AzToolsFramework::Components::TransformComponent>();
+        AZ::Data::AssetId sliceAssetId0 = SaveAsSlice(entity);
+        entity = nullptr;
+
+        // Instantiate two copies of the slice.
+        AZ::SliceComponent::EntityList parentSlice = InstantiateSlice(sliceAssetId0);
+        AZ::SliceComponent::EntityList childSlice = InstantiateSlice(sliceAssetId0);
+
+        // Make one a child of the other.
+        AZ::TransformBus::Event(childSlice[0]->GetId(), &AZ::TransformBus::Events::SetParent, parentSlice[0]->GetId());
+
+        // Grab the parent entity and add an EditorEntitySortComponent to it. 
+        AzToolsFramework::Components::EditorEntitySortComponent* parentSortComponent;
+        AZ::Entity* parentEntity = nullptr;
+        {
+            AZ::ComponentApplicationBus::BroadcastResult(parentEntity, &AZ::ComponentApplicationBus::Handler::FindEntity, parentSlice[0]->GetId());
+            AZ_Assert(parentEntity, "Failed to find parentEntity\n");
+            parentEntity->Deactivate();
+            parentSortComponent = parentEntity->CreateComponent<AzToolsFramework::Components::EditorEntitySortComponent>();
+            AZ_Assert(parentSortComponent, "Failed to create parentSortComponent\n");
+            parentEntity->Activate();
+        }
+
+        // Create two entities and make them children of the parent
+        AZ::Entity* childEntity0;
+        {
+            childEntity0 = aznew AZ::Entity("TestChildEntity");
+            childEntity0->CreateComponent<AzToolsFramework::Components::TransformComponent>();
+            childEntity0->Init();
+            childEntity0->Activate();
+            AZ::TransformBus::Event(childEntity0->GetId(), &AZ::TransformBus::Events::SetParent, parentEntity->GetId());
+            AZ_Assert(childEntity0, "Failed to create childEntity0\n");
+        }
+
+        AZ::Entity* childEntity1;
+        {
+            childEntity1 = aznew AZ::Entity("TestChildEntity");
+            childEntity1->CreateComponent<AzToolsFramework::Components::TransformComponent>();
+            childEntity1->Init();
+            childEntity1->Activate();
+            AZ::TransformBus::Event(childEntity1->GetId(), &AZ::TransformBus::Events::SetParent, parentEntity->GetId());
+            AZ_Assert(childEntity1, "Failed to create childEntity0\n");
+        }
+
+        // Analyse hierarchy for unpushable entities.
+        AZStd::unordered_map<AZ::Data::AssetId, AZ::SliceComponent::EntityIdSet> unpushableEntityIdsPerAsset;
+        {
+            AZStd::unordered_map<AZ::EntityId, AZ::SliceComponent::EntityAncestorList> sliceAncestryMapping;
+            AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>> newChildEntityIdAncestorPairs;
+
+            AZStd::unordered_set<AZ::EntityId> entitiesToAdd;
+            // Make list of entities to be pushed. Leave out childEntity1 to emulate a user having unchecked it in the advanced push widget.
+            AzToolsFramework::EntityIdList inputEntityIds = { parentEntity->GetId(), childSlice[0]->GetId(), childEntity0->GetId() };
+            AZStd::unordered_set<AZ::EntityId> pushableNewChildEntityIds = AzToolsFramework::SliceUtilities::GetPushableNewChildEntityIds(
+                inputEntityIds, unpushableEntityIdsPerAsset, sliceAncestryMapping, newChildEntityIdAncestorPairs, entitiesToAdd);
+
+            // UnpushableEntityIdsPerAsset should now contain a reference to childSlice which can't be
+            // pushed as it would create a circular reference. This would get picked up by advanced or quick push
+            // during GetPushableNewChildEntityIds.
+            AZ_TEST_ASSERT(unpushableEntityIdsPerAsset.size() == 1);
+        }
+        
+        // Add all child entities to the parent slice's child order array.
+        parentSortComponent->AddChildEntity(childSlice[0]->GetId(), false);
+        parentSortComponent->AddChildEntity(childEntity0->GetId(), false);
+        parentSortComponent->AddChildEntity(childEntity1->GetId(), false);
+        AzToolsFramework::EntityOrderArray orderArray = parentSortComponent->GetChildEntityOrderArray();
+
+        // Make a list of entities that we don't want to push (childEntity1). This will emulate a user deciding not to push
+        // certain entities in the advanced push widget.
+        AZStd::vector <AZ::EntityId> idsNotToPush;
+        idsNotToPush.push_back(childEntity1->GetId());
+
+        // Do the pruning to produce the list of entities that will be pushed.
+        AzToolsFramework::EntityOrderArray prunedOrderArray;
+        {
+            prunedOrderArray.reserve(orderArray.size());
+
+            AzToolsFramework::SliceUtilities::WillPushEntityCallback willPushEntityCallback =
+                [&unpushableEntityIdsPerAsset, &idsNotToPush]
+            (const AZ::EntityId entityId, const  AZ::Data::Asset <AZ::SliceAsset>& assetToPushTo) -> bool
+            {
+                if (unpushableEntityIdsPerAsset[assetToPushTo.GetId()].find(entityId) != unpushableEntityIdsPerAsset[assetToPushTo.GetId()].end())
+                {
+                    return false;
+                }
+
+                for (AZ::EntityId id : idsNotToPush)
+                {
+                    if (id == entityId)
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            };
+
+            AZ::Data::Asset<AZ::SliceAsset> sliceAsset = assetManager.GetAsset<AZ::SliceAsset>(sliceAssetId0, false);
+
+            AzToolsFramework::SliceUtilities::RemoveInvalidChildOrderArrayEntries(orderArray, prunedOrderArray, sliceAsset, willPushEntityCallback);
+        }
+
+        // At this point there should only be childEntity0 in the pruned order array.
+        bool pruningCorrect = false;
+
+        if (prunedOrderArray.size() == 1 && prunedOrderArray[0] == childEntity0->GetId())
+        {
+            pruningCorrect = true;
+        }
+
+        EXPECT_EQ(pruningCorrect, true);
 
         RemoveAllSlices();
     }

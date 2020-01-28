@@ -591,6 +591,8 @@ int CScriptBind_System::GetLocalOSTime(IFunctionHandler* pH)
         #include "Xenia/ScriptBind_System_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ScriptBind_System_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/ScriptBind_System_cpp_salem.inl"
     #endif
 #elif defined(LINUX) || defined(APPLE)
 #define SCRIPTBIND_SYSTEM_CPP_TRAIT_USE_UNIX_LOCALTIME 1

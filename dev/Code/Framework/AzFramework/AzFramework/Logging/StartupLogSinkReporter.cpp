@@ -18,7 +18,12 @@ namespace AZ
     {
         bool StartupLogSink::OnPreAssert(const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* message)
         {
-            m_errorStringsCollected.emplace_back(message);
+            // Don't add zero length messages to error strings it will prematurely consume asserts
+            // before they can register and gives us no information
+            if (strlen(message) > 0)
+            {
+                m_errorStringsCollected.emplace_back(message);
+            }
             return false;
         }
 

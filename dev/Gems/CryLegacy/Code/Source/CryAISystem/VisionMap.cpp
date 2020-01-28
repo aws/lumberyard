@@ -634,7 +634,7 @@ RayCastRequest::Priority CVisionMap::GetRayCastRequestPriority(const ObserverPar
                 break;
 
             default:
-                CRY_ASSERT("bad priority specified in vision map priority table");
+                CRY_ASSERT_MESSAGE(false, "bad priority specified in vision map priority table");
                 break;
             }
             break;

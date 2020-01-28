@@ -199,7 +199,12 @@
          </widget>
         </item>
         <item>
-         <layout class="QVBoxLayout" name="materialSelection"/>
+         <layout class="QVBoxLayout" name="materialSelection">
+           <item>
+             <widget class="QLabel" name="terrainNotFoundMessage">
+             </widget>
+           </item>
+         </layout>
         </item>
         <item>
          <widget class="QCollapsibleGroupBox" name="optionsGroupBox">

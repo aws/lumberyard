@@ -15,6 +15,7 @@ from cry_utils import append_kw_entry, append_to_unique_list
 from cryengine_modules import build_stlib, \
                               build_shlib,\
                               build_program, \
+                              build_file_container, \
                               BuildTaskGenerator, \
                               RunTaskGenerator,\
                               ApplyConfigOverwrite,\
@@ -29,8 +30,7 @@ import utils
 
 import re
 import os
-import glob
-
+import copy
 """
 The following 'KEYWORD_TYPES' represents reserved keywords for the build system and their expected type. Any keywords 
 that are not listed below will be treated as lists. 
@@ -220,6 +220,31 @@ def LumberyardApplication(ctx, *k, **kw):
 
     return RunTaskGenerator(ctx, *k, **kw)
 
+###############################################################################
+@build_file_container
+def LumberyardFileContainer(ctx, *k, **kw):
+    """
+    Function to create a header-only library that others can still 'use' in order
+    to recieve exported defines and exported includes.
+    """
+    target = get_target(ctx, kw)
+    platform, configuration = get_current_platform_configuration(ctx)
+
+    additional_aliases = initialize_task_generator(ctx, target, platform, configuration, kw)
+
+    configure_task_generator(ctx, target, kw)
+
+    append_kw_entry(kw, 'features', ['copy_3rd_party_binaries'])
+
+    if not BuildTaskGenerator(ctx, kw):
+        return None
+        
+    if ctx.env['PLATFORM'] != 'project_generator':
+        # clear out the 'source' and features so that as little as possible executes
+        kw['source'] = []
+        kw['features'] = ['use']
+    
+    return ctx(*k, **kw) # calling ctx() directly declares an empty target gen that doesn't do builds.
 
 ########################################################################################################################
 def get_target(ctx, kw):
@@ -936,3 +961,74 @@ def apply_settings_file(ctx, target, merge_kw, settings_file, additional_aliases
 
 def apply_project_settings_for_input():
     pass
+
+
+@conf
+def split_keywords_from_static_lib_definition_for_test(ctx, original_kw_dict):
+    """
+    This helper function will take the keyword definitions for a static library that may also include test_ keywords, and
+    in the even of having test_ keywords, split them out into two keyword dictionaries: one for the original static library
+    and the other for a shell DLL that will link against the static library but will use its own file list which will
+    represent the source unit tests that will test the code in the static library.
+    
+    :param ctx:                 The current context
+    :param original_kw_dict:    The keyword input dictionary for the static library
+    :return: Tuple of the preprocessed kw dict for the static library, preprocessed kw dict for the shared test dll (if the proper test_ keywords are provided)
+    """
+    
+    base_target_name = original_kw_dict['target']
+    
+    # The following are the only common keywords that will be shared between the static and the test shared libraries. All other keywords will be not be copies of each other
+    common_keywords = ('platforms', 'vs_filter')
+    # The following are the test_ equivalent common keywords that we we search for to determine if we need to copy over the original common value or accept the 'test_' over-ridden on
+    test_common_keywords = ['test_{}'.format(keyword) for keyword in common_keywords]
+    
+    kw_for_test_static = dict()
+    kw_for_test_shared = dict()
+    
+    # Track if a test file list was specified, otherwise do not create a shared dll for test
+    has_test_filelist = False
+    
+    # Split the values appropriately
+    for original_key, original_value in original_kw_dict.items():
+    
+        check_test_keyword = 'test_{}'.format(original_key)
+
+        if original_key.endswith('test_file_list') or original_key.endswith('test_all_file_list'):
+            # We found the test file list (potentially platform restricted and/or with the 'all' aliase for test), set the flag and add it only to the test_shared kw dict
+            has_test_filelist = True
+            kw_for_test_shared[original_key] = copy.copy(original_value)
+        elif original_key == 'test_platform_roots':
+            # Special case: set the specific 'test_platform_roots' keyword as 'platform_roots' only in the shared (test) configuration. This is needed because 'platform_roots'
+            # does not support platform or configuration keyword filtering, so we will manually do it at this point
+            kw_for_test_shared['platform_roots'] = copy.copy(original_value)
+        elif original_key.endswith('file_list'):
+            # We found a file list that is non-test, only add it to the test_static kw dict
+            kw_for_test_static[original_key] = copy.copy(original_value)
+        elif 'test_' in original_key and original_key != 'test_only' and original_key not in test_common_keywords:
+            # we found a test-specific keyword (With the exception of 'test_only', which is used to
+            # restrict the module to test-only configurations
+            kw_for_test_shared[original_key] = copy.copy(original_value)
+        elif original_key in common_keywords:
+            # The key is a common keyword that may be shared between the static and test shared library.
+            if check_test_keyword not in original_kw_dict:
+                # There is no 'test_' equivalent of the common keyword, then share the one from the static library directly in the test shared library
+                kw_for_test_shared[original_key] = copy.copy(original_value)
+            else:
+                # There is a specific 'test_' equivalent of the common one. Set the test shared shared library's value to the 'test_' one
+                kw_for_test_shared[original_key] = copy.copy(original_kw_dict[check_test_keyword])
+
+            kw_for_test_static[original_key] = copy.copy(original_value)
+        else:
+            kw_for_test_static[original_key] = copy.copy(original_value)
+    
+    if has_test_filelist:
+        kw_for_test_shared['target'] = '{}Tests'.format(base_target_name)
+        kw_for_test_shared['file_list'] = kw_for_test_shared['test_file_list']
+        del kw_for_test_shared['test_file_list']
+        kw_for_test_shared['test_only'] = True
+        kw_for_test_shared['unit_test_target'] = base_target_name
+        append_kw_entry(kw_for_test_shared, 'use', [base_target_name, 'AzTest'])
+        return kw_for_test_static, kw_for_test_shared
+    else:
+        return kw_for_test_static, None

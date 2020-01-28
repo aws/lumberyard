@@ -651,9 +651,12 @@ namespace TextureAtlasBuilder
         // We process the same file for all platforms
         for (const AssetBuilderSDK::PlatformInfo& info : request.m_enabledPlatforms)
         {
-            AssetBuilderSDK::JobDescriptor descriptor = GetJobDescriptor(request.m_sourceFile, input);
-            descriptor.SetPlatformIdentifier(info.m_identifier.c_str());
-            response.m_createJobOutputs.push_back(descriptor);
+            if (ImageProcessing::BuilderSettingManager::Instance()->DoesSupportPlatform(info.m_identifier))
+            {
+                AssetBuilderSDK::JobDescriptor descriptor = GetJobDescriptor(request.m_sourceFile, input);
+                descriptor.SetPlatformIdentifier(info.m_identifier.c_str());
+                response.m_createJobOutputs.push_back(descriptor);
+            }
         }
 
         if (valid)

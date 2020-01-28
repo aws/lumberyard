@@ -11,9 +11,13 @@
 */
 #pragma once
 
+#include <AzCore/PlatformDef.h>
+// qbrush.h(118): warning C4251: 'QBrush::d': class 'QScopedPointer<QBrushData,QBrushDataPointerDeleter>' needs to have dll-interface to be used by clients of class 'QBrush'
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option")
 #include <QSequentialAnimationGroup>
 #include <QGraphicsItem>
 #include <QPen>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Component/TickBus.h>

@@ -26,8 +26,7 @@
 #include <AzCore/std/functional.h>
 #include <AzCore/std/parallel/condition_variable.h>
 #include <AzCore/UnitTest/TestTypes.h>
-
-#include "Utils.h"
+#include <AZTestShared/Utils/Utils.h>
 
 #define MYASSET1_ID "{5B29FE2B-6B41-48C9-826A-C723951B0560}"
 #define MYASSET2_ID "{BD354AE5-B5D5-402A-A12E-BE3C96F6522B}"

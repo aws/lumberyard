@@ -39,10 +39,7 @@ namespace AzToolsFramework
         ~LinearManipulator() = default;
 
         /// A Manipulator must only be created and managed through a shared_ptr.
-        static AZStd::shared_ptr<LinearManipulator> MakeShared(const AZ::Transform& worldFromLocal)
-        {
-            return AZStd::shared_ptr<LinearManipulator>(aznew LinearManipulator(worldFromLocal));
-        }
+        static AZStd::shared_ptr<LinearManipulator> MakeShared(const AZ::Transform& worldFromLocal);
 
         /// Unchanging data set once for the linear manipulator.
         struct Fixed

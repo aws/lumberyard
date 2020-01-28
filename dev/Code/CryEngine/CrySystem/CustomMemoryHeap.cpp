@@ -28,6 +28,8 @@
         #include "Xenia/CustomMemoryHeap_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CustomMemoryHeap_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CustomMemoryHeap_cpp_salem.inl"
     #endif
 #endif
 
@@ -99,6 +101,8 @@ ICustomMemoryBlock* CCustomMemoryHeap::AllocateBlock(size_t const nAllocateSize,
         #include "Xenia/CustomMemoryHeap_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CustomMemoryHeap_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CustomMemoryHeap_cpp_salem.inl"
     #endif
 #endif
     default:
@@ -130,6 +134,8 @@ void CCustomMemoryHeap::DeallocateBlock(CCustomMemoryHeapBlock* pBlock)
         #include "Xenia/CustomMemoryHeap_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CustomMemoryHeap_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CustomMemoryHeap_cpp_salem.inl"
     #endif
 #endif
     default:

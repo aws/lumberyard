@@ -23,6 +23,10 @@
         [
             "AzFramework/IO/LocalFileIO_Android.cpp"
         ],
+        "Network/Platform/Android":
+        [
+            "../Common/Default/AzFramework/Network/AssetProcessorConnection_Default.cpp"
+        ],
         "TargetManagement/Platform/Android":
         [
             "../Common/Default/AzFramework/TargetManagement/TargetManagementComponent_Default.cpp"

@@ -53,12 +53,29 @@ namespace AZStd
 
             This class contains two typedefs, "invoker_type" and "manager_type",
             which correspond to the invoker and manager types. */
-            template<typename FunctionType, typename Tag>
+            template<typename FunctionType, typename Tag, typename Allocator = AZStd::allocator>
             struct get_invoker { };
 
             /* Retrieve the invoker for a function pointer. */
+            template<typename R, typename... Args, typename Allocator>
+            struct get_invoker<R(Args...), function_ptr_tag, Allocator>
+            {
+                template<typename FunctionPtr>
+                static basic_vtable<R, Args...> create_vtable()
+                {
+                    auto funcPtr = &call<FunctionPtr>;
+                    return { { &functor_manager_a<FunctionPtr, Allocator>::manage }, funcPtr };
+                }
+            private:
+                template<typename FunctionPtr>
+                static R call(function_buffer& function_ptr, Args&&... args)
+                {
+                    FunctionPtr f = reinterpret_cast<FunctionPtr>(function_ptr.func_ptr);
+                    return invoke_void_return_wrapper<R>::call(f, AZStd::forward<Args>(args)...);
+                }
+            };
             template<typename R, typename... Args>
-            struct get_invoker<R(Args...), function_ptr_tag>
+            struct get_invoker<R(Args...), function_ptr_tag, AZStd::allocator>
             {
                 template<typename FunctionPtr>
                 static basic_vtable<R, Args...> create_vtable()
@@ -75,8 +92,25 @@ namespace AZStd
                 }
             };
             /* Retrieve the invoker for a member pointer. */
+            template<typename R, typename... Args, typename Allocator>
+            struct get_invoker<R(Args...), member_ptr_tag, Allocator>
+            {
+                template<typename MemberPtr>
+                static basic_vtable<R, Args...> create_vtable()
+                {
+                    auto funcPtr = &call<MemberPtr>;
+                    return { vtable_base{ &functor_manager_a<MemberPtr, Allocator>::manage }, funcPtr };
+                }
+            private:
+                template<typename MemberPtr>
+                static R call(function_buffer& function_obj_ptr, Args&&... args)
+                {
+                    MemberPtr* f = reinterpret_cast<MemberPtr*>(&function_obj_ptr.data);
+                    return invoke_void_return_wrapper<R>::call(*f, AZStd::forward<Args>(args)...);
+                }
+            };
             template<typename R, typename... Args>
-            struct get_invoker<R(Args...), member_ptr_tag>
+            struct get_invoker<R(Args...), member_ptr_tag, AZStd::allocator>
             {
                 template<typename MemberPtr>
                 static basic_vtable<R, Args...> create_vtable()
@@ -94,8 +128,33 @@ namespace AZStd
             };
 
             /* Retrieve the invoker for a function object. */
+            template<typename R, typename... Args, typename Allocator>
+            struct get_invoker<R(Args...), function_obj_tag, Allocator>
+            {
+                template<typename FunctionObj>
+                static basic_vtable<R, Args...> create_vtable()
+                {
+                    auto funcPtr = &call<FunctionObj>;
+                    return { vtable_base{ &functor_manager_a<FunctionObj, Allocator>::manage }, funcPtr };
+                }
+            private:
+                template<typename FunctionObj>
+                static R call(function_buffer& function_obj_ptr, Args&&... args)
+                {
+                    FunctionObj* f;
+                    if (function_allows_small_object_optimization<FunctionObj>::value)
+                    {
+                        f = reinterpret_cast<FunctionObj*>(&function_obj_ptr.data);
+                    }
+                    else
+                    {
+                        f = reinterpret_cast<FunctionObj*>(function_obj_ptr.obj_ptr);
+                    }
+                    return invoke_void_return_wrapper<R>::call(*f, AZStd::forward<Args>(args)...);
+                }
+            };
             template<typename R, typename... Args>
-            struct get_invoker<R(Args...), function_obj_tag>
+            struct get_invoker<R(Args...), function_obj_tag, AZStd::allocator>
             {
                 template<typename FunctionObj>
                 static basic_vtable<R, Args...> create_vtable()
@@ -121,8 +180,8 @@ namespace AZStd
             };
 
             /* Retrieve the invoker for a reference to a function object. */
-            template<typename R, typename... Args>
-            struct get_invoker<R(Args...), function_obj_ref_tag>
+            template<typename R, typename... Args, typename Allocator>
+            struct get_invoker<R(Args...), function_obj_ref_tag, Allocator>
             {
                 template<typename RefWrapper>
                 static basic_vtable<R, Args...> create_vtable()
@@ -499,7 +558,7 @@ namespace AZStd
         {
             using Internal::function_util::vtable_base;
             typedef typename Internal::function_util::get_function_tag<Functor>::type tag;
-            typedef Internal::function_util::get_invoker<R(Args...), tag> get_invoker;
+            typedef Internal::function_util::get_invoker<R(Args...), tag, Allocator> get_invoker;
 
             //! A static vtable is used to avoid the need to dynamically allocate a vtable
             //! whose purpose is to contain a function ptr that can the manage the function buffer

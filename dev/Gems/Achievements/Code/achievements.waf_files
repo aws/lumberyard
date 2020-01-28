@@ -1,0 +1,13 @@
+{
+    "auto": {
+        "Include": [
+            "Include/Achievements/AchievementRequestBus.h",
+            "Include/Achievements/AchievementNotificationBus.h"
+        ],
+        "Source": [
+            "Source/AchievementsModule.cpp",
+            "Source/AchievementsSystemComponent.cpp",
+            "Source/AchievementsSystemComponent.h"
+        ]
+    }
+}

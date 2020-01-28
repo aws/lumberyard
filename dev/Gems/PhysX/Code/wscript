@@ -10,7 +10,11 @@
 #
 ########################################################################################
 
+from waflib import Configure
+
 def build(bld):
+    import lumberyard_sdks
+
     # PhysX has global pointers for referencing the PhysX SDK. These pointers need to exist in a single memory
     # space so different Gems can get copies of them. Monolithic builds will use the static version of PhysX SDK libraries,
     # which results in a single memory space. Non-monolithic builds will use the dynamic version of PhysX SDK libraries,
@@ -20,13 +24,32 @@ def build(bld):
     else:
         physx_sdk_lib = 'PHYSX_SDK_SHARED'
 
+    physx_file_list = []
+    physx_file_list_editor = []
+    pch_file = "Source/PhysX_precompiled.cpp"
+    if bld.env['PLATFORM'] == 'project_generator' or isinstance(bld,Configure.ConfigurationContext):
+        physx_file_list.extend(['physx.waf_files',
+                                'physx_unsupported.waf_files'])
+        physx_file_list_editor.extend(['physx.waf_files',
+                                       'physx_editor.waf_files',
+                                       'physx_unsupported.waf_files'])
+    else:
+        if bld.check_platform_uselib_compatibility(physx_sdk_lib):
+            physx_file_list.extend(['physx.waf_files'])
+            physx_file_list_editor.extend(['physx.waf_files',
+                                           'physx_editor.waf_files'])
+        else:
+            physx_file_list.extend(['physx_unsupported.waf_files'])
+            physx_file_list_editor.extend(['physx_unsupported.waf_files'])
+            pch_file = "Source/PhysXUnsupported_precompiled.cpp"
+
     bld.DefineGem(
-        file_list         = ['physx.waf_files'],
+        file_list         = physx_file_list,
         disable_tests     = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
         platforms         = ['all'],
         includes          = [bld.Path('Code/CryEngine/CryCommon')],
         test_all_includes = [bld.Path('Code/Framework/Tests')],
-        pch               = "Source/PhysX_precompiled.cpp",
+        pch               = pch_file,
         use               = ['AzFramework',
                              'LmbrCentral'],
         uselib            = [physx_sdk_lib],
@@ -37,7 +60,7 @@ def build(bld):
         platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)],
 
         editor = dict(
-            file_list         = ['physx.waf_files','physx_editor.waf_files'],
+            file_list         = physx_file_list_editor,
             disable_tests     = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
             defines           = ['PHYSX_EDITOR','ENABLE_NON_COMPILED_CGF'],
             includes          = [bld.Path('Code/Tools'),
@@ -54,7 +77,7 @@ def build(bld):
                                  'SceneCore',
                                  'SceneData',
                                  'AssetBuilderSDK'],
-            test_all_use      = ['AzPhysicsTests'],
+            test_all_use      = ['AzPhysicsTests', 'AzToolsFrameworkTestCommon', 'QT5TEST'],
             uselib            = ['QT5CORE', physx_sdk_lib],
 
             # Platform specific

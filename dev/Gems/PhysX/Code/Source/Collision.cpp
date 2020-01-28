@@ -12,6 +12,7 @@
 
 #include <PhysX_precompiled.h>
 #include <Source/Collision.h>
+#include <PhysX/Utils.h>
 
 namespace PhysX
 {
@@ -20,7 +21,7 @@ namespace PhysX
         // Combines two 32 bit values into 1 64 bit
         AZ::u64 Combine(AZ::u32 word0, AZ::u32 word1)
         {
-            return (AZ::u64)word0 << 32 | word1;
+            return Utils::Collision::Combine(word0, word1);
         }
 
         physx::PxFilterFlags DefaultFilterShader(
@@ -28,12 +29,7 @@ namespace PhysX
             physx::PxFilterObjectAttributes attributes1, physx::PxFilterData filterData1,
             physx::PxPairFlags& pairFlags, const void* constantBlock, physx::PxU32 constantBlockSize)
         {
-            const AZ::u64 layer0 = Combine(filterData0.word0, filterData0.word1);
-            const AZ::u64 layer1 = Combine(filterData1.word0, filterData1.word1);
-            const AZ::u64 group0 = Combine(filterData0.word2, filterData0.word3);
-            const AZ::u64 group1 = Combine(filterData1.word2, filterData1.word3);
-            const bool shouldCollide = ((layer0 & group1) && (layer1 & group0));
-            if (!shouldCollide)
+            if (!ShouldCollide(filterData0, filterData1))
             {
                 return physx::PxFilterFlag::eSUPPRESS;
             }
@@ -45,15 +41,20 @@ namespace PhysX
                 return physx::PxFilterFlag::eDEFAULT;
             }
 
+//Enable/Disable this macro in the TouchBending Gem wscript
+#ifdef TOUCHBENDING_LAYER_BIT
             //If any of the actors is in the TouchBend layer then we are not interested
             //in contact data, nor interested in eNOTIFY_* callbacks.
             const AZ::u64 touchBendLayerMask = Physics::CollisionLayer::TouchBend.GetMask();
+            const AZ::u64 layer0 = Combine(filterData0.word0, filterData0.word1);
+            const AZ::u64 layer1 = Combine(filterData1.word0, filterData1.word1);
             if (layer0 == touchBendLayerMask || layer1 == touchBendLayerMask)
             {
                 pairFlags = physx::PxPairFlag::eSOLVE_CONTACT |
                     physx::PxPairFlag::eDETECT_DISCRETE_CONTACT;
                 return physx::PxFilterFlag::eDEFAULT;
             }
+#endif //TOUCHBENDING_LAYER_BIT
 
             // generate contacts for all that were not filtered above
             pairFlags =
@@ -78,12 +79,7 @@ namespace PhysX
             physx::PxFilterObjectAttributes attributes1, physx::PxFilterData filterData1,
             physx::PxPairFlags& pairFlags, const void* constantBlock, physx::PxU32 constantBlockSize)
         {
-            const AZ::u64 layer0 = Combine(filterData0.word0, filterData0.word1);
-            const AZ::u64 layer1 = Combine(filterData1.word0, filterData1.word1);
-            const AZ::u64 group0 = Combine(filterData0.word2, filterData0.word3);
-            const AZ::u64 group1 = Combine(filterData1.word2, filterData1.word3);
-            const bool shouldCollide = ((layer0 & group1) && (layer1 & group0));
-            if (!shouldCollide)
+            if (!ShouldCollide(filterData0, filterData1))
             {
                 return physx::PxFilterFlag::eSUPPRESS;
             }
@@ -96,8 +92,12 @@ namespace PhysX
                 return physx::PxFilterFlag::eDEFAULT;
             }
 
+//Enable/Disable this macro in the TouchBending Gem wscript
+#ifdef TOUCHBENDING_LAYER_BIT
             //If any of the actors is in the TouchBend layer then we are not interested
             //in contact data, nor interested in eNOTIFY_* callbacks.
+            const AZ::u64 layer0 = Combine(filterData0.word0, filterData0.word1);
+            const AZ::u64 layer1 = Combine(filterData1.word0, filterData1.word1);
             const AZ::u64 touchBendLayerMask = Physics::CollisionLayer::TouchBend.GetMask();
             if (layer0 == touchBendLayerMask || layer1 == touchBendLayerMask)
             {
@@ -106,6 +106,7 @@ namespace PhysX
                     physx::PxPairFlag::eDETECT_CCD_CONTACT;
                 return physx::PxFilterFlag::eDEFAULT;
             }
+#endif
 
             // generate contacts for all that were not filtered above
             pairFlags =
@@ -137,23 +138,17 @@ namespace PhysX
 
         void SetLayer(const Physics::CollisionLayer& layer, physx::PxFilterData& filterData)
         {
-            filterData.word0 = (physx::PxU32)(layer.GetMask() >> 32);
-            filterData.word1 = (physx::PxU32)(layer.GetMask());
+            Utils::Collision::SetLayer(layer, filterData);
         }
 
         void SetGroup(const Physics::CollisionGroup& group, physx::PxFilterData& filterData)
         {
-            filterData.word2 = (physx::PxU32)(group.GetMask() >> 32);
-            filterData.word3 = (physx::PxU32)(group.GetMask());
+            Utils::Collision::SetGroup(group, filterData);
         }
 
         bool ShouldCollide(const physx::PxFilterData& filterData0, const physx::PxFilterData& filterData1)
         {
-            AZ::u64 layer0 = Combine(filterData0.word0, filterData0.word1);
-            AZ::u64 layer1 = Combine(filterData1.word0, filterData1.word1);
-            AZ::u64 group0 = Combine(filterData0.word2, filterData0.word3);
-            AZ::u64 group1 = Combine(filterData1.word2, filterData1.word3);
-            return (layer0 & group1) && (layer1 & group0);
+            return Utils::Collision::ShouldCollide(filterData0, filterData1);
         }
     }
 }

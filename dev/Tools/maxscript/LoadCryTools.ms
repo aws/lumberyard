@@ -32,9 +32,9 @@ if csexport != undefined then
 			print "Loading CryTools from INI file"
 	)
 
-	if (doesfileexist(buildPathFull_crytools + "Bin64vc140\\Editor.exe") == true then
-	    global editorPath_crytools = buildPathFull_crytools + "Bin64vc120\\Editor.exe"
-	else if (doesfileexist(buildPathFull_crytools + "Bin64vc120\\Editor.exe") == true then
+	if (doesfileexist(buildPathFull_crytools + "Bin64vc141\\Editor.exe") == true then
+	    global editorPath_crytools = buildPathFull_crytools + "Bin64vc141\\Editor.exe"
+	else if (doesfileexist(buildPathFull_crytools + "Bin64vc140\\Editor.exe") == true then
 	    global editorPath_crytools = buildPathFull_crytools + "Bin64vc140\\Editor.exe"
 	else
 		messagebox("I cannot find Editor.exe")

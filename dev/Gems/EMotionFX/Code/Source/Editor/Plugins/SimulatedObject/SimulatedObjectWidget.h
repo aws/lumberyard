@@ -39,6 +39,11 @@ namespace EMotionFX
         Q_OBJECT //AUTOMOC
 
     public:
+        enum
+        {
+            CLASS_ID = 0x00861164
+        };
+
         SimulatedObjectWidget();
         ~SimulatedObjectWidget() override;
         SimulatedObjectWidget(const SimulatedObjectWidget&) = delete;
@@ -48,7 +53,7 @@ namespace EMotionFX
 
         // EMStudioPlugin overrides
         const char* GetName() const override { return "Simulated Object"; }
-        uint32 GetClassID() const override { return 0x00861164; }
+        uint32 GetClassID() const override { return CLASS_ID; }
         bool GetIsClosable() const override { return true; }
         bool GetIsFloatable() const override { return true; }
         bool GetIsVertical() const override { return false; }

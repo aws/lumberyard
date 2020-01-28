@@ -15,7 +15,10 @@
 
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
+
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option")
 #include <QComboBox>
+AZ_POP_DISABLE_WARNING
 
 #pragma once
 

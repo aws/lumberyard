@@ -1709,8 +1709,8 @@ namespace UnitTest
 
         JobManager*                    m_jobManager = nullptr;
         JobContext*                    m_jobContext = nullptr;
-        QueueTestMultiBus::Handler     m_multiHandler;
-        QueueTestSingleBus::Handler    m_singleHandler;
+        QueueTestMultiBus::Handler*    m_multiHandler = nullptr;
+        QueueTestSingleBus::Handler*   m_singleHandler = nullptr;
         QueueTestMultiBus::BusPtr      m_multiPtr = nullptr;
 
         void QueueMessage()
@@ -1741,13 +1741,15 @@ namespace UnitTest
         m_jobManager = aznew JobManager(jobDesc);
         m_jobContext = aznew JobContext(*m_jobManager);
         JobContext::SetGlobalContext(m_jobContext);
+        m_multiHandler = new QueueTestMultiBus::Handler();
+        m_singleHandler = new QueueTestSingleBus::Handler();
 
-        m_singleHandler.m_callCount = 0;
-        m_multiHandler.m_callCount = 0;
+        m_singleHandler->m_callCount = 0;
+        m_multiHandler->m_callCount = 0;
         const int NumCalls = 5000;
         QueueTestMultiBus::Bind(m_multiPtr, 0);
-        m_multiHandler.BusConnect(0);
-        m_singleHandler.BusConnect();
+        m_multiHandler->BusConnect(0);
+        m_singleHandler->BusConnect();
         for (int i = 0; i < NumCalls; ++i)
         {
             Job* job = CreateJobFunction(&QueueMessageTest::QueueMessage, true);
@@ -1755,7 +1757,7 @@ namespace UnitTest
             job = CreateJobFunction(&QueueMessageTest::QueueMessagePtr, true);
             job->Start();
         }
-        while (m_singleHandler.m_callCount < NumCalls * 2 || m_multiHandler.m_callCount < NumCalls * 2)
+        while (m_singleHandler->m_callCount < NumCalls * 2 || m_multiHandler->m_callCount < NumCalls * 2)
         {
             QueueTestMultiBus::ExecuteQueuedEvents();
             QueueTestSingleBus::ExecuteQueuedEvents();
@@ -1765,10 +1767,10 @@ namespace UnitTest
         // use queuing generic functions to disconnect from the bus
 
         // the same as m_singleHandler.BusDisconnect(); but delayed until QueueTestSingleBus::ExecuteQueuedEvents()
-        QueueTestSingleBus::QueueFunction(&QueueTestSingleBus::Handler::BusDisconnect, &m_singleHandler);
+        QueueTestSingleBus::QueueFunction(&QueueTestSingleBus::Handler::BusDisconnect, m_singleHandler);
 
         // the same as m_multiHandler.BusDisconnect(); but dalayed until QueueTestMultiBus::ExecuteQueuedEvents();
-        EBUS_QUEUE_FUNCTION(QueueTestMultiBus, static_cast<void(QueueTestMultiBus::Handler::*)()>(&QueueTestMultiBus::Handler::BusDisconnect), &m_multiHandler);
+        EBUS_QUEUE_FUNCTION(QueueTestMultiBus, static_cast<void(QueueTestMultiBus::Handler::*)()>(&QueueTestMultiBus::Handler::BusDisconnect), m_multiHandler);
 
         EXPECT_EQ(1, QueueTestSingleBus::GetTotalNumOfEventHandlers());
         EXPECT_EQ(1, QueueTestMultiBus::GetTotalNumOfEventHandlers());
@@ -1778,6 +1780,8 @@ namespace UnitTest
         EXPECT_EQ(0, QueueTestMultiBus::GetTotalNumOfEventHandlers());
 
         // Cleanup
+        delete m_singleHandler;
+        delete m_multiHandler;
         m_multiPtr = nullptr;
         JobContext::SetGlobalContext(nullptr);
         delete m_jobContext;

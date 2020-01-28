@@ -36,7 +36,7 @@
         ]
     },
     "platform": {
-        "win_x64_vs2013": {
+        "win_x64_vs2017": {
             "sharedlibpath": [
                 "win32"
             ],
@@ -52,8 +52,6 @@
             "D3D_COMPILER_47/shared": [
                 "${D3D_COMPILER_47}.dll"
             ]
-        },
-       "win_x64_vs2015": "@win_x64_vs2013",
-       "win_x64_vs2017": "@win_x64_vs2013"
+        }
     }
 }

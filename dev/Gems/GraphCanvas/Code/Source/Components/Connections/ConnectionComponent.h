@@ -171,11 +171,8 @@ namespace GraphCanvas
         ////
 
     protected:
-
-        // VS2013 Fixes
         ConnectionComponent(const ConnectionComponent&) = delete;
         const ConnectionComponent& operator=(const ConnectionComponent&) = delete;
-        ////
         
         void FinalizeMove();
 

@@ -41,14 +41,16 @@ def request_url_list(request, request_content = None):
     print 'Content bucket is ' + content_bucket_name
     
     file_list = request_content.get('FileList')
-    
+    # ManifestData flag means to include data found in the manifest in the
+    # response (Size, Hash) so the manifest request can be skipped
+    manifest_data = request_content.get('ManifestData', False)
     resultList = []
     if file_list is None:
         print 'Request was empty'
         raise errors.ClientError('Invalid Request (Empty)')
     else: 
         for file_name in file_list:
-            _add_file_response(resultList, file_name)
+            _add_file_response(resultList, file_name, manifest_data)
     
     return { 'ResultList' : resultList }
 
@@ -79,7 +81,7 @@ def _get_presigned_url(file_name):
     else:
         return _get_s3_presigned(file_name)
 
-def _add_file_response(resultList, file_name):
+def _add_file_response(resultList, file_name, manifest_data):
     print 'file name requested is {}'.format(file_name)
 
     resultData = {}
@@ -103,7 +105,7 @@ def _add_file_response(resultList, file_name):
         return
         
     print 'item data was {}'.format(item_data)
-    
+
     staging_status = item_data.get('StagingStatus','UNKNOWN')
     print 'Staging status is {}'.format(staging_status)
     
@@ -112,6 +114,12 @@ def _add_file_response(resultList, file_name):
         print 'File is not currently staged'
         resultData['FileStatus'] = 'Data is unavailable'  
         return
+
+    ## include optional "Manifest Data" to allow for requests of known bundles without using the manifest
+    if manifest_data:
+        ## Empty string in the case of an unknown size
+        resultData['Size'] = item_data.get('Size', '')
+        resultData['Hash'] = item_data.get('Hash', '')
 
     current_time = datetime.utcnow()
     print 'Current time is ' + _get_formatted_time(current_time)

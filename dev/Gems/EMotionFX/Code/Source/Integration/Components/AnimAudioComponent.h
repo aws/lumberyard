@@ -102,7 +102,6 @@ namespace EMotionFX
             static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
             {
                 required.push_back(AZ_CRC("EMotionFXActorService", 0xd6e8f48d));
-                required.push_back(AZ_CRC("MeshService", 0x71d8a455));
                 required.push_back(AZ_CRC("AudioProxyService", 0x7da4c79c));
             }
 
@@ -114,15 +113,15 @@ namespace EMotionFX
         private:
             class TriggerEventData
             {
-                public:
-                    TriggerEventData(const AZ::Entity& entity, Audio::TAudioControlID triggerId, AZ::s32 jointId);
+            public:
+                TriggerEventData(const AZ::Entity& entity, Audio::TAudioControlID triggerId, AZ::s32 jointId);
 
-                    AZ::s32 GetJointId() const;
-                    Audio::TAudioControlID GetTriggerId() const;
+                AZ::s32 GetJointId() const;
+                Audio::TAudioControlID GetTriggerId() const;
 
-                private:
-                        AZ::s32 m_jointId = -1;
-                        Audio::TAudioControlID m_triggerId = INVALID_AUDIO_CONTROL_ID;
+            private:
+                AZ::s32 m_jointId = -1;
+                Audio::TAudioControlID m_triggerId = INVALID_AUDIO_CONTROL_ID;
             };
 
             void AddTriggerEventInternal(const AZStd::string& eventName, const AZStd::string& triggerName, const AZStd::string& jointName);
@@ -136,11 +135,11 @@ namespace EMotionFX
             AZ::u32 m_activeVoices = 0;
 
             AZStd::vector<AudioTriggerEvent> m_eventsToAdd;
-            AZStd::vector<AZ::Crc32>         m_eventsToRemove;
+            AZStd::vector<AZ::Crc32> m_eventsToRemove;
 
-            AZStd::unordered_map<AZ::Crc32, TriggerEventData>  m_eventTriggerMap;
+            AZStd::unordered_map<AZ::Crc32, TriggerEventData> m_eventTriggerMap;
             AZStd::unordered_map<AZ::s32, Audio::IAudioProxy*> m_jointProxies;
-            AZStd::unique_ptr<Audio::SAudioCallBackInfos>      m_callbackInfo;
+            AZStd::unique_ptr<Audio::SAudioCallBackInfos> m_callbackInfo;
 
             AZ::Transform m_transform;
         };

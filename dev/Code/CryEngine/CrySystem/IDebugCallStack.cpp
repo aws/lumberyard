@@ -20,6 +20,7 @@
 #include <AzFramework/IO/FileOperations.h>
 #include <AzCore/NativeUI/NativeUIRequests.h>
 
+#include <AzFramework/StringFunc/StringFunc.h>
 //#if !defined(LINUX)
 
 #include <ISystem.h>
@@ -144,7 +145,7 @@ const char* IDebugCallStack::TranslateExceptionCode(DWORD dwExcept)
     }
 }
 
-void IDebugCallStack::PutVersion(char* str)
+void IDebugCallStack::PutVersion(char* str, size_t length)
 {
 #pragma warning( push )
 #pragma warning(disable: 4996)
@@ -169,11 +170,11 @@ void IDebugCallStack::PutVersion(char* str)
     char s[1024];
     //! Use strftime to build a customized time string.
     strftime(s, 128, "Logged at %#c\n", today);
-    strcat(str, s);
+    azstrcat(str, length, s);
     sprintf_s(s, "FileVersion: %s\n", sFileVersion);
-    strcat(str, s);
+    azstrcat(str, length, s);
     sprintf_s(s, "ProductVersion: %s\n", sProductVersion);
-    strcat(str, s);
+    azstrcat(str, length, s);
 
     if (gEnv->pLog)
     {
@@ -181,7 +182,7 @@ void IDebugCallStack::PutVersion(char* str)
         if (logfile)
         {
             sprintf (s, "LogFile: %s\n", logfile);
-            strcat(str, s);
+            azstrcat(str, length, s);
         }
     }
 
@@ -190,15 +191,32 @@ void IDebugCallStack::PutVersion(char* str)
         if (ICVar*  pCVarGameDir = gEnv->pConsole->GetCVar("sys_game_folder"))
         {
             sprintf(s, "GameDir: %s\n", pCVarGameDir->GetString());
-            strcat(str, s);
+            azstrcat(str, length, s);
         }
     }
 
 #if AZ_LEGACY_CRYSYSTEM_TRAIT_DEBUGCALLSTACK_APPEND_MODULENAME
     GetModuleFileNameA(NULL, s, sizeof(s));
-    strcat(str, "Executable: ");
-    strcat(str, s);
-    strcat(str, "\n");
+    
+    // Log EXE filename only if possible (not full EXE path which could contain sensitive info)
+    AZStd::string exeName;
+    if (AzFramework::StringFunc::Path::GetFullFileName(s, exeName))
+    {
+        azstrcat(str, length, "Executable: ");
+        azstrcat(str, length, exeName.c_str());
+
+#   ifdef AZ_DEBUG_BUILD
+        azstrcat(str, length, " (debug: yes");
+#   else
+        azstrcat(str, length, " (debug: no");
+#   endif
+
+#   ifdef AZ_TESTS_ENABLED
+        azstrcat(str, length, " test: yes)\n");
+#   else
+        azstrcat(str, length, " test: no)\n");
+#   endif
+    }
 #endif
 #pragma warning( pop )
 }

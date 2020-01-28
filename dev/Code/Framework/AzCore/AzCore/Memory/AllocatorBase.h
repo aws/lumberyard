@@ -9,236 +9,109 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZCORE_ALLOCATOR_BASE_H
-#define AZCORE_ALLOCATOR_BASE_H 1
+#pragma once
 
-#include <AzCore/base.h>
-#include <AzCore/std/base.h>
-#include <AzCore/std/typetraits/integral_constant.h>
-#include <AzCore/std/typetraits/aligned_storage.h>
-#include <AzCore/std/typetraits/alignment_of.h>
-#include <AzCore/Debug/Profiler.h>
+#include <AzCore/Memory/IAllocator.h>
 
 namespace AZ
 {
     namespace Debug
     {
-        class AllocationRecords;
-        class MemoryDriller;
+        struct AllocationInfo;
     }
-    /**
-     * Allocator alloc/free basic interface. It is separate because it can be used
-     * for user provided allocators overrides
-     */
-    class IAllocatorAllocate
-    {
-    public:
-        typedef void*           pointer_type;
-        typedef size_t          size_type;
-        typedef ptrdiff_t       difference_type;
-
-        virtual ~IAllocatorAllocate() {}
-
-        virtual pointer_type            Allocate(size_type byteSize, size_type alignment, int flags = 0, const char* name = 0, const char* fileName = 0, int lineNum = 0, unsigned int suppressStackRecord = 0) = 0;
-        virtual void                    DeAllocate(pointer_type ptr, size_type byteSize = 0, size_type alignment = 0) = 0;
-        /// Resize an allocated memory block. Returns the new adjusted size (as close as possible or equal to the requested one) or 0 (if you don't support resize at all).
-        virtual size_type               Resize(pointer_type ptr, size_type newSize) = 0;
-        /// Realloc an allocate memory memory block. Similar to Resize except it will move the memory block if needed. Return NULL if realloc is not supported or run out of memory.
-        virtual pointer_type            ReAllocate(pointer_type ptr, size_type newSize, size_type newAlignment) = 0;
-        ///
-        /// Returns allocation size for given address. 0 if the address doesn't belong to the allocator.
-        virtual size_type               AllocationSize(pointer_type ptr) = 0;
-        /**
-         * Call from the system when we want allocators to free unused memory.
-         * IMPORTANT: This function is/should be thread safe. We can call it from any context to free memory.
-         * Freeing the actual memory is optional (if you can), thread safety is a must.
-         */
-        virtual void                    GarbageCollect()    {}
-
-        virtual size_type               NumAllocatedBytes() const = 0;
-        /// Returns the capacity of the Allocator in bytes. If the return value is 0 the Capacity is undefined (usually depends on another allocator)
-        virtual size_type               Capacity() const    = 0;
-        /// Returns max allocation size if possible. If not returned value is 0
-        virtual size_type               GetMaxAllocationSize() const { return 0; }
-        /**
-         * Returns memory allocated by the allocator and available to the user for allocations.
-         * IMPORTANT: this is not the overhead memory this is just the memory that is allocated, but not used. Example: the pool allocators
-         * allocate in chunks. So we might be using one elements in that chunk and the rest is free/unallocated. This is the memory
-         * that will be reported.
-         */
-        virtual size_type               GetUnAllocatedMemory(bool isPrint = false) const { (void)isPrint; return 0; }
-        /// Returns a pointer to a sub-allocator or NULL.
-        virtual IAllocatorAllocate*     GetSubAllocator() = 0;
-    };
 
     /**
-     * Interface class for all allocators.
-     */
-    class IAllocator
-        : public IAllocatorAllocate
+    * AllocatorBase - all AZ-compatible allocators should inherit from this implementation of IAllocator.
+    */
+    class AllocatorBase : public IAllocator
     {
-        friend class Debug::MemoryDriller;
+    protected:
+        AllocatorBase(IAllocatorAllocate* allocationSource, const char* name, const char* desc);
+        ~AllocatorBase();
+
     public:
-        // @{ IAlloctor will be registered in the AllocatorManager on construction and removed on destruction.
-        IAllocator();
-        virtual ~IAllocator();
-        // @}
 
-        // @{ Every system allocator is required to provide name this is how
-        // it will be registered with the allocator manager.
-        virtual const char*         GetName() const = 0;
-        virtual const char*         GetDescription() const = 0;
-        // @}
-
-        /// Returns a pointer to the allocation records. They might be available or not depending on the build type. \ref Debug::AllocationRecords
-        Debug::AllocationRecords*   GetRecords()    { return m_records; }
-
-        bool                        IsReady() const { return m_isReady; }
+        //---------------------------------------------------------------------
+        // IAllocator implementation
+        //---------------------------------------------------------------------
+        const char* GetName() const override;
+        const char* GetDescription() const override;
+        IAllocatorAllocate* GetSchema() override;
+        Debug::AllocationRecords* GetRecords() final;
+        void SetRecords(Debug::AllocationRecords* records) final;
+        bool IsReady() const final;
+        bool CanBeOverridden() const final;
+        void PostCreate() override;
+        void PreDestroy() final;
+        void SetLazilyCreated(bool lazy) final;
+        bool IsLazilyCreated() const final;
+        void SetProfilingActive(bool active) final;
+        bool IsProfilingActive() const final;
+        //---------------------------------------------------------------------
 
     protected:
-        /// Called when an allocator is created and we want to register in the system.
-        void                        OnCreated();
-        /// Called when an allocator is destroyed and we want to unregister from the the system.
-        void                        OnDestroy();
+        /// Returns the size of a memory allocation after adjusting for tracking.
+        AZ_FORCE_INLINE size_t MemorySizeAdjustedUp(size_t byteSize) const
+        {
+#ifdef AZCORE_ENABLE_MEMORY_TRACKING
+            if (m_records && byteSize > 0)
+            {
+                byteSize += m_memoryGuardSize;
+            }
+#endif // AZCORE_ENABLE_MEMORY_TRACKING
+
+            return byteSize;
+        }
+
+        /// Returns the size of a memory allocation, removing any tracking overhead
+        AZ_FORCE_INLINE size_t MemorySizeAdjustedDown(size_t byteSize) const
+        {
+#ifdef AZCORE_ENABLE_MEMORY_TRACKING
+            if (m_records && byteSize > 0)
+            {
+                byteSize -= m_memoryGuardSize;
+            }
+#endif // AZCORE_ENABLE_MEMORY_TRACKING
+
+            return byteSize;
+        }
+
+        /// Call to disallow this allocator from being overridden.
+        /// Only kernel-level allocators where it would be especially problematic for them to be overridden should do this.
+        void DisableOverriding();
+
+        /// Call to disallow this allocator from being registered with the AllocatorManager.
+        /// Only kernel-level allocators where it would be especially problematic for them to be registered with the AllocatorManager should do this.
+        void DisableRegistration();
+
+        /// Records an allocation for profiling.
+        void ProfileAllocation(void* ptr, size_t byteSize, size_t alignment, const char* name, const char* fileName, int lineNum, int suppressStackRecord);
+
+        /// Records a deallocation for profiling.
+        void ProfileDeallocation(void* ptr, size_t byteSize, size_t alignment, Debug::AllocationInfo* info);
+
+        /// Records a reallocation for profiling.
+        void ProfileReallocation(void* ptr, void* newPtr, size_t newSize, size_t newAlignment);
+
+        /// Records a resize for profiling.
+        void ProfileResize(void* ptr, size_t newSize);
 
         /// User allocator should call this function when they run out of memory!
-        bool OnOutOfMemory(size_type byteSize, size_type alignment, int flags, const char* name, const char* fileName, int lineNum);
-
-        Debug::AllocationRecords*   m_records;      ///< Cached pointer to allocation records. Works together with the MemoryDriller.
+        bool OnOutOfMemory(size_t byteSize, size_t alignment, int flags, const char* name, const char* fileName, int lineNum);
 
     private:
-
-        bool                        m_isReady;
+        const char* m_name = nullptr;
+        const char* m_desc = nullptr;
+        Debug::AllocationRecords* m_records = nullptr;  // Cached pointer to allocation records. Works together with the MemoryDriller.
+        size_t m_memoryGuardSize = 0;
+        bool m_isLazilyCreated = false;
+        bool m_isProfilingActive = false;
+        bool m_isReady = false;
+        bool m_canBeOverridden = true;
+        bool m_registrationEnabled = true;
     };
 
     namespace Internal  {
         struct AllocatorDummy{};
     }
-
-    template <class SchemaType, class DescriptorType = typename SchemaType::Descriptor>
-    class AllocatorBase
-        : public IAllocator
-    {
-    public:
-        using Descriptor = DescriptorType;
-        using Schema = SchemaType;
-
-        AllocatorBase(const char* name, const char* desc)
-            : m_schema(nullptr)
-            , m_name(name)
-            , m_desc(desc)
-        {
-        }
-
-        virtual ~AllocatorBase()
-        {
-            if (m_schema)
-            {
-                m_schema->~Schema();
-            }
-            m_schema = nullptr;
-        }
-
-        bool Create(const Descriptor& desc = Descriptor())
-        {
-            m_schema = new (&m_schemaStorage) Schema(desc);
-            OnCreated();
-            return m_schema != nullptr;
-        }
-
-        void Destroy()
-        {
-            OnDestroy();
-            m_schema->~Schema();
-            m_schema = nullptr;
-        }
-
-        //---------------------------------------------------------------------
-        // IAllocator
-        //---------------------------------------------------------------------
-        const char* GetName() const override
-        {
-            return m_name;
-        }
-
-        const char* GetDescription() const override
-        {
-            return m_desc;
-        }
-
-        //---------------------------------------------------------------------
-        // IAllocatorAllocate
-        //---------------------------------------------------------------------
-        pointer_type Allocate(size_type byteSize, size_type alignment, int flags = 0, const char* name = 0, const char* fileName = 0, int lineNum = 0, unsigned int suppressStackRecord = 0) override
-        {
-            pointer_type ptr = m_schema->Allocate(byteSize, alignment, flags, name, fileName, lineNum, suppressStackRecord);
-            AZ_PROFILE_MEMORY_ALLOC_EX(AZ::Debug::ProfileCategory::MemoryReserved, fileName, lineNum, ptr, byteSize, name ? name : GetName());
-            return ptr;
-        }
-
-        void DeAllocate(pointer_type ptr, size_type byteSize = 0, size_type alignment = 0) override
-        {
-            AZ_PROFILE_MEMORY_FREE(AZ::Debug::ProfileCategory::MemoryReserved, ptr);
-            m_schema->DeAllocate(ptr, byteSize, alignment);
-        }
-
-        size_type Resize(pointer_type ptr, size_type newSize) override
-        {
-            return m_schema->Resize(ptr, newSize);
-        }
-
-        pointer_type ReAllocate(pointer_type ptr, size_type newSize, size_type newAlignment) override
-        {
-            AZ_PROFILE_MEMORY_FREE(AZ::Debug::ProfileCategory::MemoryReserved, ptr);
-            pointer_type newPtr = m_schema->ReAllocate(ptr, newSize, newAlignment);
-            AZ_PROFILE_MEMORY_ALLOC(AZ::Debug::ProfileCategory::MemoryReserved, newPtr, newSize, GetName());
-            return newPtr;
-        }
-                
-        size_type AllocationSize(pointer_type ptr) override
-        {
-            return m_schema->AllocationSize(ptr);
-        }
-        
-        void GarbageCollect() override
-        {
-            m_schema->GarbageCollect();
-        }
-
-        size_type NumAllocatedBytes() const override
-        {
-            return m_schema->NumAllocatedBytes();
-        }
-
-        size_type Capacity() const override
-        {
-            return m_schema->Capacity();
-        }
-        
-        size_type GetMaxAllocationSize() const override
-        { 
-            return m_schema->GetMaxAllocationSize();
-        }
-
-        size_type               GetUnAllocatedMemory(bool isPrint = false) const override
-        { 
-            return m_schema->GetUnAllocatedMemory(isPrint);
-        }
-        
-        virtual IAllocatorAllocate*     GetSubAllocator()
-        {
-            return m_schema->GetSubAllocator();
-        }
-
-    protected:
-        Schema* m_schema;
-        const char* m_name;
-        const char* m_desc;
-        typename AZStd::aligned_storage<sizeof(Schema), AZStd::alignment_of<Schema>::value>::type m_schemaStorage;
-    };
 }
-
-#endif // AZCORE_ALLOCATOR_BASE_H
-#pragma once
-
-

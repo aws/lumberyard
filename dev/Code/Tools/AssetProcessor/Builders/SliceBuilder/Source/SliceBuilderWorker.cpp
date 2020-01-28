@@ -11,8 +11,8 @@
 */
 
 #include <SliceBuilder/Source/SliceBuilderWorker.h>
-#include <SliceBuilder/Source/TraceDrillerHook.h>
-#include <SliceBuilder/Source/TypeFingerprinter.h>
+#include <AssetBuilderSDK/SerializationDependencies.h>
+#include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzFramework/StringFunc/StringFunc.h>
@@ -32,14 +32,15 @@
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/Slice/SliceCompilation.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
+#include "AzFramework/Asset/SimpleAsset.h"
 
 namespace SliceBuilder
 {
     namespace
     {
-        TypeFingerprint CalculateFingerprintForComponentServices(AZ::SliceComponent& slice)
+        AzToolsFramework::Fingerprinting::TypeFingerprint CalculateFingerprintForComponentServices(AZ::SliceComponent& slice)
         {
-            TypeFingerprint result = 0;
+            AzToolsFramework::Fingerprinting::TypeFingerprint result = 0;
 
             // Ensures hash will change if a service is moved from, say, required to dependent.
             static const size_t kRequiredServiceKey = AZ_CRC("RequiredServiceKey", 0x22e125a6);
@@ -89,10 +90,10 @@ namespace SliceBuilder
             return result;
         }
 
-        TypeFingerprint CalculateFingerprintForSlice(AZ::SliceComponent& slice, const TypeFingerprinter& typeFingerprinter, AZ::SerializeContext& serializeContext)
+        AzToolsFramework::Fingerprinting::TypeFingerprint CalculateFingerprintForSlice(AZ::SliceComponent& slice, const AzToolsFramework::Fingerprinting::TypeFingerprinter& typeFingerprinter, AZ::SerializeContext& serializeContext)
         {
-            TypeFingerprint serializationFingerprint = typeFingerprinter.GenerateFingerprintForAllTypesInObject(&slice);
-            TypeFingerprint servicesFingerprint = CalculateFingerprintForComponentServices(slice);
+            AzToolsFramework::Fingerprinting::TypeFingerprint serializationFingerprint = typeFingerprinter.GenerateFingerprintForAllTypesInObject(&slice);
+            AzToolsFramework::Fingerprinting::TypeFingerprint servicesFingerprint = CalculateFingerprintForComponentServices(slice);
 
             AZStd::hash_combine(serializationFingerprint, servicesFingerprint);
             return serializationFingerprint;
@@ -106,7 +107,7 @@ namespace SliceBuilder
         AZ::SerializeContext* serializeContext = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
         AZ_Assert(serializeContext, "SerializeContext not found");
-        m_typeFingerprinter = AZStd::make_unique<TypeFingerprinter>(*serializeContext);
+        m_typeFingerprinter = AZStd::make_unique<AzToolsFramework::Fingerprinting::TypeFingerprinter>(*serializeContext);
 
         AssetBuilderSDK::AssetBuilderCommandBus::Handler::BusConnect(GetUUID());
     }
@@ -131,7 +132,7 @@ namespace SliceBuilder
         AzFramework::StringFunc::Path::ConstructFull(request.m_watchFolder.c_str(), request.m_sourceFile.c_str(), fullPath, false);
         AzFramework::StringFunc::Path::Normalize(fullPath);
 
-        TraceDrillerHook traceDrillerHook(true);
+        AssetBuilderSDK::AssertAndErrorAbsorber assertAndErrorAbsorber(true);
 
         AZ_TracePrintf(s_sliceBuilder, "CreateJobs for slice \"%s\"\n", fullPath.c_str());
 
@@ -173,7 +174,7 @@ namespace SliceBuilder
 
         // Fail gracefully if any errors occurred while serializing in the editor slice.
         // i.e. missing assets or serialization errors.
-        if (traceDrillerHook.GetErrorCount() > 0)
+        if (assertAndErrorAbsorber.GetErrorCount() > 0)
         {
             AZ_Error("", false, "Exporting of createjobs response for \"%s\" failed due to errors loading editor slice.", fullPath.c_str());
             return;
@@ -191,9 +192,9 @@ namespace SliceBuilder
         {
             AZ::SerializeContext* context;
             AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
-            TypeFingerprint sourceSliceTypeFingerprint = CalculateFingerprintForSlice(*sourcePrefab, *m_typeFingerprinter, *context);
+            AzToolsFramework::Fingerprinting::TypeFingerprint sourceSliceTypeFingerprint = CalculateFingerprintForSlice(*sourcePrefab, *m_typeFingerprinter, *context);
 
-            const char* compilerVersion = "6";
+            const char* compilerVersion = "8";
 
             for (const AssetBuilderSDK::PlatformInfo& info : request.m_enabledPlatforms)
             {
@@ -204,7 +205,6 @@ namespace SliceBuilder
                 jobDescriptor.SetPlatformIdentifier(info.m_identifier.c_str());
                 jobDescriptor.m_additionalFingerprintInfo = AZStd::string(compilerVersion)
                     .append(AZStd::string::format("|%llu", static_cast<uint64_t>(sourceSliceTypeFingerprint)));
-
                 response.m_createJobOutputs.push_back(jobDescriptor);
             }
         }
@@ -214,8 +214,6 @@ namespace SliceBuilder
 
     void SliceBuilderWorker::ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response) const
     {
-        // Source slice is copied directly to the cache as-is, for use in-editor.
-        // If slice is tagged as dynamic, we also conduct a runtime export, which converts editor->runtime components and generates a new .dynamicslice file.
 
         // Check for shutdown
         if (m_isShuttingDown)
@@ -224,9 +222,6 @@ namespace SliceBuilder
             response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Cancelled;
             return;
         }
-
-        TraceDrillerHook traceDrillerHook(true);
-
         AZStd::string fullPath;
         AZStd::string fileNameOnly;
         AzFramework::StringFunc::Path::GetFullFileName(request.m_sourceFile.c_str(), fileNameOnly);
@@ -243,90 +238,22 @@ namespace SliceBuilder
             return;
         }
 
-        AZ::SerializeContext* context;
-        AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
-
-        AZ::Data::Asset<AZ::SliceAsset> sourceAsset;
-        sourceAsset.Create(AZ::Data::AssetId(AZ::Uuid::CreateRandom()));
-
+        AZ::Data::Asset<AZ::SliceAsset> exportSliceAsset;
         AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
+        AssetBuilderSDK::ProductPathDependencySet productPathDependencySet;
+        AZ::PlatformTagSet platformTags;
 
-        // Asset filter is used to record dependencies.  Only returns true for slices
-        auto assetFilter = [&productDependencies](const AZ::Data::Asset<AZ::Data::AssetData>& filterAsset)
+        const AZStd::unordered_set<AZStd::string>& platformTagStrings = request.m_platformInfo.m_tags;
+        for (const AZStd::string& platformTagString : platformTagStrings)
         {
-            productDependencies.emplace_back(filterAsset.GetId(), 0);
-
-            return AZ::Data::AssetFilterSourceSlicesOnly(filterAsset);
-        };
-
-        AZ::SliceAssetHandler assetHandler(context);
-        assetHandler.LoadAssetData(sourceAsset, &stream, assetFilter);
-        sourceAsset.SetHint(fullPath);
-
-        // Flush asset manager events to ensure no asset references are held by closures queued on Ebuses.
-        AZ::Data::AssetManager::Instance().DispatchEvents();
-
-        // Fail gracefully if any errors occurred while serializing in the editor slice.
-        // i.e. missing assets or serialization errors.
-        if (traceDrillerHook.GetErrorCount() > 0)
-        {
-            AZ_Error(s_sliceBuilder, false, "Exporting of .dynamicslice for \"%s\" failed due to errors loading editor slice.", fullPath.c_str());
-            return;
+            platformTags.insert(AZ::Crc32(platformTagString.c_str(), platformTagString.size(), true));
         }
 
-        // If the slice is designated as dynamic, generate the dynamic slice (.dynamicslice).
-        AZ::SliceComponent* sourceSlice = (sourceAsset.Get()) ? sourceAsset.Get()->GetComponent() : nullptr;
-
-        if (!sourceSlice)
+        if (GetDynamicSliceAssetAndDependencies(&stream, fullPath.c_str(), platformTags, exportSliceAsset, productDependencies, productPathDependencySet))
         {
-            AZ_Error(s_sliceBuilder, false, "Failed find the slice component in the slice asset!");
-            return; // this should fail!
-        }
-
-        if (sourceSlice->IsDynamic())
-        {
-            if (traceDrillerHook.GetErrorCount() > 0)
-            {
-                AZ_Error(s_sliceBuilder, false, "Exporting of .dynamicslice for \"%s\" failed due to errors instantiating entities.", fullPath.c_str());
-                return;
-            }
-
             AZStd::string dynamicSliceOutputPath;
             AzFramework::StringFunc::Path::Join(request.m_tempDirPath.c_str(), fileNameOnly.c_str(), dynamicSliceOutputPath, true, true, true);
             AzFramework::StringFunc::Path::ReplaceExtension(dynamicSliceOutputPath, "dynamicslice");
-
-            AZ::SliceComponent::EntityList sourceEntities;
-            sourceSlice->GetEntities(sourceEntities);
-
-            AZ::PlatformTagSet platformTags;
-            const AZStd::unordered_set<AZStd::string>& platformTagStrings = request.m_platformInfo.m_tags;
-            for (const AZStd::string& platformTagString : platformTagStrings)
-            {
-                platformTags.insert(AZ::Crc32(platformTagString.c_str(), platformTagString.size(), true));
-            }
-
-            // Compile the source slice into the runtime slice (with runtime components). Note that
-            // we may be handling either world or UI entities, so we need handlers for both.
-            AzToolsFramework::WorldEditorOnlyEntityHandler worldEditorOnlyEntityHandler;
-            AzToolsFramework::UiEditorOnlyEntityHandler uiEditorOnlyEntityHandler;
-            AzToolsFramework::EditorOnlyEntityHandlers handlers =
-            {
-                &worldEditorOnlyEntityHandler,
-                &uiEditorOnlyEntityHandler,
-            };
-            AzToolsFramework::SliceCompilationResult sliceCompilationResult =
-                AzToolsFramework::CompileEditorSlice(sourceAsset, platformTags, *context, handlers);
-
-            if (!sliceCompilationResult)
-            {
-                AZ_Error("Slice compilation", false, "Slice compilation failed: %s", sliceCompilationResult.GetError().c_str());
-                return;
-            }
-
-            AZ::Data::Asset<AZ::SliceAsset> exportSliceAsset = sliceCompilationResult.GetValue();
-
-            AZ::SliceComponent::EntityList outputEntities;
-            exportSliceAsset.Get()->GetComponent()->GetEntities(outputEntities);
 
             // Save runtime slice to disk.
             // Use SaveObjectToFile because it writes to a byte stream first and then to disk
@@ -345,12 +272,88 @@ namespace SliceBuilder
             jobProduct.m_productAssetType = azrtti_typeid<AZ::DynamicSliceAsset>();
             jobProduct.m_productSubID = 2;
             jobProduct.m_dependencies = AZStd::move(productDependencies);
+            jobProduct.m_pathDependencies = AZStd::move(productPathDependencySet);
             response.m_outputProducts.push_back(AZStd::move(jobProduct));
         }
 
         response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
 
         AZ_TracePrintf(s_sliceBuilder, "Finished processing slice %s\n", fullPath.c_str());
+    }
+
+    bool SliceBuilderWorker::GetDynamicSliceAssetAndDependencies(AZ::IO::GenericStream* stream, const char* fullPath, const AZ::PlatformTagSet& platformTags, AZ::Data::Asset<AZ::SliceAsset>& outSliceAsset, AZStd::vector<AssetBuilderSDK::ProductDependency>& outProductDependencies, AssetBuilderSDK::ProductPathDependencySet& productPathDependencySet) const
+    {
+        AssetBuilderSDK::AssertAndErrorAbsorber assertAndErrorAbsorber(true);
+
+        AZ::SerializeContext* context;
+        AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+
+        AZ::Data::Asset<AZ::SliceAsset> sourceAsset;
+        sourceAsset.Create(AZ::Data::AssetId(AZ::Uuid::CreateRandom()));
+
+        AZ::SliceAssetHandler assetHandler(context);
+        assetHandler.LoadAssetData(sourceAsset, stream, &AZ::Data::AssetFilterSourceSlicesOnly);
+        sourceAsset.SetHint(fullPath);
+
+        // Flush asset manager events to ensure no asset references are held by closures queued on Ebuses.
+        AZ::Data::AssetManager::Instance().DispatchEvents();
+
+        // Fail gracefully if any errors occurred while serializing in the editor slice.
+        // i.e. missing assets or serialization errors.
+        if (assertAndErrorAbsorber.GetErrorCount() > 0)
+        {
+            AZ_Error(s_sliceBuilder, false, "Exporting of .dynamicslice for \"%s\" failed due to errors loading editor slice.", fullPath);
+            return false;
+        }
+
+        // If the slice is designated as dynamic, generate the dynamic slice (.dynamicslice).
+        AZ::SliceComponent* sourceSlice = (sourceAsset.Get()) ? sourceAsset.Get()->GetComponent() : nullptr;
+
+        if (!sourceSlice)
+        {
+            AZ_Error(s_sliceBuilder, false, "Failed to find the slice component in the slice asset!");
+            return false; // this should fail!
+        }
+
+        if (!sourceSlice->IsDynamic())
+        {
+            AZ_Error(s_sliceBuilder, false, "Slice must be a dynamicslice in order to be processed: %s\n", fullPath);
+            return false;
+        }
+
+        if (assertAndErrorAbsorber.GetErrorCount() > 0)
+        {
+            AZ_Error(s_sliceBuilder, false, "Exporting of .dynamicslice for \"%s\" failed due to errors instantiating entities.", fullPath);
+            return false;
+        }
+
+        AZ::SliceComponent::EntityList sourceEntities;
+        sourceSlice->GetEntities(sourceEntities);
+
+        // Compile the source slice into the runtime slice (with runtime components). Note that
+        // we may be handling either world or UI entities, so we need handlers for both.
+        AzToolsFramework::WorldEditorOnlyEntityHandler worldEditorOnlyEntityHandler;
+        AzToolsFramework::UiEditorOnlyEntityHandler uiEditorOnlyEntityHandler;
+        AzToolsFramework::EditorOnlyEntityHandlers handlers =
+        {
+            &worldEditorOnlyEntityHandler,
+            &uiEditorOnlyEntityHandler,
+        };
+        AzToolsFramework::SliceCompilationResult sliceCompilationResult =
+            AzToolsFramework::CompileEditorSlice(sourceAsset, platformTags, *context, handlers);
+
+        if (!sliceCompilationResult)
+        {
+            AZ_Error("Slice compilation", false, "Slice compilation failed: %s", sliceCompilationResult.GetError().c_str());
+            return false;
+        }
+
+        outSliceAsset = sliceCompilationResult.GetValue();
+
+        // Gather product dependencies from the compiled asset, not the source asset. In some cases asset references can change during asset compliation.
+        AssetBuilderSDK::GatherProductDependencies(*context, outSliceAsset.Get()->GetEntity(), outProductDependencies, productPathDependencySet);
+
+        return true;
     }
 
     AZ::Uuid SliceBuilderWorker::GetUUID()

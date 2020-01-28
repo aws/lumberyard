@@ -11,13 +11,15 @@
 */
 #pragma once
 
-#include <native/resourcecompiler/RCCommon.h>
-#include <QVector>
-#include <QHash>
-#include <QDateTime>
-#include <QIcon>
-#include <QAbstractItemModel>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <native/resourcecompiler/RCCommon.h>
+#include <QAbstractItemModel>
+#include <QDateTime>
+#include <QHash>
+#include <QIcon>
+#include <QVector>
+
+// Don't reorder above RCCommon
 #include <native/assetprocessor.h>
 
 // Do this here, rather than EditorAssetSystemAPI.h so that we don't have to link against Qt5Core to
@@ -32,6 +34,8 @@ namespace AssetProcessor
         QueueElementID m_elementId;
         QDateTime m_completedTime;
         AzToolsFramework::AssetSystem::JobStatus m_jobState;
+        AZ::u32 m_warningCount;
+        AZ::u32 m_errorCount;
         unsigned int m_jobRunKey;
         AZ::Uuid m_builderGuid;
     };
@@ -48,7 +52,8 @@ namespace AssetProcessor
         {
             logRole = Qt::UserRole + 1,
             statusRole,
-            logFileRole
+            logFileRole,
+            SortRole,
         };
 
         enum Column
@@ -71,7 +76,7 @@ namespace AssetProcessor
         QVariant data(const QModelIndex& index, int role) const override;
         int itemCount() const;
         CachedJobInfo* getItem(int index) const;
-        static QString GetStatusInString(const AzToolsFramework::AssetSystem::JobStatus& state);
+        static QString GetStatusInString(const AzToolsFramework::AssetSystem::JobStatus& state, AZ::u32 warningCount, AZ::u32 errorCount);
         void PopulateJobsFromDatabase();
 
 public Q_SLOTS:
@@ -83,9 +88,10 @@ public Q_SLOTS:
     protected:
         QIcon m_pendingIcon;
         QIcon m_errorIcon;
+        QIcon m_warningIcon;
         QIcon m_okIcon;
         QIcon m_processingIcon;
-        QVector<CachedJobInfo*> m_cachedJobs;
+        AZStd::vector<CachedJobInfo*> m_cachedJobs;
         QHash<AssetProcessor::QueueElementID, int> m_cachedJobsLookup; // QVector uses int as type of index.  
 
         void RemoveJob(const AssetProcessor::QueueElementID& elementId);

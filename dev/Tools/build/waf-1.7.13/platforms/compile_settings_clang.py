@@ -11,7 +11,7 @@
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
 from waflib.Configure import conf
-from lumberyard import deprecated
+from lumberyard import deprecated, multi_conf
 
 
 @conf
@@ -246,3 +246,12 @@ def load_release_clang_settings(conf):
     v['CXXFLAGS'] += COMPILER_FLAGS
     """
     pass
+
+
+@multi_conf
+def generate_ib_profile_tool_elements(ctx):
+    clang_tool_elements = [
+        # There is an issue with newer versions of clang that causes the slashes to be striped from file paths when being sent through IB.  Doesn't seem to happen with clang++ though
+        '<Tool Filename="clang++" AllowRemoteIf="-c" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false"/>'
+    ]
+    return clang_tool_elements

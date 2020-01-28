@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "ComponentEntityEditorPlugin_precompiled.h"
 
 #include "ComponentEntityObject.h"
 #include "IIconManager.h"
@@ -260,10 +260,11 @@ void CComponentEntityObject::SetSelected(bool bSelect)
         }
     }
 
-    AzToolsFramework::EntityIdList entities;
-    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(entities, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
+    bool anySelected = false;
+    
+    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(anySelected, &AzToolsFramework::ToolsApplicationRequests::AreAnyEntitiesSelected);
 
-    if (entities.size() == 0)
+    if (!anySelected)
     {
         GetIEditor()->Notify(eNotify_OnEntitiesDeselected);
     }

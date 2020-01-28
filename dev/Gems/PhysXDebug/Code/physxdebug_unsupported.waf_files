@@ -1,0 +1,11 @@
+{
+    "none":
+    {
+        "Source":
+        [
+            "Source/ModuleUnsupported.cpp",
+            "Source/PhysXDebugUnsupported_precompiled.cpp",
+            "Source/PhysXDebugUnsupported_precompiled.h"
+        ]
+    }
+}

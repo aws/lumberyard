@@ -13,6 +13,7 @@
 
 #include <AzCore/std/string/conversions.h>
 #include <AzCore/std/containers/array.h>
+#include <AzCore/std/containers/fixed_vector.h>
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Memory/OSAllocator.h>
 #include <AzCore/Memory/SystemAllocator.h>
@@ -1146,6 +1147,132 @@ namespace AzFramework
             return true;
         }
 
+        namespace NumberFormatting
+        {
+            int GroupDigits(char* buffer, size_t bufferSize, size_t decimalPosHint, char digitSeparator, char decimalSeparator, int groupingSize, int firstGroupingSize)
+            {
+                static const int MAX_SEPARATORS = 16;
+
+                AZ_Assert(buffer, "Null string buffer");
+                AZ_Assert(bufferSize > decimalPosHint, "Decimal position %lu cannot be located beyond bufferSize %lu", decimalPosHint, bufferSize);
+                AZ_Assert(groupingSize > 0, "Grouping size must be a positive integer");
+
+                int numberEndPos = 0;
+                int stringEndPos = 0;
+                
+                if (decimalPosHint > 0 && decimalPosHint < (bufferSize - 1) && buffer[decimalPosHint] == decimalSeparator)
+                {
+                    // Assume the number ends at the supplied location
+                    numberEndPos = (int)decimalPosHint;
+                    stringEndPos = numberEndPos + (int)strnlen(buffer + numberEndPos, bufferSize - numberEndPos);
+                }
+                else
+                {
+                    // Search for the final digit or separator while obtaining the string length
+                    int lastDigitSeenPos = 0;
+
+                    while (stringEndPos < bufferSize)
+                    {
+                        char c = buffer[stringEndPos];
+
+                        if (!c)
+                        {
+                            break;
+                        }
+                        else if (c == decimalSeparator)
+                        {
+                            // End the number if there's a decimal
+                            numberEndPos = stringEndPos;
+                        }
+                        else if (numberEndPos <= 0 && c >= '0' && c <= '9')
+                        {
+                            // Otherwise keep track of where the last digit we've seen is
+                            lastDigitSeenPos = stringEndPos;
+                        }
+
+                        stringEndPos++;
+                    }
+
+                    if (numberEndPos <= 0)
+                    {
+                        if (lastDigitSeenPos > 0)
+                        {
+                            // No decimal, so use the last seen digit as the end of the number
+                            numberEndPos = lastDigitSeenPos + 1;
+                        }
+                        else
+                        {
+                            // No digits, no decimals, therefore no change in the string
+                            return stringEndPos;
+                        }
+                    }
+                }
+
+                if (firstGroupingSize <= 0)
+                {
+                    firstGroupingSize = groupingSize;
+                }
+
+                // Determine where to place the separators
+                int groupingSizes[] = { firstGroupingSize + 1, groupingSize };  // First group gets +1 since we begin all subsequent groups at the second digit
+                int groupingOffsetsToNext[] = { 1, 0 };  // We will offset from the first entry to the second, then stay at the second for remaining iterations
+                const int* currentGroupingSize = groupingSizes;
+                const int* currentGroupingOffsetToNext = groupingOffsetsToNext;
+                AZStd::fixed_vector<char*, MAX_SEPARATORS> separatorLocations;
+                int groupCounter = 0;
+                int digitPosition = numberEndPos - 1;
+
+                while (digitPosition >= 0)
+                {
+                    // Walk backwards in the string from the least significant digit to the most significant, demarcating consecutive groups of digits
+                    char c = buffer[digitPosition];
+
+                    if (c >= '0' && c <= '9')
+                    {
+                        if (++groupCounter == *currentGroupingSize)
+                        {
+                            // Demarcate a new group of digits at this location
+                            separatorLocations.push_back(buffer + digitPosition);
+                            currentGroupingSize += *currentGroupingOffsetToNext;
+                            currentGroupingOffsetToNext += *currentGroupingOffsetToNext;
+                            groupCounter = 0;
+                        }
+
+                        digitPosition--;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                if (stringEndPos + separatorLocations.size() >= bufferSize)
+                {
+                    // Won't fit into buffer, so return unchanged
+                    return stringEndPos;
+                }
+
+                // Insert the separators by shifting characters forward in the string, starting at the end and working backwards
+                const char* src = buffer + stringEndPos;
+                char* dest = buffer + stringEndPos + separatorLocations.size();
+                auto separatorItr = separatorLocations.begin();
+
+                while (separatorItr != separatorLocations.end())
+                {
+                    while (src > *separatorItr)
+                    {
+                        *dest-- = *src--;
+                    }
+
+                    // Insert the separator and reduce the distance between our destination and source by one
+                    *dest-- = digitSeparator;
+                    ++separatorItr;
+                }
+
+                return (int)(stringEndPos + separatorLocations.size());
+            }
+        }
+
         namespace AssetPath
         {
             void CalculateBranchToken(const AZStd::string& appRootPath, AZStd::string& token)
@@ -1195,7 +1322,7 @@ namespace AzFramework
                 }
 
                 AZStd::replace(inout.begin(), inout.end(), AZ_WRONG_DATABASE_SEPARATOR, AZ_CORRECT_DATABASE_SEPARATOR);
-                Replace(inout, AZ_DOUBLE_CORRECT_DATABASE_SEPARTOR, AZ_CORRECT_DATABASE_SEPARATOR_STRING);
+                Replace(inout, AZ_DOUBLE_CORRECT_DATABASE_SEPARATOR, AZ_CORRECT_DATABASE_SEPARATOR_STRING);
 
                 return IsValid(inout.c_str());
             }
@@ -3207,7 +3334,7 @@ namespace AzFramework
                 return true;
             }
 
-            bool HasDrive(const char* in)
+            bool HasDrive(const char* in, bool bCheckAllFileSystemFormats /*= false*/)
             {
                 //no drive if empty
                 if (!in)
@@ -3220,61 +3347,66 @@ namespace AzFramework
                     return false;
                 }
 
-    #if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+                bool useWinFilePaths = AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS;
 
-                //find the first AZ_FILESYSTEM_DRIVE_SEPARATOR
-                if (const char* pFirstDriveSep = strchr(in, AZ_FILESYSTEM_DRIVE_SEPARATOR))
+                if (useWinFilePaths || bCheckAllFileSystemFormats)
                 {
-                    //fail if the drive separator is not the second character
-                    if (pFirstDriveSep != in + 1)
+                    //find the first AZ_FILESYSTEM_DRIVE_SEPARATOR
+                    if (const char* pFirstDriveSep = strchr(in, AZ_FILESYSTEM_DRIVE_SEPARATOR))
                     {
-                        return false;
-                    }
-
-                    //fail if the first character, the drive letter, is not a letter
-                    if (!isalpha(in[0]))
-                    {
-                        return false;
-                    }
-
-                    //find the first AZ_CORRECT_FILESYSTEM_SEPARATOR
-                    if (const char* pFirstSep = strchr(in, AZ_CORRECT_FILESYSTEM_SEPARATOR))
-                    {
-                        //fail if the first AZ_FILESYSTEM_DRIVE_SEPARATOR occurs after the first AZ_CORRECT_FILESYSTEM_SEPARATOR
-                        if (pFirstDriveSep > pFirstSep)
-                        {
-                            return false;
-                        }
-                    }
-                    return true;
-                }
-                else if (!strncmp(in, AZ_NETWORK_PATH_START, AZ_NETWORK_PATH_START_SIZE))//see if it has a network start
-                {
-                    //find the first AZ_CORRECT_FILESYSTEM_SEPARATOR
-                    if (const char* pFirstSep = strchr(in + AZ_NETWORK_PATH_START_SIZE, AZ_CORRECT_FILESYSTEM_SEPARATOR))
-                    {
-                        //fail if the first AZ_CORRECT_FILESYSTEM_SEPARATOR is first character
-                        if (pFirstSep == in + AZ_NETWORK_PATH_START_SIZE)
+                        //fail if the drive separator is not the second character
+                        if (pFirstDriveSep != in + 1)
                         {
                             return false;
                         }
 
-                        //fail if the first character after the NETWORK_START isn't alphanumeric
-                        if (!isalnum(*(in + AZ_NETWORK_PATH_START_SIZE + 1)))
+                        //fail if the first character, the drive letter, is not a letter
+                        if (!isalpha(in[0]))
                         {
                             return false;
                         }
+
+                        //find the first Win filesystem separator
+                        if (const char* pFirstSep = strchr(in, '\\'))
+                        {
+                            //fail if the first AZ_FILESYSTEM_DRIVE_SEPARATOR occurs after the first Win filesystem separator
+                            if (pFirstDriveSep > pFirstSep)
+                            {
+                                return false;
+                            }
+                        }
+                        return true;
                     }
-                    return true;
+                    else if (!strncmp(in, AZ_NETWORK_PATH_START, AZ_NETWORK_PATH_START_SIZE))//see if it has a network start
+                    {
+                        //find the first Win filesystem separator
+                        if (const char* pFirstSep = strchr(in + AZ_NETWORK_PATH_START_SIZE, '\\'))
+                        {
+                            //fail if the first Win filesystem separator is first character
+                            if (pFirstSep == in + AZ_NETWORK_PATH_START_SIZE)
+                            {
+                                return false;
+                            }
+
+                            //fail if the first character after the NETWORK_START isn't alphanumeric
+                            if (!isalnum(*(in + AZ_NETWORK_PATH_START_SIZE + 1)))
+                            {
+                                return false;
+                            }
+                        }
+                        return true;
+                    }
                 }
 
-    #else
-                // on other platforms, its got a root if it starts with '/'
-                if (in[0] == '/')
+                if (!useWinFilePaths || bCheckAllFileSystemFormats)
                 {
-                    return true;
+                    // on other platforms, its got a root if it starts with '/'
+                    if (in[0] == '/')
+                    {
+                        return true;
+                    }
                 }
-    #endif
+
                 return false;
             }
 

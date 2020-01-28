@@ -6,6 +6,6 @@
 	"includes": [
 		"."
 	],
-	"defines": [],
+	"defines": ["BOOST_NO_AUTO_PTR"],
 	"lib_required": "False"
 }

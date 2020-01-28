@@ -11,38 +11,15 @@
  */
 
 #include "StdAfx.h"
-#include <AzCore/Component/Component.h>
-#include <AzCore/Module/Module.h>
-#include <AzCore/std/smart_ptr/unique_ptr.h>
-#include "ImGuiManager.h"
-
-#ifdef IMGUI_ENABLED
-#include "LYCommonMenu/ImGuiLYCommonMenu.h"
-#endif //IMGUI_ENABLED
+#include "ImGuiGem.h"
 
 namespace ImGui
 {
-    /*!
-     * The ImGui::Module class coordinates with the application
-     * to reflect classes and create system components.
-     */
-    class ImGuiModule : public CryHooksModule
+    void ImGuiModule::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam)
     {
-    public:
-        AZ_RTTI(ImGuiModule, "{ECA9F41C-716E-4395-A096-5A519227F9A4}", AZ::Module);
-        ImGuiModule() : CryHooksModule() {}
-
-        AZ::ComponentTypeList GetRequiredSystemComponents() const override
-        {
-            AZ::ComponentTypeList components;
-            return components;
-        }
-
-        void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam) override
-        {
 #ifdef IMGUI_ENABLED
-            switch (event)
-            {
+        switch (event)
+        {
             case ESYSTEM_EVENT_GAME_POST_INIT:
             {
                 manager.Initialize();
@@ -54,20 +31,18 @@ namespace ImGui
                 manager.Shutdown();
                 lyCommonMenu.Shutdown();
                 break;
-            }
-#endif //IMGUI_ENABLED
+            case ESYSTEM_EVENT_GAME_POST_INIT_DONE:
+                // Register CVARS after Init is done
+                manager.RegisterImGuiCVARs();
+                break;
         }
-
-#ifdef IMGUI_ENABLED
-    private:
-        ImGuiLYCommonMenu lyCommonMenu;
-        ImGuiManager manager;
-#endif // IMGUI_ENABLED
-        
-    };
+#endif //IMGUI_ENABLED
+    }
 }
 
+#if !defined(IMGUI_GEM_EDITOR)
 // DO NOT MODIFY THIS LINE UNLESS YOU RENAME THE GEM
 // The first parameter should be GemName_GemIdLower
 // The second should be the fully qualified name of the class above
 AZ_DECLARE_MODULE_CLASS(ImGui_bab8807a1bc646b3909f3cc200ffeedf, ImGui::ImGuiModule)
+#endif // IMGUI_GEM_EDITOR

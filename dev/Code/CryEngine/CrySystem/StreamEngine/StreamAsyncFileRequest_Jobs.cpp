@@ -265,7 +265,7 @@ void CAsyncIOFileRequest::DecompressBlockEntry(SStreamJobEngineState engineState
         else
         {
 #ifndef _RELEASE
-            CryFatalError("Decomp Error: %s : %s\n", m_strFileName.c_str(), m_pZlibStream ? m_pZlibStream->msg : "m_pZlibStream == NULL, no message available");
+            AZ_Assert(false, "Decomp Error: %s : %s\n", m_strFileName.c_str(), m_pZlibStream ? m_pZlibStream->msg : "m_pZlibStream == NULL, no message available");
 #endif
             Failed(ERROR_DECOMPRESSION_FAIL);
         }

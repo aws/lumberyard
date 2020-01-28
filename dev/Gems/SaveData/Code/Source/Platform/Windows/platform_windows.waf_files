@@ -3,7 +3,9 @@
     {
         "Source/Platform/Windows":
         [
-            "SaveData_SystemComponent_Windows.cpp"
+            "SaveData_SystemComponent_Windows.cpp",
+            "SaveData_Traits_Platform.h",
+            "SaveData_Traits_Windows.h"
         ]
     }
 }

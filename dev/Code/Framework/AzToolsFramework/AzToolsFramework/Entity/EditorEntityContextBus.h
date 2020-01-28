@@ -63,13 +63,17 @@ namespace AzToolsFramework
         virtual AZ::SliceComponent* GetEditorRootSlice() = 0;
 
         /// Creates an entity in the editor context.
-        /// \return a new entity
+        /// \return the EntityId for the created Entity
+        virtual AZ::EntityId CreateNewEditorEntity(const char* name) = 0;
+        //! LUMBERYARD_DEPRECATED(LY-103316)
         virtual AZ::Entity* CreateEditorEntity(const char* name) = 0;
 
         /// Creates an entity in the editor context.
         /// \param name The name to give the newly created entity.
         /// \param entityId The entity ID to create the new entity with.
-        /// \return a new entity
+        /// \return the EntityId for the created Entity
+        virtual AZ::EntityId CreateNewEditorEntityWithId(const char* name, const AZ::EntityId& entityId) = 0;
+        //! LUMBERYARD_DEPRECATED(LY-103316)
         virtual AZ::Entity* CreateEditorEntityWithId(const char* name, const AZ::EntityId& entityId) = 0;
 
         /// Registers an existing entity with the editor context.
@@ -234,6 +238,12 @@ namespace AzToolsFramework
 
         /// Fired when a slice has failed to instantiate.
         virtual void OnSliceInstantiationFailed(const AZ::Data::AssetId& /*sliceAssetId*/, const AzFramework::SliceInstantiationTicket& /*ticket*/) {}
+
+        //! Fired when an Editor entity is created
+        virtual void OnEditorEntityCreated(const AZ::EntityId& /*entityId*/) {}
+
+        //! Fired when an Editor entity is deleted
+        virtual void OnEditorEntityDeleted(const AZ::EntityId& /*entityId*/) {}
 
         // When a slice is created , the editor entities are replaced by an instance of the slice, this notification
         // sends a map from the old Entity id's to the new Entity id's

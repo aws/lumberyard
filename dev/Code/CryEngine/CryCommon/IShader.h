@@ -48,7 +48,7 @@ struct IVisArea;
 class CShader;
 class CRendElement;
 class CRendElementBase;
-struct STexAnim;
+class ITexAnim;
 struct SShaderPass;
 struct SShaderItem;
 class ITexture;
@@ -491,6 +491,7 @@ public:
 };
 
 class CTexture;
+class CTexAnim;
 #include <ITexture.h>
 
 // Summary:
@@ -1004,7 +1005,7 @@ protected:
     // Disallow copy (potential bugs with PERMANENT objects)
     // alwasy use IRendeer::EF_DuplicateRO if you want a copy
     // of a CRenderObject
-    CRenderObject& operator= (CRenderObject& other) = default; // Not supported on vs2012
+    CRenderObject& operator= (CRenderObject& other) = default;
 
     void CloneObject(CRenderObject* srcObj)
     {
@@ -1509,8 +1510,12 @@ struct STexSamplerRT
         IRenderTarget* m_pITarget;
     };
 
-    STexAnim*   m_pAnimInfo;
-
+    union
+    {
+        CTexAnim* m_pAnimInfo;
+        ITexAnim* m_pIAnimInfo;
+    };
+    
     uint32      m_nTexFlags;
     int16       m_nTexState;
 
@@ -1550,7 +1555,7 @@ struct STexSamplerRT
         SAFE_RELEASE(m_pITex);
         // TODO: ref counted deleting of m_pAnimInfo & m_pTarget! - CW
         SAFE_RELEASE(m_pITarget);
-        SAFE_RELEASE(m_pAnimInfo);
+        SAFE_RELEASE(m_pIAnimInfo);
     }
     int Size() const
     {
@@ -1578,10 +1583,10 @@ struct STexSamplerRT
         {
             m_pITarget->AddRef();
         }
-        m_pAnimInfo = src.m_pAnimInfo;
-        if (m_pAnimInfo)
+        m_pIAnimInfo = src.m_pIAnimInfo;
+        if (m_pIAnimInfo)
         {
-            m_pAnimInfo->AddRef();
+            m_pIAnimInfo->AddRef();
         }
         m_eTexType = src.m_eTexType;
         m_nTexFlags = src.m_nTexFlags;
@@ -2128,8 +2133,8 @@ struct SInputShaderResources
 #define SHGD_TEX_SUBSURFACE         0x80
 #define SHGD_HW_BILINEARFP16        0x100
 #define SHGD_HW_SEPARATEFP16        0x200
-#define SHGD_HW_DURANGO             0x400 // ACCEPTED_USE
-#define SHGD_HW_ORBIS               0x800 // ACCEPTED_USE
+#define SHGD_HW_DURANGO             0x400
+#define SHGD_HW_ORBIS               0x800
 #define SHGD_TEX_CUSTOM             0x1000
 #define SHGD_TEX_CUSTOM_SECONDARY   0x2000
 #define SHGD_TEX_DECAL              0x4000

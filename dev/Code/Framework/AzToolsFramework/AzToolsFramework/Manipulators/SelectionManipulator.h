@@ -38,10 +38,7 @@ namespace AzToolsFramework
         ~SelectionManipulator() = default;
 
         /// A Manipulator must only be created and managed through a shared_ptr.
-        static AZStd::shared_ptr<SelectionManipulator> MakeShared(const AZ::Transform& worldFromLocal)
-        {
-            return AZStd::shared_ptr<SelectionManipulator>(aznew SelectionManipulator(worldFromLocal));
-        }
+        static AZStd::shared_ptr<SelectionManipulator> MakeShared(const AZ::Transform& worldFromLocal);
 
         /// This is the function signature of callbacks that will be invoked
         /// whenever a selection manipulator is clicked on.
@@ -60,7 +57,7 @@ namespace AzToolsFramework
 
         void SetPosition(const AZ::Vector3& position) { m_position = position; }
         void SetSpace(const AZ::Transform& worldFromLocal) { m_worldFromLocal = worldFromLocal; }
-        
+
         const AZ::Vector3& GetPosition() const { return m_position; }
 
         bool Selected() const { return m_selected; }
@@ -85,14 +82,14 @@ namespace AzToolsFramework
 
         AZ::Vector3 m_position = AZ::Vector3::CreateZero(); ///< Position in local space.
         AZ::Transform m_worldFromLocal = AZ::Transform::CreateIdentity(); ///< Space the manipulator is in (identity is world space).
-        
+
         bool m_selected = false;
 
         MouseActionCallback m_onLeftMouseDownCallback = nullptr;
         MouseActionCallback m_onLeftMouseUpCallback = nullptr;
         MouseActionCallback m_onRightMouseDownCallback = nullptr;
         MouseActionCallback m_onRightMouseUpCallback = nullptr;
-        
+
         AZStd::unique_ptr<ManipulatorView> m_manipulatorView = nullptr; ///< Look of manipulator.
     };
 } // namespace AzToolsFramework

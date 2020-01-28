@@ -10,16 +10,11 @@
 *
 */
 
-/** @file
- * Header file that defines event buses for the component application interface.
- */
-
-#ifndef AZCORE_COMPONENT_APPLICATION_BUS_H
-#define AZCORE_COMPONENT_APPLICATION_BUS_H
+#pragma once
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/EntityId.h>
-#include <AzCore/std/parallel/mutex.h> // For recursive_mutex due to GetSerializeContext().
+#include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/string/osstring.h>
 
 namespace AZ
@@ -34,6 +29,10 @@ namespace AZ
     class DynamicModuleHandle;
 
     class Component;
+
+    class SerializeContext;
+    class BehaviorContext;
+    class JsonRegistrationContext;
 
     namespace Internal
     {
@@ -182,6 +181,12 @@ namespace AZ
          */
         virtual class BehaviorContext*  GetBehaviorContext() = 0;
         /**
+         * Returns the Json Registration context that was registered with the app.
+         * @return The Json Registration context, if there is one. JsonRegistrationContext is a class that contains
+         * the serializers used by the best-effort json serialization.
+         */
+        virtual class JsonRegistrationContext* GetJsonRegistrationContext() = 0;
+        /**
          * Gets the name of the working root folder that was registered with the app.
          * @return A pointer to the name of the app's root folder, if a root folder was registered.
          */
@@ -222,6 +227,3 @@ namespace AZ
      */
     typedef AZ::EBus<ComponentApplicationRequests>  ComponentApplicationBus;
 }
-
-#endif // AZCORE_COMPONENT_APPLICATION_BUS_H
-#pragma once

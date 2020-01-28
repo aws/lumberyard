@@ -678,9 +678,13 @@ class Node(object):
 		y = id(self.ctx.bldnode)
 		lst = []
 		while cur.parent:
-			if id(cur) == y:
+			# Check the current node if it matches the bldnode (in case this node is coming from inside the BinTemp folder already)
+			# (First perform an id check, but also perform an absolute path check in case the node instances are not equal)
+			if id(cur) == y or cur.abspath() == self.ctx.bldnode.abspath():
 				return self
-			if id(cur) == x:
+			# Check the current node if it matches the srcnode (base), and then build up the subpath from the bldnode as the root.
+			# (First perform an id check, but also perform an absolute path check in case the node instances are not equal)
+			if id(cur) == x or cur.abspath() == self.ctx.srcnode.abspath():
 				lst.reverse()				
 				tmp = []
 				for i in lst:
@@ -855,18 +859,7 @@ class Node(object):
 		except AttributeError:
 			pass
 
-		if not self.is_bld() or self.ctx.bldnode is self.ctx.srcnode:
-			self.sig = Utils.h_file(self.abspath())
-		elif not hasattr(self, 'sig') and self.ctx.is_azcodegen_node(self):
-			# This situation should not happen for code gen, since codegen outputted files will already have
-			# the cache_sig precomputed.  However we are seeing an edge case with some shared code gen that is
-			# either wiping out the cache_sig from the az_codegen step or the wrong node is being calculated.
-			# Will was generate a signature here anyways if it is a code-gen source file but present a warning to
-			# track down the root cause.  This will prevent header dependencies from being excluded because the
-			# exception prevents any includes after this problem header file to be included in the dep signature
-			Logs.warn('[WARN] Signature for azcodegen file {} not found.  Regenerating..'.format(self.abspath()))
-			self.sig = Utils.h_file(self.abspath())
-		self.cache_sig = ret = self.sig
+		self.cache_sig = ret = Utils.h_file(self.abspath())
 		return ret
 
 

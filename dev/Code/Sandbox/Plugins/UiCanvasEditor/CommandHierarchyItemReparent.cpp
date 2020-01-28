@@ -166,41 +166,12 @@ void CommandHierarchyItemReparent::Reparent(ChildItemList& sourceChildren, Child
     HierarchyHelpers::SetSelectedItems(m_hierarchy, &selectedElements);
 }
 
-void CommandHierarchyItemReparent::Push(bool onCreationOfElement,
-    UndoStack* stack,
+void CommandHierarchyItemReparent::Push(UndoStack* stack,
     HierarchyWidget* hierarchy,
     const HierarchyItemRawPtrList& items,
     const QTreeWidgetItemRawPtrList& itemParents)
 {
-    if (onCreationOfElement)
-    {
-        // This ISN'T a real move. This is a reparenting done "on creation".
-        // We DON'T need to be able to undo this here. The undoing of the
-        // creation is done in a different QUndoCommand.
-        //
-        // IMPORTANT: We ONLY need to do the runtime-side because
-        // the editor-side is already done for us "on creation".
-
-        AZ_Assert(items.size() == 1, "Creating more than one element at a time is not supported");
-
-        // QTreeWidgetItem* -> AZ::Entity*
-        HierarchyItem* destinationParent = dynamic_cast<HierarchyItem*>(itemParents.front());
-        AZ::Entity* parentElement = (destinationParent ? destinationParent->GetElement() : nullptr);
-
-        // QTreeWidgetItem* -> AZ::Entity*
-        HierarchyItem* insertAboveThisItem = dynamic_cast<HierarchyItem*>(itemParents.front()->child(itemParents.front()->indexOfChild(items.front()) + 1));
-        AZ::Entity* insertAboveThisElement = (insertAboveThisItem ? insertAboveThisItem->GetElement() : nullptr);
-
-        // Reparent.
-        EBUS_EVENT_ID(items.front()->GetEntityId(), UiElementBus, Reparent, parentElement, insertAboveThisElement);
-    }
-    else
-    {
-        // This is a move of an existing element.
-        // NOT a reparenting done "on creation".
-
         stack->push(new CommandHierarchyItemReparent(stack,
                 hierarchy,
                 items));
-    }
 }

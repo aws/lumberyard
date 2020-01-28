@@ -151,7 +151,7 @@ namespace ScriptCanvas
     
     struct BreakTag
     {
-        AZ_TYPE_INFO(BreakTag, "{B1B0976D-E300-470B-B01C-8EED7571414A}", );
+        AZ_TYPE_INFO_LEGACY(BreakTag, "{B1B0976D-E300-470B-B01C-8EED7571414A}", );
         static const char* ToString() { return "Break"; }
     };
     struct BreakpointTag
@@ -226,7 +226,7 @@ namespace ScriptCanvas
     };
     struct StepOverTag
     {
-        AZ_TYPE_INFO(StepOverTag, "{44980605-0FF2-4A5C-870E-324B4184ADD6}", );
+        AZ_TYPE_INFO_LEGACY(StepOverTag, "{44980605-0FF2-4A5C-870E-324B4184ADD6}", );
         static const char* ToString() { return "StepOver"; }
     };
     struct VariableChangeTag

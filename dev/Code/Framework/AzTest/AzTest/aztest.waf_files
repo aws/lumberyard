@@ -3,9 +3,12 @@
         "Root": [
             "AzTest.h",
             "AzTest.cpp",
+            "ColorizedOutput.cpp",
             "Platform.h",
             "Utils.h",
-            "Utils.cpp"
+            "Utils.cpp",
+            "GemTestEnvironment.cpp",
+            "GemTestEnvironment.h"
         ]
     }
 }

@@ -24,6 +24,7 @@
 #include <GridMate/Replica/ReplicaChunkInterface.h>
 
 #include <AzCore/std/containers/bitset.h>
+#include <AzCore/std/containers/ring_buffer.h>
 
 namespace GridMate
 {
@@ -77,7 +78,12 @@ namespace GridMate
         template<typename DataType, typename Marshaler, typename Throttle>
         friend class DataSet;
 
-        typedef list<Internal::RpcRequest*> RPCQueue;
+        using RPCQueue = AZStd::ring_buffer<Internal::RpcRequest*, SysContAlloc>;
+        /**
+         * \brief Specify the maximum size of a RPC queues for each replica chunk.
+         * This queue can grow while RPCs are being delivered back to all clients.
+         */
+        static constexpr AZStd::size_t MaxRpcQueueSize = 512;
 
         ReplicaChunkBase();
         virtual ~ReplicaChunkBase();
@@ -133,8 +139,20 @@ namespace GridMate
 
         virtual bool ShouldBindToNetwork();
 
+#if defined(AZ_TESTS_ENABLED)
+        //---------------------------------------------------------------------
+        // DEBUG and Test Interface. Do not use in production code.
+        //---------------------------------------------------------------------
+        virtual AZ::u32 Debug_CalculateDirtyDataSetMask(MarshalContext& mc) { return CalculateDirtyDataSetMask(mc); }
+        virtual void Debug_OnDataSetChanged(const DataSetBase& dataSet) { OnDataSetChanged(dataSet); }
+        virtual void Debug_Marshal(MarshalContext& mc, AZ::u32 chunkIndex) { Marshal(mc, chunkIndex); }
+        virtual void Debug_Unmarshal(UnmarshalContext& mc, AZ::u32 chunkIndex) { Unmarshal(mc, chunkIndex); }
+        PrepareDataResult Debug_PrepareData(EndianType endianType, AZ::u32 marshalFlags) { return PrepareData(endianType, marshalFlags); }
+        void Debug_AttachedToReplica(Replica* replica) { AttachedToReplica(replica); }
+#endif // AZ_TESTS_ENABLED
+
     protected:
-        
+
         virtual AZ::u32 CalculateDirtyDataSetMask(MarshalContext& mc);
         virtual void OnDataSetChanged(const DataSetBase& dataSet);
         virtual void Marshal(MarshalContext& mc, AZ::u32 chunkIndex);
@@ -164,7 +182,7 @@ namespace GridMate
         void InternalUpdateChunk(const ReplicaContext& rc); // Called when updating replica with game info
         void InternalUpdateFromChunk(const ReplicaContext& rc); // Called when updating game with replica info
 
-        void AddDataSetEvent(DataSetBase* dataset); // Called to enqueue a user event handler for a modified DataSet on a proxy node        
+        void AddDataSetEvent(DataSetBase* dataset); // Called to enqueue a user event handler for a modified DataSet on a proxy node
 
         void SignalDataSetChanged(const DataSetBase& dataset); // Called when the DataSet changes on the master node
 
@@ -184,7 +202,7 @@ namespace GridMate
         ReplicaChunkDescriptor *    m_descriptor;
         AZ::u32                     m_flags;
 
-        RPCQueue m_rpcQueue;
+        RPCQueue m_rpcQueue{MaxRpcQueueSize};
         ReplicaChunkInterface* m_handler;
 
         AZStd::bitset<GM_MAX_DATASETS_IN_CHUNK> m_reliableDirtyBits;
@@ -193,7 +211,7 @@ namespace GridMate
         /*
          * Each bit value of 0 marks a dataset as still having the default value from the initial creation of the replica.
          * A bit value of 1 indicates that the associated dataset has been modified since its default constructor value.
-         * 
+         *
          * Internally, this is used to optimize marshaling of datasets to new proxies by omitting sending default constructor values of datasets.
          */
         AZStd::bitset<GM_MAX_DATASETS_IN_CHUNK> m_nonDefaultValueBits;
@@ -202,13 +220,13 @@ namespace GridMate
         AZ::u32 m_nDownstreamUnreliableRPCs;
         AZ::u32 m_nUpstreamReliableRPCs;
         AZ::u32 m_nUpstreamUnreliableRPCs;
-        
+
         AZ::u32 m_dirtiedDataSets; // Downstream changed DataSet bits for triggering the event handler
         ReplicaPriority m_priority;
         AZ::u64             m_revision; //change stamp. increases every time a data set changes
     };
 
-    // Replica Chunk
+    // Replica Chunk - custom class for internal GridMate classes. You should use @ReplicaChunkBase for AZ::Component work!
     /**
         Use ReplicaChunk as a parent class when the chunk contains the logic for its network events.
         This is useful for peer to peer environments and when the same code can be shared between

@@ -84,34 +84,39 @@ namespace EMotionFX
 
     void AnimGraphParameterAction::TriggerAction(AnimGraphInstance* animGraphInstance) const
     {
+        if (!m_parameterIndex.IsSuccess())
         {
-            MCore::Attribute* attribute = animGraphInstance->GetParameterValue(static_cast<uint32>(m_parameterIndex.GetValue()));
-            if (attribute)
-            {
-                switch (attribute->GetType())
-                {
-                    case MCore::AttributeBool::TYPE_ID:
-                    {
-                        MCore::AttributeBool* atrBool = static_cast<MCore::AttributeBool*>(attribute);
-                        atrBool->SetValue(m_triggerValue != 0.0f);
-                        break;
-                    }
-                    case MCore::AttributeFloat::TYPE_ID:
-                    {
-                        MCore::AttributeFloat* atrFloat = static_cast<MCore::AttributeFloat*>(attribute);
-                        atrFloat->SetValue(m_triggerValue);
-                        break;
-                    }
-                    default:
-                    {
-                        AZ_Assert(false, "Type %d of attribute %s are not supported", attribute->GetType(), m_parameterName.c_str());
-                        break;
-                    }
-                }
+            return;
+        }
+        
+        MCore::Attribute* attribute = animGraphInstance->GetParameterValue(static_cast<uint32>(m_parameterIndex.GetValue()));
+        if (!attribute)
+        {
+            return;
+        }
 
-                AnimGraphNotificationBus::Broadcast(&AnimGraphNotificationBus::Events::OnParameterActionTriggered, m_valueParameter);
+        switch (attribute->GetType())
+        {
+            case MCore::AttributeBool::TYPE_ID:
+            {
+                MCore::AttributeBool* atrBool = static_cast<MCore::AttributeBool*>(attribute);
+                atrBool->SetValue(m_triggerValue != 0.0f);
+                break;
+            }
+            case MCore::AttributeFloat::TYPE_ID:
+            {
+                MCore::AttributeFloat* atrFloat = static_cast<MCore::AttributeFloat*>(attribute);
+                atrFloat->SetValue(m_triggerValue);
+                break;
+            }
+            default:
+            {
+                AZ_Assert(false, "Type %d of attribute %s are not supported", attribute->GetType(), m_parameterName.c_str());
+                break;
             }
         }
+
+        AnimGraphNotificationBus::Broadcast(&AnimGraphNotificationBus::Events::OnParameterActionTriggered, m_valueParameter);
     }
 
 

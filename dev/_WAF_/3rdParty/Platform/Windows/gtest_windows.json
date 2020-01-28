@@ -1,0 +1,44 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "libpath_debug": [
+                "lib/Windows/Debug"
+            ],
+            "libpath_release": [
+                "lib/Windows/Release"
+            ],
+            "gtest/lib_debug": [
+                "gtestd.lib"
+            ],
+            "gtest/lib_release": [
+                "gtest.lib"
+            ],
+            "gtest_main/lib_debug": [
+                "gtest_maind.lib"
+            ],
+            "gtest_main/lib_release": [
+                "gtest_main.lib"
+            ],
+            "gmock/lib_debug": [
+                "gmockd.lib",
+                "gtestd.lib"
+            ],
+            "gmock/lib_release": [
+                "gmock.lib",
+                "gtest.lib"
+            ],
+            "gmock_main/lib_debug": [
+                "gmock_maind.lib",
+                "gtestd.lib"
+            ],
+            "gmock_main/lib_release": [
+                "gmock_main.lib",
+                "gtest.lib"
+            ],
+            "linkflags" : [
+                "/ignore:4099"
+            ]
+        },
+        "win_x64_clang": "@win_x64_vs2017"
+    }
+}

@@ -4171,7 +4171,7 @@ void TranslateInstructionMETAL(HLSLCrossCompilerContext* psContext, Instruction*
         AddIndentation(psContext);
         bcatcstr(metal, "//SYNC\n");
 #endif
-        //  Igor: warning. Although Metal documentation claims the flag can be combined
+        //  warning. Although Metal documentation claims the flag can be combined
         //  this is not true in terms of binary operations. One can't simply OR flags
         //  but rather have to use pre-defined literals.
         char* aszBarrierType[] = {
@@ -4197,7 +4197,7 @@ void TranslateInstructionMETAL(HLSLCrossCompilerContext* psContext, Instruction*
         else
         {
             AddIndentation(psContext);
-            //  Igor: simdgroup_barrier is faster than threadgroup_barrier. It is supported on iOS 10+ on all hardware.
+            //  simdgroup_barrier is faster than threadgroup_barrier. It is supported on iOS 10+ on all hardware.
             bcatcstr(metal, "threadgroup_barrier(");
         }
 

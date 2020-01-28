@@ -18,20 +18,13 @@
  * As compressed_pair can inherits from two potentially empty base classes it would put the second empty base class at offset 1.
  *
  * Luckily in Visual Studio 2015 Update 2 an attribute was added to allow VS2015 to take full advantage
- * of the Empty Base Class Optimization and not add padding between multiple empty sub cbjects
+ * of the Empty Base Class Optimization and not add padding between multiple empty sub objects
  * This is detail on the Visual Studio blog https://devblogs.microsoft.com/cppblog/optimizing-the-layout-of-empty-base-classes-in-vs2015-update-2-3/
  */
-#if defined(AZ_PLATFORM_WINDOWS)
+#if defined(AZ_COMPILER_MSVC)
 #define AZSTD_COMPRESSED_PAIR_EMPTY_BASE_OPTIMIZATION __declspec(empty_bases)
 #else
 #define AZSTD_COMPRESSED_PAIR_EMPTY_BASE_OPTIMIZATION 
-#endif
-
- // VS2015 C++14 support removes constexpr from non-const member functions
-#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1900
-#define AZSTD_COMPRESSED_PAIR_CONSTEXPR
-#else
-#define AZSTD_COMPRESSED_PAIR_CONSTEXPR constexpr
 #endif
 
 namespace AZStd
@@ -63,7 +56,7 @@ namespace AZStd
         constexpr compressed_pair_element(AZStd::piecewise_construct_t, TupleType<Args...>&& args,
             AZStd::index_sequence<Indices...>);
 
-        AZSTD_COMPRESSED_PAIR_CONSTEXPR T& get();
+        constexpr T& get();
         constexpr const T& get() const;
 
     private:
@@ -87,7 +80,7 @@ namespace AZStd
         template <template <typename...> class TupleType, class... Args, size_t... Indices>
         constexpr compressed_pair_element(AZStd::piecewise_construct_t, TupleType<Args...>&& args, AZStd::index_sequence<Indices...>);
 
-        AZSTD_COMPRESSED_PAIR_CONSTEXPR T& get();
+        constexpr T& get();
         constexpr const T& get() const;
     };
 
@@ -129,9 +122,9 @@ namespace AZStd
         template <template <typename...> class TupleType, typename... Args1, typename... Args2>
         constexpr compressed_pair(piecewise_construct_t piecewiseTag, TupleType<Args1...>&& firstArgs, TupleType<Args2...>&& secondArgs);
 
-        AZSTD_COMPRESSED_PAIR_CONSTEXPR auto first() -> first_base_value_type&;
+        constexpr auto first() -> first_base_value_type&;
         constexpr auto first() const -> const first_base_value_type&;
-        AZSTD_COMPRESSED_PAIR_CONSTEXPR auto second() -> second_base_value_type&;
+        constexpr auto second() -> second_base_value_type&;
         constexpr auto second() const -> const second_base_value_type&;
 
         void swap(compressed_pair& other);
@@ -146,4 +139,3 @@ namespace AZStd
 // undefine Visual Studio Empty Base Class Optimization Macro
 #undef AZSTD_COMPRESSED_PAIR_EMPTY_BASE_OPTIMIZATION
 // undefine Visual Studio 2015 constexpr workaround macro
-#undef AZSTD_COMPRESSED_PAIR_CONSTEXPR

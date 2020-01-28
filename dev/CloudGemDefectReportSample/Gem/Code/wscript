@@ -20,9 +20,6 @@ def build(bld):
                                   ],
         use                     = ['AzGameFramework'],
 
-        # Platform Specific
-        android_use             = ['AndroidLauncher'],
-
         # ==============================
         # iOS
         # 'ios_output_file_name' must match both

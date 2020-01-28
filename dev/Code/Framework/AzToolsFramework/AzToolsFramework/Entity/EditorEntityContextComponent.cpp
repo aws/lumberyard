@@ -26,6 +26,7 @@
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetManagerBus.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Script/ScriptSystemBus.h>
 #include <AzCore/Slice/SliceAsset.h>
 #include <AzCore/Slice/SliceMetadataInfoBus.h>
@@ -57,6 +58,7 @@
 #include <AzToolsFramework/ToolsComponents/EditorDisabledCompositionComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponent.h>
 #include <AzToolsFramework/Entity/EditorEntitySortComponent.h>
+#include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Slice/SliceMetadataEntityContextBus.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 
@@ -64,6 +66,27 @@
 
 namespace AzToolsFramework
 {
+    namespace Internal
+    {
+        struct EditorEntityContextNotificationBusHandler final
+            : public EditorEntityContextNotificationBus::Handler
+            , public AZ::BehaviorEBusHandler
+        {
+            AZ_EBUS_BEHAVIOR_BINDER(EditorEntityContextNotificationBusHandler, "{159C07A6-BCB6-432E-BEBB-6AABF6C76989}", AZ::SystemAllocator,
+                OnEditorEntityCreated, OnEditorEntityDeleted);
+
+            void OnEditorEntityCreated(const AZ::EntityId& entityId) override
+            {
+                Call(FN_OnEditorEntityCreated, entityId);
+            }
+
+            void OnEditorEntityDeleted(const AZ::EntityId& entityId) override
+            {
+                Call(FN_OnEditorEntityDeleted, entityId);
+            }
+        };
+    }
+
     //=========================================================================
     // Reflect
     //=========================================================================
@@ -83,6 +106,18 @@ namespace AzToolsFramework
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                     ;
             }
+        }
+
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->EBus<EditorEntityContextNotificationBus>("EditorEntityContextNotificationBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
+                ->Attribute(AZ::Script::Attributes::Category, "Editor")
+                ->Attribute(AZ::Script::Attributes::Module, "editor")
+                ->Handler<Internal::EditorEntityContextNotificationBusHandler>()
+                ->Event("OnEditorEntityCreated", &EditorEntityContextNotification::OnEditorEntityCreated)
+                ->Event("OnEditorEntityDeleted", &EditorEntityContextNotification::OnEditorEntityDeleted)
+                ;
         }
     }
 
@@ -168,16 +203,35 @@ namespace AzToolsFramework
     //=========================================================================
     // EditorEntityContextRequestBus::CreateEditorEntity
     //=========================================================================
+    AZ::EntityId EditorEntityContextComponent::CreateNewEditorEntity(const char* name)
+    {
+        return CreateEditorEntity(name)->GetId();
+    }
+    // LUMBERYARD_DEPRECATED(LY-103316)
     AZ::Entity* EditorEntityContextComponent::CreateEditorEntity(const char* name)
     {
         AZ::Entity* entity = CreateEntity(name);
         FinalizeEditorEntity(entity);
         return entity;
     }
+    // LUMBERYARD_DEPRECATED(LY-103316)
 
     //=========================================================================
     // EditorEntityContextRequestBus::CreateEditorEntityWithId
     //=========================================================================
+    AZ::EntityId EditorEntityContextComponent::CreateNewEditorEntityWithId(const char* name, const AZ::EntityId& entityId)
+    {
+        AZ::EntityId newEntityId;
+
+        AZ::Entity* entity = CreateEditorEntityWithId(name, entityId);
+        if (entity)
+        {
+            newEntityId = entity->GetId();
+        }
+
+        return newEntityId;
+    }
+    // LUMBERYARD_DEPRECATED(LY-103316)
     AZ::Entity* EditorEntityContextComponent::CreateEditorEntityWithId(const char* name, const AZ::EntityId& entityId)
     {
         if (!entityId.IsValid())
@@ -204,8 +258,8 @@ namespace AzToolsFramework
         AddEntity(entity);
         FinalizeEditorEntity(entity);
         return entity;
-
     }
+    // LUMBERYARD_DEPRECATED(LY-103316)
 
     //=========================================================================
     // EditorEntityContextComponent::FinalizeEditorEntity
@@ -226,6 +280,8 @@ namespace AzToolsFramework
             command->Capture(entity);
             command->SetParent(undoBatch.GetUndoBatch());
         }
+
+        EditorEntityContextNotificationBus::Broadcast(&EditorEntityContextNotification::OnEditorEntityCreated, entity->GetId());
     }
 
     //=========================================================================
@@ -462,6 +518,11 @@ namespace AzToolsFramework
                                     AZ::Quaternion oldEntityRotation;
                                     AZ::TransformBus::EventResult(oldEntityRotation, id, &AZ::TransformBus::Events::GetWorldRotationQuaternion);
                                     transformComponent->SetRotationQuaternion(oldEntityRotation);
+
+                                    // Ensure the existing hierarchy is maintained
+                                    AZ::EntityId oldParentEntityId;
+                                    AZ::TransformBus::EventResult(oldParentEntityId, id, &AZ::TransformBus::Events::GetParentId);
+                                    transformComponent->SetParent(oldParentEntityId);
                                 }
                             }
 
@@ -930,6 +991,24 @@ namespace AzToolsFramework
                     entity->Activate();
                 }
             }
+            // we need to check for locked layers and re-apply the lock to their children.
+            // This needs to be in a separate loop as we need to be sure all the entities are activated.
+            for (AZ::Entity* entity : entities)
+            {
+                AZ::EntityId entityId = entity->GetId();
+                bool locked = false;
+                EditorLockComponentRequestBus::EventResult(locked, entityId, &EditorLockComponentRequests::GetLocked);
+                if (locked)
+                {
+                    bool isLayer = false;
+                    Layers::EditorLayerComponentRequestBus::EventResult(
+                        isLayer, entityId, &Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+                    if (isLayer)
+                    {
+                        SetEntityLockState(entityId, true);
+                    }
+                }
+            }
         }
 
         ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::SetSelectedEntities, m_selectedBeforeStartingGame);
@@ -1185,8 +1264,6 @@ namespace AzToolsFramework
                     ScopedUndoBatch undoBatch("Instantiate Slice");
                     for (AZ::Entity* entity : entities)
                     {
-                        // Don't mark entities as dirty for PropertyChange undo action if they are just instantiated.
-                        ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::RemoveDirtyEntity, entity->GetId());
 
                         EntityCreateCommand* command = aznew EntityCreateCommand(
                             reinterpret_cast<UndoSystem::URCommandID>(sliceAddressCopy.GetInstance()));
@@ -1239,6 +1316,23 @@ namespace AzToolsFramework
     {
         EntityContext::PrepareForContextReset();
         EditorEntityContextNotificationBus::Broadcast(&EditorEntityContextNotification::PrepareForContextReset);
+    }
+
+    //=========================================================================
+    // ValidateEntitiesAreValidForContext
+    //=========================================================================
+    bool EditorEntityContextComponent::ValidateEntitiesAreValidForContext(const EntityList& entities)
+    {
+        // All entities in a slice being instantiated in the level editor should
+        // have the TransformComponent on them. Since it is not possible to create
+        // a slice with entities from different contexts, it is OK to check
+        // the first entity only
+        if (entities.size() > 0)
+        {
+            return entities[0]->FindComponent<Components::TransformComponent>() != nullptr;
+        }
+
+        return true;
     }
 
     //=========================================================================
@@ -1299,6 +1393,8 @@ namespace AzToolsFramework
     void EditorEntityContextComponent::OnContextEntityRemoved(const AZ::EntityId& entityId)
     {
         EditorRequests::Bus::Broadcast(&EditorRequests::DestroyEditorRepresentation, entityId, false);
+
+        EditorEntityContextNotificationBus::Broadcast(&EditorEntityContextNotification::OnEditorEntityDeleted, entityId);
     }
 
     //=========================================================================

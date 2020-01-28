@@ -32,6 +32,11 @@ namespace AzFramework
 {
     namespace AssetSystem
     {
+        namespace Platform
+        {
+            void DebugOutput(const char* message);
+        }
+
         namespace
         {
             bool GetValidAzSocket(AZSOCKET& outSocket)
@@ -72,28 +77,28 @@ namespace AzFramework
             m_retryAfterDisconnect = false;
             m_isBusyDisconnecting = false;
 
-            m_sendThread.m_desc.m_name = "APConn::SendThread";
+            m_sendThread.m_desc.m_name = "APConnection::SendThread";
             m_sendThread.m_main = AZStd::bind(&AssetProcessorConnection::SendThread, this);
 
-            m_recvThread.m_desc.m_name = "APConn::RecvThread";
+            m_recvThread.m_desc.m_name = "APConnection::RecvThread";
             m_recvThread.m_main = AZStd::bind(&AssetProcessorConnection::RecvThread, this);
             
             // Put the AP send and receive threads on a core not shared by the main thread or render thread.
             // We have found cases where render thread would stall on a Send request, but the main thread would be running on core 0
             // and starve the send and receive threads.  Putting them on a lighter CPU prevents this starvation.
-            m_sendThread.m_desc.m_cpuId = 4;
-            m_recvThread.m_desc.m_cpuId = 4;
+            m_sendThread.m_desc.m_cpuId = AZ_TRAIT_THREAD_AFFINITY_MASK_ASSET_PROCESSOR_CONNECTION_THREAD;
+            m_recvThread.m_desc.m_cpuId = AZ_TRAIT_THREAD_AFFINITY_MASK_ASSET_PROCESSOR_CONNECTION_THREAD;
 
-            m_disconnectThread.m_desc.m_name = "APConn::DisconnectThread";
+            m_disconnectThread.m_desc.m_name = "APConnection::DisconnectThread";
             m_disconnectThread.m_main = [this]()
             {
                 DisconnectThread();
             };
 
-            m_listenThread.m_desc.m_name = "APConn::ListenThread";
+            m_listenThread.m_desc.m_name = "APConnection::ListenThread";
             m_listenThread.m_main = AZStd::bind(&AssetProcessorConnection::ListenThread, this);
 
-            m_connectThread.m_desc.m_name = "APConn::ConnectThread";
+            m_connectThread.m_desc.m_name = "APConnection::ConnectThread";
             m_connectThread.m_main = [this]()
             {
                 ConnectThread();
@@ -135,13 +140,7 @@ namespace AzFramework
             AZStd::array<char, MaxMessageSize> buffer;
             azsnprintf(buffer.data(), buffer.size(), "(%p/%#" PRIxPTR "): %s\n", this, numericThreadId, msg.data());
 
-    #if AZ_TRAIT_COMPILER_USE_OUTPUT_DEBUG_STRING
-            ::OutputDebugString("AssetProcessorConnection:");
-            ::OutputDebugString(buffer.data());
-    #else
-            fputs("AssetProcessorConnection:", stdout);
-            fputs(buffer.data(), stdout);
-    #endif
+            Platform::DebugOutput(buffer.data());
 #else // ASSETPROCESORCONNECTION_VERBOSE_LOGGING is not defined
             (void)format;
 #endif
@@ -182,6 +181,8 @@ namespace AzFramework
         //trying to connect, if any error occurs start the disconnect thread
         void AssetProcessorConnection::ConnectThread()
         {
+            static constexpr char ConnectThreadWindow[] = "AssetProcessorConnection::ConnectThread";
+
             //check for join before doing an op
             if (m_connectThread.m_join)
             {
@@ -231,7 +232,8 @@ namespace AzFramework
             AZ::s32 result = AZ::AzSock::Connect(m_socket, socketAddress);
             if (AZ::AzSock::SocketErrorOccured(result))
             {
-                DebugMessage("AssetProcessorConnection::ConnectThread - Connect returned an error %s", AZ::AzSock::GetStringForError(result));
+                AZ_Warning(ConnectThreadWindow, false, "Network connection attempt failure, Connect returned error %s", AZ::AzSock::GetStringForError(result));
+
                 if (m_connectThread.m_join)
                 {
                     return;
@@ -244,7 +246,7 @@ namespace AzFramework
             result = AZ::AzSock::EnableTCPNoDelay(m_socket, true);
             if (result)
             {
-                DebugMessage("AssetProcessorConnection::ConnectThread - EnableTCPNoDelay returned an error %s", AZ::AzSock::GetStringForError(result));
+                AZ_Warning(ConnectThreadWindow, false, "Network connection attempt failure, EnableTCPNoDelay returned an error %s", AZ::AzSock::GetStringForError(result));
                 if (m_connectThread.m_join)
                 {
                     return;
@@ -274,7 +276,7 @@ namespace AzFramework
             }
 
             //we failed start the disconnect thread and try again if retry is set
-            DebugMessage("AssetProcessorConnection::ConnectThread - Negotiation with %s:%u, Failed.", m_connectAddr.c_str(), m_port);
+            AZ_Warning(ConnectThreadWindow, false, "Network connection attempt failure, negotiation with %s:%u failed.", m_connectAddr.c_str(), m_port);
             // when we are the one connecting outbound, a negotiation failure is terminal 
             // we cannot recover, the thing we're trying to connect to is not an asset processor, so disable automatic retry:
             m_retryAfterDisconnect = false;

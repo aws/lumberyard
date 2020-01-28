@@ -139,10 +139,12 @@ public:
             SEnviropment::Instance().m_RunAsRoot = (runAsRoot == 1);
         }
 
-        if (azstricmp(strKey.c_str(), "ProvoHardwareTarget") == 0)
-        {
-            SEnviropment::Instance().m_ProvoHardwareTarget = atoi(strValue.c_str());
-        }
+#if defined(TOOLS_SUPPORT_PROVO)
+#include "Provo/CrySCompileServer_cpp_provo.inl"
+#endif
+#if defined(TOOLS_SUPPORT_XENIA)
+#include "Xenia/CrySCompileServer_cpp_xenia.inl"
+#endif
     }
 
     //////////////////////////////////////////////////////////////////////////

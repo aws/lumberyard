@@ -16,8 +16,6 @@
 
 #pragma once
 
-#include "Util/BoostPythonHelpers.h"
-
 class CHeightmap;
 class CLayer;
 
@@ -32,20 +30,20 @@ enum ETextureBrushType
 */
 struct CTextureBrush
 {
-    ETextureBrushType       type;                               // Type of this brush.
+    ETextureBrushType                   type;                   // Type of this brush.
     float                               radius;                 // Radius of brush in meters
     float                               colorHardness;          // Opacity of layer color in brush painting
     float                               detailHardness;         // Opacity of detail texture in brush painting
     float                               value;                  //
-    bool                                bErase;                 //
+    bool                                erase;                  //
 
-    bool                                bMaskByLayerSettings;   //
+    bool                                maskByLayerSettings;    //
 
     float                               minRadius;              //
-    float                           maxRadius;                  //
-    ColorF                          m_cFilterColor;         //
-    float                               m_fBrightness;          // used together with m_cFilterColor
-    uint32                          m_dwMaskLayerId;        // 0xffffffff if not used
+    float                               maxRadius;              //
+    ColorF                              filterColor;            //
+    float                               brightness;             // used together with filterColor
+    uint32                              m_dwMaskLayerId;        // 0xffffffff if not used
 
     CTextureBrush()
     {
@@ -54,13 +52,13 @@ struct CTextureBrush
         colorHardness = 1.0f;
         detailHardness = 1.0f;
         value = 255;
-        bErase = false;
+        erase = false;
         minRadius = 0.01f;
         maxRadius = 256.0f;
-        bMaskByLayerSettings = true;
+        maskByLayerSettings = true;
         m_dwMaskLayerId = sInvalidMaskId;
-        m_cFilterColor = ColorF(1, 1, 1);
-        m_fBrightness = 1.0f;
+        filterColor = ColorF(1, 1, 1);
+        brightness = 1.0f;
     }
 
     static constexpr uint32 sInvalidMaskId = 0xffffffff;
@@ -71,6 +69,10 @@ class CTerrainTexturePainter
     : public CEditTool
 {
     Q_OBJECT
+
+private:
+    friend class CTerrainTexturePainterBindings;
+
 public:
     Q_INVOKABLE CTerrainTexturePainter();
     virtual ~CTerrainTexturePainter();
@@ -102,50 +104,23 @@ public:
     void Action_CollectUndo(float x, float y, float radius);
     void Action_StopUndo();
 
+    static void SaveLayer(CLayer* pLayer);
+
     static const GUID& GetClassID();
     static void RegisterTool(CRegistrationContext& rc);
-
-    // Python Bindings
-    static float PyGetBrushRadius();
-    static void PySetBrushRadius(float radius);
-
-    static float PyGetBrushColorHardness();
-    static void PySetBrushColorHardness(float colorHardness);
-
-    static float PyGetBrushDetailHardness();
-    static void PySetBrushDetailHardness(float detailHardness);
-
-    static bool PyGetBrushMaskByLayerSettings();
-    static void PySetBrushMaskByLayerSettings(bool maskByLayerSettings);
-
-    static QString PyGetBrushMaskLayer();
-    static void PySetBrushMaskLayer(const char *layerName);
-
-    static boost::python::tuple  PyGetLayerBrushColor(const char *layerName);
-    static void PySetLayerBrushColor(const char *layerName, float red, float green, float blue);
-
-    static float PyGetLayerBrushColorBrightness(const char *layerName);
-    static void PySetLayerBrushColorBrightness(const char *layerName, float colorBrightness);
-
-    static void PyPaintLayer(const char *layerName, float centerX, float centerY, float centerZ, bool floodFill);
-
-    static void RefreshUI();
-    static CLayer* FindLayer(const char *layerName);
 
 private:
     void PaintLayer(CLayer* pLayer, const Vec3& center, bool bFlood);
     CLayer* GetSelectedLayer() const;
     static void Command_Activate();
 
-
-
 private:
     Vec3 m_pointerPos;
 
     //! Flag is true if painting mode. Used for Undo.
-    bool m_bIsPainting;
+    bool m_isPainting;
 
-    struct CUndoTPElement* m_pTPElem;
+    struct CUndoTPElement* m_tpElem;
 
     // Cache often used interfaces.
     I3DEngine* m_3DEngine;

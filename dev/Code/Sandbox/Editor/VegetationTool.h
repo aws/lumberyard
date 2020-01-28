@@ -154,5 +154,22 @@ private:
     bool m_instanceLimitMessageActive;
 };
 
+namespace AzToolsFramework
+{
+    //! A component to reflect scriptable commands for the Editor
+    class VegetationToolFuncsHandler
+        : public AZ::Component
+    {
+    public:
+        AZ_COMPONENT(VegetationToolFuncsHandler, "{8CB91B63-3BB7-45F5-AC31-B666A962F932}")
+
+            static void Reflect(AZ::ReflectContext* context);
+
+        // AZ::Component ...
+        void Activate() override {}
+        void Deactivate() override {}
+    };
+
+} // namespace AzToolsFramework
 
 #endif // CRYINCLUDE_EDITOR_VEGETATIONTOOL_H

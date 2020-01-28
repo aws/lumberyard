@@ -161,6 +161,9 @@ namespace EMStudio
 
         bool CheckAnySelectedNodeBelongsToReferenceGraph() const;
 
+        // Method to control the anim graph instance stored in the model. These methods are called during activation
+        void SetAnimGraphInstance(EMotionFX::AnimGraph* currentAnimGraph, EMotionFX::AnimGraphInstance* currentAnimGraphInstance, EMotionFX::AnimGraphInstance* newAnimGraphInstance);
+
     signals:
         // Emitted when focus has changed. Index is the element we are focusing on. IndexContainer is the index of a potential
         // parent. UIs use the indexContainer to dive into that node/graph. Is possible that index is the same as indexContainer
@@ -174,9 +177,6 @@ namespace EMStudio
 
     private:
         void Reset();
-
-        // Method to control the anim graph instance stored in the model. These methods are called during activation
-        void SetAnimGraphInstance(EMotionFX::AnimGraph* currentAnimGraph, EMotionFX::AnimGraphInstance* currentAnimGraphInstance, EMotionFX::AnimGraphInstance* newAnimGraphInstance);
 
         // We want to be able to represent the model even when we dont have an AnimGraphInstance. In those
         // cases we are going to populate the model with a null AnimGraphInstance. If the graph is activated
@@ -291,6 +291,10 @@ namespace EMStudio
         // When we are deleting something, the pre-callback will cache the QModelIndex(es) of the thing being deleted.
         // Then the post-callback will use the cache to actually remove the elements from the model
         AZStd::vector<QPersistentModelIndex> m_pendingToDeleteIndices;
+
+        // When we are editing something while something is being deleted, we can't call edit directly.
+        // Putting it on this cached list, and then call edit after removePending get called.
+        AZStd::vector<QPersistentModelIndex> m_pendingToEditIndices;
 
         QItemSelectionModel m_selectionModel;
 

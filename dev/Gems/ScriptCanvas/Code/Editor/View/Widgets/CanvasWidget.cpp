@@ -13,11 +13,14 @@
 #include "precompiled.h"
 
 #include "CanvasWidget.h"
-
+// qpainter.h(465): warning C4251: 'QPainter::d_ptr': class 'QScopedPointer<QPainterPrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QPainter'
+// qpainter.h(450): warning C4800: 'QFlags<QPainter::RenderHint>::Int': forcing value to bool 'true' or 'false' (performance warning)
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option")
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QGraphicsView>
 #include <QPushButton>
+AZ_POP_DISABLE_WARNING
 
 #include "Editor/View/Widgets/ui_CanvasWidget.h"
 

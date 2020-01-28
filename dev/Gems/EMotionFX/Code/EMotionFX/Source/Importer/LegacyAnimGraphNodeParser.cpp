@@ -3879,8 +3879,8 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphMotionNode>(MCore
                 {
                     return false;
                 }
-                bool nextMotionAfterLooop = LegacyAnimGraphNodeParser::ConvertFloatAttributeValueToBool(legacyAttributeFloat.GetValue());
-                animGraphMotionNode.SetNextMotionAfterLooop(nextMotionAfterLooop);
+                bool nextMotionAfterLoop = LegacyAnimGraphNodeParser::ConvertFloatAttributeValueToBool(legacyAttributeFloat.GetValue());
+                animGraphMotionNode.SetNextMotionAfterLoop(nextMotionAfterLoop);
             }
             break;
             case 10:
@@ -3890,8 +3890,8 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphMotionNode>(MCore
                 {
                     return false;
                 }
-                bool nextMotionAfterLooop = LegacyAnimGraphNodeParser::ConvertFloatAttributeValueToBool(legacyAttributeFloat.GetValue());
-                animGraphMotionNode.SetNextMotionAfterLooop(nextMotionAfterLooop);
+                bool nextMotionAfterLoop = LegacyAnimGraphNodeParser::ConvertFloatAttributeValueToBool(legacyAttributeFloat.GetValue());
+                animGraphMotionNode.SetNextMotionAfterLoop(nextMotionAfterLoop);
             }
             break;
             default:

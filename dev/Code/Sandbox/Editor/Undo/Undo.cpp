@@ -158,6 +158,13 @@ void CUndoManager::Restore(bool bUndo)
     //CryLog( "Restore Undo" );
 }
 
+// This function is used below to decide if an operation should force a save or not. This currently
+// prevents selecting an entity, either from the outliner or both the old and new viewports.
+static bool ShouldPersist(const QString& name)
+{
+    return name != "Select Object(s)" && name != "Select Entity" && name != "Box Select Entities";
+}
+
 //////////////////////////////////////////////////////////////////////////
 void CUndoManager::Accept(const QString& name)
 {
@@ -175,7 +182,11 @@ void CUndoManager::Accept(const QString& name)
 
     if (!m_currentUndo->IsEmpty())
     {
-        GetIEditor()->SetModifiedFlag();
+        const bool persist = ShouldPersist(name);
+        if (persist)
+        {
+            GetIEditor()->SetModifiedFlag();
+        }
 
         // If accepting new undo object, must clear all redo stack.
         ClearRedoStack();
@@ -199,7 +210,10 @@ void CUndoManager::Accept(const QString& name)
         //CLogFile::FormatLine( "Undo Object Accepted (Undo:%d,Redo:%d, Size=%dKb)",m_undoStack.size(),m_redoStack.size(),GetDatabaseSize()/1024 );
 
         // If undo accepted, document modified.
-        GetIEditor()->SetModifiedFlag();
+        if (persist)
+        {
+            GetIEditor()->SetModifiedFlag();
+        }
 
         if (name.compare("Select Object(s)", Qt::CaseInsensitive) == 0)
         {

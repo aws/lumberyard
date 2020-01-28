@@ -265,6 +265,21 @@ namespace AzToolsFramework
         void AddStatusMessage(StatusMessageType messageType, const QString& messageText);
         void DisplayStatusMessages();
 
+        /// Checks whether the entity can be pushed to the slice asset, or whether it is blocked 
+        /// e.g. would cause loop when loading
+        /// \param entityId The entity to check for pushability.
+        /// \param assetId The slice asset to check against.
+        /// \returns True if the entity can be pushed
+        bool CanPushEntityToAsset(const AZ::EntityId entityId, const AZ::Data::AssetId& assetId);
+
+        /// Checks whether the entity will be pushed to the slice asset, or whether it is blocked 
+        /// (see CanPushEntityToAsset) or is simply unchecked in the tree by the user.
+        /// \param entityId The entity to check for pushability.
+        /// \param assetId The slice asset to check against.
+        /// \returns True if the entity can be pushed
+        bool WillPushEntityToAsset(const AZ::EntityId entityId, const AZ::Data::AssetId& assetId);
+
+
         const SlicePushWidgetConfigPtr                              m_config;               ///< Push configuration, containing entity type-specific callbacks/settings
 
         QTreeWidget*                                                m_fieldTree;            ///< Tree widget for fields (left side)
@@ -311,6 +326,9 @@ namespace AzToolsFramework
         // role used to store icons in the QTreeWidgetItem data so correct icon can be restored
         // e.g. when conflict is resolved.
         static const int s_iconStorageRole = Qt::UserRole;
+
+        AZStd::unordered_map<AZ::Data::AssetId, EntityIdSet> m_unpushableNewChildEntityIdsPerAsset; ///< EntityIds that can't be pushed to each slice asset.
+        EntityIdSet m_newEntityIds; ///< List of all EntityIds that are new additions.
     };
 
 } // namespace AzToolsFramework

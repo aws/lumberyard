@@ -41,6 +41,8 @@ namespace AzToolsFramework
     {
         namespace Internal
         {
+            const AZ::u32 ParentEntityCRC = AZ_CRC("Parent Entity", 0x5b1b276c);
+
             // Decompose a transform into euler angles in degrees, scale (along basis, any shear will be dropped), and translation.
             void DecomposeTransform(const AZ::Transform& transform, AZ::Vector3& translation, AZ::Vector3& rotation, AZ::Vector3& scale)
             {
@@ -60,7 +62,7 @@ namespace AzToolsFramework
                     {
                     // Convert slice-relative transform/root to standard parent-child relationship.
                     const int sliceRootIdx = classElement.FindElement(AZ_CRC("Slice Root", 0x9f115e1f));
-                    const int parentIdx = classElement.FindElement(AZ_CRC("Parent Entity", 0x5b1b276c));
+                    const int parentIdx = classElement.FindElement(ParentEntityCRC);
                     const int editorTransformIdx = classElement.FindElement(AZ_CRC("Transform Data", 0xf0a2bb50));
                     const int cachedTransformIdx = classElement.FindElement(AZ_CRC("Cached World Transform", 0x571fab30));
 
@@ -1295,6 +1297,11 @@ namespace AzToolsFramework
                     AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(&AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay, AzToolsFramework::Refresh_AttributesAndValues);
                 });
             }
+        }
+
+        AZ::u32 TransformComponent::GetParentEntityCRC()
+        {
+            return Internal::ParentEntityCRC;
         }
     }
 } // namespace AzToolsFramework

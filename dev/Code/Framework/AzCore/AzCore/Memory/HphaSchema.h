@@ -34,7 +34,7 @@ namespace AZ
         struct Descriptor
         {
             Descriptor()
-                : m_memoryBlockAlignment(AZ_PAGE_SIZE)
+                : m_fixedMemoryBlockAlignment(AZ_TRAIT_OS_DEFAULT_PAGE_SIZE)
                 , m_pageSize(AZ_PAGE_SIZE)
                 , m_poolPageSize(4*1024)
                 , m_isPoolAllocations(true)
@@ -45,7 +45,7 @@ namespace AZ
                 , m_capacity(AZ_CORE_MAX_ALLOCATOR_SIZE)
             {}
 
-            unsigned int            m_memoryBlockAlignment;
+            unsigned int            m_fixedMemoryBlockAlignment;
             unsigned int            m_pageSize;                             ///< Page allocation size must be 1024 bytes aligned.
             unsigned int            m_poolPageSize : 31;                    ///< Page size used to small memory allocations. Must be less or equal to m_pageSize and a multiple of it.
             unsigned int            m_isPoolAllocations : 1;                ///< True to allow allocations from pools, otherwise false.
@@ -68,7 +68,7 @@ namespace AZ
         virtual size_type       AllocationSize(pointer_type ptr);
 
         virtual size_type       NumAllocatedBytes() const;
-        virtual size_type       Capacity() const                            { return m_capacity; }
+        virtual size_type       Capacity() const;
         virtual size_type       GetMaxAllocationSize() const;
         virtual size_type       GetUnAllocatedMemory(bool isPrint = false) const;
         virtual IAllocatorAllocate* GetSubAllocator()                       { return m_desc.m_subAllocator; }
@@ -77,11 +77,18 @@ namespace AZ
         virtual void            GarbageCollect();
 
     private:
+        // [LY-84974][sconel@][2018-08-10] SliceStrike integration up to CL 671758
+        // this must be at least the max size of HpAllocator (defined in the cpp) + any platform compiler padding
+        static const int hpAllocatorStructureSize = 16584;
+        // [LY][sconel@] end
+        
         Descriptor          m_desc;
         int                 m_pad;      // pad the Descriptor to avoid C4355
         size_type           m_capacity;                 ///< Capacity in bytes.
         HpAllocator*        m_allocator;
-        AZStd::aligned_storage<5120, 16>::type m_hpAllocatorBuffer;    ///< Memory buffer for HpAllocator
+        // [LY-84974][sconel@][2018-08-10] SliceStrike integration up to CL 671758
+        AZStd::aligned_storage<hpAllocatorStructureSize, 16>::type m_hpAllocatorBuffer;    ///< Memory buffer for HpAllocator
+        // [LY][sconel@] end
         bool                m_ownMemoryBlock;
     };
 } // namespace AZ

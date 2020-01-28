@@ -12,6 +12,7 @@
 #include "stdafx.h"
 
 #include "EditorCommon.h"
+#include "AssetDropHelpers.h"
 
 PropertiesWrapper::PropertiesWrapper(HierarchyWidget* hierarchy,
     EditorWindow* parent)
@@ -21,6 +22,8 @@ PropertiesWrapper::PropertiesWrapper(HierarchyWidget* hierarchy,
     , m_componentButton(new ComponentButton(hierarchy, this))
 {
     AZ_Assert(parent, "Parent EditorWindow is null");
+
+    setAcceptDrops(true);
 
     QVBoxLayout* outerLayout = new QVBoxLayout(this);
 
@@ -73,6 +76,71 @@ void PropertiesWrapper::ActiveCanvasChanged()
     bool canvasLoaded = m_editorWindow->GetCanvas().IsValid();
     m_properties->setEnabled(canvasLoaded);
     m_componentButton->setEnabled(canvasLoaded);
+}
+
+bool PropertiesWrapper::AcceptsMimeData(const QMimeData* mimeData) const
+{
+    bool canvasLoaded = m_editorWindow->GetCanvas().IsValid();
+    if (!canvasLoaded)
+    {
+        return false;
+    }
+
+    if (!AssetDropHelpers::AcceptsMimeType(mimeData))
+    {
+        return false;
+    }
+
+    ComponentAssetHelpers::ComponentAssetPairs componentAssetPairs;
+    AssetDropHelpers::AssetList sliceAssets;
+    AssetDropHelpers::DecodeSliceAndComponentAssetsFromMimeData(mimeData, componentAssetPairs, sliceAssets);
+
+    if (componentAssetPairs.empty())
+    {
+        return false;
+    }
+
+    AZStd::vector<AZ::TypeId> componentTypes;
+    componentTypes.reserve(componentAssetPairs.size());
+    for (const ComponentAssetHelpers::ComponentAssetPair& pair : componentAssetPairs)
+    {
+        componentTypes.push_back(pair.first);
+    }
+    return ComponentHelpers::CanAddComponentsToSelectedEntities(componentTypes);
+}
+
+void PropertiesWrapper::dragEnterEvent(QDragEnterEvent* event)
+{
+    if (AcceptsMimeData(event->mimeData()))
+    {
+        event->accept();
+    }
+    else
+    {
+        event->ignore();
+    }
+}
+
+void PropertiesWrapper::dropEvent(QDropEvent* event)
+{
+    if (AcceptsMimeData(event->mimeData()))
+    {
+        DropMimeDataAssets(event->mimeData());
+        event->acceptProposedAction();
+
+        // Put focus on the properties widget
+        activateWindow();
+        setFocus();
+    }
+}
+
+void PropertiesWrapper::DropMimeDataAssets(const QMimeData* mimeData)
+{
+    ComponentAssetHelpers::ComponentAssetPairs componentAssetPairs;
+    AssetDropHelpers::AssetList sliceAssets;
+    AssetDropHelpers::DecodeSliceAndComponentAssetsFromMimeData(mimeData, componentAssetPairs, sliceAssets);
+
+    ComponentHelpers::AddComponentsWithAssetToSelectedEntities(componentAssetPairs);
 }
 
 #include <PropertiesWrapper.moc>

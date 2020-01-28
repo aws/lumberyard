@@ -1,0 +1,43 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "system_lib": [
+                "shlwapi",
+                "Winhttp",
+                "Userenv",
+                "Ws2_32"
+            ],
+            "libpath_debug": [
+                "lib/windows/Debug"
+            ],
+            "libpath_release": [
+                "lib/windows/Release"
+            ],
+            "aws_cpp_sdk_core_static/lib": [
+                "${aws_cpp_sdk_core}.lib",
+                "${aws_dependencies}.lib"
+            ],
+            "aws_cpp_sdk_gamelift_static/defines": [
+                "BUILD_GAMELIFT_CLIENT"
+            ],
+            "aws_cpp_sdk_gamelift_static/lib": [
+                "${aws_cpp_sdk_gamelift}.lib"
+            ],
+            "aws_cpp_sdk_cognito_identity_static/lib": [
+                "${aws_cpp_sdk_cognito_identity}.lib"
+            ],
+            "aws_cpp_sdk_lambda_static/lib": [
+                "${aws_cpp_sdk_lambda}.lib"
+            ],
+            "aws_cpp_sdk_identity_lambda_static/lib": [
+                "${aws_cpp_sdk_identity_lambda}.lib",
+                "${aws_dependencies}.lib"
+            ],
+            "aws_cpp_sdk_identity_metrics_static/lib": [
+                "${aws_cpp_sdk_identity_metrics}.lib",
+                "${aws_dependencies}.lib"
+            ]
+        },
+        "win_x64_clang": "@win_x64_vs2017"
+    }
+}

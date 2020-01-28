@@ -20,10 +20,11 @@ from botocore.client import Config
 from botocore.exceptions import ClientError
 from ConfigParser import RawConfigParser
 from StringIO import StringIO
+from errors import HandledError
 
-DEFAULT_REGION='us-east-1'
+DEFAULT_REGION = 'us-east-1'
 
-DEFAULT_PREFIXES = [ 'cctest' ]
+DEFAULT_PREFIXES = ['cctest']
 
 
 def global_resource(cleanup_function):
@@ -32,35 +33,35 @@ def global_resource(cleanup_function):
             cleanup_function(cleaner)
         else:
             print("Skipping deletion of global {} (use --delete-global-resources or exclude --region to delete)".
-                format(cleanup_function.__name__[len("_delete_"):]))
-    
+                  format(cleanup_function.__name__[len("_delete_"):]))
+
     return wrapper
 
-        
+
 class Cleaner:
 
     def __init__(self, session, delete_global_resources):
         self.delete_global_resources = delete_global_resources
         self.cf = session.client('cloudformation')
-        self.s3 = session.client('s3',config=Config(signature_version='s3v4'))
+        self.s3 = session.client('s3', config=Config(signature_version='s3v4'))
         self.iam = session.client('iam')
         self.cognito_identity = session.client('cognito-identity')
         self.cognito_idp = session.client('cognito-idp')
         self.logs = session.client('logs')
         self.apigateway = session.client('apigateway')
         self.dynamodb = session.client('dynamodb')
-        self.lambda_client = session.client('lambda')        
-        self.sqs = session.client('sqs')                
+        self.lambda_client = session.client('lambda')
+        self.sqs = session.client('sqs')
         self.glue = session.client('glue')
         self.iot_client = session.client('iot')
         self.swf = session.client('swf')
-        
+
     def cleanup(self, prefixes, exceptions):
         self.__prefixes = prefixes
         self.__exceptions = exceptions
         self._delete_stacks()
         self._delete_identity_pools()
-        self._delete_user_pools()        
+        self._delete_user_pools()
         self._delete_dynamodb_tables()
         self._delete_log_groups()
         self._delete_api_gateway()
@@ -71,14 +72,14 @@ class Cleaner:
         self._delete_buckets()
         self._delete_swf_resources()
 
-        #users/roles/policies need to be deleted last
+        # users/roles/policies need to be deleted last
         self._delete_users()
         self._delete_roles()
         self._delete_policies()
         self._delete_iot_policies()
-        
+
     def _has_prefix(self, name):
-        
+
         name = name.lower()
 
         for exception in self.__exceptions:
@@ -98,34 +99,34 @@ class Cleaner:
         if not self.glue:
             print 'No glue client available, skipping glue crawlers'
             return
-			
+
         print '\n\nlooking for Glue crawlers with names starting with one of', self.__describe_prefixes()
         token = None
         while True:
-            params = {}   
+            params = {}
             if token:
-                params["NextToken"]= token
-            res = self.glue.get_crawlers(**params)   
+                params["NextToken"] = token
+            res = self.glue.get_crawlers(**params)
             token = res.get('NextToken')
             for crawler in res['Crawlers']:
-                crawler_name = crawler['Name']                
-                if not self._has_prefix(crawler_name):                
+                crawler_name = crawler['Name']
+                if not self._has_prefix(crawler_name):
                     continue
                 print '  found crawler', crawler_name
                 while True:
                     try:
                         print '    deleting crawler', crawler_name
                         self.glue.delete_crawler(
-                                        Name=crawler_name
-                                    )
+                            Name=crawler_name
+                        )
                         break
                     except ClientError as e:
                         if e.response["Error"]["Code"] == "LimitExceededException":
-                            print '    too many requests, sleeping...'                        
+                            print '    too many requests, sleeping...'
                             time.sleep(15)
                         else:
                             print '      ERROR:', e
-                            break   
+                            break
             if token is None:
                 break
 
@@ -134,31 +135,31 @@ class Cleaner:
         token = None
         while True:
             params = {}
-            params['DatabaseName'] = database_name   
+            params['DatabaseName'] = database_name
             if token:
-                params["NextToken"]= token
-            res = self.glue.get_tables(**params)   
+                params["NextToken"] = token
+            res = self.glue.get_tables(**params)
             token = res.get('NextToken')
             for table in res['TableList']:
-                table_name = table['Name']                
-                if not self._has_prefix(table_name):                
+                table_name = table['Name']
+                if not self._has_prefix(table_name):
                     continue
                 print '  found glue table', table_name
                 while True:
                     try:
                         print '\t\tdeleting glue table', table_name
                         self.glue.delete_table(
-                                        Name=table_name,
-                                        DatabaseName=database_name
-                                    )
+                            Name=table_name,
+                            DatabaseName=database_name
+                        )
                         break
                     except ClientError as e:
                         if e.response["Error"]["Code"] == "LimitExceededException":
-                            print '    too many requests, sleeping...'                        
+                            print '    too many requests, sleeping...'
                             time.sleep(15)
                         else:
                             print '      ERROR:', e
-                            break   
+                            break
             if token is None:
                 break
 
@@ -166,18 +167,18 @@ class Cleaner:
         if not self.glue:
             print 'No glue client available, skipping glue databases'
             return
-			
+
         print '\n\nlooking for Glue databases with names starting with one of', self.__describe_prefixes()
         token = None
         while True:
-            params = {}   
+            params = {}
             if token:
-                params["NextToken"]= token
-            res = self.glue.get_databases(**params)   
-            token = res.get('NextToken') 
+                params["NextToken"] = token
+            res = self.glue.get_databases(**params)
+            token = res.get('NextToken')
             for database in res['DatabaseList']:
-                database_name = database['Name']                
-                if not self._has_prefix(database_name):                
+                database_name = database['Name']
+                if not self._has_prefix(database_name):
                     continue
                 print '  found glue database', database_name
                 self._delete_glue_tables(database_name)
@@ -185,66 +186,66 @@ class Cleaner:
                     try:
                         print '    deleting glue database', database_name
                         self.glue.delete_database(
-                                        Name=database_name
-                                    )
+                            Name=database_name
+                        )
                         break
                     except ClientError as e:
                         if e.response["Error"]["Code"] == "LimitExceededException":
-                            print '    too many requests, sleeping...'                        
+                            print '    too many requests, sleeping...'
                             time.sleep(15)
                         else:
                             print '      ERROR:', e
-                            break   
+                            break
             if token is None:
                 break
 
     def _delete_sqs_queues(self):
         print '\n\nlooking for SQS queues with names starting with one of', self.__describe_prefixes()
-        res = self.sqs.list_queues()  
-        if 'QueueUrls' not in res:      
+        res = self.sqs.list_queues()
+        if 'QueueUrls' not in res:
             return
         for queueurl in res['QueueUrls']:
             queue_parts = queueurl.split("/")
             queue = queue_parts[4]
-            if not self._has_prefix(queue):                
+            if not self._has_prefix(queue):
                 continue
             print '  found queue', queue
             while True:
                 try:
                     print '    deleting queue', queue
                     self.sqs.delete_queue(
-                                    QueueUrl=queueurl
-                                )
+                        QueueUrl=queueurl
+                    )
                     break
                 except ClientError as e:
                     if e.response["Error"]["Code"] == "LimitExceededException":
-                        print '    too many requests, sleeping...'                        
+                        print '    too many requests, sleeping...'
                         time.sleep(15)
                     else:
                         print '      ERROR:', e
-                        break    
+                        break
 
     def _delete_dynamodb_tables(self):
         print '\n\nlooking for dynamo tables with names starting with one of', self.__describe_prefixes()
-        res = self.dynamodb.list_tables()        
+        res = self.dynamodb.list_tables()
         for table in res['TableNames']:
-            if not self._has_prefix(table):                
+            if not self._has_prefix(table):
                 continue
             print '  found table', table
             while True:
                 try:
                     print '    deleting table', table
                     self.dynamodb.delete_table(
-                                    TableName=table
-                                )
+                        TableName=table
+                    )
                     break
                 except ClientError as e:
                     if e.response["Error"]["Code"] == "LimitExceededException":
-                        print '    too many requests, sleeping...'                        
+                        print '    too many requests, sleeping...'
                         time.sleep(15)
                     else:
                         print '      ERROR:', e
-                        break               
+                        break
 
     @global_resource
     def _delete_buckets(self):
@@ -273,7 +274,7 @@ class Cleaner:
                 res = self.s3.list_buckets(NextToken=next_token)
 
     def _delete_stacks(self):
-        
+
         print '\n\nlooking for stacks with names starting with one of', self.__describe_prefixes()
 
         stack_list = []
@@ -344,21 +345,21 @@ class Cleaner:
                 print '      deleting object', version['Key'], version['VersionId']
                 delete_list.append(
                     {
-                        'Key': version['Key'],'VersionId': version['VersionId']
+                        'Key': version['Key'], 'VersionId': version['VersionId']
                     })
 
             for marker in list_res.get('DeleteMarkers', []):
                 print '      deleting object', marker['Key'], marker['VersionId'], '(delete marker)'
                 delete_list.append(
                     {
-                        'Key': marker['Key'],'VersionId': marker['VersionId']
+                        'Key': marker['Key'], 'VersionId': marker['VersionId']
                     })
 
             if not len(delete_list):
                 break
 
             try:
-                delete_res = self.s3.delete_objects(Bucket=bucket_id, Delete={ 'Objects': delete_list, 'Quiet': True })
+                delete_res = self.s3.delete_objects(Bucket=bucket_id, Delete={'Objects': delete_list, 'Quiet': True})
             except ClientError as e:
                 print '        ERROR', e.message
                 return
@@ -370,7 +371,7 @@ class Cleaner:
                     return
 
     def _clean_role(self, resource_id):
-        
+
         print '    cleaning role', resource_id
 
         # delete policies
@@ -381,7 +382,7 @@ class Cleaner:
             if e.response['Error']['Code'] != 'NoSuchEntity':
                 print '      ERROR:', e
             return
-        
+
         for policy_name in res['PolicyNames']:
             print '      deleting policy', policy_name
             try:
@@ -397,7 +398,7 @@ class Cleaner:
             if e.response['Error']['Code'] != 'NoSuchEntity':
                 print '      ERROR:', e
             return
-        
+
         for attached_policy in res['AttachedPolicies']:
             print '      detaching policy', attached_policy['PolicyName']
             try:
@@ -405,9 +406,8 @@ class Cleaner:
             except ClientError as e:
                 print '        ERROR:', e
 
-
     def _clean_user(self, resource_id):
-        
+
         print '    cleaning user', resource_id
 
         # delete policies
@@ -418,7 +418,7 @@ class Cleaner:
             if e.response['Error']['Code'] != 'NoSuchEntity':
                 print '      ERROR:', e
             return
-        
+
         for policy_name in res['PolicyNames']:
             print '      deleting policy', policy_name
             try:
@@ -434,7 +434,7 @@ class Cleaner:
             if e.response['Error']['Code'] != 'NoSuchEntity':
                 print '      ERROR:', e
             return
-        
+
         for attached_policy in res['AttachedPolicies']:
             print '      detaching policy', attached_policy['PolicyName']
             try:
@@ -450,7 +450,7 @@ class Cleaner:
             if e.response['Error']['Code'] != 'NoSuchEntity':
                 print '      ERROR:', e
             return
-        
+
         for access_key_metadata in res['AccessKeyMetadata']:
             print '      deleting access key', access_key_metadata['AccessKeyId']
             try:
@@ -458,7 +458,6 @@ class Cleaner:
             except ClientError as e:
                 print '        ERROR:', e
 
-                          
     def _delete_identity_pools(self):
 
         print '\n\nlooking for cognito identity pools with names starting with one of', self.__describe_prefixes()
@@ -525,8 +524,8 @@ class Cleaner:
         while True:
 
             for role in res['Roles']:
-                    
-                path = role['Path'][1:] # remove leading /
+
+                path = role['Path'][1:]  # remove leading /
 
                 if not self._has_prefix(path) and not self._has_prefix(role['RoleName']):
                     continue
@@ -556,8 +555,8 @@ class Cleaner:
         while True:
 
             for user in res['Users']:
-                    
-                path = user['Path'][1:] # remove leading /
+
+                path = user['Path'][1:]  # remove leading /
 
                 if not self._has_prefix(path) and not self._has_prefix(user['UserName']):
                     continue
@@ -587,8 +586,8 @@ class Cleaner:
         while True:
 
             for policy in res['Policies']:
-                    
-                path = policy['Path'][1:] # remove leading /
+
+                path = policy['Path'][1:]  # remove leading /
 
                 if not self._has_prefix(path) and not self._has_prefix(policy['PolicyName']):
                     continue
@@ -605,7 +604,6 @@ class Cleaner:
             else:
                 res = self.iam.list_policies(Marker=marker)
 
-
     def _delete_log_groups(self):
 
         print '\n\nlooking for log groups starting with one of', self.__describe_prefixes()
@@ -621,7 +619,7 @@ class Cleaner:
 
                     try:
                         print '  deleting log group', log_group['logGroupName']
-                        self.logs.delete_log_group(logGroupName = log_group['logGroupName'])
+                        self.logs.delete_log_group(logGroupName=log_group['logGroupName'])
                     except ClientError as e:
                         print '      ERROR:', e
 
@@ -646,7 +644,7 @@ class Cleaner:
                     while True:
                         try:
                             print '  deleting rest_api', rest_api['name'], rest_api['id']
-                            self.apigateway.delete_rest_api(restApiId = rest_api['id'])
+                            self.apigateway.delete_rest_api(restApiId=rest_api['id'])
                             break
                         except ClientError as e:
                             if e.response["Error"]["Code"] == "TooManyRequestsException":
@@ -711,8 +709,9 @@ class Cleaner:
                 for thisVersion in version_list['policyVersions']:
                     if not thisVersion['isDefaultVersion']:
                         try:
-                            print '  deleting iot policy {} version {}'.format(name, thisVersion['versionId'])    
-                            self.iot_client.delete_policy_version(policyName=name, policyVersionId=thisVersion['versionId'])
+                            print '  deleting iot policy {} version {}'.format(name, thisVersion['versionId'])
+                            self.iot_client.delete_policy_version(policyName=name,
+                                                                  policyVersionId=thisVersion['versionId'])
                         except ClientError as e:
                             print '    ERROR', e.message
                 # Now detach the policy from any principals
@@ -725,7 +724,7 @@ class Cleaner:
                             principal_name = thisPrincipal
                         else:
                             ## Response is in the form of accountId:CognitoId - when we detach we only want cognitoId
-                            principal_name = thisPrincipal.split(':',1)[1]
+                            principal_name = thisPrincipal.split(':', 1)[1]
                         print '  Detaching policy {} from principal {}'.format(name, principal_name)
                         try:
                             self.iot_client.detach_principal_policy(policyName=name, principal=principal_name)
@@ -734,7 +733,7 @@ class Cleaner:
 
                     if next_marker is None:
                         break
-                    principal_list = self.iot_client.list_policy_principals(policyName=name, pageSize=100, marker=next_marker)  
+                    principal_list = self.iot_client.list_policy_principals(policyName=name, pageSize=100, marker=next_marker)
                     next_marker = principal_list.get('nextMarker')
                 try:
                     print '  deleting iot policy {}'.format(name)
@@ -753,10 +752,10 @@ class Cleaner:
 
         res = self.swf.list_domains(registrationStatus='REGISTERED', maximumPageSize=100)
         while True:
-            for domain in res['domainInfos']:          
+            for domain in res['domainInfos']:
                 name = domain['name']
                 if not self._has_prefix(name):
-                    continue    
+                    continue
                 try:
                     print '  deleting SWF domain {}'.format(name)
                     self.swf.deprecate_domain(name=name)
@@ -767,7 +766,8 @@ class Cleaner:
                 break
             else:
                 res = self.swf.list_domains(maximumPageSize=100, nextPageToken=next_marker)
-                
+
+
 if __name__ == '__main__':
     def __get_user_settings_path():
         '''Reads {root}\bootstrap.cfg to determine the name of the game directory.'''
@@ -793,12 +793,14 @@ if __name__ == '__main__':
             game_directory_name = config.get('default', 'sys_game_folder')
 
             platform_mapping = {"win32": "pc", "darwin": "osx_gl"}
-            user_settings_path = os.path.join(root_directory_path, 'Cache', game_directory_name, platform_mapping[sys.platform], 'User\AWS\user-settings.json')
+            user_settings_path = os.path.join(root_directory_path, 'Cache', game_directory_name,
+                                              platform_mapping[sys.platform], 'User\AWS\user-settings.json')
 
             if not os.path.exists(user_settings_path):
                 raise HandledError('{} does not exist.'.format(user_settings_path))
 
             return user_settings_path
+
 
     def __get_default_profile(args):
         user_settings_path = __get_user_settings_path()
@@ -811,14 +813,19 @@ if __name__ == '__main__':
 
         return profile
 
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('--prefix', dest='prefixes', nargs='+', default=DEFAULT_PREFIXES, help='Any stacks and buckets with names that start with this value will be deleted.')
-    parser.add_argument('--except', dest='exceptions', nargs='+', default=[], help='Do not delete anything starting with these prefixes (useful for cleaning up old results while a test is in progress).')
-    parser.add_argument('--profile', default='default', help='The AWS profile to use. Defaults to the default AWS profile.')
+    parser.add_argument('--prefix', dest='prefixes', nargs='+', default=DEFAULT_PREFIXES,
+                        help='Any stacks and buckets with names that start with this value will be deleted.')
+    parser.add_argument('--except', dest='exceptions', nargs='+', default=[],
+                        help='Do not delete anything starting with these prefixes (useful for cleaning up old results while a test is in progress).')
+    parser.add_argument('--profile', default='default',
+                        help='The AWS profile to use. Defaults to the default AWS profile.')
     parser.add_argument('--aws-access-key', required=False, help='The AWS access key to use.')
     parser.add_argument('--aws-secret-key', required=False, help='The AWS secret key to use.')
     parser.add_argument('--region', default=None, help='The AWS region to use. Defaults to {}.'.format(DEFAULT_REGION))
-    parser.add_argument('--delete-global-resources', action='store_true', default=False, help='If --region specified, use to delete global resources such as IAM roles and S3 buckets. Ignored if --region is unspecified.')
+    parser.add_argument('--delete-global-resources', action='store_true', default=False,
+                        help='If --region specified, use to delete global resources such as IAM roles and S3 buckets. Ignored if --region is unspecified.')
 
     args = parser.parse_args()
 
@@ -829,7 +836,7 @@ if __name__ == '__main__':
     exceptions = []
     for exception in args.exceptions:
         exceptions.append(exception.lower())
-        
+
     use_region = args.region if args.region else DEFAULT_REGION
 
     if args.aws_access_key and args.aws_secret_key:
@@ -839,7 +846,7 @@ if __name__ == '__main__':
     else:
         args.profile = __get_default_profile(args)
         session = boto3.Session(profile_name=args.profile, region_name=use_region)
-        
+
     delete_global_resources = True
     if args.region and not args.delete_global_resources:
         print("WARNING: Specifying a --region skips deletion of global resources like IAM roles and S3 buckets. Add --delete-global-resources or do not specify a region to include these resources in deletion.")
@@ -848,6 +855,6 @@ if __name__ == '__main__':
         print("WARNING: --delete-global-resources is ignored without specifying a --region. (Global resources are always included for deletion if --region is left unspecified.)")
     elif not args.region:
         print("WARNING: No --region was specified.  The cleanup will default to the region '{}' and delete any matching global resources.".format(DEFAULT_REGION))
-        
+
     cleaner = Cleaner(session, delete_global_resources)
     cleaner.cleanup(prefixes, exceptions)

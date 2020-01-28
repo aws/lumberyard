@@ -17,6 +17,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/Entity.h>
+#include <AzCore/Debug/AssetTracking.h>
 
 namespace AZ
 {
@@ -100,6 +101,7 @@ namespace AZ
     //=========================================================================
     bool SliceAssetHandler::LoadAssetData(const Data::Asset<Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& assetLoadFilterCB)
     {
+        AZ_ASSET_NAMED_SCOPE("SliceAsset: %s", assetPath);
         AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
         if (fileIO)
         {

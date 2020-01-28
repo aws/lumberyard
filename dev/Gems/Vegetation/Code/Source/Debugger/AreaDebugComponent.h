@@ -23,7 +23,7 @@
 
 namespace LmbrCentral
 {
-    template<typename, typename> 
+    template<typename, typename>
     class EditorWrappedComponentBase;
 }
 
@@ -50,8 +50,6 @@ namespace Vegetation
 
         AZ::Color m_debugColor = GetDebugColor();
         float m_debugCubeSize = 0.25f;
-        bool m_propagateDebug = true;
-        bool m_inheritDebug = true;
         bool m_hideDebug = false;
     };
 
@@ -82,11 +80,13 @@ namespace Vegetation
     private:
         //////////////////////////////////////////////////////////////////////////
         // AreaDebugBus impl
-        void SetDebugColor(const AZ::Color& color) override;
-        void SetDebugPropagate(bool propagate) override;
-        void SetDebugInherit(bool inherit) override;
-        void SetDebugHide(bool hide) override;
-        void GetDebugColorOverride(bool& inherit, bool& propagate, bool& hideDebug, AZ::Color& color) const override;
+        AreaDebugDisplayData GetBaseDebugDisplayData() const override;
+        void ResetBlendedDebugDisplayData() override;
+        void AddBlendedDebugDisplayData(const AreaDebugDisplayData& data) override;
+        AreaDebugDisplayData GetBlendedDebugDisplayData() const override;
+
+        bool m_hasBlendedDebugDisplayData = false;
+        AreaDebugDisplayData m_blendedDebugDisplayData;
 
         AreaDebugConfig m_configuration;
     };

@@ -23,7 +23,9 @@
 #include <SurfaceData/SurfaceDataSystemRequestBus.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/IO/LocalFileIO.h>
+#include <Vegetation/Ebuses/AreaDebugBus.h>
 #include <Vegetation/Ebuses/SystemConfigurationBus.h>
+#include <Vegetation/Ebuses/InstanceSystemRequestBus.h>
 
 #include <ISystem.h>
 #include <IConsole.h>
@@ -208,7 +210,6 @@ void DebugComponent::DrawInstanceDebug()
         return;
     }
 
-
     IRenderAuxGeom* renderAuxGeom = renderer->GetIRenderAuxGeom();
     if (!renderAuxGeom)
     {
@@ -217,21 +218,35 @@ void DebugComponent::DrawInstanceDebug()
 
     renderAuxGeom->SetRenderFlags(e_Mode3D | e_FillModeSolid | e_CullModeBack | e_DepthWriteOff | e_DepthTestOn);
 
+    AZStd::unordered_map<AreaId, AreaDebugDisplayData> areaDebugDisplayDataMap;
+
     for (const auto& instance : m_activeInstances)
     {
         const DebugInstanceData& instanceData = instance.second;
-        const DebugColorData& debugColorData = m_areaDebugColors[instanceData.m_areaId];
-        if (!debugColorData.m_render)
+
+        AreaDebugDisplayData areaDebugDisplayData;
+
+        auto areaDebugDisplayDataItr = areaDebugDisplayDataMap.find(instanceData.m_areaId);
+        if (areaDebugDisplayDataItr == areaDebugDisplayDataMap.end())
+        {
+            AreaDebugBus::EventResult(areaDebugDisplayData, instanceData.m_areaId, &AreaDebugBus::Events::GetBlendedDebugDisplayData);
+            areaDebugDisplayDataMap[instanceData.m_areaId] = areaDebugDisplayData;
+        }
+        else
+        {
+            areaDebugDisplayData = areaDebugDisplayDataItr->second;
+        }
+
+        if (!areaDebugDisplayData.m_instanceRender)
         {
             continue;
         }
-        Vec3 pos = AZVec3ToLYVec3(instanceData.m_position);
-        AZ::Color debugColor = debugColorData.m_color;
-        Vec3 radius(debugColor.GetA());
-        debugColor.SetA(1.0f);
-        AABB bounds = AABB(pos - radius, pos + radius);
-        renderAuxGeom->DrawAABB(bounds, true, ColorB(debugColor.ToU32()), eBBD_Faceted);
+ 
+        Vec3 pos(AZVec3ToLYVec3(instanceData.m_position));
+        Vec3 radius(areaDebugDisplayData.m_instanceSize * 0.5f);
+        AABB bounds(pos - radius, pos + radius);
 
+        renderAuxGeom->DrawAABB(bounds, true, ColorB(areaDebugDisplayData.m_instanceColor.ToU32()), eBBD_Faceted);
     }
 #endif
 }
@@ -476,15 +491,6 @@ void DebugComponent::FillAreaEnd(AZ::EntityId areaId, TimePoint timePoint, AZ::u
         SectorAreaData& currentSectorAreaData = sectorAreaDataIterator->second;
         currentSectorAreaData.m_end = timePoint;
     }
-
-}
-
-void DebugComponent::SetAreaDebugColor(AZ::EntityId areaId, AZ::Color debugColor, bool render)
-{
-    DebugColorData debugColorData;
-    debugColorData.m_color = debugColor;
-    debugColorData.m_render = render;
-    m_areaDebugColors[areaId] = debugColorData;
 }
 
 void DebugComponent::FilterInstance(AZ::EntityId areaId, AZStd::string_view filterReason)
@@ -935,7 +941,7 @@ void DebugComponent::PrepareNextReport()
 
     DebugUtility::FetchTimingData<decltype(m_areaData), decltype(areaTimingMap), AreaTracker, AreaTiming, AreaId>(m_areaData, areaTimingMap, [](const AreaId& areaId)
     {
-        AreaTiming timing = {};
+        AreaTiming timing;
         AZ::ComponentApplicationBus::BroadcastResult(timing.m_areaName, &AZ::ComponentApplicationRequests::GetEntityName, areaId);
         return timing;
     },
@@ -968,9 +974,12 @@ void DebugComponent::PrepareNextReport()
     m_areaData.clear();
 
     // merge results
+    AZ::u32 instanceCount = 0;
+    InstanceSystemStatsRequestBus::BroadcastResult(instanceCount, &InstanceSystemStatsRequestBus::Events::GetInstanceCount);
+
     AZStd::lock_guard<decltype(m_reportMutex)> lock(m_reportMutex);
     m_thePerformanceReport.m_count++;
-    m_thePerformanceReport.m_activeInstanceCount = m_debugData->m_instanceActiveCount.load(AZStd::memory_order_relaxed);
+    m_thePerformanceReport.m_activeInstanceCount = instanceCount;
     m_thePerformanceReport.m_lastUpdateTime = AZStd::chrono::system_clock::now();
     DebugUtility::MergeResults(sectorTimingMap, m_thePerformanceReport.m_sectorTimingData, m_thePerformanceReport.m_lastUpdateTime, [](const SectorTiming& newTiming, SectorTiming& timing)
     {
@@ -1026,12 +1035,22 @@ void DebugComponent::DrawDebugStats()
         return;
     }
 
-    renderAuxGeom->Draw2dLabel(4, 16, 1.5f, ColorF(1, 1, 1), false, AZStd::string::format("VegetationSystemStats:\nActive Instances Count: %d\nThread Queue Count: %d\nThread Processing Count: %d\nInstance Register Queue: %d\nInstance Unregister Queue: %d", 
-        m_debugData->m_instanceActiveCount.load(AZStd::memory_order_relaxed),
+    AZ::u32 instanceCount = 0;
+    InstanceSystemStatsRequestBus::BroadcastResult(instanceCount, &InstanceSystemStatsRequestBus::Events::GetInstanceCount);
+
+    AZ::u32 createTaskCount = 0;
+    InstanceSystemStatsRequestBus::BroadcastResult(createTaskCount, &InstanceSystemStatsRequestBus::Events::GetCreateTaskCount);
+
+    AZ::u32 destroyTaskCount = 0;
+    InstanceSystemStatsRequestBus::BroadcastResult(destroyTaskCount, &InstanceSystemStatsRequestBus::Events::GetDestroyTaskCount);
+
+    renderAuxGeom->Draw2dLabel(4, 16, 1.5f, ColorF(1, 1, 1), false,
+        AZStd::string::format("VegetationSystemStats:\nActive Instances Count: %d\nInstance Register Queue: %d\nInstance Unregister Queue: %d\nThread Queue Count: %d\nThread Processing Count: %d", 
+        instanceCount,
+        createTaskCount,
+        destroyTaskCount,
         m_debugData->m_areaTaskQueueCount.load(AZStd::memory_order_relaxed),
-        m_debugData->m_areaTaskActiveCount.load(AZStd::memory_order_relaxed),
-        m_debugData->m_instanceRegisterCount.load(AZStd::memory_order_relaxed),
-        m_debugData->m_instanceUnregisterCount.load(AZStd::memory_order_relaxed)
+        m_debugData->m_areaTaskActiveCount.load(AZStd::memory_order_relaxed)
         ).c_str());
 }
 

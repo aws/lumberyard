@@ -25,12 +25,6 @@
 #include <AzCore/std/typetraits/remove_cvref.h>
 #include <AzCore/std/typetraits/type_identity.h>
 
-// VS2015 C++14 support does forces all removes constexpr from non-const member functions
-#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1900
-#define AZSTD_VARIANT_CONSTEXPR
-#else
-#define AZSTD_VARIANT_CONSTEXPR constexpr
-#endif
 
 namespace AZStd
 {
@@ -557,12 +551,12 @@ namespace AZStd
             }
 
         protected:
-            AZSTD_VARIANT_CONSTEXPR auto& as_base() &
+            constexpr auto& as_base() &
             {
                 return *this;
             }
 
-            AZSTD_VARIANT_CONSTEXPR auto&& as_base() &&
+            constexpr auto&& as_base() &&
             {
                 return AZStd::move(*this);
             }
@@ -638,8 +632,6 @@ namespace AZStd
                 {
                     auto destructVisitFunc = [](auto& variantAlt)
                     {
-                        // For some reason VS2015 believes that invoking the destructor of 
-                        // a variable does not count as use, so it claims the the parameter is unreferenced
                         (void)variantAlt;
                         using alternative_type = AZStd::remove_cvref_t<decltype(variantAlt)>;
                         variantAlt.~alternative_type();
@@ -1186,4 +1178,3 @@ namespace AZStd
     }
 } // namespace AZStd
 #pragma pop_macro("max")
-#undef AZSTD_VARIANT_CONSTEXPR

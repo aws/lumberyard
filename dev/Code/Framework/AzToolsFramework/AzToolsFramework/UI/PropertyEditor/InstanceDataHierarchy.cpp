@@ -27,6 +27,8 @@
 #include "ComponentEditor.hxx"
 #include "PropertyEditorAPI.h"
 
+#include <AzToolsFramework/ToolsComponents/TransformComponent.h>
+
 namespace
 {
     AZ::Edit::Attribute* FindAttributeInNode(AzToolsFramework::InstanceDataNode* node, AZ::Edit::AttributeId attribId)
@@ -239,6 +241,61 @@ namespace AzToolsFramework
     //-----------------------------------------------------------------------------
     // InstanceDataNode
     //-----------------------------------------------------------------------------
+
+    //! Read the value of the node.
+    //! Clones the node's value and returns its address into valuePtr. ValuePtr will be overridden.
+    bool InstanceDataNode::ReadRaw(void*& valuePtr, AZ::TypeId valueType)
+    {
+        void* firstInstanceCast = (GetSerializeContext()->DownCast(FirstInstance(), GetClassMetadata()->m_typeId, valueType));
+        if (!firstInstanceCast)
+        {
+            AZ_Error("InstanceDataHierarchy", false, "Could not downcast from the value typeid %s to the instance typeid %s required.",
+                GetClassMetadata()->m_typeId.ToString<AZStd::string>().c_str(),
+                valueType.ToString<AZStd::string>().c_str());
+            return false;
+        }
+
+        valuePtr = firstInstanceCast;
+
+        // check all instance values are the same
+        return std::all_of(m_instances.begin(), m_instances.end(), [this, valueType, firstInstanceCast](void* instance)
+        {
+            void* instanceCast = (GetSerializeContext()->DownCast(instance, GetClassMetadata()->m_typeId, valueType));
+            
+            if (!instanceCast)
+            {
+                AZ_Error("InstanceDataHierarchy", false, "Could not downcast from the value typeid %s to the instance typeid %s required.",
+                    GetClassMetadata()->m_typeId.ToString<AZStd::string>().c_str(),
+                    valueType.ToString<AZStd::string>().c_str());
+                return false;
+            }
+
+            return (GetClassMetadata()->m_serializer && GetClassMetadata()->m_serializer->CompareValueData(instanceCast, firstInstanceCast)) ||
+                    (!GetClassMetadata()->m_serializer && instanceCast == firstInstanceCast);
+        });
+    }
+
+    //! Write the value into the node.
+    void InstanceDataNode::WriteRaw(const void* valuePtr, AZ::TypeId valueType)
+    {
+        for (void* instance : m_instances)
+        {
+            // If type does not match, bail
+            if (valueType != GetClassMetadata()->m_typeId)
+            {
+                AZ_Error("InstanceDataHierarchy", false, "Could not downcast from the value typeid %s to the instance typeid %s required.",
+                    GetClassMetadata()->m_typeId.ToString<AZStd::string>().c_str(),
+                    valueType.ToString<AZStd::string>().c_str());
+                continue;
+            }
+            
+            if (valueType == GetClassMetadata()->m_typeId)
+            {
+                GetSerializeContext()->CloneObjectInplace(instance, valuePtr, GetClassMetadata()->m_typeId);
+            }
+        }
+    }
+
     void* InstanceDataNode::GetInstance(size_t idx) const
     {
         void* ptr = m_instances[idx];
@@ -407,6 +464,11 @@ namespace AzToolsFramework
     //-----------------------------------------------------------------------------
     void InstanceDataNode::MarkDifferentVersusComparison()
     {
+        if (ShouldComparisonBeIgnored())
+        {
+            return;
+        }
+
         m_comparisonFlags =  static_cast<AZ::u32>(ComparisonFlags::Differs);
     }
     
@@ -422,6 +484,12 @@ namespace AzToolsFramework
     {
         m_comparisonFlags = static_cast<AZ::u32>(ComparisonFlags::None);
         m_comparisonNode = nullptr;
+    }
+
+    //-----------------------------------------------------------------------------
+    void InstanceDataNode::SetIgnoreComparisonResult(bool ignoreResult)
+    {
+        m_ignoreComparisonResult = ignoreResult;
     }
 
     //-----------------------------------------------------------------------------
@@ -467,6 +535,12 @@ namespace AzToolsFramework
         }
 
         return false;
+    }
+
+    //-----------------------------------------------------------------------------
+    bool InstanceDataNode::ShouldComparisonBeIgnored() const
+    {
+        return m_ignoreComparisonResult;
     }
 
     //-----------------------------------------------------------------------------
@@ -675,7 +749,8 @@ namespace AzToolsFramework
         EnumerateUIElements(this, dynamicEditDataProvider);
 
         // Fixup our container edit data first, as we may specifically affect comparison data
-        FixupEditData(this, 0);
+        bool foundRootParent = false;
+        FixupEditData(this, 0, foundRootParent);
         bool dataIdentical = RefreshComparisonData(accessFlags, dynamicEditDataProvider);
 
         if (editorParent)
@@ -756,7 +831,7 @@ namespace AzToolsFramework
             // Fall back on using our serializer's DataToText
             if (node->GetElementMetadata())
             {
-                if (auto serializer = node->GetClassMetadata()->m_serializer)
+                if (auto& serializer = node->GetClassMetadata()->m_serializer)
                 {
                     AZ::IO::MemoryStream memStream(node->FirstInstance(), 0, node->GetElementMetadata()->m_dataSize);
                     AZStd::vector<char> buffer;
@@ -771,14 +846,43 @@ namespace AzToolsFramework
         }
     }
 
+    void InstanceDataHierarchy::FixupComparisonData(InstanceDataNode* node, bool& foundRootParent)
+    {
+        if (!foundRootParent)
+        {
+            bool isRootParentId = false;
+            if (node->GetClassMetadata() && node->GetClassMetadata()->m_typeId == AZ::AzTypeInfo<AZ::EntityId>::Uuid())
+            {
+                if (node->GetElementMetadata()->m_nameCrc == AzToolsFramework::Components::TransformComponent::GetParentEntityCRC())
+                {
+                    isRootParentId = true;
+                }
+            }
+
+            if (isRootParentId && !ShouldComparisonBeIgnored())
+            {
+                node->SetIgnoreComparisonResult(true);
+                foundRootParent = true;
+            }
+        }
+        else if (node->GetParent() && node->GetParent()->ShouldComparisonBeIgnored())
+        {
+            node->SetIgnoreComparisonResult(true);
+        }
+    }
+
     //-----------------------------------------------------------------------------
     //-----------------------------------------------------------------------------
-    void InstanceDataHierarchy::FixupEditData(InstanceDataNode* node, int siblingIdx)
+    void InstanceDataHierarchy::FixupEditData(InstanceDataNode* node, int siblingIdx, bool& foundRootParent)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
         bool mergeElementEditData = node->m_classElement && node->m_classElement->m_editData && node->GetElementEditMetadata() != node->m_classElement->m_editData;
         bool mergeContainerEditData = node->m_parent && node->m_parent->m_classData->m_container && node->m_parent->GetElementEditMetadata() && (node->m_classElement->m_flags & AZ::SerializeContext::ClassElement::FLG_POINTER) == 0;
+
+        node->SetIgnoreComparisonResult(false);
+
+        FixupComparisonData(node, foundRootParent);
 
         bool showAsKeyValue = false;
         if (!(m_buildFlags & Flags::IgnoreKeyValuePairs))
@@ -890,7 +994,7 @@ namespace AzToolsFramework
         int childIdx = 0;
         for (NodeContainer::iterator it = node->m_children.begin(); it != node->m_children.end(); ++it)
         {
-            FixupEditData(&(*it), childIdx++);
+            FixupEditData(&(*it), childIdx++, foundRootParent);
         }
     }
 
@@ -1555,6 +1659,11 @@ namespace AzToolsFramework
             const InstanceDataNode::Address& filterElementAddress)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        if (sourceNode->ShouldComparisonBeIgnored())
+        {
+            return true;
+        }
 
         if (!context)
         {

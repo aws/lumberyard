@@ -84,8 +84,6 @@ namespace AZ
     class Outcome
     {
     public:
-        AZ_TYPE_INFO(Outcome, "{C1DB96E5-922A-4387-B658-B4BE7FB94EA0}", ValueT, ErrorT)
-        
         using ValueType = ValueT;
         using ErrorType = ErrorT;
 
@@ -214,6 +212,8 @@ namespace AZ
 
         bool m_isSuccess;
     };
+
+    AZ_TYPE_INFO_TEMPLATE(Outcome, "{C1DB96E5-922A-4387-B658-B4BE7FB94EA0}", AZ_TYPE_INFO_CLASS, AZ_TYPE_INFO_CLASS);
 
     //////////////////////////////////////////////////////////////////////////
     // Success

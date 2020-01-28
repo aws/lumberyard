@@ -18,14 +18,27 @@
 #ifdef IMGUI_ENABLED
 
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzFramework/Input/Buses/Requests/InputTextEntryRequestBus.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
-#include "IHardwareMouse.h"
-#include <LyShine/Bus/UiCursorBus.h>
+#include <AzFramework/Input/Devices/Gamepad/InputDeviceGamepad.h>
+#include <AzFramework/Input/Devices/Touch/InputDeviceTouch.h>
+#include <AzFramework/Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard.h>
+#include <IHardwareMouse.h>
+#include <imgui/imgui_internal.h>
+#include <sstream>
+#include <string>
+
 using namespace AzFramework;
 using namespace ImGui;
 
-const uint32_t IMGUI_WHEEL_DELTA = 120; // From WinUser.h, for Linux
+// Wheel Delta const value.
+const constexpr uint32_t IMGUI_WHEEL_DELTA = 120; // From WinUser.h, for Linux
+
+// Typedef and local static map to hold LyInput->ImGui Nav mappings ( filled up in Initialize() )
+typedef AZStd::pair<AzFramework::InputChannelId, ImGuiNavInput_> LyButtonImGuiNavIndexPair;
+typedef AZStd::unordered_map<AzFramework::InputChannelId, ImGuiNavInput_> LyButtonImGuiNavIndexMap;
+static LyButtonImGuiNavIndexMap s_lyInputToImGuiNavIndexMap;
 
 /**
     An anonymous namespace containing helper functions for interoperating with AzFrameworkInput.
@@ -46,16 +59,82 @@ namespace
     }
 
     /**
-        Utility function to map an AzFrameworkInput device button to its integer index.
+        Utility function to map an AzFrameworkInput mouse device button to its integer index.
 
-        @param inputChannelId the ID for an AzFrameworkInput device button.
+        @param inputChannelId the ID for an AzFrameworkInput mouse device button.
         @return the index of the indicated button, or -1 if not found.
      */
-    unsigned int GetAzButtonIndex(const InputChannelId& inputChannelId)
+    unsigned int GetAzMouseButtonIndex(const InputChannelId& inputChannelId)
     {
         const auto& buttons = InputDeviceMouse::Button::All;
         const auto& it = AZStd::find(buttons.cbegin(), buttons.cend(), inputChannelId);
         return it != buttons.cend() ? static_cast<unsigned int>(it - buttons.cbegin()) : UINT_MAX;
+    }
+
+    /**
+        Utility function to map an AzFrameworkInput touch input to its integer index.
+
+        @param inputChannelId the ID for an AzFrameworkInput touch input.
+        @return the index of the indicated touch, or -1 if not found.
+     */
+    unsigned int GetAzTouchIndex(const InputChannelId& inputChannelId)
+    {
+        const auto& touches = InputDeviceTouch::Touch::All;
+        const auto& it = AZStd::find(touches.cbegin(), touches.cend(), inputChannelId);
+        return it != touches.cend() ? static_cast<unsigned int>(it - touches.cbegin()) : UINT_MAX;
+    }
+
+    /**
+    Utility function to map an AzFrameworkInput controller button to its integer index.
+
+    @param inputChannelId the ID for an AzFrameworkInput controller button.
+    @return the index of the indicated button, or -1 if not found.
+    */
+    unsigned int GetAzControllerButtonIndex(const InputChannelId& inputChannelId)
+    {
+        const auto& buttons = InputDeviceGamepad::Button::All;
+        const auto& triggers = InputDeviceGamepad::Trigger::All;
+        const auto& it = AZStd::find(buttons.cbegin(), buttons.cend(), inputChannelId);
+        if (it != buttons.cend())
+        {
+            return static_cast<unsigned int>(it - buttons.cbegin());
+        }
+        else
+        {
+            const auto& it2 = AZStd::find(triggers.cbegin(), triggers.cend(), inputChannelId);
+            if (it2 != triggers.cend())
+            {
+                return static_cast<unsigned int>(it2 - triggers.cbegin()) + AZ_ARRAY_SIZE(InputDeviceGamepad::Button::All);
+            }
+        }
+
+        return UINT_MAX;
+    }
+
+    /**
+    Utility function to map an AzFrameworkInput thumbstick movement to its integer index.
+
+    @param inputChannelId the ID for an AzFrameworkInput thumbstick movement.
+    @return the index of the indicated button, or -1 if not found.
+    */
+    unsigned int GetAzControllerThumbstickIndex(const InputChannelId& inputChannelId)
+    {
+        const auto& thumbstickMovements = InputDeviceGamepad::ThumbStickDirection::All;
+        const auto& it = AZStd::find(thumbstickMovements.cbegin(), thumbstickMovements.cend(), inputChannelId);
+        return it != thumbstickMovements.cend() ? static_cast<unsigned int>(it - thumbstickMovements.cbegin()) : UINT_MAX;
+    }
+
+    /**
+    Utility function to map an AzFrameworkInput thumbstick movement amountto its integer index.
+
+    @param inputChannelId the ID for an AzFrameworkInput thumbstick movement amount.
+    @return the index of the indicated button, or -1 if not found.
+    */
+    unsigned int GetAzControllerThumbstickAmountIndex(const InputChannelId& inputChannelId)
+    {
+        const auto& thumbstickMovementAmounts = InputDeviceGamepad::ThumbStickAxis1D::All;
+        const auto& it = AZStd::find(thumbstickMovementAmounts.cbegin(), thumbstickMovementAmounts.cend(), inputChannelId);
+        return it != thumbstickMovementAmounts.cend() ? static_cast<unsigned int>(it - thumbstickMovementAmounts.cbegin()) : UINT_MAX;
     }
 }
 
@@ -75,7 +154,7 @@ void ImGuiManager::Initialize()
     InputChannelEventListener::Connect();
     InputTextEventListener::Connect();
 
-    // Configure ImGui
+    // Dynamically Load ImGui
 #if defined(LOAD_IMGUI_LIB_DYNAMICALLY)
 
     AZ::OSString imgGuiLibPath = "imguilib";
@@ -91,33 +170,57 @@ void ImGuiManager::Initialize()
 
 #endif // defined(LOAD_IMGUI_LIB_DYNAMICALLY)
 
+    // Create ImGui Context
+    ImGui::CreateContext();
 
+    // Set config file
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = "imgui.ini";
 
-    // clang-format off
-    // Initialize Keyboard Mappings
-    // ImGui requires that we pre-fill the array of special keys used for text manipulation.
-    io.KeyMap[ImGuiKey_Tab]        = GetAzKeyIndex(InputDeviceKeyboard::Key::EditTab);
-    io.KeyMap[ImGuiKey_LeftArrow]  = GetAzKeyIndex(InputDeviceKeyboard::Key::NavigationArrowLeft);
+    // Enable Nav Keyboard by default and allow 
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos;
+
+    // Config Keyboard Mapping keys.
+    io.KeyMap[ImGuiKey_Tab] = GetAzKeyIndex(InputDeviceKeyboard::Key::EditTab);
+    io.KeyMap[ImGuiKey_LeftArrow] = GetAzKeyIndex(InputDeviceKeyboard::Key::NavigationArrowLeft);
     io.KeyMap[ImGuiKey_RightArrow] = GetAzKeyIndex(InputDeviceKeyboard::Key::NavigationArrowRight);
-    io.KeyMap[ImGuiKey_UpArrow]    = GetAzKeyIndex(InputDeviceKeyboard::Key::NavigationArrowUp);
-    io.KeyMap[ImGuiKey_DownArrow]  = GetAzKeyIndex(InputDeviceKeyboard::Key::NavigationArrowDown);
-    io.KeyMap[ImGuiKey_PageUp]     = GetAzKeyIndex(InputDeviceKeyboard::Key::NavigationPageUp);
-    io.KeyMap[ImGuiKey_PageDown]   = GetAzKeyIndex(InputDeviceKeyboard::Key::NavigationPageDown);
-    io.KeyMap[ImGuiKey_Home]       = GetAzKeyIndex(InputDeviceKeyboard::Key::NavigationHome);
-    io.KeyMap[ImGuiKey_End]        = GetAzKeyIndex(InputDeviceKeyboard::Key::NavigationEnd);
-    io.KeyMap[ImGuiKey_Delete]     = GetAzKeyIndex(InputDeviceKeyboard::Key::NavigationDelete);
-    io.KeyMap[ImGuiKey_Backspace]  = GetAzKeyIndex(InputDeviceKeyboard::Key::EditBackspace);
-    io.KeyMap[ImGuiKey_Enter]      = GetAzKeyIndex(InputDeviceKeyboard::Key::EditEnter);
-    io.KeyMap[ImGuiKey_Escape]     = GetAzKeyIndex(InputDeviceKeyboard::Key::Escape);
-    io.KeyMap[ImGuiKey_A]          = GetAzKeyIndex(InputDeviceKeyboard::Key::AlphanumericA);
-    io.KeyMap[ImGuiKey_C]          = GetAzKeyIndex(InputDeviceKeyboard::Key::AlphanumericC);
-    io.KeyMap[ImGuiKey_V]          = GetAzKeyIndex(InputDeviceKeyboard::Key::AlphanumericV);
-    io.KeyMap[ImGuiKey_X]          = GetAzKeyIndex(InputDeviceKeyboard::Key::AlphanumericX);
-    io.KeyMap[ImGuiKey_Y]          = GetAzKeyIndex(InputDeviceKeyboard::Key::AlphanumericY);
-    io.KeyMap[ImGuiKey_Z]          = GetAzKeyIndex(InputDeviceKeyboard::Key::AlphanumericZ);
-    // clang-format on
+    io.KeyMap[ImGuiKey_UpArrow] = GetAzKeyIndex(InputDeviceKeyboard::Key::NavigationArrowUp);
+    io.KeyMap[ImGuiKey_DownArrow] = GetAzKeyIndex(InputDeviceKeyboard::Key::NavigationArrowDown);
+    io.KeyMap[ImGuiKey_PageUp] = GetAzKeyIndex(InputDeviceKeyboard::Key::NavigationPageUp);
+    io.KeyMap[ImGuiKey_PageDown] = GetAzKeyIndex(InputDeviceKeyboard::Key::NavigationPageDown);
+    io.KeyMap[ImGuiKey_Home] = GetAzKeyIndex(InputDeviceKeyboard::Key::NavigationHome);
+    io.KeyMap[ImGuiKey_End] = GetAzKeyIndex(InputDeviceKeyboard::Key::NavigationEnd);
+    io.KeyMap[ImGuiKey_Insert] = GetAzKeyIndex(InputDeviceKeyboard::Key::NavigationInsert);
+    io.KeyMap[ImGuiKey_Delete] = GetAzKeyIndex(InputDeviceKeyboard::Key::NavigationDelete);
+    io.KeyMap[ImGuiKey_Backspace] = GetAzKeyIndex(InputDeviceKeyboard::Key::EditBackspace);
+    io.KeyMap[ImGuiKey_Space] = GetAzKeyIndex(InputDeviceKeyboard::Key::EditSpace);
+    io.KeyMap[ImGuiKey_Enter] = GetAzKeyIndex(InputDeviceKeyboard::Key::EditEnter);
+    io.KeyMap[ImGuiKey_Escape] = GetAzKeyIndex(InputDeviceKeyboard::Key::Escape);
+    io.KeyMap[ImGuiKey_A] = GetAzKeyIndex(InputDeviceKeyboard::Key::AlphanumericA);
+    io.KeyMap[ImGuiKey_C] = GetAzKeyIndex(InputDeviceKeyboard::Key::AlphanumericC);
+    io.KeyMap[ImGuiKey_V] = GetAzKeyIndex(InputDeviceKeyboard::Key::AlphanumericV);
+    io.KeyMap[ImGuiKey_X] = GetAzKeyIndex(InputDeviceKeyboard::Key::AlphanumericX);
+    io.KeyMap[ImGuiKey_Y] = GetAzKeyIndex(InputDeviceKeyboard::Key::AlphanumericY);
+    io.KeyMap[ImGuiKey_Z] = GetAzKeyIndex(InputDeviceKeyboard::Key::AlphanumericZ);
+
+    // Initialize controller button mapping
+    s_lyInputToImGuiNavIndexMap.insert(LyButtonImGuiNavIndexPair(InputDeviceGamepad::Button::A, ImGuiNavInput_Activate));
+    s_lyInputToImGuiNavIndexMap.insert(LyButtonImGuiNavIndexPair(InputDeviceGamepad::Button::B, ImGuiNavInput_Cancel));
+    s_lyInputToImGuiNavIndexMap.insert(LyButtonImGuiNavIndexPair(InputDeviceGamepad::Button::X, ImGuiNavInput_Menu));
+    s_lyInputToImGuiNavIndexMap.insert(LyButtonImGuiNavIndexPair(InputDeviceGamepad::Button::Y, ImGuiNavInput_Input));
+    s_lyInputToImGuiNavIndexMap.insert(LyButtonImGuiNavIndexPair(InputDeviceGamepad::Button::DU, ImGuiNavInput_DpadUp));
+    s_lyInputToImGuiNavIndexMap.insert(LyButtonImGuiNavIndexPair(InputDeviceGamepad::Button::DD, ImGuiNavInput_DpadDown));
+    s_lyInputToImGuiNavIndexMap.insert(LyButtonImGuiNavIndexPair(InputDeviceGamepad::Button::DL, ImGuiNavInput_DpadLeft));
+    s_lyInputToImGuiNavIndexMap.insert(LyButtonImGuiNavIndexPair(InputDeviceGamepad::Button::DR, ImGuiNavInput_DpadRight));
+    s_lyInputToImGuiNavIndexMap.insert(LyButtonImGuiNavIndexPair(InputDeviceGamepad::Button::R1, ImGuiNavInput_FocusNext));
+    s_lyInputToImGuiNavIndexMap.insert(LyButtonImGuiNavIndexPair(InputDeviceGamepad::Button::L1, ImGuiNavInput_FocusPrev));
+    s_lyInputToImGuiNavIndexMap.insert(LyButtonImGuiNavIndexPair(InputDeviceGamepad::Trigger::L2, ImGuiNavInput_TweakSlow));
+    s_lyInputToImGuiNavIndexMap.insert(LyButtonImGuiNavIndexPair(InputDeviceGamepad::Trigger::R2, ImGuiNavInput_TweakFast));
+    s_lyInputToImGuiNavIndexMap.insert(LyButtonImGuiNavIndexPair(InputDeviceGamepad::ThumbStickDirection::LU, ImGuiNavInput_LStickUp));
+    s_lyInputToImGuiNavIndexMap.insert(LyButtonImGuiNavIndexPair(InputDeviceGamepad::ThumbStickDirection::LD, ImGuiNavInput_LStickDown));
+    s_lyInputToImGuiNavIndexMap.insert(LyButtonImGuiNavIndexPair(InputDeviceGamepad::ThumbStickDirection::LL, ImGuiNavInput_LStickLeft));
+    s_lyInputToImGuiNavIndexMap.insert(LyButtonImGuiNavIndexPair(InputDeviceGamepad::ThumbStickDirection::LR, ImGuiNavInput_LStickRight));
 
     // Set the Display Size
     IRenderer* renderer = gEnv->pRenderer;
@@ -130,6 +233,7 @@ void ImGuiManager::Initialize()
     io.Fonts->GetTexDataAsAlpha8(&pixels, &width, &height);
     ITexture* fontTexture =
         renderer->Create2DTexture("ImGuiFont", width, height, 1, FT_ALPHA, pixels, eTF_A8);
+
     if (fontTexture)
     {
         m_fontTextureId = fontTexture->GetTextureID();
@@ -138,6 +242,14 @@ void ImGuiManager::Initialize()
 
     // Broadcast ImGui Ready to Listeners
     ImGuiUpdateListenerBus::Broadcast(&IImGuiUpdateListener::OnImGuiInitialize);
+    m_currentControllerIndex = -1;
+    m_button1Pressed = m_button2Pressed = false;
+    m_menuBarStatusChanged = false;
+
+    // See if a hardware mouse device is connected on startup, we will use it to help determine if we should draw the mouse cursor and turn on controller support by default if one is not found.
+    //  Future work here could include responding to the mouse being connected and disconnected at run-time, but this is fine for now.
+    const AzFramework::InputDevice* mouseDevice = AzFramework::InputDeviceRequests::FindInputDevice(AzFramework::InputDeviceMouse::Id);
+    m_hardwardeMouseConnected = mouseDevice && mouseDevice->IsConnected();
 }
 
 void ImGuiManager::Shutdown()
@@ -167,31 +279,10 @@ void ImGuiManager::Shutdown()
         io.Fonts->SetTexID(nullptr);
         gEnv->pRenderer->RemoveTexture(m_fontTextureId);
     }
-}
 
-DisplayState ImGuiManager::GetEditorWindowState()
-{
-    return m_editorWindowState;
+    // Finally, destroy the ImGui Context.
+    ImGui::DestroyContext();
 }
-
-void ImGuiManager::SetEditorWindowState(DisplayState state)
-{
-    m_editorWindowState = state;
-}
-
-//void ImGuiManager::OnPreUpdate(float fDeltaTime)
-//{
-//    ICVar* consoleDisabled = gEnv->pConsole->GetCVar("sys_DeactivateConsole");
-//    if (consoleDisabled && consoleDisabled->GetIVal() != 0)
-//    {
-//        m_clientMenuBarState = DisplayState::Hidden;
-//        m_editorWindowState = DisplayState::Hidden;
-//    }
-//
-//    // Advance ImGui by Elapsed Frame Time
-//    ImGuiIO& io = ImGui::GetIO();
-//    io.DeltaTime = fDeltaTime;
-//}
 
 void ImGuiManager::OnPreRender()
 {
@@ -203,32 +294,74 @@ void ImGuiManager::OnPreRender()
     // Update Display Size
     IRenderer* renderer = gEnv->pRenderer;
     ImGuiIO& io = ImGui::GetIO();
-    io.DisplaySize.x = static_cast<float>(renderer->GetWidth());
-    io.DisplaySize.y = static_cast<float>(renderer->GetHeight());
+    io.DisplaySize = m_lastRenderResolution;
 
-    // IHardwareMouse has been deprecated in Lumberyard v1.11, so once the following line starts
-    // throwing a compiler error you can just remove it and uncomment the two lines after it.
-    // You'll likely also have to add this include: #include <LyShine/Bus/UiCursorBus.h>
-    //bool isCursorVisible =
-    //    gEnv->pSystem->GetIHardwareMouse() && !gEnv->pSystem->GetIHardwareMouse()->IsHidden();
-    bool isCursorVisible = false;
-    UiCursorBus::BroadcastResult(isCursorVisible, &UiCursorInterface::IsUiCursorVisible);
-
-    if (!isCursorVisible && !io.MouseDrawCursor)
+    if ((m_clientMenuBarState == DisplayState::Visible) || (m_editorWindowState != DisplayState::Hidden))
     {
-        ResetInput();
-        io.MousePos.x = io.DisplaySize.x;
-        io.MousePos.y = io.DisplaySize.y;
+        if (IsControllerSupportModeEnabled(ImGuiControllerModeFlags::Mouse))
+        {
+            // Update Mouse Position from Stick Position
+            m_controllerMousePosition[0] = AZ::GetClamp(m_controllerMousePosition[0] + ((io.NavInputs[ImGuiNavInput_LStickRight] - io.NavInputs[ImGuiNavInput_LStickLeft]) * m_controllerMouseSensitivity), 0.0f, m_renderResolution.x);
+            m_controllerMousePosition[1] = AZ::GetClamp(m_controllerMousePosition[1] + ((io.NavInputs[ImGuiNavInput_LStickDown] - io.NavInputs[ImGuiNavInput_LStickUp]) * m_controllerMouseSensitivity), 0.0f, m_renderResolution.y);
+            io.MousePos.x = m_controllerMousePosition[0];
+            io.MousePos.y = m_controllerMousePosition[1];
+            io.MouseDown[0] = (io.NavInputs[ImGuiNavInput_Activate] > 0.1f);
+            io.MouseDown[1] = (io.NavInputs[ImGuiNavInput_Cancel] > 0.1f);
+        }
+        else if (m_useLastPrimaryTouchPosition)
+        {
+            io.MousePos.x = m_lastPrimaryTouchPosition[0];
+            io.MousePos.y = m_lastPrimaryTouchPosition[1];
+            m_controllerMousePosition[0] = io.MousePos.x;
+            m_controllerMousePosition[1] = io.MousePos.y;
+            m_useLastPrimaryTouchPosition = false;
+        }
+        else
+        {
+            AZ::Vector2 systemCursorPositionNormalized = AZ::Vector2::CreateZero();
+            InputSystemCursorRequestBus::EventResult(
+                systemCursorPositionNormalized,
+                InputDeviceMouse::Id,
+                &InputSystemCursorRequests::GetSystemCursorPositionNormalized);
+            io.MousePos.x = systemCursorPositionNormalized.GetX() * m_lastRenderResolution.x;
+            io.MousePos.y = systemCursorPositionNormalized.GetY() * m_lastRenderResolution.y;
+            m_controllerMousePosition[0] = io.MousePos.x;
+            m_controllerMousePosition[1] = io.MousePos.y;
+        }
+
+        // Clear NavInputs if either the mouse is explicitly enabled, or if the contextual controller is explicitly disabled
+        if (IsControllerSupportModeEnabled(ImGuiControllerModeFlags::Mouse) || !IsControllerSupportModeEnabled(ImGuiControllerModeFlags::Contextual))
+        {
+            memset(io.NavInputs, 0, sizeof(io.NavInputs));
+        }
     }
-    else
+
+    // If no item and no window is focused, we should artificially add focus to the Main Menu Bar, to save 1 step when navigating with a controller.
+    if (!ImGui::IsAnyItemFocused() && !ImGui::IsAnyWindowFocused())
     {
-        AZ::Vector2 systemCursorPositionNormalized = AZ::Vector2::CreateZero();
-        InputSystemCursorRequestBus::EventResult(
-            systemCursorPositionNormalized,
-            InputDeviceMouse::Id,
-            &InputSystemCursorRequests::GetSystemCursorPositionNormalized);
-        io.MousePos.x = systemCursorPositionNormalized.GetX() * gEnv->pRenderer->GetWidth();
-        io.MousePos.y = systemCursorPositionNormalized.GetY() * gEnv->pRenderer->GetHeight();
+        ImGuiWindow* mainMenuWin = ImGui::FindWindowByName("##MainMenuBar");
+        if (mainMenuWin)
+        {
+            ImGui::GetCurrentContext()->NavLayer = ImGuiNavLayer_Menu;
+            ImGui::GetCurrentContext()->NavWindow = mainMenuWin;
+            ImGui::NavInitWindow(mainMenuWin, true);
+        }
+    }
+
+    // Show or hide the virtual keyboard as necessary
+    bool hasTextEntryStarted = false;
+    AzFramework::InputTextEntryRequestBus::EventResult(hasTextEntryStarted,
+                                                       AzFramework::InputDeviceVirtualKeyboard::Id,
+                                                       &AzFramework::InputTextEntryRequests::HasTextEntryStarted);
+    if (io.WantTextInput && !hasTextEntryStarted)
+    {
+        AzFramework::InputTextEntryRequests::VirtualKeyboardOptions options;
+        AzFramework::InputTextEntryRequestBus::Broadcast(&AzFramework::InputTextEntryRequests::TextEntryStart, options);
+    }
+    else if (!io.WantTextInput && hasTextEntryStarted)
+    {
+        AzFramework::InputTextEntryRequestBus::Broadcast(&AzFramework::InputTextEntryRequests::TextEntryStop);
+        io.KeysDown[GetAzKeyIndex(InputDeviceKeyboard::Key::EditEnter)] = false;
     }
 
     // Start New Frame
@@ -258,18 +391,63 @@ void ImGuiManager::OnPostUpdate(float fDeltaTime)
     IRenderer* renderer = gEnv->pRenderer;
     TransformationMatrices backupSceneMatrices;
 
+    // Find ImGui Render Resolution. 
+    int renderRes[2];
+    switch (m_resolutionMode)
+    {
+        default:
+            break;
+
+        case ImGuiResolutionMode::LockToResolution:
+            renderRes[0] = static_cast<int>(m_renderResolution.x);
+            renderRes[1] = static_cast<int>(m_renderResolution.y);
+            break;
+
+        case ImGuiResolutionMode::MatchRenderResolution:
+            renderRes[0] = renderer->GetBackBufferWidth();
+            renderRes[1] = renderer->GetBackBufferHeight();
+            break;
+
+        case ImGuiResolutionMode::MatchToMaxRenderResolution:
+            if (renderer->GetBackBufferWidth() <= static_cast<int>(m_renderResolution.x))
+            {
+                renderRes[0] = renderer->GetBackBufferWidth();
+                renderRes[1] = renderer->GetBackBufferHeight();
+            }
+            else
+            {
+                renderRes[0] = static_cast<int>(m_renderResolution.x);
+                renderRes[1] = static_cast<int>(m_renderResolution.y);
+            }
+            break;
+    }
+
+    ImVec2 scaleRects(  static_cast<float>(renderer->GetBackBufferWidth()) / static_cast<float>(renderRes[0]),
+                        static_cast<float>(renderer->GetBackBufferHeight() / static_cast<float>(renderRes[1])));
+
+    // Save off the last render resolution for input
+    m_lastRenderResolution.x = static_cast<float>(renderRes[0]);
+    m_lastRenderResolution.y = static_cast<float>(renderRes[1]);
+
     // Configure Renderer for 2D ImGui Rendering
     renderer->SetCullMode(R_CULL_DISABLE);
-    renderer->Set2DMode(renderer->GetWidth(), renderer->GetHeight(), backupSceneMatrices);
+    renderer->Set2DMode(renderRes[0], renderRes[1], backupSceneMatrices);
     renderer->SetColorOp(eCO_REPLACE, eCO_MODULATE, eCA_Diffuse, DEF_TEXARG0);
     renderer->SetSrgbWrite(false);
     renderer->SetState(GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA | GS_NODEPTHTEST);
 
     // Render!
-    RenderImGuiBuffers();
+    RenderImGuiBuffers(scaleRects);
 
     // Cleanup Renderer Settings
     renderer->Unset2DMode(backupSceneMatrices);
+
+    // Clear the simulated backspace key
+    if (m_simulateBackspaceKeyPressed)
+    {
+        io.KeysDown[GetAzKeyIndex(InputDeviceKeyboard::Key::EditBackspace)] = false;
+        m_simulateBackspaceKeyPressed = false;
+    }
 }
 
 /**
@@ -284,17 +462,10 @@ bool ImGuiManager::OnInputChannelEventFiltered(const InputChannel& inputChannel)
     // Handle Keyboard Hotkeys
     if (inputDeviceId == InputDeviceKeyboard::Id && inputChannel.IsStateBegan())
     {
-        // Cycle through ImGui Menu Bar States
+        // Cycle through ImGui Menu Bar States on Home button press
         if (inputChannelId == InputDeviceKeyboard::Key::NavigationHome)
         {
-            // clang-format off
-            switch (m_clientMenuBarState)
-            {
-            case DisplayState::Hidden:  m_clientMenuBarState = DisplayState::Visible;        break;
-            case DisplayState::Visible: m_clientMenuBarState = DisplayState::VisibleNoMouse; break;
-            default:                    m_clientMenuBarState = DisplayState::Hidden;         break;
-            }
-            // clang-format on
+            ToggleThroughImGuiVisibleState(-1);
         }
 
         // Cycle through Standalone Editor Window States
@@ -340,26 +511,76 @@ bool ImGuiManager::OnInputChannelEventFiltered(const InputChannel& inputChannel)
         }
     }
 
-    // Handle Mouse Visibility
-    io.MouseDrawCursor = m_clientMenuBarState == DisplayState::Visible
-                         || m_editorWindowState == DisplayState::Visible;
-
-    // IHardwareMouse has been deprecated in Lumberyard v1.11, so once the following line starts
-    // throwing a compiler error you can just remove it and uncomment the two lines after it.
-    // You'll likely also have to add this include: #include <LyShine/Bus/UiCursorBus.h>
-    //bool isCursorVisible =
-    //    gEnv->pSystem->GetIHardwareMouse() && !gEnv->pSystem->GetIHardwareMouse()->IsHidden();
-    bool isCursorVisible = false;
-    UiCursorBus::BroadcastResult(isCursorVisible, &UiCursorInterface::IsUiCursorVisible);
-    if (!isCursorVisible && !io.MouseDrawCursor)
+    // Handle Controller Inputs
+    int inputControllerIndex = -1;
+    bool controllerInput = false;
+    for (int i = 0; i < MaxControllerNumber; ++i)
     {
+        //Allow only one controller navigating ImGui at the same time. After menu bar dismissed, other controllers could take over
+        if (inputDeviceId == InputDeviceGamepad::IdForIndexN(i))
+        {
+            inputControllerIndex = i;
+            controllerInput = true;
+        }
+    }
+
+    
+    if (controllerInput)
+    {
+        // Only pipe in Controller Nav Inputs if we are the current Controller Index and at least 1 of the two controller modes are enabled.
+        if (m_currentControllerIndex == inputControllerIndex && m_controllerModeFlags)
+        {
+            const auto lyButtonToImGuiNav = s_lyInputToImGuiNavIndexMap.find(inputChannelId);
+            if (lyButtonToImGuiNav != s_lyInputToImGuiNavIndexMap.end())
+            {
+                const ImGuiNavInput_ imGuiNavInput = lyButtonToImGuiNav->second;
+                io.NavInputs[imGuiNavInput] = inputChannel.GetValue();
+            }
+        }
+
+        //Switch menu bar display only if two buttons are pressed at the same time
+        if (inputChannelId == InputDeviceGamepad::Button::L3)
+        {
+            if (inputChannel.IsStateBegan())
+            {
+                m_button1Pressed = true;
+            }
+            if (inputChannel.IsStateEnded())
+            {
+                m_button1Pressed = false;
+                m_menuBarStatusChanged = false;
+            }
+        }
+        if (inputChannelId == InputDeviceGamepad::Button::R3)
+        {
+            if (inputChannel.IsStateBegan())
+            {
+                m_button2Pressed = true;
+            }
+            if (inputChannel.IsStateEnded())
+            {
+                m_button2Pressed = false;
+                m_menuBarStatusChanged = false;
+            }
+        }
+        if (!m_menuBarStatusChanged && m_button1Pressed && m_button2Pressed)
+        {
+            ToggleThroughImGuiVisibleState(inputControllerIndex);
+        }
+
+        // If we have the Discrete Input Mode Enabled.. and we are in the Visible State, then consume input here
+        if (m_enableDiscreteInputMode && m_clientMenuBarState == DisplayState::Visible)
+        {
+            return true;
+        }
+
         return false;
     }
 
     // Handle Mouse Inputs
     if (inputDeviceId == InputDeviceMouse::Id)
     {
-        const int mouseButtonIndex = GetAzButtonIndex(inputChannelId);
+        const int mouseButtonIndex = GetAzMouseButtonIndex(inputChannelId);
         if (0 <= mouseButtonIndex && mouseButtonIndex < AZ_ARRAY_SIZE(io.MouseDown))
         {
             io.MouseDown[mouseButtonIndex] = inputChannel.IsActive();
@@ -370,53 +591,142 @@ bool ImGuiManager::OnInputChannelEventFiltered(const InputChannel& inputChannel)
         }
     }
 
+    // Handle Touch Inputs
+    if (inputDeviceId == InputDeviceTouch::Id)
+    {
+        const int touchIndex = GetAzTouchIndex(inputChannelId);
+        if (0 <= touchIndex && touchIndex < AZ_ARRAY_SIZE(io.MouseDown))
+        {
+            io.MouseDown[touchIndex] = inputChannel.IsActive();
+        }
+
+        if (touchIndex == 0)
+        {
+            const AzFramework::InputChannel::PositionData2D* positionData2D = inputChannel.GetCustomData<AzFramework::InputChannel::PositionData2D>();
+            if (positionData2D)
+            {
+                m_lastPrimaryTouchPosition[0] = positionData2D->m_normalizedPosition.GetX() * m_lastRenderResolution.x;
+                m_lastPrimaryTouchPosition[1] = positionData2D->m_normalizedPosition.GetY() * m_lastRenderResolution.y;
+                m_useLastPrimaryTouchPosition = true;
+            }
+        }
+    }
+
+    // Handle Virtual Keyboard Inputs
+    if (inputDeviceId == InputDeviceVirtualKeyboard::Id)
+    {
+        if (inputChannelId == AzFramework::InputDeviceVirtualKeyboard::Command::EditEnter)
+        {
+            // Simulate the enter key being pressed
+            io.KeysDown[GetAzKeyIndex(InputDeviceKeyboard::Key::EditEnter)] = true;
+        }
+    }
+
     if (m_clientMenuBarState == DisplayState::Visible
         || m_editorWindowState == DisplayState::Visible)
     {
         io.WantCaptureMouse = true;
         io.WantCaptureKeyboard = true;
-        return true;
+        
+        // If we have the Discrete Input Mode Enabled.. then consume the input here. 
+        if (m_enableDiscreteInputMode)
+        {
+            return true;
+        }
     }
     else
     {
         io.WantCaptureMouse = false;
         io.WantCaptureKeyboard = false;
-        return false;
     }
 
     return false;
+}
+
+bool ImGuiManager::IsControllerSupportModeEnabled(ImGuiControllerModeFlags::FlagType controllerMode) const
+{
+    return !!(m_controllerModeFlags & controllerMode);
+}
+
+void ImGuiManager::EnableControllerSupportMode(ImGuiControllerModeFlags::FlagType controllerMode, bool enable)
+{
+    if (enable)
+    {
+        // Enable - Add flag by or'ing in.
+        m_controllerModeFlags |= controllerMode;
+    }
+    else
+    {
+        // Disable - Remove flag by and'ing the flag inverse
+        m_controllerModeFlags &= ~controllerMode;
+    }
+
+    const bool controllerMouseEnabled = IsControllerSupportModeEnabled(ImGuiControllerModeFlags::Mouse);
+
+    // Draw the ImGui Mouse cursor if either the hardware mouse is connected, or the controller mouse is enabled.
+    ImGui::GetIO().MouseDrawCursor = m_hardwardeMouseConnected || controllerMouseEnabled;
+
+    // Set or unset ImGui Config flags based on which modes are enabled. 
+    if (controllerMouseEnabled)
+    {
+        ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NavEnableGamepad;
+        ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NavEnableKeyboard;
+    }
+    else if (IsControllerSupportModeEnabled(ImGuiControllerModeFlags::Contextual))
+    {
+        ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+        ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    }
 }
 
 bool ImGuiManager::OnInputTextEventFiltered(const AZStd::string& textUTF8)
 {
     ImGuiIO& io = ImGui::GetIO();
     io.AddInputCharactersUTF8(textUTF8.c_str());
+
+    if (textUTF8 == "\b" && !io.KeysDown[GetAzKeyIndex(InputDeviceKeyboard::Key::EditBackspace)])
+    {
+        // Simulate the backspace key being pressed
+        io.KeysDown[GetAzKeyIndex(InputDeviceKeyboard::Key::EditBackspace)] = true;
+        m_simulateBackspaceKeyPressed = true;
+    }
+
     return io.WantCaptureKeyboard && m_clientMenuBarState == DisplayState::Visible;
 }
 
-/**
-    Resets all keys and buttons to the "off" state.
- */
-void ImGuiManager::ResetInput()
+void ImGuiManager::ToggleThroughImGuiVisibleState(int controllerIndex)
 {
-    ImGuiIO& io = ImGui::GetIO();
-    io.KeyShift = false;
-    io.KeyAlt = false;
-    io.KeyCtrl = false;
-    io.MouseWheel = 0.0f;
-
-    for (uint32 i = 0; i < AZ_ARRAY_SIZE(io.KeysDown); ++i)
+    switch (m_clientMenuBarState)
     {
-        io.KeysDown[i] = false;
+        case DisplayState::Hidden:
+            m_currentControllerIndex = controllerIndex;
+            m_clientMenuBarState = DisplayState::Visible;
+            
+            // Draw the ImGui Mouse cursor if either the hardware mouse is connected, or the controller mouse is enabled.
+            ImGui::GetIO().MouseDrawCursor = m_hardwardeMouseConnected || IsControllerSupportModeEnabled(ImGuiControllerModeFlags::Mouse);
+            break;
+
+        case DisplayState::Visible:
+            m_clientMenuBarState = DisplayState::VisibleNoMouse;
+            ImGui::GetIO().MouseDrawCursor = false;
+
+            if (m_enableDiscreteInputMode)
+            {
+                // if we ARE Enabling the Discrete Input Mode, then we want to bail here, if not, we want to just fall below to the default case. 
+                //    no worries on setting m_clientMenuBarState twice..
+                break;
+            }
+
+        default:
+            m_clientMenuBarState = DisplayState::Hidden;
+            m_currentControllerIndex = -1;
+            break;
     }
 
-    for (uint32 i = 0; i < AZ_ARRAY_SIZE(io.MouseDown); ++i)
-    {
-        io.MouseDown[i] = false;
-    }
+    m_menuBarStatusChanged = true;
 }
 
-void ImGuiManager::RenderImGuiBuffers()
+void ImGuiManager::RenderImGuiBuffers(const ImVec2& scaleRects)
 {
     // Trigger all listeners to run their updates
     EBUS_EVENT(ImGuiUpdateListenerBus, OnImGuiUpdate);
@@ -424,6 +734,13 @@ void ImGuiManager::RenderImGuiBuffers()
     // Run imgui's internal render and retrieve resulting draw data
     ImGui::Render();
     ImDrawData* drawData = ImGui::GetDrawData();
+    if (!drawData)
+    {
+        return;
+    }
+
+    // Supply Scale Rects
+    drawData->ScaleClipRects(scaleRects);
 
     //@rky: Only render the main ImGui if it is visible
     if (m_clientMenuBarState != DisplayState::Hidden)
@@ -512,4 +829,111 @@ void ImGuiManager::RenderImGuiBuffers()
         renderer->SetScissor();
     }
 }
+
+//////  IMGUI CVAR STUFF /////////
+
+namespace ImGuiCVARNames
+{
+    static const char* s_imgui_AutoEnableComponents_Name =          "imgui_AutoEnableComponents";
+    static const char* s_imgui_DiscreteInputMode_Name =             "imgui_DiscreteInputMode";
+    static const char* s_imgui_EnableAssetExplorer_Name =           "imgui_EnableAssetExplorer";
+    static const char* s_imgui_EnableCameraMonitor_Name =           "imgui_EnableCameraMonitor";
+    static const char* s_imgui_EnableEntityOutliner_Name =          "imgui_EnableEntityOutliner";
+    static const char* s_imgui_EnableImGui_Name =                   "imgui_EnableImGui";
+    static const char* s_imgui_EnableController_Name =              "imgui_EnableController";
+    static const char* s_imgui_EnableControllerMouse_Name =         "imgui_EnableControllerMouse";
+    static const char* s_imgui_ControllerMouseSensitivity_Name =    "imgui_ControllerMouseSensitivity";
+}
+
+void OnAutoEnableComponentsCBFunc(ICVar* pArgs)
+{
+    std::string token;
+    std::istringstream tokenStream(pArgs->GetString());
+    while (std::getline(tokenStream, token, ','))
+    {
+        AZStd::string enableSearchString = token.c_str();
+        ImGui::ImGuiEntityOutlinerRequestBus::Broadcast(&ImGui::IImGuiEntityOutlinerRequests::AddAutoEnableSearchString, enableSearchString);
+    }
+}
+
+void OnEnableEntityOutlinerCBFunc(ICVar* pArgs)
+{
+    ImGui::ImGuiEntityOutlinerRequestBus::Broadcast(&ImGui::IImGuiEntityOutlinerRequests::SetEnabled, pArgs->GetIVal() != 0);
+}
+
+void OnEnableAssetExplorerCBFunc(ICVar* pArgs)
+{
+    ImGui::ImGuiAssetExplorerRequestBus::Broadcast(&ImGui::IImGuiAssetExplorerRequests::SetEnabled, pArgs->GetIVal() != 0);
+}
+
+void OnEnableCameraMonitorCBFunc(ICVar* pArgs)
+{
+    ImGui::ImGuiCameraMonitorRequestBus::Broadcast(&ImGui::IImGuiCameraMonitorRequests::SetEnabled, pArgs->GetIVal() != 0);
+}
+
+void OnShowImGuiCBFunc(ICVar* pArgs)
+{
+    ImGui::ImGuiManagerListenerBus::Broadcast(&ImGui::IImGuiManagerListener::SetClientMenuBarState, pArgs->GetIVal() != 0 ? ImGui::DisplayState::Visible : ImGui::DisplayState::Hidden);
+}
+
+void OnDiscreteInputModeCBFunc(ICVar* pArgs)
+{
+    ImGui::ImGuiManagerListenerBus::Broadcast(&ImGui::IImGuiManagerListener::SetEnableDiscreteInputMode, pArgs->GetIVal() != 0 );
+}
+
+void OnEnableControllerCBFunc(ICVar* pArgs)
+{
+    ImGui::ImGuiManagerListenerBus::Broadcast(&ImGui::IImGuiManagerListener::EnableControllerSupportMode, ImGuiControllerModeFlags::Contextual, (pArgs->GetIVal() != 0));
+}
+
+void OnEnableControllerMouseCBFunc(ICVar* pArgs)
+{
+    ImGui::ImGuiManagerListenerBus::Broadcast(&ImGui::IImGuiManagerListener::EnableControllerSupportMode, ImGuiControllerModeFlags::Mouse, (pArgs->GetIVal() != 0));
+}
+
+void OnControllerMouseSensitivityCBFunc(ICVar* pArgs)
+{
+    ImGui::ImGuiManagerListenerBus::Broadcast(&ImGui::IImGuiManagerListener::SetControllerMouseSensitivity, pArgs->GetFVal());
+}
+
+
+void ImGuiManager::RegisterImGuiCVARs()
+{
+    // These are already checked before we enter this function, but lets make double sure and prevent crashes.
+    if (!gEnv || !gEnv->pConsole)
+    {
+        return;
+    }
+
+    // We should also just make sure we aren't registering these twice. Check by just checking the first one.
+    if (gEnv->pConsole->GetCVar(ImGuiCVARNames::s_imgui_EnableImGui_Name) != nullptr)
+    {
+        return;
+    }
+
+    // Register CVARs
+    gEnv->pConsole->RegisterString(ImGuiCVARNames::s_imgui_AutoEnableComponents_Name, 0, VF_DEV_ONLY, CVARHELP("Enable ImGui Components by search string, as they are added to the Scene. Comma delimited list."), OnAutoEnableComponentsCBFunc);
+    gEnv->pConsole->RegisterInt(ImGuiCVARNames::s_imgui_EnableImGui_Name, 0, VF_DEV_ONLY, CVARHELP("Enable ImGui on Startup"), OnShowImGuiCBFunc);
+    gEnv->pConsole->RegisterInt(ImGuiCVARNames::s_imgui_EnableEntityOutliner_Name, 0, VF_DEV_ONLY, CVARHELP("Enable ImGui Entity Outliner on Startup"), OnEnableEntityOutlinerCBFunc);
+    gEnv->pConsole->RegisterInt(ImGuiCVARNames::s_imgui_EnableCameraMonitor_Name, 0, VF_DEV_ONLY, CVARHELP("Enable ImGui Camera Monitor on Startup"), OnEnableCameraMonitorCBFunc);
+    gEnv->pConsole->RegisterInt(ImGuiCVARNames::s_imgui_EnableAssetExplorer_Name, 0, VF_DEV_ONLY, CVARHELP("Enable ImGui Asset Explorer on Startup"), OnEnableAssetExplorerCBFunc);
+    gEnv->pConsole->RegisterInt(ImGuiCVARNames::s_imgui_DiscreteInputMode_Name, 0, VF_DEV_ONLY, CVARHELP("Enable ImGui Discrete Input Mode, adds a 2nd Visibility Mode, with the 1st having input going toward ImGui and the 2nd having input going toward the game. If not set, Input will go to both ImGui and the game when ImGui is enabled."), OnDiscreteInputModeCBFunc);
+    // Enable the Contextual Controller support by default when the hardware mouse is not detected.
+    gEnv->pConsole->RegisterInt(ImGuiCVARNames::s_imgui_EnableController_Name, (m_hardwardeMouseConnected ? 0 : 1), VF_DEV_ONLY, CVARHELP("Enable ImGui Controller support. Default to Off on PC, On on Console."), OnEnableControllerCBFunc);
+    gEnv->pConsole->RegisterInt(ImGuiCVARNames::s_imgui_EnableControllerMouse_Name, 0, VF_DEV_ONLY, CVARHELP("Enable ImGui Controller Mouse support. Default to Off on PC, On on Console."), OnEnableControllerMouseCBFunc);
+    gEnv->pConsole->RegisterFloat(ImGuiCVARNames::s_imgui_ControllerMouseSensitivity_Name, 5.0f, VF_DEV_ONLY, CVARHELP("ImGui Controller Mouse Sensitivty. Frame Multiplier for stick mouse sensitivity"), OnControllerMouseSensitivityCBFunc);
+
+    // Init CVARs to current values
+    OnAutoEnableComponentsCBFunc(gEnv->pConsole->GetCVar(ImGuiCVARNames::s_imgui_AutoEnableComponents_Name));
+    OnShowImGuiCBFunc(gEnv->pConsole->GetCVar(ImGuiCVARNames::s_imgui_EnableImGui_Name));
+    OnEnableAssetExplorerCBFunc(gEnv->pConsole->GetCVar(ImGuiCVARNames::s_imgui_EnableAssetExplorer_Name));
+    OnEnableCameraMonitorCBFunc(gEnv->pConsole->GetCVar(ImGuiCVARNames::s_imgui_EnableCameraMonitor_Name));
+    OnEnableEntityOutlinerCBFunc(gEnv->pConsole->GetCVar(ImGuiCVARNames::s_imgui_EnableEntityOutliner_Name));
+    OnDiscreteInputModeCBFunc(gEnv->pConsole->GetCVar(ImGuiCVARNames::s_imgui_DiscreteInputMode_Name));
+    OnEnableControllerCBFunc(gEnv->pConsole->GetCVar(ImGuiCVARNames::s_imgui_EnableController_Name));
+    OnEnableControllerMouseCBFunc(gEnv->pConsole->GetCVar(ImGuiCVARNames::s_imgui_EnableControllerMouse_Name));
+    OnControllerMouseSensitivityCBFunc(gEnv->pConsole->GetCVar(ImGuiCVARNames::s_imgui_ControllerMouseSensitivity_Name));
+}
+//////  IMGUI CVAR STUFF /////////
+
 #endif // ~IMGUI_ENABLED

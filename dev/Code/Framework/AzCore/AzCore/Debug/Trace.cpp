@@ -20,6 +20,13 @@
 
 #include <stdarg.h>
 
+#include <AzCore/NativeUI/NativeUIRequests.h>
+#include <AzCore/Debug/TraceMessageBus.h>
+
+// Used to keep a set of ignored asserts for CRC checking
+#include <AzCore/std/containers/unordered_set.h>
+#include <AzCore/Module/Environment.h>
+
 namespace AZ 
 {
     namespace Debug
@@ -52,7 +59,20 @@ namespace AZ
     const int       g_maxMessageLength = 4096;
     static const char*    g_dbgSystemWnd = "System";
     Trace Debug::g_tracer;
-    void* g_exceptionInfo = NULL;
+    void* g_exceptionInfo = nullptr;
+
+    // Environment var needed to track ignored asserts across systems and disable native UI under certain conditions
+    static const char* ignoredAssertUID = "IgnoredAssertSet";
+    static const char* assertVerbosityUID = "assertVerbosityLevel";
+    static const char* logVerbosityUID = "sys_LogLevel";
+    static const int assertLevel_log = 1;
+    static const int assertLevel_nativeUI = 2;
+    static const int logLevel_errorWarning = 1;
+    static const int logLevel_full = 2;
+    static AZ::EnvironmentVariable<AZStd::unordered_set<size_t>> g_ignoredAsserts;
+    static AZ::EnvironmentVariable<int> g_assertVerbosityLevel;
+    static AZ::EnvironmentVariable<int> g_logVerbosityLevel;
+
 
     /**
      * If any listener returns true, store the result so we don't outputs detailed information.
@@ -64,6 +84,36 @@ namespace AZ
             : m_value(false) {}
         void operator=(bool rhs)     { m_value = m_value || rhs; }
     };
+
+    // definition of init to initialize assert tracking global
+    void Trace::Init()
+    {
+        // if out ignored assert list exists, then another module has init the system
+        g_ignoredAsserts = AZ::Environment::FindVariable<AZStd::unordered_set<size_t>>(ignoredAssertUID);
+        if (!g_ignoredAsserts)
+        {
+            g_ignoredAsserts = AZ::Environment::CreateVariable<AZStd::unordered_set<size_t>>(ignoredAssertUID);
+            g_assertVerbosityLevel = AZ::Environment::CreateVariable<int>(assertVerbosityUID);
+            g_logVerbosityLevel = AZ::Environment::CreateVariable<int>(logVerbosityUID);
+
+            //default assert level is to log/print asserts this can be overriden with the sys_asserts CVAR
+            g_assertVerbosityLevel.Set(assertLevel_log);
+            g_logVerbosityLevel.Set(logLevel_full);
+        }
+    }
+
+    // clean up the ignored assert container
+    void Trace::Destroy()
+    {
+        g_ignoredAsserts = AZ::Environment::FindVariable<AZStd::unordered_set<size_t>>(ignoredAssertUID);
+        if (g_ignoredAsserts)
+        {
+            if (g_ignoredAsserts.IsOwner())
+            {
+                g_ignoredAsserts.Reset();
+            }
+        }
+    }
 
     //=========================================================================
     const char* Trace::GetDefaultSystemWindow()
@@ -124,6 +174,12 @@ namespace AZ
 #endif // AZ_ENABLE_DEBUG_TOOLS
     }
 
+    void Debug::Trace::Crash()
+    {
+        int* p = 0;
+        *p = 1;
+    }
+
     void Debug::Trace::Terminate(int exitCode)
     {
         Platform::Terminate(exitCode);
@@ -133,13 +189,27 @@ namespace AZ
     // Assert
     // [8/3/2009]
     //=========================================================================
-    void
-    Trace::Assert(const char* fileName, int line, const char* funcName, const char* format, ...)
+    void Trace::Assert(const char* fileName, int line, const char* funcName, const char* format, ...)
     {
         using namespace DebugInternal;
 
         char message[g_maxMessageLength];
         char header[g_maxMessageLength];
+
+        // Check our set to see if this assert has been previously ignored and early out if so
+        size_t assertHash = line;
+        AZStd::hash_combine(assertHash, AZ::Crc32(fileName));
+        // Find our list of ignored asserts since we probably aren't the same system that initialized it
+        g_ignoredAsserts = AZ::Environment::FindVariable<AZStd::unordered_set<size_t>>(ignoredAssertUID);
+
+        if (g_ignoredAsserts)
+        {
+            auto ignoredAssertIt2 = g_ignoredAsserts->find(assertHash);
+            if (ignoredAssertIt2 != g_ignoredAsserts->end())
+            {
+                return;
+            }
+        }
 
         if (g_alreadyHandlingAssertOrFatal)
         {
@@ -163,27 +233,70 @@ namespace AZ
             return;
         }
 
-        Output(g_dbgSystemWnd, "\n==================================================================\n");
-        azsnprintf(header, g_maxMessageLength, "Trace::Assert\n %s(%d): (%tu) '%s'\n", fileName, line, (uintptr_t)(AZStd::this_thread::get_id().m_id), funcName);
-        Output(g_dbgSystemWnd, header);
-        azstrcat(message, g_maxMessageLength, "\n");
-        Output(g_dbgSystemWnd, message);
-
-        EBUS_EVENT(TraceMessageDrillerBus, OnAssert, message);
-        EBUS_EVENT_RESULT(result, TraceMessageBus, OnAssert, message);
-        if (result.m_value)
+        int currentLevel = GetAssertVerbosityLevel();
+        if (currentLevel >= assertLevel_log)
         {
+            Output(g_dbgSystemWnd, "\n==================================================================\n");
+            azsnprintf(header, g_maxMessageLength, "Trace::Assert\n %s(%d): (%tu) '%s'\n", fileName, line, (uintptr_t)(AZStd::this_thread::get_id().m_id), funcName);
+            Output(g_dbgSystemWnd, header);
+            azstrcat(message, g_maxMessageLength, "\n");
+            Output(g_dbgSystemWnd, message);
+
+            EBUS_EVENT(TraceMessageDrillerBus, OnAssert, message);
+            EBUS_EVENT_RESULT(result, TraceMessageBus, OnAssert, message);
+            if (result.m_value)
+            {
+                Output(g_dbgSystemWnd, "==================================================================\n");
+                g_alreadyHandlingAssertOrFatal = false;
+                return;
+            }
+
+            Output(g_dbgSystemWnd, "------------------------------------------------\n");
+            PrintCallstack(g_dbgSystemWnd, 1);
             Output(g_dbgSystemWnd, "==================================================================\n");
-            g_alreadyHandlingAssertOrFatal = false;
-            return;
+
+            char dialogBoxText[g_maxMessageLength];
+            azsnprintf(dialogBoxText, g_maxMessageLength, "Assert \n\n %s(%d) \n %s \n\n %s", fileName, line, funcName, message);
+
+            // If we are logging only then ignore the assert after it logs once in order to prevent spam
+            if (currentLevel == 1 && !IsDebuggerPresent())
+            {
+                if (g_ignoredAsserts)
+                {
+                    Output(g_dbgSystemWnd, "====Assert added to ignore list by spec and verbosity setting.====\n");
+                    g_ignoredAsserts->insert(assertHash);
+                }
+            }
+            
+#if AZ_ENABLE_TRACE_ASSERTS
+            //display native UI dialogs at verbosity level 2 or higher
+            if (currentLevel >= assertLevel_nativeUI)
+            {
+                AZ::NativeUI::AssertAction buttonResult;
+                EBUS_EVENT_RESULT(buttonResult, AZ::NativeUI::NativeUIRequestBus, DisplayAssertDialog, dialogBoxText);
+                switch (buttonResult)
+                {
+                case AZ::NativeUI::AssertAction::BREAK:
+                    g_tracer.Break();
+                    break;
+                case AZ::NativeUI::AssertAction::IGNORE_ALL_ASSERTS:
+                    SetAssertVerbosityLevel(1);
+                    g_alreadyHandlingAssertOrFatal = true;
+                    return;
+                case AZ::NativeUI::AssertAction::IGNORE_ASSERT:
+                    //if ignoring this assert then add it to our ignore list so it doesn't interrupt again this run
+                    if (g_ignoredAsserts)
+                    {
+                        g_ignoredAsserts->insert(assertHash);
+                    }
+                    break;
+                default:
+                    break;
+                }
+            }
+#endif //AZ_ENABLE_TRACE_ASSERTS
         }
-
-        Output(g_dbgSystemWnd, "------------------------------------------------\n");
-        PrintCallstack(g_dbgSystemWnd, 1);
-        Output(g_dbgSystemWnd, "==================================================================\n");
         g_alreadyHandlingAssertOrFatal = false;
-
-        g_tracer.Break();
     }
 
     //=========================================================================
@@ -352,7 +465,7 @@ namespace AZ
         //printf("Alignment value %d address 0x%08x : 0x%08x\n",bla,frames);
         SymbolStorage::StackLine lines[AZ_ARRAY_SIZE(frames)];
 
-        if (nativeContext == NULL)
+        if (!nativeContext)
         {
             suppressCount += 1; /// If we don't provide a context we will capture in the RecordFunction, so skip us (Trace::PrinCallstack).
         }
@@ -383,4 +496,26 @@ namespace AZ
         return g_exceptionInfo;
     }
 
+    // Gets/sets the current verbosity level from the global
+    int Trace::GetAssertVerbosityLevel()
+    {
+        auto val = AZ::Environment::FindVariable<int>(assertVerbosityUID);
+        if (val)
+        {
+            return val.Get();
+        }
+        else
+        {
+            return assertLevel_log;
+        }
+    }
+
+    void Trace::SetAssertVerbosityLevel(int level)
+    {
+        auto val = AZ::Environment::FindVariable<int>(assertVerbosityUID);
+        if (val)
+        {
+            val.Set(level);
+        }
+    }
 } // namspace AZ

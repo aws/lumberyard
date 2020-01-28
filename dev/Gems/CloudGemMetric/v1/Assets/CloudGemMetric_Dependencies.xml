@@ -1,0 +1,4 @@
+<EngineDependencies versionnumber="1.0.0">
+    <Dependency path="cloudcanvas/metrics_configs_static.json" optional="true" />
+    <Dependency path="cloudcanvas/metrics_configs.json" optional="true" />
+</EngineDependencies>

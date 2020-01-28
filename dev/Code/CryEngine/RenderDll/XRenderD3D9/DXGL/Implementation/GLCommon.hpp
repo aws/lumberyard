@@ -55,6 +55,16 @@
 #ifndef NO_INCLUDE_GL_FEATURES
 #include "GLFeatures.hpp"
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GLCommon_hpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GLCommon_hpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/GLCommon_hpp_salem.inl"
+    #endif
+#endif
+
 namespace NCryOpenGL
 {
 #if defined(DXGL_USE_EGL)

@@ -26,6 +26,12 @@
 
 struct IRenderer;
 
+namespace AZ
+{
+    class Color;
+    class Vector2;
+}
+
 namespace ScriptCanvas
 {
     namespace Nodes

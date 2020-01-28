@@ -13,43 +13,11 @@
 
 #pragma once
 
-#define COMPILED_HEIGHT_MAP_FILE_NAME "terrain/terrain.dat"
 #define COMPILED_TERRAIN_TEXTURE_FILE_NAME "terrain/cover.ctc"
 
 #pragma pack(push,4)
 
-struct SHotUpdateInfo;
-struct IRenderNode;
-struct IStatObj;
 struct IMaterial;
-struct IStatInstGroup;
-
-struct STerrainInfo
-{
-    int nHeightMapSize_InUnits;
-    int nUnitSize_InMeters;
-    int nSectorSize_InMeters;
-
-    int nSectorsTableSize_InSectors;
-    float fHeightmapZRatio;
-    float fOceanWaterLevel;
-
-    AUTO_STRUCT_INFO
-};
-
-#define TERRAIN_CHUNK_VERSION 29
-
-struct STerrainChunkHeader
-{
-    int8 nVersion;
-    int8 nDummy;
-    int8 nFlags;
-    int8 nFlags2;
-    int32 nChunkSize;
-    STerrainInfo TerrainInfo;
-
-    AUTO_STRUCT_INFO
-};
 
 struct ITerrain
 {
@@ -84,23 +52,7 @@ struct ITerrain
         AUTO_STRUCT_INFO
     };
 
-    virtual bool SetCompiledData(byte* pData, int nDataSize, std::vector<IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable, bool bHotUpdate = false, SHotUpdateInfo* pExportInfo = nullptr) = 0;
-
-    virtual bool GetCompiledData(byte* pData, int nDataSize, std::vector<IStatObj*>** ppStatObjTable, std::vector<_smart_ptr<IMaterial>>** ppMatTable, std::vector<struct IStatInstGroup*>** ppStatInstGroupTable, EEndian eEndian, SHotUpdateInfo* pExportInfo = nullptr) = 0;
-
-    virtual int GetCompiledDataSize(SHotUpdateInfo* pExportInfo = nullptr) = 0;
-
-    virtual void GetStatObjAndMatTables(DynArray<IStatObj*>* pStatObjTable, DynArray<_smart_ptr<IMaterial>>* pMatTable, DynArray<IStatInstGroup*>* pStatInstGroupTable, uint32 nObjTypeMask) = 0;
-
     virtual void SetTerrainElevation(int left, int bottom, int areaSize, const float* heightmap, int weightmapSize, const SurfaceWeight* surfaceWeightSet) = 0;
-
-    virtual void SetOceanWaterLevel(float fOceanWaterLevel) = 0;
-
-    virtual void ChangeOceanMaterial(_smart_ptr<IMaterial> pMat) = 0;
-
-    virtual void InitTerrainWater(_smart_ptr<IMaterial> pTerrainWaterMat) = 0;
-
-    virtual IRenderNode* AddVegetationInstance(int nStaticGroupID, const Vec3& vPos, const float fScale, uint8 ucBright, uint8 angle, uint8 angleX = 0, uint8 angleY = 0) = 0;
 
     virtual float GetZ(int x, int y) const = 0;
     virtual float GetBilinearZ(float x1, float y1) const = 0;
@@ -115,45 +67,6 @@ struct ITerrain
     virtual bool IsHole(int x, int y) const = 0;
     virtual bool IsMeshQuadFlipped(const int x, const int y, const int nUnitSize) const = 0;
 
-};
-
-//==============================================================================================
-
-#define FILEVERSION_TERRAIN_TEXTURE_FILE 10
-
-// Summary:
-//   Common header for binary files used by 3dengine
-struct SCommonFileHeader
-{
-    char    signature[4];   // File signature, should be "CRY "
-    uint8   file_type;      // File type
-    uint8   flags;          // File common flags
-    uint16  version;        // File version
-
-    AUTO_STRUCT_INFO
-};
-
-// Summary:
-// Sub header for terrain texture file
-struct STerrainTextureFileHeader
-{
-    uint16  LayerCount;
-    uint16  Flags;
-    float   ColorMultiplier_deprecated;
-
-    AUTO_STRUCT_INFO
-};
-
-// Summary:
-//   Layer header for terrain texture file (for each layer)
-struct STerrainTextureLayerFileHeader
-{
-    uint16      SectorSizeInPixels; //
-    uint16      nReserved;          // ensure padding and for later usage
-    ETEX_Format eTexFormat;         // typically eTF_BC3
-    uint32      SectorSizeInBytes;  // redundant information for more convenient loading code
-
-    AUTO_STRUCT_INFO
 };
 
 #pragma pack(pop)

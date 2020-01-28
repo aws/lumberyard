@@ -178,8 +178,13 @@ namespace CodeGenerator
 
     void OutputWriter::Error(const char* format, va_list args)
     {
+        // va_list can only be used once on some platforms, must make a copy since we will iterate on it twice here
+        va_list targs;
+        va_copy(targs,args);
         // Manually handle the null terminator because some version of VC++ do not actually print the null terminator when the buffer size is >= input size
-        size_t bufferSize = vsnprintf(nullptr, 0, format, args) + 1;
+        size_t bufferSize = vsnprintf(nullptr, 0, format, targs) + 1;
+	va_end(targs);
+
         std::vector<char> buffer;
         buffer.resize(bufferSize);
         vsnprintf(buffer.data(), bufferSize, format, args);

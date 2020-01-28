@@ -114,6 +114,13 @@ namespace ScriptCanvasEditor
             }
         }
 
+        void EnumTypes(const ElementTypeCB& cb) override
+        {
+            cb(m_storeInObjectStreamElement.m_typeId, &m_storeInObjectStreamElement);
+            cb(m_assetElement.m_typeId, &m_assetElement);
+            cb(m_baseDataElement.m_typeId, &m_baseDataElement);
+        }
+
         /// Return number of elements in the container.
         size_t  Size(void* instance) const override
         {

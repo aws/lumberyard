@@ -240,7 +240,7 @@ void CTerrainDialog::OnTerrainLoad()
     ////////////////////////////////////////////////////////////////////////
 
     char szFilters[] = "All Image Files (*.bt *.asc *.tif *.pgm *.raw *.r16 *.bmp *.png);;32-bit BT files (*.bt);;32-bit ARCGrid ASCII files (*.asc);;32-bit TIFF Files (*.tif);;16-bit PGM Files (*.pgm);;16-bit RAW Files (*.raw);;16-bit RAW Files (*.r16);;8-bit Bitmap Files (*.bmp);;8-bit PNG Files (*.png);;All files (*)";
-    CAutoDirectoryRestoreFileDialog dlg(QFileDialog::AcceptOpen, QFileDialog::ExistingFile, {}, {}, szFilters, {}, {}, this);
+    CAutoDirectoryRestoreFileDialog dlg(QFileDialog::AcceptOpen, QFileDialog::ExistingFile, {}, Path::GetEditingGameDataFolder().c_str(), szFilters, {}, {}, this);
 
     if (dlg.exec())
     {
@@ -270,10 +270,31 @@ void CTerrainDialog::OnTerrainErase()
     }
 }
 
+void CTerrainDialog::closeEvent(QCloseEvent* ev)
+{
+    if (m_processing)
+    {
+        QMessageBox::information(this, "Terrain - Processing", "The terrain editor is still processing the last operation.  Please wait until complete before closing.", QMessageBox::StandardButton::Ok);
+        ev->ignore();
+    }
+    else
+    {
+        ev->accept();
+    }
+}
+
 void CTerrainDialog::OnTerrainResize()
 {
+    // Resizing can be a lengthy operation, so make sure we prevent the Terrain Dialog from closing
+    // while it's occurring.  (It can get closed because the terrain resize includes an export that
+    // updates a progress bar, which processes UI events.  These events can include closing this
+    // dialog)
+    m_processing = true;
+
     CCryEditApp::instance()->OnTerrainResizeterrain();
     UpdateTerrainDimensions();
+
+    m_processing = false;
 }
 
 void CTerrainDialog::OnTerrainInvert()
@@ -360,7 +381,7 @@ void CTerrainDialog::OnTerrainGenerate()
 void CTerrainDialog::OnExportHeightmap()
 {
     char szFilters[] = "32-bit VTP BT (*.bt);;32-bit ARCGrid ASCII (*.asc);;32-bit TIF (*.tif);;16-bit PGM (*.pgm);;16-bit RAW (*.raw);;16-bit RAW (*.r16);;8-bit Bitmap (*.bmp);;8-bit PNG Files (*.png)";
-    CAutoDirectoryRestoreFileDialog dlg(QFileDialog::AcceptSave, QFileDialog::AnyFile, "bt", {}, szFilters, {}, {}, this);
+    CAutoDirectoryRestoreFileDialog dlg(QFileDialog::AcceptSave, QFileDialog::AnyFile, "bt", Path::GetEditingGameDataFolder().c_str(), szFilters, {}, {}, this);
     if (dlg.exec())
     {
         QWaitCursor wait;
@@ -847,8 +868,7 @@ void CTerrainDialog::OnSetUnitSize()
     QString newUnitSize = QInputDialog::getItem(this, tr("Set Unit Size"), tr("Unit size (meters/texel)"), unitSizes, currentIndex, false, &ok);
     if (ok)
     {
-        GetIEditor()->GetHeightmap()->SetUnitSize(newUnitSize.toInt());
-
+        heightmap->Resize(terrainResolution, terrainResolution, newUnitSize.toInt(), false);
         InvalidateTerrain();
     }
 }
@@ -864,16 +884,17 @@ void CTerrainDialog::InvalidateTerrain()
     {
         CTerrainBrush br;
         m_pTerrainTool->GetCurBrushParams(br);
+
+        if (br.bRepositionVegetation && GetIEditor()->GetVegetationMap())
+        {
+            GetIEditor()->GetVegetationMap()->PlaceObjectsOnTerrain();
+        }
+        // Make sure objects preserve height.
         if (br.bRepositionObjects)
         {
             AABB box;
             box.min = -Vec3(100000, 100000, 100000);
             box.max = Vec3(100000, 100000, 100000);
-            if (GetIEditor()->GetVegetationMap())
-            {
-                GetIEditor()->GetVegetationMap()->RepositionArea(box);
-            }
-            // Make sure objects preserve height.
             GetIEditor()->GetObjectManager()->SendEvent(EVENT_KEEP_HEIGHT, box);
         }
     }
@@ -901,6 +922,7 @@ void CTerrainDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
     case eNotify_OnEndNewScene:
     case eNotify_OnEndSceneOpen:
     case eNotify_OnTerrainRebuild:
+        m_ui->actionResize_Terrain->setEnabled(true);
         m_ui->viewport->InitHeightmapAlignment();
         InvalidateViewport();
         UpdateTerrainDimensions();

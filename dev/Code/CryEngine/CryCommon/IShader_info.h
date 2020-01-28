@@ -21,6 +21,8 @@
         #include "Xenia/IShader_info_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/IShader_info_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/IShader_info_h_salem.inl"
     #endif
 #elif !defined(LINUX) && !defined(APPLE)
 #define ISHADER_INFO_H_TRAIT_DEFINE_ETEX_INFO 1

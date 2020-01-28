@@ -64,7 +64,8 @@ namespace PhysX
             const AZStd::vector<AZ::u32>& indices,
             const AZStd::vector<AZ::u16>& faceMaterials,
             AZStd::vector<AZ::u8>* output,
-            const MeshGroup& pxMeshGroup
+            const MeshGroup& pxMeshGroup,
+            const AZStd::string& platformIdentifier
         );
     }
 }
@@ -294,7 +295,7 @@ namespace PhysX
             }
         }
 
-        static bool ConvertCGFToPhysX(const char* sourcePath, AZStd::vector<uint8_t>* cookedMeshData, AZStd::vector<Physics::MaterialConfiguration>* materials)
+        static bool ConvertCGFToPhysX(const char* sourcePath, AZStd::vector<uint8_t>* cookedMeshData, AZStd::vector<Physics::MaterialConfiguration>* materials, const AZStd::string& platformIdentifier)
         {
             CChunkFile chunkFile;
             CLoaderCGF cgfLoader;
@@ -339,7 +340,7 @@ namespace PhysX
             meshGroup.SetMeshWeldTolerance(0.001f);
             meshGroup.SetWeldVertices(true);
 
-            bool success = CookPhysxTriangleMesh(vertices, indices, faceMaterials, cookedMeshData, meshGroup);
+            bool success = CookPhysxTriangleMesh(vertices, indices, faceMaterials, cookedMeshData, meshGroup, platformIdentifier);
             return success;
         }
 
@@ -380,7 +381,7 @@ namespace PhysX
 
             AZStd::vector<uint8_t> cookedMeshData;
             AZStd::vector<Physics::MaterialConfiguration> materials; // material data is ignored by .pxmesh files, but material indices are still stored in the cooked data
-            if (!ConvertCGFToPhysX(request.m_fullPath.c_str(), &cookedMeshData, &materials))
+            if (!ConvertCGFToPhysX(request.m_fullPath.c_str(), &cookedMeshData, &materials, request.m_platformInfo.m_identifier))
             {
                 AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Physics Cook: Cannot cook geometry file %s because it's in console format.\n", request.m_fullPath.c_str());
                 response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;

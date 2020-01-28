@@ -16,16 +16,6 @@
 
 #include <AzCore/std/algorithm.h>
 
-namespace AZ
-{
-    namespace Internal
-    {
-        extern void* GlobalAlloc(size_t size, size_t alignment, const char* fileName, int lineNum, const char* name);
-        extern void GlobalFree(void* ptr);
-        extern bool IsGlobalAlloc(void* ptr);
-    }
-}
-
 //-----------------------------------------------------------------------------
 // CryModule allocation API
 //-----------------------------------------------------------------------------
@@ -33,14 +23,7 @@ namespace AZ
 
 inline void* CryModuleMallocImpl(size_t size, const char* file, const int line)
 {
-#if defined(AZ_MONOLITHIC_BUILD)
-    if (!AZ::AllocatorInstance<AZ::LegacyAllocator>::IsReady())
-    {
-        return AZ::Internal::GlobalAlloc(size, AZ_DEFAULT_ALIGNMENT, file, line, "LegacyAllocator malloc");
-    }
-#endif
-    void* ptr = AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().Allocate(size, 0, 0, "LegacyAllocator malloc", file, line);
-    return ptr;
+    return AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().Allocate(size, 0, 0, "LegacyAllocator malloc", file, line);
 }
 
 #define CryModuleFree(ptr) CryModuleFreeImpl(ptr, __FILE__, __LINE__)
@@ -48,26 +31,24 @@ inline void* CryModuleMallocImpl(size_t size, const char* file, const int line)
 
 inline void CryModuleFreeImpl(void* ptr, const char* file, const int line)
 {
-    if (AZ::Internal::IsGlobalAlloc(ptr))
+
+    AZ::IAllocator& allocator = AZ::AllocatorInstance<AZ::LegacyAllocator>::GetAllocator();
+
+    if (allocator.IsAllocationSourceChanged())
     {
-        AZ::Internal::GlobalFree(ptr);
-        return;
+        allocator.GetAllocationSource()->DeAllocate(ptr);
     }
-    // there are a ton of Cry statics that we cannot clean up on time without major refactor
-    // Instead, we'll just ignore the free, which isn't ideal, but we're shutting down anyway
-    if (!AZ::Environment::IsReady() || !AZ::AllocatorInstance<AZ::LegacyAllocator>::IsReady())
+    else
     {
-        return;
+        static_cast<AZ::LegacyAllocator&>(allocator).DeAllocate(ptr, file, line);
     }
-    AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().DeAllocate(ptr, file, line);
 }
 
 #define CryModuleMemalign(size, alignment) CryModuleMemalignImpl(size, alignment, __FILE__, __LINE__)
 
 inline void* CryModuleMemalignImpl(size_t size, size_t alignment, const char* file, const int line)
 {
-    void* ptr = AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().Allocate(size, alignment, 0, "LegacyAllocator memalign", file, line);
-    return ptr;
+    return AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().Allocate(size, alignment, 0, "LegacyAllocator memalign", file, line);
 }
 
 #define CryModuleCalloc(num, size) CryModuleCallocImpl(num, size, __FILE__, __LINE__)
@@ -103,8 +84,20 @@ inline void* CryModuleReallocAlignImpl(void* prev, size_t size, size_t alignment
         return nullptr;
     }
 #endif
-    void* ret = AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().ReAllocate(prev, size, alignment, file, line);
-    return ret;
+
+    AZ::IAllocator& allocator = AZ::AllocatorInstance<AZ::LegacyAllocator>::GetAllocator();
+    void *ptr;
+
+    if (allocator.IsAllocationSourceChanged())
+    {
+        ptr = allocator.GetAllocationSource()->ReAllocate(prev, size, 0);
+    }
+    else
+    {
+        ptr = static_cast<AZ::LegacyAllocator&>(allocator).ReAllocate(prev, size, 0, file, line);
+    }
+
+    return ptr;
 }
 
 //-----------------------------------------------------------------------------
@@ -112,10 +105,6 @@ inline void* CryModuleReallocAlignImpl(void* prev, size_t size, size_t alignment
 //-----------------------------------------------------------------------------
 inline size_t CryCrtSize(void* p)
 {
-    if (!AZ::AllocatorInstance<AZ::LegacyAllocator>::IsReady())
-    {
-        return 0;
-    }
     return AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().AllocationSize(p);
 }
 
@@ -136,10 +125,6 @@ inline size_t CryCrtFree(void* p)
 //-----------------------------------------------------------------------------
 inline size_t CrySystemCrtSize(void* p)
 {
-    if (!AZ::AllocatorInstance<AZ::LegacyAllocator>::IsReady())
-    {
-        return 0;
-    }
     return AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().AllocationSize(p);
 }
 

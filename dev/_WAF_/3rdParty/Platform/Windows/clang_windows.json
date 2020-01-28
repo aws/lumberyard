@@ -1,0 +1,47 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "includes_debug": [
+                "llvm/include",
+                "vs2015/debug/include"
+            ],
+            "includes_release": [
+                "llvm/include",
+                "vs2015/release/include"
+            ],
+            "libpath_debug": [
+                "vs2015/debug/lib"
+            ],
+            "libpath_release": [
+                "vs2015/release/lib"
+            ],
+            "lib": [
+                "clangFrontend.lib",
+                "clangSerialization.lib",
+                "clangDriver.lib",
+                "clangTooling.lib",
+                "clangParse.lib",
+                "clangSema.lib",
+                "clangAnalysis.lib",
+                "clangRewriteFrontend.lib",
+                "clangRewrite.lib",
+                "clangEdit.lib",
+                "clangAST.lib",
+                "clangLex.lib",
+                "clangBasic.lib",
+                "LLVMBinaryFormat.lib",
+                "LLVMDebugInfoDWARF.lib",
+                "LLVMMC.lib",
+                "LLVMOption.lib",
+                "LLVMBitReader.lib",
+                "LLVMMCParser.lib",
+                "LLVMProfileData.lib",
+                "LLVMTarget.lib",
+                "LLVMCore.lib",
+                "LLVMSupport.lib",
+                "Version.lib"
+            ]
+        },
+        "win_x64_clang": "@win_x64_vs2017"
+    }
+}

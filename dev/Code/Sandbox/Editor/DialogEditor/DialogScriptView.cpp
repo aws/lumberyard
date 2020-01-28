@@ -29,6 +29,7 @@
 #include <IFacialAnimation.h>
 #include <IGameFramework.h>
 #include <ICryMannequin.h>
+#include <MathConversion.h>
 
 #include <QtUtil.h>
 #include <QtUtilWin.h>
@@ -700,7 +701,8 @@ void DialogScriptView::PlayLine(int row)
     if (audioTriggerID != INVALID_AUDIO_CONTROL_ID && m_pIAudioProxy)
     {
         const CCamera& camera = GetIEditor()->GetSystem()->GetViewCamera();
-        m_pIAudioProxy->SetPosition(Audio::SATLWorldPosition(camera.GetMatrix()));
+        const Matrix34& matrix = camera.GetMatrix();
+        m_pIAudioProxy->SetPosition(LYTransformToAZTransform(matrix));
         m_pIAudioProxy->ExecuteTrigger(audioTriggerID, eLSM_None);
         ms_currentPlayLine = audioTriggerID;
     }

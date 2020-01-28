@@ -15,6 +15,7 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/JSON/writer.h>
 #include <aws/core/utils/memory/stl/AWSStreamFwd.h>
+#include <platform.h>
 
 namespace CloudGemFramework
 {

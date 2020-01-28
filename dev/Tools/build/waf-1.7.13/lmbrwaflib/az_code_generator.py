@@ -17,6 +17,7 @@ from waflib.Context import BOTH
 from waflib.Configure import conf
 from waflib import Node, Task, Utils, Logs, Errors, Options
 from cry_utils import append_to_unique_list
+from lumberyard import multi_conf
 from binascii import hexlify
 from collections import defaultdict
 from pipes import quote
@@ -264,6 +265,10 @@ class az_code_gen(Task.Task):
         # Ensure we have a 'azcg' attribute to cache task info for future builds
         if not isinstance(getattr(self.generator.bld, 'azcg', None), dict):
             self.generator.bld.azcg = defaultdict(dict)
+        # Ensure azcg is type of defaultdict
+        elif not isinstance(self.generator.bld.azcg, defaultdict):
+            self.generator.bld.azcg = defaultdict(dict, self.generator.bld.azcg)
+
         # Ensure the task generator has a lock to manage INCPATHS
         if not hasattr(self.generator, 'task_gen_access_lock'):
             self.generator.task_gen_access_lock = threading.Lock()
@@ -366,7 +371,7 @@ class az_code_gen(Task.Task):
 
         created_task = task_hook(self.generator, node_to_link)
 
-        # Shove /Fd flags into codegen meta-tasks, this is similar to logic in mscv_helper's
+        # Shove /Fd flags into codegen meta-tasks, this is similar to logic in msvc_helper's
         # set_pdb_flags. We compute PDB file path and add the requisite /Fd flag
         # This enables debug symbols for code outputted by azcg
         if 'msvc' in (self.generator.env.CC_NAME, self.generator.env.CXX_NAME):
@@ -385,7 +390,7 @@ class az_code_gen(Task.Task):
 
                 created_task.env.append_unique('CFLAGS', pdb_cxxflag)
                 created_task.env.append_unique('CXXFLAGS', pdb_cxxflag)
-        
+
         link_task = getattr(self.generator, 'link_task', None)
         if not link_task:
             link_task = getattr(self.bld, 'monolithic_link_task', None)
@@ -685,10 +690,7 @@ class az_code_gen(Task.Task):
             raise Errors.WafError('[ERROR] az_code_gen task creation failed')
 
     def can_retrieve_cache(self):
-        try:
-            self.outputs = self.azcg_get('AZCG_OUTPUTS', [])
-        except KeyError:
-            return False
+        self.outputs = self.azcg_get('AZCG_OUTPUTS', [])
         return super(az_code_gen, self).can_retrieve_cache()
 
     def run(self):
@@ -838,15 +840,6 @@ class az_code_gen(Task.Task):
 
         Task.Task.post_run(self)
 
-        # Due to #includes of code generator header files, we can have an output node which is also an input node.
-        # In addition, we are taking nodes that are not originally build nodes (e.g. header files) and building them, which alters the signature flow in Node.get_bld_sig().
-        # Task.post_run() default behavior is to set the Node.sig to the task signature which will change our computed task signature because our outputs are our inputs in same cases.
-        # To mitigate this, we must restore the original signature for any file that had a non-build signature previously.
-        # However, we do not want to alter the signature for files that will be consumed by later tasks.
-        # Therefore, we should restore signatures on any node that is not being added to the build (any output nodes not in link_task).
-        for output in self.outputs:
-            if not output in self.azcg_get('link_inputs', []):
-                output.sig = output.cache_sig = Utils.h_file(output.abspath())
 
 @conf
 def is_azcodegen_node(ctx, node):
@@ -858,3 +851,11 @@ def is_azcodegen_node(ctx, node):
             return True
         node = node.parent
     return False
+
+
+@multi_conf
+def generate_ib_profile_tool_elements(ctx):
+    azcg_tool_elements = [
+        '<Tool Filename="AzCodeGenerator" AllowRemote="true" AllowIntercept="false" TimeLimit="15"/>'
+    ]
+    return azcg_tool_elements

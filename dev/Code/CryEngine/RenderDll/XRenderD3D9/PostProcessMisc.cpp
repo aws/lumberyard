@@ -122,7 +122,7 @@ void CPost3DRenderer::Render()
     }
 
     m_pTempRT = CTexture::s_ptexSceneDiffuse;
-#if defined(WIN32) || defined(APPLE) || defined(LINUX)
+#if defined(WIN32) || defined(APPLE) || defined(LINUX) || defined(SUPPORTS_DEFERRED_SHADING_L_BUFFERS_FORMAT)
     m_pTempRT = CTexture::s_ptexSceneNormalsBent; // non-msaaed target
 #endif
 

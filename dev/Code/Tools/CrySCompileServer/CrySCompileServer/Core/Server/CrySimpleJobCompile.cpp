@@ -105,13 +105,8 @@ bool ValidateExecutableStringLegacy(const AZStd::string& executableString)
     if (commandString.find("fxc.exe") == AZStd::string::npos &&
         commandString.find("FXC.exe") == AZStd::string::npos &&
         commandString.find("HLSLcc.exe") == AZStd::string::npos &&
-        commandString.find("HLSLcc_vc120x64.exe") == AZStd::string::npos &&
-        commandString.find("HLSLcc_vc140x64.exe") == AZStd::string::npos &&
-        commandString.find("HLSLcc_vc141x64.exe") == AZStd::string::npos &&
-        commandString.find("HLSLcc_dedicated_vc120x64.exe") == AZStd::string::npos &&
-        commandString.find("HLSLcc_dedicated_vc140x64.exe") == AZStd::string::npos &&
-        commandString.find("HLSLcc_dedicated_vc141x64.exe") == AZStd::string::npos &&
-        commandString.find("DXOrbisShaderCompiler.exe") == AZStd::string::npos && // ACCEPTED_USE
+        commandString.find("HLSLcc_dedicated.exe") == AZStd::string::npos &&
+        commandString.find("DXOrbisShaderCompiler.exe") == AZStd::string::npos &&
         commandString.find("dxcGL") == AZStd::string::npos &&
         commandString.find("dxcMetal") == AZStd::string::npos)
     {
@@ -253,9 +248,9 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
             },{
                 "METAL", SEnviropment::m_METAL_HLSLcc
             },{
-                "ORBIS", SEnviropment::m_Orbis_DXC // ACCEPTED_USE
+                "ORBIS", SEnviropment::m_Orbis_DXC
             },{
-                "DURANGO", SEnviropment::m_Durango_FXC // ACCEPTED_USE
+                "DURANGO", SEnviropment::m_Durango_FXC
             }
         };
         

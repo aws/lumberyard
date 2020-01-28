@@ -16,7 +16,11 @@
 #include "VisAreas.h"
 #include "ObjMan.h"
 #include "MatMan.h"
+
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
 #include "terrain.h"
+#endif
+
 #include "Environment/OceanEnvironmentBus.h"
 
 int CDecalRenderNode::m_nFillBigDecalIndicesCounter = 0;
@@ -38,7 +42,7 @@ CDecalRenderNode::CDecalRenderNode()
 CDecalRenderNode::~CDecalRenderNode()
 {
     DeleteDecal();
-    Get3DEngine()->FreeRenderNodeState(this);
+    GetISystem()->GetI3DEngine()->FreeRenderNodeState(this);
 }
 
 
@@ -54,7 +58,7 @@ void CDecalRenderNode::DeleteDecal()
         delete m_decal;
         m_decal = nullptr;
     }
-    }
+}
 
 void CDecalRenderNode::SetCommonProperties(CryEngineDecalInfo& decalInfo)
 {
@@ -67,7 +71,7 @@ void CDecalRenderNode::SetCommonProperties(CryEngineDecalInfo& decalInfo)
     decalInfo.fLifeTime = 1.0f; // default life time for rendering, decal won't grow older as we don't update it
     decalInfo.fGrowTime = 0.0f;
     decalInfo.fAngle = 0.0f;
-	
+
     // We don't set decalInfo.szMaterialName here because that is handled in CDecalRenderNode::CreateDecal()
 }
 
@@ -90,6 +94,7 @@ void CDecalRenderNode::CreatePlanarDecal()
 
 void CDecalRenderNode::CreateDecalOnTerrain()
 {
+#ifdef LY_TERRAIN_LEGACY_RUNTIME
     float terrainHeight(GetTerrain()->GetBilinearZ(m_decalProperties.m_pos.x, m_decalProperties.m_pos.y));
     float terrainDelta(m_decalProperties.m_pos.z - terrainHeight);
     if (terrainDelta < m_decalProperties.m_radius && terrainDelta > -0.5f)
@@ -106,6 +111,7 @@ void CDecalRenderNode::CreateDecalOnTerrain()
 
         CreateDecal(decalInfo);
     }
+#endif //#ifdef LY_TERRAIN_LEGACY_RUNTIME
 }
 
 void CDecalRenderNode::CreateDecal(const CryEngineDecalInfo& decalInfo)

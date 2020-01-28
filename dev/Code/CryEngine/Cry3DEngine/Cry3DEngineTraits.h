@@ -18,6 +18,8 @@
         #include "Xenia/Cry3DEngineTraits_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/Cry3DEngineTraits_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/Cry3DEngineTraits_h_salem.inl"
     #endif
 #else
 #if defined(WIN32) || defined(WIN64)
@@ -33,4 +35,7 @@
 #define AZ_LEGACY_3DENGINE_TRAIT_HAS_SSE 1
 #endif
 #define AZ_LEGACY_3DENGINE_TRAIT_UNROLL_GEOMETRY_BACKING_LOOPS 1
+#if defined(APPLE) || defined(LINUX)
+#define AZ_LEGACY_3DENGINE_TRAIT_DISABLE_MMRM_SSE_INSTRUCTIONS 1
+#endif
 #endif

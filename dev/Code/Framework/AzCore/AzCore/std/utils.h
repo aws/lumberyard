@@ -22,17 +22,9 @@
 #include <AzCore/std/typetraits/underlying_type.h>
 #include <AzCore/std/typetraits/add_reference.h>
 #include <AzCore/std/reference_wrapper.h>
-
 #include <AzCore/std/typetraits/remove_reference.h>
 #include <AzCore/std/typetraits/is_convertible.h>
 #include <AzCore/std/typetraits/is_lvalue_reference.h>
-
-#ifndef AZSTD_HAS_TYPE_TRAITS_INTRINSICS
-    #include <AzCore/std/typetraits/has_trivial_constructor.h>
-    #include <AzCore/std/typetraits/has_trivial_destructor.h>
-    #include <AzCore/std/typetraits/has_trivial_copy.h>
-    #include <AzCore/std/typetraits/has_trivial_assign.h>
-#endif
 
 #include <memory>
 
@@ -97,13 +89,7 @@ namespace AZStd
 
     //////////////////////////////////////////////////////////////////////////
     // Swap
-    template<class T>
-    AZ_INLINE void swap(T& a, T& b)
-    {
-        T tmp = AZStd::move(a);
-        a = AZStd::move(b);
-        b = AZStd::move(tmp);
-    }
+    using std::swap;
 
     template<class ForewardIterator1, class ForewardIterator2>
     AZ_FORCE_INLINE void                    iter_swap(ForewardIterator1 a, ForewardIterator2 b)
@@ -352,23 +338,6 @@ namespace AZStd
     {   // test if left >= right for pairs
         return !(left < right);
     }
-
-#ifndef AZSTD_HAS_TYPE_TRAITS_INTRINSICS
-    // Without compiler help we should help a little.
-    // the pair class doesn't have a dtor, so if the paired objects don't have one we don't need to call it.
-    template< class T1, class T2>
-    struct has_trivial_destructor< pair<T1, T2> >
-        : public ::AZStd::integral_constant<bool, ::AZStd::type_traits::ice_and<has_trivial_destructor<T1>::value, has_trivial_destructor<T2>::value>::value> {};
-    template< class T1, class T2>
-    struct has_trivial_constructor< pair<T1, T2> >
-        : public ::AZStd::integral_constant<bool, ::AZStd::type_traits::ice_and<has_trivial_constructor<T1>::value, has_trivial_constructor<T2>::value>::value> {};
-    template< class T1, class T2>
-    struct has_trivial_copy< pair<T1, T2> >
-        : public ::AZStd::integral_constant<bool, ::AZStd::type_traits::ice_and<has_trivial_copy<T1>::value, has_trivial_copy<T2>::value>::value> {};
-    template< class T1, class T2>
-    struct has_trivial_assign< pair<T1, T2> >
-        : public ::AZStd::integral_constant<bool, ::AZStd::type_traits::ice_and<has_trivial_assign<T1>::value, has_trivial_assign<T2>::value>::value> {};
-#endif
 
     //////////////////////////////////////////////////////////////////////////
     // Address of

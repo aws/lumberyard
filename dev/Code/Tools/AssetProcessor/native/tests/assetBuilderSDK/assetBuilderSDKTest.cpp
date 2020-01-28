@@ -87,10 +87,10 @@ namespace AssetProcessor
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(4), AssetBuilderSDK::Platform_NONE);
 
         createJobsRequest.m_enabledPlatforms = {
-            { "xboxone", {}
+            { "xenia", {}
             }
         };
-        ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(0), AssetBuilderSDK::Platform_XBOXONE); // ACCEPTED_USE
+        ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(0), AssetBuilderSDK::Platform_XENIA);
         ASSERT_EQ(createJobsRequest.GetEnabledPlatformAt(1), AssetBuilderSDK::Platform_NONE);
 
         createJobsRequest.m_enabledPlatforms = {
@@ -148,11 +148,12 @@ namespace AssetProcessor
         ASSERT_TRUE(createJobsRequest.IsPlatformValid(AssetBuilderSDK::Platform_ES3));
         ASSERT_TRUE(createJobsRequest.IsPlatformValid(AssetBuilderSDK::Platform_IOS));
         ASSERT_TRUE(createJobsRequest.IsPlatformValid(AssetBuilderSDK::Platform_OSX));
-        ASSERT_TRUE(createJobsRequest.IsPlatformValid(AssetBuilderSDK::Platform_XBOXONE)); // ACCEPTED_USE
-        ASSERT_TRUE(createJobsRequest.IsPlatformValid(AssetBuilderSDK::Platform_PS4)); // ACCEPTED_USE
+        ASSERT_TRUE(createJobsRequest.IsPlatformValid(AssetBuilderSDK::Platform_XENIA));
+        ASSERT_TRUE(createJobsRequest.IsPlatformValid(AssetBuilderSDK::Platform_PROVO));
+        ASSERT_TRUE(createJobsRequest.IsPlatformValid(AssetBuilderSDK::Platform_SALEM));
         //64 is 0x040 which currently is the next valid platform value which is invalid as of now, if we ever add a new platform entry to the Platform enum
         //we will have to update this failure unit test
-        ASSERT_FALSE(createJobsRequest.IsPlatformValid(static_cast<AssetBuilderSDK::Platform>(64)));
+        ASSERT_FALSE(createJobsRequest.IsPlatformValid(static_cast<AssetBuilderSDK::Platform>(128)));
         // using a deprecated API should have generated warnings.
         ASSERT_GT(absorb.m_numWarningsAbsorbed, 0);
     }

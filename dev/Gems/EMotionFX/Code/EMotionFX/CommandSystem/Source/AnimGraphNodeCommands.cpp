@@ -1298,14 +1298,13 @@ namespace CommandSystem
     void CopyAnimGraphNodeCommand(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraph* targetAnimGraph, EMotionFX::AnimGraphNode* targetNode, EMotionFX::AnimGraphNode* node,
         bool cutMode, AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AnimGraphCopyPasteData& copyPasteData, AZStd::unordered_set<AZStd::string>& generatedNames)
     {
-        AZ_UNUSED(targetNode);
         if (!node)
         {
             return;
         }
 
         // Construct the parent name
-        const AZStd::string parentName = copyPasteData.GetNewNodeName(node->GetParentNode(), cutMode);
+        const AZStd::string parentName = copyPasteData.GetNewNodeName(targetNode, cutMode);
         EMotionFX::AnimGraphNodeId nodeId;
         AZStd::string nodeName = node->GetNameString();
         if (cutMode)

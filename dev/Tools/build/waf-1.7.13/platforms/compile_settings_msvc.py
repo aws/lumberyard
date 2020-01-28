@@ -12,7 +12,7 @@
 #
 from waflib.Configure import conf, Logs
 from waflib import Options
-from lumberyard import deprecated
+from lumberyard import deprecated, multi_conf
 
 @deprecated("Logic replaced in load_msvc_common_settings with a combination of setting ENV values and env settings in the common.msvc.json")
 def set_ltcg_threads(conf):
@@ -145,3 +145,10 @@ def load_msvc_common_settings(conf):
     else:
         v['SET_LTCG_THREADS_FLAG'] = False
 
+
+@multi_conf
+def generate_ib_profile_tool_elements(ctx):
+    msvc_tool_elements = [
+        '<Tool Filename="cl" AllowRemote="true" AllowIntercept="false" DeriveCaptionFrom="lastparam" AllowRestartOnLocal="false" VCCompiler="true"/>'
+    ]
+    return msvc_tool_elements

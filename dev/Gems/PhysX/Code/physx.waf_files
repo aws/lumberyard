@@ -41,6 +41,8 @@
             "Source/SphereColliderComponent.cpp",
             "Source/CapsuleColliderComponent.h",
             "Source/CapsuleColliderComponent.cpp",
+            "Source/ShapeColliderComponent.cpp",
+            "Source/ShapeColliderComponent.h",
             "Source/ForceRegionComponent.cpp",
             "Source/ForceRegionComponent.h"
         ],
@@ -79,7 +81,9 @@
             "Source/ForceRegion.cpp",
             "Source/ForceRegion.h",
             "Source/NameConstants.cpp",
-            "Source/NameConstants.h"
+            "Source/NameConstants.h",
+            "Source/ComponentDescriptors.cpp",
+            "Source/ComponentDescriptors.h"
         ]
     }
 }

@@ -1,0 +1,27 @@
+{
+    "aliases": {
+        "lib_paths_android_armv8_clang": ["${lib_paths}/android.arm64-v8a.shared/"]
+    },
+    "platform": {
+        "android_armv8_clang": {
+            "importlibpath_debug": ["${lib_paths_android_armv8_clang}/debug"],
+            "importlibpath_profile": ["${lib_paths_android_armv8_clang}/profile"],
+            "importlibpath_release": ["${lib_paths_android_armv8_clang}/release"],
+            "importlibpath_performance": ["${lib_paths_android_armv8_clang}/release"],
+
+            "sharedlibpath_debug": ["${lib_paths_android_armv8_clang}/debug"],
+            "sharedlibpath_profile": ["${lib_paths_android_armv8_clang}/profile"],
+            "sharedlibpath_release": ["${lib_paths_android_armv8_clang}/release"],
+            "sharedlibpath_performance": ["${lib_paths_android_armv8_clang}/release"],
+
+            "import": [
+                "lib${lib_names}.so",
+                "lib${lib_names_ext}_static.a"
+            ],
+            
+            "shared": [
+                "lib${lib_names}.so"
+            ]
+        }
+    }
+}

@@ -13,6 +13,7 @@
 #include <AzFramework/Physics/ShapeConfiguration.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzFramework/Physics/PropertyTypes.h>
+#include <AzFramework/Physics/SystemBus.h>
 
 namespace Physics
 {
@@ -140,17 +141,19 @@ namespace Physics
                 ->Version(1)
                 ->Field("PhysicsAsset", &PhysicsAssetShapeConfiguration::m_asset)
                 ->Field("AssetScale", &PhysicsAssetShapeConfiguration::m_assetScale)
+                ->Field("UseMaterialsFromAsset", &PhysicsAssetShapeConfiguration::m_useMaterialsFromAsset)
                 ;
 
             if (auto editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<PhysicsAssetShapeConfiguration>("PhysicsAssetShapeConfiguration", "Configuration for asset shape collider")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &PhysicsAssetShapeConfiguration::m_assetScale, "AssetScale", "The scale of the asset shape")
-                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &PhysicsAssetShapeConfiguration::m_assetScale, "Asset Scale", "The scale of the asset shape")
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &PhysicsAssetShapeConfiguration::m_useMaterialsFromAsset, "Physics Materials from Mesh", "Auto-set physics materials using Mesh's material surfaces names")
                     ;
             }
         }
@@ -174,13 +177,95 @@ namespace Physics
             {
                 editContext->Class<NativeShapeConfiguration>("NativeShapeConfiguration", "Configuration for native shape collider")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &NativeShapeConfiguration::m_nativeShapeScale, "Scale", "The scale of the native shape")
-                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
                     ;
             }
+        }
+    }
+
+    void CookedMeshShapeConfiguration::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<CookedMeshShapeConfiguration, ShapeConfiguration>()
+                ->Version(1)
+                ->Field("CookedData", &CookedMeshShapeConfiguration::m_cookedData)
+                ->Field("Type", &CookedMeshShapeConfiguration::m_type)
+                ;
+        }
+    }
+
+    CookedMeshShapeConfiguration::~CookedMeshShapeConfiguration()
+    {
+        ReleaseCachedNativeMesh();
+    }
+
+    CookedMeshShapeConfiguration::CookedMeshShapeConfiguration(const CookedMeshShapeConfiguration& other)
+        : m_cookedData(other.m_cookedData)
+        , m_type(other.m_type)
+        , m_cachedNativeMesh(nullptr)
+    {
+
+    }
+
+    void CookedMeshShapeConfiguration::operator=(const CookedMeshShapeConfiguration& other)
+    {
+        m_cookedData = other.m_cookedData;
+        m_type = other.m_type;
+
+        // Prevent raw pointer from being copied
+        m_cachedNativeMesh = nullptr;
+    }
+
+    ShapeType CookedMeshShapeConfiguration::GetShapeType() const
+    {
+        return ShapeType::CookedMesh;
+    }
+
+    void CookedMeshShapeConfiguration::SetCookedMeshData(const AZ::u8* cookedData, 
+        size_t cookedDataSize, MeshType type)
+    {
+        // If the new cooked data is being set, make sure we clear the cached mesh
+        ReleaseCachedNativeMesh();
+        
+        m_cookedData.clear();
+        m_cookedData.insert(m_cookedData.end(), cookedData, cookedData + cookedDataSize);
+        
+        m_type = type;
+    }
+
+    const AZStd::vector<AZ::u8>& CookedMeshShapeConfiguration::GetCookedMeshData() const
+    {
+        return m_cookedData;
+    }
+
+    CookedMeshShapeConfiguration::MeshType CookedMeshShapeConfiguration::GetMeshType() const
+    {
+        return m_type;
+    }
+
+    void* CookedMeshShapeConfiguration::GetCachedNativeMesh() const
+    {
+        return m_cachedNativeMesh;
+    }
+
+    void CookedMeshShapeConfiguration::SetCachedNativeMesh(void* cachedNativeMesh) const
+    {
+        m_cachedNativeMesh = cachedNativeMesh;
+    }
+
+    void CookedMeshShapeConfiguration::ReleaseCachedNativeMesh()
+    {
+        if (m_cachedNativeMesh)
+        {
+            Physics::SystemRequestBus::Broadcast(
+                &Physics::SystemRequests::ReleaseNativeMeshObject, m_cachedNativeMesh);
+
+            m_cachedNativeMesh = nullptr;
         }
     }
 }

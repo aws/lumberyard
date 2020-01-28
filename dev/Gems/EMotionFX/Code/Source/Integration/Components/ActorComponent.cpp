@@ -20,6 +20,7 @@
 
 #include <AzFramework/Physics/Ragdoll.h>
 #include <AzFramework/Physics/RagdollPhysicsBus.h>
+#include <AzFramework/Physics/World.h>
 
 #include <LmbrCentral/Animation/AttachmentComponentBus.h>
 
@@ -156,7 +157,6 @@ namespace EMotionFX
             LmbrCentral::MaterialOwnerRequestBus::Handler::BusConnect(GetEntityId());
             m_materialReadyEventSent = false;
             LmbrCentral::AttachmentComponentNotificationBus::Handler::BusConnect(GetEntityId());
-            Physics::SystemNotificationBus::Handler::BusConnect();
             AzFramework::CharacterPhysicsDataRequestBus::Handler::BusConnect(GetEntityId());
             AzFramework::RagdollPhysicsNotificationBus::Handler::BusConnect(GetEntityId());
 
@@ -171,7 +171,7 @@ namespace EMotionFX
         {
             AzFramework::RagdollPhysicsNotificationBus::Handler::BusDisconnect();
             AzFramework::CharacterPhysicsDataRequestBus::Handler::BusDisconnect();
-            Physics::SystemNotificationBus::Handler::BusDisconnect();
+            Physics::WorldNotificationBus::Handler::BusDisconnect();
             ActorComponentRequestBus::Handler::BusDisconnect();
             AZ::TickBus::Handler::BusDisconnect();
             ActorComponentNotificationBus::Handler::BusDisconnect();
@@ -181,8 +181,6 @@ namespace EMotionFX
             LmbrCentral::AttachmentComponentNotificationBus::Handler::BusDisconnect();
             AZ::TransformNotificationBus::MultiHandler::BusDisconnect();
             AZ::Data::AssetBus::Handler::BusDisconnect();
-
-            m_renderNode = nullptr;
 
             DestroyActor();
             m_configuration.m_actorAsset.Release();
@@ -325,6 +323,12 @@ namespace EMotionFX
                 LmbrCentral::MeshComponentNotificationBus::Event(GetEntityId(), &LmbrCentral::MeshComponentNotifications::OnMeshCreated, actorAsset);
 
                 AzFramework::CharacterPhysicsDataNotificationBus::Event(GetEntityId(), &AzFramework::CharacterPhysicsDataNotifications::OnRagdollConfigurationReady);
+
+                // Start listening to PostWorldUpdate events for the ragdoll.
+                if (m_actorInstance->GetRagdollInstance())
+                {
+                    Physics::WorldNotificationBus::Handler::BusConnect(m_actorInstance->GetRagdollInstance()->GetRagdollWorldId());
+                }
             }
         }
 
@@ -357,6 +361,8 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         void ActorComponent::DestroyActor()
         {
+            m_renderNode.reset();
+
             if (m_actorInstance)
             {
                 DetachFromEntity();
@@ -410,7 +416,7 @@ namespace EMotionFX
                 DrawSkeleton(m_actorInstance);
             }
 
-            if (m_configuration.m_renderBounds)
+            if (m_renderNode && m_configuration.m_renderBounds)
             {
                 gEnv->pRenderer->GetIRenderAuxGeom()->DrawAABB(m_renderNode->GetBBox(), false, Col_Cyan, eBBD_Faceted);
             }
@@ -452,14 +458,17 @@ namespace EMotionFX
             return AZ::TICK_PRE_RENDER;
         }
 
-        void ActorComponent::OnPostPhysicsUpdate(float fixedDeltaTime, Physics::World* physicsWorld)
+        void ActorComponent::OnPostPhysicsUpdate(float fixedDeltaTime)
         {
-            if (m_actorInstance &&
-                m_actorInstance->GetRagdollInstance() &&
-                m_actorInstance->GetRagdollInstance()->GetRagdollWorld() == physicsWorld)
+            if (m_actorInstance)
             {
                 m_actorInstance->PostPhysicsUpdate(fixedDeltaTime);
             }
+        }
+
+        int ActorComponent::GetPhysicsTickOrder()
+        {
+            return WorldNotifications::Animation;
         }
 
         //////////////////////////////////////////////////////////////////////////

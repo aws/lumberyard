@@ -153,6 +153,11 @@ namespace AzToolsFramework
                 entityId, pEnt->GetName().c_str(),
                 oldData.size(), newData.size());
         }
+
+        // Clear out newly generated data and
+        // replace with original data to ensure debug mode has the same data as profile/release in the event of the consistency check failing.
+        m_EntityStateMap[entityId].clear();
+        m_EntityStateMap[entityId] = oldData;
 #endif // ENABLE_UNDOCACHE_CONSISTENCY_CHECKS
     }
 

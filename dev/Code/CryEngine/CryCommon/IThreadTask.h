@@ -16,6 +16,9 @@
 #ifndef CRYINCLUDE_CRYCOMMON_ITHREADTASK_H
 #define CRYINCLUDE_CRYCOMMON_ITHREADTASK_H
 #pragma once
+
+#include <smartptr.h>
+
 // forward declarations
 struct SThreadTaskInfo;
 

@@ -1,0 +1,19 @@
+{
+    "none": {
+        "Source/Editor/QT Files": [
+            "Source/Editor/EditorWwise.qrc"
+        ]
+    },
+    "auto": {
+        "Source/Editor/Source Files": [
+            "Source/Editor/AudioSystemControl_wwise.cpp",
+            "Source/Editor/AudioSystemEditor_wwise.cpp",
+            "Source/Editor/AudioWwiseLoader.cpp"
+        ],
+        "Source/Editor/Header Files": [
+            "Source/Editor/AudioSystemControl_wwise.h",
+            "Source/Editor/AudioSystemEditor_wwise.h",
+            "Source/Editor/AudioWwiseLoader.h"
+        ]
+    }
+}

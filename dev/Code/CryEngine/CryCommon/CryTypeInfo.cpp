@@ -26,6 +26,8 @@
         #include "Xenia/CryTypeInfo_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/CryTypeInfo_cpp_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/CryTypeInfo_cpp_salem.inl"
     #endif
 #elif defined(LINUX) || defined(APPLE)
 #define CRYTYPEINFO_CPP_TRAIT_DEFINE_LTOA_S 1

@@ -313,7 +313,7 @@ void CSkyLightManager::InitSkyDomeMesh()
 {
     ReleaseSkyDomeMesh();
 
-#if MOBILE
+#if defined(MOBILE)
     const uint32 c_numRings(10);
     const uint32 c_numSections(10);
 #else

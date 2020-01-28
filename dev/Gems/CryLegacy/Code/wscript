@@ -62,7 +62,7 @@ def build(bld):
         test_all_uselib     = ['AWS_CPP_SDK_GAMELIFT', 'AWS_CPP_SDK_CORE']
     )
     for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
-        kw['{}_file_list'.format(p3)] = [
+        kw['{}_file_list'.format(p1)] = [
             'Source/CryAction/{0}/cryaction_{1}.waf_files'.format(p0, p1),
             'Source/CryAISystem/{0}/cryaisystem_{1}.waf_files'.format(p0, p1),
             'Source/CryAnimation/{0}/cryanimation_{1}.waf_files'.format(p0, p1),

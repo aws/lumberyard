@@ -69,11 +69,8 @@ namespace AzFramework
         explicit InputDevice(const InputDeviceId& inputDeviceId);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        // Disable copying (protected to workaround a VS2013 bug in std::is_copy_constructible)
-        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-    protected:
+        // Disable copying
         AZ_DISABLE_COPY_MOVE(InputDevice);
-    public:
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Destructor

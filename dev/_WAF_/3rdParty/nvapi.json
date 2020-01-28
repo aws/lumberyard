@@ -8,15 +8,13 @@
     "lib_required": "True",
     "shared_required": "False",
     "platform": {
-        "win_x64_vs2013": {
+        "win_x64_vs2017": {
             "libpath": [
                 "amd64"
             ],
             "lib": [
                 "nvapi64.lib"
             ]
-        },
-        "win_x64_vs2015": "@win_x64_vs2013",
-        "win_x64_vs2017": "@win_x64_vs2013"
+        }
     }
 }

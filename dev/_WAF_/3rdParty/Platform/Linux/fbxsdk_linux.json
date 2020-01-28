@@ -1,0 +1,16 @@
+{
+    "platform": {
+        "linux_x64": {
+            "sharedlib_required": "True",
+            "sharedlibpath_debug": [
+                "lib/gcc4/x64/debug"
+            ],
+            "sharedlibpath_release": [
+                "lib/gcc4/x64/release"
+            ],
+            "shared": [
+                "libfbxsdk.so"
+            ]
+        }
+    }
+}

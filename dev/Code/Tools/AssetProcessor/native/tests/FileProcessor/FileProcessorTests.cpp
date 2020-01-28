@@ -15,9 +15,13 @@
 
 namespace UnitTests
 {
+    constexpr int ConnectionBusId = 0;
+
     void FileProcessorTests::SetUp()
     {
         AssetProcessorTest::SetUp();
+        ConnectionBus::Handler::BusConnect(ConnectionBusId);
+
         m_data.reset(new StaticData());
         m_data->m_databaseLocationListener.BusConnect();
 
@@ -63,16 +67,37 @@ namespace UnitTests
     {
         m_data->m_databaseLocationListener.BusDisconnect();
         m_data.reset();
+        ConnectionBus::Handler::BusDisconnect(ConnectionBusId);
         AssetProcessorTest::TearDown();
+    }
+
+    size_t FileProcessorTests::Send(unsigned int serial, const AzFramework::AssetSystem::BaseAssetProcessorMessage& message)
+    {
+        m_data->m_messagesSent++;
+
+        return 0;
+    }
+
+    TEST_F(FileProcessorTests, FilesAdded_WhenSentMultipleAdds_ShouldEmitOnlyOneAdd)
+    {
+        QSet<AssetFileInfo> scannerFiles;
+
+        m_data->m_fileProcessor->AssessAddedFile(m_data->m_temporarySourceDir.absoluteFilePath(m_data->m_fileEntries[0].m_fileName.c_str()));
+        m_data->m_fileProcessor->AssessAddedFile(m_data->m_temporarySourceDir.absoluteFilePath(m_data->m_fileEntries[0].m_fileName.c_str()));
+
+        ASSERT_EQ(m_data->m_messagesSent, 1);
     }
 
     TEST_F(FileProcessorTests, FilesFromScanner_ShouldSaveToDatabaseWithoutCreatingDuplicates)
     {
         QSet<AssetFileInfo> scannerFiles;
+        auto* scanFolder = m_data->m_config->GetScanFolderByPath(m_data->m_scanFolder.m_scanFolder.c_str());
+
+        ASSERT_NE(scanFolder, nullptr);
 
         for (const auto& file : m_data->m_fileEntries)
         {
-            scannerFiles.insert(AssetFileInfo(m_data->m_temporarySourceDir.absoluteFilePath(file.m_fileName.c_str()), file.m_modTime, file.m_isFolder));
+            scannerFiles.insert(AssetFileInfo(m_data->m_temporarySourceDir.absoluteFilePath(file.m_fileName.c_str()), QDateTime::fromMSecsSinceEpoch(file.m_modTime), 1234, scanFolder, file.m_isFolder));
         }
 
         m_data->m_fileProcessor->AssessFilesFromScanner(scannerFiles);
@@ -97,10 +122,13 @@ namespace UnitTests
     TEST_F(FileProcessorTests, FilesFromScanner_ShouldHandleChangesBetweenSyncs)
     {
         QSet<AssetFileInfo> scannerFiles;
+        auto* scanFolder = m_data->m_config->GetScanFolderByPath(m_data->m_scanFolder.m_scanFolder.c_str());
+
+        ASSERT_NE(scanFolder, nullptr);
 
         for (const auto& file : m_data->m_fileEntries)
         {
-            scannerFiles.insert(AssetFileInfo(m_data->m_temporarySourceDir.absoluteFilePath(file.m_fileName.c_str()), file.m_modTime, file.m_isFolder));
+            scannerFiles.insert(AssetFileInfo(m_data->m_temporarySourceDir.absoluteFilePath(file.m_fileName.c_str()), QDateTime::fromMSecsSinceEpoch(file.m_modTime), 1234, scanFolder, file.m_isFolder));
         }
 
         m_data->m_fileProcessor->AssessFilesFromScanner(scannerFiles);
@@ -139,7 +167,7 @@ namespace UnitTests
 
         for (const auto& file : m_data->m_fileEntries)
         {
-            scannerFiles.insert(AssetFileInfo(m_data->m_temporarySourceDir.absoluteFilePath(file.m_fileName.c_str()), file.m_modTime, file.m_isFolder));
+            scannerFiles.insert(AssetFileInfo(m_data->m_temporarySourceDir.absoluteFilePath(file.m_fileName.c_str()), QDateTime::fromMSecsSinceEpoch(file.m_modTime), 1234, scanFolder, file.m_isFolder));
         }
         
         // Sync again

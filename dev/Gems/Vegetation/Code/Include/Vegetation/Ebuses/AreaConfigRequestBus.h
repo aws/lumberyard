@@ -16,12 +16,6 @@
 
 namespace Vegetation
 {
-    enum class AreaLayer : AZ::u32
-    {
-        Background = 0,
-        Foreground,
-    };
-
     class AreaConfigRequests
         : public AZ::ComponentBus
     {
@@ -32,11 +26,11 @@ namespace Vegetation
          */
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
 
-        virtual float GetAreaPriority() const = 0;
-        virtual void SetAreaPriority(float priority) = 0;
+        virtual AZ::u32 GetAreaPriority() const = 0;
+        virtual void SetAreaPriority(AZ::u32 priority) = 0;
 
-        virtual AreaLayer GetAreaLayer() const = 0;
-        virtual void SetAreaLayer(AreaLayer type) = 0;
+        virtual AZ::u32 GetAreaLayer() const = 0;
+        virtual void SetAreaLayer(AZ::u32 type) = 0;
 
         virtual AZ::u32 GetAreaProductCount() const = 0;
     };

@@ -130,7 +130,7 @@ namespace LmbrCentral
         if (serializeContext)
         {
             serializeContext->Class<MeshComponentRenderNode::MeshRenderOptions>()
-                ->Version(4, &VersionConverter)
+                ->Version(5, &VersionConverter)
                 ->Field("Opacity", &MeshComponentRenderNode::MeshRenderOptions::m_opacity)
                 ->Field("MaxViewDistance", &MeshComponentRenderNode::MeshRenderOptions::m_maxViewDist)
                 ->Field("ViewDistanceMultiplier", &MeshComponentRenderNode::MeshRenderOptions::m_viewDistMultiplier)
@@ -179,6 +179,24 @@ namespace LmbrCentral
             shadowNode.SetName("CastShadows");
         }
 
+        // conversion from version 4:
+        // - Set "CastShadows" to false if "Opacity" is less than 1.0f, in order to not break old assets.
+        //   The new system ignores opacity for shadow casting and relies only on the "CastShadows" flag.
+        if (classElement.GetVersion() <= 4)
+        {
+            float opacity;
+            int opacityElementIndex = classElement.FindElement(AZ_CRC("Opacity", 0x43fd6d66));
+            AZ::SerializeContext::DataElementNode& opacityNode = classElement.GetSubElement(opacityElementIndex);
+            opacityNode.GetData(opacity);
+
+            if (opacity < 1.0f)
+            {
+                int castShadowsElementIndex = classElement.FindElement(AZ_CRC("CastShadows", 0xbe687463));
+                AZ::SerializeContext::DataElementNode& castShadowsNode = classElement.GetSubElement(castShadowsElementIndex);
+                castShadowsNode.SetData(context, false);
+            }
+        }
+       
         return true;
     }
 

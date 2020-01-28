@@ -15,6 +15,7 @@
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/CommandSystem/Source/CommandManager.h>
 #include <EMotionFX/CommandSystem/Source/ColliderCommands.h>
+#include <Tests/Printers.h>
 
 
 namespace EMotionFX

@@ -52,7 +52,7 @@ namespace AZStd
 
         native_semaphore_data_type m_semaphore;
 
-#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || AZ_TRAIT_OS_PLATFORM_APPLE
+#if !AZ_TRAIT_SEMAPHORE_HAS_NATIVE_MAX_COUNT
         //Unlike Windows, these platforms do not natively support a semaphore max count. So we use a second mutex to implement
         //the producer-consumer pattern which gives us the same behaviour.
         native_semaphore_data_type m_maxCountSemaphore;

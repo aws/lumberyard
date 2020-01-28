@@ -3,7 +3,9 @@
     {
         "Source/Platform/Android":
         [
-            "SaveData_SystemComponent_Android.cpp"
+            "SaveData_SystemComponent_Android.cpp",
+            "SaveData_Traits_Platform.h",
+            "SaveData_Traits_Android.h"
         ]
     }
 }

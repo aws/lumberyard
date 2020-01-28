@@ -1,0 +1,49 @@
+{
+    "platform": {
+        "win_x64_vs2017": {
+            "system_lib": [
+                "shlwapi",
+                "Winhttp",
+                "Userenv",
+                "Ws2_32"
+            ],
+            "importlibpath_debug": [
+                "bin/windows/Debug"
+            ],
+            "importlibpath_release": [
+                "bin/windows/Release"
+            ],
+            "aws_cpp_sdk_gamelift_shared/defines": [
+                "BUILD_GAMELIFT_CLIENT"
+            ],
+            "aws_cpp_sdk_gamelift_shared/import": [
+                "${aws_cpp_sdk_gamelift}.lib"
+            ],
+            "aws_cpp_sdk_identity_lambda_shared/import": [
+                "${aws_cpp_sdk_identity_lambda}.lib",
+                "${aws_dependencies}.lib"
+            ],
+
+            "sharedlibpath_debug": [
+                "bin/windows/Debug"
+            ],
+            "sharedlibpath_release": [
+                "bin/windows/Release"
+            ],
+            "aws_cpp_sdk_gamelift_shared/shared": [
+                "${aws_cpp_sdk_gamelift}.dll"
+            ],
+            "aws_cpp_sdk_identity_lambda_shared/shared": [
+                "${aws_cpp_sdk_identity_lambda}.dll",
+                "${aws_dependencies}.dll"
+            ],
+            "aws_cpp_sdk_gamelift_shared/pdb": [
+                "${aws_cpp_sdk_gamelift}.pdb"
+            ],
+            "aws_cpp_sdk_identity_lambda_shared/pdb": [
+                "${aws_cpp_sdk_identity_lambda}.pdb"
+            ]
+        },
+        "win_x64_clang": "@win_x64_vs2017"
+    }
+}

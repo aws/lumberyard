@@ -56,6 +56,8 @@ AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {
+    using EditorEntitySortComponent = AzToolsFramework::Components::EditorEntitySortComponent;
+
     /**
      * Applies the style sheet loaded from the passed in QSS file to the passed in widget.
      * \param widget The widget to apply the style sheet to.
@@ -1660,14 +1662,14 @@ namespace AzToolsFramework
     //=========================================================================
     void SlicePushWidget::OnPushClicked()
     {
+        auto& assetDb = AZ::Data::AssetManager::Instance();
+
         // If there were no invalid references, the warning check can be skipped.
         if (m_entityToSliceComponentWithInvalidReferences.size() > 0)
         {
             // Track the number of uniquely referenced invalid slices by using their asset hint in an unordered_set.
             AZStd::unordered_set<AZStd::string> invalidReferences;
             AZStd::unordered_set<AZ::SliceAsset*> targetSlicesWithInvalidReferences;
-
-            auto& assetDb = AZ::Data::AssetManager::Instance();
 
             // Search through all of the field items to find what is selected.
             for (QTreeWidgetItemIterator itemIter(m_fieldTree); *itemIter; ++itemIter)
@@ -1687,7 +1689,7 @@ namespace AzToolsFramework
                         {
                             AZ_Error("SlicePushWidget", 
                                 false,
-                                "Could not find SliceComponet for entity %s. This entity's slice references may not update correctly.",
+                                "Could not find SliceComponent for entity %s. This entity's slice references may not update correctly.",
                                 item->m_entity != nullptr ? item->m_entity->GetName().c_str() : "not found");
                             continue;
                         }
@@ -1735,6 +1737,69 @@ namespace AzToolsFramework
                 }
             }
         }
+
+        // Edit any ChildEntryOrderArrays to remove new entities that aren't going to be in the pushed slice.
+        for (QTreeWidgetItemIterator itemIter(m_fieldTree); *itemIter; ++itemIter)
+        {
+            FieldTreeItem* item = static_cast<FieldTreeItem*>(*itemIter);
+
+            // Skip this if it's a removed node
+            if (item->m_slicePushType == FieldTreeItem::SlicePushType::Removed)
+            {
+                continue;
+            }
+
+            if (!item->m_node)
+            {
+                AZ_Error("SlicePushWidget",
+                    false,
+                    "FieldTreeItem on entity '%s' has a null node pointer despite not being of SlicePushType Removed (this should not be possible!).\n\nIf this issue persists, delete the instance and recreate it.",
+                    item->m_entity != nullptr ? item->m_entity->GetName().c_str() : "(not found)");
+                return;
+            }
+
+            // Check whether this node is an EditorEntitySortComponent.
+            if (item->m_node->GetClassMetadata() && item->m_node->GetClassMetadata()->m_typeId == AZ::AzTypeInfo<EditorEntitySortComponent>::Uuid())
+            {
+                EditorEntitySortComponent* sortComponent = static_cast<EditorEntitySortComponent*>(item->m_node->FirstInstance());
+                if (sortComponent)
+                {
+                    SliceAssetPtr targetSlice = assetDb.GetAsset<AZ::SliceAsset>(item->m_selectedAsset, false);
+
+                    AzToolsFramework::EntityOrderArray orderArray = sortComponent->GetChildEntityOrderArray();
+                    AzToolsFramework::EntityOrderArray prunedOrderArray;
+                    prunedOrderArray.reserve(orderArray.size());
+
+                    SliceUtilities::WillPushEntityCallback willPushEntityCallback =
+                        [this](const AZ::EntityId entityId, const SliceAssetPtr& assetToPushTo) -> bool
+                    {
+                        if (WillPushEntityToAsset(entityId, assetToPushTo.GetId()))
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                    };
+
+                    SliceUtilities::RemoveInvalidChildOrderArrayEntries(orderArray, prunedOrderArray, targetSlice, willPushEntityCallback);
+
+                    AZ_Assert(orderArray.size() >= prunedOrderArray.size(), "Pruned OrderArray should not be bigger than unpruned array.");
+
+                    size_t numEntriesRemoved = orderArray.size() - prunedOrderArray.size();
+
+                    if (numEntriesRemoved > 0)
+                    {
+                        // Replace the order array with the pruned version.
+                        sortComponent->SetChildEntityOrderArray(prunedOrderArray);
+
+                        AZ_Warning("Slice Push", false, "%d entries removed from Child Entity Array as they were unselected or invalid.\n", numEntriesRemoved);
+                    }
+                }
+            }
+        }
+
         if (PushSelectedFields())
         {
             emit OnFinished();
@@ -1764,6 +1829,39 @@ namespace AzToolsFramework
             m_toggleWarningButton->setPixmap(m_iconClosed.pixmap(m_iconClosed.availableSizes().first()));
             m_warningFoldout->hide();
         }
+    }
+
+    bool SlicePushWidget::CanPushEntityToAsset(const AZ::EntityId entityId, const AZ::Data::AssetId& assetId)
+    {
+        return m_unpushableNewChildEntityIdsPerAsset[assetId].find(entityId) == m_unpushableNewChildEntityIdsPerAsset[assetId].end();
+    }
+
+    bool SlicePushWidget::WillPushEntityToAsset(const AZ::EntityId entityId, const AZ::Data::AssetId& assetId)
+    {
+        if (!CanPushEntityToAsset(entityId, assetId))
+        {
+            return false;
+        }
+
+        for (QTreeWidgetItemIterator itemIter(m_fieldTree); *itemIter; ++itemIter)
+        {
+            FieldTreeItem* item = static_cast<FieldTreeItem*>(*itemIter);
+            if (!item->IsPushableItem() 
+                || item->checkState(0) != Qt::Checked 
+                || item->m_slicePushType != FieldTreeItem::SlicePushType::Added)
+            {
+                continue;
+            }
+
+            if (item->m_entity->GetId() != entityId || item->m_selectedAsset != assetId)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     //=========================================================================
@@ -2026,7 +2124,6 @@ namespace AzToolsFramework
                     // if the slice entity has invalid reference(s), the child sort order needs to be converted into
                     // a hidden auto push otherwise it can easily get out of sync 
                     using NodeItemPair = AZStd::pair<AzToolsFramework::InstanceDataNode*, FieldTreeItem*>;
-                    using EditorEntitySortComponent = AzToolsFramework::Components::EditorEntitySortComponent;
 
                     auto childSortNodeItem = AZStd::find_if(nodeItemMap.begin(), nodeItemMap.end(),
                         [](NodeItemPair pair)
@@ -2162,11 +2259,10 @@ namespace AzToolsFramework
             entityIdList.emplace_back(entityId);
         }
 
-        AZStd::unordered_map<AZ::Data::AssetId, EntityIdSet> unpushableNewChildEntityIdsPerAsset;
-        EntityIdSet newEntityIds;
-        pushableNewChildEntityIds = SliceUtilities::GetPushableNewChildEntityIds(entityIdList, unpushableNewChildEntityIdsPerAsset, sliceAncestryMapping, newChildEntityIdAncestorPairs, newEntityIds);
+        pushableNewChildEntityIds = SliceUtilities::GetPushableNewChildEntityIds(entityIdList, m_unpushableNewChildEntityIdsPerAsset, sliceAncestryMapping, newChildEntityIdAncestorPairs, m_newEntityIds);
 
-        for (const auto& unpushableEntityIds : unpushableNewChildEntityIdsPerAsset)
+        for (const auto& unpushableEntityIds : m_unpushableNewChildEntityIdsPerAsset)
+
         {
             for (const AZ::EntityId& entityId : unpushableEntityIds.second)
             {
@@ -2188,23 +2284,19 @@ namespace AzToolsFramework
             {
                 AZ::SliceComponent::Ancestor rootAncestor = ancestors.back();
                 AZ::Data::AssetId rootId = rootAncestor.m_sliceAddress.GetReference()->GetSliceAsset().GetId();
-                if (unpushableNewChildEntityIdsPerAsset.find(rootId) != unpushableNewChildEntityIdsPerAsset.end())
+                if (!CanPushEntityToAsset(entityId, rootId))
                 {
-                    EntityIdSet unpushableIds = unpushableNewChildEntityIdsPerAsset[rootId];
-                    if (unpushableIds.find(entityId) != unpushableIds.end())
-                    {
-                        AZ::Entity* entity = nullptr;
-                        AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
+                    AZ::Entity* entity = nullptr;
+                    AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
 
-                        FieldTreeItem* item = FieldTreeItem::CreateEntityAddItem(entity);
-                        item->setText(0, QString("%1 (added, unsaveable [see (A) below])").arg(entity->GetName().c_str()));
-                        item->setIcon(0, m_iconNewDataItem);
-                        item->m_ancestors = AZStd::move(sliceAncestryMapping[entityId]);
-                        item->setCheckState(0, Qt::CheckState::Unchecked);
-                        item->setDisabled(true);
-                        entityToFieldTreeItemMap[entity->GetId()] = item;
-                        continue;
-                    }
+                    FieldTreeItem* item = FieldTreeItem::CreateEntityAddItem(entity);
+                    item->setText(0, QString("%1 (added, unsaveable [see (A) below])").arg(entity->GetName().c_str()));
+                    item->setIcon(0, m_iconNewDataItem);
+                    item->m_ancestors = AZStd::move(sliceAncestryMapping[entityId]);
+                    item->setCheckState(0, Qt::CheckState::Unchecked);
+                    item->setDisabled(true);
+                    entityToFieldTreeItemMap[entity->GetId()] = item;
+                    continue;
                 }
             }
 
@@ -2258,16 +2350,7 @@ namespace AzToolsFramework
                 {
                     AZ::Data::AssetId id = ancestor.m_sliceAddress.GetReference()->GetSliceAsset().GetId();
 
-                    bool canUse = true;
-                    if (unpushableNewChildEntityIdsPerAsset.find(id) != unpushableNewChildEntityIdsPerAsset.end())
-                    {
-                        EntityIdSet idSet = unpushableNewChildEntityIdsPerAsset[id];
-                        if (idSet.find(entityId) != idSet.end())
-                        {
-                            canUse = false;
-                        }
-                    }
-                    if (canUse)
+                    if (CanPushEntityToAsset(entityId, id))
                     {
                         item->m_ancestors.push_back(ancestor);
                     }

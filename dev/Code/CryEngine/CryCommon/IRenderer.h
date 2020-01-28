@@ -428,13 +428,11 @@ enum PublicRenderPrimitiveType
 #define RFT_FREE_0x2000       0x2000
 #define RFT_OCCLUSIONTEST     0x8000     // Support hardware occlusion test.
 
-//  Confetti BEGIN: Igor Lobanchikov :END
 #define RFT_HW_ARM_MALI       0x04000    // Unclassified ARM (MALI) hardware.
 #define RFT_HW_INTEL          0x10000    // Unclassified intel hardware.
 #define RFT_HW_QUALCOMM       0x10000    // Unclassified Qualcomm hardware
 #define RFT_HW_ATI            0x20000    // Unclassified ATI hardware.
 #define RFT_HW_NVIDIA         0x40000    // Unclassified NVidia hardware.
-//  Confetti BEGIN: Igor Lobanchikov :END
 #define RFT_HW_MASK           0x74000    // Graphics chip mask.
 
 #define RFT_HW_HDR            0x80000    // Hardware supports high dynamic range rendering.
@@ -853,6 +851,8 @@ struct SDrawTextInfo
         #include "Xenia/IRenderer_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/IRenderer_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/IRenderer_h_salem.inl"
     #endif
 #else
 //SLI/CROSSFIRE GPU maximum count
@@ -897,8 +897,8 @@ enum ERenderType
     eRT_Null,
     eRT_DX11,
     eRT_DX12,
-    eRT_XboxOne, // ACCEPTED_USE
-    eRT_PS4, // ACCEPTED_USE
+    eRT_Xenia,
+    eRT_Provo,
     eRT_OpenGL,
     eRT_Metal,
 };
@@ -2287,6 +2287,9 @@ struct IRenderer
     // Set culling mode
     virtual void SetCull(ECull eCull, bool bSkipMirrorCull = false) = 0;
 
+    // Draw a 2D quad
+    virtual void DrawQuad(float x0, float y0, float x1, float y1, const ColorF& color, float z = 1.0f, float s0 = 0.0f, float t0 = 0.0f, float s1 = 1.0f, float t1 = 1.0f) = 0;
+
     // Draw a quad
     virtual void DrawQuad3D(const Vec3& v0, const Vec3& v1, const Vec3& v2, const Vec3& v3, const ColorF& color, float ftx0, float fty0, float ftx1, float fty1) = 0;
 
@@ -2353,6 +2356,9 @@ struct IRenderer
     // Pop render target
     virtual bool FX_PopRenderTarget(int nTarget) = 0;
 
+    // Set active render targets
+    virtual void FX_SetActiveRenderTargets(bool bAllowDIP = false) = 0;
+
     // Start an effect / shader / etc..
     virtual void FX_Start(CShader* ef, int nTech, CShaderResources* Res, IRenderElement* re) = 0;
 
@@ -2391,6 +2397,11 @@ struct IRenderer
     virtual bool IsVideoThreadModeEnabled() = 0;
     virtual IDynTexture* CreateDynTexture2(uint32 nWidth, uint32 nHeight, uint32 nTexFlags, const char* szSource, ETexPool eTexPool) = 0;
     virtual uint32 GetCurrentTextureAtlasSize() = 0;
+
+    virtual void BeginProfilerSection(const char* name, uint32 eProfileLabelFlags = 0) = 0;
+    virtual void EndProfilerSection(const char* name) = 0;
+    virtual void AddProfilerLabel(const char* name) = 0;
+
 private:
     // use private for EF_Query to prevent client code to submit arbitrary combinations of output data/size
     virtual void EF_QueryImpl(ERenderQueryTypes eQuery, void* pInOut0, uint32 nInOutSize0, void* pInOut1, uint32 nInOutSize1) = 0;

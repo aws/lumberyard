@@ -209,13 +209,13 @@ void CTerrainPainterPanel::SetBrush(CTextureBrush& br)
     m_ui->brushRadiusSpin->setValue(br.radius);
     m_ui->brushColorHardnessSpin->setValue(br.colorHardness);
     m_ui->brushDetailHardnessSpin->setValue(br.detailHardness);
-    m_ui->paintMaskByLayerSettingsCheck->setChecked(br.bMaskByLayerSettings ? Qt::Checked : Qt::Unchecked);
-    m_ui->brushColorButton->SetColor(fromColorF(br.m_cFilterColor));
+    m_ui->paintMaskByLayerSettingsCheck->setChecked(br.maskByLayerSettings ? Qt::Checked : Qt::Unchecked);
+    m_ui->brushColorButton->SetColor(fromColorF(br.filterColor));
 
     m_ui->brushRadiusSlider->setValue(sliderPositionFromRadius(m_ui->brushRadiusSlider, br.minRadius, br.maxRadius, br.radius));
     m_ui->brushColorHardnessSlider->setValue(br.colorHardness * 100.0);
     m_ui->brushDetailHardnessSlider->setValue(br.detailHardness * 100.0);
-    m_ui->brushBrightnessSlider->setValue(br.m_fBrightness * 255.0);
+    m_ui->brushBrightnessSlider->setValue(br.brightness * 255.0);
 
     // Restore the previously selected mask layer, or select the default if we can't find it.
     SetMaskLayer(br.m_dwMaskLayerId);
@@ -228,7 +228,7 @@ void CTerrainPainterPanel::OnSliderChange()
     m_tool.GetBrush(br);
     br.colorHardness = m_ui->brushColorHardnessSlider->value() / 100.0f;
     br.detailHardness = m_ui->brushDetailHardnessSlider->value() / 100.0f;
-    br.m_fBrightness = m_ui->brushBrightnessSlider->value() / 255.0f;
+    br.brightness = m_ui->brushBrightnessSlider->value() / 255.0f;
     br.radius = radiusFromSliderPosition(m_ui->brushRadiusSlider, br.minRadius, br.maxRadius);
     SetBrush(br);
     m_tool.SetBrush(br);
@@ -332,7 +332,7 @@ void CTerrainPainterPanel::OnBrushResetBrightness()
 
     CTextureBrush br;
     m_tool.GetBrush(br);
-    br.m_fBrightness = 0.5;
+    br.brightness = 0.5;
     SetBrush(br);
     m_tool.SetBrush(br);
 }
@@ -343,11 +343,11 @@ void CTerrainPainterPanel::UpdateTextureBrushSettings()
     CTextureBrush br;
     m_tool.GetBrush(br);
 
-    br.bMaskByLayerSettings = m_ui->paintMaskByLayerSettingsCheck->isChecked();
+    br.maskByLayerSettings = m_ui->paintMaskByLayerSettingsCheck->isChecked();
     br.radius = m_ui->brushRadiusSpin->value();
     br.colorHardness = m_ui->brushColorHardnessSpin->value();
     br.detailHardness = m_ui->brushDetailHardnessSpin->value();
-    br.m_cFilterColor = fromQColor(m_ui->brushColorButton->Color());
+    br.filterColor = fromQColor(m_ui->brushColorButton->Color());
 
     // If maskLayerIdCombo has a selected item, set our brush to it.  If it *doesn't* have
     // a selected item, don't change the brush.  This can happen if we're doing a full refresh
@@ -386,10 +386,10 @@ void CTerrainPainterPanel::SetLayerMaskSettingsToLayer()
 
     CLayer* pLayer = GetSelectedLayer();
 
-    m_ui->brushLayerAltitudeMin->setEnabled(pLayer != 0);
-    m_ui->brushLayerAltitudeMax->setEnabled(pLayer != 0);
-    m_ui->brushLayerSlopeMin->setEnabled(pLayer != 0);
-    m_ui->brushLayerSlopeMax->setEnabled(pLayer != 0);
+    m_ui->brushLayerAltitudeMin->setEnabled(pLayer != nullptr);
+    m_ui->brushLayerAltitudeMax->setEnabled(pLayer != nullptr);
+    m_ui->brushLayerSlopeMin->setEnabled(pLayer != nullptr);
+    m_ui->brushLayerSlopeMax->setEnabled(pLayer != nullptr);
 
     if (pLayer)
     {
@@ -400,12 +400,12 @@ void CTerrainPainterPanel::SetLayerMaskSettingsToLayer()
 
         CTextureBrush br;
         m_tool.GetBrush(br);
-        br.m_cFilterColor = pLayer->m_cLayerFilterColor;
-        br.m_fBrightness = pLayer->m_fLayerBrightness;
+        br.filterColor = pLayer->m_cLayerFilterColor;
+        br.brightness = pLayer->m_fLayerBrightness;
         m_tool.SetBrush(br);
 
-        m_ui->brushColorButton->SetColor(fromColorF(br.m_cFilterColor));
-        m_ui->brushBrightnessSlider->setValue(br.m_fBrightness * 255.0f);
+        m_ui->brushColorButton->SetColor(fromColorF(br.filterColor));
+        m_ui->brushBrightnessSlider->setValue(br.brightness * 255.0f);
     }
     else
     {
@@ -466,21 +466,8 @@ void CTerrainPainterPanel::GetLayerMaskSettingsFromLayer()
 
 void CTerrainPainterPanel::OnBnClickedBrushSettolayer()
 {
-    CLayer* pLayer = GetSelectedLayer();
-
-    if (!pLayer)
-    {
-        return;
-    }
-
-    CTextureBrush br;
-    m_tool.GetBrush(br);
-
-    pLayer->m_cLayerFilterColor = br.m_cFilterColor;
-    pLayer->m_fLayerBrightness = br.m_fBrightness;
-
     m_bIgnoreNotify = true;
-    GetIEditor()->Notify(eNotify_OnInvalidateControls);
+    m_tool.SaveLayer(GetSelectedLayer());
     m_bIgnoreNotify = false;
 }
 

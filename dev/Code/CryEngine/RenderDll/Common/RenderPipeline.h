@@ -107,6 +107,8 @@ typedef union UnINT64
         #include "Xenia/RenderPipeline_h_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/RenderPipeline_h_provo.inl"
+    #elif defined(AZ_PLATFORM_SALEM)
+        #include "Salem/RenderPipeline_h_salem.inl"
     #endif
 #endif
 struct SRendItem

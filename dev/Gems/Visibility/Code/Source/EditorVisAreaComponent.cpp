@@ -345,7 +345,7 @@ namespace Visibility
                 info.bUseDeepness = false;
                 info.bUseInIndoors = false;
 
-                const AZStd::string name = AZStd::string("vis-area_") + GetEntity()->GetName();
+                const AZStd::string name = AZStd::string("VisArea_") + GetEntity()->GetName();
 
                 GetIEditor()->Get3DEngine()->UpdateVisArea(m_area, &points[0], points.size(), name.c_str(), info, true);
             }

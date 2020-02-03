@@ -148,6 +148,7 @@ namespace EMotionFX
 
     private:
         MCore::Array<Node*>     mNodes;         /**< The nodes, including root nodes. */
+        mutable AZStd::unordered_map<AZStd::string, Node*> mNodesMap;
         MCore::Array<uint32>    mRootNodes;     /**< The root nodes only. */
         Pose                    mBindPose;      /**< The bind pose. */
 

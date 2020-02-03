@@ -76,12 +76,14 @@ namespace EMotionFX
     void Skeleton::AddNode(Node* node)
     {
         mNodes.Add(node);
+        mNodesMap[node->GetNameString()] = node;
     }
 
 
     // remove a node
     void Skeleton::RemoveNode(uint32 nodeIndex, bool delFromMem)
     {
+        mNodesMap.erase(mNodes[nodeIndex]->GetName());
         if (delFromMem)
         {
             mNodes[nodeIndex]->Destroy();
@@ -104,17 +106,25 @@ namespace EMotionFX
         }
 
         mNodes.Clear();
+        mNodesMap.clear();
         mBindPose.Clear();
     }
 
 
     Node* Skeleton::FindNodeByName(const char* name) const
     {
+        auto iter = mNodesMap.find(name);
+        if (iter != mNodesMap.end())
+        {
+            return iter->second;
+        }
+
         const uint32 numNodes = mNodes.GetLength();
         for (uint32 i = 0; i < numNodes; ++i)
         {
             if (mNodes[i]->GetNameString() == name)
             {
+                mNodesMap[name] = mNodes[i];
                 return mNodes[i];
             }
         }
@@ -125,11 +135,18 @@ namespace EMotionFX
 
     Node* Skeleton::FindNodeByName(const AZStd::string& name) const
     {
+        auto iter = mNodesMap.find(name);
+        if (iter != mNodesMap.end())
+        {
+            return iter->second;
+        }
+
         const uint32 numNodes = mNodes.GetLength();
         for (uint32 i = 0; i < numNodes; ++i)
         {
             if (mNodes[i]->GetNameString() == name)
             {
+                mNodesMap[name] = mNodes[i];
                 return mNodes[i];
             }
         }
@@ -176,6 +193,7 @@ namespace EMotionFX
     void Skeleton::SetNode(uint32 index, Node* node)
     {
         mNodes[index] = node;
+        mNodesMap[node->GetNameString()] = node;
     }
 
 

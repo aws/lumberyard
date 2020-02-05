@@ -794,6 +794,13 @@ namespace LmbrCentral
             m_objectMoved = false;
         }
 
+        if (m_isRenderNearest)
+        {
+            rParams.dwFObjFlags |= FOB_NEAREST;
+            m_dwRndFlags |= ERF_RENDER_ALWAYS;
+            rParams.nAfterWater = 1;
+        }
+
         rParams.pMatrix = &m_renderTransform;
         rParams.bForceDrawStatic = !m_renderOptions.m_dynamicMesh;
         if (rParams.pMatrix->IsValid())
@@ -1129,5 +1136,11 @@ namespace LmbrCentral
     void MeshComponent::SetVisibility(bool isVisible)
     {
         m_meshRenderNode.SetVisible(isVisible);
+    }
+
+    void MeshComponent::SetRenderNearest()
+    {
+        m_meshRenderNode.SetRndFlags(ERF_RENDER_ALWAYS, true);
+        m_meshRenderNode.SetRenderNearest(true);
     }
 } // namespace LmbrCentral

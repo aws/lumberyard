@@ -2059,11 +2059,12 @@ void CMannequinModelViewport::LoadObject(const QString& fileName, float)
         {
             CLogFile::WriteLine("Importing Character Definitions...");
             m_pCharacterBase = m_pAnimationSystem->CreateInstance(file.toUtf8().data(), CA_CharEditModel);
+#if BLENDSPACE_VISUALIZATION
             if (m_pCharacterBase)
             {
                 m_pAnimationSystem->CreateDebugInstances(file.toUtf8().data());
             }
-
+#endif
             /*      for (uint32 i=0; i<NUM_INSTANCE; i++)
                             arrCharacterBase[i] = m_pAnimationSystem->CreateInstance( file ); */
         }
@@ -2074,10 +2075,12 @@ void CMannequinModelViewport::LoadObject(const QString& fileName, float)
         {
             CLogFile::WriteLine("Loading Character Model...");
             m_pCharacterBase = m_pAnimationSystem->CreateInstance(file.toUtf8().data(), CA_CharEditModel);
+#if BLENDSPACE_VISUALIZATION
             if (m_pCharacterBase)
             {
                 m_pAnimationSystem->CreateDebugInstances(file.toUtf8().data());
             }
+#endif
         }
 
         //-------------------------------------------------------

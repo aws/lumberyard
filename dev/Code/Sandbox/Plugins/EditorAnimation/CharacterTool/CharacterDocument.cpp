@@ -763,12 +763,16 @@ namespace CharacterTool {
                 m_compressedCharacter = m_characterManager->CreateInstance(filename, CA_CharEditModel);
                 if (m_compressedCharacter)
                 {
+#if BLENDSPACE_VISUALIZATION
                     m_characterManager->CreateDebugInstances(filename);
+#endif
                 }
                 m_uncompressedCharacter = m_characterManager->CreateInstance(filename, CA_CharEditModel);
                 if (m_uncompressedCharacter)
                 {
+#if BLENDSPACE_VISUALIZATION
                     m_characterManager->CreateDebugInstances(filename);
+#endif
                 }
 
                 m_characterManager->ClearCDFCache();
@@ -781,12 +785,16 @@ namespace CharacterTool {
                 m_compressedCharacter = m_characterManager->CreateInstance(filename, CA_CharEditModel);
                 if (m_compressedCharacter)
                 {
+#if BLENDSPACE_VISUALIZATION
                     m_characterManager->CreateDebugInstances(filename);
+#endif
                 }
                 m_uncompressedCharacter = m_characterManager->CreateInstance(filename, CA_CharEditModel);
                 if (m_uncompressedCharacter)
                 {
+#if BLENDSPACE_VISUALIZATION
                     m_characterManager->CreateDebugInstances(filename);
+#endif
                 }
             }
 
@@ -963,7 +971,9 @@ namespace CharacterTool {
 
         if (m_compressedCharacter)
         {
+#if BLENDSPACE_VISUALIZATION
             m_characterManager->DeleteDebugInstances();
+#endif
             m_compressedCharacter.reset();
         }
         if (m_uncompressedCharacter)

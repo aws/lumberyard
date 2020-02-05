@@ -4147,5 +4147,26 @@ void CXConsole::RemoveConsoleVarSink(IConsoleVarSink* pSink)
     m_consoleVarSinks.remove(pSink);
 }
 
+//////////////////////////////////////////////////////////////////////////
+int CXConsole::GetIntCVar(const char* name)
+{
+    ICVar* cvar = GetCVar(name);
+    if (!cvar)
+    {
+        AZ_Warning("ConsoleRequestBus", false, "Trying to get non-existing CVar: '%s'", name);
+        return 0;
+    }
+    return cvar->GetIVal();
+}
 
-
+//////////////////////////////////////////////////////////////////////////
+float CXConsole::GetFloatCVar(const char* name)
+{
+    ICVar* cvar = GetCVar(name);
+    if (!cvar)
+    {
+        AZ_Warning("ConsoleRequestBus", false, "Trying to get non-existing CVar: '%s'", name);
+        return 0.f;
+    }
+    return cvar->GetFVal();
+}

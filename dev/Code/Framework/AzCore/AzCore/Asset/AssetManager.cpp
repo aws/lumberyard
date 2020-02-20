@@ -954,7 +954,7 @@ namespace AZ
             if (reloadIter != m_reloads.end() && reloadIter->second.GetData()->IsLoading())
             {
                 // This asset may already be loading stale data. Queue this requested reload until it's finished.
-                AssetBus::QueueFunction([this, assetId]() {this->ReloadAsset(assetId); });
+                SystemTickBus::QueueFunction([this, assetId]() { AssetBus::QueueFunction([this, assetId]() {this->ReloadAsset(assetId); }); });
                 return;
             }
 
@@ -1121,8 +1121,12 @@ namespace AZ
         //=========================================================================
         void AssetManager::NotifyAssetReloadError(Asset<AssetData> asset)
         {
-            // Failed reloads have no side effects. Just notify observers (error reporting, etc).
-            m_reloads.erase(asset.GetId());
+            {
+                AZStd::lock_guard<AZStd::recursive_mutex> assetLock(m_assetMutex);
+                // Failed reloads have no side effects. Just notify observers (error reporting, etc).
+                m_reloads.erase(asset.GetId());
+            }
+            
             EBUS_EVENT_ID(asset.GetId(), AssetBus, OnAssetReloadError, asset);
         }
 

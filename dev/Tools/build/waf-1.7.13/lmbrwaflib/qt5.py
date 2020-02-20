@@ -112,7 +112,6 @@ File extensions of C++ files that may require a .moc processing
 QT5_LIBS = '''
 qtmain
 Qt5Bluetooth
-Qt5CLucene
 Qt5Concurrent
 Qt5Core
 Qt5DBus
@@ -122,7 +121,7 @@ Qt5Designer
 Qt5Gui
 Qt5Help
 Qt5MacExtras
-Qt5MultimediaQuick_p
+Qt5MultimediaQuick
 Qt5Multimedia
 Qt5MultimediaWidgets
 Qt5Network
@@ -141,8 +140,9 @@ Qt5SerialPort
 Qt5Sql
 Qt5Svg
 Qt5Test
-Qt5WebKit
-Qt5WebKitWidgets
+Qt5WebEngine
+Qt5WebEngineCore
+Qt5WebEngineWidgets
 Qt5WebChannel
 Qt5Widgets
 Qt5WinExtras
@@ -150,6 +150,24 @@ Qt5X11Extras
 Qt5XmlPatterns
 Qt5Xml'''
 
+QT5_WEBENGINE_DLLS = [
+'Qt5Core',
+'Qt5Gui',
+'Qt5Network',
+'Qt5Positioning',
+'Qt5Qml',
+'Qt5Quick',
+'Qt5WebChannel',
+'Qt5WebEngineCore'
+]
+
+QT_CONF = '''[Paths]
+Prefix = qtlibs
+'''
+
+QT_WEBENGINE_CONF = '''[Paths]
+Prefix = ..
+'''
 
 # Search pattern to find the required #include <*.moc> lines in the source code to identify the header files that need
 # moc'ing.  The path of the moc file must be relative to the current project root
@@ -246,7 +264,7 @@ class qxx(Task.classes['cxx']):
             self.add_moc_tasks()
             # At this point, the moc task should be done, recycle and try the status check again
             self.moc_done = 1
-            return Task.ASK_LATER
+            return Task.Task.runnable_status(self)
 
         return status
 
@@ -760,6 +778,10 @@ class automoc(Task.Task):
 
     def post_run(self):
         self.generator.bld.node_deps[self.uid()] = getattr(self, 'moc_headers', [])
+        try:
+            del self.cache_sig
+        except:
+            pass
         Task.Task.post_run(self)
 
 
@@ -1122,6 +1144,9 @@ def find_qt5_binaries(self, platform):
     env.QT_LIB_DIR = _get_qtlib_subfolder('lib')
     env.QT_QML_DIR = _get_qtlib_subfolder('qml')
     env.QT_PLUGINS_DIR = _get_qtlib_subfolder('plugins')
+    if platform is not 'darwin_x64':
+        env.QT_RESOURCES_DIR = _get_qtlib_subfolder('resources')
+    env.QT_TRANSLATIONS_DIR = _get_qtlib_subfolder('translations')
 
     return True
 
@@ -1498,12 +1523,18 @@ def qtlib_bootstrap(self, platform, configuration):
             plugins_pattern = patterns['plugins']
         num_files_copied += _copy_folder(ctx.env.QT_PLUGINS_DIR, dst_qtlib, 'plugins', plugins_pattern, is_required_pattern)
 
-        # Copy the extra txt files
+        # Copy the license files
         qt_base = os.path.normpath(ctx.ThirdPartyPath('qt', ''))
+        num_files_copied += _copy_file(os.path.join(qt_base, 'LICENSE'),
+                                   os.path.join(dst_qtlib, 'LICENSE'))
+        num_files_copied += _copy_file(os.path.join(qt_base, 'LICENSE.GPLV3'),
+                                   os.path.join(dst_qtlib, 'LICENSE.GPLV3'))
+        num_files_copied += _copy_file(os.path.join(qt_base, 'LICENSE.LGPLV3'),
+                                   os.path.join(dst_qtlib, 'LICENSE.LGPLV3'))
+        num_files_copied += _copy_file(os.path.join(qt_base, 'LGPL_EXCEPTION.TXT'),
+                                   os.path.join(dst_qtlib, 'LGPL_EXCEPTION.TXT'))
         num_files_copied += _copy_file(os.path.join(qt_base, 'QT-NOTICE.TXT'),
                                    os.path.join(dst_qtlib, 'QT-NOTICE.TXT'))
-        num_files_copied += _copy_file(os.path.join(qt_base, 'ThirdPartySoftware_Listing.txt'),
-                                   os.path.join(dst_qtlib, 'ThirdPartySoftware_Listing.txt'))
 
         qt_tga_files = platform_details.attributes.get('qtga_subfolders', [])
         
@@ -1570,6 +1601,67 @@ def qtlib_bootstrap(self, platform, configuration):
                 break
 
         return has_module
+
+    def _bootstrap_qtwebengine(ctx, dst, platform_details, patterns, is_required_pattern):
+        # Used to track number of files copied by this function
+        num_files_copied = 0
+
+        is_windows = platform_detail.attributes.get('is_windows', False)
+        if not is_windows:
+            return num_files_copied
+
+        # Write the qt.conf file. This is required so that Qt can find QtWebEngineProcess.exe
+        with open(os.path.join(dst, 'qt.conf'), 'w') as f:
+            f.write(QT_CONF)
+
+        # Create the qtlibs subfolder if required
+        dst_qtlib = os.path.normcase(os.path.join(dst, 'qtlibs'))
+        if not os.path.exists(dst_qtlib):
+            os.makedirs(dst_qtlib)
+
+        # If qt fails to configure, the folder copies below will give meaningless errors.
+        # Test for this condition and error out here
+        if not ctx.env.QT_BIN_DIR or not ctx.env.QT_RESOURCES_DIR or not ctx.env.QT_TRANSLATIONS_DIR:
+            Logs.warn('unable to find QT resources or translations')
+            return num_files_copied
+
+        # QtWebEngineProcess.exe
+        dst_qtbin = os.path.normcase(os.path.join(dst_qtlib, 'bin'))
+        if not os.path.exists(dst_qtbin):
+            os.makedirs(dst_qtbin)
+
+        qtwebengineprocess = 'QtWebEngineProcess' + ('d.exe' if is_debug else '.exe')
+
+        num_files_copied += _copy_file(os.path.join(ctx.env.QT_BIN_DIR, qtwebengineprocess),
+                                                os.path.join(dst_qtbin, qtwebengineprocess))
+
+        # QtWebEngineProcess dlls
+        num_files_copied += _copy_qt_dlls(self, dst_qtbin, QT5_WEBENGINE_DLLS)
+
+        # Write the QtWebEngineProcess qt.conf file. This is required so that QtWebEngineProcess.exe
+        # can find its dependencies and resources
+        with open(os.path.join(dst_qtbin, 'qt.conf'), 'w') as f:
+            f.write(QT_WEBENGINE_CONF)
+
+        # Resources and ICU data
+        resources_pattern = patterns
+        if 'resources' in patterns:
+            resources_pattern = patterns['resources']
+
+        num_files_copied += _copy_folder(ctx.env.QT_RESOURCES_DIR, dst_qtlib, 'resources', resources_pattern, is_required_pattern)
+
+        # Translations
+        dst_qttranslations = os.path.normcase(os.path.join(dst_qtlib, 'translations'))
+        if not os.path.exists(dst_qttranslations):
+            os.makedirs(dst_qttranslations)
+
+        translations_pattern = patterns
+        if 'translations' in patterns:
+            translations_pattern = patterns['translations']
+
+        num_files_copied += _copy_folder(ctx.env.QT_TRANSLATIONS_DIR, dst_qttranslations, 'qtwebengine_locales', translations_pattern, is_required_pattern)
+
+        return num_files_copied
 
     is_copy_pdbs = self.is_option_true('copy_3rd_party_pdbs')
 
@@ -1638,6 +1730,12 @@ def qtlib_bootstrap(self, platform, configuration):
                                           platform_details,
                                           ignore_lib_patterns,
                                           False)
+
+        files_copied = _bootstrap_qtwebengine(self,
+                                              output_path,
+                                              platform_details,
+                                              ignore_lib_patterns,
+                                              False)
 
         lmbr_configuration_key = 'debug' if is_debug else 'profile'
         lmbr_platform_key = ''

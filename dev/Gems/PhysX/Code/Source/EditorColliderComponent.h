@@ -136,6 +136,8 @@ namespace PhysX
 
         // DisplayCallback
         void Display(AzFramework::DebugDisplayRequests& debugDisplay) const;
+        void DisplayMeshCollider(AzFramework::DebugDisplayRequests& debugDisplay) const;
+        void DisplayPrimitiveCollider(AzFramework::DebugDisplayRequests& debugDisplay) const;
 
         // AZ::Data::AssetBus::Handler
         void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
@@ -203,11 +205,12 @@ namespace PhysX
         bool IsAssetConfig() const;
 
         void CreateStaticEditorCollider();
+        
+        void BuildDebugDrawMesh() const;
 
         using ComponentModeDelegate = AzToolsFramework::ComponentModeFramework::ComponentModeDelegate;
         ComponentModeDelegate m_componentModeDelegate; ///< Responsible for detecting ComponentMode activation
                                                        ///< and creating a concrete ComponentMode.
-
 
         AZStd::unique_ptr<Physics::RigidBodyStatic> m_editorBody;
 
@@ -217,6 +220,8 @@ namespace PhysX
 
         AZ::Data::AssetId FindMatchingPhysicsAsset(const AZ::Data::Asset<AZ::Data::AssetData>& renderMeshAsset,
             const AZStd::vector<AZ::Data::AssetId>& physicsAssets);
+
+        void ValidateMaterialSurfaces();
 
         DebugDraw::Collider m_colliderDebugDraw;
     };

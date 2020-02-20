@@ -42,8 +42,7 @@ namespace PhysX
         Physics::WorldConfiguration editorWorldConfiguration = configuration.m_worldConfiguration;
         editorWorldConfiguration.m_fixedTimeStep = 0.0f;
 
-        Physics::SystemRequestBus::BroadcastResult(m_editorWorld, &Physics::SystemRequests::CreateWorldCustom,
-            Physics::EditorPhysicsWorldId, editorWorldConfiguration);
+        m_editorWorld = AZ::Interface<Physics::System>::Get()->CreateWorldCustom(Physics::EditorPhysicsWorldId, editorWorldConfiguration);
 
         PhysX::RegisterConfigStringLineEditHandler(); // Register custom unique string line edit control
 

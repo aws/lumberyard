@@ -36,13 +36,12 @@ namespace EMStudio
 
         // transform info
         m_position = transformData->GetCurrentPose()->GetLocalSpaceTransform(nodeIndex).mPosition;
-        const MCore::Quaternion& quat = transformData->GetCurrentPose()->GetLocalSpaceTransform(nodeIndex).mRotation;
-        m_rotation = AZ::Quaternion(quat.x, quat.y, quat.z, quat.w);
+        m_rotation = transformData->GetCurrentPose()->GetLocalSpaceTransform(nodeIndex).mRotation;
 
-#ifdef EMFX_SCALECODE
+#ifndef EMFX_SCALE_DISABLED
         m_scale = transformData->GetCurrentPose()->GetLocalSpaceTransform(nodeIndex).mScale;
 #else
-        m_scale = AZ::Vector3(1.0f, 1.0f, 1.0f);
+        m_scale = AZ::Vector3::CreateOne();
 #endif
 
         {
@@ -129,7 +128,7 @@ namespace EMStudio
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_rotation, "Rotation", "")
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_scale, "Scale", "")
             ->Attribute(AZ::Edit::Attributes::Visibility,
-#ifdef EMFX_SCALECODE
+#ifndef EMFX_SCALE_DISABLED
             true
 #else
             false

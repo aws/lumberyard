@@ -15,7 +15,7 @@
 #include <AzCore/Component/Component.h>
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
-#include <AzCore/OutCome/OutCome.h>
+#include <AzCore/Outcome/Outcome.h>
 
 namespace ImageProcessing
 {

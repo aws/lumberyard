@@ -51,32 +51,12 @@ namespace AzToolsFramework
 
         EditorLockComponent::~EditorLockComponent()
         {
+            EditorLockComponentRequestBus::Handler::BusDisconnect();
         }
 
         void EditorLockComponent::Init()
         {
-        }
-
-        void EditorLockComponent::Activate()
-        {
-            EditorComponentBase::Activate();
             EditorLockComponentRequestBus::Handler::BusConnect(GetEntityId());
-
-            // send event for any handlers listening for this entity's lock state set up prior to activation
-            // notify individual entities connected to this bus
-            EditorEntityLockComponentNotificationBus::Event(
-                m_entity->GetId(), &EditorEntityLockComponentNotifications::OnEntityLockChanged, m_locked);
-
-            // notify systems connected to this bus of the entity that changed
-            EditorContextLockComponentNotificationBus::Event(
-                GetEntityContextId(), &EditorContextLockComponentNotifications::OnEntityLockChanged,
-                m_entity->GetId(), m_locked);
-        }
-
-        void EditorLockComponent::Deactivate()
-        {
-            EditorLockComponentRequestBus::Handler::BusDisconnect();
-            EditorComponentBase::Deactivate();
         }
 
         void EditorLockComponent::SetLocked(bool locked)
@@ -90,12 +70,7 @@ namespace AzToolsFramework
 
                 // notify individual entities connected to this bus
                 EditorEntityLockComponentNotificationBus::Event(
-                    m_entity->GetId(), &EditorEntityLockComponentNotifications::OnEntityLockChanged, locked);
-
-                // notify systems connected to this bus of the entity that changed
-                EditorContextLockComponentNotificationBus::Event(
-                    GetEntityContextId(), &EditorContextLockComponentNotifications::OnEntityLockChanged,
-                    m_entity->GetId(), locked);
+                    m_entity->GetId(), &EditorEntityLockComponentNotifications::OnEntityLockFlagChanged, locked);
             }
         }
 

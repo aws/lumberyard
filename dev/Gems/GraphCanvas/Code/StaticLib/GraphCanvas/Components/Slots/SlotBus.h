@@ -211,7 +211,7 @@ namespace GraphCanvas
 
         //! Get the name, or label, of the slot.
         //! These generally appear as a label against \ref Input or \ref Output slots.
-        virtual const AZStd::string& GetName() const = 0;
+        virtual const AZStd::string GetName() const = 0;
         //! Set the slot's name.
         virtual void SetName(const AZStd::string&) = 0;
 
@@ -220,7 +220,7 @@ namespace GraphCanvas
         virtual void SetTranslationKeyedName(const TranslationKeyedString&) = 0;
 
         //! Get the tooltip for the slot.
-        virtual const AZStd::string& GetTooltip() const = 0;
+        virtual const AZStd::string GetTooltip() const = 0;
         //! Set the tooltip this slot should display.
         virtual void SetTooltip(const AZStd::string&) = 0;
 

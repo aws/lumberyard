@@ -7,12 +7,11 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-import os
 
 def build(bld):
 
     bld.DefineGem(
-        file_list   = ['nativeui.waf_files'],
+        file_list = ['nativeui.waf_files'],
         disable_pch = True,
         includes    = [bld.Path('Code/CryEngine/CryCommon')
                       ],

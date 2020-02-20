@@ -12,8 +12,6 @@
 
 #include "StdAfx.h"
 
-#ifdef AZ_PLATFORM_WINDOWS
-
 #include <AzToolsFramework/Process/ProcessCommunicator.h>
 
 namespace AzToolsFramework
@@ -281,4 +279,3 @@ namespace AzToolsFramework
     }
 } // namespace AzToolsFramework
 
-#endif // AZ_PLATFORM_WINDOWS

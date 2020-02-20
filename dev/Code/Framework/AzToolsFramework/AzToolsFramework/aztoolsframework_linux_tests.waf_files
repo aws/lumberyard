@@ -1,0 +1,8 @@
+{
+    "none": {
+        "ComponentMode": [
+            "ComponentMode/EditorBaseComponentMode.h",
+            "ComponentMode/EditorBaseComponentMode.cpp"
+        ]
+    }
+}

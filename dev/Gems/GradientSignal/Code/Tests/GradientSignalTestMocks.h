@@ -18,6 +18,7 @@
 #include <AzCore/Component/TransformBus.h>
 
 #include <GradientSignal/Ebuses/GradientRequestBus.h>
+#include <GradientSignal/Ebuses/GradientPreviewContextRequestBus.h>
 #include <GradientSignal/GradientSampler.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 #include <SurfaceData/SurfaceDataSystemRequestBus.h>
@@ -35,7 +36,7 @@ namespace UnitTest
         void SetUp() override
         {
             AZ::ComponentApplication::Descriptor appDesc;
-            appDesc.m_memoryBlocksByteSize = 32 * 1024 * 1024;
+            appDesc.m_memoryBlocksByteSize = 128 * 1024 * 1024;
             m_systemEntity = m_app.Create(appDesc);
             m_app.AddEntity(m_systemEntity);
         }
@@ -124,10 +125,13 @@ namespace UnitTest
     struct MockGradientArrayRequestsBus
         : public GradientSignal::GradientRequestBus::Handler
     {
-        MockGradientArrayRequestsBus(const AZ::EntityId& id, const AZStd::vector<float>& data, int dataSize)
-            : m_getValue(data), m_dataSize(dataSize)
+        MockGradientArrayRequestsBus(const AZ::EntityId& id, const AZStd::vector<float>& data, int rowSize)
+            : m_getValue(data), m_rowSize(rowSize)
         {
             BusConnect(id);
+
+            // We expect each value to get requested exactly once.
+            m_positionsRequested.reserve(data.size());
         }
 
         ~MockGradientArrayRequestsBus()
@@ -138,8 +142,10 @@ namespace UnitTest
         float GetValue(const GradientSignal::GradientSampleParams& sampleParams) const override
         {
             const auto& pos = sampleParams.m_position;
-            const int index = azlossy_caster<float>(pos.GetY() * float(m_dataSize) + pos.GetX());
-            
+            const int index = azlossy_caster<float>(pos.GetY() * float(m_rowSize) + pos.GetX());
+
+            m_positionsRequested.push_back(sampleParams.m_position);
+
             return m_getValue[index];
         }
 
@@ -149,7 +155,8 @@ namespace UnitTest
         }
 
         AZStd::vector<float> m_getValue;
-        int m_dataSize;
+        int m_rowSize;
+        mutable AZStd::vector<AZ::Vector3> m_positionsRequested;
     };
 
     struct MockShapeComponentHandler
@@ -299,4 +306,31 @@ namespace UnitTest
         }
 
     };
+
+    struct MockGradientPreviewContextRequestBus
+        : public GradientSignal::GradientPreviewContextRequestBus::Handler
+    {
+        MockGradientPreviewContextRequestBus(const AZ::EntityId& id, const AZ::Aabb& previewBounds, bool constrainToShape)
+            : m_previewBounds(previewBounds)
+            , m_constrainToShape(constrainToShape)
+            , m_id(id)
+        {
+            BusConnect(id);
+        }
+
+        ~MockGradientPreviewContextRequestBus()
+        {
+            BusDisconnect();
+        }
+
+        AZ::EntityId GetPreviewEntity() const override { return m_id; }
+        virtual AZ::Aabb GetPreviewBounds() const { return m_previewBounds; }
+        virtual bool GetConstrainToShape() const { return m_constrainToShape; }
+
+    protected:
+        AZ::EntityId m_id;
+        AZ::Aabb m_previewBounds;
+        bool m_constrainToShape;
+    };
+
 }

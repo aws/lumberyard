@@ -71,16 +71,21 @@ namespace AZ
                 TeardownAllocator();
             }
 
-            void SetupEnvironment()
+            void SetupEnvironment(u32 maxNumReads, u32 maxNumJobs)
             {
                 m_buffer = new u32[m_fakeFileLength >> 2];
 
                 m_mock = AZStd::make_shared<StreamStackEntryMock>();
-                m_decompressor = AZStd::make_shared<FullFileDecompressor>(1, 1);
+                m_decompressor = AZStd::make_shared<FullFileDecompressor>(maxNumReads, maxNumJobs);
 
                 m_context = new StreamerContext();
                 m_decompressor->SetContext(*m_context);
                 m_decompressor->SetNext(m_mock);
+            }
+
+            void SetupEnvironment()
+            {
+                SetupEnvironment(1, 1);
             }
 
             void MockReadCalls(ReadResult mockResult)
@@ -147,9 +152,13 @@ namespace AZ
                 m_context->MarkRequestAsCompleted(request);
             }
 
-            static bool Decompressor(const CompressionInfo&, const void* compressed, size_t compressedSize, void* uncompressed, size_t uncompressedBufferSize)
+            static bool Decompressor(bool sleep, const void* compressed, size_t compressedSize, void* uncompressed, size_t uncompressedBufferSize)
             {
                 AZ_Assert(compressedSize == uncompressedBufferSize, "Fake decompression algorithm only supports copying data.");
+                if (sleep)
+                {
+                    AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(80));
+                }
                 memcpy(uncompressed, compressed, compressedSize);
                 return true;
             }
@@ -172,7 +181,12 @@ namespace AZ
                 }
                 else
                 {
-                    compressionInfo.m_decompressor = &FullDecompressorTest::Decompressor;
+                    compressionInfo.m_decompressor = [](const CompressionInfo&, const void* compressed,
+                        size_t compressedSize, void* uncompressed, size_t uncompressedBufferSize) -> bool
+                    {
+                        return FullDecompressorTest::Decompressor(false,
+                            compressed, compressedSize, uncompressed, uncompressedBufferSize);
+                    };
                 }
 
                 FileRequest* request = m_context->GetNewExternalRequest();
@@ -190,15 +204,73 @@ namespace AZ
                 m_context->RecycleRequest(request);
             }
 
-            void VerifyReadBuffer(u64 offset, u64 size)
+            void ProcessMultipleCompressedReads()
+            {
+                using ::testing::_;
+                using ::testing::Return;
+
+                static const constexpr size_t count = 16;
+
+                EXPECT_CALL(*m_mock, ExecuteRequests())
+                    .WillOnce(Return(true))
+                    .WillRepeatedly(Return(false));
+                EXPECT_CALL(*m_mock, PrepareRequest(_)).Times(count);
+
+                ON_CALL(*m_mock, GetFileSize(_, _))
+                    .WillByDefault(Invoke(this, &FullDecompressorTest::GetFileSize));
+                ON_CALL(*m_mock, PrepareRequest(_))
+                    .WillByDefault(Invoke(this, &FullDecompressorTest::PrepareReadRequest));
+
+                CompressionInfo compressionInfo;
+                compressionInfo.m_compressedSize = m_fakeFileLength;
+                compressionInfo.m_isCompressed = true;
+                compressionInfo.m_offset = 0;
+                compressionInfo.m_uncompressedSize = m_fakeFileLength;
+                compressionInfo.m_decompressor = [](const CompressionInfo&, const void* compressed,
+                    size_t compressedSize, void* uncompressed, size_t uncompressedBufferSize) -> bool
+                {
+                    return FullDecompressorTest::Decompressor(true,
+                        compressed, compressedSize, uncompressed, uncompressedBufferSize);
+                };
+
+                FileRequest* requests[count];
+                AZStd::unique_ptr<u32[]> buffers[count];
+                for (size_t i = 0; i < count; ++i)
+                {
+                    buffers[i] = AZStd::unique_ptr<u32[]>(new u32[m_fakeFileLength >> 2]);
+                    requests[i] = m_context->GetNewExternalRequest();
+                    requests[i]->CreateCompressedRead(nullptr, nullptr, compressionInfo, buffers[i].get(), 0, m_fakeFileLength);
+                    m_decompressor->PrepareRequest(requests[i]);
+                }
+
+                AZStd::vector<FileRequest*> dummyRequests;
+                while (m_decompressor->ExecuteRequests() || m_decompressor->GetNumRunningJobs() > 0)
+                {
+                    m_context->FinalizeCompletedRequests(dummyRequests);
+                }
+
+                for (size_t i = 0; i < count; ++i)
+                {
+                    VerifyReadBuffer(buffers[i].get(), 0, m_fakeFileLength);
+                    EXPECT_EQ(FileRequest::Status::Completed, requests[i]->GetStatus());
+                    m_context->RecycleRequest(requests[i]);
+                }
+            }
+
+            void VerifyReadBuffer(u32* buffer, u64 offset, u64 size)
             {
                 size = size >> 2;
                 for (u64 i = 0; i < size; ++i)
                 {
                     // Using assert here because in case of a problem EXPECT would 
                     // cause a large amount of log noise.
-                    ASSERT_EQ(m_buffer[i], offset + (i << 2));
+                    ASSERT_EQ(buffer[i], offset + (i << 2));
                 }
+            }
+
+            void VerifyReadBuffer(u64 offset, u64 size)
+            {
+                VerifyReadBuffer(m_buffer, offset, size);
             }
 
             u32* m_buffer;
@@ -259,6 +331,30 @@ namespace AZ
             SetupEnvironment();
             MockReadCalls(ReadResult::Success);
             ProcessCompressedRead(0, m_fakeFileLength, CompressionState::Corrupted, FileRequest::Status::Failed);
+        }
+
+        TEST_F(FullDecompressorTest, DecompressedRead_MultipleRequestsWithSingleJob_AllRequestsComplete)
+        {
+            SetupEnvironment(4, 1);
+            ProcessMultipleCompressedReads();
+        }
+
+        TEST_F(FullDecompressorTest, DecompressedRead_MultipleRequestsWithSingleRead_AllRequestsComplete)
+        {
+            SetupEnvironment(1, 4);
+            ProcessMultipleCompressedReads();
+        }
+
+        TEST_F(FullDecompressorTest, DecompressedRead_MultipleRequestsWithSingleReadAndJob_AllRequestsComplete)
+        {
+            SetupEnvironment(1, 1);
+            ProcessMultipleCompressedReads();
+        }
+
+        TEST_F(FullDecompressorTest, DecompressedRead_MultipleRequestsWithMultipleReadAndJobs_AllRequestsComplete)
+        {
+            SetupEnvironment(4, 4);
+            ProcessMultipleCompressedReads();
         }
     } // namespace IO
 } // namespace AZ

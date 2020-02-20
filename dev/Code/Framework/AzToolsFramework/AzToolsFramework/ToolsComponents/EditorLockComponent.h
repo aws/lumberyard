@@ -18,9 +18,7 @@ namespace AzToolsFramework
 {
     namespace Components
     {
-        /**
-         * Controls whether an Entity is frozen/locked in the Editor.
-         */
+         //! Controls whether an Entity is frozen/locked in the Editor.
         class EditorLockComponent
             : public AzToolsFramework::Components::EditorComponentBase
             , public EditorLockComponentRequestBus::Handler
@@ -30,25 +28,18 @@ namespace AzToolsFramework
             static void Reflect(AZ::ReflectContext* context);
             static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& services);
             static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& services);
-            
-            virtual ~EditorLockComponent() override;
 
-            ////////////////////////////////////////////////////////////////////
-            // EditorLockComponentRequestBus
+            ~EditorLockComponent();
+
+            // EditorLockComponentRequestBus ...
             void SetLocked(bool locked) override;
             bool GetLocked() override;
-            ////////////////////////////////////////////////////////////////////
 
         private:
-            ////////////////////////////////////////////////////////////////////
-            // AZ::Entity
+            // AZ::Entity ...
             void Init() override;
-            void Activate() override;
-            void Deactivate() override;
-            ////////////////////////////////////////////////////////////////////
 
-            /// Whether this entity is locked
-            bool m_locked = false;
+            bool m_locked = false; //!< Whether this entity is individually set to be locked.
         };
-    }
-}
+    } // namespace Components
+} // namespace AzToolsFramework

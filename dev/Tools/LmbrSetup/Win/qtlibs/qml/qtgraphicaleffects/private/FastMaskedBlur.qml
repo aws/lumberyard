@@ -1,45 +1,44 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2017 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the Qt Graphical Effects module.
 **
-** $QT_BEGIN_LICENSE:BSD$
-** You may use this file under the terms of the BSD license as follows:
+** $QT_BEGIN_LICENSE:LGPL$
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and The Qt Company. For licensing terms
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
-** "Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions are
-** met:
-**   * Redistributions of source code must retain the above copyright
-**     notice, this list of conditions and the following disclaimer.
-**   * Redistributions in binary form must reproduce the above copyright
-**     notice, this list of conditions and the following disclaimer in
-**     the documentation and/or other materials provided with the
-**     distribution.
-**   * Neither the name of The Qt Company Ltd nor the names of its
-**     contributors may be used to endorse or promote products derived
-**     from this software without specific prior written permission.
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 3 as published by the Free Software
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
+** packaging of this file. Please review the following information to
+** ensure the GNU Lesser General Public License version 3 requirements
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
-**
-** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-** LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-** A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-** OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-** LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
 
-import QtQuick 2.0
-import QtGraphicalEffects.private 1.0
+import QtQuick 2.12
+import QtGraphicalEffects.private 1.12
 
 Item {
     id: rootItem
@@ -69,42 +68,9 @@ Item {
         smooth: rootItem.blur > 0
     }
 
-    property string __internalBlurVertexShader: "
-        attribute highp vec4 qt_Vertex;
-        attribute highp vec2 qt_MultiTexCoord0;
-        uniform highp mat4 qt_Matrix;
-        uniform highp float yStep;
-        uniform highp float xStep;
-        varying highp vec2 qt_TexCoord0;
-        varying highp vec2 qt_TexCoord1;
-        varying highp vec2 qt_TexCoord2;
-        varying highp vec2 qt_TexCoord3;
+    property string __internalBlurVertexShader: "qrc:/qt-project.org/imports/QtGraphicalEffects/shaders/fastblur_internal.vert"
 
-        void main() {
-            qt_TexCoord0 = vec2(qt_MultiTexCoord0.x + xStep, qt_MultiTexCoord0.y + yStep * 0.36);
-            qt_TexCoord1 = vec2(qt_MultiTexCoord0.x + xStep * 0.36, qt_MultiTexCoord0.y - yStep);
-            qt_TexCoord2 = vec2(qt_MultiTexCoord0.x - xStep * 0.36, qt_MultiTexCoord0.y + yStep);
-            qt_TexCoord3 = vec2(qt_MultiTexCoord0.x - xStep, qt_MultiTexCoord0.y - yStep * 0.36);
-            gl_Position = qt_Matrix * qt_Vertex;
-        }
-    "
-
-    property string __internalBlurFragmentShader: "
-        uniform lowp sampler2D source;
-        uniform lowp float qt_Opacity;
-        varying highp vec2 qt_TexCoord0;
-        varying highp vec2 qt_TexCoord1;
-        varying highp vec2 qt_TexCoord2;
-        varying highp vec2 qt_TexCoord3;
-
-        void main() {
-            highp vec4 sourceColor = (texture2D(source, qt_TexCoord0) +
-            texture2D(source, qt_TexCoord1) +
-            texture2D(source, qt_TexCoord2) +
-            texture2D(source, qt_TexCoord3)) * 0.25;
-            gl_FragColor = sourceColor * qt_Opacity;
-        }
-   "
+    property string __internalBlurFragmentShader: "qrc:/qt-project.org/imports/QtGraphicalEffects/shaders/fastblur_internal.frag"
 
     ShaderEffect {
         id: mask0
@@ -276,58 +242,6 @@ Item {
         width: transparentBorder ? parent.width + 128 : parent.width
         height: transparentBorder ? parent.height + 128 : parent.height
 
-        fragmentShader: "
-            uniform lowp sampler2D mask;
-            uniform lowp sampler2D source1;
-            uniform lowp sampler2D source2;
-            uniform lowp sampler2D source3;
-            uniform lowp sampler2D source4;
-            uniform lowp sampler2D source5;
-            uniform lowp sampler2D source6;
-            uniform lowp float lod;
-            uniform lowp float qt_Opacity;
-            varying mediump vec2 qt_TexCoord0;
-
-            mediump float weight(mediump float v) {
-                if (v <= 0.0)
-                    return 1.0;
-
-                if (v >= 0.5)
-                    return 0.0;
-
-                return 1.0 - v * 2.0;
-            }
-
-            void main() {
-
-                lowp vec4 maskColor = texture2D(mask, qt_TexCoord0);
-                mediump float l = lod * maskColor.a;
-
-                mediump float w1 = weight(abs(l - 0.100));
-                mediump float w2 = weight(abs(l - 0.300));
-                mediump float w3 = weight(abs(l - 0.500));
-                mediump float w4 = weight(abs(l - 0.700));
-                mediump float w5 = weight(abs(l - 0.900));
-                mediump float w6 = weight(abs(l - 1.100));
-
-                mediump float sum = w1 + w2 + w3 + w4 + w5 + w6;
-                mediump float weight1 = w1 / sum;
-                mediump float weight2 = w2 / sum;
-                mediump float weight3 = w3 / sum;
-                mediump float weight4 = w4 / sum;
-                mediump float weight5 = w5 / sum;
-                mediump float weight6 = w6 / sum;
-
-                lowp vec4 sourceColor = texture2D(source1, qt_TexCoord0) * weight1;
-                sourceColor += texture2D(source2, qt_TexCoord0) * weight2;
-                sourceColor += texture2D(source3, qt_TexCoord0) * weight3;
-                sourceColor += texture2D(source4, qt_TexCoord0) * weight4;
-                sourceColor += texture2D(source5, qt_TexCoord0) * weight5;
-                sourceColor += texture2D(source6, qt_TexCoord0) * weight6;
-
-                gl_FragColor = sourceColor * qt_Opacity;
-
-            }
-        "
+        fragmentShader: "qrc:/qt-project.org/imports/QtGraphicalEffects/shaders/fastmaskedblur.frag"
     }
 }

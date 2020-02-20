@@ -64,6 +64,10 @@
         "Input/Devices/VirtualKeyboard/Platform/Windows":
         [
             "../Common/Unimplemented/AzFramework/Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_Unimplemented.cpp"
+        ],
+        "Windowing":
+        [
+            "AzFramework/Windowing/NativeWindow_Windows.cpp"
         ]
     }
 }

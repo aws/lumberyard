@@ -132,7 +132,7 @@ class QString;
 class QColor;
 class QPixmap;
 
-#if !AZ_TRAIT_OS_PLATFORM_APPLE
+#if !AZ_TRAIT_OS_PLATFORM_APPLE && !defined(AZ_PLATFORM_LINUX)
 typedef void* HANDLE;
 struct HWND__;
 typedef HWND__* HWND;

@@ -108,7 +108,7 @@ namespace ProjectSettingsTool
         {
             // There was a known issue on android with '.' used in directory names
             // causing problems so it has been omitted from use
-            return RegularExpressionValidator("[\\w-,]+", name);
+            return RegularExpressionValidator("[\\w,-]+", name);
         }
 
         RetType FileNameOrEmpty(const QString& name)

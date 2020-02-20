@@ -108,8 +108,8 @@ namespace AzToolsFramework
         , private Camera::EditorCameraNotificationBus::Handler
         , private PropertyEditorChangeNotificationBus::Handler
         , private ComponentModeFramework::EditorComponentModeNotificationBus::Handler
-        , private EditorContextVisibilityNotificationBus::Handler
-        , private EditorContextLockComponentNotificationBus::Handler
+        , private EditorEntityVisibilityNotificationBus::Router
+        , private EditorEntityLockComponentNotificationBus::Router
         , private EditorManipulatorCommandUndoRedoRequestBus::Handler
     {
     public:
@@ -227,10 +227,10 @@ namespace AzToolsFramework
         void OnViewportViewEntityChanged(const AZ::EntityId& newViewId) override;
 
         // EditorContextVisibilityNotificationBus ...
-        void OnEntityVisibilityChanged(AZ::EntityId entityId, bool visibility) override;
+        void OnEntityVisibilityChanged(bool visibility) override;
 
         // EditorContextLockComponentNotificationBus ...
-        void OnEntityLockChanged(AZ::EntityId entityId, bool locked) override;
+        void OnEntityLockChanged(bool locked) override;
 
         // EditorComponentModeNotificationBus ...
         void EnteredComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes) override;

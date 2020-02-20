@@ -13,6 +13,7 @@
 #include "MotionSetCommands.h"
 #include "CommandManager.h"
 #include <MCore/Source/Compare.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/FileSystem.h>
 #include <EMotionFX/Source/MotionSystem.h>
 #include <EMotionFX/Source/MotionManager.h>

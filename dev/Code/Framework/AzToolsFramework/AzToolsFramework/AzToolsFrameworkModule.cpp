@@ -29,6 +29,7 @@
 #include <AzToolsFramework/Slice/SliceDependencyBrowserComponent.h>
 #include <AzToolsFramework/Slice/SliceMetadataEntityContextComponent.h>
 #include <AzToolsFramework/SourceControl/PerforceComponent.h>
+#include <AzToolsFramework/ToolsComponents/AzToolsFrameworkConfigurationSystemComponent.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzToolsFramework/ToolsComponents/EditorDisabledCompositionComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponent.h>
@@ -86,6 +87,7 @@ namespace AzToolsFramework
             AzToolsFramework::Components::EditorComponentAPIComponent::CreateDescriptor(),
             AzToolsFramework::Components::PropertyTreeEditorComponent::CreateDescriptor(),
             AzToolsFramework::Components::EditorEntitySearchComponent::CreateDescriptor(),
+            AzToolsFramework::AzToolsFrameworkConfigurationSystemComponent::CreateDescriptor(),
         });
     }
 }

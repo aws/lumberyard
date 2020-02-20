@@ -159,7 +159,7 @@ namespace LumberyardLauncher
             attr_value)
         {
             char dynamicModuleFullPath[AZ_MAX_PATH_LEN] = { '\0' };
-            azsnprintf(dynamicModuleFullPath, AZ_ARRAY_SIZE(dynamicModuleFullPath), "%s%s", baseExePath, attr_value->value());
+            azsnprintf(dynamicModuleFullPath, AZ_ARRAY_SIZE(dynamicModuleFullPath), AZ_TRAIT_SHARED_LIBRARY_FILENAME_FORMAT, baseExePath, attr_value->value());
             dynamicModuleList.push_back(std::string(dynamicModuleFullPath));
             moduleCount++;
         }
@@ -193,7 +193,7 @@ namespace LumberyardLauncher
         for (const char* additionalTestModule : additionalTestModules)
         {
             // Form the full path to the module and add it to the list if it exists
-            azsnprintf(additionalModuleFullPath, AZ_ARRAY_SIZE(additionalModuleFullPath), "%s%s", baseExePath, additionalTestModule);
+            azsnprintf(additionalModuleFullPath, AZ_ARRAY_SIZE(additionalModuleFullPath), AZ_TRAIT_SHARED_LIBRARY_FILENAME_FORMAT, baseExePath, additionalTestModule);
             dynamicModuleList.emplace_back(additionalModuleFullPath);
         }
 
@@ -313,6 +313,8 @@ namespace LumberyardLauncher
         return evaluatedArgVs;
     }
 
+    int RunInternalUnitTests(int argc, char** argv);
+
     /// Run all the unit tests applicable for the current game project
     ///
     /// @param baseExePath      The folder of the current executable that will be used to resolve the paths for the unit test modules
@@ -347,6 +349,20 @@ namespace LumberyardLauncher
         std::list<std::string> missingModules;
         std::list<std::string> invalidModules;
 
+        const char* selfModuleName = "ClientLauncher";
+
+        int internalTestResults = RunInternalUnitTests(argc,argv);
+        if (internalTestResults == 0)
+        {
+            successfulTestModules.emplace_back(selfModuleName);
+        }
+        else
+        {
+            failedTestModules.emplace_back(selfModuleName);
+            result = ReturnCode::ErrUnitTestFailure;
+        }
+
+
         AZ::Test::Platform testPlatform = AZ::Test::GetPlatform();
         for (std::string& module : moduleToList)
         {
@@ -369,24 +385,32 @@ namespace LumberyardLauncher
                 continue;
             }
 
-            auto testFunction = testModule->GetFunction("AzRunUnitTests");
-            if (!testFunction->IsValid())
+            try
             {
-                AZ_TracePrintf("UnitTestLauncher", "Unable to run unit test on '%s'. Module is not a valid unit test module.", module.c_str());
-                invalidModules.push_back(module);
-                continue;
+                auto testFunction = testModule->GetFunction("AzRunUnitTests");
+                if (!testFunction->IsValid())
+                {
+                    AZ_TracePrintf("UnitTestLauncher", "Unable to run unit test on '%s'. Module is not a valid unit test module.", module.c_str());
+                    invalidModules.push_back(module);
+                    continue;
+                }
+                auto testResult = (*testFunction)(processedArgC, evaluatedArgV);
+                if (testResult == 0)
+                {
+                    successfulTestModules.push_back(module);
+                }
+                else
+                {
+                    failedTestModules.push_back(module);
+                    result = ReturnCode::ErrUnitTestFailure;
+                }
             }
-
-            auto testResult = (*testFunction)(processedArgC, evaluatedArgV);
-            if (testResult == 0)
-            {
-                successfulTestModules.push_back(module);
-            }
-            else
+            catch (...)
             {
                 failedTestModules.push_back(module);
                 result = ReturnCode::ErrUnitTestFailure;
             }
+
         }
 
         // Report the results
@@ -425,6 +449,15 @@ namespace LumberyardLauncher
         return result;
 #endif // defined(AZ_MONOLITHIC_BUILD)
     }
+
+    int RunInternalUnitTests(int argc, char** argv)
+    {
+        ::testing::InitGoogleMock(&argc, argv);
+        return RUN_ALL_TESTS();
+    }
+
+
+
 }
 #endif // AZ_TESTS_ENABLED
 

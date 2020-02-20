@@ -14,6 +14,7 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Math/Color.h>
 #include <AzCore/Component/EntityId.h>
+#include <AzCore/Interface/Interface.h>
 #include <AzFramework/Asset/GenericAssetHandler.h>
 
 namespace AZ
@@ -114,17 +115,28 @@ namespace Physics
     };
     using EditorWorldBus = AZ::EBus<EditorWorldRequests>;
 
-    /// Physics system global requests.
-    class SystemRequests
-        : public AZ::EBusTraits
+    class SystemRequestsTraits 
+        : public AZ::EBusTraits 
     {
     public:
         // EBusTraits
         // singleton pattern
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+    };
 
-        virtual ~SystemRequests() = default;
+    /// Physics system global requests.
+    class System
+    {
+    public:
+        AZ_TYPE_INFO(System, "{35965894-BFBC-437C-A4FB-E22F3DB09ACF}")
+
+        System() = default;
+        virtual ~System() = default;
+
+        // AZ::Interface requires these to be deleted.
+        System(System&&) = delete;
+        System& operator=(System&&) = delete;
 
         /// Creates a physical world with default settings.
         /// @param id World ID.
@@ -201,7 +213,8 @@ namespace Physics
         virtual void ReleaseNativeMeshObject(void* nativeMeshObject) = 0;
     };
 
-    typedef AZ::EBus<SystemRequests> SystemRequestBus;
+    using SystemRequests = System;
+    using SystemRequestBus = AZ::EBus<SystemRequests, SystemRequestsTraits>;
 
     /// Physics character system global requests.
     class CharacterSystemRequests

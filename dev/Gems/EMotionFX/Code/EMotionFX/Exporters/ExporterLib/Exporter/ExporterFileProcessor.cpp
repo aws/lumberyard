@@ -14,6 +14,7 @@
 #include "ExporterFileProcessor.h"
 #include "Exporter.h"
 #include <AzCore/Debug/Timer.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/StringConversions.h>
 
 

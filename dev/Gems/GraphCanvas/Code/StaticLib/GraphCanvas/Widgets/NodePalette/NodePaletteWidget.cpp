@@ -57,7 +57,11 @@ namespace GraphCanvas
         {
             painter->save();
 
+#if (QT_VERSION < QT_VERSION_CHECK(5, 11, 0))
             QStyleOptionViewItemV4 options = option;
+#else
+            QStyleOptionViewItem options = option;
+#endif
             initStyleOption(&options, index);
 
             // paint the original node item

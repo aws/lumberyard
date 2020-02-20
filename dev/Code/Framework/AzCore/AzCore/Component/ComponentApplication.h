@@ -192,6 +192,7 @@ namespace AZ
         virtual Entity* Create(const Descriptor& descriptor,
             const StartupParameters& startupParameters = StartupParameters());
         virtual void Destroy();
+        virtual void DestroyAllocator(); // Called at the end of Destroy(). Applications can override to do tear down work right before allocator is destroyed.
 
         //////////////////////////////////////////////////////////////////////////
         // ComponentApplicationRequests

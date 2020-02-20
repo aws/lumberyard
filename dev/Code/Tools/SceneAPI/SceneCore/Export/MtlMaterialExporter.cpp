@@ -157,7 +157,8 @@ namespace AZ
                             if (registerProducts)
                             {
                                 static const Data::AssetType dccMaterialAssetType("{C88469CF-21E7-41EB-96FD-BF14FBB05EDC}"); // from MaterialAsset.h
-                                context.GetProductList().AddProduct(AZStd::move(entry.first), Uuid::CreateName(filename.c_str()), dccMaterialAssetType);
+                                context.GetProductList().AddProduct(AZStd::move(entry.first), Uuid::CreateName(filename.c_str()), dccMaterialAssetType,
+                                    AZStd::nullopt, AZStd::nullopt);
                             }
                         }
                     }

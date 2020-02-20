@@ -68,6 +68,7 @@
 #include <LoadScreenBus.h>
 #include <LyShine/Bus/UiSystemBus.h>
 #include <AzFramework/Logging/MissingAssetLogger.h>
+#include <AzFramework/Render/RenderSystemBus.h>
 
 #if defined(APPLE) || defined(LINUX) && !defined(DEDICATED_SERVER)
 #include <dlfcn.h>
@@ -221,7 +222,7 @@ extern LONG WINAPI CryEngineExceptionFilterWER(struct _EXCEPTION_POINTERS* pExce
     #endif
 #endif
 
-#if AZ_TRAIT_OS_PLATFORM_APPLE
+#if AZ_TRAIT_USE_CRY_SIGNAL_HANDLER
 
 #include <execinfo.h>
 #include <signal.h>
@@ -256,7 +257,7 @@ void CryEngineSignalHandler(int signal)
     abort();
 }
 
-#endif // AZ_TRAIT_OS_PLATFORM_APPLE
+#endif // AZ_TRAIT_USE_CRY_SIGNAL_HANDLER
 
 #if defined(USE_UNIXCONSOLE)
 #if defined(LINUX) && !defined(ANDROID)
@@ -2792,7 +2793,8 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
 
     if (initParams.userPath[0] == 0)
     {
-        string outPath = PathUtil::Make(rootPath, "user");
+        string outPath = PathUtil::Make(m_env.pFileIO->GetAlias("@root@"), "user");
+        
         m_env.pFileIO->SetAlias("@user@", outPath.c_str());
     }
     else
@@ -3495,7 +3497,7 @@ void OnLevelLoadingDump(ICVar* pArgs)
 #if defined(WIN32) || defined(WIN64)
 static wstring GetErrorStringUnsupportedCPU()
 {
-    static const wchar_t s_EN[] = L"Unsupported CPU detected. CPU needs to support SSE, SSE2 and SSE3.";
+    static const wchar_t s_EN[] = L"Unsupported CPU detected. CPU needs to support SSE, SSE2, SSE3 and SSE4.1.";
     static const wchar_t s_FR[] = { 0 };
     static const wchar_t s_RU[] = { 0 };
     static const wchar_t s_ES[] = { 0 };
@@ -3539,11 +3541,11 @@ static bool CheckCPURequirements(CCpuFeatures* pCpu, CSystem* pSystem)
 {
 #if !defined(DEDICATED_SERVER)
 #if defined(WIN32) || defined(WIN64)
-    if (!gEnv->IsEditor() && !gEnv->IsDedicated())
+    if (!gEnv->IsDedicated())
     {
-        if (!(pCpu->hasSSE() && pCpu->hasSSE2() && pCpu->hasSSE3()))
+        if (!(pCpu->hasSSE() && pCpu->hasSSE2() && pCpu->hasSSE3() && pCpu->hasSSE41()))
         {
-            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Unsupported CPU! Need SSE, SSE2 and SSE3 instructions to be available.");
+            AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "Unsupported CPU! Need SSE, SSE2, SSE3 and SSE4.1 instructions to be available.");
 
 #if !defined(_RELEASE)
             const bool allowPrompts = pSystem->GetICmdLine()->FindArg(eCLAT_Pre, "noprompt") == 0;
@@ -3588,11 +3590,20 @@ static bool CheckCPURequirements(CCpuFeatures* pCpu, CSystem* pSystem)
 /////////////////////////////////////////////////////////////////////////////////
 bool CSystem::Init(const SSystemInitParams& startupParams)
 {
-#if AZ_TRAIT_OS_PLATFORM_APPLE
+#if AZ_TRAIT_USE_CRY_SIGNAL_HANDLER
     signal(SIGSEGV, CryEngineSignalHandler);
     signal(SIGTRAP, CryEngineSignalHandler);
     signal(SIGILL, CryEngineSignalHandler);
-#endif // AZ_TRAIT_OS_PLATFORM_APPLE
+#endif // AZ_TRAIT_USE_CRY_SIGNAL_HANDLER
+
+    // Temporary Fix for an issue accessing gEnv from this object instance. The gEnv is not resolving to the 
+    // global gEnv, instead its resolving an some uninitialized gEnv elsewhere (NULL). Since gEnv is 
+    // initialized to this instance's SSystemGlobalEnvironment (m_env), we will force set it again here
+    // to m_env
+    if (!gEnv)
+    {
+        gEnv = &m_env;
+    }
 
     LOADING_TIME_PROFILE_SECTION;
 
@@ -3607,6 +3618,12 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
     m_env.bNoAssertDialog = startupParams.bTesting;
     m_env.bNoRandomSeed = startupParams.bNoRandom;
     m_bShaderCacheGenMode = startupParams.bShaderCacheGen;
+
+#if defined(DEDICATED_SERVER)
+    m_bNoCrashDialog = true;
+#else
+    m_bNoCrashDialog = false;
+#endif
 
     if (startupParams.bUnattendedMode)
     {
@@ -3697,11 +3714,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 #endif // defined(CVARS_WHITELIST)
     m_bDedicatedServer = startupParams.bDedicatedServer;
     m_currentLanguageAudio = "";
-#if defined(DEDICATED_SERVER)
-    m_bNoCrashDialog = true;
-#else
-    m_bNoCrashDialog = false;
-#endif
 
     memcpy(gEnv->pProtectedFunctions, startupParams.pProtectedFunctions, sizeof(startupParams.pProtectedFunctions));
 
@@ -6176,6 +6188,12 @@ void CSystem::CreateSystemVars()
             "The splash screen to render during game initialization");
     }
 
+    static const int fileSystemCaseSensitivityDefault = 0;
+    REGISTER_CVAR2("sys_FilesystemCaseSensitivity", &g_cvars.sys_FilesystemCaseSensitivity, fileSystemCaseSensitivityDefault, VF_NULL,
+        "0 - CryPak lowercases all input file names\n"
+        "1 - CryPak preserves file name casing\n"
+        "Default is 1");
+
     REGISTER_CVAR2("sys_deferAudioUpdateOptim", &g_cvars.sys_deferAudioUpdateOptim, 1, VF_NULL,
         "0 - disable optimisation\n"
         "1 - enable optimisation\n"
@@ -6475,7 +6493,8 @@ void CSystem::CreateSystemVars()
 #endif
 
     REGISTER_CVAR2("sys_update_profile_time", &g_cvars.sys_update_profile_time, 1.0f, 0, "Time to keep updates timings history for.");
-    REGISTER_CVAR2("sys_no_crash_dialog", &g_cvars.sys_no_crash_dialog, m_bNoCrashDialog, VF_NULL, "");
+    REGISTER_CVAR2("sys_no_crash_dialog", &g_cvars.sys_no_crash_dialog, m_bNoCrashDialog, VF_NULL, "Whether to disable the crash dialog window");
+    REGISTER_CVAR2("sys_no_error_report_window", &g_cvars.sys_no_error_report_window, m_bNoErrorReportWindow, VF_NULL, "Whether to disable the error report list");
 #if !defined(DEDICATED_SERVER) && defined(_RELEASE)
     REGISTER_CVAR2("sys_WER", &g_cvars.sys_WER, 1, 0, "Enables Windows Error Reporting");
 #else

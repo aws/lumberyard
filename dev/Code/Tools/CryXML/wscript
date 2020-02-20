@@ -23,7 +23,7 @@ def build(bld):
         vs_filter           = 'RC',
         copyright_org       = 'Amazon-CryTek',
         file_list           = 'cryxml.waf_files',
-        platforms           = ['win', 'darwin'],
+        platforms           = ['win', 'darwin', 'linux'],
         client_only         = True,
         exclude_monolithic  = True,
         includes            = [ bld.Path('Code/CryEngine/CryCommon'),
@@ -42,6 +42,6 @@ def build(bld):
                                'RESOURCE_COMPILER'],
                                 
         # Testing
-        test_all_file_list = ['cryxml_test.waf_files'],
+        test_all_file_list  = ['cryxml_test.waf_files'],
     )
 

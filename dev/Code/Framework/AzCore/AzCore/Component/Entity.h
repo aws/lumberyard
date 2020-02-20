@@ -105,6 +105,19 @@ namespace AZ
          */
         Entity(const EntityId& id, const char* name = nullptr);
 
+        // Delete the copy constructor, becuase this contains vector of pointers and other pointers that
+        // are supposed to be unique, this would be a mistake.  Its safer to cause code that tries to
+        // copy an Entity to fail on compile than it would be to allow it to transparently work via
+        // some sort of serializer-powered deep copy clone.  (If you want to manually clone entities,
+        // use the serializer to do so explicitly).
+        Entity(const Entity& other) = delete;
+        Entity& operator=(const Entity& other) = delete;
+
+        // You are ONLY allowed to move construct and assign:
+        Entity(Entity&& other) = default;
+        Entity& operator=(Entity&& other) = default;
+
+
         /**
          * Destroys an entity and its components.
          * Do not destroy an entity when it is in a transition state. 

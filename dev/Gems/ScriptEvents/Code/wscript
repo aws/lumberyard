@@ -19,10 +19,14 @@ def build(bld):
         target          = 'ScriptEventsStatic',
         vs_filter       = 'Gems/ScriptEvents',
 
-        #pch              = 'precompiled.cpp',
-        win_features     = ['crcfix'],
+        win_features    = ['crcfix'],
 
-        includes        = ['Include', 'Include/ScriptEvents', 'Source'],
+        includes        = ['.',
+                           bld.ThirdPartyPath('boost'),
+                           bld.Path('Code/CryEngine/CryCommon'),
+                           'Include',
+                           'Include/ScriptEvents',
+                           'Source'],
         export_includes = ['.', 'Include', 'Include/ScriptCanvas'],
 
         use             = ['AzCore', 'AzFramework'],

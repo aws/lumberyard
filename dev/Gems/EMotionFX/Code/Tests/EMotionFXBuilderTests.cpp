@@ -16,8 +16,8 @@
 
 #include <AzTest/AzTest.h>
 #include <AzCore/Component/ComponentApplication.h>
-#include <AZCore/std/containers/vector.h>
-#include <AZCore/std/string/string.h>
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/std/string/string.h>
 #include <AzCore/UnitTest/UnitTest.h>
 #include <AzFramework/IO/LocalFileIO.h>
 

@@ -17,6 +17,7 @@
 #include "Algorithms.h"
 #include "MemoryManager.h"
 
+#include <AzCore/Debug/Trace.h>
 
 namespace MCore
 {
@@ -329,7 +330,7 @@ namespace MCore
          */
         MCORE_INLINE void Remove(uint32 pos)
         {
-            MCORE_ASSERT(pos < mLength);
+            AZ_Assert(pos < mLength, "Array index out of bounds");
             Destruct(pos);
             if (mLength > 1)
             {
@@ -472,7 +473,6 @@ namespace MCore
             {
                 return;
             }
-            MCORE_ASSERT(mMaxLength >= mLength);
             Realloc(mLength);
         }
 
@@ -679,7 +679,7 @@ namespace MCore
         }
         Array<T>&               operator= (Array<T>&& other)
         {
-            MCORE_ASSERT(&other != this);
+            AZ_Assert(&other != this, "Cannot assign array to itself.");
             if (mData)
             {
                 MCore::Free(mData);
@@ -696,8 +696,8 @@ namespace MCore
         //Array<T>&             operator+ (const Array<T>& other) const             { Array<T> newArray; newArray.Grow(mLength+other.mLength); uint32 i; for (i=0; i<GetLength(); ++i) newArray.Construct(i, mData[i]); uint32 j; for (j=0; j<other.GetLength(); ++j) newArray.Construct(i++, other.mData[j]); return newArray; }
         Array<T>&               operator+=(const T& other)                          { Add(other); return *this; }
         Array<T>&               operator+=(const Array<T>& other)                   { Add(other); return *this; }
-        MCORE_INLINE T&         operator[](uint32 index)                            { MCORE_ASSERT(index < mLength); return mData[index]; }
-        MCORE_INLINE const T&   operator[](uint32 index) const                      { MCORE_ASSERT(index < mLength); return mData[index]; }
+        MCORE_INLINE T&         operator[](uint32 index)                            { AZ_Assert(index < mLength, "Array index out of bounds"); return mData[index]; }
+        MCORE_INLINE const T&   operator[](uint32 index) const                      { AZ_Assert(index < mLength, "Array index out of bounds"); return mData[index]; }
 
     private:
         T*      mData;          /**< The element data. */

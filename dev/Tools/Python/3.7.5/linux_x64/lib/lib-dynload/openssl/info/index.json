@@ -1,0 +1,16 @@
+{
+  "arch": "x86_64",
+  "build": "h7b6447c_3",
+  "build_number": 3,
+  "depends": [
+    "ca-certificates",
+    "libgcc-ng >=7.3.0"
+  ],
+  "license": "OpenSSL",
+  "license_family": "Apache",
+  "name": "openssl",
+  "platform": "linux",
+  "subdir": "linux-64",
+  "timestamp": 1571239236113,
+  "version": "1.1.1d"
+}

@@ -182,6 +182,7 @@ namespace EMotionFX
             m_lastMotionInstance = nullptr;
             m_configuration.m_motionAsset.Release();
             m_lastMotionAsset.Release();
+            m_actorInstance.reset();
         }
 
         void SimpleMotionComponent::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
@@ -220,12 +221,12 @@ namespace EMotionFX
             RemoveMotionInstanceFromActor(m_lastMotionInstance);
             m_lastMotionInstance = nullptr;
 
-            m_actorInstance = nullptr;
+            m_actorInstance.reset();
         }
 
         void SimpleMotionComponent::PlayMotion()
         {
-            m_motionInstance = PlayMotionInternal(m_actorInstance, m_configuration, true);
+            m_motionInstance = PlayMotionInternal(m_actorInstance.get(), m_configuration, true);
         }
 
         void SimpleMotionComponent::RemoveMotionInstanceFromActor(EMotionFX::MotionInstance* motionInstance)

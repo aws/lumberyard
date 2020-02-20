@@ -43,8 +43,8 @@
 
 #define MAX_COMPILER_WAIT_TIME (60 * 1000)
 
-volatile AtomicCountType CCrySimpleJobCompile::m_GlobalCompileTasks         = 0;
-volatile AtomicCountType CCrySimpleJobCompile::m_GlobalCompileTasksMax      = 0;
+AZStd::atomic_long CCrySimpleJobCompile::m_GlobalCompileTasks       = {0};
+AZStd::atomic_long CCrySimpleJobCompile::m_GlobalCompileTasksMax    = {0};
 volatile int32_t CCrySimpleJobCompile::m_RemoteServerID                 = 0;
 volatile int64_t CCrySimpleJobCompile::m_GlobalCompileTime  =   0;
 
@@ -106,7 +106,7 @@ bool ValidateExecutableStringLegacy(const AZStd::string& executableString)
         commandString.find("FXC.exe") == AZStd::string::npos &&
         commandString.find("HLSLcc.exe") == AZStd::string::npos &&
         commandString.find("HLSLcc_dedicated.exe") == AZStd::string::npos &&
-        commandString.find("DXOrbisShaderCompiler.exe") == AZStd::string::npos &&
+        commandString.find("DXProvoShaderCompiler.exe") == AZStd::string::npos &&
         commandString.find("dxcGL") == AZStd::string::npos &&
         commandString.find("dxcMetal") == AZStd::string::npos)
     {
@@ -121,16 +121,17 @@ CCrySimpleJobCompile::CCrySimpleJobCompile(uint32_t requestIP, EProtocolVersion 
     , m_Version(Version)
     , m_pRVec(pRVec)
 {
-    InterlockedIncrement(&m_GlobalCompileTasks);
+    ++m_GlobalCompileTasks;
     if (m_GlobalCompileTasksMax < m_GlobalCompileTasks)
     {
-        m_GlobalCompileTasksMax =   m_GlobalCompileTasks;
+        //Need this cast as the copy assignment operator is implicitly deleted
+        m_GlobalCompileTasksMax = static_cast<long>(m_GlobalCompileTasks);
     }
 }
 
 CCrySimpleJobCompile::~CCrySimpleJobCompile()
 {
-    InterlockedDecrement(&m_GlobalCompileTasks);
+    --m_GlobalCompileTasks;
 }
 
 bool CCrySimpleJobCompile::Execute(const TiXmlElement* pElement)
@@ -343,16 +344,12 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
         return false;
     }
 
-    static AtomicCountType volatile nTmpCounter = 0;
-
-    InterlockedIncrement(&nTmpCounter);
+    static AZStd::atomic_long nTmpCounter = { 0 };
+    ++nTmpCounter;
 
     char tmpstr[64];
-#if defined(AZ_PLATFORM_WINDOWS)
-    sprintf(tmpstr, "%ld", nTmpCounter);
-#else
-    sprintf(tmpstr, "%d", nTmpCounter);
-#endif
+    sprintf(tmpstr, "%ld", static_cast<long>(nTmpCounter));
+
 
     const std::string TmpIn =   SEnviropment::Instance().m_TempPath + tmpstr + ".In";
     const std::string TmpOut =   SEnviropment::Instance().m_TempPath + tmpstr + ".Out";
@@ -573,7 +570,7 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
 
     int64_t t1 = g_Timer.GetTime();
     int64_t dt = t1 - t0;
-    InterlockedAdd64(&m_GlobalCompileTime, dt);
+    m_GlobalCompileTime += dt;
 
     int millis = (int)(g_Timer.TimeToSeconds(dt) * 1000.0);
     int secondsTotal = (int)g_Timer.TimeToSeconds(m_GlobalCompileTime);

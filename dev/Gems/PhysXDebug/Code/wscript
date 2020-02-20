@@ -46,9 +46,11 @@ def build(bld):
                             ],
         uselib            = [physx_sdk_lib],
             editor = dict(
-                platforms         = ['win','darwin'],
+                platforms         = ['win','darwin','linux'],
                 defines           = ['PHYSXDEBUG_GEM_EDITOR', 'IMGUI_ENABLED'],
-                includes          = [bld.Path('Code/CryEngine/CryCommon'),
+                includes          = ['.',
+                                     bld.ThirdPartyPath('boost'),
+                                     bld.Path('Code/CryEngine/CryCommon'),
                                      bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                                      bld.Path('Code/Sandbox/Editor')],
                 use               = ['ImGui'],

@@ -80,7 +80,7 @@
   <customwidget>
    <class>AzToolsFramework::ReflectedPropertyEditor</class>
    <extends>QFrame</extends>
-   <header location="global">AZToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx</header>
+   <header location="global">AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

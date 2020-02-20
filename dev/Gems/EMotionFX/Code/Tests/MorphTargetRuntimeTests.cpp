@@ -119,14 +119,10 @@ namespace EMotionFX
         void ScaleMesh(Mesh* mesh)
         {
             const uint32 vertexCount = mesh->GetNumVertices();
-            AZ::PackedVector3f* positions = static_cast<AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
+            AZ::Vector3* positions = static_cast<AZ::Vector3*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
             for (uint32 vertexNum = 0; vertexNum < vertexCount; ++vertexNum)
             {
-                positions[vertexNum].Set(
-                    positions[vertexNum].GetX() * m_scaleFactor,
-                    positions[vertexNum].GetY() * m_scaleFactor,
-                    positions[vertexNum].GetZ() * m_scaleFactor
-                    );
+                positions[vertexNum] *= m_scaleFactor;
             }
         }
 
@@ -168,7 +164,7 @@ namespace EMotionFX
             // Without this call, the bind pose does not know about newly added
             // morph target (mMorphWeights.GetLength() == 0)
             m_actor->ResizeTransformData();
-            m_actor->PostCreateInit(true, true, false);
+            m_actor->PostCreateInit(/*makeGeomLodsCompatibleWithSkeletalLODs=*/false, /*generateOBBs=*/false, /*convertUnitType=*/false);
 
             m_animGraph.reset(aznew AnimGraph);
 
@@ -250,7 +246,7 @@ namespace EMotionFX
 
         const Mesh* mesh = m_actor->GetMesh(0, 0);
         const uint32 vertexCount = mesh->GetNumOrgVertices();
-        const AZ::PackedVector3f* positions = static_cast<AZ::PackedVector3f*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
+        const AZ::Vector3* positions = static_cast<AZ::Vector3*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
         const AZStd::array<float, 4> weights {
             {0.0f, 0.5f, 1.0f, 0.0f}
         };
@@ -267,7 +263,7 @@ namespace EMotionFX
 
             for (uint32 vertexNum = 0; vertexNum < vertexCount; ++vertexNum)
             {
-                gotWeightedPoints.emplace_back(AZ::Vector3(positions[vertexNum]));
+                gotWeightedPoints.emplace_back(positions[vertexNum]);
             }
 
             for (const AZ::Vector3& neutralPoint : m_points)

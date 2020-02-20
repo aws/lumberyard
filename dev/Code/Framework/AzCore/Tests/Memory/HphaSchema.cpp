@@ -127,11 +127,13 @@ namespace Benchmark
     public:
         void SetUp(const ::benchmark::State& state)
         {
+            AZ_UNUSED(state);
             AZ::AllocatorInstance<TestAllocator>::Create();
         }
 
         void TearDown(const ::benchmark::State& state)
         {
+            AZ_UNUSED(state);
             AZ::AllocatorInstance<TestAllocator>::Destroy();
         }
 

@@ -12,6 +12,10 @@
 
 #include <AzCore/Module/DynamicModuleHandle.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <SceneAPI/SceneCore/SceneCore.h>
+#include <SceneAPI/SceneData/SceneData.h>
+#include <SceneAPI/FbxSceneBuilder/FbxSceneBuilder.h>
+
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IAnimationData.h>
 #include <Config/SettingsObjects/NodeSoftNameSetting.h>
 #include <Config/SettingsObjects/FileSoftNameSetting.h>
@@ -20,12 +24,14 @@
 
 namespace AZ
 {
+#if !defined(SCENE_CORE_STATIC)
     namespace SceneProcessing
     {
         extern AZStd::unique_ptr<AZ::DynamicModuleHandle> s_sceneCoreModule;
         extern AZStd::unique_ptr<AZ::DynamicModuleHandle> s_sceneDataModule;
         extern AZStd::unique_ptr<AZ::DynamicModuleHandle> s_fbxSceneBuilderModule;
     }
+#endif
 
     namespace SceneProcessingConfig
     {
@@ -38,10 +44,15 @@ namespace AZ
         SceneProcessingConfigSystemComponent::SceneProcessingConfigSystemComponent()
         {
             using namespace AZ::SceneAPI::SceneCore;
-
+#if defined(SCENE_CORE_STATIC)
+            AZ::SceneAPI::SceneCore::Activate();
+            AZ::SceneAPI::SceneData::Activate();
+            AZ::SceneAPI::FbxSceneBuilder::Activate();
+#else
             ActivateSceneModule(SceneProcessing::s_sceneCoreModule);
             ActivateSceneModule(SceneProcessing::s_sceneDataModule);
             ActivateSceneModule(SceneProcessing::s_fbxSceneBuilderModule);
+#endif
             
             // Defaults in case there's no config setup in the Project Configurator.
             m_softNames.push_back(aznew NodeSoftNameSetting("_lod1", PatternMatcher::MatchApproach::PostFix, "LODMesh1", true));
@@ -75,9 +86,15 @@ namespace AZ
 
         SceneProcessingConfigSystemComponent::~SceneProcessingConfigSystemComponent()
         {
+#if defined(SCENE_CORE_STATIC)
+            AZ::SceneAPI::FbxSceneBuilder::Deactivate();
+            AZ::SceneAPI::SceneData::Deactivate();
+            AZ::SceneAPI::SceneCore::Deactivate();
+#else
             DeactivateSceneModule(SceneProcessing::s_fbxSceneBuilderModule);
             DeactivateSceneModule(SceneProcessing::s_sceneDataModule);
             DeactivateSceneModule(SceneProcessing::s_sceneCoreModule);
+#endif
         }
 
         void SceneProcessingConfigSystemComponent::Clear()
@@ -148,9 +165,15 @@ namespace AZ
 
         void SceneProcessingConfigSystemComponent::Reflect(AZ::ReflectContext* context)
         {
+#if defined(SCENE_CORE_STATIC)
+            AZ::SceneAPI::SceneCore::Reflect(azrtti_cast<AZ::SerializeContext*>(context));
+            AZ::SceneAPI::SceneData::Reflect(azrtti_cast<AZ::SerializeContext*>(context));
+            AZ::SceneAPI::FbxSceneBuilder::Reflect(azrtti_cast<AZ::SerializeContext*>(context));
+#else
             ReflectSceneModule(context, SceneProcessing::s_sceneCoreModule);
             ReflectSceneModule(context, SceneProcessing::s_sceneDataModule);
             ReflectSceneModule(context, SceneProcessing::s_fbxSceneBuilderModule);
+#endif
 
             SoftNameSetting::Reflect(context);
             NodeSoftNameSetting::Reflect(context);

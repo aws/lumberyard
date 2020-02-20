@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "ThreadUtils.h"
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/bind/bind.h>

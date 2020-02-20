@@ -26,6 +26,8 @@
 
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 
 #include <QFileDialog>
 
@@ -1085,6 +1087,228 @@ namespace
     }
 }
 
+//////////////////////////////////////////////////////////////////////////
+// Temporal, to be removed by LY-101149
+AZ::EntityId PyFindEditorEntity(const char* name)
+{
+    AZ::EntityId foundEntityId;
+
+    auto searchFunc = [name, &foundEntityId](AZ::Entity* e)
+    {
+        if (!foundEntityId.IsValid() && e->GetName() == name)
+        {
+            bool isEditorEntity = false;
+            AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(isEditorEntity, &AzToolsFramework::EditorEntityContextRequests::IsEditorEntity, e->GetId());
+            if (isEditorEntity)
+            {
+                foundEntityId = e->GetId();
+            }
+        }
+    };
+
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::EnumerateEntities, searchFunc);
+    return foundEntityId;
+}
+
+AZ::EntityId PyFindGameEntity(const char* name)
+{
+    AZ::EntityId foundEntityId;
+
+    auto searchFunc = [name, &foundEntityId](AZ::Entity* e)
+    {
+        if (!foundEntityId.IsValid() && e->GetName() == name)
+        {
+            bool isEditorEntity = true;
+            AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(isEditorEntity, &AzToolsFramework::EditorEntityContextRequests::IsEditorEntity, e->GetId());
+            if (!isEditorEntity)
+            {
+                foundEntityId = e->GetId();
+            }
+        }
+    };
+
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::EnumerateEntities, searchFunc);
+    return foundEntityId;
+}
+
+
+struct PyDumpBindings
+{
+    static AZ_INLINE bool IsBehaviorFlaggedForEditor(const AZ::AttributeArray& attributes)
+    {
+        // defaults to Launcher
+        AZ::Script::Attributes::ScopeFlags scopeType = AZ::Script::Attributes::ScopeFlags::Launcher;
+        AZ::Attribute* scopeAttribute = AZ::FindAttribute(AZ::Script::Attributes::Scope, attributes);
+        if (scopeAttribute)
+        {
+            AZ::AttributeReader scopeAttributeReader(nullptr, scopeAttribute);
+            scopeAttributeReader.Read<AZ::Script::Attributes::ScopeFlags>(scopeType);
+        }
+        return (scopeType == AZ::Script::Attributes::ScopeFlags::Automation || scopeType == AZ::Script::Attributes::ScopeFlags::Common);
+    }
+
+    static AZ_INLINE AZStd::string GetModuleName(const AZ::AttributeArray& attributes)
+    {
+        AZStd::string moduleName;
+        AZ::Attribute* moduleAttribute = AZ::FindAttribute(AZ::Script::Attributes::Module, attributes);
+        if (moduleAttribute)
+        {
+            AZ::AttributeReader scopeAttributeReader(nullptr, moduleAttribute);
+            scopeAttributeReader.Read<AZStd::string>(moduleName);
+        }
+        if (!moduleName.empty())
+        {
+            moduleName = "azlmbr." + moduleName;
+        }
+        else
+        {
+            moduleName = "azlmbr";
+        }
+
+        return moduleName;
+    }
+
+
+    static AZStd::string ParameterToString(const AZ::BehaviorMethod* method, size_t index)
+    {
+        const AZStd::string* argNameStr = method->GetArgumentName(index);
+        const char* argName = (argNameStr && !argNameStr->empty()) ? argNameStr->c_str() : nullptr;
+        if (argName)
+        {
+            return AZStd::string::format("%s %s", method->GetArgument(index)->m_name, argName);
+        }
+        else
+        {
+            return method->GetArgument(index)->m_name;
+        }
+    }
+
+    static AZStd::string MethodArgumentsToString(const AZ::BehaviorMethod* method)
+    {
+        AZStd::string ret;
+        AZStd::string argumentStr;
+        for (size_t i = 0; i < method->GetNumArguments(); ++i)
+        {
+            argumentStr = ParameterToString(method, i);
+            ret += argumentStr;
+            if (i < method->GetNumArguments() - 1)
+            {
+                ret += ", ";
+            }
+        }
+        return ret;
+    }
+
+    static AZStd::string MethodToString(const AZStd::string& methodName, const AZ::BehaviorMethod* method)
+    {
+        AZStd::string methodNameStrip = methodName.data() + methodName.rfind(':') + 1; // remove ClassName:: part as it is redundant
+        return AZStd::string::format("%s %s(%s)%s", method->GetResult()->m_name, methodNameStrip.c_str(), MethodArgumentsToString(method).c_str(), method->m_isConst ? " const" : "");
+    }
+
+    static AZStd::string GetExposedPythonClasses()
+    {
+        AZ::BehaviorContext* behaviorContext(nullptr);
+        AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
+
+        AZStd::string output = "";
+        output += "// Classes\n\n";
+
+        for (auto elem : behaviorContext->m_classes)
+        {
+            AZ::BehaviorClass* cls = elem.second;
+
+            bool exposedToPython = IsBehaviorFlaggedForEditor(cls->m_attributes);
+            if (!exposedToPython)
+                continue;
+
+            output += AZStd::string::format("// Module: %s\n", GetModuleName(cls->m_attributes).c_str());
+            output += AZStd::string::format("class %s\n", cls->m_name.c_str());
+            output += "{\n";
+
+            if (cls->m_methods.size() > 0)
+            {
+                output += "    // Methods\n";
+                for (auto method_elem : cls->m_methods)
+                {
+                    output += AZStd::string::format("    %s;\n", MethodToString(method_elem.first, method_elem.second).c_str());
+                }
+            }
+            if (cls->m_properties.size() > 0)
+            {
+                output += "    // Properties\n";
+                for (auto property_elem : cls->m_properties)
+                {
+                    AZ::BehaviorProperty* bproperty = property_elem.second;
+                    output += AZStd::string::format("    %s %s;\n", bproperty->m_getter->GetResult()->m_name, bproperty->m_name.c_str());
+                }
+            }
+
+            output += "}\n";
+        }
+        output += "\n\n// Ebuses\n\n";
+        for (auto elem : behaviorContext->m_ebuses)
+        {
+            AZ::BehaviorEBus* ebus = elem.second;
+
+            bool exposedToPython = IsBehaviorFlaggedForEditor(ebus->m_attributes);
+            if (!exposedToPython)
+                continue;
+
+            output += AZStd::string::format("// Module: %s\n", GetModuleName(ebus->m_attributes).c_str());
+            output += AZStd::string::format("ebus %s\n", ebus->m_name.c_str());
+            output += "{\n";
+            for (auto event_elem : ebus->m_events)
+            {
+                auto method = event_elem.second.m_event ? event_elem.second.m_event : event_elem.second.m_broadcast;
+                if (method)
+                {
+                    const char* comment = event_elem.second.m_event ? "/* event */" : "/* broadcast */";
+                    output += AZStd::string::format("    %s %s\n", comment, MethodToString(event_elem.first, method).c_str());
+                }
+                else
+                {
+                    output += AZStd::string::format("    %s %s\n", "/* unknown */", event_elem.first);
+                }
+            }
+
+            if (ebus->m_createHandler)
+            {
+                AZ::BehaviorEBusHandler* handler = nullptr;
+                ebus->m_createHandler->InvokeResult(handler);
+                if (handler)
+                {
+                    const auto& notifications = handler->GetEvents();
+                    for (const auto& notification : notifications)
+                    {
+                        AZStd::string argsStr;
+                        const size_t paramCount = notification.m_parameters.size();
+                        for (size_t i = 0; i < notification.m_parameters.size(); ++i)
+                        {
+                            AZStd::string argName = notification.m_parameters[i].m_name;
+                            argsStr += argName;
+                            if (i != paramCount - 1)
+                            {
+                                argsStr += ", ";
+                            }
+                        }
+
+                        AZStd::string funcName = notification.m_name;
+                        output += AZStd::string::format("    /* notification */ %s(%s);\n", funcName.c_str(), argsStr.c_str());
+                    }
+                    ebus->m_destroyHandler->Invoke(handler);
+                }
+            }
+
+            output += "}\n";
+
+        }
+        AzFramework::StringFunc::Replace(output, "AZStd::basic_string<char, AZStd::char_traits<char>, allocator>", "AZStd::string");
+        return output;
+    }
+};
+
+//////////////////////////////////////////////////////////////////////////
+
 namespace AzToolsFramework
 {
     void PythonEditorFuncsHandler::Reflect(AZ::ReflectContext* context)
@@ -1147,6 +1371,12 @@ namespace AzToolsFramework
             addLegacyGeneral(behaviorContext->Method("set_hidemask_invert", PySetHideMaskInvert, nullptr, "Inverts the current hidemask."));
             addLegacyGeneral(behaviorContext->Method("set_hidemask", PySetHideMask, nullptr, "Assigns a specified value to a specific object type in the current hidemask."));
             addLegacyGeneral(behaviorContext->Method("get_hidemask", PyGetHideMask, nullptr, "Gets the value of a specific object type in the current hidemask."));
+            /////////////////////////////////////////////////////////////////////////
+            // Temporal, to be removed by LY-101149
+            addLegacyGeneral(behaviorContext->Method("find_editor_entity", PyFindEditorEntity, nullptr, "Retrieves a editor entity id by name"));
+            addLegacyGeneral(behaviorContext->Method("find_game_entity", PyFindGameEntity, nullptr, "Retrieves a game entity id by name"));
+            //////////////////////////////////////////////////////////////////////////
+            addLegacyGeneral(behaviorContext->Method("dump_exposed_classes", PyDumpBindings::GetExposedPythonClasses, nullptr, "Retrieves exposed classes"));
         }
     }
 }

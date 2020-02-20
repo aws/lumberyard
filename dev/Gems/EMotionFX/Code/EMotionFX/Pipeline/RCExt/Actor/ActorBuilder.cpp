@@ -27,9 +27,11 @@
 #include <SceneAPI/SceneCore/DataTypes/GraphData/ISkinWeightData.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexTangentData.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexBitangentData.h>
+#include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexColorData.h>
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IBlendShapeRule.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IMaterialRule.h>
+#include <SceneAPI/SceneCore/DataTypes/Rules/IClothRule.h>
 #include <SceneAPI/SceneCore/Events/GraphMetaInfoBus.h>
 #include <SceneAPI/SceneData/Rules/TangentsRule.h>
 
@@ -39,6 +41,7 @@
 #include <SceneAPIExt/Rules/LodRule.h>
 #include <SceneAPIExt/Rules/IActorScaleRule.h>
 #include <SceneAPIExt/Rules/CoordinateSystemRule.h>
+#include <SceneAPIExt/Rules/SkeletonOptimizationRule.h>
 #include <SceneAPIExt/Groups/ActorGroup.h>
 #include <RCExt/Actor/ActorBuilder.h>
 #include <RCExt/ExportContexts.h>
@@ -61,7 +64,6 @@
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Quaternion.h>
-#include <AzCore/Math/Matrix4x4.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzFramework/Application/Application.h>
 #include <AzToolsFramework/Debug/TraceContext.h>
@@ -81,10 +83,16 @@ namespace EMotionFX
         {
             return EMotionFX::Transform(
                 coordSysConverter.ConvertVector3(azTransform.GetTranslation()),
-                MCore::AzQuatToEmfxQuat(coordSysConverter.ConvertQuaternion(AZ::Quaternion::CreateFromTransform(azTransform))),
+                coordSysConverter.ConvertQuaternion(AZ::Quaternion::CreateFromTransform(azTransform)),
                 coordSysConverter.ConvertScale(azTransform.RetrieveScaleExact()));
         }
 
+        using ClothLayerAndData = AZStd::tuple<
+            EMotionFX::MeshBuilderVertexAttributeLayerUInt32*, 
+            AZStd::shared_ptr<const SceneDataTypes::IMeshVertexColorData>>;
+
+        ClothLayerAndData ExtractClothInfo(SceneContainers::SceneGraph& graph, const SceneContainers::SceneGraph::NodeIndex& meshNodeIndex,
+            const Group::IActorGroup& group, const AZ::u32 numOrgVerts, AZ::u8 lodLevel);
 
         ActorBuilder::ActorBuilder()
         {
@@ -298,6 +306,47 @@ namespace EMotionFX
                 }
             }
 
+
+            // Get the critical bones list, mark the bones that is critical to prevent it to be optimized out.
+            AZStd::shared_ptr<Rule::SkeletonOptimizationRule> skeletonOptimizationRule = actorGroup.GetRuleContainerConst().FindFirstByType<Rule::SkeletonOptimizationRule>();
+            if (skeletonOptimizationRule)
+            {
+                const SceneData::SceneNodeSelectionList& criticalBonesList = skeletonOptimizationRule->GetCriticalBonesList();
+                const size_t criticalBoneCount = criticalBonesList.GetSelectedNodeCount();
+                
+                for (size_t boneIndex = 0; boneIndex < criticalBoneCount; ++boneIndex)
+                {
+                    const AZStd::string& bonePath = criticalBonesList.GetSelectedNode(boneIndex);
+
+                    // The bone name stores the node path in the scene. We need to convert it to EMotionFX node name.
+                    const SceneContainers::SceneGraph::NodeIndex nodeIndex = graph.Find(bonePath);
+                    if (!nodeIndex.IsValid())
+                    {
+                        AZ_TracePrintf(SceneUtil::WarningWindow, "Critical bone %s is not stored in the scene. Skipping it.", bonePath.c_str());
+                        continue;
+                    }
+
+                    AZStd::shared_ptr<const SceneDataTypes::IBoneData> boneData = azrtti_cast<const SceneDataTypes::IBoneData*>(graph.GetNodeContent(nodeIndex));
+                    if (!boneData)
+                    {
+                        // Make sure we are dealing with bone here.
+                        continue;
+                    }
+
+                    const SceneContainers::SceneGraph::Name& nodeName = graph.GetNodeName(nodeIndex);
+                    EMotionFX::Node* emfxNode = actorSkeleton->FindNodeByName(nodeName.GetName());
+                    if (!emfxNode)
+                    {
+                        AZ_TracePrintf(SceneUtil::WarningWindow, "Critical bone %s is not in the actor skeleton hierarchy. Skipping it.", nodeName.GetName());
+                        continue;
+                    }
+                    // Critical node cannot be optimized out.
+                    emfxNode->SetIsCritical(true);
+                }
+
+                actor->SetOptimizeSkeleton(skeletonOptimizationRule->GetServerSkeletonOptimization());
+            }
+
             // Process meshs
             SceneEvents::ProcessingResultCombiner result;
             if (actorSettings.m_loadMeshes)
@@ -368,7 +417,7 @@ namespace EMotionFX
 
                 // Process Morph Targets
                 {
-                    AZStd::vector< AZ::u32>  meshIndices;
+                    AZStd::vector<AZ::u32> meshIndices;
                     for (auto& nodeIndex : selectedBaseMeshNodeIndices)
                     {
                         meshIndices.push_back(nodeIndex.AsNumber());
@@ -383,7 +432,44 @@ namespace EMotionFX
             // Post create actor
             actor->SetUnitType(MCore::Distance::UNITTYPE_METERS);
             actor->SetFileUnitType(MCore::Distance::UNITTYPE_METERS);
-            actor->PostCreateInit(false, true, false);
+            actor->PostCreateInit(/*makeGeomLodsCompatibleWithSkeletalLODs=*/false, /*generateOBBs=*/true, /*convertUnitType=*/false);
+
+            // Only enable joints that are used for skinning (and their parents).
+            // On top of that, enable all joints marked as critical joints.
+            const AZStd::shared_ptr<Rule::SkeletonOptimizationRule> skeletonOptimizeRule = actorGroup.GetRuleContainerConst().FindFirstByType<Rule::SkeletonOptimizationRule>();
+            if (skeletonOptimizeRule && skeletonOptimizeRule->GetAutoSkeletonLOD())
+            {
+                AZStd::vector<AZStd::string> criticalJoints;
+                const auto& criticalBonesList = skeletonOptimizeRule->GetCriticalBonesList();
+                const size_t numSelectedBones = criticalBonesList.GetSelectedNodeCount();
+                for (size_t i = 0; i < numSelectedBones; ++i)
+                {
+                    const AZStd::string criticalBonePath = criticalBonesList.GetSelectedNode(i);
+                    SceneContainers::SceneGraph::NodeIndex nodeIndex = graph.Find(criticalBonePath);
+                    if (!nodeIndex.IsValid())
+                    {
+                        AZ_TracePrintf(SceneUtil::WarningWindow, "Critical bone '%s' is not stored in the scene. Skipping it.", criticalBonePath.c_str());
+                        continue;
+                    }
+
+                    const AZStd::shared_ptr<const SceneDataTypes::IBoneData> boneData = azrtti_cast<const SceneDataTypes::IBoneData*>(graph.GetNodeContent(nodeIndex));
+                    if (!boneData)
+                    {
+                        continue;
+                    }
+
+                    const SceneContainers::SceneGraph::Name& nodeName = graph.GetNodeName(nodeIndex);
+                    if (nodeName.GetNameLength() > 0)
+                    {
+                        criticalJoints.emplace_back(nodeName.GetName());
+                    }
+                }
+
+                // Mark all skeletal joints for each LOD to be enabled or disabled, based on the skinning data and critical list.
+                // Also print the results to the log.
+                actor->AutoSetupSkeletalLODsBasedOnSkinningData(criticalJoints);
+                actor->PrintSkeletonLODs();
+            }
 
             // Scale the actor
             AZStd::shared_ptr<Rule::IActorScaleRule> scaleRule = actorGroup.GetRuleContainerConst().FindFirstByType<Rule::IActorScaleRule>();
@@ -588,10 +674,19 @@ namespace EMotionFX
                 }
             }
 
+            // Extract cloth data from cloth modifiers
+            EMotionFX::MeshBuilderVertexAttributeLayerUInt32* clothInverseMassesLayer = nullptr;
+            AZStd::shared_ptr<const SceneDataTypes::IMeshVertexColorData> meshColorData;
+            AZStd::tie(clothInverseMassesLayer, meshColorData) = ExtractClothInfo(graph, meshNodeIndex, context.m_group, numOrgVerts, lodLevel);
+            if (clothInverseMassesLayer)
+            {
+                meshBuilder->AddLayer(clothInverseMassesLayer);
+            }
+
             // Inverse transpose for normal, tangent and bitangent.
             const AZ::Transform globalTransform = SceneUtil::BuildWorldTransform(graph, meshNodeIndex);
             AZ::Transform globalTransformN = globalTransform.GetInverseFull().GetTranspose();
-            globalTransformN.SetTranslation(AZ::Vector3(0, 0, 0));
+            globalTransformN.SetTranslation(AZ::Vector3::CreateZero());
 
             // Data for each vertex.
             AZ::Vector2 uv;
@@ -600,7 +695,8 @@ namespace EMotionFX
             AZ::Vector4 tangent;
             AZ::Vector3 bitangent;
             AZ::Vector4 newTangent;
-            AZ::PackedVector3f bitangentVec;
+            AZ::Vector3 bitangentVec;
+
             const AZ::u32 numTriangles = meshData->GetFaceCount();
             for (AZ::u32 i = 0; i < numTriangles; ++i)
             {
@@ -705,6 +801,23 @@ namespace EMotionFX
                         }
                         bitangentVec.Set(bitangent.GetX(), bitangent.GetY(), bitangent.GetZ());
                         bitangentLayer->SetCurrentVertexValue(&bitangentVec);
+                    }
+
+                    // Feed the cloth inverse masses
+                    if (clothInverseMassesLayer)
+                    {
+                        AZ::Color inverseMassColor(1.0f, 1.0f, 1.0f, 1.0f);
+                        if (meshColorData)
+                        {
+                            const auto& color = meshColorData->GetColor(vertexIndex);
+                            inverseMassColor.Set(
+                                AZ::GetClamp<float>(color.red, 0.0f, 1.0f), 
+                                AZ::GetClamp<float>(color.green, 0.0f, 1.0f),
+                                AZ::GetClamp<float>(color.blue, 0.0f, 1.0f),
+                                AZ::GetClamp<float>(color.alpha, 0.0f, 1.0f));
+                        }
+                        AZ::u32 inverseMassU32 = inverseMassColor.ToU32();
+                        clothInverseMassesLayer->SetCurrentVertexValue(&inverseMassU32);
                     }
 
                     meshBuilder->AddPolygonVertex(orgVertexNumber);
@@ -986,6 +1099,61 @@ namespace EMotionFX
                 return lodName.substr(0, pos);
             }
             return lodName;
+        }
+
+        ClothLayerAndData ExtractClothInfo(SceneContainers::SceneGraph& graph, const SceneContainers::SceneGraph::NodeIndex& meshNodeIndex,
+            const Group::IActorGroup& group, const AZ::u32 numOrgVerts, AZ::u8 lodLevel)
+        {
+            EMotionFX::MeshBuilderVertexAttributeLayerUInt32* clothInverseMassesLayer = nullptr;
+            AZStd::shared_ptr<const SceneDataTypes::IMeshVertexColorData> meshColorData;
+
+            // Cloth meshes only created for LOD 0 (full mesh)
+            if (lodLevel == 0)
+            {
+                const auto& groupRules = group.GetRuleContainerConst();
+                for (size_t ruleIndex = 0; ruleIndex < groupRules.GetRuleCount(); ++ruleIndex)
+                {
+                    const SceneDataTypes::IClothRule* clothRule = azrtti_cast<const SceneDataTypes::IClothRule*>(groupRules.GetRule(ruleIndex).get());
+                    if (!clothRule)
+                    {
+                        continue;
+                    }
+
+                    // Reached a cloth rule for this mesh node?
+                    SceneContainers::SceneGraph::NodeIndex clothMeshNodeIndex = graph.Find(clothRule->GetMeshNodeName());
+                    if (clothMeshNodeIndex != meshNodeIndex)
+                    {
+                        continue;
+                    }
+
+                    // If a color layer is already created it means there are more than 1 cloth rule affecting the same mesh.
+                    if (clothInverseMassesLayer != nullptr)
+                    {
+                        AZ_TracePrintf(SceneUtil::WarningWindow, "Different cloth rules chose the same mesh node, only using the first cloth rule.");
+                        continue;
+                    }
+
+                    // Create layer
+                    clothInverseMassesLayer = EMotionFX::MeshBuilderVertexAttributeLayerUInt32::Create(numOrgVerts, EMotionFX::Mesh::ATTRIB_COLORS32, false/*isScale*/, true/*isDeformable*/);
+
+                    // Find the Vertex Color Data for the cloth
+                    if (!clothRule->IsVertexColorStreamDisabled() &&
+                        !clothRule->GetVertexColorStreamName().empty())
+                    {
+                        auto vertexColorNodeIndex = graph.Find(meshNodeIndex, clothRule->GetVertexColorStreamName());
+                        meshColorData = azrtti_cast<const SceneDataTypes::IMeshVertexColorData*>(graph.GetNodeContent(vertexColorNodeIndex));
+                        if (!meshColorData)
+                        {
+                            AZ_TracePrintf(SceneUtil::WarningWindow,
+                                "Vertex color stream '%s' not found for mesh node '%s'.",
+                                clothRule->GetVertexColorStreamName().c_str(),
+                                clothRule->GetMeshNodeName().c_str());
+                        }
+                    }
+                }
+            }
+
+            return AZStd::make_tuple(clothInverseMassesLayer, meshColorData);
         }
     } // namespace Pipeline
 } // namespace EMotionFX

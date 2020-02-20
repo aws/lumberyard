@@ -12,134 +12,59 @@
 
 #include <AzCore/Math/ToString.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzFramework/Entity/EntityContext.h>
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzTest/AzTest.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
 #include <AzToolsFramework/Entity/EditorEntityActionComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
+#include <AzToolsFramework/Entity/EditorEntityModel.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
-#include <AzToolsFramework/ToolsComponents/EditorLayerComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorLockComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityComponent.h>
+#include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
 #include <AzToolsFramework/Viewport/ActionBus.h>
 #include <AzToolsFramework/ViewportSelection/EditorDefaultSelection.h>
 #include <AzToolsFramework/ViewportSelection/EditorInteractionSystemViewportSelectionRequestBus.h>
 #include <AzToolsFramework/ViewportSelection/EditorTransformComponentSelection.h>
 #include <AzToolsFramework/ViewportSelection/EditorVisibleEntityDataCache.h>
-#include <AzCore/UnitTest/TestTypes.h>
-
-#include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
 
 using namespace AzToolsFramework;
 
 namespace UnitTest
 {
-    AZ::Entity* CreateEditorEntity(const char* name)
-    {
-        AZ::Entity* entity = nullptr;
-        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
-            entity, &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateEditorEntity, name);
-
-        if (entity)
-        {
-            entity->Deactivate();
-
-            // add required components for the Editor entity
-            entity->CreateComponent<Components::TransformComponent>();
-            entity->CreateComponent<Components::EditorLockComponent>();
-            entity->CreateComponent<Components::EditorVisibilityComponent>();
-
-            // This is necessary to prevent a warning in the undo system.
-            AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(
-                &AzToolsFramework::ToolsApplicationRequests::Bus::Events::AddDirtyEntity,
-                entity->GetId());
-
-            entity->Activate();
-        }
-        return entity;
-    }
-
-    AZ::Entity* CreateEditorReadyEntity(const char* entityName)     // EditorLayerComponentTest:132
-    {
-        AZ::Entity* createdEntity = nullptr;
-        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
-            createdEntity,
-            &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateEditorEntity,
-            entityName);
-
-        createdEntity->Deactivate();
-
-        AzToolsFramework::EditorEntityContextRequestBus::Broadcast(
-            &AzToolsFramework::EditorEntityContextRequestBus::Events::AddRequiredComponents,
-            *createdEntity);
-
-        createdEntity->Activate();
-        return createdEntity;
-    }
-   
-    AZ::Entity* CreateEntityWithLayer(const char* entityName)
-    {
-        AZ::Entity* entity = CreateEditorReadyEntity(entityName);
-        auto layer = aznew AzToolsFramework::Layers::EditorLayerComponent();
-        AZStd::vector<AZ::Component*> newComponents;
-
-        newComponents.push_back(layer);
-        Components::EditorEntityActionComponent::AddExistingComponentsOutcome componentAddResult(
-            AZ::Failure(AZStd::string("No listener on AddExistingComponentsToEntity bus.")));
-
-        AzToolsFramework::EntityCompositionRequestBus::BroadcastResult(
-            componentAddResult,
-            &AzToolsFramework::EntityCompositionRequests::AddExistingComponentsToEntity,
-            entity,
-            newComponents);
-
-        return entity;
-    }
-
     class EditorEntityVisibilityCacheFixture
-        : public AllocatorsTestFixture
+        : public ToolsApplicationFixture
     {
     public:
-        void SetUp() override
+        void CreateLayerAndEntityHierarchy()
         {
-            m_app.Start(AzFramework::Application::Descriptor());
-        }
-
-        void TearDown() override
-        {
-            m_app.Stop();
-        }
-
-        void CreateLayerAndEntityHeirarchy()
-        {
-            // Given
             // Set up entity layer hierarchy.
-            AZ::Entity* a = CreateEditorEntity("A");
-            AZ::Entity* b = CreateEditorEntity("B");
-            AZ::Entity* c = CreateEditorEntity("C");
+            const AZ::EntityId a = CreateDefaultEditorEntity("A");
+            const AZ::EntityId b = CreateDefaultEditorEntity("B");
+            const AZ::EntityId c = CreateDefaultEditorEntity("C");
 
-            m_layer = CreateEntityWithLayer("Layer");
+            m_layerId = CreateEditorLayerEntity("Layer");
 
-            AZ::TransformBus::Event(a->GetId(), &AZ::TransformBus::Events::SetParent, m_layer->GetId());
-            AZ::TransformBus::Event(b->GetId(), &AZ::TransformBus::Events::SetParent, a->GetId());
-            AZ::TransformBus::Event(c->GetId(), &AZ::TransformBus::Events::SetParent, b->GetId());
+            AZ::TransformBus::Event(a, &AZ::TransformBus::Events::SetParent, m_layerId);
+            AZ::TransformBus::Event(b, &AZ::TransformBus::Events::SetParent, a);
+            AZ::TransformBus::Event(c, &AZ::TransformBus::Events::SetParent, b);
 
             // Add entity ids we want to track, to the visibility cache.
-            m_entityIds.insert(m_entityIds.begin(), { a->GetId(), b->GetId(), c->GetId() });
+            m_entityIds.insert(m_entityIds.begin(), { a, b, c });
             m_cache.AddEntityIds(m_entityIds);
         }
 
-        ToolsApplication m_app;
         EntityIdList m_entityIds;
-        AZ::Entity* m_layer = nullptr;
+        AZ::EntityId m_layerId;
         EditorVisibleEntityDataCache m_cache;
     };
 
     TEST_F(EditorEntityVisibilityCacheFixture, LayerLockAffectsChildEntitiesInEditorEntityCache)
     {
         // Given
-        CreateLayerAndEntityHeirarchy();
+        CreateLayerAndEntityHierarchy();
 
         // Check preconditions.
         EXPECT_FALSE(m_cache.IsVisibleEntityLocked(m_cache.GetVisibleEntityIndexFromId(m_entityIds[0]).value()));
@@ -147,7 +72,7 @@ namespace UnitTest
         EXPECT_FALSE(m_cache.IsVisibleEntityLocked(m_cache.GetVisibleEntityIndexFromId(m_entityIds[2]).value()));
 
         // When
-        AzToolsFramework::SetEntityLockState(m_layer->GetId(), true);
+        SetEntityLockState(m_layerId, true);
 
         // Then
         EXPECT_TRUE(m_cache.IsVisibleEntityLocked(m_cache.GetVisibleEntityIndexFromId(m_entityIds[0]).value()));
@@ -158,7 +83,7 @@ namespace UnitTest
     TEST_F(EditorEntityVisibilityCacheFixture, LayerVisibilityAffectsChildEntitiesInEditorEntityCache)
     {
         // Given
-        CreateLayerAndEntityHeirarchy();
+        CreateLayerAndEntityHierarchy();
 
         // Check preconditions.
         EXPECT_TRUE(m_cache.IsVisibleEntityVisible(m_cache.GetVisibleEntityIndexFromId(m_entityIds[0]).value()));
@@ -166,7 +91,7 @@ namespace UnitTest
         EXPECT_TRUE(m_cache.IsVisibleEntityVisible(m_cache.GetVisibleEntityIndexFromId(m_entityIds[2]).value()));
 
         // When
-        AzToolsFramework::SetEntityVisibility(m_layer->GetId(), false);
+        SetEntityVisibility(m_layerId, false);
 
         // Then
         EXPECT_FALSE(m_cache.IsVisibleEntityVisible(m_cache.GetVisibleEntityIndexFromId(m_entityIds[0]).value()));
@@ -386,7 +311,7 @@ namespace UnitTest
         UnitTest::SliceAssets sliceAssets;
         const auto sliceAssetId = UnitTest::SaveAsSlice({ grandParent }, &m_app, sliceAssets);
 
-        AzToolsFramework::EntityList instantiatedEntities =
+        EntityList instantiatedEntities =
             UnitTest::InstantiateSlice(sliceAssetId, sliceAssets);
 
         const AZ::EntityId entityIdToMove = instantiatedEntities.back()->GetId();
@@ -411,4 +336,439 @@ namespace UnitTest
 
         UnitTest::DestroySlices(sliceAssets);
     }
+
+    class EditorEntityModelVisibilityFixture
+        : public ToolsApplicationFixture
+        , private EditorEntityVisibilityNotificationBus::Router
+        , private EditorEntityInfoNotificationBus::Handler
+    {
+    public:
+        void SetUpEditorFixtureImpl() override
+        {
+            EditorEntityVisibilityNotificationBus::Router::BusRouterConnect();
+            EditorEntityInfoNotificationBus::Handler::BusConnect();
+        }
+
+        void TearDownEditorFixtureImpl() override
+        {
+            EditorEntityInfoNotificationBus::Handler::BusDisconnect();
+            EditorEntityVisibilityNotificationBus::Router::BusRouterDisconnect();
+        }
+
+        bool m_entityInfoUpdatedVisibilityForLayer = false;
+        AZ::EntityId m_layerId;
+
+    private:
+        // EditorEntityVisibilityNotificationBus ...
+        void OnEntityVisibilityChanged(bool /*visibility*/) override
+        {
+            // for debug purposes
+        }
+
+        // EditorEntityInfoNotificationBus ...
+        void OnEntityInfoUpdatedVisibility(AZ::EntityId entityId, bool /*visible*/) override
+        {
+            if (entityId == m_layerId)
+            {
+                m_entityInfoUpdatedVisibilityForLayer = true;
+            }
+        }
+    };
+
+    // all entities in a layer are the same state, modifying the layer
+    // will also notify the UI to refresh
+    TEST_F(EditorEntityModelVisibilityFixture, LayerVisibilityNotifiesEditorEntityModelState)
+    {
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        const AZ::EntityId a = CreateDefaultEditorEntity("A");
+        const AZ::EntityId b = CreateDefaultEditorEntity("B");
+        const AZ::EntityId c = CreateDefaultEditorEntity("C");
+
+        m_layerId = CreateEditorLayerEntity("Layer");
+
+        AZ::TransformBus::Event(a, &AZ::TransformBus::Events::SetParent, m_layerId);
+        AZ::TransformBus::Event(b, &AZ::TransformBus::Events::SetParent, m_layerId);
+        AZ::TransformBus::Event(c, &AZ::TransformBus::Events::SetParent, m_layerId);
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        SetEntityVisibility(a, false);
+        SetEntityVisibility(b, false);
+        SetEntityVisibility(c, false);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_FALSE(IsEntityVisible(a));
+        EXPECT_FALSE(IsEntityVisible(b));
+        EXPECT_FALSE(IsEntityVisible(c));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        SetEntityVisibility(m_layerId, false);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_FALSE(IsEntityVisible(m_layerId));
+        EXPECT_TRUE(m_entityInfoUpdatedVisibilityForLayer);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // reset property
+        m_entityInfoUpdatedVisibilityForLayer = false;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        SetEntityVisibility(m_layerId, true);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_TRUE(m_entityInfoUpdatedVisibilityForLayer);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    TEST_F(EditorEntityModelVisibilityFixture, UnhidingEntityInInvisibleLayerUnhidesAllEntitiesThatWereNotIndividuallyHidden)
+    {
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        const AZ::EntityId a = CreateDefaultEditorEntity("A");
+        const AZ::EntityId b = CreateDefaultEditorEntity("B");
+        const AZ::EntityId c = CreateDefaultEditorEntity("C");
+
+        const AZ::EntityId d = CreateDefaultEditorEntity("D");
+        const AZ::EntityId e = CreateDefaultEditorEntity("E");
+        const AZ::EntityId f = CreateDefaultEditorEntity("F");
+
+        m_layerId = CreateEditorLayerEntity("Layer1");
+        const AZ::EntityId secondLayerId = CreateEditorLayerEntity("Layer2");
+
+        AZ::TransformBus::Event(a, &AZ::TransformBus::Events::SetParent, m_layerId);
+        AZ::TransformBus::Event(b, &AZ::TransformBus::Events::SetParent, m_layerId);
+        AZ::TransformBus::Event(c, &AZ::TransformBus::Events::SetParent, m_layerId);
+
+        AZ::TransformBus::Event(secondLayerId, &AZ::TransformBus::Events::SetParent, m_layerId);
+
+        AZ::TransformBus::Event(d, &AZ::TransformBus::Events::SetParent, secondLayerId);
+        AZ::TransformBus::Event(e, &AZ::TransformBus::Events::SetParent, secondLayerId);
+        AZ::TransformBus::Event(f, &AZ::TransformBus::Events::SetParent, secondLayerId);
+
+        // Layer1
+          // A
+          // B
+          // C
+          // Layer2
+            // D
+            // E
+            // F
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        // hide top layer
+        SetEntityVisibility(m_layerId, false);
+
+        // hide a and c (a and see are 'set' not to be visible and are not visible)
+        SetEntityVisibility(a, false);
+        SetEntityVisibility(c, false);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_TRUE(!IsEntityVisible(a));
+        EXPECT_TRUE(!IsEntitySetToBeVisible(a));
+
+        // b will not be visible but is not 'set' to be hidden
+        EXPECT_TRUE(!IsEntityVisible(b));
+        EXPECT_TRUE(IsEntitySetToBeVisible(b));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        // same for nested layer
+        SetEntityVisibility(secondLayerId, false);
+
+        SetEntityVisibility(d, false);
+        SetEntityVisibility(f, false);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_TRUE(!IsEntityVisible(e));
+        EXPECT_TRUE(IsEntitySetToBeVisible(e));
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        // set visibility of most nested entity to true
+        SetEntityVisibility(d, true);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_TRUE(IsEntitySetToBeVisible(m_layerId));
+        EXPECT_TRUE(IsEntitySetToBeVisible(secondLayerId));
+
+        // a will still be set to be not visible and won't be visible as parent layer is now visible
+        EXPECT_TRUE(!IsEntitySetToBeVisible(a));
+        EXPECT_TRUE(!IsEntityVisible(a));
+
+        // b will now be visible as it was not individually
+        // set to be visible and the parent layer is now visible
+        EXPECT_TRUE(IsEntitySetToBeVisible(b));
+        EXPECT_TRUE(IsEntityVisible(b));
+
+        // same story for e as for b
+        EXPECT_TRUE(IsEntitySetToBeVisible(e));
+        EXPECT_TRUE(IsEntityVisible(e));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    TEST_F(EditorEntityModelVisibilityFixture, UnlockingEntityInLockedLayerUnlocksAllEntitiesThatWereNotIndividuallyLocked)
+    {
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        const AZ::EntityId a = CreateDefaultEditorEntity("A");
+        const AZ::EntityId b = CreateDefaultEditorEntity("B");
+        const AZ::EntityId c = CreateDefaultEditorEntity("C");
+
+        const AZ::EntityId d = CreateDefaultEditorEntity("D");
+        const AZ::EntityId e = CreateDefaultEditorEntity("E");
+        const AZ::EntityId f = CreateDefaultEditorEntity("F");
+
+        m_layerId = CreateEditorLayerEntity("Layer1");
+        const AZ::EntityId secondLayerId = CreateEditorLayerEntity("Layer2");
+
+        AZ::TransformBus::Event(a, &AZ::TransformBus::Events::SetParent, m_layerId);
+        AZ::TransformBus::Event(b, &AZ::TransformBus::Events::SetParent, m_layerId);
+        AZ::TransformBus::Event(c, &AZ::TransformBus::Events::SetParent, m_layerId);
+
+        AZ::TransformBus::Event(secondLayerId, &AZ::TransformBus::Events::SetParent, m_layerId);
+
+        AZ::TransformBus::Event(d, &AZ::TransformBus::Events::SetParent, secondLayerId);
+        AZ::TransformBus::Event(e, &AZ::TransformBus::Events::SetParent, secondLayerId);
+        AZ::TransformBus::Event(f, &AZ::TransformBus::Events::SetParent, secondLayerId);
+
+        // Layer1
+          // A
+          // B
+          // C
+          // Layer2
+            // D
+            // E
+            // F
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        // lock top layer
+        SetEntityLockState(m_layerId, true);
+
+        // lock a and c (a and see are 'set' not to be visible and are not visible)
+        SetEntityLockState(a, true);
+        SetEntityLockState(c, true);
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_TRUE(IsEntityLocked(a));
+        EXPECT_TRUE(IsEntitySetToBeLocked(a));
+
+        // b will be locked but is not 'set' to be locked
+        EXPECT_TRUE(IsEntityLocked(b));
+        EXPECT_TRUE(!IsEntitySetToBeLocked(b));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        // same for nested layer
+        SetEntityLockState(secondLayerId, true);
+
+        SetEntityLockState(d, true);
+        SetEntityLockState(f, true);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_TRUE(IsEntityLocked(e));
+        EXPECT_TRUE(!IsEntitySetToBeLocked(e));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        // set visibility of most nested entity to true
+        SetEntityLockState(d, false);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_TRUE(!IsEntitySetToBeLocked(m_layerId));
+        EXPECT_TRUE(!IsEntitySetToBeLocked(secondLayerId));
+
+        // a will still be set to be not visible and won't be visible as parent layer is now visible
+        EXPECT_TRUE(IsEntitySetToBeLocked(a));
+        EXPECT_TRUE(IsEntityLocked(a));
+
+        // b will now be visible as it was not individually
+        // set to be visible and the parent layer is now visible
+        EXPECT_TRUE(!IsEntitySetToBeLocked(b));
+        EXPECT_TRUE(!IsEntityLocked(b));
+
+        // same story for e as for b
+        EXPECT_TRUE(!IsEntitySetToBeLocked(e));
+        EXPECT_TRUE(!IsEntityLocked(e));
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    // test to ensure the visibility flag on a layer entity is not modified
+    // instead we rely on SetLayerChildrenVisibility and AreLayerChildrenVisible
+    TEST_F(EditorEntityModelVisibilityFixture, LayerEntityVisibilityFlagIsNotModified)
+    {
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        const AZ::EntityId a = CreateDefaultEditorEntity("A");
+        const AZ::EntityId b = CreateDefaultEditorEntity("B");
+        const AZ::EntityId c = CreateDefaultEditorEntity("C");
+
+        m_layerId = CreateEditorLayerEntity("Layer1");
+
+        AZ::TransformBus::Event(a, &AZ::TransformBus::Events::SetParent, m_layerId);
+        AZ::TransformBus::Event(b, &AZ::TransformBus::Events::SetParent, m_layerId);
+        AZ::TransformBus::Event(c, &AZ::TransformBus::Events::SetParent, m_layerId);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        SetEntityVisibility(m_layerId, false);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_TRUE(!IsEntitySetToBeVisible(m_layerId));
+        EXPECT_TRUE(!IsEntityVisible(m_layerId));
+
+        bool flagSetVisible = false;
+        EditorVisibilityRequestBus::EventResult(
+            flagSetVisible, m_layerId, &EditorVisibilityRequestBus::Events::GetVisibilityFlag);
+
+        // even though a layer is set to not be visible, this is recorded by SetLayerChildrenVisibility
+        // and AreLayerChildrenVisible - the visibility flag will not be modified and remains true
+        EXPECT_TRUE(flagSetVisible);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    class EditorEntityInfoRequestActivateTestComponent
+        : public AzToolsFramework::Components::EditorComponentBase
+    {
+    public:
+        AZ_EDITOR_COMPONENT(
+            EditorEntityInfoRequestActivateTestComponent, "{849DA1FC-6A0C-4CB8-A0BB-D90DEE7FF7F7}",
+            AzToolsFramework::Components::EditorComponentBase);
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        // AZ::Component ...
+        void Activate() override
+        {
+            // ensure we can successfully read IsVisible and IsLocked (bus will be connected to in entity Init)
+            EditorEntityInfoRequestBus::EventResult(
+                m_visible, GetEntityId(), &EditorEntityInfoRequestBus::Events::IsVisible);
+            EditorEntityInfoRequestBus::EventResult(
+                m_locked, GetEntityId(), &EditorEntityInfoRequestBus::Events::IsLocked);
+        }
+
+        void Deactivate() override {}
+
+        bool m_visible = false;
+        bool m_locked = true;
+    };
+
+    void EditorEntityInfoRequestActivateTestComponent::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<EditorEntityInfoRequestActivateTestComponent>()
+                ->Version(0)
+                ;
+        }
+    }
+
+    class EditorEntityModelEntityInfoRequestFixture
+        : public ToolsApplicationFixture
+    {
+    public:
+        void SetUpEditorFixtureImpl() override
+        {
+            m_app.RegisterComponentDescriptor(EditorEntityInfoRequestActivateTestComponent::CreateDescriptor());
+        }
+    };
+
+    TEST_F(EditorEntityModelEntityInfoRequestFixture, EditorEntityInfoRequestBusRespondsInComponentActivate)
+    {
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        AZ::Entity* entity = nullptr;
+        const AZ::EntityId entityId = CreateDefaultEditorEntity("Entity", &entity);
+
+        entity->Deactivate();
+        const auto* entityInfoComponent = entity->CreateComponent<EditorEntityInfoRequestActivateTestComponent>();
+
+        // This is necessary to prevent a warning in the undo system.
+        AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(
+            &AzToolsFramework::ToolsApplicationRequests::Bus::Events::AddDirtyEntity,
+            entity->GetId());
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        entity->Activate();
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_TRUE(entityInfoComponent->m_visible);
+        EXPECT_FALSE(entityInfoComponent->m_locked);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    TEST_F(EditorEntityModelEntityInfoRequestFixture, EditorEntityInfoRequestBusRespondsInComponentActivateInLayer)
+    {
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Given
+        AZ::Entity* entity = nullptr;
+        const AZ::EntityId entityId = CreateDefaultEditorEntity("Entity", &entity);
+        const AZ::EntityId layerId = CreateEditorLayerEntity("Layer");
+
+        AZ::TransformBus::Event(entityId, &AZ::TransformBus::Events::SetParent, layerId);
+
+        SetEntityVisibility(layerId, false);
+        SetEntityLockState(layerId, true);
+
+        entity->Deactivate();
+        auto* entityInfoComponent = entity->CreateComponent<EditorEntityInfoRequestActivateTestComponent>();
+
+        // This is necessary to prevent a warning in the undo system.
+        AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(
+            &AzToolsFramework::ToolsApplicationRequests::Bus::Events::AddDirtyEntity,
+            entity->GetId());
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // When
+        // invert initial state to be sure we know Activate does what it's supposed to
+        entityInfoComponent->m_visible = true;
+        entityInfoComponent->m_locked = false;
+        entity->Activate();
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Then
+        EXPECT_FALSE(entityInfoComponent->m_visible);
+        EXPECT_TRUE(entityInfoComponent->m_locked);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
 } // namespace UnitTest

@@ -59,3 +59,5 @@ AZ_POP_DISABLE_WARNING
 
 #include <AzCore/PlatformDef.h>
 #include <AzCore/base.h>
+
+#include "SwapEndianness.h"

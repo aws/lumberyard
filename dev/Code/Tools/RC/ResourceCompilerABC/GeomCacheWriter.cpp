@@ -58,9 +58,15 @@ void GeomCacheDiskWriteThread::EndThread()
 
 uint64 GeomCacheDiskWriteThread::GetCurrentPosition() const
 {
+#if defined(AZ_PLATFORM_LINUX)
+    off_t position;
+    position = ftello(m_fileHandle);
+    return static_cast<uint64>(position);
+#else
     fpos_t position;
     fgetpos(m_fileHandle, &position);
     return static_cast<uint64>(position);
+#endif
 }
 
 GeomCacheBlockCompressionWriter::GeomCacheBlockCompressionWriter(IGeomCacheBlockCompressor* pBlockCompressor, GeomCacheDiskWriteThread& diskWriteThread)

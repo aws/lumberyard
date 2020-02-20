@@ -205,20 +205,24 @@ namespace Physics
     }
 
     CookedMeshShapeConfiguration::CookedMeshShapeConfiguration(const CookedMeshShapeConfiguration& other)
-        : m_cookedData(other.m_cookedData)
+        : ShapeConfiguration(other)
+        , m_cookedData(other.m_cookedData)
         , m_type(other.m_type)
         , m_cachedNativeMesh(nullptr)
     {
-
     }
 
-    void CookedMeshShapeConfiguration::operator=(const CookedMeshShapeConfiguration& other)
+    CookedMeshShapeConfiguration& CookedMeshShapeConfiguration::operator=(const CookedMeshShapeConfiguration& other)
     {
+        ShapeConfiguration::operator=(other);
+
         m_cookedData = other.m_cookedData;
         m_type = other.m_type;
 
         // Prevent raw pointer from being copied
         m_cachedNativeMesh = nullptr;
+
+        return *this;
     }
 
     ShapeType CookedMeshShapeConfiguration::GetShapeType() const

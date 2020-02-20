@@ -27,7 +27,8 @@ namespace AZ
             {
                 Diffuse,
                 Specular,
-                Bump
+                Bump,
+                Normal
             };
 
             FbxMaterialWrapper(FbxSurfaceMaterial* fbxMaterial);
@@ -43,6 +44,7 @@ namespace AZ
             virtual AZ::Vector3 GetEmissiveColor() const;
             virtual float GetOpacity() const;
             virtual float GetShininess() const;
+            virtual uint64_t GetUniqueId() const;
 
         protected:
             FbxSurfaceMaterial* m_fbxMaterial;

@@ -1023,6 +1023,12 @@ namespace AZ
 
             instance.m_instantiated = dataPatch.Apply(&sourceObjects, dependentSlice->GetSerializeContext(), filterDesc, sourceDataFlags, targetDataFlags);
 
+            if (!instance.m_instantiated)
+            {
+                AZ_Error("SliceComponent", false, "Failed to Apply override(s) to instance of slice: %s. Instantiation will complete without applying override(s)\n", m_asset.GetHint().c_str());
+                instance.m_instantiated = dependentSlice->GetSerializeContext()->CloneObject<InstantiatedContainer>(&sourceObjects);
+            }
+
             // Remap Ids & references.
             IdUtils::Remapper<EntityId>::ReplaceIdsAndIdRefs(instance.m_instantiated, [&entityIdMap](const EntityId& sourceId, bool isEntityId, const AZStd::function<EntityId()>& idGenerator) -> EntityId
             {

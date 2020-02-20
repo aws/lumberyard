@@ -1,0 +1,11 @@
+{
+    "none": {
+    },
+    "auto": {
+        "Utilities": [
+            "Utilities/MouseHider_linux.cpp",
+            "Utilities/QtWindowUtilities_linux.cpp",
+            "Utilities/ScreenGrabber_linux.cpp"
+        ]
+    }
+}

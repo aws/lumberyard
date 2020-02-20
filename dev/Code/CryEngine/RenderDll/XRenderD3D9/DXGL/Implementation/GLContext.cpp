@@ -4163,7 +4163,7 @@ case _D3DValue:                                     \
         }
 
         AZ_Assert(m_kWindowContext, "Null WindowContext");
-        EGLNativeWindowType window = nullptr;
+        EGLNativeWindowType window = EGL_NULL_VALUE;
 #   if defined(ANDROID)
         window = AZ::Android::Utils::GetWindow();
 #   else
@@ -4180,7 +4180,7 @@ case _D3DValue:                                     \
     {
 #if defined(DXGL_USE_EGL)
         AZ_Assert(m_kWindowContext, "Null WindowContext");
-        m_kWindowContext->SetWindow(nullptr);
+        m_kWindowContext->SetWindow(EGL_NULL_VALUE);
 #else
         DXGL_NOT_IMPLEMENTED
 #endif

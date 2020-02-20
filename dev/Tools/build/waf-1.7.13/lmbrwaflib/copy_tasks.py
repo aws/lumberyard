@@ -868,7 +868,14 @@ def add_copy_3rd_party_artifacts(self):
 
             target_folder = output_path_node.abspath()
 
-            for source_node in third_party_artifacts:
+            for artifact in third_party_artifacts:
+                if isinstance(artifact,tuple):
+                    source_node = artifact[0]
+                    full_symlink_path = os.path.join(target_folder, artifact[1])
+                else:
+                    source_node = artifact
+                    full_symlink_path = None
+
                 source_full_path = source_node.abspath()
                 source_filename = os.path.basename(source_full_path)
                 target_full_path = os.path.join(target_folder, source_filename)
@@ -880,9 +887,17 @@ def add_copy_3rd_party_artifacts(self):
                         fast_copy2(source_full_path, target_full_path)
                         copied_files += 1
                     except:
-                        Logs.warn('[WARN] Unable to copy {} to destination {}.  '
+                        Logs.warn('[WARN] Unable to copy {} to destination {}. '
                                   'Check the file permissions or any process that may be locking it.'
                                   .format(source_full_path, target_full_path))
+                try:
+                    if full_symlink_path:
+                        if not os.path.islink(full_symlink_path):
+                            os.symlink(source_filename, full_symlink_path)
+                except:
+                    Logs.warn('[WARN] Unable to link {}->{}. '
+                              'Check the file permissions or any process that may be locking it.'
+                              .format(full_symlink_path, target_full_path))
         if copied_files > 0 and Logs.verbose > 0:
             Logs.info('[INFO] {} External files copied.'.format(copied_files))
 
@@ -946,6 +961,7 @@ def copy_external_files(self):
     if copied_files > 0:
         Logs.info('[INFO] {} External files copied.'.format(copied_files))
 
+import fnmatch
 
 @feature('c', 'cxx', 'copy_3rd_party_binaries')
 @before_method('process_source')
@@ -959,17 +975,30 @@ def copy_3rd_party_binaries(self):
     if self.bld.cmd in ('msvs', 'android_studio'):
         return
 
-    def _process_filelist(source_files):
+    def _process_filelist(source_files, symlink_patterns = None):
 
         if 'COPY_3RD_PARTY_ARTIFACTS' not in self.env:
             self.env['COPY_3RD_PARTY_ARTIFACTS'] = []
 
         for source_file in source_files:
 
+            symlink_name = None
+            if symlink_patterns:
+                base_source_name = os.path.basename(source_file)
+                for symlink_pattern in symlink_patterns:
+                    search_pattern, replace_str = symlink_pattern.split(':')
+                    if fnmatch.fnmatch(base_source_name, search_pattern):
+                        symlink_name = replace_str % (base_source_name)
+                        break
+
+
             source_file_file_norm_path = os.path.normpath(source_file)
 
             source_node = self.bld.root.make_node(source_file_file_norm_path)
-            self.env['COPY_3RD_PARTY_ARTIFACTS'] += [source_node]
+            if symlink_name:
+                self.env['COPY_3RD_PARTY_ARTIFACTS'] += [(source_node, symlink_name)]
+            else:
+                self.env['COPY_3RD_PARTY_ARTIFACTS'] += [source_node]
 
     uselib_keys = []
     uselib_keys += getattr(self, 'uselib', [])
@@ -996,11 +1025,16 @@ def copy_3rd_party_binaries(self):
                                     fullpaths.append(sharedlib_fullpath)
                                     process_source_filename.add(source_file)
                 return fullpaths
+            def _get_symlink_patterns():
+                symlink_varname = "SYMLINK_PATTERNS_{}".format(uselib_key)
+                return self.env[symlink_varname]
+
 
             # Process the shared lib files if any
             shared_fullpaths = _extract_full_pathnames('SHAREDLIBPATH', 'SHAREDLIB')
+            _get_symlink_patterns = _get_symlink_patterns()
             if len(shared_fullpaths) > 0:
-                _process_filelist(shared_fullpaths)
+                _process_filelist(shared_fullpaths, _get_symlink_patterns)
 
             # Process the pdbs if any
 

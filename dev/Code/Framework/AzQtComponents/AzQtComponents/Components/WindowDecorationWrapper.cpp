@@ -533,9 +533,17 @@ namespace AzQtComponents
 
                         const QPoint globalPos = QHighDpi::fromNativePixels(QPoint(global_x, global_y), widget->window()->windowHandle());
                         const QPoint local = titleBar->mapFromGlobal(globalPos);
-                        if (titleBar->draggableRect().contains(local) && !titleBar->isTopResizeArea(globalPos))
+                        if (titleBar->draggableRect().contains(local))
                         {
-                            *result = HTCAPTION;
+                            if (titleBar->isTopResizeArea(globalPos))
+                            {
+                                *result = HTTOP;
+                            }
+                            else
+                            {
+                                *result = HTCAPTION;
+                            }
+
                             return true;
                         }
                     }

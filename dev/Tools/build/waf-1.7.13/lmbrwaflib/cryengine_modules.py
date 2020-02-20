@@ -552,6 +552,7 @@ def VerifyInput(ctx, kw):
 
     # 'target' is required
     target_name = kw['target']
+    is_launcher = kw.get('is_launcher', False)
 
     wscript_file = ctx.path.make_node('wscript').abspath()
     if kw['file_list'] == []:
@@ -568,7 +569,7 @@ def VerifyInput(ctx, kw):
     # Validate the paths only during the build command execution and exist in the spec
     if ctx.cmd.startswith('build'):
 
-        if ctx.is_target_enabled(target_name):
+        if ctx.is_target_enabled(target_name, is_launcher):
 
             # Validate the include paths and show warnings for ones that dont exist (only for the currently building platform
             # and only during the build command execution)
@@ -772,6 +773,10 @@ def ConfigureTaskGenerator(ctx, kw):
             module_define = 'AZ_MODULE_NAME="{}"'.format(target.upper())
             append_kw_entry(kw, 'defines', module_define)
 
+        # If this is a linux target, then add 'linux_rpath' to the kw
+        if ctx.is_linux_platform(target_platform):
+            append_to_unique_list(kw.setdefault('linux_rpath', []), '$ORIGIN')
+
     # Special case:  Only non-android launchers can use required gems
     apply_required_gems = kw.get('use_required_gems', False)
     if kw.get('is_launcher', False):
@@ -909,6 +914,13 @@ def RunTaskGenerator(ctx, *k, **kw ):
         kw['output_stub_name'] = kw.get('output_file_name', target)
     if ctx.env['ALT_STUB_ST'] and build_type == 'shlib':
         kw['alt_output_stub_name'] = kw.get('output_file_name', target)
+
+        # If we are a linux platform, add set rpath to [$ORIGIN] automatically so it applies the
+        # current program/shared lib path to the library search path
+        host = Utils.unversioned_sys_platform()
+        if host == 'linux':
+            append_to_unique_list(kw.setdefault('rpath', []), ['$ORIGIN'])
+        pass
 
     return getattr(ctx, BUILD_PROCESS_TABLE[build_type][CTX_TYPE_INDEX])(*k, **kw)
 
@@ -1055,6 +1067,8 @@ def BuildTaskGenerator(ctx, kw):
         ctx.update_module_definition(module_type, build_type, kw)
         return False
 
+    is_launcher = kw.get('is_launcher', False)
+
     # Assign a deterministic UID to this target
     ctx.assign_target_uid(kw)
 
@@ -1113,11 +1127,11 @@ def BuildTaskGenerator(ctx, kw):
     # If this is a unit test module for a static library (see CryEngineStaticLibrary), then enable it if its unit test target
     # is enabled as well
     unit_test_target = kw.get('unit_test_target')
-    if unit_test_target and ctx.is_target_enabled(unit_test_target):
+    if unit_test_target and ctx.is_target_enabled(unit_test_target, is_launcher):
         Logs.debug('lumberyard: module {} enabled for platform {}.'.format(target, current_platform))
         return True
 
-    if ctx.is_target_enabled(target):
+    if ctx.is_target_enabled(target, is_launcher):
         Logs.debug('lumberyard: module {} enabled for platform {}.'.format(target, current_platform))
         return True     # Skip project is it is not part of the current spec
 
@@ -1877,47 +1891,9 @@ def CryEditorLib(ctx, *k, **kw):
     AppendCommonModules(ctx,kw)
 
     # Additional Editor-specific settings
-    append_kw_entry(kw,'defines',[ 'SANDBOX_EXPORTS' ])
-
-    kw['enable_rtti'] = [ True ]
-
-    # Setup TaskGenerator specific settings
-    ctx.set_editor_flags(kw)
-    apply_cryengine_module_defines(ctx, kw)
-
-    SetupRunTimeLibraries(ctx,kw)
-    append_kw_entry(kw,'msvc_cxxflags',['/EHsc'])
-    append_kw_entry(kw,'msvc_cflags', ['/EHsc'])
-    append_kw_entry(kw,'defines',['USE_MEM_ALLOCATOR', 'EDITOR', 'DONT_BAN_STD_STRING', 'FBXSDK_NEW_API=1' ])
-
-    LoadSharedSettings(ctx,k,kw)
-
-    ConfigureTaskGenerator(ctx, kw)
-
-    if not BuildTaskGenerator(ctx, kw):
-        return None
-
-    return RunTaskGenerator(ctx, *k, **kw)
-
-###############################################################################
-@build_shlib
-def CryEditorLib(ctx, *k, **kw):
-    """
-    Wrapper for CryEngine Editor Library component
-    """
-    # Initialize the Task Generator
-    if not InitializeTaskGenerator(ctx, kw):
-        return
-
-    # Append common modules
-    AppendCommonModules(ctx,kw)
-
-    # Additional Editor-specific settings
     append_kw_entry(kw,'features',[ 'generate_rc_file' ])
     append_kw_entry(kw,'defines',[ 'SANDBOX_EXPORTS' ])
 
-    kw['enable_rtti'] = [ True ]
-
     # Setup TaskGenerator specific settings
     ctx.set_editor_flags(kw)
     apply_cryengine_module_defines(ctx, kw)
@@ -1933,6 +1909,9 @@ def CryEditorLib(ctx, *k, **kw):
 
     if not BuildTaskGenerator(ctx, kw):
         return None
+
+    if ctx.env['PLATFORM'] == 'darwin_x64':
+        append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
 
     return RunTaskGenerator(ctx, *k, **kw)
 

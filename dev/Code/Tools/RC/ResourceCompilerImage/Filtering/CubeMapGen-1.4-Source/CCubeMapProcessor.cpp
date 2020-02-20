@@ -3,6 +3,9 @@
 //=============================================================================
 // modifications by Crytek GmbH 
 
+// Modifications copyright Amazon.com, Inc. or its affiliates.
+
+#include "StdAfx.h"
 #include "CCubeMapProcessor.h"
 
 #include <Cry_Math.h> // for max()
@@ -2154,18 +2157,18 @@ void CCubeMapProcessor::EstimateFilterThreadProgress(SFilterProgress *a_FilterPr
    float32 totalMipComputation = 0.0f;     //time to compute all mip levels as a function of the time it takes 
                                             //to compute the top mip level
 
-   float32 progressMipComputation = 0.0f;	//progress based on entirely computed mip levels
-   float32 currentMipComputation = 0.0f;	//amount of computation it takes to process this entire mip level
-   float32 progressFaceComputation = 0.0f;	//progress based on entirely computed faces for this mip level
-   float32 currentFaceComputation = 0.0f;	//amount of computation it takes to process this entire face
-   float32 progressRowComputation = 0.0f;	//progress based on entirely computed rows for this face
+   float32 progressMipComputation = 0.0f;   //progress based on entirely computed mip levels
+   float32 currentMipComputation = 0.0f;    //amount of computation it takes to process this entire mip level
+   float32 progressFaceComputation = 0.0f;  //progress based on entirely computed faces for this mip level
+   float32 currentFaceComputation = 0.0f;   //amount of computation it takes to process this entire face
+   float32 progressRowComputation = 0.0f;   //progress based on entirely computed rows for this face
                                             //estimated fraction of total computation time the current face will take
    
    int32 i;
 
-   float32 filterAngle = 1.0f;					//filter angle for given miplevel
-   int32 dstSize = 1;						//destination cube map size of given mip level
-   int32 currentMipSize = 1;				//size of mip level currently being processed
+   float32 filterAngle = 1.0f;                  //filter angle for given miplevel
+   int32 dstSize = 1;                       //destination cube map size of given mip level
+   int32 currentMipSize = 1;                //size of mip level currently being processed
 
    //compuate total compuation time as a function of the time  
    // cubemap processing for each miplevel is roughly O(n^2 * m^2) 

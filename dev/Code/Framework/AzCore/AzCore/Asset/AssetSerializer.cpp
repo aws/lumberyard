@@ -113,9 +113,7 @@ namespace AZ {
         if (Load(classPtr, stream, version, isDataBigEndian))
         {
             Data::Asset<Data::AssetData>* asset = reinterpret_cast<Data::Asset<Data::AssetData>*>(classPtr);
-            PostSerializeAssetReference(*asset, assetFilterCallback);
-
-            return true;
+            return PostSerializeAssetReference(*asset, assetFilterCallback);
         }
 
         return false;
@@ -202,18 +200,18 @@ namespace AZ {
 
     //-------------------------------------------------------------------------
 
-    void AssetSerializer::PostSerializeAssetReference(AZ::Data::Asset<AZ::Data::AssetData>& asset, const Data::AssetFilterCB& assetFilterCallback)
+    bool AssetSerializer::PostSerializeAssetReference(AZ::Data::Asset<AZ::Data::AssetData>& asset, const Data::AssetFilterCB& assetFilterCallback)
     {
         if (!asset.GetId().IsValid())
         {
             // The asset reference is null, so there's no additional processing required.
-            return;
+            return true;
         }
         
         if (assetFilterCallback && !assetFilterCallback(asset))
         {
             // This asset reference is filtered out for further processing/loading.
-            return;
+            return true;
         }
 
         RemapLegacyIds(asset);
@@ -221,7 +219,7 @@ namespace AZ {
         if (asset.Get())
         {
             // Asset reference is already fully populated.
-            return;
+            return true;
         }
 
         const Data::AssetLoadBehavior loadBehavior = asset.GetAutoLoadBehavior();
@@ -229,10 +227,19 @@ namespace AZ {
         if (loadBehavior == Data::AssetLoadBehavior::NoLoad)
         {
             // Asset reference is flagged to never load unless explicitly by user code.
-            return;
+            return true;
         }
 
+        // Save this in case GetAsset() fails
+        Data::AssetId assetId = asset.GetId();
+
         asset = Data::AssetManager::Instance().GetAsset(asset.GetId(), asset.GetType(), false /*don't queue load*/);
+
+        if (!asset.GetId().IsValid()) // This will happen if there is no asset handler registered
+        {
+            AZ_Error("Serialization", false, "Dependent asset (%s) could not be loaded.", assetId.ToString<AZStd::string>().c_str());
+            return false;
+        }
 
         // If the asset is flagged to pre-load, kick off a blocking load.
         if (loadBehavior == Data::AssetLoadBehavior::PreLoad)
@@ -251,6 +258,7 @@ namespace AZ {
                 AZ_Error("Serialization", false, "Dependent asset (%s:%s) could not be loaded.",
                     asset.GetId().ToString<AZStd::string>().c_str(),
                     asset.GetHint().c_str());
+                return false;
             }
         }
 
@@ -262,6 +270,8 @@ namespace AZ {
         }
 
         asset.SetAutoLoadBehavior(loadBehavior);
+
+        return true;
     }
 
     //-------------------------------------------------------------------------

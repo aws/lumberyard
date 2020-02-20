@@ -18,9 +18,7 @@
 #include <QPointer>
 #include <QLineEdit>
 
-class QAbstractSpinBox;
 class QLineEdit;
-class QMouseEvent;
 class QPainter;
 class QSettings;
 class QStyleOption;
@@ -79,6 +77,12 @@ namespace AzQtComponents
         {
             int pixelsPerStep;
             QCursor scrollCursor;
+            QCursor scrollCursorLeft;
+            QCursor scrollCursorLeftMax;
+            QCursor scrollCursorRight;
+            QCursor scrollCursorRightMax;
+            // For VectorInput, DoubleVectorInput
+            int labelSize;
         };
 
         /*!
@@ -96,6 +100,7 @@ namespace AzQtComponents
         bool isUndoAvailable() const;
         bool isRedoAvailable() const;
 
+        void setInitialValueWasSetting(bool b);
     Q_SIGNALS:
         void valueChangeBegan();
         void valueChangeEnded();
@@ -103,6 +108,7 @@ namespace AzQtComponents
         void globalUndoTriggered();
         void globalRedoTriggered();
 
+        void pasteTriggered();
         /// Always connect to this signal in the main UI thread, with a direct connection; do not use Qt::QueuedConnection or Qt::BlockingQueuedConnection
         /// as the parameters will only be valid for a short time
         void contextMenuAboutToShow(QMenu* menu, QAction* undoAction, QAction* redoAction);
@@ -124,8 +130,6 @@ namespace AzQtComponents
 
         static bool polish(QProxyStyle* style, QWidget* widget, const Config& config);
         static bool unpolish(QProxyStyle* style, QWidget* widget, const Config& config);
-
-        static void initStyleOption(QAbstractSpinBox* spinBox, QStyleOptionSpinBox* option);
 
         void focusInEvent(QFocusEvent* e) override;
         void contextMenuEvent(QContextMenuEvent* ev) override;
@@ -195,12 +199,17 @@ namespace AzQtComponents
 
         bool isEditing() const;
 
+        void setInitialValueWasSetting(bool b);
+        void updateValue(double value);
+
     Q_SIGNALS:
         void valueChangeBegan();
         void valueChangeEnded();
 
         void globalUndoTriggered();
         void globalRedoTriggered();
+
+        void pasteTriggered();
 
         /// Always connect to this signal in the main UI thread, with a direct connection; do not use Qt::QueuedConnection or Qt::BlockingQueuedConnection
         /// as the parameters will only be valid for a short time
@@ -237,7 +246,7 @@ namespace AzQtComponents
             Q_OBJECT
 
         public:
-            using QLineEdit::QLineEdit;
+            explicit SpinBoxLineEdit(QWidget* parent = nullptr);
 
             bool event(QEvent* ev) override;
             void keyPressEvent(QKeyEvent* ev) override;
@@ -248,6 +257,8 @@ namespace AzQtComponents
             void globalUndoTriggered();
             void globalRedoTriggered();
             void selectAllTriggered();
+
+            void pasteTriggered();
         };
     } // namespace internal
 } // namespace AzQtComponents

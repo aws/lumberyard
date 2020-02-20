@@ -41,6 +41,7 @@ namespace AzToolsFramework
         //************************************************************
 
         bool detachedWindow = false;                                    ///< set to true if the view pane should use a detached, non-dockable widget. This is to workaround a problem with QOpenGLWidget on macOS. Currently this has no effect on other platforms.
+        bool isDisabledInSimMode = false;                               ///< set to true if the view pane should not be openable from level editor menu when editor is in simulation mode.
     };
 
 } // namespace AzToolsFramework

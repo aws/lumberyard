@@ -23,8 +23,8 @@
 
 namespace EMotionFX
 {
-    AZ_CLASS_ALLOCATOR_IMPL(TransitionStateFilterPicker, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(TransitionStateFilterLocalHandler, AZ::SystemAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(TransitionStateFilterPicker, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(TransitionStateFilterLocalHandler, EditorAllocator, 0)
 
     TransitionStateFilterPicker::TransitionStateFilterPicker(AnimGraphStateMachine* stateMachine, QWidget* parent)
         : QWidget(parent)

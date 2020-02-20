@@ -190,7 +190,9 @@
             "TinyDocument.h",
             "tools.h",
             "../../CryCommonTools/Util.h",
-            "ResourceCompilerImage.rc"
+            "ResourceCompilerImage.rc",
+            "PCH/StdAfx.h",
+            "PCH/StdAfx.cpp"
         ]
     },
     "none":

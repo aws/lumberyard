@@ -2055,7 +2055,7 @@ void CD3D9Renderer::FX_SetStencilDontCareActions(int const nTarget,
 
 void CD3D9Renderer::FX_TogglePLS(bool const enable)
 {
-#if defined(OPENGL_ES)
+#if defined(OPENGL_ES) && !defined(DESKTOP_GLES)
     DXGLTogglePLS(&GetDeviceContext(), enable);
 #endif
 }

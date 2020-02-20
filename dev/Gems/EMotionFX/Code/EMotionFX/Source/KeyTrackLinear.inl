@@ -171,13 +171,45 @@ MCORE_INLINE KeyFrame<ReturnType, StorageType>* KeyTrackLinear<ReturnType, Stora
 
 // returns the interpolated value at a given time
 template <class ReturnType, class StorageType>
-ReturnType KeyTrackLinear<ReturnType, StorageType>::GetValueAtTime(float currentTime, uint32* cachedKey, uint8* outWasCacheHit) const
+ReturnType KeyTrackLinear<ReturnType, StorageType>::GetValueAtTime(float currentTime) const
+{
+    MCORE_ASSERT(currentTime >= 0.0);
+    MCORE_ASSERT(mKeys.GetLength() > 0);
+
+    uint32 keyNumber = KeyFrameFinder<ReturnType, StorageType>::FindKey(currentTime, mKeys.GetReadPtr(), mKeys.GetLength());
+
+    // if no key could be found
+    if (keyNumber == MCORE_INVALIDINDEX32)
+    {
+        // if there are no keys at all, simply return an empty object
+        if (mKeys.GetLength() == 0)
+        {
+            // return an empty object
+            return ReturnType();
+        }
+
+        // return the last key
+        return mKeys.GetLast().GetValue();
+    }
+
+    // check if we didn't reach the end of the track
+    if ((keyNumber + 1) > (mKeys.GetLength() - 1))
+    {
+        return mKeys.GetLast().GetValue();
+    }
+
+    // perform interpolation
+    return Interpolate(keyNumber, currentTime);
+}
+
+template <class ReturnType, class StorageType>
+ReturnType KeyTrackLinear<ReturnType, StorageType>::GetValueAtTime(float currentTime, uint32& cachedKey, uint8& outWasCacheHit) const
 {
     MCORE_ASSERT(currentTime >= 0.0);
     MCORE_ASSERT(mKeys.GetLength() > 0);
 
     // make a local copy of the cached key value
-    uint32 localCachedKey = (cachedKey) ? *cachedKey : MCORE_INVALIDINDEX32;
+    uint32 localCachedKey = cachedKey;
 
     // find the first key to start interpolating from (between this one and the next)
     uint32 keyNumber = MCORE_INVALIDINDEX32;
@@ -186,17 +218,9 @@ ReturnType KeyTrackLinear<ReturnType, StorageType>::GetValueAtTime(float current
     // of course we need to check first if the cached key is actually still valid or not
     if (localCachedKey == MCORE_INVALIDINDEX32) // no cached key has been set, so simply perform a search
     {
-        if (outWasCacheHit)
-        {
-            *outWasCacheHit = 0;
-        }
-
+        outWasCacheHit = 0;
         keyNumber = KeyFrameFinder<ReturnType, StorageType>::FindKey(currentTime, mKeys.GetReadPtr(), mKeys.GetLength());
-
-        if (cachedKey)
-        {
-            *cachedKey = keyNumber;
-        }
+        cachedKey = keyNumber;
     }
     else
     {
@@ -217,35 +241,20 @@ ReturnType KeyTrackLinear<ReturnType, StorageType>::GetValueAtTime(float current
         if ((mKeys[localCachedKey].GetTime() <= currentTime) && (mKeys[localCachedKey + 1].GetTime() >= currentTime))
         {
             keyNumber = localCachedKey;
-            if (outWasCacheHit)
-            {
-                *outWasCacheHit = 1;
-            }
+            outWasCacheHit = 1;
         }
         else
         {
             if (localCachedKey < mKeys.GetLength() - 2 && (mKeys[localCachedKey + 1].GetTime() <= currentTime) && (mKeys[localCachedKey + 2].GetTime() >= currentTime))
             {
-                if (outWasCacheHit)
-                {
-                    *outWasCacheHit = 1;
-                }
-
+                outWasCacheHit = 1;
                 keyNumber = localCachedKey + 1;
             }
             else    // the cached key is invalid, so perform a real search (cache miss)
             {
-                if (outWasCacheHit)
-                {
-                    *outWasCacheHit = 0;
-                }
-
+                outWasCacheHit = 0;
                 keyNumber = KeyFrameFinder<ReturnType, StorageType>::FindKey(currentTime, mKeys.GetReadPtr(), mKeys.GetLength());
-
-                if (cachedKey)
-                {
-                    *cachedKey = keyNumber;
-                }
+                cachedKey = keyNumber;
             }
         }
     }
@@ -293,17 +302,17 @@ MCORE_INLINE ReturnType KeyTrackLinear<ReturnType, StorageType>::Interpolate(uin
 
 
 template <>
-MCORE_INLINE MCore::Quaternion KeyTrackLinear<MCore::Quaternion, MCore::Compressed16BitQuaternion>::Interpolate(uint32 startKey, float currentTime) const
+MCORE_INLINE AZ::Quaternion KeyTrackLinear<AZ::Quaternion, MCore::Compressed16BitQuaternion>::Interpolate(uint32 startKey, float currentTime) const
 {
     // get the keys to interpolate between
-    const KeyFrame<MCore::Quaternion, MCore::Compressed16BitQuaternion>& firstKey = mKeys[startKey];
-    const KeyFrame<MCore::Quaternion, MCore::Compressed16BitQuaternion>& nextKey  = mKeys[startKey + 1];
+    const KeyFrame<AZ::Quaternion, MCore::Compressed16BitQuaternion>& firstKey = mKeys[startKey];
+    const KeyFrame<AZ::Quaternion, MCore::Compressed16BitQuaternion>& nextKey  = mKeys[startKey + 1];
 
     // calculate the time value in range of [0..1]
     const float t = (currentTime - firstKey.GetTime()) / (nextKey.GetTime() - firstKey.GetTime());
 
     // lerp between them
-    return firstKey.GetValue().NLerp(nextKey.GetValue(), t);
+    return MCore::NLerp(firstKey.GetValue(), nextKey.GetValue(), t);
 }
 
 

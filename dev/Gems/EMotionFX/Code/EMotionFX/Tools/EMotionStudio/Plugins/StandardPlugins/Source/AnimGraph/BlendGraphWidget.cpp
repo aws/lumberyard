@@ -36,6 +36,7 @@
 #include <MCore/Source/ReflectionSerializer.h>
 #include <MCore/Source/StandardHeaders.h>
 #include <MysticQt/Source/KeyboardShortcutManager.h>
+#include <MCore/Source/LogManager.h>
 
 // qt includes
 #include <QDropEvent>

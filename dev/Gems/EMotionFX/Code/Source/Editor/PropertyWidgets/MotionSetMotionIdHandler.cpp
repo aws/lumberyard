@@ -23,10 +23,10 @@ namespace EMotionFX
 {
     float MotionSelectionIdWidgetController::s_displayedRoundingError = 0.0f;
 
-    AZ_CLASS_ALLOCATOR_IMPL(MotionSetMotionIdPicker, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(MotionIdRandomSelectionWeightsHandler, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(MotionSetMultiMotionIdHandler, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(MotionSelectionIdWidgetController, AZ::SystemAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(MotionSetMotionIdPicker, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(MotionIdRandomSelectionWeightsHandler, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(MotionSetMultiMotionIdHandler, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(MotionSelectionIdWidgetController, EditorAllocator, 0)
 
     const float MotionSetMotionIdPicker::s_defaultWeight = 1.0f;
 

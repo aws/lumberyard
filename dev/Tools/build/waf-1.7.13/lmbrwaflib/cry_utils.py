@@ -23,6 +23,7 @@ import utils
 import json
 import os
 import re
+import copy
 
 winreg_available = True
 try:
@@ -138,6 +139,8 @@ def sanitize_kw_input_lists(list_keywords, kw):
         if key in kw:
             if not isinstance(kw[key],list):
                 kw[key] = [ kw[key] ]
+            else:
+                kw[key] = copy.copy(kw[key])
 
 
 def flatten_list(input):

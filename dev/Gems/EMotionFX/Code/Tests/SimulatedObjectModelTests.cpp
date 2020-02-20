@@ -49,7 +49,7 @@ namespace EMotionFX
 
         actor->SetNumNodes(3);
         actor->ResizeTransformData();
-        actor->PostCreateInit(/*makeGeomLodsCompatibleWithSkeletalLods=*/false, /*generateOBBs=*/false, /*convertUnitType=*/false);
+        actor->PostCreateInit(/*makeGeomLodsCompatibleWithSkeletalLODs=*/false, /*generateOBBs=*/false, /*convertUnitType=*/false);
 
         EMotionFX::SimulatedObjectWidget* simulatedObjectWidget = static_cast<EMotionFX::SimulatedObjectWidget*>(EMStudio::GetPluginManager()->FindActivePlugin(EMotionFX::SimulatedObjectWidget::CLASS_ID));
         ASSERT_TRUE(simulatedObjectWidget) << "Simulated Object plugin not loaded";

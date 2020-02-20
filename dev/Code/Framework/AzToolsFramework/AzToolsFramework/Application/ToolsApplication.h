@@ -59,6 +59,11 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
+        // AzFramework::ApplicationRequests::Bus overrides ...
+        void QueryApplicationType(AzFramework::ApplicationTypeQuery& appType) const override;
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
         // ToolsApplicationRequests::Bus::Handler
         void PreExportEntity(AZ::Entity& source, AZ::Entity& target) override;
         void PostExportEntity(AZ::Entity& source, AZ::Entity& target) override;

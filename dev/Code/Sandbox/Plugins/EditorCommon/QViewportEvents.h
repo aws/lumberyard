@@ -15,7 +15,8 @@
 #define CRYINCLUDE_EDITORCOMMON_QVIEWPORTEVENTS_H
 #pragma once
 
-class QViewport;
+#include "EditorCommonAPI.h"
+class EDITOR_COMMON_API QViewport;
 
 struct SMouseEvent
 {

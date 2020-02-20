@@ -82,13 +82,13 @@ namespace GraphCanvas
 
         Endpoint GetEndpoint() const;
 
-        const AZStd::string& GetName() const  override { return m_slotConfiguration.m_name.GetDisplayString(); }
+        const AZStd::string GetName() const  override { return m_slotConfiguration.m_name.GetDisplayString(); }
         void SetName(const AZStd::string& name) override;
 
         TranslationKeyedString GetTranslationKeyedName() const override { return m_slotConfiguration.m_name; }
         void SetTranslationKeyedName(const TranslationKeyedString&) override;
 
-        const AZStd::string& GetTooltip() const override { return m_slotConfiguration.m_tooltip.GetDisplayString(); }
+        const AZStd::string GetTooltip() const override { return m_slotConfiguration.m_tooltip.GetDisplayString(); }
         void SetTooltip(const AZStd::string& tooltip)  override;
 
         TranslationKeyedString GetTranslationKeyedTooltip() const override { return m_slotConfiguration.m_tooltip; }

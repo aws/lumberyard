@@ -22,11 +22,7 @@ namespace AZ
     {
         void BlockCache::Section::Prefix(const Section& section)
         {
-            if (!section.m_used)
-            {
-                return;
-            }
-
+            AZ_Assert(section.m_used, "Trying to prefix an unused section");
             AZ_Assert(!m_wait && !section.m_wait, "Can't merge two section that are already waiting for data to be loaded.");
 
             if (m_used)
@@ -438,14 +434,11 @@ namespace AZ
                 const bool isEntirelyInCache = blockOffset + size <= blockReadSizeStart;
                 if (isEntirelyInCache)
                 {
-                    if (roundedOffsetStart + blockReadSizeStart > fileLength)
-                    {
-                        prolog.m_readSize = fileLength - roundedOffsetStart;
-                    }
-                    else
-                    {
-                        prolog.m_readSize = blockReadSizeStart;
-                    }
+                    // The read size is already clamped to the file size above when blockReadSizeStart is set.
+                    AZ_Assert(roundedOffsetStart + blockReadSizeStart <= fileLength,
+                        "Read size in block cache was set to %llu but this is beyond the file length of %llu.",
+                        roundedOffsetStart + blockReadSizeStart, fileLength);
+                    prolog.m_readSize = blockReadSizeStart;
                     prolog.m_copySize = size;
 
                     // There won't be anything else coming after this so continue reading.
@@ -537,7 +530,7 @@ namespace AZ
                 }
             }
 
-            if (!m_inFlightRequests[oldestIndex])
+            if (!IsCacheBlockInFlight(oldestIndex))
             {
                 // Recycle the block.
                 m_cachedPaths[oldestIndex] = filePath;

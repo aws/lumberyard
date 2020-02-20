@@ -15,7 +15,7 @@
 
 #include <QtNetwork/qhostaddress.h>
 #include <QtNetwork/qabstractsocket.h>
-#include <QTimer.h>
+#include <QTimer>
 
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzFramework/API/ApplicationAPI.h>

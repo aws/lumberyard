@@ -89,6 +89,8 @@ namespace AzQtComponents
         void disableAutoSaveLayout(QDockWidget* dock);
         void enableAutoSaveLayout(QDockWidget* dock);
 
+        bool IsDockWidgetBeingDragged(QDockWidget* dock);
+
     protected:
         bool eventFilter(QObject* watched, QEvent* event) override;
 
@@ -188,7 +190,6 @@ namespace AzQtComponents
             QPointer<QWidget> draggedWidget;
             QPointer<QDockWidget> draggedDockWidget;  // This could be different from m_state.dock if the dock widget being dragged is tabbed
             QPointer<QDockWidget> floatingDockContainer;
-            int tabIndex = -1;
             bool updateInProgress = false;
             int snappedSide = 0;
 

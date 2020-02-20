@@ -13,7 +13,7 @@
 #include "StdAfx.h"
 
 #include "CloudGemMetric/MetricsSettings.h"
-#include "AWS/ServiceAPI/CloudGemMetricClientComponent.h"
+#include "AWS/ServiceApi/CloudGemMetricClientComponent.h"
 
 namespace CloudGemMetric
 {
@@ -56,19 +56,19 @@ namespace CloudGemMetric
 
         if (!RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "max_local_file_size_in_bytes", IsInt) ||
             !RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "game_buffer_flush_period_in_seconds", IsInt) ||
-            !RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "max_game_buffer_size_in_bytes", IsInt) || 
-            !RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "max_num_buffered_metrics", IsInt) || 
-            !RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "max_metrics_size_to_send_in_batch_in_bytes", IsInt) || 
+            !RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "max_game_buffer_size_in_bytes", IsInt) ||
+            !RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "max_num_buffered_metrics", IsInt) ||
+            !RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "max_metrics_size_to_send_in_batch_in_bytes", IsInt) ||
             !RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "send_metrics_interval_in_seconds", IsInt) ||
             !RAPIDJSON_IS_VALID_MEMBER(settingsObjVal, "file_threshold_to_prioritize_in_perc", IsDouble))
         {
             return false;
         }
 
-        if (!ValidateSettings(settingsObjVal["max_local_file_size_in_bytes"].GetInt(), 
-            settingsObjVal["game_buffer_flush_period_in_seconds"].GetInt(), 
-            settingsObjVal["max_game_buffer_size_in_bytes"].GetInt(), 
-            settingsObjVal["max_metrics_size_to_send_in_batch_in_bytes"].GetInt(), 
+        if (!ValidateSettings(settingsObjVal["max_local_file_size_in_bytes"].GetInt(),
+            settingsObjVal["game_buffer_flush_period_in_seconds"].GetInt(),
+            settingsObjVal["max_game_buffer_size_in_bytes"].GetInt(),
+            settingsObjVal["max_metrics_size_to_send_in_batch_in_bytes"].GetInt(),
             settingsObjVal["send_metrics_interval_in_seconds"].GetInt()))
         {
             AZ_Warning("MetricsSettings", false, "Rejecting invalid settings from file");
@@ -86,7 +86,7 @@ namespace CloudGemMetric
     }
 
     void MetricsSettings::InitFromBackend(const CloudGemMetric::ServiceAPI::ClientContext& context)
-    {        
+    {
         if (!ValidateSettings(context.file_max_size_in_mb,
             context.buffer_flush_to_file_interval_sec,
             context.buffer_flush_to_file_max_in_bytes,

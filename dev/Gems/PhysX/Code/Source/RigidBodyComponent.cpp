@@ -42,6 +42,9 @@ namespace PhysX
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<Physics::RigidBodyRequestBus>("RigidBodyRequestBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "physics")
+                ->Attribute(AZ::Script::Attributes::Category, "PhysX")
                 ->Event("EnablePhysics", &Physics::RigidBodyRequests::EnablePhysics)
                 ->Event("DisablePhysics", &RigidBodyRequests::DisablePhysics)
                 ->Event("IsPhysicsEnabled", &RigidBodyRequests::IsPhysicsEnabled)
@@ -77,6 +80,7 @@ namespace PhysX
                 ->Event("SetKinematic", &RigidBodyRequests::SetKinematic)
                 ->Event("SetKinematicTarget", &RigidBodyRequests::SetKinematicTarget)
 
+                ->Event("IsGravityEnabled", &RigidBodyRequests::IsGravityEnabled)
                 ->Event("SetGravityEnabled", &RigidBodyRequests::SetGravityEnabled)
                 ->Event("SetSimulationEnabled", &RigidBodyRequests::SetSimulationEnabled)
 
@@ -239,7 +243,7 @@ namespace PhysX
     {
         // Create rigid body
         SetupConfiguration();
-        Physics::SystemRequestBus::BroadcastResult(m_rigidBody, &Physics::SystemRequests::CreateRigidBody, m_configuration);
+        m_rigidBody = AZ::Interface<Physics::System>::Get()->CreateRigidBody(m_configuration);
         m_rigidBody->SetKinematic(m_configuration.m_kinematic);
 
         // Add shapes
@@ -432,6 +436,11 @@ namespace PhysX
     {
         m_isLastMovementFromKinematicSource = true;
         m_rigidBody->SetKinematicTarget(targetPosition);
+    }
+
+    bool RigidBodyComponent::IsGravityEnabled() const
+    {
+        return m_rigidBody->IsGravityEnabled();
     }
 
     void RigidBodyComponent::SetGravityEnabled(bool enabled)

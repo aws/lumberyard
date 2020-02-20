@@ -273,6 +273,7 @@ namespace AssetBundler
         void NormalizePathKeepCase(AZStd::string& /*path*/) override {};
         void CalculateBranchTokenForAppRoot(AZStd::string& /*token*/) const override {};
         const char* GetEngineRoot() const { return TestRoot; }
+        void QueryApplicationType(AzFramework::ApplicationTypeQuery& appType) const override {};
     };
 
     class MockBootstrapReader

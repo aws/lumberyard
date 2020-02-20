@@ -39,6 +39,7 @@ namespace AzToolsFramework
         void ThumbnailerComponent::Deactivate()
         {
             BusDisconnect();
+            m_thumbnails.clear();
         }
 
         void ThumbnailerComponent::Reflect(AZ::ReflectContext* context)
@@ -64,6 +65,17 @@ namespace AzToolsFramework
         {
             AZ_Assert(m_thumbnails.find(contextName) == m_thumbnails.end(), "Context %s already registered", contextName);
             m_thumbnails[contextName] = AZStd::make_shared<ThumbnailContext>(thumbnailSize);
+        }
+
+        void ThumbnailerComponent::UnregisterContext(const char* contextName)
+        {
+            AZ_Assert(m_thumbnails.find(contextName) != m_thumbnails.end(), "Context %s not registered", contextName);
+            m_thumbnails.erase(contextName);
+        }
+
+        bool ThumbnailerComponent::HasContext(const char* contextName) const
+        {
+            return m_thumbnails.find(contextName) != m_thumbnails.end();
         }
 
         void ThumbnailerComponent::RegisterThumbnailProvider(SharedThumbnailProvider provider, const char* contextName)

@@ -96,13 +96,13 @@ namespace EMotionFX
         GetEMotionFX().Update(1.0f / 60.0f);
 
         // Check correct output for quaternion parameter.
-        const MCore::Quaternion& quaternionTestParam = m_paramNode->GetOutputQuaternion(m_animGraphInstance,
+        const AZ::Quaternion& quaternionTestParam = m_paramNode->GetOutputQuaternion(m_animGraphInstance,
             m_paramNode->FindOutputPortIndex("quaternionTest"))->GetValue();
 
-        EXPECT_TRUE(quaternionTestParam.x == m_param.GetX()) << "Quaternion X value should be the same as expected Quaternion X value.";
-        EXPECT_TRUE(quaternionTestParam.y == m_param.GetY()) << "Quaternion Y value should be the same as expected Quaternion Y value.";
-        EXPECT_TRUE(quaternionTestParam.z == m_param.GetZ()) << "Quaternion Z value should be the same as expected Quaternion Z value.";
-        EXPECT_TRUE(quaternionTestParam.w == m_param.GetW()) << "Quaternion W value should be the same as expected Quaternion W value.";
+        EXPECT_TRUE(quaternionTestParam.GetX() == m_param.GetX()) << "Quaternion X value should be the same as expected Quaternion X value.";
+        EXPECT_TRUE(quaternionTestParam.GetY() == m_param.GetY()) << "Quaternion Y value should be the same as expected Quaternion Y value.";
+        EXPECT_TRUE(quaternionTestParam.GetZ() == m_param.GetZ()) << "Quaternion Z value should be the same as expected Quaternion Z value.";
+        EXPECT_TRUE(quaternionTestParam.GetW() == m_param.GetW()) << "Quaternion W value should be the same as expected Quaternion W value.";
     }
 
     TEST_P(QuaternionParameterFixture, QuaternionSetValueOutputsCorrectQuaternion)
@@ -111,15 +111,15 @@ namespace EMotionFX
         GetEMotionFX().Update(1.0f / 60.0f);
 
         // Shuffle the Quaternion parameter values to check changing quaternion values will be processed correctly.
-        ParamSetValue<MCore::AttributeQuaternion, MCore::Quaternion>("quaternionTest", MCore::Quaternion(m_param.GetY(), m_param.GetZ(), m_param.GetX(), m_param.GetW()));
+        ParamSetValue<MCore::AttributeQuaternion, AZ::Quaternion>("quaternionTest", AZ::Quaternion(m_param.GetY(), m_param.GetZ(), m_param.GetX(), m_param.GetW()));
         GetEMotionFX().Update(1.0f / 60.0f);
 
-        const MCore::Quaternion& quaternionTestParam = m_paramNode->GetOutputQuaternion(m_animGraphInstance,
+        const AZ::Quaternion& quaternionTestParam = m_paramNode->GetOutputQuaternion(m_animGraphInstance,
             m_paramNode->FindOutputPortIndex("quaternionTest"))->GetValue();
-        EXPECT_FLOAT_EQ(quaternionTestParam.x, m_param.GetY()) << "Input Quaternion X value should be the same as expected Quaternion Y value.";
-        EXPECT_FLOAT_EQ(quaternionTestParam.y, m_param.GetZ()) << "Input Quaternion Y value should be the same as expected Quaternion Z value.";
-        EXPECT_FLOAT_EQ(quaternionTestParam.z, m_param.GetX()) << "Input Quaternion Z value should be the same as expected Quaternion X value.";
-        EXPECT_FLOAT_EQ(quaternionTestParam.w, m_param.GetW()) << "Input Quaternion W value should be the same as expected Quaternion W value.";
+        EXPECT_FLOAT_EQ(quaternionTestParam.GetX(), m_param.GetY()) << "Input Quaternion X value should be the same as expected Quaternion Y value.";
+        EXPECT_FLOAT_EQ(quaternionTestParam.GetY(), m_param.GetZ()) << "Input Quaternion Y value should be the same as expected Quaternion Z value.";
+        EXPECT_FLOAT_EQ(quaternionTestParam.GetZ(), m_param.GetX()) << "Input Quaternion Z value should be the same as expected Quaternion X value.";
+        EXPECT_FLOAT_EQ(quaternionTestParam.GetW(), m_param.GetW()) << "Input Quaternion W value should be the same as expected Quaternion W value.";
     };
 
     std::vector<AZ::Quaternion> quaternionParameterTestData

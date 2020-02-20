@@ -52,17 +52,17 @@ public:
         const AZStd::string& ());
     MOCK_METHOD3(GetVideoMemoryUsageStats,
         void(size_t&, size_t&, bool));
-    MOCK_METHOD0(GetNumGeomInstances,
+    MOCK_CONST_METHOD0(GetNumGeomInstances,
         int());
-    MOCK_METHOD0(GetNumGeomInstanceDrawCalls,
+    MOCK_CONST_METHOD0(GetNumGeomInstanceDrawCalls,
         int());
-    MOCK_METHOD0(GetCurrentNumberOfDrawCalls,
+    MOCK_CONST_METHOD0(GetCurrentNumberOfDrawCalls,
         int());
-    MOCK_METHOD2(GetCurrentNumberOfDrawCalls,
+    MOCK_CONST_METHOD2(GetCurrentNumberOfDrawCalls,
         void(int& nGeneral, int& nShadowGen));
-    MOCK_METHOD1(GetCurrentNumberOfDrawCalls,
+    MOCK_CONST_METHOD1(GetCurrentNumberOfDrawCalls,
         int(const uint32 EFSListMask));
-    MOCK_METHOD1(GetCurrentDrawCallRTTimes,
+    MOCK_CONST_METHOD1(GetCurrentDrawCallRTTimes,
         float(const uint32 EFSListMask));
     MOCK_METHOD1(SetDebugRenderNode,
         void(IRenderNode * pRenderNode));
@@ -402,9 +402,9 @@ public:
         void(const bool bSort));
     MOCK_METHOD0(ForceGC,
         void());
-    MOCK_METHOD0(GetPolyCount,
+    MOCK_CONST_METHOD0(GetPolyCount,
         int());
-    MOCK_METHOD2(GetPolyCount,
+    MOCK_CONST_METHOD2(GetPolyCount,
         void(int& nPolygons, int& nShadowVolPolys));
     MOCK_METHOD1(SetClearColor,
         void(const Vec3& vColor));
@@ -597,9 +597,9 @@ public:
         void(bool bEnabled));
     MOCK_METHOD1(AllowGPUTimers2,
         void(bool bAllow));
-    MOCK_METHOD2(GetRPPStats,
+    MOCK_CONST_METHOD2(GetRPPStats,
         const RPProfilerStats * (ERenderPipelineProfilerStats, bool));
-    MOCK_METHOD1(GetRPPStatsArray,
+    MOCK_CONST_METHOD1(GetRPPStatsArray,
         const RPProfilerStats * (bool));
     MOCK_METHOD4(GetPolygonCountByType,
         int(uint32, EVertexCostTypes, uint32, bool));

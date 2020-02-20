@@ -13,7 +13,7 @@
 #include "SurfaceData_precompiled.h"
 #include "SurfaceDataShapeComponent.h"
 
-#include <AZCore/Component/TransformBus.h>
+#include <AzCore/Component/TransformBus.h>
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>

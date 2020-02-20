@@ -207,7 +207,9 @@ bool CChunkCompiler::Process()
 
     bool bOk = false;
 
+#if !defined(AZ_PLATFORM_LINUX) // Exception handling not enabled on linux builds
     try
+#endif // !defined(AZ_PLATFORM_LINUX)
     {
         const uint32 version =
             StringHelpers::EndsWith(m_CC.config->GetAsString("targetversion", "0x746", "0x746"), "745")
@@ -215,11 +217,13 @@ bool CChunkCompiler::Process()
             : 0x746;
         bOk = convertChunkFile(version, sourceFile.c_str(), outputFile.c_str());
     }
+#if !defined(AZ_PLATFORM_LINUX) // Exception handling not enabled on linux builds
     catch (char*)
     {
         RCLogError("Unexpected failure in processing %s - contact an RC programmer.", sourceFile.c_str());
         return false;
     }
+#endif // !defined(AZ_PLATFORM_LINUX)
 
     if (bOk)
     {
@@ -229,7 +233,6 @@ bool CChunkCompiler::Process()
         }
         m_CC.pRC->AddInputOutputFilePair(m_CC.GetSourcePath(), GetOutputPath());
     }
-
     return bOk;
 }
 

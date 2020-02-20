@@ -46,7 +46,6 @@ _EXCLUDED_PATH_PATTERNS = [
     re.compile('dev/Gems/PBSreferenceMaterials($|/.*)', re.I),
     re.compile('dev/Gems/LyShineExamples($|/.*)', re.I),
     re.compile('dev/Gems/Clouds($|/.*)', re.I),
-    re.compile('dev/Gems/EMotionFX($|/.*)', re.I),
     re.compile('dev/Tools/3dsmax($|/.*)', re.I),
     re.compile('dev/Tools/AWSNativeSDK($|/.*)', re.I),
     re.compile('dev/Tools/crashpad($|/.*)', re.I),

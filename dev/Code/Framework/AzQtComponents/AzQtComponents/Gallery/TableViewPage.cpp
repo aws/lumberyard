@@ -104,6 +104,7 @@ TableViewPage::TableViewPage(QWidget* parent)
     ui->tableView->setModel(proxy);
     ui->tableView->setRootIndex(proxy->mapFromSource(model->index(QDir::currentPath())));
     ui->tableView->setSortingEnabled(true);
+    ui->tableView->setSelectionMode(QTreeView::ExtendedSelection);
 
     auto fruitModel = new QStringListModel(this);
     QStringList fruit;
@@ -137,7 +138,7 @@ specification. It hides the branch controls and therefore assumes the model is o
 deep.</p>
 <p>Example:</p>
 <pre>
-#include <AzQtComponents/Components/Widgets/TableView.h>
+#include &lt;AzQtComponents/Components/Widgets/TableView.h&gt;
 
 auto tableView = new AzQtComponents::TableView();
 

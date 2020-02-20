@@ -290,11 +290,11 @@ namespace AzQtComponents
         m_buttons->setExclusive(true);
 
         m_buttonsLayout = new QBoxLayout(QBoxLayout::LeftToRight, buttonsWidget);
-        m_buttonsLayout->setMargin(0);
+        m_buttonsLayout->setContentsMargins(0, 0, 0, 0);
         m_buttonsLayout->setSpacing(0);
 
         m_alignmentLayout = new QBoxLayout(QBoxLayout::LeftToRight, this);
-        m_alignmentLayout->setMargin(0);
+        m_alignmentLayout->setContentsMargins(0, 0, 0, 0);
         m_alignmentLayout->setSpacing(0);
         m_alignmentLayout->addWidget(buttonsWidget);
 

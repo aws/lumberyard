@@ -136,6 +136,7 @@ namespace AzToolsFramework
         ////////////////////////////////////////////////////////////////////////
         // AZ::EntityBus
         ////////////////////////////////////////////////////////////////////////
+        void OnEntityExists(const AZ::EntityId& entityId) override;
         void OnEntityActivated(const AZ::EntityId& entityId) override;
 
         ////////////////////////////////////////////////////////////////////////
@@ -173,6 +174,11 @@ namespace AzToolsFramework
         public:
             EditorEntityModelEntry();
             ~EditorEntityModelEntry();
+
+            // Separately connect to EditorEntityInfoRequestBus and refresh Entity
+            // visibility and lock state - happens as part of Connect() but is also
+            // refreshed earlier after Entity initialization.
+            void EntityInfoRequestConnect();
 
             void Connect();
             void Disconnect();
@@ -238,7 +244,7 @@ namespace AzToolsFramework
             ////////////////////////////////////////////////////////////////////////
             // EditorLockComponentNotificationBus::Handler
             ////////////////////////////////////////////////////////////////////////
-            void OnEntityLockChanged(bool locked) override;
+            void OnEntityLockFlagChanged(bool locked) override;
 
             ////////////////////////////////////////////////////////////////////////
             // EditorVisibilityNotificationBus::Handler
@@ -280,7 +286,7 @@ namespace AzToolsFramework
                 SliceFlag_EntityNameOverridden = 1 << 3, // special case since it's not saved in a component
                 SliceFlag_EntityActivationOverridden = 1 << 4, // special case since it's not saved in a component
                 SliceFlag_EntityComponentsOverridden = 1 << 5,
-                SliceFlag_EntityHasAdditionsDeletions = 1 << 6, 
+                SliceFlag_EntityHasAdditionsDeletions = 1 << 6,
 
                 SliceFlag_EntityHasNonChildOverrides = (SliceFlag_EntityNameOverridden | SliceFlag_EntityActivationOverridden | SliceFlag_EntityComponentsOverridden),
                 SliceFlag_EntityHasOverrides    = (SliceFlag_EntityNameOverridden | SliceFlag_EntityActivationOverridden | SliceFlag_EntityComponentsOverridden | SliceFlag_EntityHasAdditionsDeletions),
@@ -309,8 +315,10 @@ namespace AzToolsFramework
             void ModifyParentsOverriddenChildren(AZ::EntityId entityId, AZ::u8 lastFlags, bool hasOverrides);
             void UpdateCyclicDependencyInfo();
 
-            typedef bool(*EntityInHierarchyConditionFunction)(AZ::EntityId);
+            using EntityInHierarchyConditionFunction = bool(*)(AZ::EntityId);
             bool DoesEntityHierarchyOverrideState(EntityInHierarchyConditionFunction stateCheckFunction) const;
+            bool DoesEntityHierarchyOverrideVisibility() const;
+            bool DoesEntityHierarchyOverrideLock() const;
 
             AZ::EntityId m_entityId;
             AZ::EntityId m_parentId;

@@ -218,6 +218,7 @@ namespace ScriptCanvasEditor
             static void Reflect(AZ::ReflectContext* reflectContext);
 
             StylingSettings() = default;
+            
             virtual ~StylingSettings() = default;
 
             GraphCanvas::Styling::ConnectionCurveType GetConnectionCurveType() const

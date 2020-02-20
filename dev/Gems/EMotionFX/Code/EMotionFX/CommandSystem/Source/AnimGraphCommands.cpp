@@ -14,6 +14,7 @@
 #include "AnimGraphCommands.h"
 #include "CommandManager.h"
 #include <MCore/Source/FileSystem.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/ReflectionSerializer.h>
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/AnimGraph.h>

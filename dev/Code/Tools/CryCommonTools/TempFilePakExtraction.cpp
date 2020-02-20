@@ -16,7 +16,7 @@
 //               already exists it does not delete it when finished.
 
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "TempFilePakExtraction.h"
 #include "FileUtil.h"

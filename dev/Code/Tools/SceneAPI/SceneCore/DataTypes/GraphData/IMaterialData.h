@@ -36,7 +36,8 @@ namespace AZ
                 {
                     Diffuse,
                     Specular,
-                    Bump
+                    Bump,
+                    Normal
                 };
 
                 virtual ~IMaterialData() override = default;
@@ -49,6 +50,8 @@ namespace AZ
                 virtual const AZ::Vector3& GetEmissiveColor() const = 0;
                 virtual float GetOpacity() const = 0;
                 virtual float GetShininess() const = 0;
+                                
+                virtual uint64_t GetUniqueId() const = 0;
             };
         }  //namespace DataTypes
     }  //namespace SceneAPI

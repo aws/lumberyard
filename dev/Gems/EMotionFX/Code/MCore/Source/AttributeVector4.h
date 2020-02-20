@@ -16,7 +16,6 @@
 #include <AzCore/Math/Vector4.h>
 #include "StandardHeaders.h"
 #include "Attribute.h"
-#include "Vector.h"
 #include "StringConversions.h"
 #include <MCore/Source/AttributeAllocator.h>
 

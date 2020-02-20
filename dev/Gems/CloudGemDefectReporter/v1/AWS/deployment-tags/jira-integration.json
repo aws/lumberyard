@@ -201,6 +201,28 @@
                 "Type": "AWS::Lambda::Function"
             }
         },
+        "Resources:JiraCredentialsLambdaInvokePermission": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Type": "AWS::Lambda::Permission",
+                "Properties": {
+                    "FunctionName": {
+                        "Ref": "JiraCredentialsLambda"
+                    },
+                    "Action": "lambda:InvokeFunction",
+                    "Principal": "lambda.amazonaws.com",
+                    "SourceAccount": {
+                        "Ref": "AWS::AccountId"
+                    },
+                    "SourceArn": {
+                        "Fn::GetAtt": [
+                            "ServiceLambda",
+                            "Arn"
+                        ]
+                    }
+                }
+            }
+        },
         "Resources:JiraCredentialsLambdaConfiguration": {
             "EditType": "Add",
             "TemplateData": {
@@ -246,7 +268,23 @@
                                         ]
                                     }
                                 },
-                                "Action": "kms:*",
+                                "Action": [
+                                    "kms:Encrypt",
+                                    "kms:Decrypt",
+                                    "kms:Create*",
+                                    "kms:Describe*",
+                                    "kms:Enable*",
+                                    "kms:List*",
+                                    "kms:Put*",
+                                    "kms:Update*",
+                                    "kms:Revoke*",
+                                    "kms:Disable*",
+                                    "kms:Get*",
+                                    "kms:Delete*",
+                                    "kms:ScheduleKeyDeletion",
+                                    "kms:CancelKeyDeletion",
+                                    "kms:TagResource",
+                                    "kms:UntagResource"],
                                 "Resource": "*"
                             },
                             {
@@ -260,7 +298,7 @@
                                         ]
                                     }
                                 },
-                                "Action": "kms:*",
+                                "Action": ["kms:Encrypt", "kms:Decrypt"],
                                 "Resource": "*"
                             }
                         ]

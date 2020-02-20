@@ -11,8 +11,6 @@
 */
 #pragma once
 
-#include <AzCore/Memory/SystemAllocator.h>
-#include <AzCore/std/containers/vector.h>
 #include <AzToolsFramework/AssetBrowser/Search/Filter.h>
 #include <AzToolsFramework/UI/UICore/QTreeViewStateSaver.hxx>
 #include <AzCore/std/smart_ptr/intrusive_ptr.h>
@@ -26,62 +24,57 @@ class QItemSelection;
 
 namespace Ui
 {
-    class AzAssetBrowserDialogClass;
+    class AssetPickerDialogClass;
 }
 
 namespace AzToolsFramework
 {
+    class QWidgetSavedState;
+
     namespace AssetBrowser
     {
         class ProductAssetBrowserEntry;
         class AssetBrowserFilterModel;
         class AssetBrowserModel;
         class AssetSelectionModel;
-    }
 
-    class QWidgetSavedState;
-}
+        class AssetPickerDialog
+            : public QDialog
+        {
+            Q_OBJECT
+        public:
+            AZ_CLASS_ALLOCATOR(AssetPickerDialog, AZ::SystemAllocator, 0);
+            explicit AssetPickerDialog(AssetSelectionModel& selection, QWidget* parent = nullptr);
+            virtual ~AssetPickerDialog();
 
-class SANDBOX_API AzAssetBrowserDialog
-    : public QDialog
-{
-    Q_OBJECT
-public:
-    AZ_CLASS_ALLOCATOR(AzAssetBrowserDialog, AZ::SystemAllocator, 0);
+        protected:
+            //////////////////////////////////////////////////////////////////////////
+            // QDialog
+            //////////////////////////////////////////////////////////////////////////
+            void accept() override;
+            void reject() override;
+            void keyPressEvent(QKeyEvent* e) override;
 
-    explicit AzAssetBrowserDialog(AzToolsFramework::AssetBrowser::AssetSelectionModel& selection, QWidget* parent = nullptr);
-    virtual ~AzAssetBrowserDialog();
+        private Q_SLOTS:
+            void DoubleClickedSlot(const QModelIndex& index);
+            void SelectionChangedSlot();
+            void RestoreState();
+            void OnFilterUpdated();
 
-protected:
-    void keyPressEvent(QKeyEvent* e) override;
-    void reject() override;
+        private:
+            //! Evaluate whether current selection is valid.
+            //! Valid selection requires exactly one item to be selected, must be source or product type, and must match the wildcard filter
+            bool EvaluateSelection() const;
+            void UpdatePreview() const;
+            void SaveState();
 
-private:
-    QScopedPointer<Ui::AzAssetBrowserDialogClass> m_ui;
-    AzToolsFramework::AssetBrowser::AssetBrowserModel* m_assetBrowserModel;
-    QScopedPointer<AzToolsFramework::AssetBrowser::AssetBrowserFilterModel> m_filterModel;
-    AzToolsFramework::AssetBrowser::AssetSelectionModel& m_selection;
-
-    //! Evaluate whether current selection is valid
-    /*!
-        Valid selection requires exactly one item to be selected,
-        must be source or product type,
-        and must match the wildcard filter
-    */
-    bool EvaluateSelection() const;
-
-    void UpdatePreview() const;
-
-private Q_SLOTS:
-    void DoubleClickedSlot(const QModelIndex& index);
-    void SelectionChangedSlot();
-    void RestoreState();
-
-    void OnFilterUpdated();
-
-private:
-
-    bool m_hasFilter;
-    AZStd::unique_ptr<AzToolsFramework::TreeViewState> m_filterStateSaver;
-    AZStd::intrusive_ptr<AzToolsFramework::QWidgetSavedState> m_persistentState;
-};
+            QScopedPointer<Ui::AssetPickerDialogClass> m_ui;
+            AssetBrowserModel* m_assetBrowserModel = nullptr;
+            QScopedPointer<AssetBrowserFilterModel> m_filterModel;
+            AssetSelectionModel& m_selection;
+            bool m_hasFilter;
+            AZStd::unique_ptr<TreeViewState> m_filterStateSaver;
+            AZStd::intrusive_ptr<QWidgetSavedState> m_persistentState;
+        };
+    } // AssetBrowser
+} // AzToolsFramework

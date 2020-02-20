@@ -459,18 +459,14 @@ namespace RenderGL
 
 
     // SetUniform
-    void GLSLShader::SetUniform(const char* name, const MCore::Matrix& matrix)
+    void GLSLShader::SetUniform(const char* name, const AZ::Matrix4x4& matrix)
     {
-#ifdef MCORE_MATRIX_ROWMAJOR
         SetUniform(name, matrix, true);
-#else
-        SetUniform(name, matrix, true);
-#endif
     }
 
 
     // SetUniform
-    void GLSLShader::SetUniform(const char* name, const MCore::Matrix& matrix, bool transpose)
+    void GLSLShader::SetUniform(const char* name, const AZ::Matrix4x4& matrix, bool transpose)
     {
         ShaderParameter* param = FindUniform(name);
         if (param == nullptr)
@@ -478,16 +474,12 @@ namespace RenderGL
             return;
         }
 
-#ifdef MCORE_MATRIX_ROWMAJOR
-        glUniformMatrix4fvARB(param->mLocation, 1, transpose, matrix.m16);
-#else
-        glUniformMatrix4fvARB(param->mLocation, 1, !transpose, matrix.m16);
-#endif
+        glUniformMatrix4fvARB(param->mLocation, 1, !transpose, (float*)&matrix);
     }
 
 
     // SetUniform
-    void GLSLShader::SetUniform(const char* name, const MCore::Matrix* matrices, uint32 count)
+    void GLSLShader::SetUniform(const char* name, const AZ::Matrix4x4* matrices, uint32 count)
     {
         ShaderParameter* param = FindUniform(name);
         if (param == nullptr)
@@ -495,11 +487,7 @@ namespace RenderGL
             return;
         }
 
-#ifdef MCORE_MATRIX_ROWMAJOR
-        glUniformMatrix4fvARB(param->mLocation, count, GL_TRUE, matrices[0].m16);
-#else
-        glUniformMatrix4fvARB(param->mLocation, count, GL_FALSE, matrices[0].m16);
-#endif
+        glUniformMatrix4fvARB(param->mLocation, count, GL_FALSE, (float*)matrices);
     }
 
 
@@ -513,19 +501,6 @@ namespace RenderGL
 
         // update the value
         glUniform1fvARB(param->mLocation, numFloats, values);
-    }
-
-
-    void GLSLShader::SetUniform(const char* name, const AZ::PackedVector3f* values, uint32 numVectors)
-    {
-        ShaderParameter* param = FindUniform(name);
-        if (param == nullptr)
-        {
-            return;
-        }
-
-        // update the value
-        glUniform3fvARB(param->mLocation, numVectors, (float*)values);
     }
 
 

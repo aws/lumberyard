@@ -33,7 +33,8 @@ namespace UnitTest
                                          float inputMin, float inputMid, float inputMax, float outputMin, float outputMax)
         {
             auto entityMock = CreateEntity();
-            UnitTest::MockGradientArrayRequestsBus mockGradientRequestsBus(entityMock->GetId(), inputData, dataSize);
+            const AZ::EntityId id = entityMock->GetId();
+            UnitTest::MockGradientArrayRequestsBus mockGradientRequestsBus(id, inputData, dataSize);
 
             GradientSignal::GradientTransformConfig gradientTransformConfig;
             CreateComponent<GradientSignal::GradientTransformComponent>(entityMock.get(), gradientTransformConfig);
@@ -61,7 +62,8 @@ namespace UnitTest
                                             GradientSignal::PosterizeGradientConfig::ModeType posterizeMode, int bands)
         {
             auto entityMock = CreateEntity();
-            UnitTest::MockGradientArrayRequestsBus mockGradientRequestsBus(entityMock->GetId(), inputData, dataSize);
+            const AZ::EntityId id = entityMock->GetId();
+            UnitTest::MockGradientArrayRequestsBus mockGradientRequestsBus(id, inputData, dataSize);
 
             GradientSignal::GradientTransformConfig gradientTransformConfig;
             CreateComponent<GradientSignal::GradientTransformComponent>(entityMock.get(), gradientTransformConfig);
@@ -86,7 +88,8 @@ namespace UnitTest
                                             float midpoint, float range, float softness)
         {
             auto entityMock = CreateEntity();
-            UnitTest::MockGradientArrayRequestsBus mockGradientRequestsBus(entityMock->GetId(), inputData, dataSize);
+            const AZ::EntityId id = entityMock->GetId();
+            UnitTest::MockGradientArrayRequestsBus mockGradientRequestsBus(id, inputData, dataSize);
 
             GradientSignal::GradientTransformConfig gradientTransformConfig;
             CreateComponent<GradientSignal::GradientTransformComponent>(entityMock.get(), gradientTransformConfig);
@@ -111,7 +114,8 @@ namespace UnitTest
         void TestThresholdGradientComponent(int dataSize, const AZStd::vector<float>& inputData, const AZStd::vector<float>& expectedOutput, float threshold)
         {
             auto entityMock = CreateEntity();
-            UnitTest::MockGradientArrayRequestsBus mockGradientRequestsBus(entityMock->GetId(), inputData, dataSize);
+            const AZ::EntityId id = entityMock->GetId();
+            UnitTest::MockGradientArrayRequestsBus mockGradientRequestsBus(id, inputData, dataSize);
 
             GradientSignal::GradientTransformConfig gradientTransformConfig;
             CreateComponent<GradientSignal::GradientTransformComponent>(entityMock.get(), gradientTransformConfig);
@@ -138,7 +142,8 @@ namespace UnitTest
 
         const float expectedOutput = 159.0f;
         auto entity = CreateEntity();
-        MockGradientRequestsBus mockGradientRequestsBus(entity->GetId());
+        const AZ::EntityId id = entity->GetId();
+        MockGradientRequestsBus mockGradientRequestsBus(id);
         mockGradientRequestsBus.m_GetValue = expectedOutput;
         ActivateEntity(entity.get());
 

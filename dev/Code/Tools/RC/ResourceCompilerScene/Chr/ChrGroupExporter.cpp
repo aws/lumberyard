@@ -84,7 +84,8 @@ namespace AZ
                             return it.m_assetType == skeletonAssetType;
                         }) == list.end();
 
-                    SceneAPI::Events::ExportProduct& product = context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), skeletonAssetType);
+                    SceneAPI::Events::ExportProduct& product = context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), skeletonAssetType,
+                        AZStd::nullopt, AZStd::nullopt);
 
                     // Previously only a single skeleton would be exported that was named after the source file. This was changed to exporting all
                     //      skeletons now named after the root node. This means that the first skeleton would previously have been known under

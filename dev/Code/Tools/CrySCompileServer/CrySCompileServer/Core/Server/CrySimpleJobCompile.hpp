@@ -28,12 +28,12 @@ public:
 
     virtual bool                            Execute(const TiXmlElement* pElement);
 
-    static volatile long            GlobalCompileTasks(){return m_GlobalCompileTasks; }
-    static volatile long            GlobalCompileTasksMax(){return m_GlobalCompileTasksMax; }
+    static long            GlobalCompileTasks(){return m_GlobalCompileTasks; }
+    static long            GlobalCompileTasksMax(){return m_GlobalCompileTasksMax; }
 
 private:
-    static volatile AtomicCountType             m_GlobalCompileTasks;
-    static volatile AtomicCountType             m_GlobalCompileTasksMax;
+    static AZStd::atomic_long             m_GlobalCompileTasks;
+    static AZStd::atomic_long             m_GlobalCompileTasksMax;
     static volatile int32_t             m_RemoteServerID;
     static volatile int64_t m_GlobalCompileTime;
 

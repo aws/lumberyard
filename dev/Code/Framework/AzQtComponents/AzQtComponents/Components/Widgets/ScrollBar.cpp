@@ -12,6 +12,8 @@
 
 #include <AzQtComponents/Components/Widgets/ScrollBar.h>
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/StyleManager.h>
+#include <AzQtComponents/Components/ConfigHelpers.h>
 #include <AzCore/std/functional.h>
 #include <AzCore/std/function/invoke.h>
 
@@ -22,8 +24,13 @@
 #include <QScrollBar>
 #include <QEvent>
 
+#include <QtWidgets/private/qstylesheetstyle_p.h>
+
 namespace AzQtComponents
 {
+    static constexpr const char* g_showBackgroundProperty = "ShowBackground";
+    static constexpr const char* g_scrollBarModeProperty = "ScrollBarMode";
+
     class ScrollBarWatcher : public QObject
     {
     public:
@@ -37,6 +44,16 @@ namespace AzQtComponents
             auto scrollArea = qobject_cast<QAbstractScrollArea*>(widget);
             if (scrollArea && !m_widgets.contains(scrollArea))
             {
+                auto mode = m_config.defaultMode;
+                const auto scrollBarMode = scrollArea->property(g_scrollBarModeProperty);
+                if (scrollBarMode.isValid() && scrollBarMode.canConvert<ScrollBar::ScrollBarMode>())
+                {
+                    mode = scrollBarMode.value<ScrollBar::ScrollBarMode>();
+                }
+                else
+                {
+                    scrollArea->setProperty(g_scrollBarModeProperty, QVariant::fromValue(mode));
+                }
                 auto scrollBars = scrollArea->findChildren<QScrollBar*>();
                 if (!scrollBars.isEmpty())
                 {
@@ -44,12 +61,20 @@ namespace AzQtComponents
                     data.hoverWasEnabled = scrollArea->testAttribute(Qt::WA_Hover);
                     for (auto scrollBar : scrollBars)
                     {
-                        scrollBar->hide();
+                        if (mode == ScrollBar::ScrollBarMode::ShowOnHover)
+                        {
+                            scrollBar->hide();
+                        }
                         data.scrollBars.append(scrollBar);
+                        scrollBar->installEventFilter(this);
                     }
                     scrollArea->setAttribute(Qt::WA_Hover);
                     scrollArea->installEventFilter(this);
                     m_widgets.insert(widget, data);
+                    auto cornerWidget = new QWidget();
+                    cornerWidget->setProperty(g_showBackgroundProperty, false);
+                    scrollArea->setCornerWidget(cornerWidget);
+                    cornerWidget->installEventFilter(this);
 
                     return true;
                 }
@@ -76,27 +101,83 @@ namespace AzQtComponents
 
         bool eventFilter(QObject* obj, QEvent* event) override
         {
-            switch (event->type())
+            if (auto scrollArea = qobject_cast<QAbstractScrollArea*>(obj))
             {
-                case QEvent::HoverEnter:
+                auto scrollBarMode = scrollArea->property(g_scrollBarModeProperty).value<ScrollBar::ScrollBarMode>();
+
+                switch (event->type())
                 {
-                    perScrollBar(obj, &QScrollBar::show);
+                    case QEvent::HoverEnter:
+                    {
+                        if (scrollBarMode == ScrollBar::ScrollBarMode::ShowOnHover)
+                        {
+                            perScrollBar(obj, &QScrollBar::show);
+                        }
+                    }
                     break;
+
+                    case QEvent::HoverLeave:
+                    {
+                        if (scrollBarMode == ScrollBar::ScrollBarMode::ShowOnHover)
+                        {
+                            perScrollBar(obj, &QScrollBar::hide);
+                        }
+                    }
+                    break;
+
+                    default:
+                        break;
+                }
+            }
+            else if (auto scrollBar = qobject_cast<QScrollBar*>(obj))
+            {
+                QAbstractScrollArea* parentScrollArea;
+                QWidget* parent = scrollBar->parentWidget();
+
+                while (parent && !qobject_cast<QAbstractScrollArea*>(parent))
+                {
+                    parent = parent->parentWidget();
                 }
 
-                case QEvent::HoverLeave:
+                if (parent)
                 {
-                    perScrollBar(obj, &QScrollBar::hide);
+                    parentScrollArea = qobject_cast<QAbstractScrollArea*>(parent);
+
+                    switch (event->type())
+                    {
+                        case QEvent::HoverEnter:
+                        {
+                            parentScrollArea->cornerWidget()->setProperty(g_showBackgroundProperty, true);
+                        }
+                        break;
+                        case QEvent::HoverLeave:
+                        {
+                            parentScrollArea->cornerWidget()->setProperty(g_showBackgroundProperty, false);
+                        }
+                    }
+                }
+            }
+            else if (auto cornerWidget = qobject_cast<QWidget*>(obj))
+            {
+                switch (event->type())
+                {
+                    case QEvent::DynamicPropertyChange:
+                    {
+                        if (auto styleSheet = StyleManager::styleSheetStyle(cornerWidget))
+                        {
+                            styleSheet->repolish(cornerWidget);
+                        }
+                    }
                     break;
                 }
-
-                default:
-                    break;
             }
             return QObject::eventFilter(obj, event);
         }
 
     private:
+        friend class ScrollBar;
+        ScrollBar::Config m_config;
+
         struct ScrollAreaData
         {
             bool hoverWasEnabled;
@@ -115,6 +196,7 @@ namespace AzQtComponents
                 {
                     if (scrollBar)
                     {
+                        scrollBar->setAttribute(Qt::WA_OpaquePaintEvent, false);
                         AZStd::invoke(callback, scrollBar.data());
                     }
                 }
@@ -133,12 +215,30 @@ namespace AzQtComponents
     ScrollBar::Config ScrollBar::loadConfig(QSettings& settings)
     {
         Q_UNUSED(settings);
-        return defaultConfig();
+        Config config = ScrollBar::defaultConfig();
+
+        ConfigHelpers::read<AzQtComponents::ScrollBar::ScrollBarMode>(settings, QStringLiteral("DefaultMode"), config.defaultMode);
+
+        return config;
     }
 
     ScrollBar::Config ScrollBar::defaultConfig()
     {
-        return Config();
+        Config config;
+
+        config.defaultMode = ScrollBarMode::AlwaysShow;
+
+        return config;
+    }
+
+    void ScrollBar::setDisplayMode(QAbstractScrollArea* scrollArea, ScrollBarMode mode)
+    {
+        if (!scrollArea)
+        {
+            return;
+        }
+
+        scrollArea->setProperty(g_scrollBarModeProperty, QVariant::fromValue(mode));
     }
 
     void ScrollBar::initializeWatcher()
@@ -171,6 +271,8 @@ namespace AzQtComponents
         Q_UNUSED(style);
         Q_UNUSED(config);
 
+        s_scrollBarWatcher->m_config = config;
+
         return s_scrollBarWatcher->install(widget);
     }
 
@@ -182,6 +284,18 @@ namespace AzQtComponents
         return s_scrollBarWatcher->uninstall(widget);
     }
 
-} // namespace AzQtComponents
+    bool ScrollBar::drawScrollBar(const Style* style, const QStyleOptionComplex* option, QPainter* painter, const QWidget* widget, const Config& config)
+    {
+        Q_UNUSED(config);
 
-#include <Components/Widgets/ScrollBar.moc>
+        auto styleSheetStyle = qobject_cast<QStyleSheetStyle*>(style->baseStyle());
+        if (styleSheetStyle)
+        {
+            styleSheetStyle->QWindowsStyle::drawComplexControl(QStyle::CC_ScrollBar, option, painter, widget);
+            return true;
+        }
+
+        return false;
+    }
+
+} // namespace AzQtComponents

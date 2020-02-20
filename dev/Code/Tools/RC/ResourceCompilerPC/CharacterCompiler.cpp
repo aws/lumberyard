@@ -169,7 +169,9 @@ bool CharacterCompiler::Process()
 
     bool ok = true;
 
+#if !defined(AZ_PLATFORM_LINUX) // Exception handling not enabled on linux builds
     try
+#endif // !defined(AZ_PLATFORM_LINUX)
     {
         CChunkFile* pChunkFile = NULL;
         CLoaderCGF cgfLoader;
@@ -218,11 +220,12 @@ bool CharacterCompiler::Process()
             }
         }
     }
+#if !defined(AZ_PLATFORM_LINUX) // Exception handling not enabled on linux builds
     catch (char*)
     {
         ok = false;
     }
-
+#endif // !defined(AZ_PLATFORM_LINUX)
     return ok;
 }
 

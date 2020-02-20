@@ -14,6 +14,7 @@
 
 #include <gmock/gmock.h>
 #include <AzCore/Math/Vector4.h>
+#include <AzCore/Math/Quaternion.h>
 #include <EMotionFX/Source/Transform.h>
 #include <MCore/Source/Quaternion.h>
 #include <MCore/Source/Compare.h>
@@ -28,6 +29,37 @@ MATCHER(IsClose, "")
 MATCHER_P(IsClose, expected, "")
 {
     return arg.IsClose(expected, 0.001f);
+}
+
+template<>
+template<>
+inline bool IsCloseMatcherP<AZ::Quaternion>::gmock_Impl<const AZ::Quaternion&>::MatchAndExplain(const AZ::Quaternion& arg, ::testing::MatchResultListener* result_listener) const
+{
+    const AZ::Quaternion compareQuat = (expected.Dot(arg) < 0.0f) ? -arg : arg;
+    const AZ::Vector4 compareVec4(compareQuat.GetX(), compareQuat.GetY(), compareQuat.GetZ(), compareQuat.GetW());
+
+    if (::testing::ExplainMatchResult(IsClose(AZ::Vector4(expected.GetX(), expected.GetY(), expected.GetZ(), expected.GetW())), compareVec4, result_listener))
+    {
+        return true;
+    }
+
+    AZ::Vector3 gotAxis;
+    AZ::Vector3 expectedAxis;
+    float gotAngle;
+    float expectedAngle;
+
+    // convert to an axis and angle representation
+    expected.ConvertToAxisAngle(expectedAxis, expectedAngle);
+    compareQuat.ConvertToAxisAngle(gotAxis, gotAngle);
+
+    *result_listener << "\n     Got Axis: ";
+    PrintTo(gotAxis, result_listener->stream());
+    *result_listener << ", Got Angle: " << gotAngle << "\n";
+    *result_listener << "Expected Axis: ";
+    PrintTo(expectedAxis, result_listener->stream());
+    *result_listener << ", Expected Angle: " << expectedAngle;
+
+    return false;
 }
 
 template<>

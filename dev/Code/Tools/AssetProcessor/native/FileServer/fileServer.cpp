@@ -15,7 +15,7 @@
 #include <QDir>
 #include <QTimer>
 
-#if !defined(APPLE)
+#if !defined(APPLE) && !defined(LINUX)
 #include <io.h>
 #endif
 #include <unordered_map>
@@ -398,7 +398,7 @@ void FileServer::ProcessReadRequest(unsigned int connId, unsigned int, unsigned 
 
     FileReadResponse response;
     response.m_data.resize_no_construct(request.m_bytesToRead);
-    uint64_t bytesRead = 0;
+    AZ::u64 bytesRead = 0;
     auto fileIO = m_fileIOs[connId];
     AZStd::string moreInfo = AZStd::string::format("%llu bytes", size);
     RecordFileOp(fileIO.get(), "READ", fileHandle, moreInfo.c_str());
@@ -440,7 +440,7 @@ void FileServer::ProcessWriteRequest(unsigned int connId, unsigned int, unsigned
 
     AZ::IO::HandleType fileHandle = request.m_fileHandle;
 
-    uint64_t bytesWritten = 0;
+    AZ::u64 bytesWritten = 0;
     auto fileIO = m_fileIOs[connId];
     AZStd::string moreInfo = AZStd::string::format("%llu bytes", request.m_data.size());
     RecordFileOp(fileIO.get(), "WRITE", fileHandle, moreInfo.c_str());
@@ -483,7 +483,7 @@ void FileServer::ProcessTellRequest(unsigned int connId, unsigned int, unsigned 
     }
 
     AZ::IO::HandleType fileHandle = request.m_fileHandle;
-    uint64_t offset = 0;
+    AZ::u64 offset = 0;
     auto fileIO = m_fileIOs[connId];
     AZStd::string moreInfo = AZStd::string::format("offset: %llu", offset);
     RecordFileOp(fileIO.get(), "TELL", fileHandle, moreInfo.c_str());
@@ -615,7 +615,7 @@ void FileServer::ProcessSizeRequest(unsigned int connId, unsigned int, unsigned 
     }
 
     const char* filePath = request.m_filePath.c_str();
-    uint64_t size = 0;
+    AZ::u64 size = 0;
     auto fileIO = m_fileIOs[connId];
     RecordFileOp(fileIO.get(), "SIZE", filePath, nullptr);
 

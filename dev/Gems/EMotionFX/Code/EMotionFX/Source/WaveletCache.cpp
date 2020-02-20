@@ -61,13 +61,13 @@ namespace EMotionFX
     WaveletCache::DecompressedChunk::~DecompressedChunk()
     {
         MCore::Free(mRotations);
-        MCore::Free(mPositions);
+        MCore::AlignedFree(mPositions);
         MCore::Free(mMorphWeights);
 
         EMFX_SCALECODE
         (
             //MCore::Free( mScaleRotations );
-            MCore::Free(mScales);
+            MCore::AlignedFree(mScales);
         )
     }
 
@@ -107,8 +107,8 @@ namespace EMotionFX
         if (mapping.mPosIndex != MCORE_INVALIDINDEX16)
         {
             const uint32 offset = mapping.mPosIndex * mNumSamples;
-            const AZ::Vector3& posA = AZ::Vector3(mPositions[offset + firstSampleIndex]);
-            const AZ::Vector3& posB = AZ::Vector3(mPositions[offset + secondSampleIndex]);
+            const AZ::Vector3& posA = mPositions[offset + firstSampleIndex];
+            const AZ::Vector3& posB = mPositions[offset + secondSampleIndex];
             outTransform->mPosition = MCore::LinearInterpolate<AZ::Vector3>(posA, posB, t) + subMotion->GetPosePos();
         }
         else
@@ -120,9 +120,9 @@ namespace EMotionFX
         if (mapping.mRotIndex != MCORE_INVALIDINDEX16)
         {
             const uint32 offset = mapping.mRotIndex * mNumSamples;
-            const MCore::Quaternion rotationA = mRotations[offset + firstSampleIndex].ToQuaternion();
-            const MCore::Quaternion rotationB = mRotations[offset + secondSampleIndex].ToQuaternion();
-            outTransform->mRotation = rotationA.NLerp(rotationB, t);
+            const AZ::Quaternion rotationA = mRotations[offset + firstSampleIndex].ToQuaternion();
+            const AZ::Quaternion rotationB = mRotations[offset + secondSampleIndex].ToQuaternion();
+            outTransform->mRotation = MCore::NLerp(rotationA, rotationB, t);
         }
         else
         {
@@ -135,8 +135,8 @@ namespace EMotionFX
                     if (mapping.mScaleRotIndex != MCORE_INVALIDINDEX16)
                     {
                         const uint32 offset = mapping.mScaleRotIndex * mNumSamples;
-                        const MCore::Quaternion rotationA = mScaleRotations[offset + firstSampleIndex].ToQuaternion();
-                        const MCore::Quaternion rotationB = mScaleRotations[offset + secondSampleIndex].ToQuaternion();
+                        const AZ::Quaternion rotationA = mScaleRotations[offset + firstSampleIndex].ToQuaternion();
+                        const AZ::Quaternion rotationB = mScaleRotations[offset + secondSampleIndex].ToQuaternion();
                         outTransform->mScaleRotation = rotationA.NLerp( rotationB, t );
                     }
                     else
@@ -146,8 +146,8 @@ namespace EMotionFX
             if (mapping.mScaleIndex != MCORE_INVALIDINDEX16)
             {
                 const uint32 offset = mapping.mScaleIndex * mNumSamples;
-                const AZ::Vector3& scaleA = AZ::Vector3(mScales[offset + firstSampleIndex]);
-                const AZ::Vector3& scaleB = AZ::Vector3(mScales[offset + secondSampleIndex]);
+                const AZ::Vector3& scaleA = mScales[offset + firstSampleIndex];
+                const AZ::Vector3& scaleB = mScales[offset + secondSampleIndex];
                 outTransform->mScale  = MCore::LinearInterpolate<AZ::Vector3>(scaleA, scaleB, t) + subMotion->GetPoseScale();
             }
             else
@@ -206,8 +206,8 @@ namespace EMotionFX
         if (mapping.mPosIndex != MCORE_INVALIDINDEX16)
         {
             const uint32 offset = mapping.mPosIndex * mNumSamples;
-            const AZ::Vector3& posA = AZ::Vector3(mPositions[offset + firstSampleIndex]);
-            const AZ::Vector3& posB = AZ::Vector3(mPositions[offset + secondSampleIndex]);
+            const AZ::Vector3& posA = mPositions[offset + firstSampleIndex];
+            const AZ::Vector3& posB = mPositions[offset + secondSampleIndex];
             outTransform->mPosition = MCore::LinearInterpolate<AZ::Vector3>(posA, posB, t) + subMotion->GetPosePos();
         }
         else
@@ -219,9 +219,9 @@ namespace EMotionFX
         if (mapping.mRotIndex != MCORE_INVALIDINDEX16)
         {
             const uint32 offset = mapping.mRotIndex * mNumSamples;
-            const MCore::Quaternion rotationA = mRotations[offset + firstSampleIndex].ToQuaternion();
-            const MCore::Quaternion rotationB = mRotations[offset + secondSampleIndex].ToQuaternion();
-            outTransform->mRotation = rotationA.NLerp(rotationB, t);
+            const AZ::Quaternion rotationA = mRotations[offset + firstSampleIndex].ToQuaternion();
+            const AZ::Quaternion rotationB = mRotations[offset + secondSampleIndex].ToQuaternion();
+            outTransform->mRotation = MCore::NLerp(rotationA, rotationB, t);
         }
         else
         {
@@ -234,8 +234,8 @@ namespace EMotionFX
                     if (mapping.mScaleRotIndex != MCORE_INVALIDINDEX16)
                     {
                         const uint32 offset = mapping.mScaleRotIndex * mNumSamples;
-                        const MCore::Quaternion rotationA = mScaleRotations[offset + firstSampleIndex].ToQuaternion();
-                        const MCore::Quaternion rotationB = mScaleRotations[offset + secondSampleIndex].ToQuaternion();
+                        const AZ::Quaternion rotationA = mScaleRotations[offset + firstSampleIndex].ToQuaternion();
+                        const AZ::Quaternion rotationB = mScaleRotations[offset + secondSampleIndex].ToQuaternion();
                         outTransform->mScaleRotation = rotationA.NLerp( rotationB, t );
                     }
                     else
@@ -245,8 +245,8 @@ namespace EMotionFX
             if (mapping.mScaleIndex != MCORE_INVALIDINDEX16)
             {
                 const uint32 offset = mapping.mScaleIndex * mNumSamples;
-                const AZ::Vector3& scaleA = AZ::Vector3(mScales[offset + firstSampleIndex]);
-                const AZ::Vector3& scaleB = AZ::Vector3(mScales[offset + secondSampleIndex]);
+                const AZ::Vector3& scaleA = mScales[offset + firstSampleIndex];
+                const AZ::Vector3& scaleB = mScales[offset + secondSampleIndex];
                 outTransform->mScale  = MCore::LinearInterpolate<AZ::Vector3>(scaleA, scaleB, t) + subMotion->GetPoseScale();
             }
             else

@@ -11,10 +11,10 @@
 */
 #include "StdAfx.h"
 
-#include <Editor/AzAssetBrowser/Preview/PreviewWidget.h>
+#include <Editor/AzAssetBrowser/Preview/LegacyPreviewer.h>
 #include <Editor/Controls/PreviewModelCtrl.h>
 
-#include <AzAssetBrowser/Preview/ui_PreviewWidget.h>
+#include <AzAssetBrowser/Preview/ui_LegacyPreviewer.h>
 
 #include <AzCore/Asset/AssetTypeInfoBus.h>
 
@@ -32,11 +32,12 @@
 #include <QString>
 #include <QStringList>
 
-static const int CHAR_WIDTH = 6;
+static const int s_CharWidth = 6;
+const QString LegacyPreviewer::Name{ QStringLiteral("LegacyPreviewer") };
 
-PreviewWidget::PreviewWidget(QWidget* parent)
-    : QWidget(parent)
-    , m_ui(new Ui::PreviewWidgetClass())
+LegacyPreviewer::LegacyPreviewer(QWidget* parent)
+    : Previewer(parent)
+    , m_ui(new Ui::LegacyPreviewerClass())
     , m_textureType(TextureType::RGB)
 {
     m_ui->setupUi(this);
@@ -51,20 +52,19 @@ PreviewWidget::PreviewWidget(QWidget* parent)
     Clear();
 }
 
-PreviewWidget::~PreviewWidget()
+LegacyPreviewer::~LegacyPreviewer()
 {
 }
 
-void PreviewWidget::Clear() const
+void LegacyPreviewer::Clear() const
 {
     m_ui->m_previewCtrl->ReleaseObject();
     m_ui->m_modelPreviewWidget->hide();
     m_ui->m_texturePreviewWidget->hide();
     m_ui->m_fileInfoCtrl->hide();
-    m_ui->m_noPreviewWidget->show();
 }
 
-void PreviewWidget::Display(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry)
+void LegacyPreviewer::Display(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry)
 {
     using namespace AzToolsFramework::AssetBrowser;
 
@@ -90,12 +90,17 @@ void PreviewWidget::Display(const AzToolsFramework::AssetBrowser::AssetBrowserEn
     }
 }
 
-void PreviewWidget::resizeEvent(QResizeEvent* /*event*/)
+const QString& LegacyPreviewer::GetName() const
 {
-    m_ui->m_fileInfoCtrl->setText(WordWrap(m_fileinfo, m_ui->m_fileInfoCtrl->width() / CHAR_WIDTH));
+    return Name;
 }
 
-bool PreviewWidget::DisplayProduct(const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* product)
+void LegacyPreviewer::resizeEvent(QResizeEvent* /*event*/)
+{
+    m_ui->m_fileInfoCtrl->setText(WordWrap(m_fileinfo, m_ui->m_fileInfoCtrl->width() / s_CharWidth));
+}
+
+bool LegacyPreviewer::DisplayProduct(const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* product)
 {
     m_ui->m_fileInfoCtrl->show();
 
@@ -113,7 +118,6 @@ bool PreviewWidget::DisplayProduct(const AzToolsFramework::AssetBrowser::Product
     {
         m_ui->m_modelPreviewWidget->show();
         m_ui->m_texturePreviewWidget->hide();
-        m_ui->m_noPreviewWidget->hide();
         m_ui->m_previewCtrl->LoadFile(filename);
 
         int nVertexCount = m_ui->m_previewCtrl->GetVertexCount();
@@ -124,7 +128,7 @@ bool PreviewWidget::DisplayProduct(const AzToolsFramework::AssetBrowser::Product
         {
             m_fileinfo += tr("\r\n%1 Faces\r\n%2 Verts\r\n%3 MaxLod\r\n%4 Materials").arg(nFaceCount).arg(nVertexCount).arg(nMaxLod).arg(nMtls);
         }
-        m_ui->m_fileInfoCtrl->setText(WordWrap(m_fileinfo, m_ui->m_fileInfoCtrl->width() / CHAR_WIDTH));
+        m_ui->m_fileInfoCtrl->setText(WordWrap(m_fileinfo, m_ui->m_fileInfoCtrl->width() / s_CharWidth));
         updateGeometry();
         return true;
     }
@@ -155,7 +159,7 @@ bool PreviewWidget::DisplayProduct(const AzToolsFramework::AssetBrowser::Product
     return false;
 }
 
-void PreviewWidget::DisplaySource(const AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry* source)
+void LegacyPreviewer::DisplaySource(const AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry* source)
 {
     using namespace AzToolsFramework::AssetBrowser;
 
@@ -199,7 +203,7 @@ void PreviewWidget::DisplaySource(const AzToolsFramework::AssetBrowser::SourceAs
     }
 }
 
-QString PreviewWidget::GetFileSize(const char* path)
+QString LegacyPreviewer::GetFileSize(const char* path)
 {
     QString fileSizeStr;
     AZ::u64 fileSizeResult = 0;
@@ -247,11 +251,10 @@ QString PreviewWidget::GetFileSize(const char* path)
     return fileSizeStr;
 }
 
-bool PreviewWidget::DisplayTextureLegacy(const char* fullImagePath)
+bool LegacyPreviewer::DisplayTextureLegacy(const char* fullImagePath)
 {
     m_ui->m_modelPreviewWidget->hide();
     m_ui->m_texturePreviewWidget->show();
-    m_ui->m_noPreviewWidget->hide();
 
     bool foundPixmap = false;
     if (!AZ::IO::FileIOBase::GetInstance()->IsDirectory(fullImagePath))
@@ -273,7 +276,7 @@ bool PreviewWidget::DisplayTextureLegacy(const char* fullImagePath)
     if (!foundPixmap)
     {
         m_ui->m_previewImageCtrl->setPixmap(QPixmap());
-        m_ui->m_fileInfoCtrl->setText(WordWrap(m_fileinfo, m_ui->m_fileInfoCtrl->width() / CHAR_WIDTH));
+        m_ui->m_fileInfoCtrl->setText(WordWrap(m_fileinfo, m_ui->m_fileInfoCtrl->width() / s_CharWidth));
     }
 
     updateGeometry();
@@ -281,11 +284,10 @@ bool PreviewWidget::DisplayTextureLegacy(const char* fullImagePath)
     return foundPixmap;
 }
 
-bool PreviewWidget::DisplayTextureProductModern(const char* fullProductImagePath)
+bool LegacyPreviewer::DisplayTextureProductModern(const char* fullProductImagePath)
 {
     m_ui->m_modelPreviewWidget->hide();
     m_ui->m_texturePreviewWidget->show();
-    m_ui->m_noPreviewWidget->hide();
 
     bool foundPixmap = false;
     QImage previewImage;
@@ -324,14 +326,14 @@ bool PreviewWidget::DisplayTextureProductModern(const char* fullProductImagePath
     else
     {
         m_ui->m_previewImageCtrl->setPixmap(QPixmap());
-        m_ui->m_fileInfoCtrl->setText(WordWrap(m_fileinfo, m_ui->m_fileInfoCtrl->width() / CHAR_WIDTH));
+        m_ui->m_fileInfoCtrl->setText(WordWrap(m_fileinfo, m_ui->m_fileInfoCtrl->width() / s_CharWidth));
     }
 
     updateGeometry();
     return foundPixmap;
 }
 
-void PreviewWidget::UpdateTextureType()
+void LegacyPreviewer::UpdateTextureType()
 {
     m_previewImageUpdated.Copy(m_previewImageSource);
 
@@ -365,11 +367,11 @@ void PreviewWidget::UpdateTextureType()
     QPixmap qtPixmap = QPixmap::fromImage(
             QImage(reinterpret_cast<uchar*>(m_previewImageUpdated.GetData()), m_previewImageUpdated.GetWidth(), m_previewImageUpdated.GetHeight(), QImage::Format_ARGB32));
     m_ui->m_previewImageCtrl->setPixmap(qtPixmap);
-    m_ui->m_fileInfoCtrl->setText(WordWrap(m_textureType == TextureType::Alpha? m_fileinfoAlphaTexture: m_fileinfo, m_ui->m_fileInfoCtrl->width() / CHAR_WIDTH));
+    m_ui->m_fileInfoCtrl->setText(WordWrap(m_textureType == TextureType::Alpha? m_fileinfoAlphaTexture: m_fileinfo, m_ui->m_fileInfoCtrl->width() / s_CharWidth));
     m_ui->m_previewImageCtrl->updateGeometry();
 }
 
-bool PreviewWidget::FileInfoCompare(const FileInfo& f1, const FileInfo& f2)
+bool LegacyPreviewer::FileInfoCompare(const FileInfo& f1, const FileInfo& f2)
 {
     if ((f1.attrib & _A_SUBDIR) && !(f2.attrib & _A_SUBDIR))
     {
@@ -383,7 +385,7 @@ bool PreviewWidget::FileInfoCompare(const FileInfo& f1, const FileInfo& f2)
     return QString::compare(f1.filename, f2.filename, Qt::CaseInsensitive) < 0;
 }
 
-QString PreviewWidget::WordWrap(const QString& string, int maxLength)
+QString LegacyPreviewer::WordWrap(const QString& string, int maxLength)
 {
     QString result;
     int length = 0;
@@ -408,4 +410,4 @@ QString PreviewWidget::WordWrap(const QString& string, int maxLength)
     return result;
 }
 
-#include <AzAssetBrowser/Preview/PreviewWidget.moc>
+#include <AzAssetBrowser/Preview/LegacyPreviewer.moc>

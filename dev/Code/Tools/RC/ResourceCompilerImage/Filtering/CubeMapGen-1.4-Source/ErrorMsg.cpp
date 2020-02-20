@@ -8,11 +8,14 @@
 //--------------------------------------------------------------------------------------
 // modifications by Crytek GmbH
 
+// Modifications copyright Amazon.com, Inc. or its affiliates.
+
+#include "StdAfx.h"
 #include "Types.h"
 #include "ErrorMsg.h"
 #include <AzCore/base.h>
 
-#if AZ_TRAIT_OS_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE || defined(AZ_PLATFORM_LINUX)
 #define SUCCEEDED(x) ((x) >= 0)
 #define FAILED(x) (!(SUCCEEDED(x)))
 #endif

@@ -340,7 +340,6 @@ void CD3D9Renderer::FX_DeferredShadowPass(const SRenderLight* pLight, ShadowMapF
             vCamPosShadowSpace /= vCamPosShadowSpace.w;                
             if (abs(vCamPosShadowSpace.x) > 1.0f || abs(vCamPosShadowSpace.y) > 1.0f || vCamPosShadowSpace.z < 0 || vCamPosShadowSpace.z > 1)
             {
-			
                 pShader->FXBeginPass(DS_STENCIL_VOLUME_CLIP);
                 if (!FAILED(FX_SetVertexDeclaration(0, eVF_P3F_C4B_T2F)))
                 {

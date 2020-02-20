@@ -907,6 +907,7 @@ void CClipKey::SetupAnimClip(SAnimClip& animClip, float lastTime, int fragPart)
 
 const char* CClipKey::GetDBAPath() const
 {
+#ifdef EDITOR_PCDEBUGCODE
     if (m_animSet)
     {
         const int animId = m_animSet->GetAnimIDByCRC(animRef.crc);
@@ -915,7 +916,7 @@ const char* CClipKey::GetDBAPath() const
             return m_animSet->GetDBAFilePath(animId);
         }
     }
-
+#endif // EDITOR_PCDEBUGCODE
     return NULL;
 }
 
@@ -946,6 +947,7 @@ void CClipKey::SetAnimation(const QString& animName, const IAnimationSet* animSe
 
 void CClipKey::UpdateFlags()
 {
+#ifdef EDITOR_PCDEBUGCODE
     const int id = m_animSet ? m_animSet->GetAnimIDByCRC(animRef.crc) : -1;
     if (id >= 0)
     {
@@ -969,6 +971,7 @@ void CClipKey::UpdateFlags()
         animIsAdditive = FALSE;
         m_fileState = eNone;
     }
+#endif // EDITOR_PCDEBUGCODE
 }
 
 void CClipKey::GetExtensions(QStringList& extensions, QString& editableExtension) const

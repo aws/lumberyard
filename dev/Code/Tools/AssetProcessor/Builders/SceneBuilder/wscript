@@ -20,11 +20,12 @@ def build(bld):
         target              = 'SceneBuilder',
         vs_filter           = 'Tools/AssetProcessor/Builders/Deprecated',
         file_list           = ['scenebuilder.waf_files'],
-        platforms           = ['win', 'darwin'],
+        platforms           = ['win', 'darwin', 'linux'],
         exclude_monolithic  = True,
         client_only         = True,
         disable_pch         = True,
         test_all_file_list  = ['scenebuilder_tests.waf_files'],
+        linux_rpath         = ['$ORIGIN/..']
     )
 
 

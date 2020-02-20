@@ -13,24 +13,25 @@
 
 def build(bld):
     bld.DefineGem(
-        includes          = [ '.',
-                              'Include',
-                              bld.Path('Code/CryEngine/CryCommon')
-                            ],
+        includes          = ['.',
+                             bld.ThirdPartyPath('boost'),
+                             bld.Path('Code/CryEngine/CryCommon'),
+                             'Include'],
         win_features      = ['crcfix'],
         use_required_gems = True,
 
         editor = dict(
-            platforms   = ['win', 'darwin'],
+            platforms   = ['win', 'darwin', 'linux'],
             features    = ['qt5'],
-            uselib      = [
-			               'QT5CORE',
+            uselib      = ['QT5CORE',
                            'QT5GUI',
                            'QT5WIDGETS',
                            'QT5NETWORK' # this lib depends on EditorLib, which depends on NewsShared, which depends on Qt5Network
                            ],
             defines     = ['GRADIENTSIGNAL_EDITOR'],
-            includes    = ['.', 
+            includes    = ['.',
+                           bld.ThirdPartyPath('boost'),
+                           bld.Path('Code/CryEngine/CryCommon'),
                            'Include',
                            bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                            bld.Path('Code/Sandbox/Editor'),

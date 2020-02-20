@@ -793,7 +793,13 @@ def gather_msvc_2017_versions(conf, windows_kit, versions):
         path_string = ''
         try:
             vs_where_args = conf.options.win_vs2017_vswhere_args.lower().split()
+            vs_where_args_buildtools = vs_where_args[:]
+            vs_where_args_buildtools.append('-products')
+            vs_where_args_buildtools.append('Microsoft.VisualStudio.Product.BuildTools')
             version_string = subprocess.check_output([vswhere_exe, '-property', 'installationVersion'] + vs_where_args)
+            if not version_string:
+                version_string = subprocess.check_output([vswhere_exe, '-property', 'installationVersion'] + vs_where_args_buildtools)
+
             if not version_string:
                 try:
                     version_arg_index = vs_where_args.index('-version')
@@ -802,14 +808,22 @@ def gather_msvc_2017_versions(conf, windows_kit, versions):
 
                     # We could not find a min version of vs2017 based on the vswhere args for vswhere, so try to find any version of 2017
                     vs_where_args = ['-version', '[15.0,16.0)']
+                    vs_where_args_buildtools = vs_where_args[:]
+                    vs_where_args_buildtools.append('-products')
+                    vs_where_args_buildtools.append('Microsoft.VisualStudio.Product.BuildTools')
 
                     version_string = subprocess.check_output([vswhere_exe, '-property', 'installationVersion'] + vs_where_args)
+                    if not version_string:
+                        version_string = subprocess.check_output([vswhere_exe, '-property', 'installationVersion'] + vs_where_args_buildtools)
                 except ValueError:
                     pass
 
             version_parts = version_string.split('.')
             version_string = version_parts[0]
             path_string = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs_where_args)
+            if not path_string:
+                path_string = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs_where_args_buildtools)
+
             path_string = path_string[:len(path_string)-2]
             vc_paths.append((version_string, path_string))
 

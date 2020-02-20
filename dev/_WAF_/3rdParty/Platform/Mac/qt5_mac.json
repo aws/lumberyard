@@ -16,15 +16,6 @@
             "Qt5Bluetooth/framework": [
                 "QtBluetooth"
             ],
-            "Qt5CLucene/defines": [
-                "QT_CLUCENE_LIB"
-            ],
-            "Qt5CLucene/includes": [
-                "clang_64/lib/QtCLucene.framework/Headers"
-            ],
-            "Qt5CLucene/framework": [
-                "QtCLucene"
-            ],
             "Qt5Concurrent/defines": [
                 "QT_CONCURRENT_LIB"
             ],
@@ -40,8 +31,8 @@
             ],
             "Qt5Core/includes": [
                 "clang_64/lib/QtCore.framework/Headers",
-                "clang_64/lib/QtCore.framework/Headers/5.6.2",
-                "clang_64/lib/QtCore.framework/Headers/5.6.2/QtCore"
+                "clang_64/lib/QtCore.framework/Headers/5.12.4",
+                "clang_64/lib/QtCore.framework/Headers/5.12.4/QtCore"
             ],
             "Qt5Core/framework": [
                 "QtCore"
@@ -87,8 +78,8 @@
             ],
             "Qt5Gui/includes": [
                 "clang_64/lib/QtGui.framework/Headers",
-                "clang_64/lib/QtGui.framework/Headers/5.6.2",
-                "clang_64/lib/QtGui.framework/Headers/5.6.2/QtGui"
+                "clang_64/lib/QtGui.framework/Headers/5.12.4",
+                "clang_64/lib/QtGui.framework/Headers/5.12.4/QtGui"
             ],
             "Qt5Gui/framework": [
                 "QtGui"
@@ -102,7 +93,7 @@
             "Qt5Help/framework": [
                 "QtHelp"
             ],
-	    "Qt5MacExtras/defines": [
+            "Qt5MacExtras/defines": [
                 "QT_MACEXTRAS_LIB"
             ],
             "Qt5MacExtras/includes": [
@@ -120,14 +111,14 @@
             "Qt5Multimedia/framework": [
                 "QtMultimedia"
             ],
-            "Qt5MultimediaQuick_p/defines": [
+            "Qt5MultimediaQuick/defines": [
                 "QT_MULTIMEDIAQUICK_LIB"
             ],
-            "Qt5MultimediaQuick_p/includes": [
-                "clang_64/lib/QtMultimediaQuick_p.framework/Headers"
+            "Qt5MultimediaQuick/includes": [
+                "clang_64/lib/QtMultimediaQuick.framework/Headers"
             ],
-            "Qt5MultimediaQuick_p/framework": [
-                "QtMultimediaQuick_p"
+            "Qt5MultimediaQuick/framework": [
+                "QtMultimediaQuick"
             ],
             "Qt5MultimediaWidgets/defines": [
                 "QT_MULTIMEDIAWIDGETS_LIB"
@@ -264,31 +255,40 @@
             "Qt5Test/framework": [
                 "QtTest"
             ],
-            "Qt5WebKit/defines": [
-                "QT_WEBKIT_LIB"
+            "Qt5WebEngine/defines": [
+                "QT_WEBENGINE_LIB"
             ],
-            "Qt5WebKit/includes": [
-                "clang_64/lib/QtWebKit.framework/Headers"
+            "Qt5WebEngine/includes": [
+                "clang_64/lib/QtWebEngine.framework/Headers"
             ],
-            "Qt5WebKit/framework": [
-                "QtWebKit"
+            "Qt5WebEngine/framework": [
+                "QtWebEngine"
             ],
-            "Qt5WebKitWidgets/defines": [
-                "QT_WEBKITWIDGETS_LIB"
+            "Qt5WebEngineCore/defines": [
+                "QT_WEBENGINECORE_LIB"
             ],
-            "Qt5WebKitWidgets/includes": [
-                "clang_64/lib/QtWebKitWidgets.framework/Headers"
+            "Qt5WebEngineCore/includes": [
+                "clang_64/lib/QtWebEngineCore.framework/Headers"
             ],
-            "Qt5WebKitWidgets/framework": [
-                "QtWebKitWidgets"
+            "Qt5WebEngineCore/framework": [
+                "QtWebEngineCore"
+            ],
+            "Qt5WebEngineWidgets/defines": [
+                "QT_WEBENGINEWIDGETS_LIB"
+            ],
+            "Qt5WebEngineWidgets/includes": [
+                "clang_64/lib/QtWebEngineWidgets.framework/Headers"
+            ],
+            "Qt5WebEngineWidgets/framework": [
+                "QtWebEngineWidgets"
             ],
             "Qt5Widgets/defines": [
                 "QT_WIDGETS_LIB"
             ],
             "Qt5Widgets/includes": [
                 "clang_64/lib/QtWidgets.framework/Headers",
-                "clang_64/lib/QtWidgets.framework/Headers/5.6.2",
-                "clang_64/lib/QtWidgets.framework/Headers/5.6.2/QtWidgets"
+                "clang_64/lib/QtWidgets.framework/Headers/5.12.4",
+                "clang_64/lib/QtWidgets.framework/Headers/5.12.4/QtWidgets"
             ],
             "Qt5Widgets/framework": [
                 "QtWidgets"
@@ -311,6 +311,8 @@
             "Qt5Xml/framework": [
                 "QtXml"
             ]
-        }
+        },
+        "apple_tv": "@darwin_x64",
+        "ios": "@darwin_x64"
     }
 }

@@ -26,6 +26,7 @@
 
 #include <LmbrCentral/Rendering/MaterialOwnerBus.h>
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
+#include <LmbrCentral/Rendering/MeshModificationBus.h>
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
 #include <LmbrCentral/Rendering/MaterialAsset.h>
 #include <LmbrCentral/Rendering/MeshAsset.h>
@@ -176,6 +177,9 @@ namespace LmbrCentral
         //! Applies configured render options to the render node.
         void ApplyRenderOptions();
 
+        //! Populates the render mesh from the mesh asset
+        void BuildRenderMesh();
+
         class MeshRenderOptions
         {
         public:
@@ -284,6 +288,9 @@ namespace LmbrCentral
 
         //! Tracks if the object was moved so we can notify the renderer.
         bool m_objectMoved;
+
+        // Helper to store indices for meshes to be modified by other components.
+        MeshModificationRequestHelper m_modificationHelper;
     };
 
 
@@ -372,6 +379,9 @@ namespace LmbrCentral
         }
 
         static void Reflect(AZ::ReflectContext* context);
+
+        void RequireSendingRenderMeshForEditing(size_t lodIndex, size_t primitiveIndex);
+        void NoRenderMeshesForEditing();
 
 
         //////////////////////////////////////////////////////////////////////////

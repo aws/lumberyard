@@ -77,7 +77,7 @@ namespace EMotionFX
         const float x = GetInputNumberAsFloat(animGraphInstance, INPUTPORT_X);
         const float y = GetInputNumberAsFloat(animGraphInstance, INPUTPORT_Y);
         const float z = GetInputNumberAsFloat(animGraphInstance, INPUTPORT_Z);
-        GetOutputVector3(animGraphInstance, OUTPUTPORT_VECTOR)->SetValue(AZ::PackedVector3f(x, y, z));
+        GetOutputVector3(animGraphInstance, OUTPUTPORT_VECTOR)->SetValue(AZ::Vector3(x, y, z));
     }
 
     void BlendTreeVector3ComposeNode::Reflect(AZ::ReflectContext* context)

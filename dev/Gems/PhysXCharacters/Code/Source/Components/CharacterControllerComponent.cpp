@@ -40,45 +40,34 @@ namespace PhysXCharacters
 
         if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-            behaviorContext->EBus<Physics::CharacterRequestBus>("Character Controller")
+            behaviorContext->EBus<Physics::CharacterRequestBus>("CharacterControllerRequestBus", "Character Controller")
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::RuntimeOwn)
                 ->Attribute(AZ::Edit::Attributes::Category, "PhysX")
-                ->Event("Get Base Position", &Physics::CharacterRequests::GetBasePosition)
-                ->Event("Set Base Position", &Physics::CharacterRequests::SetBasePosition,
-                    { { { "Position" , "The controller will directly move (teleport) to this base position" } } })
-                ->Event("Get Center Position", &Physics::CharacterRequests::GetCenterPosition)
-                ->Event("Get Step Height", &Physics::CharacterRequests::GetStepHeight)
-                ->Event("Set Step Height", &Physics::CharacterRequests::SetStepHeight,
-                    { { { "Step Height", "The new value for the step height" } } })
-                ->Event("Get Up Direction", &Physics::CharacterRequests::GetUpDirection)
-                ->Event("Get Slope Limit (Degrees)", &Physics::CharacterRequests::GetSlopeLimitDegrees)
-                ->Event("Set Slope Limit (Degrees)", &Physics::CharacterRequests::SetSlopeLimitDegrees,
-                    { { { "Slope Limit", "The new value for the slope limit in degrees" } } })
-                ->Event("Get Velocity", &Physics::CharacterRequests::GetVelocity)
-                ->Event("Try Relative Move", &Physics::CharacterRequests::TryRelativeMove,
-                    { { { "Delta Position", "Desired movement relative to current position" },
-                        { "Delta Time", "Duration of the movement" } } })
-                ->Attribute(AZ::Script::Attributes::ToolTip,
-                    "Tries to perform a relative movement, returning the new base position")
+                ->Event("GetBasePosition", &Physics::CharacterRequests::GetBasePosition, "Get Base Position")
+                ->Event("SetBasePosition", &Physics::CharacterRequests::SetBasePosition, "Set Base Position")
+                ->Event("GetCenterPosition", &Physics::CharacterRequests::GetCenterPosition, "Get Center Position")
+                ->Event("GetStepHeight", &Physics::CharacterRequests::GetStepHeight, "Get Step Height")
+                ->Event("SetStepHeight", &Physics::CharacterRequests::SetStepHeight, "Set Step Height")
+                ->Event("GetUpDirection", &Physics::CharacterRequests::GetUpDirection, "Get Up Direction")
+                ->Event("GetSlopeLimitDegrees", &Physics::CharacterRequests::GetSlopeLimitDegrees, "Get Slope Limit (Degrees)")
+                ->Event("SetSlopeLimitDegrees", &Physics::CharacterRequests::SetSlopeLimitDegrees, "Set Slope Limit (Degrees)")
+                ->Event("GetVelocity", &Physics::CharacterRequests::GetVelocity, "Get Velocity")
+                ->Event("TryRelativeMove", &Physics::CharacterRequests::TryRelativeMove, "Try Relative Move")
                 ;
 
-            behaviorContext->EBus<CharacterControllerRequestBus>("Character Controller (PhysX specific)")
+            behaviorContext->EBus<CharacterControllerRequestBus>("PhysXCharacterControllerRequestBus",
+                "Character Controller (PhysX specific)")
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::RuntimeOwn)
                 ->Attribute(AZ::Edit::Attributes::Category, "PhysX")
-                ->Event("Resize", &CharacterControllerRequests::Resize,
-                    { { { "Height", "The new height for the character controller (maintains the base position)" } } })
-                ->Event("Get Height", &CharacterControllerRequests::GetHeight)
-                ->Event("Set Height", &CharacterControllerRequests::SetHeight,
-                    { { { "Height", "The new height for the character controller (maintains the center position)" } } })
-                ->Event("Get Radius", &CharacterControllerRequests::GetRadius)
-                ->Event("Set Radius", &CharacterControllerRequests::SetRadius,
-                    { { { "Radius", "The new radius (for capsule controllers only)" } } })
-                ->Event("Get Half Side Extent", &CharacterControllerRequests::GetHalfSideExtent)
-                ->Event("Set Half Side Extent", &CharacterControllerRequests::SetHalfSideExtent,
-                    { { { "Half Side Extent", "The new half side extent (for box controllers only)" } } })
-                ->Event("Get Half Forward Extent", &CharacterControllerRequests::GetHalfForwardExtent)
-                ->Event("Set Half Forward Extent", &CharacterControllerRequests::SetHalfForwardExtent,
-                    { { { "Half Forward Extent", "The new half forward extent (for box controllers only)" } } })
+                ->Event("Resize", &CharacterControllerRequests::Resize)
+                ->Event("GetHeight", &CharacterControllerRequests::GetHeight, "Get Height")
+                ->Event("SetHeight", &CharacterControllerRequests::SetHeight, "Set Height")
+                ->Event("GetRadius", &CharacterControllerRequests::GetRadius, "Get Radius")
+                ->Event("SetRadius", &CharacterControllerRequests::SetRadius, "Set Radius")
+                ->Event("GetHalfSideExtent", &CharacterControllerRequests::GetHalfSideExtent, "Get Half Side Extent")
+                ->Event("SetHalfSideExtent", &CharacterControllerRequests::SetHalfSideExtent, "Set Half Side Extent")
+                ->Event("GetHalfForwardExtent", &CharacterControllerRequests::GetHalfForwardExtent, "Get Half Forward Extent")
+                ->Event("SetHalfForwardExtent", &CharacterControllerRequests::SetHalfForwardExtent, "Set Half Forward Extent")
                 ;
         }
     }
@@ -141,10 +130,12 @@ namespace PhysXCharacters
 
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         Physics::CharacterRequestBus::Handler::BusConnect(GetEntityId());
+        Physics::CollisionFilteringRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     void CharacterControllerComponent::Deactivate()
     {
+        Physics::CollisionFilteringRequestBus::Handler::BusDisconnect();
         CharacterControllerRequestBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
         Physics::CharacterRequestBus::Handler::BusDisconnect();
@@ -377,6 +368,95 @@ namespace PhysXCharacters
                 AZ::Quaternion rotation = AZ::Quaternion::CreateFromTransform(world);
                 controllerReplica->Move(world.GetTranslation());
                 controllerReplica->SetRotation(rotation);
+            }
+        }
+    }
+    
+    void CharacterControllerComponent::SetCollisionLayer(const AZStd::string& layerName, const AZ::Crc32& colliderTag)
+    {
+        if (!m_controller)
+        {
+            AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
+            return;
+        }
+
+        if (Physics::Utils::FilterTag(m_controller->GetColliderTag(), colliderTag))
+        {
+            bool success = false;
+            Physics::CollisionLayer collisionLayer;
+            Physics::CollisionRequestBus::BroadcastResult(success, &Physics::CollisionRequests::TryGetCollisionLayerByName, layerName, collisionLayer);
+            if (success) 
+            {
+                m_controller->SetCollisionLayer(collisionLayer);
+            }
+        }
+    }
+
+    AZStd::string CharacterControllerComponent::GetCollisionLayerName()
+    {
+        AZStd::string layerName;
+        if (!m_controller)
+        {
+            AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
+            return layerName;
+        }
+
+        Physics::CollisionRequestBus::BroadcastResult(layerName, &Physics::CollisionRequests::GetCollisionLayerName, m_controller->GetCollisionLayer());
+        return layerName;
+    }
+
+    void CharacterControllerComponent::SetCollisionGroup(const AZStd::string& groupName, const AZ::Crc32& colliderTag)
+    {
+        if (!m_controller)
+        {
+            AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
+            return;
+        }
+
+        if (Physics::Utils::FilterTag(m_controller->GetColliderTag(), colliderTag))
+        {
+            bool success = false;
+            Physics::CollisionGroup collisionGroup;
+            Physics::CollisionRequestBus::BroadcastResult(success, &Physics::CollisionRequests::TryGetCollisionGroupByName, groupName, collisionGroup);
+            if (success)
+            {
+                m_controller->SetCollisionGroup(collisionGroup);
+            }
+        }
+    }
+
+    AZStd::string CharacterControllerComponent::GetCollisionGroupName()
+    {
+        AZStd::string groupName;
+        if (!m_controller)
+        {
+            AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
+            return groupName;
+        }
+        
+        Physics::CollisionRequestBus::BroadcastResult(groupName, &Physics::CollisionRequests::GetCollisionGroupName, m_controller->GetCollisionGroup());
+        return groupName;
+    }
+
+    void CharacterControllerComponent::ToggleCollisionLayer(const AZStd::string& layerName, const AZ::Crc32& colliderTag, bool enabled)
+    {
+        if (!m_controller)
+        {
+            AZ_Error("PhysX Character Controller Component", false, "Invalid character controller.");
+            return;
+        }
+
+        if (Physics::Utils::FilterTag(m_controller->GetColliderTag(), colliderTag))
+        {
+            bool success = false;
+            Physics::CollisionLayer collisionLayer;
+            Physics::CollisionRequestBus::BroadcastResult(success, &Physics::CollisionRequests::TryGetCollisionLayerByName, layerName, collisionLayer);
+            if (success)
+            {
+                Physics::CollisionLayer layer(layerName);
+                Physics::CollisionGroup group = m_controller->GetCollisionGroup();
+                group.SetLayer(layer, enabled);
+                m_controller->SetCollisionGroup(group);
             }
         }
     }

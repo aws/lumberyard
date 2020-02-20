@@ -10,7 +10,6 @@
 *
 */
 
-#include <AzCore/Math/PackedVector3.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <EMotionFX/CommandSystem/Source/CommandManager.h>
 #include <EMotionFX/Source/Actor.h>
@@ -41,13 +40,13 @@ namespace EMotionFX
         // Create motions
         SkeletalSubMotion* rootJointXMotion = SkeletalSubMotion::Create();
         rootJointXMotion->CreatePosTrack();
-        rootJointXMotion->GetPosTrack()->AddKey(0.0f, AZ::PackedVector3f(0.0f, 0.0f, 0.0f));
-        rootJointXMotion->GetPosTrack()->AddKey(1.0f, AZ::PackedVector3f(1.0f, 0.0f, 0.0f));
+        rootJointXMotion->GetPosTrack()->AddKey(0.0f, AZ::Vector3(0.0f, 0.0f, 0.0f));
+        rootJointXMotion->GetPosTrack()->AddKey(1.0f, AZ::Vector3(1.0f, 0.0f, 0.0f));
 
         SkeletalSubMotion* rootJointYMotion = SkeletalSubMotion::Create();
         rootJointYMotion->CreatePosTrack();
-        rootJointYMotion->GetPosTrack()->AddKey(0.0f, AZ::PackedVector3f(0.0f, 0.0f, 0.0f));
-        rootJointYMotion->GetPosTrack()->AddKey(1.0f, AZ::PackedVector3f(0.0f, 1.0f, 0.0f));
+        rootJointYMotion->GetPosTrack()->AddKey(0.0f, AZ::Vector3(0.0f, 0.0f, 0.0f));
+        rootJointYMotion->GetPosTrack()->AddKey(1.0f, AZ::Vector3(0.0f, 1.0f, 0.0f));
 
         SkeletalMotion* xmotion = SkeletalMotion::Create("xmotion");
         xmotion->SetFileName("xmotion.motion");

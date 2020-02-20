@@ -21,7 +21,7 @@ def build(bld):
         vs_filter           = 'Sandbox',
         copyright_org       = 'Amazon-CryTek',
         file_list           = 'editorcommon.waf_files',
-        platforms           = ['win', 'darwin'],
+        platforms           = ['win', 'darwin', 'linux'],
         configurations      = ['all'],
         exclude_monolithic  = True,
         client_only         = True,
@@ -39,13 +39,17 @@ def build(bld):
                                'QT5QUICK',
                                'QT5WIDGETS'],
         export_includes     = [ "."],
+        export_defines      = ['EDITOR_COMMON_IMPORTS'],
+
         defines             = ['FORCE_STANDARD_ASSERT',
                                'EDITOR_COMMON_EXPORTS'],
 
         # Platform Specific
         darwin_enable_rtti = True,
+        linux_enable_rtti  = True,
 
         win_x64_clang_cxxflags = ['-Wno-enum-compare-switch'],
+        linux_rpath             =['$ORIGIN/qtlibs/lib'],
 
         # Testing
         test_all_file_list = ['editorcommon_test.waf_files'],

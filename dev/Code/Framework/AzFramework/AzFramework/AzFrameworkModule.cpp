@@ -17,12 +17,14 @@
 #include <AzFramework/Asset/AssetSystemComponent.h>
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzFramework/Components/BootstrapReaderComponent.h>
+#include <AzFramework/Components/AzFrameworkConfigurationSystemComponent.h>
 #include <AzFramework/Driller/RemoteDrillerInterface.h>
 #include <AzFramework/Entity/GameEntityContextComponent.h>
 #include <AzFramework/FileTag/FileTagComponent.h>
 #include <AzFramework/Input/System/InputSystemComponent.h>
 #include <AzFramework/Network/NetBindingComponent.h>
 #include <AzFramework/Network/NetBindingSystemComponent.h>
+#include <AzFramework/Scene/SceneSystemComponent.h>
 #include <AzFramework/Script/ScriptComponent.h>
 #include <AzFramework/Script/ScriptRemoteDebugging.h>
 #include <AzFramework/TargetManagement/TargetManagementComponent.h>
@@ -52,6 +54,8 @@ namespace AzFramework
     #if !defined(AZCORE_EXCLUDE_LUA)
             AzFramework::ScriptComponent::CreateDescriptor(),
     #endif
+            AzFramework::SceneSystemComponent::CreateDescriptor(),
+            AzFramework::AzFrameworkConfigurationSystemComponent::CreateDescriptor(),
         });
     }
 }

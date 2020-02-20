@@ -24,7 +24,7 @@
 #include <AzCore/JSON/rapidjson.h>
 #include <AzCore/JSON/prettywriter.h>
 #include <AzCore/std/sort.h>
-#include <ImGui/imgui.h>
+#include <imgui/imgui.h>
 #include <ImGuiBus.h>
 
 namespace AssetMemoryAnalyzer

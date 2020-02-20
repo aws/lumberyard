@@ -63,6 +63,7 @@ namespace EMotionFX
             AnimGraphNode*                              mPreviousState;         /**< The previously used state, so the one used before the current one, the one from which we transitioned into the current one. */
             bool                                        mReachedExitState;      /**< True in case the state machine's current state is an exit state, false it not. */
             AnimGraphRefCountedData                     m_prevData;
+            bool                                        mSwitchToEntryState;
 
         private:
             AZStd::vector<AnimGraphNode*>               m_activeStates;         // TODO: See function comment.

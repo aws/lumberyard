@@ -1,0 +1,11 @@
+{
+    "name": "cityhash",
+    "source": "@3P:cityhash@",
+    "description": "CityHash for 64 bit hash",
+    "includes": [
+        "src"
+    ],
+    "defines": [],
+    "lib_required": "True",
+    "shared_required": "False"
+}

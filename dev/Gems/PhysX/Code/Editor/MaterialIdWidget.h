@@ -15,7 +15,7 @@
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzFramework/Physics/Material.h>
-#include <QCombobox>
+#include <QComboBox>
 
 namespace PhysX
 {

@@ -42,6 +42,11 @@
         "DEFINES": [
             "LINUX64",
             "__ARM_NEON__"
+        ],
+        "CFLAGS,CXXFLAGS": [
+            "-ffast-math",          # Allow aggressive, lossy floating-point optimizations,
+            "-fno-rtti",            # Disable RTTI,
+            "-fno-exceptions"       # Disable Exceptions
         ]
     },
     "env/debug": {

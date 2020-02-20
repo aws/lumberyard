@@ -143,10 +143,14 @@ namespace AzFramework
             AzFramework::AssetSystemBus::AllowFunctionQueuing(true);
             AssetSystemRequestBus::Handler::BusConnect();
             AZ::SystemTickBus::Handler::BusConnect();
+            
+            AssetSystemStatusBus::Broadcast(&AssetSystemStatusBus::Events::AssetSystemAvailable);
         }
 
         void AssetSystemComponent::Deactivate()
         {
+            AssetSystemStatusBus::Broadcast(&AssetSystemStatusBus::Events::AssetSystemUnavailable);
+
             AZ::SystemTickBus::Handler::BusDisconnect();
             AssetSystemRequestBus::Handler::BusDisconnect();
             
@@ -292,6 +296,12 @@ namespace AzFramework
 
         bool AssetSystemComponent::Connect(const char* identifier)
         {
+            const float DefaultTimeout = 40; // seconds
+            return ConnectWithTimeout(identifier, AZStd::chrono::duration<float>(DefaultTimeout));
+        }
+
+        bool AssetSystemComponent::ConnectWithTimeout(const char* identifier, AZStd::chrono::duration<float> timeout)
+        {
             auto apConnection = azrtti_cast<AssetProcessorConnection*>(m_socketConn.get());
             if (!apConnection)
             {
@@ -305,9 +315,9 @@ namespace AzFramework
             AZ_TracePrintf("Asset System Connection", "Asset Processor Connection IP: %s, port: %hu, branch token %s\n", m_assetProcessorIP.c_str(), m_assetProcessorPort, m_branchToken.c_str());
             apConnection->Connect(m_assetProcessorIP.c_str(), m_assetProcessorPort);
 
-            //this should be pretty much immediate, but allow up to 40 seconds in case the CPU is heavily overloaded and thread starting takes a while.
+            //this should be pretty much immediate, but allow up to specified timeout time in case the CPU is heavily overloaded and thread starting takes a while.
             AZStd::chrono::system_clock::time_point start = AZStd::chrono::system_clock::now();
-            while (!apConnection->IsConnected() && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start) < AZStd::chrono::seconds(40))
+            while (!apConnection->IsConnected() && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start) < timeout)
             {
                 //yield
                 AZStd::this_thread::yield();

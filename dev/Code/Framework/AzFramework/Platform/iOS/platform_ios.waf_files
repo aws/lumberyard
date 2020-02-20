@@ -62,6 +62,10 @@
         "Input/Devices/VirtualKeyboard/Platform/iOS":
         [
             "../Common/Apple/AzFramework/Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_Apple.mm"
+        ],
+        "Windowing":
+        [
+            "AzFramework/Windowing/NativeWindow_ios.mm"
         ]
     }
 }

@@ -75,11 +75,11 @@ namespace MCore
     AttributeQuaternion* AttributeQuaternion::Create(float x, float y, float z, float w)
     { 
         AttributeQuaternion* result = aznew AttributeQuaternion(); 
-        result->SetValue(Quaternion(x, y, z, w)); 
+        result->SetValue(AZ::Quaternion(x, y, z, w)); 
         return result; 
     }
     
-    AttributeQuaternion* AttributeQuaternion::Create(const Quaternion& value)
+    AttributeQuaternion* AttributeQuaternion::Create(const AZ::Quaternion& value)
     { 
         AttributeQuaternion* result = aznew AttributeQuaternion(); 
         result->SetValue(value); 
@@ -127,11 +127,11 @@ namespace MCore
     AttributeVector3* AttributeVector3::Create(float x, float y, float z)
     { 
         AttributeVector3* result = aznew AttributeVector3(); 
-        result->SetValue(AZ::PackedVector3f(x, y, z)); 
+        result->SetValue(AZ::Vector3(x, y, z));
         return result; 
     }
     
-    AttributeVector3* AttributeVector3::Create(const AZ::PackedVector3f& value)
+    AttributeVector3* AttributeVector3::Create(const AZ::Vector3& value)
     { 
         AttributeVector3* result = aznew AttributeVector3(); 
         result->SetValue(value); 

@@ -18,24 +18,46 @@ QComboBox
 {
     height: 16px;
     padding-left: 8px;
-    margin: 4px;
+    margin: 2px;
     font-size: 12px;
+    background-color: #CCCCCC;
 }
 
-QComboBox:focus
+QComboBox:hover
 {
+    margin: 1px;
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 3px;
+    border-color: rgba(0, 0, 0, 50);
+}
+
+QComboBox:focus,
+QComboBox[HasPopupOpen=true],
+QComboBox[HasPopupOpen=true][HasPopupOpen=true]
+{
+    margin: 1px;
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 3px;
+    border-color: #00A1C9;
+
     background-color: #FFFFFF;
-    margin: 2px;
+}
+
+QComboBox[HasError=true]
+{
+    margin: 0px;
     border-width: 2px;
     border-style: solid;
     border-radius: 4px;
-    border-color: #C09EFF;
+    border-color: #E25243;
 }
 
 QComboBox:disabled
 {
     background-color: #777777;
-    color: #999999;
+    color: #BBBBBB;
 }
 
 QComboBox::drop-down
@@ -45,12 +67,15 @@ QComboBox::drop-down
 
 QComboBox::down-arrow
 {
-    image: url(":/stylesheet/img/triangle3.png");
+    width: 16px;
+    height: 16px;
+    margin-right: 4px;
+    image: url(":/stylesheet/img/UI20/combobox-arrow.svg");
 }
 
 QComboBox::down-arrow:disabled
 {
-    image: url(":/stylesheet/img/triangle1.png");
+    image: url(":/stylesheet/img/UI20/combobox-arrow-disabled.svg");
 }
 
 /* Popup */
@@ -59,7 +84,6 @@ QComboBox QAbstractItemView
 {
     background-color: #222222;
     padding: 4px 0px 4px 0px;
-    border-radius: 2px;
     outline: none; /* Disable focus rect */
     show-decoration-selected: 1;
 }
@@ -100,12 +124,12 @@ QComboBox QAbstractItemView::separator
 QComboBox QAbstractItemView::indicator
 {
     /* Keep in sync with the check mark image size */
-    width: 12px;
-    height: 9px;
+    width: 16px;
+    height: 16px;
     image: none;
 }
 
 QComboBox QAbstractItemView::indicator:checked
 {
-    image: url(:/stylesheet/img/menu-check.png);
+    image: url(:/stylesheet/img/UI20/checkmark.svg);
 }

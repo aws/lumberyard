@@ -76,7 +76,7 @@ namespace EMStudio
         {
         }
 
-        RotateManipulatorCallback(EMotionFX::ActorInstance* actorInstance, const MCore::Quaternion& oldValue)
+        RotateManipulatorCallback(EMotionFX::ActorInstance* actorInstance, const AZ::Quaternion& oldValue)
             : ManipulatorCallback(actorInstance, oldValue)
         {
         }
@@ -89,7 +89,7 @@ namespace EMStudio
         /**
          * update the actor instance.
          */
-        void Update(const MCore::Quaternion& value) override;
+        void Update(const AZ::Quaternion& value) override;
 
         /**
          * update old transformation values of the callback

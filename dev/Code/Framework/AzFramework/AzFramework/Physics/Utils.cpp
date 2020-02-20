@@ -24,6 +24,7 @@
 #include <AzFramework/Physics/CollisionNotificationBus.h>
 #include <AzFramework/Physics/TriggerBus.h>
 #include <AzFramework/Physics/ScriptCanvasPhysicsUtils.h>
+#include <AzFramework/Physics/CollisionBus.h>
 
 namespace Physics
 {
@@ -53,6 +54,8 @@ namespace Physics
                 if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
                 {
                     behaviorContext->EBus<Physics::TriggerNotificationBus>("TriggerNotificationBus")
+                        ->Attribute(AZ::Script::Attributes::Module, "physics")
+                        ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                         ->Handler<TriggerNotificationBusBehaviorHandler>()
                         ;
                 }
@@ -160,6 +163,7 @@ namespace Physics
             AnimationConfiguration::Reflect(context);
             CharacterConfiguration::Reflect(context);
             ReflectWorldBus(context);
+            CollisionFilteringRequests::Reflect(context);
             TriggerNotificationBusBehaviorHandler::Reflect(context);
             CollisionNotificationBusBehaviorHandler::Reflect(context);
             RayCastHit::Reflect(context);
@@ -211,6 +215,12 @@ namespace Physics
                 world->RemoveBody(*worldBody);
                 world->DeferDelete(AZStd::move(worldBody));
             }
+        }
+
+        bool FilterTag(const AZ::Crc32& tag, const AZ::Crc32& filterTag)
+        {
+            // If the filter tag is empty, then ignore it
+            return !filterTag || tag == filterTag;
         }
     }
 }

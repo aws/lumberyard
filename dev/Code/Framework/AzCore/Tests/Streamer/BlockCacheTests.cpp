@@ -125,15 +125,20 @@ namespace AZ
                 m_context->MarkRequestAsCompleted(request);
             }
 
-            void VerifyReadBuffer(u64 offset, u64 size)
+            void VerifyReadBuffer(u32* buffer, u64 offset, u64 size)
             {
                 size = size >> 2;
                 for (u64 i = 0; i < size; ++i)
                 {
                     // Using assert here because in case of a problem EXPECT would 
                     // cause a large amount of log noise.
-                    ASSERT_EQ(m_buffer[i], offset + (i << 2));
+                    ASSERT_EQ(buffer[i], offset + (i << 2));
                 }
+            }
+
+            void VerifyReadBuffer(u64 offset, u64 size)
+            {
+                VerifyReadBuffer(m_buffer, offset, size);
             }
 
         protected:
@@ -289,6 +294,24 @@ namespace AZ
 
             ProcessRead(m_buffer, m_path, 256, m_fakeFileLength - 512, FileRequest::Status::Completed);
             VerifyReadBuffer(256, m_fakeFileLength - 512);
+        }
+
+        // File    |------------------------------------------------|
+        // Request     |---------|
+        // Cache   [   v    ][    v   ][   x    ][   x    ][   x    ]
+        TEST_F(BlockCacheWithPrologAndEpilogTest, ReadFile_PrologAndEpilogInTwoBlocks_FileReadInTwoReads)
+        {
+            using ::testing::_;
+
+            CreateTestEnvironment();
+            RedirectReadCalls();
+
+            EXPECT_CALL(*m_mock, PrepareRequest(_)).Times(2);
+            EXPECT_CALL(*this, ReadFile(_, _, 0, m_blockSize));
+            EXPECT_CALL(*this, ReadFile(_, _, m_blockSize, m_blockSize));
+
+            ProcessRead(m_buffer, m_path, 256, m_blockSize, FileRequest::Status::Completed);
+            VerifyReadBuffer(256, m_blockSize);
         }
 
         // File    |------------------------------------------------|
@@ -479,13 +502,130 @@ namespace AZ
             m_context->RecycleRequest(request0);
 
             VerifyReadBuffer(256, m_fakeFileLength - 512);
-            for (u64 i = 0; i < secondReadSize / sizeof(u32); ++i)
+            VerifyReadBuffer(buffer1, m_fakeFileLength - 768, secondReadSize);
+        }
+
+        // File     |----------------------------------------------|
+        // Request0     |---------------------------------------|
+        // Request1                                           |----|
+        // Cache    [   v    ][    x   ][   x    ][   x    ][   v    ]
+        // This test queues up multiple read that overlap so one in-flight cache block is used in two requests. This
+        // is the same as the previous version except it finishes the first request so there's no wait-request created.
+        TEST_F(BlockCacheWithPrologAndEpilogTest, ReadFile_MultipleReadsOverlappingAfterComplete_BothFilesAreCorrectlyRead)
+        {
+            using ::testing::_;
+            using ::testing::Return;
+
+            CreateTestEnvironment();
+
+            EXPECT_CALL(*m_mock, GetFileSize(_, _)).Times(2);
+            EXPECT_CALL(*m_mock, ExecuteRequests())
+                .WillOnce(Return(true))
+                .WillOnce(Return(false))
+                .WillOnce(Return(true))
+                .WillRepeatedly(Return(false));
+            ON_CALL(*m_mock, GetFileSize(_, _))
+                .WillByDefault(Invoke(this, &BlockCacheTest::GetFileSize));
+            ON_CALL(*m_mock, PrepareRequest(_))
+                .WillByDefault(Invoke(this, &BlockCacheTest::PrepareReadRequest));;
+
+            EXPECT_CALL(*m_mock, PrepareRequest(_)).Times(3);
+            EXPECT_CALL(*this, ReadFile(_, _, 0, m_blockSize));
+            EXPECT_CALL(*this, ReadFile(_, _, m_blockSize, m_fakeFileLength - 2 * m_blockSize));
+            EXPECT_CALL(*this, ReadFile(_, _, m_fakeFileLength - m_blockSize, m_blockSize));
+
+            constexpr size_t secondReadSize = 512;
+            u32 buffer1[secondReadSize / sizeof(u32)];
+
+            FileRequest* request0 = m_context->GetNewExternalRequest();
+            FileRequest* request1 = m_context->GetNewExternalRequest();
+            request0->CreateRead(nullptr, nullptr, m_buffer, m_path, 256, m_fakeFileLength - 512);
+            request1->CreateRead(nullptr, nullptr, buffer1, m_path, m_fakeFileLength - 768, secondReadSize);
+
+            AZStd::vector<FileRequest*> dummyRequests;
+            m_cache->PrepareRequest(request0);
+            while (m_cache->ExecuteRequests())
             {
-                // Using assert here because in case of a problem EXPECT would 
-                // cause a large amount of log noise.
-                ASSERT_EQ(buffer1[i], m_fakeFileLength - 768 + (i << 2));
+                m_context->FinalizeCompletedRequests(dummyRequests);
+            }
+            m_cache->PrepareRequest(request1);
+            while (m_cache->ExecuteRequests())
+            {
+                m_context->FinalizeCompletedRequests(dummyRequests);
+            }
+
+            EXPECT_EQ(FileRequest::Status::Completed, request0->GetStatus());
+            EXPECT_EQ(FileRequest::Status::Completed, request1->GetStatus());
+
+            m_context->RecycleRequest(request1);
+            m_context->RecycleRequest(request0);
+
+            VerifyReadBuffer(256, m_fakeFileLength - 512);
+            VerifyReadBuffer(buffer1, m_fakeFileLength - 768, secondReadSize);
+        }
+
+        TEST_F(BlockCacheWithPrologAndEpilogTest, ReadFile_FileLengthNotFound_RequestReturnsFailure)
+        {
+            using ::testing::_;
+            using ::testing::Return;
+
+            CreateTestEnvironment();
+            RedirectReadCalls();
+
+            ON_CALL(*m_mock, GetFileSize(_, _)).WillByDefault(Return(false));
+
+            ProcessRead(m_buffer, m_path, 0, m_blockSize, FileRequest::Status::Failed);
+        }
+
+        TEST_F(BlockCacheWithPrologAndEpilogTest, ReadFile_DelayedRequest_DelayedRequestAlsoFinish)
+        {
+            using ::testing::_;
+            using ::testing::Return;
+
+            static const constexpr size_t count = 3;
+
+            m_cacheSize = (count - 1) * m_blockSize;
+            CreateTestEnvironment();
+
+            EXPECT_CALL(*m_mock, GetFileSize(_, _)).Times(count);
+            EXPECT_CALL(*m_mock, ExecuteRequests())
+                .WillOnce(Return(true))
+                .WillRepeatedly(Return(false));
+            EXPECT_CALL(*m_mock, PrepareRequest(_)).Times(count);
+            EXPECT_CALL(*m_mock, GetAvailableRequestSlots())
+                .WillRepeatedly(Return(64));
+            EXPECT_CALL(*this, ReadFile(_, _, _, _)).Times(count);
+            ON_CALL(*m_mock, GetFileSize(_, _))
+                .WillByDefault(Invoke(this, &BlockCacheTest::GetFileSize));
+            ON_CALL(*m_mock, PrepareRequest(_))
+                .WillByDefault(Invoke(this, &BlockCacheTest::PrepareReadRequest));
+
+            using ScratchBuffer = char[128 * 1024];
+            ScratchBuffer buffers[count];
+            FileRequest* requests[count];
+
+            for (size_t i = 0; i < count; ++i)
+            {
+                EXPECT_EQ(i == (count - 1) ? 0 : (count - i - 1), m_cache->GetAvailableRequestSlots());
+                FileRequest* request = m_context->GetNewExternalRequest();
+                request->CreateRead(nullptr, nullptr, buffers[i], m_path, (m_blockSize - 256) * i, m_blockSize - 256);
+                m_cache->PrepareRequest(request);
+                requests[i] = request;
+            }
+
+            AZStd::vector<FileRequest*> dummyRequests;
+            while (m_cache->ExecuteRequests())
+            {
+                m_context->FinalizeCompletedRequests(dummyRequests);
+            }
+
+            for (size_t i = 0; i < count; ++i)
+            {
+                EXPECT_EQ(FileRequest::Status::Completed, requests[i]->GetStatus());
+                m_context->RecycleRequest(requests[i]);
             }
         }
+
 
 
 
@@ -607,6 +747,24 @@ namespace AZ
 
             ProcessRead(m_buffer, m_path, 256, m_fakeFileLength - 512, FileRequest::Status::Completed);
             VerifyReadBuffer(256, m_fakeFileLength - 512);
+        }
+
+        // File    |------------------------------------------------|
+        // Request     |---------|
+        // Cache   [   v    ][    v   ][   x    ][   x    ][   x    ]
+        TEST_F(BlockCacheWithOnlyEpilogTest, ReadFile_PrologAndEpilogInTwoBlocks_FileReadInTwoReads)
+        {
+            using ::testing::_;
+
+            CreateTestEnvironment();
+            RedirectReadCalls();
+
+            EXPECT_CALL(*m_mock, PrepareRequest(_)).Times(2);
+            EXPECT_CALL(*this, ReadFile(_, _, 256, m_blockSize - 256));
+            EXPECT_CALL(*this, ReadFile(_, _, m_blockSize, m_blockSize));
+
+            ProcessRead(m_buffer, m_path, 256, m_blockSize, FileRequest::Status::Completed);
+            VerifyReadBuffer(256, m_blockSize);
         }
 
         // File    |------------------------------------------------|
@@ -774,12 +932,13 @@ namespace AZ
             EXPECT_CALL(*this, ReadFile(_, _, m_fakeFileLength - m_blockSize, m_blockSize));
 
 
-            u32 buffer1[512 / 4];
+            constexpr size_t secondReadSize = 512;
+            u32 buffer1[secondReadSize / sizeof(u32)];
 
             FileRequest* request0 = m_context->GetNewExternalRequest();
             FileRequest* request1 = m_context->GetNewExternalRequest();
             request0->CreateRead(nullptr, nullptr, m_buffer, m_path, 256, m_fakeFileLength - 512);
-            request1->CreateRead(nullptr, nullptr, buffer1, m_path, m_fakeFileLength - 768, 512);
+            request1->CreateRead(nullptr, nullptr, buffer1, m_path, m_fakeFileLength - 768, secondReadSize);
 
             AZStd::vector<FileRequest*> dummyRequests;
             m_cache->PrepareRequest(request0);
@@ -796,13 +955,67 @@ namespace AZ
             m_context->RecycleRequest(request0);
 
             VerifyReadBuffer(256, m_fakeFileLength - 512);
-            for (u64 i = 0; i < 512 / 4; ++i)
-            {
-                // Using assert here because in case of a problem EXPECT would 
-                // cause a large amount of log noise.
-                ASSERT_EQ(buffer1[i], m_fakeFileLength - 768 + (i << 2));
-            }
+            VerifyReadBuffer(buffer1, m_fakeFileLength - 768, secondReadSize);
         }
+
+        // File     |----------------------------------------------|
+        // Request0     |---------------------------------------|
+        // Request1                                           |----|
+        // Cache    [   v    ][    x   ][   x    ][   x    ][   v    ]
+        // This test queues up multiple read that overlap so one in-flight cache block is used in two requests. This
+        // is the same as the previous version except it finishes the first request so there's no wait-request created.
+        TEST_F(BlockCacheWithOnlyEpilogTest, ReadFile_MultipleReadsOverlappingAfterComplete_BothFilesAreCorrectlyRead)
+        {
+            using ::testing::_;
+            using ::testing::Return;
+
+            CreateTestEnvironment();
+
+            EXPECT_CALL(*m_mock, GetFileSize(_, _)).Times(2);
+            EXPECT_CALL(*m_mock, ExecuteRequests())
+                .WillOnce(Return(true))
+                .WillRepeatedly(Return(false));
+            ON_CALL(*m_mock, GetFileSize(_, _))
+                .WillByDefault(Invoke(this, &BlockCacheTest::GetFileSize));
+            ON_CALL(*m_mock, PrepareRequest(_))
+                .WillByDefault(Invoke(this, &BlockCacheTest::PrepareReadRequest));
+
+            EXPECT_CALL(*m_mock, PrepareRequest(_)).Times(2);
+            EXPECT_CALL(*this, ReadFile(_, _, 256, m_fakeFileLength - m_blockSize - 256));
+            EXPECT_CALL(*this, ReadFile(_, _, m_fakeFileLength - m_blockSize, m_blockSize));
+
+
+            constexpr size_t secondReadSize = 512;
+            u32 buffer1[secondReadSize / sizeof(u32)];
+
+            FileRequest* request0 = m_context->GetNewExternalRequest();
+            FileRequest* request1 = m_context->GetNewExternalRequest();
+            request0->CreateRead(nullptr, nullptr, m_buffer, m_path, 256, m_fakeFileLength - 512);
+            request1->CreateRead(nullptr, nullptr, buffer1, m_path, m_fakeFileLength - 768, secondReadSize);
+
+            AZStd::vector<FileRequest*> dummyRequests;
+            m_cache->PrepareRequest(request0);
+            while (m_cache->ExecuteRequests())
+            {
+                m_context->FinalizeCompletedRequests(dummyRequests);
+            }
+            m_cache->PrepareRequest(request1);
+            while (m_cache->ExecuteRequests())
+            {
+                m_context->FinalizeCompletedRequests(dummyRequests);
+            }
+
+            EXPECT_EQ(FileRequest::Status::Completed, request0->GetStatus());
+            EXPECT_EQ(FileRequest::Status::Completed, request1->GetStatus());
+
+            m_context->RecycleRequest(request1);
+            m_context->RecycleRequest(request0);
+
+            VerifyReadBuffer(256, m_fakeFileLength - 512);
+            VerifyReadBuffer(buffer1, m_fakeFileLength - 768, secondReadSize);
+        }
+
+        
 
 
 

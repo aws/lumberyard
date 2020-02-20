@@ -110,22 +110,6 @@ namespace PhysX
                 pxGeometry.storeAny(physx::PxCapsuleGeometry(radius, halfHeight));
                 break;
             }
-            case Physics::ShapeType::PhysicsAsset:
-            {
-                const Physics::PhysicsAssetShapeConfiguration& assetShapeConfig = static_cast<const Physics::PhysicsAssetShapeConfiguration&>(shapeConfiguration);
-                AZ::Vector3 scale = assetShapeConfig.m_assetScale * assetShapeConfig.m_scale;
-
-                Pipeline::MeshAsset* physXMeshAsset = assetShapeConfig.m_asset.GetAs<Pipeline::MeshAsset>();
-                if (!physXMeshAsset)
-                {
-                    AZ_Error("PhysX Rigid Body", false, "PhysXUtils::CreatePxGeometryFromConfig. Mesh asset is null.");
-                    return false;
-                }
-
-                physx::PxBase* meshData = physXMeshAsset->GetMeshData();
-
-                return MeshDataToPxGeometry(meshData, pxGeometry, scale);
-            }
             case Physics::ShapeType::Native:
             {
                 const Physics::NativeShapeConfiguration& nativeShapeConfig = static_cast<const Physics::NativeShapeConfiguration&>(shapeConfiguration);
@@ -166,6 +150,13 @@ namespace PhysX
 
                 return MeshDataToPxGeometry(nativeMeshObject, pxGeometry, cookedMeshShapeConfig.m_scale);
             }
+            case Physics::ShapeType::PhysicsAsset:
+            {
+                AZ_Assert(false,
+                    "CreatePxGeometryFromConfig: Cannot pass PhysicsAsset configuration since it is a collection of shapes. "
+                    "Please iterate over m_colliderShapes in the asset and call this function for each of them.");
+                return false;
+            }
             default:
                 AZ_Warning("PhysX Rigid Body", false, "Shape not supported in PhysX. Shape Type: %d", shapeType);
                 return false;
@@ -195,6 +186,7 @@ namespace PhysX
             if (Utils::CreatePxGeometryFromConfig(shapeConfiguration, pxGeomHolder))
             {
                 auto materialsCount = static_cast<physx::PxU16>(materials.size());
+
                 physx::PxShape* shape = PxGetPhysics().createShape(pxGeomHolder.any(), materials.begin(), materialsCount, colliderConfiguration.m_isExclusive);
 
                 if (shape)
@@ -271,11 +263,26 @@ namespace PhysX
             }
         }
 
-        bool WriteCookedMeshToFile(const AZStd::string& filePath, const Pipeline::MeshAssetCookedData& cookedMesh)
+        bool WriteCookedMeshToFile(const AZStd::string& filePath, const AZStd::vector<AZ::u8>& physxData,
+            Physics::CookedMeshShapeConfiguration::MeshType meshType)
+        {
+            Pipeline::MeshAssetData assetData;
+
+            AZStd::shared_ptr<Pipeline::AssetColliderConfiguration> colliderConfig;
+            AZStd::shared_ptr<Physics::CookedMeshShapeConfiguration> shapeConfig = AZStd::make_shared<Physics::CookedMeshShapeConfiguration>();
+
+            shapeConfig->SetCookedMeshData(physxData.data(), physxData.size(), meshType);
+
+            assetData.m_colliderShapes.emplace_back(colliderConfig, shapeConfig);
+
+            return Utils::WriteCookedMeshToFile(filePath, assetData);
+        }
+
+        bool WriteCookedMeshToFile(const AZStd::string& filePath, const Pipeline::MeshAssetData& assetData)
         {
             AZ::SerializeContext* serializeContext = nullptr;
             AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
-            return AZ::Utils::SaveObjectToFile(filePath, AZ::DataStream::ST_BINARY, &cookedMesh, serializeContext);
+            return AZ::Utils::SaveObjectToFile(filePath, AZ::DataStream::ST_BINARY, &assetData, serializeContext);
         }
 
         bool CookConvexToPxOutputStream(const AZ::Vector3* vertices, AZ::u32 vertexCount, physx::PxOutputStream& stream)
@@ -570,7 +577,9 @@ namespace PhysX
         {
             AZ::Aabb aabb;
             physx::PxGeometryHolder geometryHolder;
-            if (CreatePxGeometryFromConfig(shapeConfiguration, geometryHolder))
+            bool isAssetShape = shapeConfiguration.GetShapeType() == Physics::ShapeType::PhysicsAsset;
+            
+            if (!isAssetShape && CreatePxGeometryFromConfig(shapeConfiguration, geometryHolder))
             {
                 physx::PxBounds3 bounds = physx::PxGeometryQuery::getWorldBounds(geometryHolder.any()
                     , physx::PxTransform(PxMathConvert(PhysX::Utils::GetColliderWorldTransform(worldTransform
@@ -596,6 +605,94 @@ namespace PhysX
             return response.value;
         }
 
+        void GetColliderShapeConfigsFromAsset(const Physics::PhysicsAssetShapeConfiguration& assetConfiguration,
+            const Physics::ColliderConfiguration& masterColliderConfiguration,
+            Physics::ShapeConfigurationList& resultingColliderShapes)
+        {
+            if (!assetConfiguration.m_asset.IsReady())
+            {
+                AZ_Error("PhysX", false, "GetColliderShapesFromAsset: Asset %s is not ready."
+                    "Please make sure the calling code connects to the AssetBus and "
+                    "creates the collider shapes only when OnAssetReady or OnAssetReload is invoked.",
+                    assetConfiguration.m_asset.GetHint().c_str());
+                return;
+            }
+
+            const Pipeline::MeshAsset* asset = assetConfiguration.m_asset.GetAs<Pipeline::MeshAsset>();
+
+            if (!asset)
+            {
+                AZ_Error("PhysX", false, "GetColliderShapesFromAsset: Mesh Asset %s is null."
+                    "Please check the file is in the correct format. Try to delete it and get AssetProcessor re-create it. "
+                    "The data is loaded in Pipeline::MeshAssetHandler::LoadAssetData()",
+                    assetConfiguration.m_asset.GetHint().c_str());
+                return;
+            }
+
+            const Pipeline::MeshAssetData& assetData = asset->m_assetData;
+            const Pipeline::MeshAssetData::ShapeConfigurationList& shapeConfigList = assetData.m_colliderShapes;
+            
+            resultingColliderShapes.reserve(resultingColliderShapes.size() + shapeConfigList.size());
+
+            for (size_t shapeIndex = 0; shapeIndex < shapeConfigList.size(); shapeIndex++)
+            {
+                const Pipeline::MeshAssetData::ShapeConfigurationPair& shapeConfigPair = shapeConfigList[shapeIndex];
+
+                AZStd::shared_ptr<Physics::ColliderConfiguration> thisColliderConfiguration = 
+                    AZStd::make_shared<Physics::ColliderConfiguration>(masterColliderConfiguration);
+
+                AZ::u16 shapeMaterialIndex = assetData.m_materialIndexPerShape[shapeIndex];
+
+                // Triangle meshes have material indices cooked in the data.
+                if(shapeMaterialIndex != Pipeline::MeshAssetData::TriangleMeshMaterialIndex)
+                {
+                    // Clear the materials that came in from the component collider configuration
+                    thisColliderConfiguration->m_materialSelection.SetMaterialSlots({});
+                
+                    // Set the material that is relevant for this specific shape
+                    Physics::MaterialId assignedMaterialForShape =
+                        masterColliderConfiguration.m_materialSelection.GetMaterialId(shapeMaterialIndex);
+                    thisColliderConfiguration->m_materialSelection.SetMaterialId(assignedMaterialForShape);
+                }
+
+                // Here we use the collider configuration data saved in the asset to update the one coming from the component
+                if (const Pipeline::AssetColliderConfiguration* optionalColliderData = shapeConfigPair.first.get())
+                {
+                    optionalColliderData->UpdateColliderConfiguration(*thisColliderConfiguration);
+                }
+
+                // Update the scale with the data from the asset configuration
+                AZStd::shared_ptr<Physics::ShapeConfiguration> thisShapeConfiguration = shapeConfigPair.second;
+                thisShapeConfiguration->m_scale = assetConfiguration.m_scale * assetConfiguration.m_assetScale;
+
+                resultingColliderShapes.emplace_back(thisColliderConfiguration, thisShapeConfiguration);
+            }
+        }
+
+        void GetShapesFromAsset(const Physics::PhysicsAssetShapeConfiguration& assetConfiguration,
+            const Physics::ColliderConfiguration& masterColliderConfiguration,
+            AZStd::vector<AZStd::shared_ptr<Physics::Shape>>& resultingShapes)
+        {
+            Physics::ShapeConfigurationList resultingColliderShapeConfigs;
+            GetColliderShapeConfigsFromAsset(assetConfiguration, masterColliderConfiguration, resultingColliderShapeConfigs);
+
+            resultingShapes.reserve(resultingShapes.size() + resultingColliderShapeConfigs.size());
+
+            for (const Physics::ShapeConfigurationPair& shapeConfigPair : resultingColliderShapeConfigs)
+            {
+                // Scale the collider offset
+                shapeConfigPair.first->m_position *= shapeConfigPair.second->m_scale;
+
+                AZStd::shared_ptr<Physics::Shape> shape;
+                Physics::SystemRequestBus::BroadcastResult(shape, &Physics::SystemRequests::CreateShape, 
+                    *shapeConfigPair.first, *shapeConfigPair.second);
+
+                if (shape)
+                {
+                    resultingShapes.emplace_back(shape);
+                }
+            }
+        }
     }
 
     namespace ReflectionUtils
@@ -610,6 +707,8 @@ namespace PhysX
             if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
             {
                 behaviorContext->EBus<PhysX::ForceRegionNotificationBus>("ForceRegionNotificationBus")
+                    ->Attribute(AZ::Script::Attributes::Module, "physics")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                     ->Handler<ForceRegionBusBehaviorHandler>()
                     ;
             }

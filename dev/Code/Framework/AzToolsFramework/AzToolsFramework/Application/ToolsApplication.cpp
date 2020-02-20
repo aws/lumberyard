@@ -27,6 +27,7 @@
 #include <AzToolsFramework/Commands/EntityStateCommand.h>
 #include <AzToolsFramework/Commands/SelectionCommand.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyManagerComponent.h>
+#include <AzToolsFramework/ToolsComponents/AzToolsFrameworkConfigurationSystemComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorAssetMimeDataContainer.h>
 #include <AzToolsFramework/ToolsComponents/ComponentAssetMimeDataContainer.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
@@ -418,6 +419,7 @@ namespace AzToolsFramework
                 azrtti_typeid<AzToolsFramework::AssetBundleComponent>(),
                 azrtti_typeid<AzToolsFramework::ArchiveComponent>(),
                 azrtti_typeid<AzToolsFramework::SliceDependencyBrowserComponent>(),
+                azrtti_typeid<AzToolsFramework::AzToolsFrameworkConfigurationSystemComponent>(),
                 azrtti_typeid<Components::EditorEntityModelComponent>(),
                 azrtti_typeid<AzToolsFramework::EditorInteractionSystemComponent>(),
                 azrtti_typeid<Components::EditorEntitySearchComponent>()
@@ -1364,6 +1366,8 @@ namespace AzToolsFramework
 
     UndoSystem::URSequencePoint* ToolsApplication::BeginUndoBatch(const char* label)
     {
+        AZ_Error("Tools Application", !m_isDuringUndoRedo, "Can not create a new Undo/Redo bach while an Undo or Redo operation is running.");
+
         if (!m_currentBatchUndo)
         {
             m_currentBatchUndo = aznew UndoSystem::BatchCommand(label, 0);
@@ -1704,6 +1708,8 @@ namespace AzToolsFramework
             static const char* toolSubFolder = "Tools/LmbrSetup/Win";
 #elif AZ_TRAIT_OS_PLATFORM_APPLE
             static const char* toolSubFolder = "Tools/LmbrSetup/Mac";
+#elif defined(AZ_PLATFORM_LINUX)
+            static const char* toolSubFolder = "Tools/LmbrSetup/Linux";
 #else
 #error Unsupported Platform for tools
 #endif
@@ -1729,4 +1735,10 @@ namespace AzToolsFramework
 
         return AZ::Failure(AZStd::string::format("Unable to resolve tool application path for '%s'", toolApplicationName));
     }
+
+    void ToolsApplication::QueryApplicationType(AzFramework::ApplicationTypeQuery& appType) const
+    { 
+        appType.m_maskValue = AzFramework::ApplicationTypeQuery::Masks::Tool;
+    };
+
 } // namespace AzToolsFramework

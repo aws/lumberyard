@@ -14,7 +14,7 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/RTTI/RTTI.h>
-#include <AzCore/Component/componentbus.h>
+#include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Slice/SliceComponent.h>
 
 #include <AzToolsFramework/Undo/UndoSystem.h>

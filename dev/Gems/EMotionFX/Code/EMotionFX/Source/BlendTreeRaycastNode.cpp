@@ -80,8 +80,8 @@ namespace EMotionFX
             !TryGetInputVector3(animGraphInstance, INPUTPORT_RAY_END, rayEnd))
         {
             SetHasError(animGraphInstance, true);
-            GetOutputVector3(animGraphInstance, OUTPUTPORT_POSITION)->SetValue(AZ::PackedVector3f(0.0f, 0.0f, 0.0f));
-            GetOutputVector3(animGraphInstance, OUTPUTPORT_NORMAL)->SetValue(AZ::PackedVector3f(0.0f, 0.0f, 1.0f));
+            GetOutputVector3(animGraphInstance, OUTPUTPORT_POSITION)->SetValue(AZ::Vector3(0.0f, 0.0f, 0.0f));
+            GetOutputVector3(animGraphInstance, OUTPUTPORT_NORMAL)->SetValue(AZ::Vector3(0.0f, 0.0f, 1.0f));
             GetOutputFloat(animGraphInstance, OUTPUTPORT_INTERSECTED)->SetValue(0.0f);
             return;
         }
@@ -112,14 +112,14 @@ namespace EMotionFX
         // Set the output values.
         if (rayResult.m_intersected)
         {
-            GetOutputVector3(animGraphInstance, OUTPUTPORT_POSITION)->SetValue(AZ::PackedVector3f(rayResult.m_position));
-            GetOutputVector3(animGraphInstance, OUTPUTPORT_NORMAL)->SetValue(AZ::PackedVector3f(rayResult.m_normal));
+            GetOutputVector3(animGraphInstance, OUTPUTPORT_POSITION)->SetValue(rayResult.m_position);
+            GetOutputVector3(animGraphInstance, OUTPUTPORT_NORMAL)->SetValue(rayResult.m_normal);
             GetOutputFloat(animGraphInstance, OUTPUTPORT_INTERSECTED)->SetValue(1.0);
         }
         else
         {
-            GetOutputVector3(animGraphInstance, OUTPUTPORT_POSITION)->SetValue(AZ::PackedVector3f(rayStart));
-            GetOutputVector3(animGraphInstance, OUTPUTPORT_NORMAL)->SetValue(AZ::PackedVector3f(0.0f, 0.0f, 1.0f));
+            GetOutputVector3(animGraphInstance, OUTPUTPORT_POSITION)->SetValue(rayStart);
+            GetOutputVector3(animGraphInstance, OUTPUTPORT_NORMAL)->SetValue(AZ::Vector3(0.0f, 0.0f, 1.0f));
             GetOutputFloat(animGraphInstance, OUTPUTPORT_INTERSECTED)->SetValue(0.0f);
         }
     }

@@ -12,11 +12,9 @@
 
 #pragma once
 
-// include required headers
+#include <AzCore/Math/Transform.h>
+#include <AzCore/Math/Vector3.h>
 #include "StandardHeaders.h"
-#include "Vector.h"
-#include "Matrix4.h"
-#include "Algorithms.h"
 
 
 namespace MCore
@@ -44,7 +42,7 @@ namespace MCore
          * @param aabb The axis aligned bounding box.
          * @param transformation The transformation of the box.
          */
-        MCORE_INLINE OBB(const AABB& aabb, const Matrix& transformation)                        { Create(aabb, transformation); }
+        MCORE_INLINE OBB(const AABB& aabb, const AZ::Transform& transformation)                 { Create(aabb, transformation); }
 
         /**
          * Construct the OBB from a center, extends and a rotation.
@@ -52,7 +50,7 @@ namespace MCore
          * @param extents The extents of the box, which start at the center of the box.
          * @param rot The matrix, representing the transformation of the box.
          */
-        MCORE_INLINE OBB(const AZ::Vector3& center, const AZ::Vector3& extents, const Matrix& rot)
+        MCORE_INLINE OBB(const AZ::Vector3& center, const AZ::Vector3& extents, const AZ::Transform& rot)
             : mRotation(rot)
             , mExtents(extents)
             , mCenter(center)    {}
@@ -90,7 +88,7 @@ namespace MCore
          * @param aabb The axis aligned bounding box.
          * @param mat The matrix, which represents the orientation of the box.
          */
-        void Create(const AABB& aabb, const Matrix& mat);
+        void Create(const AABB& aabb, const AZ::Transform& mat);
 
         /**
          * Transform this OBB with a given matrix.
@@ -98,14 +96,14 @@ namespace MCore
          * So the transformation specified is NOT an absolute rotation, but a relative transformation.
          * @param transMatrix The relative transformation matrix, to be applied to the current transformation.
          */
-        void Transform(const Matrix& transMatrix);
+        void Transform(const AZ::Transform& transMatrix);
 
         /**
          * Calculate the transformed version of this OBB.
          * @param rotMatrix The transformation matrix to be applied to the rotation of this OBB, so not an absolute rotation!
          * @param outOBB A pointer to the OBB to fill with the rotated version of this OBB.
          */
-        void Transformed(const Matrix& rotMatrix, OBB* outOBB) const;
+        void Transformed(const AZ::Transform& rotMatrix, OBB* outOBB) const;
 
         /**
          * Check if this is a valid OBB or not.
@@ -130,7 +128,7 @@ namespace MCore
          * Set the transformation of the box.
          * @param transform The new transformation of the box.
          */
-        MCORE_INLINE void SetTransformation(const Matrix& transform)                            { mRotation = transform; }
+        MCORE_INLINE void SetTransformation(const AZ::Transform& transform)                         { mRotation = transform; }
 
         /**
          * Get the center of the box.
@@ -148,7 +146,7 @@ namespace MCore
          * Get the transformation of the box.
          * @result The transformation of the box.
          */
-        MCORE_INLINE const Matrix& GetTransformation() const                                    { return mRotation; }
+        MCORE_INLINE const AZ::Transform& GetTransformation() const                                 { return mRotation; }
 
         /**
          * Calculate the 8 corner points of the box.
@@ -192,9 +190,9 @@ namespace MCore
         void CalcMinMaxPoints(AZ::Vector3* outMin, AZ::Vector3* outMax) const;
 
     private:
-        Matrix      mRotation; /**< The rotation of the box. */     // TODO: store the center inside the translation component and extents inside last column?
-        AZ::Vector3 mExtents;   /**< The extents of the box. */
-        AZ::Vector3 mCenter;    /**< The center of the box. */
+        AZ::Transform mRotation;  /**< The rotation of the box. */     // TODO: store the center inside the translation component and extents inside last column?
+        AZ::Vector3   mExtents;   /**< The extents of the box. */
+        AZ::Vector3   mCenter;    /**< The center of the box. */
 
         /**
          * Calculate the three eigen vectors for a symmetric matrix.
@@ -233,7 +231,7 @@ namespace MCore
          */
         void CovarianceMatrix(const AZ::Vector3 * points, uint32 numPoints, AZ::Vector3 & mean, float C[6]);
 
-        void InitFromPointsRange(const AZ::Vector3* points, uint32 numPoints, float xDegrees, float* outMinArea, AABB* outMinBox, Matrix* outMinMatrix);
+        void InitFromPointsRange(const AZ::Vector3* points, uint32 numPoints, float xDegrees, float* outMinArea, AABB* outMinBox, AZ::Transform* outMinMatrix);
     };
 
     // include the inline code

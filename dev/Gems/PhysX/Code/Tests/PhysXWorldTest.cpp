@@ -73,8 +73,7 @@ namespace PhysX
 
         AZStd::tuple<WorldPtr, WorldEventListener> CreateWorld(const char* worldId)
         {
-            WorldPtr world;
-            Physics::SystemRequestBus::BroadcastResult(world, &Physics::SystemRequests::CreateWorld, AZ::Crc32(worldId));
+            WorldPtr world = AZ::Interface<Physics::System>::Get()->CreateWorld(AZ::Crc32(worldId));
             return AZStd::make_tuple(world, WorldEventListener(worldId));
         }
 
@@ -122,8 +121,7 @@ namespace PhysX
 
         // GIVEN there is a world with multiple listeners
         const char* worldId = "World1";
-        WorldPtr world;
-        SystemRequestBus::BroadcastResult(world, &Physics::SystemRequests::CreateWorld, AZ::Crc32(worldId));
+        WorldPtr world = AZ::Interface<System>::Get()->CreateWorld(AZ::Crc32(worldId));
 
         // Connect the busses in randomish order.
         WorldEventListener listener1(worldId, WorldNotifications::Physics);

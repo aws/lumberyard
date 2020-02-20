@@ -44,6 +44,8 @@
 #include <AzFramework/FileFunc/FileFunc.h>
 #include <AzFramework/FileTag/FileTagComponent.h>
 #include <AzFramework/Input/System/InputSystemComponent.h>
+#include <AzFramework/Scene/SceneSystemComponent.h>
+#include <AzFramework/Components/AzFrameworkConfigurationSystemComponent.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/IO/LocalFileIO.h>
 #include <AzFramework/Network/NetBindingComponent.h>
@@ -57,6 +59,7 @@
 #include <AzFramework/Network/NetworkContext.h>
 #include <AzFramework/Metrics/MetricsPlainTextNameRegistration.h>
 #include <GridMate/Memory.h>
+#include <AzCore/std/string/tokenize.h>
 
 #include "Application.h"
 #include <AzFramework/AzFrameworkModule.h>
@@ -179,6 +182,7 @@ namespace AzFramework
         AZ::UserSettingsFileLocatorBus::Handler::BusConnect();
         NetSystemRequestBus::Handler::BusConnect();
     }
+
 
     int* Application::GetArgC() const
     {
@@ -308,7 +312,6 @@ namespace AzFramework
         return true;
     }
 
-
     void Application::StartCommon(AZ::Entity* systemEntity)
     {
         // Startup default local FileIO (hits OSAllocator) if not already setup.
@@ -320,7 +323,10 @@ namespace AzFramework
 
         m_pimpl.reset(Implementation::Create());
 
-        m_commandLine.Parse(*m_argC, *m_argV);
+        if (*m_argC != ApplicationInternal::s_argCUninitialized)
+        {
+            m_commandLine.Parse(*m_argC, *m_argV);
+        }
 
         systemEntity->Init();
         systemEntity->Activate();
@@ -343,6 +349,7 @@ namespace AzFramework
 
         // Calculate the engine root by reading the engine.json file
         AZStd::string  engineJsonPath = AZStd::string::format("%s%s", m_appRoot, s_engineConfigFileName);
+        AzFramework::StringFunc::Path::Normalize(engineJsonPath);
         AZ::IO::LocalFileIO localFileIO;
         auto readJsonResult = AzFramework::FileFunc::ReadJsonFile(engineJsonPath, &localFileIO);
 
@@ -446,6 +453,18 @@ namespace AzFramework
         }
     }
 
+    void Application::DestroyAllocator()
+    {
+        // Destroy the default file IO.
+        if (AZ::IO::FileIOBase::GetInstance() == m_defaultFileIO.get())
+        {
+            AZ::IO::FileIOBase::SetInstance(nullptr);
+        }
+        m_defaultFileIO.reset();
+
+        ComponentApplication::DestroyAllocator();
+    }
+
     void Application::RegisterCoreComponents()
     {
         AZ::ComponentApplication::RegisterCoreComponents();
@@ -469,6 +488,8 @@ namespace AzFramework
             azrtti_typeid<AzFramework::NetBindingComponent>(),
             azrtti_typeid<AzFramework::NetBindingSystemComponent>(),
             azrtti_typeid<AzFramework::TransformComponent>(),
+            azrtti_typeid<AzFramework::SceneSystemComponent>(),
+            azrtti_typeid<AzFramework::AzFrameworkConfigurationSystemComponent>(),
             azrtti_typeid<AzFramework::GameEntityContextComponent>(),
 #if !defined(_RELEASE)
             azrtti_typeid<AzFramework::TargetManagementComponent>(),
@@ -525,6 +546,8 @@ namespace AzFramework
             azrtti_typeid<AzFramework::AssetCatalogComponent>(),
             azrtti_typeid<AzFramework::CustomAssetTypeComponent>(),
             azrtti_typeid<AzFramework::FileTag::BlackListFileComponent>(),
+            azrtti_typeid<AzFramework::SceneSystemComponent>(),
+            azrtti_typeid<AzFramework::AzFrameworkConfigurationSystemComponent>(),
             azrtti_typeid<AzFramework::GameEntityContextComponent>(),
             azrtti_typeid<AzFramework::AssetSystem::AssetSystemComponent>(),
             azrtti_typeid<AzFramework::InputSystemComponent>(),
@@ -909,6 +932,7 @@ namespace AzFramework
                 AZ_Assert(false, "Invalid RootPathType (%d)", static_cast<int>(type));
             }
     }
+    void Application::QueryApplicationType(ApplicationTypeQuery& appType) const { appType.m_maskValue = ApplicationTypeQuery::Masks::Invalid; }
 
 
 } // namespace AzFramework

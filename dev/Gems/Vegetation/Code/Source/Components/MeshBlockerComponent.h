@@ -22,7 +22,7 @@
 #include <SurfaceData/SurfaceDataSystemNotificationBus.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/std/containers/unordered_map.h>
-#include <Vegetation/EBuses/AreaNotificationBus.h>
+#include <Vegetation/Ebuses/AreaNotificationBus.h>
 #include <Vegetation/AreaComponentBase.h>
 
 namespace LmbrCentral

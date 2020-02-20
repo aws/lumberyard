@@ -10,33 +10,26 @@
 *
 */
 
-#ifndef __RENDERGL_LIGHT__H
-#define __RENDERGL_LIGHT__H
+#pragma once
 
 #include "RenderGLConfig.h"
-#include <MCore/Source/Vector.h>
-#include <MCore/Source/Color.h>
-
+#include <AzCore/Math/Color.h>
+#include <AzCore/Math/Vector3.h>
 
 namespace RenderGL
 {
     struct RENDERGL_API Light
     {
         Light()
-        {
-            dir = MCore::Vector3(-1.0f, 0.0f, -1.0f);
+            : m_dir(-1.0f, 0.0f, -1.0f)
+            , m_diffuse(1.0f, 1.0f, 1.0f, 1.0f)
+            , m_specular(1.0f, 1.0f, 1.0f, 1.0f)
+            , m_ambient(0.0f, 0.0f, 0.0f, 0.0f)
+        {}
 
-            diffuse  = MCore::RGBAColor(1.0f, 1.0f, 1.0f, 1.0f);
-            specular = MCore::RGBAColor(1.0f, 1.0f, 1.0f, 1.0f);
-            ambient  = MCore::RGBAColor(0.0f, 0.0f, 0.0f, 0.0f);
-        }
-
-        MCore::Vector3 dir;
-
-        MCore::RGBAColor diffuse;
-        MCore::RGBAColor specular;
-        MCore::RGBAColor ambient;
+        AZ::Vector3 m_dir;
+        AZ::Color m_diffuse;
+        AZ::Color m_specular;
+        AZ::Color m_ambient;
     };
 }
-
-#endif

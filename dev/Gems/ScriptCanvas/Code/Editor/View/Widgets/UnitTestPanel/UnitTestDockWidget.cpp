@@ -435,27 +435,35 @@ namespace ScriptCanvasEditor
         
         for (const AZ::Uuid& scriptUuid : scriptUuids)
         {
+            const SourceAssetBrowserEntry* sourceBrowserEntry = SourceAssetBrowserEntry::GetSourceByUuid(scriptUuid);
 
-            AZStd::string scriptAbsolutePath = SourceAssetBrowserEntry::GetSourceByUuid(scriptUuid)->GetFullPath();
-
-            Reporter reporter;
-
-            UnitTestWidgetNotificationBus::Broadcast(&UnitTestWidgetNotifications::OnTestStart, scriptUuid);
-
-            ScriptCanvasExecutionBus::BroadcastResult(reporter, &ScriptCanvasExecutionRequests::RunGraph, scriptAbsolutePath);
-            
-            UnitTestResult testResult;
-            UnitTestVerificationBus::BroadcastResult(testResult, &UnitTestVerificationRequests::Verify, reporter);
-
-            UnitTestWidgetNotificationBus::Broadcast(&UnitTestWidgetNotifications::OnTestResult, scriptUuid, testResult);
-
-            if (testResult.m_success)
+            if (sourceBrowserEntry == nullptr)
             {
-                ++successCount;
+                ++failureCount;
             }
             else
             {
-                ++failureCount;
+                AZStd::string scriptAbsolutePath = sourceBrowserEntry->GetFullPath();
+
+                Reporter reporter;
+
+                UnitTestWidgetNotificationBus::Broadcast(&UnitTestWidgetNotifications::OnTestStart, scriptUuid);
+
+                ScriptCanvasExecutionBus::BroadcastResult(reporter, &ScriptCanvasExecutionRequests::RunGraph, scriptAbsolutePath);
+
+                UnitTestResult testResult;
+                UnitTestVerificationBus::BroadcastResult(testResult, &UnitTestVerificationRequests::Verify, reporter);
+
+                UnitTestWidgetNotificationBus::Broadcast(&UnitTestWidgetNotifications::OnTestResult, scriptUuid, testResult);
+
+                if (testResult.m_success)
+                {
+                    ++successCount;
+                }
+                else
+                {
+                    ++failureCount;
+                }
             }
             
             QString executionMessage = QString("Executed %1 out of %2 test(s) - ").arg(successCount + failureCount).arg(scriptUuids.size());

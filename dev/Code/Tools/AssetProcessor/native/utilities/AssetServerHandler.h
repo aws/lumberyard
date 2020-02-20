@@ -10,7 +10,7 @@
 *
 */
 
-#include <native/utilities/assetUtilEBusHelper.h>
+#include <native/utilities/AssetUtilEBusHelper.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 
 namespace AssetProcessor

@@ -21,6 +21,9 @@
 #include <QLabel>
 #include <QSettings>
 #include <QPushButton>
+#include <QToolBar>
+#include <QStatusBar>
+#include <QAction>
 
 StyledDockWidgetPage::StyledDockWidgetPage(QWidget* parent)
     : QWidget(parent)
@@ -162,6 +165,17 @@ void StyledDockWidgetPage::showMainWindow()
     m_mainWindow->resize(800, 600);
     m_mainWindow->setAttribute(Qt::WA_DeleteOnClose);
     auto fancyDocking = new AzQtComponents::FancyDocking(m_mainWindow);
+
+    auto action = new QAction(m_mainWindow);
+    action->setIcon(QIcon(QStringLiteral(":/stylesheet/img/search.svg")));
+
+    auto toolBar = new QToolBar(m_mainWindow);
+    toolBar->addAction(action);
+    m_mainWindow->addToolBar(toolBar);
+
+    auto statusBar = new QStatusBar(m_mainWindow);
+    statusBar->showMessage(QStringLiteral("Status Bar..."));
+    m_mainWindow->setStatusBar(statusBar);
 
     QWidget* centralWidget = new QWidget;
     QPushButton* load = new QPushButton("Restore layout");

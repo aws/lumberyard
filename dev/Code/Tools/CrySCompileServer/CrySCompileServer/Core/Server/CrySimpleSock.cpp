@@ -19,7 +19,7 @@
 #include <Core/STLHelper.hpp>
 
 #include <AzCore/Debug/Trace.h>
-
+#include <AzCore/std/parallel/atomic.h>
 #include <algorithm>
 
 #if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_MAC)
@@ -42,7 +42,7 @@ namespace
         ECrySimpleST_INVALID,
     };
 
-    static volatile AtomicCountType numberOfOpenSockets = 0;
+    static AZStd::atomic_long numberOfOpenSockets = {0};
     const int MAX_DATA_SIZE = 1024 * 1024; // Only allow 1 MB of data to come through. Lumberyard Game Engine has the same size constraint
     const size_t BLOCKSIZE = 4 * 1024;
     const size_t MAX_ERROR_MESSAGE_SIZE = 1024;
@@ -169,7 +169,7 @@ CCrySimpleSock::CCrySimpleSock(SOCKET Sock, CCrySimpleSock * pInstance)
     m_pImpl->m_bHasSendData = false;
     m_pImpl->m_Port = ~0;
 
-    InterlockedIncrement(&numberOfOpenSockets);
+    ++numberOfOpenSockets;
 
     InitClient();
 }
@@ -211,7 +211,7 @@ CCrySimpleSock::CCrySimpleSock(const std::string& rServerName, uint16_t Port)
 
     m_pImpl->m_Socket = socket(AF_INET, SOCK_STREAM, 0);
 
-    InterlockedIncrement(&numberOfOpenSockets);
+    ++numberOfOpenSockets;
 
     int Err = connect(m_pImpl->m_Socket, (struct sockaddr*)&addr, sizeof addr);
     if (Err < 0)
@@ -275,7 +275,7 @@ CCrySimpleSock::CCrySimpleSock(uint16_t Port, const std::vector<AZStd::string>& 
         return;
     }
 
-    InterlockedIncrement(&numberOfOpenSockets);
+    ++numberOfOpenSockets;
 }
 
 void CCrySimpleSock::Listen()
@@ -338,7 +338,7 @@ void CCrySimpleSock::Release()
 #endif
         closesocket(m_pImpl->m_Socket);
         m_pImpl->m_Socket = INVALID_SOCKET;
-        InterlockedDecrement(&numberOfOpenSockets);
+        --numberOfOpenSockets;
     }
 
 #if defined(AZ_PLATFORM_WINDOWS)
@@ -728,7 +728,7 @@ void CCrySimpleSock::WaitForShutDownEvent(bool bValue)
     m_pImpl->m_WaitForShutdownEvent = bValue;
 }
 
-volatile AtomicCountType CCrySimpleSock::GetOpenSockets()
+long CCrySimpleSock::GetOpenSockets()
 {
     return numberOfOpenSockets;
 }

@@ -847,7 +847,9 @@ bool CStatCGFCompiler::CompileCGF(AssetBuilderSDK::ProcessJobResponse& response,
         metrics.RecordDccName(this, m_CC.config, "StatCGFCompiler", sourceFile.c_str());
     }
 
+#if !defined(AZ_PLATFORM_LINUX) // Exception handling not enabled on linux builds
     try
+#endif
     {
         const bool bStripMeshData = m_CC.config->HasKey("StripMesh");
         const bool bStripNonMeshData = m_CC.config->GetAsBool("StripNonMesh", false, true);
@@ -1212,11 +1214,13 @@ bool CStatCGFCompiler::CompileCGF(AssetBuilderSDK::ProcessJobResponse& response,
 
         delete pCGF;
     }
+#if !defined(AZ_PLATFORM_LINUX) // Exception handling not enabled on linux builds
     catch (char*)
     {
         RCLogError("Unexpected failure in processing %s to %s - contact an RC programmer.", sourceFile.c_str(), outputFile.c_str());
         return false;
     }
+#endif // !defined(AZ_PLATFORM_LINUX)
 
     return true;
 }

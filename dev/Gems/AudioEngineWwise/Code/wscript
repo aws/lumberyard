@@ -68,7 +68,7 @@ def build(bld):
         # Platform Roots
         platform_roots      = [bld.PlatformRoot('Platform', export_includes=False)],
 
-        platforms           = ['win', 'darwin'],
+        platforms           = ['win', 'darwin', 'linux'],
 
         use                 = ['EditorCommon'],
         uselib              = [wwise_flavor, 'QT5CORE'],
@@ -76,6 +76,7 @@ def build(bld):
 
         win_lib             = win_libs,
         darwin_x64_framework    = apple_frameworks,
+        linux_x64_lib       = ['SDL2'],
 
         # Testing
         test_all_file_list  = ['audioenginewwise_editor_tests.waf_files'],
@@ -142,7 +143,7 @@ def build(bld):
         Editor = dict(
             disable_pch = True,
             file_list = ['audioenginewwise_stub.waf_files'],
-            platforms = ['win', 'darwin'],
+            platforms = ['win', 'darwin', 'linux'],
             disable_tests = True,
         )
     )

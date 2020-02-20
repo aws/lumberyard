@@ -108,18 +108,6 @@ namespace UnitTest
         {
             m_physicalEntity = physicalEntity;
         }
-
-        void SetScale(const AZ::EntityId entityId, const AZ::Vector3& scale)
-        {
-            AZ::Transform worldFromLocal = AZ::Transform::CreateIdentity();
-            AZ::TransformBus::EventResult(
-                worldFromLocal, entityId, &AZ::TransformBus::Events::GetWorldTM);
-
-            const AZ::Transform newWorldFromLocal = worldFromLocal * AZ::Transform::CreateScale(scale);
-
-            AZ::TransformBus::Event(
-                entityId, &AZ::TransformBus::Events::SetWorldTM, newWorldFromLocal);
-        }
     };
 
     void TestEditorMeshComponent::Reflect(AZ::ReflectContext* context)
@@ -132,33 +120,24 @@ namespace UnitTest
     }
 
     class EditorMeshComponentTestFixture
-        : public AllocatorsFixture
+        : public ToolsApplicationFixture
     {
-        AZStd::unique_ptr<SerializeContext> m_serializeContext;
         AZStd::unique_ptr<ComponentDescriptor> m_testMeshComponentDescriptor;
-        AZStd::unique_ptr<ComponentDescriptor> m_transformComponentDescriptor;
 
     public:
-        void SetUp() override
+        void SetUpEditorFixtureImpl() override
         {
-            AllocatorsFixture::SetUp();
-            m_serializeContext = AZStd::make_unique<SerializeContext>();
+            AZ::SerializeContext* serializeContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
 
             m_testMeshComponentDescriptor =
                 AZStd::unique_ptr<ComponentDescriptor>(TestEditorMeshComponent::CreateDescriptor());
-            m_transformComponentDescriptor =
-                AZStd::unique_ptr<ComponentDescriptor>(TransformComponent::CreateDescriptor());
-
-            m_transformComponentDescriptor->Reflect(&(*m_serializeContext));
-            m_testMeshComponentDescriptor->Reflect(&(*m_serializeContext));
+            m_testMeshComponentDescriptor->Reflect(serializeContext);
         }
 
-        void TearDown() override
+        void TearDownEditorFixtureImpl() override
         {
-            m_transformComponentDescriptor.reset();
             m_testMeshComponentDescriptor.reset();
-            m_serializeContext.reset();
-            AllocatorsFixture::TearDown();
         }
     };
 
@@ -176,11 +155,8 @@ namespace UnitTest
         AZ::EntityId parentId = parent.GetId();
         AZ::EntityId childId = child.GetId();
 
-        AZ::TransformBus::Event(
-            childId, &AZ::TransformInterface::SetParent, parentId);
-
-        parent.CreateComponent<TransformComponent>();
-        child.CreateComponent<TransformComponent>();
+        parent.CreateComponent<AzToolsFramework::Components::TransformComponent>();
+        child.CreateComponent<AzToolsFramework::Components::TransformComponent>();
 
         // add test mesh component to 'sense' change
         TestEditorMeshComponent* parentTestMeshComponent =
@@ -191,9 +167,12 @@ namespace UnitTest
         parent.Activate();
         child.Activate();
 
+        AZ::TransformBus::Event(
+            childId, &AZ::TransformInterface::SetParent, parentId);
+
         // apply scale to entities
-        parentTestMeshComponent->SetScale(parentId, AZ::Vector3(2.0f, 0.5f, 3.0f));
-        childTestMeshComponent->SetScale(childId, AZ::Vector3(3.0f, 2.5f, 0.2f));
+        AZ::TransformBus::Event(parentId, &AZ::TransformBus::Events::SetLocalScale, AZ::Vector3(2.0f, 0.5f, 3.0f));
+        AZ::TransformBus::Event(childId, &AZ::TransformBus::Events::SetLocalScale, AZ::Vector3(3.0f, 2.5f, 0.2f));
 
         // attach face physical entity (to detect changes)
         auto parentPhysicalEntitySetParamChecker = AZStd::make_unique<PhysicalEntitySetParamsCheck>();
@@ -209,26 +188,84 @@ namespace UnitTest
             AZ::Transform::CreateFromQuaternion(
                 AZ::Quaternion::CreateFromAxisAngle(AZ::Vector3::CreateAxisZ(), AZ::DegToRad(40.0f)));
 
-        AZ::Transform worldFromLocal = AZ::Transform::CreateIdentity();
+        AZ::Transform childLocalTM = AZ::Transform::CreateIdentity();
         AZ::TransformBus::EventResult(
-            worldFromLocal, childId, &AZ::TransformBus::Events::GetWorldTM);
+            childLocalTM, childId, &AZ::TransformBus::Events::GetLocalTM);
 
-        AZ::TransformBus::Event(
-            childId, &AZ::TransformBus::Events::SetWorldTM, worldFromLocal * rotation);
+        AZ::TransformBus::Event(childId, &AZ::TransformBus::Events::SetLocalTM, childLocalTM * rotation);
 
         // apply new scale to parent after orientating child entity
-        parentTestMeshComponent->SetScale(parentId, AZ::Vector3(0.6f, 0.5f, 3.0f));
+        AZ::TransformBus::Event(parentId, &AZ::TransformBus::Events::SetLocalScale, AZ::Vector3(0.6f, 0.5f, 3.0f));
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Then
-        // ensure matricies are still orthonormal
-        EXPECT_TRUE(childPhysicalEntitySetParamChecker->m_isOrthonormal);
+        // The child should not have created a physics entity, because its transform is too skewed
+
+        EXPECT_TRUE(childTestMeshComponent->GetPhysicalEntity() == nullptr);
+        EXPECT_TRUE(parentTestMeshComponent->GetPhysicalEntity() != nullptr);
         EXPECT_TRUE(parentPhysicalEntitySetParamChecker->m_isOrthonormal);
 
         // clear test physical entity
         childTestMeshComponent->OverridePhysicalEntity(nullptr);
         parentTestMeshComponent->OverridePhysicalEntity(nullptr);
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    }
+
+    TEST_F(EditorMeshComponentTestFixture, IsPhysicalizableReturnsTrueForIdentity)
+    {
+        EXPECT_TRUE(IsPhysicalizable(AZ::Transform::Identity()));
+    }
+
+    TEST_F(EditorMeshComponentTestFixture, IsPhysicalizableReturnsTrueForPureRotationMatrices)
+    {
+        AZ::Transform rot1 = AZ::Transform::CreateRotationZ(AZ::DegToRad(20.0f));
+        AZ::Transform rot2 = AZ::Transform::CreateRotationX(AZ::DegToRad(35.0f));
+        AZ::Transform rot3 = AZ::Transform::CreateRotationY(AZ::DegToRad(60.0f));
+
+        EXPECT_TRUE(IsPhysicalizable(rot1));
+        EXPECT_TRUE(IsPhysicalizable(rot2));
+        EXPECT_TRUE(IsPhysicalizable(rot3));
+        EXPECT_TRUE(IsPhysicalizable(rot1 * rot2));
+        EXPECT_TRUE(IsPhysicalizable(rot2 * rot3 * rot1));
+    }
+
+    TEST_F(EditorMeshComponentTestFixture, IsPhysicalizableReturnsTrueForPureScaleMatrices)
+    {
+        AZ::Transform scale1 = AZ::Transform::CreateDiagonal(AZ::Vector3(0.5f, 2.0f, 1.5f));
+        AZ::Transform scale2 = AZ::Transform::CreateDiagonal(AZ::Vector3(2.5f, 3.0f, 0.5f));
+        AZ::Transform scale3 = AZ::Transform::CreateDiagonal(AZ::Vector3(2.0f, 0.2f, 1.3f));
+
+        EXPECT_TRUE(IsPhysicalizable(scale1));
+        EXPECT_TRUE(IsPhysicalizable(scale2));
+        EXPECT_TRUE(IsPhysicalizable(scale3));
+        EXPECT_TRUE(IsPhysicalizable(scale1 * scale2));
+        EXPECT_TRUE(IsPhysicalizable(scale3 * scale2));
+    }
+
+    TEST_F(EditorMeshComponentTestFixture, IsPhysicalizableReturnsTrueForScaleFollowedByRotationMatrices)
+    {
+        AZ::Transform rot1 = AZ::Transform::CreateRotationZ(AZ::DegToRad(20.0f));
+        AZ::Transform rot2 = AZ::Transform::CreateRotationX(AZ::DegToRad(35.0f));
+        AZ::Transform scale1 = AZ::Transform::CreateDiagonal(AZ::Vector3(0.5f, 2.0f, 1.5f));
+        AZ::Transform scale2 = AZ::Transform::CreateDiagonal(AZ::Vector3(2.5f, 3.0f, 0.5f));
+
+        EXPECT_TRUE(IsPhysicalizable(rot1 * scale1));
+        EXPECT_TRUE(IsPhysicalizable(rot1 * scale2));
+        EXPECT_TRUE(IsPhysicalizable(rot2 * scale1));
+        EXPECT_TRUE(IsPhysicalizable(rot2 * scale2));
+    }
+
+    TEST_F(EditorMeshComponentTestFixture, IsPhysicalizableReturnsFalseForSkewMatrices)
+    {
+        AZ::Transform rot1 = AZ::Transform::CreateRotationZ(AZ::DegToRad(20.0f));
+        AZ::Transform rot2 = AZ::Transform::CreateRotationX(AZ::DegToRad(35.0f));
+        AZ::Transform scale1 = AZ::Transform::CreateDiagonal(AZ::Vector3(0.5f, 2.0f, 1.5f));
+        AZ::Transform scale2 = AZ::Transform::CreateDiagonal(AZ::Vector3(2.5f, 3.0f, 0.5f));
+
+        EXPECT_FALSE(IsPhysicalizable(scale1 * rot1));
+        EXPECT_FALSE(IsPhysicalizable(scale1 * rot2));
+        EXPECT_FALSE(IsPhysicalizable(scale2 * rot1));
+        EXPECT_FALSE(IsPhysicalizable(scale2 * rot2));
     }
 } // namespace UnitTest

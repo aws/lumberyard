@@ -110,7 +110,7 @@ namespace PhysX
     void SystemComponent::Reflect(AZ::ReflectContext* context)
     {
         D6JointLimitConfiguration::Reflect(context);
-        Pipeline::MeshAssetCookedData::Reflect(context);
+        Pipeline::MeshAssetData::Reflect(context);
 
         PhysX::ReflectionUtils::ReflectPhysXOnlyApi(context);
 
@@ -378,6 +378,8 @@ namespace PhysX
 #else
         m_cpuDispatcher = AzPhysXCpuDispatcherCreate();
 #endif
+        
+        PxSetProfilerCallback(&m_pxAzProfilerCallback);
 
         // Set Physics API constants to PhysX-friendly values
         Physics::DefaultRigidBodyConfiguration::m_computeInertiaTensor = true;
@@ -550,14 +552,12 @@ namespace PhysX
 
     bool SystemComponent::CookConvexMeshToFile(const AZStd::string& filePath, const AZ::Vector3* vertices, AZ::u32 vertexCount)
     {
-        physx::PxDefaultMemoryOutputStream memoryStream;
+        AZStd::vector<AZ::u8> physxData;
 
-        if (Utils::CookConvexToPxOutputStream(vertices, vertexCount, memoryStream))
+        if (CookConvexMeshToMemory(vertices, vertexCount, physxData))
         {
-            Pipeline::MeshAssetCookedData assetFileContent(memoryStream);
-            assetFileContent.m_isConvexMesh = true;
-
-            return Utils::WriteCookedMeshToFile(filePath, assetFileContent);
+            return Utils::WriteCookedMeshToFile(filePath, physxData, 
+                Physics::CookedMeshShapeConfiguration::MeshType::Convex);
         }
 
         AZ_Error("PhysX", false, "CookConvexMeshToFile. Convex cooking failed for %s.", filePath);
@@ -566,15 +566,13 @@ namespace PhysX
 
     bool SystemComponent::CookTriangleMeshToFile(const AZStd::string& filePath, const AZ::Vector3* vertices, AZ::u32 vertexCount,
         const AZ::u32* indices, AZ::u32 indexCount)
-    {
-        physx::PxDefaultMemoryOutputStream memoryStream;
+    {   
+        AZStd::vector<AZ::u8> physxData;
 
-        if (Utils::CookTriangleMeshToToPxOutputStream(vertices, vertexCount, indices, indexCount, memoryStream))
+        if (CookTriangleMeshToMemory(vertices, vertexCount, indices, indexCount, physxData))
         {
-            Pipeline::MeshAssetCookedData assetFileContent(memoryStream);
-            assetFileContent.m_isConvexMesh = false;
-
-            return Utils::WriteCookedMeshToFile(filePath, assetFileContent);
+            return Utils::WriteCookedMeshToFile(filePath, physxData,
+                Physics::CookedMeshShapeConfiguration::MeshType::TriangleMesh);
         }
 
         AZ_Error("PhysX", false, "CookTriangleMeshToFile. Mesh cooking failed for %s.", filePath);
@@ -935,14 +933,53 @@ namespace PhysX
         return m_configuration.m_collisionLayers.GetLayer(layerName);
     }
 
+    AZStd::string SystemComponent::GetCollisionLayerName(const Physics::CollisionLayer& layer)
+    {
+        return m_configuration.m_collisionLayers.GetName(layer);
+    }
+
+    bool SystemComponent::TryGetCollisionLayerByName(const AZStd::string& layerName, Physics::CollisionLayer& layer)
+    {
+        return m_configuration.m_collisionLayers.TryGetLayer(layerName, layer);
+    }
+
     Physics::CollisionGroup SystemComponent::GetCollisionGroupByName(const AZStd::string& groupName)
     {
         return m_configuration.m_collisionGroups.FindGroupByName(groupName);
     }
 
+    bool SystemComponent::TryGetCollisionGroupByName(const AZStd::string& groupName, Physics::CollisionGroup& group)
+    {
+        return m_configuration.m_collisionGroups.TryFindGroupByName(groupName, group);
+    }
+
+    AZStd::string SystemComponent::GetCollisionGroupName(const Physics::CollisionGroup& collisionGroup)
+    {
+        AZStd::string groupName;
+        for (const auto& group : m_configuration.m_collisionGroups.GetPresets())
+        {
+            if (group.m_group.GetMask() == collisionGroup.GetMask())
+            {
+                groupName = group.m_name;
+                break;
+            }
+        }
+        return groupName;
+    }
+
     Physics::CollisionGroup SystemComponent::GetCollisionGroupById(const Physics::CollisionGroups::Id& groupId)
     {
         return m_configuration.m_collisionGroups.FindGroupById(groupId);
+    }
+
+    void SystemComponent::SetCollisionLayerName(int index, const AZStd::string& layerName)
+    {
+        m_configuration.m_collisionLayers.SetName(index, layerName);
+    }
+
+    void SystemComponent::CreateCollisionGroup(const AZStd::string& groupName, const Physics::CollisionGroup& group)
+    {
+        m_configuration.m_collisionGroups.CreateGroup(groupName, group);
     }
 
     physx::PxFilterData SystemComponent::CreateFilterData(const Physics::CollisionLayer& layer, const Physics::CollisionGroup& group)
@@ -1092,7 +1129,7 @@ namespace PhysX
         }
 
         // Set the slots from the mesh asset
-        materialSelection.SetMaterialSlots(meshAsset->GetMaterialSlots());
+        materialSelection.SetMaterialSlots(meshAsset->m_assetData.m_surfaceNames);
 
         if (!assetConfiguration.m_useMaterialsFromAsset)
         {
@@ -1100,18 +1137,18 @@ namespace PhysX
         }
 
         const Physics::MaterialLibraryAsset* materialLibrary = materialSelection.GetMaterialLibraryAssetData();
-        const AZStd::vector<Physics::MaterialConfiguration>& meshMaterials = meshAsset->GetMaterialsData();
+        const AZStd::vector<AZStd::string>& meshMaterialNames = meshAsset->m_assetData.m_materialNames;
 
         // Update material IDs in the selection for each slot
         int slotIndex = 0;
-        for (const Physics::MaterialConfiguration& meshMaterial : meshMaterials)
+        for (const AZStd::string& meshMaterialName : meshMaterialNames)
         {
             Physics::MaterialFromAssetConfiguration materialData;
-            bool found = materialLibrary->GetDataForMaterialName(meshMaterial.m_surfaceType, materialData);
+            bool found = materialLibrary->GetDataForMaterialName(meshMaterialName, materialData);
 
             AZ_Warning("PhysX", found, 
                 "UpdateMaterialSelectionFromPhysicsAsset: No material found for surfaceType (%s) in the collider material library", 
-                meshMaterial.m_surfaceType.c_str());
+                meshMaterialName.c_str());
 
             if (found)
             {
@@ -1122,6 +1159,18 @@ namespace PhysX
         }
 
         return true;
+    }
+
+    void* PxAzProfilerCallback::zoneStart(const char* eventName, bool /*detached*/, uint64_t /*contextId*/)
+    {
+        AZ_PROFILE_EVENT_BEGIN(AZ::Debug::ProfileCategory::Physics, eventName);
+        return nullptr;
+    }
+
+    void PxAzProfilerCallback::zoneEnd(void* /*profilerData*/, 
+        const char* /*eventName*/, bool /*detached*/, uint64_t /*contextId*/)
+    {
+        AZ_PROFILE_EVENT_END(AZ::Debug::ProfileCategory::Physics);
     }
 
 } // namespace PhysX

@@ -10,8 +10,6 @@
 *
 */
 
-#include <precompiled.h>
-
 #include <Source/Framework/ScriptCanvasTestVerify.h>
 
 namespace ScriptCanvasTests

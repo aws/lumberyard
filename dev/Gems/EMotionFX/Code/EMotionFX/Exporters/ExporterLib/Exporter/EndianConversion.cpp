@@ -29,27 +29,27 @@ namespace ExporterLib
     }
 
 
-    void CopyQuaternion(EMotionFX::FileFormat::FileQuaternion& to, MCore::Quaternion from)
+    void CopyQuaternion(EMotionFX::FileFormat::FileQuaternion& to, AZ::Quaternion from)
     {
         from.Normalize();
 
-        if (from.w < 0)
+        if (from.GetW() < 0)
         {
             from = -from;
         }
 
-        to.mX = from.x;
-        to.mY = from.y;
-        to.mZ = from.z;
-        to.mW = from.w;
+        to.mX = from.GetX();
+        to.mY = from.GetY();
+        to.mZ = from.GetZ();
+        to.mW = from.GetW();
     }
 
 
-    void Copy16BitQuaternion(EMotionFX::FileFormat::File16BitQuaternion& to, MCore::Quaternion from)
+    void Copy16BitQuaternion(EMotionFX::FileFormat::File16BitQuaternion& to, AZ::Quaternion from)
     {
         from.Normalize();
 
-        if (from.w < 0)
+        if (from.GetW() < 0)
         {
             from = -from;
         }

@@ -162,6 +162,34 @@ namespace Render
 
         VRAMDriller::VRAMDriller()
         {
+#if PLATFORM_MEMORY_INSTRUMENTATION_ENABLED
+            m_platformMemoryInstrumentationRootGroupId = AZ::PlatformMemoryInstrumentation::GetNextGroupId();
+            AZ::PlatformMemoryInstrumentation::RegisterGroup(m_platformMemoryInstrumentationRootGroupId, "VRAM", AZ::PlatformMemoryInstrumentation::m_groupRoot);
+
+            m_platformMemoryInstrumentationCategoryIds[VRAM_CATEGORY_TEXTURE] = AZ::PlatformMemoryInstrumentation::GetNextGroupId();
+            AZ::PlatformMemoryInstrumentation::RegisterGroup(m_platformMemoryInstrumentationCategoryIds[VRAM_CATEGORY_TEXTURE], "Texture", m_platformMemoryInstrumentationRootGroupId);
+            m_platformMemoryInstrumentationCategoryIds[VRAM_CATEGORY_BUFFER] = AZ::PlatformMemoryInstrumentation::GetNextGroupId();
+            AZ::PlatformMemoryInstrumentation::RegisterGroup(m_platformMemoryInstrumentationCategoryIds[VRAM_CATEGORY_BUFFER], "Buffer", m_platformMemoryInstrumentationRootGroupId);
+            m_platformMemoryInstrumentationCategoryIds[VRAM_CATEGORY_MISC] = AZ::PlatformMemoryInstrumentation::GetNextGroupId();
+            AZ::PlatformMemoryInstrumentation::RegisterGroup(m_platformMemoryInstrumentationCategoryIds[VRAM_CATEGORY_MISC], "Misc", m_platformMemoryInstrumentationRootGroupId);
+
+            m_platformMemoryInstrumentationSubcategoryIds[VRAM_SUBCATEGORY_TEXTURE_RENDERTARGET] = AZ::PlatformMemoryInstrumentation::GetNextGroupId();
+            AZ::PlatformMemoryInstrumentation::RegisterGroup(m_platformMemoryInstrumentationSubcategoryIds[VRAM_SUBCATEGORY_TEXTURE_RENDERTARGET], "Render Target", m_platformMemoryInstrumentationCategoryIds[VRAM_CATEGORY_TEXTURE]);
+            m_platformMemoryInstrumentationSubcategoryIds[VRAM_SUBCATEGORY_TEXTURE_TEXTURE] = AZ::PlatformMemoryInstrumentation::GetNextGroupId();
+            AZ::PlatformMemoryInstrumentation::RegisterGroup(m_platformMemoryInstrumentationSubcategoryIds[VRAM_SUBCATEGORY_TEXTURE_TEXTURE], "Texture", m_platformMemoryInstrumentationCategoryIds[VRAM_CATEGORY_TEXTURE]);
+            m_platformMemoryInstrumentationSubcategoryIds[VRAM_SUBCATEGORY_TEXTURE_DYNAMIC] = AZ::PlatformMemoryInstrumentation::GetNextGroupId();
+            AZ::PlatformMemoryInstrumentation::RegisterGroup(m_platformMemoryInstrumentationSubcategoryIds[VRAM_SUBCATEGORY_TEXTURE_DYNAMIC], "Dynamic", m_platformMemoryInstrumentationCategoryIds[VRAM_CATEGORY_TEXTURE]);
+            m_platformMemoryInstrumentationSubcategoryIds[VRAM_SUBCATEGORY_BUFFER_VERTEX_BUFFER] = AZ::PlatformMemoryInstrumentation::GetNextGroupId();
+            AZ::PlatformMemoryInstrumentation::RegisterGroup(m_platformMemoryInstrumentationSubcategoryIds[VRAM_SUBCATEGORY_BUFFER_VERTEX_BUFFER], "Vertex Buffer", m_platformMemoryInstrumentationCategoryIds[VRAM_CATEGORY_BUFFER]);
+            m_platformMemoryInstrumentationSubcategoryIds[VRAM_SUBCATEGORY_BUFFER_INDEX_BUFFER] = AZ::PlatformMemoryInstrumentation::GetNextGroupId();
+            AZ::PlatformMemoryInstrumentation::RegisterGroup(m_platformMemoryInstrumentationSubcategoryIds[VRAM_SUBCATEGORY_BUFFER_INDEX_BUFFER], "Index Buffer", m_platformMemoryInstrumentationCategoryIds[VRAM_CATEGORY_BUFFER]);
+            m_platformMemoryInstrumentationSubcategoryIds[VRAM_SUBCATEGORY_BUFFER_CONSTANT_BUFFER] = AZ::PlatformMemoryInstrumentation::GetNextGroupId();
+            AZ::PlatformMemoryInstrumentation::RegisterGroup(m_platformMemoryInstrumentationSubcategoryIds[VRAM_SUBCATEGORY_BUFFER_CONSTANT_BUFFER], "Constant Buffer", m_platformMemoryInstrumentationCategoryIds[VRAM_CATEGORY_BUFFER]);
+            m_platformMemoryInstrumentationSubcategoryIds[VRAM_SUBCATEGORY_BUFFER_OTHER_BUFFER] = AZ::PlatformMemoryInstrumentation::GetNextGroupId();
+            AZ::PlatformMemoryInstrumentation::RegisterGroup(m_platformMemoryInstrumentationSubcategoryIds[VRAM_SUBCATEGORY_BUFFER_OTHER_BUFFER], "Other Buffer", m_platformMemoryInstrumentationCategoryIds[VRAM_CATEGORY_BUFFER]);
+            m_platformMemoryInstrumentationSubcategoryIds[VRAM_SUBCATEGORY_MISC_OTHER] = AZ::PlatformMemoryInstrumentation::GetNextGroupId();
+            AZ::PlatformMemoryInstrumentation::RegisterGroup(m_platformMemoryInstrumentationSubcategoryIds[VRAM_SUBCATEGORY_MISC_OTHER], "Misc", m_platformMemoryInstrumentationCategoryIds[VRAM_CATEGORY_MISC]);
+#endif
             BusConnect();
         }
 
@@ -225,14 +253,17 @@ namespace Render
 
         //=========================================================================
 
-        void VRAMDriller::RegisterAllocation(void* address, size_t byteSize, const char* allocationName, VRAMAllocationCategory category, VRAMAllocationSubcategory subcategories)
+        void VRAMDriller::RegisterAllocation(void* address, size_t byteSize, const char* allocationName, VRAMAllocationCategory category, VRAMAllocationSubcategory subcategory)
         {
-            AZ_Assert(m_allocations != nullptr, "Allocation records for the VRAMDriller do not exist!");
             AZ_Assert(category != VRAM_CATEGORY_INVALID, "Invalid VRAM allocation category");
-            AZ_Assert(subcategories != VRAM_SUBCATEGORY_INVALID, "No subcategory provided for VRAM Allocation");
+            AZ_Assert(subcategory != VRAM_SUBCATEGORY_INVALID, "No subcategory provided for VRAM Allocation");
 
-            const VRAMAllocationInfo* info = m_allocations->RegisterAllocation(address, byteSize, allocationName, category, subcategories);
+#if PLATFORM_MEMORY_INSTRUMENTATION_ENABLED
+            AZ::PlatformMemoryInstrumentation::Alloc(address, byteSize, 0, m_platformMemoryInstrumentationSubcategoryIds[subcategory]);
+#else
+            AZ_Assert(m_allocations != nullptr, "Allocation records for the VRAMDriller do not exist!");
 
+            const VRAMAllocationInfo* info = m_allocations->RegisterAllocation(address, byteSize, allocationName, category, subcategory);
             // Skip if we have no active output
             if (m_output == nullptr)
             {
@@ -240,6 +271,7 @@ namespace Render
             }
 
             RegisterAllocationOutput(address, info);
+#endif
         }
 
         void VRAMDriller::RegisterAllocationOutput(void* address, const VRAMAllocationInfo* info)
@@ -259,6 +291,9 @@ namespace Render
 
         void VRAMDriller::UnregisterAllocation(void* address)
         {
+#if PLATFORM_MEMORY_INSTRUMENTATION_ENABLED
+            AZ::PlatformMemoryInstrumentation::Free(address);
+#else
             AZ_Assert(m_allocations != nullptr, "Allocation records for the VRAMDriller do not exist!");
             m_allocations->UnregisterAllocation(address);
 
@@ -273,6 +308,7 @@ namespace Render
             m_output->Write(AZ_CRC("Address", 0x0d4e6f81), address);
             m_output->EndTag(AZ_CRC("UnRegisterAllocation", 0xea5dc4cd));
             m_output->EndTag(AZ_CRC("VRAMDriller"));
+#endif
         }
 
         //=========================================================================

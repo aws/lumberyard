@@ -26,7 +26,7 @@
         #endif
     #endif
 #else
-    #if defined(AZ_MONOLITHIC_BUILD)
+    #if defined(AZ_MONOLITHIC_BUILD) || defined(SCENE_CORE_STATIC) || defined(AZ_PLATFORM_LINUX)
         #define SCENE_CORE_CLASS
         #define SCENE_CORE_API
     #else

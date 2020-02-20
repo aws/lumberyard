@@ -12,10 +12,11 @@
 
 #pragma once
 
-// include the Core system
+#include <AzCore/std/string/string.h>
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
 #include "Pose.h"
+#include <MCore/Source/Array.h>
 
 
 namespace EMotionFX

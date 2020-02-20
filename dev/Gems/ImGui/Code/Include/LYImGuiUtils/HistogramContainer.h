@@ -14,7 +14,7 @@
 
 #ifdef IMGUI_ENABLED
 #include <AzCore/std/containers/deque.h>
-#include "ImGui/imgui.h"
+#include "imgui/imgui.h"
 #include <ISystem.h>
 
 namespace ImGui
@@ -25,7 +25,7 @@ namespace ImGui
         * A small class to help manage values for an ImGui Histogram ( ImGui doesn't want to manage the values itself ).
         *   Nothing crazy, just helps reduce boiler plate if you are ImGui::PlotHistogram()'ing
         */
-        class HistogramContainer 
+        class HistogramContainer
         {
         public:
             HistogramContainer() = default;
@@ -68,7 +68,7 @@ namespace ImGui
 
             // Draw this histogram with ImGui
             void Draw(float histogramWidth, float histogramHeight);
-        
+
         private:
 
             AZStd::string m_histogramName;

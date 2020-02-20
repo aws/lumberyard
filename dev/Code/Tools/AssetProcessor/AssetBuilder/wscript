@@ -10,24 +10,30 @@
 #
 ########################################################################################
 
-import os
 
 def build(bld):
+    
+    platform_filter = ['win', 'darwin']
+    if bld.should_build_experimental_targets():
+        platform_filter.append('linux')
+    
     bld.CryConsoleApplication(
         target          = 'AssetBuilder',
         vs_filter       = 'Tools/AssetProcessor',
         file_list       = 'asset_builder.waf_files',
-        platforms       = ['win', 'darwin'],
-        configurations  = ['all'],
+        platforms       = ['win', 'darwin', 'linux'],
         exclude_monolithic = True,
+        client_only     = True,
         use             = ['AssetBuilderSDK'],
         uselib          = ['QT5CORE',
                            'QT5GUI',
-                           'QT5WIDGETS'],
+                           'QT5WIDGETS',
+                           'QT5XML'],
         disable_pch     = True,
         darwin_rpath    = ['@executable_path/qtlibs/lib',
                            '@executable_path/../Frameworks',
                            '@executable_path'],
+        linux_rpath     = ['@executable_path/qtlibs/lib', '@executable_path'],
         win_features    = ['crcfix'],
         features        = ['link_running_program'],
 
@@ -35,7 +41,8 @@ def build(bld):
         msvc_cxxflags       = ['/W4'],
 
         win_file_list   = ['asset_builder_win.waf_files'],
-        darwin_file_list = ['asset_builder_darwin.waf_files']
+        darwin_file_list = ['asset_builder_darwin.waf_files'],
+        linux_file_list  = ['asset_builder_linux.waf_files']
     )
 
 

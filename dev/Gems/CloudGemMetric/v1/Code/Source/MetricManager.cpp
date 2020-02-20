@@ -16,7 +16,7 @@
 #include "CloudGemMetric/MetricsPriority.h"
 #include "CloudGemMetric/MetricsFilterGroup.h"
 #include "CloudGemMetric/MetricsAggregator.h"
-#include "AWS/ServiceAPI/CloudGemMetricClientComponent.h"
+#include "AWS/ServiceApi/CloudGemMetricClientComponent.h"
 
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/std/parallel/mutex.h>
@@ -35,12 +35,12 @@
 #include <CloudCanvasCommon/CloudCanvasCommonBus.h>
 
 namespace CloudGemMetric
-{   
+{
     MetricManager::MetricManager(DefaultAttributesGenerator* defaultAttributesGenerator):
         m_defaultAttributesGenerator(defaultAttributesGenerator),
         m_lastFlushToFileTime(AZStd::chrono::system_clock::now()),
-        m_lastSendMetricsTime(AZStd::chrono::system_clock::now())        
-    {        
+        m_lastSendMetricsTime(AZStd::chrono::system_clock::now())
+    {
     }
 
     bool MetricManager::Init()
@@ -118,7 +118,7 @@ namespace CloudGemMetric
             return true;
         }
 
-        return false;        
+        return false;
     }
 
     AZ::IO::FileIOBase* MetricManager::GetFileIO()
@@ -170,13 +170,13 @@ namespace CloudGemMetric
         else
         {
             EBUS_EVENT_RESULT(m_playerId, CloudGemFramework::CloudCanvasPlayerIdentityBus, GetIdentityId);
-        }        
+        }
     }
 
     bool MetricManager::FlushMetricsToFile(AZStd::shared_ptr<MetricsQueue> metricsToFlush, SendMetricsMode sendMetricsMode, const MetricsSettings::Settings& settings)
     {
-        AZStd::lock_guard<AZStd::mutex> lock(m_metricsFileMutex);        
-        
+        AZStd::lock_guard<AZStd::mutex> lock(m_metricsFileMutex);
+
         if (!CreateMetricsDirIfNotExists())
         {
             if ((sendMetricsMode == SendMetricsMode::ELLIGIBLE && ShouldSendMetrics(metricsToFlush->GetNumMetrics(), metricsToFlush->GetSizeInBytes(), settings)) ||
@@ -203,8 +203,8 @@ namespace CloudGemMetric
                 // abandon these metrics if we can't create metrics directory
                 return false;
             }
-        }        
-        
+        }
+
         AZ::IO::FileIOBase* fileIO = GetFileIO();
         if (!fileIO)
         {
@@ -250,7 +250,7 @@ namespace CloudGemMetric
                     metrics.SetPlayerIdIfNotExist(m_playerId);
                 }
             }
-        }        
+        }
 
         if (hasPlayerId && ( (sendMetricsMode == SendMetricsMode::ELLIGIBLE &&
                               ShouldSendMetrics(curMetrics->GetNumMetrics() + metricsToFlush->GetNumMetrics(),
@@ -265,7 +265,7 @@ namespace CloudGemMetric
             return SendMetrics(curMetrics, settings);
         }
         else
-        {            
+        {
             AZ::IO::HandleType fileHandle;
             if (!fileIO->Open(GetMetricsFilePath(), AZ::IO::OpenMode::ModeWrite | AZ::IO::OpenMode::ModeText, fileHandle))
             {
@@ -301,7 +301,7 @@ namespace CloudGemMetric
         AZ::Job* job{ nullptr };
 
         job = AZ::CreateJobFunction([this, metricsToFlush, sendMetricsMode, settings]()
-        {            
+        {
             FlushMetricsToFile(metricsToFlush, sendMetricsMode, settings);
         }, true, jobContext);
 
@@ -317,7 +317,7 @@ namespace CloudGemMetric
             uuid.ToString(batchId);
             additionalAttributes.emplace_back(MetricsAttribute("msgid", batchId));
         }
-        
+
         AZStd::string out = metrics.SerializeToJson(&additionalAttributes);
 
         auto job = ServiceAPI::SendMetricToSQSRequestJob::Create(
@@ -336,7 +336,7 @@ namespace CloudGemMetric
             }
         }
         );
-        
+
         MetricManager::SetEventParameters(job->parameters, metricsParameters);
 
         job->parameters.payload_type = "JSON";
@@ -354,7 +354,7 @@ namespace CloudGemMetric
         {
             return false;
         }
-        
+
         AZStd::vector<MetricsAttribute> additionalAttributes;
         {
             AZ::Uuid uuid = AZ::Uuid::Create();
@@ -380,13 +380,13 @@ namespace CloudGemMetric
                     // failed to send, write these metrics to file and wait for next try
                     FlushMetricsToFile(metrics, SendMetricsMode::NO, settings);
                 }
-                );                    
+                );
                 MetricManager::SetEventParameters(job->parameters, metricsParameters);
-                    
+
                 job->parameters.payload_type = "JSON";
                 job->parameters.data.data = AZStd::move(metric_str);
 
-                job->GetHttpRequestJob().Start();                
+                job->GetHttpRequestJob().Start();
             }
 
             if (nextIdx == -1)
@@ -412,7 +412,7 @@ namespace CloudGemMetric
     }
 
     bool MetricManager::FlushMetricsToFileAsync(const MetricsSettings::Settings& settings, SendMetricsMode sendMetricsMode)
-    {       
+    {
         m_lastFlushToFileTime = AZStd::chrono::system_clock::now();
 
         if ((sendMetricsMode == SendMetricsMode::ELLIGIBLE ||
@@ -437,7 +437,7 @@ namespace CloudGemMetric
         }
 
         if (!fileIO->Exists(GetMetricsDir()))
-        {            
+        {
             if (!fileIO->CreatePath(GetMetricsDir()))
             {
                 AZ_Warning("CloudCanvas", false, "Failed to create metrics directory");
@@ -454,7 +454,7 @@ namespace CloudGemMetric
         {
             return false;
         }
-        
+
         AZ::IO::FileIOBase* fileIO = GetFileIO();
         if (!fileIO)
         {
@@ -498,7 +498,7 @@ namespace CloudGemMetric
         }
 
         fileIO->Close(fileHandle);
-        
+
         return true;
     }
 
@@ -513,23 +513,23 @@ namespace CloudGemMetric
         if (ShouldFilterMetrics(metricsName, metricsAttributes, metrics))
         {
             return false;
-        }   
+        }
 
         if (m_defaultAttributesGenerator)
         {
             m_defaultAttributesGenerator->AddDefaultAttributes(metrics, metricSourceOverride);
-        }        
+        }
 
         metrics.SetEventParameters(metricsParameters);
 
-        AZStd::lock_guard<AZStd::mutex> lock(m_metricsMutex);        
+        AZStd::lock_guard<AZStd::mutex> lock(m_metricsMutex);
 
         m_metricsQueue.MoveMetrics(metrics);
 
         MetricsSettings::Settings settings = m_metricsConfigs.GetSettings();
 
         if (ShouldFlushMetricsToFile(settings))
-        {            
+        {
             FlushMetricsToFileAsync(settings, SendMetricsMode::ELLIGIBLE);
         }
 
@@ -614,7 +614,7 @@ namespace CloudGemMetric
         {
             return true;
         }
-     
+
         return false;
     }
 
@@ -633,10 +633,10 @@ namespace CloudGemMetric
     {
         AZStd::lock_guard<AZStd::mutex> lock(m_metricsMutex);
 
-        MetricsSettings::Settings settings = m_metricsConfigs.GetSettings();        
+        MetricsSettings::Settings settings = m_metricsConfigs.GetSettings();
 
         if (ShouldSendMetrics(time, settings))
-        {            
+        {
             m_lastSendMetricsTime = AZStd::chrono::system_clock::now();
             FlushMetricsToFileAsync(settings, SendMetricsMode::FORCE);
         }
@@ -660,7 +660,7 @@ namespace CloudGemMetric
     const char* MetricManager::GetMetricsFilePath() const
     {
         return m_metricsFilePath.c_str();
-    }    
+    }
 
     const char* MetricManager::GetLiveUpdateMetricsConfigsFilePath() const
     {
@@ -682,17 +682,17 @@ namespace CloudGemMetric
         //Defaults
         jobParameters.sensitivity_type = SENSITIVITY_TYPE_INSENSITIVE;
         jobParameters.compression_mode = COMPRESSION_MODE_NOCOMPRESS;
-                
-        for (auto it = metricsParameters.begin(); it != metricsParameters.end(); it++) {            
+
+        for (auto it = metricsParameters.begin(); it != metricsParameters.end(); it++) {
             auto type = it->GetName();
-            auto value = it->GetVal();                   
+            auto value = it->GetVal();
             if (type == SENSITIVITY_TYPE)
             {
-                jobParameters.sensitivity_type = value == 1 ? SENSITIVITY_TYPE_SENSITIVE : SENSITIVITY_TYPE_INSENSITIVE;                
+                jobParameters.sensitivity_type = value == 1 ? SENSITIVITY_TYPE_SENSITIVE : SENSITIVITY_TYPE_INSENSITIVE;
             }
             else if (type == COMPRESSION_MODE)
             {
-                jobParameters.compression_mode = value == 1 ? COMPRESSION_MODE_COMPRESS : COMPRESSION_MODE_NOCOMPRESS;                
+                jobParameters.compression_mode = value == 1 ? COMPRESSION_MODE_COMPRESS : COMPRESSION_MODE_NOCOMPRESS;
             }
         }
     }

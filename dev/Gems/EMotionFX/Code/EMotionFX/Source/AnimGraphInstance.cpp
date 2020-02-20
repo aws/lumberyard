@@ -80,9 +80,6 @@ namespace EMotionFX
         // recursively create the unique datas for all nodes
         mAnimGraph->GetRootStateMachine()->RecursiveOnUpdateUniqueData(this);
 
-        // start the state machines at the entry state
-        Start();
-
         mAnimGraph->Unlock();
         GetEventManager().OnCreateAnimGraphInstance(this);
     }
@@ -255,9 +252,11 @@ namespace EMotionFX
         //MCore::LogInfo("------refData used = %d/%d (max=%d)----------", GetEMotionFX().GetThreadData(0)->GetRefCountedDataPool().GetNumUsedItems(), GetEMotionFX().GetThreadData(0)->GetRefCountedDataPool().GetNumItems(), GetEMotionFX().GetThreadData(0)->GetRefCountedDataPool().GetNumMaxUsedItems());
         //MCORE_ASSERT(GetEMotionFX().GetThreadData(0).GetPosePool().GetNumUsedPoses() == 0);
 
-        if (m_autoReleaseAllPoses)
+        // Release only for root anim graphs and when we want to auto release.
+        if (m_autoReleaseAllPoses && !m_parentAnimGraphInstance)
         {
             ReleasePoses();
+            posePool.FreeAllPoses();
         }
 
         // Gather active state. Must be done in output function.
@@ -825,6 +824,7 @@ namespace EMotionFX
         // get the root node's trajectory delta
         AnimGraphRefCountedData* rootData = mAnimGraph->GetRootStateMachine()->FindUniqueNodeData(this)->GetRefCountedData();
         trajectoryDelta = rootData->GetTrajectoryDelta();
+        trajectoryDelta.mRotation.NormalizeExact();
 
         // update the actor instance with the delta movement already
         mActorInstance->SetTrajectoryDeltaTransform(trajectoryDelta);
@@ -891,7 +891,8 @@ namespace EMotionFX
 
         //MCore::LogInfo("------bef refData used = %d/%d (max=%d)----------", GetEMotionFX().GetThreadData(threadIndex)->GetRefCountedDataPool().GetNumUsedItems(), GetEMotionFX().GetThreadData(threadIndex)->GetRefCountedDataPool().GetNumItems(), GetEMotionFX().GetThreadData(threadIndex)->GetRefCountedDataPool().GetNumMaxUsedItems());
 
-        if (m_autoReleaseAllRefDatas)
+        // Only release for root/main anim graphs and when we want to.
+        if (m_autoReleaseAllRefDatas && !m_parentAnimGraphInstance)
         {
             ReleaseRefDatas();
         }
@@ -1238,8 +1239,10 @@ namespace EMotionFX
 
     void AnimGraphInstance::ReleasePoses()
     {
-        const uint32 threadIndex = mActorInstance->GetThreadIndex();
-        AnimGraphPosePool& posePool = GetEMotionFX().GetThreadData(threadIndex)->GetPosePool();
+        for (AnimGraphInstance* childAnimGraphInstance : m_childAnimGraphInstances)
+        {
+            childAnimGraphInstance->ReleasePoses();
+        }
 
         for (MCore::Attribute* attribute : m_internalAttributes)
         {
@@ -1249,7 +1252,6 @@ namespace EMotionFX
                 attributePose->SetValue(nullptr);
             }
         }
-        posePool.FreeAllPoses();
     }
 
     bool AnimGraphInstance::GetParameterValueAsFloat(uint32 paramIndex, float* outValue)
@@ -1322,7 +1324,7 @@ namespace EMotionFX
         MCore::AttributeVector3* param = GetParameterValueChecked<MCore::AttributeVector3>(paramIndex);
         if (param)
         {
-            *outValue = AZ::Vector3(param->GetValue());
+            *outValue = param->GetValue();
             return true;
         }
 
@@ -1343,7 +1345,7 @@ namespace EMotionFX
     }
 
 
-    bool AnimGraphInstance::GetRotationParameterValue(uint32 paramIndex, MCore::Quaternion* outRotation)
+    bool AnimGraphInstance::GetRotationParameterValue(uint32 paramIndex, AZ::Quaternion* outRotation)
     {
         MCore::AttributeQuaternion* param = GetParameterValueChecked<MCore::AttributeQuaternion>(paramIndex);
         if (param)
@@ -1452,7 +1454,7 @@ namespace EMotionFX
     }
 
 
-    bool AnimGraphInstance::GetRotationParameterValue(const char* paramName, MCore::Quaternion* outRotation)
+    bool AnimGraphInstance::GetRotationParameterValue(const char* paramName, AZ::Quaternion* outRotation)
     {
         const AZ::Outcome<size_t> index = FindParameterIndex(paramName);
         if (!index.IsSuccess())

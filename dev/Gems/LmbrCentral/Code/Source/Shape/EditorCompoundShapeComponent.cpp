@@ -15,7 +15,7 @@
 
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <AzToolsFramework/UI/UiCore/WidgetHelpers.h>
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 
 namespace LmbrCentral
 {

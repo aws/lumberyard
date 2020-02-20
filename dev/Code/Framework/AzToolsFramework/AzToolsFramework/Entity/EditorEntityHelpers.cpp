@@ -515,6 +515,8 @@ namespace AzToolsFramework
 
     bool IsSelected(const AZ::EntityId entityId)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         bool selected = false;
         EditorEntityInfoRequestBus::EventResult(
             selected, entityId, &EditorEntityInfoRequestBus::Events::IsSelected);
@@ -523,36 +525,53 @@ namespace AzToolsFramework
 
     bool IsSelectableInViewport(const AZ::EntityId entityId)
     {
-        bool visibleFlag = false;
-        EditorVisibilityRequestBus::EventResult(
-            visibleFlag, entityId, &EditorVisibilityRequests::GetVisibilityFlag);
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        bool visible = false;
+        EditorEntityInfoRequestBus::EventResult(
+            visible, entityId, &EditorEntityInfoRequestBus::Events::IsVisible);
 
         bool locked = false;
-        EditorLockComponentRequestBus::EventResult(
-            locked, entityId, &EditorLockComponentRequests::GetLocked);
+        EditorEntityInfoRequestBus::EventResult(
+            locked, entityId, &EditorEntityInfoRequestBus::Events::IsLocked);
 
-        return visibleFlag && !locked;
+        return visible && !locked;
     }
 
     static void SetEntityLockStateRecursively(
         const AZ::EntityId entityId, const bool locked,
         const AZ::EntityId toggledEntityId, const bool toggledEntityWasLayer)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         if (!entityId.IsValid())
         {
             return;
         }
 
-        /// first set lock state of the entity in the outliner we clicked on to lock
+        // first set lock state of the entity in the outliner we clicked on to lock
+        bool notifyChildrenOfLayer = true;
         if (!toggledEntityWasLayer || toggledEntityId == entityId)
         {
-            EditorLockComponentRequestBus::Event(entityId, &EditorLockComponentRequests::SetLocked, locked);
+            EditorLockComponentRequestBus::Event(
+                entityId, &EditorLockComponentRequests::SetLocked, locked);
         }
         else
         {
+            bool layerEntity = false;
+            Layers::EditorLayerComponentRequestBus::EventResult(
+                layerEntity, entityId, &Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
             bool prevLockState = false;
-            EditorLockComponentRequestBus::EventResult(
-                prevLockState, entityId, &EditorLockComponentRequests::GetLocked);
+            EditorEntityInfoRequestBus::EventResult(
+                prevLockState, entityId, &EditorEntityInfoRequestBus::Events::IsLocked);
+
+            // if we're unlocking a layer, we do not want to notify/modify child entities
+            // as this is a non-destructive change (their individual lock state is preserved)
+            if (prevLockState && layerEntity && !locked)
+            {
+                notifyChildrenOfLayer = false;
+            }
 
             // for all other entities, if we're unlocking and they were individually already locked,
             // keep their lock state, otherwise if we're locking, set all entities to be locked.
@@ -563,18 +582,64 @@ namespace AzToolsFramework
                 newLockState);
         }
 
-        EntityIdList children;
-        EditorEntityInfoRequestBus::EventResult(
-            children, entityId, &EditorEntityInfoRequestBus::Events::GetChildren);
-
-        for (auto childId : children)
+        if (notifyChildrenOfLayer)
         {
-            SetEntityLockStateRecursively(childId, locked, toggledEntityId, toggledEntityWasLayer);
+            EntityIdList children;
+            EditorEntityInfoRequestBus::EventResult(
+                children, entityId, &EditorEntityInfoRequestBus::Events::GetChildren);
+
+            for (auto childId : children)
+            {
+                SetEntityLockStateRecursively(childId, locked, toggledEntityId, toggledEntityWasLayer);
+            }
         }
+    }
+
+    // if a child of a layer has its lock state changed to false, change that layer to no longer be locked
+    // do this for all layers in the hierarchy (this is because not all entities under these layers
+    // will be locked so the layer cannot be represented as 'fully' locked)
+    // note: must be called on layer entity
+    static void UnlockLayer(const AZ::EntityId entityId)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        EditorLockComponentRequestBus::Event(
+            entityId, &EditorLockComponentRequestBus::Events::SetLocked, false);
+
+        // recursive lambda - notify all children of the layer if the lock has changed
+        const auto notifyChildrenOfLockChange = [](const AZ::EntityId entityId)
+        {
+            const auto notifyChildrenOfLockChangeImpl =
+                [](const AZ::EntityId entityId, const auto& notifyChildrenRef) -> void
+            {
+                EntityIdList children;
+                EditorEntityInfoRequestBus::EventResult(
+                    children, entityId, &EditorEntityInfoRequestBus::Events::GetChildren);
+
+                for (auto childId : children)
+                {
+                    notifyChildrenRef(childId, notifyChildrenRef);
+                }
+
+                bool locked = false;
+                EditorLockComponentRequestBus::EventResult(
+                    locked, entityId, &EditorLockComponentRequests::GetLocked);
+
+                EditorEntityLockComponentNotificationBus::Event(
+                    entityId, &EditorEntityLockComponentNotificationBus::Events::OnEntityLockChanged,
+                    locked);
+            };
+
+            notifyChildrenOfLockChangeImpl(entityId, notifyChildrenOfLockChangeImpl);
+        };
+
+        notifyChildrenOfLockChange(entityId);
     }
 
     void SetEntityLockState(const AZ::EntityId entityId, const bool locked)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         // when an entity is unlocked, if it was in a locked layer(s), unlock those layers
         if (!locked)
         {
@@ -589,19 +654,13 @@ namespace AzToolsFramework
                 Layers::EditorLayerComponentRequestBus::EventResult(
                     parentLayer, parentId, &Layers::EditorLayerComponentRequestBus::Events::HasLayer);
 
-                if (parentLayer)
+                if (parentLayer && IsEntitySetToBeLocked(parentId))
                 {
-                    bool parentLayerLocked = false;
-                    EditorEntityInfoRequestBus::EventResult(
-                        parentLayerLocked, parentId, &EditorEntityInfoRequestBus::Events::IsJustThisEntityLocked);
-
-                    if (parentLayerLocked)
-                    {
-                        // if a child of a layer has its lock state changed to false, change that layer to no longer be locked
-                        // do this for all layers in the hierarchy (this is because not all entities under these layers
-                        // will be locked so the layer cannot be represented as 'fully' locked)
-                        EditorLockComponentRequestBus::Event(parentId, &EditorLockComponentRequests::SetLocked, false);
-                    }
+                    // if a child of a layer has its lock state changed to false, unlock
+                    // that layer, do this for all layers in the hierarchy
+                    UnlockLayer(parentId);
+                    // even though layer lock state is saved to each layer individually, parents still
+                    // need to be checked recursively so that the entity that was toggled can be unlocked
                 }
 
                 currentEntityId = parentId;
@@ -617,6 +676,8 @@ namespace AzToolsFramework
 
     void ToggleEntityLockState(const AZ::EntityId entityId)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         if (entityId.IsValid())
         {
             bool locked = false;
@@ -627,8 +688,10 @@ namespace AzToolsFramework
 
             if (IsSelected(entityId))
             {
-                // handles the case where we have multiple entities selected but must click one entity
-                // specifically in the outliner, this will apply the lock state to all entities in the selection
+                // handles the case where we have multiple entities selected but
+                // must click one entity specifically in the outliner, this will
+                // apply the lock state to all entities in the selection
+                // (note: shift must be held)
                 EntityIdList selectedEntityIds;
                 ToolsApplicationRequestBus::BroadcastResult(
                     selectedEntityIds, &ToolsApplicationRequests::GetSelectedEntities);
@@ -649,6 +712,8 @@ namespace AzToolsFramework
 
     static void SetEntityVisibilityInternal(const AZ::EntityId entityId, const bool visibility)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         bool layerEntity = false;
         Layers::EditorLayerComponentRequestBus::EventResult(
             layerEntity, entityId, &Layers::EditorLayerComponentRequestBus::Events::HasLayer);
@@ -667,22 +732,71 @@ namespace AzToolsFramework
         }
     }
 
+    // note: must be called on layer entity
+    static void ShowLayer(const AZ::EntityId entityId)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        SetEntityVisibilityInternal(entityId, true);
+
+        // recursive lambda - notify all children of the layer if visibility has changed
+        const auto notifyChildrenOfVisibilityChange =
+            [](const AZ::EntityId entityId)
+        {
+            const auto notifyChildrenOfVisibilityChangeImpl =
+                [](const AZ::EntityId entityId, const auto& notifyChildrenRef) -> void
+            {
+                EntityIdList children;
+                EditorEntityInfoRequestBus::EventResult(
+                    children, entityId, &EditorEntityInfoRequestBus::Events::GetChildren);
+
+                for (auto childId : children)
+                {
+                    notifyChildrenRef(childId, notifyChildrenRef);
+                }
+
+                EditorVisibilityNotificationBus::Event(
+                    entityId, &EditorVisibilityNotificationBus::Events::OnEntityVisibilityChanged,
+                    IsEntitySetToBeVisible(entityId));
+            };
+
+            notifyChildrenOfVisibilityChangeImpl(entityId, notifyChildrenOfVisibilityChangeImpl);
+        };
+
+        notifyChildrenOfVisibilityChange(entityId);
+    }
+
     static void SetEntityVisibilityStateRecursively(
         const AZ::EntityId entityId, const bool visible,
         const AZ::EntityId toggledEntityId, const bool toggledEntityWasLayer)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         if (!entityId.IsValid())
         {
             return;
         }
 
+        // should we notify children of this entity or layer of a visibility change
+        bool notifyChildrenOfLayer = true;
         if (!toggledEntityWasLayer || toggledEntityId == entityId)
         {
             SetEntityVisibilityInternal(entityId, visible);
         }
         else
         {
+            bool layerEntity = false;
+            Layers::EditorLayerComponentRequestBus::EventResult(
+                layerEntity, entityId, &Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
+            // if the layer in question was not visible and we're trying to make
+            // entities visible, do not override the state of the layer and notify
+            // child entities of a change in visibility
             bool oldVisibilityState = IsEntitySetToBeVisible(entityId);
+            if (!oldVisibilityState && layerEntity && visible)
+            {
+                notifyChildrenOfLayer = false;
+            }
 
             bool newVisibilityState = visible ? oldVisibilityState : false;
             EditorVisibilityNotificationBus::Event(
@@ -690,18 +804,23 @@ namespace AzToolsFramework
                 newVisibilityState);
         }
 
-        EntityIdList children;
-        EditorEntityInfoRequestBus::EventResult(
-            children, entityId, &EditorEntityInfoRequestBus::Events::GetChildren);
-
-        for (auto childId : children)
+        if (notifyChildrenOfLayer)
         {
-            SetEntityVisibilityStateRecursively(childId, visible, toggledEntityId, toggledEntityWasLayer);
+            EntityIdList children;
+            EditorEntityInfoRequestBus::EventResult(
+                children, entityId, &EditorEntityInfoRequestBus::Events::GetChildren);
+
+            for (auto childId : children)
+            {
+                SetEntityVisibilityStateRecursively(childId, visible, toggledEntityId, toggledEntityWasLayer);
+            }
         }
     }
 
     void SetEntityVisibility(const AZ::EntityId entityId, const bool visible)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         // when an entity is set to visible, if it was in an invisible layer(s), make that layer visible
         if (visible)
         {
@@ -716,16 +835,13 @@ namespace AzToolsFramework
                 Layers::EditorLayerComponentRequestBus::EventResult(
                     parentLayer, parentId, &Layers::EditorLayerComponentRequestBus::Events::HasLayer);
 
-                if (parentLayer)
+                if (parentLayer && !IsEntitySetToBeVisible(parentId))
                 {
-                    if (!IsEntitySetToBeVisible(parentId))
-                    {
-                        // if a child of a layer has its visibility state changed to true, change
-                        // that layer to be visible, do this for all layers in the hierarchy
-                        SetEntityVisibilityInternal(parentId, true);
-                        // even though layer visibility is saved to each layer individually, parents still
-                        // need to be checked recursively so that the entity that was toggled can become visible
-                    }
+                    // if a child of a layer has its visibility state changed to true, change
+                    // that layer to be visible, do this for all layers in the hierarchy
+                    ShowLayer(parentId);
+                    // even though layer visibility is saved to each layer individually, parents still
+                    // need to be checked recursively so that the entity that was toggled can become visible
                 }
 
                 currentEntityId = parentId;
@@ -741,6 +857,8 @@ namespace AzToolsFramework
 
     void ToggleEntityVisibility(const AZ::EntityId entityId)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         if (entityId.IsValid())
         {
             bool visible = IsEntitySetToBeVisible(entityId);
@@ -749,6 +867,10 @@ namespace AzToolsFramework
 
             if (IsSelected(entityId))
             {
+                // handles the case where we have multiple entities selected but
+                // must click one entity specifically in the outliner, this will
+                // apply the visibility change to all entities in the selection
+                // (note: shift must be held)
                 EntityIdList selectedEntityIds;
                 ToolsApplicationRequestBus::BroadcastResult(
                     selectedEntityIds, &ToolsApplicationRequests::GetSelectedEntities);
@@ -767,8 +889,28 @@ namespace AzToolsFramework
         }
     }
 
+    bool IsEntitySetToBeLocked(const AZ::EntityId entityId)
+    {
+        bool locked = false;
+        EditorLockComponentRequestBus::EventResult(
+            locked, entityId, &EditorLockComponentRequestBus::Events::GetLocked);
+
+        return locked;
+    }
+
+    bool IsEntityLocked(const AZ::EntityId entityId)
+    {
+        bool locked = false;
+        EditorEntityInfoRequestBus::EventResult(
+            locked, entityId, &EditorEntityInfoRequestBus::Events::IsLocked);
+
+        return locked;
+    }
+
     bool IsEntitySetToBeVisible(const AZ::EntityId entityId)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         // Visibility state is tracked in 5 places, see OutlinerListModel::dataForLock for info on 3 of these ways.
         // Visibility's fourth state over lock is the EditorVisibilityRequestBus has two sets of
         // setting and getting functions for visibility. Get/SetVisibilityFlag is what should be used in most cases.
@@ -790,6 +932,15 @@ namespace AzToolsFramework
             EditorVisibilityRequestBus::EventResult(
                 visible, entityId, &EditorVisibilityRequestBus::Events::GetVisibilityFlag);
         }
+
+        return visible;
+    }
+
+    bool IsEntityVisible(const AZ::EntityId entityId)
+    {
+        bool visible = false;
+        EditorEntityInfoRequestBus::EventResult(
+            visible, entityId, &EditorEntityInfoRequestBus::Events::IsVisible);
 
         return visible;
     }

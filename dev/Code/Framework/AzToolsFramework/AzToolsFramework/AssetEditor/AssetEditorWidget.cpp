@@ -213,14 +213,16 @@ namespace AzToolsFramework
 
             m_saveAssetAction = fileMenu->addAction("&Save");
             m_saveAssetAction->setShortcut(QKeySequence::Save);
-            m_saveAssetAction->setEnabled(true);
             connect(m_saveAssetAction, &QAction::triggered, this, &AssetEditorWidget::SaveAsset);
 
             m_saveAsAssetAction = fileMenu->addAction("&Save As");
             m_saveAsAssetAction->setShortcut(QKeySequence::SaveAs);
-            m_saveAsAssetAction->setEnabled(true);
-
             connect(m_saveAsAssetAction, &QAction::triggered, this, &AssetEditorWidget::SaveAssetAs);
+
+            // "Save" and "Save As..." actions are disabled by default,
+            // and they are activated when an asset is created/open
+            m_saveAssetAction->setEnabled(false);
+            m_saveAsAssetAction->setEnabled(false);
 
             QMenu* viewMenu = mainMenu->addMenu(tr("&View"));
 
@@ -277,6 +279,8 @@ namespace AzToolsFramework
             {
                 SetStatusText(Status::assetLoaded);
             }
+
+            UpdateMenusOnAssetOpen();
         }
 
         void AssetEditorWidget::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
@@ -880,6 +884,13 @@ namespace AzToolsFramework
                     }
                 }
             }
+        }
+
+        void AssetEditorWidget::UpdateMenusOnAssetOpen()
+        {
+            // Activate "Save" and "Save As..." actions
+            m_saveAssetAction->setEnabled(true);
+            m_saveAsAssetAction->setEnabled(true);
         }
 
     } // namespace AssetEditor

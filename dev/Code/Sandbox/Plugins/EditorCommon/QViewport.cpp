@@ -299,15 +299,24 @@ bool QViewport::CreateRenderContext()
     {
         return false;
     }
+
+    HWND windowHandle = reinterpret_cast<HWND>(QWidget::winId());
+
+    ERenderType renderType = GetIEditor()->GetEnv()->pRenderer->GetRenderType();
+
     m_creatingRenderContext = true;
     DestroyRenderContext();
-    HWND window = (HWND)QWidget::winId();
-    if (window && GetIEditor()->GetEnv()->pRenderer && !m_renderContextCreated)
+    if (windowHandle && GetIEditor()->GetEnv()->pRenderer && !m_renderContextCreated)
     {
         m_renderContextCreated = true;
 
+        AzFramework::WindowRequestBus::Handler::BusConnect(windowHandle);
+        AzFramework::WindowSystemNotificationBus::Broadcast(&AzFramework::WindowSystemNotificationBus::Handler::OnWindowCreated, windowHandle);
+
+        m_lastHwnd = windowHandle;
+
         StorePreviousContext();
-        GetIEditor()->GetEnv()->pRenderer->CreateContext(window);
+        GetIEditor()->GetEnv()->pRenderer->CreateContext(windowHandle);
         RestorePreviousContext();
 
         m_creatingRenderContext = false;
@@ -321,12 +330,17 @@ void QViewport::DestroyRenderContext()
 {
     if (GetIEditor()->GetEnv()->pRenderer && m_renderContextCreated)
     {
-        HWND window = (HWND)QWidget::winId();
-        if (window != GetIEditor()->GetEnv()->pRenderer->GetHWND())
+        HWND windowHandle = reinterpret_cast<HWND>(QWidget::winId());
+
+        if (windowHandle != GetIEditor()->GetEnv()->pRenderer->GetHWND())
         {
-            GetIEditor()->GetEnv()->pRenderer->DeleteContext(window);
+            GetIEditor()->GetEnv()->pRenderer->DeleteContext(windowHandle);
         }
         m_renderContextCreated = false;
+
+        AzFramework::WindowNotificationBus::Event(windowHandle, &AzFramework::WindowNotificationBus::Handler::OnWindowClosed);
+        AzFramework::WindowRequestBus::Handler::BusDisconnect();
+        m_lastHwnd = 0;
     }
 }
 
@@ -335,7 +349,7 @@ void QViewport::StorePreviousContext()
     SPreviousContext previous;
     previous.width = GetIEditor()->GetEnv()->pRenderer->GetWidth();
     previous.height = GetIEditor()->GetEnv()->pRenderer->GetHeight();
-    previous.window = (HWND)GetIEditor()->GetEnv()->pRenderer->GetCurrentContextHWND();
+    previous.window = reinterpret_cast<HWND>(GetIEditor()->GetEnv()->pRenderer->GetCurrentContextHWND());
     previous.renderCamera = GetIEditor()->GetEnv()->pRenderer->GetCamera();
     previous.systemCamera = GetISystem()->GetViewCamera();
     previous.isMainViewport = GetIEditor()->GetEnv()->pRenderer->IsCurrentContextMainVP();
@@ -351,8 +365,8 @@ void QViewport::SetCurrentContext()
         return;
     }
 
-    HWND window = (HWND)QWidget::winId();
-    GetIEditor()->GetEnv()->pRenderer->SetCurrentContext(window);
+    HWND windowHandle = reinterpret_cast<HWND>(QWidget::winId());
+    GetIEditor()->GetEnv()->pRenderer->SetCurrentContext(windowHandle);
     GetIEditor()->GetEnv()->pRenderer->ChangeViewport(0, 0, m_width, m_height);
     GetIEditor()->GetEnv()->pRenderer->SetCamera(*m_camera);
     GetIEditor()->GetEnv()->pSystem->SetViewCamera(*m_camera);
@@ -439,6 +453,13 @@ void QViewport::Update()
 
     AutoBool updating(&m_updating);
 
+    if (m_resizeWindowEvent)
+    {
+        HWND windowHandle = reinterpret_cast<HWND>(QWidget::winId());
+        AzFramework::WindowNotificationBus::Event(windowHandle, &AzFramework::WindowNotificationBus::Handler::OnWindowResized, m_width, m_height);
+        m_resizeWindowEvent = false;
+    }
+
     if (hasFocus())
     {
         ProcessMouse();
@@ -468,8 +489,36 @@ void QViewport::SetForegroundUpdateMode(bool foregroundUpdate)
     //m_timer->setInterval(foregroundUpdate ? 2 : 50);
 }
 
+CCamera* QViewport::Camera() const 
+{ 
+    return m_camera.get(); 
+}
 
+void QViewport::SetSceneDimensions(const Vec3& size) 
+{ 
+    m_sceneDimensions = size; 
+}
 
+const SViewportSettings& QViewport::GetSettings() const 
+{
+    return *m_settings; 
+}
+
+const SViewportState& QViewport::GetState() const 
+{
+    return *m_state; 
+}
+
+void QViewport::SetSize(const QSize& size)
+{ 
+    m_width = size.width(); 
+    m_height = size.height(); 
+}
+
+float QViewport::GetLastFrameTime() 
+{ 
+    return m_lastFrameTime; 
+}
 
 
 void QViewport::ProcessMouse()
@@ -997,6 +1046,19 @@ void QViewport::GetImageOffscreen(CImageEx& image, const QSize& customSize)
     RestorePreviousContext();
 }
 
+void QViewport::SetWindowTitle(const AZStd::string& title)
+{
+    // Do not support the WindowRequestBus changing the editor window title
+    AZ_UNUSED(title);
+}
+
+AzFramework::WindowSize QViewport::GetClientAreaSize() const
+{
+    const QWidget* window = this->window();
+    QSize windowSize = window->size();
+    return AzFramework::WindowSize(windowSize.width(), windowSize.height());
+}
+
 void QViewport::ResetCamera()
 {
     *m_state = SViewportState();
@@ -1218,6 +1280,12 @@ void QViewport::resizeEvent(QResizeEvent* ev)
 
     m_width = cx;
     m_height = cy;
+
+    // We queue the window resize event in case the windows is hidden.
+    // If the QWidget is hidden, the native windows does not resize and the
+    // swapchain may have the incorrect size. We need to wait
+    // until it's visible to trigger the resize event.
+    m_resizeWindowEvent = true;
 
     GetIEditor()->GetEnv()->pSystem->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_RESIZE, cx, cy);
     SignalUpdate();

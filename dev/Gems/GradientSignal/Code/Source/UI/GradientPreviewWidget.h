@@ -31,6 +31,7 @@ namespace GradientSignal
         void resizeEvent(QResizeEvent* resizeEvent) override;
 
         void OnUpdate() override;
+        QSize GetPreviewSize() const override;
     };
 
 } //namespace GradientSignal

@@ -55,7 +55,7 @@ namespace GraphCanvas
         {
         }
 
-        const AZStd::string& GetDisplayString() const
+        const AZStd::string GetDisplayString() const
         {
             if (m_dirtyText)
             {

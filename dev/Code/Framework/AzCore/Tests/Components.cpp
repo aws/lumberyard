@@ -90,7 +90,8 @@ namespace UnitTest
     public:
         Components()
             : AllocatorsFixture()
-        {}
+        {
+        }
     };
 
     //////////////////////////////////////////////////////////////////////////
@@ -1167,7 +1168,8 @@ namespace UnitTest
         AZ_TEST_ASSERT(myLocalUserSettings == storedLocalSettings);
         AZ_TEST_ASSERT(storedLocalSettings->m_intOption1 == 20);
 
-        // Deactivating should trigger saving of user options.
+        // Deactivating will not trigger saving of user options, saving must be performed manually.
+        UserSettingsComponentRequestBus::Broadcast(&UserSettingsComponentRequests::Save);
         systemEntity->Deactivate();
 
         // Deactivate() should have cleared all the registered user options

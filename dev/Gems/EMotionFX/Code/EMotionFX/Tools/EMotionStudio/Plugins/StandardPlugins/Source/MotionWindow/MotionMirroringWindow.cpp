@@ -22,6 +22,7 @@
 #include <EMotionFX/Source/MotionSystem.h>
 #include <EMotionFX/Source/ActorManager.h>
 #include <EMotionFX/CommandSystem/Source/MotionCommands.h>
+#include <MCore/Source/LogManager.h>
 
 
 namespace EMStudio

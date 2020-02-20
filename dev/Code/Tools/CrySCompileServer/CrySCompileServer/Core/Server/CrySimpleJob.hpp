@@ -16,6 +16,8 @@
 
 #include <Core/Common.h>
 #include <vector>
+#include <string>
+#include <AzCore/std/parallel/atomic.h>
 
 class TiXmlElement;
 
@@ -45,7 +47,8 @@ class CCrySimpleJob
 {
     ECrySimpleJobState      m_State;
     uint32_t                            m_RequestIP;
-    static volatile AtomicCountType m_GlobalRequestNumber;
+    static AZStd::atomic_long m_GlobalRequestNumber;
+    
 
 protected:
     virtual bool                    ExecuteCommand(const std::string& rCmd, std::string& outError);
@@ -64,7 +67,7 @@ public:
     }
     ECrySimpleJobState      State() const { return m_State; }
     const uint32_t&             RequestIP() const { return m_RequestIP; }
-    static volatile AtomicCountType GlobalRequestNumber() { return m_GlobalRequestNumber; }
+    static long GlobalRequestNumber() { return m_GlobalRequestNumber; }
 };
 
 #endif

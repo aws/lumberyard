@@ -68,7 +68,7 @@ namespace EMStudio
         if (!m_attributes.empty())
         {
             MCore::AttributeVector3* attribute = static_cast<MCore::AttributeVector3*>(m_attributes[0]);
-            m_currentValue = AZ::Vector3(attribute->GetValue().GetX(), attribute->GetValue().GetY(), attribute->GetValue().GetZ());
+            m_currentValue = attribute->GetValue();
         }
         else
         {
@@ -99,7 +99,7 @@ namespace EMStudio
         for (MCore::Attribute* attribute : m_attributes)
         {
             MCore::AttributeVector3* typedAttribute = static_cast<MCore::AttributeVector3*>(attribute);
-            typedAttribute->SetValue(AZ::PackedVector3f(m_currentValue.GetX(), m_currentValue.GetY(), m_currentValue.GetZ()));
+            typedAttribute->SetValue(m_currentValue);
         }
     }
 }

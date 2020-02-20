@@ -273,8 +273,8 @@ namespace ZipDir
         void OnNewFileData(void* pUncompressed, unsigned nSize, unsigned nCompressedSize, unsigned nCompressionMethod, bool bContinuous);
 
         uint64 GetModificationTime();
-        void SetFromFileTimeNTFS(__int64 timestamp);
-        bool CompareFileTimeNTFS(__int64 timestamp);
+        void SetFromFileTimeNTFS(int64 timestamp);
+        bool CompareFileTimeNTFS(int64 timestamp);
     };
 
     // tries to refresh the file entry from the given file (reads fromthere if needed)

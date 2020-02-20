@@ -13,7 +13,7 @@
 
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/RTTI/RTTI.h>
-#include <AzCore/Rtti/ReflectContext.h>
+#include <AzCore/RTTI/ReflectContext.h>
 #include <AzFramework/Asset/GenericAssetHandler.h>
 
 namespace AZ

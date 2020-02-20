@@ -20,7 +20,6 @@ import glob
 import importlib
 import json
 import os
-import signal
 import subprocess
 import sys
 import threading
@@ -155,6 +154,22 @@ unit_test_suites = {
             top_level_directory_path = path_utils.resource_manager_v1_path(),
             search_start_directory_path = path_utils.resource_manager_v1_test_path(),
             pattern='test_unit_lmbr_aws.py'
+        )
+    },
+
+    # Unit tests for all other 'common' components aside from the test_unit_common_code_import.py
+    # Note: Using _rm_<file_name_under_test>.py so they can be matched with a pattern because unittest has no mechanism to exclude
+    # test_unit_lmbr_aws.py and test_unit_common_code_import.py which are special case tests
+    'CloudGemFramework ResourceManagerCode': {
+        'group': 1,
+        'environment': {
+            'PYTHONPATH': resource_manager_v1_test_python_path(),
+            'LYMETRICS': 'TEST'
+        },
+        'command': python_unittest_command(
+            top_level_directory_path=path_utils.resource_manager_v1_path(),
+            search_start_directory_path=path_utils.resource_manager_v1_test_path(),
+            pattern='test_unit_rm_*.py'
         )
     },
 
@@ -385,7 +400,7 @@ integration_test_suites = {
         )
     },
 
-     'ServiceApi': {
+    'ServiceApi': {
          'group': 3,
          'environment': {
              'PYTHONPATH': resource_manager_v1_test_python_path(
@@ -629,7 +644,6 @@ def main():
 
 
 def list_test_suites(args):
-
     suites = get_all_filtered_test_suites_in_order(args)
 
     for suite in suites:
@@ -645,10 +659,10 @@ def list_test_suites(args):
         [
             {'Field': 'name', 'Heading': 'Test Name'},
             {'Field': 'type', 'Heading': 'Type'},
-            {'Field': 'group', 'Heading': 'Group', 'Formatter': group_formatter },
+            {'Field': 'group', 'Heading': 'Group', 'Formatter': group_formatter},
             {'Field': 'full_command_line', 'Heading': 'Command'}
         ],
-        sort_column_count = 0 # list is already sorted by order run
+        sort_column_count=0  # list is already sorted by order run
     )
 
     return 0
@@ -705,7 +719,7 @@ def run_test_suites_in_parallel(args):
                     print("\tLast 50 lines of the log.")
                     lines = tail(file, 50)
                     for line in lines:
-                        print("\t\t",line.rstrip())
+                        print("\t\t", line.rstrip())
 
         exit_code = 1
     else:
@@ -815,7 +829,7 @@ def run_test_suite_list_in_parallel(args, suites, results_directory_path, type):
                     env=process_suite_environment(suite)
                 )
 
-                # Piping stdin and closing it causes the process to exit on Ctrl+C instead of promptig
+                # Piping stdin and closing it causes the process to exit on Ctrl+C instead of prompting
                 # to terminate the batch job (at least I think that is what is happening... it made
                 # everything work as desired).
                 popen.stdin.close()
@@ -872,8 +886,7 @@ def run_test_suite_list_in_parallel(args, suites, results_directory_path, type):
                 wait_count[0] = wait_count[0] - 1
                 display_wait_count(wait_count[0], type)
 
-
-        thread = threading.Thread(target=worker, args=[suite, output_file_path], name = suite['title'])
+        thread = threading.Thread(target=worker, args=[suite, output_file_path], name=suite['title'])
         thread.start()
         threads.append(thread)
 
@@ -1074,8 +1087,7 @@ def filter_includes(args, title):
 
 
 def verify_required_libs(suites):
-
-    libs = set(['mock'])
+    libs = {'mock'}
 
     for suite in suites:
         for lib in suite.get('required_libs', []):
@@ -1102,7 +1114,7 @@ def get_test_results_directory_path(args):
 
 def output_table(items, specs, sort_column_count = 1, indent = False, first_sort_column=0):
 
-    ''' Displays a table containing data from items formatted as defined by specs.
+    """ Displays a table containing data from items formatted as defined by specs.
 
     items is an array of dict. The properties shown are determined by specs.
 
@@ -1121,7 +1133,7 @@ def output_table(items, specs, sort_column_count = 1, indent = False, first_sort
     is specified by the sort_column_count parameter (which defaults to 1, causing the the table to
     be sorted by the first column only).
 
-    '''
+    """
 
     def default_formatter(v):
         return str(v) if v is not None else ''

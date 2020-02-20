@@ -327,7 +327,7 @@ namespace AzToolsFramework
     ProcessWatcher::ProcessWatcher()
         : m_pCommunicator(nullptr)
     {
-        m_pWatcherData = aznew ProcessData {};
+        m_pWatcherData = AZStd::make_unique<ProcessData>();
     }
 
     ProcessWatcher::~ProcessWatcher()
@@ -338,8 +338,6 @@ namespace AzToolsFramework
         }
 
         delete m_pCommunicator;
-        delete m_pWatcherData;
-        m_pWatcherData = nullptr;
     }
 
     bool ProcessWatcher::IsProcessRunning(AZ::u32* outExitCode)
@@ -354,8 +352,10 @@ namespace AzToolsFramework
         return !m_pWatcherData->m_childProcessIsDone;
     }
 
-    bool ProcessWatcher::WaitForProcessToExit(AZ::u32 waitTimeInSeconds)
+    bool ProcessWatcher::WaitForProcessToExit(AZ::u32 waitTimeInSeconds, AZ::u32* outExitCode /*= nullptr*/)
     {
+        AZ_UNUSED(outExitCode);
+
         if (IsChildProcessDone(m_pWatcherData->m_childProcessId))
         {
             // Already exited
@@ -369,11 +369,16 @@ namespace AzToolsFramework
         while (((currentTime - startTime) < waitTimeInSeconds) && !isProcessDone)
         {
             usleep(100);
-            int result = waitpid(m_pWatcherData->m_childProcessId, NULL, WNOHANG);
+            int wait_status = 0;
+            int result = waitpid(m_pWatcherData->m_childProcessId, &wait_status, WNOHANG);
             if (result == m_pWatcherData->m_childProcessId)
             {
                 isProcessDone = true;
                 m_pWatcherData->m_childProcessIsDone = true;
+                if (outExitCode)
+                {
+                    *outExitCode = static_cast<AZ::u32>(WEXITSTATUS(wait_status));
+                }
             }
             currentTime = time(0);
         }

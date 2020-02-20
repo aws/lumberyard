@@ -21,6 +21,9 @@
             "PropertyTreeEditorTests.cpp",
             "PythonBindingTests.cpp",
             "Slice.cpp",
+            "SliceUpgradeTestsData.h",
+            "SliceUpgradeTests.cpp",
+            "ThumbnailerTests.cpp",
             "UndoStack.cpp"
         ],
         "Entity": [

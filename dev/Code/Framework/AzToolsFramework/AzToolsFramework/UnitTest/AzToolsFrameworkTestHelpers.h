@@ -146,6 +146,10 @@ namespace UnitTest
     /// Optional second parameter of Entity pointer if required.
     AZ::EntityId CreateDefaultEditorEntity(const char* name, AZ::Entity** outEntity = nullptr);
 
+    /// Create a Layer Entity as it would appear in the Editor.
+    /// Optional second parameter of Entity pointer if required.
+    AZ::EntityId CreateEditorLayerEntity(const char* name, AZ::Entity** outEntity = nullptr);
+
     using SliceAssets = AZStd::unordered_map<AZ::Data::AssetId, AZ::Data::Asset<AZ::SliceAsset>>;
 
     /// This function transfers the ownership of all the entity pointers - do not delete or use them afterwards.

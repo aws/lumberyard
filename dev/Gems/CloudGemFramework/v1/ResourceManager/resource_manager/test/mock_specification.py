@@ -72,9 +72,6 @@ def ok_project_stack(permissions = {}):
             'ProjectAdmin': {
                 'ResourceType': 'AWS::IAM::Role'
             },
-            'ProjectAdminRestrictions': {
-                'ResourceType': 'AWS::IAM::ManagedPolicy'
-            },
             'ProjectOwner': {
                 'ResourceType': 'AWS::IAM::Role'
             },

@@ -1863,6 +1863,7 @@ namespace AZ
         class AZStdString
             : public SerializeContext::IDataSerializer
         {
+        public:
             /// Convert binary data to text
             size_t DataToText(IO::GenericStream& in, IO::GenericStream& out, bool isDataBigEndian /*= false*/) override
             {
@@ -1922,6 +1923,7 @@ namespace AZ
         class AZBinaryData
             : public SerializeContext::IDataSerializer
         {
+        public:
             size_t DataToText(IO::GenericStream& in, IO::GenericStream& out, bool isDataBigEndian /*= false*/) override
             {
                 (void)isDataBigEndian;

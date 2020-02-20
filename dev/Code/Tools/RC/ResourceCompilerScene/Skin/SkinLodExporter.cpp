@@ -95,7 +95,7 @@ namespace AZ
                         static const AZ::Data::AssetType skinnedMeshLodsAssetType("{58E5824F-C27B-46FD-AD48-865BA41B7A51}");
                         // Using the same guid as the parent group/cgf as this needs to be a lod of that cgf.
                         // Setting the lod to index+1 as 0 means the base mesh and 1-6 are lod levels 0-5.
-                        context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), skinnedMeshLodsAssetType, index + 1);
+                        context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), skinnedMeshLodsAssetType, index + 1, AZStd::nullopt);
                     }
                     else
                     {

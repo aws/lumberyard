@@ -489,12 +489,17 @@ namespace EMotionFX
 
         for (const auto& collider : colliders)
         {
-            const AZ::Vector3& worldScale = actorInstance->GetTransformData()->GetCurrentPose()->GetModelSpaceTransform(nodeIndex).mScale;
-            const AZ::Transform azColliderOffsetTransform = AZ::Transform::CreateFromQuaternionAndTranslation(collider.first->m_rotation, collider.first->m_position);
+            #ifndef EMFX_SCALE_DISABLED
+                const AZ::Vector3& worldScale = actorInstance->GetTransformData()->GetCurrentPose()->GetModelSpaceTransform(nodeIndex).mScale;
+            #else
+                const AZ::Vector3 worldScale = AZ::Vector3::CreateOne();
+            #endif
+
+            const Transform colliderOffsetTransform(collider.first->m_position, collider.first->m_rotation);
             const Transform& actorInstanceGlobalTransform = actorInstance->GetWorldSpaceTransform();
             const Transform& emfxNodeGlobalTransform = actorInstance->GetTransformData()->GetCurrentPose()->GetModelSpaceTransform(nodeIndex);
 
-            const Transform emfxColliderGlobalTransformNoScale = MCore::AzTransformToEmfxTransform(azColliderOffsetTransform) * emfxNodeGlobalTransform * actorInstanceGlobalTransform;
+            const Transform emfxColliderGlobalTransformNoScale = colliderOffsetTransform * emfxNodeGlobalTransform * actorInstanceGlobalTransform;
 
             const AZ::TypeId colliderType = collider.second->RTTI_GetType();
             if (colliderType == azrtti_typeid<Physics::SphereShapeConfiguration>())
@@ -504,7 +509,7 @@ namespace EMotionFX
                 // LY Physics scaling rules: The maximum component from the node scale will be multiplied by the radius of the sphere.
                 const float radius = sphere->m_radius * MCore::Max3<float>(static_cast<float>(worldScale.GetX()), static_cast<float>(worldScale.GetY()), static_cast<float>(worldScale.GetZ()));
 
-                renderUtil->RenderWireframeSphere(radius, emfxColliderGlobalTransformNoScale.ToMatrix(), colliderColor);
+                renderUtil->RenderWireframeSphere(radius, emfxColliderGlobalTransformNoScale.ToAZTransform(), colliderColor);
             }
             else if (colliderType == azrtti_typeid<Physics::CapsuleShapeConfiguration>())
             {
@@ -514,7 +519,7 @@ namespace EMotionFX
                 const float radius = capsule->m_radius * MCore::Max<float>(static_cast<float>(worldScale.GetX()), static_cast<float>(worldScale.GetY()));
                 const float height = capsule->m_height * static_cast<float>(worldScale.GetZ());
 
-                renderUtil->RenderWireframeCapsule(radius, height, emfxColliderGlobalTransformNoScale.ToMatrix(), colliderColor);
+                renderUtil->RenderWireframeCapsule(radius, height, emfxColliderGlobalTransformNoScale.ToAZTransform(), colliderColor);
             }
             else if (colliderType == azrtti_typeid<Physics::BoxShapeConfiguration>())
             {
@@ -524,7 +529,7 @@ namespace EMotionFX
                 AZ::Vector3 dimensions = box->m_dimensions;
                 dimensions *= worldScale;
 
-                renderUtil->RenderWireframeBox(dimensions, emfxColliderGlobalTransformNoScale.ToMatrix(), colliderColor);
+                renderUtil->RenderWireframeBox(dimensions, emfxColliderGlobalTransformNoScale.ToAZTransform(), colliderColor);
             }
         }
     }

@@ -79,6 +79,7 @@ AZ_PUSH_DISABLE_WARNING(4244 4251 4800, "-Wunknown-warning-option") // 4244: con
 #include <QDragEnterEvent>
 #include <QDragMoveEvent>
 #include <QGraphicsEffect>
+#include <QHeaderView>
 #include <QInputDialog>
 #include <QLabel>
 #include <QListView>

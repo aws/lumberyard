@@ -74,17 +74,17 @@ namespace EMotionFX
             AZStd::shared_ptr<AZ::SceneData::GraphData::MeshData> meshData = AZStd::make_shared<AZ::SceneData::GraphData::MeshData>();
             AZStd::vector<AZ::Vector3> unmorphedVerticies
             {
-                AZ::Vector3(0, 0, 0),
-                AZ::Vector3(1, 0, 0),
-                AZ::Vector3(0, 1, 0)
+                AZ::Vector3(0.0f, 0.0f, 0.0f),
+                AZ::Vector3(1.0f, 0.0f, 0.0f),
+                AZ::Vector3(0.0f, 1.0f, 0.0f)
             };
             for (const AZ::Vector3& vertex : unmorphedVerticies)
             {
                 meshData->AddPosition(vertex);
             }
-            meshData->AddNormal(AZ::Vector3(0, 0, 1));
-            meshData->AddNormal(AZ::Vector3(0, 0, 1));
-            meshData->AddNormal(AZ::Vector3(0, 0, 1));
+            meshData->AddNormal(AZ::Vector3(0.0f, 0.0f, 1.0f));
+            meshData->AddNormal(AZ::Vector3(0.0f, 0.0f, 1.0f));
+            meshData->AddNormal(AZ::Vector3(0.0f, 0.0f, 1.0f));
             meshData->SetVertexIndexToControlPointIndexMap(0, 0);
             meshData->SetVertexIndexToControlPointIndexMap(1, 1);
             meshData->SetVertexIndexToControlPointIndexMap(2, 2);
@@ -96,15 +96,15 @@ namespace EMotionFX
             {{
                 {
                     // Morph target 1
-                    AZ::Vector3(0, 0, 0),
-                    AZ::Vector3(1, 0, 1), // this one is different
-                    AZ::Vector3(0, 1, 0)
+                    AZ::Vector3(0.0f, 0.0f, 0.0f),
+                    AZ::Vector3(1.0f, 0.0f, 1.0f), // this one is different
+                    AZ::Vector3(0.0f, 1.0f, 0.0f)
                 },
                 {
                     // Morph target 2
-                    AZ::Vector3(0, 0, 0),
-                    AZ::Vector3(1, 0, 0),
-                    AZ::Vector3(0, 1, 1)  // this one is different
+                    AZ::Vector3(0.0f, 0.0f, 0.0f),
+                    AZ::Vector3(1.0f, 0.0f, 0.0f),
+                    AZ::Vector3(0.0f, 1.0f, 1.0f)  // this one is different
                 },
             }};
             const size_t morphTargetCount = morphedVertices.size();
@@ -115,7 +115,7 @@ namespace EMotionFX
                 const uint vertexCount = static_cast<uint>(verticesForThisMorph.size());
                 for (uint vertexIndex = 0; vertexIndex < vertexCount; ++vertexIndex)
                 {
-                    blendShapeData->AddVertex(verticesForThisMorph.at(vertexIndex), /*normal=*/AZ::Vector3(0, 0, 1));
+                    blendShapeData->AddVertex(verticesForThisMorph.at(vertexIndex), /*normal=*/AZ::Vector3(0.0f, 0.0f, 1.0f));
                     blendShapeData->SetVertexIndexToControlPointIndexMap(vertexIndex, vertexIndex);
                 }
                 blendShapeData->AddFace({{0, 1, 2}});
@@ -222,7 +222,7 @@ namespace EMotionFX
             const AZ::SceneAPI::Containers::SceneGraph& graph = m_scene->GetGraph();
 
             // Verify that the unmorphed vertices are what we expect
-            const AZ::PackedVector3<float> *const positions = static_cast<AZ::PackedVector3f*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
+            const AZ::Vector3* const positions = static_cast<AZ::Vector3*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
             AZStd::vector<AZ::Vector3> gotUnmorphedVertices;
             uint32 numVertices = mesh->GetNumVertices();
             for (uint32 vertexNum = 0; vertexNum < numVertices; ++vertexNum)
@@ -251,7 +251,7 @@ namespace EMotionFX
             actorInstance->UpdateTransformations(0.0f, true);
             actorInstance->UpdateMeshDeformers(0.0f);
 
-            const AZ::PackedVector3<float> *const morphedPositions = static_cast<AZ::PackedVector3f*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
+            const AZ::Vector3* const morphedPositions = static_cast<AZ::Vector3*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
             AZStd::vector<AZ::Vector3> gotMorphedVertices;
             numVertices = mesh->GetNumVertices();
             for (uint32 vertexNum = 0; vertexNum < numVertices; ++vertexNum)

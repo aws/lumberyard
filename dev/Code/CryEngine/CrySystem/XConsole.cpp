@@ -496,7 +496,7 @@ void CXConsole::Init(ISystem* pSystem)
     AzFramework::InputChannelEventListener::Connect();
     AzFramework::InputTextEventListener::Connect();
 
-#if defined(_RELEASE)
+#if defined(_RELEASE) && !defined(PERFORMANCE_BUILD)
     static const int kDeactivateConsoleDefault = 1;
 #else
     static const int kDeactivateConsoleDefault = 0;

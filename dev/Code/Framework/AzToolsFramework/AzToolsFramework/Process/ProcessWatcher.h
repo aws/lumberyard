@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/base.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzToolsFramework/Process/ProcessCommon_fwd.h>
@@ -79,7 +80,7 @@ namespace AzToolsFramework
         bool IsProcessRunning(AZ::u32* outExitCode = nullptr);
 
         // Wait for process to exit, waitTime is in seconds, returns true if process exited, false if still running
-        bool WaitForProcessToExit(AZ::u32 waitTimeInSeconds);
+        bool WaitForProcessToExit(AZ::u32 waitTimeInSeconds, AZ::u32* outExitCode = nullptr);
 
         // Terminate child process with a given exit code (if still running)
         void TerminateProcess(AZ::u32 exitCode);
@@ -101,7 +102,7 @@ namespace AzToolsFramework
         ProcessWatcher(const ProcessWatcher&) = delete;
         ProcessWatcher& operator= (const ProcessWatcher&) = delete;
 
-        ProcessData* m_pWatcherData;
+        AZStd::unique_ptr<ProcessData>  m_pWatcherData;
         ProcessCommunicator* m_pCommunicator;
         ProcessCommunicator* m_pChildCommunicator;
     };

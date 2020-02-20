@@ -101,6 +101,7 @@
 #include <QThread>
 
 #include "ActionManager.h"
+#include "Util/ModalWindowDismisser.h"
 
 static const char defaultFileExtension[] = ".ly";
 static const char oldFileExtension[] = ".cry";
@@ -391,6 +392,7 @@ CGameEngine::CGameEngine()
     , m_bIgnoreUpdates(false)
     , m_pEditorGame(0)
     , m_ePendingGameMode(ePGM_NotPending)
+    , m_modalWindowDismisser(nullptr)
 {
     m_pISystem = NULL;
     m_pNavigation = 0;
@@ -573,10 +575,15 @@ AZ::Outcome<void, AZStd::string> CGameEngine::Init(
     if (sInCmdLine)
     {
         azstrncpy(sip.szSystemCmdLine, AZ_COMMAND_LINE_LEN, sInCmdLine, AZ_COMMAND_LINE_LEN);
-        if (strstr(sInCmdLine, "-export") || strstr(sInCmdLine, "/export"))
+        if (strstr(sInCmdLine, "-export") || strstr(sInCmdLine, "/export") || strstr(sInCmdLine, "-autotest_mode"))
         {
             sip.bUnattendedMode = true;
         }
+    }
+
+    if (sip.bUnattendedMode)
+    {
+        m_modalWindowDismisser = AZStd::make_unique<ModalWindowDismisser>();
     }
 
     if (bShaderCacheGen)

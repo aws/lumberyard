@@ -234,12 +234,6 @@ HRESULT CCryDXGLSwapChain::Present(UINT SyncInterval, UINT Flags)
     pContext->Release();
     [m_Drawable release];
     m_Drawable = nil;
-
-#ifndef _RELEASE
-    //leave a hint for the graphics debugger.
-    id<MTLCommandQueue> mtlCommandQueue = pDevice->GetMetalCommandQueue();
-    [mtlCommandQueue insertDebugCaptureBoundary]; //This is depricated past 10.13 on macos
-#endif
     
     {
         ID3D11DeviceContext* pContext;

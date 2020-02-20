@@ -89,7 +89,7 @@ namespace AZ
         void FileRequest::CreateWait(StreamStackEntry* owner, FileRequest* parent)
         {
             AZ_Assert(parent, "A parent is needed to create a read operation with FileRequest.");
-            AZ_Assert(m_operation == Operation::None, "Attempting to set FileRequest to 'Read', but another task was already assigned.");
+            AZ_Assert(m_operation == Operation::None, "Attempting to set FileRequest to 'Wait', but another task was already assigned.");
             m_operation = Operation::Wait;
             m_parent = parent;
             m_owner = owner;
@@ -200,6 +200,8 @@ namespace AZ
                 reinterpret_cast<CompressedReadData*>(m_payload)->~CompressedReadData();
                 break;
             case Operation::Wait:
+                break;
+            case Operation::Cancel:
                 reinterpret_cast<CancelData*>(m_payload)->~CancelData();
                 break;
             default:

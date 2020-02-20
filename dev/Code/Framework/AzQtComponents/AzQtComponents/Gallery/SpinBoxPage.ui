@@ -119,24 +119,6 @@
        </item>
        <item row="1" column="1">
         <widget class="AzQtComponents::SpinBox" name="filledInSpinBox">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="minimumSize">
-          <size>
-           <width>0</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>62</width>
-           <height>16777215</height>
-          </size>
-         </property>
          <property name="maximum">
           <number>1024</number>
          </property>
@@ -171,6 +153,44 @@
        <item row="3" column="1">
         <widget class="AzQtComponents::SpinBox" name="errorSpinBox"/>
        </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="label_7">
+         <property name="text">
+          <string>Vector input (pure number)</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="AzQtComponents::DoubleVectorInput" name="vectorInputX"/>
+       </item>
+       <item row="5" column="2">
+        <widget class="AzQtComponents::DoubleVectorInput" name="vectorInputY"/>
+       </item>
+       <item row="5" column="3">
+        <widget class="AzQtComponents::DoubleVectorInput" name="vectorInputZ"/>
+       </item>
+       <item row="6" column="0">
+        <widget class="QLabel" name="label_8">
+         <property name="text">
+          <string>Vector input (meters)</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="AzQtComponents::DoubleVectorInput" name="metersVectorInputX"/>
+       </item>
+       <item row="6" column="2">
+        <widget class="AzQtComponents::DoubleVectorInput" name="metersVectorInputY"/>
+       </item>
+       <item row="6" column="3">
+        <widget class="AzQtComponents::DoubleVectorInput" name="metersVectorInputZ"/>
+       </item>
       </layout>
      </item>
      <item>
@@ -195,6 +215,11 @@
    <class>AzQtComponents::DoubleSpinBox</class>
    <extends>QDoubleSpinBox</extends>
    <header location="global">AzQtComponents/Components/Widgets/SpinBox.h</header>
+  </customwidget>
+  <customwidget>
+    <class>AzQtComponents::DoubleVectorInput</class>
+    <extends>AzQtComponents::DoubleSpinBox</extends>
+    <header location="global">AzQtComponents/Components/Widgets/VectorInput.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

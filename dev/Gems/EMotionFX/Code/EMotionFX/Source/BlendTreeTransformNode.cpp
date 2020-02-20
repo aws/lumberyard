@@ -23,6 +23,7 @@
 #include <EMotionFX/Source/BlendTreeTransformNode.h>
 #include <EMotionFX/Source/Node.h>
 #include <EMotionFX/Source/EMotionFXManager.h>
+#include <MCore/Source/AzCoreConversions.h>
 
 
 namespace EMotionFX
@@ -156,7 +157,9 @@ namespace EMotionFX
             OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_ROTATE_AMOUNT));
             const float rotateFactor = MCore::Clamp<float>(GetInputNumberAsFloat(animGraphInstance, INPUTPORT_ROTATE_AMOUNT), 0.0f, 1.0f);
             const AZ::Vector3 newAngles = MCore::LinearInterpolate<AZ::Vector3>(m_minRotation, m_maxRotation, rotateFactor);
-            outputTransform.mRotation = inputTransform.mRotation * MCore::Quaternion(MCore::Math::DegreesToRadians(newAngles.GetX()), MCore::Math::DegreesToRadians(newAngles.GetY()), MCore::Math::DegreesToRadians(newAngles.GetZ()));
+            outputTransform.mRotation = inputTransform.mRotation * MCore::AzEulerAnglesToAzQuat(MCore::Math::DegreesToRadians(newAngles.GetX()), 
+                MCore::Math::DegreesToRadians(newAngles.GetY()), 
+                MCore::Math::DegreesToRadians(newAngles.GetZ()));
         }
 
         // process the translation

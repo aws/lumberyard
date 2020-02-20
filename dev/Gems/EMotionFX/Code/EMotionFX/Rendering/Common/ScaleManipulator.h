@@ -14,7 +14,6 @@
 
 // include the Core system
 #include <MCore/Source/Vector.h>
-#include <MCore/Source/Matrix4.h>
 #include <MCore/Source/Frustum.h>
 #include <MCore/Source/Ray.h>
 #include "MCommonConfig.h"

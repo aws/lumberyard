@@ -115,6 +115,7 @@ public:
 
     int rowCount(const QModelIndex& parent = QModelIndex()) const override
     {
+#ifdef EDITOR_PCDEBUGCODE
         if (!parent.isValid())
         {
             if (m_pInstance_SKEL)
@@ -134,6 +135,9 @@ public:
             }
         }
         return 0;
+#else
+        return 0;
+#endif // EDITOR_PCDEBUGCODE
     }
 
     int columnCount(const QModelIndex& parent = QModelIndex()) const override
@@ -167,6 +171,7 @@ public:
 
     QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override
     {
+#ifdef EDITOR_PCDEBUGCODE
         if (!index.isValid() || index.row() >= rowCount(index.parent()) || index.column() >= columnCount(index.parent()))
         {
             return QVariant();
@@ -257,6 +262,9 @@ public:
             }
         }
         return {};
+#else
+        return QVariant();
+#endif // EDITOR_PCDEBUGCODE
     }
 
     QString GenerateToolTips(int row) const;
@@ -547,6 +555,7 @@ bool AnimationBrowserModel::LoadAndCombineTrueColorImages(QVector<QPixmap>& imag
 //////////////////////////////////////////////////////////////////////////
 QPixmap AnimationBrowserModel::GetAnimIcon(int nAnimId) const
 {
+#ifdef EDITOR_PCDEBUGCODE
     if (!m_pInstance_SKEL)
     {
         return QPixmap();
@@ -704,8 +713,10 @@ QPixmap AnimationBrowserModel::GetAnimIcon(int nAnimId) const
         + typeId[4] * typeSize[5]
         + typeId[5];
 
-
     return m_imageList.at(iconId + 1);     // skip the first 64x16 "missing icon"
+#else
+        return QPixmap();
+#endif // EDITOR_PCDEBUGCODE
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -852,6 +863,7 @@ void CAnimationBrowser::OnSelectCharacters()
 
 QString AnimationBrowserModel::GenerateToolTips(int row) const
 {
+#ifdef EDITOR_PCDEBUGCODE
     if (!m_pInstance_SKEL)
     {
         return QString();
@@ -920,6 +932,9 @@ QString AnimationBrowserModel::GenerateToolTips(int row) const
     }
 
     return text;
+#else
+    return QString("Not supported on Linux");
+#endif // EDITOR_PCDEBUGCODE
 }
 
 void CAnimationBrowser::SetModel_SKEL(ICharacterInstance* pSkelInstance)
@@ -979,6 +994,7 @@ void CAnimationBrowser::SetModel_SKIN(IAttachmentSkin* pAttachmentSkin)
 
 void CAnimationBrowser::ExportCAF2HTR(const string name)
 {
+#ifdef EDITOR_PCDEBUGCODE
     const QString path = QFileDialog::getSaveFileName(this, QString(), QString(), tr("HTR (*.htr)"));
 
     if (path.isEmpty())
@@ -990,12 +1006,19 @@ void CAnimationBrowser::ExportCAF2HTR(const string name)
 
     ISkeletonAnim* pISkeletonAnim = m_pInstance_SKEL->GetISkeletonAnim();
     pISkeletonAnim->ExportHTRAndICAF(name.c_str(), dirName.c_str());
+#else
+    AZ_UNUSED(name)
+#endif // EDITOR_PCDEBUGCODE
 }
 
 void CAnimationBrowser::ExportVGrid(const string name)
 {
+#ifdef EDITOR_PCDEBUGCODE
     ISkeletonAnim* pISkeletonAnim = m_pInstance_SKEL->GetISkeletonAnim();
     pISkeletonAnim->ExportVGrid(name.c_str());
+#else
+    AZ_UNUSED(name)
+#endif // EDITOR_PCDEBUGCODE
 }
 
 void CAnimationBrowser::RegenerateAimGrid(const string name)
@@ -1022,9 +1045,10 @@ void CAnimationBrowser::RegenerateAimGrid(const string name)
         currentAnimations.push_back(animationName);
     }
 
+#ifdef EDITOR_PCDEBUGCODE
     m_pInstance_SKEL->ReloadCHRPARAMS();
     pAnimations->RebuildAimHeader(name.c_str(), &m_pInstance_SKEL->GetIDefaultSkeleton());
-
+#endif // EDITOR_PCDEBUGCODE
     assert(currentAnimations.size() == ISkeletonAnim::LayerCount);
     for (uint32 i = 0; i < ISkeletonAnim::LayerCount; ++i)
     {

@@ -14,9 +14,11 @@
 #include <AzQtComponents/AzQtComponentsAPI.h>
 
 #include <QPointer>
+#include <QStyle>
 
 class QSettings;
 class QWidget;
+class QAbstractScrollArea;
 
 namespace AzQtComponents
 {
@@ -34,8 +36,16 @@ namespace AzQtComponents
     class AZ_QT_COMPONENTS_API ScrollBar
     {
     public:
+
+        enum class ScrollBarMode
+        {
+            AlwaysShow = 0,
+            ShowOnHover
+        };
+
         struct Config
         {
+            ScrollBarMode defaultMode;
         };
 
         /*!
@@ -48,6 +58,8 @@ namespace AzQtComponents
         */
         static Config defaultConfig();
 
+        static void setDisplayMode(QAbstractScrollArea* scrollArea, ScrollBarMode mode);
+
     private:
         friend class Style;
         friend class AssetFolderThumbnailView;
@@ -58,6 +70,7 @@ namespace AzQtComponents
 
         static bool polish(Style* style, QWidget* widget, const Config& config);
         static bool unpolish(Style* style, QWidget* widget, const Config& config);
+        static bool drawScrollBar(const Style* style, const QStyleOptionComplex* option, QPainter* painter, const QWidget* widget, const Config& config);
 
         AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'AzQtComponents::ScrollBar::s_scrollBarWatcher': class 'QPointer<AzQtComponents::ScrollBarWatcher>' needs to have dll-interface to be used by clients of class 'AzQtComponents::ScrollBar'
         static QPointer<ScrollBarWatcher> s_scrollBarWatcher;
@@ -66,3 +79,5 @@ namespace AzQtComponents
     };
 
 } // namespace AzQtComponents
+
+Q_DECLARE_METATYPE(AzQtComponents::ScrollBar::ScrollBarMode)

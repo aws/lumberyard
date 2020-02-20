@@ -19,6 +19,8 @@
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzToolsFramework/Debug/TraceContextStackInterface.h>
 
+#include <inttypes.h>
+
 #endif // AZ_ENABLE_TRACE_CONTEXT
 
 namespace AzToolsFramework
@@ -51,10 +53,10 @@ namespace AzToolsFramework
                     written = azsnprintf(buffer, bufferSize, "%s=%c\n", stack.GetKey(i), (stack.GetBoolValue(i) ? '1' : '0'));
                     break;
                 case TraceContextStackInterface::ContentType::IntType:
-                    written = azsnprintf(buffer, bufferSize, "%s=%lli\n", stack.GetKey(i), stack.GetIntValue(i));
+                    written = azsnprintf(buffer, bufferSize, "%s=%" PRIi64 "\n", stack.GetKey(i), stack.GetIntValue(i));
                     break;
                 case TraceContextStackInterface::ContentType::UintType:
-                    written = azsnprintf(buffer, bufferSize, "%s=%llu\n", stack.GetKey(i), stack.GetUIntValue(i));
+                    written = azsnprintf(buffer, bufferSize, "%s=%" PRIu64 "\n", stack.GetKey(i), stack.GetUIntValue(i));
                     break;
                 case TraceContextStackInterface::ContentType::FloatType:
                     written = azsnprintf(buffer, bufferSize, "%s=%f\n", stack.GetKey(i), stack.GetFloatValue(i));

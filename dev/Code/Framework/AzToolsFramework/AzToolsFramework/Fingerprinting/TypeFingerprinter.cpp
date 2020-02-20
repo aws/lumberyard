@@ -11,6 +11,7 @@
 */
 #include <AzCore/std/sort.h>
 #include <AzToolsFramework/Fingerprinting/TypeFingerprinter.h>
+#include "AzCore/Component/Component.h"
 
 namespace AzToolsFramework
 {
@@ -29,10 +30,52 @@ namespace AzToolsFramework
 
         TypeFingerprint TypeFingerprinter::CreateFingerprint(const AZ::SerializeContext::ClassData& classData)
         {
+            // Ensures hash will change if a service is moved from, say, required to dependent.
+            static const size_t kRequiredServiceKey = AZ_CRC("RequiredServiceKey", 0x22e125a6);
+            static const size_t kDependentServiceKey = AZ_CRC("DependentServiceKey", 0x380e6c63);
+            static const size_t kProvidedServiceKey = AZ_CRC("ProvidedServiceKey", 0xd3cc7058);
+            static const size_t kIncompatibleServiceKey = AZ_CRC("IncompatibleServiceKey", 0x95ee560f);
+
             TypeFingerprint fingerprint = 0;
 
             AZStd::hash_combine(fingerprint, classData.m_typeId);
             AZStd::hash_combine(fingerprint, classData.m_version);
+
+            bool isComponentObject = classData.m_azRtti ? classData.m_azRtti->IsTypeOf(azrtti_typeid<AZ::Component>()) : false;
+
+            if(isComponentObject)
+            {
+                AZ::ComponentDescriptor::DependencyArrayType services;
+                AZ::ComponentDescriptor* componentDescriptor = nullptr;
+                AZ::ComponentDescriptorBus::EventResult(componentDescriptor, classData.m_azRtti->GetTypeId(), &AZ::ComponentDescriptorBus::Events::GetDescriptor);
+
+                if (componentDescriptor)
+                {
+                    services.clear();
+                    componentDescriptor->GetRequiredServices(services, nullptr);
+                    AZStd::sort(services.begin(), services.end());
+                    AZStd::hash_combine(fingerprint, kRequiredServiceKey);
+                    AZStd::hash_range(fingerprint, services.begin(), services.end());
+
+                    services.clear();
+                    componentDescriptor->GetDependentServices(services, nullptr);
+                    AZStd::sort(services.begin(), services.end());
+                    AZStd::hash_combine(fingerprint, kDependentServiceKey);
+                    AZStd::hash_range(fingerprint, services.begin(), services.end());
+
+                    services.clear();
+                    componentDescriptor->GetProvidedServices(services, nullptr);
+                    AZStd::sort(services.begin(), services.end());
+                    AZStd::hash_combine(fingerprint, kProvidedServiceKey);
+                    AZStd::hash_range(fingerprint, services.begin(), services.end());
+
+                    services.clear();
+                    componentDescriptor->GetIncompatibleServices(services, nullptr);
+                    AZStd::sort(services.begin(), services.end());
+                    AZStd::hash_combine(fingerprint, kIncompatibleServiceKey);
+                    AZStd::hash_range(fingerprint, services.begin(), services.end());
+                }
+            }
 
             for (const AZ::SerializeContext::ClassElement& element : classData.m_elements)
             {

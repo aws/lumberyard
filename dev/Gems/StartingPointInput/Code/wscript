@@ -35,10 +35,11 @@ def build(bld):
 
     bld.DefineGem(
         use    = [ 'AzFramework', 'ScriptCanvas' ],
-        includes = [ bld.Path('Code/CryEngine/CryCommon'),
-                     bld.Path('Code/CryEngine/CryAction'),
-                     bld.Path('Code/CryEngine')
-                   ],
+        includes = ['.',
+                    bld.ThirdPartyPath('boost'),
+                    bld.Path('Code/CryEngine/CryCommon'),
+                    bld.Path('Code/CryEngine/CryAction'),
+                    bld.Path('Code/CryEngine')],
         export_includes = [bld.Path('Code/CryEngine')],
 
         # Suppressing level 1 warning C4351 on windows

@@ -15,4 +15,7 @@ def build(bld):
     bld.DefineGem(
         disable_pch = True,
         file_list   = ['UserLoginDefault.waf_files'],
+        includes    = ['.',
+                       bld.ThirdPartyPath('boost'),
+                       bld.Path('Code/CryEngine/CryCommon')]
     )

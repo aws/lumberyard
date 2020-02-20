@@ -16,7 +16,7 @@
 #include <AzFramework/Physics/RigidBody.h>
 #include <AzFramework/Physics/SystemBus.h>
 #include <AzFramework/Physics/World.h>
-
+#include <AzFramework/Components/TransformComponent.h>
 #include <PhysX/SystemComponentBus.h>
 
 #include <BoxColliderComponent.h>
@@ -70,7 +70,7 @@ namespace PhysX
         EntityPtr CreateFlatTestTerrain(float width /*= 1.0f*/, float depth /*= 1.0f*/)
         {
             // Creates a single tiled, flat terrain at height 0
-            EntityPtr terrain = AZStd::make_unique<AZ::Entity>("FlatTerrain");
+            EntityPtr terrain = AZStd::make_shared<AZ::Entity>("FlatTerrain");
 
             // 4 Corners, each at height zero
             AZStd::vector<uint16_t> samples = { 0, 0, 0, 0 };
@@ -89,7 +89,7 @@ namespace PhysX
         EntityPtr CreateFlatTestTerrainWithMaterial(float width /*= 1.0f*/, float depth /*= 1.0f*/, const Physics::MaterialSelection& materialSelection /*= Physics::MaterialSelection()*/)
         {
             // Creates a single tiled, flat terrain at height 0
-            EntityPtr terrain = AZStd::make_unique<AZ::Entity>("FlatTerrain");
+            EntityPtr terrain = AZStd::make_shared<AZ::Entity>("FlatTerrain");
 
             // 4 Corners, each at height zero
             AZStd::vector<uint16_t> samples = { 0, 0, 0, 0 };
@@ -110,7 +110,7 @@ namespace PhysX
 
         EntityPtr CreateSlopedTestTerrain(float width /*= 1.0f*/, float depth /*= 1.0f*/, float height /*= 1.0f*/)
         {
-            EntityPtr terrain = AZStd::make_unique<AZ::Entity>("SlopedTerrain");
+            EntityPtr terrain = AZStd::make_shared<AZ::Entity>("SlopedTerrain");
 
             // Creates a 3x3 tiled sloped terrain (9 samples), where each sample's height is sum of grid coordinates:
             // i.e h = x + y
@@ -136,7 +136,7 @@ namespace PhysX
 
         EntityPtr CreateSphereEntity(const AZ::Vector3& position, const float radius, const AZStd::shared_ptr<Physics::ColliderConfiguration>& colliderConfig)
         {
-            EntityPtr entity = AZStd::make_unique<AZ::Entity>("TestSphereEntity");
+            EntityPtr entity = AZStd::make_shared<AZ::Entity>("TestSphereEntity");
             entity->CreateComponent(AZ::Uuid::CreateString("{22B10178-39B6-4C12-BB37-77DB45FDD3B6}")); // TransformComponent
             entity->Init();
 
@@ -157,11 +157,54 @@ namespace PhysX
             return entity;
         }
 
+        EntityPtr CreateBoxEntity(const AZ::Vector3& position, const AZ::Vector3& dimensions, bool isTrigger)
+        {
+            auto colliderConfiguration = AZStd::make_shared<Physics::ColliderConfiguration>();
+            colliderConfiguration->m_isTrigger = isTrigger;
+            return CreateBoxEntity(position, dimensions, colliderConfiguration);
+        }
+
+        EntityPtr CreateStaticBoxEntity(const AZ::Vector3& position, const AZ::Vector3& dimensions)
+        {
+            EntityPtr entity = AZStd::make_shared<AZ::Entity>("TestBoxEntity");
+            entity->CreateComponent<AzFramework::TransformComponent>();
+            entity->Init();
+
+            entity->Activate();
+
+            AZ::TransformBus::Event(entity->GetId(), &AZ::TransformBus::Events::SetWorldTranslation, position);
+
+            entity->Deactivate();
+
+            auto shapeConfig = AZStd::make_shared<Physics::BoxShapeConfiguration>(dimensions);
+            auto boxColliderComponent = entity->CreateComponent<PhysX::BoxColliderComponent>();
+            auto colliderConfig = AZStd::make_shared<Physics::ColliderConfiguration>();
+            boxColliderComponent->SetShapeConfigurationList({ AZStd::make_pair(colliderConfig, shapeConfig) });
+
+            entity->Activate();
+            return entity;
+        }
+
+        void SetCollisionLayer(EntityPtr& entity, const AZStd::string& layerName, const AZStd::string& colliderTag)
+        {
+            Physics::CollisionFilteringRequestBus::Event(entity->GetId(), &Physics::CollisionFilteringRequests::SetCollisionLayer, layerName, AZ::Crc32(colliderTag.c_str()));
+        }
+        
+        void SetCollisionGroup(EntityPtr& entity, const AZStd::string& groupName, const AZStd::string& colliderTag)
+        {
+            Physics::CollisionFilteringRequestBus::Event(entity->GetId(), &Physics::CollisionFilteringRequests::SetCollisionGroup, groupName, AZ::Crc32(colliderTag.c_str()));
+        }
+
+        void ToggleCollisionLayer(EntityPtr& entity, const AZStd::string& layerName, bool enabled, const AZStd::string& colliderTag)
+        {
+            Physics::CollisionFilteringRequestBus::Event(entity->GetId(), &Physics::CollisionFilteringRequests::ToggleCollisionLayer, layerName, AZ::Crc32(colliderTag.c_str()), enabled);
+        }
+
         EntityPtr CreateBoxEntity(const AZ::Vector3& position, const AZ::Vector3& dimensions,
             const AZStd::shared_ptr<Physics::ColliderConfiguration>& colliderConfig)
         {
-            EntityPtr entity = AZStd::make_unique<AZ::Entity>("TestBoxEntity");
-            entity->CreateComponent(AZ::Uuid::CreateString("{22B10178-39B6-4C12-BB37-77DB45FDD3B6}")); // TransformComponent
+            EntityPtr entity = AZStd::make_shared<AZ::Entity>("TestBoxEntity");
+            entity->CreateComponent<AzFramework::TransformComponent>();
             entity->Init();
 
             entity->Activate();
@@ -178,6 +221,34 @@ namespace PhysX
             entity->CreateComponent<PhysX::RigidBodyComponent>(rigidBodyConfig);
 
             entity->Activate();
+            return entity;
+        }
+
+        EntityPtr AddUnitTestBoxComponentsMix(const AZ::Vector3& position, const char* name)
+        {
+            EntityPtr entity = AZStd::make_shared<AZ::Entity>(name);
+
+            AZ::TransformConfig transformConfig;
+            transformConfig.m_worldTransform = AZ::Transform::CreateTranslation(position);
+            entity->CreateComponent<AzFramework::TransformComponent>()->SetConfiguration(transformConfig);
+            Physics::ShapeConfigurationList shapeConfigList = { AZStd::make_pair(
+                AZStd::make_shared<Physics::ColliderConfiguration>(),
+                AZStd::make_shared<Physics::BoxShapeConfiguration>()) };
+            auto boxCollider = entity->CreateComponent<BoxColliderComponent>();
+            boxCollider->SetShapeConfigurationList(shapeConfigList);
+
+            Physics::RigidBodyConfiguration rigidBodyConfig;
+            entity->CreateComponent<RigidBodyComponent>(rigidBodyConfig);
+
+            // Removing and adding component can cause race condition in component activation code if dependencies are not correct
+            // Simulation of user removing one collider and adding another
+            entity->RemoveComponent(boxCollider);
+            delete boxCollider;
+            entity->CreateComponent<BoxColliderComponent>()->SetShapeConfigurationList(shapeConfigList);
+
+            entity->Init();
+            entity->Activate();
+
             return entity;
         }
     }

@@ -47,7 +47,6 @@ namespace AzQtComponents
         m_featureLayout = new QVBoxLayout(this);
         m_featureLayout->setSizeConstraint(QLayout::SetMinimumSize);
         m_featureLayout->addWidget(headerFrame);
-        setLayout(m_featureLayout);
     }
 
     void CardNotification::addFeature(QWidget* feature)
@@ -56,7 +55,7 @@ namespace AzQtComponents
         m_featureLayout->addWidget(feature);
     }
 
-    QPushButton* CardNotification::addButtonFeature(QString buttonText)
+    QPushButton* CardNotification::addButtonFeature(const QString& buttonText)
     {
         QPushButton* featureButton = new QPushButton(buttonText, this);
 
@@ -64,5 +63,7 @@ namespace AzQtComponents
 
         return featureButton;
     }
+
+    #include <Components/Widgets/CardNotification.moc>
 }
 

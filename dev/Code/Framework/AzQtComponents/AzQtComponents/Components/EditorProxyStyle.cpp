@@ -478,7 +478,15 @@ namespace AzQtComponents
             SpinBox::polish(this, widget, config);
         }
 
-        if (qobject_cast<QToolButton*>(widget))
+        if (auto lineEdit = qobject_cast<QLineEdit*>(widget))
+        {
+            QPalette pal = lineEdit->palette();
+            const auto hasFocus = false;
+            pal.setColor(QPalette::PlaceholderText, "#80ffffff");
+
+            lineEdit->setPalette(pal);
+        }
+        else if (qobject_cast<QToolButton*>(widget))
         {
             // So we can have a different effect on hover
             widget->setAttribute(Qt::WA_Hover);
@@ -1095,6 +1103,27 @@ namespace AzQtComponents
                 }
                 return;
             }
+        }
+        else if (QStyle::PE_IndicatorItemViewItemDrop == element)
+        {
+            // This code comes from the old OutlinerTreeViewProxyStyle whose functionality was reimplemented in UI 2.0.
+            // It's here just so UI 1.0 preserves the same old visual behavior
+            painter->save();
+            if (option->rect.height() == 0)
+            {
+                //draw circle followed by line for drops between items
+                painter->setPen(QColor("#FFFFFF"));
+                painter->drawEllipse(option->rect.topLeft(), 3, 3);
+                painter->drawLine(QPoint(option->rect.topLeft().x() + 3, option->rect.topLeft().y()), option->rect.topRight());
+            }
+            else
+            {
+                //draw a rounded box for drops on items
+                painter->setPen(QColor("#B48BFF"));
+                painter->drawRoundedRect(option->rect, 3, 3);
+            }
+            painter->restore();
+            return;
         }
 
         QProxyStyle::drawPrimitive(element, option, painter, widget);

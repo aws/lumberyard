@@ -14,13 +14,14 @@
 #include <Editor/Util/FileUtil.h>
 #include <Editor/Util/Image.h>
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzToolsFramework/AssetBrowser/Previewer/Previewer.h>
 
 #include <QWidget>
 #include <QScopedPointer>
 
 namespace Ui
 {
-    class PreviewWidgetClass;
+    class LegacyPreviewerClass;
 }
 
 namespace AzToolsFramework
@@ -35,18 +36,24 @@ namespace AzToolsFramework
 
 class QResizeEvent;
 
-class PreviewWidget
-    : public QWidget
+class LegacyPreviewer
+    : public AzToolsFramework::AssetBrowser::Previewer
 {
     Q_OBJECT
 public:
-    AZ_CLASS_ALLOCATOR(PreviewWidget, AZ::SystemAllocator, 0);
+    AZ_CLASS_ALLOCATOR(LegacyPreviewer, AZ::SystemAllocator, 0);
 
-    explicit PreviewWidget(QWidget* parent = nullptr);
-    ~PreviewWidget();
+    explicit LegacyPreviewer(QWidget* parent = nullptr);
+    ~LegacyPreviewer();
 
-    void Clear() const;
-    void Display(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry);
+    //////////////////////////////////////////////////////////////////////////
+    // AzToolsFramework::AssetBrowser::Previewer
+    //////////////////////////////////////////////////////////////////////////
+    void Clear() const override;
+    void Display(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) override;
+    const QString& GetName() const override;
+
+    static const QString Name;
 
 protected:
     void resizeEvent(QResizeEvent * event) override;
@@ -69,7 +76,7 @@ private:
         Alpha
     };
 
-    QScopedPointer<Ui::PreviewWidgetClass> m_ui;
+    QScopedPointer<Ui::LegacyPreviewerClass> m_ui;
     CImageEx m_previewImageSource;
     CImageEx m_previewImageUpdated;
     TextureType m_textureType;

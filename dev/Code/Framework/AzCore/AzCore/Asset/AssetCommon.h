@@ -219,6 +219,18 @@ namespace AZ
                 return m_assetData != nullptr;
             }
 
+            T& operator*() const
+            {
+                AZ_Assert(m_assetData, "Asset is not loaded");
+                return *Get();
+            }
+
+            T* operator->() const
+            {
+                AZ_Assert(m_assetData, "Asset is not loaded");
+                return Get();
+            }
+
             bool IsReady() const;               ///< Is the asset data ready (loaded)?
             bool IsError() const;               ///< Did an error occur when loading the asset?
             bool IsLoading() const;             ///< Is the asset currently loading?
@@ -265,7 +277,7 @@ namespace AZ
 
             /**
              * Reloads an asset if an asset is create.
-             * \returns true if reload is triggered, otherwise false if an asset is not created (ie. We don't asset ID to reload)
+             * \returns true if reload is triggered, otherwise false if an asset is not created (ie. We don't have asset ID to reload)
              */
             bool Reload();
 
@@ -407,11 +419,11 @@ namespace AZ
                     Asset<AssetData> assetData(AssetInternal::GetAssetData(actualId));
                     if (assetData)
                     {
-                        if (assetData.Get()->GetStatus() == AssetData::AssetStatus::Ready)
+                        if (assetData->GetStatus() == AssetData::AssetStatus::Ready)
                         {
                             handler->OnAssetReady(assetData);
                         }
-                        else if (assetData.Get()->IsError())
+                        else if (assetData->IsError())
                         {
                             handler->OnAssetError(assetData);
                         }
@@ -785,12 +797,7 @@ namespace AZ
         template<class T>
         T* Asset<T>::Get() const
         {
-            if (m_assetData)
-            {
-                //return azrtti_cast<T*>(m_assetData);
-                return static_cast<T*>(m_assetData); // Type is checked when we set the asset data
-            }
-            return nullptr;
+            return static_cast<T*>(m_assetData);
         }
 
         //=========================================================================

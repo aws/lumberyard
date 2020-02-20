@@ -16,6 +16,7 @@
 #include <AzFramework/Physics/Material.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <HeightmapUpdateNotificationBus.h>
 #include <TerrainComponent.h>
 #include <PhysX/ComponentTypeIds.h>
 #include <AzToolsFramework/Physics/EditorTerrainComponentBus.h>
@@ -37,6 +38,7 @@ namespace PhysX
         , protected AzToolsFramework::EntitySelectionEvents::Bus::Handler
         , private PhysX::ConfigurationNotificationBus::Handler
         , private AzToolsFramework::ToolsApplicationNotificationBus::Handler
+        , private AZ::HeightmapUpdateNotificationBus::Handler
     {
     public:
         AZ_EDITOR_COMPONENT(EditorTerrainComponent, EditorTerrainComponentTypeId, AzToolsFramework::Components::EditorComponentBase);
@@ -103,6 +105,9 @@ namespace PhysX
         void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
         void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
         void OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
+
+        // AZ::HeightmapUpdateNotificationBus
+        void HeightmapModified(const AZ::Aabb& bounds) override;
 
         TerrainConfiguration m_configuration; ///< Configuration used for creating terrain.
         AZStd::string m_exportAssetPath = "terrain/terrain.pxheightfield"; ///< Relative path to current level folder.

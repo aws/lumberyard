@@ -37,6 +37,7 @@ def build(bld):
                            'BOOSTPYTHON',
                            'AWS_CPP_SDK_IDENTITY_METRICS',
                            ],
+        test_all_uselib = ['QT5TEST'],
         defines         = ['USE_PYTHON_SCRIPTING',],
         includes        = [ bld.Path('Code/Sandbox/Editor'),
                             bld.Path('Code/Sandbox/Editor/Include'),

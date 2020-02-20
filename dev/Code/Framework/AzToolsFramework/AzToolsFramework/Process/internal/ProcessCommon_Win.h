@@ -14,8 +14,6 @@
 
 #include <AzCore/PlatformIncl.h>
 
-#ifdef AZ_PLATFORM_WINDOWS
-
 namespace AzToolsFramework
 {
     class CommunicatorHandleImpl
@@ -50,4 +48,3 @@ namespace AzToolsFramework
     };
 } // namespace AzToolsFramework
 
-#endif // AZ_PLATFORM_WINDOWS

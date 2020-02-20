@@ -394,7 +394,7 @@ inline CCryDXGLDeviceContext* GetDXGLDeviceContext(ID3D11DeviceContext* pDeviceC
 
 #if !DXGL_FULL_EMULATION
 
-#if defined(OPENGL_ES)
+#if defined(OPENGL_ES) && !defined(DESKTOP_GLES)
 void DXGLSetColorDontCareActions(ID3D11RenderTargetView* const rtv,
     bool const loadDontCare,
     bool const storeDontCare)

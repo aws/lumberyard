@@ -10,18 +10,17 @@
 *
 */
 
-#include <AzCore/Serialization/SerializeContext.h>
-#include <AzCore/Serialization/EditContext.h>
-#include "EMotionFXConfig.h"
 #include "BlendTreeBlendNNode.h"
-#include "AnimGraphInstance.h"
-#include "AnimGraphMotionNode.h"
 #include "ActorInstance.h"
-#include "MotionInstance.h"
 #include "AnimGraphAttributeTypes.h"
+#include "AnimGraphInstance.h"
 #include "AnimGraphManager.h"
+#include "AnimGraphMotionNode.h"
+#include "EMotionFXConfig.h"
+#include "MotionInstance.h"
+#include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Serialization/SerializeContext.h>
 #include <EMotionFX/Source/AnimGraphBus.h>
-
 
 namespace EMotionFX
 {
@@ -29,10 +28,10 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeBlendNNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(BlendNParamWeight, AnimGraphAllocator, 0)
 
-    BlendNParamWeight::BlendNParamWeight(AZ::u32 portId, float weightRange) : m_portId(portId),
-        m_weightRange(weightRange)
+    BlendNParamWeight::BlendNParamWeight(AZ::u32 portId, float weightRange)
+        : m_portId(portId)
+        , m_weightRange(weightRange)
     {
-
     }
 
     const char* BlendNParamWeight::GetPortLabel() const
@@ -61,9 +60,7 @@ namespace EMotionFX
         serializeContext->Class<BlendNParamWeight>()
             ->Version(1)
             ->Field("portId", &BlendNParamWeight::m_portId)
-            ->Field("weightRange", &BlendNParamWeight::m_weightRange)
-            ;
-
+            ->Field("weightRange", &BlendNParamWeight::m_weightRange);
 
         AZ::EditContext* editContext = serializeContext->GetEditContext();
         if (!editContext)
@@ -95,16 +92,10 @@ namespace EMotionFX
         SetupInputPort(GetPoseInputPortName(PORTID_INPUT_POSE_9), INPUTPORT_POSE_9, AttributePose::TYPE_ID, PORTID_INPUT_POSE_9);
         SetupInputPortAsNumber("Weight", INPUTPORT_WEIGHT, PORTID_INPUT_WEIGHT); // accept float/int/bool values
 
-                                                                                 // setup output ports
+        // setup output ports
         InitOutputPorts(1);
         SetupOutputPortAsPose("Output Pose", OUTPUTPORT_POSE, PORTID_OUTPUT_POSE);
     }
-
-
-    BlendTreeBlendNNode::~BlendTreeBlendNNode()
-    {
-    }
-
 
     bool BlendTreeBlendNNode::InitAfterLoading(AnimGraph* animGraph)
     {
@@ -118,20 +109,15 @@ namespace EMotionFX
         return true;
     }
 
-
-    // get the palette name
     const char* BlendTreeBlendNNode::GetPaletteName() const
     {
         return "Blend N";
     }
 
-
-    // get the category
     AnimGraphObject::ECategory BlendTreeBlendNNode::GetPaletteCategory() const
     {
         return AnimGraphObject::CATEGORY_BLENDING;
     }
-
 
     // pre-create the unique data
     void BlendTreeBlendNNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
@@ -175,13 +161,13 @@ namespace EMotionFX
     // find the two blend nodes
     void BlendTreeBlendNNode::FindBlendNodes(AnimGraphInstance* animGraphInstance, AnimGraphNode** outNodeA, AnimGraphNode** outNodeB, uint32* outIndexA, uint32* outIndexB, float* outWeight) const
     {
-        if(m_paramWeights.empty())
+        if (m_paramWeights.empty())
         {
-            *outNodeA   = nullptr;
-            *outNodeB   = nullptr;
-            *outIndexA  = MCORE_INVALIDINDEX32;
-            *outIndexB  = MCORE_INVALIDINDEX32;
-            *outWeight  = 0.0f;
+            *outNodeA = nullptr;
+            *outNodeB = nullptr;
+            *outIndexA = MCORE_INVALIDINDEX32;
+            *outIndexB = MCORE_INVALIDINDEX32;
+            *outWeight = 0.0f;
             return;
         }
 
@@ -220,9 +206,9 @@ namespace EMotionFX
             if (weight <= m_paramWeights[i].m_weightRange)
             {
                 poseIndexB = m_paramWeights[i].m_portId;
-                poseIndexA = m_paramWeights[i- 1].m_portId;
+                poseIndexA = m_paramWeights[i - 1].m_portId;
                 *outWeight = (weight - m_paramWeights[i - 1].m_weightRange)
-                        / (m_paramWeights[i].m_weightRange - m_paramWeights[i - 1].m_weightRange);
+                    / (m_paramWeights[i].m_weightRange - m_paramWeights[i - 1].m_weightRange);
 
                 if (i == 1 && (*outWeight < MCore::Math::epsilon))
                 {
@@ -250,7 +236,7 @@ namespace EMotionFX
             }
         }
 
-        // Not found in the range (nor below it) so snap to the maximum 
+        // Not found in the range (nor below it) so snap to the maximum
         poseIndexA = m_paramWeights.back().m_portId;
         poseIndexB = poseIndexA;
         *outWeight = 0.0f;
@@ -260,11 +246,8 @@ namespace EMotionFX
         *outNodeB = GetInputPort(INPUTPORT_POSE_0 + poseIndexB).mConnection->GetSourceNode();
         *outIndexA = poseIndexA;
         *outIndexB = poseIndexB;
-
     }
 
-
-    // sync the motions
     void BlendTreeBlendNNode::SyncMotions(AnimGraphInstance* animGraphInstance, AnimGraphNode* nodeA, AnimGraphNode* nodeB, uint32 poseIndexA, uint32 poseIndexB, float blendWeight, ESyncMode syncMode)
     {
         if (nodeA == nullptr || nodeB == nullptr)
@@ -282,7 +265,7 @@ namespace EMotionFX
             nodeA->RecursiveSetUniqueDataFlag(animGraphInstance, AnimGraphInstance::OBJECTFLAGS_RESYNC, true);
         }
 
-        // sync to the blend node
+        // Sync the primary node to this blend N node.
         nodeA->AutoSync(animGraphInstance, this, 0.0f, SYNCMODE_TRACKBASED, resync);
 
         // for all input ports (10 motion input poses)
@@ -317,10 +300,9 @@ namespace EMotionFX
             nodeToSync->AutoSync(animGraphInstance, nodeA, blendWeight, syncMode, resync);
         }
 
-        uniqueData->mIndexA     = poseIndexA;
-        uniqueData->mIndexB     = poseIndexB;
+        uniqueData->mIndexA = poseIndexA;
+        uniqueData->mIndexB = poseIndexB;
     }
-
 
     // perform the calculations / actions
     void BlendTreeBlendNNode::Output(AnimGraphInstance* animGraphInstance)
@@ -423,8 +405,6 @@ namespace EMotionFX
         }
     }
 
-
-    // update
     void BlendTreeBlendNNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         // if the node is disabled
@@ -457,33 +437,12 @@ namespace EMotionFX
             uniqueData->Clear();
             return;
         }
-        /*
-            UpdateIncomingNode(animGraphInstance, nodeA, timePassedInSeconds);
-            if (nodeB && nodeA != nodeB)
-                UpdateIncomingNode(animGraphInstance, nodeB, timePassedInSeconds);
-        */
-        // mark all incoming pose nodes as synced, except the main motion
-        const bool syncEnabled = (m_syncMode != SYNCMODE_DISABLED);
-        if (syncEnabled)
-        {
-            for (uint32 i = 0; i < 10; ++i)
-            {
-                connection = mInputPorts[INPUTPORT_POSE_0 + i].mConnection;
-                if (connection)
-                {
-                    UpdateIncomingNode(animGraphInstance, connection->GetSourceNode(), timePassedInSeconds);
-                }
-            }
-        }
-        else
-        {
-            UpdateIncomingNode(animGraphInstance, nodeA, timePassedInSeconds);
-            if (nodeB && nodeA != nodeB)
-            {
-                UpdateIncomingNode(animGraphInstance, nodeB, timePassedInSeconds);
-            }
-        }
 
+        UpdateIncomingNode(animGraphInstance, nodeA, timePassedInSeconds);
+        if (nodeB && nodeA != nodeB)
+        {
+            UpdateIncomingNode(animGraphInstance, nodeB, timePassedInSeconds);
+        }
 
         // update the sync track
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
@@ -497,8 +456,6 @@ namespace EMotionFX
         uniqueData->SetPlaySpeed(playSpeed * factorA);
     }
 
-
-    // top down update
     void BlendTreeBlendNNode::TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         // if the node is disabled
@@ -576,24 +533,13 @@ namespace EMotionFX
             }
         }
 
-        // top down update all inputs
-        for (uint32 i = 0; i < 10; ++i)
+        // Top-down update the relevant nodes.
+        nodeA->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
+        if (nodeB && nodeA != nodeB)
         {
-            EMotionFX::BlendTreeConnection* connection = mInputPorts[INPUTPORT_POSE_0 + i].mConnection;
-            if (connection)
-            {
-                AnimGraphNode* sourceNode = connection->GetSourceNode();
-                if (sourceNode != nodeA && sourceNode != nodeB)
-                {
-                    AnimGraphNodeData* nodeData = sourceNode->FindUniqueNodeData(animGraphInstance);
-                    nodeData->SetGlobalWeight(0.0f);
-                    nodeData->SetLocalWeight(0.0f);
-                }
-                sourceNode->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
-            }
+            nodeB->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
         }
     }
-
 
     // post sync update
     void BlendTreeBlendNNode::PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
@@ -704,28 +650,25 @@ namespace EMotionFX
             ->Version(2, VersionConverter)
             ->Field("syncMode", &BlendTreeBlendNNode::m_syncMode)
             ->Field("eventMode", &BlendTreeBlendNNode::m_eventMode)
-            ->Field("paramWeights", &BlendTreeBlendNNode::m_paramWeights)
-            ;
-
+            ->Field("paramWeights", &BlendTreeBlendNNode::m_paramWeights);
 
         AZ::EditContext* editContext = serializeContext->GetEditContext();
         if (!editContext)
         {
             return;
         }
-        
+
         editContext->Class<BlendTreeBlendNNode>("Blend N", "Blend N attributes")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
-                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
             ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeBlendNNode::m_syncMode)
             ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeBlendNNode::m_eventMode)
             ->DataElement(AZ_CRC("BlendNParamWeightsContainerHandler", 0x311f6bb3), &BlendTreeBlendNNode::m_paramWeights, "Blend weight triggers", "The values of the input weight at which an input pose will weigh 100%")
-                ->Attribute(AZ_CRC("BlendTreeBlendNNodeParamWeightsElement", 0x7eae1990), "")
-                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->ElementAttribute(AZ::Edit::UIHandlers::Handler, AZ_CRC("BlendNParamWeightsElementHandler", 0xec71620d))
-            ;
+            ->Attribute(AZ_CRC("BlendTreeBlendNNodeParamWeightsElement", 0x7eae1990), "")
+            ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+            ->ElementAttribute(AZ::Edit::UIHandlers::Handler, AZ_CRC("BlendNParamWeightsElementHandler", 0xec71620d));
     }
 
     void BlendTreeBlendNNode::SetSyncMode(ESyncMode syncMode)
@@ -746,9 +689,9 @@ namespace EMotionFX
         }
 
         float weightStep = 0;
-        if(m_paramWeights.size() > 1)
+        if (m_paramWeights.size() > 1)
         {
-            weightStep = (max - min) / (m_paramWeights.size() - 1 );
+            weightStep = (max - min) / (m_paramWeights.size() - 1);
         }
         m_paramWeights.back().m_weightRange = max;
         float weightRange = min;
@@ -818,39 +761,39 @@ namespace EMotionFX
         const char* name = "";
         switch (portId)
         {
-        case PORTID_INPUT_POSE_0:
-            name = "Pose 0";
-            break;
-        case PORTID_INPUT_POSE_1:
-            name = "Pose 1";
-            break;
-        case PORTID_INPUT_POSE_2:
-            name = "Pose 2";
-            break;
-        case PORTID_INPUT_POSE_3:
-            name = "Pose 3";
-            break;
-        case PORTID_INPUT_POSE_4:
-            name = "Pose 4";
-            break;
-        case PORTID_INPUT_POSE_5:
-            name = "Pose 5";
-            break;
-        case PORTID_INPUT_POSE_6:
-            name = "Pose 6";
-            break;
-        case PORTID_INPUT_POSE_7:
-            name = "Pose 7";
-            break;
-        case PORTID_INPUT_POSE_8:
-            name = "Pose 8";
-            break;
-        case PORTID_INPUT_POSE_9:
-            name = "Pose 9";
-            break;
-        default:
-            AZ_Assert(false, "Error: unknown input port id %u", portId);
-            break;
+            case PORTID_INPUT_POSE_0:
+                name = "Pose 0";
+                break;
+            case PORTID_INPUT_POSE_1:
+                name = "Pose 1";
+                break;
+            case PORTID_INPUT_POSE_2:
+                name = "Pose 2";
+                break;
+            case PORTID_INPUT_POSE_3:
+                name = "Pose 3";
+                break;
+            case PORTID_INPUT_POSE_4:
+                name = "Pose 4";
+                break;
+            case PORTID_INPUT_POSE_5:
+                name = "Pose 5";
+                break;
+            case PORTID_INPUT_POSE_6:
+                name = "Pose 6";
+                break;
+            case PORTID_INPUT_POSE_7:
+                name = "Pose 7";
+                break;
+            case PORTID_INPUT_POSE_8:
+                name = "Pose 8";
+                break;
+            case PORTID_INPUT_POSE_9:
+                name = "Pose 9";
+                break;
+            default:
+                AZ_Assert(false, "Error: unknown input port id %u", portId);
+                break;
         }
         return name;
     }

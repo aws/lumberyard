@@ -16,7 +16,7 @@
 
 #include <QMainWindow>
 #include "IEditor.h"
-#include <Editor/ui_ImGuiMainWindow.h>
+#include <Editor/ui_ImGuiMainwindow.h>
 
 namespace Ui
 {

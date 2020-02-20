@@ -41,6 +41,12 @@
 
 namespace EditorInternal
 {
+    EditorToolsApplication::EditorToolsApplication(int* argc, char*** argv)
+        : ToolsApplication(argc, argv)
+    {
+
+    }
+
     bool EditorToolsApplication::OnFailedToFindConfiguration(const char* configFilePath)
     {
         bool overrideAssetRoot = (this->m_assetRoot[0] != '\0');
@@ -123,7 +129,7 @@ namespace EditorInternal
         AZ::ModuleManagerRequestBus::Broadcast(&AZ::ModuleManagerRequestBus::Events::LoadDynamicModule, "LyzardProjects", AZ::ModuleInitializationSteps::ActivateEntity, true);
     }
 
-    bool EditorToolsApplication::Start(int argc, char* argv[])
+    bool EditorToolsApplication::Start()
     {
         char descriptorPath[AZ_MAX_PATH_LEN] = { 0 };
         char appRootOverride[AZ_MAX_PATH_LEN] = { 0 };
@@ -140,7 +146,10 @@ namespace EditorInternal
 
             AzFramework::Application::StartupParameters params;
 
-            if (!GetOptionalAppRootArg(argc, argv, appRootOverride, AZ_ARRAY_SIZE(appRootOverride)))
+            AZ_Assert(m_argC != nullptr, "Missing Command Line Data");
+            AZ_Assert(m_argV != nullptr, "Missing Command Line Data");
+
+            if (!GetOptionalAppRootArg(*m_argC, *m_argV, appRootOverride, AZ_ARRAY_SIZE(appRootOverride)))
             {
                 QString currentRoot;
                 QDir pathCheck(qApp->applicationDirPath());
@@ -203,5 +212,11 @@ namespace EditorInternal
             return false;
         }
     }
+
+    void EditorToolsApplication::QueryApplicationType(AzFramework::ApplicationTypeQuery& appType) const
+    { 
+        appType.m_maskValue = AzFramework::ApplicationTypeQuery::Masks::Editor | AzFramework::ApplicationTypeQuery::Masks::Tool;
+    };
+
 }
 

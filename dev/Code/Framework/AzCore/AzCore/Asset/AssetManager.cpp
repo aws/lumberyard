@@ -78,11 +78,11 @@ namespace AZ
                     Asset<AssetData> assetData(AssetInternal::GetAssetData(actualId));
                     if (assetData)
                     {
-                        if (assetData.Get()->IsReady())
+                        if (assetData->IsReady())
                         {
                             handler->OnAssetReady(assetData);
                         }
-                        else if (assetData.Get()->IsError())
+                        else if (assetData->IsError())
                         {
                             handler->OnAssetError(assetData);
                         }
@@ -899,7 +899,7 @@ namespace AZ
 
             // We have to separate the code which was removing the asset from the m_asset map while being locked, but then actually destroy the asset
             // while the lock is not held since destroying the asset while holding the lock can cause a deadlock.
-            if(destroyAsset)
+            if (destroyAsset)
             {
                 // find the asset type handler
                 AssetHandlerMap::iterator handlerIt = m_handlers.find(assetType);
@@ -977,7 +977,7 @@ namespace AZ
             // Resolve the asset handler and allocate new data for the reload.
             {
                 AssetHandlerMap::iterator handlerIt = m_handlers.find(currentAssetData->GetType());
-                AZ_Assert(handlerIt != m_handlers.end(), "No handler was registered for this asset [type:0x%x id:%s]!",
+                AZ_Assert(handlerIt != m_handlers.end(), "No handler was registered for this asset [type:%s id:%s]!",
                     currentAssetData->GetType().ToString<AZ::OSString>().c_str(), currentAssetData->GetId().ToString<AZ::OSString>().c_str());
                 handler = handlerIt->second;
 
@@ -1009,12 +1009,12 @@ namespace AZ
         void AssetManager::ReloadAssetFromData(const Asset<AssetData>& asset)
         {
             AZ_Assert(asset.Get(), "Asset data for reload is missing.");
-            AZ_Assert(m_assets.find(asset.GetId()) != m_assets.end(),"Unable to reload asset %s because its not in the AssetManager's asset list.", asset.ToString<AZStd::string>().c_str());
-            AZ_Assert(m_assets.find(asset.GetId()) == m_assets.end() || asset.Get()->RTTI_GetType() == m_assets.find(asset.GetId())->second->RTTI_GetType(),
+            AZ_Assert(m_assets.find(asset.GetId()) != m_assets.end(), "Unable to reload asset %s because its not in the AssetManager's asset list.", asset.ToString<AZStd::string>().c_str());
+            AZ_Assert(m_assets.find(asset.GetId()) == m_assets.end() || asset->RTTI_GetType() == m_assets.find(asset.GetId())->second->RTTI_GetType(),
                 "New and old data types are mismatched!");
 
             auto found = m_assets.find(asset.GetId());
-            if ((found == m_assets.end()) || (asset.Get()->RTTI_GetType() != found->second->RTTI_GetType()))
+            if ((found == m_assets.end()) || (asset->RTTI_GetType() != found->second->RTTI_GetType()))
             {
                 return; // this will just lead to crashes down the line and the above asserts cover this.
             }
@@ -1029,7 +1029,7 @@ namespace AZ
                 // Resolve the asset handler and account for the new asset instance.
                 {
                     AssetHandlerMap::iterator handlerIt = m_handlers.find(newData->GetType());
-                    AZ_Assert(handlerIt != m_handlers.end(), "No handler was registered for this asset [type:0x%x id:%s]!",
+                    AZ_Assert(handlerIt != m_handlers.end(), "No handler was registered for this asset [type:%s id:%s]!",
                         newData->GetType().ToString<AZ::OSString>().c_str(), newData->GetId().ToString<AZ::OSString>().c_str());
                 }
 
@@ -1059,9 +1059,9 @@ namespace AZ
 
             const AssetId& assetId = asset.GetId();
 
-            asset.Get()->m_status = static_cast<int>(AssetData::AssetStatus::Ready);
+            asset->m_status = static_cast<int>(AssetData::AssetStatus::Ready);
 
-            if (asset.Get()->IsRegisterReadonlyAndShareable())
+            if (asset->IsRegisterReadonlyAndShareable())
             {
                 AZStd::lock_guard<AZStd::recursive_mutex> assetLock(m_assetMutex);
                 auto found = m_assets.find(assetId);

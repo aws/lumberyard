@@ -108,6 +108,18 @@ namespace AzToolsFramework
         }
     }
 
+    void LineEditLoading::focusInEvent(QFocusEvent* event)
+    {
+        emit(focused(true));
+        QLineEdit::focusInEvent(event);
+    }
+
+    void LineEditLoading::focusOutEvent(QFocusEvent* event)
+    {
+        emit(focused(false));
+        QLineEdit::focusOutEvent(event);
+    }
+
     void LineEditLoading::OnTick(float /*deltaTime*/, AZ::ScriptTimePoint /*time*/)
     {
         repaint();
@@ -144,6 +156,7 @@ namespace AzToolsFramework
         m_label->setFrameShape(QFrame::Panel);
         m_label->setFrameShadow(QFrame::Sunken);
         m_label->setFocusPolicy(Qt::StrongFocus);
+        m_label->installEventFilter(this);
 
         m_label->setVisible(false);
 
@@ -178,7 +191,7 @@ namespace AzToolsFramework
         m_browseButton->setVisible(true);
 
         connect(m_editButton, &QPushButton::clicked, this, &PropertyAssetCtrl::OnEditButtonClicked);
-        connect(m_browseButton, &QPushButton::clicked, this, &PropertyAssetCtrl::PopupAssetBrowser);
+        connect(m_browseButton, &QPushButton::clicked, this, &PropertyAssetCtrl::PopupAssetPicker);
         connect(m_clearButton, &QPushButton::clicked, this, &PropertyAssetCtrl::ClearAsset);
 
         pLayout->addWidget(m_lineEdit);
@@ -192,12 +205,13 @@ namespace AzToolsFramework
         setFocusProxy(m_lineEdit);
         setFocusPolicy(m_lineEdit->focusPolicy());
 
-        m_lineEdit->installEventFilter(this);
         m_currentAssetType = AZ::Data::s_invalidAssetType;
 
         setContextMenuPolicy(Qt::CustomContextMenu);
         connect(this, SIGNAL(customContextMenuRequested(const QPoint&)),
             this, SLOT(ShowContextMenu(const QPoint&)));
+
+        connect(m_lineEdit, &LineEditLoading::focused, this, &PropertyAssetCtrl::OnLineEditFocus);
     }
 
     void PropertyAssetCtrl::ConfigureAutocompleter()
@@ -230,6 +244,11 @@ namespace AzToolsFramework
         m_model->SetFilter(m_currentAssetType);
     }
 
+    void PropertyAssetCtrl::RefreshAutocompleter()
+    {
+        m_model->RefreshAssetList();
+    }
+
     void PropertyAssetCtrl::EnableAutocompleter()
     {
         m_completerIsActive = true;
@@ -240,6 +259,19 @@ namespace AzToolsFramework
     {
         m_completerIsActive = false;
         m_lineEdit->setCompleter(nullptr);
+    }
+
+    void PropertyAssetCtrl::HandleFieldClear()
+    {
+        if (m_allowEmptyValue)
+        {
+            SetSelectedAssetID(AZ::Data::AssetId());
+        }
+        else
+        {
+            SetSelectedAssetID(GetCurrentAssetID());
+        }
+        m_lineEdit->StopLoading();
     }
 
     void PropertyAssetCtrl::OnAutocomplete(const QModelIndex& index)
@@ -261,17 +293,15 @@ namespace AzToolsFramework
             }
             else
             {
-                SetSelectedAssetID(AZ::Data::AssetId());
-                m_lineEdit->setText("");
-                m_lineEdit->StopLoading();
+                HandleFieldClear();
             }
         }
         else
         {
-            SetSelectedAssetID(AZ::Data::AssetId());
-            m_lineEdit->setText("");
-            m_lineEdit->StopLoading();
+            HandleFieldClear();
         }
+
+        m_lineEdit->clearFocus();
     }
 
     void PropertyAssetCtrl::OnTextChange(const QString& text)
@@ -740,27 +770,13 @@ namespace AzToolsFramework
     {
         (void)obj;
 
-        if (isEnabled())
+        if (isEnabled() && event->type() == QEvent::MouseButtonDblClick)
         {
-            if (event->type() == QEvent::MouseButtonDblClick)
+            // if its filled in with an asset, open the asset.
+            if (m_selectedAssetID.IsValid())
             {
-                // if its filled in with an asset, open the asset.
-                if (m_selectedAssetID.IsValid())
-                {
-                    bool someoneHandledIt = false;
-                    AssetBrowser::AssetBrowserInteractionNotificationBus::Broadcast(&AssetBrowser::AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, GetCurrentAssetID(), someoneHandledIt);
-                }
-            }
-        }
-
-        // When focus is lost, delete text in editLabel if no asset is currently selected
-        if (event->type() == QEvent::FocusOut)
-        {
-            if (m_incompleteFilename)
-            {
-                SetSelectedAssetID(AZ::Data::AssetId());
-                m_lineEdit->setText("");
-                m_lineEdit->StopLoading();
+                bool someoneHandledIt = false;
+                AssetBrowser::AssetBrowserInteractionNotificationBus::Broadcast(&AssetBrowser::AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, GetCurrentAssetID(), someoneHandledIt);
             }
         }
 
@@ -773,11 +789,11 @@ namespace AzToolsFramework
 
     void PropertyAssetCtrl::OnEditButtonClicked()
     {
-        AZ::Data::AssetId assetId = GetCurrentAssetID();
+        const AZ::Data::AssetId assetID = GetCurrentAssetID();
         if (m_editNotifyCallback)
         {
             AZ_Error("Asset Property", m_editNotifyTarget, "No notification target set for edit callback.");
-            m_editNotifyCallback->Invoke(m_editNotifyTarget, assetId, GetCurrentAssetType());
+            m_editNotifyCallback->Invoke(m_editNotifyTarget, assetID, GetCurrentAssetType());
             return;
         }
         else
@@ -790,7 +806,7 @@ namespace AzToolsFramework
                 const AZ::SerializeContext::ClassData* classData = serializeContext->FindClassData(GetCurrentAssetType());
                 if (classData && classData->m_editData)
                 {
-                    if (!assetId.IsValid())
+                    if (!assetID.IsValid())
                     {
                         // No Asset Id selected - Open editor and create new asset for them
                         AssetEditor::AssetEditorRequestsBus::Broadcast(&AssetEditor::AssetEditorRequests::CreateNewAsset, GetCurrentAssetType());
@@ -799,7 +815,7 @@ namespace AzToolsFramework
                     {
                         // Open the asset with the preferred asset editor
                         bool handled = false;
-                        AssetBrowser::AssetBrowserInteractionNotificationBus::Broadcast(&AssetBrowser::AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, assetId, handled);
+                        AssetBrowser::AssetBrowserInteractionNotificationBus::Broadcast(&AssetBrowser::AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, assetID, handled);
                     }
 
                     return;
@@ -811,17 +827,17 @@ namespace AzToolsFramework
             tr("No callback is provided and no associated editor could be found."), QMessageBox::Ok, QMessageBox::Ok);
     }
 
-    void PropertyAssetCtrl::PopupAssetBrowser()
+    void PropertyAssetCtrl::PopupAssetPicker()
     {
         AZ_Assert(m_currentAssetType != AZ::Data::s_invalidAssetType, "No asset type was assigned.");
 
         // Request the AssetBrowser Dialog and set a type filter
         AssetSelectionModel selection = GetAssetSelectionModel();
         selection.SetSelectedAssetId(m_selectedAssetID);
-        EditorRequests::Bus::Broadcast(&EditorRequests::BrowseForAssets, selection);
+        AssetBrowserComponentRequestBus::Broadcast(&AssetBrowserComponentRequests::PickAssets, selection, parentWidget());
         if (selection.IsValid())
         {
-            auto product = azrtti_cast<const ProductAssetBrowserEntry*>(selection.GetResult());
+            const auto product = azrtti_cast<const ProductAssetBrowserEntry*>(selection.GetResult());
             auto folder = azrtti_cast<const FolderAssetBrowserEntry*>(selection.GetResult());
             AZ_Assert(product || folder, "Incorrect entry type selected. Expected product or folder.");
             if (product)
@@ -851,6 +867,7 @@ namespace AzToolsFramework
         const bool isFolderSelection = !GetFolderSelection().empty();
         if (m_selectedAssetID == newID && !isFolderSelection)
         {
+            UpdateAssetDisplay();
             return;
         }
         m_selectedAssetID = newID;
@@ -968,7 +985,7 @@ namespace AzToolsFramework
             AzFramework::StringFunc::Path::GetFileName(assetInfo.m_relativePath.c_str(), m_defaultAssetHint);
         }
 
-        m_lineEdit->setPlaceholderText((m_defaultAssetHint + " (default)").data());
+        m_lineEdit->setPlaceholderText((m_defaultAssetHint + m_DefaultSuffix).c_str());
     }
 
     void PropertyAssetCtrl::UpdateAssetDisplay()
@@ -978,11 +995,11 @@ namespace AzToolsFramework
             return;
         }
 
+        const AZ::Data::AssetId assetID = GetCurrentAssetID();
+
         if (!m_unnamedType) 
         {
-
             AZ::Outcome<AssetSystem::JobInfoContainer> jobOutcome = AZ::Failure();
-            AZ::Data::AssetId assetID = GetCurrentAssetID();
             AssetSystemJobRequestBus::BroadcastResult(jobOutcome, &AssetSystemJobRequestBus::Events::GetAssetJobsInfoByAssetID, assetID, false, false);
 
             if (jobOutcome.IsSuccess())
@@ -1056,7 +1073,6 @@ namespace AzToolsFramework
                     m_currentAssetHint = assetPath;
                 }
             }
-
         }
 
         // Get the asset file name
@@ -1067,8 +1083,32 @@ namespace AzToolsFramework
         }
 
         setToolTip(m_currentAssetHint.c_str());
-        m_lineEdit->setText(assetName.c_str());
-        m_label->setText(assetName.c_str());
+
+        // If no asset is selected but a default asset id is, show the default name.
+        if(!m_selectedAssetID.IsValid() && m_defaultAssetID.IsValid())
+        {
+            m_lineEdit->setText("");
+            m_label->setText((assetName + m_DefaultSuffix).c_str());
+        }
+        else
+        {
+            m_lineEdit->setText(assetName.c_str());
+            m_label->setText(assetName.c_str());
+        }
+    }
+
+    void PropertyAssetCtrl::OnLineEditFocus(bool focus)
+    {
+        if (focus && m_completerIsConfigured)
+        {
+            RefreshAutocompleter();
+        }
+
+        // When focus is lost, clear the field if necessary
+        if (!focus && m_incompleteFilename)
+        {
+            HandleFieldClear();
+        }
     }
 
     void PropertyAssetCtrl::SetEditButtonEnabled(bool enabled)
@@ -1115,11 +1155,13 @@ namespace AzToolsFramework
     void PropertyAssetCtrl::SetClearButtonEnabled(bool enable)
     {
         m_clearButton->setEnabled(enable);
+        m_allowEmptyValue = enable;
     }
 
     void PropertyAssetCtrl::SetClearButtonVisible(bool visible)
     {
         m_clearButton->setVisible(visible);
+        m_allowEmptyValue = visible;
     }
 
     const AZ::Uuid& AssetPropertyHandlerDefault::GetHandledType() const

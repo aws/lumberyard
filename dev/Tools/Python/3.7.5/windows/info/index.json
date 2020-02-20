@@ -1,0 +1,17 @@
+{
+  "arch": "x86_64",
+  "build": "h8c8aaf0_0",
+  "build_number": 0,
+  "depends": [
+    "openssl >=1.1.1d,<1.1.2a",
+    "sqlite >=3.30.1,<4.0a0",
+    "vc >=14.1,<15.0a0",
+    "vs2015_runtime >=14.16.27012,<15.0a0"
+  ],
+  "license": "PSF",
+  "name": "python",
+  "platform": "win",
+  "subdir": "win-64",
+  "timestamp": 1572553227125,
+  "version": "3.7.5"
+}

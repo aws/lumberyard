@@ -41,6 +41,7 @@ namespace EMotionFX
         void Reserve(uint32 numEvents);
         void Resize(uint32 numEvents);
         void AddEvent(const EventInfo& newEvent);
+        void AddAllEventsFrom(const AnimGraphEventBuffer& eventBuffer);
 
         template<typename... Args>
         void AddEvent(Args&&... args)

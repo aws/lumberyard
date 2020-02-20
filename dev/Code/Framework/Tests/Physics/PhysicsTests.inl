@@ -62,6 +62,11 @@ namespace Physics
         return SuppressExpectedErrors(window, message);
     }
 
+    bool ErrorHandler::OnPrintf(const char* window, const char* message)
+    {
+        return SuppressExpectedErrors(window, message);
+    }
+
     // helper functions
     AZStd::shared_ptr<World> GenericPhysicsInterfaceTest::CreateTestWorld()
     {

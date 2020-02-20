@@ -1,4 +1,4 @@
-#
+﻿#
 # All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 # its licensors.
 #
@@ -208,14 +208,28 @@ def check_cpp_platform_tools(toolsetVer, platform_tool_name, vs2017vswhereOption
             if vswhere_exe == '':
                 return False
 
+            vs2017vswhereOptionsBuildtools = vs2017vswhereOptions[:]
+            vs2017vswhereOptionsBuildtools.append('-products')
+            vs2017vswhereOptionsBuildtools.append('Microsoft.VisualStudio.Product.BuildTools')
+
             installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptions)
+            if not installation_path:
+                installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptionsBuildtools)
+
             if not installation_path:
                 try:
                     version_arg_index = vs2017vswhereOptions.index('-version')
                     Logs.warn('[WARN] VSWhere could not find an installed version of Visual Studio matching the version requirements provided (-version {}). Attempting to fall back on any available installed version.'.format(vs2017vswhereOptions[version_arg_index + 1]))
                     Logs.warn('[WARN] Lumberyard defaults the version range to the maximum version tested against before each release. You can modify the version range in the WAF user_settings\' option win_vs2017_vswhere_args under [Windows Options].')
-                    del vs2017vswhereOptions[version_arg_index : version_arg_index + 2]
+
+                    vs2017vswhereOptions = ['-version', '[15.0,16.0)']
+                    vs2017vswhereOptionsBuildTools = vs2017vswhereOptions[:]
+                    vs2017vswhereOptionsBuildTools.append('-products')
+                    vs2017vswhereOptionsBuildTools.append('Microsoft.VisualStudio.Product.BuildTools')
+
                     installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptions)
+                    if not installation_path:
+                        installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptionsBuildtools)
                 except ValueError:
                     pass
 
@@ -534,23 +548,32 @@ def is_project_spec_specified(ctx):
 
 
 @conf
-def is_target_enabled(ctx, target):
+def is_target_enabled(ctx, target, is_launcher):
     """
     Check if the target is enabled for the build based on whether a spec file was specified
     """
+    if not is_project_spec_specified(ctx):
+        # No spec means all projects are enabled
+        return True
+
     project_spec = ctx.options.project_spec
+    if is_launcher:
+        # If we are building a launcher, the only restriction is if the spec explicitly disables building game launchers
+        return not ctx.spec_disable_games(project_spec)
 
     # prevent sending an empty list form being passed down in the unlikely chance the keys don't exist
     platform = ctx.env['PLATFORM'] or None
     config = ctx.env['CONFIGURATION'] or None
 
-    if is_project_spec_specified(ctx):
-        return (target in ctx.spec_modules(project_spec, platform, config)) or (target in ctx.get_all_module_uses(project_spec, platform, config))
-    else:
-        # No spec means all projects are enabled
+    # If the target in one of the explicit spec modules
+    if target in ctx.spec_modules(project_spec, platform, config):
         return True
 
+    # If the target is implied by a use dependency of one of the spec modules
+    if target in ctx.get_all_module_uses(project_spec, platform, config):
+        return True
 
+    return False
 @conf
 def add_target_to_spec(ctx, target, spec_name=None):
     """

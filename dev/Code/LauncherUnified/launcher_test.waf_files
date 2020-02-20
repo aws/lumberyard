@@ -7,6 +7,10 @@
             "Launcher_precompiled.h",
             "TestLauncher.cpp",
             "Launcher.h"
+        ],
+        "Source/Tests" :
+        [
+            "Tests/LauncherUnifiedTests.cpp"
         ]
     }
 }

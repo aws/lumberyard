@@ -14,9 +14,13 @@ def build(bld):
 
     kw_dict = dict(
         disable_pch             = True,
+        vs_filter               = 'Gems/PlatformServices',
         file_list               = ['gamestatesamples.waf_files'],
-        includes                = [bld.Path('Code/CryEngine/CryCommon')
-                                  ],
+        includes                = ['.',
+                                   bld.ThirdPartyPath('boost'),
+                                   bld.Path('Code/CryEngine/CryCommon')],
+        
+        # Testing
         test_all_file_list      = ['gamestatesamples_tests.waf_files'],
         platform_roots          = [bld.PlatformRoot('Include/Platform', export_includes=True)]
     )

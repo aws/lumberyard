@@ -89,7 +89,78 @@ namespace AzToolsFramework
 
         GenericComponentWrapper::~GenericComponentWrapper()
         {
-            delete m_template;
+            if (m_template)
+            {
+                delete m_template;
+            }
+        }
+
+        GenericComponentWrapper::GenericComponentWrapper(const GenericComponentWrapper& RHS)
+            : m_displayName(RHS.m_displayName)
+            , m_displayDescription(RHS.m_displayDescription)
+        {
+            if (GetEntity())
+            {
+                AZ_Assert(GetEntity()->GetState() <= AZ::Entity::State::ES_INIT, "Entity should not be activated when copying components");
+            }
+
+            AZ::SerializeContext* context = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+            m_template = context->CloneObject<AZ::Component>(RHS.m_template);
+
+            m_templateEvents = azrtti_cast<AzFramework::EditorEntityEvents*>(m_template);
+        }
+
+        GenericComponentWrapper::GenericComponentWrapper(GenericComponentWrapper&& RHS)
+            : m_displayName(AZStd::move(RHS.m_displayName))
+            , m_displayDescription(AZStd::move(RHS.m_displayDescription))
+        {
+            if (GetEntity())
+            {
+                AZ_Assert(GetEntity()->GetState() <= AZ::Entity::State::ES_INIT, "Entity should not be activated when copying components");
+            }
+
+            m_template = AZStd::move(RHS.m_template);
+            RHS.m_template = nullptr;
+
+            m_templateEvents = azrtti_cast<AzFramework::EditorEntityEvents*>(m_template);
+        }
+
+        GenericComponentWrapper& GenericComponentWrapper::operator=(const GenericComponentWrapper& RHS)
+        {
+            if (GetEntity())
+            {
+                AZ_Assert(GetEntity()->GetState() <= AZ::Entity::State::ES_INIT, "Entity should not be activated when copying components");
+            }
+
+            AZ::SerializeContext* context = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+            m_template = context->CloneObject<AZ::Component>(RHS.m_template);
+
+            m_templateEvents = azrtti_cast<AzFramework::EditorEntityEvents*>(m_template);
+
+            m_displayName = RHS.m_displayName;
+            m_displayDescription = RHS.m_displayDescription;
+
+            return *this;
+        }
+
+        GenericComponentWrapper& GenericComponentWrapper::operator=(GenericComponentWrapper&& RHS)
+        {
+            if (GetEntity())
+            {
+                AZ_Assert(GetEntity()->GetState() <= AZ::Entity::State::ES_INIT, "Entity should not be activated when copying components");
+            }
+
+            m_template = AZStd::move(RHS.m_template);
+            RHS.m_template = nullptr;
+
+            m_templateEvents = azrtti_cast<AzFramework::EditorEntityEvents*>(m_template);
+
+            m_displayName = AZStd::move(RHS.m_displayName);
+            m_displayDescription = AZStd::move(RHS.m_displayDescription);
+
+            return *this;
         }
 
         const char* GenericComponentWrapper::GetDisplayName()

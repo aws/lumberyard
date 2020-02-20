@@ -47,6 +47,8 @@ namespace AzFramework
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<GameEntityContextRequestBus>("GameEntityContextRequestBus")
+                ->Attribute(AZ::Script::Attributes::Module, "entity")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Event("CreateGameEntity", &GameEntityContextRequestBus::Events::CreateGameEntityForBehaviorContext)
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Event("DestroyGameEntity", &GameEntityContextRequestBus::Events::DestroyGameEntity)

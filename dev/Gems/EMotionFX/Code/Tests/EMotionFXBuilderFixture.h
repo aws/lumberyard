@@ -41,8 +41,12 @@ namespace EMotionFX
     public:
         AZ_COMPONENT(BuilderMockComponent, "{6FD64C20-B0D1-41EC-9563-7B57C019300C}");
 
-        BuilderMockComponent();
-        ~BuilderMockComponent() override;
+        BuilderMockComponent() = default;
+        ~BuilderMockComponent() override = default;
+        BuilderMockComponent(const BuilderMockComponent&) = delete;
+        BuilderMockComponent(BuilderMockComponent&&) = default;
+        BuilderMockComponent& operator=(const BuilderMockComponent&) = delete;
+        BuilderMockComponent& operator=(BuilderMockComponent&&) = default;
 
         static void ReflectAnimGraphAndMotionSet(AZ::ReflectContext* context);
         static void Reflect(AZ::ReflectContext* context);
@@ -54,9 +58,6 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
 
     private:
-        //unique_ptr cannot be copied -> vector of unique_ptrs cannot be copied -> class cannot be copied
-        BuilderMockComponent(const BuilderMockComponent&) = delete;
-
         AZStd::vector<AZStd::unique_ptr<AZ::Data::AssetHandler> > m_assetHandlers;
         AZStd::unique_ptr<EMotionFXTest_MockCatalog> m_assetCatalog;
     };

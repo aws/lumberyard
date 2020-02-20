@@ -94,8 +94,8 @@ namespace EMotionFX
         const Transform& parentBindTransform = node->GetParentNode()
             ? bindPose->GetModelSpaceTransform(node->GetParentIndex())
             : Transform();
-        const AZ::Quaternion& nodeBindRotationWorld = MCore::EmfxQuatToAzQuat(nodeBindTransform.mRotation);
-        const AZ::Quaternion& parentBindRotationWorld = MCore::EmfxQuatToAzQuat(parentBindTransform.mRotation);
+        const AZ::Quaternion& nodeBindRotationWorld = nodeBindTransform.mRotation;
+        const AZ::Quaternion& parentBindRotationWorld = parentBindTransform.mRotation;
 
         AZ::Vector3 boneDirection = AZ::Vector3::CreateAxisX();
 
@@ -127,10 +127,9 @@ namespace EMotionFX
 
         AZStd::vector<AZ::Quaternion> exampleRotationsLocal;
 
-        AZStd::unique_ptr<Physics::JointLimitConfiguration> jointLimitConfig;
-        Physics::SystemRequestBus::BroadcastResult(jointLimitConfig,
-            &Physics::SystemRequests::ComputeInitialJointLimitConfiguration,
-            typeId, parentBindRotationWorld, nodeBindRotationWorld, boneDirection, exampleRotationsLocal);
+        AZStd::unique_ptr<Physics::JointLimitConfiguration> jointLimitConfig =
+            AZ::Interface<Physics::System>::Get()->ComputeInitialJointLimitConfiguration(
+                typeId, parentBindRotationWorld, nodeBindRotationWorld, boneDirection, exampleRotationsLocal);
 
         AZ_Assert(jointLimitConfig, "Could not create joint limit configuration with type '%s'.", typeId.ToString<AZStd::string>().c_str());
         return jointLimitConfig;

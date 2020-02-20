@@ -14,18 +14,21 @@ from cgf_utils import custom_resource_utils
 from cgf_utils import custom_resource_response
 import traceback
 import os
-import imp
 import sys
 import json
 from cgf_utils import aws_utils
 from cgf_utils import json_utils
-from resource_manager_common import constant
 from resource_manager_common import module_utils
 from resource_manager_common import stack_info
 
 from cgf_utils.properties import ValidationError
 
 import boto3
+from botocore.config import Config
+
+# See https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
+LAMBDA_READ_TIMEOUT = 120           # In seconds, boto3 default is 60s
+LAMBDA_CONNECTION_TIMEOUT = 10      # In seconds, boto3 default is 60s
 
 # This is patched by unit tests
 PLUGIN_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'plugin'))
@@ -33,12 +36,13 @@ PLUGIN_DIRECTORY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 
 _LOCAL_CUSTOM_RESOURCE_WHITELIST = {"Custom::LambdaConfiguration", "Custom::ResourceTypes"}
 
 _UPDATE_CHANGED_PHYSICAL_ID_WARNING = "Warning: resource \"{}\" has updated physical resource ID from \"{}\" to " \
-    "\"{}\". This is forbidden by the CloudFormation specification for custom resources and may result in " \
-    "unspecified behavior."
+                                      "\"{}\". This is forbidden by the CloudFormation specification for custom resources and may result in " \
+                                      "unspecified behavior."
+
 
 def handler(event, context):
+    """Main handler for custom resources, wired in via project-template.json as the ProjectResourceHandler"""
     try:
-
         print 'Dispatching event {} with context {}.'.format(json.dumps(event, cls=json_utils.SafeEncoder), context)
 
         resource_type = event.get('ResourceType', None)
@@ -103,7 +107,11 @@ def handler(event, context):
             logical_id = event['LogicalResourceId']
             embedded_physical_id = None
 
-            lambda_client = aws_utils.ClientWrapper(boto3.client("lambda", stack.region))
+            # Access control can take over 60s so set custom timeouts
+            config_dict = {'region_name': stack.region, 'connect_timeout': LAMBDA_CONNECTION_TIMEOUT, 'read_timeout': LAMBDA_READ_TIMEOUT}
+            lambda_client_config = Config(**config_dict)
+            lambda_client = aws_utils.ClientWrapper(boto3.client("lambda", config=lambda_client_config))
+
             cf_client = aws_utils.ClientWrapper(boto3.client("cloudformation", stack.region))
 
             if request_type != "Create":
@@ -177,8 +185,8 @@ def handler(event, context):
     except ValidationError as e:
         custom_resource_response.fail(event, context, str(e))
     except Exception as e:
-        print 'Unexpected error occured when processing event {} with context {}. {}'.format(event, context, traceback.format_exc())
-        custom_resource_response.fail(event, context, 'Unexpected {} error occured: {}. Additional details can be found in the CloudWatch log group {} stream {}'.format(
+        print 'Unexpected error occurred when processing event {} with context {}. {}'.format(event, context, traceback.format_exc())
+        custom_resource_response.fail(event, context, 'Unexpected {} error occurred: {}. Additional details can be found in the CloudWatch log group {} stream {}'.format(
             type(e).__name__,
             e.message,
             context.log_group_name,

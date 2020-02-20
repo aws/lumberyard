@@ -198,11 +198,18 @@ namespace LegacyFramework
         ::_splitpath_s(m_applicationModule, szDrv, _MAX_DRIVE, szDir, _MAX_DIR, NULL, 0, NULL, 0);
 
         ::_makepath_s(configFilePath, _MAX_PATH, szDrv, szDir, desc.m_applicationName, ".xml");
-#else
+#elif defined (AZ_PLATFORM_APPLE_OSX)
         uint32_t bufSize = AZ_ARRAY_SIZE(m_applicationModule);
         _NSGetExecutablePath(m_applicationModule, &bufSize);
         QString path = QStringLiteral("%1/%2.xml").arg(m_exeDirectory, desc.m_applicationName);
         qstrcpy(configFilePath, path.toUtf8().data());
+#elif defined (AZ_PLATFORM_LINUX)
+        uint32_t bufSize = AZ_ARRAY_SIZE(m_applicationModule);
+        size_t pathLen = readlink("/proc/self/exe", m_applicationModule, bufSize);
+        QString path = QStringLiteral("%1/%2.xml").arg(m_exeDirectory, desc.m_applicationName);
+        qstrcpy(configFilePath, path.toUtf8().data());
+#else
+#error ("Unsupported Platform")
 #endif
 
         // Enable next line to load from the last state

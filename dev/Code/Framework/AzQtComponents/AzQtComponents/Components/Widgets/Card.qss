@@ -15,8 +15,11 @@ AzQtComponents--Card
 {
     margin: 0px;
     padding: 0px;
-    border: 1px solid rgb(33, 34, 35);
-    border-radius: 2px;
+}
+
+AzQtComponents--Card *
+{
+    background-color: #555555;
 }
 
 AzQtComponents--Card[hideFrame=true]
@@ -24,19 +27,11 @@ AzQtComponents--Card[hideFrame=true]
     border: 1px transparent rgba(0, 0, 0, 0);
 }
 
-AzQtComponents--CardNotification
-{
-    background-color: #1AFDC32D;
-    margin: 2px;
-    border: 1px solid #FDC32D;
-    border-radius: 2px;
-}
-
 AzQtComponents--CardNotification #HeaderFrame,
 AzQtComponents--CardNotification #Icon,
 AzQtComponents--CardNotification #Title
 {
-    background-color: transparent;
+    background-color: #444444;
     border: none;
 }
 
@@ -52,12 +47,18 @@ AzQtComponents--CardHeader
 {
     margin: 0px;
     padding: 0px;
-    border: none;
+    border-top-left-radius: 2px;
+    border-top-right-radius: 2px;
+}
+
+AzQtComponents--CardHeader *
+{
+    background-color: #555555;
 }
 
 AzQtComponents--CardHeader #Background
 {
-    margin: 2px;
+    margin: 0px 6px 0px 6px;
     padding: 0px;
     border: none;
     background-image: none;
@@ -66,17 +67,28 @@ AzQtComponents--CardHeader #Background
 
 .primaryCardHeader
 {
-    background-color: #222222;
+    background-color: #333333;
 }
 
 .secondaryCardHeader
 {
-    background-color: transparent;
+    background-color: #555555;
+}
+
+AzQtComponents--CardHeader #Background[warning=true]
+{
+    margin: 0px;
+    background-repeat: repeat-x;
+    background-image: url(:/Cards/img/UI20/Cards/error-conclict-state.svg);
+}
+
+AzQtComponents--CardHeader #Background[warning=false]
+{
+    background-image: none;
 }
 
 AzQtComponents--CardHeader #Background[readOnly=true]
 {
-
     background-repeat: repeat-xy;
 }
 
@@ -87,6 +99,8 @@ AzQtComponents--CardHeader #Background[readOnly=false]
 
 AzQtComponents--CardHeader #Title
 {
+    height: 16px;
+    margin: 0px 2px 0px 2px;
     font-weight: bold;
     background-color: transparent;
 }
@@ -106,11 +120,16 @@ AzQtComponents--CardHeader #Expander
 
 AzQtComponents--CardHeader #Expander:enabled:checked
 {
-    image: url(:/Cards/img/UI20/Cards/group_open.png);
+    width: 8px;
+    height: 8px;
+    padding: 0px 4px 0px 4px;
+    margin: 4px 2px 4px 2px;
+    image: url(:/Cards/img/UI20/Cards/caret_down.svg);
 }
 
 AzQtComponents--CardHeader #Expander:enabled:!checked
 {
+    margin: 4px 2px 4px 2px;
     image: url(:/Cards/img/UI20/Cards/group_closed.png);
 }
 
@@ -119,30 +138,35 @@ AzQtComponents--CardHeader #WarningIcon
 {
     width: 16px;
     height: 16px;
+    margin: 4px 2px 4px 2px;
     border: none;
     background-color: transparent;
 }
 
 AzQtComponents--CardHeader #ContextMenu
 {
+    width: 24px;
+    margin: 4px 2px 4px 2px;
     qproperty-flat: true;
     border: none;
     color: transparent;
     background-color: transparent;
     selection-color: transparent;
     selection-background-color: transparent;
-    image: url(:/Cards/img/UI20/Cards/menu_ico.png);
+    image: url(:/Cards/img/UI20/Cards/menu_ico.svg);
 }
 
 AzQtComponents--CardHeader #Help
 {
+    width: 16px;
+    margin: 4px 2px 4px 2px;
     qproperty-flat: true;
     border: none;
     color: transparent;
     background-color: transparent;
     selection-color: transparent;
     selection-background-color: transparent;
-    image: url(:/Cards/img/UI20/Cards/help.png);
+    image: url(:/Cards/img/UI20/Cards/help.svg);
 }
 
 .separator
@@ -155,5 +179,5 @@ AzQtComponents--Card #SeparatorContainer
     margin-left: 2px;
     margin-right: 2px;
     border: none;
+    background-color: #555555;
 }
-

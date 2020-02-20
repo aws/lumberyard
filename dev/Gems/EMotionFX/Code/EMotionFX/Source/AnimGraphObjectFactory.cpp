@@ -20,49 +20,50 @@
 #include <MCore/Source/LogManager.h>
 
 // default object types
-#include "BlendTreeParameterNode.h"
-#include "BlendSpace2DNode.h"
-#include "BlendSpace1DNode.h"
-#include "BlendTreeFinalNode.h"
-#include "BlendTreeBlend2Node.h"
-#include "BlendTreeBlend2NodeBase.h"
-#include "BlendTreeBlend2AdditiveNode.h"
-#include "BlendTreeBlend2LegacyNode.h"
-#include "BlendTreeBlendNNode.h"
-#include "BlendTreePoseSwitchNode.h"
-#include "BlendTreeFloatConstantNode.h"
-#include "BlendTreeFloatMath1Node.h"
-#include "BlendTreeFloatMath2Node.h"
-#include "BlendTreeFloatSwitchNode.h"
-#include "BlendTreeFloatConditionNode.h"
-#include "BlendTreeGetTransformNode.h"
-#include "BlendTreeBoolLogicNode.h"
-#include "BlendTreeSmoothingNode.h"
-#include "BlendTreeMaskNode.h"
-#include "BlendTreeMorphTargetNode.h"
-#include "BlendTreeMotionFrameNode.h"
-#include "BlendTreeVector3Math1Node.h"
-#include "BlendTreeVector3Math2Node.h"
-#include "BlendTreeVector2DecomposeNode.h"
-#include "BlendTreeVector3DecomposeNode.h"
-#include "BlendTreeVector4DecomposeNode.h"
-#include "BlendTreeVector2ComposeNode.h"
-#include "BlendTreeVector3ComposeNode.h"
-#include "BlendTreeVector4ComposeNode.h"
-#include "BlendTreeRotationMath2Node.h"
-#include "BlendTreeRotationLimitNode.h"
-#include "BlendTreeTwoLinkIKNode.h"
-#include "BlendTreeLookAtNode.h"
-#include "BlendTreeTransformNode.h"
-#include "BlendTreeAccumTransformNode.h"
-#include "BlendTreeRangeRemapperNode.h"
-#include "BlendTreeSetTransformNode.h"
-#include "BlendTreeDirectionToWeightNode.h"
-#include "BlendTreeMirrorPoseNode.h"
-#include "BlendTree.h"
-#include "BlendTreeMirrorPoseNode.h"
-#include "BlendTreePoseSubtractNode.h"
-#include "TransformSpace.h"
+#include <EMotionFX/Source/BlendTreeParameterNode.h>
+#include <EMotionFX/Source/BlendSpace2DNode.h>
+#include <EMotionFX/Source/BlendSpace1DNode.h>
+#include <EMotionFX/Source/BlendTreeFinalNode.h>
+#include <EMotionFX/Source/BlendTreeBlend2Node.h>
+#include <EMotionFX/Source/BlendTreeBlend2NodeBase.h>
+#include <EMotionFX/Source/BlendTreeBlend2AdditiveNode.h>
+#include <EMotionFX/Source/BlendTreeBlend2LegacyNode.h>
+#include <EMotionFX/Source/BlendTreeBlendNNode.h>
+#include <EMotionFX/Source/BlendTreePoseSwitchNode.h>
+#include <EMotionFX/Source/BlendTreeFloatConstantNode.h>
+#include <EMotionFX/Source/BlendTreeFloatMath1Node.h>
+#include <EMotionFX/Source/BlendTreeFloatMath2Node.h>
+#include <EMotionFX/Source/BlendTreeFloatSwitchNode.h>
+#include <EMotionFX/Source/BlendTreeFloatConditionNode.h>
+#include <EMotionFX/Source/BlendTreeGetTransformNode.h>
+#include <EMotionFX/Source/BlendTreeBoolLogicNode.h>
+#include <EMotionFX/Source/BlendTreeSmoothingNode.h>
+#include <EMotionFX/Source/BlendTreeMaskNode.h>
+#include <EMotionFX/Source/BlendTreeMaskLegacyNode.h>
+#include <EMotionFX/Source/BlendTreeMorphTargetNode.h>
+#include <EMotionFX/Source/BlendTreeMotionFrameNode.h>
+#include <EMotionFX/Source/BlendTreeVector3Math1Node.h>
+#include <EMotionFX/Source/BlendTreeVector3Math2Node.h>
+#include <EMotionFX/Source/BlendTreeVector2DecomposeNode.h>
+#include <EMotionFX/Source/BlendTreeVector3DecomposeNode.h>
+#include <EMotionFX/Source/BlendTreeVector4DecomposeNode.h>
+#include <EMotionFX/Source/BlendTreeVector2ComposeNode.h>
+#include <EMotionFX/Source/BlendTreeVector3ComposeNode.h>
+#include <EMotionFX/Source/BlendTreeVector4ComposeNode.h>
+#include <EMotionFX/Source/BlendTreeRotationMath2Node.h>
+#include <EMotionFX/Source/BlendTreeRotationLimitNode.h>
+#include <EMotionFX/Source/BlendTreeTwoLinkIKNode.h>
+#include <EMotionFX/Source/BlendTreeLookAtNode.h>
+#include <EMotionFX/Source/BlendTreeTransformNode.h>
+#include <EMotionFX/Source/BlendTreeAccumTransformNode.h>
+#include <EMotionFX/Source/BlendTreeRangeRemapperNode.h>
+#include <EMotionFX/Source/BlendTreeSetTransformNode.h>
+#include <EMotionFX/Source/BlendTreeDirectionToWeightNode.h>
+#include <EMotionFX/Source/BlendTreeMirrorPoseNode.h>
+#include <EMotionFX/Source/BlendTree.h>
+#include <EMotionFX/Source/BlendTreeMirrorPoseNode.h>
+#include <EMotionFX/Source/BlendTreePoseSubtractNode.h>
+#include <EMotionFX/Source/TransformSpace.h>
 #include <EMotionFX/Source/BlendTreeRagdollNode.h>
 #include <EMotionFX/Source/BlendTreeRagdollStrengthModifierNode.h>
 #include <EMotionFX/Source/BlendTreeFootIKNode.h>
@@ -165,6 +166,7 @@ namespace EMotionFX
         BlendTreeBoolLogicNode::Reflect(context);
         BlendTreePoseSwitchNode::Reflect(context);
         BlendTreeMaskNode::Reflect(context);
+        BlendTreeMaskLegacyNode::Reflect(context);
         BlendTreeMorphTargetNode::Reflect(context);
         BlendTreeMotionFrameNode::Reflect(context);
         BlendTreeVector3Math1Node::Reflect(context);
@@ -222,6 +224,7 @@ namespace EMotionFX
             azrtti_typeid<BlendTreeBoolLogicNode>(),
             azrtti_typeid<BlendTreePoseSwitchNode>(),
             azrtti_typeid<BlendTreeMaskNode>(),
+            azrtti_typeid<BlendTreeMaskLegacyNode>(),
             azrtti_typeid<BlendTreeMorphTargetNode>(),
             azrtti_typeid<BlendTreeMotionFrameNode>(),
             azrtti_typeid<BlendTreeVector3Math1Node>(),

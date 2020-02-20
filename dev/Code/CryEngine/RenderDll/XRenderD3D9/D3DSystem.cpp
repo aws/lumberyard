@@ -1933,8 +1933,12 @@ WIN_HWND CD3D9Renderer::Init(int x, int y, int width, int height, unsigned int c
 
     if (!bShaderCacheGen)
     {
+#if !defined(AZ_PLATFORM_LINUX)
         // create the D3D implementation of the GPU particle system.
         m_gpuParticleEngine = new CD3DGPUParticleEngine();
+#else
+        AZ_Warning("Rendering", false, "GPU Particles not supported on Linux");
+#endif
     }
 
     // Success, return the window handle
@@ -3088,7 +3092,8 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
         LOADING_TIME_PROFILE_SECTION_NAMED("CD3D9Renderer::OnD3D10PostCreateDevice(): m_OcclQueries");
         rd->m_OcclQueries.Reserve(MAX_OCCL_QUERIES);
         // Lazy initialization on Android due to limited number of queries that we can create.
-#if !defined(AZ_PLATFORM_ANDROID)
+        // TODO Linux - This was crashing on Ubuntu, investigate
+#if !defined(AZ_PLATFORM_ANDROID) && !defined(AZ_PLATFORM_LINUX)
         for (int a = 0; a < MAX_OCCL_QUERIES; a++)
         {
             rd->m_OcclQueries[a].Create();

@@ -20,6 +20,7 @@
 #include <EMotionFX/Source/BaseObject.h>
 #include <EMotionFX/Source/EMotionFXConfig.h>
 #include <MCore/Source/Attribute.h>
+#include <MCore/Source/Array.h>
 #include <MCore/Source/Random.h>
 
 
@@ -95,7 +96,7 @@ namespace EMotionFX
         bool GetVector2ParameterValue(const char* paramName, AZ::Vector2* outValue);
         bool GetVector3ParameterValue(const char* paramName, AZ::Vector3* outValue);
         bool GetVector4ParameterValue(const char* paramName, AZ::Vector4* outValue);
-        bool GetRotationParameterValue(const char* paramName, MCore::Quaternion* outRotation);
+        bool GetRotationParameterValue(const char* paramName, AZ::Quaternion* outRotation);
 
         bool GetParameterValueAsFloat(uint32 paramIndex, float* outValue);
         bool GetParameterValueAsBool(uint32 paramIndex, bool* outValue);
@@ -103,7 +104,7 @@ namespace EMotionFX
         bool GetVector2ParameterValue(uint32 paramIndex, AZ::Vector2* outValue);
         bool GetVector3ParameterValue(uint32 paramIndex, AZ::Vector3* outValue);
         bool GetVector4ParameterValue(uint32 paramIndex, AZ::Vector4* outValue);
-        bool GetRotationParameterValue(uint32 paramIndex, MCore::Quaternion* outRotation);
+        bool GetRotationParameterValue(uint32 paramIndex, AZ::Quaternion* outRotation);
 
         void SetMotionSet(MotionSet* motionSet);
 

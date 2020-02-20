@@ -57,6 +57,10 @@
         "Input/Devices/VirtualKeyboard/Platform/Linux":
         [
             "../Common/Unimplemented/AzFramework/Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_Unimplemented.cpp"
+        ],
+        "Windowing":
+        [
+            "AzFramework/Windowing/NativeWindow_Linux.cpp"
         ]
     }
 }

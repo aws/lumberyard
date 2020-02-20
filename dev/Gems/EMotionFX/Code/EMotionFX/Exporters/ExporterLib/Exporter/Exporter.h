@@ -13,11 +13,11 @@
 #pragma once
 
 // include the required headers
+#include <AzCore/Math/Quaternion.h>
 #include <AzCore/std/containers/vector.h>
 #include <MCore/Source/Array.h>
 #include <MCore/Source/MemoryFile.h>
 #include <MCore/Source/Endian.h>
-#include <MCore/Source/Quaternion.h>
 #include <MCore/Source/Color.h>
 #include <EMotionFX/Source/WaveletSkeletalMotion.h>
 #include <EMotionFX/Source/MorphTarget.h>
@@ -65,8 +65,8 @@ namespace ExporterLib
     //void FixSkeleton(Actor* actor, MCore::Array<MCore::Matrix>* outDeltaMatrices = nullptr);
     void CopyVector2(EMotionFX::FileFormat::FileVector2& to, const AZ::Vector2& from);
     void CopyVector(EMotionFX::FileFormat::FileVector3& to, const AZ::PackedVector3f& from);
-    void CopyQuaternion(EMotionFX::FileFormat::FileQuaternion& to, MCore::Quaternion from);
-    void Copy16BitQuaternion(EMotionFX::FileFormat::File16BitQuaternion& to, MCore::Quaternion from);
+    void CopyQuaternion(EMotionFX::FileFormat::FileQuaternion& to, AZ::Quaternion from);
+    void Copy16BitQuaternion(EMotionFX::FileFormat::File16BitQuaternion& to, AZ::Quaternion from);
     void Copy16BitQuaternion(EMotionFX::FileFormat::File16BitQuaternion& to, MCore::Compressed16BitQuaternion from);
     void CopyColor(const MCore::RGBAColor& from, EMotionFX::FileFormat::FileColor& to);
 
@@ -141,7 +141,7 @@ namespace ExporterLib
     // actors
     const char* GetActorExtension(bool includingDot = true);
     void SaveActorHeader(MCore::Stream* file, MCore::Endian::EEndianType targetEndianType);
-    void SaveActorFileInfo(MCore::Stream* file, uint32 numLODLevels, uint32 motionExtractionNodeIndex, uint32 retargetRootNodeIndex, const char* sourceApp, const char* orgFileName, const char* actorName, MCore::Distance::EUnitType unitType, MCore::Endian::EEndianType targetEndianType);
+    void SaveActorFileInfo(MCore::Stream* file, uint32 numLODLevels, uint32 motionExtractionNodeIndex, uint32 retargetRootNodeIndex, const char* sourceApp, const char* orgFileName, const char* actorName, MCore::Distance::EUnitType unitType, MCore::Endian::EEndianType targetEndianType, bool optimizeSkeleton);
 
     void SaveActor(MCore::MemoryFile* file, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType);
     bool SaveActor(AZStd::string& filename, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType);
@@ -161,10 +161,7 @@ namespace ExporterLib
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     void OptimizeSkeletalSubMotion(EMotionFX::SkeletalSubMotion* subMotion, bool optimizePos, bool optimizeRot, bool optimizeScale, float maxPosError, float maxRotError, float maxScaleError);
-    void AddSortedKey(EMotionFX::SkeletalSubMotion* subMotion, float time, const AZ::Vector3& position, const MCore::Quaternion& rotation, const AZ::Vector3& scale);
-    // call this before optimization !!!
-    void ConformSkeletalMotion(EMotionFX::SkeletalMotion* motion, EMotionFX::Actor* actor, const MCore::Array<MCore::Matrix>& deltaMatrices);
-    void FixTransformation(const MCore::Array<MCore::Matrix>& deltaMatrices, uint32 nodeIndex, uint32 parentNodeIndex, const AZ::Vector3& inPosition, const MCore::Quaternion& inRotation, const AZ::Vector3& inScale, AZ::Vector3* outPosition, MCore::Quaternion* outRotation, AZ::Vector3* outScale);
+    void AddSortedKey(EMotionFX::SkeletalSubMotion* subMotion, float time, const AZ::Vector3& position, const AZ::Quaternion& rotation, const AZ::Vector3& scale);
 
     void SaveSkeletalMotionHeader(MCore::Stream* file, EMotionFX::Motion* motion, MCore::Endian::EEndianType targetEndianType);
     void SaveSkeletalMotionFileInfo(MCore::Stream* file, EMotionFX::SkeletalMotion* motion, MCore::Endian::EEndianType targetEndianType);

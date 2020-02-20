@@ -132,6 +132,12 @@ namespace EMotionFX
 
     TEST_P(AnimGraphStateMachine_InterruptionFixture, AnimGraphStateMachine_InterruptionTest)
     {
+        // Defer enter entry state on state machine update.
+        m_eventHandler->m_numStatesEntering -= 1;
+        m_eventHandler->m_numStatesEntered -= 1;
+        m_eventHandler->m_numStatesExited -= 1;
+        m_eventHandler->m_numStatesEnded -= 1;
+
         Simulate(20.0f/*simulationTime*/, 60.0f/*expectedFps*/, 0.0f/*fpsVariance*/,
             /*preCallback*/[this](AnimGraphInstance* animGraphInstance){},
             /*postCallback*/[this](AnimGraphInstance* animGraphInstance){},

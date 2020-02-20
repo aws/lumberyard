@@ -13,7 +13,6 @@
 #pragma once
 
 #include <AzCore/Serialization/SerializeContext.h>
-#include <AzCore/std/containers/bitset.h>
 
 namespace Physics
 {
@@ -57,7 +56,9 @@ namespace Physics
 
         static const CollisionGroup None; ///< Collide with nothing
         static const CollisionGroup All; ///< Collide with everything
+#ifdef TOUCHBENDING_LAYER_BIT
         static const CollisionGroup All_NoTouchBend; ///< Collide with everything, except Touch Bendable Vegetation.
+#endif
 
         CollisionGroup(AZ::u64 mask = All.GetMask());
         CollisionGroup(const AZStd::string& groupName);
@@ -84,6 +85,7 @@ namespace Physics
         virtual ~CollisionLayers() = default;
 
         Physics::CollisionLayer GetLayer(const AZStd::string& name);
+        bool TryGetLayer(const AZStd::string& name, Physics::CollisionLayer& layer);
         AZStd::string GetName(const Physics::CollisionLayer& layer) const;
         const AZStd::array<AZStd::string, s_maxCollisionLayers>& GetNames() const;
         void SetName(Physics::CollisionLayer layer, const AZStd::string& layerName);
@@ -148,6 +150,7 @@ namespace Physics
         void SetLayer(Id id, CollisionLayer layer, bool enabled);
         CollisionGroup FindGroupById(Id id) const;
         CollisionGroup FindGroupByName(const AZStd::string& groupName) const;
+        bool TryFindGroupByName(const AZStd::string& groupName, CollisionGroup& group) const;
         Id FindGroupIdByName(const AZStd::string& groupName) const;
         AZStd::string FindGroupNameById(Id id) const;
         const AZStd::vector<Preset>& GetPresets()const;

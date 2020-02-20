@@ -19,7 +19,7 @@ def build(bld):
         vs_filter                   = 'Tools/SceneAPI',
         disable_pch                 = True,
         file_list                   = 'SceneUI.waf_files',
-        platforms                   = ['win', 'darwin'],
+        platforms                   = ['win', 'darwin', 'linux'],
         client_only                 = True,
         exclude_monolithic          = True,
         test_all_file_list          = 'SceneUI_testing.waf_files',

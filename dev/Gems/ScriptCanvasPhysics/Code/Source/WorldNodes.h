@@ -147,7 +147,8 @@ namespace ScriptCanvasPhysics
             AZStd::vector<Physics::OverlapHit> overlaps;
             Physics::WorldRequestBus::BroadcastResult(overlaps, &Physics::World::Overlap, request);
 
-            AZStd::vector<AZ::EntityId> overlapIds(overlaps.size());
+            AZStd::vector<AZ::EntityId> overlapIds;
+            overlapIds.reserve(overlaps.size());
             AZStd::transform(overlaps.begin(), overlaps.end(), AZStd::back_inserter(overlapIds), [](const Physics::OverlapHit& overlap)
             {
                 return overlap.m_body->GetEntityId();

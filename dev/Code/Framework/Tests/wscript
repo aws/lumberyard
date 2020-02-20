@@ -22,7 +22,7 @@ def build(bld):
         target              = 'FrameworkTests',
         vs_filter           = 'AZ Framework/TestSuites',
         file_list           = 'frameworktests.waf_files',
-        platforms           = ['win', 'darwin'],
+        platforms           = ['win', 'darwin', 'linux'],
         configurations      = ['all'],
         test_only           = True,
         use                 = ['AzTest', 'AzToolsFramework', 'AzTestShared'],

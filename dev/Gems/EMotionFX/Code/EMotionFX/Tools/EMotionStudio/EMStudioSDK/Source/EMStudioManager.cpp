@@ -70,12 +70,8 @@ namespace EMStudio
 
         mApp = app;
 
-        {
-            UIAllocator::Descriptor uiAllocatorDescriptor;
-            uiAllocatorDescriptor.m_custom = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
-            AZ::AllocatorInstance<UIAllocator>::Create();
-        }
-
+        AZ::AllocatorInstance<UIAllocator>::Create();
+        
         AZ::SerializeContext* serializeContext = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
         if (!serializeContext)

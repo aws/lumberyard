@@ -273,10 +273,10 @@ namespace AZ
     } u128;
 
     template<typename T>
-    inline T SizeAlignUp(T s, size_t a) { return (s+(a-1)) & ~(a-1); }
+    inline T SizeAlignUp(T s, size_t a) { return static_cast<T>((s+(a-1)) & ~(a-1)); }
 
     template<typename T>
-    inline T SizeAlignDown(T s, size_t a)   { return (s) & ~(a-1); }
+    inline T SizeAlignDown(T s, size_t a) { return static_cast<T>((s) & ~(a-1)); }
 
     template<typename T>
     inline T* PointerAlignUp(T* p, size_t a)    { return reinterpret_cast<T*>((reinterpret_cast<size_t>(p)+(a-1)) & ~(a-1));    }
@@ -334,8 +334,8 @@ namespace AZ
 
 // Macros to default the auto-generated copy/move constructors and assignment operators for a class
 #define AZ_DEFAULT_COPY(_Class) _Class(const _Class&) = default; _Class& operator=(const _Class&) = default;
-// MSVC only supports default move constructors and assignment operators starting from version 14.0,
-// so we can't add macros for AZ_DEFAULT_MOVE/AZ_DEFAULT_COPY_MOVE while we're supporting MSVC 12.0
+#define AZ_DEFAULT_MOVE(_Class) _Class(_Class&&) = default; _Class& operator=(_Class&&) = default;
+#define AZ_DEFAULT_COPY_MOVE(_Class) AZ_DEFAULT_COPY(_Class) AZ_DEFAULT_MOVE(_Class)
 
 // Macro that can be used to avoid unreferenced variable warnings
 #define AZ_UNUSED(x) (void)x;

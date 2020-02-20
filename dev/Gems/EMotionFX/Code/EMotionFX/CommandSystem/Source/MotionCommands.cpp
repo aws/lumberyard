@@ -15,6 +15,7 @@
 
 #include <MCore/Source/Compare.h>
 #include <MCore/Source/FileSystem.h>
+#include <MCore/Source/LogManager.h>
 
 #include <EMotionFX/Source/MotionSystem.h>
 #include <EMotionFX/Source/MotionManager.h>

@@ -10,6 +10,8 @@
 *
 */
 
+#pragma once
+
 #include <AzToolsFramework/ComponentMode/ComponentModeDelegate.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <PhysX/EditorColliderComponentRequestBus.h>

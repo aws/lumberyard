@@ -895,6 +895,8 @@ IStatObj* CStatObj::Clone(bool bCloneGeometry, bool bCloneChildren, bool bMeshes
     pNewObj->m_szFileName = m_szFileName;
     pNewObj->m_szGeomName = m_szGeomName;
 
+    pNewObj->m_cgfNodeName = m_cgfNodeName;
+
     // Default material.
     pNewObj->m_pMaterial = m_pMaterial;
 
@@ -967,7 +969,7 @@ IStatObj* CStatObj::Clone(bool bCloneGeometry, bool bCloneChildren, bool bMeshes
             {
                 pNewObj->m_subObjects[i].pStatObj = m_subObjects[i].pStatObj->Clone(bCloneGeometry, bCloneChildren, bMeshesOnly);
                 pNewObj->m_subObjects[i].pStatObj->AddRef();
-                ((CStatObj*)(pNewObj->m_subObjects[i].pStatObj))->m_pParentObject = this;
+                ((CStatObj*)(pNewObj->m_subObjects[i].pStatObj))->m_pParentObject = pNewObj;
             }
             else
             {
@@ -1302,6 +1304,11 @@ bool CStatObj::CanMergeSubObjects()
         return false;
     }
 
+    if (!m_clothInverseMasses.empty())
+    {
+        return false;
+    }
+
     int nSubMeshes = 0;
     int nTotalVertexCount = 0;
     int nTotalTriCount = 0;
@@ -1314,7 +1321,11 @@ bool CStatObj::CanMergeSubObjects()
         if (pSubObj->pStatObj && pSubObj->nType == STATIC_SUB_OBJECT_MESH && !pSubObj->bHidden)
         {
             CStatObj* pStatObj = (CStatObj*)pSubObj->pStatObj;
-            if (pStatObj->m_pMaterial != m_pMaterial || pStatObj->m_nSpines) // All materials must be same, and no bendable foliage
+
+            // Conditions to not merge subobjects
+            if (pStatObj->m_pMaterial != m_pMaterial ||  // Different materials
+                pStatObj->m_nSpines ||                   // It's bendable foliage
+                !pStatObj->m_clothInverseMasses.empty()) // It's cloth
             {
                 return false;
             }

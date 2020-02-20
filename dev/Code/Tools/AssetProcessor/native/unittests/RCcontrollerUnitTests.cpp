@@ -22,6 +22,11 @@
 #include "native/utilities/assetUtils.h"
 #include <QMetaObject>
 
+#if defined(AZ_PLATFORM_LINUX)
+#include <sys/stat.h>
+#include <fcntl.h>
+#endif
+
 using namespace AssetProcessor;
 using namespace AzFramework::AssetSystem;
 
@@ -463,6 +468,9 @@ void RCcontrollerUnitTests::RunRCControllerTests()
 #if defined(AZ_PLATFORM_WINDOWS)
     // on windows, its enough to just open the file:
     lockFileTest.open(QFile::ReadOnly);
+#elif defined(AZ_PLATFORM_LINUX)
+    int handleOfLock = open(fileInUsePath.toUtf8().constData(), O_RDONLY | O_EXCL | O_NONBLOCK);
+    UNIT_TEST_EXPECT_TRUE(handleOfLock != -1);
 #else
     int handleOfLock = open(fileInUsePath.toUtf8().constData(), O_RDONLY | O_EXLOCK | O_NONBLOCK);
     UNIT_TEST_EXPECT_TRUE(handleOfLock != -1);

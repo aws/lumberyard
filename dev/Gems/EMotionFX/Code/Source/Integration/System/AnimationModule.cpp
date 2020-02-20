@@ -40,6 +40,7 @@
 #   include <SceneAPIExt/Behaviors/SkinRuleBehavior.h>
 #   include <SceneAPIExt/Behaviors/MorphTargetRuleBehavior.h>
 #   include <SceneAPIExt/Behaviors/LodRuleBehavior.h>
+#   include <SceneAPIExt/Behaviors/SkeletonOptimizationRuleBehavior.h>
 #   include <RCExt/Actor/ActorExporter.h>
 #   include <RCExt/Actor/ActorGroupExporter.h>
 #   include <RCExt/Actor/ActorBuilder.h>
@@ -99,6 +100,7 @@ namespace EMotionFX
                     EMotionFX::Pipeline::Behavior::MeshRuleBehavior::CreateDescriptor(),
                     EMotionFX::Pipeline::Behavior::MorphTargetRuleBehavior::CreateDescriptor(),
                     EMotionFX::Pipeline::Behavior::LodRuleBehavior::CreateDescriptor(),
+                    EMotionFX::Pipeline::Behavior::SkeletonOptimizationRuleBehavior::CreateDescriptor(),
                     EMotionFX::Pipeline::ActorExporter::CreateDescriptor(),
                     EMotionFX::Pipeline::ActorGroupExporter::CreateDescriptor(),
                     EMotionFX::Pipeline::ActorBuilder::CreateDescriptor(),

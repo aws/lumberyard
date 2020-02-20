@@ -2461,7 +2461,7 @@ void CStaticObjectCompiler::CreateSpinesFromSkinningData(SSpineRC** pSpines, int
     float spineLength = 0.0f;
     const char* pBoneName = nullptr;
     const char* underscore = nullptr;
-    __int64 prefixLen = 0;
+    int64 prefixLen = 0;
 
     auto completeNewSpine = [&]() {
         if (spine.nVtx > 2)

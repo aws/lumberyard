@@ -87,7 +87,7 @@ namespace AZ
                 if (m_assetWriter->WriteCGF(&cgfContent))
                 {
                     static const Data::AssetType staticMeshAssetType("{C2869E3B-DDA0-4E01-8FE3-6770D788866B}"); // from MeshAsset.h
-                    AZ::SceneAPI::Events::ExportProduct& exportProduct = context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), staticMeshAssetType, 0);
+                    AZ::SceneAPI::Events::ExportProduct& exportProduct = context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), staticMeshAssetType, 0, AZStd::nullopt);
 
                     // If the mesh group has a material rule, then add the material path dependency
                     if (context.m_group.GetRuleContainerConst().FindFirstByType<SceneDataTypes::IMaterialRule>())

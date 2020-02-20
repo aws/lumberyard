@@ -235,7 +235,7 @@ private:
     void DrawTerrainLine(AZ::Vector3 worldPos1, AZ::Vector3 worldPos2) override;
     void DrawWireSphere(const AZ::Vector3& pos, float radius) override;
     void DrawWireSphere(const AZ::Vector3& pos, const AZ::Vector3 radius) override;
-    void DrawBall(const AZ::Vector3& pos, float radius) override;
+    void DrawBall(const AZ::Vector3& pos, float radius, bool drawShaded = true) override;
     void DrawArrow(const AZ::Vector3& src, const AZ::Vector3& trg, float fHeadScale, bool b2SidedArrow) override;
     void DrawTextLabel(const AZ::Vector3& pos, float size, const char* text, const bool bCenter, int srcOffsetX, int scrOffsetY) override;
     void Draw2dTextLabel(float x, float y, float size, const char* text, bool bCenter) override;

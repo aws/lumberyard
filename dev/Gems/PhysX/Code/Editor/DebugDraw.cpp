@@ -24,7 +24,7 @@ namespace PhysX
 {
     namespace DebugDraw
     {
-        const AZ::u32 MaxTriangles = 16384 * 3;
+        const AZ::u32 TrianglesWarningThreshold = 16384 * 3;
         const AZ::u32 MaxTrianglesRange = 800;
         const AZ::Color WarningColor(1.0f, 0.0f, 0.0f, 1.0f);
         const float WarningFrequency = 1.0f; // the number of times per second to flash
@@ -47,6 +47,75 @@ namespace PhysX
             PhysX::Configuration configuration{};
             PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
             return configuration.m_editorConfiguration.m_globalCollisionDebugDraw == requiredState;
+        }
+
+        static void BuildAABBVerts(const AZ::Aabb& aabb,
+            AZStd::vector<AZ::Vector3>& verts,
+            AZStd::vector<AZ::Vector3>& points,
+            AZStd::vector<AZ::u32>& indices)
+        {
+            struct Triangle
+            {
+                AZ::Vector3 m_points[3];
+
+                Triangle(const AZ::Vector3& point0, const AZ::Vector3& point1, const AZ::Vector3& point2)
+                    : m_points{point0, point1, point2}
+                {}
+            };
+
+            const AZ::Vector3 aabbMin = aabb.GetMin();
+            const AZ::Vector3 aabbMax = aabb.GetMax();
+
+            const float x[2] = { aabbMin.GetX(), aabbMax.GetX() };
+            const float y[2] = { aabbMin.GetY(), aabbMax.GetY() };
+            const float z[2] = { aabbMin.GetZ(), aabbMax.GetZ() };
+
+            // There are 12 triangles in an AABB
+            const AZStd::vector<Triangle> triangles =
+            {
+                // Bottom
+                {AZ::Vector3(x[0], y[0], z[0]), AZ::Vector3(x[1], y[1], z[0]), AZ::Vector3(x[1], y[0], z[0])},
+                {AZ::Vector3(x[0], y[0], z[0]), AZ::Vector3(x[0], y[1], z[0]), AZ::Vector3(x[1], y[1], z[0])},
+                // Top
+                {AZ::Vector3(x[0], y[0], z[1]), AZ::Vector3(x[1], y[0], z[1]), AZ::Vector3(x[1], y[1], z[1])},
+                {AZ::Vector3(x[0], y[0], z[1]), AZ::Vector3(x[1], y[1], z[1]), AZ::Vector3(x[0], y[1], z[1])},
+                // Near
+                {AZ::Vector3(x[0], y[0], z[0]), AZ::Vector3(x[1], y[0], z[1]), AZ::Vector3(x[1], y[0], z[1])},
+                {AZ::Vector3(x[0], y[0], z[0]), AZ::Vector3(x[1], y[0], z[1]), AZ::Vector3(x[0], y[0], z[1])},
+                // Far
+                {AZ::Vector3(x[0], y[1], z[0]), AZ::Vector3(x[1], y[1], z[1]), AZ::Vector3(x[0], y[1], z[1])},
+                {AZ::Vector3(x[0], y[1], z[0]), AZ::Vector3(x[1], y[1], z[0]), AZ::Vector3(x[1], y[1], z[1])},
+                // Left
+                {AZ::Vector3(x[0], y[1], z[0]), AZ::Vector3(x[0], y[0], z[1]), AZ::Vector3(x[0], y[1], z[1])},
+                {AZ::Vector3(x[0], y[1], z[0]), AZ::Vector3(x[0], y[0], z[0]), AZ::Vector3(x[0], y[0], z[1])},
+                // Right
+                {AZ::Vector3(x[1], y[0], z[0]), AZ::Vector3(x[1], y[1], z[0]), AZ::Vector3(x[1], y[1], z[1])},
+                {AZ::Vector3(x[1], y[0], z[0]), AZ::Vector3(x[1], y[1], z[1]), AZ::Vector3(x[1], y[0], z[1])}
+            };
+
+            int index = static_cast<int>(verts.size());
+
+            verts.reserve(verts.size() + triangles.size() * 3);
+            indices.reserve(indices.size() + triangles.size() * 3);
+            points.reserve(points.size() + triangles.size() * 6);
+
+            for (const auto& triangle : triangles)
+            {
+                verts.emplace_back(triangle.m_points[0]);
+                verts.emplace_back(triangle.m_points[1]);
+                verts.emplace_back(triangle.m_points[2]);
+
+                indices.emplace_back(index++);
+                indices.emplace_back(index++);
+                indices.emplace_back(index++);
+
+                points.emplace_back(triangle.m_points[0]);
+                points.emplace_back(triangle.m_points[1]);
+                points.emplace_back(triangle.m_points[1]);
+                points.emplace_back(triangle.m_points[2]);
+                points.emplace_back(triangle.m_points[2]);
+                points.emplace_back(triangle.m_points[0]);
+            }
         }
 
         // Collider
@@ -103,155 +172,115 @@ namespace PhysX
             AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
             m_displayCallback = nullptr;
             m_entityId = AZ::EntityId();
-            m_triangleIndexesByMaterialSlot.clear();
-            m_verts.clear();
-            m_points.clear();
-            m_indices.clear();
+
+            ClearCachedGeometry();
         }
 
-        void Collider::SetMeshDirty()
+        bool Collider::HasCachedGeometry() const
         {
-            m_meshDirty = true;
+            return !m_geometry.empty();
         }
 
-        void Collider::BuildMeshes(const Physics::ShapeConfiguration& shapeConfig,
-            const AZ::Data::Asset<Pipeline::MeshAsset>& meshColliderAsset) const
+        void Collider::ClearCachedGeometry()
         {
-            if (m_meshDirty)
+            m_geometry.clear();
+        }
+
+        void Collider::BuildMeshes(const Physics::ShapeConfiguration& shapeConfig, AZ::u32 geomIndex) const
+        {
+            if (m_geometry.size() <= geomIndex)
             {
-                m_verts.clear();
-                m_indices.clear();
-                m_points.clear();
+                m_geometry.resize(geomIndex + 1);
+            }
 
-                switch (shapeConfig.GetShapeType())
+            GeometryData& geom = m_geometry[geomIndex];
+
+            AZStd::vector<AZ::Vector3>& verts = geom.m_verts;
+            AZStd::vector<AZ::Vector3>& points = geom.m_points;
+            AZStd::vector<AZ::u32>& indices = geom.m_indices;
+
+            verts.clear();
+            indices.clear();
+            points.clear();
+
+            switch (shapeConfig.GetShapeType())
+            {
+            case Physics::ShapeType::Sphere:
+            {
+                const auto& sphereConfig = static_cast<const Physics::SphereShapeConfiguration&>(shapeConfig);
+                AZ::Vector3 boxMax = AZ::Vector3(sphereConfig.m_scale * sphereConfig.m_radius);
+                AZ::Aabb aabb = AZ::Aabb::CreateFromMinMax(-boxMax, boxMax);
+                BuildAABBVerts(aabb, verts, points, indices);
+            }
+            break;
+            case Physics::ShapeType::Box:
+            {
+                const auto& boxConfig = static_cast<const Physics::BoxShapeConfiguration&>(shapeConfig);
+                AZ::Vector3 boxMax = boxConfig.m_scale * 0.5f * boxConfig.m_dimensions;
+                AZ::Aabb aabb = AZ::Aabb::CreateFromMinMax(-boxMax, boxMax);
+                BuildAABBVerts(aabb, verts, points, indices);
+            }
+            break;
+            case Physics::ShapeType::Capsule:
+            {
+                const auto& capsuleConfig = static_cast<const Physics::CapsuleShapeConfiguration&>(shapeConfig);
+                LmbrCentral::CapsuleGeometrySystemRequestBus::Broadcast(
+                    &LmbrCentral::CapsuleGeometrySystemRequestBus::Events::GenerateCapsuleMesh,
+                    capsuleConfig.m_radius * capsuleConfig.m_scale.GetX(),
+                    capsuleConfig.m_height * capsuleConfig.m_scale.GetZ(),
+                    16, 8, verts, indices, points);
+            }
+            break;
+            case Physics::ShapeType::CookedMesh:
+            {
+                const auto& cookedMeshConfig = static_cast<const Physics::CookedMeshShapeConfiguration&>(shapeConfig);
+                physx::PxBase* meshData = static_cast<physx::PxBase*>(cookedMeshConfig.GetCachedNativeMesh());
+                if (meshData)
                 {
-                case Physics::ShapeType::Sphere:
-                {
-                    const auto& sphereConfig = static_cast<const Physics::SphereShapeConfiguration&>(shapeConfig);
-                    AZ::Vector3 boxMax = AZ::Vector3(sphereConfig.m_scale * sphereConfig.m_radius);
-                    BuildAABBVerts(-boxMax, boxMax);
-                    m_meshDirty = false;
-                }
-                break;
-                case Physics::ShapeType::Box:
-                {
-                    const auto& boxConfig = static_cast<const Physics::BoxShapeConfiguration&>(shapeConfig);
-                    AZ::Vector3 boxMax = boxConfig.m_scale * 0.5f * boxConfig.m_dimensions;
-                    BuildAABBVerts(-boxMax, boxMax);
-                    m_meshDirty = false;
-                }
-                break;
-                case Physics::ShapeType::Capsule:
-                {
-                    const auto& capsuleConfig = static_cast<const Physics::CapsuleShapeConfiguration&>(shapeConfig);
-                    LmbrCentral::CapsuleGeometrySystemRequestBus::Broadcast(
-                        &LmbrCentral::CapsuleGeometrySystemRequestBus::Events::GenerateCapsuleMesh,
-                        capsuleConfig.m_radius * capsuleConfig.m_scale.GetX(),
-                        capsuleConfig.m_height * capsuleConfig.m_scale.GetZ(),
-                        16, 8,
-                        m_verts,
-                        m_indices,
-                        m_points
-                    );
-                    m_meshDirty = false;
-                }
-                break;
-                case Physics::ShapeType::PhysicsAsset:
-                    if (meshColliderAsset && meshColliderAsset.IsReady())
+                    if (meshData->is<physx::PxTriangleMesh>())
                     {
-                        physx::PxBase* meshData = meshColliderAsset.Get()->GetMeshData();
-
-                        if (meshData)
-                        {
-                            if (meshData->is<physx::PxTriangleMesh>())
-                            {
-                                BuildTriangleMesh(meshData);
-                            }
-                            else
-                            {
-                                BuildConvexMesh(meshData);
-                            }
-                        }
-
-                        m_meshDirty = false;
+                        BuildTriangleMesh(meshData, geomIndex);
                     }
-                    break;
-                }
-                if ((m_indices.size() / 3) >= MaxTriangles)
-                {
-                    AZ::Entity* entity = nullptr;
-                    AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, m_entityId);
-                    if (entity)
+                    else
                     {
-                        AZ_Warning("PhysX Debug Draw", false, "Mesh has too many triangles! Entity: '%s', id: %s",
-                            entity->GetName().c_str(), entity->GetId().ToString().c_str());
+                        BuildConvexMesh(meshData, geomIndex);
                     }
                 }
+                break;
+            }
+            case Physics::ShapeType::PhysicsAsset:
+            {
+                AZ_Error("PhysX", false,
+                    "DebugDraw::Collider::BuildMeshes: Cannot pass PhysicsAsset configuration since it is a collection of shapes. "
+                    "Please iterate over m_colliderShapes in the asset and call this function for each of them. "
+                    "Entity %s, ID: %llu", GetEntityName().c_str(), m_entityId);
+                break;
+            }
+
+            default:
+            {
+                AZ_Error("PhysX", false, "DebugDraw::Collider::BuildMeshes: Unsupported ShapeType %d. Entity %s, ID: %llu",
+                    static_cast<AZ::u32>(shapeConfig.GetShapeType()), GetEntityName().c_str(), m_entityId);
+                break;
+            }
+            }
+
+            if ((indices.size() / 3) >= TrianglesWarningThreshold)
+            {
+                AZ_Warning("PhysX Debug Draw", false, "Mesh has too many triangles! Entity: '%s', ID: %llu",
+                    GetEntityName().c_str(), m_entityId);
             }
         }
 
-        void Collider::BuildAABBVerts(const AZ::Vector3& boxMin, const AZ::Vector3& boxMax) const
+        void Collider::BuildTriangleMesh(physx::PxBase* meshData, AZ::u32 geomIndex) const
         {
-            struct Triangle
-            {
-                AZ::Vector3 m_points[3];
+            GeometryData& geom = m_geometry[geomIndex];
 
-                Triangle(AZ::Vector3 point0, AZ::Vector3 point1, AZ::Vector3 point2)
-                {
-                    m_points[0] = point0;
-                    m_points[1] = point1;
-                    m_points[2] = point2;
-                }
-            };
+            AZStd::unordered_map<int, AZStd::vector<AZ::u32>>& triangleIndexesByMaterialSlot = geom.m_triangleIndexesByMaterialSlot;
+            AZStd::vector<AZ::Vector3>& verts = geom.m_verts;
+            AZStd::vector<AZ::Vector3>& points = geom.m_points;
+            AZStd::vector<AZ::u32>& indices = geom.m_indices;
 
-            float x[2] = { boxMin.GetX(), boxMax.GetX() };
-            float y[2] = { boxMin.GetY(), boxMax.GetY() };
-            float z[2] = { boxMin.GetZ(), boxMax.GetZ() };
-
-            // There are 12 triangles in an AABB
-            AZStd::vector<Triangle> triangles;
-            // Bottom
-            triangles.push_back(Triangle(AZ::Vector3(x[0], y[0], z[0]), AZ::Vector3(x[1], y[1], z[0]), AZ::Vector3(x[1], y[0], z[0])));
-            triangles.push_back(Triangle(AZ::Vector3(x[0], y[0], z[0]), AZ::Vector3(x[0], y[1], z[0]), AZ::Vector3(x[1], y[1], z[0])));
-            // Top
-            triangles.push_back(Triangle(AZ::Vector3(x[0], y[0], z[1]), AZ::Vector3(x[1], y[0], z[1]), AZ::Vector3(x[1], y[1], z[1])));
-            triangles.push_back(Triangle(AZ::Vector3(x[0], y[0], z[1]), AZ::Vector3(x[1], y[1], z[1]), AZ::Vector3(x[0], y[1], z[1])));
-            // Near
-            triangles.push_back(Triangle(AZ::Vector3(x[0], y[0], z[0]), AZ::Vector3(x[1], y[0], z[1]), AZ::Vector3(x[1], y[0], z[1])));
-            triangles.push_back(Triangle(AZ::Vector3(x[0], y[0], z[0]), AZ::Vector3(x[1], y[0], z[1]), AZ::Vector3(x[0], y[0], z[1])));
-            // Far
-            triangles.push_back(Triangle(AZ::Vector3(x[0], y[1], z[0]), AZ::Vector3(x[1], y[1], z[1]), AZ::Vector3(x[0], y[1], z[1])));
-            triangles.push_back(Triangle(AZ::Vector3(x[0], y[1], z[0]), AZ::Vector3(x[1], y[1], z[0]), AZ::Vector3(x[1], y[1], z[1])));
-            // Left
-            triangles.push_back(Triangle(AZ::Vector3(x[0], y[1], z[0]), AZ::Vector3(x[0], y[0], z[1]), AZ::Vector3(x[0], y[1], z[1])));
-            triangles.push_back(Triangle(AZ::Vector3(x[0], y[1], z[0]), AZ::Vector3(x[0], y[0], z[0]), AZ::Vector3(x[0], y[0], z[1])));
-            // Right
-            triangles.push_back(Triangle(AZ::Vector3(x[1], y[0], z[0]), AZ::Vector3(x[1], y[1], z[0]), AZ::Vector3(x[1], y[1], z[1])));
-            triangles.push_back(Triangle(AZ::Vector3(x[1], y[0], z[0]), AZ::Vector3(x[1], y[1], z[1]), AZ::Vector3(x[1], y[0], z[1])));
-
-            int index = 0;
-
-            for (const auto& triangle : triangles)
-            {
-                m_verts.push_back(triangle.m_points[0]);
-                m_verts.push_back(triangle.m_points[1]);
-                m_verts.push_back(triangle.m_points[2]);
-
-                m_indices.push_back(index++);
-                m_indices.push_back(index++);
-                m_indices.push_back(index++);
-
-                m_points.push_back(triangle.m_points[0]);
-                m_points.push_back(triangle.m_points[1]);
-                m_points.push_back(triangle.m_points[1]);
-                m_points.push_back(triangle.m_points[2]);
-                m_points.push_back(triangle.m_points[2]);
-                m_points.push_back(triangle.m_points[0]);
-            }
-        }
-
-        void Collider::BuildTriangleMesh(physx::PxBase* meshData) const
-        {
             physx::PxTriangleMeshGeometry mesh = physx::PxTriangleMeshGeometry(reinterpret_cast<physx::PxTriangleMesh*>(meshData));
 
             const physx::PxTriangleMesh* triangleMesh = mesh.triangleMesh;
@@ -260,10 +289,10 @@ namespace PhysX
             const AZ::u32 triangleCount = triangleMesh->getNbTriangles();
             const void* triangles = triangleMesh->getTriangles();
 
-            m_verts.reserve(vertCount);
-            m_indices.reserve(triangleCount * 3);
-            m_points.reserve(triangleCount * 3 * 2);
-            m_triangleIndexesByMaterialSlot.clear();
+            verts.reserve(vertCount);
+            indices.reserve(triangleCount * 3);
+            points.reserve(triangleCount * 3 * 2);
+            triangleIndexesByMaterialSlot.clear();
 
             physx::PxTriangleMeshFlags triangleMeshFlags = triangleMesh->getTriangleMeshFlags();
             const bool mesh16BitVertexIndices = triangleMeshFlags.isSet(physx::PxTriangleMeshFlag::Enum::e16_BIT_INDICES);
@@ -283,7 +312,7 @@ namespace PhysX
             for (AZ::u32 vertIndex = 0; vertIndex < vertCount; ++vertIndex)
             {
                 AZ::Vector3 vert = PxMathConvert(vertices[vertIndex]);
-                m_verts.push_back(vert);
+                verts.push_back(vert);
             }
 
             for (AZ::u32 triangleIndex = 0; triangleIndex < triangleCount * 3; triangleIndex += 3)
@@ -292,38 +321,40 @@ namespace PhysX
                 AZ::u32 index2 = GetVertIndex(triangleIndex + 1);
                 AZ::u32 index3 = GetVertIndex(triangleIndex + 2);
 
-                AZ::Vector3 a = m_verts[index1];
-                AZ::Vector3 b = m_verts[index2];
-                AZ::Vector3 c = m_verts[index3];
-                m_indices.push_back(index1);
-                m_indices.push_back(index2);
-                m_indices.push_back(index3);
+                AZ::Vector3 a = verts[index1];
+                AZ::Vector3 b = verts[index2];
+                AZ::Vector3 c = verts[index3];
+                indices.push_back(index1);
+                indices.push_back(index2);
+                indices.push_back(index3);
 
-                m_points.push_back(a);
-                m_points.push_back(b);
-                m_points.push_back(b);
-                m_points.push_back(c);
-                m_points.push_back(c);
-                m_points.push_back(a);
+                points.push_back(a);
+                points.push_back(b);
+                points.push_back(b);
+                points.push_back(c);
+                points.push_back(c);
+                points.push_back(a);
 
                 const physx::PxMaterialTableIndex materialIndex = triangleMesh->getTriangleMaterialIndex(triangleIndex / 3);
                 const int slotIndex = static_cast<const int>(materialIndex);
-                m_triangleIndexesByMaterialSlot[slotIndex].push_back(index1);
-                m_triangleIndexesByMaterialSlot[slotIndex].push_back(index2);
-                m_triangleIndexesByMaterialSlot[slotIndex].push_back(index3);
+                triangleIndexesByMaterialSlot[slotIndex].push_back(index1);
+                triangleIndexesByMaterialSlot[slotIndex].push_back(index2);
+                triangleIndexesByMaterialSlot[slotIndex].push_back(index3);
             }
         }
 
-        void Collider::BuildConvexMesh(physx::PxBase* meshData) const
+        void Collider::BuildConvexMesh(physx::PxBase* meshData, AZ::u32 geomIndex) const
         {
+            GeometryData& geom = m_geometry[geomIndex];
+
+            AZStd::vector<AZ::Vector3>& verts = geom.m_verts;
+            AZStd::vector<AZ::Vector3>& points = geom.m_points;
+
             physx::PxConvexMeshGeometry mesh = physx::PxConvexMeshGeometry(reinterpret_cast<physx::PxConvexMesh*>(meshData));
             const physx::PxConvexMesh* convexMesh = mesh.convexMesh;
-            const physx::PxU8* indices = convexMesh->getIndexBuffer();
-            const physx::PxVec3* vertices = convexMesh->getVertices();
+            const physx::PxU8* pxIndices = convexMesh->getIndexBuffer();
+            const physx::PxVec3* pxVertices = convexMesh->getVertices();
             const AZ::u32 numPolys = convexMesh->getNbPolygons();
-
-            m_verts.clear();
-            m_points.clear();
 
             for (AZ::u32 polygonIndex = 0; polygonIndex < numPolys; ++polygonIndex)
             {
@@ -334,26 +365,26 @@ namespace PhysX
                 AZ::u32 index2 = 1;
                 AZ::u32 index3 = 2;
 
-                const AZ::Vector3 a = PxMathConvert(vertices[indices[poly.mIndexBase + index1]]);
+                const AZ::Vector3 a = PxMathConvert(pxVertices[pxIndices[poly.mIndexBase + index1]]);
                 const AZ::u32 triangleCount = poly.mNbVerts - 2;
 
                 for (AZ::u32 triangleIndex = 0; triangleIndex < triangleCount; ++triangleIndex)
                 {
                     AZ_Assert(index3 < poly.mNbVerts, "Implementation error: attempted to index outside range of polygon vertices.");
 
-                    const AZ::Vector3 b = PxMathConvert(vertices[indices[poly.mIndexBase + index2]]);
-                    const AZ::Vector3 c = PxMathConvert(vertices[indices[poly.mIndexBase + index3]]);
+                    const AZ::Vector3 b = PxMathConvert(pxVertices[pxIndices[poly.mIndexBase + index2]]);
+                    const AZ::Vector3 c = PxMathConvert(pxVertices[pxIndices[poly.mIndexBase + index3]]);
 
-                    m_verts.push_back(a);
-                    m_verts.push_back(b);
-                    m_verts.push_back(c);
+                    verts.push_back(a);
+                    verts.push_back(b);
+                    verts.push_back(c);
 
-                    m_points.push_back(a);
-                    m_points.push_back(b);
-                    m_points.push_back(b);
-                    m_points.push_back(c);
-                    m_points.push_back(c);
-                    m_points.push_back(a);
+                    points.push_back(a);
+                    points.push_back(b);
+                    points.push_back(b);
+                    points.push_back(c);
+                    points.push_back(c);
+                    points.push_back(a);
 
                     index2 = index3++;
                 }
@@ -397,14 +428,14 @@ namespace PhysX
         AZ::Color Collider::CalcDebugColorWarning(const AZ::Color& currentColor, AZ::u32 triangleCount) const
         {
             // Show glowing warning color when the triangle count exceeds the maximum allowed triangles
-            if (triangleCount > MaxTriangles)
+            if (triangleCount > TrianglesWarningThreshold)
             {
                 AZ::ScriptTimePoint currentTimePoint;
                 AZ::TickRequestBus::BroadcastResult(currentTimePoint, &AZ::TickRequests::GetTimeAtCurrentTick);
                 float currentTime = static_cast<float>(currentTimePoint.GetSeconds());
                 float alpha = fabsf(sinf(currentTime * AZ::Constants::HalfPi * WarningFrequency));
-                alpha *= static_cast<float>(AZStd::GetMin(MaxTrianglesRange, triangleCount - MaxTriangles)) /
-                    static_cast<float>(MaxTriangles);
+                alpha *= static_cast<float>(AZStd::GetMin(MaxTrianglesRange, triangleCount - TrianglesWarningThreshold)) /
+                    static_cast<float>(TrianglesWarningThreshold);
                 return currentColor * (1.0f - alpha) + WarningColor * alpha;
             }
             return currentColor;
@@ -444,47 +475,50 @@ namespace PhysX
             const Physics::CapsuleShapeConfiguration& capsuleShapeConfig,
             const AZ::Vector3& transformScale) const
         {
+            AZStd::vector<AZ::Vector3> verts;
+            AZStd::vector<AZ::Vector3> points;
+            AZStd::vector<AZ::u32> indices;
+
             debugDisplay.PushMatrix(GetColliderLocalTransform(colliderConfig));
 
             LmbrCentral::CapsuleGeometrySystemRequestBus::Broadcast(
                 &LmbrCentral::CapsuleGeometrySystemRequestBus::Events::GenerateCapsuleMesh,
                 capsuleShapeConfig.m_radius * transformScale.GetX(),
                 capsuleShapeConfig.m_height * transformScale.GetZ(),
-                16, 8,
-                m_verts,
-                m_indices,
-                m_points
-            );
+                16, 8, verts, indices, points);
 
             const AZ::Color& faceColor = CalcDebugColor(colliderConfig);
-            debugDisplay.DrawTrianglesIndexed(m_verts, m_indices, faceColor);
-            debugDisplay.DrawLines(m_points, WireframeColor);
+            debugDisplay.DrawTrianglesIndexed(verts, indices, faceColor);
+            debugDisplay.DrawLines(points, WireframeColor);
             debugDisplay.SetLineWidth(ColliderLineWidth);
             debugDisplay.PopMatrix();
         }
 
         void Collider::DrawMesh(AzFramework::DebugDisplayRequests& debugDisplay,
             const Physics::ColliderConfiguration& colliderConfig,
-            const Physics::PhysicsAssetShapeConfiguration& assetConfig,
-            const AZ::Data::Asset<Pipeline::MeshAsset>& meshColliderAsset) const
+            const Physics::CookedMeshShapeConfiguration& meshConfig,
+            AZ::Vector3 meshScale, 
+            AZ::u32 geomIndex) const
         {
-            if (meshColliderAsset && meshColliderAsset.IsReady())
+            if (geomIndex >= m_geometry.size())
             {
-                const AZ::Transform scaleMatrix = AZ::Transform::CreateScale(GetNonUniformScale() * assetConfig.m_assetScale);
+                AZ_Error("PhysX", false, "DrawMesh: geomIndex %d is out of range for %s. Size: %d",
+                    geomIndex, GetEntityName().c_str(), m_geometry.size());
+                return;
+            }
+
+            if (meshConfig.GetCachedNativeMesh())
+            {
+                const AZ::Transform scaleMatrix = AZ::Transform::CreateScale(GetNonUniformScale() * meshScale);
                 debugDisplay.PushMatrix(GetColliderLocalTransform(colliderConfig) * scaleMatrix);
 
-                physx::PxBase* meshData = meshColliderAsset.Get()->GetMeshData();
-
-                if (meshData)
+                if (meshConfig.GetMeshType() == Physics::CookedMeshShapeConfiguration::MeshType::TriangleMesh)
                 {
-                    if (meshData->is<physx::PxTriangleMesh>())
-                    {
-                        DrawTriangleMesh(debugDisplay, colliderConfig, meshData);
-                    }
-                    else
-                    {
-                        DrawConvexMesh(debugDisplay, colliderConfig, meshData);
-                    }
+                    DrawTriangleMesh(debugDisplay, colliderConfig, geomIndex);
+                }
+                else
+                {
+                    DrawConvexMesh(debugDisplay, colliderConfig, geomIndex);
                 }
 
                 debugDisplay.PopMatrix();
@@ -492,11 +526,21 @@ namespace PhysX
         }
 
         void Collider::DrawTriangleMesh(AzFramework::DebugDisplayRequests& debugDisplay,
-            const Physics::ColliderConfiguration& colliderConfig, physx::PxBase* meshData) const
+            const Physics::ColliderConfiguration& colliderConfig, 
+            AZ::u32 geomIndex) const
         {
-            if (!m_verts.empty())
+            AZ_Assert(geomIndex < m_geometry.size(), "DrawTriangleMesh: geomIndex is out of range");
+
+            const GeometryData& geom = m_geometry[geomIndex];
+
+            const AZStd::unordered_map<int, AZStd::vector<AZ::u32>>& triangleIndexesByMaterialSlot
+                = geom.m_triangleIndexesByMaterialSlot;
+            const AZStd::vector<AZ::Vector3>& verts = geom.m_verts;
+            const AZStd::vector<AZ::Vector3>& points = geom.m_points;
+
+            if (!verts.empty())
             {
-                for (const auto& element : m_triangleIndexesByMaterialSlot)
+                for (const auto& element : triangleIndexesByMaterialSlot)
                 {
                     const int materialSlot = element.first;
                     const AZStd::vector<AZ::u32>& triangleIndexes = element.second;
@@ -506,25 +550,42 @@ namespace PhysX
                     triangleMeshInfo.m_numTriangles = triangleCount;
                     triangleMeshInfo.m_materialSlotIndex = materialSlot;
 
-                    debugDisplay.DrawTrianglesIndexed(m_verts, triangleIndexes
+                    debugDisplay.DrawTrianglesIndexed(verts, triangleIndexes
                         , CalcDebugColor(colliderConfig, triangleMeshInfo));
                 }
-                debugDisplay.DrawLines(m_points, WireframeColor);
+                debugDisplay.DrawLines(points, WireframeColor);
             }
-
         }
 
         void Collider::DrawConvexMesh(AzFramework::DebugDisplayRequests& debugDisplay,
-            const Physics::ColliderConfiguration& colliderConfig, physx::PxBase* meshData) const
+            const Physics::ColliderConfiguration& colliderConfig, AZ::u32 geomIndex) const
         {
-            if (!m_verts.empty())
+            AZ_Assert(geomIndex < m_geometry.size(), "DrawConvexMesh: geomIndex is out of range");
+
+            const GeometryData& geom = m_geometry[geomIndex];
+            const AZStd::vector<AZ::Vector3>& verts = geom.m_verts;
+            const AZStd::vector<AZ::Vector3>& points = geom.m_points;
+
+            if (!verts.empty())
             {
-                const AZ::u32 triangleCount = static_cast<AZ::u32>(m_verts.size() / 3);
+                const AZ::u32 triangleCount = static_cast<AZ::u32>(verts.size() / 3);
                 ElementDebugInfo convexMeshInfo;
                 convexMeshInfo.m_numTriangles = triangleCount;
 
-                debugDisplay.DrawTriangles(m_verts, CalcDebugColor(colliderConfig, convexMeshInfo));
-                debugDisplay.DrawLines(m_points, WireframeColor);
+                debugDisplay.DrawTriangles(verts, CalcDebugColor(colliderConfig, convexMeshInfo));
+                debugDisplay.DrawLines(points, WireframeColor);
+            }
+        }
+
+        void Collider::DrawPolygonPrism(AzFramework::DebugDisplayRequests& debugDisplay,
+            const Physics::ColliderConfiguration& colliderConfig, const AZStd::vector<AZ::Vector3>& points) const
+        {
+            if (!points.empty())
+            {
+                debugDisplay.PushMatrix(GetColliderLocalTransform(colliderConfig));
+                debugDisplay.SetLineWidth(ColliderLineWidth);
+                debugDisplay.DrawLines(points, WireframeColor);
+                debugDisplay.PopMatrix();
             }
         }
 
@@ -546,19 +607,30 @@ namespace PhysX
             return scale;
         }
 
-        const AZStd::vector<AZ::Vector3>& Collider::GetVerts() const
+        const AZStd::vector<AZ::Vector3>& Collider::GetVerts(AZ::u32 geomIndex) const
         {
-            return m_verts;
+            AZ_Assert(geomIndex < m_geometry.size(), "GetVerts: geomIndex %d is out of range for %s. Size: %d",
+                geomIndex, GetEntityName().c_str(), m_geometry.size());
+            return m_geometry[geomIndex].m_verts;
         }
 
-        const AZStd::vector<AZ::Vector3>& Collider::GetPoints() const
+        const AZStd::vector<AZ::Vector3>& Collider::GetPoints(AZ::u32 geomIndex) const
         {
-            return m_points;
+            AZ_Assert(geomIndex < m_geometry.size(), "GetPoints: geomIndex %d is out of range for %s. Size: %d",
+                geomIndex, GetEntityName().c_str(), m_geometry.size());
+            return m_geometry[geomIndex].m_points;
         }
 
-        const AZStd::vector<AZ::u32>& Collider::GetIndices() const
+        const AZStd::vector<AZ::u32>& Collider::GetIndices(AZ::u32 geomIndex) const
         {
-            return m_indices;
+            AZ_Assert(geomIndex < m_geometry.size(), "GetIndices: geomIndex %d is out of range for %s. Size: %d",
+                geomIndex, GetEntityName().c_str(), m_geometry.size());
+            return m_geometry[geomIndex].m_indices;
+        }
+
+        AZ::u32 Collider::GetNumShapes() const
+        {
+            return static_cast<AZ::u32>(m_geometry.size());
         }
 
         // AzFramework::EntityDebugDisplayEventBus
@@ -598,5 +670,15 @@ namespace PhysX
                 }
             }
         }
+
+        AZStd::string Collider::GetEntityName() const 
+        {
+            AZStd::string entityName;
+            AZ::ComponentApplicationBus::BroadcastResult(entityName, 
+                &AZ::ComponentApplicationRequests::GetEntityName, m_entityId);
+
+            return entityName;
+        }
+
     } // namespace DebugDraw
 } // namespace PhysX

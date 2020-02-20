@@ -17,6 +17,7 @@ BreadCrumbs are QWidgets with a QHBoxLayout with 0 content margins and one QLabe
 
 */
 
-AzQtComponents--BreadCrumbs
+AzQtComponents--BreadCrumbs #breadcrumbs-separator
 {
+	background-color: #373737;
 }

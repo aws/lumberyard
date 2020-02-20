@@ -63,10 +63,10 @@ namespace AzQtComponents
     {
         Q_OBJECT
 
-        Q_PROPERTY(Mode mode READ mode WRITE setMode NOTIFY modeChanged);
-        Q_PROPERTY(qreal hue READ hue WRITE setHue NOTIFY hueChanged);
-        Q_PROPERTY(qreal saturation READ saturation WRITE setSaturation NOTIFY saturationChanged);
-        Q_PROPERTY(qreal lightness READ lightness WRITE setLightness NOTIFY lightnessChanged);
+        Q_PROPERTY(Mode mode READ mode WRITE setMode NOTIFY modeChanged)
+        Q_PROPERTY(qreal hue READ hue WRITE setHue NOTIFY hueChanged)
+        Q_PROPERTY(qreal saturation READ saturation WRITE setSaturation NOTIFY saturationChanged)
+        Q_PROPERTY(qreal lightness READ lightness WRITE setLightness NOTIFY lightnessChanged)
 
     public:
         enum class Mode
@@ -113,9 +113,9 @@ namespace AzQtComponents
         : public QWidget
     {
         Q_OBJECT
-        Q_PROPERTY(qreal hue READ hue WRITE setHue NOTIFY hueChanged);
-        Q_PROPERTY(qreal saturation READ saturation WRITE setSaturation NOTIFY saturationChanged);
-        Q_PROPERTY(qreal value READ value WRITE setValue NOTIFY valueChanged);
+        Q_PROPERTY(qreal hue READ hue WRITE setHue NOTIFY hueChanged)
+        Q_PROPERTY(qreal saturation READ saturation WRITE setSaturation NOTIFY saturationChanged)
+        Q_PROPERTY(qreal value READ value WRITE setValue NOTIFY valueChanged)
 
     public:
         enum class Mode
@@ -162,9 +162,9 @@ namespace AzQtComponents
         : public QWidget
     {
         Q_OBJECT
-        Q_PROPERTY(qreal red READ red WRITE setRed NOTIFY redChanged);
-        Q_PROPERTY(qreal green READ green WRITE setGreen NOTIFY greenChanged);
-        Q_PROPERTY(qreal blue READ blue WRITE setBlue NOTIFY blueChanged);
+        Q_PROPERTY(qreal red READ red WRITE setRed NOTIFY redChanged)
+        Q_PROPERTY(qreal green READ green WRITE setGreen NOTIFY greenChanged)
+        Q_PROPERTY(qreal blue READ blue WRITE setBlue NOTIFY blueChanged)
 
     public:
         explicit RGBSliders(QWidget* parent = nullptr);

@@ -21,8 +21,8 @@
 #include <AzCore/Math/Color.h>
 
 // include MCore related files
+#include <MCore/Source/AABB.h>
 #include <MCore/Source/Vector.h>
-#include <MCore/Source/Quaternion.h>
 #include <MCore/Source/Array.h>
 #include <MCore/Source/SmallArray.h>
 #include <MCore/Source/OBB.h>
@@ -201,17 +201,7 @@ namespace EMotionFX
          * Get the motion extraction node.
          * @result The motion extraction node, or nullptr when it has not been set.
          */
-        MCORE_INLINE Node* GetMotionExtractionNode() const
-        {
-            if (mMotionExtractionNode != MCORE_INVALIDINDEX32)
-            {
-                return mSkeleton->GetNode(mMotionExtractionNode);
-            }
-            else
-            {
-                return nullptr;
-            }
-        }
+        Node* GetMotionExtractionNode() const;
 
         /**
          * Get the motion extraction node index.
@@ -241,9 +231,17 @@ namespace EMotionFX
 
         /**
          * Check if this actor contains any nodes that have meshes.
+         * @param lodLevel The LOD level to check for.
          * @result Returns true when this actor contains nodes that have meshes in the given LOD, otherwise false is returned.
          */
         bool CheckIfHasMeshes(uint32 lodLevel) const;
+
+        /**
+         * Check if we have skinned meshes.
+         * @param lodLevel The LOD level to check for.
+         * @result Returns true when skinned meshes are present in the specified LOD level, otherwise false is returned.
+         */
+        bool CheckIfHasSkinnedMeshes(AZ::u32 lodLevel) const;
 
         /**
          * Extract a list with nodes that represent bones.
@@ -898,8 +896,18 @@ namespace EMotionFX
         void SetRetargetRootNodeIndex(uint32 nodeIndex);
         void SetRetargetRootNode(Node* node);
 
+        void AutoSetupSkeletalLODsBasedOnSkinningData(const AZStd::vector<AZStd::string>& alwaysIncludeJoints);
+        void PrintSkeletonLODs();
+
+        // Optimize a server version of the actor. The optimized skeleton will only have critical joints, hit detection collider joints and all their ancestor joints.
+        void GenerateOptimizedSkeleton();
+
+        void SetOptimizeSkeleton(bool optimizeSkeleton) { m_optimizeSkeleton = optimizeSkeleton; }
+        bool GetOptimizeSkeleton() const { return m_optimizeSkeleton; }
 
     private:
+        void InsertJointAndParents(AZ::u32 jointIndex, AZStd::unordered_set<AZ::u32>& includedJointIndices);
+
         // data per node, per lod
         struct EMFX_API NodeLODInfo
         {
@@ -949,6 +957,7 @@ namespace EMotionFX
         MCore::AABB                                     mStaticAABB;                /**< The static AABB. */
         bool                                            mDirtyFlag;                 /**< The dirty flag which indicates whether the user has made changes to the actor since the last file save operation. */
         bool                                            mUsedForVisualization;      /**< Indicates if the actor is used for visualization specific things and is not used as a normal in-game actor. */
+        bool                                            m_optimizeSkeleton;         /**< Indicates if we should perform/ */
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
         bool                                            mIsOwnedByRuntime;          /**< Set if the actor is used/owned by the engine runtime. */

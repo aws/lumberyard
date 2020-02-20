@@ -45,6 +45,8 @@ namespace AzQtComponents
         template <typename T, typename ...Args>
         void repolishWhenPropertyChanges(T* widget, void (T::*signal)(Args...))
         {
+#if !defined(AZ_PLATFORM_LINUX)
+            
             QObject::connect(widget, signal, widget, [widget]() {
                 if (auto styleSheet = StyleManager::styleSheetStyle(widget))
                 {
@@ -55,6 +57,7 @@ namespace AzQtComponents
                     styleSheet->repolish(widget);
                 }
             });
+#endif // !defined(AZ_PLATFORM_LINUX)
         }
     } // namespace StyleHelpers
 } // namespace AzQtComponents

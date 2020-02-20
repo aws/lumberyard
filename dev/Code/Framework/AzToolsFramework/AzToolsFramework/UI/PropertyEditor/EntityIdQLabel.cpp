@@ -79,16 +79,21 @@ namespace AzToolsFramework
 
         if (m_entityId.IsValid())
         {
-            EntityIdList selectionList = { m_entityId };
-
-            AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::SetSelectedEntities, selectionList);
-
-            bool canGoTo = false;
-            AzToolsFramework::EditorRequestBus::BroadcastResult(canGoTo, &AzToolsFramework::EditorRequests::CanGoToSelectedEntitiesInViewports);
-
-            if (canGoTo)
+            AZ::Entity* entity = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, m_entityId);
+            if (entity)
             {
-                AzToolsFramework::EditorRequestBus::Broadcast(&AzToolsFramework::EditorRequests::GoToSelectedEntitiesInViewports);
+                EntityIdList selectionList = { m_entityId };
+
+                AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::SetSelectedEntities, selectionList);
+
+                bool canGoTo = false;
+                AzToolsFramework::EditorRequestBus::BroadcastResult(canGoTo, &AzToolsFramework::EditorRequests::CanGoToSelectedEntitiesInViewports);
+
+                if (canGoTo)
+                {
+                    AzToolsFramework::EditorRequestBus::Broadcast(&AzToolsFramework::EditorRequests::GoToSelectedEntitiesInViewports);
+                }
             }
         }
 

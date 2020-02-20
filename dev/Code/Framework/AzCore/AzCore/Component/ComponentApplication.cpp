@@ -57,6 +57,7 @@
 #include <AzCore/UserSettings/UserSettingsComponent.h>
 
 #include <AzCore/XML/rapidxml.h>
+#include <AzCore/Math/Sfmt.h>
 
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
 #include <AzCore/Debug/StackTracer.h>
@@ -397,7 +398,7 @@ namespace AZ
                 classId.ToString(idStr, AZ_ARRAY_SIZE(idStr));
                 AZ_Error("ComponentApplication", false, "Unknown class type %p %s", classPtr, idStr);
             }
-        }, 
+        },
             ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
         // we cannot load assets during system bootstrap since we haven't even got the catalog yet.  But we can definitely read their IDs.
 
@@ -450,6 +451,8 @@ namespace AZ
         CalculateExecutablePath();
 
         CreateDrillers();
+
+        Sfmt::Create();
 
         CreateSystemAllocator();
 
@@ -506,10 +509,10 @@ namespace AZ
     {
         // Finish all queued work
         AZ::SystemTickBus::Broadcast(&AZ::SystemTickBus::Events::OnSystemTick);
-        
+
         TickBus::ExecuteQueuedEvents();
         TickBus::AllowFunctionQueuing(false);
-        
+
         SystemTickBus::ExecuteQueuedEvents();
         SystemTickBus::AllowFunctionQueuing(false);
 
@@ -563,6 +566,8 @@ namespace AZ
             delete systemEntity;
         }
 
+        Sfmt::Destroy();
+
         // delete all descriptors left for application clean up
         EBUS_EVENT(ComponentDescriptorBus, ReleaseDescriptor);
 
@@ -579,6 +584,19 @@ namespace AZ
         // Clear the descriptor to deallocate all strings (owned by ModuleDescriptor)
         m_descriptor = Descriptor();
 
+        DestroyAllocator();
+
+        m_isStarted = false;
+
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
+        // Unregister module listeners after allocators are destroyed
+        // so that symbol/stack trace information is available at shutdown
+        Debug::SymbolStorage::UnregisterModuleListeners();
+#endif // defined(AZ_ENABLE_DEBUG_TOOLS)
+    }
+
+    void ComponentApplication::DestroyAllocator()
+    {
         // kill the system allocator if we created it
         if (m_isSystemAllocatorOwner)
         {
@@ -602,14 +620,6 @@ namespace AZ
         }
 
         m_osAllocator = nullptr;
-
-        m_isStarted = false;
-
-#if defined(AZ_ENABLE_DEBUG_TOOLS)
-        // Unregister module listeners after allocators are destroyed
-        // so that symbol/stack trace information is available at shutdown
-        Debug::SymbolStorage::UnregisterModuleListeners();
-#endif // defined(AZ_ENABLE_DEBUG_TOOLS)
     }
 
     //=========================================================================

@@ -299,7 +299,7 @@ namespace EMotionFX
             }
             void OnDeleteActor(Actor* actor) override;
 
-            using IndexVector = AZStd::vector<uint32, STLAllocator<MotionAllocator> >;  // the vector index is the nodeIndex, the value is the submotion index
+            using IndexVector = AZStd::vector<uint32, AZ::AZStdAlloc<MotionAllocator> >;  // the vector index is the nodeIndex, the value is the submotion index
 
             static void RecursiveAddIndices(const IndexVector& indicesVector, Actor* actor, uint32 nodeIndex, MotionInstance* instance);
 
@@ -307,13 +307,13 @@ namespace EMotionFX
                 IndexVector,
                 AZStd::hash<Actor*>,
                 AZStd::equal_to<Actor*>,
-                STLAllocator<MotionAllocator> > m_subMotionIndexByActorNode;
+                AZ::AZStdAlloc<MotionAllocator> > m_subMotionIndexByActorNode;
 
             AZStd::shared_mutex m_mutex;
         };
 
-        AZStd::vector<SkeletalSubMotion*, STLAllocator<MotionAllocator> >    mSubMotions;            /**< The sub-motions. */
-        AZStd::vector<MorphSubMotion*, STLAllocator<MotionAllocator> >       mMorphSubMotions;       /**< The morph sub-motions, that contain the keyframing data. */
+        AZStd::vector<SkeletalSubMotion*, AZ::AZStdAlloc<MotionAllocator> >    mSubMotions;            /**< The sub-motions. */
+        AZStd::vector<MorphSubMotion*, AZ::AZStdAlloc<MotionAllocator> >       mMorphSubMotions;       /**< The morph sub-motions, that contain the keyframing data. */
         SubMotionIndexCache                  m_subMotionIndexCache;  /**< A cache of sub-motion index by actor's node. The vector will be the same size as the actor's node count. */
         bool                                 mDoesInfluencePhonemes; /**< Does this motion influence any phonemes? */
 

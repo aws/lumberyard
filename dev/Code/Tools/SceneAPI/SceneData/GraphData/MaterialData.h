@@ -43,6 +43,7 @@ namespace AZ
                 SCENE_DATA_API virtual void SetEmissiveColor(const AZ::Vector3& color);
                 SCENE_DATA_API virtual void SetOpacity(float opacity);
                 SCENE_DATA_API virtual void SetShininess(float shininess);
+                SCENE_DATA_API virtual void SetUniqueId(uint64_t uid);
 
                 SCENE_DATA_API const AZStd::string& GetTexture(TextureMapType mapType) const override;
                 SCENE_DATA_API bool IsNoDraw() const override;
@@ -52,6 +53,7 @@ namespace AZ
                 SCENE_DATA_API const AZ::Vector3& GetEmissiveColor() const override;
                 SCENE_DATA_API float GetOpacity() const override;
                 SCENE_DATA_API float GetShininess() const override;
+                SCENE_DATA_API uint64_t GetUniqueId() const override;
 
                 static void Reflect(ReflectContext* context);
 
@@ -70,6 +72,10 @@ namespace AZ
                 const static AZStd::string s_SpecularMapName;
                 const static AZStd::string s_BumpMapName;
                 const static AZStd::string s_emptyString;
+
+                // A unique id which is used to identify a material in a fbx. 
+                // This is the same as the ID in the fbx file's FbxNode
+                uint64_t m_uniqueId;
             };
         } // namespace GraphData
     } // namespace SceneData

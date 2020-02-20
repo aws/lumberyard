@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <AzCore/EBus/Ebus.h>
+#include <AzCore/EBus/EBus.h>
 #include <native/AssetManager/assetScanFolderInfo.h>
 #include <QString>
 #include <QSet>

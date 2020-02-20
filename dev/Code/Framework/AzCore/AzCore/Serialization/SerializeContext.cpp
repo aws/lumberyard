@@ -1613,6 +1613,30 @@ namespace AZ
     }
 
     //=========================================================================
+    // ClassBuilder::NameChange
+    // [4/10/2019]
+    //=========================================================================
+    SerializeContext::ClassBuilder* SerializeContext::ClassBuilder::NameChange(unsigned int fromVersion, unsigned int toVersion, AZStd::string_view oldFieldName, AZStd::string_view newFieldName)
+    {
+        if (m_context->IsRemovingReflection())
+        {
+            return this; // we have already removed the class data for this class
+        }
+
+        AZ_Error("Serialize", !m_classData->second.m_serializer, "Class has a custom serializer, and can not have per-node version upgrades.");
+        AZ_Error("Serialize", !m_classData->second.m_elements.empty(), "Class has no defined elements to add per-node version upgrades to.");
+
+        if (m_classData->second.m_serializer || m_classData->second.m_elements.empty())
+        {
+            return this;
+        }
+
+        m_classData->second.m_dataPatchUpgrader.AddFieldUpgrade(aznew DataPatchNameUpgrade(fromVersion, toVersion, oldFieldName, newFieldName));
+
+        return this;
+    }
+
+    //=========================================================================
     // ClassBuilder::Version
     // [10/05/2012]
     //=========================================================================
@@ -1756,7 +1780,7 @@ namespace AZ
                 // if ptr is a pointer-to-pointer, cast its value to a void* (or const void*) and dereference to get to the actual object pointer.
                 objectPtr = *(void**)(ptr);
 
-                if (objectPtr == nullptr)
+                if (!objectPtr)
                 {
                     return true;    // nothing to serialize
                 }
@@ -1768,9 +1792,22 @@ namespace AZ
                         // we are pointing to derived type, adjust class data, uuid and pointer.
                         classIdPtr = &actualClassId;
                         dataClassInfo = FindClassData(actualClassId);
-                        if (dataClassInfo)
+                        if ( (dataClassInfo) && (dataClassInfo->m_azRtti) ) // it could be missing RTTI if its deprecated.
                         {
                             objectPtr = classElement->m_azRtti->Cast(objectPtr, dataClassInfo->m_azRtti->GetTypeId());
+
+                            AZ_Assert(objectPtr, "Potential Data Loss: AZ_RTTI Cast to type %s Failed on element: %s", dataClassInfo->m_name, classElement->m_name);
+                            if (!objectPtr)
+                            {
+                                #if defined (AZ_ENABLE_SERIALIZER_DEBUG)
+                                // Additional error information: Provide Type IDs and the serialization stack from our enumeration
+                                AZStd::string sourceTypeID = dataClassInfo->m_typeId.ToString<AZStd::string>();
+                                AZStd::string targetTypeID = classElement->m_typeId.ToString<AZStd::string>();
+                                AZStd::string error = AZStd::string::format("EnumarateElements RTTI Cast Error: %s -> %s", sourceTypeID.c_str(), targetTypeID.c_str());
+                                callContext->m_errorHandler->ReportError(error.c_str());
+                                #endif
+                                return true;    // RTTI Error. Continue serialization
+                            }
                         }
                     }
                 }
@@ -2045,6 +2082,162 @@ namespace AZ
         }
     }
 
+    AZ::SerializeContext::DataPatchUpgrade::DataPatchUpgrade(AZStd::string_view fieldName, unsigned int fromVersion, unsigned int toVersion)
+        : m_targetFieldName(fieldName)
+        , m_targetFieldCRC(m_targetFieldName.data(), m_targetFieldName.size(), true)
+        , m_fromVersion(fromVersion)
+        , m_toVersion(toVersion)
+    {}
+
+    bool AZ::SerializeContext::DataPatchUpgrade::operator==(const DataPatchUpgrade& RHS) const
+    {
+        return m_upgradeType == RHS.m_upgradeType
+            && m_targetFieldCRC == RHS.m_targetFieldCRC
+            && m_fromVersion == RHS.m_fromVersion
+            && m_toVersion == RHS.m_toVersion;
+    }
+
+    bool AZ::SerializeContext::DataPatchUpgrade::operator<(const DataPatchUpgrade& RHS) const
+    {
+        if (m_fromVersion < RHS.m_fromVersion)
+        {
+            return true;
+        }
+
+        if (m_fromVersion > RHS.m_fromVersion)
+        {
+            return false;
+        }
+
+        // We sort on to version in reverse order
+        if (m_toVersion > RHS.m_toVersion)
+        {
+            return true;
+        }
+
+        if (m_toVersion < RHS.m_toVersion)
+        {
+            return false;
+        }
+
+        // When versions are equal, upgrades are prioritized by type in the
+        // order in which they appear in the DataPatchUpgradeType enum.
+        return m_upgradeType < RHS.m_upgradeType;
+    }
+
+    unsigned int AZ::SerializeContext::DataPatchUpgrade::FromVersion() const
+    {
+        return m_fromVersion;
+    }
+
+    unsigned int AZ::SerializeContext::DataPatchUpgrade::ToVersion() const
+    {
+        return m_toVersion;
+    }
+
+    const AZStd::string& AZ::SerializeContext::DataPatchUpgrade::GetFieldName() const
+    {
+        return m_targetFieldName;
+    }
+
+    AZ::Crc32 AZ::SerializeContext::DataPatchUpgrade::GetFieldCRC() const
+    {
+        return m_targetFieldCRC;
+    }
+
+    AZ::SerializeContext::DataPatchUpgradeType AZ::SerializeContext::DataPatchUpgrade::GetUpgradeType() const
+    {
+        return m_upgradeType;
+    }
+
+    AZ::SerializeContext::DataPatchUpgradeHandler::~DataPatchUpgradeHandler()
+    {
+        for (auto fieldUpgrades : m_upgrades)
+        {
+            for (auto versionUpgrades : fieldUpgrades.second)
+            {
+                for (auto* upgrade : versionUpgrades.second)
+                {
+                    delete upgrade;
+                }
+            }
+        }
+    }           
+    
+    void AZ::SerializeContext::DataPatchUpgradeHandler::AddFieldUpgrade(DataPatchUpgrade* upgrade)
+    {
+        // Find the field
+        auto fieldUpgrades = m_upgrades.find(upgrade->GetFieldCRC());
+
+        // If we don't have any upgrades for the field, add this item.
+        if (fieldUpgrades == m_upgrades.end())
+        {
+            m_upgrades[upgrade->GetFieldCRC()][upgrade->FromVersion()].insert(upgrade);
+        }
+        else
+        {
+            auto versionUpgrades = fieldUpgrades->second.find(upgrade->FromVersion());
+            if (versionUpgrades == fieldUpgrades->second.end())
+            {
+                fieldUpgrades->second[upgrade->FromVersion()].insert(upgrade);
+            }
+            else
+            {
+                for (auto* existingUpgrade : versionUpgrades->second)
+                {
+                    if (*existingUpgrade == *upgrade)
+                    {
+                        AZ_Assert(false, "Duplicate upgrade to field %s from version %u to version %u", upgrade->GetFieldName().c_str(), upgrade->FromVersion(), upgrade->ToVersion());
+
+                        // In a failure case, delete the upgrade as we've assumed control of it.
+                        delete upgrade;
+                        return;
+                    }
+                }
+
+                m_upgrades[upgrade->GetFieldCRC()][upgrade->FromVersion()].insert(upgrade);
+            }
+        }
+    }
+
+    const AZ::SerializeContext::DataPatchFieldUpgrades& AZ::SerializeContext::DataPatchUpgradeHandler::GetUpgrades() const
+    {
+        return m_upgrades;
+    }
+
+    bool AZ::SerializeContext::DataPatchNameUpgrade::operator<(const DataPatchUpgrade& RHS) const
+    {
+        // If the right side is also a Field Name Upgrade, forward this to the
+        // appropriate equivalence operator.
+        return DataPatchUpgrade::operator<(RHS);
+    }
+
+    bool AZ::SerializeContext::DataPatchNameUpgrade::operator<(const DataPatchNameUpgrade& RHS) const
+    {
+        // The default operator is fine for name upgrades
+        return DataPatchUpgrade::operator<(RHS);
+    }
+
+    void AZ::SerializeContext::DataPatchNameUpgrade::Apply(AZ::SerializeContext& context, SerializeContext::DataElementNode& node) const
+    {
+        AZ_UNUSED(context);
+
+        int targetElementIndex = node.FindElement(m_targetFieldCRC);
+
+        AZ_Assert(targetElementIndex >= 0, "Invalid node. Field %s is not a valid element of class %s (Version %u). Check your reflection function.", m_targetFieldName.c_str(), node.GetNameString(), node.GetVersion());
+
+        if (targetElementIndex >= 0)
+        {
+            auto& targetElement = node.GetSubElement(targetElementIndex);
+            targetElement.SetName(m_newNodeName.c_str());
+        }
+    }
+
+    AZStd::string AZ::SerializeContext::DataPatchNameUpgrade::GetNewName() const
+    {
+        return m_newNodeName;
+    }
+
     //=========================================================================
     // BeginCloneElement (internal element clone callbacks)
     //=========================================================================
@@ -2072,6 +2265,24 @@ namespace AZ
         void* srcPtr = ptr;
         void* destPtr = nullptr;
         void* reservePtr = nullptr;
+
+        if (classData->m_version == VersionClassDeprecated)
+        {
+            if (classData->m_converter)
+            {
+                AZ_Assert(false, "A deprecated element with a data converter was passed to CloneObject, this is not supported.")
+            }
+            // push a dummy node in the stack
+            cloneData->m_parentStack.push_back();
+            ObjectCloneData::ParentInfo& parentInfo = cloneData->m_parentStack.back();
+            parentInfo.m_ptr = destPtr;
+            parentInfo.m_reservePtr = reservePtr;
+            parentInfo.m_classData = classData;
+            parentInfo.m_containerIndexCounter = 0;
+            return false;    // do not iterate further.
+        }
+
+
         if (!cloneData->m_parentStack.empty())
         {
             AZ_Assert(elementData, "Non-root nodes need to have a valid elementData!");
@@ -2193,6 +2404,13 @@ namespace AZ
         ObjectCloneData* cloneData = reinterpret_cast<ObjectCloneData*>(data);
         void* dataPtr = cloneData->m_parentStack.back().m_ptr;
         void* reservePtr = cloneData->m_parentStack.back().m_reservePtr;
+
+        if (!dataPtr)
+        {
+            // we failed to clone an object - an assertion was already raised if it needed to be.
+            cloneData->m_parentStack.pop_back();
+            return true; // continue on to siblings.
+        }
 
         const ClassData* classData = cloneData->m_parentStack.back().m_classData;
         if (classData->m_eventHandler)

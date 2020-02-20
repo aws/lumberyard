@@ -15,7 +15,7 @@ def build(bld):
     # Set Config Based Defines (not including IMGUI_ENABLED turns ImGui off and no-ops much of the code.)
     configBaseDefines=[]
     configBaseDefinesEditor=[]
-    if bld.env['CONFIGURATION'] == 'profile' or bld.env['CONFIGURATION'] == 'debug':
+    if bld.env['CONFIGURATION'] == 'profile' or bld.env['CONFIGURATION'] == 'debug' or bld.env['CONFIGURATION'] == 'performance':
         configBaseDefines.append('IMGUI_ENABLED')
         configBaseDefinesEditor.append('IMGUI_ENABLED')
     configBaseDefinesEditor.append('IMGUI_GEM_EDITOR')
@@ -31,6 +31,9 @@ def build(bld):
         platforms = ['all'],
         configurations = ['all'],
         file_list = ['imgui_lib.waf_files'],
+        includes=['.',
+                  bld.ThirdPartyPath('boost'),
+                  bld.Path('Code/CryEngine/CryCommon')],
         use = ['AzCore'],
         defines = configBaseDefines,
         export_includes=[bld.Path('Gems/ImGui/External/ImGui/v1.70')],
@@ -54,7 +57,10 @@ def build(bld):
 
     #Common Editor and Game Includes
     COMMON_INCLUDES = [
-        bld.Path('Code/CryEngine/CryCommon'),
+        '.',
+         bld.ThirdPartyPath('boost'),
+         bld.Path('Code/CryEngine/CryCommon'),
+         bld.Path('Code/CryEngine/CryAction'),
         bld.Path('Code/CryEngine/CryAction'),
         bld.Path('Gems/LmbrCentral/Code/include')
     ]

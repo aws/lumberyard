@@ -500,6 +500,11 @@ private:
     bool m_bRunPythonScript = false;
     //! File to run on startup
     QString m_execFile;
+    //! Command to run on startup
+    QString m_execLineCmd;
+    //! Autotest mode: Special mode meant for automated testing, things like blocking dialogs or error report windows won't appear
+    bool m_bAutotestMode = false;
+
     CMatEditMainDlg* m_pMatEditDlg = nullptr;
     CConsoleDialog* m_pConsoleDialog = nullptr;
     Vec3 m_tagLocations[12];

@@ -116,8 +116,10 @@
 #define DXGL_USE_LOADER_GLAD
 #define DXGL_REQUIRED_VERSION 0
 #define DXGLES_REQUIRED_VERSION DXGLES_VERSION_30
-#elif defined(LINUX)
+#elif defined(AZ_PLATFORM_LINUX)
+#define OPENGL_ES
 #if defined(OPENGL_ES)
+#   define DESKTOP_GLES // Differentiate between mobile and desktop OpenGL ES
 #   define DXGL_USE_EGL
 #   define DXGL_USE_LOADER_GLAD
 #   define DXGLES_REQUIRED_VERSION DXGLES_VERSION_30
@@ -125,7 +127,7 @@
 #else
 #   define DXGL_USE_EGL
 #   define DXGL_USE_LOADER_GLAD
-#   define DXGL_REQUIRED_VERSION DXGL_VERSION_44
+#   define DXGL_REQUIRED_VERSION DXGL_VERSION_43
 #   define DXGLES_REQUIRED_VERSION 0
 #endif // defined(OPENGL_ES)
 #elif defined(WIN32)
@@ -267,7 +269,7 @@ DXGL_EXTERN DXGL_API void DXGLProfileLabelPop(const char* szName);
 //  DXGL Extensions
 ////////////////////////////////////////////////////////////////////////////
 
-#if defined(OPENGL_ES)
+#if defined(OPENGL_ES) && !defined(DESKTOP_GLES)
 void DXGLSetColorDontCareActions(ID3D11RenderTargetView* const rtv,
     bool const loadDontCare = false,
     bool const storeDontCare = false);

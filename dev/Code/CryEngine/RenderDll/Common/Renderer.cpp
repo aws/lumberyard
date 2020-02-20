@@ -883,6 +883,8 @@ int CRenderer::CV_r_SpecularAntialiasing = 1;
 float CRenderer::CV_r_minConsoleFontSize;
 float CRenderer::CV_r_maxConsoleFontSize;
 
+// Linux
+int CRenderer::CV_r_linuxSkipWindowCreation = 0;
 
 // Graphics programmers: Use these in your code for local tests/debugging.
 // Delete all references in your code before you submit
@@ -990,9 +992,9 @@ static void OnChange_CV_r_AntialiasingMode(ICVar* pCVar)
     int32 nVal = pCVar->GetIVal();
     nVal = min(eAT_AAMODES_COUNT - 1, nVal);
 #if defined(OPENGL_ES)
-    if (nVal == static_cast<int32>(eAT_SMAA1TX))
+    if ((nVal == static_cast<int32>(eAT_SMAA1TX)) || (nVal == static_cast<int32>(eAT_TAA)))
     {
-        AZ_Warning("Rendering", false, "SMAA is not supported on this platform. Fallback to FXAA");
+        AZ_Warning("Rendering", false, "SMAA and TAA are not supported on this platform. Fallback to FXAA");
         nVal = eAT_FXAA;
     }
 #endif
@@ -1375,6 +1377,10 @@ static void OnChange_CV_r_DeferredShadingTiled(ICVar* pCVar)
 #if defined (AZ_PLATFORM_MAC)
     // We don't support deferred shading tiled on macOS yet so always force the cvar to 0
     AZ_Warning("Rendering", pCVar->GetIVal() == 0, "Deferred Shading Tiled is not supported on macOS");
+    CRenderer::CV_r_DeferredShadingTiled = 0;
+#elif defined(OPENGL)
+    // We don't support deferred shading tiled on any OpenGL targets yet so always force the cvar to 0
+    AZ_Warning("Rendering", pCVar->GetIVal() == 0, "Deferred Shading Tiled is not supported when using OpenGL");
     CRenderer::CV_r_DeferredShadingTiled = 0;
 #endif
 }
@@ -3218,9 +3224,29 @@ void CRenderer::InitRenderer()
 
     DefineConstIntCVar3("r_wireframe", CV_r_wireframe, R_SOLID_MODE, VF_CHEAT, "Toggles wireframe rendering mode");
 
-    REGISTER_CVAR3("r_GetScreenShot", CV_r_GetScreenShot, 0, VF_NULL,
-        "To capture one screenshot (variable is set to 0 after capturing)\n"
-        "0=do not take a screenshot (default), 1=save a screenshot (together with .HDR if enabled), 2=save a screenshot");
+    REGISTER_CVAR3_CB("r_GetScreenShot", CV_r_GetScreenShot, 0, VF_NULL,
+        AZStd::string::format
+        (
+            "To capture one screenshot (variable is set to 0 after capturing)\n"
+            "%d = do not take a screenshot (default)\n"
+            "%d = take a screenshot and another HDR screenshot if HDR is enabled\n"
+            "%d = take a screenshot\n",
+            static_cast<int>(ScreenshotType::None),
+            static_cast<int>(ScreenshotType::HdrAndNormal),
+            static_cast<int>(ScreenshotType::Normal)
+        ).c_str(),
+        [](ICVar* pArgs)
+        {
+            // Do not accept other values, since ScreenshotType::NormalWithFilepath = 3 is reserved for internal use.
+            if (CV_r_GetScreenShot != static_cast<int>(ScreenshotType::None) &&
+                CV_r_GetScreenShot != static_cast<int>(ScreenshotType::HdrAndNormal) &&
+                CV_r_GetScreenShot != static_cast<int>(ScreenshotType::Normal))
+            {
+                CV_r_GetScreenShot = static_cast<int>(ScreenshotType::None);
+                iLog->LogWarning("Screenshot type not supported!");
+            }
+        }
+    );
 
     DefineConstIntCVar3("r_Character_NoDeform", CV_r_character_nodeform, 0, VF_NULL, "");
 
@@ -3775,6 +3801,11 @@ void CRenderer::InitRenderer()
 
     REGISTER_CVAR3("r_maxConsoleFontSize", CV_r_maxConsoleFontSize, 24.0f, VF_NULL,
         "Maximum size used for scaling the font when rendering the console"
+    );
+
+    REGISTER_CVAR3("r_linuxSkipWindowCreation", CV_r_linuxSkipWindowCreation, 0, VF_NULL,
+        "0: Create a rendering window like normal"
+        "1: (Linux Only) Skip window creation and only render to an offscreen pixel buffer surface.  Screenshots can still be captured with r_GetScreenShot."
     );
 
     REGISTER_CVAR3("r_GraphicsTest00", CV_r_GraphicsTest00, 0, VF_DEV_ONLY, "Graphics programmers: Use in your code for misc graphics tests/debugging.");
@@ -8587,7 +8618,9 @@ CRenderView* CRenderer::GetRenderViewForThread(int nThreadID)
 
 bool CRenderer::UseHalfFloatRenderTargets()
 {
-#if defined(OPENGL_ES)
+#if defined(OPENGL_ES) && !defined(AZ_PLATFORM_LINUX)
+    // When using OpenGL ES on Linux, DXGL_GL_EXTENSION_SUPPORTED(EXT_color_buffer_half_float) returns false,
+    // however with at least the Mesa driver, half float render targets are natively supported.
     return RenderCapabilities::SupportsHalfFloatRendering() && (!CRenderer::CV_r_ForceFixedPointRenderTargets);
 #else
     return true;

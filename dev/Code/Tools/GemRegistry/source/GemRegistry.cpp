@@ -244,8 +244,7 @@ namespace Gems
                         errorString += AZStd::string::format("Fail to load Gems from path %s disk. %s\n", searchPath.m_path.c_str(), loadOutcome.GetError().c_str());
                     }
 
-                    // We found the Gem.json file, we can stop now
-                    return false;
+                    // We found the Gem.json file but we have to keep looking to support nested gems
                 }
             }
 

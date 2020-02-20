@@ -15,6 +15,7 @@
 
 #include <AzCore/Asset/AssetManager.h>
 
+#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #include <Include/IEditorParticleManager.h>
@@ -69,7 +70,7 @@ namespace LmbrCentral
                     DataElement(AZ::Edit::UIHandlers::ComboBox, &EditorParticleComponent::m_selectedEmitter, "Emitters", "List of emitters in this library.")->
                     Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorParticleComponent::OnEmitterSelected)->
                     Attribute(AZ::Edit::Attributes::StringList, &EditorParticleComponent::GetEmitterNames)->
-                    
+
                     DataElement(0, &EditorParticleComponent::m_settings, "Spawn Settings", "")->
                     Attribute(AZ::Edit::Attributes::AutoExpand, false)->
                     Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorParticleComponent::OnSpawnParamChanged)->
@@ -84,7 +85,7 @@ namespace LmbrCentral
                 ;
 
                 editContext->Class<ParticleEmitterSettings>("ParticleSettings", "")->
-                    
+
                     DataElement(AZ::Edit::UIHandlers::CheckBox, &ParticleEmitterSettings::m_prime, "Pre-Roll", "(CPU Only) Set emitter as though it's been running indefinitely.")->
 
                     DataElement(AZ::Edit::UIHandlers::Color, &ParticleEmitterSettings::m_color, "Color tint", "Particle color tint")->
@@ -107,7 +108,7 @@ namespace LmbrCentral
                     Attribute(AZ::Edit::Attributes::Max, ParticleEmitterSettings::MaxSpeedScale)->
                     Attribute(AZ::Edit::Attributes::Step, 0.1f)->
 
-                    DataElement(AZ::Edit::UIHandlers::Slider, &ParticleEmitterSettings::m_strength, "Strength Curve Time", 
+                    DataElement(AZ::Edit::UIHandlers::Slider, &ParticleEmitterSettings::m_strength, "Strength Curve Time",
                         "Controls all \"Strength Over Emitter Life\" curves.\n\
 The curves will use this Strength Curve Time instead of the actual Emitter life time.\n\
 Negative values will be ignored.\n")->
@@ -208,7 +209,7 @@ Negative values will be ignored.\n")->
     EditorParticleComponent::~EditorParticleComponent()
     {
     }
-    
+
     void EditorParticleComponent::Init()
     {
         EditorComponentBase::Init();
@@ -231,12 +232,12 @@ Negative values will be ignored.\n")->
         }
         else if (m_librarySource == LibrarySource::Level)
         {
-            //Populates level's emitter list and showing selected 
+            //Populates level's emitter list and showing selected
             ResolveLevelEmitter();
         }
 
         SetDirty();
-                
+
         RenderNodeRequestBus::Handler::BusConnect(m_entity->GetId());
 
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusConnect(GetEntityId());
@@ -350,7 +351,7 @@ Negative values will be ignored.\n")->
                     m_emitterFullNameToSelect.clear();
                 }
             }
-            
+
             //refresh the selected emitter UI
             EBUS_EVENT(AzToolsFramework::ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, AzToolsFramework::Refresh_AttributesAndValues);
         }
@@ -358,7 +359,7 @@ Negative values will be ignored.\n")->
 
     void EditorParticleComponent::SelectEmitter(const AZStd::string& emitterFullName)
     {
-        //format the emitter name. 
+        //format the emitter name.
         AZStd::string selEmitterName = emitterFullName;
         AZStd::string libName;
         int pos = emitterFullName.find_first_of('.');
@@ -456,7 +457,7 @@ Negative values will be ignored.\n")->
         EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, AddDirtyEntity, GetEntityId());
         OnAssetChanged();
     }
-    
+
     void EditorParticleComponent::ResolveLevelEmitter()
     {
         if (m_librarySource == LibrarySource::Level)
@@ -512,26 +513,27 @@ Negative values will be ignored.\n")->
 
         return AZ::Edit::PropertyRefreshLevels::ValuesOnly;
     }
-    
+
     ParticleEmitterSettings EditorParticleComponent::GetSettingsForEmitter() const
     {
         ParticleEmitterSettings settingsForEmitter = m_settings;
 
         // take the entity's visibility into account
-        bool entityVisibility = true;
-        AzToolsFramework::EditorVisibilityRequestBus::EventResult(entityVisibility, GetEntityId(), &AzToolsFramework::EditorVisibilityRequestBus::Events::GetCurrentVisibility);
-        settingsForEmitter.m_visible &= entityVisibility;
+        bool visible = false;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(
+            visible, GetEntityId(), &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsVisible);
+        settingsForEmitter.m_visible = settingsForEmitter.m_visible && visible;
         settingsForEmitter.m_asset = m_asset;
         return settingsForEmitter;
     }
 
     void EditorParticleComponent::SetEmitter(const AZStd::string& emitterFullName, const AZStd::string& libPath)
-    {      
+    {
         m_librarySource = LibrarySource::File;
 
         //set selected emitter
-        m_emitterFullNameToSelect = emitterFullName;        
-        
+        m_emitterFullNameToSelect = emitterFullName;
+
         //find the asset
         AZ::Data::AssetId cmAssetId;
         EBUS_EVENT_RESULT(cmAssetId, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, libPath.c_str(), azrtti_typeid<ParticleAsset>(), false);

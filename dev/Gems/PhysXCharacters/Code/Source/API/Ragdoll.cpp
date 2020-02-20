@@ -237,6 +237,12 @@ namespace PhysXCharacters
             return;
         }
 
+        physx::PxScene* scene = actor->getScene();
+        if (scene)
+        {
+            scene->lockWrite();
+        }
+
         if (nodeState.m_simulationType == Physics::SimulationType::Kinematic)
         {
             actor->setRigidBodyFlag(physx::PxRigidBodyFlag::eKINEMATIC, true);
@@ -263,6 +269,11 @@ namespace PhysXCharacters
                     pxJoint->setDrivePosition(physx::PxTransform(targetRotation));
                 }
             }
+        }
+
+        if (scene)
+        {
+            scene->unlockWrite();
         }
     }
 

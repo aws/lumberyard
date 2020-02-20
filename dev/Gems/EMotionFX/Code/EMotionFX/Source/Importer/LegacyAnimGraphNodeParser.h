@@ -14,6 +14,7 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/Math/Vector2.h>
 #include <MCore/Source/Endian.h>
+#include <MCore/Source/LogManager.h>
 #include "Importer.h"
 #include "AnimGraphFileFormat.h"
 #include "../AnimGraphObject.h"

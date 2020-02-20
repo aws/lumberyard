@@ -34,6 +34,7 @@
 #include <Editor/PropertyWidgets/SimulatedObjectColliderTagHandler.h>
 #include <Editor/PropertyWidgets/SimulatedObjectNameHandler.h>
 #include <Editor/PropertyWidgets/SimulatedObjectSelectionHandler.h>
+#include <Editor/PropertyWidgets/PropertyWidgetAllocator.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 
 
@@ -42,6 +43,8 @@ namespace EMotionFX
     AZStd::vector<AzToolsFramework::PropertyHandlerBase*> RegisterPropertyTypes()
     {
 #if defined(EMOTIONFXANIMATION_EDITOR)
+        AZ::AllocatorInstance<PropertyWidgetAllocator>::Create();
+
         AZStd::vector<AzToolsFramework::PropertyHandlerBase*> propertyHandlers =
         {
             aznew EMotionFX::ActorJointElementHandler(),
@@ -102,6 +105,8 @@ namespace EMotionFX
                 delete handler;
             }
         }
+
+        AZ::AllocatorInstance<PropertyWidgetAllocator>::Destroy();
 #endif
     }
 } // namespace EMotionFX

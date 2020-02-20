@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "PakSystem.h"
 #include "PathHelpers.h"
 #include "StringHelpers.h"
@@ -348,7 +348,7 @@ void PakSystem::CloseArchive(PakSystemArchive* archive)
     }
 }
 
-void PakSystem::AddToArchive(PakSystemArchive* archive, const char* path, void* data, int size, __time64_t modTime, int compressionLevel)
+void PakSystem::AddToArchive(PakSystemArchive* archive, const char* path, void* data, int size, int64 modTime, int compressionLevel)
 {
     int compressionMethod = ZipFile::METHOD_DEFLATE;
     if (compressionLevel == 0)
@@ -359,7 +359,7 @@ void PakSystem::AddToArchive(PakSystemArchive* archive, const char* path, void* 
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool PakSystem::CheckIfFileExist(PakSystemArchive* archive, const char* path, __time64_t modTime)
+bool PakSystem::CheckIfFileExist(PakSystemArchive* archive, const char* path, int64 modTime)
 {
     assert(archive);
 

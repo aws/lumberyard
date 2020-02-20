@@ -109,6 +109,13 @@ void AutoCustomWindowDecorations::ensureCustomWindowDecorations(QWidget* w)
                 WindowDecorationWrapper::OptionAutoTitleBarButtons, w->parentWidget());
 
         w->setParent(wrapper, w->windowFlags());
+
+        // After porting to Qt 5.12, automatically decorated dialogs wouldn't preserve their
+        // size after decoration. This workaround forces their size back to the one configured
+        // in the .ui file, if any.
+        if (w->testAttribute(Qt::WA_Resized)) {
+            w->resize(w->size());
+        }
     }
 }
 

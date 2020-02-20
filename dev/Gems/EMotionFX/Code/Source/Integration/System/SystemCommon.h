@@ -22,8 +22,6 @@
 #include <AzCore/std/smart_ptr/intrusive_ptr.h>
 
 #include <MCore/Source/Vector.h>
-#include <MCore/Source/Matrix4.h>
-#include <MCore/Source/Quaternion.h>
 #include <MCore/Source/MemoryObject.h>
 
 #include <EMotionFX/Source/Transform.h>
@@ -55,16 +53,16 @@ namespace EMotionFX
          * System allocator to be used for all EMotionFX and EMotionFXAnimation gem persistent allocations.
          */
         class EMotionFXAllocator
-            : public AZ::SystemAllocator
+            : public AZ::SimpleSchemaAllocator<AZ::ChildAllocatorSchema<AZ::SystemAllocator>>
         {
-            friend class AZ::AllocatorInstance<EMotionFXAllocator>;
-
         public:
-
             AZ_TYPE_INFO(EMotionFXAllocator, "{00AEC34F-4A00-4ECB-BC9C-7221E76337D6}");
+            using Base = AZ::SimpleSchemaAllocator<AZ::ChildAllocatorSchema<AZ::SystemAllocator>>;
+            using Descriptor = Base::Descriptor;
 
-            const char* GetName() const override { return "EMotion FX System Allocator"; }
-            const char* GetDescription() const override { return "EMotion FX general memory allocator"; }
+            EMotionFXAllocator() : Base("EMotion FX System Allocator", "EMotion FX general memory allocator") 
+            {
+            }
         };
 
         /**
@@ -136,12 +134,12 @@ namespace EMotionFX
 
             AZ_FORCE_INLINE ObjectType* operator ->() const
             {
-                return get();
+                AZ_Assert(m_ptr, "Attempting to dereference a null EMotion FX object pointer.");
+                return m_ptr;
             }
 
             AZ_FORCE_INLINE ObjectType* get() const
             {
-                AZ_Assert(m_ptr, "Attempting to dereference a null EMotion FX object pointer.");
                 return m_ptr;
             }
 

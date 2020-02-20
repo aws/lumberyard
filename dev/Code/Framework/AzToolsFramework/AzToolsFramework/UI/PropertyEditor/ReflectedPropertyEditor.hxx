@@ -67,7 +67,7 @@ namespace AzToolsFramework
         template<class T>
         bool AddInstance(T* instance, void* aggregateInstance = nullptr, void* compareInstance = nullptr)
         {
-            return AddInstance(instance, AZ::AzTypeInfo<T>().Uuid(), aggregateInstance, compareInstance);
+            return AddInstance(instance, azrtti_typeid(instance), aggregateInstance, compareInstance);
         }
 
         void InvalidateAll(const char* filter = nullptr); // recreates the entire tree of properties.

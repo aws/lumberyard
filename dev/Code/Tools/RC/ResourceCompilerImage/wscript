@@ -19,6 +19,9 @@ from runpy import run_path
 def build(bld):
 
     includes    = [ '.',
+                    './PCH',
+                    bld.ThirdPartyPath('boost'),
+                    bld.Path('Code/CryEngine/CryCommon'),
                     bld.Path('Code/Tools'),
                     bld.Path('Code/Tools/RC/ResourceCompiler'),
                     bld.Path('Code/Tools/CryCommonTools'),
@@ -50,7 +53,8 @@ def build(bld):
         vs_filter                   = 'RC',
         copyright_org               = 'Amazon-CryTek',
         file_list                   = ['resourcecompilerimage.waf_files'],
-        platforms                   = ['win', 'darwin'],
+        pch                         = 'PCH/StdAfx.cpp',
+        platforms                   = ['win', 'darwin', 'linux'],
         exclude_monolithic          = True,
         client_only                 = True,
         use                         = ['AzToolsFramework'],
@@ -90,6 +94,9 @@ def build(bld):
                                     '-Wno-shift-count-overflow',
                                     '-Wno-sometimes-uninitialized', # required for squish library to compile
                                     '-Wno-shift-negative-value'],
+
+        linux_rpath                 = ['$ORIGIN/..'],
+        linux_lib                   = ['jpeg', 'jbig'],
 
         # Testing
         test_all_file_list          = ['resourcecompilerimage_test.waf_files'],

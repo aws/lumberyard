@@ -20,12 +20,15 @@ def build(bld):
 
         target              = 'GraphCanvasWidgets',
 
-        platforms           = ['darwin', 'win'],
+        platforms           = ['darwin', 'win', 'linux'],
         exclude_monolithic  = True,
         client_only         = True,
-        file_list       = ['GraphCanvas_staticlib.waf_files'],
+        file_list           = ['GraphCanvas_staticlib.waf_files'],
 
-        includes            = ['StaticLib'],
+        includes            = ['.',
+                               bld.ThirdPartyPath('boost'),
+                               bld.Path('Code/CryEngine/CryCommon'),
+                               'StaticLib'],
         defines             = [enableDetailProfiling],
         use                 = ['AzCore',
                                'AzFramework',
@@ -51,7 +54,9 @@ def build(bld):
         file_list       = ['GraphCanvas_game.waf_files'],
         pch             = '',
         test_all_file_list = ['GraphCanvas_test.waf_files'],                
-
+        includes        = ['.',
+                           bld.ThirdPartyPath('boost'),
+                           bld.Path('Code/CryEngine/CryCommon')],
         ########################################
         # Editor Gem configuration
         editor = dict(
@@ -65,6 +70,8 @@ def build(bld):
             use                 = ['GraphCanvasWidgets'],
 
             includes            = ['.',
+                                   bld.ThirdPartyPath('boost'),
+                                   bld.Path('Code/CryEngine/CryCommon'),
                                    '..',
                                    'Include',
                                    'Source'],

@@ -349,7 +349,7 @@ public: // static member data
 typedef AZ::EBus<UiCanvasInterface> UiCanvasBus;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! The canvas component implements this bus and it is provided for C++ implementations of 
+//! The canvas component implements this bus and it is provided for C++ implementations of
 //! UI components to use to talk to the canvas
 class UiCanvasComponentImplementationInterface
     : public AZ::ComponentBus

@@ -11,6 +11,8 @@
 */
 
 #include "Camera.h"
+#include <MCore/Source/AzCoreConversions.h>
+#include <MCore/Source/LogManager.h>
 
 
 namespace MCommon
@@ -43,7 +45,7 @@ namespace MCommon
         // initialize for perspective projection
         case PROJMODE_PERSPECTIVE:
         {
-            mProjectionMatrix.PerspectiveRH(MCore::Math::DegreesToRadians(mFOV), mAspect, mNearClipDistance, mFarClipDistance);
+            MCore::PerspectiveRH(mProjectionMatrix, MCore::Math::DegreesToRadians(mFOV), mAspect, mNearClipDistance, mFarClipDistance);
             break;
         }
 
@@ -52,13 +54,13 @@ namespace MCommon
         {
             const float halfX = mOrthoClipDimensions.GetX() * 0.5f;
             const float halfY = mOrthoClipDimensions.GetY() * 0.5f;
-            mProjectionMatrix.OrthoOffCenterRH(-halfX, halfX, halfY, -halfY, -mFarClipDistance, mFarClipDistance);
+            MCore::OrthoOffCenterRH(mProjectionMatrix, -halfX, halfX, halfY, -halfY, -mFarClipDistance, mFarClipDistance);
             break;
         }
         }
 
         // calculate the viewproj matrix
-        mViewProjMatrix = mViewMatrix * mProjectionMatrix;
+        mViewProjMatrix = mProjectionMatrix * mViewMatrix;
 
         // init the view frustum
         mFrustum.InitFromMatrix(mViewProjMatrix);
@@ -76,20 +78,18 @@ namespace MCommon
         mAspect             = 16.0f / 9.0f;
         mRotationSpeed      = 0.5f;
         mTranslationSpeed   = 1.0f;
-        mViewMatrix.Identity();
+        mViewMatrix = AZ::Matrix4x4::CreateIdentity();
     }
 
 
     // unproject screen coordinates to a ray
     MCore::Ray Camera::Unproject(int32 screenX, int32 screenY)
     {
-        MCore::Matrix invProj = mProjectionMatrix.Inversed();
-        MCore::Matrix invView = mViewMatrix.Inversed();
+        const AZ::Matrix4x4 invProj = MCore::InvertProjectionMatrix(mProjectionMatrix);
+        const AZ::Matrix4x4 invView = MCore::InvertProjectionMatrix(mViewMatrix);
 
-        AZ::Vector3  start   = MCore::Unproject(static_cast<float>(screenX), static_cast<float>(screenY), static_cast<float>(mScreenWidth), static_cast<float>(mScreenHeight), mNearClipDistance, invProj, invView);
-        AZ::Vector3  end     = MCore::Unproject(static_cast<float>(screenX), static_cast<float>(screenY), static_cast<float>(mScreenWidth), static_cast<float>(mScreenHeight), mFarClipDistance, invProj, invView);
-
-        //LogInfo("start=(%.2f, %.2f, %.2f) end=(%.2f, %.2f, %.2f)", start.x, start.y, start.z, end.x, end.y, end.z);
+        const AZ::Vector3  start = MCore::Unproject(static_cast<float>(screenX), static_cast<float>(screenY), static_cast<float>(mScreenWidth), static_cast<float>(mScreenHeight), mNearClipDistance, invProj, invView);
+        const AZ::Vector3  end   = MCore::Unproject(static_cast<float>(screenX), static_cast<float>(screenY), static_cast<float>(mScreenWidth), static_cast<float>(mScreenHeight), mFarClipDistance, invProj, invView);
 
         return MCore::Ray(start, end);
     }

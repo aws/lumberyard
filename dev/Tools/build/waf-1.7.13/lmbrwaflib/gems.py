@@ -294,12 +294,13 @@ def DefineGem(ctx, *k, **kw):
 
             'features': [],
             'use': [],
-            'uselib': []
+            'uselib': [],
+            'linux_rpath': ["$ORIGIN", "$ORIGIN/qtlibs/lib"]
         }
 
         # Builders have some special settings
         if module.type in [Gem.Module.Type.Builder, Gem.Module.Type.EditorModule]:
-            default_settings['platforms'] = ['win', 'darwin']
+            default_settings['platforms'] = ['win', 'darwin', 'linux']
             default_settings['configurations'] = ['all']
             kw['exclude_monolithic'] = True
             default_settings['client_only'] = True

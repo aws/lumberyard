@@ -19,7 +19,7 @@ def build(bld):
         target                      = 'FbxSDKWrapper',
         vs_filter                   = 'Tools/SceneAPI',
         file_list                   = 'fbxsdkwrapper.waf_files',
-        platforms                   = ['win', 'darwin'],
+        platforms                   = ['win', 'darwin', 'linux'],
         configurations              = ['all'],
         exclude_monolithic          = True,
         client_only                 = True,
@@ -27,5 +27,6 @@ def build(bld):
         disable_pch                 = True,
         use                         = ['AzCore', 'AzFramework', 'AzToolsFramework', 'SceneCore', 'FBXSDK'],
         win_x64_clang_cxxflags      = ['-Wno-null-dereference'],
-        darwin_cxxflags             = ['-Wno-pragmas']
+        darwin_cxxflags             = ['-Wno-pragmas'],
+        linux_cxxflags              = ['-Wno-null-dereference']
     )

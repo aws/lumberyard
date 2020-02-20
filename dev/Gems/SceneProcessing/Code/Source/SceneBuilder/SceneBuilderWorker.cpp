@@ -27,6 +27,7 @@
 #include <SceneAPI/SceneCore/Events/ExportEventContext.h>
 #include <SceneAPI/SceneCore/Events/SceneSerializationBus.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
+#include <SceneAPI/SceneCore/SceneBuilderDependencyBus.h>
 
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include <SceneBuilder/SceneBuilderWorker.h>
@@ -88,6 +89,10 @@ namespace SceneBuilder
             descriptor.m_failOnError = true;
             descriptor.m_priority = 11; // more important than static mesh files, since these may control logic (actors and motions specifically)
             descriptor.m_additionalFingerprintInfo = GetFingerprint();
+
+            AZ::SceneAPI::SceneBuilderDependencyBus::Broadcast(&AZ::SceneAPI::SceneBuilderDependencyRequests::ReportJobDependencies,
+                descriptor.m_jobDependencyList, enabledPlatform.m_identifier.c_str());
+
             response.m_createJobOutputs.push_back(descriptor);
         }
 
@@ -233,7 +238,8 @@ namespace SceneBuilder
         AZ_TracePrintf(Utilities::LogWindow, "Collecting and registering products.\n");
         for (const ExportProduct& product : productList.GetProducts())
         {
-            AZ::u32 subId = BuildSubId(product);
+            const AZ::u32 subId = product.m_subId.has_value() ? product.m_subId.value() : BuildSubId(product);
+
             AZ_TracePrintf(Utilities::LogWindow, "Listed product: %s+0x%08x - %s (type %s)\n", product.m_id.ToString<AZStd::string>().c_str(),
                 subId, product.m_filename.c_str(), product.m_assetType.ToString<AZStd::string>().c_str());
 
@@ -276,9 +282,9 @@ namespace SceneBuilder
         // uber-fbx files that contain hundreds of meshes that need to be split into individual mesh objects as an example.
         AZ::u32 id = static_cast<AZ::u32>(product.m_id.GetHash());
 
-        if (product.m_lod != AZ::SceneAPI::Events::ExportProduct::s_LodNotUsed)
+        if (product.m_lod.has_value())
         {
-            AZ::u8 lod = static_cast<AZ::u8>(product.m_lod);
+            AZ::u8 lod = product.m_lod.value();
             if (lod > 0xF)
             {
                 AZ_TracePrintf(AZ::SceneAPI::Utilities::WarningWindow, "%i is too large to fit in the allotted bits for LOD.\n", static_cast<AZ::u32>(lod));

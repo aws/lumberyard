@@ -20,19 +20,6 @@
 #include <QFileDialog>
 #include <AzQtComponents/Components/Widgets/BreadCrumbs.h>
 
-static QWidget* createSeparator(QBoxLayout* layout, QWidget* parent)
-{
-    QFrame* line = new QFrame(parent);
-    line->setMinimumSize(QSize(0, 0));
-    line->setMaximumSize(QSize(2, 20));
-    line->setStyleSheet(QStringLiteral("color: black; background-color: black"));
-    line->setFrameShape(QFrame::VLine);
-    line->setFrameShadow(QFrame::Sunken);
-
-    layout->addWidget(line);
-
-    return line;
-}
 
 BreadCrumbsPage::BreadCrumbsPage(QWidget* parent)
 : QWidget(parent)
@@ -46,17 +33,16 @@ BreadCrumbsPage::BreadCrumbsPage(QWidget* parent)
     breadCrumbs->pushPath("C:/Documents/SubDirectory1/SubDirectory2/SubDirectory3");
 
     // Have the bread crumb widget create the right buttons for us and we just lay them out
-    ui->horizontalLayout->addWidget(breadCrumbs->createButton(AzQtComponents::NavigationButton::Up));
     ui->horizontalLayout->addWidget(breadCrumbs->createButton(AzQtComponents::NavigationButton::Back));
     ui->horizontalLayout->addWidget(breadCrumbs->createButton(AzQtComponents::NavigationButton::Forward));
 
-    createSeparator(ui->horizontalLayout, this);
+    ui->horizontalLayout->addWidget(breadCrumbs->createSeparator());
 
     ui->horizontalLayout->addWidget(breadCrumbs);
 
-    createSeparator(ui->horizontalLayout, this);
+    ui->horizontalLayout->addWidget(breadCrumbs->createSeparator());
 
-    auto browseButton = new QPushButton("Browse...", this);
+    auto browseButton = breadCrumbs->createButton(AzQtComponents::NavigationButton::Browse);
 
     ui->horizontalLayout->addWidget(browseButton);
 
@@ -92,7 +78,6 @@ breadCrumbs->pushPath(somePath);
 // To navigate:
 breadCrumbs->back();
 breadCrumbs->forward();
-breadCrumbs->up();
 
 // Listen for path changes
 connect(breadCrumbs, &AzQtComponents::BreadCrumbs::pathChanged, this, [](const QString& newPath){
@@ -108,7 +93,6 @@ QHBoxLayout* groupLayout = new QHBoxLayout(group);
 
 AzQtComponents::BreadCrumbs* breadCrumbs = new AzQtComponents::BreadCrumbs(group);
 
-layout->addWidget(breadCrumbs->createButton(AzQtComponents::NavigationButton::Up));
 layout->addWidget(breadCrumbs->createButton(AzQtComponents::NavigationButton::Back));
 layout->addWidget(breadCrumbs->createButton(AzQtComponents::NavigationButton::Forward));
 

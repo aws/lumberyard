@@ -34,6 +34,7 @@ namespace AzToolsFramework
         QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
 
         void SetFilter(AZ::Data::AssetType filterType);
+        void RefreshAssetList();
         void SearchStringHighlight(QString searchString);
 
         Qt::ItemFlags flags(const QModelIndex &index) const override;
@@ -50,8 +51,10 @@ namespace AzToolsFramework
         };
 
         AssetBrowserEntry* GetAssetEntry(QModelIndex index) const;
-        void FetchResources(AssetBrowserFilterModel* filter, QModelIndex index);
+        void FetchResources(QModelIndex index);
 
+        //! Store assetBrowserFilterModel
+        AZStd::unique_ptr<AssetBrowserFilterModel> m_assetBrowserFilterModel;
         //! Stores list of assets to suggest via the autocompleter
         AZStd::vector<AssetItem> m_assets;
         //! String that will be highlighted in the suggestions

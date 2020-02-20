@@ -16,6 +16,7 @@
 #include <EMotionFX/Source/MotionSystem.h>
 #include <EMotionFX/Source/MotionManager.h>
 #include <MCore/Source/Compare.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/ReflectionSerializer.h>
 #include <EMotionFX/Source/MotionEventTrack.h>
 #include <EMotionFX/Source/EventManager.h>

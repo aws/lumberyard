@@ -19,11 +19,11 @@ def build(bld):
         target          = 'AssetBuilderSDK',
         vs_filter       = 'Tools/AssetProcessor',
         file_list       = ['assetbuilder.waf_files'],
-        platforms       = ['win', 'darwin'],
+        platforms       = ['win', 'darwin', 'linux'],
         configurations  = ['all'],
         exclude_monolithic = True,
         disable_pch     = True,
-        use             = ['AzToolsFramework'],
+        use             = ['AzCore', 'AzToolsFramework', 'AzFramework'],
         export_includes = ['.'],
         defines         = defines,
 

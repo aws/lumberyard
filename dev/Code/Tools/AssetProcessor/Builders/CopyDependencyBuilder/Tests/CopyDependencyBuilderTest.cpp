@@ -124,8 +124,8 @@ protected:
     void TestSuccessCase(
         CopyDependencyBuilderWorker* worker,
         AZStd::string_view fileName,
-        AZStd::vector<const char*>& expectedPathDependencies = AZStd::vector<const char*>(),
-        AZStd::vector<AssetBuilderSDK::ProductDependency>& expectedProductDependencies = AZStd::vector<AssetBuilderSDK::ProductDependency>())
+        AZStd::vector<const char*>& expectedPathDependencies,
+        AZStd::vector<AssetBuilderSDK::ProductDependency>& expectedProductDependencies)
     {
         AssetBuilderSDK::ProductPathDependencySet resolvedPaths;
         AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
@@ -178,13 +178,19 @@ protected:
     {
         AZStd::vector<const char*> expectedFiles;
         expectedFiles.push_back(expectedFile);
-        TestSuccessCase(worker, fileName, expectedFiles);
+
+        AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+        TestSuccessCase(worker, fileName, expectedFiles, expectedProductDependencies);
     }
 
     void TestSuccessCaseNoDependencies(CopyDependencyBuilderWorker* worker, AZStd::string_view fileName)
     {
         AZStd::vector<const char*> expectedFiles;
-        TestSuccessCase(worker, fileName, expectedFiles);
+
+        AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+        TestSuccessCase(worker, fileName, expectedFiles, expectedProductDependencies);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -406,7 +412,10 @@ TEST_F(CopyDependencyBuilderTest, TestFontfamilyAsset_MultipleDependencies_Outpu
     AZStd::string fileName = "Fonts/FontFamilyExample.fontfamily"; 
 
     FontBuilderWorker builderWorker;
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestFontAsset_SingleDependency_OutputProductDependency)
@@ -417,6 +426,7 @@ TEST_F(CopyDependencyBuilderTest, TestFontAsset_SingleDependency_OutputProductDe
     AZStd::string fileName = "Fonts/FontExample.font";
 
     FontBuilderWorker builderWorker;
+    
     TestSuccessCase(&builderWorker, fileName, "Fonts/FontExample.ttf");
 }
 
@@ -519,7 +529,10 @@ TEST_F(CopyDependencyBuilderTest, TestAudioControl_OnePreloadMultipleBanks_Multi
     };
     AZStd::string fileName = "AudioControls/TestControlOnePreloadMultipleBanks.xml";
     AudioControlBuilderWorker builderWorker;
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestAudioControl_MultiplePreloadsOneBankEach_MultipleProductDependencies)
@@ -530,7 +543,10 @@ TEST_F(CopyDependencyBuilderTest, TestAudioControl_MultiplePreloadsOneBankEach_M
     };
     AZStd::string fileName = "AudioControls/TestControlMultiplePreloadOneBank.xml";
     AudioControlBuilderWorker builderWorker;
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestAudioControl_MultiplePreloadsMultipleBanksEach_MultipleProductDependencies)
@@ -543,7 +559,10 @@ TEST_F(CopyDependencyBuilderTest, TestAudioControl_MultiplePreloadsMultipleBanks
     };
     AZStd::string fileName = "AudioControls/TestControlMultiplePreloadsMultipleBanks.xml";
     AudioControlBuilderWorker builderWorker;
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestAudioControl_NoConfigGroups_NoProductDependencies)
@@ -625,7 +644,10 @@ TEST_F(CopyDependencyBuilderTest, TestParticlePreloadLib_MultipleReferences_Outp
     };
     AZStd::string fileName = "Libs/Particles/PreloadMultipleReferences.txt";
     ParticlePreloadLibsBuilderWorker builderWorker;
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestParticlePreloadLib_DependenciesWithPath_OutputProductDependencies)
@@ -637,7 +659,10 @@ TEST_F(CopyDependencyBuilderTest, TestParticlePreloadLib_DependenciesWithPath_Ou
 
     AZStd::string fileName = "Libs/Particles/PreloadWithSubfolders.txt";
     ParticlePreloadLibsBuilderWorker builderWorker;
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestParticlePreloadLib_EmptyFile_NoDependencies)
@@ -693,7 +718,11 @@ TEST_F(CopyDependencyBuilderTest, TestParticlePreloadLib_MultipleReferencesAndMu
     AZStd::string fileName = "Libs/Particles/PreloadErrorsAndMultipleRefs.txt";
     ParticlePreloadLibsBuilderWorker builderWorker;
     AZ_TEST_START_TRACE_SUPPRESSION;
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
+
     // Two errors occur: A wildcard symbol is in the file, and an @ on its own line.
     AZ_TEST_STOP_TRACE_SUPPRESSION(2 * SuppressedErrorMultiplier);
 }
@@ -704,7 +733,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_ExcludedSourceFilePath_NoProductD
     AZStd::string fileName = "Xmls/ExcludedFilePathExample.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithVersionConstraints"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_InvalidSchemaFormat_NoProductDependencies)
@@ -739,7 +771,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_InvalidSourceFileVersionNumberFor
     AZStd::string fileName = "Xmls/XmlExampleInvalidVersionNumberFormat.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithVersionConstraints"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_NoMatchedSchema_NoProductDependencies)
@@ -748,7 +783,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_NoMatchedSchema_NoProductDependen
     AZStd::string fileName = "Xmls/NoMatchedSchemaExample.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/FullFeatured"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SchemaMissingRules_NoProductDependencies)
@@ -777,7 +815,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SchemaEmptyAttributeValue_OutputP
     AZStd::string fileName = "Xmls/XmlExampleEmptyAttributeValue.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/FullFeatured"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_DependencySearchRuleForSpecificAttribute_OutputProductDependencies)
@@ -792,7 +833,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_DependencySearchRuleForSpecificAt
     AZStd::string fileName = "Xmls/XmlExampleWithoutVersion.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/SpecificAttribute"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_DependencySearchRuleForSpecificElement_OutputProductDependencies)
@@ -806,7 +850,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_DependencySearchRuleForSpecificEl
     AZStd::string fileName = "Xmls/XmlExampleWithoutVersion.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/SpecificElement"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_DependencySearchRuleRelativeToXmlRootNode_OutputProductDependencies)
@@ -819,7 +866,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_DependencySearchRuleRelativeToXml
     AZStd::string fileName = "Xmls/XmlExampleWithoutVersion.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/RelativeToXmlRootNode"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_DependencySearchRuleWithExpectedExtension_OutputProductDependencies)
@@ -841,7 +891,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_MultipleOverlappingOptionalExtens
     AZStd::string fileName = "Xmls/XmlExampleMultipleMatchingExtensions.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/MultipleExtensionsSamePath"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_DependencySearchRuleWithOptionalAttribute_OutputProductDependencies)
@@ -854,7 +907,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_DependencySearchRuleWithOptionalA
     AZStd::string fileName = "Xmls/XmlExampleWithoutVersion.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/OptionalAttribute"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+    
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_DependencySearchRuleWithMissingRequiredAttribute_NoProductDependencies)
@@ -864,7 +920,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_DependencySearchRuleWithMissingRe
     AZStd::string fileName = "Xmls/XmlExampleWithoutVersion.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/RequiredAttribute"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_DependencySearchRuleWithOptionalElement_OutputProductDependencies)
@@ -877,7 +936,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_DependencySearchRuleWithOptionalE
     AZStd::string fileName = "Xmls/XmlExampleWithoutVersion.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/OptionalElement"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_DependencySearchRuleWithMissingRequiredElement_NoProductDependencies)
@@ -887,7 +949,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_DependencySearchRuleWithMissingRe
     AZStd::string fileName = "Xmls/XmlExampleWithoutVersion.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/RequiredElements"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithoutVersionSchemaWithVersionConstraints_NoProductDependencies)
@@ -897,7 +962,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithoutVersionSchemaWit
     AZStd::string fileName = "Xmls/XmlExampleWithoutVersion.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithVersionConstraints"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithVersionOutOfRangeSchemaWithVersionConstraints_NoProductDependencies)
@@ -906,7 +974,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithVersionOutOfRangeSc
     AZStd::string fileName = "Xmls/XmlExampleVersionOutOfRange.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithVersionConstraints"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithVersionSchemaWithVersionConstraints_OutputProductDependencies)
@@ -924,7 +995,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithVersionSchemaWithVe
     AZStd::string fileName = "Xmls/XmlExample.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithVersionConstraints"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithOneVersionPartSchemaWithVersionConstraints_OutputProductDependencies)
@@ -942,7 +1016,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithOneVersionPartSchem
     AZStd::string fileName = "Xmls/XmlExampleWithOneVersionPart.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithVersionConstraints"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithTwoVersionPartsSchemaWithVersionConstraints_OutputProductDependencies)
@@ -960,7 +1037,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithTwoVersionPartsSche
     AZStd::string fileName = "Xmls/XmlExampleWithTwoVersionParts.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithVersionConstraints"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithThreeVersionPartsSchemaWithVersionConstraints_OutputProductDependencies)
@@ -978,7 +1058,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithThreeVersionPartsSc
     AZStd::string fileName = "Xmls/XmlExampleWithThreeVersionParts.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithVersionConstraints"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithInvalidVersionPartsCountSchemaWithVersionConstraints_OutputNoProductDependencies)
@@ -988,7 +1071,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithInvalidVersionParts
     AZStd::string fileName = "Xmls/XmlExampleWithInvalidVersionPartsCount.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithVersionConstraints"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithInvalidVersionPartsSeparatorSchemaWithVersionConstraints_OutputNoProductDependencies)
@@ -998,7 +1084,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithInvalidVersionParts
     AZStd::string fileName = "Xmls/XmlExampleWithInvalidVersionPartsSeparator.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithVersionConstraints"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithVersionSchemaWithoutVersionConstraints_OutputProductDependencies)
@@ -1016,7 +1105,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithVersionSchemaWithou
     AZStd::string fileName = "Xmls/XmlExample.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/FullFeatured"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithoutVersionSchemaWithoutVersionConstraints_OutputProductDependencies)
@@ -1034,7 +1126,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_SourceFileWithoutVersionSchemaWit
     AZStd::string fileName = "Xmls/XmlExampleWithoutVersion.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/FullFeatured"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_CreateJobsWithValidSourceFile_OutputSourceDependencies)
@@ -1065,7 +1160,10 @@ TEST_F(CopyDependencyBuilderTest, TestXmlAsset_ProductPathRelativeToSourceAssetF
     AZStd::string fileName = "Xmls/XmlExample.xml";
     XmlBuilderWorker builderWorker;
     builderWorker.AddSchemaFileDirectory(GetFullPath("Xmls/Schema/WithoutVersionConstraints/PathRelativeToSourceAssetFolder"));
-    TestSuccessCase(&builderWorker, fileName, expectedPaths);
+
+    AZStd::vector<AssetBuilderSDK::ProductDependency> expectedProductDependencies;
+
+    TestSuccessCase(&builderWorker, fileName, expectedPaths, expectedProductDependencies);
 }
 
 TEST_F(CopyDependencyBuilderTest, TestXmlAsset_ProductDependencyWithAssetId_OutputProductDependencies)

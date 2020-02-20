@@ -540,6 +540,8 @@ struct IStatObj
     virtual string& GetFileName() = 0;
     virtual const string& GetFileName() const = 0;
 
+    virtual const string& GetCGFNodeName() const = 0;
+
     // Summary:
     //     Returns the filename of the object
     // Return Value:
@@ -819,4 +821,6 @@ struct IStatObj
     virtual int GetSubObjectMeshCount() const = 0;
     virtual void SetSubObjectMeshCount(int count) = 0;
     virtual void CleanUnusedLods() = 0;
+
+    virtual AZStd::vector<float>& GetClothInverseMasses() = 0;
 };

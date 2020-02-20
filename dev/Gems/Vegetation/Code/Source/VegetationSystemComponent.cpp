@@ -18,9 +18,9 @@
 #include <GradientSignal/ImageAsset.h>
 #include <Vegetation/DescriptorListAsset.h>
 #include <Vegetation/AreaComponentBase.h>
-#include <AZFramework/Asset/GenericAssetHandler.h>
+#include <AzFramework/Asset/GenericAssetHandler.h>
 
-#include <Vegetation/EBuses/FilterRequestBus.h>
+#include <Vegetation/Ebuses/FilterRequestBus.h>
 
 #include <CrySystemBus.h>
 

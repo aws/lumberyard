@@ -21,7 +21,7 @@
     "font-size": "default",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "black",
 
@@ -176,7 +176,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "#ffffff",
 
@@ -436,7 +436,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "#ffffff",
 
@@ -482,7 +482,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "#ffffff",
 
@@ -577,7 +577,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "#ffffff",
 
@@ -615,7 +615,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "white",
 
@@ -663,7 +663,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "white",
     "background-color": "transparent",
@@ -680,7 +680,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "white",
     "background-color": "transparent",
@@ -700,7 +700,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "white",
     "background-color": "transparent",
@@ -720,7 +720,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "white",
 
@@ -768,7 +768,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "white",
     "background-color": "transparent",
@@ -785,7 +785,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "white",
     "background-color": "transparent",
@@ -805,7 +805,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "white",
     "background-color": "transparent",
@@ -861,7 +861,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "white",
     "background-color": "transparent",
@@ -878,7 +878,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "white",
     "background-color": "transparent",
@@ -898,7 +898,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "white",
     "background-color": "transparent",
@@ -944,7 +944,7 @@
     "font-size": "135%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "background-color": "#666666",
     "color": "#EEEEEE",
@@ -1040,7 +1040,7 @@
     "font-size": "default",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "background-color": "#666666",
     "color": "#EEEEEE",
@@ -1124,7 +1124,7 @@
     "font-size": "default",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "background-color": "#666666",
     "color": "#EEEEEE",
@@ -1156,7 +1156,7 @@
     "font-size": "default",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "background-color": "#666666",
     "color": "#EEEEEE",
@@ -1190,7 +1190,7 @@
     "font-size": "default",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "background-color": "#666666",
     "color": "#EEEEEE",
@@ -1224,7 +1224,7 @@
     "font-size": "default",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "background-color": "#666666",
     "color": "#EEEEEE",
@@ -1258,7 +1258,7 @@
     "font-size": "default",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "background-color": "#666666",
     "color": "#EEEEEE",
@@ -1300,7 +1300,7 @@
     "font-size": "default",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "background-color": "#666666",
     "color": "#EEEEEE",
@@ -1334,7 +1334,7 @@
     "font-size": "default",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "background-color": "#666666",
     "color": "#EEEEEE",
@@ -1368,7 +1368,7 @@
     "font-size": "default",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "background-color": "#666666",
     "color": "#EEEEEE",
@@ -1390,7 +1390,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "white",
 
@@ -1422,7 +1422,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "white",
     "background-color": "transparent",
@@ -1439,7 +1439,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "white",
     "background-color": "transparent",
@@ -1459,7 +1459,7 @@
     "font-size": "100%",
     "font-style": "default",
     "font-variant": "default",
-    "font-weight": "Light",
+    "font-weight": "regular",
 
     "color": "white",
     "background-color": "transparent",

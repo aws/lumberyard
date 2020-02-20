@@ -14,14 +14,14 @@
 #include <AzQtComponents/Components/ConfigHelpers.h>
 #include <AzQtComponents/Components/Style.h>
 
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include <QToolButton>
 #include <QLabel>
-AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include <QHBoxLayout>
-AZ_POP_DISABLE_WARNING
 #include <QSettings>
 #include <QMenu>
 #include <QResizeEvent>
+AZ_POP_DISABLE_WARNING
 
 namespace AzQtComponents
 {
@@ -71,6 +71,17 @@ namespace AzQtComponents
         return m_currentPath;
     }
 
+    QWidget* BreadCrumbs::createSeparator()
+    {
+        QFrame* line = new QFrame(this);
+        line->setObjectName(QStringLiteral("breadcrumbs-separator"));
+        line->setMinimumSize(QSize(0, 0));
+        line->setMaximumSize(QSize(2, 16));
+        line->setFrameShape(QFrame::VLine);
+        line->setFrameShadow(QFrame::Sunken);
+        return line;
+    }
+
     QToolButton* BreadCrumbs::createButton(NavigationButton type)
     {
         QToolButton* button = new QToolButton(this);
@@ -78,24 +89,24 @@ namespace AzQtComponents
         switch (type)
         {
         case NavigationButton::Back:
-            button->setIcon(style()->standardIcon(QStyle::SP_ArrowBack));
+            button->setIcon(QIcon(":/Breadcrumb/img/UI20/Breadcrumb/arrow_left-default.svg"));
+            button->setIconSize(QSize(16, 16));
             button->setEnabled(isBackAvailable());
             connect(button, &QToolButton::released, this, &BreadCrumbs::back);
             connect(this, &BreadCrumbs::backAvailabilityChanged, button, &QWidget::setEnabled);
             break;
 
         case NavigationButton::Forward:
-            button->setIcon(style()->standardIcon(QStyle::SP_ArrowForward));
+            button->setIcon(QIcon(":/Breadcrumb/img/UI20/Breadcrumb/arrow_right-default.svg"));
             button->setEnabled(isForwardAvailable());
+            button->setIconSize(QSize(16, 16));
             connect(button, &QToolButton::released, this, &BreadCrumbs::forward);
             connect(this, &BreadCrumbs::forwardAvailabilityChanged, button, &QWidget::setEnabled);
             break;
 
-        case NavigationButton::Up:
-            button->setIcon(style()->standardIcon(QStyle::SP_ArrowUp));
-            button->setEnabled(isUpAvailable());
-            connect(button, &QToolButton::released, this, &BreadCrumbs::up);
-            connect(this, &BreadCrumbs::upAvailabilityChanged, button, &QWidget::setEnabled);
+        case NavigationButton::Browse:
+            button->setIcon(QIcon(":/Breadcrumb/img/UI20/Breadcrumb/List_View.svg"));
+            button->setIconSize(QSize(16, 16));
             break;
 
         default:
@@ -165,22 +176,6 @@ namespace AzQtComponents
         return true;
     }
 
-    bool BreadCrumbs::up()
-    {
-        // split out the current path
-        int separatorIndex = m_currentPath.lastIndexOf(g_separator);
-        if (separatorIndex <= 0)
-        {
-            return false;
-        }
-
-        // don't have to worry about handling signals because pushPath will do it
-
-        pushPath(m_currentPath.left(separatorIndex));
-
-        return true;
-    }
-
     void BreadCrumbs::resizeEvent(QResizeEvent* event)
     {
         if (event->oldSize().width() != event->size().width())
@@ -207,7 +202,7 @@ namespace AzQtComponents
 
         const QString nonBreakingSpace = QStringLiteral("&nbsp;");
         auto prependSeparators = [&]() {
-            htmlString.prepend(QStringLiteral("%1%1>%1%1").arg(nonBreakingSpace));
+            htmlString.prepend(QStringLiteral("%1%1<img src=\":/Breadcrumb/img/UI20/Breadcrumb/Next_level_arrow.svg\">%1%1").arg(nonBreakingSpace));
         };
 
         // last section is not clickable
@@ -253,7 +248,6 @@ namespace AzQtComponents
     {
         buttonStates[EnumToConstExprInt(NavigationButton::Back)] = isBackAvailable();
         buttonStates[EnumToConstExprInt(NavigationButton::Forward)] = isForwardAvailable();
-        buttonStates[EnumToConstExprInt(NavigationButton::Up)] = isUpAvailable();
     }
 
     void BreadCrumbs::emitButtonSignals(BreadCrumbButtonStates previousButtonStates)
@@ -266,11 +260,6 @@ namespace AzQtComponents
         if (isForwardAvailable() != previousButtonStates[EnumToConstExprInt(NavigationButton::Forward)])
         {
             Q_EMIT forwardAvailabilityChanged(isForwardAvailable());
-        }
-
-        if (isUpAvailable() != previousButtonStates[EnumToConstExprInt(NavigationButton::Up)])
-        {
-            Q_EMIT upAvailabilityChanged(isUpAvailable());
         }
     }
 

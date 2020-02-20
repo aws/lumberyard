@@ -19,8 +19,8 @@
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/parallel/mutex.h>
-#include <AzCore/std/parallel/scoped_lock.h>
 #include <Integration/System/SystemCommon.h>
+#include <EMotionFX/Source/Pose.h>
 
 namespace EMotionFX
 {
@@ -77,6 +77,7 @@ namespace EMotionFX
             void DrawWireframeCapsule(const AZ::Vector3& start, const AZ::Vector3& end, float radius, const AZ::Color& color, AZ::u32 numBodySubDivs = 16, AZ::u32 numSideSubDivs = 8);
             void DrawWireframeJointLimitCone(const AZ::Vector3& positionOffset, const AZ::Vector3& direction, float swingLimitDegreesX, float swingLimitDegreesY, float scale, const AZ::Color& color, AZ::u32 numAngularSubDivs = 32, AZ::u32 numRadialSubDivs = 4);
             void DrawMarker(const AZ::Vector3& position, const AZ::Color& color, float scale = 0.015f);
+            void DrawPose(const Pose& pose, const AZ::Color& color, const AZ::Vector3& offset = AZ::Vector3::CreateZero());
 
         private:
             void ClearLines();

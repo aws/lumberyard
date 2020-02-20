@@ -22,8 +22,9 @@ def build(bld):
         vs_filter           = 'Sandbox/Plugins',
         file_list           = 'editorui_qt.waf_files',
         darwin_file_list    = 'editorui_qt_darwin.waf_files',
+        linux_file_list     = 'editorui_qt_linux.waf_files',
         win_file_list       = 'editorui_qt_win.waf_files',
-        platforms           = ['win', 'darwin'],
+        platforms           = ['win', 'darwin', 'linux'],
         configurations      = ['all'],
         exclude_monolithic  = True,
         client_only         = True,
@@ -41,11 +42,14 @@ def build(bld):
                                'QT5GUI',
                                'QTMAIN',
                                'QT5WIDGETS',
-                               'QT5XML'],
+                               'QT5XML',
+                               'BOOST'],
+        defines             = ['EDITOR_COMMON_IMPORTS'],
         darwin_uselib       = ['QT5MACEXTRAS'],
-        enable_rtti         = True,
-
-        clang_cxxflags  = ['-Wno-char-subscripts', '-Wno-enum-compare-switch'],
+        darwin_enable_rtti  = True,
+    
+        clang_cxxflags      = ['-Wno-char-subscripts', '-Wno-enum-compare-switch'],
+        linux_rpath         = ['$ORIGIN/qtlibs/lib'],
 
         # Testing
         test_all_file_list = ['editorui_qt_test.waf_files'],

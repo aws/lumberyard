@@ -63,7 +63,6 @@
 #include <AzToolsFramework/Entity/EditorEntityFixupComponent.h>
 #include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogComponent.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
-#include <LyShine/UiAssetTypes.h>
 #include <AzToolsFramework/Archive/ArchiveComponent.h>
 
 namespace AssetProcessor

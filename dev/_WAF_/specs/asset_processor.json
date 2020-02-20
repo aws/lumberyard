@@ -2,7 +2,7 @@
     "description"           : "Configuration to build Asset Processor",
     "visual_studio_name"    : "Asset Processor",
     "disable_game_projects" : true,
-    "platforms" : ["win", "darwin"],
+    "platforms" : ["win", "darwin", "linux"],
     "modules" :
     [
         "AssetProcessor",

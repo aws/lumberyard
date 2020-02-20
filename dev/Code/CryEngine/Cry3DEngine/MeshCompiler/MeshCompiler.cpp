@@ -658,15 +658,24 @@ namespace mesh_compiler
 
             const int vertexCount = mesh.GetVertexCount();
             const int faceCount = mesh.GetFaceCount();
+            const int subSetCount = mesh.GetSubSetCount();
+
+            if (subSetCount >= MAX_SUB_MATERIALS)
+            {
+                m_LastError.Format(
+                    "Mesh compilation failed - Number of subsets (%d) exceeds the maximum amount of sub-materials (%d).",
+                    subSetCount, MAX_SUB_MATERIALS);
+                return false;
+            }
 
             for (int i = 0; i < faceCount; ++i)
             {
                 const SMeshFace& face = mesh.m_pFaces[i];
-                if (face.nSubset < 0 || face.nSubset >= MAX_SUB_MATERIALS)
+                if (face.nSubset < 0 || face.nSubset >= subSetCount)
                 {
                     m_LastError.Format(
                         "Mesh compilation failed - face %d has bad subset index %d (allowed range is [0;%d]). Contact an RC programmer.",
-                        i, (int)face.nSubset, MAX_SUB_MATERIALS - 1);
+                        i, (int)face.nSubset, subSetCount - 1);
                     return false;
                 }
                 for (int j = 0; j < 3; ++j)

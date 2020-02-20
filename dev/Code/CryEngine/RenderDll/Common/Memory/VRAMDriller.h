@@ -15,6 +15,7 @@
 #include <AzCore/Driller/Driller.h>
 #include <Common/Memory/VRAMDrillerBus.h>
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/Memory/PlatformMemoryInstrumentation.h>
 
 namespace Render
 {
@@ -51,7 +52,7 @@ namespace Render
             // VRAMDrillerBus
             virtual void RegisterCategory(VRAMAllocationCategory category, const char* categoryName, const VRAMSubCategoryType& subcategories);
             virtual void UnregisterAllCategories();
-            virtual void RegisterAllocation(void* address, size_t byteSize, const char* allocationName, VRAMAllocationCategory category, VRAMAllocationSubcategory subcategories);
+            virtual void RegisterAllocation(void* address, size_t byteSize, const char* allocationName, VRAMAllocationCategory category, VRAMAllocationSubcategory subcategory);
             virtual void UnregisterAllocation(void* address);
             virtual void GetCurrentVRAMStats(VRAMAllocationCategory category, VRAMAllocationSubcategory subcategory, AZStd::string& categoryName, AZStd::string& subcategoryName, size_t& numberBytesAllocated, size_t& numberAllocations);
             //////////////////////////////////////////////////////////////////////////
@@ -63,6 +64,11 @@ namespace Render
 
         private:
 
+#if PLATFORM_MEMORY_INSTRUMENTATION_ENABLED
+            uint16_t m_platformMemoryInstrumentationRootGroupId = 0;
+            uint16_t m_platformMemoryInstrumentationCategoryIds[Render::Debug::VRAM_CATEGORY_NUMBER_CATEGORIES] = { 0 };
+            uint16_t m_platformMemoryInstrumentationSubcategoryIds[Render::Debug::VRAM_SUBCATEGORY_NUMBER_SUBCATEGORIES] = { 0 };
+#endif
             class VRAMDrillerAllocations* m_allocations = nullptr;
         };
     } // namespace Debug

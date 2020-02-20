@@ -319,7 +319,7 @@ namespace Editor
         UIFactory::Initialize();
     }
 
-    void EditorQtApplication::LoadSettings() 
+    void EditorQtApplication::LoadSettings()
     {
         AZ::SerializeContext* context;
         EBUS_EVENT_RESULT(context, AZ::ComponentApplicationBus, GetSerializeContext);

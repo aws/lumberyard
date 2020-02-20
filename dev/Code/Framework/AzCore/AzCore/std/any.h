@@ -197,9 +197,6 @@ namespace AZStd
         explicit any(in_place_type_t<ValueType>, Args&&... args)
             : any(allocator("AZStd::any"))
         {
-            static_assert(AZStd::is_constructible<decay_t<ValueType>, Args...>::value && Internal::template_is_copy_constructible<decay_t<ValueType>>::value,
-                "ValueType must be constructible with Args... and copy constructible.");
-
             // Initialize typeinfo from the type given
             m_typeInfo = create_template_type_info<decay_t<ValueType>>();
 
@@ -215,9 +212,6 @@ namespace AZStd
         explicit any(in_place_type_t<ValueType>, AZStd::initializer_list<U> il, Args&&... args)
             : any(allocator("AZStd::any"))
         {
-            static_assert(AZStd::is_constructible<decay_t<ValueType>, AZStd::initializer_list<U>&, Args...>::value && Internal::template_is_copy_constructible<decay_t<ValueType>>::value,
-                "ValueType must be constructible with Args... and copy constructible.");
-
             // Initialize typeinfo from the type given
             m_typeInfo = create_template_type_info<decay_t<ValueType>>();
 
@@ -287,15 +281,16 @@ namespace AZStd
     private:
         // Any elements must be copy constructible
         template<typename ValueType, typename ParamType> // ParamType must be deduced to allow universal ref
-        static void construct(AZStd::any* dest, ParamType&& value, AZStd::enable_if_t<!AZStd::is_abstract<ValueType>::value && std::is_copy_constructible<ValueType>::value, AZStd::true_type*> = nullptr /* AZStd::is_copy_constructible<ValueType>::value*/)
+        static void construct(AZStd::any* dest, ParamType&& value, AZStd::enable_if_t<AZStd::is_constructible_v<ValueType, ParamType>, AZStd::true_type*> = nullptr /* AZStd::is_constructible_v<ValueType, ParamType>*/)
         {
             new (dest->get_data()) ValueType(forward<ParamType>(value));
         }
 
         // The ValueType is not copy constructible in this case
         template<typename ValueType, typename ParamType>
-        static void construct(AZStd::any* dest, ParamType&&, AZStd::enable_if_t<AZStd::is_abstract<ValueType>::value || !std::is_copy_constructible<ValueType>::value, AZStd::false_type*> = nullptr /* !AZStd::is_copy_constructible<ValueType>::value*/)
+        static void construct(AZStd::any* dest, ParamType&& value, AZStd::enable_if_t<!AZStd::is_constructible_v<ValueType, ParamType>, AZStd::false_type*> = nullptr /* !AZStd::is_constructible_v<ValueType, ParamType>*/)
         {
+            AZ_UNUSED(value);
             AZ_Assert(false, "Contained type %s is not copyable. Any will not attempt to invoke copy constructor", dest->get_type_info().m_id.ToString<AZStd::string>().data());
         }
 

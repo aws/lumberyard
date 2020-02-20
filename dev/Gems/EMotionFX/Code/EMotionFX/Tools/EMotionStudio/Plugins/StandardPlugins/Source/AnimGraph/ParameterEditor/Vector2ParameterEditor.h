@@ -13,6 +13,7 @@
 #pragma once
 
 #include "ValueParameterEditor.h"
+#include <AzCore/Math/Vector2.h>
 
 namespace EMStudio
 {

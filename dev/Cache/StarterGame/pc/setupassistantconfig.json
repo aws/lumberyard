@@ -42,7 +42,7 @@
             "tooltip" : "rungameToolTip",
             "tags" : ["rungame"],
             "categories" : ["role"],
-            "hosts" : [ "windows", "macOS" ],
+            "hosts" : [ "all" ],
             "default" : true
         },
         {
@@ -51,7 +51,7 @@
             "tooltip" : "runeditorToolTip",
             "tags" : ["runeditor"],
             "categories" : ["role"],
-            "hosts" : [ "windows", "macOS" ],
+            "hosts" : [ "all" ],
             "default" : true
         },
         {
@@ -78,7 +78,7 @@
             "tooltip" : "compilesandboxToolTip",
             "tags" : ["compilesandbox"],
             "categories" : ["role"],
-            "hosts" : [ "windows", "macOS" ],
+            "hosts" : [ "all" ],
             "default" : false
         },
         {
@@ -150,7 +150,7 @@
         {
             "identifier" : "boost",
             "name" : "boostName",
-            "version" : "v1.61.0 modified",
+            "version" : "v1.61.0-az.4 modified",
             "source": "boost/1.61.0-az.4",
             "optional" : 0,
             "description" : "boostDescriptionSummary",
@@ -326,8 +326,8 @@
         {
             "identifier" : "sqlite",
             "name" : "sqliteName",
-            "version" : "v3.8.8.2",
-            "source": "SQLite/v3.8.8.2",
+            "version" : "v3.8.8.2-az.1",
+            "source": "SQLite/v3.8.8.2-az.1",
             "optional" : 0,
             "description" : "sqliteDescriptionSummary",
             "detailedInstructions" : "sqliteDetailedInstructions",
@@ -335,13 +335,13 @@
             "symlinks" :
             [
                 {
-                    "source" : "SQLite/v3.8.8.2",
+                    "source" : "SQLite/v3.8.8.2-az.1",
                     "destination" : "$CODEFOLDERNAME$/Tools/SDKs/SQLite",
                     "exampleFile" : "sqlite3.c"
                 },
                 {
                     "compilers" : ["vc141"],
-                    "source" : "SQLite/v3.8.8.2",
+                    "source" : "SQLite/v3.8.8.2-az.1",
                     "destination" : "$CODEFOLDERNAME$/Tools/SDKs/SQLite",
                     "exampleFile" : "build/win_x64/vc140/release/sqlite.lib"
                 }
@@ -442,8 +442,8 @@
         {
             "identifier" : "tiff",
             "name" : "tiffName",
-            "version" : "3.9.5",
-            "source": "tiff/3.9.5",
+            "version" : "3.9.5-az.2",
+            "source": "tiff/3.9.5-az.2",
             "optional" : 0,
             "description" : "tiffDescriptionSummary",
             "detailedInstructions" : "tiffDetailedInstructions",
@@ -452,14 +452,14 @@
             [
                 {
                     "compilers" : ["vc141"],
-                    "source" : "tiff/3.9.5",
+                    "source" : "tiff/3.9.5-az.2",
                     "destination" : "$CODEFOLDERNAME$/SDKs/tiff",
                     "exampleFile" : "libtiff/libtiff64rtdlld_vc140.lib"
                 },
                 {
-                    "source" : "tiff/3.9.5",
+                    "source" : "tiff/3.9.5-az.2",
                     "destination" : "$CODEFOLDERNAME$/SDKs/tiff",
-                    "exampleFile" : "libtiff/tiff.h"
+                    "exampleFile" : "include/libtiff/tiff.h"
                 }
             ]
         },
@@ -467,35 +467,41 @@
             "identifier" : "fbxsdk",
             "name" : "fbxsdkName",
             "version" : "2016.1.2",
-            "source": "FbxSdk/2016.1.2",
+            "source": "FbxSdk/2016.1.2-az.1",
             "optional" : 0,
             "description" : "fbxsdkDescriptionSummary",
             "detailedInstructions" : "fbxsdkDetailedInstructions",
             "roles" : ["compileengine", "compilesandbox"],
-            "hostOS" : ["windows", "macOS"],
+            "hostOS" : ["windows", "macOS", "linux"],
             "installers" :
             [
                 {
                     "compilers" : ["vc141"],
-                    "source" : "$TOOLSFOLDERNAME$/Redistributables/FbxSdk/2016.1.2/fbx20161_2_fbxsdk_vs2015_win.exe",
-                    "params" : "/D=$THIRDPARTYFOLDERPATH$\\FbxSdk\\2016.1.2"
+                    "source" : "$TOOLSFOLDERNAME$/Redistributables/FbxSdk/2016.1.2-az.1/fbx20161_2_fbxsdk_vs2015_win.exe",
+                    "params" : "/D=$THIRDPARTYFOLDERPATH$\\FbxSdk\\2016.1.2-az.1"
                 },
                 {
                     "hostOS": ["macOS"],
                     "source": "./$TOOLSFOLDERNAME$/Python/python.sh",
-                    "params": "$TOOLSFOLDERNAME$/Redistributables/FbxSdk/2016.1.2/fbx_install_mac.py \"$THIRDPARTYFOLDERPATH$/FbxSdk/2016.1.2\""
+                    "params": "$TOOLSFOLDERNAME$/Redistributables/FbxSdk/2016.1.2-az.1/fbx_install_mac.py \"$THIRDPARTYFOLDERPATH$/FbxSdk/2016.1.2-az.1\""
                 }
             ],
             "symlinks" :
             [
                 {
                     "compilers" : ["vc141"],
-                    "source" : "FbxSdk/2016.1.2",
+                    "source" : "FbxSdk/2016.1.2-az.1",
                     "destination" : "$CODEFOLDERNAME$/SDKs/FbxSdk",
                     "exampleFile" : "lib/vs2015/x64/release/libfbxsdk.dll"
                 },
                 {
-                    "source" : "FbxSdk/2016.1.2",
+                    "compilers" : ["linux"],
+                    "source" : "FbxSdk/2016.1.2-az.1",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/FbxSdk",
+                    "exampleFile" : "lib/gcc4/x64/debug/libfbxsdk.a"
+                },
+                {
+                    "source" : "FbxSdk/2016.1.2-az.1",
                     "destination" : "$CODEFOLDERNAME$/SDKs/FbxSdk",
                     "exampleFile" : "include/fbxsdk.h"
                 }
@@ -599,8 +605,8 @@
         {
             "identifier" : "mikkt",
             "name" : "mikkelsenName",
-            "version" : "1.0.0-az.1",
-            "source" : "mikkelsen/1.0.0-az.1",
+            "version" : "1.0.0-az.2",
+            "source" : "mikkelsen/1.0.0-az.2",
             "optional" : 0,
             "description" : "mikkelsenDescriptionSummary",
             "detailedInstructions" : "mikkelsenDetailedInstructions",
@@ -608,7 +614,7 @@
             "symlinks" :
             [
                 {
-                    "source" : "mikkelsen/1.0.0-az.1",
+                    "source" : "mikkelsen/1.0.0-az.2",
                     "destination" : "$CODEFOLDERNAME$/SDKs/TangentBasisComputation",
                     "exampleFile" : "mikkelsen/mikktspace.cpp"
                 }
@@ -647,19 +653,19 @@
         {
             "identifier": "hdf5",
             "name": "hdf5name",
-            "version": "1.10.5",
-            "source": "hdf5/1.10.5",
+            "version": "1.10.5-az.1",
+            "source": "hdf5/1.10.5-az.1",
             "description": "hdf5DescriptionSummary",
             "detailedInstructions": "hdf5DetailedInstructions",
             "symlinks":
             [
                 {
                     "compilers" : ["vc141"],
-                    "source": "hdf5/1.10.5",
+                    "source": "hdf5/1.10.5-az.1",
                     "exampleFile": "lib/Windows/Release/libhdf5.lib"
                 },
                 {
-                    "source": "hdf5/1.10.5",
+                    "source": "hdf5/1.10.5-az.1",
                     "exampleFile": "include/hdf5.h"
                 }
             ]
@@ -667,20 +673,20 @@
         {
             "identifier": "ilmbase",
             "name": "ilmbasename",
-            "version": "2.3.0",
-            "source": "ilmbase/2.3.0",
+            "version": "2.3.0-az.1",
+            "source": "ilmbase/2.3.0-az.1",
             "description": "ilmbaseDescriptionSummary",
             "detailedInstructions": "ilmbaseDetailedInstructions",
             "symlinks":
             [
                 {
-                    "source": "ilmbase/2.3.0",
+                    "source": "ilmbase/2.3.0-az.1",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/Alembic/ilmbase",
                     "exampleFile": "include/OpenEXR/IlmBaseConfig.h"
                 },
                 {
                     "compilers" : ["vc141"],
-                    "source": "ilmbase/2.3.0",
+                    "source": "ilmbase/2.3.0-az.1",
                     "exampleFile": "lib/Windows/Release/Imath-2_3_s.lib"
                 }
             ]
@@ -689,19 +695,19 @@
             "identifier": "szip",
             "name": "szipname",
             "version": "2.1",
-            "source": "szip/2.1",
+            "source": "szip/2.1-az.1",
             "description": "szipDescriptionSummary",
             "detailedInstructions": "szipDetailedInstructions",
             "symlinks":
             [
                 {
-                    "source": "szip/2.1",
+                    "source": "szip/2.1-az.1",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/Alembic/szip",
                     "exampleFile": "include/szlib.h"
                 },
                 {
                     "compilers" : ["vc141"],
-                    "source": "szip/2.1",
+                    "source": "szip/2.1-az.1",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/Alembic/szip",
                     "exampleFile": "lib/x64/libszip-vc140-mt-s.lib"
                 }
@@ -711,8 +717,8 @@
         {
             "identifier": "alembic",
             "name": "alembicName",
-            "version": "1.7.11",
-            "source": "alembic/1.7.11",
+            "version": "1.7.11-az.1",
+            "source": "alembic/1.7.11-az.1",
             "optional": 0,
             "description": "alembicDescriptionSummary",
             "detailedInstructions": "alembicDetailedInstructions",
@@ -728,11 +734,11 @@
             [
                 {
                     "compilers" : ["vc141"],
-                    "source": "alembic/1.7.11",
+                    "source": "alembic/1.7.11-az.1",
                     "exampleFile": "lib/Windows/Release/Alembic.lib"
                 },
                 {
-                    "source": "alembic/1.7.11",
+                    "source": "alembic/1.7.11-az.1",
                     "exampleFile": "include/Alembic/Util/All.h"
                 }
             ]
@@ -790,8 +796,8 @@
         {
             "identifier": "qt",
             "name": "qtName",
-            "version": "5.6.2.7-az",
-            "source": "Qt/5.6.2.7-az",
+            "version": "5.12.4.0-az",
+            "source": "Qt/5.12.4.0-az",
             "optional": 0,
             "description": "qtDescriptionSummary",
             "detailedInstructions": "qtDetailedInstructions",
@@ -800,25 +806,25 @@
             "symlinks":
             [
                 {
-                    "source": "Qt/5.6.2.7-az",
+                    "source": "Qt/5.12.4.0-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
-                    "exampleFile": "QT-NOTICE.TXT"
+                    "exampleFile": "LICENSE"
                 },
                 {
                     "compilers": [ "vc141" ],
-                    "source": "Qt/5.6.2.7-az",
+                    "source": "Qt/5.12.4.0-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
-                    "exampleFile": "msvc2015_64/bin/moc.exe"
+                    "exampleFile": "msvc2017_64/bin/moc.exe"
                 },
                 {
                     "hostOS": [ "macOS" ],
-                    "source": "Qt/5.6.2.7-az",
+                    "source": "Qt/5.12.4.0-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
                     "exampleFile": "clang_64/bin/moc"
                 },
                 {
                     "hostOS": [ "linux" ],
-                    "source": "Qt/5.6.2.7-az",
+                    "source": "Qt/5.12.4.0-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
                     "exampleFile": "gcc_64/bin/moc"
                 }
@@ -833,7 +839,7 @@
             "description": "powerVRDescriptionSummary",
             "detailedInstructions": "powerVRDetailedInstructions",
             "roles": [ "compileengine", "compilesandbox" ],
-            "hostOS": [ "windows", "macOS" ],
+            "hostOS": [ "windows", "macOS", "linux" ],
             "symlinks":
             [
                 {
@@ -852,6 +858,12 @@
                     "source": "PVRTexTool/2016_r1.1",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/PowerVRTexTool",
                     "exampleFile": "OSX_x86/libPVRTexLib.dylib"
+                },
+                {
+                    "hostOS": [ "linux" ],
+                    "source": "PVRTexTool/2016_r1.1",
+                    "destination": "$CODEFOLDERNAME$/Tools/SDKs/PowerVRTexTool",
+                    "exampleFile": "Linux_x86_64/libPVRTexLib.so"
                 }
             ]
         },
@@ -859,16 +871,16 @@
             "identifier" : "etc2comp",
             "name" : "etc2compName",
             "version" : "2017_04_24",
-            "source" : "etc2comp/2017_04_24",
+            "source" : "etc2comp/2017_04_24-az.1",
             "optional" : 0,
             "description" : "etc2compDescriptionSummary",
             "detailedInstructions" : "etc2compDetailedInstructions",
             "roles" : ["compileengine", "compilesandbox"],
-            "hostOS" : ["windows", "macOS"],
+            "hostOS" : ["windows", "macOS", "linux"],
             "symlinks" :
             [
                 {
-                    "source" : "etc2comp/2017_04_24",
+                    "source" : "etc2comp/2017_04_24-az.1",
                     "destination" : "$CODEFOLDERNAME$/Tools/SDKs/etc2comp",
                     "exampleFile" : "EtcLib/Etc/Etc.h"
                 }
@@ -1312,6 +1324,58 @@
             ]
         },
         {
+            "identifier" : "NVCLOTHLIB",
+            "name" : "NVCLOTHLIBName",
+            "version" : "1.1.6",
+            "source" : "NvCloth/1.1.6",
+            "description" : "NVCLOTHLIBDescriptionSummary",
+            "detailedInstructions" : "NVCLOTHLIBDetailedInstructions",
+            "roles" : ["compilegame", "compileengine", "compilesandbox", "compileios", "compileandroid", "setuplinux"],
+            "symlinks" :
+            [
+                {
+                    "source" : "NvCloth/1.1.6/NvCloth",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/NvCloth/NvCloth",
+                    "exampleFile" : "include/NvCloth/Factory.h"
+                },
+                {
+                    "source" : "NvCloth/1.1.6/PxShared",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/NvCloth/PxShared",
+                    "exampleFile" : "include/foundation/Px.h"
+                },
+                {
+                    "compilers" : ["vc141"],
+                    "source": "NvCloth/1.1.6/NvCloth",
+                    "destination": "$CODEFOLDERNAME$/SDKs/NvCloth/NvCloth",
+                    "exampleFile": "lib/vc141win64-cmake/NvCloth_x64.lib"
+                },
+                {
+                    "hostOS" : ["macOS"],
+                    "source": "NvCloth/1.1.6/NvCloth",
+                    "destination": "$CODEFOLDERNAME$/SDKs/NvCloth/NvCloth",
+                    "exampleFile": "lib/osx64-cmake/libNvCloth.a"
+                },
+                {
+                    "roles" : ["compileios"],
+                    "source": "NvCloth/1.1.6/NvCloth",
+                    "destination": "$CODEFOLDERNAME$/SDKs/NvCloth/NvCloth",
+                    "exampleFile": "lib/ios-cmake/libNvCloth.a"
+                },
+                {
+                    "roles" : ["compileandroid"],
+                    "source": "NvCloth/1.1.6/NvCloth",
+                    "destination": "$CODEFOLDERNAME$/SDKs/NvCloth/NvCloth",
+                    "exampleFile": "lib/android-arm64-v8a-release-cmake/libNvCloth.a"
+                },
+                {
+                    "roles" : ["setuplinux"],
+                    "source": "NvCloth/1.1.6/NvCloth",
+                    "destination": "$CODEFOLDERNAME$/SDKs/NvCloth/NvCloth",
+                    "exampleFile": "lib/linux64-cmake/libNvCloth.a"
+                }
+            ]
+        },
+        {
             "identifier": "Dyad",
             "name": "dyadName",
             "version": "0.2.0-17-amazon",
@@ -1707,7 +1771,7 @@
             "description" : "gladSummary",
             "detailedInstructions" : "gladDetailedInstructions",
             "roles": [ "compilegame", "compileandroid", "compileengine", "compilesandbox" ],
-            "hostOS": [ "windows", "macOS" ],
+            "hostOS": [ "windows", "macOS", "linux" ],
             "symlinks" :
             [
                 {
@@ -1720,8 +1784,8 @@
         {
             "identifier" : "poly2tri", 
             "name" : "poly2triName",
-            "version" : "0.3.3",
-            "source" : "poly2tri/0.3.3",
+            "version" : "0.3.3-az.1",
+            "source" : "poly2tri/0.3.3-az.1",
             "description" : "poly2triSummary",
             "detailedInstructions" : "poly2triDetailedInstructions",
             "roles" : [ "compilesandbox" ],
@@ -1729,27 +1793,48 @@
             "symlinks" :
             [
                 {
-                    "source" : "poly2tri/0.3.3",
+                    "source" : "poly2tri/0.3.3-az.1",
                     "destination" : "$CODEFOLDERNAME$/Sandbox/SDKs/poly2tri",
                     "exampleFile" : "poly2tri/poly2tri.h"
                 },
                 {
                     "compilers" : ["vc141"],
-                    "source" : "poly2tri/0.3.3",
+                    "source" : "poly2tri/0.3.3-az.1",
                     "destination" : "$CODEFOLDERNAME$/Sandbox/SDKs/poly2tri",
                     "exampleFile" : "lib/win_x64_vc141/Release/poly2tri.lib"
                 },
                 {
                     "hostOS" : ["macOS"],
-                    "source" : "poly2tri/0.3.3",
+                    "source" : "poly2tri/0.3.3-az.1",
                     "destination" : "$CODEFOLDERNAME$/Sandbox/SDKs/poly2tri",
                     "exampleFile" : "lib/osx/Release/libpoly2tri.a"
                 },
                 {
                     "hostOS" : ["linux"],
-                    "source" : "poly2tri/0.3.3",
+                    "source" : "poly2tri/0.3.3-az.1",
                     "destination" : "$CODEFOLDERNAME$/Sandbox/SDKs/poly2tri",
                     "exampleFile" : "lib/linux/Release/libpoly2tri.a"
+                }
+            ]
+        },
+        {
+            "identifier": "cityhash",
+            "name": "cityhashName",
+            "version": "1.1",
+            "source": "cityhash/1.1",
+            "optional": 0,
+            "description": "cityhashDescriptionSummary",
+            "detailedInstructions": "cityhashDetailedInstructions",
+            "roles": [
+                "compilegame",
+                "compileengine",
+                "compileeditor"
+            ],
+            "symlinks": [
+                {
+                    "source": "cityhash/1.1/src",
+                    "destination": "$CODEFOLDERNAME$/SDKs/cityhash/src",
+                    "exampleFile": "city.h"
                 }
             ]
         }

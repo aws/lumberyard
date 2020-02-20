@@ -15,9 +15,9 @@
 
 // include required headers
 #include <AzCore/Math/Vector2.h>
+#include <MCore/Source/AzCoreConversions.h>
 #include <MCore/Source/Vector.h>
 #include <MCore/Source/Color.h>
-#include <MCore/Source/Matrix4.h>
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/Mesh.h>
 #include "Camera.h"
@@ -92,7 +92,7 @@ namespace MCommon
          *                       you have to make sure to call RenderLines() manually at the end of your custom render frame function.
          * @param offsetScale The offset scaling factor. The wired mesh is offset slightly from the mesh, to prevent some z-fighting.
          */
-        void RenderWireframe(EMotionFX::Mesh* mesh, const MCore::Matrix& worldTM, const MCore::RGBAColor& color = MCore::RGBAColor(0.80784315f, 0.23921569f, 0.88627452f, 1.0f), bool directlyRender = false, float offsetScale = 1.0f);
+        void RenderWireframe(EMotionFX::Mesh* mesh, const AZ::Transform& worldTM, const MCore::RGBAColor& color = MCore::RGBAColor(0.80784315f, 0.23921569f, 0.88627452f, 1.0f), bool directlyRender = false, float offsetScale = 1.0f);
 
         /**
          * Render vertex and/or face normals of the mesh.
@@ -107,7 +107,7 @@ namespace MCommon
          * @param directlyRender Will call the RenderLines() function internally in case it is set to true. If false
          *                       you have to make sure to call RenderLines() manually at the end of your custom render frame function.
          */
-        void RenderNormals(EMotionFX::Mesh* mesh, const MCore::Matrix& worldTM, bool vertexNormals, bool faceNormals, float vertexNormalsScale = 1.0f, float faceNormalsScale = 2.0f, const MCore::RGBAColor& colorVertexNormals = MCore::RGBAColor(0.0f, 1.0f, 0.0f), const MCore::RGBAColor& colorFaceNormals = MCore::RGBAColor(0.5f, 0.5f, 1.0f), bool directlyRender = false);
+        void RenderNormals(EMotionFX::Mesh* mesh, const AZ::Transform& worldTM, bool vertexNormals, bool faceNormals, float vertexNormalsScale = 1.0f, float faceNormalsScale = 2.0f, const MCore::RGBAColor& colorVertexNormals = MCore::RGBAColor(0.0f, 1.0f, 0.0f), const MCore::RGBAColor& colorFaceNormals = MCore::RGBAColor(0.5f, 0.5f, 1.0f), bool directlyRender = false);
 
         /**
          * Render tangents and bitangents of the mesh.
@@ -120,7 +120,7 @@ namespace MCommon
          * @param directlyRender Will call the RenderLines() function internally in case it is set to true. If false
          *                       you have to make sure to call RenderLines() manually at the end of your custom render frame function.
          */
-        void RenderTangents(EMotionFX::Mesh* mesh, const MCore::Matrix& worldTM, float scale = 1.0f, const MCore::RGBAColor& colorTangents = MCore::RGBAColor(1.0f, 0.0f, 0.0f), const MCore::RGBAColor& mirroredBitangentColor = MCore::RGBAColor(1.0f, 1.0f, 0.0f), const MCore::RGBAColor& colorBitangents = MCore::RGBAColor(1.0f, 1.0f, 1.0f), bool directlyRender = false);
+        void RenderTangents(EMotionFX::Mesh* mesh, const AZ::Transform& worldTM, float scale = 1.0f, const MCore::RGBAColor& colorTangents = MCore::RGBAColor(1.0f, 0.0f, 0.0f), const MCore::RGBAColor& mirroredBitangentColor = MCore::RGBAColor(1.0f, 1.0f, 0.0f), const MCore::RGBAColor& colorBitangents = MCore::RGBAColor(1.0f, 1.0f, 1.0f), bool directlyRender = false);
 
         /**
          * Render the given axis aligned bounding box.
@@ -256,7 +256,7 @@ namespace MCommon
          * @param color The desired sphere color.
          * @param worldTM The world space transformation matrix.
          */
-        MCORE_INLINE void RenderSphere(const MCore::RGBAColor& color, const MCore::Matrix& worldTM)                                                            { RenderUtilMesh(mUnitSphereMesh, color, worldTM); }
+        MCORE_INLINE void RenderSphere(const MCore::RGBAColor& color, const AZ::Transform& worldTM)                                                            { RenderUtilMesh(mUnitSphereMesh, color, worldTM); }
 
         /**
          * Render a circle, consisting of lines.
@@ -265,14 +265,14 @@ namespace MCommon
          * @param radius The radius of the circle.
          * @param color The color of the circle.
          */
-        void RenderCircle(const MCore::Matrix& rotation, float radius, uint32 numSegments, const MCore::RGBAColor& color, float startAngle = 0.0f, float endAngle = MCore::Math::twoPi, bool fillCircle = false, const MCore::RGBAColor& fillColor = MCore::RGBAColor(), bool cullFaces = false, const AZ::Vector3& camRollAxis = AZ::Vector3::CreateZero());
+        void RenderCircle(const AZ::Transform& rotation, float radius, uint32 numSegments, const MCore::RGBAColor& color, float startAngle = 0.0f, float endAngle = MCore::Math::twoPi, bool fillCircle = false, const MCore::RGBAColor& fillColor = MCore::RGBAColor(), bool cullFaces = false, const AZ::Vector3& camRollAxis = AZ::Vector3::CreateZero());
 
         /**
          * Render a cube.
          * @param color The desired cube color.
          * @param worldTM The world space transformation matrix.
          */
-        MCORE_INLINE void RenderCube(const MCore::RGBAColor& color, const MCore::Matrix& worldTM)                                                          { RenderUtilMesh(mUnitCubeMesh, color, worldTM); }
+        MCORE_INLINE void RenderCube(const MCore::RGBAColor& color, const AZ::Transform& worldTM)                                                          { RenderUtilMesh(mUnitCubeMesh, color, worldTM); }
 
         /**
          * Render a cylinder.
@@ -282,7 +282,7 @@ namespace MCommon
          * @param color The desired cylinder color.
          * @param worldTM The world space transformation matrix.
          */
-        MCORE_INLINE void RenderCylinder(float baseRadius, float topRadius, float length, const MCore::RGBAColor& color, const MCore::Matrix& worldTM)     { FillCylinder(mCylinderMesh, baseRadius, topRadius, length); RenderUtilMesh(mCylinderMesh, color, worldTM); }
+        MCORE_INLINE void RenderCylinder(float baseRadius, float topRadius, float length, const MCore::RGBAColor& color, const AZ::Transform& worldTM)     { FillCylinder(mCylinderMesh, baseRadius, topRadius, length); RenderUtilMesh(mCylinderMesh, color, worldTM); }
 
         /**
          * Render a cylinder.
@@ -327,7 +327,7 @@ namespace MCommon
          * @param color The desired arrow head color.
          * @param worldTM The world space transformation matrix.
          */
-        MCORE_INLINE void RenderArrowHead(float height, float radius, const MCore::RGBAColor& color, const MCore::Matrix& worldTM)             { FillArrowHead(mArrowHeadMesh, height, radius); RenderUtilMesh(mArrowHeadMesh, color, worldTM); }
+        MCORE_INLINE void RenderArrowHead(float height, float radius, const MCore::RGBAColor& color, const AZ::Transform& worldTM)             { FillArrowHead(mArrowHeadMesh, height, radius); RenderUtilMesh(mArrowHeadMesh, color, worldTM); }
 
         /**
          * Render an arrow head.
@@ -361,7 +361,7 @@ namespace MCommon
              */
             AxisRenderingSettings();
 
-            MCore::Matrix   mWorldTM;           /**< The world space transformation matrix to visualize. */
+            AZ::Transform   mWorldTM;           /**< The world space transformation matrix to visualize. */
             AZ::Vector3     mCameraRight;       /**< The inverse of the camera's right vector used for billboarding the axis names. */
             AZ::Vector3     mCameraUp;          /**< The inverse of the camera's up vector used for billboarding the axis names. */
             float           mSize;              /**< The size value in units is used to control the scaling of the axis. */
@@ -387,7 +387,7 @@ namespace MCommon
          * @param size The size value in units is used to control the scaling of the axis.
          * @param worldTM The world space transformation matrix to visualize.
          */
-        MCORE_INLINE void RenderAxis(float size, const MCore::Matrix& worldTM)                         { RenderAxis(size, worldTM.GetTranslation(), worldTM.GetRight(), worldTM.GetUp(), worldTM.GetForward()); }
+        MCORE_INLINE void RenderAxis(float size, const AZ::Transform& worldTM) { RenderAxis(size, worldTM.GetTranslation(), MCore::GetRight(worldTM), MCore::GetUp(worldTM), MCore::GetForward(worldTM)); }
 
         //---------------------------------------------------------------------------------------------
 
@@ -397,7 +397,7 @@ namespace MCommon
         struct MCOMMON_API LineVertex
         {
             MCORE_MEMORYOBJECTCATEGORY(RenderUtil::LineVertex, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_MCOMMON);
-            AZ::PackedVector3f  mPosition;  /**< The position of the vertex. */
+            AZ::Vector3         mPosition;  /**< The position of the vertex. */
             MCore::RGBAColor    mColor;     /**< The vertex color. */
         };
 
@@ -409,8 +409,8 @@ namespace MCommon
          */
         MCORE_INLINE void RenderLine(const AZ::Vector3& v1, const AZ::Vector3& v2, const MCore::RGBAColor& color)
         {
-            mVertexBuffer[mNumVertices].mPosition = AZ::PackedVector3f(v1);
-            mVertexBuffer[mNumVertices + 1].mPosition = AZ::PackedVector3f(v2);
+            mVertexBuffer[mNumVertices].mPosition = v1;
+            mVertexBuffer[mNumVertices + 1].mPosition = v2;
             mVertexBuffer[mNumVertices].mColor = color;
             mVertexBuffer[mNumVertices + 1].mColor = color;
             mNumVertices += 2;
@@ -514,11 +514,9 @@ namespace MCommon
              */
             void Allocate(uint32 numVertices, uint32 numIndices, bool hasNormals);
 
-            AZ::PackedVector3f* mPositions;     /**< The vertex buffer. */
-            uint32*             mIndices;       /**< The index buffer. */
-            AZ::PackedVector3f* mNormals;       /**< The normal buffer. */
-            uint32              mNumVertices;   /**< The number of vertices in this mesh. */
-            uint32              mNumIndices;    /**< The number of indices in this mesh. */
+            AZStd::vector<AZ::Vector3>        mPositions;     /**< The vertex buffer. */
+            AZStd::vector<uint32>             mIndices;       /**< The index buffer. */
+            AZStd::vector<AZ::Vector3>        mNormals;       /**< The normal buffer. */
         };
 
         /**
@@ -527,8 +525,8 @@ namespace MCommon
         struct UtilMeshVertex
         {
             MCORE_MEMORYOBJECTCATEGORY(RenderUtil::UtilMeshVertex, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_MCOMMON);
-            AZ::PackedVector3f mPosition;   /**< The position of the vertex. */
-            AZ::PackedVector3f mNormal;     /**< The vertex normal. */
+            AZ::Vector3 mPosition;   /**< The position of the vertex. */
+            AZ::Vector3 mNormal;     /**< The vertex normal. */
 
             UtilMeshVertex(const AZ::Vector3& pos, const AZ::Vector3& normal)
                 : mPosition(pos)
@@ -543,7 +541,7 @@ namespace MCommon
          * @param color The desired color.
          * @param worldTM The world space transformation matrix.
          */
-        virtual void RenderUtilMesh(UtilMesh* mesh, const MCore::RGBAColor& color, const MCore::Matrix& worldTM)           { MCORE_UNUSED(mesh); MCORE_UNUSED(color); MCORE_UNUSED(worldTM); }
+        virtual void RenderUtilMesh(UtilMesh* mesh, const MCore::RGBAColor& color, const AZ::Transform& worldTM)           { MCORE_UNUSED(mesh); MCORE_UNUSED(color); MCORE_UNUSED(worldTM); }
 
         /**
          * Get if mesh rendering is supported in the given render util implementation.
@@ -585,9 +583,9 @@ namespace MCommon
         struct TriangleVertex
         {
             MCORE_MEMORYOBJECTCATEGORY(RenderUtil::TriangleVertex, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_MCOMMON);
-            AZ::PackedVector3f  mPosition;      /**< The position of the vertex. */
-            AZ::PackedVector3f  mNormal;        /**< The vertex normal. */
-            uint32              mColor;
+            AZ::Vector3  mPosition;      /**< The position of the vertex. */
+            AZ::Vector3  mNormal;        /**< The vertex normal. */
+            uint32       mColor;
 
             MCORE_INLINE TriangleVertex(const AZ::Vector3& pos, const AZ::Vector3& normal, uint32 color)
                 : mPosition(pos)
@@ -631,7 +629,7 @@ namespace MCommon
 
         struct TrajectoryPathParticle
         {
-            MCore::Matrix mWorldTM;
+            EMotionFX::Transform mWorldTM;
         };
 
         struct TrajectoryTracePath
@@ -656,7 +654,7 @@ namespace MCommon
          * @param[in] scale The size or the arrow.
          */
         void RenderTrajectory(EMotionFX::ActorInstance* actorInstance, const MCore::RGBAColor& innerColor, const MCore::RGBAColor& borderColor, float scale);
-        void RenderTrajectory(const MCore::Matrix& worldTM, const MCore::RGBAColor& innerColor, const MCore::RGBAColor& borderColor, float scale);
+        void RenderTrajectory(const AZ::Transform& worldTM, const MCore::RGBAColor& innerColor, const MCore::RGBAColor& borderColor, float scale);
 
         void RenderTrajectoryPath(TrajectoryTracePath* trajectoryPath, const MCore::RGBAColor& innerColor, float scale);
         static void ResetTrajectoryPath(TrajectoryTracePath* trajectoryPath);
@@ -688,9 +686,9 @@ namespace MCommon
 
         virtual void SetDepthMaskWrite(bool writeEnabled) = 0;
 
-        void RenderWireframeBox(const AZ::Vector3& dimensions, const MCore::Matrix& worldTM, const MCore::RGBAColor& color, bool directlyRender = false);
-        void RenderWireframeSphere(float radius, const MCore::Matrix& worldTM, const MCore::RGBAColor& color, bool directlyRender = false);
-        void RenderWireframeCapsule(float radius, float height, const MCore::Matrix& worldTM, const MCore::RGBAColor& color, bool directlyRender = false);
+        void RenderWireframeBox(const AZ::Vector3& dimensions, const AZ::Transform& worldTM, const MCore::RGBAColor& color, bool directlyRender = false);
+        void RenderWireframeSphere(float radius, const AZ::Transform& worldTM, const MCore::RGBAColor& color, bool directlyRender = false);
+        void RenderWireframeCapsule(float radius, float height, const AZ::Transform& worldTM, const MCore::RGBAColor& color, bool directlyRender = false);
 
     protected:
         /**
@@ -763,7 +761,7 @@ namespace MCommon
          * @param mesh A pointer to the mesh to pre-calculate the world space positions for.
          * @param worldTM The world space transformation matrix of the node to which the given mesh belongs to.
          */
-        void PrepareForMesh(EMotionFX::Mesh* mesh, const MCore::Matrix& worldTM);
+        void PrepareForMesh(EMotionFX::Mesh* mesh, const AZ::Transform& worldTM);
 
         class MCOMMON_API FontChar
         {
@@ -817,7 +815,7 @@ namespace MCommon
         };
 
         EMotionFX::Mesh*                mCurrentMesh;           /**< A pointer to the mesh whose world space positions are in the pre-calculated positions buffer. NULL in case we haven't pre-calculated any positions yet. */
-        MCore::Array<AZ::Vector3>       mWorldSpacePositions;   /**< The buffer used to store world space positions for rendering normals, tangents and the wireframe. */
+        AZStd::vector<AZ::Vector3>      mWorldSpacePositions;   /**< The buffer used to store world space positions for rendering normals, tangents and the wireframe. */
 
         LineVertex*                     mVertexBuffer;          /**< Array of line vertices. */
         uint32                          mNumVertices;           /**< The current number of vertices in the array. */

@@ -119,8 +119,6 @@ namespace EMotionFX
 
         void SetGravity(const AZ::Vector3& gravity);
         const AZ::Vector3& GetGravity() const;
-        void SetFixedTimeStep(double timeStep);
-        double GetFixedTimeStep() const;
         void SetNumIterations(size_t numIterations);
         size_t GetNumIterations() const;
 
@@ -152,34 +150,6 @@ namespace EMotionFX
         AZ_INLINE void SetCollisionEnabled(bool enabled) { m_collisionDetection = enabled; }
 
     private:
-        struct EMFX_API ParticleState
-        {
-            AZ::Vector3 m_pos = AZ::Vector3::CreateZero();
-            AZ::Vector3 m_oldPos = AZ::Vector3::CreateZero();
-            AZ::Vector3 m_force = AZ::Vector3::CreateZero();
-            AZ::Vector3 m_limitDir = AZ::Vector3::CreateZero();
-        };
-
-        struct EMFX_API CollisionObjectState
-        {
-            AZ::Vector3 m_globalStart = AZ::Vector3::CreateZero();
-            AZ::Vector3 m_globalEnd = AZ::Vector3::CreateZero();
-            AZ::Vector3 m_start = AZ::Vector3::CreateZero();
-            AZ::Vector3 m_end = AZ::Vector3::CreateZero();
-        };
-
-        struct EMFX_API State
-        {
-            AZStd::vector<ParticleState> m_particles;
-            AZStd::vector<CollisionObjectState> m_collisionObjects;
-
-            void Clear()
-            {
-                m_particles.clear();
-                m_collisionObjects.clear();
-            }
-        };
-
         void InitColliders(const InitSettings& initSettings);
         void CreateCollider(AZ::u32 skeletonJointIndex, const Physics::ShapeConfigurationPair& shapePair);
         void InitColliderFromColliderSetupShape(CollisionObject& collider);
@@ -202,15 +172,11 @@ namespace EMotionFX
         bool CheckIsJointInsideCollider(const CollisionObject& colObject, const Particle& particle) const;
         void CheckAndExcludeCollider(AZ::u32 colliderIndex, const SimulatedJoint* joint);
         void UpdateFixedParticles(const Pose& pose);
-        void UpdateCurrentState();
-        void InterpolateState(float alpha);
         void Stabilize(const Pose& inputPose, Pose& pose, size_t numFrames=5);
         void InitAutoColliderExclusion();
         void InitAutoColliderExclusion(SimulatedJoint* joint);
         float GetScaleFactor() const;
 
-        State m_currentState; /**< The current physics state. */
-        State m_prevState; /**< The previous physics state. */
         AZStd::vector<Spring> m_springs; /**< The collection of springs in the system. */
         AZStd::vector<Particle> m_particles; /**< The particles, which are connected by springs. */
         AZStd::vector<CollisionObject> m_collisionObjects; /**< The collection of collision objects. */
@@ -218,11 +184,9 @@ namespace EMotionFX
         AZ::Vector3 m_gravity = AZ::Vector3(0.0f, 0.0f, -9.81f); /**< The gravity force vector, which is (0.0f, 0.0f, -9.81f) on default. */
         ActorInstance* m_actorInstance = nullptr; /**< The actor instance we work on. */
         const SimulatedObject* m_simulatedObject = nullptr; /**< The simulated object we are simulating. */
-        size_t m_numIterations = 1; /**< The number of iterations to run the constraint solving routines. The default is 1. */
+        size_t m_numIterations = 2; /**< The number of iterations to run the constraint solving routines. The default is 2. */
         size_t m_parentParticle = InvalidIndex; /**< The parent particle of the one you add next. Set ot ~0 when there is no parent particle yet. */
-        double m_fixedTimeStep = 1.0 / 60.0; /**< The fixed time step value, to update the simulation with. The default is (1.0 / 60.0), which updates the simulation at 60 fps. */
         double m_lastTimeDelta = 0.0; /**< The previous time delta. */
-        double m_timeAccumulation = 0.0; /**< The accumulated time of the updates, used for fixed timestep processing. */
         float m_stiffnessFactor = 1.0; /**< The factor that is applied to the stiffness of all joints. A value of 2 would make everything twice as stiff. */
         float m_gravityFactor = 1.0; /**< The factor that is applied to the gravity. A value of 2 would make the gravity twice as large. */
         float m_dampingFactor = 1.0; /**< The factor that is applied to the damping. A value of 2 would make the damping twice as large. */

@@ -78,7 +78,10 @@
             "GameController"
         ],
         "CFLAGS, CXXFLAGS": [
-            "-Wno-shorten-64-to-32"
+            "-Wno-shorten-64-to-32",
+            "-ffast-math",          # Allow aggressive, lossy floating-point optimizations,
+            "-fno-rtti",            # Disable RTTI,
+            "-fno-exceptions"       # Disable Exceptions
         ],
         "LIB": [
             "pthread"

@@ -15,6 +15,7 @@
 #include <EMotionFX/Source/ActorManager.h>
 #include <EMotionFX/Source/MotionManager.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
+#include <MCore/Source/LogManager.h>
 
 
 namespace CommandSystem

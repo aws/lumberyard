@@ -15,15 +15,18 @@
 // include required headers
 #include "StandardHeaders.h"
 #include "PlaneEq.h"
-#include "Vector.h"
 #include "Array.h"
 
+
+namespace AZ
+{
+    class Matrix4x4;
+}
 
 namespace MCore
 {
     // forward declarations
     class AABB;
-    class Matrix;
 
     /**
      * The frustum base class.
@@ -152,7 +155,7 @@ namespace MCore
          * Initialize the frustum planes from the given matrix.
          * @param viewProjMatrix The view projection matrix from which we will determine the view frustum planes. The view projection matrix is the following pre-multiplied matrix: viewMatrix*projectionMatrix.
          */
-        void InitFromMatrix(const Matrix& viewProjMatrix);
+        void InitFromMatrix(const AZ::Matrix4x4& viewProjMatrix);
 
         /**
          * Prints the view frustum into the logfile or debug output, using MCore::LogDetailedInfo().

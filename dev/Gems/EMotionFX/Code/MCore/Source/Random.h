@@ -14,8 +14,8 @@
 
 #include <AzCore/std/containers/vector.h>
 #include "StandardHeaders.h"
-#include "Vector.h"
-#include "Array.h"
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/Math/Vector3.h>
 
 
 namespace MCore
@@ -151,7 +151,7 @@ namespace MCore
          * @param numVectors The number of direction vectors to generate. This might not be the number of vectors returned by this method!
          * @result The array containing the random vectors. The length of the array will be equal to (Sqrt(numVectors) * Sqrt(numVectors)).
          */
-        static Array<AZ::Vector3> RandomDirVectorsStratisfied(const AZ::Vector3& dir, float coneAngle, uint32 numVectors);
+        static AZStd::vector<AZ::Vector3> RandomDirVectorsStratisfied(const AZ::Vector3& dir, float coneAngle, uint32 numVectors);
 
         /**
          * Generate a given amount of uniform direction vectors using Hammersley sets.
@@ -160,7 +160,7 @@ namespace MCore
          * @param numVectors The number of vectors to generate.
          * @result An array containing the generated vectors.
          */
-        static Array<AZ::Vector3> RandomDirVectorsHammersley(const AZ::Vector3& dir, float coneAngle, uint32 numVectors);
+        static AZStd::vector<AZ::Vector3> RandomDirVectorsHammersley(const AZ::Vector3& dir, float coneAngle, uint32 numVectors);
 
         /**
          * Generate a given amount of uniform direction vectors using Hammersley sets.
@@ -170,7 +170,7 @@ namespace MCore
          * @param base The base number of the sequence (values of 2 or 3 are nice (must be ap rime value))
          * @result An array containing the generated vectors.
          */
-        static Array<AZ::Vector3> RandomDirVectorsHammersley2(const AZ::Vector3& dir, float coneAngle, uint32 numVectors, uint32 base);
+        static AZStd::vector<AZ::Vector3> RandomDirVectorsHammersley2(const AZ::Vector3& dir, float coneAngle, uint32 numVectors, uint32 base);
 
         /**
          * Generate a given amount of uniform direction vectors using Halton sequences.

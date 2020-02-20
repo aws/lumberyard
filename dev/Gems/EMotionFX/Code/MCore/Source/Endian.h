@@ -13,9 +13,8 @@
 #pragma once
 
 // include the standard headers
-
+#include <AzCore/Math/Quaternion.h>
 #include "StandardHeaders.h"
-#include "Quaternion.h"
 #include "Vector.h"
 #include "Color.h"
 #include "CompressedQuaternion.h"
@@ -91,7 +90,7 @@ namespace MCore
          * @param value The value to convert the endian for.
          * @param count The number of items to convert. Please note that the array specified by value must be large enough!
          */
-        static MCORE_INLINE void ConvertVector3(AZ::PackedVector3f* value, uint32 count = 1);
+        static MCORE_INLINE void ConvertVector3(AZ::Vector3* value, uint32 count = 1);
 
         /**
          * Swap the endian of one or more Vector4 objects.
@@ -105,7 +104,7 @@ namespace MCore
          * @param value The value to convert the endian for.
          * @param count The number of items to convert. Please note that the array specified by value must be large enough!
          */
-        static MCORE_INLINE void ConvertQuaternion(MCore::Quaternion* value, uint32 count = 1);
+        static MCORE_INLINE void ConvertQuaternion(AZ::Quaternion* value, uint32 count = 1);
 
         /**
          * Swap the endian of one or more 16-bit compressed Quaternion objects.
@@ -215,7 +214,7 @@ namespace MCore
         * @param sourceEndianType The endian type where the object is currently stored in.
         * @param count The number of objects to convert. This allows conversion of arrays at once.
         */
-        static MCORE_INLINE void ConvertVector3(AZ::PackedVector3f* value, EEndianType sourceEndianType, uint32 count = 1);
+        static MCORE_INLINE void ConvertVector3(AZ::Vector3* value, EEndianType sourceEndianType, uint32 count = 1);
 
         /**
          * Convert a Vector4 object into the endian used by our current platform.
@@ -231,7 +230,7 @@ namespace MCore
          * @param sourceEndianType The endian type where the object is currently stored in.
          * @param count The number of objects to convert. This allows conversion of arrays at once.
          */
-        static MCORE_INLINE void ConvertQuaternion(MCore::Quaternion* value, EEndianType sourceEndianType, uint32 count = 1);
+        static MCORE_INLINE void ConvertQuaternion(AZ::Quaternion* value, EEndianType sourceEndianType, uint32 count = 1);
 
         /**
          * Convert a 16-bit compressed Quaternion object into the endian used by our current platform.
@@ -312,7 +311,7 @@ namespace MCore
          * @param targetEndianType The endian type that the value should be converted into.
          * @param count The number of objects to convert. This allows conversion of arrays at once.
          */
-        static MCORE_INLINE void ConvertVector3(AZ::PackedVector3f* value, EEndianType sourceEndianType, EEndianType targetEndianType, uint32 count = 1);
+        static MCORE_INLINE void ConvertVector3(AZ::Vector3* value, EEndianType sourceEndianType, EEndianType targetEndianType, uint32 count = 1);
 
         /**
          * Convert a Vector4 object into another endian type.
@@ -330,7 +329,7 @@ namespace MCore
          * @param targetEndianType The endian type that the value should be converted into.
          * @param count The number of objects to convert. This allows conversion of arrays at once.
          */
-        static MCORE_INLINE void ConvertQuaternion(MCore::Quaternion* value, EEndianType sourceEndianType, EEndianType targetEndianType, uint32 count = 1);
+        static MCORE_INLINE void ConvertQuaternion(AZ::Quaternion* value, EEndianType sourceEndianType, EEndianType targetEndianType, uint32 count = 1);
 
         /**
          * Convert a 16-bit compressed Quaternion object into another endian type.
@@ -406,7 +405,7 @@ namespace MCore
          * @param targetEndianType The endian type that the value should be converted into.
          * @param count The number of objects to convert. This allows conversion of arrays at once.
          */
-        static MCORE_INLINE void ConvertVector3To(AZ::PackedVector3f* value, EEndianType targetEndianType, uint32 count = 1);
+        static MCORE_INLINE void ConvertVector3To(AZ::Vector3* value, EEndianType targetEndianType, uint32 count = 1);
 
         /**
          * Convert a Vector4 object into another endian type.
@@ -422,7 +421,7 @@ namespace MCore
          * @param targetEndianType The endian type that the value should be converted into.
          * @param count The number of objects to convert. This allows conversion of arrays at once.
          */
-        static MCORE_INLINE void ConvertQuaternionTo(MCore::Quaternion* value, EEndianType targetEndianType, uint32 count = 1);
+        static MCORE_INLINE void ConvertQuaternionTo(AZ::Quaternion* value, EEndianType targetEndianType, uint32 count = 1);
 
         /**
          * Convert a 16-bit compressed Quaternion object into another endian type.

@@ -61,9 +61,9 @@ public:
 
     virtual PakSystemArchive* OpenArchive(const char* path, size_t fileAlignment, bool encrypted, const uint32 encryptionKey[4]);
     virtual void CloseArchive(PakSystemArchive* archive);
-    virtual void AddToArchive(PakSystemArchive* archive, const char* path, void* data, int size, __time64_t modTime, int compressionLevel);
+    virtual void AddToArchive(PakSystemArchive* archive, const char* path, void* data, int size, int64 modTime, int compressionLevel);
     virtual bool DeleteFromArchive(PakSystemArchive* archive, const char* path);
-    virtual bool CheckIfFileExist(PakSystemArchive* archive, const char* path, __time64_t modTime);
+    virtual bool CheckIfFileExist(PakSystemArchive* archive, const char* path, int64 modTime);
 };
 
 #endif // CRYINCLUDE_CRYCOMMONTOOLS_PAKSYSTEM_H

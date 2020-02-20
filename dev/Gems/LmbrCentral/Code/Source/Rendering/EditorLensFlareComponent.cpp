@@ -18,6 +18,7 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Asset/AssetManagerBus.h>
 
+#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #include <CryCommon/IFlares.h>
@@ -174,7 +175,7 @@ namespace LmbrCentral
                         Attribute(AZ::Edit::Attributes::Step, 0.1f)->
                         Attribute(AZ::Edit::Attributes::Max, 4.f)->
                         Attribute(AZ::Edit::Attributes::Suffix, "x")->
-                    
+
                     DataElement(0, &LensFlareConfiguration::m_animPhase, "Phase", "Animation start offset from 0 to 1.  0.1 would be 10% into the animation")->
                         Attribute(AZ::Edit::Attributes::Visibility, &LensFlareConfiguration::ShouldShowAnimationSettings)->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LensFlareConfiguration::PropertyChanged)->
@@ -206,7 +207,7 @@ namespace LmbrCentral
         }
 
         return AZ::Edit::PropertyRefreshLevels::None;
-    }    
+    }
 
     AZ::u32 EditorLensFlareConfiguration::SyncAnimationChanged()
     {
@@ -230,7 +231,7 @@ namespace LmbrCentral
         // else use the value set by user.
         if (m_attachToSun)
         {
-            m_viewDistMultiplierUser = m_viewDistMultiplier; 
+            m_viewDistMultiplierUser = m_viewDistMultiplier;
             m_viewDistMultiplier = static_cast<float>(IRenderNode::VIEW_DISTANCE_MULTIPLIER_MAX);
         }
         else
@@ -272,7 +273,7 @@ namespace LmbrCentral
 
         m_selectedLensFlareLibrary = GetLibraryNameFromAsset();
         m_selectedLensFlareName = GetFlareNameFromPath(m_configuration.m_lensFlare);
-       
+
         const AZ::EntityId entityId = GetEntityId();
         m_configuration.m_editorEntityId = entityId;
 
@@ -335,9 +336,11 @@ namespace LmbrCentral
         EditorLensFlareConfiguration configuration = m_configuration;
 
         // take the entity's visibility into account
-        bool entityVisibility = true;
-        AzToolsFramework::EditorVisibilityRequestBus::EventResult(entityVisibility, GetEntityId(), &AzToolsFramework::EditorVisibilityRequestBus::Events::GetCurrentVisibility);
-        configuration.m_visible &= entityVisibility;
+        bool visible = false;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(
+            visible, GetEntityId(), &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsVisible);
+
+        configuration.m_visible = visible && configuration.m_visible;
         configuration.m_asset = m_asset;
 
         return configuration;
@@ -382,7 +385,7 @@ namespace LmbrCentral
     {
         m_configuration.m_lensFlare = GetSelectedLensFlareFullName();
 
-        //If the flare we've selected is valid we need to parse a couple of parameters from it to make sure 
+        //If the flare we've selected is valid we need to parse a couple of parameters from it to make sure
         //that we display the flare as it's seen in the lens flare editor
         if (!m_configuration.m_lensFlare.empty())
         {
@@ -414,14 +417,14 @@ namespace LmbrCentral
                         {
                             m_configuration.m_brightness = var->GetFloat();
                         }
-                    
+
                     }
                 }
             }
         }
 
         m_configuration.PropertyChanged(); // Update the render light
-        
+
         return AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
     }
 
@@ -495,7 +498,7 @@ namespace LmbrCentral
         int unusedOutIndex = 0;
         const bool forceReload = true;
         gEnv->pOpticsManager->Load(GetSelectedLensFlareFullName().c_str(), unusedOutIndex, forceReload);
-            
+
         RefreshLensFlare();
     }
 

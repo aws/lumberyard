@@ -11,7 +11,7 @@
 */
 #pragma once
 #include "UnitTestRunner.h"
-#include <native/utilities/assetUtilEBusHelper.h>
+#include <native/utilities/AssetUtilEBusHelper.h>
 
 namespace AssetProcessor
 {

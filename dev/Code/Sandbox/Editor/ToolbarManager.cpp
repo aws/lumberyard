@@ -691,6 +691,18 @@ void ToolbarManager::RestoreToolbarDefaults(const QString& toolbarName)
     }
 }
 
+void ToolbarManager::SetEnabled(bool enabled)
+{
+    for (AmazonToolbar& amazonToolbar : m_toolbars)
+    {
+        QToolBar* toolbar = amazonToolbar.Toolbar();
+        if (toolbar)
+        {
+            toolbar->setEnabled(enabled);
+        }
+    }
+}
+
 void AmazonToolbar::SetActionsOnInternalToolbar(ActionManager* actionManager)
 {
     for (auto actionData : m_actions)

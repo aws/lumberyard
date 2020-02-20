@@ -24,7 +24,6 @@
 
 class QAction;
 class QActionGroup;
-class QFrame;
 class QMenu;
 class QScrollArea;
 class QSettings;
@@ -34,9 +33,11 @@ class QHBoxLayout;
 class QSettings;
 class QDialogButtonBox;
 class QUndoStack;
+class QCheckBox;
 
 namespace AzQtComponents
 {
+    class DoubleSpinBox;
     class GradientSlider;
     class HSLSliders;
     class HSVSliders;
@@ -53,6 +54,7 @@ namespace AzQtComponents
     class PaletteCard;
     class QuickPaletteCard;
     class ColorValidator;
+    class GammaEdit;
 
     namespace Internal
     {
@@ -258,7 +260,8 @@ namespace AzQtComponents
         QAction* m_importPaletteAction = nullptr;
         QAction* m_newPaletteAction = nullptr;
         QAction* m_toggleQuickPaletteAction = nullptr;
-
+        QWidget* m_gammaSeparator = nullptr;
+        GammaEdit* m_gammaEdit = nullptr;
         QDialogButtonBox* m_dialogButtonBox = nullptr;
         qreal m_defaultVForHsMode = 0.0f;
         qreal m_defaultLForHsMode = 0.0f;

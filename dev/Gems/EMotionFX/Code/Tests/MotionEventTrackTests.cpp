@@ -20,6 +20,7 @@
 #include <EMotionFX/Source/SkeletalMotion.h>
 #include <EMotionFX/Source/Node.h>
 #include <EMotionFX/Source/TwoStringEventData.h>
+#include <Integration/System/SystemCommon.h>
 
 #include <AzCore/std/algorithm.h>
 
@@ -115,7 +116,7 @@ namespace EMotionFX
             : public EMotionFX::EventHandler
         {
         public:
-            AZ_CLASS_ALLOCATOR(TestProcessEventsEventHandler, AZ::SystemAllocator, 0);
+            AZ_CLASS_ALLOCATOR(TestProcessEventsEventHandler, Integration::EMotionFXAllocator, 0);
 
             TestProcessEventsEventHandler(AnimGraphEventBuffer* buffer)
                 : m_buffer(buffer)
@@ -152,7 +153,7 @@ namespace EMotionFX
             Node* rootNode = Node::Create("rootNode", m_actor->GetSkeleton());
             m_actor->AddNode(rootNode);
             m_actor->ResizeTransformData();
-            m_actor->PostCreateInit();
+            m_actor->PostCreateInit(/*makeGeomLodsCompatibleWithSkeletalLODs=*/false, /*generateOBBs=*/false, /*convertUnitType=*/false);
 
             m_actorInstance = ActorInstance::Create(m_actor);
 

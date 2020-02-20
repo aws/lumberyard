@@ -33,6 +33,7 @@
 #define CFI_SSE2  0x10
 #define CFI_SSE3  0x20
 #define CFI_F16C  0x40
+#define CFI_SSE41 0x80
 
 /// Type of Cpu Vendor.
 enum ECpuVendor
@@ -148,6 +149,7 @@ public:
     bool hasSSE() { return (m_Cpu[0].mFeatures & CFI_SSE) != 0; }
     bool hasSSE2() { return (m_Cpu[0].mFeatures & CFI_SSE2) != 0; }
     bool hasSSE3() { return (m_Cpu[0].mFeatures & CFI_SSE3) != 0; }
+    bool hasSSE41() { return (m_Cpu[0].mFeatures & CFI_SSE41) != 0; }
     bool has3DNow() { return (m_Cpu[0].mFeatures & CFI_3DNOW) != 0; }
     bool hasMMX() { return (m_Cpu[0].mFeatures & CFI_MMX) != 0; }
     bool hasF16C() { return (m_Cpu[0].mFeatures & CFI_F16C) != 0; }

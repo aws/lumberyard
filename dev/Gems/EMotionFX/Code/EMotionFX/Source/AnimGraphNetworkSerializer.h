@@ -54,10 +54,10 @@ namespace EMotionFX
             virtual void Serialize(AZ::u32& value, const char* context) = 0;
             virtual void Serialize(AZ::s32& value, const char* context) = 0;
             virtual void Serialize(float& value, const char*  context) = 0;
-            virtual void Serialize(AZStd::string &value, const char*  context) = 0;
-            virtual void Serialize(AZ::Vector2 &value, const char*  context) = 0;
-            virtual void Serialize(AZ::PackedVector3f &value, const char*  context) = 0;
-            virtual void Serialize(AZ::Vector4 &value, const char*  context) = 0;
+            virtual void Serialize(AZStd::string& value, const char*  context) = 0;
+            virtual void Serialize(AZ::Vector2& value, const char*  context) = 0;
+            virtual void Serialize(AZ::Vector3& value, const char*  context) = 0;
+            virtual void Serialize(AZ::Vector4& value, const char*  context) = 0;
 
             // Function to call the Network Serialize function on the attribute class.
             void Serialize(MCore::Attribute& attribute, const char* context);

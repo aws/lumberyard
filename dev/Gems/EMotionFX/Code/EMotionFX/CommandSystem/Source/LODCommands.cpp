@@ -18,6 +18,7 @@
 #include <EMotionFX/Source/Importer/Importer.h>
 #include <EMotionFX/Source/ActorManager.h>
 #include <AzFramework/API/ApplicationAPI.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/StringConversions.h>
 
 

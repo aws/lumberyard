@@ -22,6 +22,7 @@
 
 #include <CryCommon/MathConversion.h>
 
+#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #include <Cry_Math.h>
@@ -829,14 +830,16 @@ namespace LmbrCentral
 
     void EditorLightComponent::RefreshLight()
     {
-        EditorLightConfiguration temp = m_configuration;
+        EditorLightConfiguration configuration = m_configuration;
 
         // take the entity's visibility into account
-        bool entityVisibility = true;
-        AzToolsFramework::EditorVisibilityRequestBus::EventResult(entityVisibility, GetEntityId(), &AzToolsFramework::EditorVisibilityRequestBus::Events::GetCurrentVisibility);
-        temp.m_visible &= entityVisibility;
+        bool visible = false;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(
+            visible, GetEntityId(), &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsVisible);
 
-        m_light.UpdateRenderLight(temp);
+        configuration.m_visible = visible && configuration.m_visible;
+
+        m_light.UpdateRenderLight(configuration);
     }
 
     IRenderNode* EditorLightComponent::GetRenderNode()
@@ -891,7 +894,7 @@ namespace LmbrCentral
                 GetEntityId(),
                 GetCubemapId(),
                 nullptr,
-                false, 
+                false,
                 true);
         }
     }

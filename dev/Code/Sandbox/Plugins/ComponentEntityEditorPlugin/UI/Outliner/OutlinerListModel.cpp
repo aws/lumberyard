@@ -1177,7 +1177,6 @@ bool OutlinerListModel::ReparentEntities(const AZ::EntityId& newParentId, const 
     AzToolsFramework::EntityIdList processedEntityIds;
     {
         AzToolsFramework::ScopedUndoBatch undo("Reparent Entities");
-        bool isParentVisible = AzToolsFramework::IsEntitySetToBeVisible(newParentId);
 
         for (AZ::EntityId entityId : selectedEntityIds)
         {
@@ -1204,9 +1203,10 @@ bool OutlinerListModel::ReparentEntities(const AZ::EntityId& newParentId, const 
 
             processedEntityIds.push_back(entityId);
 
-            AzToolsFramework::SetEntityVisibility(entityId, isParentVisible);
-            AzToolsFramework::ComponentEntityEditorRequestBus::Event(entityId, &AzToolsFramework::ComponentEntityEditorRequestBus::Events::RefreshVisibilityAndLock);
+            AzToolsFramework::ComponentEntityEditorRequestBus::Event(
+                entityId, &AzToolsFramework::ComponentEntityEditorRequestBus::Events::RefreshVisibilityAndLock);
         }
+
         GetIEditor()->GetObjectManager()->InvalidateVisibleList();
     }
 
@@ -2567,7 +2567,11 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
         painter->save();
         painter->setRenderHint(QPainter::Antialiasing);
 
+#if (QT_VERSION < QT_VERSION_CHECK(5, 11, 0))
         QStyleOptionViewItemV4 optionV4{ customOptions };
+#else
+        QStyleOptionViewItem optionV4{ customOptions };
+#endif
         initStyleOption(&optionV4, index);
         optionV4.state &= ~(QStyle::State_HasFocus | QStyle::State_Selected);
 

@@ -20,7 +20,6 @@
 #include <EMotionFX/CommandSystem/Source/AnimGraphConnectionCommands.h>
 #include <Tests/AnimGraphFixture.h>
 
-
 namespace EMotionFX
 {
     class AnimGraphTransitionCommandsFixture
@@ -192,6 +191,11 @@ namespace EMotionFX
 
         // 3. Undo remove transition
         EXPECT_TRUE(commandManager.Undo(result));
+
+        // Point m_transitionLeft to the newly created transition after undo.
+        const AnimGraphConnectionId connectionId = AnimGraphConnectionId::CreateFromString(result);
+        m_transitionLeft = m_animGraph->RecursiveFindTransitionById(connectionId);
+
         EXPECT_EQ(m_transitionLeft->GetCanBeInterruptedByTransitionIds(), canBeInterruptedByTransitionIds)
             << "The transition should be back and the can be interrupted by transition ids contain the middle as well as the right transition ids.";
 

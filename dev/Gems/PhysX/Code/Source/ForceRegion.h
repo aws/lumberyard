@@ -101,9 +101,5 @@ namespace PhysX
 
         /// Generates a list of points on the surface of a cylinder.
         PointList GenerateCylinderPoints(float height, float radius);
-
-        /// Generates a list of points on the surface of a mesh.
-        PointList GenerateMeshPoints(const AZ::Data::Asset<PhysX::Pipeline::MeshAsset>& meshAsset
-            , const AZ::Vector3& assetScale);
     }
 }

@@ -12,8 +12,10 @@
 
 #include <AzQtComponents/Components/Widgets/ComboBox.h>
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/StyleManager.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
 
+AZ_PUSH_DISABLE_WARNING(4251 4244, "-Wunknown-warning-option") // 4251: class '...' needs to have dll-interface to be used by clients of class '...'
 #include <QComboBox>
 #include <QStyledItemDelegate>
 #include <QAbstractItemView>
@@ -21,14 +23,161 @@
 #include <QLineEdit>
 #include <QSettings>
 #include <QDebug>
+#include <QApplication>
+#include <QDesktopWidget>
+#include <QToolButton>
+
+#include <QtWidgets/private/qstylesheetstyle_p.h>
+AZ_POP_DISABLE_WARNING
 
 namespace AzQtComponents
 {
+    const int g_errorBorderWidth = 1;
+
+    class ComboBoxWatcher : public QObject
+    {
+    public:
+        explicit ComboBoxWatcher(QObject* parent = nullptr)
+            : QObject(parent)
+        {
+        }
+
+        bool isError(QComboBox* cb) const
+        {
+            auto validator = cb->property(Validator);
+
+            if (validator.canConvert<AzQtComponents::ComboBoxValidator*>())
+            {
+                auto validatorObj = validator.value<AzQtComponents::ComboBoxValidator*>();
+                return validatorObj->validateIndex(cb->currentIndex()) != QValidator::Acceptable;
+            }
+            else if (validator.canConvert<QValidator*>())
+            {
+                auto validatorObj = validator.value<QValidator*>();
+                int cursor = 0;
+                QString textCopy = cb->currentText();
+                return validatorObj->validate(textCopy, cursor) != QValidator::Acceptable;
+            }
+
+            return false;
+        }
+
+        void updateErrorState(QComboBox* cb)
+        {
+            const bool error = isError(cb);
+
+            ComboBox::setError(cb, error);
+
+            auto errorToolButton = cb->findChild<QToolButton*>(ErrorToolButton);
+
+            if (errorToolButton)
+            {
+                errorToolButton->setVisible(error);
+            }
+
+            positionSideWidgets(cb);
+        }
+
+        void positionSideWidgets(QComboBox* cb)
+        {
+            auto errorToolButton = cb->findChild<QToolButton*>(ErrorToolButton);
+
+            if (errorToolButton)
+            {
+                auto rect = cb->rect();
+                QStyleOptionComboBox opt;
+                opt.subControls &= QStyle::SC_ComboBoxArrow;
+                auto arrowButtonRect = cb->style()->subControlRect(QStyle::CC_ComboBox, &opt, QStyle::SC_ComboBoxArrow, cb);
+                QRect widgetGeometry(QPoint(
+                    rect.width() - g_errorBorderWidth - errorToolButton->width() - arrowButtonRect.width() - m_config.errorImageSpacing,
+                    (rect.height() - errorToolButton->height()) / 2),
+                    errorToolButton->size());
+                errorToolButton->setGeometry(widgetGeometry);
+            }
+        }
+
+        void updateErrorStateSlot()
+        {
+            if (auto cb = qobject_cast<QComboBox*>(sender()))
+            {
+                updateErrorState(cb);
+            }
+        }
+
+        bool eventFilter(QObject* watched, QEvent* event) override
+        {
+            if (auto cbWidget = qobject_cast<QComboBox*>(watched))
+            {
+                switch (event->type())
+                {
+                    case QEvent::Show:
+                    {
+                        // Need to check validity also for the preselected item
+                        updateErrorState(cbWidget);
+                    }
+                    break;
+
+                    case QEvent::Resize:
+                    {
+                        positionSideWidgets(cbWidget);
+                    }
+                    break;
+
+                    case QEvent::DynamicPropertyChange:
+                    {
+                        auto styleSheet = StyleManager::styleSheetStyle(cbWidget);
+                        styleSheet->repolish(cbWidget);
+                    }
+                    break;
+                }
+            }
+            else if (auto itemView = qobject_cast<QAbstractItemView*>(watched))
+            {
+                bool newHasPopupOpen = false;
+
+                switch (event->type())
+                {
+                    case QEvent::Show:
+                    {
+                        newHasPopupOpen = true;
+                    }
+                    // intentional fall-through
+                    case QEvent::Hide:
+                    {
+                        if (!itemView->parent())
+                        {
+                            return false;
+                        }
+
+                        auto cb = qobject_cast<QComboBox*>(itemView->parent()->parent());
+
+                        if (!cb)
+                        {
+                            return false;
+                        }
+
+                        if (cb->property(HasPopupOpen).toBool() != newHasPopupOpen)
+                        {
+                            cb->setProperty(HasPopupOpen, newHasPopupOpen);
+                        }
+                    }
+                    break;
+                }
+            }
+
+            return QObject::eventFilter(watched, event);
+        }
+
+    private:
+        friend class ComboBox;
+        ComboBox::Config m_config;
+    };
+
     class ComboBoxItemDelegate : public QStyledItemDelegate
     {
     public:
-        explicit ComboBoxItemDelegate(QComboBox* combo)
-            : QStyledItemDelegate(combo)
+        explicit ComboBoxItemDelegate(QComboBox* combo, QWidget* parent = nullptr)
+            : QStyledItemDelegate(parent)
             , m_combo(combo)
         {
         }
@@ -55,12 +204,11 @@ namespace AzQtComponents
     {
         Config config = defaultConfig();
 
-        ConfigHelpers::read<int>(settings, QStringLiteral("BoxShadowXOffset"), config.boxShadowXOffset);
-        ConfigHelpers::read<int>(settings, QStringLiteral("BoxShadowYOffset"), config.boxShadowYOffset);
-        ConfigHelpers::read<int>(settings, QStringLiteral("BoxShadowBlurRadius"), config.boxShadowBlurRadius);
-        ConfigHelpers::read<QColor>(settings, QStringLiteral("BoxShadowColor"), config.boxShadowColor);
         ConfigHelpers::read<QColor>(settings, QStringLiteral("PlaceHolderTextColor"), config.placeHolderTextColor);
         ConfigHelpers::read<QColor>(settings, QStringLiteral("FramelessTextColor"), config.framelessTextColor);
+        ConfigHelpers::read<QString>(settings, QStringLiteral("ErrorImage"), config.errorImage);
+        ConfigHelpers::read<QSize>(settings, QStringLiteral("ErrorImageSize"), config.errorImageSize);
+        ConfigHelpers::read<int>(settings, QStringLiteral("ErrorImageSpacing"), config.errorImageSpacing);
 
         return config;
     }
@@ -69,17 +217,54 @@ namespace AzQtComponents
     {
         Config config;
 
-        // Style guide require x: 0, y: 1, blur radius: 2, spread radius: 1
-        // But QGraphicsDropShadowEffect does not support spread radius, so let
-        // customize it a bit differently so it mostly looks like what is asked.
-        config.boxShadowXOffset = 0;
-        config.boxShadowYOffset = 1;
-        config.boxShadowBlurRadius = 4;
-        config.boxShadowColor = QColor("#7F000000");
         config.placeHolderTextColor = QColor("#999999");
         config.framelessTextColor = QColor(Qt::white);
+        config.errorImage = QStringLiteral(":/stylesheet/img/UI20/lineedit-error.svg");
+        config.errorImageSize = {16, 16};
+        config.errorImageSpacing = 4;
 
         return config;
+    }
+
+    void ComboBox::setValidator(QComboBox* cb, QValidator* validator)
+    {
+        cb->setProperty(Validator, QVariant::fromValue(validator));
+    }
+
+    void ComboBox::setError(QComboBox* cb, bool error)
+    {
+        if (error != cb->property(HasError).toBool())
+        {
+            cb->setProperty(HasError, error);
+        }
+    }
+
+    QPointer<ComboBoxWatcher> ComboBox::s_comboBoxWatcher = nullptr;
+    unsigned int ComboBox::s_watcherReferenceCount = 0;
+
+    void ComboBox::initializeWatcher()
+    {
+        if (!s_comboBoxWatcher)
+        {
+            Q_ASSERT(s_watcherReferenceCount == 0);
+            s_comboBoxWatcher = new ComboBoxWatcher;
+        }
+
+        ++s_watcherReferenceCount;
+    }
+
+    void ComboBox::uninitializeWatcher()
+    {
+        Q_ASSERT(!s_comboBoxWatcher.isNull());
+        Q_ASSERT(s_watcherReferenceCount > 0);
+
+        --s_watcherReferenceCount;
+
+        if (s_watcherReferenceCount == 0)
+        {
+            delete s_comboBoxWatcher;
+            s_comboBoxWatcher = nullptr;
+        }
     }
 
     bool ComboBox::polish(Style* style, QWidget* widget, const ComboBox::Config& config)
@@ -88,66 +273,30 @@ namespace AzQtComponents
 
         if (comboBox)
         {
+            s_comboBoxWatcher->m_config = config;
+            QObject::connect(comboBox, qOverload<int>(&QComboBox::currentIndexChanged), s_comboBoxWatcher, &ComboBoxWatcher::updateErrorStateSlot);
+
             // The default menu combobox delegate is not stylishable via qss
-            comboBox->setItemDelegate(new ComboBoxItemDelegate(comboBox));
+            comboBox->setItemDelegate(new ComboBoxItemDelegate(comboBox, comboBox->view()));
 
             if (QLineEdit* le = comboBox->lineEdit())
             {
                 QPalette pal = le->palette();
+#if !defined(AZ_PLATFORM_LINUX)
                 pal.setColor(QPalette::PlaceholderText, config.placeHolderTextColor);
+#endif //!defined(AZ_PLATFORM_LINUX)
                 le->setPalette(pal);
             }
-            // Allow the popup to have round radius as it's a top level window.
-            QWidget* frame = comboBox->view()->parentWidget();
-            frame->setWindowFlags(frame->windowFlags() | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint);
-            frame->setAttribute(Qt::WA_TranslucentBackground, true);
-
-            // Qss does not support css box-shadow, let use QGraphicsDropShadowEffect
-            // Please note that it does not support spread-radius.
-            QGraphicsDropShadowEffect* effect = new QGraphicsDropShadowEffect(frame);
-            effect->setXOffset(config.boxShadowXOffset);
-            effect->setYOffset(config.boxShadowYOffset);
-            effect->setBlurRadius(config.boxShadowBlurRadius);
-            effect->setColor(config.boxShadowColor);
-
-            QMargins margins;
-
-            if (effect->xOffset() == 0)
-            {
-                margins.setLeft(effect->blurRadius());
-                margins.setRight(effect->blurRadius());
-            }
-            else if (effect->xOffset() > 0)
-            {
-                margins.setLeft(0);
-                margins.setRight(effect->xOffset() + effect->blurRadius());
-            }
-            else if (effect->xOffset() < 0)
-            {
-                margins.setLeft(-effect->xOffset() + effect->blurRadius());
-                margins.setRight(0);
-            }
-
-            if (effect->yOffset() == 0)
-            {
-                margins.setTop(effect->blurRadius());
-                margins.setBottom(effect->blurRadius());
-            }
-            else if (effect->yOffset() > 0)
-            {
-                margins.setTop(0);
-                margins.setBottom(effect->yOffset() + effect->blurRadius());
-            }
-            else if (effect->yOffset() < 0)
-            {
-                margins.setTop(-effect->yOffset() + effect->blurRadius());
-                margins.setBottom(0);
-            }
-
-            frame->setGraphicsEffect(effect);
-            frame->setContentsMargins(margins);
 
             style->repolishOnSettingsChange(comboBox);
+
+            comboBox->installEventFilter(s_comboBoxWatcher);
+            if (comboBox->view())
+            {
+                comboBox->view()->installEventFilter(s_comboBoxWatcher);
+            }
+
+            ComboBox::addErrorButton(comboBox, config);
         }
 
         return comboBox;
@@ -237,4 +386,44 @@ namespace AzQtComponents
         return true;
     }
 
+    bool ComboBox::drawItemCheckIndicator(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config)
+    {
+        Q_UNUSED(config);
+
+        if (strcmp(widget->metaObject()->className(), "QComboBoxListView") != 0)
+        {
+            return false;
+        }
+
+        auto opt = qstyleoption_cast<const QStyleOptionViewItem*>(option);
+        if (!opt)
+        {
+            return false;
+        }
+
+        if (opt->checkState == Qt::Checked)
+        {
+            style->QProxyStyle::drawPrimitive(QStyle::PE_IndicatorViewItemCheck, opt, painter, widget);
+        }
+
+        return true;
+    }
+
+    void ComboBox::addErrorButton(QComboBox* cb, const Config& config)
+    {
+        auto errorToolButton = cb->findChild<QToolButton*>(ErrorToolButton);
+        if (!errorToolButton)
+        {
+            QIcon errorIcon;
+            errorIcon.addFile(config.errorImage, config.errorImageSize);
+            auto toolButton = new QToolButton(cb);
+            toolButton->setObjectName(ErrorToolButton);
+            toolButton->setIcon(errorIcon);
+            toolButton->resize(config.errorImageSize.width(), config.errorImageSize.height());
+            toolButton->hide();
+        }
+    }
+
 } // namespace AzQtComponents
+
+#include <Components/Widgets/ComboBox.moc>

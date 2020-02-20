@@ -139,6 +139,12 @@ namespace EMotionFX
         }
         uniqueData->m_simulations.clear();
 
+        if (GetEMotionFX().GetEnableServerOptimization())
+        {
+            // Doesn't need to init solvers when server optimization is enabled.
+            return false;
+        }
+
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
         const Actor* actor = actorInstance->GetActor();
         const SimulatedObjectSetup* simObjectSetup = actor->GetSimulatedObjectSetup().get();
@@ -164,9 +170,12 @@ namespace EMotionFX
         {
             // Check if this simulated object is in our list of simulated objects that the user picked.
             // If not, then we can skip adding this simulated object.
-            if (AZStd::find(m_simulatedObjectNames.begin(), m_simulatedObjectNames.end(), simObject->GetName()) == m_simulatedObjectNames.end())
+            if (!m_simulatedObjectNames.empty())
             {
-                continue;
+                if (AZStd::find(m_simulatedObjectNames.begin(), m_simulatedObjectNames.end(), simObject->GetName()) == m_simulatedObjectNames.end())
+                {
+                    continue;
+                }
             }
 
             // Create the simulation, which holds the solver.
@@ -185,7 +194,6 @@ namespace EMotionFX
                 delete sim;
                 continue;
             }
-            solver.SetFixedTimeStep(1.0f / static_cast<float>(m_updateRate));
             solver.SetNumIterations(m_numIterations);
             solver.SetCollisionEnabled(m_collisionDetection);
 
@@ -235,8 +243,8 @@ namespace EMotionFX
             weight = AZ::GetClamp(weight, 0.0f, 1.0f);
         }
 
-        // If the weight is near zero or if this node is disabled, we can skip all calculations and just output the input pose.
-        if (AZ::IsClose(weight, 0.0f, FLT_EPSILON) || mDisabled)
+        // If the weight is near zero or if this node is disabled or it is optimized for server, we can skip all calculations and just output the input pose.
+        if (AZ::IsClose(weight, 0.0f, FLT_EPSILON) || mDisabled || GetEMotionFX().GetEnableServerOptimization())
         {
             OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_POSE));
             const AnimGraphPose* inputPose = GetInputPose(animGraphInstance, INPUTPORT_POSE)->GetValue();
@@ -386,15 +394,17 @@ namespace EMotionFX
         });
     }
 
-    void BlendTreeSimulatedObjectNode::OnUpdateRateChanged()
+
+    bool BlendTreeSimulatedObjectNode::VersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElementNode)
     {
-        OnPropertyChanged([this](UniqueData* uniqueData) {
-            for (Simulation* sim : uniqueData->m_simulations)
-            {
-                sim->m_solver.SetFixedTimeStep(1.0f / static_cast<float>(m_updateRate));
-            }
-        });
+        if (rootElementNode.GetVersion() == 1)
+        {
+            rootElementNode.RemoveElementByName(AZ_CRC("simulationRate", 0x60a4df7b));
+        }
+
+        return true;
     }
+
 
     void BlendTreeSimulatedObjectNode::Reflect(AZ::ReflectContext* context)
     {
@@ -405,12 +415,11 @@ namespace EMotionFX
         }
 
         serializeContext->Class<BlendTreeSimulatedObjectNode, AnimGraphNode>()
-            ->Version(1)
+            ->Version(2, VersionConverter)
             ->Field("simulatedObjectNames", &BlendTreeSimulatedObjectNode::m_simulatedObjectNames)
             ->Field("stiffnessFactor", &BlendTreeSimulatedObjectNode::m_stiffnessFactor)
             ->Field("gravityFactor", &BlendTreeSimulatedObjectNode::m_gravityFactor)
             ->Field("dampingFactor", &BlendTreeSimulatedObjectNode::m_dampingFactor)
-            ->Field("simulationRate", &BlendTreeSimulatedObjectNode::m_updateRate)
             ->Field("numIterations", &BlendTreeSimulatedObjectNode::m_numIterations)
             ->Field("collisionDetection", &BlendTreeSimulatedObjectNode::m_collisionDetection);
 
@@ -441,10 +450,6 @@ namespace EMotionFX
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
             ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
             ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
-            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeSimulatedObjectNode::m_updateRate, "Simulation update rate", "The simulation update rate, as number of frames per second.")
-            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeSimulatedObjectNode::OnUpdateRateChanged)
-            ->Attribute(AZ::Edit::Attributes::Min, 10)
-            ->Attribute(AZ::Edit::Attributes::Max, 150)
             ->DataElement(AZ::Edit::UIHandlers::SpinBox, &BlendTreeSimulatedObjectNode::m_numIterations, "Number of iterations", "The number of iterations in the simulation. Higher values can be more stable. Lower numbers give faster performance.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeSimulatedObjectNode::OnNumIterationsChanged)
             ->Attribute(AZ::Edit::Attributes::Min, 1)

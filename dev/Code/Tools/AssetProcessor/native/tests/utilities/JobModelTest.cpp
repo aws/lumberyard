@@ -10,7 +10,7 @@
 *
 */
 
-#include <native/tests/utilities/jobModelTest.h>
+#include <native/tests/utilities/JobModelTest.h>
 
 TEST_F(JobModelUnitTests, Test_RemoveMiddleJob)
 {

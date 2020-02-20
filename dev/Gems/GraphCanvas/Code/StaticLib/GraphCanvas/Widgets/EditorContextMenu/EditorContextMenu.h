@@ -17,7 +17,7 @@
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/containers/unordered_set.h>
 
-#include <GraphCanvas/Widgets/EditorContextMenu/contextMenuActions/ContextMenuAction.h>
+#include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ContextMenuAction.h>
 
 namespace GraphCanvas
 {

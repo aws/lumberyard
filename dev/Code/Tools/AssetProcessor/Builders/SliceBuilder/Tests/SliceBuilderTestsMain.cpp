@@ -575,4 +575,76 @@ TEST_F(DependencyTest, Slice_HasEmptySimpleAssetReference_HasNoProductDependency
     ASSERT_EQ(productPathDependencySet.size(), 0);
 }
 
+struct ServiceTestComponent
+    : public AZ::Component
+{
+    AZ_COMPONENT(ServiceTestComponent, "{CBC4FCB6-FFD2-4097-844D-A01B09042DF4}");
+
+    static void Reflect(ReflectContext* reflection)
+    {
+        SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<ServiceTestComponent, AZ::Component>()
+                ->Field("field", &ServiceTestComponent::m_field);
+        }
+    }
+
+    static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
+    {
+        if (m_enableServiceDependency)
+        {
+            required.push_back(AZ_CRC("SomeService", 0x657d5763));
+        }
+    }
+
+    void Activate() override {}
+    void Deactivate() override {}
+
+    int m_field{};
+
+    static bool m_enableServiceDependency;
+};
+
+bool ServiceTestComponent::m_enableServiceDependency = false;
+
+TEST_F(DependencyTest, SliceFingerprint_ChangesWhenComponentServicesChange)
+{
+    using namespace AzToolsFramework::Fingerprinting;
+
+    AZStd::unique_ptr<ComponentDescriptor> descriptor(ServiceTestComponent::CreateDescriptor());
+    descriptor->Reflect(m_serializeContext);
+
+    auto* assetComponent = aznew ServiceTestComponent;
+    auto sliceAsset = AZ::Test::CreateSliceFromComponent(assetComponent, m_catalog->GenerateMockAssetId());
+    SliceComponent* sourcePrefab = (sliceAsset.Get()) ? sliceAsset.Get()->GetComponent() : nullptr;
+
+    TypeFingerprint fingerprintNoService, fingerprintWithService;
+
+    {
+        TypeFingerprinter fingerprinter(*m_serializeContext);
+        fingerprintNoService = fingerprinter.GenerateFingerprintForAllTypesInObject(sourcePrefab);
+    }
+
+    ServiceTestComponent::m_enableServiceDependency = true;
+
+    {
+        TypeFingerprinter fingerprinter(*m_serializeContext);
+        fingerprintWithService = fingerprinter.GenerateFingerprintForAllTypesInObject(sourcePrefab);
+    }
+
+    ASSERT_NE(fingerprintNoService, fingerprintWithService);
+
+    ServiceTestComponent::m_enableServiceDependency = false;
+
+    {
+        // Check again to make sure the fingerprint is stable
+        TypeFingerprinter fingerprinter(*m_serializeContext);
+        TypeFingerprint fingerprintNoServiceDoubleCheck = fingerprinter.GenerateFingerprintForAllTypesInObject(sourcePrefab);
+
+        ASSERT_EQ(fingerprintNoService, fingerprintNoServiceDoubleCheck);
+    }
+}
+
 AZ_UNIT_TEST_HOOK();

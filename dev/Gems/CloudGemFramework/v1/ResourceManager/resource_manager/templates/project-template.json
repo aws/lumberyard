@@ -55,7 +55,6 @@
             "Description": "Indicates whether cache clustering is enabled for the service API.",
             "Type": "String"
         }
-
     },
 
     "Resources": {
@@ -63,7 +62,7 @@
         "AccessControl": {
             "Type": "Custom::AccessControl",
             "Properties": {
-                "ServiceToken": { "Fn::Join": [ "", [ "arn:aws:lambda:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":function:", { "Ref": "ProjectResourceHandler" } ] ] },
+                "ServiceToken": {"Fn::Join": [ "", [ "arn:aws:lambda:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":function:", { "Ref": "ProjectResourceHandler" }] ]},
                 "ConfigurationBucket": { "Ref": "Configuration" },
                 "ConfigurationKey": { "Ref": "ConfigurationKey" }
             },
@@ -92,7 +91,7 @@
                 "ProjectUserPool",
                 "ServiceApi",
                 "ServiceLambda",
-                "SeviceLambdaConfiguration",
+                "ServiceLambdaConfiguration",
                 "ServiceLambdaExecution"
             ]
         },
@@ -217,17 +216,7 @@
         "CloudGemPortalUserAccess": {
             "Type": "AWS::IAM::ManagedPolicy",
             "Properties": {
-                "Path": {
-                    "Fn::Join": [
-                        "",
-                        [
-                            "/", {
-                                "Ref": "AWS::StackName"
-                            },
-                            "/"
-                        ]
-                    ]
-                },
+                "Path": {"Fn::Join": ["", ["/", {"Ref": "AWS::StackName"}, "/"] ]},
                 "PolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -238,66 +227,11 @@
                                 "s3:GetObject"
                             ],
                             "Resource": [
-                                {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "arn:aws:s3:::",
-                                            {
-                                                "Ref": "Configuration"
-                                            },
-                                            "/upload/*"
-                                        ]
-                                    ]
-                                },
-                                {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "arn:aws:s3:::",
-                                            {
-                                                "Ref": "Configuration"
-                                            },
-                                            "/project-settings.json"
-                                        ]
-                                    ]
-                                },
-                                {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "arn:aws:s3:::",
-                                            {
-                                                "Ref": "Configuration"
-                                            },
-                                            "/dstack*"
-                                        ]
-                                    ]
-                                },
-                                {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "arn:aws:s3:::",
-                                            {
-                                                "Ref": "Configuration"
-                                            },
-                                            "/cgp-resource-code/*"
-                                        ]
-                                    ]
-                                },
-                                {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "arn:aws:s3:::",
-                                            {
-                                                "Ref": "Configuration"
-                                            },
-                                            "/resource-settings/*"
-                                        ]
-                                    ]
-                                }
+                                {"Fn::Join": ["", ["arn:aws:s3:::", {"Ref": "Configuration"}, "/upload/*"] ]},
+                                {"Fn::Join": ["", ["arn:aws:s3:::", {"Ref": "Configuration"}, "/project-settings.json"] ]},
+                                {"Fn::Join": ["", ["arn:aws:s3:::", {"Ref": "Configuration"}, "/dstack*"] ]},
+                                {"Fn::Join": ["", ["arn:aws:s3:::", {"Ref": "Configuration"}, "/cgp-resource-code/*"] ]},
+                                {"Fn::Join": ["", ["arn:aws:s3:::", {"Ref": "Configuration"}, "/resource-settings/*"] ]}
                             ]
                         },
                         {
@@ -305,38 +239,7 @@
                             "Effect": "Allow",
                             "Action": "s3:ListBucket",
                             "Resource": [
-                                {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "arn:aws:s3:::",
-                                            { "Ref": "Configuration" }
-                                        ]
-                                    ]
-                                }
-                            ]
-                        },
-                        {
-                            "Sid": "ExecuteServiceAPI",
-                            "Effect": "Allow",
-                            "Action": [
-                                "execute-api:Invoke"
-                            ],
-                            "Resource": [
-                                {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "arn:aws:execute-api:", {
-                                                "Ref": "AWS::Region"
-                                            },
-                                            ":", {
-                                                "Ref": "AWS::AccountId"
-                                            },
-                                            ":*/api/*"
-                                        ]
-                                    ]
-                                }
+                                {"Fn::Join": ["", [ "arn:aws:s3:::", {"Ref": "Configuration"}] ]}
                             ]
                         },
                         {
@@ -346,17 +249,7 @@
                                 "apigateway:GET"
                             ],
                             "Resource": [
-                                {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "arn:aws:apigateway:", {
-                                                "Ref": "AWS::Region"
-                                            },
-                                            "::/restapis/*/stages/api/exports/swagger"
-                                        ]
-                                    ]
-                                }
+                                {"Fn::Join": ["", ["arn:aws:apigateway:", {"Ref": "AWS::Region"}, "::/restapis/*/stages/api/exports/swagger"] ]}
                             ]
                         },
                         {
@@ -366,23 +259,7 @@
                                 "logs:FilterLogEvents"
                             ],
                             "Resource": [
-                                {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "arn:aws:logs:", {
-                                                "Ref": "AWS::Region"
-                                            },
-                                            ":", {
-                                                "Ref": "AWS::AccountId"
-                                            },
-                                            ":log-group:/aws/lambda/", {
-                                                "Ref": "AWS::StackName"
-                                            },
-                                            "-*"
-                                        ]
-                                    ]
-                                }
+                                {"Fn::Join": ["", ["arn:aws:logs:", {"Ref": "AWS::Region"}, ":", {"Ref": "AWS::AccountId"}, ":log-group:/aws/lambda/", {"Ref": "AWS::StackName"}, "-*"] ]}
                             ]
                         },
                         {
@@ -394,23 +271,7 @@
                                 "cloudformation:DescribeStacks"
                             ],
                             "Resource": [
-                                {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "arn:aws:cloudformation:", {
-                                                "Ref": "AWS::Region"
-                                            },
-                                            ":", {
-                                                "Ref": "AWS::AccountId"
-                                            },
-                                            ":stack/", {
-                                                "Ref": "AWS::StackName"
-                                            },
-                                            "-*"
-                                        ]
-                                    ]
-                                }
+                                {"Fn::Join": ["", ["arn:aws:cloudformation:", {"Ref": "AWS::Region"}, ":", {"Ref": "AWS::AccountId"}, ":stack/", {"Ref": "AWS::StackName"}, "-*"] ]}
                             ]
                         },
                         {
@@ -421,22 +282,9 @@
                                 "logs:CreateLogStream",
                                 "logs:PutLogEvents"
                             ],
-                            "Resource": {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        "arn:aws:logs:", {
-                                            "Ref": "AWS::Region"
-                                        },
-                                        ":", {
-                                            "Ref": "AWS::AccountId"
-                                        },
-                                        ":function:", {
-                                            "Ref": "ProjectResourceHandler"
-                                        }
-                                    ]
-                                ]
-                            }
+                            "Resource": [
+                               {"Fn::Join": ["", ["arn:aws:logs:", {"Ref": "AWS::Region"}, ":", {"Ref": "AWS::AccountId"}, ":function:", {"Ref": "ProjectResourceHandler"}] ]}
+                            ]
                         },
                         {
                             "Sid": "IoTPolicy",
@@ -459,17 +307,7 @@
         "CloudGemPortalUserRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
-                "Path": {
-                    "Fn::Join": [
-                        "",
-                        [
-                            "/", {
-                                "Ref": "AWS::StackName"
-                            },
-                            "/"
-                        ]
-                    ]
-                },
+                "Path": {"Fn::Join": ["", ["/", {"Ref": "AWS::StackName"}, "/"] ]},
                 "AssumeRolePolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [{
@@ -824,6 +662,9 @@
                         "ArnFormat": "*",
                         "HandlerFunction": {
                             "Function": "Custom_AccessControl.handler",
+                            "HandlerFunctionConfiguration": {
+                                "MemorySize": 256
+                            },
                             "PolicyStatement": [
                                 {
                                     "Sid": "ManageAccessControlRoles",
@@ -1236,7 +1077,7 @@
                         "PermissionMetadata": {
                             "DefaultRoleMappings" : [
                                 {
-                                    "AbstractRole": [ "DeploymentAdmin", "ProjectAdmin" ],
+                                    "AbstractRole": [ "DeploymentAdmin", "ProjectAdmin", "CloudGemPortalUserRole", "CloudGemPortalAdministratorRole" ],
                                     "Action": "execute-api:*",
                                     "ResourceSuffix": "/*"
                                 }
@@ -1567,7 +1408,8 @@
                             "Effect": "Allow",
                             "Action": [
                                 "cloudformation:DescribeStackResources",
-                                "cloudformation:DescribeStackResource"
+                                "cloudformation:DescribeStackResource",
+                                "cloudformation:ListStackResources"
                             ],
                             "Resource": [
                                 { "Fn::Join": [ "", [ "arn:aws:cloudformation:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":stack/", { "Ref": "AWS::StackName" }, "/*" ]] },
@@ -1699,17 +1541,7 @@
         "ProjectIdentityPoolAuthenticatedRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
-                "Path": {
-                    "Fn::Join": [
-                        "",
-                        [
-                            "/", {
-                                "Ref": "AWS::StackName"
-                            },
-                            "/"
-                        ]
-                    ]
-                },
+                "Path": {"Fn::Join": ["", ["/", {"Ref": "AWS::StackName"}, "/"] ]},
                 "AssumeRolePolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [{
@@ -1736,17 +1568,7 @@
         "ProjectIdentityPoolUnauthenticatedRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
-                "Path": {
-                    "Fn::Join": [
-                        "",
-                        [
-                            "/", {
-                                "Ref": "AWS::StackName"
-                            },
-                            "/"
-                        ]
-                    ]
-                },
+                "Path": {"Fn::Join": ["", ["/", {"Ref": "AWS::StackName"}, "/"] ]},
                 "AssumeRolePolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [{
@@ -1766,7 +1588,7 @@
         "ProjectOwner": {
             "Type": "AWS::IAM::Role",
             "Properties": {
-                "Path": { "Fn::Join": [ "", [ "/", { "Ref": "AWS::StackName" }, "/" ]] },
+                "Path": {"Fn::Join": [ "", [ "/", { "Ref": "AWS::StackName" }, "/" ]] },
                 "AssumeRolePolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -1798,7 +1620,7 @@
         "ProjectOwnerAccess": {
             "Type": "AWS::IAM::ManagedPolicy",
             "Properties": {
-                "Path": { "Fn::Join": [ "", [ "/", { "Ref": "AWS::StackName" }, "/" ]] },
+                "Path": {"Fn::Join": [ "", [ "/", { "Ref": "AWS::StackName" }, "/" ]] },
                 "PolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
@@ -2284,22 +2106,7 @@
                 },
                 "FunctionName": "ServiceLambda",
                 "Runtime": "python2.7",
-                "ServiceToken": {
-                    "Fn::Join": [
-                        "",
-                        [
-                            "arn:aws:lambda:", {
-                                "Ref": "AWS::Region"
-                            },
-                            ":", {
-                                "Ref": "AWS::AccountId"
-                            },
-                            ":function:", {
-                                "Ref": "ProjectResourceHandler"
-                            }
-                        ]
-                    ]
-                },
+                "ServiceToken": {"Fn::Join": ["",  ["arn:aws:lambda:", {"Ref": "AWS::Region"}, ":", {"Ref": "AWS::AccountId"}, ":function:", {"Ref": "ProjectResourceHandler"}] ]},
                 "Settings": {
                     "ProjectStackArn": { "Ref": "AWS::StackId" },
                     "ProjectConfigurationBucket": { "Ref": "Configuration" },

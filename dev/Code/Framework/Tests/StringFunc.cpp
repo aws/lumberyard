@@ -97,6 +97,84 @@ namespace AzFramework
         ASSERT_EQ(input, expectedResult);
     }
 
+    TEST_F(StringFuncTest, Join_PathsWithNoOverlappingDirectoriesDisabled_Success)
+    {
+        AZStd::string path1 = "1/2/3/4";
+        AZStd::string path2 = "5/6";
+        AZStd::string expectedResult = "1/2/3/4/5/6";
+        AZStd::string joinResult;
+
+        AzFramework::StringFunc::Path::Normalize(path1);
+        AzFramework::StringFunc::Path::Normalize(path2);
+        AzFramework::StringFunc::Path::Normalize(expectedResult);
+        AzFramework::StringFunc::Path::Join(path1.c_str(), path2.c_str(), joinResult);
+
+        ASSERT_EQ(joinResult, expectedResult);
+    }
+
+    TEST_F(StringFuncTest, Join_PathsWithOverlappingDirectoriesDisabled_Success)
+    {
+        AZStd::string path1 = "1/2/3/4";
+        AZStd::string path2 = "3/4/5/6";
+        AZStd::string expectedResult = "1/2/3/4/3/4/5/6";
+        AZStd::string joinResult;
+
+        AzFramework::StringFunc::Path::Normalize(path1);
+        AzFramework::StringFunc::Path::Normalize(path2);
+        AzFramework::StringFunc::Path::Normalize(expectedResult);
+        AzFramework::StringFunc::Path::Join(path1.c_str(), path2.c_str(), joinResult);
+
+        ASSERT_EQ(joinResult, expectedResult);
+    }
+
+    TEST_F(StringFuncTest, Join_PathsWithNoOverlappingDirectories_Success)
+    {
+        const bool handleOverlapDirectories = true;
+        AZStd::string path1 = "1/2/3/4";
+        AZStd::string path2 = "5/6";
+        AZStd::string expectedResult = "1/2/3/4/5/6";
+        AZStd::string joinResult;
+
+        AzFramework::StringFunc::Path::Normalize(path1);
+        AzFramework::StringFunc::Path::Normalize(path2);
+        AzFramework::StringFunc::Path::Normalize(expectedResult);
+        AzFramework::StringFunc::Path::Join(path1.c_str(), path2.c_str(), joinResult, handleOverlapDirectories);
+
+        ASSERT_EQ(joinResult, expectedResult);
+    }
+
+    TEST_F(StringFuncTest, Join_PathsWithOverlappingDirectories_Success)
+    {
+        const bool handleOverlapDirectories = true;
+        AZStd::string path1 = "1/2/3/4";
+        AZStd::string path2 = "3/4/5/6";
+        AZStd::string expectedResult = "1/2/3/4/5/6";
+        AZStd::string joinResult;
+
+        AzFramework::StringFunc::Path::Normalize(path1);
+        AzFramework::StringFunc::Path::Normalize(path2);
+        AzFramework::StringFunc::Path::Normalize(expectedResult);
+        AzFramework::StringFunc::Path::Join(path1.c_str(), path2.c_str(), joinResult, handleOverlapDirectories);
+
+        ASSERT_EQ(joinResult, expectedResult);
+    }
+
+    TEST_F(StringFuncTest, Join_PathsWithSecondNameOverlappingDirectory_Success)
+    {
+        const bool handleOverlapDirectories = true;
+        AZStd::string path1 = "1/2/3/4";
+        AZStd::string path2 = "3";
+        AZStd::string expectedResult = "1/2/3/4/3";
+        AZStd::string joinResult;
+
+        AzFramework::StringFunc::Path::Normalize(path1);
+        AzFramework::StringFunc::Path::Normalize(path2);
+        AzFramework::StringFunc::Path::Normalize(expectedResult);
+        AzFramework::StringFunc::Path::Join(path1.c_str(), path2.c_str(), joinResult, handleOverlapDirectories);
+
+        ASSERT_EQ(joinResult, expectedResult);
+    }
+
     TEST_F(StringFuncTest, GroupDigits_BasicFunctionality)
     {
         // Test a bunch of numbers and other inputs

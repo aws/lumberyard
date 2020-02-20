@@ -3,7 +3,8 @@
     {
         "Tests":
         [
-            "Tests/test_Main.cpp"
+            "Tests/test_Main.cpp",
+            "Tests/ComponentEntityObjectStateTests.cpp"
         ]
     }
 }

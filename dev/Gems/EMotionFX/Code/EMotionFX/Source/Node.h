@@ -52,6 +52,16 @@ namespace EMotionFX
         };
 
         /**
+         * The node flags (options).
+         */
+        enum ENodeFlags
+        {
+            FLAG_INCLUDEINBOUNDSCALC = 1 << 0,           /**< Specifies whether we have to include this node in the bounds calculation or not (true on default). */
+            FLAG_ATTACHMENT = 1 << 1,           /**< Indicates if this node is an attachment node or not (false on default). */
+            FLAG_CRITICAL = 1 << 2            /**< Indicates if this node is a critical node. A critical node is always included the skeleton and cannot be optimized out (false on default). */
+        };
+
+        /**
          * Create method.
          * @param name The name of the node.
          * @param skeleton The skeleton where this node will belong to, you still need to manually add it to the skeleton though.
@@ -383,6 +393,19 @@ namespace EMotionFX
         void SetIncludeInBoundsCalc(bool includeThisNode);
 
         /**
+         * Check whether this node is critcal and should not be optimized out in any situations.
+         * Sometimes we perform optimization process on the node. This flag make sure that critical node will always be included in the actor heirarchy.
+         * @result Returns true when this node is critical, or false when it won't.
+         */
+        MCORE_INLINE bool GetIsCritical() const { return mNodeFlags & FLAG_CRITICAL; }
+
+        /**
+         * Specify whether this node is critcal and should not be optimized out in any situations.
+         * @param isCritical Set to true when you want this node to be critical.
+         */
+        void SetIsCritical(bool isCritical);
+
+        /**
          * Check if the node is an attachment node.
          * @return True if the node is an attachment node, false if not.
          */
@@ -395,15 +418,6 @@ namespace EMotionFX
         void SetIsAttachmentNode(bool isAttachmentNode);
 
     private:
-        /**
-         * The node flags (options).
-         */
-        enum ENodeFlags
-        {
-            FLAG_INCLUDEINBOUNDSCALC        = 1 << 0,           /**< Specifies whether we have to include this node in the bounds calculation or not (true on default). */
-            FLAG_ATTACHMENT                 = 1 << 1            /**< Indicates if this node is an attachment node or not (false on default). */
-        };
-
         uint32      mNodeIndex;         /**< The node index, which is the index into the array of nodes inside the Skeleton class. */
         uint32      mParentIndex;       /**< The parent node index, or MCORE_INVALIDINDEX32 when there is no parent. */
         uint32      mSkeletalLODs;      /**< The skeletal LOD status values. Each bit represents if this node is enabled or disabled in the given LOD. */

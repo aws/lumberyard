@@ -62,7 +62,7 @@ def build(bld):
         test_file_list      = ['../Tests/azcoretests.waf_files'],
         test_includes       = ['../Tests'],
         test_use            = ['BENCHMARK', 'AzTestShared'],
-        test_platforms      = ['win', 'darwin'],
+        test_platforms      = ['win', 'darwin', 'linux'],
         test_platform_roots = [bld.PlatformRoot('../Tests/Platform', export_includes=False)],
     )
 
@@ -70,7 +70,7 @@ def build(bld):
         target                  = 'AzTestShared',
         vs_filter               = 'AZ Framework',
         file_list               = '../Tests/aztestshared.waf_files',
-        platforms               = ['win', 'darwin'],
+        platforms               = ['win', 'darwin', 'linux'],
         configurations          = ['all'],
         test_only               = True,
         use                     = ['AzCore'],

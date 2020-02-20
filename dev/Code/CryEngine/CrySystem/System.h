@@ -275,6 +275,7 @@ struct SSystemCVars
 
     int sys_float_exceptions;
     int sys_no_crash_dialog;
+    int sys_no_error_report_window;
     int sys_dump_aux_threads;
     int sys_WER;
     int sys_dump_type;
@@ -301,6 +302,7 @@ struct SSystemCVars
     int sys_asserts;
     int sys_error_debugbreak;
 
+    int sys_FilesystemCaseSensitivity;
     int sys_rendersplashscreen;
     const char* sys_splashscreen;
 
@@ -920,7 +922,6 @@ private: // ------------------------------------------------------
 
     CTimer                              m_Time;                             //!<
     CCamera                             m_ViewCamera;                   //!<
-    volatile bool                   m_bQuit;                            //!< if is true the system is quitting. Volatile as it may be polled from multiple threads.
     bool                                    m_bInitializedSuccessfully;     //!< true if the system completed all initialization steps
     bool                  m_bShaderCacheGenMode;//!< true if the application runs in shader cache generation mode
     bool                                    m_bRelaunch;                    //!< relaunching the app or not (true beforerelaunch)
@@ -929,6 +930,7 @@ private: // ------------------------------------------------------
     bool                                    m_bMinimal;                     //!< If running in 'minimal mode'.
     bool                                    m_bEditor;                      //!< If running in Editor.
     bool                                    m_bNoCrashDialog;
+    bool                                    m_bNoErrorReportWindow;
     bool                  m_bPreviewMode;       //!< If running in Preview mode.
     bool                                    m_bDedicatedServer;     //!< If running as Dedicated server.
     bool                                    m_bIgnoreUpdates;           //!< When set to true will ignore Update and Render calls,

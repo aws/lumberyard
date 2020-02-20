@@ -10,35 +10,40 @@
 *
 */
 
-#include "EMotionFXConfig.h"
-#include "Actor.h"
-#include "Motion.h"
-#include "SkeletalMotion.h"
-#include "MeshDeformerStack.h"
-#include "Material.h"
-#include "Mesh.h"
-#include "SubMesh.h"
-#include "MorphMeshDeformer.h"
-#include "SkinningInfoVertexAttributeLayer.h"
-#include "ActorInstance.h"
-#include "MotionSystem.h"
-#include "EventManager.h"
-#include "EventHandler.h"
-#include "NodeMap.h"
-#include "NodeGroup.h"
-#include "ActorManager.h"
-#include "MorphSetup.h"
-#include "Node.h"
-#include "Skeleton.h"
-#include "SoftSkinDeformer.h"
-#include "DualQuatSkinDeformer.h"
-#include "DebugDraw.h"
+#include <AzCore/Math/Quaternion.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/std/containers/unordered_map.h>
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/Actor.h>
+#include <EMotionFX/Source/ActorBus.h>
+#include <EMotionFX/Source/Motion.h>
+#include <EMotionFX/Source/SkeletalMotion.h>
+#include <EMotionFX/Source/MeshDeformerStack.h>
+#include <EMotionFX/Source/Material.h>
+#include <EMotionFX/Source/Mesh.h>
+#include <EMotionFX/Source/SubMesh.h>
+#include <EMotionFX/Source/MorphMeshDeformer.h>
+#include <EMotionFX/Source/SkinningInfoVertexAttributeLayer.h>
+#include <EMotionFX/Source/ActorInstance.h>
+#include <EMotionFX/Source/MotionSystem.h>
+#include <EMotionFX/Source/EventManager.h>
+#include <EMotionFX/Source/EventHandler.h>
+#include <EMotionFX/Source/NodeMap.h>
+#include <EMotionFX/Source/NodeGroup.h>
+#include <EMotionFX/Source/ActorManager.h>
+#include <EMotionFX/Source/MorphSetup.h>
+#include <EMotionFX/Source/Node.h>
+#include <EMotionFX/Source/Skeleton.h>
+#include <EMotionFX/Source/SoftSkinDeformer.h>
+#include <EMotionFX/Source/DualQuatSkinDeformer.h>
+#include <EMotionFX/Source/DebugDraw.h>
 #include <EMotionFX/Source/SimulatedObjectSetup.h>
 
 #include <MCore/Source/IDGenerator.h>
 #include <MCore/Source/Compare.h>
-#include <MCore/Source/Quaternion.h>
 #include <MCore/Source/OBB.h>
+
+#include <AzCore/std/containers/unordered_set.h>
 
 namespace EMotionFX
 {
@@ -102,6 +107,7 @@ namespace EMotionFX
         m_physicsSetup              = AZStd::make_shared<PhysicsSetup>();
         m_simulatedObjectSetup      = AZStd::make_shared<SimulatedObjectSetup>(this);
 
+        m_optimizeSkeleton          = false;
 #if defined(EMFX_DEVELOPMENT_BUILD)
         mIsOwnedByRuntime           = false;
 #endif // EMFX_DEVELOPMENT_BUILD
@@ -168,6 +174,7 @@ namespace EMotionFX
         result->mStaticAABB             = mStaticAABB;
         result->mRetargetRootNode       = mRetargetRootNode;
         result->mInvBindPoseTransforms  = mInvBindPoseTransforms;
+        result->m_optimizeSkeleton      = m_optimizeSkeleton;
 
         result->RecursiveAddDependencies(this);
 
@@ -835,6 +842,22 @@ namespace EMotionFX
     }
 
 
+    bool Actor::CheckIfHasSkinnedMeshes(AZ::u32 lodLevel) const
+    {
+        const AZ::u32 numNodes = mSkeleton->GetNumNodes();
+        for (AZ::u32 i = 0; i < numNodes; ++i)
+        {
+            const Mesh* mesh = GetMesh(lodLevel, i);
+            if (mesh && mesh->FindSharedVertexAttributeLayer(SkinningInfoVertexAttributeLayer::TYPE_ID))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
     void Actor::SetPhysicsSetup(const AZStd::shared_ptr<PhysicsSetup>& physicsSetup)
     {
         m_physicsSetup = physicsSetup;
@@ -1389,29 +1412,35 @@ namespace EMotionFX
         }
     }
 
-
-    // set the motion extraction node
     void Actor::SetMotionExtractionNode(Node* node)
     {
         if (node)
         {
-            mMotionExtractionNode = node->GetNodeIndex();
+            SetMotionExtractionNodeIndex(node->GetNodeIndex());
         }
         else
         {
-            mMotionExtractionNode = MCORE_INVALIDINDEX32;
+            SetMotionExtractionNodeIndex(MCORE_INVALIDINDEX32);
         }
     }
 
-
-    // set the motion extraction node
     void Actor::SetMotionExtractionNodeIndex(uint32 nodeIndex)
     {
         mMotionExtractionNode = nodeIndex;
+        ActorNotificationBus::Broadcast(&ActorNotificationBus::Events::OnMotionExtractionNodeChanged, this, GetMotionExtractionNode());
     }
 
+    Node* Actor::GetMotionExtractionNode() const
+    {
+        if (mMotionExtractionNode != MCORE_INVALIDINDEX32 &&
+            mMotionExtractionNode < mSkeleton->GetNumNodes())
+        {
+            return mSkeleton->GetNode(mMotionExtractionNode);
+        }
 
-    // reinitialize all mesh deformers for all LOD levels
+        return nullptr;
+    }
+
     void Actor::ReinitializeMeshDeformers()
     {
         const uint32 numLODLevels = GetNumLODLevels();
@@ -1528,7 +1557,7 @@ namespace EMotionFX
             Transform localTransform = pose.GetLocalSpaceTransform(motionSource);
             Transform orgDelta;
             orgDelta.mPosition.Set(1.1f, 2.2f, 3.3f);
-            orgDelta.mRotation.SetEuler(0.1f, 0.2f, 0.3f);
+            orgDelta.mRotation = MCore::AzEulerAnglesToAzQuat(0.1f, 0.2f, 0.3f);
             Transform delta = orgDelta;
             delta.Multiply(localTransform);
             pose.SetLocalSpaceTransform(motionSource, delta);
@@ -2211,8 +2240,7 @@ namespace EMotionFX
                 // get the vertex positions in bind pose
                 const uint32 numVerts = loopMesh->GetNumVertices();
                 points.reserve(numVerts * 2);
-                AZ::PackedVector3f* positions = (AZ::PackedVector3f*)loopMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS);
-                //AZ::Vector3* positions = (AZ::Vector3*)loopMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS);
+                AZ::Vector3* positions = (AZ::Vector3*)loopMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS);
 
                 SkinningInfoVertexAttributeLayer* skinLayer = (SkinningInfoVertexAttributeLayer*)loopMesh->FindSharedVertexAttributeLayer(SkinningInfoVertexAttributeLayer::TYPE_ID);
                 if (skinLayer)
@@ -2405,7 +2433,7 @@ namespace EMotionFX
 
         // Get the local space rotation matrix of the motion extraction node.
         const Transform& localTransform = GetBindPose()->GetLocalSpaceTransform(mMotionExtractionNode);
-        const MCore::Matrix rotationMatrix = localTransform.mRotation.ToMatrix();
+        const AZ::Matrix3x3 rotationMatrix = AZ::Matrix3x3::CreateFromQuaternion(localTransform.mRotation);
 
         // Calculate angles between the up axis and each of the rotation's basis vectors.
         const AZ::Vector3 globalUpAxis(0.0f, 0.0f, 1.0f);
@@ -2442,5 +2470,234 @@ namespace EMotionFX
     void Actor::SetRetargetRootNode(Node* node)
     {
         mRetargetRootNode = node ? node->GetNodeIndex() : MCORE_INVALIDINDEX32;
+    }
+
+    void Actor::InsertJointAndParents(AZ::u32 jointIndex, AZStd::unordered_set<AZ::u32>& includedJointIndices)
+    {
+        // If our joint is already in, then we can skip things.
+        if (includedJointIndices.find(jointIndex) != includedJointIndices.end())
+        {
+            return;
+        }
+
+        // Add the parent.
+        const AZ::u32 parentIndex = mSkeleton->GetNode(jointIndex)->GetParentIndex();
+        if (parentIndex != InvalidIndex32)
+        {
+            InsertJointAndParents(parentIndex, includedJointIndices);
+        }
+
+        // Add itself.
+        includedJointIndices.emplace(jointIndex);
+    }
+
+    void Actor::AutoSetupSkeletalLODsBasedOnSkinningData(const AZStd::vector<AZStd::string>& alwaysIncludeJoints)
+    {
+        AZStd::unordered_set<AZ::u32> includedJointIndices;
+
+        const AZ::u32 numLODs = GetNumLODLevels();
+        for (AZ::u32 lod = 0; lod < numLODs; ++lod)
+        {
+            includedJointIndices.clear();
+
+            // If we have no meshes, or only static meshes, we shouldn't do anything.
+            if (!CheckIfHasMeshes(lod) || !CheckIfHasSkinnedMeshes(lod))
+            {
+                continue;
+            }
+
+            const AZ::u32 numJoints = mSkeleton->GetNumNodes();
+            for (AZ::u32 jointIndex = 0; jointIndex < numJoints; ++jointIndex)
+            {
+                const Mesh* mesh = GetMesh(lod, jointIndex);
+                if (!mesh)
+                {
+                    continue;
+                }
+
+                // Include the mesh, as we always want to include meshes.
+                InsertJointAndParents(jointIndex, includedJointIndices);
+
+                // Look at the joints registered in the submeshes.
+                const AZ::u32 numSubMeshes = mesh->GetNumSubMeshes();
+                for (AZ::u32 subMeshIndex = 0; subMeshIndex < numSubMeshes; ++subMeshIndex)
+                {
+                    const MCore::Array<AZ::u32>& subMeshJoints = mesh->GetSubMesh(subMeshIndex)->GetBonesArray();
+                    const AZ::u32 numSubMeshJoints = subMeshJoints.GetLength();
+                    for (AZ::u32 i = 0; i < numSubMeshJoints; ++i)
+                    {
+                        InsertJointAndParents(subMeshJoints[i], includedJointIndices);
+                    }
+                }
+            } // for all joints
+
+            // Now that we have the list of joints to include for this LOD, let's disable all the joints in this LOD, and enable all the ones in our list.
+            if (!includedJointIndices.empty())
+            {
+                // Force joints in our "always include list" to be included.
+                for (const AZStd::string& jointName : alwaysIncludeJoints)
+                {
+                    AZ::u32 jointIndex = InvalidIndex32;
+                    if (!mSkeleton->FindNodeAndIndexByName(jointName, jointIndex))
+                    {
+                        if (!jointName.empty())
+                        {
+                            AZ_Warning("EMotionFX", false, "Cannot find joint '%s' inside the skeleton. This joint name was specified inside the alwaysIncludeJoints list.", jointName.c_str());
+                        }
+                        continue;
+                    }
+
+                    InsertJointAndParents(jointIndex, includedJointIndices);
+                }
+
+                // Disable all joints first.
+                for (AZ::u32 jointIndex = 0; jointIndex < numJoints; ++jointIndex)
+                {
+                    mSkeleton->GetNode(jointIndex)->SetSkeletalLODStatus(lod, false);
+                }
+
+                // Enable all our included joints in this skeletal LOD.
+                AZ_TracePrintf("EMotionFX", "[LOD %d] Enabled joints = %zd\n", lod, includedJointIndices.size());
+                for (AZ::u32 jointIndex : includedJointIndices)
+                {
+                    mSkeleton->GetNode(jointIndex)->SetSkeletalLODStatus(lod, true);
+                }
+            }
+            else // When we have an empty include list, enable everything.
+            {
+                AZ_TracePrintf("EMotionFX", "[LOD %d] Enabled joints = %zd\n", lod, mSkeleton->GetNumNodes());
+                for (AZ::u32 i = 0; i < mSkeleton->GetNumNodes(); ++i)
+                {
+                    mSkeleton->GetNode(i)->SetSkeletalLODStatus(lod, true);
+                }
+            }
+        } // for each LOD
+    }
+
+
+    void Actor::PrintSkeletonLODs()
+    {
+        const AZ::u32 numLODs = GetNumLODLevels();
+        for (AZ::u32 lod = 0; lod < numLODs; ++lod)
+        {
+            AZ_TracePrintf("EMotionFX", "[LOD %d]:", lod);
+            const AZ::u32 numJoints = mSkeleton->GetNumNodes();
+            for (AZ::u32 jointIndex = 0; jointIndex < numJoints; ++jointIndex)
+            {
+                const Node* joint = mSkeleton->GetNode(jointIndex);
+                if (joint->GetSkeletalLODStatus(lod))
+                {
+                    AZ_TracePrintf("EMotionFX", "\t%s (index=%d)", joint->GetName(), jointIndex);
+                }
+            }
+        }
+    }
+
+    void Actor::GenerateOptimizedSkeleton()
+    {
+        // We should have already removed all the mesh, skinning information, sim object and etc.
+        // At this point, we only need to remove extra joint nodes.
+
+        // First, check if we have a hit detection setup.
+        // NOTE:: We won't do anything unless the actor has a hit detection collider setup. If you don't have a hit collider associate with animation on server,
+        // you should consider not running the anim graph at all.
+        if (!m_physicsSetup || m_physicsSetup->GetHitDetectionConfig().m_nodes.empty())
+        {
+            return;
+        }
+
+        // 1) Build a set of nodes that we want to keep in the actor skeleton heirarchy.
+        // 2) Mark all the node in the above list and all their predecessors.
+        // 3) In actor skeleton, remove every node that hasn't been marked.
+        // 4) Meanwhile, build a map that represent the child-parent relationship. 
+        // 5) After the node index changed, we use the map in 4) to restore the child-parent relationship.
+        AZ::u32 numNodes = mSkeleton->GetNumNodes();
+        AZStd::vector<bool> flags;
+        AZStd::unordered_map<AZStd::string, AZStd::string> childParentMap;
+        flags.resize(numNodes);
+        
+        AZStd::unordered_set<Node*> nodesToKeep;
+        // Search the hit detection config to find and keep all the hit detection nodes.
+        for (const Physics::CharacterColliderNodeConfiguration& nodeConfig : m_physicsSetup->GetHitDetectionConfig().m_nodes)
+        {
+            Node* node = mSkeleton->FindNodeByName(nodeConfig.m_name);
+            if (node && nodesToKeep.find(node) == nodesToKeep.end())
+            {
+                nodesToKeep.emplace(node);
+            }
+        }
+
+        // find our motion extraction node and make sure we keep it.
+        Node* motionExtractionNode = GetMotionExtractionNode();
+        if (motionExtractionNode)
+        {
+            nodesToKeep.emplace(motionExtractionNode);
+        }
+
+        // Search the actor skeleton to find all the critical nodes.
+        for (AZ::u32 i = 0; i < numNodes; ++i)
+        {
+            Node* node = mSkeleton->GetNode(i);
+            if (node->GetIsCritical() && nodesToKeep.find(node) == nodesToKeep.end())
+            {
+                nodesToKeep.emplace(node);
+            }
+        }
+
+        for (Node* nodeToKeep : nodesToKeep)
+        {
+            Node* node = nodeToKeep;
+            // Mark this node and all its predecessors.
+            do
+            {
+                if (flags[node->GetNodeIndex()])
+                {
+                    break;
+                }
+                flags[node->GetNodeIndex()] = true;
+                Node* parent = node->GetParentNode();
+                if (parent)
+                {
+                    childParentMap[node->GetNameString()] = parent->GetNameString();
+                }
+                node = parent;
+            } while (node);
+        }
+
+        // Remove all the nodes that haven't been marked
+        for (AZ::u32 nodeIndex = numNodes - 1; nodeIndex > 0; nodeIndex--)
+        {
+            if (!flags[nodeIndex])
+            {
+                mSkeleton->RemoveNode(nodeIndex);
+            }
+        }
+
+        // Update the node index.
+        mSkeleton->UpdateNodeIndexValues();
+
+        // After the node index changed, the parent index become invalid. First, clear all information about children because
+        // it's not valid anymore.
+        for (AZ::u32 nodeIndex = 0; nodeIndex < mSkeleton->GetNumNodes(); ++nodeIndex)
+        {
+            Node* node = mSkeleton->GetNode(nodeIndex);
+            node->RemoveAllChildNodes();
+        }
+
+        // Then build the child-parent relationship using the prebuild map.
+        for (auto& pair : childParentMap)
+        {
+            Node* child = mSkeleton->FindNodeByName(pair.first);
+            Node* parent = mSkeleton->FindNodeByName(pair.second);
+            child->SetParentIndex(parent->GetNodeIndex());
+            parent->AddChild(child->GetNodeIndex());
+        }
+
+        // Resize transform data because the actor nodes has been trimmed down.
+        ResizeTransformData();
+
+        //reset the motion extraction node index
+        SetMotionExtractionNode(motionExtractionNode);
+        FindBestMatchingMotionExtractionAxis();
     }
 } // namespace EMotionFX

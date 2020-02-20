@@ -35,6 +35,7 @@
 #include <TerrainComponent.h>
 #include <ComponentDescriptors.h>
 #include <AzFramework/Physics/CollisionBus.h>
+#include <AzFramework/Physics/Utils.h>
 #include <AzFramework/IO/LocalFileIO.h>
 
 namespace PhysX
@@ -90,7 +91,6 @@ namespace PhysX
         PhysXApplication* m_application;
         AZ::Entity* m_systemEntity;
         AZStd::unique_ptr<AZ::ComponentDescriptor> m_transformComponentDescriptor;
-        AZStd::unique_ptr<AZ::SerializeContext> m_serializeContext;
         AZStd::unique_ptr<AZ::IO::LocalFileIO> m_fileIo;
     };
 
@@ -120,13 +120,18 @@ namespace PhysX
         AZ::ComponentApplication::StartupParameters startupParams;
         m_systemEntity = m_application->Create(appDesc, startupParams);
         AZ_TEST_ASSERT(m_systemEntity);
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        if (serializeContext)
+        {
+            // The reflection for generic physics API types which PhysX relies on happens in AzFramework and is not
+            // called by PhysX itself, so we have to make sure it is called here
+            Physics::ReflectionUtils::ReflectPhysicsApi(serializeContext);
+            m_transformComponentDescriptor = AZStd::unique_ptr<AZ::ComponentDescriptor>(AzFramework::TransformComponent::CreateDescriptor());
+            m_transformComponentDescriptor->Reflect(serializeContext);
+        }
         m_systemEntity->Init();
         m_systemEntity->Activate();
-
-        // Set up transform component descriptor
-        m_serializeContext = AZStd::make_unique<AZ::SerializeContext>();
-        m_transformComponentDescriptor = AZStd::unique_ptr<AZ::ComponentDescriptor>(AzFramework::TransformComponent::CreateDescriptor());
-        m_transformComponentDescriptor->Reflect(&(*m_serializeContext));
 
         if (s_enablePvd)
         {
@@ -143,7 +148,6 @@ namespace PhysX
         }
 
         m_transformComponentDescriptor.reset();
-        m_serializeContext.reset();
         m_fileIo.reset();
         m_application->Destroy();
         delete m_application;
@@ -158,8 +162,7 @@ namespace Physics
 {
     void GenericPhysicsInterfaceTest::SetUp()
     {
-        Physics::SystemRequestBus::BroadcastResult(m_defaultWorld,
-            &Physics::SystemRequests::CreateWorld, Physics::DefaultPhysicsWorldId);
+        m_defaultWorld = AZ::Interface<Physics::System>::Get()->CreateWorld(Physics::DefaultPhysicsWorldId);
 
         Physics::DefaultWorldBus::Handler::BusConnect();
     }

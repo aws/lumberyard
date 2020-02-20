@@ -1,0 +1,12 @@
+{
+  "tk": "8.6",
+  "bzip2": "1.0",
+  "xz": "5",
+  "sqlite": "3",
+  "zlib": "1.2",
+  "openssl": "1.1.1",
+  "c_compiler": "clang",
+  "CONDA_BUILD_SYSROOT": "/opt/MacOSX10.10.sdk",
+  "libffi": "3.2",
+  "cxx_compiler": "clangxx"
+}

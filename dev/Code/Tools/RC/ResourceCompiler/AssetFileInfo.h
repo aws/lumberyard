@@ -78,8 +78,8 @@ public:
 
 public:
     EType         m_type;
-    __int64       m_SrcFileSize;
-    __int64       m_DstFileSize;
+    int64         m_SrcFileSize;
+    int64         m_DstFileSize;
 
     SimpleString  m_sInfo;            // separated list of properties (used for excel export)
     SimpleString  m_sSourceFilename;

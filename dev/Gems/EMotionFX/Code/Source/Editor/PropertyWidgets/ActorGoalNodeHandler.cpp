@@ -22,8 +22,8 @@
 
 namespace EMotionFX
 {
-    AZ_CLASS_ALLOCATOR_IMPL(ActorGoalNodePicker, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(ActorGoalNodeHandler, AZ::SystemAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(ActorGoalNodePicker, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(ActorGoalNodeHandler, EditorAllocator, 0)
 
     ActorGoalNodePicker::ActorGoalNodePicker(QWidget* parent)
         : QWidget(parent)

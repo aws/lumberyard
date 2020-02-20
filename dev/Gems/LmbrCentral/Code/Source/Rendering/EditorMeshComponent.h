@@ -151,7 +151,7 @@ namespace LmbrCentral
         {
             dependent.push_back(AZ_CRC("EditorVisibilityService", 0x90888caf));
         }
-        
+
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
             incompatible.push_back(AZ_CRC("MeshService", 0x71d8a455));
@@ -166,6 +166,9 @@ namespace LmbrCentral
         void CreateEditorPhysics();
         void DestroyEditorPhysics();
 
+        /// Issues a warning once each time the transform changes from being physicalizable to being too skewed to physicalize.
+        void PhysicsTransformWarning() const;
+
         // Decides if this mesh affects the navmesh or not.
         void AffectNavmesh();
 
@@ -176,8 +179,13 @@ namespace LmbrCentral
 
         IPhysicalEntity* m_physicalEntity = nullptr;  ///< Edit-time physical entity (for object snapping).
         AZ::Vector3 m_physScale; ///< To track scale changes, which requires re-physicalizing.
+        mutable bool m_physicsTransformWarningIssued = false; ///< Tracks whether a warning has been issued for the transform being too skewed to physicalize.
     };
 
     // Helper function useful for automation.
     bool AddMeshComponentWithMesh(const AZ::EntityId& targetEntity, const AZ::Uuid& meshAssetId);
+
+    /// Tests if the transform allows the mesh to be physicalized, or if it is too skewed to allow physicalization.
+    /// Note that this is CryPhysics specific, and CryPhysics will be deprecated in future.
+    bool IsPhysicalizable(const AZ::Transform& transform);
 } // namespace LmbrCentral

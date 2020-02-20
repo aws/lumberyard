@@ -115,7 +115,7 @@ namespace UnitTest
         {
             (void)assetLoadFilterCB;
             EXPECT_TRUE(asset.GetType() == AzTypeInfo<MyAssetType>::Uuid());
-            EXPECT_TRUE(asset.Get() != nullptr && asset.Get()->GetType() == AzTypeInfo<MyAssetType>::Uuid());
+            EXPECT_TRUE(asset.Get() != nullptr && asset->GetType() == AzTypeInfo<MyAssetType>::Uuid());
             size_t assetDataSize = static_cast<size_t>(stream->GetLength());
             MyAssetType* myAsset = asset.GetAs<MyAssetType>();
             myAsset->m_data = reinterpret_cast<char*>(azmalloc(assetDataSize + 1));
@@ -375,13 +375,16 @@ namespace UnitTest
 
     class AssetManagerTest
         : public AllocatorsFixture
+        , public AssetCatalogRequestBus::Handler
     {
         IO::FileIOBase* m_prevFileIO{
             nullptr
         };
         TestFileIOBase m_fileIO;
+
     protected:
         MyAssetHandlerAndCatalog * m_assetHandlerAndCatalog;
+
     public:
 
         void SetUp() override
@@ -405,10 +408,19 @@ namespace UnitTest
             AssetManager::Instance().RegisterHandler(m_assetHandlerAndCatalog, AzTypeInfo<MyAssetType>::Uuid());
             AssetManager::Instance().RegisterCatalog(m_assetHandlerAndCatalog, AzTypeInfo<MyAssetType>::Uuid());
             AssetManager::Instance().RegisterHandler(m_assetHandlerAndCatalog, AzTypeInfo<EmptyAssetTypeWithId>::Uuid());
+            
+            AssetCatalogRequestBus::Handler::BusConnect();
         }
 
         void TearDown() override
         {
+            AssetCatalogRequestBus::Handler::BusDisconnect();
+
+            // Manually release the handler
+            AssetManager::Instance().UnregisterHandler(m_assetHandlerAndCatalog);
+            AssetManager::Instance().UnregisterCatalog(m_assetHandlerAndCatalog);
+            delete m_assetHandlerAndCatalog;
+
             // destroy the database
             AssetManager::Destroy();
 
@@ -423,6 +435,20 @@ namespace UnitTest
 
             AllocatorsFixture::TearDown();
         }
+
+        //////////////////////////////////////////////////////////////////////////
+        // AssetCatalogRequestBus
+        // Override GetAssetInfoById and always return a fake valid information so asset manager assume the asset exists
+        // This is for the AssetSerializerAssetReferenceTest which need to load referenced asset
+        AssetInfo GetAssetInfoById(const AssetId& assetId) override
+        {
+            AssetInfo result;
+            result.m_assetType = AzTypeInfo<MyAssetType>::Uuid();
+            result.m_assetId = assetId;
+            result.m_relativePath = "FakePath";
+            return result;
+        }
+        //////////////////////////////////////////////////////////////////////////
 
         void OnLoadedClassReady(void* classPtr, const Uuid& /*classId*/)
         {
@@ -487,7 +513,7 @@ namespace UnitTest
         AZ_CLASS_ALLOCATOR(SimpleAssetType, AZ::SystemAllocator, 0);
         AZ_RTTI(SimpleAssetType, "{73D60606-BDE5-44F9-9420-5649FE7BA5B8}", AssetData);
     };
-   
+
     class SimpleClassWithAnAssetRef
     {
     public:
@@ -504,6 +530,27 @@ namespace UnitTest
         {
             context.Class<SimpleClassWithAnAssetRef>()
                 ->Field("m_asset", &SimpleClassWithAnAssetRef::m_asset)
+                ;
+        }
+    };
+
+    // similar to SimpleClassWithAnAssetRef but the asset load behavior is changed to pre-load
+    class SimpleClassWithAnAssetRefPreLoad
+    {
+    public:
+        AZ_RTTI(SimpleClassWithAnAssetRefPreLoad, "{331FF6F2-9DA1-4B4F-A044-94A8FEE4130F}");
+        AZ_CLASS_ALLOCATOR(SimpleClassWithAnAssetRefPreLoad, SystemAllocator, 0);
+
+        virtual ~SimpleClassWithAnAssetRefPreLoad() = default;
+
+        Asset<SimpleAssetType> m_asset;
+
+        SimpleClassWithAnAssetRefPreLoad() : m_asset(AssetLoadBehavior::PreLoad) {}
+
+        static void Reflect(SerializeContext& context)
+        {
+            context.Class<SimpleClassWithAnAssetRefPreLoad>()
+                ->Field("m_asset", &SimpleClassWithAnAssetRefPreLoad::m_asset)
                 ;
         }
     };
@@ -568,6 +615,53 @@ namespace UnitTest
         }
     }
 
+    // Test for serialize class data which contains a reference asset which handler wasn't registered to AssetManager
+    TEST_F(AssetManagerTest, AssetSerializerAssetReferenceTest)
+    {
+        auto assetId = AssetId("{3E971FD2-DB5F-4617-9061-CCD3606124D0}", 0);
+        
+        SerializeContext context;
+        SimpleClassWithAnAssetRefPreLoad::Reflect(context);
+        char memBuffer[4096];
+        AZ::IO::MemoryStream memStream(memBuffer, AZ_ARRAY_SIZE(memBuffer), 0);
+
+        // generate the data stream for the object contains a reference of asset
+        SimpleClassWithAnAssetRefPreLoad toSave;
+        toSave.m_asset.Create(assetId, false);
+        Utils::SaveObjectToStream(memStream, DataStream::StreamType::ST_BINARY, &toSave, &context);
+        toSave.m_asset.Release();
+
+        // Unregister asset handler for MyAssetType
+        AssetManager::Instance().UnregisterHandler(m_assetHandlerAndCatalog);
+
+        Utils::FilterDescriptor desc;
+        SimpleClassWithAnAssetRefPreLoad toRead;
+
+        // return true if loading with none filter or ignore unknown classes filter
+        memStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        desc.m_flags = 0;
+        ASSERT_TRUE(Utils::LoadObjectFromStreamInPlace(memStream, toRead, &context, desc));
+        // LoadObjectFromStreamInPlace generates two errors. One is can't find the handler. Another one is can't load referenced asset.
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
+
+        // return true if loading with ignore unknown classes filter
+        memStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        desc.m_flags = ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES;
+        ASSERT_TRUE(Utils::LoadObjectFromStreamInPlace(memStream, toRead, &context, desc));
+        // LoadObjectFromStreamInPlace generates two errors. One is can't find the handler. Another one is can't load referenced asset.
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
+
+        // return false if loading with strict filter
+        memStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        desc.m_flags = ObjectStream::FILTERFLAG_STRICT;
+        ASSERT_FALSE(Utils::LoadObjectFromStreamInPlace(memStream, toRead, &context, desc));
+        // LoadObjectFromStreamInPlace generates two errors. One is can't find the handler. Another one is can't load referenced asset.
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
+    }
+
     TEST_F(AssetManagerTest, AssetPtrRefCount)
     {
         // Asset ptr tests.
@@ -576,9 +670,9 @@ namespace UnitTest
 
         EXPECT_EQ(EmptyAssetTypeWithId::s_alive, 1);
 
-                // Construct with flags
+        // Construct with flags
         {
-                    Asset<EmptyAssetTypeWithId> assetWithFlags(AssetLoadBehavior::PreLoad);
+            Asset<EmptyAssetTypeWithId> assetWithFlags(AssetLoadBehavior::PreLoad);
             EXPECT_TRUE(!assetWithFlags.GetId().IsValid());
             EXPECT_TRUE(assetWithFlags.GetType() == AzTypeInfo<EmptyAssetTypeWithId>::Uuid());
         }
@@ -597,7 +691,7 @@ namespace UnitTest
             EmptyAssetTypeWithId* newData = assetWithData.Get();
             Asset<EmptyAssetTypeWithId> assetWithData2(assetWithData);
 
-            EXPECT_TRUE(assetWithData.Get()->GetUseCount() == 2);
+            EXPECT_TRUE(assetWithData->GetUseCount() == 2);
             EXPECT_TRUE(assetWithData.Get() == newData);
             EXPECT_TRUE(assetWithData2.Get() == newData);
         }
@@ -630,10 +724,10 @@ namespace UnitTest
             Asset<EmptyAssetTypeWithId> assetWithData2 = AssetManager::Instance().CreateAsset<EmptyAssetTypeWithId>(Uuid::CreateRandom());
             EXPECT_EQ(EmptyAssetTypeWithId::s_alive, 3);
             assetWithData2 = AZStd::move(assetWithData);
-            
+
             // Allow the asset manager to purge assets on the dead list.
             AssetManager::Instance().DispatchEvents();
-            EXPECT_EQ(EmptyAssetTypeWithId::s_alive,  2);
+            EXPECT_EQ(EmptyAssetTypeWithId::s_alive, 2);
 
             EXPECT_TRUE(assetWithData.Get() == nullptr);
             EXPECT_TRUE(assetWithData2.Get() == newData);
@@ -924,7 +1018,7 @@ namespace UnitTest
             }
             bool SaveAssetData(const Asset<AssetData>& asset, IO::GenericStream* stream) override
             {
-                return Utils::SaveObjectToStream(*stream, AZ::DataStream::ST_XML, asset.Get(), asset.Get()->RTTI_GetType(), m_context);
+                return Utils::SaveObjectToStream(*stream, AZ::DataStream::ST_XML, asset.Get(), asset->RTTI_GetType(), m_context);
             }
             void DestroyAsset(AssetPtr ptr) override
             {
@@ -1127,9 +1221,9 @@ namespace UnitTest
             EXPECT_TRUE(asset1.IsReady());
             EXPECT_TRUE(asset2.IsReady());
             EXPECT_TRUE(asset3.IsReady());
-            EXPECT_TRUE(asset1.Get()->asset.IsReady());
-            EXPECT_TRUE(asset2.Get()->asset.IsReady());
-            EXPECT_TRUE(asset3.Get()->asset.IsReady());
+            EXPECT_TRUE(asset1->asset.IsReady());
+            EXPECT_TRUE(asset2->asset.IsReady());
+            EXPECT_TRUE(asset3->asset.IsReady());
             EXPECT_TRUE(assetHandlerAndCatalog->m_numCreations == 6);
 
             asset1 = Asset<AssetData>();
@@ -1308,7 +1402,7 @@ namespace UnitTest
                 AZStd::aligned_storage<sizeof(T), AZStd::alignment_of<T>::value> m_storage;
                 bool free = true;
             };
-            struct 
+            struct
             {
                 Storage<Asset1Prime> m_asset1Prime;
                 Storage<Asset1> m_asset1;
@@ -1413,7 +1507,7 @@ namespace UnitTest
             }
             bool SaveAssetData(const Asset<AssetData>& asset, IO::GenericStream* stream) override
             {
-                return Utils::SaveObjectToStream(*stream, AZ::DataStream::ST_XML, asset.Get(), asset.Get()->RTTI_GetType(), m_context);
+                return Utils::SaveObjectToStream(*stream, AZ::DataStream::ST_XML, asset.Get(), asset->RTTI_GetType(), m_context);
             }
             void DestroyAsset(AssetPtr ptr) override
             {
@@ -1682,10 +1776,10 @@ namespace UnitTest
                         }
 
                         EXPECT_TRUE(asset1.IsReady());
-                        EXPECT_TRUE(asset1.Get()->asset.IsReady());
+                        EXPECT_TRUE(asset1->asset.IsReady());
 
                         // There should be at least 1 ref here in this scope
-                        EXPECT_GE(asset1.Get()->GetUseCount(), 1);
+                        EXPECT_GE(asset1->GetUseCount(), 1);
                         asset1 = Asset<AssetData>();
                     }
 
@@ -1789,10 +1883,10 @@ namespace UnitTest
                     }
 
                     EXPECT_TRUE(asset.IsReady());
-                    EXPECT_TRUE(asset.Get()->data.IsReady());
-                    EXPECT_TRUE(asset.Get()->data.Get()->data.IsReady());
-                    EXPECT_TRUE(asset.Get()->data.Get()->data.Get()->data.IsReady());
-                    EXPECT_TRUE(asset.Get()->data.Get()->data.Get()->data.Get()->data.IsReady());
+                    EXPECT_TRUE(asset->data.IsReady());
+                    EXPECT_TRUE(asset->data->data.IsReady());
+                    EXPECT_TRUE(asset->data->data->data.IsReady());
+                    EXPECT_TRUE(asset->data->data->data->data.IsReady());
 
                     asset = Data::Asset<CyclicAsset>();
 
@@ -1896,10 +1990,10 @@ namespace UnitTest
                     }
 
                     EXPECT_TRUE(asset.IsReady());
-                    EXPECT_TRUE(asset.Get()->data.IsReady());
-                    EXPECT_TRUE(asset.Get()->data.Get()->data.IsReady());
-                    EXPECT_TRUE(asset.Get()->data.Get()->data.Get()->data.IsReady());
-                    EXPECT_EQ(42, asset.Get()->data.Get()->data.Get()->data.Get()->data);
+                    EXPECT_TRUE(asset->data.IsReady());
+                    EXPECT_TRUE(asset->data->data.IsReady());
+                    EXPECT_TRUE(asset->data->data->data.IsReady());
+                    EXPECT_EQ(42, asset->data->data->data->data);
 
                     asset = Data::Asset<AssetA>();
 

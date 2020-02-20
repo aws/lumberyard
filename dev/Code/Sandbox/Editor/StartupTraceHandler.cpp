@@ -119,25 +119,27 @@ namespace SandboxEditor
                 cachedErrors.splice(cachedErrors.end(), m_errors);
             }
         }
-
-        AZ::SystemTickBus::QueueFunction([cachedWarnings, cachedErrors]() 
+        if (m_showWindow)
         {
-            // Parent to the main window, so that the error dialog doesn't
-            // show up as a separate window when alt-tabbing.
-            QWidget* mainWindow = nullptr;
-            AzToolsFramework::EditorRequests::Bus::BroadcastResult(
-                mainWindow,
-                &AzToolsFramework::EditorRequests::Bus::Events::GetMainWindow);
+            AZ::SystemTickBus::QueueFunction([cachedWarnings, cachedErrors]() 
+            {
+                // Parent to the main window, so that the error dialog doesn't
+                // show up as a separate window when alt-tabbing.
+                QWidget* mainWindow = nullptr;
+                AzToolsFramework::EditorRequests::Bus::BroadcastResult(
+                    mainWindow,
+                    &AzToolsFramework::EditorRequests::Bus::Events::GetMainWindow);
 
-            ErrorDialog errorDialog(mainWindow);
-            errorDialog.AddMessages(
-                SandboxEditor::ErrorDialog::MessageType::Warning,
-                cachedWarnings);
-            errorDialog.AddMessages(
-                SandboxEditor::ErrorDialog::MessageType::Error,
-                cachedErrors);
-            errorDialog.exec();
-        });
+                ErrorDialog errorDialog(mainWindow);
+                errorDialog.AddMessages(
+                    SandboxEditor::ErrorDialog::MessageType::Warning,
+                    cachedWarnings);
+                errorDialog.AddMessages(
+                    SandboxEditor::ErrorDialog::MessageType::Error,
+                    cachedErrors);
+                errorDialog.exec();
+            });
+        }
     }
 
     void StartupTraceHandler::ShowMessageBox(const QString& message)

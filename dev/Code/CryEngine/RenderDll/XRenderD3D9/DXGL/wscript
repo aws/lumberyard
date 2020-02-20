@@ -34,7 +34,7 @@ def build(bld):
         copyright_org       = 'Amazon-CryTek',
 
         file_list           = ['../core_renderer.waf_files', 'opengl_renderer.waf_files' ],
-        platforms           = ['win', 'android'],
+        platforms           = ['win', 'android', 'linux'],
         configurations      = ['debug', 'debug_test',
                                'profile', 'profile_test',
                                'linux:performance',
@@ -51,8 +51,10 @@ def build(bld):
                                'AMD_SHARED',
                                'NVAPI',
                                'GLAD'],
-        includes            = [ bld.Path('Code/CryEngine/CryCommon'),
-                                '..', '../..',
+        includes            = [ bld.ThirdPartyPath('boost'),
+                                bld.Path('Code/CryEngine/CryCommon'),
+                                '..', 
+                                '../..',
                                 bld.Path('Code/Tools/HLSLCrossCompiler/include'),
                                 bld.Path('Code/CryEngine/RenderDll/Common'),
                                 bld.ThirdPartyPath('squish'),
@@ -76,11 +78,12 @@ def build(bld):
                                 '-Wno-array-bounds',
                                 '-Wno-return-type',
                                 '-Wno-enum-compare-switch'],
+        
+        linux_x64_cxxflags  = [ '-Wno-c++11-narrowing'],
 
         # Platform Specific
         win_file_list       = ['opengl_mesh_baker.waf_files'],
-        win_includes        = ['.',
-                               bld.Path('Code/Tools/HLSLCrossCompiler/include'),
+        win_includes        = [bld.Path('Code/Tools/HLSLCrossCompiler/include'),
                                bld.ThirdPartyPath('squish')],
         win_lib             = ['opengl32',
                                'winmm',
@@ -96,6 +99,10 @@ def build(bld):
         android_lib         = [ 'GLESv2', 'EGL' ],
 
         android_file_list   = ['opengl_mesh_baker.waf_files'],
+
+        linux_includes      = [ bld.Path('Code/Tools/HLSLCrossCompiler/include') ],
+        linux_lib           = [ 'X11', 'GL', 'EGL' ],
+        linux_file_list     = ['opengl_mesh_baker.waf_files'],
         
         # Testing
         test_all_file_list  = ['opengl_test.waf_files'],

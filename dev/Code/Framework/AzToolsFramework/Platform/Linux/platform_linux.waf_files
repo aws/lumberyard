@@ -1,6 +1,9 @@
 {
-  "auto": {
-    "Platform/Linux": [
+  "auto":
+  {
+    "AzToolsFramework/Archive":
+    [
+      "AzToolsFramework/Archive/ArchiveComponent_Linux.cpp"
     ]
   }
 }

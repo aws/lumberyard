@@ -18,16 +18,13 @@
 
 namespace AZ
 {
+    class Matrix4x4;
     class Vector2;
     class Vector3;
 }
 
 namespace MCore
 {
-    // forward declarations
-    class Matrix;
-
-
     /**
      * Project a 3D point in world space to 2D screen coordinates.
      * @param point The point in world space we want to map to the screen.
@@ -41,7 +38,7 @@ namespace MCore
      *                      point even further to the top and not visible by the camera at all, a bigger value than screenHeight goes analogue for the bottom border.
      *         z component: The distance of the point to the camera. A negative value means the point is behind the camera and not visible.
      */
-    AZ::Vector3 MCORE_API Project(const AZ::Vector3& point, const Matrix& viewProjMatrix, uint32 screenWidth, uint32 screenHeight);
+    AZ::Vector3 MCORE_API Project(const AZ::Vector3& point, const AZ::Matrix4x4& viewProjMatrix, uint32 screenWidth, uint32 screenHeight);
 
     /**
      * Unproject screen coordinates to a 3D point in world space.
@@ -54,9 +51,9 @@ namespace MCore
      * @param projectionMatrix The projection matrix of the camera.
      * @return The unprojected point in world space.
      */
-    AZ::Vector3 MCORE_API UnprojectToEyeSpace(float screenX, float screenY, const MCore::Matrix& invProjMat, float windowWidth, float windowHeight, float depth);
-    AZ::Vector3 MCORE_API Unproject(float screenX, float screenY, float screenWidth, float screenHeight, float depth, const MCore::Matrix& invProjMat, const MCore::Matrix& invViewMat);
-    AZ::Vector3 MCORE_API UnprojectOrtho(float screenX, float screenY, float screenWidth, float screenHeight, float depth, const MCore::Matrix& projectionMatrix, const MCore::Matrix& viewMatrix);
+    AZ::Vector3 MCORE_API UnprojectToEyeSpace(float screenX, float screenY, const AZ::Matrix4x4& invProjMat, float windowWidth, float windowHeight, float depth);
+    AZ::Vector3 MCORE_API Unproject(float screenX, float screenY, float screenWidth, float screenHeight, float depth, const AZ::Matrix4x4& invProjMat, const AZ::Matrix4x4& invViewMat);
+    AZ::Vector3 MCORE_API UnprojectOrtho(float screenX, float screenY, float screenWidth, float screenHeight, float depth, const AZ::Matrix4x4& projectionMatrix, const AZ::Matrix4x4& viewMatrix);
 
     //
     AZ::Vector2 MCORE_API OrthogonalProject(const AZ::Vector3& pos);

@@ -5,6 +5,7 @@
         [
             "Source/Actor.cpp",
             "Source/Actor.h",
+            "Source/ActorBus.h",
             "Source/ActorInstance.cpp",
             "Source/ActorInstance.h",
             "Source/ActorManager.cpp",
@@ -268,6 +269,8 @@
             "Source/BlendTreeLookAtNode.h",
             "Source/BlendTreeMaskNode.cpp",
             "Source/BlendTreeMaskNode.h",
+            "Source/BlendTreeMaskLegacyNode.cpp",
+            "Source/BlendTreeMaskLegacyNode.h",
             "Source/BlendTreeMirrorPoseNode.cpp",
             "Source/BlendTreeMirrorPoseNode.h",
             "Source/BlendTreeMorphTargetNode.cpp",

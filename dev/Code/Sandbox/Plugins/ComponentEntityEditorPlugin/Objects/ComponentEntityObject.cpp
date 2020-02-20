@@ -135,19 +135,26 @@ void CComponentEntityObject::AssignEntity(AZ::Entity* entity, bool destroyOld)
     {
         m_entityId = entity->GetId();
 
-        // Use the entity id to generate a GUID for this CEO because we need it to stay consistent for systems that register by GUID such as undo/redo since our own undo/redo system constantly recreates CEOs
-        GUID entityBasedGUID;
-        entityBasedGUID.Data1 = 0;
-        entityBasedGUID.Data2 = 0;
-        entityBasedGUID.Data3 = 0;
-        static_assert(sizeof(m_entityId) >= sizeof(entityBasedGUID.Data4), "The data contained in entity Id should fit inside Data4, if not switch to some other method of conversion to GUID");
-        memcpy(&entityBasedGUID.Data4, &m_entityId, sizeof(entityBasedGUID.Data4));
-        GetObjectManager()->ChangeObjectId(GetId(), entityBasedGUID);
-
-        // Synchronize sandbox name to new entity's name.
+        // note: GetObjectManager() will always be valid during normal operation but
+        // will not exist when running unit tests
+        if (IObjectManager* objectManager = GetObjectManager())
         {
-            EditorActionScope nameChange(m_nameReentryGuard);
-            SetName(QString(entity->GetName().c_str()));
+            // Use the entity id to generate a GUID for this CEO because we need it to stay consistent for systems
+            // that register by GUID such as undo/redo since our own undo/redo system constantly recreates CEOs
+            GUID entityBasedGUID;
+            entityBasedGUID.Data1 = 0;
+            entityBasedGUID.Data2 = 0;
+            entityBasedGUID.Data3 = 0;
+            static_assert(sizeof(m_entityId) >= sizeof(entityBasedGUID.Data4), "The data contained in entity Id should fit inside Data4, if not switch to some other method of conversion to GUID");
+            memcpy(&entityBasedGUID.Data4, &m_entityId, sizeof(entityBasedGUID.Data4));
+
+            objectManager->ChangeObjectId(GetId(), entityBasedGUID);
+
+            // Synchronize sandbox name to new entity's name.
+            {
+                EditorActionScope nameChange(m_nameReentryGuard);
+                SetName(QString(entity->GetName().c_str()));
+            }
         }
 
         EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, AddRequiredComponents, *entity);
@@ -178,35 +185,31 @@ void CComponentEntityObject::AssignEntity(AZ::Entity* entity, bool destroyOld)
 
 void CComponentEntityObject::RefreshVisibilityAndLock()
 {
+    using AzToolsFramework::EditorEntityInfoRequestBus;
+    using AzToolsFramework::EditorEntityLockComponentNotificationBus;
+    using AzToolsFramework::EditorEntityVisibilityNotificationBus;
+
     // Lock state is tracked in 3 places:
     // EditorLockComponent, EditorEntityModel, and ComponentEntityObject.
-    // Entities in layers have additional behavior in relation to lock state, if the layer is locked it supercede's the entity's lock state.
+    // Entities in layers have additional behavior in relation to lock state, if the layer is locked it supersedes the entity's lock state.
     // The viewport controls for manipulating entities are disabled during lock state here in ComponentEntityObject using the OBJFLAG_FROZEN.
     // In this case, the lock behavior should include the layer hierarchy as well, if the layer is locked this entity can't move.
     // EditorEntityModel can report this information.
     bool locked = false;
-    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(locked, m_entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsLocked);
-    if (locked)
-    {
-        SetFlags(OBJFLAG_FROZEN);
-    }
-    else
-    {
-        ClearFlags(OBJFLAG_FROZEN);
-    }
+    EditorEntityInfoRequestBus::EventResult(
+        locked, m_entityId, &EditorEntityInfoRequestBus::Events::IsLocked);
+
+    EditorEntityLockComponentNotificationBus::Event(
+        m_entityId, &EditorEntityLockComponentNotificationBus::Events::OnEntityLockChanged, locked);
 
     // OBJFLAG_HIDDEN should match EditorVisibilityComponent's VisibilityFlag.
-    bool visibilityFlag = true;
     // Visibility state is similar to lock state in the number of areas it can be set / tracked. See the comment about the lock state above.
-    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(visibilityFlag, m_entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsVisible);
-    if (visibilityFlag)
-    {
-        ClearFlags(OBJFLAG_HIDDEN);
-    }
-    else
-    {
-        SetFlags(OBJFLAG_HIDDEN);
-    }
+    bool visibility = true;
+    EditorEntityInfoRequestBus::EventResult(
+        visibility, m_entityId, &EditorEntityInfoRequestBus::Events::IsVisible);
+
+    EditorEntityVisibilityNotificationBus::Event(
+        m_entityId, &EditorEntityVisibilityNotificationBus::Events::OnEntityVisibilityChanged, visibility);
 }
 
 void CComponentEntityObject::SetName(const QString& name)
@@ -421,59 +424,39 @@ bool CComponentEntityObject::IsFrozen() const
     return CheckFlags(OBJFLAG_FROZEN);
 }
 
-void CComponentEntityObject::SetFrozen(bool bFrozen)
+void CComponentEntityObject::SetFrozen(bool frozen)
 {
-    CEntityObject::SetFrozen(bFrozen);
-
-    // EditorLockComponent's locked state should match OBJFLAG_FROZEN.
     if (m_lockedReentryGuard)
     {
         EditorActionScope flagChange(m_lockedReentryGuard);
-        EBUS_EVENT_ID(m_entityId, AzToolsFramework::EditorLockComponentRequestBus, SetLocked, CheckFlags(OBJFLAG_FROZEN));
+        AzToolsFramework::SetEntityLockState(m_entityId, frozen);
     }
 }
 
 void CComponentEntityObject::OnEntityLockChanged(bool locked)
 {
-    if (m_lockedReentryGuard)
-    {
-        EditorActionScope flagChange(m_lockedReentryGuard);
-        SetFrozen(locked);
-    }
+    CEntityObject::SetFrozen(locked);
 }
 
-void CComponentEntityObject::SetHidden(bool bHidden, uint64 hiddenId/*=CBaseObject::s_invalidHiddenID*/, bool bAnimated/*=false*/)
-{
-    CEntityObject::SetHidden(bHidden, hiddenId, bAnimated);
-
-    // EditorVisibilityComponent's VisibilityFlag should match OBJFLAG_HIDDEN.
-    if (m_visibilityFlagReentryGuard)
-    {
-        EditorActionScope flagChange(m_visibilityFlagReentryGuard);
-        EBUS_EVENT_ID(m_entityId, AzToolsFramework::EditorVisibilityRequestBus, SetVisibilityFlag, !CheckFlags(OBJFLAG_HIDDEN));
-    }
-}
-
-void CComponentEntityObject::OnEntityVisibilityFlagChanged(bool visible)
+void CComponentEntityObject::SetHidden(
+    bool bHidden, uint64 hiddenId /*=CBaseObject::s_invalidHiddenID*/, bool bAnimated /*=false*/)
 {
     if (m_visibilityFlagReentryGuard)
     {
         EditorActionScope flagChange(m_visibilityFlagReentryGuard);
-        SetHidden(!visible);
+        AzToolsFramework::SetEntityVisibility(m_entityId, !bHidden);
     }
+}
+
+void CComponentEntityObject::OnEntityVisibilityChanged(bool visible)
+{
+    CEntityObject::SetHidden(!visible);
 }
 
 void CComponentEntityObject::OnEntityIconChanged(const AZ::Data::AssetId& entityIconAssetId)
 {
     (void)entityIconAssetId;
     SetupEntityIcon();
-}
-
-void CComponentEntityObject::UpdateVisibility(bool bVisible)
-{
-    CEntityObject::UpdateVisibility(bVisible);
-
-    AzToolsFramework::EditorVisibilityRequestBus::Event(m_entityId, &AzToolsFramework::EditorVisibilityRequests::SetCurrentVisibility, m_bVisible != 0);
 }
 
 void CComponentEntityObject::OnLayerChanged(CObjectLayer* layer)
@@ -884,7 +867,7 @@ bool CComponentEntityObject::HitTest(HitContext& hc)
                     hc.dist = closestDistance;
                     return rayIntersection;
                 }
-                    
+
                 hc.dist = (hitPos - hc.raySrc).GetLength();
                 return true;
 
@@ -1032,7 +1015,7 @@ void CComponentEntityObject::Display(DisplayContext& dc)
         if (showIcons)
         {
             if ((dc.flags & DISPLAY_2D) ||
-                IsSelected() || 
+                IsSelected() ||
                 IsAncestorIconDrawingAtSameLocation() ||
                 IsDescendantSelectedAtSameLocation())
             {
@@ -1118,7 +1101,7 @@ bool CComponentEntityObject::IsSelectable() const
 }
 
 void CComponentEntityObject::SetWorldPos(const Vec3& pos, int flags)
-{    
+{
     // Layers, by design, are not supposed to be moveable. Layers are intended to just be a grouping
     // mechanism to allow teams to cleanly split their level into working zones, and a moveable position
     // complicates that behavior more than it helps.
@@ -1185,15 +1168,15 @@ void CComponentEntityObject::SetupEntityIcon()
     m_hasIcon = false;
 
     AzToolsFramework::EditorEntityIconComponentRequestBus::EventResult(hideIconInViewport, m_entityId, &AzToolsFramework::EditorEntityIconComponentRequestBus::Events::IsEntityIconHiddenInViewport);
-    
+
     if (!hideIconInViewport)
     {
         AzToolsFramework::EditorEntityIconComponentRequestBus::EventResult(m_icon, m_entityId, &AzToolsFramework::EditorEntityIconComponentRequestBus::Events::GetEntityIconPath);
-        
+
         if (!m_icon.empty())
         {
             m_hasIcon = true;
-            
+
             int textureId = GetIEditor()->GetIconManager()->GetIconTexture(m_icon.c_str());
             m_iconTexture = GetIEditor()->GetRenderer()->EF_GetTextureByID(textureId);
         }

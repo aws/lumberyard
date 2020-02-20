@@ -24,6 +24,7 @@
 #include "MotionInstancePool.h"
 #include "AnimGraphManager.h"
 #include <MCore/Source/MCoreSystem.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/MemoryTracker.h>
 #include <AzCore/std/algorithm.h>
 #include <AzCore/IO/FileIO.h>
@@ -32,7 +33,6 @@
 #include <AzFramework/API/ApplicationAPI.h>
 #include <EMotionFX/Source/Allocators.h>
 #include <EMotionFX/Source/DebugDraw.h>
-
 
 namespace EMotionFX
 {
@@ -130,6 +130,10 @@ namespace EMotionFX
         mUnitType               = MCore::Distance::UNITTYPE_METERS;
         mGlobalSimulationSpeed  = 1.0f;
         m_isInEditorMode        = false;
+        m_isInServerMode        = false;
+
+        // EMotionFX will do optimization in server mode when this is enabled.
+        m_enableServerOptimization = true;
 
         if (MCore::GetMCore().GetIsTrackingMemory())
         {

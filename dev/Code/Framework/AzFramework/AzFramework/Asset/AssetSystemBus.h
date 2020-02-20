@@ -88,8 +88,15 @@ namespace AzFramework
 
             //! Configure the underlying socket connection
             virtual bool ConfigureSocketConnection(const AZStd::string& branch, const AZStd::string& platform, const AZStd::string& identifier) = 0;
-            //! Configure the underlying socket connection and try to connect to the Asset processor
+            //! Configure the underlying socket connection and try to connect to the Asset processor            
+            //! \param identifier A name for the connection that will show up in the asset processor dialog
+            //! \return Whether the connection was established
             virtual bool Connect(const char* identifier) = 0;
+            //! Configure the underlying socket connection and try to connect to the Asset processor            
+            //! \param identifier A name for the connection that will show up in the asset processor dialog
+            //! \param timeout Time in seconds which the function waits while trying to create a connection.
+            //! \return Whether the connection was established
+            virtual bool ConnectWithTimeout(const char* identifier, AZStd::chrono::duration<float> timeout) = 0;
             //! Disconnect from the underlying socket connection to the Asset processor if connected, otherwise this function does nothing.
             virtual bool Disconnect() = 0;
             /** CompileAssetSync
@@ -153,9 +160,28 @@ namespace AzFramework
             static const char* Editor = "EDITOR";
             static const char* Game = "GAME";
         }
+
+        //! AssetSystemStatusBusTraits
+        //! This bus is for AssetSystem status change
+        class AssetSystemStatus
+            : public AZ::EBusTraits
+        {
+        public:
+            static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple; // multi listener
+            static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;   // single bus
+
+            virtual ~AssetSystemStatus() = default;
+
+            //! Notifies listeners Asset System turns available
+            virtual void AssetSystemAvailable() {}
+            //! Notifies listeners Asset System turns not available
+            virtual void AssetSystemUnavailable() {}
+        };
+
     } // namespace AssetSystem
     using AssetSystemBus = AZ::EBus<AssetSystem::AssetSystemNotifications>;
     using AssetSystemInfoBus = AZ::EBus<AssetSystem::AssetSystemInfoNotifications>;
     using AssetSystemRequestBus = AZ::EBus<AssetSystem::AssetSystemRequests>;
     using AssetSystemConnectionNotificationsBus = AZ::EBus<AssetSystem::AssetSystemConnectionNotifications>;
+    using AssetSystemStatusBus = AZ::EBus<AssetSystem::AssetSystemStatus>;
 } // namespace AzFramework

@@ -79,7 +79,6 @@
 #include <Editor/HyperGraph/FlowGraphManager.h>
 #include <Editor/HyperGraph/FlowGraph.h>
 #include <Editor/HyperGraph/FlowGraphNode.h>
-#include <Editor/AzAssetBrowser/AzAssetBrowserDialog.h>
 #include <IResourceSelectorHost.h>
 #include <Editor/AI/AIManager.h>
 #include "CryEdit.h"
@@ -2495,9 +2494,7 @@ void SandboxIntegrationManager::CloseViewPane(const char* paneName)
 
 void SandboxIntegrationManager::BrowseForAssets(AssetSelectionModel& selection)
 {
-    auto dialog = aznew AzAssetBrowserDialog(selection, GetMainWindow());
-    dialog->exec();
-    delete dialog;
+    AssetBrowserComponentRequestBus::Broadcast(&AssetBrowserComponentRequests::PickAssets, selection, GetMainWindow());
 }
 
 void SandboxIntegrationManager::GenerateCubemapForEntity(AZ::EntityId entityId, AZStd::string* cubemapOutputPath, bool hideEntity)
@@ -2983,11 +2980,11 @@ void SandboxIntegrationManager::DrawWireSphere(const AZ::Vector3& pos, const AZ:
     }
 }
 
-void SandboxIntegrationManager::DrawBall(const AZ::Vector3& pos, float radius)
+void SandboxIntegrationManager::DrawBall(const AZ::Vector3& pos, float radius, bool drawShaded)
 {
     if (m_dc)
     {
-        m_dc->DrawBall(AZVec3ToLYVec3(pos), radius);
+        m_dc->DrawBall(AZVec3ToLYVec3(pos), radius, drawShaded);
     }
 }
 

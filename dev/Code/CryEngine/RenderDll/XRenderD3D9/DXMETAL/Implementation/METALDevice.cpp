@@ -43,7 +43,7 @@
 #if defined(AZ_PLATFORM_MAC)
         self.wantsLayer = YES;
         self.layer = _metalLayer = [CAMetalLayer layer];
-        self.autoresizingMask = (NSViewWidthSizable | NSViewHeightSizable);		
+        self.autoresizingMask = (NSViewWidthSizable | NSViewHeightSizable);
 #else
         _metalLayer = (CAMetalLayer*)self.layer;
         self.autoresizingMask = (UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight);
@@ -197,7 +197,7 @@ namespace NCryMetal
 #if defined(AZ_PLATFORM_MAC)
         CGRect screenBounds = CGRectMake(0, 0, width, height);
         //Make the window closeable and minimizeable.
-        NSUInteger styleMask = NSClosableWindowMask|NSTitledWindowMask|NSMiniaturizableWindowMask;
+        NSUInteger styleMask = NSWindowStyleMaskClosable|NSWindowStyleMaskTitled|NSWindowStyleMaskMiniaturizable;
         NativeWindowType* nativeWindow = [[NativeWindowType alloc] initWithContentRect: screenBounds styleMask: styleMask backing: NSBackingStoreBuffered defer:false];
 
         [nativeWindow makeKeyAndOrderFront:nil];
@@ -258,7 +258,7 @@ namespace NCryMetal
             
             // Create the MetalView
 #if defined(AZ_PLATFORM_MAC)
-            bool isFullScreen = (([nativeWindow styleMask] & NSFullScreenWindowMask) == NSFullScreenWindowMask);
+            bool isFullScreen = (([nativeWindow styleMask] & NSWindowStyleMaskFullScreen) == NSWindowStyleMaskFullScreen);
             CGRect screenBounds = [nativeScreen visibleFrame];
             if(isFullScreen)
             {

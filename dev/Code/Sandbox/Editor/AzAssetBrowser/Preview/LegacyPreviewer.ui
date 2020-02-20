@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>PreviewWidgetClass</class>
- <widget class="QWidget" name="PreviewWidgetClass">
+ <class>LegacyPreviewerClass</class>
+ <widget class="QWidget" name="LegacyPreviewerClass">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -101,31 +101,6 @@
       </property>
       <item>
        <widget class="CPreviewModelCtrl" name="m_previewCtrl" native="true"/>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QWidget" name="m_noPreviewWidget" native="true">
-     <layout class="QVBoxLayout" name="verticalLayout_2">
-      <item>
-       <widget class="QLabel" name="m_noPreviewText">
-        <property name="font">
-         <font>
-          <family>Open Sans</family>
-          <pointsize>8</pointsize>
-         </font>
-        </property>
-        <property name="text">
-         <string>No preview available</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-       </widget>
       </item>
      </layout>
     </widget>

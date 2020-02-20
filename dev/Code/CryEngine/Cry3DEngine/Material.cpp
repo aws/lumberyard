@@ -152,23 +152,7 @@ void CMatInfo::ShutDown()
 {
     SAFE_DELETE(m_pMaterialLayers);
 
-    // When a group material has the same pointer to a shader resource object as
-    // one of its sub materials we don't want to call ReleaseCurrentShaderItem as
-    // the sub material will be calling it and releasing the shader resources twice
-    // can lead to a crash.
-    bool haveReferenceToSubmaterialShaderResources = false;
-    for (auto& subMaterial : m_subMtls)
-    {
-        if (subMaterial && this->GetShaderItem().m_pShaderResources == subMaterial->GetShaderItem().m_pShaderResources)
-        {
-            haveReferenceToSubmaterialShaderResources = true;
-            break;
-        }
-    }
-    if (!haveReferenceToSubmaterialShaderResources)
-    {
-        ReleaseCurrentShaderItem();
-    }
+    ReleaseCurrentShaderItem();
     m_subMtls.clear();
 }
 

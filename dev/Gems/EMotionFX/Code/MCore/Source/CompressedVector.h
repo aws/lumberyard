@@ -74,16 +74,6 @@ namespace MCore
          * Uncompress this compressed vector into an uncompressed Vector3 of floats.
          * Please note that the minimum and maximum values you specify are the same as when you created this compressed vector3 or when you for the last
          * time called the FromVector3 method.
-         * @param output The uncompressed vector to store the result in.
-         * @param minValue The minimum possible value of the xyz components of the uncompressed vector. So in case of a normalized normal, this would be -1.
-         * @param maxValue The maximum possible value of the xyz components of the uncompressed vector. So in case of a normalized normal, this would be +1.
-         */
-        MCORE_INLINE void UnCompress(AZ::PackedVector3f* output, float minValue, float maxValue) const;
-
-        /**
-         * Uncompress this compressed vector into an uncompressed Vector3 of floats.
-         * Please note that the minimum and maximum values you specify are the same as when you created this compressed vector3 or when you for the last
-         * time called the FromVector3 method.
          * @param minValue The minimum possible value of the xyz components of the uncompressed vector. So in case of a normalized normal, this would be -1.
          * @param maxValue The maximum possible value of the xyz components of the uncompressed vector. So in case of a normalized normal, this would be +1.
          * @result The uncompressed version of this vector.

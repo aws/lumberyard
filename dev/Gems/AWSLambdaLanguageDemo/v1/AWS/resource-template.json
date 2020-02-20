@@ -381,7 +381,7 @@
                     "Ref": "ConfigurationKey"
                 },
                 "FunctionName": "NodeLambda",
-                "Runtime": "nodejs8.10",
+                "Runtime": "nodejs10.x",
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
                 }

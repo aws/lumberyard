@@ -15,6 +15,7 @@
 
 #include <QPointer>
 #include <QColor>
+#include <QSize>
 
 class QLineEdit;
 class QSettings;
@@ -25,6 +26,7 @@ namespace AzQtComponents
 {
     class Style;
     class LineEditWatcher;
+    class BrowseEdit;
 
     /**
      * Class to provide extra functionality for working with Line Edit controls.
@@ -39,9 +41,25 @@ namespace AzQtComponents
         {
             int borderRadius;
             QColor borderColor;
+            QColor hoverBackgroundColor;
+            QColor hoverBorderColor;
+            int hoverLineWidth;
             QColor focusedBorderColor;
+            int focusedLineWidth;
             QColor errorBorderColor;
+            int errorLineWidth;
             QColor placeHolderTextColor;
+            bool clearButtonAutoEnabled;
+            QString clearImage;
+            QSize clearImageSize;
+            QString errorImage;
+            QSize errorImageSize;
+            int iconSpacing;
+            int iconMargin;
+
+            int getLineWidth(const QStyleOption* option, bool hasError) const;
+            QColor getBorderColor(const QStyleOption* option, bool hasError) const;
+            QColor getBackgroundColor(const QStyleOption* option, bool hasError, const QWidget* widget) const;
         };
 
         /*!
@@ -69,8 +87,21 @@ namespace AzQtComponents
         */
         static Config defaultConfig();
 
+        /*!
+         * Set the message to display in a tooltip if the QLineEdit validator
+         * detects an error.
+         */
+        static void setErrorMessage(QLineEdit* lineEdit, const QString& error);
+
+        /*!
+         * Side buttons (clear/error buttons) are enabled by default. Allow the
+         * developer to disable them.
+         */
+        static void setSideButtonsEnabled(QLineEdit* lineEdit, bool enabled);
+
     private:
         friend class Style;
+        friend class BrowseEdit;
         AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // needs to have dll-interface to be used by clients of class 'AzQtComponents::LineEdit'
         static QPointer<LineEditWatcher> s_lineEditWatcher;
         AZ_POP_DISABLE_WARNING
@@ -84,7 +115,12 @@ namespace AzQtComponents
         static bool polish(Style* style, QWidget* widget, const Config& config);
         static bool unpolish(Style* style, QWidget* widget, const Config& config);
 
-        static QIcon clearButtonIcon(const QStyleOption* option, const QWidget* widget);
+        static void applyClearButtonStyle(QLineEdit* lineEdit, const Config& config);
+        static void applyErrorStyle(QLineEdit* lineEdit, const Config& config);
+
+        static QIcon clearButtonIcon(const QStyleOption* option, const QWidget* widget, const Config& config);
+
+        static bool sideButtonsEnabled(QLineEdit* lineEdit);
     };
 
 } // namespace AzQtComponents

@@ -33,16 +33,18 @@ namespace GradientSignal
         update();
     }
 
+    QSize GradientPreviewWidget::GetPreviewSize() const
+    {
+        return size();
+    }
+
     void GradientPreviewWidget::paintEvent(QPaintEvent* paintEvent)
     {
-        if (m_dirty)
-        {
-            Render(size());
-            m_dirty = false;
-        }
-
         QPainter painter(this);
-        painter.drawImage(QPoint(0, 0), m_previewImage);
+        if (!m_previewImage.isNull())
+        {
+            painter.drawImage(QPoint(0, 0), m_previewImage);
+        }
     }
 
     void GradientPreviewWidget::resizeEvent(QResizeEvent* resizeEvent)

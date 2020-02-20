@@ -20,6 +20,7 @@
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NodeGraph.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NodeGraphWidget.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/StateGraphNode.h>
+#include <MCore/Source/LogManager.h>
 #include <MysticQt/Source/KeyboardShortcutManager.h>
 #include <QMouseEvent>
 #include <QPainter>

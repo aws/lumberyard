@@ -40,6 +40,7 @@
 #include <MCore/Source/IDGenerator.h>
 #include <MCore/Source/Attribute.h>
 #include <MCore/Source/AttributeFactory.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/Stream.h>
 #include <MCore/Source/Compare.h>
 #include <MCore/Source/Random.h>
@@ -133,13 +134,18 @@ namespace EMotionFX
             }
         }
 
-        // Initialize trigger actions
-        for (AnimGraphTriggerAction* action : m_actionSetup.GetActions())
-        {
-            action->InitAfterLoading(animGraph);
-        }
+        InitTriggerActions();
 
         return result;
+    }
+
+
+    void AnimGraphNode::InitTriggerActions()
+    {
+        for (AnimGraphTriggerAction* action : m_actionSetup.GetActions())
+        {
+            action->InitAfterLoading(mAnimGraph);
+        }
     }
 
 

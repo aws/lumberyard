@@ -242,7 +242,12 @@ void CErrorReport::Display()
     }
     CryLogAlways("========================= End Errors =========================");
 
-    CErrorReportDialog::Open(this);
+    ICVar* const noErrorReportWindowCVar = gEnv && gEnv->pConsole ? gEnv->pConsole->GetCVar("sys_no_error_report_window") : nullptr;
+    if (noErrorReportWindowCVar && noErrorReportWindowCVar->GetIVal() == 0)
+    {
+        CErrorReportDialog::Open(this);
+    }
+
     SetImmidiateMode(true);
 }
 

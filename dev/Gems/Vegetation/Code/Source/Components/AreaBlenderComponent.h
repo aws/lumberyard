@@ -17,8 +17,8 @@
 #include <AzCore/Component/TransformBus.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 #include <LmbrCentral/Dependency/DependencyNotificationBus.h>
-#include <Vegetation/EBuses/AreaNotificationBus.h>
-#include <Vegetation/EBuses/AreaBlenderRequestBus.h>
+#include <Vegetation/Ebuses/AreaNotificationBus.h>
+#include <Vegetation/Ebuses/AreaBlenderRequestBus.h>
 #include <Vegetation/AreaComponentBase.h>
 
 namespace LmbrCentral

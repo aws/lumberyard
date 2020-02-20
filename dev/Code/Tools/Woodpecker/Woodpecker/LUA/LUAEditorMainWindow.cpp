@@ -262,8 +262,6 @@ namespace LUAEditor
         LUAEditorMainWindowMessages::Handler::BusDisconnect();
         LUABreakpointTrackerMessages::Handler::BusDisconnect();
 
-        m_gui->m_assetBrowserTreeView->SaveState();
-
         azdestroy(m_gui);
 
         delete m_assetDatabaseListener;
@@ -1531,8 +1529,7 @@ namespace LUAEditor
                 }
             }
         }
-
-        AZ_TracePrintf(LUAEditorInfoName, "                            willShutDown == %d\n", (int)willShutDown);
+        
         return willShutDown;
     }
 

@@ -21,7 +21,7 @@
 #include "IGame.h"
 #include "IGameFramework.h"
 #include <IInput.h>
-#include <ImGui/imgui.h>
+#include <imgui/imgui.h>
 #include <ImGuiBus.h>
 #include <VertexFormats.h>
 

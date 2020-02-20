@@ -28,7 +28,9 @@ def build(bld):
                         ],
 
         uselib      = ['AWS_CPP_SDK_CORE'],
-        includes    =   [],
+        includes    =   ['.',
+                         bld.ThirdPartyPath('boost'),
+                         bld.Path('Code/CryEngine/CryCommon')],
         
         # Platform Roots
         platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)],

@@ -25,6 +25,9 @@ def build(bld):
 
     bld.DefineGem(
         includes =  [
+            '.',
+            bld.ThirdPartyPath('boost'),
+            bld.Path('Code/CryEngine/CryCommon'),
             bld.Path('Code/CryEngine'),
             bld.Path('Code/CryEngine/CryCommon'),
             bld.Path('Code/CryEngine/Cry3DEngine'),
@@ -46,11 +49,14 @@ def build(bld):
         darwin_dedicated_export_defines = export_defines_not_supported,
 
         editor = dict(
-            platforms   = ['win', 'darwin'],
+            platforms   = ['win', 'darwin', 'linux'],
             defines     = ['RENDER_TO_TEXTURE_EDITOR'],
             use	        = [ 'AzToolsFramework' ],
 
-            includes    = [ 
+            includes    = [
+                '.',
+                bld.ThirdPartyPath('boost'),
+                bld.Path('Code/CryEngine/CryCommon'),
                 bld.Path('Code/CryEngine'),
                 bld.Path('Code/CryEngine/CryCommon'),
                 bld.Path('Code/CryEngine/Cry3DEngine'),

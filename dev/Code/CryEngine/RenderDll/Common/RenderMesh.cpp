@@ -1890,6 +1890,7 @@ void CRenderMesh::CopyTo(IRenderMesh* _pDst, int nAppendVtx, bool bDynamic, bool
         CREMeshImpl* re = (CREMeshImpl*) rSrcMat.pRE;
         if (re)
         {
+            AZ_Assert(!re->m_CustomData, "Trying to copy a render mesh after custom data has been set."); // Custom data cannot be copied over (used by Terrain and Decals)
             rNewMat.pRE = (CREMeshImpl*) gRenDev->EF_CreateRE(eDATA_Mesh);
             CRendElement* pNext = rNewMat.pRE->m_NextGlobal;
             CRendElement* pPrev = rNewMat.pRE->m_PrevGlobal;
@@ -1902,7 +1903,6 @@ void CRenderMesh::CopyTo(IRenderMesh* _pDst, int nAppendVtx, bool bDynamic, bool
             rNewMat.pRE->m_NextGlobal = pNext;
             rNewMat.pRE->m_PrevGlobal = pPrev;
             rNewMat.pRE->m_pRenderMesh = pDst;
-            assert(rNewMat.pRE->m_CustomData);
             rNewMat.pRE->m_CustomData = NULL;
         }
     }
@@ -2331,7 +2331,6 @@ byte* CRenderMesh::GetHWSkinPtr(int32& nStride, uint32 nFlags, bool remapped)
     PROFILE_FRAME(Mesh_GetHWSkinPtr);
     int nStr = 0;
     byte* pData = (byte*)LockVB(VSF_HWSKIN_INFO, nFlags, 0, &nStr);
-    ASSERT_LOCK;
     if (!pData)
     {
         return NULL;
@@ -2686,6 +2685,20 @@ bool CRenderMesh::RT_CheckUpdate(CRenderMesh* pVContainer, uint32 nStreamMask, b
                                 {
                                     RT_AllocationFailure("Update VB Stream", GetStreamSize(i, m_nVerts));
                                     return false;
+                                }
+                                if (i == VSF_HWSKIN_INFO && pVContainer->m_RemappedBoneIndices.size() == 1)
+                                {
+                                    // Just locking the VB stream doesn't store any information about the GUID so
+                                    // if the HWSKIN_INFO has been locked and we only have one set of remapped bone
+                                    // indices we will assume they are the same set. This is a valid assumption in non
+                                    // legacy code, as we will only have the one set loaded from the asset.
+                                    if (!gRenDev->m_DevBufMan.UpdateBuffer(pVContainer->m_RemappedBoneIndices[0].buffer,
+                                        pMS->m_pUpdateData,
+                                        pVContainer->GetVerticesCount() * pVContainer->GetStreamStride(VSF_HWSKIN_INFO)))
+                                    {
+                                        RT_AllocationFailure("Update VB Stream", GetStreamSize(i, m_nVerts));
+                                        return false;
+                                    }
                                 }
                                 pMS->m_nFrameUpdate = nFrame;
                             }

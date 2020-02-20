@@ -41,19 +41,6 @@ MCORE_INLINE void TCompressedVector3<StorageType>::FromVector3(const AZ::Vector3
 }
 
 
-// uncompress into a Vector3
-template <class StorageType>
-MCORE_INLINE void TCompressedVector3<StorageType>::UnCompress(AZ::PackedVector3f* output, float minValue, float maxValue) const
-{
-    const float f = (maxValue - minValue) / static_cast<float>(CONVERT_VALUE);
-    output->Set(
-        static_cast<float>(mX) * f + minValue,
-        static_cast<float>(mY) * f + minValue,
-        static_cast<float>(mZ) * f + minValue
-    );
-}
-
-
 // convert to a Vector3
 template <class StorageType>
 MCORE_INLINE AZ::Vector3 TCompressedVector3<StorageType>::ToVector3(float minValue, float maxValue) const

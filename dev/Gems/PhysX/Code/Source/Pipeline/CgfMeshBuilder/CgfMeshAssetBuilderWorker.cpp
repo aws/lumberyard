@@ -59,7 +59,7 @@ namespace PhysX
 {
     namespace Pipeline
     {
-        bool CookPhysxTriangleMesh(
+        bool CookPhysXMesh(
             const AZStd::vector<Vec3>& vertices,
             const AZStd::vector<AZ::u32>& indices,
             const AZStd::vector<AZ::u16>& faceMaterials,
@@ -94,7 +94,8 @@ namespace PhysX
             bool m_bLoadingWarnings = false;
         };
 
-        static const char* physxGemAssetJobKey = "PhysX mesh";
+        static const char* PhysXGemAssetJobKey = "PhysX mesh";
+        static const char* CgfDefaultMaterialName = "default";
 
         void CgfMeshAssetBuilderWorker::CreateJobs(const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse & response)
         {
@@ -112,7 +113,7 @@ namespace PhysX
                 for (const AssetBuilderSDK::PlatformInfo& platformInfo : request.m_enabledPlatforms)
                 {
                     AssetBuilderSDK::JobDescriptor descriptor;
-                    descriptor.m_jobKey = physxGemAssetJobKey;
+                    descriptor.m_jobKey = PhysXGemAssetJobKey;
                     descriptor.SetPlatformIdentifier(platformInfo.m_identifier.c_str());
 
                     response.m_createJobOutputs.push_back(descriptor);
@@ -123,7 +124,34 @@ namespace PhysX
             }
         }
 
-        static void ConvertCryPhysToPhysx(CNodeCGF* pNode, AZStd::vector<Vec3>* vertices, AZStd::vector<AZ::u32>* indices, AZStd::vector<AZ::u16>* faceMaterials, AZStd::vector<Physics::MaterialConfiguration>* materials)
+        // Calculates the material index for the node. This will auto-insert the material name if it is a new one.
+        static AZ::u16 FindMaterialIndexForNode(AZStd::vector<AZStd::string>& materialNames, CNodeCGF* pNode)
+        {
+            AZ::u16 materialIndex = 0;
+
+            auto materialIt = AZStd::find(materialNames.begin(), materialNames.end(), pNode->pMaterial->name);
+            if (materialIt == materialNames.end())
+            {
+                // update material library
+                materialIndex = static_cast<AZ::u16>(materialNames.size());
+
+                if (pNode->pMaterial != nullptr) //needs to check if the material with this name already exists
+                {
+                    materialNames.push_back(pNode->pMaterial->name);
+                }
+                else
+                {
+                    materialNames.push_back(CgfDefaultMaterialName);
+                }
+            }
+            else
+            {
+                materialIndex = AZStd::distance(materialNames.begin(), materialIt);
+            }
+            return materialIndex;
+        }
+
+        static void ConvertCryPhysToPhysx(CNodeCGF* pNode, AZStd::vector<Vec3>& vertices, AZStd::vector<AZ::u32>& indices, AZStd::vector<AZ::u16>& faceMaterials, AZStd::vector<AZStd::string>& materialNames)
         {
             CPhysWorldLoader physLoader;
             IPhysicalWorld* pPhysWorld = physLoader.GetWorldPtr();
@@ -189,38 +217,29 @@ namespace PhysX
                     AZ_Assert(filteredVertexCurr == filteredVertexNum, "CGF to PhysX cooking: Error while remapping verticies");
 
                     // append the remapped vertices
-                    AZ::u32 vertOffset = vertices->size();
-                    vertices->resize(vertices->size() + filteredVertexNum);
+                    AZ::u32 vertOffset = vertices.size();
+                    vertices.resize(vertices.size() + filteredVertexNum);
                     for (int i = 0; i < filteredVertexNum; ++i)
                     {
-                        (*vertices)[vertOffset + i] = filteredVertices[i];
+                        vertices[vertOffset + i] = filteredVertices[i];
                     }
 
                     // append the remapped indices
-                    AZ::u32 indexOffset = indices->size();
-                    indices->resize(indices->size() + facesNum*3);
+                    AZ::u32 indexOffset = indices.size();
+                    indices.resize(indices.size() + facesNum*3);
                     for (int i = 0; i < facesNum * 3; ++i)
                     {
                         index_t idx = geomMeshData->pIndices[i];
                         AZ::u32 remapIdx = remap[idx];
-                        (*indices)[indexOffset + i] = vertOffset + remapIdx;
+                        indices[indexOffset + i] = vertOffset + remapIdx;
                     }
 
-                    // update material library
-                    AZ::u16 materialIndex = static_cast<AZ::u16>(materials->size());
-                    Physics::MaterialConfiguration materialEntry;
-                    if (pNode->pMaterial != nullptr)
-                    {
-                        // @KB TODO: additional material data
-                        materialEntry.m_surfaceType = pNode->pMaterial->name;
-                        //materialEntry.SetDynamicFriction(0.f);
-                        //materialEntry.SetRestitution(0.f);
-                    }
-                    materials->push_back(materialEntry);
+                    // Get the material index
+                    AZ::u16 materialIndex = FindMaterialIndexForNode(materialNames, pNode);
 
                     // append material info for each triangle
                     // I'm unsure from the data if these materials need to be iterated from the geomMeshData, and multiple materials inserted into the library.  This may need updating if that is the case.
-                    faceMaterials->resize(faceMaterials->size() + facesNum, materialIndex); // One entry per triangle
+                    faceMaterials.resize(faceMaterials.size() + facesNum, materialIndex); // One entry per triangle
                 }
                 else if (geomType == GEOM_BOX)
                 {
@@ -257,36 +276,27 @@ namespace PhysX
                     }
 
                     // append the remapped vertices
-                    AZ::u32 vertOffset = vertices->size();
-                    vertices->resize(vertices->size() + 8);
+                    AZ::u32 vertOffset = vertices.size();
+                    vertices.resize(vertices.size() + 8);
                     for (int i = 0; i < 8; ++i)
                     {
-                        (*vertices)[vertOffset + i] = boxData->center + boxVerts[i];
+                        vertices[vertOffset + i] = boxData->center + boxVerts[i];
                     }
 
                     // append the remapped indices
-                    AZ::u32 indexOffset = indices->size();
-                    indices->resize(indices->size() + 36);
+                    AZ::u32 indexOffset = indices.size();
+                    indices.resize(indices.size() + 36);
                     for (int i = 0; i < 36; ++i)
                     {
-                        (*indices)[indexOffset + i] = vertOffset + boxIndices[i];
+                        indices[indexOffset + i] = vertOffset + boxIndices[i];
                     }
 
-                    // update material library
-                    AZ::u16 materialIndex = static_cast<AZ::u16>(materials->size());
-                    Physics::MaterialConfiguration materialEntry;
-                    if (pNode->pMaterial != nullptr)
-                    {
-                        // @KB TODO: additional material data
-                        materialEntry.m_surfaceType = pNode->pMaterial->name;
-                        //materialEntry.SetDynamicFriction(0.f);
-                        //materialEntry.SetRestitution(0.f);
-                    }
-                    materials->push_back(materialEntry);
+                    // Get the material index
+                    AZ::u16 materialIndex = FindMaterialIndexForNode(materialNames, pNode);
 
                     // append material info for each triangle
                     // I'm unsure from the data if these materials need to be iterated from the geomMeshData, and multiple materials inserted into the library.  This may need updating if that is the case.
-                    faceMaterials->resize(faceMaterials->size() + 12, materialIndex); // One entry per triangle
+                    faceMaterials.resize(faceMaterials.size() + 12, materialIndex); // One entry per triangle
                 }
                 else
                 {
@@ -295,7 +305,7 @@ namespace PhysX
             }
         }
 
-        static bool ConvertCGFToPhysX(const char* sourcePath, AZStd::vector<uint8_t>* cookedMeshData, AZStd::vector<Physics::MaterialConfiguration>* materials, const AZStd::string& platformIdentifier)
+        static bool ConvertCGFToPhysX(const char* sourcePath, MeshAssetData& assetData, const AZStd::string& platformIdentifier)
         {
             CChunkFile chunkFile;
             CLoaderCGF cgfLoader;
@@ -319,6 +329,7 @@ namespace PhysX
             AZStd::vector<Vec3> vertices; // don't use AZ::Vector3, it includes padding. Vec3 does not have padding.
             AZStd::vector<vtx_idx> indices;
             AZStd::vector<AZ::u16> faceMaterials;
+            AZStd::vector<AZStd::string> materialNames;
 
             for (int32_t i = 0; i < pCGF->GetNodeCount(); ++i)
             {
@@ -326,7 +337,7 @@ namespace PhysX
                 if (pNode)
                 {
                     CMesh& mesh = *pNode->pMesh;
-                    ConvertCryPhysToPhysx(pNode, &vertices, &indices, &faceMaterials, materials);
+                    ConvertCryPhysToPhysx(pNode, vertices, indices, faceMaterials, materialNames);
                 }
             }
 
@@ -340,7 +351,31 @@ namespace PhysX
             meshGroup.SetMeshWeldTolerance(0.001f);
             meshGroup.SetWeldVertices(true);
 
-            bool success = CookPhysxTriangleMesh(vertices, indices, faceMaterials, cookedMeshData, meshGroup, platformIdentifier);
+            // Note: CGF->Pxmesh builder only supports triangle mesh cooking, however if you wish to add support of primitives/convexes,
+            // you can add it below by setting meshType = Physics::CookedMeshShapeConfiguration::MeshType::Convex 
+            // or even creating BoxShapeConfiguration/SphereShapeConfiguration etc. instead of CookedMeshShapeConfiguration
+            Physics::CookedMeshShapeConfiguration::MeshType meshType = Physics::CookedMeshShapeConfiguration::MeshType::TriangleMesh;
+
+            AZStd::vector<AZ::u8> physxData;
+
+            bool success = CookPhysXMesh(vertices, indices, faceMaterials, &physxData, meshGroup, platformIdentifier);
+
+            if (!success)
+            {
+                AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "PhysX Mesh cooking failed. CGF: %s", sourcePath);
+                return false;
+            }
+
+            AZStd::shared_ptr<AssetColliderConfiguration> colliderConfig = nullptr;
+            AZStd::shared_ptr<Physics::CookedMeshShapeConfiguration> shapeConfig = AZStd::make_shared<Physics::CookedMeshShapeConfiguration>();
+
+            shapeConfig->SetCookedMeshData(physxData.data(), physxData.size(), meshType);
+
+            assetData.m_colliderShapes.emplace_back(colliderConfig, shapeConfig);
+            assetData.m_materialNames = materialNames;
+            assetData.m_surfaceNames = materialNames; // There're no surfaces information in CGF. Using material names.
+            assetData.m_materialIndexPerShape.push_back(MeshAssetData::TriangleMeshMaterialIndex);
+
             return success;
         }
 
@@ -356,8 +391,7 @@ namespace PhysX
                 return;
             }
 
-
-            if (request.m_jobDescription.m_jobKey == physxGemAssetJobKey)
+            if (request.m_jobDescription.m_jobKey == PhysXGemAssetJobKey)
             {
                 AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Starting PhysX Gem mesh conversion.\n");
                 CreatePhysXGemMeshAsset(request, response);
@@ -379,16 +413,15 @@ namespace PhysX
                 return;
             }
 
-            AZStd::vector<uint8_t> cookedMeshData;
-            AZStd::vector<Physics::MaterialConfiguration> materials; // material data is ignored by .pxmesh files, but material indices are still stored in the cooked data
-            if (!ConvertCGFToPhysX(request.m_fullPath.c_str(), &cookedMeshData, &materials, request.m_platformInfo.m_identifier))
+            MeshAssetData assetData;
+            if (!ConvertCGFToPhysX(request.m_fullPath.c_str(), assetData, request.m_platformInfo.m_identifier))
             {
                 AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Physics Cook: Cannot cook geometry file %s because it's in console format.\n", request.m_fullPath.c_str());
                 response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
                 return;
             }
 
-            if (cookedMeshData.size() == 0)
+            if (assetData.m_colliderShapes.empty())
             {
                 AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "No physicalized nodes discovered, ending the job.\n");
                 response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
@@ -402,23 +435,27 @@ namespace PhysX
             AZStd::string destPath;
             AzFramework::StringFunc::Path::ConstructFull(request.m_tempDirPath.c_str(), fileName.c_str(), MeshAssetHandler::s_assetFileExtension, destPath, true);
 
-            MeshAssetCookedData assetFileContent;
-            assetFileContent.m_isConvexMesh = false;
-            assetFileContent.m_cookedPxMeshData = cookedMeshData;
+            if (Utils::WriteCookedMeshToFile(destPath, assetData))
+            {
+                AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Writing cooked mesh to %s finished!\n", destPath.c_str());
 
-            Utils::WriteCookedMeshToFile(destPath, assetFileContent);
+                AzFramework::StringFunc::Path::GetFullFileName(destPath.c_str(), fileName);
 
-            AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Writing cooked mesh to %s finished!\n", destPath.c_str());
+                AssetBuilderSDK::JobProduct jobProduct(fileName);
+                jobProduct.m_productAssetType = AZ::AzTypeInfo<MeshAsset>::Uuid();
+                jobProduct.m_productSubID = AssetBuilderSDK::ConstructSubID(1, 0, 0);
 
-            AzFramework::StringFunc::Path::GetFullFileName(destPath.c_str(), fileName);
+                response.m_outputProducts.push_back(jobProduct);
+                response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
+                AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Job finished, returning success.!\n");
 
-            AssetBuilderSDK::JobProduct jobProduct(fileName);
-            jobProduct.m_productAssetType = AZ::AzTypeInfo<MeshAsset>::Uuid();
-            jobProduct.m_productSubID = AssetBuilderSDK::ConstructSubID(1, 0, 0);
-
-            response.m_outputProducts.push_back(jobProduct);
-            response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
-            AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Job finished, returning success.!\n");
+            }
+            else
+            {
+                AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "Unable to write to a PhysX mesh asset: %s for a CGF: %s", 
+                    destPath.c_str(), request.m_fullPath.c_str());
+                response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+            }
         }
 
 

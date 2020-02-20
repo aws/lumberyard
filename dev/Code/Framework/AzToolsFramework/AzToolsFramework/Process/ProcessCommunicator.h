@@ -21,6 +21,8 @@
     #include <AzToolsFramework/Process/internal/ProcessCommon_Win.h>
 #elif AZ_TRAIT_OS_PLATFORM_APPLE
     #include <AzToolsFramework/Process/internal/ProcessCommon_OSX.h>
+#elif defined(AZ_PLATFORM_LINUX)
+    #include <AzToolsFramework/Process/internal/ProcessCommon_Linux.h>
 #endif
 
 namespace AzToolsFramework

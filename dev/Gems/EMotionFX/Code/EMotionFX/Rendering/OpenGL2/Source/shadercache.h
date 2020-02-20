@@ -15,6 +15,8 @@
 
 #include "Shader.h"
 #include <AzCore/std/string/string.h>
+#include <MCore/Source/Array.h>
+
 
 namespace RenderGL
 {

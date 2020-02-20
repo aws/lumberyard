@@ -46,18 +46,50 @@ AzQtComponents--FilterCriteriaButton
     background-color: rgb(46, 46, 46);
 }
 
-AzQtComponents--FilterCriteriaButton QPushButton
+AzQtComponents--FilterCriteriaButton QPushButton#closeTag
 {
     qproperty-icon: url(:/stylesheet/img/close.svg);
-    qproperty-iconSize: 14px 14px;
+    qproperty-iconSize: 16px 16px;
     background-color: transparent;
-    max-height: 18px;
+    padding-right: 0px;
+    padding-Left: 2px;
+    max-height: 24px;
+}
+
+AzQtComponents--FilterCriteriaButton QPushButton#unlocked
+{
+    qproperty-icon: url(:/stylesheet/img/close.svg);
+    qproperty-iconSize: 16px 16px;
+    background-color: transparent;
+    padding-right: 0px;
+    padding-Left: 4px;
+    max-height: 24px;
+}
+
+AzQtComponents--FilterCriteriaButton QPushButton#locked
+{
+    qproperty-icon: url(:/stylesheet/img/close.svg);
+    qproperty-iconSize: 16px 16px;
+    background-color: transparent;
+    padding-right: 0px;
+    padding-Left: 4px;
+    max-height: 24px;
+}
+
+AzQtComponents--FilterCriteriaButton QPushButton#visible
+{
+    qproperty-icon: url(:/stylesheet/img/close.svg);
+    qproperty-iconSize: 16px 16px;
+    background-color: transparent;
+    padding-right: 0px;
+    padding-Left: 4px;
+    max-height: 24px;
 }
 
 AzQtComponents--FilterCriteriaButton QLabel
 {
     padding-left: 8px;
-    padding-right: 8px;
+    padding-right: 2px;
     background-color: transparent;
 }
 

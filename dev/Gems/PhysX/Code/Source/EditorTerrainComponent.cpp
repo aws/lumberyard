@@ -167,6 +167,7 @@ namespace PhysX
         Physics::EditorTerrainMaterialRequestsBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EntitySelectionEvents::Bus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::ToolsApplicationNotificationBus::Handler::BusConnect();
+        AZ::HeightmapUpdateNotificationBus::Handler::BusConnect();
         PhysX::Utils::LogWarningIfMultipleComponents<Physics::EditorTerrainComponentRequestsBus>(
             "EditorTerrainComponent", 
             "Multiple EditorTerrainComponents found in the editor scene on these entities:");
@@ -196,6 +197,7 @@ namespace PhysX
         Physics::EditorTerrainComponentRequestsBus::Handler::BusDisconnect();
         Physics::EditorTerrainMaterialRequestsBus::Handler::BusDisconnect();
         AZ::Data::AssetBus::Handler::BusDisconnect(m_configuration.m_heightFieldAsset.GetId());
+        AZ::HeightmapUpdateNotificationBus::Handler::BusDisconnect();
         AzToolsFramework::ToolsApplicationNotificationBus::Handler::BusDisconnect();
 
         UnregisterForEditorEvents();
@@ -314,6 +316,11 @@ namespace PhysX
         {
             UpdateHeightFieldAsset();
         }
+    }
+
+    void EditorTerrainComponent::HeightmapModified(const AZ::Aabb& /*bounds*/)
+    {
+        UpdateHeightFieldAsset();
     }
 
     AZStd::string EditorTerrainComponent::GetExportPath()

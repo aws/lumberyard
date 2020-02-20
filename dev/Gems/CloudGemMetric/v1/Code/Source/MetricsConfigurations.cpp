@@ -14,7 +14,7 @@
 
 #include "CloudGemMetric/MetricsConfigurations.h"
 #include "CloudGemMetric/MetricManager.h"
-#include "AWS/ServiceAPI/CloudGemMetricClientComponent.h"
+#include "AWS/ServiceApi/CloudGemMetricClientComponent.h"
 #include <AzFramework/FileFunc/FileFunc.h>
 
 namespace CloudGemMetric
@@ -41,7 +41,7 @@ namespace CloudGemMetric
         doc.SetObject();
         m_metricsSettings.SerializeToJson(doc);
         m_metricsFilterGroup.SerializeToJson(doc);
-        m_metricsPriority.SerializeToJson(doc);        
+        m_metricsPriority.SerializeToJson(doc);
 
         rapidjson::StringBuffer strbuf;
         rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
@@ -83,7 +83,7 @@ namespace CloudGemMetric
     }
 
     bool MetricsConfigurations::ReadFromJson(const char* filePath)
-    {        
+    {
         AZ::IO::FileIOBase* fileIO = MetricManager::GetFileIO();
         if (!fileIO)
         {

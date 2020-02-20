@@ -1,0 +1,42 @@
+{
+    "none": {
+        "Source": [
+            "Source/NvCloth_precompiled.cpp",
+            "Source/NvCloth_precompiled.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/NvCloth/SystemBus.h"
+        ],
+        "Source": [
+            "Source/Module.cpp"
+        ],
+        "Source/Components": [
+            "Source/Components/ClothComponent.cpp",
+            "Source/Components/ClothComponent.h"
+        ],
+        "Source/System": [
+            "Source/System/SystemComponent.cpp",
+            "Source/System/SystemComponent.h",
+            "Source/System/ActorClothColliders.cpp",
+            "Source/System/ActorClothColliders.h",
+            "Source/System/ActorClothSkinning.cpp",
+            "Source/System/ActorClothSkinning.h",
+            "Source/System/ClothDebugDisplay.cpp",
+            "Source/System/ClothDebugDisplay.h"
+        ],
+        "Source/Utils": [
+            "Source/Utils/Allocators.h",
+            "Source/Utils/MathConversion.h",
+            "Source/Utils/AssetHelper.h",
+            "Source/Utils/AssetHelper.cpp",
+            "Source/Utils/MeshAssetHelper.cpp",
+            "Source/Utils/MeshAssetHelper.h",
+            "Source/Utils/ActorAssetHelper.cpp",
+            "Source/Utils/ActorAssetHelper.h",
+            "Source/Utils/TangentSpaceCalculation.cpp",
+            "Source/Utils/TangentSpaceCalculation.h"
+        ]
+    }
+}

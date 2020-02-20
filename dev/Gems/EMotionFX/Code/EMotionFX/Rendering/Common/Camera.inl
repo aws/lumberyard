@@ -119,27 +119,6 @@ MCORE_INLINE float Camera::GetAspectRatio() const
 }
 
 
-// return the camera projection matrix
-MCORE_INLINE MCore::Matrix& Camera::GetProjectionMatrix()
-{
-    return mProjectionMatrix;
-}
-
-
-// return the camera view matrix
-MCORE_INLINE MCore::Matrix& Camera::GetViewMatrix()
-{
-    return mViewMatrix;
-}
-
-
-// return the camera viewproj matrix
-MCORE_INLINE MCore::Matrix& Camera::GetViewProjMatrix()
-{
-    return mViewProjMatrix;
-}
-
-
 // get the translation speed
 MCORE_INLINE float Camera::GetTranslationSpeed() const
 {

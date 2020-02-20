@@ -21,18 +21,21 @@ def build(bld):
 
         includes    = [ '.',
                         'Include',
+                        bld.ThirdPartyPath('boost'),
                         bld.Path('Code/CryEngine/CryCommon'),
                         bld.Path('Code/CryEngine/CryAction')
                       ],
 
         editor = dict(
-            platforms   = ['win', 'darwin'],
+            platforms   = ['win', 'darwin', 'linux'],
 
             defines     = ['MAESTRO_EDITOR',],
 
             includes    = [ '.',
                             'Include',
                             'Source',
+                            bld.ThirdPartyPath('boost'),
+                            bld.Path('Code/CryEngine/CryCommon'),
                             bld.Path('Code/Sandbox/Editor'),
                             bld.Path('Code/Sandbox/Editor/Include'),
                             bld.Path('Code/Sandbox/Plugins/EditorCommon'),

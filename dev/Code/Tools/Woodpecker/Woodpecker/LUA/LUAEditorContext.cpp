@@ -106,6 +106,11 @@ namespace LUAEditor
         s_pLUAEditorScriptPtr = NULL;
         delete m_referenceModel;
 
+        for (auto errorData : m_errorData)
+        {
+            delete errorData;
+        }
+
         m_errorData.clear();
 
         AZ_Assert(m_numOutstandingOperations == 0, "Save still pending when shut down.");
@@ -638,24 +643,24 @@ namespace LUAEditor
         typedef AzToolsFramework::FrameworkMessages::Bus HotkeyBus;
         // register our hotkeys so that they exist in the preferences panel even if we're not open:
 
-        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAFind", 0xc62d8078),					"Ctrl+F",			"Find",									"LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
-        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAQuickFindLocal", 0x115cbcda),			"Ctrl+F3",			"Quick Find Local",						"LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
-        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAQuickFindLocalReverse", 0xdd8a0c22),	"Ctrl+Shift+F3",	"Quick Find Local (Reverse)",			"LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
-        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAFindInFiles", 0xdaebdfdd),				"Ctrl+Shift+F",		"Find In Files",						"LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
-        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAReplace", 0x1fd5510c),					"Ctrl+R",			"Replace",								"LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
-        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAReplaceInFiles", 0x38b609e0),			"Ctrl+Shift+R",		"Replace In Files",						"LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
-        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAGoToLine", 0xb6603f27),				"Ctrl+G",			"Go to line number...",					"LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
-        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAFold", 0xf0969e48),					"Alt+0",			"Fold Source Functions",				"LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
-        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAUnfold", 0x36934ecd),					"Alt+Shift+0",		"Unfold Source Functions",				"LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
-        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUACloseAllExceptCurrent", 0x0076409a),	"Ctrl+Alt+F4",		"Close All Windows Except Current",		"LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
-        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUACloseAll", 0xf732678f),				"Ctrl+Shift+F4",	"Close All Windows",					"LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
-        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAComment", 0x873c2725),					"Ctrl+K",			"Comment Selected Block",				"LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
-        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAUncomment", 0x9190cf18),				"Ctrl+Shift+K",		"Uncomment Selected Block",				"LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
+        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAFind", 0xc62d8078),                    "Ctrl+F",           "Find",                                 "LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
+        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAQuickFindLocal", 0x115cbcda),          "Ctrl+F3",          "Quick Find Local",                     "LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
+        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAQuickFindLocalReverse", 0xdd8a0c22),   "Ctrl+Shift+F3",    "Quick Find Local (Reverse)",           "LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
+        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAFindInFiles", 0xdaebdfdd),             "Ctrl+Shift+F",     "Find In Files",                        "LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
+        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAReplace", 0x1fd5510c),                 "Ctrl+R",           "Replace",                              "LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
+        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAReplaceInFiles", 0x38b609e0),          "Ctrl+Shift+R",     "Replace In Files",                     "LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
+        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAGoToLine", 0xb6603f27),                "Ctrl+G",           "Go to line number...",                 "LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
+        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAFold", 0xf0969e48),                    "Alt+0",            "Fold Source Functions",                "LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
+        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAUnfold", 0x36934ecd),                  "Alt+Shift+0",      "Unfold Source Functions",              "LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
+        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUACloseAllExceptCurrent", 0x0076409a),   "Ctrl+Alt+F4",      "Close All Windows Except Current",     "LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
+        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUACloseAll", 0xf732678f),                "Ctrl+Shift+F4",    "Close All Windows",                    "LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
+        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAComment", 0x873c2725),                 "Ctrl+K",           "Comment Selected Block",               "LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
+        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAUncomment", 0x9190cf18),               "Ctrl+Shift+K",     "Uncomment Selected Block",             "LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
 
-        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUALinesUpTranspose", 0xafc899ef),		"Ctrl+Shift+Up",	"Transpose Lines Up",					"LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
-        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUALinesDnTranspose", 0xf9d733bf),		"Ctrl+Shift+Down",	"Transpose Lines Down",					"LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
+        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUALinesUpTranspose", 0xafc899ef),        "Ctrl+Shift+Up",    "Transpose Lines Up",                   "LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
+        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUALinesDnTranspose", 0xf9d733bf),        "Ctrl+Shift+Down",  "Transpose Lines Down",                 "LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
 
-        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAResetZoom", 0xbe0787ad),				"Ctrl+0",			"Reset Default Zoom",					"LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
+        EBUS_EVENT(HotkeyBus, RegisterHotkey, AzToolsFramework::HotkeyDescription(AZ_CRC("LUAResetZoom", 0xbe0787ad),               "Ctrl+0",           "Reset Default Zoom",                   "LUA Editor", 1, AzToolsFramework::HotkeyDescription::SCOPE_WINDOW));
 
         bool GUIMode = true;
         EBUS_EVENT_RESULT(GUIMode, LegacyFramework::FrameworkApplicationMessages::Bus, IsRunningInGUIMode);
@@ -2444,15 +2449,15 @@ namespace LUAEditor
                             {
                                 if (m_pLUAEditorMainWindow)
                                 {
-                                    m_errorData.push_back();
-                                    auto& errorData = m_errorData.back();
+                                    m_errorData.push_back(new CompilationErrorData());
+                                    auto errorData = m_errorData.back();
 
                                     // Get the full path from the currentAsset
                                     bool pathFound = false;
                                     AZStd::string fullPath;
-                                    AzToolsFramework::AssetSystemRequestBus::BroadcastResult(pathFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetFullSourcePathFromRelativeProductPath, currentAsset, errorData.m_filename);
+                                    AzToolsFramework::AssetSystemRequestBus::BroadcastResult(pathFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetFullSourcePathFromRelativeProductPath, currentAsset, errorData->m_filename);
                                     // Lower this so that it matches the asset_id used by the rest of the lua id when referring to open files
-                                    AZStd::to_lower(errorData.m_filename.begin(), errorData.m_filename.end());
+                                    AZStd::to_lower(errorData->m_filename.begin(), errorData->m_filename.end());
 
                                     // Errors should come in the form of <timestamp> filename.lua:####: errormsg
                                     AZStd::string logString = logLine.ToString();
@@ -2469,12 +2474,12 @@ namespace LUAEditor
                                         int lineNumber = 0;
                                         if (AzFramework::StringFunc::LooksLikeInt(match[1].str().c_str(), &lineNumber))
                                         {
-                                            errorData.m_lineNumber = lineNumber;
+                                            errorData->m_lineNumber = lineNumber;
                                             finalMessage = match[2].str().c_str();
                                         }
                                     }
 
-                                    m_pLUAEditorMainWindow->AddMessageToLog(logLine.GetLogType(), LUAEditorInfoName, finalMessage.c_str(), &errorData);
+                                    m_pLUAEditorMainWindow->AddMessageToLog(logLine.GetLogType(), LUAEditorInfoName, finalMessage.c_str(), errorData);
                                 }
                             }
                         });

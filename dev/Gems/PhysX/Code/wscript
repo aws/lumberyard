@@ -47,7 +47,6 @@ def build(bld):
         file_list         = physx_file_list,
         disable_tests     = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
         platforms         = ['all'],
-        includes          = [bld.Path('Code/CryEngine/CryCommon')],
         test_all_includes = [bld.Path('Code/Framework/Tests')],
         pch               = pch_file,
         use               = ['AzFramework',
@@ -55,6 +54,9 @@ def build(bld):
         uselib            = [physx_sdk_lib],
         test_all_use      = ['AzPhysicsTests'],
         win_features      = ['crcfix'],
+        includes          = ['.',
+                             bld.ThirdPartyPath('boost'),
+                             bld.Path('Code/CryEngine/CryCommon')],
 
         win_x64_clang_cxxflags = ['-Wno-return-type-c-linkage'],
         platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)],
@@ -63,7 +65,10 @@ def build(bld):
             file_list         = physx_file_list_editor,
             disable_tests     = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
             defines           = ['PHYSX_EDITOR','ENABLE_NON_COMPILED_CGF'],
-            includes          = [bld.Path('Code/Tools'),
+            includes          = ['.',
+                                 bld.ThirdPartyPath('boost'),
+                                 bld.Path('Code/CryEngine/CryCommon'),
+                                 bld.Path('Code/Tools'),
                                  bld.Path('Code/Sandbox/Editor'),
                                  bld.Path('Code/Sandbox/Editor/Include'),
                                  bld.Path('Code/Tools/CryCommonTools'),
@@ -78,7 +83,7 @@ def build(bld):
                                  'SceneData',
                                  'AssetBuilderSDK'],
             test_all_use      = ['AzPhysicsTests', 'AzToolsFrameworkTestCommon', 'QT5TEST'],
-            uselib            = ['QT5CORE', physx_sdk_lib],
+            uselib            = ['QT5CORE', physx_sdk_lib, 'POLY2TRI_LIB'],
 
             # Platform specific
             win_lib           = ['Ws2_32', 'Gdi32', 'Shell32', 'Ole32', 'Rpcrt4', 'Winmm'],

@@ -63,10 +63,6 @@ namespace AZ
                 {
                     return Events::ProcessingResult::Failure;
                 }
-
-                context.m_createdData.push_back();
-
-                return Events::ProcessingResult::Success;
             }
         } // namespace FbxSceneBuilder
     } // namespace SceneAPI

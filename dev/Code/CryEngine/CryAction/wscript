@@ -24,11 +24,12 @@ def build(bld):
         file_list               = ['cryaction.waf_files'],
         win_test_all_file_list  = ['cryaction_tests.waf_files'],
         darwin_test_all_file_list = ['cryaction_tests.waf_files'],
+        linux_test_all_file_list = ['cryaction_tests.waf_files'],
         platforms               = ['all'],
         configurations          = ['all'],
+        includes                = [bld.ThirdPartyPath('boost'),
+                                   bld.Path('Code/CryEngine/CryCommon')],
         defines                 = ['USE_CRY_NEW_AND_DELETE'],
         use                     = ['AzCore'],
-        includes                = [bld.Path('Code/CryEngine/CryCommon')
-                                  ],
     )
 

@@ -41,7 +41,7 @@ namespace EMotionFX
                 AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
                 if (serializeContext)
                 {
-                    serializeContext->Class<ActorPhysicsSetupRule, ExternalToolRule>()
+                    serializeContext->Class<ActorPhysicsSetupRule>()
                         ->Version(1)
                         ->Field("data", &ActorPhysicsSetupRule::m_data)
                         ;

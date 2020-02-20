@@ -207,7 +207,7 @@ struct SANDBOX_API DisplayContext
     const Matrix34& GetMatrix();
 
     // Draw special 3D objects.
-    void DrawBall(const Vec3& pos, float radius);
+    void DrawBall(const Vec3& pos, float radius, bool drawShaded = true);
 
     //! Draws 3d arrow.
     void DrawArrow(const Vec3& src, const Vec3& trg, float fHeadScale = 1, bool b2SidedArrow = false);

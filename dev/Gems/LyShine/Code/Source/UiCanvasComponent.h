@@ -588,7 +588,7 @@ private: // static data
     //! occurs and back to true on mouse/touch activity.
     static bool s_handleHoverInputEvents;
 
-    //! If true, when handling hover input events, allow clearing the hover interactable if the mouse isn't 
+    //! If true, when handling hover input events, allow clearing the hover interactable if the mouse isn't
     //! over any interactables. Set to false when a key event occurs and back to true when handling hover
     //! input events and the input position hovers over an interactable.
     static bool s_allowClearingHoverInteractableOnHoverInput;

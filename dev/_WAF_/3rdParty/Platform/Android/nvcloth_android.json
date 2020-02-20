@@ -1,0 +1,23 @@
+{
+    "platform": {
+        "android_armv8_clang": {
+            "importlibpath_debug": ["${lib_paths}/android-arm64-v8a-debug-cmake"],
+            "importlibpath_profile": ["${lib_paths}/android-arm64-v8a-profile-cmake"],
+            "importlibpath_performance": ["${lib_paths}/android-arm64-v8a-release-cmake"],
+            "importlibpath_release": ["${lib_paths}/android-arm64-v8a-release-cmake"],
+            
+            "import_debug": [
+                "lib${lib_names}DEBUG.a"
+            ],
+            "import_profile": [
+                "lib${lib_names}PROFILE.a"
+            ],
+            "import_performance": [
+                "lib${lib_names}.a"
+            ],
+            "import_release": [
+                "lib${lib_names}.a"
+            ]
+        }
+    }
+}

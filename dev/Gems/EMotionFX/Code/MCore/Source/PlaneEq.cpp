@@ -16,20 +16,20 @@
 namespace MCore
 {
     // clip points against the plane
-    bool PlaneEq::Clip(const Array<AZ::Vector3>& pointsIn, Array<AZ::Vector3>& pointsOut) const
+    bool PlaneEq::Clip(const AZStd::vector<AZ::Vector3>& pointsIn, AZStd::vector<AZ::Vector3>& pointsOut) const
     {
-        int32 numPoints = pointsIn.GetLength();
+        size_t numPoints = pointsIn.size();
 
         MCORE_ASSERT(&pointsIn != &pointsOut);
         MCORE_ASSERT(numPoints >= 2);
 
-        int32       vert1       = numPoints - 1;
+        size_t      vert1       = numPoints - 1;
         float       firstDist   = CalcDistanceTo(pointsIn[vert1]);
         float       nextDist    = firstDist;
         bool        firstIn     = (firstDist >= 0.0f);
         bool        nextIn      = firstIn;
 
-        pointsOut.Clear();
+        pointsOut.clear();
 
         if (numPoints == 2)
         {
@@ -46,7 +46,7 @@ namespace MCore
 
             if (in)
             {
-                pointsOut.Add(pointsIn[vert1]);
+                pointsOut.emplace_back(pointsIn[vert1]);
             }
 
             if ((in != nextIn) && (dist != 0.0f) && (nextDist != 0.0f))
@@ -56,7 +56,7 @@ namespace MCore
                 float frac = dist / (dist - nextDist);
                 if ((frac > 0.0f) && (frac < 1.0f))
                 {
-                    pointsOut.Add(pointsIn[vert1] + frac * dir);
+                    pointsOut.emplace_back(pointsIn[vert1] + frac * dir);
                 }
             }
 
@@ -66,14 +66,14 @@ namespace MCore
         //if (numPoints == 1)
         //  return (pointsOut.GetLength() > 1);
 
-        return (pointsOut.GetLength() > 1);
+        return (pointsOut.size() > 1);
     }
 
 
     // clip a set of vectors <points> to this plane
-    bool PlaneEq::Clip(Array<AZ::Vector3>& points) const
+    bool PlaneEq::Clip(AZStd::vector<AZ::Vector3>& points) const
     {
-        Array<AZ::Vector3> pointsOut;
+        AZStd::vector<AZ::Vector3> pointsOut;
         if (Clip(points, pointsOut))
         {
             points = pointsOut;

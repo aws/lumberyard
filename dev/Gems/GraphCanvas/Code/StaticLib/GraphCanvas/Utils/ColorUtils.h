@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#include <AzCore/math/Color.h>
+#include <AzCore/Math/Color.h>
 
 namespace GraphCanvas
 {

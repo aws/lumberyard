@@ -39,7 +39,8 @@
         [
             "ResourceCompilerABC.cpp",
             "../ResourceCompiler/IConfig.cpp",
-            "stdafx.h"
+            "PCH/StdAfx.cpp",
+            "PCH/StdAfx.h"
         ],
         "Utils":
         [

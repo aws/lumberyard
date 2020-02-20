@@ -104,7 +104,7 @@ namespace ZipDir
 
         // Adds a new file to the zip or update an existing one
         // adds a directory (creates several nested directories if needed)
-        ErrorEnum UpdateFile(const char* szRelativePath, void* pUncompressed, unsigned nSize, unsigned nCompressionMethod, int nCompressionLevel, __time64_t modTime);
+        ErrorEnum UpdateFile(const char* szRelativePath, void* pUncompressed, unsigned nSize, unsigned nCompressionMethod, int nCompressionLevel, int64 modTime);
 
         // Sets if Archive should be encrypted or decrypted on close.
         bool EncryptArchive(EncryptionChange change, IEncryptPredicate* encryptContentPredicate, int* numChanged, int* numSkipped);

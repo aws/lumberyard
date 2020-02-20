@@ -127,3 +127,30 @@ def test_get_all_eligible_use_keywords():
     assert len(related_keywords) == len(expected_use_keywords)
     for expected_use in expected_use_keywords:
         assert expected_use in related_keywords
+
+
+@pytest.mark.parametrize(
+    "engine_root_version, experimental_string, expected", [
+        pytest.param('0.0.0.0', 'False', True),
+        pytest.param('0.0.0.0', 'True', True),
+        pytest.param('0.0.0.1', 'False', False),
+        pytest.param('0.0.0.1', 'True', True)
+    ]
+)
+def test_should_build_experimental_targets(engine_root_version, experimental_string, expected):
+    
+    class FakeOptions(object):
+        def __init__(self, experimental_string):
+            self.enable_experimental_features = experimental_string
+    
+    class FakeExperimentContext(object):
+        def __init__(self, engine_root_version, experimental_string):
+            
+            self.engine_root_version = engine_root_version
+            self.options = FakeOptions(experimental_string)
+            
+    fake_context = FakeExperimentContext(engine_root_version, experimental_string)
+    
+    result = lumberyard.should_build_experimental_targets(fake_context)
+    
+    assert result == expected

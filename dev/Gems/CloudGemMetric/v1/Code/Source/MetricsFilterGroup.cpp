@@ -16,7 +16,7 @@
 #include "CloudGemMetric/MetricsFilter.h"
 #include "CloudGemMetric/MetricsAttribute.h"
 #include "CloudGemMetric/MetricsAggregator.h"
-#include "AWS/ServiceAPI/CloudGemMetricClientComponent.h"
+#include "AWS/ServiceApi/CloudGemMetricClientComponent.h"
 
 namespace CloudGemMetric
 {
@@ -90,6 +90,6 @@ namespace CloudGemMetric
         {
             auto p = m_eventNameToFilterMap.insert(filter.event);
             p.first->second.InitFromBackend(filter);
-        }        
+        }
     }
 }

@@ -232,11 +232,11 @@ namespace AzQtComponents
         m_segmentBar = bar;
 
         m_widgets = new QStackedLayout;
-        m_widgets->setMargin(0);
+        m_widgets->setContentsMargins(0, 0, 0, 0);
         m_widgets->setSpacing(0);
 
         m_layout = new QBoxLayout(QBoxLayout::TopToBottom, this);
-        m_layout->setMargin(0);
+        m_layout->setContentsMargins(0, 0, 0, 0);
         m_layout->setSpacing(0);
         m_layout->addWidget(m_segmentBar);
         m_layout->addLayout(m_widgets);

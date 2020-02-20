@@ -163,16 +163,19 @@ namespace EMotionFX
                 // process the rotation
                 if (GetInputPort(INPUTPORT_ROTATION).mConnection)
                 {
-                    const MCore::Quaternion& rotation = GetInputQuaternion(animGraphInstance, INPUTPORT_ROTATION)->GetValue();
+                    const AZ::Quaternion& rotation = GetInputQuaternion(animGraphInstance, INPUTPORT_ROTATION)->GetValue();
                     outputTransform.mRotation = rotation;
                 }
 
                 // process the scale
-                AZ::Vector3 scale;
-                if (TryGetInputVector3(animGraphInstance, INPUTPORT_SCALE, scale))
-                {
-                    outputTransform.mScale = scale;
-                }
+                EMFX_SCALECODE
+                (
+                    AZ::Vector3 scale;
+                    if (TryGetInputVector3(animGraphInstance, INPUTPORT_SCALE, scale))
+                    {
+                        outputTransform.mScale = scale;
+                    }
+                )
 
                 // update the transformation of the node
                 switch (m_transformSpace)

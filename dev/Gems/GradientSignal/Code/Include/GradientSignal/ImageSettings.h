@@ -14,7 +14,7 @@
 
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/RTTI/RTTI.h>
-#include <AzCore/Rtti/ReflectContext.h>
+#include <AzCore/RTTI/ReflectContext.h>
 
 namespace GradientSignal
 {

@@ -2361,6 +2361,10 @@ namespace AZ
             Method("IsNormalized", &Vector2::IsNormalized, context.MakeDefaultValues(static_cast<float>(g_simdTolerance)))->
             Method("GetDistance", &Vector2::GetDistance)->
             Method("GetDistanceSq", &Vector2::GetDistanceSq)->
+            Method("Angle", &Vector2::Angle)->
+            Method("AngleDeg", &Vector2::AngleDeg)->
+            Method("AngleSafe", &Vector2::AngleSafe)->
+            Method("AngleSafeDeg", &Vector2::AngleSafeDeg)->
             Method("Lerp", &Vector2::Lerp)->
             Method("Slerp", &Vector2::Slerp)->
             Method("Dot", &Vector2::Dot)->
@@ -2487,6 +2491,10 @@ namespace AZ
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("GetDistance", &Vector3::GetDistanceExact)->
             Method("GetDistanceSq", &Vector3::GetDistanceSq)->
+            Method("Angle", &Vector3::Angle)->
+            Method("AngleDeg", &Vector3::AngleDeg)->
+            Method("AngleSafe", &Vector3::AngleSafe)->
+            Method("AngleSafeDeg", &Vector3::AngleSafeDeg)->
             Method("Lerp", &Vector3::Lerp)->
             Method("Slerp", &Vector3::Slerp)->
             Method("Dot", &Vector3::Dot)->
@@ -2749,6 +2757,8 @@ namespace AZ
 
         // Quaternion
         context.Class<Quaternion>()->
+            Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)->
+            Attribute(AZ::Script::Attributes::Module, "math")->
             Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Constructor<const VectorFloat&>()->
             Constructor<const VectorFloat&, const VectorFloat&, const VectorFloat&, const VectorFloat&>()->
@@ -2834,6 +2844,8 @@ namespace AZ
 
         // Matrix3x3
         context.Class<Matrix3x3>()->
+            Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)->
+            Attribute(AZ::Script::Attributes::Module, "math")->
             Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
             Attribute(AZ::Script::Attributes::GenericConstructorOverride, &Internal::Matrix3x3DefaultConstructor)->
@@ -2943,6 +2955,8 @@ namespace AZ
 
         // Matrix4x4
         context.Class<Matrix4x4>()->
+            Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)->
+            Attribute(AZ::Script::Attributes::Module, "math")->
             Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
             Attribute(AZ::Script::Attributes::GenericConstructorOverride, &Internal::Matrix4x4DefaultConstructor)->
@@ -3051,6 +3065,8 @@ namespace AZ
 
         // Transform
             context.Class<Transform>()->
+                Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)->
+                Attribute(AZ::Script::Attributes::Module, "math")->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
                 Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
                 Attribute(AZ::Script::Attributes::GenericConstructorOverride, &Internal::TransformDefaultConstructor)->

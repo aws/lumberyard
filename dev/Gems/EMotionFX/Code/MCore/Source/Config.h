@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/PlatformDef.h>
+#include <AzCore/Debug/Trace.h>
 
 #include <wchar.h>
 #include <stdint.h>
@@ -258,7 +259,7 @@ typedef uintptr_t uintPointer;
 
 // define a custom assert macro
 #ifndef MCORE_NO_ASSERT
-    #define MCORE_ASSERT(x) assert(x)
+    #define MCORE_ASSERT(x) AZ_Assert(x, "MCore Asserted")
 #else
     #define MCORE_ASSERT(x)
 #endif

@@ -352,6 +352,10 @@ private:
 
     void UpdateKeyDataAfterParentChanged(const AZ::Transform& oldParentWorldTM, const AZ::Transform& newParentWorldTM);
 
+    // Used to track Editor object listener registration
+    void RegisterEditorObjectListeners(CEntityObject* entity);
+    void UnRegisterEditorObjectListeners();
+
     // Helper functions
     static void RemoveChildNode(CTrackViewAnimNode* child);
     static AZ::Transform GetEntityWorldTM(const AZ::EntityId entityId);
@@ -366,6 +370,9 @@ private:
     // used to stash the Editor sequence and node entity Ids when we switch to game mode from the editor
     AZ::EntityId    m_stashedAnimNodeEditorAzEntityId;
     AZ::EntityId    m_stashedAnimSequenceEditorAzEntityId;
+
+    // Used to track Editor object listener registration
+    CEntityObject* m_editorObjectListenerRegistered = nullptr;
 
     // used to return a const reference to a null Uuid
     static const AZ::Uuid s_nullUuid;

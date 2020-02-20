@@ -961,9 +961,7 @@ void C3DEngine::RenderInternal(const int nRenderFlags, const SRenderingPassInfo&
     assert(m_pPartManager);
 
     UpdatePreRender(passInfo);
-
     RenderScene(nRenderFlags, passInfo);
-
     UpdatePostRender(passInfo);
 }
 

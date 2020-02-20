@@ -872,7 +872,7 @@ namespace AzToolsFramework
         // A key must still be manually provided for persistent saving across sessions.
         if (0 == m_impl->m_savedStateKey)
         {
-            if (!m_impl->m_instances.empty() && m_impl->m_instances.begin()->GetRootNode())
+            if (!m_impl->m_instances.empty() && m_impl->m_instances.begin()->GetRootNode() && m_impl->m_instances.begin()->GetRootNode()->GetClassMetadata())
             {
                 // Based on instance type name; persists when editing any object of this type.
                 SetSavedStateKey(AZ::Crc32(m_impl->m_instances.begin()->GetRootNode()->GetClassMetadata()->m_name));

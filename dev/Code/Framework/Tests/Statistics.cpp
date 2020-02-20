@@ -338,8 +338,8 @@ namespace UnitTest
            EXPECT_EQ(m_statsManager->GetStatistic(child0StatName)->GetNumSamples(), numIterations);
            EXPECT_EQ(m_statsManager->GetStatistic(child1StatName)->GetNumSamples(), numIterations);
 
-           const double minimumExpectDurationOfChildFunctionMicros = sleepTimeAllFuncsMillis * 1000;
-           const double minimumExpectDurationOfParentFunctionMicros = (sleepTimeAllFuncsMillis * 1000) + 2 * minimumExpectDurationOfChildFunctionMicros;
+           const double minimumExpectDurationOfChildFunctionMicros = 1;
+           const double minimumExpectDurationOfParentFunctionMicros = 1;
 
            EXPECT_GE(m_statsManager->GetStatistic(parentStatName)->GetMinimum(), minimumExpectDurationOfParentFunctionMicros);
            EXPECT_GE(m_statsManager->GetStatistic(parentStatName)->GetAverage(), minimumExpectDurationOfParentFunctionMicros);

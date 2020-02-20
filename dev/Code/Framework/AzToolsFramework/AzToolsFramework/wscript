@@ -17,7 +17,7 @@ def build(bld):
         target              = 'AzToolsFrameworkTestCommon',
         vs_filter           = 'AZ Framework',
         file_list           = ['aztoolsframework_tests.waf_files'],
-        platforms           = ['win', 'darwin'],
+        platforms           = ['win', 'darwin', 'linux'],
         disable_pch         = True,
         test_only           = True,
         includes            = ['..'],
@@ -37,7 +37,7 @@ def build(bld):
         target              = 'AzToolsFramework',
         vs_filter           = 'AZ Framework',
         file_list           = ['aztoolsframework.waf_files'],
-        platforms           = ['win', 'darwin'],
+        platforms           = ['win', 'darwin', 'linux'],
         configurations      = ['all'],
         disable_pch         = True,
         features            = ['qt5'],
@@ -69,25 +69,31 @@ def build(bld):
 
         darwin_file_list    = ['aztoolsframework_osx.waf_files'],
         darwin_enable_rtti  = True,
+
+        linux_file_list     = ['aztoolsframework_linux.waf_files'],
     
         # Tests
         create_test_driver  = True,
         test_vs_filter      = 'AZ Framework/TestSuites',
         test_file_list      = ['../Tests/aztoolsframeworktests.waf_files'],
-        test_use            = ['AzTest',
+        test_linux_file_list = ['aztoolsframework_linux_tests.waf_files'],
+        test_use            = ['AzToolsFramework',
                                'AzToolsFrameworkTestCommon',
                                'AzTestShared'],
         test_uselib         = ['QT5CORE',
                                'QT5GUI',
                                'QT5NETWORK',
                                'QT5QML',
-                               'QT5WEBKITWIDGETS',
-                               'QT5WEBKIT',
+                               'QT5WEBENGINEWIDGETS',
+                               'QT5WEBENGINE',
+                               'QT5WEBENGINECORE',
                                'QT5WIDGETS',
                                'QT5WINEXTRAS',
                                'QT5CONCURRENT',
                                'QT5XML',
                                'QT5TEST'],
-        test_includes       = ['../Tests']
+        test_includes       = ['../Tests'],
+        test_platform_roots = [bld.PlatformRoot('../Platform', export_includes=True)],
 
+        linux_enable_rtti   = True
     )

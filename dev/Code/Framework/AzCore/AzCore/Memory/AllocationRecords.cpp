@@ -280,20 +280,26 @@ AllocationRecords::UnregisterAllocation(void* address, size_t byteSize, size_t a
     }
 #endif
 
+    // delete allocation record
+    if (iter->second.m_namesBlock)
+    {
+        m_records.get_allocator().deallocate(iter->second.m_namesBlock, iter->second.m_namesBlockSize, 1);
+        iter->second.m_namesBlock = nullptr;
+        iter->second.m_namesBlockSize = 0;
+        iter->second.m_name = nullptr;
+        iter->second.m_fileName = nullptr;
+    }
+    if (iter->second.m_stackFrames)
+    {
+        m_records.get_allocator().deallocate(iter->second.m_stackFrames, sizeof(AZ::Debug::StackFrame)*m_numStackLevels, 1);
+        iter->second.m_stackFrames = nullptr;
+    }
+
     if (info)
     {
         *info = iter->second;
     }
 
-    // delete allocation record
-    if (iter->second.m_namesBlock)
-    {
-        m_records.get_allocator().deallocate(iter->second.m_namesBlock, iter->second.m_namesBlockSize, 1);
-    }
-    if (iter->second.m_stackFrames)
-    {
-        m_records.get_allocator().deallocate(iter->second.m_stackFrames, sizeof(AZ::Debug::StackFrame)*m_numStackLevels, 1);
-    }
     m_records.erase(iter);
 
     // try to be more aggressive and keep the memory footprint low.

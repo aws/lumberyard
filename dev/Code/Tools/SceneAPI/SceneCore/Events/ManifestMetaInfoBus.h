@@ -34,7 +34,7 @@ namespace AZ
         }
         namespace Events
         {
-            class ManifestMetaInfo
+            class SCENE_CORE_API ManifestMetaInfo
                 : public AZ::EBusTraits
             {
             public:
@@ -56,21 +56,21 @@ namespace AZ
                 using CategoryRegistrationList = AZStd::vector<CategoryRegistration>;
                 using ModifiersList = AZStd::vector<AZ::Uuid>;
 
-                SCENE_CORE_API ManifestMetaInfo();
+                ManifestMetaInfo();
                 virtual ~ManifestMetaInfo() = 0;
 
                 //! Gets a list of all the categories and the class identifiers that are listed for that category.
-                SCENE_CORE_API virtual void GetCategoryAssignments(CategoryRegistrationList& categories, const Containers::Scene& scene);
+                virtual void GetCategoryAssignments(CategoryRegistrationList& categories, const Containers::Scene& scene);
 
                 //! Gets the path to the icon associated with the given object.
-                SCENE_CORE_API virtual void GetIconPath(AZStd::string& iconPath, const DataTypes::IManifestObject& target);
+                virtual void GetIconPath(AZStd::string& iconPath, const DataTypes::IManifestObject& target);
 
                 //! Gets a list of a the modifiers (such as rules for  groups) that the target accepts.
                 //! Note that updates to the target may change what modifiers can be accepted. For instance
                 //! if a group only accepts a single rule of a particular type, calling this function a second time
                 //! will not include the uuid of that rule.
                 //! This method is called when the "Add Modifier" button is pressed in the FBX Settings Editor.
-                SCENE_CORE_API virtual void GetAvailableModifiers(ModifiersList& modifiers, const Containers::Scene& scene, 
+                virtual void GetAvailableModifiers(ModifiersList& modifiers, const Containers::Scene& scene,
                     const DataTypes::IManifestObject& target);
 
                 //! Initialized the given manifest object based on the scene. Depending on what other entries have been added
@@ -79,7 +79,7 @@ namespace AZ
                 //! This method is always called each time a Group type of object is created in memory (e.g. When the user
                 //! clicks the "Add another Mesh" or "Add another Actor" in the FBX Settings Editor). Overriders of this method
                 //! should check the type of the \p target to decide to take action (e.g. add a Modifier) or do nothing.
-                SCENE_CORE_API virtual void InitializeObject(const Containers::Scene& scene, DataTypes::IManifestObject& target);
+                virtual void InitializeObject(const Containers::Scene& scene, DataTypes::IManifestObject& target);
 
                 //! Called when an existing object is updated. This is not called when an object is initialized, which is handled,
                 //! by InitializeObject, but a parent may still get the update. For instance adding or removing a rule will
@@ -89,7 +89,7 @@ namespace AZ
                 //! when a group is deleted for instance.
                 //! @param sender An optional argument to keep track of the object that called this function. This can be used if the
                 //! same object that sends a message also handles the callback to avoid recursively updating.
-                SCENE_CORE_API virtual void ObjectUpdated(const Containers::Scene& scene, const DataTypes::IManifestObject* target, void* sender = nullptr);
+                virtual void ObjectUpdated(const Containers::Scene& scene, const DataTypes::IManifestObject* target, void* sender = nullptr);
             };
 
             inline ManifestMetaInfo::~ManifestMetaInfo() = default;

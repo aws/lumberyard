@@ -13,6 +13,7 @@
 
 #include "EditorCommon.h"
 #include "UiEditorInternalBus.h"
+#include <AzCore/Component/ComponentBus.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
@@ -972,6 +973,8 @@ namespace ComponentHelpers
                     for (const AZ::EntityId& entityId : selectedEntities)
                     {
                         AZ::Entity* entity = AzToolsFramework::GetEntityById(entityId);
+                        // De-serialize from mime data each time the component is pasted, otherwise the same component pointer could be added to multiple entities.
+                        AzToolsFramework::ComponentMimeData::GetComponentDataFromMimeData(mimeData, componentsToAdd);
                         if (!entity)
                         {
                             AZ_Error("UI Editor", false, "Can't find entity by Id.");

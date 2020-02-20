@@ -7,10 +7,7 @@
             "symlink_patterns": [
                 "libaws-c*.so:%s.1.0.0"
             ],
-            "libpath_debug": [
-                "lib/linux/Debug"
-            ],
-            "libpath_release": [
+            "libpath": [
                 "lib/linux/Release"
             ],
             "aws_cpp_sdk_all/lib": [
@@ -57,10 +54,7 @@
                 "lib${aws_cpp_sdk_identity_metrics}.a",
                 "lib${aws_dependencies}.a"
             ],
-            "sharedlibpath_debug": [
-                "bin/linux/Debug"
-            ],
-            "sharedlibpath_release": [
+            "sharedlibpath": [
                 "bin/linux/Release"
             ],
             "aws_cpp_sdk_all/shared": [
@@ -69,19 +63,10 @@
             ],
             "aws_cpp_sdk_core/shared": [
                 "lib${aws_cpp_sdk_core}.so",
-                "lib${aws_dependencies}.so",
-                "libcurl.so"
+                "lib${aws_dependencies}.so"
             ],
-	    "aws_cpp_sdk_core/copy_extra": [
-                "bin/linux/Release/libcurl.so.4:."
-            ],
-            "aws_cpp_sdk_core/copy_extra_debug": [
-                "bin/linux/Debug/lib${aws_c_dependencies}.so.0unstable:.",
-		"bin/linux/Debug/libcurl.so.4:."
-            ],
-            "aws_cpp_sdk_core/copy_extra_release": [
-                "bin/linux/Release/lib${aws_c_dependencies}.so.0unstable:.",
-		"bin/linux/Release/libcurl.so.4:."
+            "aws_cpp_sdk_core/copy_extra": [
+                "bin/linux/Release/lib${aws_c_dependencies}.so.0unstable:."
             ],
             "aws_cpp_sdk_gamelift/shared": [
                 "lib${aws_cpp_sdk_gamelift}.so"

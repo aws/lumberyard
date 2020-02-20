@@ -13,10 +13,10 @@
 #pragma once
 
 // include the required headers
+#include <AzCore/Math/Quaternion.h>
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
 #include "EMotionFXManager.h"
-#include <MCore/Source/Quaternion.h>
 #include <MCore/Source/StringIdPool.h>
 
 
@@ -72,7 +72,7 @@ namespace EMotionFX
          * @param scale This must contain the initial scale, and will be modified inside this method as well.
          * @param weight The absolute weight value.
          */
-        virtual void ApplyTransformation(ActorInstance* actorInstance, uint32 nodeIndex, AZ::Vector3& position, MCore::Quaternion& rotation, AZ::Vector3& scale, float weight) = 0;
+        virtual void ApplyTransformation(ActorInstance* actorInstance, uint32 nodeIndex, AZ::Vector3& position, AZ::Quaternion& rotation, AZ::Vector3& scale, float weight) = 0;
 
         /**
          * Get the unique ID of this morph target.

@@ -1290,6 +1290,8 @@ namespace AzFramework
             behaviorContext->Class<TransformComponent>()->RequestBus("TransformBus");
 
             behaviorContext->EBus<AZ::TransformBus>("TransformBus")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "components")
                 ->Event("GetLocalTM", &AZ::TransformBus::Events::GetLocalTM)
                 ->Event("GetWorldTM", &AZ::TransformBus::Events::GetWorldTM)
                 ->Event("GetParentId", &AZ::TransformBus::Events::GetParentId)

@@ -12,6 +12,12 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "stdafx.h"
+
+#include <AzCore/PlatformDef.h>
+#if defined (AZ_PLATFORM_LINUX)
+#include "Linux64Specific.h"
+#endif // defined (AZ_PLATFORM_LINUX)
+
 #include "SkeletonManager.h"
 
 #include "../../../CryXML/IXMLSerializer.h"

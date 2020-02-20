@@ -10,11 +10,16 @@
 *
 */
 
+#include <AzCore/PlatformDef.h>
+
+AZ_PUSH_DISABLE_WARNING(,"-Wdelete-non-virtual-dtor")
+
 #include <AzCore/JSON/pointer.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Serialization/Json/JsonSerialization.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
+
 #include <Tests/Serialization/Json/BaseJsonSerializerFixture.h>
 #include <Tests/Serialization/Json/JsonSerializerMock.h>
 #include <Tests/Serialization/Json/TestCases.h>
@@ -967,3 +972,6 @@ namespace JsonSerializationTests
         EXPECT_EQ(Outcomes::Unknown, result.GetOutcome());
     }
 } // namespace JsonSerializationTests
+
+AZ_POP_DISABLE_WARNING
+

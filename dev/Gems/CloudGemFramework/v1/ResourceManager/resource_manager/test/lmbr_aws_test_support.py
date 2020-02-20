@@ -15,8 +15,6 @@ import unittest
 import sys
 import json
 import os
-import distutils
-import uuid
 import stat
 import shutil
 import re
@@ -24,10 +22,6 @@ import string
 import random
 import contextlib
 import mock
-import test_integration_shared_resource as shared_resource_manager
-import threading
-import time
-from distutils import dir_util
 from test_integration_shared_resource import SharedResourceManager
 from tempfile import mkdtemp, gettempdir
 from contextlib import contextmanager
@@ -47,7 +41,6 @@ from resource_manager.gem import GemContext
 # Cloud Gem Framework imports
 from cgf_utils.version_utils import Version
 from cgf_utils import aws_utils, custom_resource_utils
-import cgf_service_client
 from resource_manager_common import stack_info
 import cgf_service_client
 
@@ -58,7 +51,7 @@ import time
 import datetime
 import threading
 
-REGION='us-east-1'
+REGION = 'us-east-1'
 
 UNIQUE_NAME_CHARACTERS = string.ascii_uppercase + string.digits
 UNIQUE_NAME_CHARACTER_COUNT = 7
@@ -152,13 +145,13 @@ class lmbr_aws_TestCase(unittest.TestCase):
         self.resource_group_name_override = None
         resource_manager.stack.STACK_UPDATE_DELAY_TIME = 20
 
-        # assumes this file is ...\dev\Gems\CloudGemFramework\v?\ResoureManager\resource_manager\test\lmbr_aws_test_support.py
+        # assumes this file is ...\dev\Gems\CloudGemFramework\v?\ResourceManager\resource_manager\test\lmbr_aws_test_support.py
         # we want ...\dev
         self.__real_root_dir = os.path.abspath(os.path.join(__file__, '..', '..', '..', '..', '..', '..', '..'))
         self.shared_resource_manager = SharedResourceManager()
         self.__project_resource_transitions = create(
             create=ResourceTransition(1, lambda context: (
-                                            #allow a 20s window for all sub processes to register for shared resources
+                                            # allow a 20s window for all sub processes to register for shared resources
                                             time.sleep(20),
                                             self.shared_resource_manager.sync_registered_gems(self.context["GameDir"], self.enable_real_gem),
                                             self.lmbr_aws('project', 'create', '--stack-name', unique_name(suffix="-hyptest"),
@@ -241,7 +234,7 @@ class lmbr_aws_TestCase(unittest.TestCase):
         self.__deployment_resource_transitions = create(
             create=ResourceTransition(1, lambda context: (
                                               self.shared_resource_manager.sync_registered_gems(self.context["GameDir"], self.enable_real_gem),
-                                              #creating a new deployment stack requires we lock the project stack since the configuration will be updated                                              
+                                              # creating a new deployment stack requires we lock the project stack since the configuration will be updated
                                               self.lmbr_aws('deployment', 'create', '--deployment', self.TEST_DEPLOYMENT_NAME,
                                                                 '--confirm-aws-usage',
                                                                 '--confirm-security-change'),
@@ -281,7 +274,7 @@ class lmbr_aws_TestCase(unittest.TestCase):
                                           )
                                         ),
             delete=ResourceTransition(3, lambda context: (
-                                            #deleting the deployment stack requires we lock the project stack since the configuration will be updated
+                                            # deleting the deployment stack requires we lock the project stack since the configuration will be updated
                                             self.lmbr_aws('deployment', 'delete', '--deployment', self.TEST_DEPLOYMENT_NAME,
                                             '--confirm-resource-deletion'),
                                             self.shared_resource_manager.update_context_attribute(context,
@@ -310,7 +303,7 @@ class lmbr_aws_TestCase(unittest.TestCase):
                                             '--confirm-resource-deletion'), kwargs={"ignore_failure": True})
                     t.start()
                     threads.append(t)
-            #wait for all of the deployments to delete
+            # wait for all of the deployments to delete
             for t in threads:
                 t.join(timeout=3600)
                 time.sleep(10)
@@ -319,7 +312,7 @@ class lmbr_aws_TestCase(unittest.TestCase):
             print "Deployments remaining after the deletion:", deployments.keys()
             if len(deployments.keys()) > 1:
                 print "deployments remaining", deployments.keys()
-                #seems a deployment was added to the project when the other deployments were being deleted.
+                # seems a deployment was added to the project when the other deployments were being deleted.
                 self.delete_all_deployments()
                     
 
@@ -407,8 +400,8 @@ class lmbr_aws_TestCase(unittest.TestCase):
         print('Using context\n{}'.format(json.dumps(context, indent=4, sort_keys=True)))
         self.context = context
 
-        self.context_stack = [] # see push_context and pop_context
-        self.root_context = self.context # so the root context can get saved after push_context
+        self.context_stack = []  # see push_context and pop_context
+        self.root_context = self.context  # so the root context can get saved after push_context
 
 
     def __prepare_test_directory(self, game_name):
@@ -534,9 +527,9 @@ class lmbr_aws_TestCase(unittest.TestCase):
                 with self.alternate_context(alternate_context_name):
                     check_context()
 
-        self.clean_test_envionment(self.currentResult)        
+        self.clean_test_environment(self.currentResult)
 
-    def clean_test_envionment(self, results):
+    def clean_test_environment(self, results):
         ok = results.wasSuccessful()
         errors = results.errors
         failures = results.failures
@@ -586,6 +579,10 @@ class lmbr_aws_TestCase(unittest.TestCase):
     @property
     def TEST_DEPLOYMENT_NAME(self):
         return self.deployment_name_override if self.deployment_name_override else test_constant.DEPLOYMENT_NAME
+
+    @property
+    def RELEASE_DEPLOYMENT_NAME(self):
+        return test_constant.RELEASE_DEPLOYMENT_NAME
 
     def set_deployment_name(self, value):
         self.deployment_name_override = value               
@@ -785,7 +782,7 @@ class lmbr_aws_TestCase(unittest.TestCase):
         self.__make_gem_link(temp_dir, gem_name, ignore_existing_symlinks, rel_path if path else None)
         self.__add_to_gems_file(temp_dir, game_name, rel_path)
 
-        #Ensure the gem resources are available by checking the symlink exists.  We verify this by checking the existence of the gem.json file.
+        # Ensure the gem resources are available by checking the symlink exists.  We verify this by checking the existence of the gem.json file.
         end = datetime.datetime.utcnow() + datetime.timedelta(minutes=1)
         while datetime.datetime.utcnow() <= end:
             print datetime.datetime.utcnow(), end
@@ -1176,14 +1173,14 @@ class lmbr_aws_TestCase(unittest.TestCase):
 
     def verify_permissions(self, context, policy_documents, permissions):
 
-        #print '**** Policy Documents:'
-        #for policy_document in policy_documents: 
+        # print '**** Policy Documents:'
+        # for policy_document in policy_documents:
         #    print '\n' + json.dumps(json.loads(policy_document), indent=4)
 
         for permission in permissions:
 
             description = permission.get('Description', None)
-            #if description:
+            # if description:
             #    print '>>> Checking Permission:', description
 
             if 'Allow' in permission:
@@ -1199,15 +1196,15 @@ class lmbr_aws_TestCase(unittest.TestCase):
 
             resource_arns = permission.get('Resources', [])
 
-            #print '**** action_names:', action_names
-            #print '**** resource_arns:', resource_arns
+            # print '**** action_names:', action_names
+            # print '**** resource_arns:', resource_arns
 
             simulate_custom_policy_res = self.aws_iam.simulate_custom_policy(
                 PolicyInputList = policy_documents,
                 ActionNames = action_names,
                 ResourceArns = resource_arns)
 
-            #print '**** simulate_custom_policy_res', json.dumps(simulate_custom_policy_res, indent=4)
+            # print '**** simulate_custom_policy_res', json.dumps(simulate_custom_policy_res, indent=4)
 
             def find_evaluation_result(action, resource_arn):
                 for evaluation_result in simulate_custom_policy_res['EvaluationResults']:
@@ -1610,7 +1607,7 @@ class lmbr_aws_TestCase(unittest.TestCase):
            the project and TEST_DEPLOYMENT_NAME deployment access stacks. use_aws_auth is
            ignored (AWS auth is always used), if this parameter is set.
 
-           use_aws_auth: if True, then the local AWS credentails will be used to make the
+           use_aws_auth: if True, then the local AWS credentials will be used to make the
            request. Otherwise the request will not be signed.
 
            stack_id: identifies the stack that provides the service api. If not specified,
@@ -1640,7 +1637,6 @@ class lmbr_aws_TestCase(unittest.TestCase):
             session = None
 
         return cgf_service_client.for_url(url, session = session, role_arn = role_arn, verbose = True)
-    
 
     def get_service_url(self, stack_id = None):
         '''Gets the service API url for a stack's service api. If no stack is specified, the stack

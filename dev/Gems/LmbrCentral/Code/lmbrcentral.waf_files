@@ -69,6 +69,7 @@
             "include/LmbrCentral/Rendering/MaterialOwnerBus.h",
             "include/LmbrCentral/Rendering/MeshAsset.h",
             "include/LmbrCentral/Rendering/MeshComponentBus.h",
+            "include/LmbrCentral/Rendering/MeshModificationBus.h",
             "include/LmbrCentral/Rendering/ParticleAsset.h",
             "include/LmbrCentral/Rendering/ParticleComponentBus.h",
             "include/LmbrCentral/Rendering/RenderNodeBus.h",

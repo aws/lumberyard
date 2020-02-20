@@ -11,7 +11,6 @@
 */
 
 #include "OrthographicCamera.h"
-#include <MCore/Source/Quaternion.h>
 #include <MCore/Source/Compare.h>
 #include <MCore/Source/Distance.h>
 #include <EMotionFX/Source/EMotionFXManager.h>
@@ -94,7 +93,7 @@ namespace MCommon
             mPosition += yAxis * mPositionDelta.GetY();
 
             // setup the view matrix
-            mViewMatrix.LookAtRH(mPosition + zAxis * mCurrentDistance, mPosition, yAxis);
+            MCore::LookAtRH(mViewMatrix, mPosition + zAxis * mCurrentDistance, mPosition, yAxis);
             break;
         }
 
@@ -109,7 +108,7 @@ namespace MCommon
             mPosition += yAxis * mPositionDelta.GetY();
 
             // setup the view matrix
-            mViewMatrix.LookAtRH(mPosition + zAxis * mCurrentDistance, mPosition, yAxis);
+            MCore::LookAtRH(mViewMatrix, mPosition + zAxis * mCurrentDistance, mPosition, yAxis);
             break;
         }
 
@@ -125,7 +124,7 @@ namespace MCommon
             mPosition += yAxis * mPositionDelta.GetY();
 
             // setup the view matrix
-            mViewMatrix.LookAtRH(mPosition + zAxis * mCurrentDistance, mPosition, yAxis);
+            MCore::LookAtRH(mViewMatrix, mPosition + zAxis * mCurrentDistance, mPosition, yAxis);
             break;
         }
 
@@ -140,7 +139,7 @@ namespace MCommon
             mPosition += yAxis * mPositionDelta.GetY();
 
             // setup the view matrix
-            mViewMatrix.LookAtRH(mPosition + zAxis * mCurrentDistance, mPosition, yAxis);
+            MCore::LookAtRH(mViewMatrix, mPosition + zAxis * mCurrentDistance, mPosition, yAxis);
             break;
         }
 
@@ -155,7 +154,7 @@ namespace MCommon
             mPosition += yAxis * mPositionDelta.GetY();
 
             // setup the view matrix
-            mViewMatrix.LookAtRH(mPosition + zAxis * mCurrentDistance, mPosition, yAxis);
+            MCore::LookAtRH(mViewMatrix, mPosition + zAxis * mCurrentDistance, mPosition, yAxis);
             break;
         }
 
@@ -170,7 +169,7 @@ namespace MCommon
             mPosition += yAxis * mPositionDelta.GetY();
 
             // setup the view matrix
-            mViewMatrix.LookAtRH(mPosition + zAxis * mCurrentDistance, mPosition, yAxis);
+            MCore::LookAtRH(mViewMatrix, mPosition + zAxis * mCurrentDistance, mPosition, yAxis);
             break;
         }
         }
@@ -213,7 +212,7 @@ namespace MCommon
     {
         mPositionDelta      = AZ::Vector2(0.0f, 0.0f);
         mMinDistance        = MCore::Math::epsilon;
-        mMaxDistance        = mFarClipDistance;
+        mMaxDistance        = mFarClipDistance * 0.5f;
 
         AZ::Vector3 resetPosition(0.0f, 0.0f, 0.0f);
         switch (mMode)
@@ -434,6 +433,6 @@ namespace MCommon
     void OrthographicCamera::AutoUpdateLimits()
     {
         mMinDistance    = mNearClipDistance;
-        mMaxDistance    = mFarClipDistance;
+        mMaxDistance    = mFarClipDistance * 0.5f;
     }
 } // namespace MCommon

@@ -76,4 +76,48 @@ namespace AZ
     };
 
     using RenderThreadEventsBus = AZ::EBus<RenderThreadEvents>;
+
+    /**
+    * This bus is used for firing screenshot request to any rendering system.
+    * The rendering system should implement its own screenshot function.
+    */
+    class RenderScreenshotRequests
+        : public AZ::EBusTraits
+    {
+    public:
+        static const EBusHandlerPolicy HandlerPolicy = EBusHandlerPolicy::Single; ///< EBusTraits overrides
+        static const EBusAddressPolicy AddressPolicy = EBusAddressPolicy::Single; ///< EBusTraits overrides
+
+        /** Take a screenshot and save it to a file.
+        @param filepath the path where a the screenshot is saved.
+        */
+        virtual void WriteScreenshotToFile(const char* filepath) = 0;
+
+        /** Take a screenshot and preserve it within a buffer
+        */
+        virtual void WriteScreenshotToBuffer() = 0;
+
+        /** Fill a provided buffer with the render buffer
+        @param imageBuffer The provided buffer to be filled
+        */
+        virtual bool CopyScreenshotToBuffer(unsigned char* imageBuffer, unsigned int width, unsigned int height) = 0;
+
+    };
+
+    using RenderScreenshotRequestBus = AZ::EBus<RenderScreenshotRequests>;
+
+    class RenderScreenshotNotifications
+        : public AZ::EBusTraits
+    {
+    public:
+        virtual ~RenderScreenshotNotifications() = default;
+
+        static const EBusAddressPolicy AddressPolicy = EBusAddressPolicy::Single; ///< EBusTraits overrides
+
+        /** Notify waiting components that the requested screenshot is ready
+        */
+        virtual void OnScreenshotReady() = 0;
+    };
+
+    using RenderScreenshotNotificationBus = AZ::EBus<RenderScreenshotNotifications>;
 }

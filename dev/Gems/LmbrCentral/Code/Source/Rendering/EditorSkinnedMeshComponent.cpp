@@ -23,6 +23,8 @@
 #include "MeshComponent.h"
 #include <AzCore/Asset/AssetManager.h>
 
+#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
+
 namespace LmbrCentral
 {
 
@@ -137,9 +139,11 @@ namespace LmbrCentral
         m_mesh.AttachToEntity(m_entity->GetId());
 
         // Check current visibility and updates render flags appropriately
-        bool currentVisibility = true;
-        EBUS_EVENT_ID_RESULT(currentVisibility, GetEntityId(), AzToolsFramework::EditorVisibilityRequestBus, GetCurrentVisibility);
-        m_mesh.UpdateAuxiliaryRenderFlags(!currentVisibility, ERF_HIDDEN);
+        bool visible = false;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(
+            visible, GetEntityId(), &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsVisible);
+
+        m_mesh.UpdateAuxiliaryRenderFlags(!visible, ERF_HIDDEN);
 
         // Note we are purposely connecting to buses before calling m_mesh.CreateMesh().
         // m_mesh.CreateMesh() can result in events (eg: OnMeshCreated) that we want receive.
@@ -364,17 +368,17 @@ namespace LmbrCentral
     {
         return m_mesh.GetJointCount();
     }
-    
+
     const char* EditorSkinnedMeshComponent::GetJointNameByIndex(AZ::u32 jointIndex)
     {
         return m_mesh.GetJointNameByIndex(jointIndex);
     }
-    
+
     AZ::s32 EditorSkinnedMeshComponent::GetJointIndexByName(const char* jointName)
     {
         return m_mesh.GetJointIndexByName(jointName);
     }
-    
+
     AZ::Transform EditorSkinnedMeshComponent::GetJointTransformCharacterRelative(AZ::u32 jointIndex)
     {
         return m_mesh.GetJointTransformCharacterRelative(jointIndex);
@@ -518,7 +522,7 @@ namespace LmbrCentral
                 meshAssetUuId = AZ::AzTypeInfo<CharacterDefinitionAsset>::Uuid();
                 renderOptionUuid = SkinnedMeshComponentRenderNode::GetRenderOptionsUuid();
                 meshTypeString = "Skinned Mesh";
-            } 
+            }
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////

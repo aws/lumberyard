@@ -186,14 +186,28 @@ namespace Physics
 
     Physics::CollisionLayer CollisionLayers::GetLayer(const AZStd::string& layerName)
     {
+        Physics::CollisionLayer layer = Physics::CollisionLayer::Default;
+        TryGetLayer(layerName, layer);
+        return layer;
+    }
+
+    bool CollisionLayers::TryGetLayer(const AZStd::string& layerName, Physics::CollisionLayer& layer)
+    {
+        if (layerName.empty())
+        {
+            return false;
+        }
+
         for (AZ::u8 i = 0; i < m_names.size(); ++i)
         {
             if (m_names[i] == layerName)
             {
-                return Physics::CollisionLayer(i);
+                layer = Physics::CollisionLayer(i);
+                return true;
             }
         }
-        return Physics::CollisionLayer::Default;
+        AZ_Warning("CollisionLayers", false, "Could not find collision layer:%s. Does it exist in the physx configuration window?", layerName.c_str());
+        return false;
     }
 
     AZStd::string CollisionLayers::GetName(const Physics::CollisionLayer& layer) const
@@ -260,6 +274,13 @@ namespace Physics
 
     CollisionGroup CollisionGroups::FindGroupByName(const AZStd::string& groupName) const
     {
+        CollisionGroup group = CollisionGroup::All;
+        TryFindGroupByName(groupName, group);
+        return group;
+    }
+
+    bool CollisionGroups::TryFindGroupByName(const AZStd::string& groupName, CollisionGroup& group) const
+    {
         auto found = AZStd::find_if(m_groups.begin(), m_groups.end(), [groupName](const Preset& preset)
         {
             return preset.m_name == groupName;
@@ -267,9 +288,12 @@ namespace Physics
 
         if (found != m_groups.end())
         {
-            return found->m_group;
+            group = found->m_group;
+            return true;
         }
-        return CollisionGroup::All;
+
+        AZ_Warning("CollisionGroups", false, "Could not find collision group:%s. Does it exist in the physx configuration window?", groupName.c_str());
+        return false;
     }
 
     CollisionGroups::Id CollisionGroups::FindGroupIdByName(const AZStd::string& groupName) const

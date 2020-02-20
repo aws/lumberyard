@@ -94,6 +94,7 @@ LMBR_SETUP_QT_FILTERS = {
                 "lib": [
                     "QtConcurrent.framework",
                     "QtCore.framework",
+                    "QtDbus.framework",
                     "QtGui.framework",
                     "QtNetwork.framework",
                     "QtPrintSupport.framework",
@@ -134,6 +135,7 @@ LMBR_SETUP_QT_FILTERS = {
                 "lib": [
                     "QtConcurrent.framework",
                     "QtCore.framework",
+                    "QtDbus.framework",
                     "QtGui.framework",
                     "QtNetwork.framework",
                     "QtPrintSupport.framework",

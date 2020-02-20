@@ -13,7 +13,7 @@
 
 #include <AzCore/PlatformDef.h>
 
-AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") // conditional expression is constant
+AZ_PUSH_DISABLE_WARNING(4127 4251, "-Wunknown-warning-option") // conditional expression is constant
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 AZ_POP_DISABLE_WARNING
 

@@ -176,6 +176,9 @@ namespace EMotionFX
         class RaycastRequests : public AZ::EBusTraits
         {
         public:
+            // Enable multi-threaded access by locking primitive using a mutex when connecting handlers to the EBus or executing events.
+            using MutexType = AZStd::mutex;
+
             static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
             static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 

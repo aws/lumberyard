@@ -1,0 +1,20 @@
+{
+    "platform": {
+        "ios": {
+            "importlibpath": ["${lib_paths}/ios-cmake"],
+            
+            "import_debug": [
+                "lib${lib_names}DEBUG.a"
+            ],
+            "import_profile": [
+                "lib${lib_names}PROFILE.a"
+            ],
+            "import_performance": [
+                "lib${lib_names}.a"
+            ],
+            "import_release": [
+                "lib${lib_names}.a"
+            ]
+        }
+    }
+}

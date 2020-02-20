@@ -112,7 +112,8 @@ namespace EMotionFX
          * @param outWasCacheHit This output value will contain 0 when this method had an internal cache miss and a value of 1 in case it was a cache hit.
          * @result Returns the value at the specified time.
          */
-        ReturnType GetValueAtTime(float currentTime, uint32* cachedKey = nullptr, uint8* outWasCacheHit = nullptr) const;
+        ReturnType GetValueAtTime(float currentTime) const;
+        ReturnType GetValueAtTime(float currentTime, uint32& cachedKey, uint8& outWasCacheHit) const;
 
         /**
          * Get a given keyframe.

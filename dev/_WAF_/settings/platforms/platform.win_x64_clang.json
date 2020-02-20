@@ -63,7 +63,10 @@
             "-msse3",
             "-Wno-macro-redefined",
             "-Wno-microsoft-cast",
-            "-Wno-ignored-pragma-intrinsic"    # Clang doens"t need #pragma intrinsic anyway, so don"t whine when one isn"t recognized
+            "-Wno-ignored-pragma-intrinsic",    # Clang doesnt need #pragma intrinsic anyway, so dont whine when one isnt recognized,
+            "-ffast-math",                      # Allow aggressive, lossy floating-point optimizations,
+            "-fno-rtti",                        # Disable RTTI,
+            "-fno-exceptions"                   # Disable Exceptions
         ],
         "LINKFLAGS": [
             "/MACHINE:x64",

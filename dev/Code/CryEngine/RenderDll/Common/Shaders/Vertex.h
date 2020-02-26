@@ -318,6 +318,14 @@ namespace AZ
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
                     m_enum = eVF_P3F_C4F_T2F_T3F;
                     break;
+                case eVF_P3F_C4F_T2F_T3F_T3F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    m_enum = eVF_P3F_C4F_T2F_T3F_T3F;
+                    break;
                 case eVF_P3F_C4F_T2F_T1F:
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
@@ -333,6 +341,15 @@ namespace AZ
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
                     m_enum = eVF_P3F_C4F_T2F_T1F_T3F;
                     break;
+                case eVF_P3F_C4F_T2F_T1F_T3F_T3F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_1));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    m_enum = eVF_P3F_C4F_T2F_T1F_T3F_T3F;
+                    break;
                 case eVF_P3F_C4F_T4F_T2F:
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
@@ -347,6 +364,15 @@ namespace AZ
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
                     m_enum = eVF_P3F_C4F_T4F_T2F_T3F;
+                    break;
+                case eVF_P3F_C4F_T4F_T2F_T3F_T3F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    m_enum = eVF_P3F_C4F_T4F_T2F_T3F_T3F;
                     break;
                 case eVF_P3F_C4F_T4F_T2F_T1F:
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
@@ -365,6 +391,16 @@ namespace AZ
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
                     m_enum = eVF_P3F_C4F_T4F_T2F_T1F_T3F;
                     break;
+                case eVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_1));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    m_enum = eVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F;
+                    break;
                 case eVF_P3F_C4F_T2F_T2F_T1F:
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
@@ -381,6 +417,16 @@ namespace AZ
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_1));
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
                     m_enum = eVF_P3F_C4F_T2F_T2F_T1F_T3F;
+                    break;
+                case eVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_1));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    m_enum = eVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F;
                     break;
                 case eVF_P3F_C4F_T2F_T2F_T1F_T1F:
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
@@ -400,6 +446,17 @@ namespace AZ
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_1));
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
                     m_enum = eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F;
+                    break;
+                case eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_1));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_1));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    m_enum = eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F;
                     break;
                 case eVF_P4F_T2F_C4F_T4F_T4F:
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_4));
@@ -425,6 +482,15 @@ namespace AZ
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
                     m_enum = eVF_P3F_C4F_T2F_T3F_T4F;
                     break;
+                case eVF_P3F_C4F_T2F_T3F_T3F_T4F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    m_enum = eVF_P3F_C4F_T2F_T3F_T3F_T4F;
+                    break;
                 case eVF_P3F_C4F_T2F_T1F_T4F:
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
@@ -442,6 +508,16 @@ namespace AZ
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
                     m_enum = eVF_P3F_C4F_T2F_T1F_T3F_T4F;
                     break;
+                case eVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_1));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    m_enum = eVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F;
+                    break;
                 case eVF_P3F_C4F_T4F_T2F_T4F:
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
@@ -458,6 +534,16 @@ namespace AZ
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
                     m_enum = eVF_P3F_C4F_T4F_T2F_T3F_T4F;
+                    break;
+                case eVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    m_enum = eVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F;
                     break;
                 case eVF_P3F_C4F_T4F_T2F_T1F_T4F:
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
@@ -478,6 +564,17 @@ namespace AZ
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
                     m_enum = eVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F;
                     break;
+                case eVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_1));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    m_enum = eVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F;
+                    break;
                 case eVF_P3F_C4F_T2F_T2F_T1F_T4F:
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
@@ -496,6 +593,17 @@ namespace AZ
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
                     m_enum = eVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F;
+                    break;
+                case eVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_1));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    m_enum = eVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F;
                     break;
                 case eVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F:
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
@@ -517,6 +625,18 @@ namespace AZ
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
                     m_enum = eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F;
+                    break;
+                case eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_1));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_1));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    m_enum = eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F;
                     break;
                 case eVF_P4F_T2F_C4F_T4F_T4F_T4F:
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_4));
@@ -545,6 +665,16 @@ namespace AZ
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
                     m_enum = eVF_P3F_C4F_T2F_T3F_T4F_T4F;
                     break;
+                case eVF_P3F_C4F_T2F_T3F_T3F_T4F_T4F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    m_enum = eVF_P3F_C4F_T2F_T3F_T3F_T4F_T4F;
+                    break;
                 case eVF_P3F_C4F_T2F_T1F_T4F_T4F:
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
@@ -564,6 +694,17 @@ namespace AZ
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
                     m_enum = eVF_P3F_C4F_T2F_T1F_T3F_T4F_T4F;
                     break;
+                case eVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F_T4F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_1));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    m_enum = eVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F_T4F;
+                    break;
                 case eVF_P3F_C4F_T4F_T2F_T4F_T4F:
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
@@ -582,6 +723,17 @@ namespace AZ
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
                     m_enum = eVF_P3F_C4F_T4F_T2F_T3F_T4F_T4F;
+                    break;
+                case eVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F_T4F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    m_enum = eVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F_T4F;
                     break;
                 case eVF_P3F_C4F_T4F_T2F_T1F_T4F_T4F:
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
@@ -604,6 +756,18 @@ namespace AZ
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
                     m_enum = eVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F_T4F;
                     break;
+                case eVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F_T4F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_1));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    m_enum = eVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F_T4F;
+                    break;
                 case eVF_P3F_C4F_T2F_T2F_T1F_T4F_T4F:
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
@@ -624,6 +788,18 @@ namespace AZ
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
                     m_enum = eVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F_T4F;
+                    break;
+                case eVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F_T4F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_1));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    m_enum = eVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F_T4F;
                     break;
                 case eVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F_T4F:
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
@@ -647,6 +823,19 @@ namespace AZ
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
                     m_enum = eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F_T4F;
+                    break;
+                case eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F_T4F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_1));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_1));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    m_enum = eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F_T4F;
                     break;
                 case eVF_P4F_T2F_C4F_T4F_T4F_T4F_T4F:
                     AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_4));
@@ -865,7 +1054,7 @@ namespace AZ
 #ifdef PARTICLE_MOTION_BLUR
             static const uint32_t kMaxAttributes = 8;
 #elif defined(POPCORNFX_PARTICLES)
-            static const uint32_t kMaxAttributes = 9;
+            static const uint32_t kMaxAttributes = 10;
 #else
             static const uint32_t kMaxAttributes = 5;
 #endif

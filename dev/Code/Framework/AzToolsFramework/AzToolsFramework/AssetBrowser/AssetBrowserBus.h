@@ -18,13 +18,13 @@
 // warning C4251: 'QBrush::d': class 'QScopedPointer<QBrushData,QBrushDataPointerDeleter>' needs to have dll-interface to be used by clients of class 'QBrush'
 AZ_PUSH_DISABLE_WARNING(4127 4251, "-Wunknown-warning-option") 
 #include <QIcon>
-#include <QImage>
 AZ_POP_DISABLE_WARNING
 
 class QMimeData;
 class QWidget;
 class QImage;
 class QMenu;
+
 namespace AZ
 {
     namespace Data
@@ -39,7 +39,9 @@ namespace AzToolsFramework
 {
     namespace AssetBrowser
     {
+        class AssetSelectionModel;
         class AssetBrowserModel;
+        class AssetBrowserEntry;
 
         //////////////////////////////////////////////////////////////////////////
         // AssetBrowserComponent
@@ -52,7 +54,6 @@ namespace AzToolsFramework
             //! Indicates that the Asset Database has been initialized
             virtual void OnDatabaseInitialized() = 0;
         };
-        class AssetBrowserEntry;
 
         using AssetDatabaseLocationNotificationBus = AZ::EBus<AssetDatabaseLocationNotifications>;
 
@@ -70,6 +71,11 @@ namespace AzToolsFramework
 
             //! Returns true if entries were populated
             virtual bool AreEntriesReady() = 0;
+
+            //! Spawn asset picker window
+            //! @param selection Selection filter model for asset picker window
+            //! @param parent Parent widget that previewer will be attached to
+            virtual void PickAssets(AssetSelectionModel& selection, QWidget* parent) = 0;
         };
 
         using AssetBrowserComponentRequestBus = AZ::EBus<AssetBrowserComponentRequests>;
@@ -89,10 +95,8 @@ namespace AzToolsFramework
         // Interaction
         //////////////////////////////////////////////////////////////////////////
 
-        /**
-        * This struct is used to respond about being able to open source files.
-        * See /ref AssetBrowserInteractionNotifications::OpenSourceFileInEditor below
-        */
+        //! This struct is used to respond about being able to open source files.
+        //! See AssetBrowserInteractionNotifications::OpenSourceFileInEditor below
         struct SourceFileOpenerDetails
         {
             //! You provide a function to call (you may use std-bind to bind to your class) if your opener is chosen to handle the open operation
@@ -100,19 +104,15 @@ namespace AzToolsFramework
 
             AZStd::string m_identifier; ///< choose something unique for your opener.  It may be used to restore state.  it will not be shown to user.
 
-            /**
-            * m_displayText is used when more than one listener offers to open this kind of file and 
-            * we need the user to pick which one they want.  They will be offered all the available openers in a menu
-            * which shows this text, and the one they pick will get its SourceFileOpenerFunctionType called.
-            */
+            //! m_displayText is used when more than one listener offers to open this kind of file and 
+            //! we need the user to pick which one they want.  They will be offered all the available openers in a menu
+            //! which shows this text, and the one they pick will get its SourceFileOpenerFunctionType called.
             AZStd::string m_displayText; 
             QIcon m_iconToUse; ///< optional.  Same as m_displayText.  Used when there's ambiguity.  If empty, no icon.
 
-            /**
-            * This is the function to call.  If you fill a nullptr in here, then the default operating system behavior will be suppressed
-            * but no opener will be opened.  This will also cause the 'open' option in context menus to disappear if the only openers
-            * are nullptr ones.
-            */
+            //! This is the function to call.  If you fill a nullptr in here, then the default operating system behavior will be suppressed
+            //! but no opener will be opened.  This will also cause the 'open' option in context menus to disappear if the only openers
+            //! are nullptr ones.
             SourceFileOpenerFunctionType m_opener; 
 
             SourceFileOpenerDetails() = default;
@@ -125,34 +125,28 @@ namespace AzToolsFramework
 
         typedef AZStd::vector<SourceFileOpenerDetails> SourceFileOpenerList;
 
-        /**
-        * used by the API to (optionally) let systems describe details about source files
-        * see /ref AssetBrowserInteractionNotifications to see how it is used.
-        * The intended behavior of this is that listeners respond with a SourceFileDetails struct
-        * which has only the field(s) filled in which they can fill in, and the system combines all responses
-        * to fill in details from many systems.
-        * More fields may be added to SourceFileDetails as more systems require other kinds of details.
-        */
+        //! used by the API to (optionally) let systems describe details about source files
+        //! see /ref AssetBrowserInteractionNotifications to see how it is used.
+        //! The intended behavior of this is that listeners respond with a SourceFileDetails struct
+        //! which has only the field(s) filled in which they can fill in, and the system combines all responses
+        //! to fill in details from many systems.
+        //! More fields may be added to SourceFileDetails as more systems require other kinds of details.
         struct SourceFileDetails
         {
-            /** 
-            * An openable path to a resource that can be used as the thumbnail for this type of file.
-            * This can be a Qt resource system string like ":/tools/something.png" for resources embedded in your 
-            * dlls, or an absolute path, or relative source asset path like "editor/icons/whatever.png"
-            */
+            //! An openable path to a resource that can be used as the thumbnail for this type of file.
+            //! This can be a Qt resource system string like ":/tools/something.png" for resources embedded in your 
+            //! dlls, or an absolute path, or relative source asset path like "editor/icons/whatever.png"
             AZStd::string m_sourceThumbnailPath;
 
-            // Update this constructor or add more constructors if you add fields so that existing ones continue to work.
+            //! Update this constructor or add more constructors if you add fields so that existing ones continue to work.
             SourceFileDetails(const char* thumbnailPath)
             {
                 m_sourceThumbnailPath = thumbnailPath;
             }
             
-            /** Remember to update this function also if you add fields to this struct.
-            * this is the function that will be used to "fold" multiple returned values from other results onto
-            * one canonical result containing all the result fields.  This function gets called repeatedly, once
-            * for every responding listener and can be used to avoid allocations.
-            */
+            //! this is the function that will be used to "fold" multiple returned values from other results onto
+            //! one canonical result containing all the result fields.  This function gets called repeatedly, once
+            //! for every responding listener and can be used to avoid allocations.
             SourceFileDetails& operator=(SourceFileDetails&& other)
             {
                 if (this != &other)
@@ -194,34 +188,28 @@ namespace AzToolsFramework
             //! Notification that a context menu is about to be shown and offers an opportunity to add actions.
             virtual void AddContextMenuActions(QWidget* /*caller*/, QMenu* /*menu*/, const AZStd::vector<AssetBrowserEntry*>& /*entries*/) {};
 
-            /**
-            * Implement AddSourceFileOpeners to provide your own editor for source files
-            * This gets called to collect the list of available openers for a file.
-            * Add your detail(s) to the openers list if you would like to be one of the options available to open the file.
-            * You can also add more than one to the list, or check the existing list to determine your behavior.
-            * If there is more than one in the list, the user will be given the choice of openers to use.
-            * If nobody responds (nobody adds their entry into the openers list), then the default operating system handler
-            * will be called (whatever that kind of file is associated with).
-            */
+            //! Implement AddSourceFileOpeners to provide your own editor for source files
+            //! This gets called to collect the list of available openers for a file.
+            //! Add your detail(s) to the openers list if you would like to be one of the options available to open the file.
+            //! You can also add more than one to the list, or check the existing list to determine your behavior.
+            //! If there is more than one in the list, the user will be given the choice of openers to use.
+            //! If nobody responds (nobody adds their entry into the openers list), then the default operating system handler
+            //! will be called (whatever that kind of file is associated with).
             virtual void AddSourceFileOpeners(const char* /*fullSourceFileName*/, const AZ::Uuid& /*sourceUUID*/, SourceFileOpenerList& /*openers*/) {}
 
-            /**
-            * If you have an Asset Entry and would like to try to open it using the associated editor, you can use this bus to do so.
-            * Note that you can override this bus with a higher-than-zero priorit handler, and set alreadyHandled to true in your handler
-            * to prevent the default behavior from occuring.
-            * The default behavior is to call the above function for all handlers of that asset type, to gather the openers that can open it.
-            * following that, it either opens it with the opener (if there is only one) or prompts the user for which one to use.
-            * If no opener is present it tries to open it using the asset editor.
-            * finally, if its not a generic asset, it tries the operating system.
-            */
+            //! If you have an Asset Entry and would like to try to open it using the associated editor, you can use this bus to do so.
+            //! Note that you can override this bus with a higher-than-zero priorit handler, and set alreadyHandled to true in your handler
+            //! to prevent the default behavior from occuring.
+            //! The default behavior is to call the above function for all handlers of that asset type, to gather the openers that can open it.
+            //! following that, it either opens it with the opener (if there is only one) or prompts the user for which one to use.
+            //! If no opener is present it tries to open it using the asset editor.
+            //! finally, if its not a generic asset, it tries the operating system.
             virtual void OpenAssetInAssociatedEditor(const AZ::Data::AssetId& /*assetId*/, bool& /*alreadyHandled*/) {}
 
-            /**
-            * Allows you to recognise the source files that your plugin cares about and provide information about the source file
-            * for display in the Asset Browser.  This allows you to override the default behavior if you wish to.
-            * note that you'll get SourceFileDetails for every file in view, and you should only return something if its YOUR
-            * kind of file that you have details to provide.
-            */
+            //! Allows you to recognise the source files that your plugin cares about and provide information about the source file
+            //! for display in the Asset Browser.  This allows you to override the default behavior if you wish to.
+            //! note that you'll get SourceFileDetails for every file in view, and you should only return something if its YOUR
+            //! kind of file that you have details to provide.
             virtual SourceFileDetails GetSourceFileDetails(const char* /*fullSourceFileName*/)
             {
                 return SourceFileDetails();
@@ -278,10 +266,8 @@ namespace AzToolsFramework
         public:
             static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
 
-            /**
-            * Requests the Asset Browser's view to select the given asset.
-            * \param assetID The asset to select.
-            */
+            //! Requests the Asset Browser's view to select the given asset.
+            //! @param assetID The asset to select.
             virtual void SelectProduct(AZ::Data::AssetId assetID) = 0;
 
             /**

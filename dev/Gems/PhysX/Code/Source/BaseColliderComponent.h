@@ -16,6 +16,8 @@
 #include <AzCore/Component/EntityBus.h>
 #include <AzCore/Component/TransformBus.h>
 
+#include <AzFramework/Physics/CollisionBus.h>
+
 #include <PhysX/ColliderComponentBus.h>
 #include <PhysX/ColliderShapeBus.h>
 
@@ -33,6 +35,7 @@ namespace PhysX
         , public ColliderComponentRequestBus::Handler
         , private AZ::TransformNotificationBus::Handler
         , protected PhysX::ColliderShapeRequestBus::Handler
+        , protected Physics::CollisionFilteringRequestBus::Handler
     {
     public:
         AZ_COMPONENT(BaseColliderComponent, "{D0D48233-DCCA-4125-A6AE-4E5AC5E722D3}");
@@ -60,6 +63,13 @@ namespace PhysX
         // PhysX::ColliderShapeBus
         AZ::Aabb GetColliderShapeAabb() override;
         bool IsTrigger() override;
+
+        // CollisionFilteringRequestBus
+        void SetCollisionLayer(const AZStd::string& layerName, const AZ::Crc32& filterTag) override;
+        AZStd::string GetCollisionLayerName() override;
+        void SetCollisionGroup(const AZStd::string& groupName, const AZ::Crc32& filterTag) override;
+        AZStd::string GetCollisionGroupName() override;
+        void ToggleCollisionLayer(const AZStd::string& layerName, const AZ::Crc32& filterTag, bool enabled) override;
 
     protected:
         /// Class for collider's shape parameters that are cached.
@@ -124,7 +134,9 @@ namespace PhysX
         Physics::ShapeConfigurationList m_shapeConfigList;
     private:
         void InitStaticRigidBody();
-        void InitShapes();
+        bool InitShapes();
+        bool IsMeshCollider() const;
+        bool InitMeshCollider();
 
         AZStd::unique_ptr<PhysX::RigidBodyStatic> m_staticRigidBody;
         AZStd::vector<AZStd::shared_ptr<Physics::Shape>> m_shapes;

@@ -96,7 +96,7 @@ namespace EMotionFX
         GetEMotionFX().Update(1.0f / 60.0f);
 
         // Check correct output for vector3 parameter.
-        const AZ::PackedVector3f& vec3TestParam = m_paramNode->GetOutputVector3(m_animGraphInstance,
+        const AZ::Vector3& vec3TestParam = m_paramNode->GetOutputVector3(m_animGraphInstance,
             m_paramNode->FindOutputPortIndex("vec3Test"))->GetValue();
 
         EXPECT_FLOAT_EQ(vec3TestParam.GetX(), m_param.GetX()) << "Vector3 X value should be the same as expected vector3 X value.";
@@ -110,10 +110,10 @@ namespace EMotionFX
         GetEMotionFX().Update(1.0f / 60.0f);
 
         // Shuffle the vector3 parameter values to check changing vector3 values will be processed correctly.
-        ParamSetValue<MCore::AttributeVector3, AZ::PackedVector3f>("vec3Test", AZ::PackedVector3f(m_param.GetY(), m_param.GetZ(), m_param.GetX()));
+        ParamSetValue<MCore::AttributeVector3, AZ::Vector3>("vec3Test", AZ::Vector3(m_param.GetY(), m_param.GetZ(), m_param.GetX()));
         GetEMotionFX().Update(1.0f / 60.0f);
 
-        const AZ::PackedVector3f& vec3TestParam = m_paramNode->GetOutputVector3(m_animGraphInstance,
+        const AZ::Vector3& vec3TestParam = m_paramNode->GetOutputVector3(m_animGraphInstance,
             m_paramNode->FindOutputPortIndex("vec3Test"))->GetValue();
         EXPECT_FLOAT_EQ(vec3TestParam.GetX(), m_param.GetY()) << "Input vector3 X value should be the same as expected vector3 Y value.";
         EXPECT_FLOAT_EQ(vec3TestParam.GetY(), m_param.GetZ()) << "Input vector3 Y value should be the same as expected vector3 Z value.";

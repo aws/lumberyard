@@ -18,7 +18,7 @@
 #include <EMotionFX/Source/Pose.h>
 #include <EMotionFX/Source/PoseDataFactory.h>
 #include <EMotionFX/Source/TransformData.h>
-
+#include <MCore/Source/AzCoreConversions.h>
 
 namespace EMotionFX
 {
@@ -304,7 +304,7 @@ namespace EMotionFX
         Skeleton* skeleton = mActor->GetSkeleton();
 
         const uint32 parentIndex = skeleton->GetNode(nodeIndex)->GetParentIndex();
-        if (parentIndex != MCORE_INVALIDINDEX32)
+        if (parentIndex != MCORE_INVALIDINDEX32 && !(mFlags[parentIndex] & FLAG_MODELTRANSFORMREADY))
         {
             UpdateModelSpaceTransform(parentIndex);
         }
@@ -416,15 +416,8 @@ namespace EMotionFX
     // get the local transform
     const Transform& Pose::GetLocalSpaceTransform(uint32 nodeIndex) const
     {
-        if ((mFlags[nodeIndex] & FLAG_LOCALTRANSFORMREADY))
-        {
-            return mLocalSpaceTransforms[nodeIndex];
-        }
-        else
-        {
-            UpdateLocalSpaceTransform(nodeIndex);
-            return mLocalSpaceTransforms[nodeIndex];
-        }
+        UpdateLocalSpaceTransform(nodeIndex);
+        return mLocalSpaceTransforms[nodeIndex];
     }
 
 
@@ -1071,7 +1064,7 @@ namespace EMotionFX
             {
                 nodeNr = mActorInstance->GetEnabledNode(i);
                 UpdateLocalSpaceTransform(nodeNr);
-                mLocalSpaceTransforms[nodeNr].mRotation.Normalize();
+                mLocalSpaceTransforms[nodeNr].mRotation.NormalizeExact();
             }
         }
         else
@@ -1080,7 +1073,7 @@ namespace EMotionFX
             for (uint32 i = 0; i < numNodes; ++i)
             {
                 UpdateLocalSpaceTransform(i);
-                mLocalSpaceTransforms[i].mRotation.Normalize();
+                mLocalSpaceTransforms[i].mRotation.NormalizeExact();
             }
         }
     }
@@ -1357,7 +1350,7 @@ namespace EMotionFX
                 Transform& transform = const_cast<Transform&>(GetLocalSpaceTransform(nodeNr));
                 const Transform& refTransform = refPose.GetLocalSpaceTransform(nodeNr);
                 transform.mPosition = transform.mPosition - refTransform.mPosition;
-                transform.mRotation = refTransform.mRotation.Conjugated() * transform.mRotation;
+                transform.mRotation = refTransform.mRotation.GetConjugate() * transform.mRotation;
                 EMFX_SCALECODE
                 (
                     transform.mScale *= refTransform.mScale;
@@ -1372,7 +1365,7 @@ namespace EMotionFX
                 Transform& transform = const_cast<Transform&>(GetLocalSpaceTransform(i));
                 const Transform& refTransform = refPose.GetLocalSpaceTransform(i);
                 transform.mPosition = transform.mPosition - refTransform.mPosition;
-                transform.mRotation = refTransform.mRotation.Conjugated() * transform.mRotation;
+                transform.mRotation = refTransform.mRotation.GetConjugate() * transform.mRotation;
                 EMFX_SCALECODE
                 (
                     transform.mScale *= refTransform.mScale;

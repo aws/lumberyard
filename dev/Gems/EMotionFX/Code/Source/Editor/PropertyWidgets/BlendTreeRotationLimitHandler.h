@@ -61,6 +61,7 @@ namespace EMotionFX
 
         // Method to create the new widget - returns a GrowTextEdit*
         QWidget* CreateGUI(QWidget* parent) override;
+        bool AutoDelete() const override { return false; }
 
         // Method to return the name of the new handler - returns AZ::Edit::UIHandlers::MultiLineEdit, so it can be used
         // by when reflecting properties
@@ -101,6 +102,7 @@ namespace EMotionFX
 
         // Method to create the new widget - returns a GrowTextEdit*
         QWidget* CreateGUI(QWidget* parent) override;
+        bool AutoDelete() const override { return false; }
 
         // Method to return the name of the new handler - returns AZ::Edit::UIHandlers::MultiLineEdit, so it can be used
         // by when reflecting properties

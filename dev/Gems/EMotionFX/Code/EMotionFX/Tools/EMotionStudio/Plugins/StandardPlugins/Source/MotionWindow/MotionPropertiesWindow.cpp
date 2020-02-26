@@ -19,6 +19,7 @@
 #include <MysticQt/Source/ButtonGroup.h>
 #include <EMotionFX/CommandSystem/Source/MotionCommands.h>
 #include <MCore/Source/Compare.h>
+#include <MCore/Source/LogManager.h>
 
 
 namespace EMStudio

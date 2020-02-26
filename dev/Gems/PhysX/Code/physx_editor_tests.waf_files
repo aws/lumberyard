@@ -1,8 +1,14 @@
 {
     "auto": {
         "Tests": [
+            "Tests/PhysXTestCommon.cpp",
+            "Tests/PhysXTestCommon.h",
+            "Tests/EditorTestUtilities.cpp",
+            "Tests/EditorTestUtilities.h",
             "Tests/PhysXEditorTest.cpp",
+            "Tests/PolygonPrismMeshUtilsTest.cpp",
             "Tests/PhysXColliderComponentModeTests.cpp",
+            "Tests/ShapeColliderComponentTests.cpp",
             "Tests/TestColliderComponent.h"
         ]
     }

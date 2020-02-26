@@ -90,6 +90,74 @@
       </widget>
      </item>
      <item>
+      <widget class="AzQtComponents::TabWidget" name="tabWidgetBig">
+       <property name="currentIndex">
+        <number>1</number>
+       </property>
+       <property name="tabsClosable">
+        <bool>true</bool>
+       </property>
+       <property name="movable">
+        <bool>true</bool>
+       </property>
+       <widget class="QWidget" name="tabA">
+        <attribute name="title">
+         <string>Tab A</string>
+        </attribute>
+       </widget>
+       <widget class="QWidget" name="tabB">
+        <attribute name="title">
+         <string>Tab B</string>
+        </attribute>
+       </widget>
+       <widget class="QWidget" name="tabC">
+        <attribute name="title">
+         <string>Tab C</string>
+        </attribute>
+       </widget>
+       <widget class="QWidget" name="tabD">
+        <attribute name="title">
+         <string>Tab D</string>
+        </attribute>
+       </widget>
+       <widget class="QWidget" name="tabE">
+        <attribute name="title">
+         <string>Tab E</string>
+        </attribute>
+       </widget>
+       <widget class="QWidget" name="tabF">
+        <attribute name="title">
+         <string>Tab F</string>
+        </attribute>
+       </widget>
+       <widget class="QWidget" name="tabG">
+        <attribute name="title">
+         <string>Tab G</string>
+        </attribute>
+       </widget>
+       <widget class="QWidget" name="tabH">
+        <attribute name="title">
+         <string>Tab H</string>
+        </attribute>
+       </widget>
+       <widget class="QWidget" name="tabI">
+        <attribute name="title">
+         <string>Tab I</string>
+        </attribute>
+       </widget>
+       <widget class="QWidget" name="tabL">
+        <attribute name="title">
+         <string>Tab L</string>
+        </attribute>
+       </widget>
+       <widget class="QWidget" name="tabM">
+        <attribute name="title">
+         <string>Tab M</string>
+        </attribute>
+       </widget>
+      </widget>
+     </item>
+     <item>
       <spacer name="verticalSpacer">
        <property name="orientation">
         <enum>Qt::Vertical</enum>

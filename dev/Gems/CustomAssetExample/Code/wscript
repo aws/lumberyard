@@ -12,8 +12,10 @@
 
 def build(bld):
     bld.DefineGem(
-        includes            = [],
-        platforms           = ['win', 'darwin'],
+        includes            = ['.',
+                               bld.ThirdPartyPath('boost'),
+                               bld.Path('Code/CryEngine/CryCommon')],
+        platforms           = ['win', 'darwin', 'linux'],
         exclude_monolithic  = True,
         client_only         = True,
         disable_pch         = True,
@@ -21,7 +23,9 @@ def build(bld):
         test_all_file_list  = ['customassetexample_tests.waf_files'],
 
         editor = dict(
-            includes           = [],
+            includes           = ['.',
+                                  bld.ThirdPartyPath('boost'),
+                                  bld.Path('Code/CryEngine/CryCommon')],
             use                = ['AssetBuilderSDK', 'AzCore'],
             disable_pch        = True,
             features           = ['crcfix'],

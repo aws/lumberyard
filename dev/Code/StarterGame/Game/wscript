@@ -30,6 +30,7 @@ def build(bld):
         # Common
         #==============================
         includes    = [ '.' ,
+                        bld.ThirdPartyPath('boost'),
                         bld.Path('Code/CryEngine/CryCommon'),
                         bld.Path('Code/CryEngine/CryAction')
                       ],

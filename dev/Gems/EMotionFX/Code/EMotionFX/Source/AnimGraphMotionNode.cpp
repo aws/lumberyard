@@ -663,6 +663,11 @@ namespace EMotionFX
         return customSpeed;
     }
 
+    void AnimGraphMotionNode::PickNewActiveMotion(AnimGraphInstance* animGraphInstance)
+    {
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        PickNewActiveMotion(animGraphInstance, uniqueData);
+    }
 
     // pick a new motion from the list
     void AnimGraphMotionNode::PickNewActiveMotion(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData)

@@ -19,7 +19,7 @@
 #include <AzFramework/FileTag/FileTagBus.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/IO/LocalFileIO.h>
-#include <AzTestShared/Utils/Utils.h>
+#include <AZTestShared/Utils/Utils.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
 #include <fstream>

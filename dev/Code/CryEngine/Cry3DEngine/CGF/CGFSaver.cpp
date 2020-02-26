@@ -22,6 +22,7 @@
 
 #if defined(RESOURCE_COMPILER)
 
+#include "SwapEndianness.h"
 #include "../../../Tools/RC/ResourceCompilerPC/CGF/LoaderCAF.h"
 #include "../../../Tools/RC/ResourceCompilerPC/CGF/AnimSaver.h"
 #include "CompileTimeAssert.h"
@@ -836,7 +837,7 @@ int CSaverCGF::SaveNodeMesh(
         if (mesh.m_pColor1)
         {
             SwapEndian(mesh.m_pColor1, vertexCount, bSwapEndian);
-            chunk.nStreamChunkID[CGF_STREAM_COLORS2][0] = SaveStreamDataChunk(mesh.m_pColor1, CGF_STREAM_COLORS2, 0, vertexCount, sizeof(SMeshColor), bSwapEndian);
+            chunk.nStreamChunkID[CGF_STREAM_COLORS][1] = SaveStreamDataChunk(mesh.m_pColor1, CGF_STREAM_COLORS, 1, vertexCount, sizeof(SMeshColor), bSwapEndian);
             SwapEndian(mesh.m_pColor1, vertexCount, bSwapEndian);
         }
 

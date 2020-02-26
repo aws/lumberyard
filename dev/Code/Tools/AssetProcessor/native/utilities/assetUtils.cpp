@@ -44,6 +44,8 @@
 #include <mach-o/dyld.h>
 #include <libgen.h>
 #include <unistd.h>
+#elif defined(AZ_PLATFORM_LINUX)
+#include <libgen.h>
 #endif
 
 #include <AzCore/Debug/Trace.h>
@@ -68,9 +70,15 @@
 #   include <QFile>
 #endif
 
-#if AZ_TRAIT_OS_PLATFORM_APPLE
+#if defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
 #include <fcntl.h>
 #endif
+
+#if defined(AZ_PLATFORM_LINUX)
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#endif // defined(AZ_PLATFORM_LINUX)
 
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
@@ -336,6 +344,16 @@ namespace AssetUtilities
         // generally, in windows, drive letters are uppercase (in all presentations of them, such as UI, command line, etc).
         // however, its not actually case sensitive for drive letters.  But we want to remain consistent, so we uppercase it here:
         dir = dir.mid(0, 1).toUpper() + dir.mid(1);
+#elif defined(AZ_PLATFORM_LINUX)
+
+        char appPath[AZ_MAX_PATH_LEN];
+        // http://man7.org/linux/man-pages/man5/proc.5.html
+        size_t pathLen = readlink("/proc/self/exe", appPath, AZ_ARRAY_SIZE(appPath));
+
+        const char* exeBasename = basename(appPath);
+        filename = exeBasename;
+        const char* exedir = dirname(appPath);
+        dir = exedir;
 #endif
     }
 
@@ -428,8 +446,12 @@ namespace AssetUtilities
 
         return false;
 #else
-
-        int handle = open(fileName.toUtf8().constData(), O_RDONLY | O_EXLOCK | O_NONBLOCK);
+        int open_flags = O_RDONLY | O_NONBLOCK;
+#if defined(PLATFORM_APPLE)
+        // O_EXLOCK only supported on APPLE
+        open_flags |= O_EXLOCK
+#endif
+        int handle = open(fileName.toUtf8().constData(), open_flags);
         if (handle != -1)
         {
             close(handle);

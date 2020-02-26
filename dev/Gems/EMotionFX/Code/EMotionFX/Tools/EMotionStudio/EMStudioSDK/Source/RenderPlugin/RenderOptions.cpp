@@ -549,12 +549,10 @@ namespace EMStudio
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnRagdollColliderColorChangedCallback)
             ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectedRagdollColliderColor, "Selected ragdoll collider color", "")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSelectedRagdollColliderColorChangedCallback)
-#ifdef EMOTIONFX_ENABLE_CLOTH
             ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_clothColliderColor, "Cloth collider color", "")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnClothColliderColorChangedCallback)
             ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectedClothColliderColor, "Selected cloth collider color", "")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSelectedClothColliderColorChangedCallback)
-#endif
             ;
     }
 

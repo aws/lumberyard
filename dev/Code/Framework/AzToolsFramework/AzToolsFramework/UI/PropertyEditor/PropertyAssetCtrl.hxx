@@ -14,8 +14,9 @@
 
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
-#include <QtWidgets/QWidget>
-#include <QtWidgets/QPushButton>
+#include <QWidget>
+#include <QLabel>
+#include <QPushButton>
 #include "PropertyEditorAPI.h"
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -55,8 +56,13 @@ namespace AzToolsFramework
         void StartLoading();
         void StopLoading();
 
+    signals:
+        void focused(bool hasFocus);
+
     protected:
-        void paintEvent(QPaintEvent *event) override;
+        void paintEvent(QPaintEvent* event) override;
+        void focusInEvent(QFocusEvent* event) override;
+        void focusOutEvent(QFocusEvent* event) override;
 
         // AZ::TickBus ...
         void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
@@ -78,6 +84,7 @@ namespace AzToolsFramework
     public:
         AZ_CLASS_ALLOCATOR(PropertyAssetCtrl, AZ::SystemAllocator, 0);
 
+        // This is meant to be used with the "EditCallback" Attribute
         using EditCallbackType = AZ::Edit::AttributeFunction<void(const AZ::Data::AssetId&, const AZ::Data::AssetType&)>;
 
         PropertyAssetCtrl(QWidget *pParent = NULL, QString optionalValidDragDropExtensions = QString());
@@ -131,13 +138,37 @@ namespace AzToolsFramework
         EditCallbackType* m_editNotifyCallback = nullptr;
         QString m_optionalValidDragDropExtensions;
 
+        //! The number of characters after which the autocompleter dropdown will be shown.
+        //  Prevents showing too many options.
         static const int s_autocompleteAfterNumberOfChars = 3;
+
+        //! Used to store the last position of the cursor in the lineEdit
+        //  so that it can be restored when the text is changed programmatically.
         int m_lineEditLastCursorPosition = 0;
 
+        //! True if the autocompleter has been configured. Prevents multiple configurations.
         bool m_completerIsConfigured = false;
+
+        //! True when the autocompleter dropdown is currently being shown on screen.
         bool m_completerIsActive = false;
+
+        //! This flag is set to true whenever the user alters the value in the lineEdit
+        //  At that point, new values can only be selected via the autocompleter or the browse button.
         bool m_incompleteFilename = false;
+
+        //! If true, the field is used to reference folders.
         bool m_unnamedType = false;
+
+        //! True if the line edit is on focus (user has clicked on it and is editing it)
+        bool m_lineEditFocused = false;
+
+        //! Determines whether the field can be cleared by deleting the value of the lineEdit (or providing an invalid one).
+        //  True by default, turns to false if the clear button is disabled or hidden.
+        //  If set to false, trying to clear the value of the field will result in the current value being restored.
+        bool m_allowEmptyValue = true;
+
+        // ! Default suffix used in the field's placeholder text when a default value is set.
+        const char* m_DefaultSuffix = " (default)";
 
         bool IsCorrectMimeData(const QMimeData* pData, AZ::Data::AssetId* pAssetId = nullptr, AZ::Data::AssetType* pAssetType = nullptr) const;
         void ClearErrorButton();
@@ -147,18 +178,22 @@ namespace AzToolsFramework
         virtual void ClearAssetInternal();
 
         void ConfigureAutocompleter();
+        void RefreshAutocompleter();
         void EnableAutocompleter();
         void DisableAutocompleter();
+
+        void HandleFieldClear();
+        AZStd::string AddDefaultSuffix(const AZStd::string& filename);
 
         //////////////////////////////////////////////////////////////////////////
         // AssetSystemBus
         void SourceFileChanged(AZStd::string relativePath, AZStd::string scanFolder, AZ::Uuid sourceUUID) override;
         void SourceFileFailed(AZStd::string relativePath, AZStd::string scanFolder, AZ::Uuid sourceUUID) override;
         //////////////////////////////////////////////////////////////////////////
-
+        
     public slots:
         void SetEditNotifyTarget(void* editNotifyTarget);
-        void SetEditNotifyCallback(EditCallbackType* editNotifyCallback);
+        void SetEditNotifyCallback(EditCallbackType* editNotifyCallback); // This is meant to be used with the "EditCallback" Attribute
         void SetEditButtonEnabled(bool enabled);
         void SetEditButtonVisible(bool visible);
         void SetEditButtonIcon(const QIcon& icon);
@@ -170,10 +205,11 @@ namespace AzToolsFramework
         void SetSelectedAssetID(const AZ::Data::AssetId& newID, const AZ::Data::AssetType& newType);
         void SetCurrentAssetHint(const AZStd::string& hint);
         void SetDefaultAssetID(const AZ::Data::AssetId& defaultID);
-        void PopupAssetBrowser();
+        void PopupAssetPicker();
         void ClearAsset();
         void UpdateAssetDisplay();
-        void OnEditButtonClicked();
+        void OnLineEditFocus(bool focus);
+        virtual void OnEditButtonClicked();
         void OnAutocomplete(const QModelIndex& index);
         void OnTextChange(const QString& text);
         void OnReturnPressed();

@@ -1082,8 +1082,10 @@ public:
     QString m_logFile;
     QString m_pythonArgs;
     QString m_execFile;
+    QString m_execLineCmd;
 
     bool m_bSkipWelcomeScreenDialog = false;
+    bool m_bAutotestMode = false;
 
 #if AZ_TESTS_ENABLED
     bool m_bBootstrapPluginTests = false;
@@ -1128,13 +1130,17 @@ public:
             { "version", m_bShowVersionInfo },
             { "NSDocumentRevisionsDebugMode", nsDocumentRevisionsDebugMode},
             { "skipWelcomeScreenDialog", m_bSkipWelcomeScreenDialog},
+            { "autotest_mode", m_bAutotestMode}
         };
 
+        QString dummyString;
         const std::vector<std::pair<CommandLineStringOption, QString&> > stringOptions = {
             {{"app-root", "Application Root path override", "app-root"}, m_appRoot},
             {{"logfile", "File name of the log file to write out to.", "logfile"}, m_logFile},
             {{"runpythonargs", "Command-line argument string to pass to the python script if --runpython was used.", "runpythonargs"}, m_pythonArgs},
-            {{"exec", "cfg file to run on startup, used for systems like automation", "exec"}, m_execFile}
+            {{"exec", "cfg file to run on startup, used for systems like automation", "exec"}, m_execFile},
+            {{"exec_line", "command to run on startup, used for systems like automation", "exec_line"}, m_execLineCmd}
+            // add dummy entries here to prevent QCommandLineParser error-ing out on cmd line args that will be parsed later
         };
 
 
@@ -2328,7 +2334,7 @@ void CCryEditApp::InitFromCommandLine(CEditCommandLineInfo& cmdInfo)
 
     m_bTestMode |= cmdInfo.m_bTest;
 
-    m_bSkipWelcomeScreenDialog = cmdInfo.m_bSkipWelcomeScreenDialog || !cmdInfo.m_execFile.isEmpty();
+    m_bSkipWelcomeScreenDialog = cmdInfo.m_bSkipWelcomeScreenDialog || !cmdInfo.m_execFile.isEmpty() || !cmdInfo.m_execLineCmd.isEmpty() || cmdInfo.m_bAutotestMode;
     m_bPrecacheShaderList = cmdInfo.m_bPrecacheShaderList;
     m_bStatsShaderList = cmdInfo.m_bStatsShaderList;
     m_bStatsShaders = cmdInfo.m_bStatsShaders;
@@ -2338,6 +2344,8 @@ void CCryEditApp::InitFromCommandLine(CEditCommandLineInfo& cmdInfo)
     m_bExportMode = cmdInfo.m_bExport;
     m_bRunPythonScript = cmdInfo.m_bRunPythonScript;
     m_execFile = cmdInfo.m_execFile;
+    m_execLineCmd = cmdInfo.m_execLineCmd;
+    m_bAutotestMode = cmdInfo.m_bAutotestMode || cmdInfo.m_bConsoleMode;
 
     m_pEditor->SetMatEditMode(cmdInfo.m_bMatEditMode);
 
@@ -2673,6 +2681,12 @@ BOOL CCryEditApp::InitConsole()
         return false;
     }
 
+    // Execute command from cmdline -exec_line if applicable
+    if (!m_execLineCmd.isEmpty())
+    {
+        gEnv->pConsole->ExecuteString(QString("%1").arg(m_execLineCmd).toLocal8Bit());
+    }
+
     // Execute cfg from cmdline -exec if applicable
     if (!m_execFile.isEmpty())
     {
@@ -2860,6 +2874,15 @@ BOOL CCryEditApp::InitInstance()
     {
         AZ::Uuid editorFlowGraphComponentUuid = AZ::Uuid("{400972DE-DD1F-4407-8F53-7E514C5767CA}");
         EBUS_EVENT_ID(editorFlowGraphComponentUuid, AZ::ComponentDescriptorBus, ReleaseDescriptor);
+
+        // we have to actually mark it deprecated, or else we will incur errors as this loads.
+        AZ::SerializeContext* serialize = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serialize, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        if (serialize)
+        {
+            serialize->ClassDeprecate("EditorFlowGraphComponent", editorFlowGraphComponentUuid);
+        }
+
     }
 
     mainWindow->Initialize();
@@ -2877,6 +2900,8 @@ BOOL CCryEditApp::InitInstance()
         };
         cf->UnregisterClass(actorEntityGUID);
     }
+
+#if !defined(AZ_PLATFORM_LINUX)
     //Show login screen when not in batch mode
     if(!m_bConsoleMode)
     {
@@ -2889,6 +2914,9 @@ BOOL CCryEditApp::InitInstance()
             ExitInstance();
         }
     }
+#else
+    AZ_Assert(false,"Amazon Login Manager not supported on Linux")
+#endif // !defined(AZ_PLATFORM_LINUX)
 
     GetIEditor()->GetCommandManager()->RegisterAutoCommands();
     GetIEditor()->AddUIEnums();
@@ -2940,6 +2968,20 @@ BOOL CCryEditApp::InitInstance()
                 connect(observer, &Editor::WindowObserver::windowIsMovingOrResizingChanged, Editor::EditorQtApplication::instance(), &Editor::EditorQtApplication::setIsMovingOrResizing);
             }
 #endif
+        }
+    }
+
+    if (m_bAutotestMode)
+    {
+        ICVar* const noErrorReportWindowCVar = gEnv && gEnv->pConsole ? gEnv->pConsole->GetCVar("sys_no_error_report_window") : nullptr;
+        if (noErrorReportWindowCVar)
+        {
+            noErrorReportWindowCVar->Set(true);
+        }
+        ICVar* const showErrorDialogOnLoadCVar = gEnv && gEnv->pConsole ? gEnv->pConsole->GetCVar("ed_showErrorDialogOnLoad") : nullptr;
+        if (showErrorDialogOnLoadCVar)
+        {
+            showErrorDialogOnLoadCVar->Set(false);
         }
     }
 
@@ -6409,6 +6451,10 @@ void CCryEditApp::CloseCurrentLevel()
         // This closes the current document (level)
         currentLevel->OnNewDocument();
 
+        // Then we freeze the viewport's input
+        AzToolsFramework::ViewportInteraction::ViewportFreezeRequestBus::Broadcast(
+            &AzToolsFramework::ViewportInteraction::ViewportFreezeRequestBus::Events::FreezeViewportInput, true);
+
         // Then we need to tell the game engine there is no level to render anymore
         if (GetIEditor()->GetGameEngine())
         {
@@ -6635,6 +6681,10 @@ CCryEditDoc* CCryEditApp::OpenDocumentFile(LPCTSTR lpszFileName)
     {
         SandboxEditor::StartupTraceHandler openDocTraceHandler;
         openDocTraceHandler.StartCollection();
+        if (m_bAutotestMode)
+        {
+            openDocTraceHandler.SetShowWindow(false);
+        }
 
         // in this case, we set bAddToMRU to always be true because adding files to the MRU list
         // automatically culls duplicate and normalizes paths anyway
@@ -8735,6 +8785,38 @@ namespace
             loop.exec();
         } while ((double)(clock() - start) / CLOCKS_PER_SEC < timeInSec);
     }
+
+    void PyIdleWaitFrames(uint32 frames)
+    {
+        struct Ticker : public AZ::TickBus::Handler
+        {
+            Ticker(QEventLoop* loop, uint32 targetFrames) : m_loop(loop), m_targetFrames(targetFrames)
+            {
+                AZ::TickBus::Handler::BusConnect();
+            }
+            ~Ticker()
+            {
+                AZ::TickBus::Handler::BusDisconnect();
+            }
+
+            void OnTick(float deltaTime, AZ::ScriptTimePoint time) override
+            {
+                AZ_UNUSED(deltaTime);
+                AZ_UNUSED(time);
+                if (++m_elapsedFrames == m_targetFrames)
+                {
+                    m_loop->quit();
+                }
+            }
+            QEventLoop* m_loop = nullptr;
+            uint32 m_elapsedFrames = 0;
+            uint32 m_targetFrames = 0;
+        };
+
+        QEventLoop loop;
+        Ticker ticker(&loop, frames);
+        loop.exec();
+    }
 }
 
 bool CCryEditApp::Command_ExportToEngine()
@@ -9012,6 +9094,9 @@ bool CCryEditApp::OpenProjectConfigurator(const QString& startPage) const
     const char* projectConfigurator = "ProjectConfigurator.exe";
 #elif defined(Q_OS_MACOS)
     const char* projectConfigurator = "ProjectConfigurator";
+#elif defined(Q_OS_LINUX)
+    //KDAB_TODO verify it
+    const char* projectConfigurator = "ProjectConfigurator";
 #else
 #error Unsupported Platform for Project Configurator
 #endif
@@ -9046,6 +9131,9 @@ bool CCryEditApp::OpenSetupAssistant() const
 #if defined(Q_OS_WIN)
     const char* setupAssistant = "SetupAssistant.exe";
 #elif defined(Q_OS_MACOS)
+    const char* setupAssistant = "SetupAssistant";
+#elif defined(Q_OS_LINUX)
+    //KDAB_TODO verify it
     const char* setupAssistant = "SetupAssistant";
 #else
 #error Unsupported Platform for Project Configurator
@@ -9229,9 +9317,9 @@ int SANDBOX_API CryEditMain(int argc, char* argv[])
 
     // open a scope to contain the AZToolsApp instance;
     {
-        EditorInternal::EditorToolsApplication AZToolsApp;
+        EditorInternal::EditorToolsApplication AZToolsApp(&argc, &argv);
 
-        if (!AZToolsApp.Start(argc, argv))
+        if (!AZToolsApp.Start())
         {
             return -1;
         }
@@ -9456,6 +9544,7 @@ namespace AzToolsFramework
             addLegacyGeneral(behaviorContext->Method("is_idle_enabled", PyIdleIsEnabled, nullptr, "Returns whether or not idle processing is enabled for the Editor. Primarily used for auto-testing."));
             addLegacyGeneral(behaviorContext->Method("idle_is_enabled", PyIdleIsEnabled, nullptr, "Returns whether or not idle processing is enabled for the Editor. Primarily used for auto-testing."));
             addLegacyGeneral(behaviorContext->Method("idle_wait", PyIdleWait, nullptr, "Waits idling for a given seconds. Primarily used for auto-testing."));
+            addLegacyGeneral(behaviorContext->Method("idle_wait_frames", PyIdleWaitFrames, nullptr, "Waits idling for a frames. Primarily used for auto-testing."));
 
             addLegacyGeneral(behaviorContext->Method("start_process_detached", PyStartProcessDetached, nullptr, "Launches a detached process with an optional space separated list of arguments."));
             addLegacyGeneral(behaviorContext->Method("launch_lua_editor", PyLaunchLUAEditor, nullptr, "Launches the Lua editor, may receive a list of space separate file paths, or an empty string to only open the editor."));

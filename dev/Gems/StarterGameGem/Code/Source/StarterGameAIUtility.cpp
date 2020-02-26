@@ -15,7 +15,7 @@
 
 #include <AzCore/RTTI/BehaviorContext.h>
 
-#include <AI/NavigationComponent.h>
+#include <Ai/NavigationComponent.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/Entity.h>
 #include <IAISystem.h>

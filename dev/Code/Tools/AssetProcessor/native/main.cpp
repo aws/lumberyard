@@ -86,6 +86,7 @@ int main(int argc, char* argv[])
 
 #if defined(BATCH_MODE)
     BatchApplicationManager applicationManager(&argc, &argv);
+    setvbuf(stdout, NULL, _IONBF, 0); // Disabling output buffering to fix test failures due to incomplete logs
 #else
     GUIApplicationManager applicationManager(&argc, &argv);
 #endif

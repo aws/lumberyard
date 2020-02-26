@@ -34,6 +34,7 @@ namespace GradientSignal
         virtual ~GradientPreviewRequests() AZ_DEFAULT_METHOD;
 
         virtual void Refresh() = 0;
+        virtual void CancelRefresh() = 0;
     };
 
     using GradientPreviewRequestBus = AZ::EBus<GradientPreviewRequests>;

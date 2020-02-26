@@ -39,13 +39,12 @@ def restore_bucket(context, args):
         context, args.deployment, resource_group_name, logical_resource_name)
     if not resource['ResourceType'] in S3_TYPES:
         raise HandledError("{} is not an s3 bucket".format(logical_resource_name))
-    
+
     resource_name = __get_resource_name(context,
                                         args.deployment, resource_group_name, logical_resource_name)
     client = context.aws.session.client(
         's3', region_name=context.config.project_region, config=Config(signature_version='s3v4'))
     __restore_s3(client, args.backup_name, resource_name, context.config.project_region)
-
 
 
 def backup_resource(context, args):
@@ -65,10 +64,10 @@ def backup_resource(context, args):
         args.backup_name = "{}.{}.{}".format(
             context.config.get_project_stack_name(), args.deployment, args.resource)
 
-    if args.type == None:
+    if args.type is None:
         resource = __get_resource(context, args.deployment, resource_group_name, logical_resource_name)
         if resource['ResourceType'] in DDB_TYPES:
-            args.type='ddb'
+            args.type = 'ddb'
         elif resource['ResourceType'] in S3_TYPES:
             args.type = 's3'
         else:
@@ -78,7 +77,7 @@ def backup_resource(context, args):
         client = context.aws.session.client(
             'dynamodb', region_name=context.config.project_region)
         resource_name = __get_resource_name(context,
-            args.deployment, resource_group_name, logical_resource_name)
+                                            args.deployment, resource_group_name, logical_resource_name)
         __backup_ddb(client, resource_name, args.backup_name)
     elif args.type == "s3":
         resource_name = __get_resource_name(context,
@@ -151,8 +150,8 @@ def __backup_s3(client, bucket_name, backup_bucket, region_name):
 
 
 def __restore_s3(client, source_bucket, target_bucket, region_name):
-        print "Restoring {} from {}".format(target_bucket, source_bucket)
-        __transfer_s3(client, source_bucket, target_bucket, region_name)
+    print "Restoring {} from {}".format(target_bucket, source_bucket)
+    __transfer_s3(client, source_bucket, target_bucket, region_name)
 
 
 def __transfer_s3(client, source_bucket, target_bucket, region_name):

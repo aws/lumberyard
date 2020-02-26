@@ -37,7 +37,16 @@
             "Source/Integration/Components/SimpleMotionComponent.cpp",
             "Source/Integration/Components/SimpleLODComponent.h",
             "Source/Integration/Components/SimpleLODComponent.cpp"
+        ],
+        "GemShared/Source/Rendering": [
+            "Source/Integration/Rendering/RenderBackend.h",
+            "Source/Integration/Rendering/RenderBackend.cpp",
+            "Source/Integration/Rendering/RenderActor.h",
+            "Source/Integration/Rendering/RenderActor.cpp",
+            "Source/Integration/Rendering/RenderActorInstance.h",
+            "Source/Integration/Rendering/RenderActorInstance.cpp",
+            "Source/Integration/Rendering/RenderBackendManager.h",
+            "Source/Integration/Rendering/RenderBackendManager.cpp"
         ]
     }
 }
-

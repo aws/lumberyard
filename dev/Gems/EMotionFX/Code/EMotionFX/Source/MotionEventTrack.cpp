@@ -17,6 +17,7 @@
 #include "EventHandler.h"
 #include "TwoStringEventData.h"
 #include "AnimGraphEventBuffer.h"
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/StringIdPool.h>
 #include <EMotionFX/Source/Allocators.h>
 #include <AzCore/Math/MathUtils.h>

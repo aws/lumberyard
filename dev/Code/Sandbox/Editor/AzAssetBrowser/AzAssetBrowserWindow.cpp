@@ -15,7 +15,7 @@
 
 #include <Editor/AzAssetBrowser/AzAssetBrowserWindow.h>
 #include <Editor/AzAssetBrowser/AzAssetBrowserRequestHandler.h>
-#include <Editor/AzAssetBrowser/Preview/PreviewWidget.h>
+#include <Editor/AzAssetBrowser/Preview/LegacyPreviewer.h>
 
 #include <AzToolsFramework/AssetBrowser/Views/AssetBrowserTreeView.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
@@ -116,10 +116,11 @@ void AzAssetBrowserWindow::UpdatePreview() const
     auto selectedAssets = m_ui->m_assetBrowserTreeViewWidget->GetSelectedAssets();
     if (selectedAssets.size() != 1)
     {
-        m_ui->m_previewWidget->Clear();
+        m_ui->m_previewerFrame->Clear();
         return;
     }
-    m_ui->m_previewWidget->Display(selectedAssets.front());
+
+    m_ui->m_previewerFrame->Display(selectedAssets.front());
 }
 
 static void ExpandTreeToIndex(QTreeView* treeView, const QModelIndex& index)

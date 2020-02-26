@@ -14,6 +14,7 @@ def build(bld):
     bld.DefineGem(
         # General
         disable_pch             = True,
+        vs_filter               = 'Gems/PlatformServices',
         file_list               = ['achievements.waf_files'],
         
         # Testing

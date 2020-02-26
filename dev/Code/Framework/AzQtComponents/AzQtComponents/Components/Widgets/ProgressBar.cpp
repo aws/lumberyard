@@ -33,7 +33,7 @@ ProgressBar::Config ProgressBar::defaultConfig()
 {
     Config config;
 
-    config.height = 7;
+    config.height = 5;
 
     return config;
 }

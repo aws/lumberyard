@@ -26,21 +26,23 @@ def build(bld):
             file_list.append('lmbraws_unsupported.waf_files')
 
     kw = dict(
-        platforms = ['all'],
-        file_list = file_list,
-        uselib = ['AWS_CPP_SDK_CORE'],
-        use = ['AWSNativeSDKInit', 'CloudCanvasCommon.StaticLibrary'],
-        includes = [bld.Path('Code/CryEngine/CryCommon')
-                   ],
+        platforms       = ['all'],
+        file_list       = file_list,
+        uselib          = ['AWS_CPP_SDK_CORE', 'BOOST'],
+        use             = ['AWSNativeSDKInit', 'CloudCanvasCommon.StaticLibrary'],
+        includes        = ['.',
+                           bld.Path('Code/CryEngine/CryCommon')],
         platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)],
 
         StaticLibrary = dict(
             file_list = static_list,
-            use = ['AzCore', 'AzFramework'],
-            includes = [bld.Path('Code/CryEngine/CryCommon')],
-            vs_filter = 'Gems',
-            disable_pch = True,
-            platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)]
+            includes        = ['.',
+                               bld.Path('Code/CryEngine/CryCommon')],
+            use             = ['AzCore', 'AzFramework'],
+            uselib          = ['BOOST'],
+            vs_filter       = 'Gems',
+            disable_pch     = True,
+            platform_roots  = [bld.PlatformRoot('Source/Platform', export_includes=False)]
         )
     )
     

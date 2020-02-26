@@ -49,6 +49,7 @@ namespace Physics
                         ->Attribute(AZ::Edit::Attributes::Visibility, &ColliderConfiguration::GetOffsetVisibility)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ColliderConfiguration::m_rotation, "Rotation", "Local rotation relative to the rigid body")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &ColliderConfiguration::GetOffsetVisibility)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ColliderConfiguration::m_materialSelection, "Physics Material", "Select physics material library and which materials to use for the shape")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &ColliderConfiguration::GetMaterialSelectionVisibility)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ColliderConfiguration::m_tag, "Tag", "Tag used to identify colliders from one another")

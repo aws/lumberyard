@@ -13,6 +13,7 @@
 // inlude required headers
 #include "AttachmentNodesWindow.h"
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/StringConversions.h>
 
 // include qt headers

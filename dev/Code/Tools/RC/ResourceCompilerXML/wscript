@@ -21,10 +21,13 @@ def build(bld):
         vs_filter           = 'RC',
         copyright_org       = 'Amazon-CryTek',
         file_list           = 'resourcecompilerxml.waf_files',
-        platforms           = ['win', 'darwin'],
+        pch                 = 'PCH/StdAfx.cpp',
+        platforms           = ['win', 'darwin', 'linux'],
         client_only         = True,
         exclude_monolithic  = True,
         includes            = ['.',
+                               'PCH/.',
+                               bld.ThirdPartyPath('boost'),
                                bld.Path('Code/CryEngine/CryCommon'),
                                bld.Path('Code/Tools'),
                                bld.Path('Code/Tools/RC/ResourceCompiler'),
@@ -44,6 +47,7 @@ def build(bld):
 
         win_x64_clang_cxxflags = ['-Wno-nonportable-include-path'],
 
+        linux_rpath         = ['$ORIGIN/..', '$ORIGIN/qtlibs/lib'],
         # Testing
         test_all_file_list  = ['resourcecompilerxml_test.waf_files'],
     )

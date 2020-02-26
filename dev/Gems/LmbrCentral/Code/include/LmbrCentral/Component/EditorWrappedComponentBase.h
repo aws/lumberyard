@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -54,7 +55,7 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
 
         virtual AZ::u32 ConfigurationChanged();
-        
+
         TComponent m_component;
         TConfiguration m_configuration;
         bool m_visible = true;

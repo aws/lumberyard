@@ -18,8 +18,8 @@
 
 #include <PhysX/ColliderShapeBus.h>
 
-#include <AZcore/Serialization/EditContext.h>
-#include <AZcore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Serialization/SerializeContext.h>
 
 #include <LmbrCentral/Shape/SplineComponentBus.h>
 
@@ -286,9 +286,8 @@ namespace PhysX
             }
             else if (shapeConfig.IsAssetConfig())
             {
-                PhysX::MeshColliderComponentRequestsBus::Handler* meshColliderHandler = (PhysX::MeshColliderComponentRequestsBus::Handler*)editorColliderComponent;
-                randomPoints = ForceRegionUtil::GenerateMeshPoints(meshColliderHandler->GetMeshAsset()
-                    , shapeConfig.m_physicsAsset.m_configuration.m_assetScale);
+                const AZ::Vector3 halfExtents = aabb.GetExtents() * 0.5f;
+                randomPoints = PhysX::ForceRegionUtil::GenerateBoxPoints(-halfExtents, halfExtents);
             }
 
             PhysX::Utils::ColliderPointsLocalToWorld(randomPoints

@@ -321,17 +321,17 @@ MCORE_INLINE ReturnType KeyTrackLinearDynamic<ReturnType, StorageType>::Interpol
 
 
 template <>
-MCORE_INLINE MCore::Quaternion KeyTrackLinearDynamic<MCore::Quaternion, MCore::Compressed16BitQuaternion>::Interpolate(uint32 startKey, float currentTime) const
+MCORE_INLINE AZ::Quaternion KeyTrackLinearDynamic<AZ::Quaternion, MCore::Compressed16BitQuaternion>::Interpolate(uint32 startKey, float currentTime) const
 {
     // get the keys to interpolate between
-    const KeyFrame<MCore::Quaternion, MCore::Compressed16BitQuaternion>& firstKey = mKeys[startKey];
-    const KeyFrame<MCore::Quaternion, MCore::Compressed16BitQuaternion>& nextKey  = mKeys[startKey + 1];
+    const KeyFrame<AZ::Quaternion, MCore::Compressed16BitQuaternion>& firstKey = mKeys[startKey];
+    const KeyFrame<AZ::Quaternion, MCore::Compressed16BitQuaternion>& nextKey  = mKeys[startKey + 1];
 
     // calculate the time value in range of [0..1]
     const float t = (currentTime - firstKey.GetTime()) / (nextKey.GetTime() - firstKey.GetTime());
 
     // lerp between them
-    return firstKey.GetValue().NLerp(nextKey.GetValue(), t);
+    return MCore::NLerp(firstKey.GetValue(), nextKey.GetValue(), t);
 }
 
 

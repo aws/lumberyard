@@ -17,6 +17,7 @@
 #include "Importer/Importer.h"
 #include "Importer/NodeMapFileFormat.h"
 #include <MCore/Source/DiskFile.h>
+#include <MCore/Source/LogManager.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <EMotionFX/Source/Allocators.h>
 

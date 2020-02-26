@@ -19,6 +19,7 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/Interface/Interface.h>
 #include <AzFramework/Physics/Character.h>
 #include <AzFramework/Physics/RigidBody.h>
 #include <AzFramework/Physics/Shape.h>
@@ -101,6 +102,28 @@ namespace PhysX
         }
     };
 
+    /// Implementation of the PhysX profiler callback interface.
+    class PxAzProfilerCallback
+        : public physx::PxProfilerCallback
+    {
+    public:
+
+        //! Mark the beginning of a nested profile block.
+        //! @eventName Event name. Must be a persistent const char *.
+        //! @detached True for cross thread events.
+        //! @contextId The context id of this zone. Zones with the same id belong to the same group. 0 is used for no specific group.
+        //! @return Returns implementation-specific profiler data for this event.
+        void* zoneStart(const char* eventName, bool detached, uint64_t contextId) override;
+
+        //! Mark the end of a nested profile block.
+        //! @profilerData The data returned by the corresponding zoneStart call (or NULL if not available)
+        //! @eventName The name of the zone ending, must match the corresponding name passed with 'zoneStart'. Must be a persistent const char *.
+        //! @detached True for cross thread events. Should match the value passed to zoneStart.
+        //! @contextId The context of this zone. Should match the value passed to zoneStart.
+        //! Note: eventName plus contextId can be used to uniquely match up start and end of a zone.
+        void zoneEnd(void* profilerData, const char* eventName, bool detached, uint64_t contextId) override;
+    };
+
     /// System component for PhysX.
     /// The system component handles underlying tasks such as initialization and shutdown of PhysX, managing a
     /// Lumberyard memory allocator for PhysX allocations, scheduling for PhysX jobs, and connections to the PhysX
@@ -108,6 +131,7 @@ namespace PhysX
     /// constraints etc., and perform cooking (processing assets such as meshes and heightfields ready for use in PhysX).
     class SystemComponent
         : public AZ::Component
+        , public AZ::Interface<Physics::System>::Registrar
         , public Physics::SystemRequestBus::Handler
         , public PhysX::SystemRequestsBus::Handler
         , public ConfigurationRequestBus::Handler
@@ -193,8 +217,14 @@ namespace PhysX
 
         // CollisionRequestBus
         Physics::CollisionLayer GetCollisionLayerByName(const AZStd::string& layerName) override;
+        AZStd::string GetCollisionLayerName(const Physics::CollisionLayer& layer) override;
+        bool TryGetCollisionLayerByName(const AZStd::string& layerName, Physics::CollisionLayer& layer) override;
         Physics::CollisionGroup GetCollisionGroupByName(const AZStd::string& groupName) override;
+        bool TryGetCollisionGroupByName(const AZStd::string& layerName, Physics::CollisionGroup& group) override;
+        AZStd::string GetCollisionGroupName(const Physics::CollisionGroup& collisionGroup) override;
         Physics::CollisionGroup GetCollisionGroupById(const Physics::CollisionGroups::Id& groupId) override;
+        void SetCollisionLayerName(int index, const AZStd::string& layerName) override;
+        void CreateCollisionGroup(const AZStd::string& groupName, const Physics::CollisionGroup& group) override;
 
         // AZ::Component interface implementation
         void Init() override;
@@ -267,6 +297,7 @@ namespace PhysX
         AZStd::string m_configurationPath;
         Configuration m_configuration;
         AZ::Vector3 m_cameraPositionCache = AZ::Vector3::CreateZero();
+        PxAzProfilerCallback m_pxAzProfilerCallback;
     };
 
     /// Return PxCookingParams better suited for use at run-time, these parameters will improve cooking time.

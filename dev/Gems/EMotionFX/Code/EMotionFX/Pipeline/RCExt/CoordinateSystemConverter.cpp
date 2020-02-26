@@ -36,11 +36,11 @@ namespace EMotionFX
         CoordinateSystemConverter::CoordinateSystemConverter(const AZ::Vector3 sourceBasisVectors[3], const AZ::Vector3 targetBasisVectors[3], const AZ::u32 targetBasisIndices[3])
         {
             m_sourceTransform = AZ::Transform::CreateIdentity();
-            m_sourceTransform.SetBasisAndPosition(sourceBasisVectors[0], sourceBasisVectors[1], sourceBasisVectors[2], AZ::Vector3(0.0f, 0.0f, 0.0f));
+            m_sourceTransform.SetBasisAndPosition(sourceBasisVectors[0], sourceBasisVectors[1], sourceBasisVectors[2], AZ::Vector3::CreateZero());
             AZ_Assert(m_sourceTransform.IsOrthogonal(), "Invalid source transformation, basis vectors have to be orthogonal.");
 
             m_targetTransform = AZ::Transform::CreateIdentity();
-            m_targetTransform.SetBasisAndPosition(targetBasisVectors[0], targetBasisVectors[1], targetBasisVectors[2], AZ::Vector3(0.0f, 0.0f, 0.0f));
+            m_targetTransform.SetBasisAndPosition(targetBasisVectors[0], targetBasisVectors[1], targetBasisVectors[2], AZ::Vector3::CreateZero());
             AZ_Assert(m_targetTransform.IsOrthogonal(), "Invalid target transformation, basis vectors have to be orthogonal.");
 
             m_conversionTransform = m_targetTransform * m_sourceTransform.GetInverseFull();

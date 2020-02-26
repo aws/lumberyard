@@ -31,6 +31,13 @@
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzCore/std/containers/map.h>
 
+// EGL Windows are pointers on some platforms and integers on other platforms, so we can't globally use nullptr
+#if defined(AZ_PLATFORM_LINUX)
+    #define EGL_NULL_VALUE 0
+#else
+    #define EGL_NULL_VALUE nullptr
+#endif
+
 namespace NCryOpenGL
 {
     // Optional device context features
@@ -56,7 +63,7 @@ namespace NCryOpenGL
         eF_DebugOutput,
         eF_DualSourceBlending,
         eF_IndependentBlending,
-		eF_CopyImage,
+        eF_CopyImage,
         eF_NUM // Must be last one
     };
 
@@ -212,6 +219,10 @@ namespace NCryOpenGL
     protected:
         bool CreateSurface();
         bool DestroySurface();
+
+#if defined(AZ_PLATFORM_LINUX)
+        bool CreateX11Window();
+#endif
 
         EGLDisplay m_display;
         EGLSurface m_surface;

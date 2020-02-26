@@ -24,10 +24,10 @@ namespace AzGameFramework
         : public AzFramework::Application
     {
     public:
-
         AZ_CLASS_ALLOCATOR(GameApplication, AZ::SystemAllocator, 0);
 
         GameApplication();
+        GameApplication(int* argc, char*** argvS);
         ~GameApplication();
 
         AZ::ComponentTypeList GetRequiredSystemComponents() const override;
@@ -37,8 +37,13 @@ namespace AzGameFramework
         {
             azstrcpy(outConfigFilename, AZ_MAX_PATH_LEN, gameName);
             azstrcat(outConfigFilename, AZ_MAX_PATH_LEN, "/Config/Game.xml");
-            AZStd::to_lower(outConfigFilename, outConfigFilename + strlen(outConfigFilename));
         }
+
+
+        //////////////////////////////////////////////////////////////////////////
+        // AzFramework::ApplicationRequests::Bus
+        void QueryApplicationType(AzFramework::ApplicationTypeQuery& appType) const override;
+        //////////////////////////////////////////////////////////////////////////
 
     protected:
 

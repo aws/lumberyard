@@ -9,15 +9,18 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
-#include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
 #include <AzToolsFramework/AssetBrowser/Search/Filter.h>
 #include <AzToolsFramework/AssetBrowser/Entries/FolderAssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/Entries/SourceAssetBrowserEntry.h>
 
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option")
+#include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
+
 #include <QSharedPointer>
 #include <QTimer>
 #include <QCollator>
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {
@@ -126,7 +129,7 @@ namespace AzToolsFramework
                 }
             }
             invalidateFilter();
-                    Q_EMIT filterChanged();
+            Q_EMIT filterChanged();
         }
 
         void AssetBrowserFilterModel::filterUpdatedSlot()

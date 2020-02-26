@@ -12,10 +12,25 @@
 ########################################################################################
 
 
+def build(bld):
+    
+    from waflib import Utils
+    host_platform = Utils.unversioned_sys_platform()
+    
+    if host_platform == 'linux':
+        # For linux platforms, build this module as a static library
+        build_func           = 'CryEngineStaticLibrary'
+        build_defines        = ['SCENE_DATA_STATIC']
+        build_export_defines = ['SCENE_CORE_STATIC']
+        build_features       = ['qt5', 'crcfix']
+    else:
+        # For all other platforms, build this module as a shared library
+        build_func           = 'CryEngineModule'
+        build_defines        = ['SCENE_DATA_EXPORTS']
+        build_export_defines = []
+        build_features       = ['qt5','crcfix', 'link_running_program']
 
-def build(bld): 
-
-    #Create a file list that is needed for the exported symbols in the dylib in a non-monolithic build
+    # Create a file list that is needed for the exported symbols in the dylib in a non-monolithic build
     darwinExportedSymbolFileList=[]
     if not bld.is_build_monolithic():
         darwinExportedSymbolFileList.append('SceneData_darwin.waf_files');
@@ -27,7 +42,7 @@ def build(bld):
         vs_filter                   = 'Tools/SceneAPI',
         disable_pch                 = True,
         file_list                   = ['SceneData.waf_files'],
-        platforms                   = ['win', 'darwin'],
+        platforms                   = ['win', 'darwin', 'linux'],
         client_only                 = True,
         exclude_monolithic          = True,
         includes                    = [ bld.Path('Code/Tools') ],
@@ -39,15 +54,18 @@ def build(bld):
         uselib                      = ['QT5CORE',
                                        'QT5WIDGETS',
                                        'QT5GUI'],
-        defines                     = [ 'SCENE_DATA_EXPORTS' ],
-        features                    = ['qt5', 'crcfix', 'link_running_program'],
+        defines                     = build_defines,
+        export_defines              = build_export_defines,
+        features                    = build_features,
         output_sub_folder_copy      = 'rc',
 
-        #platform specific
+        # platform specific
         darwin_file_list            = darwinExportedSymbolFileList,
 
         # Testing
         test_all_file_list          = 'SceneData_testing.waf_files',
     )
 
-    bld.CryEngineModule(**kw)
+    getattr(bld, build_func)(**kw)
+
+

@@ -162,6 +162,7 @@ namespace Physics
         float m_minimumMovementDistance = 0.001f; ///< To avoid jittering, the controller will not attempt to move distances below this.
         bool m_directControl = true; ///< If false, the character will move purely kinematically under external control.
                                      ///< Can be used, for example, to replicate the movement of a character in a cosmetic world.
+        AZStd::string m_colliderTag; ///< Used to identify the collider associated with the character controller.
     };
 
     /// Basic implementation of common character-style needs as a WorldBody. Is not a full-functional ship-ready
@@ -187,6 +188,11 @@ namespace Physics
         virtual float GetSlopeLimitDegrees() const = 0;
         virtual void SetSlopeLimitDegrees(float slopeLimitDegrees) = 0;
         virtual AZ::Vector3 GetVelocity() const = 0;
+        virtual void SetCollisionLayer(const CollisionLayer& layer) = 0;
+        virtual void SetCollisionGroup(const CollisionGroup& group) = 0;
+        virtual CollisionLayer GetCollisionLayer() const = 0;
+        virtual CollisionGroup GetCollisionGroup() const = 0;
+        virtual AZ::Crc32 GetColliderTag() const = 0;
 
         /// Tries to move the character by the requested position change relative to its current position.
         /// Obstacles may prevent the actual movement from exactly matching the requested movement.

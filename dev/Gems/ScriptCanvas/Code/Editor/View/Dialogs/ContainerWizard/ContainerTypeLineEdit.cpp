@@ -15,6 +15,7 @@
 #include <qscopedvaluerollback.h>
 
 #include <QFocusEvent>
+#include <QHeaderView>
 #include <QWidgetAction>
 
 #include <GraphCanvas/Components/StyleBus.h>

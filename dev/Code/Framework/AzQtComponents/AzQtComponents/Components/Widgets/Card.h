@@ -21,7 +21,6 @@
 
 class QPoint;
 class QVBoxLayout;
-class QBoxLayout;
 class QSettings;
 
 namespace AzQtComponents
@@ -55,6 +54,7 @@ namespace AzQtComponents
         {
             int toolTipPaddingInPixels;
             int headerIconSizeInPixels;
+            int mainLayoutSpacing;
         };
 
         Card(QWidget* parent = nullptr);
@@ -67,7 +67,7 @@ namespace AzQtComponents
 
         CardHeader* header() const;
 
-        CardNotification* addNotification(QString message);
+        CardNotification* addNotification(const QString& message);
         void clearNotifications();
         int getNotificationCount() const;
 
@@ -120,6 +120,7 @@ namespace AzQtComponents
 
         // methods used by Style
         static bool polish(Style* style, QWidget* widget, const Config& config);
+        static bool unpolish(Style* style, QWidget* widget, const Config& config);
 
         QWidget* m_contentWidget = nullptr;
         QWidget* m_secondaryContentWidget = nullptr;

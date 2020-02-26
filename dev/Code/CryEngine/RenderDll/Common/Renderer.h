@@ -911,7 +911,7 @@ public:
     unsigned long GetNvidiaDriverVersion() const { return m_nvidiaDriverVersion; }
     void SetNvidiaDriverVersion(unsigned long version) { m_nvidiaDriverVersion = version; }
 
-    virtual int GetNumGeomInstances()
+    virtual int GetNumGeomInstances() const
     {
 #if !defined(RELEASE)
         return m_RP.m_PS[m_RP.m_nProcessThreadID].m_nInsts;
@@ -920,7 +920,7 @@ public:
 #endif
     };
 
-    virtual int GetNumGeomInstanceDrawCalls()
+    virtual int GetNumGeomInstanceDrawCalls() const
     {
 #if !defined(RELEASE)
         return m_RP.m_PS[m_RP.m_nProcessThreadID].m_nInstCalls;
@@ -929,7 +929,7 @@ public:
 #endif
     };
 
-    virtual int GetCurrentNumberOfDrawCalls()
+    virtual int GetCurrentNumberOfDrawCalls() const
     {
         int nDIPs = 0;
 #if defined(ENABLE_PROFILING_CODE)
@@ -942,7 +942,7 @@ public:
         return nDIPs;
     }
 
-    virtual void GetCurrentNumberOfDrawCalls(int& nGeneral, int& nShadowGen)
+    virtual void GetCurrentNumberOfDrawCalls(int& nGeneral, int& nShadowGen) const
     {
         int nDIPs = 0;
 #if defined(ENABLE_PROFILING_CODE)
@@ -958,10 +958,9 @@ public:
         nGeneral = nDIPs;
         nShadowGen = m_RP.m_PS[nThr].m_nDIPs[EFSLIST_SHADOW_GEN];
 #endif
-        return;
     }
 
-    virtual int GetCurrentNumberOfDrawCalls(const uint32 EFSListMask)
+    virtual int GetCurrentNumberOfDrawCalls(const uint32 EFSListMask) const
     {
         int nDIPs = 0;
 #if defined(ENABLE_PROFILING_CODE)
@@ -977,7 +976,7 @@ public:
         return nDIPs;
     }
 
-    virtual float GetCurrentDrawCallRTTimes(const uint32 EFSListMask)
+    virtual float GetCurrentDrawCallRTTimes(const uint32 EFSListMask) const
     {
         float fDIPTimes = 0.0f;
         int nThr = m_pRT->GetThreadList();
@@ -1238,7 +1237,7 @@ public:
     virtual CRenderView* GetRenderViewForThread(int nThreadID) final;
     Matrix44A GetCameraMatrix();
 
-    void GetPolyCount(int& nPolygons, int& nShadowPolys)
+    void GetPolyCount(int& nPolygons, int& nShadowPolys) const
     {
 #if defined(ENABLE_PROFILING_CODE)
         nPolygons = GetPolyCount();
@@ -1248,7 +1247,7 @@ public:
 #endif
     }
 
-    int GetPolyCount()
+    int GetPolyCount() const
     {
 #if defined(ENABLE_PROFILING_CODE)
         int nPolys = 0;
@@ -2151,6 +2150,15 @@ public:
     static int CV_r_StereoOutput;
     static int CV_r_StereoFlipEyes;
     static int CV_r_GetScreenShot;
+    enum class ScreenshotType : int // define as int to match the CVar
+    {
+        None               = 0,
+        HdrAndNormal       = 1,
+        Normal             = 2,
+        // Now for internal ScreenshotRequestBus use only.
+        NormalWithFilepath = 3,
+        NormalToBuffer     = 4
+    };
 
     static int CV_r_BreakOnError;
 
@@ -2602,6 +2610,9 @@ public:
     static float CV_r_minConsoleFontSize;
     static float CV_r_maxConsoleFontSize;
 
+    // Linux CVARS
+    static int CV_r_linuxSkipWindowCreation;
+
     // Graphics programmers: Use these in your code for local tests/debugging.
     // Delete all references in your code before you submit
     static int CV_r_GraphicsTest00;
@@ -2633,8 +2644,8 @@ public:
     virtual void EnableGPUTimers2(bool bEnabled) {};
     virtual void AllowGPUTimers2(bool bAllow) {}
 
-    virtual const RPProfilerStats* GetRPPStats(ERenderPipelineProfilerStats eStat, bool bCalledFromMainThread = true) { return NULL; }
-    virtual const RPProfilerStats* GetRPPStatsArray(bool bCalledFromMainThread = true) { return NULL; }
+    virtual const RPProfilerStats* GetRPPStats(ERenderPipelineProfilerStats eStat, bool bCalledFromMainThread = true) const { return nullptr; }
+    virtual const RPProfilerStats* GetRPPStatsArray(bool bCalledFromMainThread = true) const { return nullptr; }
 
     virtual int GetPolygonCountByType(uint32 EFSList, EVertexCostTypes vct, uint32 z, bool bCalledFromMainThread = true) { return 0; }
 

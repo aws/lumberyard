@@ -26,7 +26,6 @@ BrowseEditPage::BrowseEditPage(QWidget* parent)
 
     QIcon icon(":/stylesheet/img/question.png");
 
-    ui->browseEditEnabled->setClearButtonEnabled(true);
     ui->browseEditEnabled->setAttachedButtonIcon(icon);
     ui->browseEditEnabled->setLineEditReadOnly(true);
     ui->browseEditEnabled->setPlaceholderText("Some placeholder");
@@ -35,7 +34,6 @@ BrowseEditPage::BrowseEditPage(QWidget* parent)
         ui->browseEditEnabled->setText(text);
     });
 
-    ui->browseEditDisabled->setClearButtonEnabled(true);
     ui->browseEditDisabled->setLineEditReadOnly(true);
     ui->browseEditDisabled->setEnabled(false);
     ui->browseEditDisabled->setAttachedButtonIcon(icon);
@@ -58,7 +56,6 @@ BrowseEditPage::BrowseEditPage(QWidget* parent)
     });
 
     ui->browseEditNumberNonReadOnly->setValidator(new QIntValidator(this));
-    ui->browseEditNumberNonReadOnly->setClearButtonEnabled(true);
     ui->browseEditNumberNonReadOnly->setAttachedButtonIcon(icon);
     ui->browseEditNumberNonReadOnly->setToolTip("Click the attached button to enter a number. Put random characters in to put the control into error state.");
     ui->browseEditNumberNonReadOnly->setErrorToolTip("The control only accepts numbers!");

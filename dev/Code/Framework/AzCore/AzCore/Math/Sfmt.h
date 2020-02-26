@@ -105,9 +105,14 @@ namespace AZ
 
         /**
          * Returns the default global instance of the Sfmt, initialized with time(NULL) as seed. We recommend
-         * creating your own instances when need a big set of random numbers.
+         * creating your own instances when you need a big set of random numbers.
          */
         static Sfmt&     GetInstance();
+
+        //! Creates a global instance of Smft using AZ::EnvironmentVariable
+        static void Create();
+        //! Releases a global instance of Smft
+        static void Destroy();
 
     protected:
 

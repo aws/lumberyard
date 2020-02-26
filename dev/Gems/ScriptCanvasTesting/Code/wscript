@@ -13,7 +13,6 @@ def build(bld):
     bld.DefineGem(
         Editor = dict(
             vs_filter       = 'Gems/ScriptCanvas',
-            platforms       = ['win', 'darwin'],
             win_features    = ['crcfix'],
             autod_uselib    = ['QT5CORE','QT5GUI','QT5WIDGETS'],
             features        = ['qt5','az_code_gen'],

@@ -164,13 +164,6 @@ namespace EMotionFX
                 continue;
             }
 
-#ifndef EMOTIONFX_ENABLE_CLOTH
-            if (copyFrom == PhysicsSetup::ColliderConfigType::Cloth)
-            {
-                continue;
-            }
-#endif
-
             QAction* action = copyFromMenu->addAction(PhysicsSetup::GetVisualNameForColliderConfigType(copyFrom));
             QObject::connect(action, &QAction::triggered, parent, [=]
                 {
@@ -201,13 +194,6 @@ namespace EMotionFX
             {
                 continue;
             }
-
-#ifndef EMOTIONFX_ENABLE_CLOTH
-            if (copyFrom == PhysicsSetup::ColliderConfigType::Cloth)
-            {
-                continue;
-            }
-#endif
 
             const QString buttonText = QString("Copy from %1").arg(PhysicsSetup::GetVisualNameForColliderConfigType(copyFrom));
             QPushButton* button = new QPushButton(buttonText);

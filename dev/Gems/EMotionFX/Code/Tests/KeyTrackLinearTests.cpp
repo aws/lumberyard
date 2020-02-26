@@ -259,23 +259,23 @@ namespace EMotionFX
 
         uint8 cacheHit = 0;
         uint32 cached = 0;
-        ASSERT_FLOAT_EQ(track.GetValueAtTime(0.0f, &cached, &cacheHit), 0.0f);
+        ASSERT_FLOAT_EQ(track.GetValueAtTime(0.0f, cached, cacheHit), 0.0f);
         ASSERT_EQ(cached, 0);
         ASSERT_EQ(cacheHit, 1);
 
-        ASSERT_FLOAT_EQ(track.GetValueAtTime(0.5f, &cached, &cacheHit), 0.5f);
+        ASSERT_FLOAT_EQ(track.GetValueAtTime(0.5f, cached, cacheHit), 0.5f);
         ASSERT_EQ(cached, 0);
         ASSERT_EQ(cacheHit, 1);
 
-        ASSERT_FLOAT_EQ(track.GetValueAtTime(1.0f, &cached, &cacheHit), 1.0f);
+        ASSERT_FLOAT_EQ(track.GetValueAtTime(1.0f, cached, cacheHit), 1.0f);
         ASSERT_EQ(cached, 0);
         ASSERT_EQ(cacheHit, 1);
 
-        ASSERT_FLOAT_EQ(track.GetValueAtTime(2.999f, &cached, &cacheHit), 2.999f);
+        ASSERT_FLOAT_EQ(track.GetValueAtTime(2.999f, cached, cacheHit), 2.999f);
         ASSERT_EQ(cached, 2);
         ASSERT_EQ(cacheHit, 0);
 
-        ASSERT_FLOAT_EQ(track.GetValueAtTime(0.0f, &cached, &cacheHit), 0.0f);
+        ASSERT_FLOAT_EQ(track.GetValueAtTime(0.0f, cached, cacheHit), 0.0f);
         ASSERT_EQ(cached, 0);
         ASSERT_EQ(cacheHit, 0);
    }

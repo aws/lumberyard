@@ -14,7 +14,7 @@
 #include <Source/WaterVolumeSurfaceDataComponent.h>
 #include <Water/WaterSystemComponent.h>
 
-#include <AZCore/Component/TransformBus.h>
+#include <AzCore/Component/TransformBus.h>
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>

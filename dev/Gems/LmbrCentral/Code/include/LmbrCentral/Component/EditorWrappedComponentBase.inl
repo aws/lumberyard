@@ -175,10 +175,11 @@ namespace LmbrCentral
     void EditorWrappedComponentBase<TComponent, TConfiguration>::Activate()
     {
         AzToolsFramework::Components::EditorComponentBase::Activate();
-        
+
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusConnect(GetEntityId());
-        AzToolsFramework::EditorVisibilityRequestBus::EventResult(m_visible, GetEntityId(), &AzToolsFramework::EditorVisibilityRequestBus::Events::GetCurrentVisibility);
-        
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(
+            m_visible, GetEntityId(), &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsVisible);
+
         m_component.ReadInConfig(&m_configuration);
         m_component.SetEntity(GetEntity());
 
@@ -193,7 +194,7 @@ namespace LmbrCentral
     {
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusDisconnect();
         AzToolsFramework::Components::EditorComponentBase::Deactivate();
-        
+
         m_component.Deactivate();
         m_component.SetEntity(nullptr); // remove the entity association, in case the parent component is being removed, otherwise the component will be reactivated
     }
@@ -204,7 +205,7 @@ namespace LmbrCentral
         m_visible = visibility;
         ConfigurationChanged();
     }
-    
+
     template <typename TComponent, typename TConfiguration>
     AZ::u32 EditorWrappedComponentBase<TComponent, TConfiguration>::ConfigurationChanged()
     {

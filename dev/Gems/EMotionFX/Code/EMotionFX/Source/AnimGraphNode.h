@@ -26,7 +26,6 @@
 #include "AnimGraphNodeData.h"
 
 #include <AzCore/std/functional.h>
-#include <AzCore/Math/PackedVector3.h>
 #include <AzCore/Math/Color.h>
 
 namespace EMotionFX
@@ -156,6 +155,7 @@ namespace EMotionFX
 
         virtual void RecursiveReinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
+        void InitTriggerActions();
 
         virtual bool GetSupportsVisualization() const           { return false; }
         virtual bool GetSupportsDisable() const                 { return false; }
@@ -356,7 +356,7 @@ namespace EMotionFX
             case MCore::AttributeInt32::TYPE_ID:
                 return static_cast<const MCore::AttributeInt32*>(attribute)->GetValue() != 0;
             default:
-                MCORE_ASSERT("Unhandled type");
+                AZ_Assert(false, "Unhandled type");
             }
             return false;
         }
@@ -377,7 +377,7 @@ namespace EMotionFX
             case MCore::AttributeInt32::TYPE_ID:
                 return static_cast<float>(static_cast<const MCore::AttributeInt32*>(attribute)->GetValue());
             default:
-                MCORE_ASSERT("Unhandled type");
+                AZ_Assert(false, "Unhandled type");
             }
             return 0.0f;
         }
@@ -398,7 +398,7 @@ namespace EMotionFX
             case MCore::AttributeInt32::TYPE_ID:
                 return static_cast<const MCore::AttributeInt32*>(attribute)->GetValue();
             default:
-                MCORE_ASSERT("Unhandled type");
+                AZ_Assert(false, "Unhandled type");
             }
             return 0;
         }
@@ -419,7 +419,7 @@ namespace EMotionFX
             case MCore::AttributeInt32::TYPE_ID:
                 return static_cast<const MCore::AttributeInt32*>(attribute)->GetValue();
             default:
-                MCORE_ASSERT("Unhandled type");
+                AZ_Assert(false, "Unhandled type");
             }
             return 0;
         }
@@ -504,7 +504,7 @@ namespace EMotionFX
             }
             case MCore::AttributeVector3::TYPE_ID:
             {
-                const AZ::PackedVector3f& vec3 = (static_cast<MCore::AttributeVector3*>(attrib))->GetValue();
+                const AZ::Vector3& vec3 = (static_cast<MCore::AttributeVector3*>(attrib))->GetValue();
                 outResult.SetX(vec3.GetX());
                 outResult.SetY(vec3.GetY());
                 outResult.SetZ(vec3.GetZ());
@@ -534,7 +534,7 @@ namespace EMotionFX
             }
             case MCore::AttributeVector3::TYPE_ID:
             {
-                const AZ::PackedVector3f& vec3 = (static_cast<MCore::AttributeVector3*>(attrib))->GetValue();
+                const AZ::Vector3& vec3 = (static_cast<MCore::AttributeVector3*>(attrib))->GetValue();
                 outResult.SetX(vec3.GetX());
                 outResult.SetY(vec3.GetY());
                 return true;
@@ -557,10 +557,8 @@ namespace EMotionFX
             {
             case MCore::AttributeVector3::TYPE_ID:
             {
-                const AZ::PackedVector3f& vec3AttrValue = (static_cast<MCore::AttributeVector3*>(attrib))->GetValue();
-                outResult.SetX(vec3AttrValue.GetX());
-                outResult.SetY(vec3AttrValue.GetY());
-                outResult.SetZ(vec3AttrValue.GetZ());
+                const AZ::Vector3& vec3AttrValue = (static_cast<MCore::AttributeVector3*>(attrib))->GetValue();
+                outResult = vec3AttrValue;
                 return true;
             }
             case MCore::AttributeVector2::TYPE_ID:

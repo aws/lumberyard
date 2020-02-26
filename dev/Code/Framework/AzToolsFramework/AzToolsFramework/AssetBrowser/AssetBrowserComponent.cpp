@@ -28,6 +28,7 @@
 #include <AzToolsFramework/AssetBrowser/Thumbnails/FolderThumbnail.h>
 #include <AzToolsFramework/AssetBrowser/Thumbnails/SourceThumbnail.h>
 #include <AzToolsFramework/AssetBrowser/Thumbnails/ProductThumbnail.h>
+#include <AzToolsFramework/AssetBrowser/AssetPicker/AssetPickerDialog.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 
 #include <chrono>
@@ -150,6 +151,12 @@ namespace AzToolsFramework
         bool AssetBrowserComponent::AreEntriesReady()
         {
             return m_entriesReady;
+        }
+
+        void AssetBrowserComponent::PickAssets(AssetSelectionModel& selection, QWidget* parent)
+        {
+            AssetPickerDialog dialog(selection, parent);
+            dialog.exec();
         }
 
         void AssetBrowserComponent::OnTick(float /*deltaTime*/, AZ::ScriptTimePoint /*time*/)

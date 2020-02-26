@@ -1,0 +1,26 @@
+AzQtComponents--VectorInput > QLabel,
+AzQtComponents--DoubleVectorInput > QLabel
+{
+    margin: 2px;
+    border-top-left-radius: 2px;
+    border-bottom-left-radius: 2px;
+    text-align: center;
+}
+
+AzQtComponents--VectorInput[Coordinate="X"] > QLabel,
+AzQtComponents--DoubleVectorInput[Coordinate="X"] > QLabel
+{
+    background-color: #E25243;
+}
+
+AzQtComponents--VectorInput[Coordinate="Y"] > QLabel,
+AzQtComponents--DoubleVectorInput[Coordinate="Y"] > QLabel
+{
+    background-color: #58BC61;
+}
+
+AzQtComponents--VectorInput[Coordinate="Z"] > QLabel,
+AzQtComponents--DoubleVectorInput[Coordinate="Z"] > QLabel
+{
+    background-color: #4285F4;
+}

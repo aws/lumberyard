@@ -23,9 +23,9 @@
 
 namespace EMotionFX
 {
-    AZ_CLASS_ALLOCATOR_IMPL(ActorMorphTargetPicker, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(ActorSingleMorphTargetHandler, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(ActorMultiMorphTargetHandler, AZ::SystemAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(ActorMorphTargetPicker, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(ActorSingleMorphTargetHandler, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(ActorMultiMorphTargetHandler, EditorAllocator, 0)
 
     ActorMorphTargetPicker::ActorMorphTargetPicker(bool multiSelection, QWidget* parent)
         : QWidget(parent)

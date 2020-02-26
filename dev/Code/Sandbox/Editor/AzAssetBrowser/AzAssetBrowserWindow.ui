@@ -129,15 +129,15 @@
            </item>
           </layout>
          </widget>
-         <widget class="QWidget" name="layoutWidget">
+         <widget class="QWidget" name="verticalLayoutWidget">
           <layout class="QVBoxLayout" name="m_rightLayout">
            <item>
-            <widget class="PreviewWidget" name="m_previewWidget" native="true">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
+            <widget class="AzToolsFramework::AssetBrowser::PreviewerFrame" name="m_previewerFrame">
+             <property name="frameShape">
+              <enum>QFrame::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
              </property>
             </widget>
            </item>
@@ -164,9 +164,9 @@
    <header>AzToolsFramework/AssetBrowser/Views/AssetBrowserTreeView.h</header>
   </customwidget>
   <customwidget>
-   <class>PreviewWidget</class>
-   <extends>QWidget</extends>
-   <header location="global">AzAssetBrowser/Preview/PreviewWidget.h</header>
+   <class>AzToolsFramework::AssetBrowser::PreviewerFrame</class>
+   <extends>QFrame</extends>
+   <header>AzToolsFramework/AssetBrowser/Previewer/PreviewerFrame.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

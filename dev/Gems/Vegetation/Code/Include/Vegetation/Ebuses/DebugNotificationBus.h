@@ -53,12 +53,4 @@ namespace Vegetation
         virtual void ToggleVisualization() {}; // toggles the 3D visualization in the 3D client, helper for cvars.
     };
     using DebugNotificationBus = AZ::EBus<DebugNotifications>;
-
-    // VEG_PROFILE_ENABLED is defined in the wscript
-    // VEG_PROFILE_ENABLED is only defined in the Vegetation gem by default
-#if defined(VEG_PROFILE_ENABLED)
-#define VEG_PROFILE_METHOD(Method) Method
-#else
-#define VEG_PROFILE_METHOD(...) // no-op
-#endif
 }

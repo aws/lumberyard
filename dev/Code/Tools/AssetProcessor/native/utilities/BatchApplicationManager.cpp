@@ -52,7 +52,7 @@
 #include <QCoreApplication>
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
 #include <AzToolsFramework/Process/ProcessWatcher.h>
-#include <AzToolsFramework/Process/internal/ProcessCommon_Win.h>
+
 
 #include <LyMetricsProducer/LyMetricsAPI.h>
 

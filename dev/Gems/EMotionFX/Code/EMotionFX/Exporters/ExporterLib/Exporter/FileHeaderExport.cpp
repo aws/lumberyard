@@ -18,6 +18,7 @@
 #include <EMotionFX/Source/SkeletalMotion.h>
 #include <EMotionFX/Source/WaveletSkeletalMotion.h>
 #include <EMotionFX/Source/Actor.h>
+#include <MCore/Source/LogManager.h>
 
 
 namespace ExporterLib
@@ -49,28 +50,30 @@ namespace ExporterLib
         const char* orgFileName,
         const char* actorName,
         MCore::Distance::EUnitType unitType,
-        MCore::Endian::EEndianType targetEndianType)
+        MCore::Endian::EEndianType targetEndianType,
+        bool optimizeSkeleton)
     {
         // chunk header
         EMotionFX::FileFormat::FileChunk chunkHeader;
         chunkHeader.mChunkID        = EMotionFX::FileFormat::ACTOR_CHUNK_INFO;
 
-        chunkHeader.mSizeInBytes    = sizeof(EMotionFX::FileFormat::Actor_Info2);
+        chunkHeader.mSizeInBytes    = sizeof(EMotionFX::FileFormat::Actor_Info3);
         chunkHeader.mSizeInBytes    += GetStringChunkSize(sourceApp);
         chunkHeader.mSizeInBytes    += GetStringChunkSize(orgFileName);
         chunkHeader.mSizeInBytes    += GetStringChunkSize(GetCompilationDate());
         chunkHeader.mSizeInBytes    += GetStringChunkSize(actorName);
 
-        chunkHeader.mVersion        = 2;
+        chunkHeader.mVersion        = 3;
 
-        EMotionFX::FileFormat::Actor_Info2 infoChunk;
-        memset(&infoChunk, 0, sizeof(EMotionFX::FileFormat::Actor_Info2));
+        EMotionFX::FileFormat::Actor_Info3 infoChunk;
+        memset(&infoChunk, 0, sizeof(EMotionFX::FileFormat::Actor_Info3));
         infoChunk.mNumLODs                      = numLODLevels;
         infoChunk.mMotionExtractionNodeIndex    = motionExtractionNodeIndex;
         infoChunk.mRetargetRootNodeIndex        = retargetRootNodeIndex;
         infoChunk.mExporterHighVersion          = static_cast<uint8>(EMotionFX::GetEMotionFX().GetHighVersion());
         infoChunk.mExporterLowVersion           = static_cast<uint8>(EMotionFX::GetEMotionFX().GetLowVersion());
         infoChunk.mUnitType                     = static_cast<uint8>(unitType);
+        infoChunk.mOptimizeSkeleton             = optimizeSkeleton ? 1 : 0;
 
         // print repositioning node information
         MCore::LogDetailedInfo("- File Info");
@@ -90,7 +93,7 @@ namespace ExporterLib
         ConvertUnsignedInt(&infoChunk.mNumLODs, targetEndianType);
 
         file->Write(&chunkHeader, sizeof(EMotionFX::FileFormat::FileChunk));
-        file->Write(&infoChunk, sizeof(EMotionFX::FileFormat::Actor_Info2));
+        file->Write(&infoChunk, sizeof(EMotionFX::FileFormat::Actor_Info3));
 
         SaveString(sourceApp, file, targetEndianType);
         SaveString(orgFileName, file, targetEndianType);

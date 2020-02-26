@@ -218,6 +218,19 @@ namespace AzToolsFramework
         NotifyEntityComponentPropertyChanged();
     }
 
+    void BaseManipulator::ForwardMouseOverEvent(const ViewportInteraction::MouseInteraction& interaction)
+    {
+        OnMouseOver(m_manipulatorId, interaction);
+    }
+
+    void BaseManipulator::UpdateMouseOver(const ManipulatorId manipulatorId)
+    {
+        if (!PerformingAction())
+        {
+            m_mouseOver = (m_manipulatorId == manipulatorId);
+        }
+    }
+
     void BaseManipulator::EndUndoBatch()
     {
         if (m_undoBatch != nullptr)

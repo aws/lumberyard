@@ -1503,10 +1503,15 @@ QMenu {
     margin: 3 5 5 5;
 }
 
+/* Setting padding-left explicitly only pads the text,
+ * without taking into account the action icon, so it
+ * may result in text and icon overlapping. */
 QMenu::item {
     color: white;
     font-size: 12px;
-    padding: 2px 25px 2px 20px;
+    padding-right: 25px;
+    padding-top: 2px;
+    padding-bottom: 2px;
 }
 
 QMenu::item:selected {

@@ -11,8 +11,8 @@
 */
 #include <Launcher_precompiled.h>
 #include <Launcher.h>
-
 #include <../Common/UnixLike/Launcher_UnixLike.h>
+#include <common/Launcher_host.h>
 
 #include <AzCore/Debug/StackTracer.h>
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
@@ -75,7 +75,7 @@ int main(int argc, char** argv)
     char exePath[AZ_MAX_PATH_LEN] = { 0 };
     if (readlink("/proc/self/exe", exePath, AZ_MAX_PATH_LEN) == -1)
     {
-        return static_cast<int>(ReturnCode::ErrExePath);
+        return static_cast<int>(LumberyardLauncher::ReturnCode::ErrExePath);
     }
     char* runDir = dirname(exePath);
     LumberyardLauncher::ReturnCode status = LumberyardLauncher::RunUnitTests(runDir, argc, argv);
@@ -119,6 +119,16 @@ int main(int argc, char** argv)
 #endif // !defined(AZ_MONOLITHIC_BUILD)
 
     PlatformMainInfo mainInfo;
+
+    char appResourcesPath[AZ_MAX_PATH_LEN] = { 0 };
+    mainInfo.m_appResourcesPath = GetAbsolutePath(appResourcesPath,AZ_ARRAY_SIZE(appResourcesPath),GetAppResourcePathForHostPlatforms());
+
+    if (mainInfo.m_appResourcesPath[0] == '\0')
+    {
+        // Unable to resolve the application resource path because we cannot find the application descriptor (game.xml)
+        return static_cast<int>(ReturnCode::ErrAppDescriptor);
+    }
+
     mainInfo.m_updateResourceLimits = IncreaseResourceLimits;
 
     bool ret = mainInfo.CopyCommandLine(argc, argv);

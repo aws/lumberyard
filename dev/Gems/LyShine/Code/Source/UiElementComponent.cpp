@@ -1639,7 +1639,11 @@ void UiElementComponent::OnPatchEnd(const AZ::DataPatchNodeInfo& patchInfo)
     // Build the address of the "Children" element within this UiElementComponent
     AZ::DataPatch::AddressType childrenAddress = address;
     childrenAddress.push_back(AZ_CRC("Children", 0xa197b1ba));
-    
+
+    // Get the serialize context for use in the LoadObjectFromStreamInPlace calls
+    AZ::SerializeContext* serializeContext = nullptr;
+    AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+
     // childPatchLookup contains all addresses in the patch that are within the UiElementComponent so
     // it is slightly faster to iterate over that than over "patch" directly.
     for (auto& childPatchPair : childPatchLookup)
@@ -1663,7 +1667,7 @@ void UiElementComponent::OnPatchEnd(const AZ::DataPatchNodeInfo& patchInfo)
                 }
 
                 // the last part of the address is the index in the m_children array
-                AZ::u64 index = childPatchAddress.back();
+                AZ::u64 index = childPatchAddress.back().GetAddressElement();
 
                 if (foundPatchIt->second.empty())
                 {
@@ -1676,13 +1680,40 @@ void UiElementComponent::OnPatchEnd(const AZ::DataPatchNodeInfo& patchInfo)
                     // This is an addition
 
                     // get the EntityId out of the patch value
-                    AZ::IO::MemoryStream stream(foundPatchIt->second.data(), foundPatchIt->second.size());
-                    AZ::EntityId* entityIdPtr = AZ::Utils::LoadObjectFromStream<AZ::EntityId>(stream);
-                    if (entityIdPtr)
+                    AZ::EntityId entityId;
+                    bool entityIdLoaded = false;
+
+                    // If the patch originated in a Legacy DataPatch then we must first load the EntityId from the legacy stream
+                    if (foundPatchIt->second.type() == azrtti_typeid<AZ::DataPatch::LegacyStreamWrapper>())
+                    {
+                        const AZ::DataPatch::LegacyStreamWrapper* wrapper = AZStd::any_cast<AZ::DataPatch::LegacyStreamWrapper>(&foundPatchIt->second);
+
+                        if (wrapper)
+                        {
+                            AZ::IO::MemoryStream stream(wrapper->m_stream.data(), wrapper->m_stream.size());
+                            entityIdLoaded = AZ::Utils::LoadObjectFromStreamInPlace<AZ::EntityId>(stream, entityId, serializeContext);
+                        }
+                    }
+                    else
+                    {
+                        // Otherwise we can acquire the EntityId from the patch directly
+                        const AZ::EntityId* entityIdPtr = AZStd::any_cast<AZ::EntityId>(&foundPatchIt->second);
+
+                        if (entityIdPtr)
+                        {
+                            entityId = *entityIdPtr;
+                            entityIdLoaded = true;
+                        }
+                    }
+                    
+                    if (entityIdLoaded)
                     {
                         oldChildrenDataPatchFound = true;
-                        elementsAdded.push_back({index, *entityIdPtr});
-                        azdestroy(entityIdPtr);   // azdestroy required rather than delete to ensure AZ::SystemAlocator is used
+                        elementsAdded.push_back({index, entityId});
+                    }
+                    else
+                    {
+                        AZ_Error("UI", false, "UiElement::OnPatchEnd: Failed to load a child entity Id from DataPatch");
                     }
                 }
             }
@@ -1726,20 +1757,48 @@ void UiElementComponent::OnPatchEnd(const AZ::DataPatchNodeInfo& patchInfo)
                 }
 
                 // This should be the u64 "Id" element of the EntityId, if not ignore.
-                if (childPatchAddress.back() == AZ_CRC("Id", 0xbf396750))
+                if (childPatchAddress.back().GetAddressElement() == AZ_CRC("Id", 0xbf396750))
                 {
                     // the second to last part of the address is the index in the m_children array
-                    AZ::u64 index = childPatchAddress[childPatchAddress.size() - 2];
+                    AZ::u64 index = childPatchAddress[childPatchAddress.size() - 2].GetAddressElement();
 
                     // extract the u64 from the patch value
-                    AZ::IO::MemoryStream stream(foundPatchIt->second.data(), foundPatchIt->second.size());
-                    AZ::u64* idPtr = AZ::Utils::LoadObjectFromStream<AZ::u64>(stream);
-                    if (idPtr)
+                    AZ::u64 id = 0;
+                    bool idLoaded = false;
+
+                    // If the patch originated in a Legacy DataPatch then we must first load the u64 from the legacy stream
+                    if (foundPatchIt->second.type() == azrtti_typeid<AZ::DataPatch::LegacyStreamWrapper>())
                     {
-                        AZ::EntityId entityId(*idPtr);
+                        const AZ::DataPatch::LegacyStreamWrapper* wrapper = AZStd::any_cast<AZ::DataPatch::LegacyStreamWrapper>(&foundPatchIt->second);
+
+                        if (wrapper)
+                        {
+                            AZ::IO::MemoryStream stream(wrapper->m_stream.data(), wrapper->m_stream.size());
+
+                            idLoaded = AZ::Utils::LoadObjectFromStreamInPlace<AZ::u64>(stream, id, serializeContext);
+                        }
+                    }
+                    else
+                    {
+                        // Otherwise we can acquire the EntityId from the patch directly
+                        const AZ::u64* idPtr = AZStd::any_cast<AZ::u64>(&foundPatchIt->second);
+
+                        if (idPtr)
+                        {
+                            id = *idPtr;
+                            idLoaded = true;
+                        }
+                    }
+
+                    if (idLoaded)
+                    {
+                        AZ::EntityId entityId(id);
                         oldChildrenDataPatchFound = true;
                         elementsChanged.push_back({index, entityId});
-                        azdestroy(idPtr);   // azdestroy required rather than delete to ensure AZ::SystemAlocator is used
+                    }
+                    else
+                    {
+                        AZ_Error("UI", false, "UiElement::OnPatchEnd: Failed to load a child entity Id from DataPatch");
                     }
                 }
             }

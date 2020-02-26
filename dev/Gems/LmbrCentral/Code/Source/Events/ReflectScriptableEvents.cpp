@@ -327,7 +327,10 @@ namespace LmbrCentral
 
             behaviorContext->EBus<AZ::InputEventNotificationBus>("InputEventNotificationBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
-                ->Handler<BehaviorInputEventNotificationBusHandler>();
+                ->Handler<BehaviorInputEventNotificationBusHandler>()
+                ->Event("OnPressed", &AZ::InputEventNotificationBus::Events::OnPressed)
+                ->Event("OnHeld", &AZ::InputEventNotificationBus::Events::OnHeld)
+                ->Event("OnReleased", &AZ::InputEventNotificationBus::Events::OnReleased);
 
             behaviorContext->EBus<AZ::InputRequestBus>("InputRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)

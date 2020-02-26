@@ -960,6 +960,108 @@ namespace SerializeTestClasses
     AZStd::atomic_int ClassThatAllocatesMemoryInDefaultCtor::InstanceTracker::s_instanceCount(0);
 }   // namespace SerializeTestClasses
 
+namespace ContainerElementDeprecationTestData
+{
+    using namespace AZ;
+    // utility classes for testing what happens to container elements, when they are deprecated.
+    class BaseClass
+    {
+    public:
+        AZ_RTTI(BaseClass, "{B736AD73-E627-467D-A779-7B942D2B5359}");
+        AZ_CLASS_ALLOCATOR(BaseClass, SystemAllocator, 0);
+        virtual ~BaseClass() {}
+
+        static void Reflect(ReflectContext* context)
+        {
+            if (auto serializeContext = azrtti_cast<SerializeContext*>(context))
+            {
+                serializeContext->Class<BaseClass>();
+            }
+        }
+    };
+
+    class DerivedClass1 : public BaseClass
+    {
+    public:
+        AZ_RTTI(DerivedClass1, "{E55D26B8-96B9-4918-94F0-5ABCA29F2508}", BaseClass);
+        AZ_CLASS_ALLOCATOR(DerivedClass1, SystemAllocator, 0);
+        static void Reflect(ReflectContext* context)
+        {
+            if (auto serializeContext = azrtti_cast<SerializeContext*>(context))
+            {
+                serializeContext->Class<DerivedClass1, BaseClass>();
+            }
+        }
+    };
+
+    class DerivedClass2 : public BaseClass
+    {
+    public:
+        AZ_RTTI(DerivedClass2, "{91F6C9A1-1EB1-477E-99FC-41A35FE9CF0B}", BaseClass);
+        AZ_CLASS_ALLOCATOR(DerivedClass2, SystemAllocator, 0);
+        static void Reflect(ReflectContext* context)
+        {
+            if (auto serializeContext = azrtti_cast<SerializeContext*>(context))
+            {
+                serializeContext->Class<DerivedClass2, BaseClass>();
+            }
+        }
+    };
+
+    class DerivedClass3 : public BaseClass
+    {
+    public:
+        AZ_RTTI(DerivedClass3, "{1399CC2D-D525-4061-B190-5FCD82FCC161}", BaseClass);
+        AZ_CLASS_ALLOCATOR(DerivedClass3, AZ::SystemAllocator, 0);
+        static void Reflect(ReflectContext* context)
+        {
+            if (auto* serializeContext = azrtti_cast<SerializeContext*>(context))
+            {
+                serializeContext->Class<DerivedClass3, BaseClass>();
+            }
+        }
+    };
+
+    static bool ConvertDerivedClass2ToDerivedClass3(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    {
+        classElement.Convert(context, AZ::AzTypeInfo<DerivedClass3>::Uuid());
+        return true;
+    }
+
+    class ClassWithAVectorOfBaseClasses final
+    {
+    public:
+        AZ_RTTI(ClassWithAVectorOfBaseClasses, "{B62A3327-8BEE-43BD-BA2C-32BAE9EE5455}");
+        AZ_CLASS_ALLOCATOR(ClassWithAVectorOfBaseClasses, AZ::SystemAllocator, 0);
+        AZStd::vector<BaseClass*> m_vectorOfBaseClasses;
+
+        ~ClassWithAVectorOfBaseClasses()
+        {
+            for (auto base : m_vectorOfBaseClasses)
+            {
+                delete base;
+            }
+            m_vectorOfBaseClasses.swap(AZStd::vector<BaseClass*>());
+        }
+
+        static void Reflect(ReflectContext* context)
+        {
+            if (auto* serializeContext = azrtti_cast<SerializeContext*>(context))
+            {
+                BaseClass::Reflect(context);
+                DerivedClass1::Reflect(context);
+                DerivedClass2::Reflect(context);
+                DerivedClass3::Reflect(context);
+
+                serializeContext->Class<ClassWithAVectorOfBaseClasses>()
+                    ->Field("m_vectorOfBaseClasses", &ClassWithAVectorOfBaseClasses::m_vectorOfBaseClasses);
+            }
+        }
+    };
+
+} // End of namespace ContainerElementDeprecationTestData
+
+
 namespace AZ {
     struct GenericClass
     {
@@ -3338,6 +3440,111 @@ namespace UnitTest
     }
 
 
+    // Prove that if a member of a vector of baseclass pointers is unreadable, the container
+    // removes the element instead of leaving a null.  This is an arbitrary choice (to remove or leave
+    // the null) and this test exists just to prove that the chosen way functions as expected.
+    TEST_F(Serialization, Clone_UnreadableVectorElements_LeaveNoGaps_Errors)
+    {
+        using namespace ContainerElementDeprecationTestData;
+        // make sure that when a component is deprecated, it is removed during deserialization
+        // and does not leave a hole that is a nullptr.
+        ClassWithAVectorOfBaseClasses::Reflect(m_serializeContext.get());
+
+        ClassWithAVectorOfBaseClasses vectorContainer;
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass1());
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass2());
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass1());
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass2());
+
+        // (remove it, but without deprecating)
+        m_serializeContext->EnableRemoveReflection();
+        DerivedClass2::Reflect(m_serializeContext.get());
+        m_serializeContext->DisableRemoveReflection();
+
+        // clone it, we expect errors:
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        ClassWithAVectorOfBaseClasses loadedContainer;
+        m_serializeContext->CloneObjectInplace(loadedContainer, &vectorContainer);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2); // 2 classes should have failed and generated warnings/errors
+
+        EXPECT_EQ(loadedContainer.m_vectorOfBaseClasses.size(), 2); // we still preserve the ones we CAN read.
+        for (auto baseclass : loadedContainer.m_vectorOfBaseClasses)
+        {
+            // we should only have baseclass1's in there.
+            EXPECT_EQ(baseclass->RTTI_GetType(), azrtti_typeid<DerivedClass1>());
+        }
+    }
+
+    // Prove that if you properly deprecate a member of a vector of baseclass pointers, the container
+    // removes the element instead of leaving a null and does not emit an error
+    TEST_F(Serialization, Clone_DeprecatedVectorElements_LeaveNoGaps_DoesNotError)
+    {
+        using namespace ContainerElementDeprecationTestData;
+        // make sure that when a component is deprecated, it is removed during deserialization
+        // and does not leave a hole that is a nullptr.
+        ClassWithAVectorOfBaseClasses::Reflect(m_serializeContext.get());
+
+        ClassWithAVectorOfBaseClasses vectorContainer;
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass1());
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass2());
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass1());
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass2());
+
+        // remove it and properly deprecate it
+        m_serializeContext->EnableRemoveReflection();
+        DerivedClass2::Reflect(m_serializeContext.get());
+        m_serializeContext->DisableRemoveReflection();
+        m_serializeContext->ClassDeprecate("Dummy UUID", azrtti_typeid<DerivedClass2>());
+
+        // clone it, we expect no errors:
+        ClassWithAVectorOfBaseClasses loadedContainer;
+        m_serializeContext->CloneObjectInplace(loadedContainer, &vectorContainer);
+
+        EXPECT_EQ(loadedContainer.m_vectorOfBaseClasses.size(), 2); // we still preserve the ones we CAN read.
+        for (auto baseclass : loadedContainer.m_vectorOfBaseClasses)
+        {
+            // we should only have baseclass1's in there.
+            EXPECT_EQ(baseclass->RTTI_GetType(), azrtti_typeid<DerivedClass1>());
+        }
+    }
+
+    // Prove that if you deprecate but upgrade a member of a vector of baseclass pointers, the container
+    // Clone actually errors.  This behavior differs from serialize and datapatch because you're not
+    // expected to even have a deprecated class being cloned in the first place (it should have
+    // converted on deserialize or datapatch!)
+    TEST_F(Serialization, Clone_DeprecatedVectorElements_ConvertedClass_LeavesGaps_Errors)
+    {
+        using namespace ContainerElementDeprecationTestData;
+        // make sure that when a component is deprecated, it is removed during deserialization
+        // and does not leave a hole that is a nullptr.
+        ClassWithAVectorOfBaseClasses::Reflect(m_serializeContext.get());
+
+        ClassWithAVectorOfBaseClasses vectorContainer;
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass1());
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass2());
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass1());
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass2());
+
+        // remove it and properly deprecate it with a converter that will upgrade it.
+        m_serializeContext->EnableRemoveReflection();
+        DerivedClass2::Reflect(m_serializeContext.get());
+        m_serializeContext->DisableRemoveReflection();
+        m_serializeContext->ClassDeprecate("Dummy UUID", azrtti_typeid<DerivedClass2>(), ConvertDerivedClass2ToDerivedClass3);
+
+        // clone it, we expect no errors:
+        ClassWithAVectorOfBaseClasses loadedContainer;
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        m_serializeContext->CloneObjectInplace(loadedContainer, &vectorContainer);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2); // one for each converter
+
+        ASSERT_EQ(loadedContainer.m_vectorOfBaseClasses.size(), 2); // we still preserve the ones we CAN read.
+
+                                                                    // this also proves it does not shuffle elements around.
+        EXPECT_EQ(loadedContainer.m_vectorOfBaseClasses[0]->RTTI_GetType(), azrtti_typeid<DerivedClass1>());
+        EXPECT_EQ(loadedContainer.m_vectorOfBaseClasses[1]->RTTI_GetType(), azrtti_typeid<DerivedClass1>());
+    }
+
+
     TEST_F(Serialization, Clone_Container_WhereReserveElement_ReturnsNullptr_DoesNotCrash)
     {
         struct TestContainerType
@@ -5062,7 +5269,7 @@ namespace UnitTest
         byteObjStream->Finalize();
         byteStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
 
-        // create and destroy temporary context to test static context members [ATOM-628]
+        // create and destroy temporary context to test static context members
         SerializeContext* tmpContext = aznew SerializeContext();
         delete tmpContext;
 
@@ -5894,6 +6101,123 @@ namespace UnitTest
             RootFieldNameV1::Reflect(m_serializeContext.get());
             m_serializeContext->DisableRemoveReflection();
         }
+    }
+
+    // Prove that if a member of a vector of baseclass pointers is unreadable, the container
+    // removes the element instead of leaving a null.  This is an arbitrary choice (to remove or leave
+    // the null) and this test exists just to prove that the chosen way functions as expected.
+    TEST_F(ObjectStreamSerialization, UnreadableVectorElements_LeaveNoGaps_Errors)
+    {
+        using namespace ContainerElementDeprecationTestData;
+        // make sure that when a component is deprecated, it is removed during deserialization
+        // and does not leave a hole that is a nullptr.
+        ClassWithAVectorOfBaseClasses::Reflect(m_serializeContext.get());
+
+        ClassWithAVectorOfBaseClasses vectorContainer;
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass1());
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass2());
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass1());
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass2());
+
+        AZStd::vector<char> charBuffer;
+        AZ::IO::ByteContainerStream<AZStd::vector<char> > containerStream(&charBuffer);
+        bool success = AZ::Utils::SaveObjectToStream(containerStream, AZ::ObjectStream::ST_XML, &vectorContainer, m_serializeContext.get());
+        EXPECT_TRUE(success);
+
+        // (remove it, but without deprecating)
+        m_serializeContext->EnableRemoveReflection();
+        DerivedClass2::Reflect(m_serializeContext.get());
+        m_serializeContext->DisableRemoveReflection();
+
+        // load it, we expect errors:
+        ClassWithAVectorOfBaseClasses loadedContainer;
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        success = AZ::Utils::LoadObjectFromBufferInPlace(charBuffer.data(), charBuffer.size(), loadedContainer, m_serializeContext.get());
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2); // 2 classes should have failed and generated warnings/errors
+        EXPECT_TRUE(success);
+        EXPECT_EQ(loadedContainer.m_vectorOfBaseClasses.size(), 2); // we still preserve the ones we CAN read.
+        for (auto baseclass : loadedContainer.m_vectorOfBaseClasses)
+        {
+            // we should only have baseclass1's in there.
+            EXPECT_EQ(baseclass->RTTI_GetType(), azrtti_typeid<DerivedClass1>());
+        }
+    }
+
+    // Prove that if you properly deprecate a member of a vector of baseclass pointers, the container
+    // removes the element instead of leaving a null and does not emit an error
+    TEST_F(ObjectStreamSerialization, DeprecatedVectorElements_LeaveNoGaps_DoesNotError)
+    {
+        using namespace ContainerElementDeprecationTestData;
+        // make sure that when a component is deprecated, it is removed during deserialization,
+        // and does not leave a hole that is a nullptr.
+        ClassWithAVectorOfBaseClasses::Reflect(m_serializeContext.get());
+
+        ClassWithAVectorOfBaseClasses vectorContainer;
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass1());
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass2());
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass1());
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass2());
+
+        AZStd::vector<char> charBuffer;
+        AZ::IO::ByteContainerStream<AZStd::vector<char> > containerStream(&charBuffer);
+        bool success = AZ::Utils::SaveObjectToStream(containerStream, AZ::ObjectStream::ST_XML, &vectorContainer, m_serializeContext.get());
+        EXPECT_TRUE(success);
+
+        // remove it and properly deprecate it
+        m_serializeContext->EnableRemoveReflection();
+        DerivedClass2::Reflect(m_serializeContext.get());
+        m_serializeContext->DisableRemoveReflection();
+        m_serializeContext->ClassDeprecate("Dummy UUID", azrtti_typeid<DerivedClass2>());
+
+        ClassWithAVectorOfBaseClasses loadedContainer;
+        // it should generate no warnings but the deprecated ones should not be there.
+        success = AZ::Utils::LoadObjectFromBufferInPlace(charBuffer.data(), charBuffer.size(), loadedContainer, m_serializeContext.get());
+        EXPECT_TRUE(success);
+        EXPECT_EQ(loadedContainer.m_vectorOfBaseClasses.size(), 2); // we still preserve the ones we CAN read.
+        for (auto baseclass : loadedContainer.m_vectorOfBaseClasses)
+        {
+            // we should only have baseclass1's in there.
+            EXPECT_EQ(baseclass->RTTI_GetType(), azrtti_typeid<DerivedClass1>());
+        }
+    }
+
+    // Prove that if you deprecate but upgrade a member of a vector of baseclass pointers, the container
+    // contains the freshly upgraded element instead of leaving a null and does not emit an error
+    TEST_F(ObjectStreamSerialization, DeprecatedVectorElements_ConvertedClass_DoesNotError_DoesNotDiscardData)
+    {
+        using namespace ContainerElementDeprecationTestData;
+        // make sure that when a component is deprecated, it is removed during deserialization
+        // and does not leave a hole that is a nullptr.
+        ClassWithAVectorOfBaseClasses::Reflect(m_serializeContext.get());
+
+        ClassWithAVectorOfBaseClasses vectorContainer;
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass1());
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass2());
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass1());
+        vectorContainer.m_vectorOfBaseClasses.push_back(new DerivedClass2());
+
+        AZStd::vector<char> charBuffer;
+        AZ::IO::ByteContainerStream<AZStd::vector<char> > containerStream(&charBuffer);
+        bool success = AZ::Utils::SaveObjectToStream(containerStream, AZ::ObjectStream::ST_XML, &vectorContainer, m_serializeContext.get());
+        EXPECT_TRUE(success);
+
+        // remove it and properly deprecate it with a converter that will upgrade it.
+        m_serializeContext->EnableRemoveReflection();
+        DerivedClass2::Reflect(m_serializeContext.get());
+        m_serializeContext->DisableRemoveReflection();
+        m_serializeContext->ClassDeprecate("Dummy UUID", azrtti_typeid<DerivedClass2>(), ConvertDerivedClass2ToDerivedClass3);
+
+        ClassWithAVectorOfBaseClasses loadedContainer;
+        // it should generate no warnings but the deprecated ones should not be there.
+        success = AZ::Utils::LoadObjectFromBufferInPlace(charBuffer.data(), charBuffer.size(), loadedContainer, m_serializeContext.get());
+        EXPECT_TRUE(success);
+        ASSERT_EQ(loadedContainer.m_vectorOfBaseClasses.size(), 4); // we still preserve the ones we CAN read.
+
+        // this also proves it does not shuffle elements around.
+        EXPECT_EQ(loadedContainer.m_vectorOfBaseClasses[0]->RTTI_GetType(), azrtti_typeid<DerivedClass1>());
+        EXPECT_EQ(loadedContainer.m_vectorOfBaseClasses[1]->RTTI_GetType(), azrtti_typeid<DerivedClass3>());
+        EXPECT_EQ(loadedContainer.m_vectorOfBaseClasses[2]->RTTI_GetType(), azrtti_typeid<DerivedClass1>());
+        EXPECT_EQ(loadedContainer.m_vectorOfBaseClasses[3]->RTTI_GetType(), azrtti_typeid<DerivedClass3>());
     }
 
     TEST_F(ObjectStreamSerialization, LoadObjectFromStreamInPlaceFailureDoesNotLeak)
@@ -7092,6 +7416,8 @@ namespace UnitTest
 
         bool CompareValueData(const void* lhs, const void* rhs) override
         {
+            AZ_UNUSED(lhs);
+            AZ_UNUSED(rhs);
             return true;
         }
 

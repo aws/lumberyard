@@ -12,6 +12,7 @@
 
 #include <Editor/PropertyWidgets/LODSceneGraphWidget.h>
 #include <Editor/PropertyWidgets/LODTreeSelectionWidget.h>
+#include <Editor/PropertyWidgets/PropertyWidgetAllocator.h>
 
 namespace EMotionFX
 {
@@ -19,7 +20,7 @@ namespace EMotionFX
     {
         namespace UI
         {
-            AZ_CLASS_ALLOCATOR_IMPL(LODTreeSelectionWidget, AZ::SystemAllocator, 0)
+            AZ_CLASS_ALLOCATOR_IMPL(LODTreeSelectionWidget, PropertyWidgetAllocator, 0)
 
             LODTreeSelectionWidget::LODTreeSelectionWidget(QWidget* parent)
                 : NodeTreeSelectionWidget(parent)

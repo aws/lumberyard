@@ -20,6 +20,9 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <EMotionFX/Source/AnimGraph.h>
 #include <EMotionFX/Source/DebugDraw.h>
+#include <MCore/Source/LogManager.h>
+#include <MCore/Source/Vector.h>
+
 
 namespace EMotionFX
 {
@@ -196,19 +199,18 @@ namespace EMotionFX
         const AZ::Vector3 solution(d, e, 0);
 
         // calculate the matrix that rotates from IK solve space into world space
-        MCore::Matrix matForward;
-        matForward.Identity();
+        AZ::Matrix3x3 matForward = AZ::Matrix3x3::CreateIdentity();
         CalculateMatrix(localGoal, bendDir, &matForward);
 
         // rotate the solution (the mid "knee/elbow" position) into world space
-        *outMidPos = posA + matForward.Mul3x3(solution);
+        *outMidPos = posA + solution * matForward;
 
         // check if we found a solution or not
         return (d > MCore::Math::epsilon && d < lengthA + MCore::Math::epsilon);
     }
 
     // calculate the direction matrix
-    void BlendTreeTwoLinkIKNode::CalculateMatrix(const AZ::Vector3& goal, const AZ::Vector3& bendDir, MCore::Matrix* outForward)
+    void BlendTreeTwoLinkIKNode::CalculateMatrix(const AZ::Vector3& goal, const AZ::Vector3& bendDir, AZ::Matrix3x3* outForward)
     {
         // the inverse matrix defines a coordinate system whose x axis contains P, so X = unit(P).
         const AZ::Vector3 x = MCore::SafeNormalize(goal);
@@ -411,7 +413,7 @@ namespace EMotionFX
             // if we don't want to align the rotation and position to another given node
             if (alignNodeIndex == MCORE_INVALIDINDEX32)
             {
-                MCore::Quaternion newRotation; // identity quat
+                AZ::Quaternion newRotation = AZ::Quaternion::CreateIdentity(); // identity quat
                 if (inputGoalRot)
                 {
                     newRotation = inputGoalRot->GetValue(); // use our new rotation directly
@@ -444,7 +446,7 @@ namespace EMotionFX
         }
 
         // store the desired rotation
-        MCore::Quaternion newNodeRotationC = globalTransformC.mRotation;
+        AZ::Quaternion newNodeRotationC = globalTransformC.mRotation;
 
         // draw debug lines
         if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
@@ -500,11 +502,11 @@ namespace EMotionFX
         float dotProduct = oldForward.Dot(newForward);
         float deltaAngle = MCore::Math::ACos(MCore::Clamp<float>(dotProduct, -1.0f, 1.0f));
         AZ::Vector3 axis = oldForward.Cross(newForward);
-        MCore::Quaternion deltaRot(axis, deltaAngle);
+        AZ::Quaternion deltaRot = MCore::CreateFromAxisAndAngle(axis, deltaAngle);
         globalTransformA.mRotation = deltaRot * globalTransformA.mRotation;
         outTransformPose.SetWorldSpaceTransform(nodeIndexA, globalTransformA);
 
-        //globalTransformA = outTransformPose.GetGlobalTransformIncludingActorInstanceTransform(nodeIndexA);
+        // globalTransformA = outTransformPose.GetGlobalTransformIncludingActorInstanceTransform(nodeIndexA);
         globalTransformB = outTransformPose.GetWorldSpaceTransform(nodeIndexB);
         globalTransformC = outTransformPose.GetWorldSpaceTransform(nodeIndexC);
 
@@ -532,11 +534,11 @@ namespace EMotionFX
         {
             deltaAngle = MCore::Math::ACos(MCore::Clamp<float>(dotProduct, -1.0f, 1.0f));
             axis = oldForward.Cross(newForward);
-            deltaRot = MCore::Quaternion(axis, deltaAngle);
+            deltaRot = MCore::CreateFromAxisAndAngle(axis, deltaAngle);
         }
         else
         {
-            deltaRot.Identity();
+            deltaRot = AZ::Quaternion::CreateIdentity();
         }
 
         globalTransformB.mRotation = deltaRot * globalTransformB.mRotation;

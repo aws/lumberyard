@@ -45,5 +45,8 @@ namespace Physics
         /// This ensures trigger exit events are raised correctly on deleted
         /// objects.
         void DeferDelete(AZStd::unique_ptr<Physics::WorldBody> body);
+
+        //! Returns true if the tag matches the filter tag, or the filter tag is empty
+        bool FilterTag(const AZ::Crc32& tag, const AZ::Crc32& filter);
     }
 }

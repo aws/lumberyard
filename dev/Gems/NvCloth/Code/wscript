@@ -1,0 +1,68 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+from waflib import Configure
+
+def build(bld):
+    import lumberyard_sdks
+
+    nvcloth_file_list = []
+    nvcloth_file_list_editor = []
+    nvcloth_pch = "Source/NvCloth_precompiled.cpp"
+    nvcloth_lib = 'NVCLOTH_LIB'
+    if bld.env['PLATFORM'] == 'project_generator' or isinstance(bld,Configure.ConfigurationContext):
+        nvcloth_file_list.extend(['nvcloth.waf_files',
+                                  'nvcloth_unsupported.waf_files'])
+        nvcloth_file_list_editor.extend(['nvcloth.waf_files',
+                                         'nvcloth_editor.waf_files',
+                                         'nvcloth_unsupported.waf_files'])
+    else:
+        if bld.check_platform_uselib_compatibility(nvcloth_lib):
+            nvcloth_file_list.extend(['nvcloth.waf_files'])
+            nvcloth_file_list_editor.extend(['nvcloth.waf_files',
+                                             'nvcloth_editor.waf_files'])
+        else:
+            nvcloth_file_list.extend(['nvcloth_unsupported.waf_files'])
+            nvcloth_file_list_editor.extend(['nvcloth_unsupported.waf_files'])
+            nvcloth_pch = "Source/NvClothUnsupported_precompiled.cpp"
+    
+    bld.DefineGem(
+        file_list               = nvcloth_file_list,
+        pch                     = nvcloth_pch,
+        win_features            = ['crcfix'],
+        includes                = [bld.Path('Code/CryEngine/CryCommon')],
+        
+        # Testing
+        disable_tests           = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
+        test_all_file_list      = ['nvcloth_tests.waf_files'],
+        
+        # Dependencies
+        use                     = ['EMotionFXStaticLib'],
+        uselib                  = [nvcloth_lib],
+        
+        # Editor Module
+        editor = dict(
+            file_list           = nvcloth_file_list_editor,
+            win_features        = ['crcfix'],
+            defines             = ['NVCLOTH_EDITOR'],
+            includes            = [bld.Path('Code/Tools'),
+                                   bld.Path('Code/CryEngine/CryCommon')],
+            
+            # Testing
+            disable_tests       = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
+            test_all_file_list  = ['nvcloth_editor_tests.waf_files'],
+            
+            # Dependencies
+            use                 = ['SceneCore', 'EMotionFXStaticLib'],
+            uselib              = [nvcloth_lib]
+        )
+    )

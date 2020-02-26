@@ -126,7 +126,7 @@ void CGameResourcesExporter::Save(const QString& outputDirectory)
     m_files.clear();
 }
 
-#if defined(WIN64) || defined(APPLE)
+#if defined(WIN64) || defined(APPLE) || defined(AZ_PLATFORM_LINUX)
 template <class Container1, class Container2>
 void Append(Container1& a, const Container2& b)
 {

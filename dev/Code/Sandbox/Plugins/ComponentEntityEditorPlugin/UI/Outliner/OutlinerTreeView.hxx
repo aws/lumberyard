@@ -76,7 +76,6 @@ private:
 
     QMouseEvent* m_queuedMouseEvent;
     bool m_draggingUnselectedItem; // This is set when an item is dragged outside its bounding box.
-    QPoint m_mousePressedPos;
 
     int m_expandOnlyDelay = -1;
     QBasicTimer m_expandTimer;

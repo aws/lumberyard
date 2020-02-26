@@ -13,19 +13,19 @@
 
 def build(bld):
     bld.DefineGem(
-        includes          = [ '.', 
-                              'Include', 
-                              bld.Path('Code/CryEngine/CryCommon')
-                            ],
-        win_features      = ['crcfix'],
+        includes          = ['.',
+                             bld.ThirdPartyPath('boost'),
+                             bld.Path('Code/CryEngine/CryCommon'),
+                             'Include'],
+        win_features      = ['crcfix'],    
         use_required_gems = True,
-        debug_export_defines = ['VEG_PROFILE_ENABLED'],
-        debug_test_export_defines = ['VEG_PROFILE_ENABLED'],
-        profile_export_defines = ['VEG_PROFILE_ENABLED'],
-        profile_test_export_defines = ['VEG_PROFILE_ENABLED'],
+        debug_defines = ['VEG_PROFILE_ENABLED'],
+        debug_test_defines = ['VEG_PROFILE_ENABLED'],
+        profile_defines = ['VEG_PROFILE_ENABLED'],
+        profile_test_defines = ['VEG_PROFILE_ENABLED'],
 
         editor = dict(
-            platforms   = ['win', 'darwin'],
+            platforms   = ['win', 'darwin', 'linux'],
             features    = ['qt5', 'crcfix'],
             uselib      = [
                            'QT5CORE',
@@ -35,6 +35,8 @@ def build(bld):
                            ],
             defines     = ['VEGETATION_EDITOR'],
             includes    = ['.', 
+                           bld.ThirdPartyPath('boost'),
+                           bld.Path('Code/CryEngine/CryCommon'),
                            'Include',
                            bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                            bld.Path('Code/Sandbox/Editor'),
@@ -48,9 +50,9 @@ def build(bld):
                            'AzToolsFramework', 
                            'AzQtComponents'],
             use_required_gems = True,
-            debug_export_defines = ['VEG_PROFILE_ENABLED'],
-            debug_test_export_defines = ['VEG_PROFILE_ENABLED'],
-            profile_export_defines = ['VEG_PROFILE_ENABLED'],
-            profile_test_export_defines = ['VEG_PROFILE_ENABLED'],
+            debug_defines = ['VEG_PROFILE_ENABLED'],
+            debug_test_defines = ['VEG_PROFILE_ENABLED'],
+            profile_defines = ['VEG_PROFILE_ENABLED'],
+            profile_test_defines = ['VEG_PROFILE_ENABLED'],
         ),
     )

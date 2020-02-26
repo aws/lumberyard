@@ -40,7 +40,7 @@
             "description"       : "Visual Studio 2017"
         },
         "qt_supported"          : true,
-        "qt_platform_dir"       : "msvc2015_64",
+        "qt_platform_dir"       : "msvc2017_64",
         "qtga_subfolders"       : [
             "win32/vc140/qtga.dll",
             "win32/vc140/qtgad.dll",

@@ -1,4 +1,4 @@
-﻿/*
+/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -1202,13 +1202,16 @@ namespace Audio
                     while (platformNode)
                     {
                         auto platformAttr = platformNode->first_attribute(ATLXmlTags::ATLNameAttribute, 0, false);
-                        if (platformAttr && azstricmp(platformAttr->value(), ATLXmlTags::PlatformName) == 0)
+                        if (platformAttr)
                         {
-                            auto configGroupAttr = platformNode->first_attribute(ATLXmlTags::ATLConfigGroupAttribute, 0, false);
-                            if (configGroupAttr)
+                            if (azstricmp(platformAttr->value(), ATLXmlTags::PlatformName) == 0 || azstricmp(platformAttr->value(), ATLXmlTags::PlatformCodeName) == 0)
                             {
-                                configGroupName = configGroupAttr->value();
-                                break;
+                                auto configGroupAttr = platformNode->first_attribute(ATLXmlTags::ATLConfigGroupAttribute, 0, false);
+                                if (configGroupAttr)
+                                {
+                                    configGroupName = configGroupAttr->value();
+                                    break;
+                                }
                             }
                         }
 

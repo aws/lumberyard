@@ -37,6 +37,39 @@ struct IUnknown
 #endif
 #define __uuidof(T) T::uuid()
 
+#if defined(AZ_PLATFORM_LINUX)
+
+# ifndef _REFGUID_DEFINED
+# define _REFGUID_DEFINED
+typedef const GUID& REFGUID;
+# endif
+
+# ifndef _REFIID_DEFINED
+# define _REFIID_DEFINED
+typedef const GUID& REFIID;
+# endif
+
+# ifndef IID_DEFINED
+# define IID_DEFINED
+typedef GUID IID;
+# endif
+
+#ifndef HRESULT_VALUES_DEFINED
+#define HRESULT_VALUES_DEFINED
+enum
+{
+    E_OUTOFMEMORY  = 0x8007000E,
+    E_FAIL         = 0x80004005,
+    E_ABORT        = 0x80004004,
+    E_INVALIDARG   = 0x80070057,
+    E_NOINTERFACE  = 0x80004002,
+    E_NOTIMPL      = 0x80004001,
+    E_UNEXPECTED   = 0x8000FFFF
+};
+#endif
+
+#endif  // defined(AZ_PLATFORM_LINUX)
+
 #include "SandboxAPI.h"
 
 class QObject;

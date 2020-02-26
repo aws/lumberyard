@@ -2,19 +2,19 @@
     "platform": {
         "win_x64_vs2017": {
             "includes": [
-                "msvc2015_64/include"
+                "msvc2017_64/include"
             ],
             "importlibpath": [
-                "msvc2015_64/lib"
+                "msvc2017_64/lib"
             ],
             "sharedlibpath": [
-                "msvc2015_64/bin"
+                "msvc2017_64/bin"
             ],
             "qtmain/defines": [
                 "QT_MAIN_LIB"
             ],
             "qtmain/includes": [
-                "msvc2015_64/include"
+                "msvc2017_64/include"
             ],
             "qtmain/import_release": [
                 "qtmain.lib"
@@ -23,17 +23,17 @@
                 "qtmaind.lib"
             ],
             "ActiveQt/includes": [
-                "msvc2015_64/include/ActiveQt"
+                "msvc2017_64/include/ActiveQt"
             ],
             "qtangle/includes": [
-                "msvc2015_64/include/QtANGLE"
+                "msvc2017_64/include/QtANGLE"
             ],
             "Qt5Bluetooth/defines": [
                 "QT_BLUETOOTH_LIB"
             ],
             "Qt5Bluetooth/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtBluetooth"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtBluetooth"
             ],
             "Qt5Bluetooth/import_release": [
                 "Qt5Bluetooth.lib"
@@ -50,34 +50,12 @@
             "Qt5Bluetooth/pdb_debug": [
                 "Qt5Bluetoothd.pdb"
             ],
-            "Qt5CLucene/defines": [
-                "QT_CLUCENE_LIB"
-            ],
-            "Qt5CLucene/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtCLucene"
-            ],
-            "Qt5CLucene/import_release": [
-                "Qt5CLucene.lib"
-            ],
-            "Qt5CLucene/import_debug": [
-                "Qt5CLucened.lib"
-            ],
-            "Qt5CLucene/shared_release": [
-                "Qt5CLucene.dll"
-            ],
-            "Qt5CLucene/shared_debug": [
-                "Qt5CLucened.dll"
-            ],
-            "Qt5CLucene/pdb_debug": [
-                "Qt5CLucened.pdb"
-            ],
             "Qt5Concurrent/defines": [
                 "QT_CONCURRENT_LIB"
             ],
             "Qt5Concurrent/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtConcurrent"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtConcurrent"
             ],
             "Qt5Concurrent/import_release": [
                 "Qt5Concurrent.lib"
@@ -99,10 +77,10 @@
                 "QT_NO_EXCEPTIONS"
             ],
             "Qt5Core/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtCore",
-                "msvc2015_64/include/QtCore/5.6.2",
-                "msvc2015_64/include/QtCore/5.6.2/QtCore"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtCore",
+                "msvc2017_64/include/QtCore/5.12.4",
+                "msvc2017_64/include/QtCore/5.12.4/QtCore"
             ],
             "Qt5Core/import_release": [
                 "Qt5Core.lib"
@@ -123,8 +101,8 @@
                 "QT_DBUS_LIB"
             ],
             "Qt5DBus/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtDBus"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtDBus"
             ],
             "Qt5DBus/import_release": [
                 "Qt5DBus.lib"
@@ -145,8 +123,8 @@
                 "QT_DECLARATIVE_LIB"
             ],
             "Qt5Declarative/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtDeclarative"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtDeclarative"
             ],
             "Qt5Declarative/import_release": [
                 "Qt5Declarative.lib"
@@ -158,8 +136,8 @@
                 "QT_DESIGNER_LIB"
             ],
             "Qt5Designer/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtDesigner"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtDesigner"
             ],
             "Qt5Designer/import_release": [
                 "Qt5Designer.lib"
@@ -180,8 +158,8 @@
                 "QT_DESIGNERCOMPONENTS_LIB"
             ],
             "Qt5DesignerComponents/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtDesignerComponents"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtDesignerComponents"
             ],
             "Qt5DesignerComponents/import_release": [
                 "Qt5DesignerComponents.lib"
@@ -202,10 +180,10 @@
                 "QT_GUI_LIB"
             ],
             "Qt5Gui/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtGui",
-                "msvc2015_64/include/QtGui/5.6.2",
-                "msvc2015_64/include/QtGui/5.6.2/QtGui"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtGui",
+                "msvc2017_64/include/QtGui/5.12.4",
+                "msvc2017_64/include/QtGui/5.12.4/QtGui"
             ],
             "Qt5Gui/import_release": [
                 "Qt5Gui.lib"
@@ -226,8 +204,8 @@
                 "QT_HELP_LIB"
             ],
             "Qt5Help/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtHelp"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtHelp"
             ],
             "Qt5Help/import_release": [
                 "Qt5Help.lib"
@@ -248,8 +226,8 @@
                 "QT_MULTIMEDIA_LIB"
             ],
             "Qt5Multimedia/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtMultimedia"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtMultimedia"
             ],
             "Qt5Multimedia/import_release": [
                 "Qt5Multimedia.lib"
@@ -270,8 +248,8 @@
                 "QT_MULTIMEDIAWIDGETS_LIB"
             ],
             "Qt5MultimediaWidgets/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtMultimediaWidgets"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtMultimediaWidgets"
             ],
             "Qt5MultimediaWidgets/import_release": [
                 "Qt5MultimediaWidgets.lib"
@@ -292,8 +270,8 @@
                 "QT_NETWORK_LIB"
             ],
             "Qt5Network/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtNetwork"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtNetwork"
             ],
             "Qt5Network/import_release": [
                 "Qt5Network.lib"
@@ -314,8 +292,8 @@
                 "QT_NFC_LIB"
             ],
             "Qt5Nfc/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtNfc"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtNfc"
             ],
             "Qt5Nfc/import_release": [
                 "Qt5Nfc.lib"
@@ -336,8 +314,8 @@
                 "QT_OPENGL_LIB"
             ],
             "Qt5OpenGL/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtOpenGL"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtOpenGL"
             ],
             "Qt5OpenGL/import_release": [
                 "Qt5OpenGL.lib"
@@ -358,8 +336,8 @@
                 "QT_POSITIONING_LIB"
             ],
             "Qt5Positioning/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtPositioning"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtPositioning"
             ],
             "Qt5Positioning/import_release": [
                 "Qt5Positioning.lib"
@@ -380,8 +358,8 @@
                 "QT_PRINTSUPPORT_LIB"
             ],
             "Qt5PrintSupport/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtPrintSupport"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtPrintSupport"
             ],
             "Qt5PrintSupport/import_release": [
                 "Qt5PrintSupport.lib"
@@ -402,8 +380,8 @@
                 "QT_QML_LIB"
             ],
             "Qt5Qml/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtQml"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtQml"
             ],
             "Qt5Qml/import_release": [
                 "Qt5Qml.lib"
@@ -424,8 +402,8 @@
                 "QT_QUICK_LIB"
             ],
             "Qt5Quick/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtQuick"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtQuick"
             ],
             "Qt5Quick/import_release": [
                 "Qt5Quick.lib"
@@ -446,8 +424,8 @@
                 "QT_QUICKPARTICLES_LIB"
             ],
             "Qt5QuickParticles/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtQuickParticles"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtQuickParticles"
             ],
             "Qt5QuickParticles/import_release": [
                 "Qt5QuickParticles.lib"
@@ -468,8 +446,8 @@
                 "QT_QUICKTEST_LIB"
             ],
             "Qt5QuickTest/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtQuickTest"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtQuickTest"
             ],
             "Qt5QuickTest/import_release": [
                 "Qt5QuickTest.lib"
@@ -490,8 +468,8 @@
                 "QT_SENSORS_LIB"
             ],
             "QtSensors/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtSensors"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtSensors"
             ],
             "Qt5Sensors/import_release": [
                 "Qt5Sensors.lib"
@@ -512,8 +490,8 @@
                 "QT_SERIALPORT_LIB"
             ],
             "Qt5SerialPort/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtSerialPort"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtSerialPort"
             ],
             "Qt5SerialPort/import_release": [
                 "Qt5SerialPort.lib"
@@ -534,8 +512,8 @@
                 "QT_SQL_LIB"
             ],
             "Qt5Sql/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtSql"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtSql"
             ],
             "Qt5Sql/import_release": [
                 "Qt5Sql.lib"
@@ -556,8 +534,8 @@
                 "QT_SVG_LIB"
             ],
             "Qt5Svg/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtSvg"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtSvg"
             ],
             "Qt5Svg/import_release": [
                 "Qt5Svg.lib"
@@ -578,8 +556,8 @@
                 "QT_TEST_LIB"
             ],
             "Qt5Test/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtTest"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtTest"
             ],
             "Qt5Test/import_release": [
                 "Qt5Test.lib"
@@ -596,97 +574,140 @@
             "Qt5Test/pdb_debug": [
                 "Qt5Testd.pdb"
             ],
-            "Qt5WebKit/defines": [
-                "QT_WEBKIT_LIB"
+            "Qt5WebEngine/defines": [
+                "QT_WEBENGINE_LIB"
             ],
-            "Qt5WebKit/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtWebKit"
+            "Qt5WebEngine/includes": [
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtWebEngine"
             ],
-            "Qt5WebKit/import_release": [
-                "Qt5WebKit.lib"
+            "Qt5WebEngine/import_release": [
+                "Qt5WebEngine.lib"
             ],
-            "Qt5WebKit/import_debug": [
-                "Qt5WebKitd.lib"
+            "Qt5WebEngine/import_debug": [
+                "Qt5WebEngined.lib"
             ],
-            "Qt5WebKit/shared_release": [
-                "Qt5WebKit.dll",
-                "Qt5Sensors.dll",
-                "Qt5Positioning.dll",
+            "Qt5WebEngine/shared_release": [
+                "Qt5WebEngine.dll",
+                "Qt5WebEngineCore.dll",
+                "Qt5Quick.dll",
+                "Qt5Gui.dll",
                 "Qt5WebChannel.dll",
-                "Qt5Multimedia.dll",
-                "Qt5Sql.dll",
-                "icudt54.dll",
-                "icuin54.dll",
-                "icuuc54.dll"
+                "Qt5Qml.dll",
+                "Qt5Core.dll"
             ],
-            "Qt5WebKit/shared_debug": [
-                "Qt5WebKitd.dll",
-                "Qt5Sensorsd.dll",
-                "Qt5Positioningd.dll",
+            "Qt5WebEngine/shared_debug": [
+                "Qt5WebEngined.dll",
+                "Qt5WebEngineCored.dll",
+                "Qt5Quickd.dll",
+                "Qt5Guid.dll",
                 "Qt5WebChanneld.dll",
-                "Qt5Multimediad.dll",
-                "Qt5Sqld.dll",
-                "icudt54.dll",
-                "icuin54.dll",
-                "icuuc54.dll"
+                "Qt5Qmld.dll",
+                "Qt5Cored.dll"
             ],
-            "Qt5WebKit/pdb_debug": [
-                "Qt5WebKitd.pdb",
-                "Qt5Sensorsd.pdb",
-                "Qt5Positioningd.pdb",
+            "Qt5WebEngine/pdb_debug": [
+                "Qt5WebEngined.pdb",
+                "Qt5WebEngineCored.pdb",
+                "Qt5Quickd.pdb",
+                "Qt5Guid.pdb",
                 "Qt5WebChanneld.pdb",
-                "Qt5Multimediad.pdb",
-                "Qt5Sqld.pdb"
+                "Qt5Qmld.pdb",
+                "Qt5Cored.pdb"
             ],
-            "Qt5WebKitWidgets/defines": [
-                "QT_WEBKITWIDGETS_LIB"
+            "Qt5WebEngineCore/defines": [
+                "QT_WEBENGINECORE_LIB"
             ],
-            "Qt5WebKitWidgets/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtWebKitWidgets"
+            "Qt5WebEngineCore/includes": [
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtWebEngineCore"
             ],
-            "Qt5WebKitWidgets/import_release": [
-                "Qt5WebKitWidgets.lib"
+            "Qt5WebEngineCore/import_release": [
+                "Qt5WebEngineCore.lib"
             ],
-            "Qt5WebKitWidgets/import_debug": [
-                "Qt5WebKitWidgetsd.lib"
+            "Qt5WebEngineCore/import_debug": [
+                "Qt5WebEngineCored.lib"
             ],
-            "Qt5WebKitWidgets/shared_release": [
-                "Qt5WebKitWidgets.dll",
-                "Qt5Sensors.dll",
-                "Qt5MultimediaWidgets.dll",
-                "Qt5Multimedia.dll",
+            "Qt5WebEngineCore/shared_release": [
+                "Qt5WebEngineCore.dll",
+                "Qt5Quick.dll",
+                "Qt5Gui.dll",
+                "Qt5WebChannel.dll",
+                "Qt5Network.dll",
+                "Qt5Positioning.dll",
+                "Qt5Core.dll"
+            ],
+            "Qt5WebEngineCore/shared_debug": [
+                "Qt5WebEngineCored.dll",
+                "Qt5Quickd.dll",
+                "Qt5Guid.dll",
+                "Qt5WebChanneld.dll",
+                "Qt5Networkd.dll",
+                "Qt5Positioningd.dll",
+                "Qt5Cored.dll"
+            ],
+            "Qt5WebEngineCore/pdb_debug": [
+                "Qt5WebEngineCored.pdb",
+                "Qt5Quickd.pdb",
+                "Qt5Guid.pdb",
+                "Qt5WebChanneld.pdb",
+                "Qt5Networkd.pdb",
+                "Qt5Positioningd.pdb",
+                "Qt5Cored.pdb"
+            ],
+            "Qt5WebEngineWidgets/defines": [
+                "QT_WEBENGINEWIDGETS_LIB"
+            ],
+            "Qt5WebEngineWidgets/includes": [
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtWebEngineWidgets"
+            ],
+            "Qt5WebEngineWidgets/import_release": [
+                "Qt5WebEngineWidgets.lib"
+            ],
+            "Qt5WebEngineWidgets/import_debug": [
+                "Qt5WebEngineWidgetsd.lib"
+            ],
+            "Qt5WebEngineWidgets/shared_release": [
+                "Qt5WebEngineWidgets.dll",
+                "Qt5WebEngineCore.dll",
+                "Qt5Quick.dll",
                 "Qt5PrintSupport.dll",
-                "icudt54.dll",
-                "icuin54.dll",
-                "icuuc54.dll"
+                "Qt5Widgets.dll",
+                "Qt5Gui.dll",
+                "Qt5Network.dll",
+                "Qt5Core.dll",
+                "Qt5QuickWidgets.dll"
             ],
-            "Qt5WebKitWidgets/shared_debug": [
-                "Qt5WebKitWidgetsd.dll",
-                "Qt5Sensorsd.dll",
-                "Qt5MultimediaWidgetsd.dll",
-                "Qt5Multimediad.dll",
+            "Qt5WebEngineWidgets/shared_debug": [
+                "Qt5WebEngineWidgetsd.dll",
+                "Qt5WebEngineCored.dll",
+                "Qt5Quickd.dll",
                 "Qt5PrintSupportd.dll",
-                "icudt54.dll",
-                "icuin54.dll",
-                "icuuc54.dll"
+                "Qt5Widgetsd.dll",
+                "Qt5Guid.dll",
+                "Qt5Networkd.dll",
+                "Qt5Cored.dll",
+                "Qt5QuickWidgetsd.dll"
             ],
-            "Qt5WebKitWidgets/pdb_debug": [
-                "Qt5WebKitWidgetsd.pdb",
-                "Qt5Sensors.pdb",
-                "Qt5MultimediaWidgetsd.pdb",
-                "Qt5Multimediad.pdb",
-                "Qt5PrintSupportd.pdb"
+            "Qt5WebEngineWidgets/pdb_debug": [
+                "Qt5WebEngineWidgetsd.pdb",
+                "Qt5WebEngineCored.pdb",
+                "Qt5Quickd.pdb",
+                "Qt5PrintSupportd.pdb",
+                "Qt5Widgetsd.pdb",
+                "Qt5Guid.pdb",
+                "Qt5Networkd.pdb",
+                "Qt5Cored.pdb",
+                "Qt5QuickWidgetsd.pdb"
             ],
             "Qt5Widgets/defines": [
                 "QT_WIDGETS_LIB"
             ],
             "Qt5Widgets/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtWidgets",
-                "msvc2015_64/include/QtWidgets/5.6.2",
-                "msvc2015_64/include/QtWidgets/5.6.2/QtWidgets"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtWidgets",
+                "msvc2017_64/include/QtWidgets/5.12.4",
+                "msvc2017_64/include/QtWidgets/5.12.4/QtWidgets"
             ],
             "Qt5Widgets/import_release": [
                 "Qt5Widgets.lib"
@@ -707,8 +728,8 @@
                 "QT_WINEXTRAS_LIB"
             ],
             "Qt5WinExtras/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtWinExtras"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtWinExtras"
             ],
             "Qt5WinExtras/import_release": [
                 "Qt5WinExtras.lib"
@@ -729,8 +750,8 @@
                 "QT_XMLPATTERNS_LIB"
             ],
             "Qt5XmlPatterns/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtXmlPatterns"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtXmlPatterns"
             ],
             "Qt5XmlPatterns/import_release": [
                 "Qt5XmlPatterns.lib"
@@ -751,8 +772,8 @@
                 "QT_XML_LIB"
             ],
             "Qt5Xml/includes": [
-                "msvc2015_64/include",
-                "msvc2015_64/include/QtXml"
+                "msvc2017_64/include",
+                "msvc2017_64/include/QtXml"
             ],
             "Qt5Xml/import_release": [
                 "Qt5Xml.lib"

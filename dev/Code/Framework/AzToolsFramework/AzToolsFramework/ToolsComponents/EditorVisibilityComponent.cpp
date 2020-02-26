@@ -14,6 +14,7 @@
 
 #include <AzCore/Serialization/EditContext.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
 
 namespace AzToolsFramework
@@ -58,46 +59,9 @@ namespace AzToolsFramework
 
         void EditorVisibilityComponent::Init()
         {
-            // Current visibility isn't saved to disk. Initialize it with the visibility flag's value.
-            m_currentVisibility = m_visibilityFlag;
-
             // We connect to the bus here because we need to be able to respond even if the entity and component are not active
             // This is a special case for certain EditorComponents only!
             EditorVisibilityRequestBus::Handler::BusConnect(GetEntityId());
-        }
-
-        void EditorVisibilityComponent::Activate()
-        {
-            EditorComponentBase::Activate();
-            EditorVisibilityNotificationBus::Event(
-                GetEntityId(), &EditorVisibilityNotifications::OnEntityVisibilityFlagChanged, m_visibilityFlag);
-        }
-
-        void EditorVisibilityComponent::Deactivate()
-        {
-            EditorComponentBase::Deactivate();
-        }
-
-        void EditorVisibilityComponent::SetCurrentVisibility(bool visibility)
-        {
-            if (m_currentVisibility != visibility)
-            {
-                m_currentVisibility = visibility;
-
-                // notify individual entities connected to this bus
-                EditorEntityVisibilityNotificationBus::Event(
-                    m_entity->GetId(), &EditorEntityVisibilityNotifications::OnEntityVisibilityChanged, visibility);
-
-                // notify systems connected to this bus of the entity that changed
-                EditorContextVisibilityNotificationBus::Event(
-                    GetEntityContextId(), &EditorContextVisibilityNotifications::OnEntityVisibilityChanged,
-                    m_entity->GetId(), visibility);
-            }
-        }
-
-        bool EditorVisibilityComponent::GetCurrentVisibility()
-        {
-            return m_currentVisibility;
         }
 
         void EditorVisibilityComponent::SetVisibilityFlag(bool flag)
@@ -112,17 +76,22 @@ namespace AzToolsFramework
                 // notify individual entities connected to this bus
                 EditorEntityVisibilityNotificationBus::Event(
                     m_entity->GetId(), &EditorEntityVisibilityNotifications::OnEntityVisibilityFlagChanged, flag);
-
-                // notify systems connected to this bus of the entity that changed
-                EditorContextVisibilityNotificationBus::Event(
-                    GetEntityContextId(), &EditorContextVisibilityNotifications::OnEntityVisibilityFlagChanged,
-                    m_entity->GetId(), flag);
             }
         }
 
         bool EditorVisibilityComponent::GetVisibilityFlag()
         {
             return m_visibilityFlag;
+        }
+
+        void EditorVisibilityComponent::SetCurrentVisibility(const bool visibility)
+        {
+            SetEntityVisibility(GetEntityId(), visibility);
+        }
+
+        bool EditorVisibilityComponent::GetCurrentVisibility()
+        {
+            return IsEntityVisible(GetEntityId());
         }
     } // namespace Components
 } // namespace AzToolsFramework

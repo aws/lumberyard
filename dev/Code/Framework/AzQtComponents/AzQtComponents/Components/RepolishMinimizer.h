@@ -29,14 +29,18 @@ namespace AzQtComponents
     public:
         RepolishMinimizer()
         {
+#if !defined(AZ_PLATFORM_LINUX)
             // Enable optimizations
             QStyle::enableMinimizePolishOptimizations(true);
+#endif // !defined(AZ_PLATFORM_LINUX)
         }
 
         ~RepolishMinimizer()
         {
+#if !defined(AZ_PLATFORM_LINUX)
             // Disable optimizations. Back to normal.
             QStyle::enableMinimizePolishOptimizations(false);
+#endif // !defined(AZ_PLATFORM_LINUX)
         }
 
     private:

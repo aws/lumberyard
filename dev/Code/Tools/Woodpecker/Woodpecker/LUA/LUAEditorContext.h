@@ -301,7 +301,7 @@ namespace LUAEditor
 
     private:
 
-        AZStd::vector<CompilationErrorData> m_errorData;
+        AZStd::vector<CompilationErrorData*> m_errorData;
 
         // utility
         void ProvisionalShowAndFocus(bool forceShow = false, bool forcedHide = false);

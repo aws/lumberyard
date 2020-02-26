@@ -335,7 +335,7 @@ namespace CryThreadUtil
         SuspendThread(hThread);
 
         CONTEXT ctx;
-        memset(&ctx, sizeof(ctx), 0);
+        memset(&ctx, 0, sizeof(ctx));
         ctx.ContextFlags = CONTEXT_ALL;
         if (GetThreadContext(hThread, &ctx) == 0)
         {

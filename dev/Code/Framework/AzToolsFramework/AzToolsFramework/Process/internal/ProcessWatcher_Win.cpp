@@ -12,8 +12,6 @@
 
 #include "StdAfx.h"
 
-#ifdef AZ_PLATFORM_WINDOWS // Only windows support currently
-
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/string/conversions.h>
 #include <AzCore/std/parallel/thread.h>
@@ -136,7 +134,7 @@ namespace AzToolsFramework
     ProcessWatcher::ProcessWatcher()
         : m_pCommunicator(nullptr)
     {
-        m_pWatcherData = aznew ProcessData {};
+        m_pWatcherData = AZStd::make_unique<ProcessData>();
     }
 
     ProcessWatcher::~ProcessWatcher()
@@ -149,8 +147,6 @@ namespace AzToolsFramework
         delete m_pCommunicator;
         CloseHandle(m_pWatcherData->processInformation.hProcess);
         CloseHandle(m_pWatcherData->processInformation.hThread);
-        delete m_pWatcherData;
-        m_pWatcherData = nullptr;
     }
 
     StdProcessCommunicator* ProcessWatcher::CreateStdCommunicator()
@@ -215,7 +211,7 @@ namespace AzToolsFramework
         return waitResult == WAIT_TIMEOUT;
     }
 
-    bool ProcessWatcher::WaitForProcessToExit(AZ::u32 waitTimeInSeconds)
+    bool ProcessWatcher::WaitForProcessToExit(AZ::u32 waitTimeInSeconds, AZ::u32* outExitCode /*= nullptr*/)
     {
         if (CheckExitCode(m_pWatcherData->processInformation.hProcess))
         {
@@ -225,6 +221,10 @@ namespace AzToolsFramework
 
         // Verify process is not signaled
         DWORD waitResult = WaitForSingleObject(m_pWatcherData->processInformation.hProcess, waitTimeInSeconds * 1000);
+        if ((outExitCode) && (waitResult != WAIT_TIMEOUT))
+        {
+            CheckExitCode(m_pWatcherData->processInformation.hProcess, outExitCode);
+        }
 
         // if wait timed out, process still running.
         return waitResult != WAIT_TIMEOUT;
@@ -246,5 +246,3 @@ namespace AzToolsFramework
         ::TerminateProcess(m_pWatcherData->processInformation.hProcess, exitCode);
     }
 } // namespace AzToolsFramework
-
-#endif // AZ_PLATFORM_WINDOWS 

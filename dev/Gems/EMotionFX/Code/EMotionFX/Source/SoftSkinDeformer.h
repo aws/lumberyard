@@ -12,11 +12,11 @@
 
 #pragma once
 
-// include the required headers
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/Math/Transform.h>
 #include "EMotionFXConfig.h"
 #include "MeshDeformer.h"
-#include <MCore/Source/Vector.h>
-#include <MCore/Source/Matrix4.h>
+
 
 namespace EMotionFX
 {
@@ -103,7 +103,7 @@ namespace EMotionFX
          * This is the number of different bones that the skinning information of the mesh where this deformer works on uses.
          * @result The number of bones.
          */
-        MCORE_INLINE uint32 GetNumLocalBones() const                        { return mNodeNumbers.GetLength(); }
+        MCORE_INLINE size_t GetNumLocalBones() const                        { return mNodeNumbers.size(); }
 
         /**
          * Get the node number of a given local bone.
@@ -117,12 +117,12 @@ namespace EMotionFX
          * This does not alter the value returned by GetNumLocalBones().
          * @param numBones The number of bones to pre-allocate space for.
          */
-        MCORE_INLINE void ReserveLocalBones(uint32 numBones)                { mNodeNumbers.Reserve(numBones); mBoneMatrices.Reserve(numBones); }
+        MCORE_INLINE void ReserveLocalBones(uint32 numBones)                { mNodeNumbers.reserve(numBones); mBoneMatrices.reserve(numBones); }
 
 
     protected:
-        MCore::Array<MCore::Matrix>     mBoneMatrices;
-        MCore::Array<uint32>            mNodeNumbers;
+        AZStd::vector<AZ::Transform>    mBoneMatrices;
+        AZStd::vector<uint32>           mNodeNumbers;
 
         /**
          * Default constructor.
@@ -142,18 +142,18 @@ namespace EMotionFX
          */
         MCORE_INLINE uint32 FindLocalBoneIndex(uint32 nodeIndex) const
         {
-            const uint32 numBones = mNodeNumbers.GetLength();
-            for (uint32 i = 0; i < numBones; ++i)
+            const size_t numBones = mNodeNumbers.size();
+            for (size_t i = 0; i < numBones; ++i)
             {
                 if (mNodeNumbers[i] == nodeIndex)
                 {
-                    return i;
+                    return static_cast<uint32>(i);
                 }
             }
 
             return MCORE_INVALIDINDEX32;
         }
 
-        void SkinVertexRange(uint32 startVertex, uint32 endVertex, AZ::PackedVector3f* positions, AZ::PackedVector3f* normals, AZ::Vector4* tangents, AZ::PackedVector3f* bitangents, uint32* orgVerts, SkinningInfoVertexAttributeLayer* layer);
+        void SkinVertexRange(uint32 startVertex, uint32 endVertex, AZ::Vector3* positions, AZ::Vector3* normals, AZ::Vector4* tangents, AZ::Vector3* bitangents, uint32* orgVerts, SkinningInfoVertexAttributeLayer* layer);
     };
 } // namespace EMotionFX

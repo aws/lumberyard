@@ -320,7 +320,7 @@ namespace EMStudio
                     case MCore::AttributeVector3::TYPE_ID:
                     {
                         MCore::AttributeVector3* vecAttribute = static_cast<MCore::AttributeVector3*>(attribute);
-                        const AZ::PackedVector3f& vec = vecAttribute->GetValue();
+                        const AZ::Vector3& vec = vecAttribute->GetValue();
                         m_tempStringA = AZStd::string::format("(%.2f, %.2f, %.2f)", static_cast<float>(vec.GetX()), static_cast<float>(vec.GetY()), static_cast<float>(vec.GetZ()));
                         break;
                     }
@@ -346,7 +346,7 @@ namespace EMStudio
                     case MCore::AttributeQuaternion::TYPE_ID:
                     {
                         MCore::AttributeQuaternion* quatAttribute = static_cast<MCore::AttributeQuaternion*>(attribute);
-                        const AZ::Vector3 eulerAngles = quatAttribute->GetValue().ToEuler();
+                        const AZ::Vector3 eulerAngles = MCore::AzQuaternionToEulerAngles(quatAttribute->GetValue());
                         m_tempStringA = AZStd::string::format("(%.2f, %.2f, %.2f)", static_cast<float>(eulerAngles.GetX()), static_cast<float>(eulerAngles.GetY()), static_cast<float>(eulerAngles.GetZ()));
                         break;
                     }

@@ -14,9 +14,6 @@
 ########################################################################################
 
 
-def should_build_darwin_editor(ctx):
-    return ctx.engine_root_version == '0.0.0.0' or ctx.options.enable_experimental_features.lower() == 'true'
-
 def build(bld):
 
     qt_version = None
@@ -44,7 +41,7 @@ def build(bld):
         vs_filter               = 'Sandbox',
         pch                     = 'StdAfx.cpp',
         file_list               = 'editor_core.waf_files',
-        platforms               = ['win', 'darwin'],
+        platforms               = ['win', 'darwin', 'linux'],
         configurations          = ['all'],
         exclude_monolithic      = True,
         client_only             = True,
@@ -52,8 +49,9 @@ def build(bld):
         uselib                  = ['QT5CORE',
                                    'QT5GUI',
                                    'QT5NETWORK',
-                                   'QT5WEBKITWIDGETS',
-                                   'QT5WEBKIT',
+                                   'QT5WEBENGINEWIDGETS',
+                                   'QT5WEBENGINE',
+                                   'QT5WEBENGINECORE',
                                    'QT5WIDGETS',
                                    'QT5WINEXTRAS',
                                    'ZLIB'],
@@ -74,11 +72,13 @@ def build(bld):
         # Platform Specific
         darwin_includes         = additional_qt_includes,
         darwin_enable_rtti      = True,
+        linux_enable_rtti       = True,
 
         win_features            = ['crcfix'],
+        linux_rpath             = ['$ORIGIN/qtlibs/lib'],
 
         # Testing
-        test_all_file_list  = ['editor_core_test.waf_files'],
+        test_all_file_list      = ['editor_core_test.waf_files'],
     )
 
     #By default the Editor is built with tools to edit Terrain.
@@ -104,8 +104,9 @@ def build(bld):
         pch                                 = 'StdAfx.cpp',
         file_list                           = fileList,
         darwin_file_list                    = 'editor_lib_darwin.waf_files',
+        linux_file_list                     = 'editor_lib_linux.waf_files',
         win_file_list                       = [ ],
-        platforms                           = ['win', 'darwin'],
+        platforms                           = ['win', 'darwin', 'linux'],
         configurations                      = ['all'],
         exclude_monolithic                  = True,
         client_only                         = True,
@@ -144,8 +145,9 @@ def build(bld):
                                                'QT5GUI',
                                                'QT5NETWORK',
                                                'QT5QML',
-                                               'QT5WEBKITWIDGETS',
-                                               'QT5WEBKIT',
+                                               'QT5WEBENGINEWIDGETS',
+                                               'QT5WEBENGINE',
+                                               'QT5WEBENGINECORE',
                                                'QT5WIDGETS',
                                                'QT5WINEXTRAS',
                                                'QT5XML',
@@ -171,6 +173,7 @@ def build(bld):
         win_linkflags                       = ['/SUBSYSTEM:WINDOWS'],
         win_debug_all_linkflags             = '/NODEFAULTLIB:LIBCMTD.lib',
         win_ndebug_linkflags                = '/NODEFAULTLIB:LIBCMT.lib',
+        win_uselib                          = ['BOOSTPYTHON'],
         msvc_cxxflags                       = [ '/Zm200', '/wd4355', '/wd4018', '/wd4267' ],
 
         # Platform Specific
@@ -199,7 +202,12 @@ def build(bld):
                                                bld.Path('Code/Sandbox/Editor/Controls'),
                                                bld.Path('Code/Sandbox/Editor/AI')] + additional_qt_includes,
         darwin_x64_framework                = ['Security'],
-
+        darwin_uselib                       = ['BOOSTPYTHON'],
+        darwin_enable_rtti                  = True,
+        linux_rpath                         = ['$ORIGIN/qtlibs/lib'],
+        linux_lib                           = ['jpeg','python2.7','jbig'],
+        linux_uselib                        = ['BOOSTPYTHON_STATIC'],
+        linux_x64_lib                       = ['python2.7', 'jpeg', 'jbig'], # Our 3rdparty libtiff.a depends on libjpeg and libjbig
 
         # Testing
         test_all_file_list  = testFileList,
@@ -210,8 +218,8 @@ def build(bld):
 
     bld.CryEditorLib(**kw)
 
-    enabled_platforms = ['win']
-    if should_build_darwin_editor(bld):
+    enabled_platforms = ['win', 'linux']
+    if bld.should_build_experimental_targets():
         enabled_platforms.append('darwin') 
 
     tsk_gen = bld.CryEditor(
@@ -224,10 +232,11 @@ def build(bld):
         configurations                      = ['all'],
         exclude_monolithic                  = True,
         client_only                         = True,
-        includes                            = ['.',
+        includes                            = ['..',
                                                bld.Path('Code/CryEngine/CryCommon'),
-                                               '..',
                                                'Include',
+                                               bld.ThirdPartyPath('boost'),
+                                               bld.Path('Code/CryEngine/CryCommon'),
                                                bld.Path('Code/CryEngine'),
                                                bld.Path('Code/CryEngine/CryAction'),
                                                bld.Path('Code/CryEngine/CrySystem'),
@@ -256,8 +265,9 @@ def build(bld):
                                                'QT5GUI',
                                                'QT5NETWORK',
                                                'QT5QML',
-                                               'QT5WEBKITWIDGETS',
-                                               'QT5WEBKIT',
+                                               'QT5WEBENGINEWIDGETS',
+                                               'QT5WEBENGINE',
+                                               'QT5WEBENGINECORE',
                                                'QT5WIDGETS',
                                                'QT5WINEXTRAS',
                                                'QT5CONCURRENT',
@@ -313,6 +323,9 @@ def build(bld):
         darwin_x64_framework                = ['Security'],
 
         darwin_xcassets                     = 'Code/Sandbox/Editor/res/Images.xcassets',
+        linux_x64_lib                       = ['python2.7'],
+        linux_enable_rtti                   = True,
+        linux_rpath                         = ['@executable_path/', '@executable_path/qtlibs/lib', '@executable_path/rc', '@executable_path/EditorPlugins']
     )
 
     if tsk_gen != None:
@@ -321,7 +334,7 @@ def build(bld):
 
 
 def package(pkg):
-    if should_build_darwin_editor(pkg):
+    if pkg.should_build_experimental_targets():
         build(pkg) # Need to call this to generate our task_generator
         pkg.package_tool(
             target           = 'Editor',

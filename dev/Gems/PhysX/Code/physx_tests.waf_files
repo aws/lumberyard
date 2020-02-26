@@ -2,12 +2,18 @@
     "auto": {
         "Tests": [
             "Tests/PhysXTestCommon.h",
+            "Tests/PhysXTestCommon.inl",
             "Tests/PhysXTestCommon.cpp",
             "Tests/PhysXGenericTest.cpp",
             "Tests/PhysXSpecificTest.cpp",
             "Tests/PhysXForceRegionTest.cpp",
             "Tests/PhysXWorldTest.cpp",
-            "Tests/PhysXMaterialLibraryTest.cpp"
+            "Tests/PhysXMaterialLibraryTest.cpp",
+            "Tests/PhysXCollisionFilteringTest.cpp",
+            "Tests/PhysXTestFixtures.h",
+            "Tests/PhysXTestFixtures.cpp",
+            "Tests/PhysXTestUtil.h",
+            "Tests/PhysXTestUtil.cpp"
         ]
     }
 }

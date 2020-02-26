@@ -19,9 +19,11 @@
 #include <AzCore/Math/Quaternion.h>
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzFramework/Entity/EntityContext.h>
+#include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
+#include <AzToolsFramework/ToolsComponents/EditorLayerComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorLockComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityComponent.h>
 
@@ -109,12 +111,12 @@ namespace UnitTest
     {
         PropertyEditorEntityChangeNotificationBus::Handler::BusConnect(entityId);
         EditorTransformChangeNotificationBus::Handler::BusConnect();
-        AzToolsFramework::ToolsApplicationNotificationBus::Handler::BusConnect();
+        ToolsApplicationNotificationBus::Handler::BusConnect();
     }
 
     EditorEntityComponentChangeDetector::~EditorEntityComponentChangeDetector()
     {
-        AzToolsFramework::ToolsApplicationNotificationBus::Handler::BusDisconnect();
+        ToolsApplicationNotificationBus::Handler::BusDisconnect();
         EditorTransformChangeNotificationBus::Handler::BusDisconnect();
         PropertyEditorEntityChangeNotificationBus::Handler::BusDisconnect();
     }
@@ -164,6 +166,27 @@ namespace UnitTest
             entity->GetId());
 
         entity->Activate();
+
+        if (outEntity)
+        {
+            *outEntity = entity;
+        }
+
+        return entity->GetId();
+    }
+
+    AZ::EntityId CreateEditorLayerEntity(const char* name, AZ::Entity** outEntity /*= nullptr*/)
+    {
+        AZ::Entity* entity = nullptr;
+        CreateDefaultEditorEntity(name, &entity);
+
+        auto layer = aznew Layers::EditorLayerComponent();
+        AZStd::vector<AZ::Component*> newComponents{ layer };
+
+        EntityCompositionRequests::AddExistingComponentsOutcome componentAddResult;
+        EntityCompositionRequestBus::BroadcastResult(
+            componentAddResult, &EntityCompositionRequests::AddExistingComponentsToEntity,
+            entity, newComponents);
 
         if (outEntity)
         {

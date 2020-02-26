@@ -246,7 +246,7 @@ private:
     QMap<QString, QRect> m_fakeDockWidgetGeometries;
 
     bool m_enableLegacyCryEntities;
-    AzQtComponents::FancyDocking* m_advancedDockManager;
+    QPointer<AzQtComponents::FancyDocking> m_advancedDockManager;
 
     using EditorComponentModeNotificationBusImpl = AzToolsFramework::ComponentModeFramework::EditorComponentModeNotificationBusImpl;
     EditorComponentModeNotificationBusImpl m_componentModeNotifications; /**< Helper for EditorComponentModeNotificationBus so 

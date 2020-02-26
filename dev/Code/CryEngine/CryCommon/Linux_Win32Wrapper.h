@@ -137,7 +137,9 @@ typedef HANDLE THREAD_HANDLE;
 #define _O_SEQUENTIAL   0x0020  /* file access is primarily sequential */
 #define _O_RANDOM       0x0010  /* file access is primarily random */
 
-#define MemoryBarrier() __sync_synchronize()
+inline void MemoryBarrier() {
+    __sync_synchronize();
+}
 // Memory barrier implementation taken from https://code.google.com/p/gperftools/
 //inline void MemoryBarrier() {
 //  __asm__ __volatile__("mfence" : : : "memory");

@@ -16,8 +16,9 @@ from resource_manager_common import constant
 
 from errors import HandledError
 
-def resolve_imports(context, target_directory_path, imported_paths = None, multi_imports = None):
-    '''Determines the paths identified by an .import file in a specified path.
+
+def resolve_imports(context, target_directory_path, imported_paths=None, multi_imports=None):
+    """Determines the paths identified by an .import file in a specified path.
 
     The .import file should contain one import name per line. An import name has
     the format {gem-name}.{common-code-subdirectory-name}.
@@ -25,11 +26,11 @@ def resolve_imports(context, target_directory_path, imported_paths = None, multi
     If the gem name is * then the common code directory will be imported from
     any and all active gems that provide it.
 
-    Imports are resolved recursivly in an arbitary order. 
-    
-    TODO: is this good enough, or does this need to be ordered? What about duplicate 
-    content? Should it be detected here? Is it always an error or, if the paths are 
-    ordered, is precidence assumed. Starting with the fewest assumptions and we'll 
+    Imports are resolved recursively in an arbitrary order.
+
+    TODO: is this good enough, or does this need to be ordered? What about duplicate
+    content? Should it be detected here? Is it always an error or, if the paths are
+    ordered, is precedence assumed. Starting with the fewest assumptions and we'll
     see what problems manifest.
 
     Arguments:
@@ -44,7 +45,7 @@ def resolve_imports(context, target_directory_path, imported_paths = None, multi
             participating in the import.
 
     Returns two values:
-   
+
         imported_paths: a set of full paths to imported directories.
             All the directories will have been verified to exist.
 
@@ -52,10 +53,9 @@ def resolve_imports(context, target_directory_path, imported_paths = None, multi
             in the import.  All the directories will have been verified to exist.
 
     Raises a HandledError if the .import file contents are malformed, identify a gem
-    that does not exist or is not enabled, or identifies an common-code directory 
+    that does not exist or is not enabled, or identifies an common-code directory
     that does not exist.
-
-    '''
+    """
 
     if imported_paths is None:
         imported_paths = set()
@@ -75,7 +75,8 @@ def resolve_imports(context, target_directory_path, imported_paths = None, multi
             line = line.strip()
             parts = line.split('.')
             if len(parts) != 2 or not parts[0] or not parts[1]:
-                raise HandledError('Invalid import "{}" found in {}. Import should have the format <gem-name>.<common-code-subdirectory-name>.'.format(line, imports_file_path))
+                raise HandledError('Invalid import "{}" found in {}. Import should have the format <gem-name>.<common-code-subdirectory-name>.'.format(line,
+                                                                                                                                                       imports_file_path))
 
             gem_name, import_directory_name = parts
 
@@ -97,7 +98,7 @@ def resolve_imports(context, target_directory_path, imported_paths = None, multi
 
                     # add it to the set and recurse
 
-                    if path not in imported_paths: # avoid infinte loops and extra work
+                    if path not in imported_paths:  # avoid infinite loops and extra work
                         imported_paths.add(path)
                         imported_gem_names.add(gem.name)
                         resolve_imports(context, path, imported_paths, multi_imports)
@@ -114,11 +115,13 @@ def resolve_imports(context, target_directory_path, imported_paths = None, multi
 
                 path = os.path.join(gem.aws_directory_path, constant.COMMON_CODE_DIRECTORY_NAME, import_directory_name)
                 if not os.path.isdir(path):
-                    raise HandledError('The {} gem does not provide the {} import as found in {}. The {} directory does not exist.'.format(gem_name, line, imports_file_path, path))
+                    raise HandledError(
+                        'The {} gem does not provide the {} import as found in {}. The {} directory does not exist.'.format(gem_name, line, imports_file_path,
+                                                                                                                            path))
 
                 # add it to the set and recurse
 
-                if path not in imported_paths: # avoid infinte loops and extra work
+                if path not in imported_paths:  # avoid infinite loops and extra work
                     imported_paths.add(path)
                     resolve_imports(context, path, imported_paths, multi_imports)
 

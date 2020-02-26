@@ -1,5 +1,5 @@
 Amazon Lumberyard
-Copyright (c) 2016-2019 Amazon Web Services, Inc., its affiliates or licensors.  All Rights Reserved.  
+Copyright (c) 2016-2020 Amazon Web Services, Inc., its affiliates or licensors.  All Rights Reserved.  
 
 Learn more at https://aws.amazon.com/lumberyard.
 
@@ -26,8 +26,7 @@ THIRD PARTY COMPONENTS
 Amazon Lumberyard requires the use of and makes available to you software and assets that have been developed by third parties and are subject to separate license terms (such as code licensed under an open source license), including the materials provided in \3rdParty. It is your responsibility to obtain and comply with the applicable licenses, along with any platform policies that may apply to you. Information on third party materials, and the applicable license terms, are referenced in or included with the materials, such as in separate LICENSE.txt files accompanying the materials. 
 
 Please note that certain materials are subject to "copyleft" licenses, which require distribution of source code, including:
- - Qt Toolkit https://github.com/qtproject/, which is subject to the GNU Lesser General Public License version 2.1 (with certain exceptions, see \3rdParty\Qt\).  A copy of the source code for Qt Toolkit may be found at https://s3-us-west-2.amazonaws.com/ly-legal/LicenseConformance/Qt/Src.zip
- - Qwt Widgets for Technical Applications http://qwt.sourceforge.net, which is subject to the GNU Lesser General Public License version 2.1. A copy of the source code may be found in \3rdParty\Qwt\.
+ - Qt Toolkit https://github.com/qtproject/, which is subject to the GNU Lesser General Public License version 3 (with certain exceptions, see \3rdParty\Qt\).  A copy of the source code for Qt Toolkit may be found at https://s3-us-west-2.amazonaws.com/ly-legal/LicenseConformance/Qt/Src.zip
  - Chardet https://chardet.github.io/, which is subject to the GNU Lesser General Public License version 2.1. A copy of the source code may be found in \3rdParty\AWS\AWSPythonSDK\1.2.1\botocore\vendored\requests\packages\.
 
 This software contains Autodesk(R) FBX(R) code developed by Autodesk, Inc. Copyright 2013 Autodesk, Inc. All rights, reserved. Such code is provided "as is" and Autodesk, Inc. disclaims any and all warranties, whether express or implied, including without limitation the implied warranties of merchantability, fitness for a particular purpose or non-infringement of third party rights. In no event shall Autodesk, Inc. be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services; loss of use, data, or profits; or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of such code.

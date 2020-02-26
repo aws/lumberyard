@@ -69,56 +69,6 @@
             "Asset/AssetUtils.h",
             "Asset/AssetUtils.cpp"
         ],
-
-        "AssetBrowser/Views": [
-            "AssetBrowser/Views/AssetBrowserTreeView.cpp",
-            "AssetBrowser/Views/AssetBrowserTreeView.h",
-            "AssetBrowser/Views/EntryDelegate.cpp",
-            "AssetBrowser/Views/EntryDelegate.h",
-            "AssetBrowser/Views/AssetBrowserFolderWidget.cpp",
-            "AssetBrowser/Views/AssetBrowserFolderWidget.h",
-            "AssetBrowser/Views/AssetBrowserFolderWidget.qrc"
-        ],
-        "AssetBrowser/Entries": [
-            "AssetBrowser/Entries/AssetBrowserEntry.cpp",
-            "AssetBrowser/Entries/AssetBrowserEntry.h",
-            "AssetBrowser/Entries/AssetBrowserEntry.inl",
-            "AssetBrowser/Entries/AssetBrowserEntryCache.cpp",
-            "AssetBrowser/Entries/AssetBrowserEntryCache.h",
-            "AssetBrowser/Entries/FolderAssetBrowserEntry.cpp",
-            "AssetBrowser/Entries/FolderAssetBrowserEntry.h",
-            "AssetBrowser/Entries/ProductAssetBrowserEntry.cpp",
-            "AssetBrowser/Entries/ProductAssetBrowserEntry.h",
-            "AssetBrowser/Entries/RootAssetBrowserEntry.cpp",
-            "AssetBrowser/Entries/RootAssetBrowserEntry.h",
-            "AssetBrowser/Entries/SourceAssetBrowserEntry.cpp",
-            "AssetBrowser/Entries/SourceAssetBrowserEntry.h"
-        ],
-        "AssetBrowser/Search": [
-            "AssetBrowser/Search/Filter.cpp",
-            "AssetBrowser/Search/Filter.h",
-            "AssetBrowser/Search/FilterByWidget.cpp",
-            "AssetBrowser/Search/FilterByWidget.h",
-            "AssetBrowser/Search/FilterByWidget.ui",
-            "AssetBrowser/Search/search.qrc",
-            "AssetBrowser/Search/SearchAssetTypeSelectorWidget.cpp",
-            "AssetBrowser/Search/SearchAssetTypeSelectorWidget.h",
-            "AssetBrowser/Search/SearchAssetTypeSelectorWidget.ui",
-            "AssetBrowser/Search/SearchParametersWidget.cpp",
-            "AssetBrowser/Search/SearchParametersWidget.h",
-            "AssetBrowser/Search/SearchParametersWidget.ui",
-            "AssetBrowser/Search/SearchWidget.cpp",
-            "AssetBrowser/Search/SearchWidget.h",
-            "AssetBrowser/Search/SearchWidget.ui"
-        ],
-        "AssetBrowser/Thumbnails": [
-            "AssetBrowser/Thumbnails/FolderThumbnail.cpp",
-            "AssetBrowser/Thumbnails/FolderThumbnail.h",
-            "AssetBrowser/Thumbnails/ProductThumbnail.cpp",
-            "AssetBrowser/Thumbnails/ProductThumbnail.h",
-            "AssetBrowser/Thumbnails/SourceThumbnail.cpp",
-            "AssetBrowser/Thumbnails/SourceThumbnail.h"
-        ],
         "AssetCatalog": [
             "AssetCatalog/PlatformAddressedAssetCatalogBus.h",
             "AssetCatalog/PlatformAddressedAssetCatalog.h",
@@ -379,7 +329,9 @@
             "ToolsComponents/ScriptEditorComponent.h",
             "ToolsComponents/ToolsAssetCatalogComponent.cpp",
             "ToolsComponents/ToolsAssetCatalogComponent.h",
-            "ToolsComponents/ToolsAssetCatalogBus.h"
+            "ToolsComponents/ToolsAssetCatalogBus.h",
+            "ToolsComponents/AzToolsFrameworkConfigurationSystemComponent.h",
+            "ToolsComponents/AzToolsFrameworkConfigurationSystemComponent.cpp"
         ],
         "ToolsMessaging": [
             "ToolsMessaging/EntityHighlightBus.h"
@@ -610,16 +562,7 @@
             "ToolsFileUtils/ToolsFileUtils.h"
         ]
     },
-    "Archive_Uber.cpp": {
-        "Archive": [
-            "Archive/ArchiveComponent.h",
-            "Archive/ArchiveComponent.cpp",
-            "Archive/NullArchiveComponent.h",
-            "Archive/NullArchiveComponent.cpp",
-            "Archive/ArchiveAPI.h"
-        ]
-    },
-    "AssetBrowser_Uber.cpp": {
+    "uber_assetbrowser_core.cpp": {
         "AssetBrowser": [
             "AssetBrowser/AssetBrowserBus.h",
             "AssetBrowser/AssetBrowserComponent.cpp",
@@ -635,6 +578,84 @@
             "AssetBrowser/AssetSelectionModel.cpp",
             "AssetBrowser/AssetSelectionModel.h",
             "AssetBrowser/EBusFindAssetTypeByName.h"
+        ],
+        "AssetBrowser/Views": [
+            "AssetBrowser/Views/AssetBrowserTreeView.cpp",
+            "AssetBrowser/Views/AssetBrowserTreeView.h",
+            "AssetBrowser/Views/EntryDelegate.cpp",
+            "AssetBrowser/Views/EntryDelegate.h",
+            "AssetBrowser/Views/AssetBrowserFolderWidget.cpp",
+            "AssetBrowser/Views/AssetBrowserFolderWidget.h",
+            "AssetBrowser/Views/AssetBrowserFolderWidget.qrc"
+        ],
+        "AssetBrowser/Entries": [
+            "AssetBrowser/Entries/AssetBrowserEntry.cpp",
+            "AssetBrowser/Entries/AssetBrowserEntry.h",
+            "AssetBrowser/Entries/AssetBrowserEntry.inl",
+            "AssetBrowser/Entries/AssetBrowserEntryCache.cpp",
+            "AssetBrowser/Entries/AssetBrowserEntryCache.h",
+            "AssetBrowser/Entries/FolderAssetBrowserEntry.cpp",
+            "AssetBrowser/Entries/FolderAssetBrowserEntry.h",
+            "AssetBrowser/Entries/ProductAssetBrowserEntry.cpp",
+            "AssetBrowser/Entries/ProductAssetBrowserEntry.h",
+            "AssetBrowser/Entries/RootAssetBrowserEntry.cpp",
+            "AssetBrowser/Entries/RootAssetBrowserEntry.h",
+            "AssetBrowser/Entries/SourceAssetBrowserEntry.cpp",
+            "AssetBrowser/Entries/SourceAssetBrowserEntry.h"
+        ],
+        "AssetBrowser/Search": [
+            "AssetBrowser/Search/Filter.cpp",
+            "AssetBrowser/Search/Filter.h",
+            "AssetBrowser/Search/FilterByWidget.cpp",
+            "AssetBrowser/Search/FilterByWidget.h",
+            "AssetBrowser/Search/FilterByWidget.ui",
+            "AssetBrowser/Search/search.qrc",
+            "AssetBrowser/Search/SearchAssetTypeSelectorWidget.cpp",
+            "AssetBrowser/Search/SearchAssetTypeSelectorWidget.h",
+            "AssetBrowser/Search/SearchAssetTypeSelectorWidget.ui",
+            "AssetBrowser/Search/SearchParametersWidget.cpp",
+            "AssetBrowser/Search/SearchParametersWidget.h",
+            "AssetBrowser/Search/SearchParametersWidget.ui",
+            "AssetBrowser/Search/SearchWidget.cpp",
+            "AssetBrowser/Search/SearchWidget.h",
+            "AssetBrowser/Search/SearchWidget.ui"
+        ],
+        "AssetBrowser/Thumbnails": [
+            "AssetBrowser/Thumbnails/FolderThumbnail.cpp",
+            "AssetBrowser/Thumbnails/FolderThumbnail.h",
+            "AssetBrowser/Thumbnails/ProductThumbnail.cpp",
+            "AssetBrowser/Thumbnails/ProductThumbnail.h",
+            "AssetBrowser/Thumbnails/SourceThumbnail.cpp",
+            "AssetBrowser/Thumbnails/SourceThumbnail.h"
+        ]
+    },
+    "uber_assetbrowser_picker.cpp": {
+        "AssetBrowser/AssetPickerDialog": [
+            "AssetBrowser/AssetPicker/AssetPickerDialog.cpp",
+            "AssetBrowser/AssetPicker/AssetPickerDialog.h",
+            "AssetBrowser/AssetPicker/AssetPickerDialog.ui"
+        ]
+    },
+    "uber_assetbrowser_previewer.cpp": {
+        "AssetBrowser/Previewer": [
+            "AssetBrowser/Previewer/EmptyPreviewer.cpp",
+            "AssetBrowser/Previewer/EmptyPreviewer.h",
+            "AssetBrowser/Previewer/EmptyPreviewer.ui",
+            "AssetBrowser/Previewer/Previewer.cpp",
+            "AssetBrowser/Previewer/Previewer.h",
+            "AssetBrowser/Previewer/PreviewerBus.h",
+            "AssetBrowser/Previewer/PreviewerFactory.h",
+            "AssetBrowser/Previewer/PreviewerFrame.cpp",
+            "AssetBrowser/Previewer/PreviewerFrame.h"
+        ]
+    },
+    "Archive_Uber.cpp": {
+    "Archive": [
+            "Archive/ArchiveComponent.h",
+            "Archive/ArchiveComponent.cpp",
+            "Archive/NullArchiveComponent.h",
+            "Archive/NullArchiveComponent.cpp",
+            "Archive/ArchiveAPI.h"
         ]
     },
     "PropertyEditor_Uber.cpp": {
@@ -647,4 +668,5 @@
             "UI/PropertyEditor/View/AssetCompleterListView.cpp"
         ]
     }
+
 }

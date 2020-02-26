@@ -56,7 +56,7 @@ namespace AzToolsFramework
         if (communicationType == COMMUNICATOR_TYPE_STDINOUT)
         {
             StdProcessCommunicator* pStdCommunicator = CreateStdCommunicator();
-            if (pStdCommunicator->CreatePipesForProcess(m_pWatcherData))
+            if (pStdCommunicator->CreatePipesForProcess(m_pWatcherData.get()))
             {
                 m_pCommunicator = pStdCommunicator;
             }

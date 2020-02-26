@@ -19,6 +19,7 @@
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphModel.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphPlugin.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendGraphWidget.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/StringConversions.h>
 #include <QColorDialog>
 

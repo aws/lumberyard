@@ -231,7 +231,7 @@ MCORE_INLINE void Endian::ConvertVector2(AZ::Vector2* value, Endian::EEndianType
 
 
 // convert a Vector3
-MCORE_INLINE void Endian::ConvertVector3(AZ::PackedVector3f* value, Endian::EEndianType sourceEndianType, uint32 count)
+MCORE_INLINE void Endian::ConvertVector3(AZ::Vector3* value, Endian::EEndianType sourceEndianType, uint32 count)
 {
     // convert into the new endian, depending on the platform we are running on
     switch (sourceEndianType)
@@ -269,7 +269,7 @@ MCORE_INLINE void Endian::ConvertVector4(AZ::Vector4* value, Endian::EEndianType
 
 
 // convert a Quaternion
-MCORE_INLINE void Endian::ConvertQuaternion(MCore::Quaternion* value, Endian::EEndianType sourceEndianType, uint32 count)
+MCORE_INLINE void Endian::ConvertQuaternion(AZ::Quaternion* value, Endian::EEndianType sourceEndianType, uint32 count)
 {
     // convert into the new endian, depending on the platform we are running on
     switch (sourceEndianType)
@@ -412,7 +412,7 @@ MCORE_INLINE void Endian::ConvertVector2(AZ::Vector2* value, EEndianType sourceE
 
 
 // convert a Vector3 into another endian type
-MCORE_INLINE void Endian::ConvertVector3(AZ::PackedVector3f* value, EEndianType sourceEndianType, EEndianType targetEndianType, uint32 count)
+MCORE_INLINE void Endian::ConvertVector3(AZ::Vector3* value, EEndianType sourceEndianType, EEndianType targetEndianType, uint32 count)
 {
     // if we don't need to convert anything
     if (sourceEndianType == targetEndianType)
@@ -440,7 +440,7 @@ MCORE_INLINE void Endian::ConvertVector4(AZ::Vector4* value, EEndianType sourceE
 
 
 // convert a Quaternion into another endian type
-MCORE_INLINE void Endian::ConvertQuaternion(MCore::Quaternion* value, EEndianType sourceEndianType, EEndianType targetEndianType, uint32 count)
+MCORE_INLINE void Endian::ConvertQuaternion(AZ::Quaternion* value, EEndianType sourceEndianType, EEndianType targetEndianType, uint32 count)
 {
     // if we don't need to convert anything
     if (sourceEndianType == targetEndianType)
@@ -489,7 +489,7 @@ MCORE_INLINE void Endian::ConvertVector2(AZ::Vector2* value, uint32 count)
 
 
 // convert a Vector3
-MCORE_INLINE void Endian::ConvertVector3(AZ::PackedVector3f* value, uint32 count)
+MCORE_INLINE void Endian::ConvertVector3(AZ::Vector3* value, uint32 count)
 {
     ConvertFloat((float*)value, 3 * count);
 }
@@ -503,7 +503,7 @@ MCORE_INLINE void Endian::ConvertVector4(AZ::Vector4* value, uint32 count)
 
 
 // convert a Quaternion
-MCORE_INLINE void Endian::ConvertQuaternion(MCore::Quaternion* value, uint32 count)
+MCORE_INLINE void Endian::ConvertQuaternion(AZ::Quaternion* value, uint32 count)
 {
     ConvertFloat((float*)value, count << 2);
 }
@@ -651,7 +651,7 @@ MCORE_INLINE void Endian::ConvertVector2To(AZ::Vector2* value, EEndianType targe
 
 
 // convert a Vector3 into another endian type
-MCORE_INLINE void Endian::ConvertVector3To(AZ::PackedVector3f* value, EEndianType targetEndianType, uint32 count)
+MCORE_INLINE void Endian::ConvertVector3To(AZ::Vector3* value, EEndianType targetEndianType, uint32 count)
 {
     // do nothing if we are already in the right endian
     #if !defined(AZ_BIG_ENDIAN) // LITTLE_ENDIAN
@@ -693,7 +693,7 @@ MCORE_INLINE void Endian::ConvertVector4To(AZ::Vector4* value, EEndianType targe
 
 
 // convert a Quaternion into another endian type
-MCORE_INLINE void Endian::ConvertQuaternionTo(MCore::Quaternion* value, EEndianType targetEndianType, uint32 count)
+MCORE_INLINE void Endian::ConvertQuaternionTo(AZ::Quaternion* value, EEndianType targetEndianType, uint32 count)
 {
     // do nothing if we are already in the right endian
     #if !defined(AZ_BIG_ENDIAN) // LITTLE_ENDIAN

@@ -184,11 +184,14 @@ CRenderViewport::CRenderViewport(const QString& name, QWidget* parent)
 //////////////////////////////////////////////////////////////////////////
 CRenderViewport::~CRenderViewport()
 {
+    AzFramework::WindowNotificationBus::Event(renderOverlayHWND(), &AzFramework::WindowNotificationBus::Handler::OnWindowClosed);
+
     if (m_pPrimaryViewport == this)
     {
         m_pPrimaryViewport = nullptr;
     }
 
+    AzFramework::WindowRequestBus::Handler::BusDisconnect();
     AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
     DisconnectViewportInteractionRequestBus();
     AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusDisconnect();
@@ -230,6 +233,11 @@ void CRenderViewport::resizeEvent(QResizeEvent* event)
     gEnv->pSystem->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_RESIZE, width(), height());
 
     gEnv->pRenderer->EF_DisableTemporalEffects();
+
+    // We queue the window resize event because the render overlay may be hidden.
+    // If the render overlay is not visible, the native window that is backing it will
+    // also be hidden, and it will not resize until it becomes visible.
+    m_windowResizedEvent = true;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1020,6 +1028,14 @@ void CRenderViewport::Update()
     if (!isVisible())
     {
         return;
+    }
+
+    // Only send the resize event if the render overlay is visible. This is to make sure
+    // the native window has resized.
+    if (m_windowResizedEvent && isRenderOverlayVisible())
+    {
+        AzFramework::WindowNotificationBus::Event(renderOverlayHWND(), &AzFramework::WindowNotificationBus::Handler::OnWindowResized, m_rcClient.width(), m_rcClient.height());
+        m_windowResizedEvent = false;
     }
 
     // Don't wait for changes to update the focused viewport.
@@ -2187,6 +2203,16 @@ QPoint CRenderViewport::ViewportWorldToScreen(const AZ::Vector3& worldPosition)
     return screenPosition;
 }
 
+bool CRenderViewport::IsViewportInputFrozen()
+{
+    return m_freezeViewportInput;
+}
+
+void CRenderViewport::FreezeViewportInput(bool freeze)
+{
+    m_freezeViewportInput = freeze;
+}
+
 QWidget* CRenderViewport::GetWidgetForViewportContextMenu()
 {
     return this;
@@ -2208,8 +2234,22 @@ bool CRenderViewport::ShowingWorldSpace()
     return BuildKeyboardModifiers(QGuiApplication::queryKeyboardModifiers()).Shift();
 }
 
+void CRenderViewport::SetWindowTitle(const AZStd::string& title)
+{
+    // Do not support the WindowRequestBus changing the editor window title
+    AZ_UNUSED(title);
+}
+
+AzFramework::WindowSize CRenderViewport::GetClientAreaSize() const
+{
+    const QWidget* window = this->window();
+    QSize windowSize = window->size();
+    return AzFramework::WindowSize(windowSize.width(), windowSize.height());
+}
+
 void CRenderViewport::ConnectViewportInteractionRequestBus()
 {
+    AzToolsFramework::ViewportInteraction::ViewportFreezeRequestBus::Handler::BusConnect(GetViewportId());
     AzToolsFramework::ViewportInteraction::ViewportInteractionRequestBus::Handler::BusConnect(GetViewportId());
     AzToolsFramework::ViewportInteraction::MainEditorViewportInteractionRequestBus::Handler::BusConnect(GetViewportId());
 }
@@ -2218,6 +2258,7 @@ void CRenderViewport::DisconnectViewportInteractionRequestBus()
 {
     AzToolsFramework::ViewportInteraction::MainEditorViewportInteractionRequestBus::Handler::BusDisconnect();
     AzToolsFramework::ViewportInteraction::ViewportInteractionRequestBus::Handler::BusDisconnect();
+    AzToolsFramework::ViewportInteraction::ViewportFreezeRequestBus::Handler::BusDisconnect();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3791,6 +3832,10 @@ bool CRenderViewport::CreateRenderContext()
     if (m_renderer && !m_bRenderContextCreated)
     {
         m_bRenderContextCreated = true;
+
+        AzFramework::WindowRequestBus::Handler::BusConnect(renderOverlayHWND());
+        AzFramework::WindowSystemNotificationBus::Broadcast(&AzFramework::WindowSystemNotificationBus::Handler::OnWindowCreated, renderOverlayHWND());
+
         WIN_HWND oldContext = m_renderer->GetCurrentContextHWND();
         m_renderer->CreateContext(renderOverlayHWND());
         m_renderer->SetCurrentContext(oldContext); // restore prior context
@@ -4261,7 +4306,7 @@ void CRenderViewport::RenderSnappingGrid()
 CRenderViewport::SPreviousContext CRenderViewport::SetCurrentContext(int newWidth, int newHeight) const
 {
     SPreviousContext x;
-    x.window = (HWND)m_renderer->GetCurrentContextHWND();
+    x.window = reinterpret_cast<HWND>(m_renderer->GetCurrentContextHWND());
     x.mainViewport = m_renderer->IsCurrentContextMainVP();
     x.width = m_renderer->GetCurrentContextViewportWidth();
     x.height = m_renderer->GetCurrentContextViewportHeight();

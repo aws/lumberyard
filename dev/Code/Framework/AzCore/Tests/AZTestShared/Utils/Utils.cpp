@@ -11,7 +11,7 @@
 *
 */
 
-#include <AzTestShared/Utils/Utils.h>
+#include <AZTestShared/Utils/Utils.h>
 #include "AzCore/Component/Entity.h"
 #include "AzCore/Asset/AssetManager.h"
 #include "AzCore/Slice/SliceComponent.h"

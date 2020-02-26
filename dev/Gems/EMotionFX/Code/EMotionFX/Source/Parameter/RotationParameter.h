@@ -27,7 +27,7 @@ namespace EMotionFX
 
         RotationParameter()
             : BaseType(
-                AZ::Quaternion(0.0f, 0.0f, 0.0f, 1.0f),
+                AZ::Quaternion::CreateIdentity(),
                 AZ::Quaternion(-1000.0f, -1000.0f, -1000.0f, -1000.0f),
                 AZ::Quaternion(1000.0f, 1000.0f, 1000.0f, 1000.0f)
             )

@@ -65,8 +65,8 @@ namespace MCore
     }
 
     template <>
-    MCORE_INLINE AZ::PackedVector3f LinearInterpolate(const AZ::PackedVector3f& source, const AZ::PackedVector3f& target, float timeValue)
+    MCORE_INLINE AZ::Vector3 LinearInterpolate(const AZ::Vector3& source, const AZ::Vector3& target, float timeValue)
     {
-        return static_cast<AZ::PackedVector3f>(AZ::Vector3(source) * (AZ::VectorFloat(1.0f - timeValue)) + (AZ::VectorFloat(timeValue) * AZ::Vector3(target)));
+        return source * (AZ::VectorFloat(1.0f - timeValue)) + (AZ::VectorFloat(timeValue) * target);
     }
 }   // namespace MCore

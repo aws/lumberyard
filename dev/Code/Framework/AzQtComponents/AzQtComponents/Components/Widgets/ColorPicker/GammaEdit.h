@@ -23,8 +23,8 @@ namespace AzQtComponents
         : public QWidget
     {
         Q_OBJECT
-        Q_PROPERTY(bool checked READ isChecked WRITE setChecked NOTIFY toggled);
-        Q_PROPERTY(qreal gamma READ gamma WRITE setGamma NOTIFY gammaChanged);
+        Q_PROPERTY(bool checked READ isChecked WRITE setChecked NOTIFY toggled)
+        Q_PROPERTY(qreal gamma READ gamma WRITE setGamma NOTIFY gammaChanged)
 
     public:
         explicit GammaEdit(QWidget* parent = nullptr);

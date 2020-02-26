@@ -243,6 +243,7 @@ private:
         ePGM_SwitchToInEditor,
     };
     EPendingGameMode m_ePendingGameMode;
+    AZStd::unique_ptr<class ModalWindowDismisser> m_modalWindowDismisser;
 };
 
 

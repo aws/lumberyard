@@ -60,7 +60,7 @@ static LRESULT WINAPI WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     {
         pSystem = static_cast<CSystem*>(gEnv->pSystem);
     }
-    if (pSystem && !pSystem->m_bQuit)
+    if (pSystem && !pSystem->IsQuitting())
     {
         LRESULT result;
         bool bAny = false;
@@ -486,7 +486,6 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
     m_pCpu = NULL;
     m_sys_game_folder = NULL;
 
-    m_bQuit = false;
     m_bInitializedSuccessfully = false;
     m_bShaderCacheGenMode = false;
     m_bRelaunch = false;
@@ -496,6 +495,7 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
     m_bPreviewMode = false;
     m_bIgnoreUpdates = false;
     m_bNoCrashDialog = false;
+    m_bNoErrorReportWindow = false;
 
 #ifndef _RELEASE
     m_checkpointLoadCount = 0;
@@ -978,7 +978,7 @@ void CSystem::Quit()
 {
     CryLogAlways("CSystem::Quit invoked from thread %" PRI_THREADID " (main is %" PRI_THREADID ")", GetCurrentThreadId(), gEnv->mMainThreadId);
     
-    m_bQuit = true;
+    AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::ExitMainLoop);
 
     // If this was set from anywhere but the main thread, bail and let the main thread handle shutdown
     if (GetCurrentThreadId() != gEnv->mMainThreadId)
@@ -1040,7 +1040,9 @@ void CSystem::Quit()
 /////////////////////////////////////////////////////////////////////////////////
 bool CSystem::IsQuitting() const
 {
-    return m_bQuit;
+    bool wasExitMainLoopRequested = false;
+    AzFramework::ApplicationRequests::Bus::BroadcastResult(wasExitMainLoopRequested, &AzFramework::ApplicationRequests::WasExitMainLoopRequested);
+    return wasExitMainLoopRequested;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2155,7 +2157,7 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
         UpdateMovieSystem(updateFlags, fMovieFrameTime, true);
     }
 
-    return !m_bQuit;
+    return !IsQuitting();
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -2328,13 +2330,13 @@ bool CSystem::UpdatePostTickBus(int updateFlags, int nPauseMode)
         }
     }
 
-    return !m_bQuit;
+    return !IsQuitting();
 }
 
 
 bool CSystem::UpdateLoadtime()
 {
-    return !m_bQuit;
+    return !IsQuitting();
 }
 
 void CSystem::DoWorkDuringOcclusionChecks()
@@ -3284,7 +3286,7 @@ bool CSystem::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, 
             cause the render thread to deadlock and the main
             thread to spin in SRenderThread::WaitFlushFinishedCond.
         */
-        m_bQuit = true;
+        AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::ExitMainLoop);
         return false;
     case WM_MOVE:
         GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_MOVE, x, y);

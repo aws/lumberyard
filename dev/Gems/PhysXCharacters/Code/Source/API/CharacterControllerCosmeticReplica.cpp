@@ -100,7 +100,7 @@ namespace PhysXCharacters
         rigidBodyConfig.m_orientation = CalculateOrientation(shapeConfig, characterConfig.m_upDirection);
         m_transform.SetRotationPartFromQuaternion(rigidBodyConfig.m_orientation);
         rigidBodyConfig.m_position = characterConfig.m_position;
-        Physics::SystemRequestBus::BroadcastResult(m_rigidBody, &Physics::SystemRequests::CreateRigidBody, rigidBodyConfig);
+        m_rigidBody = AZ::Interface<Physics::System>::Get()->CreateRigidBody(rigidBodyConfig);
 
         if (!m_rigidBody)
         {
@@ -132,12 +132,12 @@ namespace PhysXCharacters
         {
             const auto& extendedConfig = static_cast<const CharacterControllerConfiguration&>(characterConfig);
             auto scaledShapeConfig = GetScaledShapeConfiguration(extendedConfig.m_scaleCoefficient, shapeConfig);
-            Physics::SystemRequestBus::BroadcastResult(m_shape, &Physics::SystemRequests::CreateShape, colliderConfig, *scaledShapeConfig);
+            m_shape = AZ::Interface<Physics::System>::Get()->CreateShape(colliderConfig, *scaledShapeConfig);
             static_cast<physx::PxShape*>(m_shape->GetNativePointer())->setContactOffset(extendedConfig.m_contactOffset);
         }
         else
         {
-            Physics::SystemRequestBus::BroadcastResult(m_shape, &Physics::SystemRequests::CreateShape, colliderConfig, shapeConfig);
+            m_shape = AZ::Interface<Physics::System>::Get()->CreateShape(colliderConfig, shapeConfig);
         }
 
         m_rigidBody->AddShape(m_shape);
@@ -182,7 +182,7 @@ namespace PhysXCharacters
         rigidBodyConfig.m_kinematic = true;
         rigidBodyConfig.m_debugName = characterConfig.m_debugName + " (Shadow)";
         rigidBodyConfig.m_entityId = characterConfig.m_entityId;
-        Physics::SystemRequestBus::BroadcastResult(m_shadowBody, &Physics::SystemRequests::CreateRigidBody, rigidBodyConfig);
+        m_shadowBody = AZ::Interface<Physics::System>::Get()->CreateRigidBody(rigidBodyConfig);
         world.AddBody(*m_shadowBody);
     }
 
@@ -245,6 +245,56 @@ namespace PhysXCharacters
     {
         AZ_WarningOnce("PhysX Character Controller Cosmetic Replica", false, "GetVelocity - not yet supported.");
         return AZ::Vector3::CreateZero();
+    }
+
+    void CharacterControllerCosmeticReplica::SetCollisionLayer(const Physics::CollisionLayer& layer)
+    {
+        if (!m_shape)
+        {
+            AZ_Error("PhysX Character Controller Cosmetic Replica", false, "Attempting to access null shape on character controller.");
+            return;
+        }
+
+        m_shape->SetCollisionLayer(layer);
+    }
+
+    void CharacterControllerCosmeticReplica::SetCollisionGroup(const Physics::CollisionGroup& group)
+    {
+        if (!m_shape)
+        {
+            AZ_Error("PhysX Character Controller Cosmetic Replica", false, "Attempting to access null shape on character controller.");
+            return;
+        }
+
+        m_shape->SetCollisionGroup(group);
+    }
+
+    Physics::CollisionLayer CharacterControllerCosmeticReplica::GetCollisionLayer() const
+    {
+        if (!m_shape)
+        {
+            AZ_Error("PhysX Character Controller Cosmetic Replica", false, "Attempting to access null shape on character controller.");
+            return Physics::CollisionLayer::Default;
+        }
+
+        return m_shape->GetCollisionLayer();
+    }
+
+    Physics::CollisionGroup CharacterControllerCosmeticReplica::GetCollisionGroup() const
+    {
+        if (!m_shape)
+        {
+            AZ_Error("PhysX Character Controller Cosmetic Replica", false, "Attempting to access null shape on character controller.");
+            return Physics::CollisionGroup::All;
+        }
+
+        return m_shape->GetCollisionGroup();
+    }
+    
+    AZ::Crc32 CharacterControllerCosmeticReplica::GetColliderTag() const
+    {
+        AZ_Assert(m_shape != nullptr, "Attempting to access null shape on character controller");
+        return m_shape->GetTag();
     }
 
     AZ::Vector3 CharacterControllerCosmeticReplica::TryRelativeMove(const AZ::Vector3& deltaPosition, float deltaTime)

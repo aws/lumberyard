@@ -15,17 +15,31 @@
 #include <AzCore/Component/TransformBus.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzFramework/Physics/Shape.h>
+#include <AzFramework/Physics/RigidBody.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <PhysX/ConfigurationBus.h>
+#include <PhysX/ColliderShapeBus.h>
 #include <Editor/DebugDraw.h>
+#include <Editor/PolygonPrismMeshUtils.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
+#include <LmbrCentral/Shape/PolygonPrismShapeComponentBus.h>
 
 namespace PhysX
 {
-    /// Editor PhysX Shape Collider Component.
-    /// This component is used together with a shape component, and uses the shape information contained in that
-    /// component to create geometry in the PhysX simulation.
+    enum class ShapeType
+    {
+        None,
+        Box,
+        Capsule,
+        Sphere,
+        PolygonPrism,
+        Unsupported
+    };
+
+    //! Editor PhysX Shape Collider Component.
+    //! This component is used together with a shape component, and uses the shape information contained in that
+    //! component to create geometry in the PhysX simulation.
     class EditorShapeColliderComponent
         : public AzToolsFramework::Components::EditorComponentBase
         , protected AzFramework::EntityDebugDisplayEventBus::Handler
@@ -34,6 +48,7 @@ namespace PhysX
         , private PhysX::ConfigurationNotificationBus::Handler
         , protected DebugDraw::DisplayCallback
         , protected LmbrCentral::ShapeComponentNotificationsBus::Handler
+        , private PhysX::ColliderShapeRequestBus::Handler
     {
     public:
         AZ_EDITOR_COMPONENT(EditorShapeColliderComponent, "{2389DDC7-871B-42C6-9C95-2A679DDA0158}",
@@ -45,16 +60,22 @@ namespace PhysX
 
         EditorShapeColliderComponent();
 
-        // this function is made virtual because we call it from other modules
+        // these functions are made virtual because we call it from other modules
         virtual const Physics::ColliderConfiguration& GetColliderConfiguration() const;
+        virtual const AZStd::vector<AZStd::shared_ptr<Physics::ShapeConfiguration>>& GetShapeConfigurations() const;
 
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
-
     private:
         void CreateStaticEditorCollider();
         AZ::u32 OnConfigurationChanged();
-        void CheckSupportedShapeTypes();
+        void UpdateShapeConfigs();
+        AZ::Vector3 GetUniformScale();
+        void UpdateBoxConfig(const AZ::Vector3& scale);
+        void UpdateCapsuleConfig(const AZ::Vector3& scale);
+        void UpdateSphereConfig(const AZ::Vector3& scale);
+        void UpdatePolygonPrismDecomposition();
+        void UpdatePolygonPrismDecomposition(const AZ::PolygonPrismPtr polygonPrismPtr);
 
         // AZ::Component
         void Activate() override;
@@ -77,10 +98,18 @@ namespace PhysX
         // DisplayCallback
         void Display(AzFramework::DebugDisplayRequests& debugDisplay) const;
 
+        // ColliderShapeRequestBus
+        AZ::Aabb GetColliderShapeAabb() override;
+        bool IsTrigger() override;
+
         Physics::ColliderConfiguration m_colliderConfig;
         DebugDraw::Collider m_colliderDebugDraw;
         AZ::Vector3 m_scale = AZ::Vector3::CreateOne();
         AZStd::unique_ptr<Physics::RigidBodyStatic> m_editorBody;
         bool m_shapeTypeWarningIssued = false;
+        PolygonPrismMeshUtils::Mesh2D m_mesh;
+        AZStd::vector<AZStd::shared_ptr<Physics::ShapeConfiguration>> m_shapeConfigs;
+        bool m_simplePolygonErrorIssued = false;
+        ShapeType m_shapeType = ShapeType::None;
     };
 } // namespace PhysX

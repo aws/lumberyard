@@ -67,7 +67,7 @@
     #define EXTENSION ""
 #endif
 
-volatile AtomicCountType CCrySimpleServer::ms_ExceptionCount    = 0;
+AZStd::atomic_long CCrySimpleServer::ms_ExceptionCount    = {0};
 
 const static std::string SHADER_PROFILER            =   "NVShaderPerf" EXTENSION;
 
@@ -81,7 +81,7 @@ const static std::string SHADER_PATH_CACHE          =   "Cache";
 static const bool autoDeleteJobWhenDone = true;
 static const int sleepTimeWhenWaiting = 10;
 
-static AtomicCountType g_ConnectionCount = 0;
+static AZStd::atomic_long g_ConnectionCount = {0};
 
 SEnviropment* SEnviropment::m_instance=nullptr;
 
@@ -129,6 +129,7 @@ void SEnviropment::InitializePlatformAttributes()
     m_Platforms.insert("Mac");
     m_Platforms.insert("iOS");
     m_Platforms.insert("Android");
+    m_Platforms.insert("Linux");
 
     // Initialize valid Shader Languages
     // NOTE: Values must be in sync with GetShaderLanguageName() function in the engine side.
@@ -478,7 +479,7 @@ void CompileJob::Process()
 
         m_pThreadData->Socket()->Send(Vec, State, Version);
     }
-    InterlockedDecrement(&g_ConnectionCount);
+    --g_ConnectionCount;
 }
 
 
@@ -539,7 +540,7 @@ void TickThread()
             t0 = t1;
             const int maxStringSize = 512;
             char str[maxStringSize] = { 0 };
-            azsnprintf(str, maxStringSize, "Amazon Shader Compiler Server (%ld compile tasks | %d open sockets | %d exceptions)",
+            azsnprintf(str, maxStringSize, "Amazon Shader Compiler Server (%ld compile tasks | %ld open sockets | %ld exceptions)",
                 CCrySimpleJobCompile::GlobalCompileTasks(), CCrySimpleSock::GetOpenSockets() + CSMTPMailer::GetOpenSockets(),
                 CCrySimpleServer::GetExceptionCount());
 #if defined(AZ_PLATFORM_WINDOWS)
@@ -633,7 +634,7 @@ CCrySimpleServer::CCrySimpleServer()
 
         // Increase connection count and start new job.
         // NOTE: CompileJob will be auto deleted when done, deleting thread data and client socket as well.
-        InterlockedIncrement(&g_ConnectionCount);
+        ++g_ConnectionCount;
         CompileJob* compileJob = new CompileJob();
         compileJob->SetThreadData(pData);
         compileJob->Start();
@@ -809,5 +810,5 @@ void CCrySimpleServer::Init()
 
 void CCrySimpleServer::IncrementExceptionCount()
 {
-    InterlockedIncrement(&ms_ExceptionCount);
+    ++ms_ExceptionCount;
 }

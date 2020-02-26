@@ -13,6 +13,7 @@
 #pragma once
 
 #include "../EMotionFXConfig.h"
+#include <MCore/Source/Array.h>
 #include <MCore/Source/Endian.h>
 #include <EMotionFX/Source/BaseObject.h>
 #include <AzCore/std/string/string.h>
@@ -110,6 +111,8 @@ namespace EMotionFX
             bool mDualQuatSkinning;                         /**< Set to true  if you wish to enable software skinning using dual quaternions. */
             bool mMakeGeomLODsCompatibleWithSkeletalLODs;   /**< Set to true if you wish to disable the process that makes sure no skinning influences are mapped to disabled bones. Default is false. */
             bool mUnitTypeConvert;                          /**< Set to false to disable automatic unit type conversion (between cm, meters, etc). On default this is enabled. */
+            bool mLoadSimulatedObjects;                     /**< Set to false if you wish to disable loading of simulated objects. */
+            bool mOptimizeForServer;                        /**< Set to true if you witsh to optimize this actor to be used on server. */
             uint32 mThreadIndex;
             MCore::Array<uint32>    mChunkIDsToIgnore;      /**< Add chunk ID's to this array. Chunks with these ID's will not be processed. */
             MCore::Array<uint32>    mLayerIDsToIgnore;      /**< Add vertex attribute layer ID's to ignore. */
@@ -134,11 +137,30 @@ namespace EMotionFX
                 mDualQuatSkinning                       = false;
                 mMakeGeomLODsCompatibleWithSkeletalLODs = false;
                 mUnitTypeConvert                        = true;
+                mLoadSimulatedObjects                   = true;
+                mOptimizeForServer                      = false;
                 mThreadIndex                            = 0;
                 mLayerConvertFunction                   = StandardLayerConvert;
 
                 mChunkIDsToIgnore.SetMemoryCategory(EMFX_MEMCATEGORY_IMPORTER);
                 mLayerIDsToIgnore.SetMemoryCategory(EMFX_MEMCATEGORY_IMPORTER);
+            }
+
+            /**
+             * If the actor need to be optimized for server, will overwrite a few other actor settings.
+             */
+            void OptimizeForServer()
+            {
+                mLoadMeshes = false;
+                mLoadCollisionMeshes = false;
+                mLoadStandardMaterialLayers = false;
+                mLoadSkinningInfo = false;
+                mLoadGeometryLODs = false;
+                mLoadSkeletalLODs = false;
+                mLoadTangents = false;
+                mAutoGenTangents = false;
+                mLoadMorphTargets = false;
+                mLoadSimulatedObjects = false;
             }
         };
 

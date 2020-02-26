@@ -14,6 +14,7 @@
 
 // include the required headers
 #include "../EMotionFXConfig.h"
+#include <MCore/Source/Array.h>
 #include <MCore/Source/CompressedQuaternion.h>
 #include "../MemoryCategories.h"
 #include "../BaseObject.h"
@@ -210,7 +211,7 @@ namespace EMotionFX
          * @param endianType The endian type in which the current object is stored.
          * @param count The number of items to convert.
          */
-        static MCORE_INLINE void ConvertVector3(AZ::PackedVector3f* value, MCore::Endian::EEndianType endianType, uint32 count = 1)
+        static MCORE_INLINE void ConvertVector3(AZ::Vector3* value, MCore::Endian::EEndianType endianType, uint32 count = 1)
         {
             MCore::Endian::ConvertVector3(value, endianType, count);
         }
@@ -222,7 +223,7 @@ namespace EMotionFX
          * @param endianType The endian type in which the current object is stored.
          * @param count The number of items to convert.
          */
-        static MCORE_INLINE void ConvertQuaternion(MCore::Quaternion* value, MCore::Endian::EEndianType endianType, uint32 count = 1)
+        static MCORE_INLINE void ConvertQuaternion(AZ::Quaternion* value, MCore::Endian::EEndianType endianType, uint32 count = 1)
         {
             MCore::Endian::ConvertQuaternion(value, endianType, count);
 
@@ -230,7 +231,7 @@ namespace EMotionFX
             for (uint32 i = 0; i < count; ++i)
             {
                 value[i].Normalize();
-                if (value[i].w < 0.0f)
+                if (value[i].GetW() < 0.0f)
                 {
                     value[i] = -value[i];
                 }
@@ -270,7 +271,7 @@ namespace EMotionFX
          * @param endianType The endian type in which the current object is stored.
          * @param count The number of items to convert.
          */
-        static MCORE_INLINE void ConvertScale(AZ::PackedVector3f* value, MCore::Endian::EEndianType endianType, uint32 count = 1)
+        static MCORE_INLINE void ConvertScale(AZ::Vector3* value, MCore::Endian::EEndianType endianType, uint32 count = 1)
         {
             MCore::Endian::ConvertVector3(value, endianType, count);
         }
@@ -326,6 +327,7 @@ namespace EMotionFX
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorGenericMaterial,      FileFormat::ACTOR_CHUNK_GENERICMATERIAL,      1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorInfo,                 FileFormat::ACTOR_CHUNK_INFO,                 1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorInfo2,                FileFormat::ACTOR_CHUNK_INFO,                 2)
+    EMFX_CHUNKPROCESSOR(ChunkProcessorActorInfo3,                FileFormat::ACTOR_CHUNK_INFO,                 3)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorMeshLOD,              FileFormat::ACTOR_CHUNK_MESHLODLEVELS,        1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorProgMorphTarget,      FileFormat::ACTOR_CHUNK_STDPROGMORPHTARGET,   1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorNodeGroups,           FileFormat::ACTOR_CHUNK_NODEGROUPS,           1)

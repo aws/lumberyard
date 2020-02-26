@@ -13,12 +13,12 @@
 def build(bld):
     bld.DefineGem(
         defines      = ['WATER_GEM'],
-        includes     = [bld.Path('Code/CryEngine'),
-                        bld.Path('Code/CryEngine/CryCommon')
-                       ],
+        includes     = [bld.ThirdPartyPath('boost'),
+                        bld.Path('Code/CryEngine/CryCommon'),
+                        bld.Path('Code/CryEngine')],
         win_features = ['crcfix'],
         editor = dict(
-            platforms  = ['win', 'darwin'],
+            platforms  = ['win', 'darwin', 'linux'],
             defines    = ['WATER_GEM_EDITOR'],
             uselib     = ['QT5CORE',
                           'QT5GUI',
@@ -31,7 +31,10 @@ def build(bld):
                           'EditorCore',
                           'EditorLib'],
             features   = ['qt5'],
-            includes   = ['Include',
+            includes   = ['.',
+                          bld.ThirdPartyPath('boost'),
+                          bld.Path('Code/CryEngine/CryCommon'),
+                          'Include',
                           'Source',
                           bld.Path('Code/Sandbox'),
                           bld.Path('Code/Sandbox/Plugins/EditorCommon'),

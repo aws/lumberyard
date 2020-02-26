@@ -142,10 +142,10 @@ namespace EMotionFX
             }
 
             // output data
-            AZ::PackedVector3f* positions   = static_cast<AZ::PackedVector3f*>(mMesh->FindVertexData(Mesh::ATTRIB_POSITIONS));
-            AZ::PackedVector3f* normals     = static_cast<AZ::PackedVector3f*>(mMesh->FindVertexData(Mesh::ATTRIB_NORMALS));
-            AZ::Vector4*        tangents    = static_cast<AZ::Vector4*>(mMesh->FindVertexData(Mesh::ATTRIB_TANGENTS));
-            AZ::PackedVector3f* bitangents  = static_cast<AZ::PackedVector3f*>(mMesh->FindVertexData(Mesh::ATTRIB_BITANGENTS));
+            AZ::Vector3* positions   = static_cast<AZ::Vector3*>(mMesh->FindVertexData(Mesh::ATTRIB_POSITIONS));
+            AZ::Vector3* normals     = static_cast<AZ::Vector3*>(mMesh->FindVertexData(Mesh::ATTRIB_NORMALS));
+            AZ::Vector4* tangents    = static_cast<AZ::Vector4*>(mMesh->FindVertexData(Mesh::ATTRIB_TANGENTS));
+            AZ::Vector3* bitangents  = static_cast<AZ::Vector3*>(mMesh->FindVertexData(Mesh::ATTRIB_BITANGENTS));
 
             // input data
             const MorphTargetStandard::DeformData::VertexDelta* deltas = deformData->mDeltas;
@@ -160,9 +160,9 @@ namespace EMotionFX
                 {
                     vtxNr = deltas[v].mVertexNr;
 
-                    positions [vtxNr] = AZ::PackedVector3f(AZ::Vector3(positions[vtxNr]) + deltas[v].mPosition.ToVector3(minValue, maxValue) * weight);
-                    normals   [vtxNr] = AZ::PackedVector3f(AZ::Vector3(normals[vtxNr]) + deltas[v].mNormal.ToVector3(-2.0f, 2.0f) * weight);
-                    bitangents[vtxNr] = AZ::PackedVector3f(AZ::Vector3(bitangents[vtxNr]) + deltas[v].mBitangent.ToVector3(-2.0f, 2.0f) * weight);
+                    positions [vtxNr] = positions[vtxNr] + deltas[v].mPosition.ToVector3(minValue, maxValue) * weight;
+                    normals   [vtxNr] = normals[vtxNr] + deltas[v].mNormal.ToVector3(-2.0f, 2.0f) * weight;
+                    bitangents[vtxNr] = bitangents[vtxNr] + deltas[v].mBitangent.ToVector3(-2.0f, 2.0f) * weight;
 
                     const AZ::Vector3 tangentDirVector = deltas[v].mTangent.ToVector3(-2.0f, 2.0f);
                     tangents[vtxNr] += AZ::Vector4(tangentDirVector.GetX()*weight, tangentDirVector.GetY()*weight, tangentDirVector.GetZ()*weight, 0.0f);
@@ -175,8 +175,8 @@ namespace EMotionFX
                 {
                     vtxNr = deltas[v].mVertexNr;
 
-                    positions[vtxNr] = AZ::PackedVector3f(AZ::Vector3(positions[vtxNr]) + deltas[v].mPosition.ToVector3(minValue, maxValue) * weight);
-                    normals  [vtxNr] = AZ::PackedVector3f(AZ::Vector3(normals[vtxNr]) + deltas[v].mNormal.ToVector3(-2.0f, 2.0f) * weight);
+                    positions[vtxNr] = positions[vtxNr] + deltas[v].mPosition.ToVector3(minValue, maxValue) * weight;
+                    normals  [vtxNr] = normals[vtxNr] + deltas[v].mNormal.ToVector3(-2.0f, 2.0f) * weight;
 
                     const AZ::Vector3 tangentDirVector = deltas[v].mTangent.ToVector3(-2.0f, 2.0f);
                     tangents[vtxNr] += AZ::Vector4(tangentDirVector.GetX()*weight, tangentDirVector.GetY()*weight, tangentDirVector.GetZ()*weight, 0.0f);
@@ -190,8 +190,8 @@ namespace EMotionFX
                 {
                     vtxNr = deltas[v].mVertexNr;
 
-                    positions[vtxNr] = AZ::PackedVector3f(AZ::Vector3(positions[vtxNr]) + deltas[v].mPosition.ToVector3(minValue, maxValue) * weight);
-                    normals[vtxNr]   = AZ::PackedVector3f(AZ::Vector3(normals[vtxNr]) + deltas[v].mNormal.ToVector3(-2.0f, 2.0f) * weight);
+                    positions[vtxNr] = positions[vtxNr] + deltas[v].mPosition.ToVector3(minValue, maxValue) * weight;
+                    normals[vtxNr]   = normals[vtxNr] + deltas[v].mNormal.ToVector3(-2.0f, 2.0f) * weight;
                 }
             }
         }

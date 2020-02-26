@@ -11,6 +11,7 @@
 */
 
 #include <MCore/Source/Config.h>
+#include <MCore/Source/LogManager.h>
 #include "GLInclude.h"
 
 #include "RenderTexture.h"

@@ -21,6 +21,12 @@ AzQtComponents--TabWidget:pane
     border-top: none;
 }
 
+AzQtComponents--TabWidgetActionToolBarContainer
+{
+    margin-left: 4px;
+    background-color: #111111;
+}
+
 AzQtComponents--TabBar
 {
     qproperty-drawBase: false; /* Stop the base being visible during tab position change animation */
@@ -34,13 +40,7 @@ AzQtComponents--TabBar:tab
     background-color: #333333;
 
     text-align: left;
-    padding: 6px 0px 6px 16px; /* top, right, bottom, left */
-}
-
-AzQtComponents--TabBar::tab:middle,
-AzQtComponents--TabBar::tab:last
-{
-    margin-left: -1px;
+    padding: 6px 0px 6px 12px; /* top, right, bottom, left */
 }
 
 AzQtComponents--TabBar::tab:text
@@ -52,6 +52,11 @@ AzQtComponents--TabBar::tab:text
 AzQtComponents--TabBar::tab:selected
 {
     border-bottom: 1px solid #444444;
+}
+
+AzQtComponents--TabBar::tab:selected,
+AzQtComponents--TabBar::tab:hover
+{
     background-color: #444444;
 }
 

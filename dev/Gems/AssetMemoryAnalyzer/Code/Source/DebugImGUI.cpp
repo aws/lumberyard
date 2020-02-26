@@ -18,7 +18,7 @@
 
 #include <AzCore/Debug/AssetTracking.h>
 #include <AzCore/std/sort.h>
-#include <ImGui/imgui.h>
+#include <imgui/imgui.h>
 #include <ImGuiBus.h>
 
 namespace AssetMemoryAnalyzer
@@ -155,7 +155,7 @@ namespace AssetMemoryAnalyzer
                     m_childAssetSortFn = [](const AssetInfo* lhs, const AssetInfo* rhs) { return strcmp(lhs->m_id, rhs->m_id) < 0; };
                     m_allocationPointSortFn = [](const AllocationPoint* lhs, const AllocationPoint* rhs) {
                         int cmp = strcmp(lhs->m_codePoint->m_file, rhs->m_codePoint->m_file);
-                        return (cmp < 0) || (cmp == 0 && lhs->m_codePoint->m_line < rhs->m_codePoint->m_line); 
+                        return (cmp < 0) || (cmp == 0 && lhs->m_codePoint->m_line < rhs->m_codePoint->m_line);
                     };
                 }
 

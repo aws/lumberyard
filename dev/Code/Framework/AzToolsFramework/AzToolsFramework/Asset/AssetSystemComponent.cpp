@@ -20,7 +20,14 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #ifdef AZ_PLATFORM_WINDOWS
-#include <Windows.h> // needed for GetCurrentProcessId() for activating the Editor and setting it to the Foreground
+// needed for GetCurrentProcessId() for activating the Editor and setting it to the Foreground
+#ifdef NOMINMAX
+#   include <windows.h>
+#else
+#   define NOMINMAX
+#       include <windows.h>
+#   undef NOMINMAX
+#endif
 #endif
 
 namespace AzToolsFramework

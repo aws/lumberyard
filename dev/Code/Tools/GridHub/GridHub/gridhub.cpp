@@ -20,7 +20,7 @@
 #include <signal.h>
 #endif
 
-#include "GridHub.hxx"
+#include "gridhub.hxx"
 #include <GridHub/gridhub.moc>
 
 #include <AzCore/Component/ComponentApplication.h>
@@ -32,7 +32,7 @@
 
 #include <QtNetwork/QHostInfo>
 
-#include <time.h>		// for output timestamp
+#include <time.h>   // for output timestamp
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -69,7 +69,7 @@ GridHub::GridHub(AZ::ComponentApplication* componentApp, GridHubComponent* hubCo
     m_trayIcon->setToolTip(QString("Amazon Debug Connection Hub - GridHub"));
     m_trayIcon->setIcon(QIcon(":/GridHub/Resources/Disconnected.png"));
     
-    connect(m_trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)),	this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
+    connect(m_trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)),   this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
 
     m_trayIcon->show();
     
@@ -135,7 +135,7 @@ void GridHub::SystemTick()
 void GridHub::closeEvent(QCloseEvent *event)
 {
     if (m_trayIcon->isVisible()) {
-/*		QMessageBox::information(this, tr("GridHub - Amazon Debug Connection Hub"),
+/*      QMessageBox::information(this, tr("GridHub - Amazon Debug Connection Hub"),
             tr("The program will keep running in the "
             "system tray. To terminate the program, "
             "choose <b>Quit</b> in the context menu "
@@ -182,7 +182,7 @@ void GridHub::timerEvent(QTimerEvent *event)
 // [5/24/2011]
 //=========================================================================
 void GridHub::UpdateOutput()
-{	
+{
     if( m_output.empty() ) return;
     m_outputMutex.lock();
     QString msg(m_output.c_str());
@@ -357,7 +357,7 @@ GridHubComponent::GridHubComponent()
     {
 #ifdef _UNICODE
         char c[MAX_COMPUTERNAME_LENGTH + 1];
-        wcstombs(c, name, AZ_ARRAY_SIZE(c));	
+        wcstombs(c, name, AZ_ARRAY_SIZE(c));
         m_hubName = c;
 #else
         m_hubName = name;
@@ -581,7 +581,7 @@ GridHubComponent::OnMemberLeaving(GridMate::GridSession* session, GridMate::Grid
 
             m_monitored.erase(m_monitored.begin()+i);
             break;
-        }		
+        }
     }
 }
 

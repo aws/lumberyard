@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzCore/Memory/IAllocator.h>
+#include <AzCore/Memory/PlatformMemoryInstrumentation.h>
 
 namespace AZ
 {
@@ -91,6 +92,13 @@ namespace AZ
         void ProfileDeallocation(void* ptr, size_t byteSize, size_t alignment, Debug::AllocationInfo* info);
 
         /// Records a reallocation for profiling.
+        void ProfileReallocationBegin(void* ptr, size_t newSize);
+
+        /// Records the beginning of a reallocation for profiling.
+        void ProfileReallocationEnd(void* ptr, void* newPtr, size_t newSize, size_t newAlignment);
+
+        /// Deprecated.
+        /// @deprecated Please use ProfileReallocationBegin/ProfileReallocationEnd instead.
         void ProfileReallocation(void* ptr, void* newPtr, size_t newSize, size_t newAlignment);
 
         /// Records a resize for profiling.
@@ -100,6 +108,7 @@ namespace AZ
         bool OnOutOfMemory(size_t byteSize, size_t alignment, int flags, const char* name, const char* fileName, int lineNum);
 
     private:
+
         const char* m_name = nullptr;
         const char* m_desc = nullptr;
         Debug::AllocationRecords* m_records = nullptr;  // Cached pointer to allocation records. Works together with the MemoryDriller.
@@ -109,6 +118,9 @@ namespace AZ
         bool m_isReady = false;
         bool m_canBeOverridden = true;
         bool m_registrationEnabled = true;
+#if PLATFORM_MEMORY_INSTRUMENTATION_ENABLED
+        uint16_t m_platformMemoryInstrumentationGroupId = 0;
+#endif
     };
 
     namespace Internal  {

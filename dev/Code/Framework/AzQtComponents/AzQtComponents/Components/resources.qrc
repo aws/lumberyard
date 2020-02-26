@@ -63,7 +63,7 @@
     <file>img/16x16/Audio.png</file>
     <file>img/16x16/Database_view.png</file>
     <file>img/16x16/Delete_named_selection.png</file>
-    <file>img/16x16/Deploy.png</file>
+    <file>img/16x16/deploy.png</file>
     <file>img/16x16/Flowgraph.png</file>
     <file>img/16x16/Follow_terrain.png</file>
     <file>img/16x16/Freeze.png</file>
@@ -132,7 +132,7 @@
     <file>img/24x24/Audio.png</file>
     <file>img/24x24/Database_view.png</file>
     <file>img/24x24/Delete_named_selection.png</file>
-    <file>img/24x24/Deploy.png</file>
+    <file>img/24x24/deploy.png</file>
     <file>img/24x24/Flowgraph.png</file>
     <file>img/24x24/Follow_terrain.png</file>
     <file>img/24x24/Freeze.png</file>
@@ -190,7 +190,7 @@
     <file>img/32x32/Audio.png</file>
     <file>img/32x32/Database_view.png</file>
     <file>img/32x32/Delete_named_selection.png</file>
-    <file>img/32x32/Deploy.png</file>
+    <file>img/32x32/deploy.png</file>
     <file>img/32x32/Flowgraph.png</file>
     <file>img/32x32/Follow_terrain.png</file>
     <file>img/32x32/Freeze.png</file>
@@ -322,6 +322,17 @@
     <file>img/logging/warning-yellow.svg</file>
     <file>img/branch_open.png</file>
     <file>img/branch_closed.png</file>
+    <file>img/UI20/checkbox/off-disabled.svg</file>
+    <file>img/UI20/checkbox/off-focus.svg</file>
+    <file>img/UI20/checkbox/off.svg</file>
+    <file>img/UI20/checkbox/on-disabled.svg</file>
+    <file>img/UI20/checkbox/on-focus.svg</file>
+    <file>img/UI20/checkbox/on.svg</file>
+    <file>img/UI20/checkbox/partial-selected-disabled.svg</file>
+    <file>img/UI20/checkbox/partial-selected-focus.svg</file>
+    <file>img/UI20/checkbox/partial-selected.svg</file>
+    <file>img/UI20/checkmark.svg</file>
+    <file>img/UI20/checkmark-menu.svg</file>
 </qresource>
 <qresource prefix="/docking">
     <file alias="tabs_icon.png">img/docking/tabs_icon.png</file>
@@ -337,6 +348,7 @@
     <file>img/UI20/Cards/list-add-small.png</file>
     <file>img/UI20/Cards/group_closed.png</file>
     <file>img/UI20/Cards/group_open.png</file>
+    <file>img/UI20/Cards/caret_down.svg</file>
     <file>img/UI20/Cards/tool_cancel.png</file>
     <file>img/UI20/Cards/tool_cancel_highlight.png</file>
     <file>img/UI20/Cards/tool_cancel_hover.png</file>
@@ -348,11 +360,14 @@
     <file>img/UI20/Cards/changed_data_item.png</file>
     <file>img/UI20/Cards/new_data_item.png</file>
     <file>img/UI20/Cards/removed_data_item.png</file>
+    <file>img/UI20/Cards/menu_ico.svg</file>
     <file>img/UI20/Cards/menu_ico.png</file>
     <file>img/UI20/Cards/error_icon.png</file>
     <file>img/UI20/Cards/warning.png</file>
     <file>img/UI20/Cards/search.png</file>
     <file>img/UI20/Cards/close.png</file>
+    <file>img/UI20/Cards/error-conclict-state.svg</file>
+    <file>img/UI20/Cards/help.svg</file>
     <file>img/UI20/Cards/disabled_header.png</file>
     <file>img/UI20/Cards/help.png</file>
     <file>img/UI20/Cards/help_hover.png</file>
@@ -398,31 +413,53 @@
     <file>Widgets/WindowDecorationWrapper.qss</file>
 </qresource>
 <qresource prefix="/stylesheet">
-    <file>img/UI20/combo-checked.png</file>
-    <file>img/UI20/combo-checked-disabled.png</file>
-    <file>img/UI20/combo-checked-focus.png</file>
-    <file>img/UI20/combo-tristate.png</file>
-    <file>img/UI20/combo-tristate-focus.png</file>
-    <file>img/UI20/radio-checked.png</file>
-    <file>img/UI20/radio-checked-disabled.png</file>
-    <file>img/UI20/radio-checked-focus.png</file>
-    <file>img/UI20/radio-unchecked.png</file>
-    <file>img/UI20/radio-unchecked-disabled.png</file>
-    <file>img/UI20/radio-unchecked-focus.png</file>
+    <file>img/UI20/combobox-arrow.svg</file>
+    <file>img/UI20/combobox-arrow-disabled.svg</file>
+    <file>img/UI20/dropdown-button-arrow.svg</file>
+    <file>img/UI20/lineedit-error.svg</file>
+    <file>img/UI20/lineedit-close.svg</file>
+    <file>img/UI20/menu-indicator.svg</file>
+    <file>img/UI20/radiobutton/checked.svg</file>
+    <file>img/UI20/radiobutton/checked-disabled.svg</file>
+    <file>img/UI20/radiobutton/checked-focus.svg</file>
+    <file>img/UI20/radiobutton/unchecked.svg</file>
+    <file>img/UI20/radiobutton/unchecked-disabled.svg</file>
+    <file>img/UI20/radiobutton/unchecked-focus.svg</file>
+    <file>img/UI20/shadows/menu-shadow.png</file>
+    <file>img/UI20/shadows/menu-shadow@2x.png</file>
     <file>img/UI20/tear.svg</file>
+    <file>img/UI20/titlebar-close-hover.svg</file>
+    <file>img/UI20/titlebar-close.svg</file>
+    <file>img/UI20/titlebar-maximize-hover.svg</file>
     <file>img/UI20/titlebar-maximize.svg</file>
+    <file>img/UI20/titlebar-minimize-hover.svg</file>
     <file>img/UI20/titlebar-minimize.svg</file>
-    <file>img/UI20/toggle-checked.png</file>
-    <file>img/UI20/toggle-checked-disabled.png</file>
-    <file>img/UI20/toggle-checked-focus.png</file>
-    <file>img/UI20/toggle-unchecked.png</file>
-    <file>img/UI20/toggle-unchecked-disabled.png</file>
-    <file>img/UI20/toggle-unchecked-focus.png</file>
+    <file>img/UI20/titlebar-popout-hover.svg</file>
+    <file>img/UI20/titlebar-popout.svg</file>
+    <file>img/UI20/titlebar-restore-hover.svg</file>
+    <file>img/UI20/titlebar-restore.svg</file>
+    <file>img/UI20/toggleswitch/checked.svg</file>
+    <file>img/UI20/toggleswitch/checked-disabled.svg</file>
+    <file>img/UI20/toggleswitch/checked-focus.svg</file>
+    <file>img/UI20/toggleswitch/unchecked.svg</file>
+    <file>img/UI20/toggleswitch/unchecked-disabled.svg</file>
+    <file>img/UI20/toggleswitch/unchecked-focus.svg</file>
     <file>img/UI20/alpha-background.png</file>
     <file>img/UI20/spinbox-cursor-scroll.png</file>
     <file>img/UI20/spinbox-down-arrow.png</file>
     <file>img/UI20/spinbox-up-arrow.png</file>
 </qresource>
+<qresource prefix="/Breadcrumb">
+    <file>img/UI20/Breadcrumb/Next_level_arrow.svg</file>
+    <file>img/UI20/Breadcrumb/arrow_left-default.svg</file>
+    <file>img/UI20/Breadcrumb/arrow_left-default_hover.svg</file>
+    <file>img/UI20/Breadcrumb/arrow_right-default.svg</file>
+    <file>img/UI20/Breadcrumb/arrow_right-default_hover.svg</file>
+    <file>img/UI20/Breadcrumb/dot-dot-dot.svg</file>
+    <file>img/UI20/Breadcrumb/dot-dot-dot_with_arrow.svg</file>
+    <file>img/UI20/Breadcrumb/doward_arrow.svg</file>
+    <file>img/UI20/Breadcrumb/List_View.svg</file>
+  </qresource>
 <qresource prefix="/ColorPickerDialog">
     <file alias="Palette/add-normal.png">img/UI20/colorpicker/palette-add-normal.png</file>
     <file alias="ColorGrid/eyedropper-normal.png">img/UI20/colorpicker/colorgrid-eyedropper-normal.png</file>
@@ -441,5 +478,23 @@
     <file>Fonts/Open_Sans/OpenSans-Semibold.ttf</file>
     <file>Fonts/Open_Sans/OpenSans-SemiboldItalic.ttf</file>
     <file>Fonts/Open_Sans/OpenSans-Bold.ttf</file>
+</qresource>
+<qresource prefix="/SpinBox">
+    <file alias="arrowLeftDefault.svg">img/UI20/SpinBox/arrow_left_default.svg</file>
+    <file alias="arrowLeftIncreasing.svg">img/UI20/SpinBox/arrow_left_increasing.svg</file>
+    <file alias="arrowLeftMaxed.svg">img/UI20/SpinBox/arrow_left_maxed_reached.svg</file>
+    <file alias="arrowRightDefault.svg">img/UI20/SpinBox/arrow_right_default.svg</file>
+    <file alias="arrowRightIncreasing.svg">img/UI20/SpinBox/arrow_right_increasing.svg</file>
+    <file alias="arrowRightMaxed.svg">img/UI20/SpinBox/arrow_right_maxed_reached.svg</file>
+    <file alias="groupedDefault.svg">img/UI20/SpinBox/groupped-default.svg</file>
+    <file alias="groupedLeftArrowActive.svg">img/UI20/SpinBox/groupped-left-arrow-active.svg</file>
+    <file alias="groupedLeftArrowMaxed.svg">img/UI20/SpinBox/groupped-left-arrow-maxed.svg</file>
+    <file alias="groupedRightArrowActive.svg">img/UI20/SpinBox/groupped-right-arrow-active.svg</file>
+    <file alias="groupedRightArrowMaxed.svg">img/UI20/SpinBox/groupped-right-arrow-maxed.svg</file>
+    <file alias="scrollIconDefault.svg">img/UI20/SpinBox/NumberEdit_center.svg</file>
+    <file alias="scrollIconLeft.svg">img/UI20/SpinBox/NumberEdit_scroll_left.svg</file>
+    <file alias="scrollIconLeftMaxed.svg">img/UI20/SpinBox/NumberEdit_scroll_left_stopped.svg</file>
+    <file alias="scrollIconRight.svg">img/UI20/SpinBox/NumberEdit_scroll_right.svg</file>
+    <file alias="scrollIconRightMaxed.svg">img/UI20/SpinBox/NumberEdit_scroll_right_stopped.svg</file>
 </qresource>
 </RCC>

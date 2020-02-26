@@ -24,7 +24,7 @@ PxFoundation.*\.(dll|dylib|so)
 PxPvdSDK.*\.(dll|dylib|so)
 (lib)?PVRTexLib.*
 python.*
-qt5.*
+(lib)?qt5.*
 qtlibs[\\/].*
 rad_tm.*
 (lib)?SDL2.*
@@ -37,12 +37,13 @@ xinput.*
 zlib.*
 
 # internal modules
-AzCoreTestDLL\.(dll|dylib|so)
-ComponentEntityEditorPlugin\.(dll|dylib|so)
+(lib)?AzCoreTestDLL\.(dll|dylib|so)
 CryDesigner\.(dll|dylib|so)
-LyIdentity.*\.(dll|dylib|so)
-LyMetrics.*\.(dll|dylib|so)
+(lib)?LyIdentity.*\.(dll|dylib|so)
+(lib)?LyMetrics.*\.(dll|dylib|so)
 MaglevControlPanel\.(dll|dylib|so)
 UiCanvasEditor\.(dll|dylib|so)
 .*\.app.*
 AssetBuilder\.exe
+# disable save data gem until we add the save data implementation for linux and figure out where the saves should live
+.*Gem\.SaveData.*\.so

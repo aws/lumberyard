@@ -47,7 +47,7 @@ namespace RenderGL
         void Render2DLines(Line2D* lines, uint32 numLines) override;
 
         // util mesh rendering
-        void RenderUtilMesh(UtilMesh* mesh, const MCore::RGBAColor& color, const MCore::Matrix& globalTM) override;
+        void RenderUtilMesh(UtilMesh* mesh, const MCore::RGBAColor& color, const AZ::Transform& globalTM) override;
         bool GetIsMeshRenderingSupported() const override           { return true; }
 
         // triangle rendering

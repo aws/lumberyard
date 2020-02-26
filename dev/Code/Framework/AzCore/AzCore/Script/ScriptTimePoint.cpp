@@ -26,6 +26,8 @@ namespace AZ
         if (behaviorContext)
         {
             behaviorContext->Class<ScriptTimePoint>()->
+                Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)->
+                Attribute(AZ::Script::Attributes::Module, "script")->
                 Method("ToString", &ScriptTimePoint::ToString)->
                     Attribute(Script::Attributes::Operator,Script::Attributes::OperatorType::ToString)->
                 Method("GetSeconds", &ScriptTimePoint::GetSeconds)->

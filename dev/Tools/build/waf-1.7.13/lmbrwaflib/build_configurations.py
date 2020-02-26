@@ -25,7 +25,7 @@ from waflib import Configure, ConfigSet, Context, Options, Utils, Logs, Errors
 from waflib.Build import BuildContext, CleanContext, Context, CACHE_DIR
 from waflib.Configure import conf, ConfigurationContext, REGISTERED_CONF_FUNCTIONS
 
-from waf_branch_spec import LUMBERYARD_ENGINE_PATH, LMBR_WAF_VERSION_TAG, BINTEMP_CACHE_3RD_PARTY, BINTEMP_CACHE_TOOLS, BINTEMP_MODULE_DEF
+from waf_branch_spec import LUMBERYARD_ENGINE_PATH, LMBR_WAF_VERSION_TAG, BINTEMP_FOLDER, BINTEMP_CACHE_3RD_PARTY, BINTEMP_CACHE_TOOLS, BINTEMP_MODULE_DEF
 
 import settings_manager
 import lumberyard
@@ -1181,6 +1181,14 @@ def load_compile_rules_for_enabled_platforms(ctx):
     host_function_name = load_compile_rules_for_host(ctx, host_platform)
 
     installed_platforms = []
+
+    # Always clear the 3rd Party cache folder in case there are changes that cannot be tracked
+    try:
+        cache_3p_folder = os.path.join(Context.launch_dir, BINTEMP_FOLDER, BINTEMP_CACHE_3RD_PARTY)
+        if os.path.isdir(cache_3p_folder):
+            shutil.rmtree(cache_3p_folder)
+    except Exception as err:
+        Logs.warn('[WARN] Unable to clear 3P Cache : {}'.format(err))
 
     cached_uselib_readers = ctx.get_uselib_third_party_reader_map()
 

@@ -74,7 +74,7 @@ ColorComponentEdit::ColorComponentEdit(const QString& labelText, int softMaximum
 {
     auto layout = new QHBoxLayout(this);
 
-    layout->setMargin(0);
+    layout->setContentsMargins(0, 0, 0, 0);
 
     auto label = new QLabel(labelText, this);
     label->setFixedWidth(GetRequiredWidth(this));

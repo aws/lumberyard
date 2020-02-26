@@ -24,7 +24,8 @@ def build(bld):
         vs_filter       = 'RC',
         copyright_org   = 'Amazon-CryTek',
         file_list       = 'resourcecompiler.waf_files',
-        platforms       = ['win', 'darwin'],
+        pch             = 'PCH/StdAfx.cpp',
+        platforms       = ['win', 'darwin', 'linux'],
         client_only     = True,
         exclude_monolithic = True,
         features        = ['qt5'],
@@ -41,7 +42,9 @@ def build(bld):
                            'OPENGL32'],
         defines         = defines,
         includes        = ['.',
-                           bld.Path('Code/CryEngine/CryCommon'), 
+                           './PCH',
+                           bld.Path('Code/CryEngine/CryCommon'),
+                           bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                            bld.Path('Code/Tools/CryCommonTools'),
                            bld.Path('Code/Tools/CryXML'),
                            bld.Path('Code/CryEngine/CrySystem/XML')],
@@ -58,7 +61,9 @@ def build(bld):
         darwin_cxxflags = ['-Wno-shift-count-overflow'],
 
         win_x64_clang_cxxflags = ['-fexceptions'],
+        linux_x64_cxxflags = ['-fexceptions'],
 
+        linux_rpath        = ['$ORIGIN/..'],
         # Testing
         test_all_file_list = ['resourcecompiler_test.waf_files'],
 

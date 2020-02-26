@@ -35,6 +35,7 @@
 #include <EMotionFX/Source/Parameter/Parameter.h>
 #include <EMotionFX/Source/Parameter/ParameterFactory.h>
 #include <EMotionFX/Source/Parameter/ValueParameter.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/AttributeFactory.h>
 #include <MCore/Source/ReflectionSerializer.h>
 

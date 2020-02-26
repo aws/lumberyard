@@ -1445,7 +1445,10 @@ def android_natives_processing(self):
 
     third_party_artifacts = getattr(self.env, 'COPY_3RD_PARTY_ARTIFACTS', [])
     for artifact in third_party_artifacts:
-        _, ext = os.path.splitext(artifact.abspath())
+        if isinstance(artifact, tuple):
+            _, ext = os.path.splitext(artifact[0].abspath())
+        else:
+            _, ext = os.path.splitext(artifact.abspath())
         # Only care about shared libraries
         if ext != '.so':
             continue

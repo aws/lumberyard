@@ -19,6 +19,7 @@
 
 #include <Integration/AnimationBus.h>
 #include <Integration/EMotionFXBus.h>
+#include <Integration/Rendering/RenderBackendManager.h>
 
 #include <CrySystemBus.h> // Immediate-mode CryRendering only
 
@@ -108,7 +109,7 @@ namespace EMotionFX
             void DisableRayRequests() override;
             RaycastRequests::RaycastResult Raycast(AZ::EntityId entityId, const RaycastRequests::RaycastRequest& rayRequest) override;
             ////////////////////////////////////////////////////////////////////////
-            
+
 
             void RegisterAssetTypesAndHandlers();
             void SetMediaRoot(const char* alias);
@@ -132,6 +133,7 @@ namespace EMotionFX
         private:
             AZStd::vector<AZStd::unique_ptr<AZ::Data::AssetHandler> > m_assetHandlers;
             AZStd::unique_ptr<EMotionFXEventHandler> m_eventHandler;
+            AZStd::unique_ptr<RenderBackendManager> m_renderBackendManager;
         };
     }
 }

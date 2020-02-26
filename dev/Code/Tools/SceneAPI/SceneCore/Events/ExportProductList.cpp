@@ -18,16 +18,17 @@ namespace AZ
     {
         namespace Events
         {
-            ExportProduct::ExportProduct(const AZStd::string& filename, Uuid id, Data::AssetType assetType, s8 lod)
-                : ExportProduct(AZStd::string(filename), id, assetType, lod)
+            ExportProduct::ExportProduct(const AZStd::string& filename, Uuid id, Data::AssetType assetType, AZStd::optional<u8> lod, AZStd::optional<u32> subId)
+                :ExportProduct(AZStd::string(filename), id, assetType, lod, subId)
             {
             }
 
-            ExportProduct::ExportProduct(AZStd::string&& filename, Uuid id, Data::AssetType assetType, s8 lod)
+            ExportProduct::ExportProduct(AZStd::string&& filename, Uuid id, Data::AssetType assetType, AZStd::optional<u8> lod, AZStd::optional<u32> subId)
                 : m_filename(AZStd::move(filename))
                 , m_id(id)
                 , m_assetType(assetType)
                 , m_lod(lod)
+                , m_subId(subId)
             {
             }
 
@@ -43,24 +44,25 @@ namespace AZ
                 m_id = rhs.m_id;
                 m_assetType = rhs.m_assetType;
                 m_lod = rhs.m_lod;
+                m_subId = rhs.m_subId;
                 m_legacyPathDependencies = rhs.m_legacyPathDependencies;
                 m_productDependencies = rhs.m_productDependencies;
                 return *this;
             }
 
-            ExportProduct& ExportProductList::AddProduct(const AZStd::string& filename, Uuid id, Data::AssetType assetType, s8 lod)
+            ExportProduct& ExportProductList::AddProduct(const AZStd::string& filename, Uuid id, Data::AssetType assetType, AZStd::optional<u8> lod, AZStd::optional<u32> subId)
             {
-                return AddProduct(AZStd::string(filename), id, assetType, lod);
+                return AddProduct(AZStd::string(filename), id, assetType, lod, subId);
             }
 
-            ExportProduct& ExportProductList::AddProduct(AZStd::string&& filename, Uuid id, Data::AssetType assetType, s8 lod)
+            ExportProduct& ExportProductList::AddProduct(AZStd::string&& filename, Uuid id, Data::AssetType assetType, AZStd::optional<u8> lod, AZStd::optional<u32> subId)
             {
                 AZ_Assert(!filename.empty(), "A filename is required to register a product.");
                 AZ_Assert(!id.IsNull(), "Provided guid is not valid");
-                AZ_Assert(lod < 16, "Lod value has to be between 0 and 15 or s_LodNotUsed(-1) to disable.");
+                AZ_Assert(!lod.has_value() || lod < 16, "Lod value has to be between 0 and 15 or disabled.");
 
                 size_t index = m_products.size();
-                m_products.emplace_back(AZStd::move(filename), id, assetType, lod);
+                m_products.emplace_back(AZStd::move(filename), id, assetType, lod, subId);
                 return m_products[index];
             }
 

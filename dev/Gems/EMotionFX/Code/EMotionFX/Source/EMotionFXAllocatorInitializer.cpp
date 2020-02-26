@@ -21,7 +21,6 @@ namespace EMotionFX
     {
         // Start EMotionFX allocator.
         EMotionFX::Integration::EMotionFXAllocator::Descriptor allocatorDescriptor;
-        allocatorDescriptor.m_custom = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
         AZ::AllocatorInstance<EMotionFX::Integration::EMotionFXAllocator>::Create(allocatorDescriptor);
     }
 

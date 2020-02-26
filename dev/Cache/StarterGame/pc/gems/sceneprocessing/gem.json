@@ -9,7 +9,7 @@
     "Tags": ["Scene", "FBX", "Assets"],
     "IconPath": "preview.png",
     "EditorModule": true,
-    "IsRequired": true,
+    "IsRequired": false,
     "Modules": [
         {
             "Name": "Editor",

@@ -455,6 +455,8 @@ def enable_embedded_python(self):
         self.env['DEFINES'] += ['DEFAULT_LY_PYTHONHOME="{}"'.format(python_home_define.replace('\\', '/'))]
         if 'LIBPATH_BOOSTPYTHON' in self.env:
             self.env['LIBPATH'] += self.env['LIBPATH_BOOSTPYTHON']
+        elif 'STLIBPATH_BOOSTPYTHON' in self.env:
+            self.env['LIBPATH'] += self.env['STLIBPATH_BOOSTPYTHON']
         elif self.env['PLATFORM'] != 'project_generator':
             Logs.warn(
                 '[WARN] Required 3rd party boostpython not detected.  This may cause a link error in project {}.'.format(

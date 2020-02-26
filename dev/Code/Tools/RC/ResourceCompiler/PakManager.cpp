@@ -672,7 +672,7 @@ PakManager::ECallResult PakManager::CreatePakFile(
 
                         // check if the reconsolidation of the pak gave more space free than we needed previously
                         // in case it did, keep adding to the same file, instead of adding it to the next part
-                        const __int64 fileSize = FileUtil::GetFileSize(pakFilenameToWrite);
+                        const int64 fileSize = FileUtil::GetFileSize(pakFilenameToWrite);
                         if (fileSize < sizeSplitter.m_fileSizeThreshold)
                         {
                             // if we tried keepTrying without effect, don't try again
@@ -730,7 +730,7 @@ PakManager::ECallResult PakManager::CreatePakFile(
             }
 
             GetPakSystem()->CloseArchive(pPakFile);
-            const __int64 fileSize = FileUtil::GetFileSize(pakFilenameToWrite);
+            const int64 fileSize = FileUtil::GetFileSize(pakFilenameToWrite);
             if (fileSize > INT_MAX)
             {
                 RCLogError("PAK File size exceeds 2GB limit. This will not be loaded by Engine: %s", pakFilenameToWrite.c_str());
@@ -772,7 +772,7 @@ PakManager::ECallResult PakManager::CreatePakFile(
                         }
                     }
 
-                    const __int64 fileSize = FileUtil::GetFileSize(pakFilenameToDelete);
+                    const int64 fileSize = FileUtil::GetFileSize(pakFilenameToDelete);
                     if (fileSize <= nMinZipSize)
                     {
                         // eliminate paks without content (may occur by filtering or reordering)

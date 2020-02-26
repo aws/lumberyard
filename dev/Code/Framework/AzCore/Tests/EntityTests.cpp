@@ -676,4 +676,30 @@ namespace UnitTest
         // The crash would be caught by the unit test system.
         entity.EvaluateDependencies();
     }
+
+    TEST_F(EntityTests, EntityIsMoveConstructed)
+    {
+        AZ_STATIC_ASSERT(!AZStd::is_copy_constructible<AZ::Entity>::value, "Entity is dangerous to copy construct.");
+        AZ_STATIC_ASSERT(!AZStd::is_copy_assignable<AZ::Entity>::value, "Entity is dangerous to copy assign.");
+
+        {
+            AZ::Entity entity1;
+            entity1.CreateComponent<SortOrderTestFirstComponent>();
+            AZ::Entity entity2(AZStd::move(entity1));
+            EXPECT_EQ(entity1.GetComponents().size(), 0);
+            EXPECT_EQ(entity2.GetComponents().size(), 1);
+        } // there will be a crash here if they go out of scope if they weren't properly moved.
+    }
+
+    TEST_F(EntityTests, EntityIsMoveAssigned)
+    {
+        {
+            AZ::Entity entity1;
+            entity1.CreateComponent<SortOrderTestFirstComponent>();
+            AZ::Entity entity2;
+            entity2 = AZStd::move(entity1);
+            EXPECT_EQ(entity1.GetComponents().size(), 0);
+            EXPECT_EQ(entity2.GetComponents().size(), 1);
+        } // there will be a crash here if they go out of scope if they weren't properly moved.
+    }
 } // namespace UnitTest

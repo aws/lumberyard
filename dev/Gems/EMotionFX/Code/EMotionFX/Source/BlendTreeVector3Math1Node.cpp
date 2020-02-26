@@ -150,7 +150,7 @@ namespace EMotionFX
 
         // update the output value
         //AnimGraphNodeData* uniqueData = animGraphInstance->FindUniqueNodeData(this);
-        GetOutputVector3(animGraphInstance, OUTPUTPORT_RESULT_VECTOR3)->SetValue(AZ::PackedVector3f(vectorResult));
+        GetOutputVector3(animGraphInstance, OUTPUTPORT_RESULT_VECTOR3)->SetValue(vectorResult);
         GetOutputFloat(animGraphInstance, OUTPUTPORT_RESULT_FLOAT)->SetValue(floatResult);
     }
 

@@ -14,8 +14,8 @@
 
 #include "EMotionFXConfig.h"
 #include <MCore/Source/MemoryCategoriesCore.h>
-#include <MCore/Source/Quaternion.h>
-#include <MCore/Source/Matrix4.h>
+#include <AzCore/Math/Quaternion.h>
+#include <AzCore/Math/Transform.h>
 
 
 namespace EMotionFX
@@ -32,23 +32,22 @@ namespace EMotionFX
         MCORE_INLINE Transform()
         {
             mPosition = AZ::Vector3::CreateZero();
-            mRotation.Identity();
+            mRotation = AZ::Quaternion::CreateIdentity();
             EMFX_SCALECODE
             (
                 mScale.Set(1.0f, 1.0f, 1.0f);
             );
         }
 
-        Transform(const AZ::Vector3& pos, const MCore::Quaternion& rotation);
-        Transform(const AZ::Vector3& pos, const MCore::Quaternion& rotation, const AZ::Vector3& scale);
-        Transform(const MCore::Matrix& mat);
+        Transform(const AZ::Vector3& pos, const AZ::Quaternion& rotation);
+        Transform(const AZ::Vector3& pos, const AZ::Quaternion& rotation, const AZ::Vector3& scale);
+        Transform(const AZ::Transform& transform);
 
-        void Set(const AZ::Vector3& pos, const MCore::Quaternion& rotation);
-        void Set(const AZ::Vector3& pos, const MCore::Quaternion& rotation, const AZ::Vector3& scale);
+        void Set(const AZ::Vector3& pos, const AZ::Quaternion& rotation);
+        void Set(const AZ::Vector3& pos, const AZ::Quaternion& rotation, const AZ::Vector3& scale);
 
-        void InitFromMatrix(const MCore::Matrix& mat);  // relatively slow as it decomposes the matrix
-        MCore::Matrix ToMatrix() const;
-        void ToMatrix(MCore::Matrix& outMatrix) const;
+        void InitFromAZTransform(const AZ::Transform& transform);  // relatively slow as it decomposes the matrix
+        AZ::Transform ToAZTransform() const;
 
         void Identity();
         void Zero();
@@ -147,8 +146,8 @@ namespace EMotionFX
         bool        operator != (const Transform& right) const;
 
     public:
-        MCore::Quaternion   mRotation;          /**< The rotation. */
-        AZ::Vector3         mPosition;          /**< The position. */
+        AZ::Quaternion   mRotation;             /**< The rotation. */
+        AZ::Vector3      mPosition;             /**< The position. */
         #ifndef EMFX_SCALE_DISABLED
         AZ::Vector3  mScale;                    /**< The scale. */
         #endif

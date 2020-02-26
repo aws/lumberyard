@@ -20,7 +20,6 @@
 
 class QSettings;
 class QLineEdit;
-class QPushButton;
 class QValidator;
 class QStyleOption;
 
@@ -32,7 +31,9 @@ namespace AzQtComponents
         : public QFrame
     {
         Q_OBJECT //AUTOMOC
-            public : typedef LineEdit::Config Config;
+        Q_PROPERTY(bool acceptableInput READ hasAcceptableInput NOTIFY hasAcceptableInputChanged)
+    public:
+        typedef LineEdit::Config Config;
 
         BrowseEdit(QWidget* parent = nullptr);
         ~BrowseEdit();
@@ -82,11 +83,13 @@ namespace AzQtComponents
         void returnPressed();
         void textChanged(const QString& text);
         void textEdited(const QString& text);
+        void hasAcceptableInputChanged(bool acceptable);
 
     protected:
         bool eventFilter(QObject* watched, QEvent* event) override;
         void mouseDoubleClickEvent(QMouseEvent* event) override;
         bool event(QEvent* event) override;
+        void setHasAcceptableInput(bool acceptable);
 
     private Q_SLOTS:
         void onTextChanged(const QString& text);
@@ -94,6 +97,9 @@ namespace AzQtComponents
     private:
         friend class Style;
         struct InternalData;
+
+        static bool polish(Style* style, QWidget* widget, const Config& config, const LineEdit::Config& lineEditConfig);
+        static bool unpolish(Style* style, QWidget* widget, const Config& config, const LineEdit::Config& lineEditConfig);
 
         static bool drawFrame(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config);
 

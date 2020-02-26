@@ -146,16 +146,16 @@ namespace EMotionFX
 
                 // check if the mesh has differences
                 uint32 numDifferent = 0;
-                const AZ::PackedVector3f*   neutralPositions = static_cast<const AZ::PackedVector3f*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS));
-                const AZ::PackedVector3f*   neutralNormals   = static_cast<const AZ::PackedVector3f*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_NORMALS));
-                const AZ::u32*              neutralOrgVerts  = static_cast<const AZ::u32*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_ORGVTXNUMBERS));
-                const AZ::Vector4*          neutralTangents  = static_cast<const AZ::Vector4*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_TANGENTS));
-                const AZ::PackedVector3f*   neutralBitangents = static_cast<const AZ::PackedVector3f*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_BITANGENTS));
-                const AZ::u32*              targetOrgVerts   = static_cast<const AZ::u32*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_ORGVTXNUMBERS));
-                const AZ::PackedVector3f*   targetPositions  = static_cast<const AZ::PackedVector3f*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS));
-                const AZ::PackedVector3f*   targetNormals    = static_cast<const AZ::PackedVector3f*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_NORMALS));
-                const AZ::Vector4*          targetTangents   = static_cast<const AZ::Vector4*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_TANGENTS));
-                const AZ::PackedVector3f*   targetBitangents = static_cast<const AZ::PackedVector3f*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_BITANGENTS));
+                const AZ::Vector3*   neutralPositions = static_cast<const AZ::Vector3*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS));
+                const AZ::Vector3*   neutralNormals   = static_cast<const AZ::Vector3*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_NORMALS));
+                const AZ::u32*       neutralOrgVerts  = static_cast<const AZ::u32*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_ORGVTXNUMBERS));
+                const AZ::Vector4*   neutralTangents  = static_cast<const AZ::Vector4*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_TANGENTS));
+                const AZ::Vector3*   neutralBitangents= static_cast<const AZ::Vector3*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_BITANGENTS));
+                const AZ::u32*       targetOrgVerts   = static_cast<const AZ::u32*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_ORGVTXNUMBERS));
+                const AZ::Vector3*   targetPositions  = static_cast<const AZ::Vector3*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS));
+                const AZ::Vector3*   targetNormals    = static_cast<const AZ::Vector3*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_NORMALS));
+                const AZ::Vector4*   targetTangents   = static_cast<const AZ::Vector4*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_TANGENTS));
+                const AZ::Vector3*   targetBitangents = static_cast<const AZ::Vector3*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_BITANGENTS));
 
                 // Do some simplified check to see if the mesh topology is different.
                 bool differentTopology = false;
@@ -177,8 +177,7 @@ namespace EMotionFX
                 // first calculate the neutral and target bounds
                 MCore::AABB neutralAABB;
                 MCore::AABB targetAABB;
-                MCore::Matrix identity;
-                identity.Identity();
+                const AZ::Transform identity = AZ::Transform::CreateIdentity();
                 neutralMesh->CalcAABB(&neutralAABB, identity, 1);
                 targetMesh->CalcAABB(&targetAABB, identity, 1);
                 neutralAABB.Encapsulate(targetAABB); // join the two boxes, so that we have the box around those two boxes
@@ -205,7 +204,7 @@ namespace EMotionFX
                     const uint32 orgVertex = neutralOrgVerts[v];
 
                     // calculate the delta vector between the two positions
-                    const AZ::Vector3 deltaVec = AZ::Vector3(targetPositions[ morphVerts[orgVertex][0] ]) - AZ::Vector3(neutralPositions[v]);
+                    const AZ::Vector3 deltaVec = targetPositions[ morphVerts[orgVertex][0] ] - neutralPositions[v];
 
                     // check if the vertex positions are different, so if there are mesh changes
                     if (MCore::SafeLength(deltaVec) > /*0.0001f*/ epsilon)
@@ -251,7 +250,7 @@ namespace EMotionFX
                     const uint32 orgVertex = neutralOrgVerts[v];
 
                     // calculate the delta vector between the two positions
-                    const AZ::Vector3 deltaVec = AZ::Vector3(targetPositions[morphVerts[orgVertex][0]]) - AZ::Vector3(neutralPositions[v]);
+                    const AZ::Vector3 deltaVec = targetPositions[morphVerts[orgVertex][0]] - neutralPositions[v];
 
                     // check if the vertex positions are different, so if there are mesh changes
                     if (MCore::SafeLength(deltaVec) > epsilon)
@@ -279,14 +278,14 @@ namespace EMotionFX
                         AZ::Vector3 deltaBitangent(0.0f, 0.0f, 0.0f);
                         if (hasBitangents)
                         {
-                            const AZ::Vector3 neutralBitangent = AZ::Vector3(neutralBitangents[v]).GetNormalizedSafeExact();
-                            const AZ::Vector3 targetBitangent  = AZ::Vector3(targetBitangents[v]).GetNormalizedSafeExact();
+                            const AZ::Vector3 neutralBitangent = neutralBitangents[v].GetNormalizedSafeExact();
+                            const AZ::Vector3 targetBitangent  = targetBitangents[v].GetNormalizedSafeExact();
                             deltaBitangent = targetBitangent - neutralBitangent;
                         }
 
                         // setup the deform data for this vertex
-                        const AZ::Vector3 neutralNormal = AZ::Vector3(neutralNormals[v]).GetNormalizedSafeExact();
-                        const AZ::Vector3 targetNormal  = AZ::Vector3(targetNormals[v]).GetNormalizedSafeExact();
+                        const AZ::Vector3 neutralNormal = neutralNormals[v].GetNormalizedSafeExact();
+                        const AZ::Vector3 targetNormal  = targetNormals[v].GetNormalizedSafeExact();
                         const AZ::Vector3 deltaNormal   = targetNormal - neutralNormal;
                         deformData->mDeltas[curVertex].mPosition.FromVector3(deltaVec, minValue, maxValue);
                         deformData->mDeltas[curVertex].mNormal.FromVector3(deltaNormal, -2.0f, 2.0f);
@@ -385,15 +384,15 @@ namespace EMotionFX
 
                 AZ::Vector3         neutralPos      = neutralTransform.mPosition;
                 AZ::Vector3         targetPos       = targetTransform.mPosition;
-                MCore::Quaternion   neutralRot      = neutralTransform.mRotation;
-                MCore::Quaternion   targetRot       = targetTransform.mRotation;
+                AZ::Quaternion      neutralRot      = neutralTransform.mRotation;
+                AZ::Quaternion      targetRot       = targetTransform.mRotation;
 
                 EMFX_SCALECODE
                 (
                     AZ::Vector3      neutralScale    = neutralTransform.mScale;
                     AZ::Vector3      targetScale     = targetTransform.mScale;
-                    //MCore::Quaternion neutralScaleRot = neutralTransform.mScaleRotation;
-                    //MCore::Quaternion targetScaleRot  = targetTransform.mScaleRotation;
+                    //AZ::Quaternion neutralScaleRot = neutralTransform.mScaleRotation;
+                    //AZ::Quaternion targetScaleRot  = targetTransform.mScaleRotation;
                 )
 
                 // check if the position changed
@@ -402,7 +401,7 @@ namespace EMotionFX
                 // check if the rotation changed
                 if (changed == false)
                 {
-                    changed = (MCore::Compare<MCore::Quaternion>::CheckIfIsClose(neutralRot, targetRot, MCore::Math::epsilon) == false);
+                    changed = (MCore::Compare<AZ::Quaternion>::CheckIfIsClose(neutralRot, targetRot, MCore::Math::epsilon) == false);
                 }
 
                 EMFX_SCALECODE
@@ -415,7 +414,7 @@ namespace EMotionFX
 
                     // check if the scale rotation changed
                     //              if (changed == false)
-                    //              changed = (MCore::Compare<MCore::Quaternion>::CheckIfIsClose(neutralScaleRot, targetScaleRot, MCore::Math::epsilon) == false);
+                    //              changed = (MCore::Compare<AZ::Quaternion>::CheckIfIsClose(neutralScaleRot, targetScaleRot, MCore::Math::epsilon) == false);
                 )
 
                 // if this node changed transformation
@@ -452,7 +451,7 @@ namespace EMotionFX
 
     // apply the relative transformation to the specified node
     // store the result in the position, rotation and scale parameters
-    void MorphTargetStandard::ApplyTransformation(ActorInstance* actorInstance, uint32 nodeIndex, AZ::Vector3& position, MCore::Quaternion& rotation, AZ::Vector3& scale, float weight)
+    void MorphTargetStandard::ApplyTransformation(ActorInstance* actorInstance, uint32 nodeIndex, AZ::Vector3& position, AZ::Quaternion& rotation, AZ::Vector3& scale, float weight)
     {
         // calculate the normalized weight (in range of 0..1)
         const float newWeight = MCore::Clamp<float>(weight, mRangeMin, mRangeMax); // make sure its within the range
@@ -472,9 +471,9 @@ namespace EMotionFX
             scale += mTransforms[i].mScale * newWeight;
 
             // rotate additively
-            const MCore::Quaternion& orgRot = actorInstance->GetTransformData()->GetBindPose()->GetLocalSpaceTransform(nodeIndex).mRotation;
-            const MCore::Quaternion rot = orgRot.NLerp(mTransforms[i].mRotation, normalizedWeight);
-            rotation = rotation * (orgRot.Inversed() * rot);
+            const AZ::Quaternion& orgRot = actorInstance->GetTransformData()->GetBindPose()->GetLocalSpaceTransform(nodeIndex).mRotation;
+            const AZ::Quaternion rot = orgRot.NLerp(mTransforms[i].mRotation, normalizedWeight);
+            rotation = rotation * (orgRot.GetInverseFull() * rot);
             rotation.Normalize();
 
             // all remaining nodes in the transform won't modify this current node
@@ -543,9 +542,9 @@ namespace EMotionFX
             )
 
             // rotate additively
-            const MCore::Quaternion& orgRot = transformData->GetBindPose()->GetLocalSpaceTransform(nodeIndex).mRotation;
-            const MCore::Quaternion rot = orgRot.NLerp(mTransforms[i].mRotation, normalizedWeight);
-            newTransform.mRotation = newTransform.mRotation * (orgRot.Inversed() * rot);
+            const AZ::Quaternion& orgRot = transformData->GetBindPose()->GetLocalSpaceTransform(nodeIndex).mRotation;
+            const AZ::Quaternion rot = orgRot.NLerp(mTransforms[i].mRotation, normalizedWeight);
+            newTransform.mRotation = newTransform.mRotation * (orgRot.GetInverseFull() * rot);
             newTransform.mRotation.Normalize();
             /*
                     // scale rotate additively

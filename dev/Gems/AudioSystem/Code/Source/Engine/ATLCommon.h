@@ -22,6 +22,7 @@ namespace Audio
     namespace ATLXmlTags
     {
         static constexpr const char* PlatformName = AZ_TRAIT_OS_PLATFORM_NAME;
+        static constexpr const char* PlatformCodeName = AZ_TRAIT_OS_PLATFORM_CODENAME;
 
         static constexpr const char* RootNodeTag = "ATLConfig";
         static constexpr const char* TriggersNodeTag = "AudioTriggers";

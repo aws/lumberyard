@@ -29,6 +29,7 @@ import re
 import json
 import string
 import ConfigParser
+import fnmatch
 
 ALIAS_SEARCH_PATTERN = re.compile(r'(\$\{([\w]*)})')
 
@@ -568,7 +569,12 @@ class ThirdPartyLibReader:
             if header_only_library:
                 # If this is a header only library, then no need to look for libs/binaries
                 return True, None
-            
+
+            # symlink_patterns
+            symlink_patterns = self.get_most_specific_entry("symlink_patterns", uselib_name, lib_configuration)
+            if symlink_patterns:
+                self.apply_uselib_values_general(uselib_env_name, symlink_patterns, "SYMLINK_PATTERNS")
+
             # Determine what kind of libraries we are using
             static_lib_paths = self.get_most_specific_entry("libpath", uselib_name, lib_configuration)
             static_lib_filenames = self.get_most_specific_entry("lib", uselib_name, lib_configuration)
@@ -773,20 +779,23 @@ class ThirdPartyLibReader:
             # Apply any alias if the entry implies an alias
             vetted_list = []
             for single_entry in entry:
-                alias_match = ALIAS_SEARCH_PATTERN.search(single_entry)
-                if alias_match is not None:
-                    # This contains an aliased value
-                    alias_key = alias_match.group(2)
-                    if alias_key not in self.name_alias_map:
-                        raise RuntimeError("Invalid alias key {} for 3rd Party library {} and platform {}".format(alias_key, key_base_name, self.lib_key, self.platform_key))
-                    aliased_names = self.name_alias_map[alias_key] if isinstance(self.name_alias_map[alias_key],list) else [self.name_alias_map[alias_key]]
-                    for aliased_name in aliased_names:
-                        updated_name = ALIAS_SEARCH_PATTERN.sub(aliased_name, single_entry)
-                        vetted_list.append(updated_name)
-                    pass
+                if isinstance(single_entry, str):
+                    alias_match = ALIAS_SEARCH_PATTERN.search(single_entry)
+                    if alias_match is not None:
+                        # This contains an aliased value
+                        alias_key = alias_match.group(2)
+                        if alias_key not in self.name_alias_map:
+                            raise RuntimeError("Invalid alias key {} for 3rd Party library {} and platform {}".format(alias_key, key_base_name, self.lib_key, self.platform_key))
+                        aliased_names = self.name_alias_map[alias_key] if isinstance(self.name_alias_map[alias_key],list) else [self.name_alias_map[alias_key]]
+                        for aliased_name in aliased_names:
+                            updated_name = ALIAS_SEARCH_PATTERN.sub(aliased_name, single_entry)
+                            vetted_list.append(updated_name)
+                    else:
+                        # This is a normal value
+                        vetted_list.append(single_entry)
                 else:
-                    # This is a normal value
                     vetted_list.append(single_entry)
+
 
             return vetted_list
 
@@ -881,10 +890,24 @@ class ThirdPartyLibReader:
             # Validate that the file exists
             lib_found_fullpath = None
             for lib_path in lib_paths:
-                lib_file_path = os.path.normpath(os.path.join(self.apply_optional_path_alias(lib_path, lib_source_path), lib_filename))
+                check_base_path = self.apply_optional_path_alias(lib_path, lib_source_path)
+                lib_file_path = os.path.normpath(os.path.join(check_base_path, lib_filename))
                 if self.ctx.cached_does_path_exist(lib_file_path):
                     lib_found_fullpath = lib_file_path
                     break
+                    
+                if lib_filename.endswith('.so'):
+                    # Special case: If we can't find an .so, then check for any versioned .so. There should be post-processing
+                    # during configure to establish a symlink-connection
+                    for check in os.listdir(check_base_path):
+                        if fnmatch.fnmatch(check, '{}.*'.format(lib_filename)):
+                            # We found a potential match, but make sure its not a '.a' file since clang will link to that if its present
+                            if os.path.splitext(check)[1] != '.a':
+                                lib_found_fullpath = lib_file_path
+                                self.ctx.warn_once("[WARN] shared library {} not found, but found '{}' instead. Assuming that this is the correct version.".format(lib_filename, check))
+                                break
+                    if lib_found_fullpath:
+                        break
 
             if lib_found_fullpath is None:
                 if is_required:

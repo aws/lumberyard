@@ -62,11 +62,18 @@ namespace EMotionFX
             AZ_CLASS_ALLOCATOR_DECL
 
             UniqueData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
-                : AnimGraphNodeData(node, animGraphInstance)     { mNodeIndex = MCORE_INVALIDINDEX32; mMustUpdate = true; mIsValid = false; mFirstUpdate = true; mTimeDelta = 0.0f; }
+                : AnimGraphNodeData(node, animGraphInstance)
+                , mRotationQuat(AZ::Quaternion::CreateIdentity())
+                , mNodeIndex(MCORE_INVALIDINDEX32)
+                , mMustUpdate(true)
+                , mIsValid(false)
+                , mFirstUpdate(true)
+                , mTimeDelta(0.0f)
+            {}
             ~UniqueData() {}
 
         public:
-            MCore::Quaternion mRotationQuat;
+            AZ::Quaternion mRotationQuat;
             float       mTimeDelta;
             uint32      mNodeIndex;
             bool        mMustUpdate;

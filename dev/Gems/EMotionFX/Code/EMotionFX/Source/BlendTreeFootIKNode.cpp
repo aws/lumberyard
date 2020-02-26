@@ -101,9 +101,18 @@ namespace EMotionFX
         return AnimGraphObject::CATEGORY_CONTROLLERS;
     }
 
+    float BlendTreeFootIKNode::GetActorInstanceScale(const ActorInstance* actorInstance) const
+    {
+        #ifndef EMFX_SCALE_DISABLED
+            return actorInstance->GetWorldSpaceTransform().mScale.GetZ();
+        #else
+            return 1.0f;
+        #endif
+    }
+
     float BlendTreeFootIKNode::GetFootHeightOffset(AnimGraphInstance* animGraphInstance) const
     {
-        const float actorInstanceScale = animGraphInstance->GetActorInstance()->GetWorldSpaceTransform().mScale.GetZ();
+        const float actorInstanceScale = GetActorInstanceScale(animGraphInstance->GetActorInstance());
         MCore::AttributeFloat* input = GetInputFloat(animGraphInstance, INPUTPORT_FOOTHEIGHT);
         return input ? input->GetValue() * actorInstanceScale : m_footHeightOffset * actorInstanceScale;
     }
@@ -116,14 +125,14 @@ namespace EMotionFX
 
     float BlendTreeFootIKNode::GetMaxHipAdjustment(AnimGraphInstance* animGraphInstance) const
     {
-        const float actorInstanceScale = animGraphInstance->GetActorInstance()->GetWorldSpaceTransform().mScale.GetZ();
+        const float actorInstanceScale = GetActorInstanceScale(animGraphInstance->GetActorInstance());
         MCore::AttributeFloat* input = GetInputFloat(animGraphInstance, INPUTPORT_MAXHIPADJUST);
         return input ? input->GetValue() * actorInstanceScale : m_maxHipAdjustment * actorInstanceScale;
     }
 
     float BlendTreeFootIKNode::GetMaxFootAdjustment(AnimGraphInstance* animGraphInstance) const
     {
-        const float actorInstanceScale = animGraphInstance->GetActorInstance()->GetWorldSpaceTransform().mScale.GetZ();
+        const float actorInstanceScale = GetActorInstanceScale(animGraphInstance->GetActorInstance());
         MCore::AttributeFloat* input = GetInputFloat(animGraphInstance, INPUTPORT_MAXFOOTADJUST);
         return input ? input->GetValue() * actorInstanceScale : m_maxFootAdjustment * actorInstanceScale;
     }
@@ -230,7 +239,7 @@ namespace EMotionFX
             }
 
             // Try to find the hip joint.
-            if (m_hipJointName.empty() || !skeleton->FindNodeAndIndexByName(m_hipJointName, uniqueData->m_hipJointIndex))
+            if ( (m_hipJointName.empty() || !skeleton->FindNodeAndIndexByName(m_hipJointName, uniqueData->m_hipJointIndex)) && !GetEMotionFX().GetEnableServerOptimization())
             {
                 AZ_Error("EMotionFX", false, "Anim graph footplant IK node '%s' cannot find hip joint named '%s'", GetName(), m_hipJointName.c_str());
                 return;
@@ -266,16 +275,15 @@ namespace EMotionFX
         const float e = MCore::Math::SafeSqrt(square);
 
         const AZ::Vector3 solution(d, e, 0);
-        MCore::Matrix matForward;
-        matForward.Identity();
+        AZ::Matrix3x3 matForward = AZ::Matrix3x3::CreateIdentity();
         CalculateMatrix(localGoal, bendDir, &matForward);
 
-        *outMidPos = posA + matForward.Mul3x3(solution);
+        *outMidPos = posA + solution * matForward;
         return (d > MCore::Math::epsilon && d < lengthA + MCore::Math::epsilon);
     }
 
     // Calculate the matrix to rotate the solve plane.
-    void BlendTreeFootIKNode::CalculateMatrix(const AZ::Vector3& goal, const AZ::Vector3& bendDir, MCore::Matrix* outForward)
+    void BlendTreeFootIKNode::CalculateMatrix(const AZ::Vector3& goal, const AZ::Vector3& bendDir, AZ::Matrix3x3* outForward)
     {
         const AZ::Vector3 x = MCore::SafeNormalize(goal);
         const float dot = bendDir.Dot(x);
@@ -319,7 +327,7 @@ namespace EMotionFX
         }
 
         // Scale the height offset by the actor instance scale.
-        const float actorInstanceScale = animGraphInstance->GetActorInstance()->GetWorldSpaceTransform().mScale.GetZ();
+        const float actorInstanceScale = GetActorInstanceScale(animGraphInstance->GetActorInstance());
         float heightOffset = GetFootHeightOffset(animGraphInstance);
         if (jointId == LegJointId::Foot)
         {
@@ -423,7 +431,7 @@ namespace EMotionFX
     {
         const Leg& leg = solveParams.m_uniqueData->m_legs[legId];
 
-        AZ::Quaternion result = MCore::EmfxQuatToAzQuat(solveParams.m_outputPose->GetWorldSpaceTransform(leg.m_jointIndices[LegJointId::Foot]).mRotation);
+        AZ::Quaternion result = solveParams.m_outputPose->GetWorldSpaceTransform(leg.m_jointIndices[LegJointId::Foot]).mRotation;
         const bool footDown = leg.IsFlagEnabled(LegFlags::FootDown);
         const bool toeDown = leg.IsFlagEnabled(LegFlags::ToeDown);
         const float weight = leg.m_weight * solveParams.m_weight;
@@ -456,7 +464,7 @@ namespace EMotionFX
                 // Apply a delta rotation to the foot.
                 Transform newTransform = solveParams.m_outputPose->GetWorldSpaceTransform(footIndex);
                 const AZ::Quaternion deltaRot = AZ::Quaternion::CreateShortestArc(oldToToe, newToToe);
-                result = deltaRot * MCore::EmfxQuatToAzQuat(newTransform.mRotation);
+                result = deltaRot * newTransform.mRotation;
             }
             else if (footDown)
             {
@@ -478,7 +486,7 @@ namespace EMotionFX
                 // Apply a delta rotation to the foot.
                 Transform newTransform = solveParams.m_outputPose->GetWorldSpaceTransform(footIndex);
                 const AZ::Quaternion deltaRot = AZ::Quaternion::CreateShortestArc(oldToToe, newToToe);
-                result = deltaRot * MCore::EmfxQuatToAzQuat(newTransform.mRotation);
+                result = deltaRot * newTransform.mRotation;
             }
 
             // Visualize some debug things in the viewport.
@@ -562,7 +570,7 @@ namespace EMotionFX
         bool justLocked = false;
         if (!solveParams.m_forceIKDisabled && ikEnabled)
         {
-            const float actorInstanceScale = solveParams.m_actorInstance->GetWorldSpaceTransform().mScale.GetZ();
+            const float actorInstanceScale = GetActorInstanceScale(solveParams.m_actorInstance);
             const float surfaceOffset = s_surfaceThreshold * actorInstanceScale;
             footDown = solveParams.m_intersections[legId].m_footResult.m_intersected ? IsBelowSurface(inputGlobalTransforms[LegJointId::Foot].mPosition, footTargetPosition, solveParams.m_intersections[legId].m_footResult.m_normal, surfaceOffset) : false;
             toeDown = solveParams.m_intersections[legId].m_toeResult.m_intersected ? IsBelowSurface(inputGlobalTransforms[LegJointId::Toe].mPosition, toeTargetPosition, solveParams.m_intersections[legId].m_toeResult.m_normal, surfaceOffset) : false;
@@ -650,7 +658,7 @@ namespace EMotionFX
         AZ::Vector3 oldForward = (inputGlobalTransforms[LegJointId::Knee].mPosition - inputGlobalTransforms[LegJointId::UpperLeg].mPosition).GetNormalizedSafeExact();
         AZ::Vector3 newForward = (kneePos - inputGlobalTransforms[LegJointId::UpperLeg].mPosition).GetNormalizedSafeExact();
         Transform newTransform = inputGlobalTransforms[LegJointId::UpperLeg];
-        newTransform.mRotation.RotateFromTo(oldForward, newForward);
+        MCore::RotateFromTo(newTransform.mRotation, oldForward, newForward);
         solveParams.m_outputPose->SetWorldSpaceTransform(upperLegIndex, newTransform);
 
         // Update the knee.
@@ -658,13 +666,13 @@ namespace EMotionFX
         oldForward = (footPos - kneePos).GetNormalizedExact();
         newForward = (footTargetPosition - kneePos).GetNormalizedSafeExact();
         newTransform = solveParams.m_outputPose->GetWorldSpaceTransform(leg.m_jointIndices[LegJointId::Knee]);
-        newTransform.mRotation.RotateFromTo(oldForward, newForward);
+        MCore::RotateFromTo(newTransform.mRotation, oldForward, newForward);
         newTransform.mPosition = kneePos;
         solveParams.m_outputPose->SetWorldSpaceTransform(kneeIndex, newTransform);
 
         if (leg.IsFlagEnabled(LegFlags::FirstUpdate))
         {
-            leg.m_currentFootRot = MCore::EmfxQuatToAzQuat(inputGlobalTransforms[LegJointId::Foot].mRotation);
+            leg.m_currentFootRot = inputGlobalTransforms[LegJointId::Foot].mRotation;
             leg.DisableFlag(LegFlags::FirstUpdate);
         }
 
@@ -694,7 +702,7 @@ namespace EMotionFX
             blendT = 1.0f;
         }
         leg.m_currentFootRot = leg.m_currentFootRot.NLerp(footRotation, blendT);
-        footTransform.mRotation = MCore::AzQuatToEmfxQuat(leg.m_currentFootRot);
+        footTransform.mRotation = leg.m_currentFootRot;
         solveParams.m_outputPose->SetWorldSpaceTransform(footIndex, footTransform);
 
         // Draw debug lines.
@@ -864,8 +872,8 @@ namespace EMotionFX
             weight = MCore::Clamp<float>(weight, 0.0f, 1.0f);
         }
 
-        // If the weight is near zero or if this node is disabled, we can skip all calculations and just output the input pose.
-        if (weight < MCore::Math::epsilon || mDisabled)
+        // If the weight is near zero or if this node is disabled or if the node is enable for server optimization, we can skip all calculations and just output the input pose.
+        if (weight < MCore::Math::epsilon || mDisabled || GetEMotionFX().GetEnableServerOptimization())
         {
             OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_POSE));
             const AnimGraphPose* inputPose = GetInputPose(animGraphInstance, INPUTPORT_POSE)->GetValue();

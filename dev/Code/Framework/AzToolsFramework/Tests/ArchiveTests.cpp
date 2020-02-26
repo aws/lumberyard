@@ -12,10 +12,10 @@
 
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/Asset/AssetManagerBus.h>
-#include <AzCore/Math/UUID.h>
+#include <AzCore/Math/Uuid.h>
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
-#include <AzTestShared/Utils/Utils.h>
+#include <Tests/AZTestShared/Utils/Utils.h>
 #include <AzToolsFramework/Archive/ArchiveAPI.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
 #include <AzFramework/StringFunc/StringFunc.h>

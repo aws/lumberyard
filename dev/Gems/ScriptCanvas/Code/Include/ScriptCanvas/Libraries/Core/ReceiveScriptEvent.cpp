@@ -237,36 +237,40 @@ namespace ScriptCanvas
 
                     // Get the name and tooltip from the script event definition
                     size_t eventParamIndex = parameterIndex - AZ::eBehaviorBusForwarderEventIndices::ParameterFirst;
-                    AZStd::string argName = methodDefinition.GetParameters()[eventParamIndex].GetName();
-                    AZStd::string argToolTip = methodDefinition.GetParameters()[eventParamIndex].GetTooltip();
-                    AZ::Uuid argIdentifier = methodDefinition.GetParameters()[eventParamIndex].GetNameProperty().GetId();
-
-                    if (argName.empty())
+                    const auto& parameterDefinitions = methodDefinition.GetParameters();
+                    if (!parameterDefinitions.empty())
                     {
-                        argName = AZStd::string::format("%s", Data::GetName(outputType).c_str());
-                    }
+                        AZStd::string argName = parameterDefinitions[eventParamIndex].GetName();
+                        AZStd::string argToolTip = parameterDefinitions[eventParamIndex].GetTooltip();
+                        AZ::Uuid argIdentifier = parameterDefinitions[eventParamIndex].GetNameProperty().GetId();
 
-                    DataSlotConfiguration slotConfiguration;
-                    slotConfiguration.m_name = argName;
-                    slotConfiguration.m_toolTip = argToolTip;
-                    slotConfiguration.SetConnectionType(ConnectionType::Output);
-                    slotConfiguration.m_addUniqueSlotByNameAndType = false;
+                        if (argName.empty())
+                        {
+                            argName = AZStd::string::format("%s", Data::GetName(outputType).c_str());
+                        }
 
-                    auto remappingIdIter = m_eventSlotMapping.find(argIdentifier);
+                        DataSlotConfiguration slotConfiguration;
+                        slotConfiguration.m_name = argName;
+                        slotConfiguration.m_toolTip = argToolTip;
+                        slotConfiguration.SetConnectionType(ConnectionType::Output);
+                        slotConfiguration.m_addUniqueSlotByNameAndType = false;
 
-                    if (remappingIdIter != m_eventSlotMapping.end())
-                    {
-                        slotConfiguration.m_slotId = remappingIdIter->second;
-                    }
+                        auto remappingIdIter = m_eventSlotMapping.find(argIdentifier);
 
-                    slotConfiguration.SetType(outputType);
+                        if (remappingIdIter != m_eventSlotMapping.end())
+                        {
+                            slotConfiguration.m_slotId = remappingIdIter->second;
+                        }
 
-                    SlotId slotId = AddSlot(slotConfiguration);
+                        slotConfiguration.SetType(outputType);
 
-                    AZ_Error("ScriptCanvas", populationMapping.find(argIdentifier) == populationMapping.end(), "Trying to create the same slot twice. Unable to create sane mapping.");
+                        SlotId slotId = AddSlot(slotConfiguration);
+
+                        AZ_Error("ScriptCanvas", populationMapping.find(argIdentifier) == populationMapping.end(), "Trying to create the same slot twice. Unable to create sane mapping.");
                     
-                    populationMapping[argIdentifier] = slotId;
-                    eBusEventEntry.m_parameterSlotIds.push_back(slotId);
+                        populationMapping[argIdentifier] = slotId;
+                        eBusEventEntry.m_parameterSlotIds.push_back(slotId);
+                    }
                 }
 
                 const AZStd::string eventID(AZStd::string::format("ExecutionSlot:%s", event.m_name));

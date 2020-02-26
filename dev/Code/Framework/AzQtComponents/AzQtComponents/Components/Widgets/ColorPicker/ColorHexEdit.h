@@ -22,10 +22,10 @@ namespace AzQtComponents
         : public QWidget
     {
         Q_OBJECT
-        Q_PROPERTY(qreal red READ red WRITE setRed NOTIFY redChanged);
-        Q_PROPERTY(qreal green READ green WRITE setGreen NOTIFY greenChanged);
-        Q_PROPERTY(qreal blue READ blue WRITE setBlue NOTIFY blueChanged);
-        Q_PROPERTY(qreal alpha READ alpha WRITE setAlpha NOTIFY alphaChanged);
+        Q_PROPERTY(qreal red READ red WRITE setRed NOTIFY redChanged)
+        Q_PROPERTY(qreal green READ green WRITE setGreen NOTIFY greenChanged)
+        Q_PROPERTY(qreal blue READ blue WRITE setBlue NOTIFY blueChanged)
+        Q_PROPERTY(qreal alpha READ alpha WRITE setAlpha NOTIFY alphaChanged)
 
     public:
         struct ParsedColor

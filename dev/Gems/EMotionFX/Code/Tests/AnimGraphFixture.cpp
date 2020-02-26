@@ -41,16 +41,10 @@ namespace EMotionFX
         // 3) will create an empty motion set
         // 4) will instantiate the actor and animation graph
         {
-            m_actor = Actor::Create("testActor");
-            Node* rootNode = Node::Create("rootNode", m_actor->GetSkeleton());
-            m_actor->AddNode(rootNode);
-            m_actor->GetSkeleton()->UpdateNodeIndexValues(0);
-            Pose& actorBindPose = *m_actor->GetBindPose();
-            EMotionFX::Transform identity;
-            identity.Identity();
-            actorBindPose.SetModelSpaceTransform(0, identity);
+            ConstructActor();
+            ASSERT_TRUE(m_actor) << "Construct actor did not build a valid actor.";
             m_actor->ResizeTransformData();
-            m_actor->PostCreateInit();
+            m_actor->PostCreateInit(/*makeGeomLodsCompatibleWithSkeletalLODs=*/false, /*generateOBBs=*/false, /*convertUnitType=*/false);
         }
         {
             m_motionSet = aznew MotionSet("testMotionSet");
@@ -74,6 +68,18 @@ namespace EMotionFX
         m_rootStateMachine = aznew AnimGraphStateMachine();
         m_rootStateMachine->SetName("Root");
         m_animGraph->SetRootStateMachine(m_rootStateMachine);
+    }
+
+    void AnimGraphFixture::ConstructActor()
+    {
+        m_actor = Actor::Create("testActor");
+        Node* rootNode = Node::Create("rootNode", m_actor->GetSkeleton());
+        m_actor->AddNode(rootNode);
+        m_actor->GetSkeleton()->UpdateNodeIndexValues(0);
+        Pose& actorBindPose = *m_actor->GetBindPose();
+        EMotionFX::Transform identity;
+        identity.Identity();
+        actorBindPose.SetModelSpaceTransform(0, identity);
     }
 
     AZStd::string AnimGraphFixture::SerializeAnimGraph() const

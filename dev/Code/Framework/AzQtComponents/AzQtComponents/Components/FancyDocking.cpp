@@ -1086,14 +1086,10 @@ namespace AzQtComponents
                 shouldStartDrag = !tabBar->rect().contains(tabBar->mapFromGlobal(globalPos));
 
                 // If the tab has been ripped out, we need to reset the tab widget's
-                // internal drag state and update our tab index to the current
-                // active tab because the initially pressed index could have changed
-                // by now if the user dragged the tab inside the tab header,
-                // resulting in the tabs being re-ordered
+                // internal drag state
                 if (shouldStartDrag)
                 {
                     m_state.tabWidget->finishDrag();
-                    m_state.tabIndex = m_state.tabWidget->currentIndex();
                 }
                 // Otherwise, the mouse is still being dragged inside the tab header
                 // area, so pass the mouse event along to the tab widget so it can
@@ -1170,32 +1166,13 @@ namespace AzQtComponents
             }
             // Otherwise, we need to hide the original widget while we are dragging
             // around the placeholder. Actual hiding it would minimize the dock
-            // window, so instead we need to replace it with an empty QWidget.
-            else
+            // window, so instead we need to replace it with an empty QWidget,
+            // and save the original content widget so we can restore it later
+            else if (m_state.draggedDockWidget)
             {
-                // If the dock widget is tabbed, then we need to grab the dock widget
-                // from the tab widget
-                QDockWidget* draggedDockWidget = nullptr;
-                if (m_state.tabWidget && m_state.tabIndex != -1)
-                {
-                    draggedDockWidget = qobject_cast<StyledDockWidget*>(m_state.tabWidget->widget(m_state.tabIndex));
-                }
-                // Otherwise, dock (same as m_state.dock) will be the actual dock
-                // widget that is being dragged, so use that
-                else
-                {
-                    draggedDockWidget = dock;
-                }
-
-                // Hide the dock widgets contents, and save its content widget
-                // so we can restore it later
-                if (draggedDockWidget)
-                {
-                    m_state.draggedDockWidget = draggedDockWidget;
-                    m_state.draggedWidget = draggedDockWidget->widget();
-                    draggedDockWidget->setWidget(m_emptyWidget);
-                    m_emptyWidget->show();
-                }
+                m_state.draggedWidget = m_state.draggedDockWidget->widget();
+                m_state.draggedDockWidget->setWidget(m_emptyWidget);
+                m_emptyWidget->show();
             }
 
             m_dropZoneState.setDragging(true);
@@ -1234,21 +1211,10 @@ namespace AzQtComponents
                 .translated(globalPos - dock->mapToGlobal(m_state.pressPos))
                 .translated(dock->isWindow() ? QPoint() : dock->parentWidget()->mapToGlobal(QPoint())));
 
-            QWidget* draggedDockWidget = m_state.dock;
-
-            if (m_state.tabWidget)
-            {
-                QWidget* widget = m_state.tabWidget->widget(m_state.tabIndex);
-                if (widget)
-                {
-                    draggedDockWidget = widget;
-                }
-            }
-
             // If we restored the last floating screen grab for this dock widget,
             // then we need to change the placeholder size and update the X coordinate
             // to account for the extrapolated mouse press position
-            if (draggedDockWidget && m_lastFloatingScreenGrab.contains(draggedDockWidget->objectName()))
+            if (m_state.draggedDockWidget && m_lastFloatingScreenGrab.contains(m_state.draggedDockWidget->objectName()))
             {
                 QSize lastFloatingSize = m_state.dockWidgetScreenGrab.size;
                 int pressPosX = m_state.pressPos.x();
@@ -1556,34 +1522,35 @@ namespace AzQtComponents
             dock = childDockWidget;
         }
 
-        QWidget* draggedWidget = dock;
+        QDockWidget* draggedDockWidget = dock;
         m_state.dock = dock;
 
         // If we are dragging a tab widget, then get a reference to the appropriate widget
         // so we can get the screen grab of just that tab
         if (tabIndex != -1 && m_state.tabWidget)
         {
-            QWidget* widget = m_state.tabWidget->widget(tabIndex);
+            QDockWidget* widget = qobject_cast<QDockWidget*>(m_state.tabWidget->widget(tabIndex));
             if (widget)
             {
-                draggedWidget = widget;
+                draggedDockWidget = widget;
             }
         }
+
+        m_state.draggedDockWidget = draggedDockWidget;
 
         // If we have cached the last floating screen grab for this dock widget,
         // then retrieve it here, otherwise retrieve a screen grab from the dock
         // widget itself
-        QString paneName = draggedWidget->objectName();
+        QString paneName = draggedDockWidget->objectName();
         if (m_lastFloatingScreenGrab.contains(paneName))
         {
             m_state.dockWidgetScreenGrab = m_lastFloatingScreenGrab[paneName];
         }
         else
         {
-            m_state.dockWidgetScreenGrab = { draggedWidget->grab(), draggedWidget->size() };
+            m_state.dockWidgetScreenGrab = { draggedDockWidget->grab(), draggedDockWidget->size() };
         }
 
-        m_state.tabIndex = tabIndex;
         m_state.pressPos = pressPos;
         m_dropZoneState.setDragging(false);
         setupDropZones(nullptr);
@@ -1760,7 +1727,6 @@ namespace AzQtComponents
             // Set the necessary drag state parameters so that we can undock the
             // given dock widget from the tab widget
             m_state.tabWidget = tabWidget;
-            m_state.tabIndex = index;
             dockWidget = qobject_cast<QDockWidget*>(tabWidget->widget(index));
         }
 
@@ -1816,6 +1782,9 @@ namespace AzQtComponents
         QScreen* screen = m_desktopScreens[screenIndex];
         m_state.setPlaceholder(QRect(newPosition, newSize), screen);
         updateFloatingPixmap();
+
+        // Set the widget as being dragged
+        m_state.draggedDockWidget = dockWidget;
 
         // Undock the dock widget
         dropDockWidget(dockWidget, nullptr, Qt::NoDockWidgetArea);
@@ -1957,6 +1926,11 @@ namespace AzQtComponents
         dock->setProperty(g_AutoSavePropertyName, false);
     }
 
+    bool FancyDocking::IsDockWidgetBeingDragged(QDockWidget* dock)
+    {
+        return m_state.draggedDockWidget == dock;
+    }
+
     /**
      * Dock a QDockWidget onto a QDockWidget or a QMainWindow
      * NOTE: This method is responsible for calling clearDraggingState() when it has
@@ -1969,11 +1943,17 @@ namespace AzQtComponents
         // cache of widget <-> tab container since we are moving it somewhere else.
         if (m_state.tabWidget)
         {
-            int index = m_state.tabIndex;
-            StyledDockWidget* dockWidget = qobject_cast<StyledDockWidget*>(m_state.tabWidget->widget(index));
-            m_lastTabContainerForDockWidget.remove(dockWidget->objectName());
-            m_state.tabWidget->removeTab(index);
-            dock = dockWidget;
+            if (m_state.draggedDockWidget)
+            {
+                m_lastTabContainerForDockWidget.remove(m_state.draggedDockWidget->objectName());
+                m_state.tabWidget->removeTab(m_state.draggedDockWidget);
+                dock = m_state.draggedDockWidget;
+            }
+            else
+            {
+                m_lastTabContainerForDockWidget.remove(dock->objectName());
+                m_state.tabWidget->removeTab(dock);
+            }
         }
 
         if (area == Qt::NoDockWidgetArea)
@@ -3045,7 +3025,14 @@ namespace AzQtComponents
         // single tab which would result in the tab container being destroyed
         if (m_state.draggedDockWidget)
         {
-            m_state.draggedDockWidget->setWidget(m_state.draggedWidget);
+            // If the drag was cancelled before the mouse had actually moved far enough to
+            // initiate the drag (manhattan length), then we don't need to restore the actual
+            // dock widget contents since they will have remained unchanged
+            if (m_state.draggedWidget)
+            {
+                m_state.draggedDockWidget->setWidget(m_state.draggedWidget);
+            }
+
             m_state.draggedDockWidget = nullptr;
             m_state.draggedWidget = nullptr;
             m_emptyWidget->hide();
@@ -3076,7 +3063,6 @@ namespace AzQtComponents
         m_state.dock = nullptr;
         m_dropZoneState.setDragging(false);
         m_state.tabWidget = nullptr;
-        m_state.tabIndex = -1;
         m_state.setPlaceholder(QRect(), nullptr);
         m_state.floatingDockContainer = nullptr;
         m_state.snappedSide = 0;

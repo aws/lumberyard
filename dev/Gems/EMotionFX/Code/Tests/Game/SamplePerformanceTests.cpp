@@ -13,7 +13,7 @@
 
 #include <Tests/Game/SampleGameFixture.h>
 #include <AzCore/Debug/Timer.h>
-#include <AzCore/Math/random.h>
+#include <AzCore/Math/Random.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/ActorManager.h>

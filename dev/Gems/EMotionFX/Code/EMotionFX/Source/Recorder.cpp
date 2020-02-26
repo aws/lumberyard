@@ -29,7 +29,8 @@
 #include <MCore/Source/AzCoreConversions.h>
 #include <MCore/Source/Compare.h>
 #include <MCore/Source/DiskFile.h>
-#include <MCore/Source/Matrix4.h>
+#include <MCore/Source/Compare.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/ReflectionSerializer.h>
 
 
@@ -503,7 +504,7 @@ namespace EMotionFX
             const Transform& transform = actorInstance->GetLocalSpaceTransform();
 
         #ifndef EMFX_SCALE_DISABLED
-            AddTransformKey(actorInstanceData->mActorLocalTransform, transform.mPosition, EmfxQuatToAzQuat(transform.mRotation), transform.mScale);
+            AddTransformKey(actorInstanceData->mActorLocalTransform, transform.mPosition, transform.mRotation, transform.mScale);
         #else
             AddTransformKey(actorInstanceData->mActorLocalTransform, transform.mPosition, transform.mRotation, AZ::Vector3(1.0f, 1.0f, 1.0f));
         #endif
@@ -526,9 +527,9 @@ namespace EMotionFX
                     const Transform& localTransform = transformData->GetCurrentPose()->GetLocalSpaceTransform(n);
 
                 #ifndef EMFX_SCALE_DISABLED
-                    AddTransformKey(actorInstanceData->m_transformTracks[n], localTransform.mPosition, EmfxQuatToAzQuat(localTransform.mRotation), localTransform.mScale);
+                    AddTransformKey(actorInstanceData->m_transformTracks[n], localTransform.mPosition, localTransform.mRotation, localTransform.mScale);
                 #else
-                    AddTransformKey(actorInstanceData->m_transformTracks[n], localTransform.mPosition, EmfxQuatToAzQuat(localTransform.mRotation), AZ::Vector3(1.0f, 1.0f, 1.0f));
+                    AddTransformKey(actorInstanceData->m_transformTracks[n], localTransform.mPosition, localTransform.mRotation, AZ::Vector3(1.0f, 1.0f, 1.0f));
                 #endif
                 }
             }
@@ -806,7 +807,7 @@ namespace EMotionFX
         // sample and apply
         const TransformTracks& track = actorInstanceData.mActorLocalTransform;
         actorInstance->SetLocalSpacePosition(track.mPositions.GetValueAtTime(timeInSeconds, nullptr, nullptr, mRecordSettings.mInterpolate));
-        actorInstance->SetLocalSpaceRotation(MCore::AzQuatToEmfxQuat(track.mRotations.GetValueAtTime(timeInSeconds, nullptr, nullptr, mRecordSettings.mInterpolate)));
+        actorInstance->SetLocalSpaceRotation(track.mRotations.GetValueAtTime(timeInSeconds, nullptr, nullptr, mRecordSettings.mInterpolate));
         EMFX_SCALECODE
         (
             if (mRecordSettings.mRecordScale)
@@ -833,8 +834,8 @@ namespace EMotionFX
             const TransformTracks& track = actorInstanceData.m_transformTracks[n];
 
             // build the output transform by sampling the keytracks
-            outTransform.mPosition = track.mPositions.GetValueAtTime(timeInSeconds, nullptr, nullptr, mRecordSettings.mInterpolate);
-            outTransform.mRotation = MCore::AzQuatToEmfxQuat(track.mRotations.GetValueAtTime(timeInSeconds, nullptr, nullptr, mRecordSettings.mInterpolate));
+            outTransform.mPosition      = track.mPositions.GetValueAtTime(timeInSeconds);
+            outTransform.mRotation      = track.mRotations.GetValueAtTime(timeInSeconds);
 
             EMFX_SCALECODE
             (

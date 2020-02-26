@@ -15,7 +15,6 @@
 // include the required headers
 #include "StandardHeaders.h"
 #include "Attribute.h"
-#include "Vector.h"
 #include "StringConversions.h"
 #include <MCore/Source/AttributeAllocator.h>
 
@@ -39,15 +38,15 @@ namespace MCore
         };
 
         static AttributeVector3* Create();
-        static AttributeVector3* Create(const AZ::PackedVector3f& value);
+        static AttributeVector3* Create(const AZ::Vector3& value);
         static AttributeVector3* Create(float x, float y, float z);
 
         MCORE_INLINE uint8* GetRawDataPointer()                     { return reinterpret_cast<uint8*>(&mValue); }
-        MCORE_INLINE uint32 GetRawDataSize() const                  { return sizeof(AZ::PackedVector3f); }
+        MCORE_INLINE uint32 GetRawDataSize() const                  { return sizeof(AZ::Vector3); }
 
         // adjust values
-        MCORE_INLINE const AZ::PackedVector3f& GetValue() const     { return mValue; }
-        MCORE_INLINE void SetValue(const AZ::PackedVector3f& value) { mValue = value; }
+        MCORE_INLINE const AZ::Vector3& GetValue() const     { return mValue; }
+        MCORE_INLINE void SetValue(const AZ::Vector3& value) { mValue = value; }
 
         // overloaded from the attribute base class
         Attribute* Clone() const override                           { return AttributeVector3::Create(mValue); }
@@ -71,12 +70,12 @@ namespace MCore
             mValue.Set(vec3.GetX(), vec3.GetY(), vec3.GetZ());
             return true;
         }
-        bool ConvertToString(AZStd::string& outString) const override      { AZStd::to_string(outString, AZ::Vector3(mValue)); return true; }
+        bool ConvertToString(AZStd::string& outString) const override      { AZStd::to_string(outString, mValue); return true; }
         uint32 GetClassSize() const override                        { return sizeof(AttributeVector3); }
         uint32 GetDefaultInterfaceType() const override             { return ATTRIBUTE_INTERFACETYPE_VECTOR3; }
 
     private:
-        AZ::PackedVector3f  mValue;     /**< The Vector3 value. */
+        AZ::Vector3  mValue;     /**< The Vector3 value. */
 
         AttributeVector3()
             : Attribute(TYPE_ID)                    { mValue.Set(0.0f, 0.0f, 0.0f); }
@@ -85,7 +84,7 @@ namespace MCore
             , mValue(value)     { }
         ~AttributeVector3() { }
 
-        uint32 GetDataSize() const override                         { return sizeof(AZ::PackedVector3f); }
+        uint32 GetDataSize() const override                         { return sizeof(AZ::Vector3); }
 
         // read from a stream
         bool ReadData(MCore::Stream* stream, MCore::Endian::EEndianType streamEndianType, uint8 version) override
@@ -100,8 +99,8 @@ namespace MCore
             }
 
             // convert endian
-            Endian::ConvertVector3(&streamValue, streamEndianType);
-            mValue = streamValue;
+            mValue = AZ::Vector3(streamValue.GetX(), streamValue.GetY(), streamValue.GetZ());
+            Endian::ConvertVector3(&mValue, streamEndianType);
 
             return true;
         }

@@ -15,7 +15,7 @@
 #include <AzCore/Component/Component.h>
 #include <LmbrCentral/Dependency/DependencyNotificationBus.h>
 #include <Vegetation/Ebuses/AreaConfigRequestBus.h>
-#include <Vegetation/EBuses/AreaNotificationBus.h>
+#include <Vegetation/Ebuses/AreaNotificationBus.h>
 #include <Vegetation/Ebuses/AreaRequestBus.h>
 #include <Vegetation/Ebuses/AreaInfoBus.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>

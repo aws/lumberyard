@@ -98,10 +98,11 @@ namespace EMotionFX
                 /*postCallback*/[this](AnimGraphInstance* animGraphInstance)
                 {
                     const int numStates = GetParam().m_numStates;
-                    EXPECT_EQ(this->m_eventHandler->m_numStatesEntering, numStates);
-                    EXPECT_EQ(this->m_eventHandler->m_numStatesEntered, numStates);
-                    EXPECT_EQ(this->m_eventHandler->m_numStatesExited, numStates);
-                    EXPECT_EQ(this->m_eventHandler->m_numStatesEnded, numStates);
+                    const int numExpectedEvents = numStates + 1 /*numDeferEnter*/; // +1 because we defer the entering to entrance state at the beginning of update.
+                    EXPECT_EQ(this->m_eventHandler->m_numStatesEntering, numExpectedEvents);
+                    EXPECT_EQ(this->m_eventHandler->m_numStatesEntered, numExpectedEvents);
+                    EXPECT_EQ(this->m_eventHandler->m_numStatesExited, numExpectedEvents);
+                    EXPECT_EQ(this->m_eventHandler->m_numStatesEnded, numExpectedEvents);
                     EXPECT_EQ(this->m_eventHandler->m_numTransitionsStarted, numStates);
                     EXPECT_EQ(this->m_eventHandler->m_numTransitionsEnded, numStates);
                 },
@@ -115,7 +116,7 @@ namespace EMotionFX
                 m_rootStateMachine->Rewind(m_animGraphInstance);
                 GetEMotionFX().Update(1.0f/expectedFps);
 
-                const int numExpectedEvents = numStates + 1;
+                const int numExpectedEvents = numStates + 1 /*rewind*/ + 2 /*numDeferEnter*/;
                 EXPECT_EQ(this->m_eventHandler->m_numStatesEntering, numExpectedEvents);
                 EXPECT_EQ(this->m_eventHandler->m_numStatesEntered, numExpectedEvents);
                 EXPECT_EQ(this->m_eventHandler->m_numStatesExited, numExpectedEvents);

@@ -1,16 +1,20 @@
 {
     "platform": {
-        "linux_x64": {
+       "linux_x64": {
             "libpath": [
-                "lib/linux",
-                "@3P:hdf5@/lib/linux",
-                "@3P:ilmbase@/lib/linux"
+                "lib/Linux",
+                "@3P:hdf5@/lib/Linux",
+                "@3P:ilmbase@/lib/Linux"
             ],
             "lib_debug": [
-                "lib${lib_names}.a"
+                "lib${alembic_libs}.a",
+                "lib${ilmbase_libs}.a",
+                "${hdf5_libs}.a"
             ],
             "lib_release": [
-                "lib${lib_names}.a"
+                "lib${alembic_libs}.a",
+                "lib${ilmbase_libs}.a",
+                "${hdf5_libs}.a"
             ]
         }
     }

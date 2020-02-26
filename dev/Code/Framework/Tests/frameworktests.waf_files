@@ -26,6 +26,7 @@
             "AssetProcessorConnection.cpp",
             "NetBindingSystemImplTest.cpp",
             "NetBindingMocks.h",
+            "NativeWindow.cpp",
             "TransformComponent.cpp",
             "GridMocks.h",
             "InterestManagerComponentTests.cpp",

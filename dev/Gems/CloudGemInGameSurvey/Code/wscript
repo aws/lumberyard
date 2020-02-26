@@ -26,11 +26,12 @@ def build(bld):
     bld.DefineGem(
         # Add custom build options here
         file_list = file_list,
-
+ 
+        includes  = [ '.',
+                      bld.ThirdPartyPath('boost'),
+                      bld.Path('Code/CryEngine/CryCommon')],
+        
         uselib = ['AWS_CPP_SDK_CORE', 'AWS_CPP_SDK_LAMBDA'],
 
         use = ['CloudGemFramework.StaticLibrary'],
-
-        includes = [bld.Path('Code/CryEngine/CryCommon')
-                   ],
     )

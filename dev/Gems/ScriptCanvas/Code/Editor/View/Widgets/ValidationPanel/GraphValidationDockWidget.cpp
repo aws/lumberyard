@@ -11,6 +11,8 @@
 */
 #include <precompiled.h>
 
+#include <QButtonGroup>
+
 #include <GraphCanvas/Components/Connections/ConnectionBus.h>
 #include <GraphCanvas/Components/GridBus.h>
 #include <GraphCanvas/Components/Nodes/NodeBus.h>

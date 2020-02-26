@@ -20,7 +20,7 @@
 #include <AzCore/IO/FileIO.h>
 
 #include <QBoxLayout>
-#include <QURL>
+#include <QUrl>
 #include <QDesktopServices>
 #include <QKeyEvent>
 #include <QPushButton>

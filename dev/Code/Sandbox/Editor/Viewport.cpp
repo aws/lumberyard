@@ -944,6 +944,11 @@ void QtViewport::setRenderOverlayVisible(bool visible)
     m_renderOverlay.setVisible(visible);
 }
 
+bool QtViewport::isRenderOverlayVisible() const
+{
+    return m_renderOverlay.isVisible();
+}
+
 //////////////////////////////////////////////////////////////////////////
 void QtViewport::MakeConstructionPlane(int axis)
 {

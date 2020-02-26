@@ -450,7 +450,48 @@ def wrap_compiled_task_clang(classname, eligible_compilers):
     derived_class.exec_command = exec_command
 
 
+def wrap_shlib_task_linux_clang(classname):
+    """
+    Wrap a shared library link task to support post-link validation of the shared object on linux
+    :param classname:   The name of the task class to wrap
+    """
+
+    if Utils.unversioned_sys_platform() != 'linux':
+        # Skip for non-linux platforms
+        return
+
+    derived_class = type(classname, (waflib.Task.classes[classname],), {})
+
+    def post_run(self):
+        if self.outputs:
+            error_msg_list = []
+            # Inspect all of the outputs and only process shared libraries (.so)
+            for output_node in self.outputs:
+                output_path_abs = output_node.abspath()
+                if not output_path_abs.lower().endswith('.so'):
+                    continue
+
+                # Run an 'ldd -r' command on the output shared library. The '-r' flag will process data and function
+                # relocation for the shared library and will uncover any undefined symbols that we may not catch
+                # during the linker process
+                output = subprocess.check_output(['ldd', '-r', output_path_abs])
+                output_lines = output.split('\n')
+                for output_line in output_lines:
+                    if output_line.startswith('undefined symbol:'):
+                        error_msg_list.append("Linux Clang Error for {}:\n\t{}\n".format(output_path_abs, output_line))
+
+            if error_msg_list:
+                self.err_msg = '\n'.join(error_msg_list)
+                raise Errors.BuildError([self])
+
+        waflib.Task.Task.post_run(self)
+
+    derived_class.post_run = post_run
+
+
 #############################################################################
 ## Wrap compile commands to track dependencies for these types of files
 for compile_task in ('c', 'cxx', 'pch_clang'):
     wrap_compiled_task_clang(compile_task, supported_compilers)
+
+wrap_shlib_task_linux_clang('cxxshlib')

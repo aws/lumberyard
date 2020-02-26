@@ -10,7 +10,6 @@
 *
 */
 
-
 #include "EMotionFX_precompiled.h"
 
 #include <AzCore/Component/Entity.h>
@@ -19,13 +18,17 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Asset/AssetManager.h>
+
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 
 #include <LmbrCentral/Physics/CryCharacterPhysicsBus.h>
+#include <LmbrCentral/Rendering/MeshComponentBus.h>
 
 #include <Integration/Editor/Components/EditorActorComponent.h>
 #include <Integration/AnimGraphComponentBus.h>
+#include <Integration/Rendering/RenderBackendManager.h>
 
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MainWindow.h>
@@ -33,16 +36,10 @@
 #include <EMotionFX/CommandSystem/Source/SelectionList.h>
 #include <MCore/Source/AzCoreConversions.h>
 
-#include <MathConversion.h>
-#include <IRenderAuxGeom.h>
-#include <Material/Material.h>
-
-
 namespace EMotionFX
 {
     namespace Integration
     {
-        //////////////////////////////////////////////////////////////////////////
         void EditorActorComponent::Reflect(AZ::ReflectContext* context)
         {
             auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -159,16 +156,15 @@ namespace EMotionFX
         {
             CreateActorInstance();
 
-            AzToolsFramework::EditorVisibilityRequestBus::EventResult(m_entityVisible, GetEntityId(), &AzToolsFramework::EditorVisibilityRequests::GetCurrentVisibility);
+            const AZ::EntityId entityId = GetEntityId();
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(
+                m_entityVisible, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsVisible);
 
-            ActorComponentRequestBus::Handler::BusConnect(GetEntityId());
-            EditorActorComponentRequestBus::Handler::BusConnect(GetEntityId());
-            LmbrCentral::MeshComponentRequestBus::Handler::BusConnect(GetEntityId());
-            LmbrCentral::RenderNodeRequestBus::Handler::BusConnect(GetEntityId());
-            LmbrCentral::MaterialOwnerRequestBus::Handler::BusConnect(GetEntityId());
-            LmbrCentral::AttachmentComponentNotificationBus::Handler::BusConnect(GetEntityId());
-            AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(GetEntityId());
-            AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusConnect(GetEntityId());
+            ActorComponentRequestBus::Handler::BusConnect(entityId);
+            EditorActorComponentRequestBus::Handler::BusConnect(entityId);
+            LmbrCentral::AttachmentComponentNotificationBus::Handler::BusConnect(entityId);
+            AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(entityId);
+            AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusConnect(entityId);
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -177,9 +173,6 @@ namespace EMotionFX
             AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusDisconnect();
             AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusDisconnect();
             LmbrCentral::AttachmentComponentNotificationBus::Handler::BusDisconnect();
-            LmbrCentral::MaterialOwnerRequestBus::Handler::BusDisconnect();
-            LmbrCentral::RenderNodeRequestBus::Handler::BusDisconnect();
-            LmbrCentral::MeshComponentRequestBus::Handler::BusDisconnect();
             EditorActorComponentRequestBus::Handler::BusDisconnect();
             ActorComponentRequestBus::Handler::BusDisconnect();
 
@@ -229,6 +222,11 @@ namespace EMotionFX
         {
             if (m_actorInstance)
             {
+                // Send general mesh destruction notification to interested parties.
+                LmbrCentral::MeshComponentNotificationBus::Event(
+                    GetEntityId(),
+                    &LmbrCentral::MeshComponentNotifications::OnMeshDestroyed);
+
                 ActorComponentNotificationBus::Event(
                     GetEntityId(),
                     &ActorComponentNotificationBus::Events::OnActorInstanceDestroyed,
@@ -236,7 +234,7 @@ namespace EMotionFX
             }
 
             m_actorInstance = nullptr;
-            m_renderNode = nullptr;
+            m_renderActorInstance.reset();
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -251,9 +249,10 @@ namespace EMotionFX
         void EditorActorComponent::OnEntityVisibilityChanged(bool visibility)
         {
             m_entityVisible = visibility;
-            if (m_renderNode)
+
+            if (m_renderActorInstance)
             {
-                m_renderNode->Hide(!m_entityVisible || !m_renderCharacter);
+                m_renderActorInstance->SetIsVisible(m_entityVisible && m_renderCharacter);
             }
         }
         //////////////////////////////////////////////////////////////////////////
@@ -277,9 +276,9 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         void EditorActorComponent::OnMaterialChanged()
         {
-            if (m_renderNode)
+            if (m_renderActorInstance)
             {
-                m_renderNode->SetMaterials(m_materialPerLOD);
+                m_renderActorInstance->SetMaterials(m_materialPerLOD);
             }
         }
 
@@ -308,7 +307,7 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         void EditorActorComponent::OnDebugDrawFlagChanged()
         {
-            if (m_renderSkeleton || m_renderBounds)
+            if (m_renderSkeleton || m_renderBounds || m_renderCharacter)
             {
                 AZ::TickBus::Handler::BusConnect();
             }
@@ -317,18 +316,18 @@ namespace EMotionFX
                 AZ::TickBus::Handler::BusDisconnect();
             }
 
-            if (m_renderNode)
+            if (m_renderActorInstance)
             {
-                m_renderNode->Hide(!m_entityVisible || !m_renderCharacter);
+                m_renderActorInstance->SetIsVisible(m_entityVisible && m_renderCharacter);
             }
         }
 
         //////////////////////////////////////////////////////////////////////////
         void EditorActorComponent::OnSkinningMethodChanged()
         {
-            if (m_renderNode)
+            if (m_renderActorInstance)
             {
-                m_renderNode->SetSkinningMethod(m_skinningMethod);
+                m_renderActorInstance->SetSkinningMethod(m_skinningMethod);
             }
         }
 
@@ -377,7 +376,7 @@ namespace EMotionFX
         AZ::Crc32 EditorActorComponent::OnAttachmentTargetJointSelect()
         {
             // Grab actor instance and invoke UI for joint selection.
-            EMotionFXPtr<EMotionFX::ActorInstance> actorInstance;
+            EMotionFXPtr<ActorInstance> actorInstance;
             ActorComponentRequestBus::EventResult(
                 actorInstance,
                 m_attachmentTarget,
@@ -395,7 +394,7 @@ namespace EMotionFX
                 // If a joint was previously selected, ensure it's pre-selected in the UI.
                 if (!m_attachmentJointName.empty())
                 {
-                    EMotionFX::Node* node = actorInstance->GetActor()->GetSkeleton()->FindNodeByName(m_attachmentJointName.c_str());
+                    Node* node = actorInstance->GetActor()->GetSkeleton()->FindNodeByName(m_attachmentJointName.c_str());
                     if (node)
                     {
                         selection.AddNode(node);
@@ -409,7 +408,7 @@ namespace EMotionFX
                         if (!selectedItems.empty())
                         {
                             const char* jointName = selectedItems[0].GetNodeName();
-                            EMotionFX::Node* node = actorInstance->GetActor()->GetSkeleton()->FindNodeByName(jointName);
+                            Node* node = actorInstance->GetActor()->GetSkeleton()->FindNodeByName(jointName);
                             if (node)
                             {
                                 m_attachmentJointName = jointName;
@@ -483,6 +482,11 @@ namespace EMotionFX
 
             if (m_actorInstance)
             {
+                // Send general mesh destruction notification to interested parties.
+                LmbrCentral::MeshComponentNotificationBus::Event(
+                    GetEntityId(),
+                    &LmbrCentral::MeshComponentNotifications::OnMeshDestroyed);
+
                 ActorComponentNotificationBus::Event(
                     GetEntityId(),
                     &ActorComponentNotificationBus::Events::OnActorInstanceDestroyed,
@@ -523,11 +527,38 @@ namespace EMotionFX
             // Force an update of node transforms so we can get an accurate bounding box.
             m_actorInstance->UpdateTransformations(0.0f, true, false);
 
-            m_renderNode = AZStd::make_unique<ActorRenderNode>(GetEntityId(), m_actorInstance, m_actorAsset, transform);
-            m_renderNode->SetMaterials(m_materialPerLOD);
-            m_renderNode->RegisterWithRenderer();
-            m_renderNode->Hide(!m_renderCharacter || !m_entityVisible);
-            m_renderNode->SetSkinningMethod(m_skinningMethod);
+            RenderBackend* renderBackend = AZ::Interface<RenderBackendManager>::Get()->GetRenderBackend();
+            m_renderActorInstance.reset(renderBackend->CreateActorInstance(GetEntityId(),
+                    m_actorInstance,
+                    m_actorAsset,
+                    m_materialPerLOD,
+                    m_skinningMethod,
+                    transform));
+            if (m_renderActorInstance)
+            {
+                m_renderActorInstance->SetIsVisible(m_entityVisible && m_renderCharacter);
+
+                m_renderActorInstance->SetOnMaterialChangedCallback([this](const AZStd::string& materialName)
+                    {
+                        m_materialPerLOD.clear();
+
+                        if (!materialName.empty())
+                        {
+                            m_materialPerActor.SetAssetPath(materialName.c_str());
+                        }
+                        else
+                        {
+                            m_materialPerActor.SetAssetPath("");
+                            InitializeMaterial(*m_actorAsset.GetAs<ActorAsset>());
+                        }
+
+                        // Update the rendernode and the property grid
+                        OnMaterialPerActorChanged();
+                        AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
+                            &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay,
+                            AzToolsFramework::Refresh_AttributesAndValues);
+                    });
+            }
 
             // Reattach all attachments
             for (AZ::EntityId& attachment : m_attachments)
@@ -539,7 +570,6 @@ namespace EMotionFX
             LmbrCentral::MeshComponentNotificationBus::Event(GetEntityId(), &LmbrCentral::MeshComponentNotifications::OnMeshCreated, m_actorAsset);
         }
 
-        //////////////////////////////////////////////////////////////////////////
         void EditorActorComponent::InitializeMaterial(ActorAsset& actorAsset)
         {
             if (!m_materialPerLOD.empty())
@@ -583,8 +613,8 @@ namespace EMotionFX
 
             const AZ::Quaternion entityOrientation = AZ::Quaternion::CreateRotationFromScaledTransform(world);
             const AZ::Vector3 entityPosition = world.GetTranslation();
-            const AZ::Transform worldTransformNoScale = AZ::Transform::CreateFromQuaternionAndTranslation(entityOrientation, entityPosition);
-            m_actorInstance->SetLocalSpaceTransform(MCore::AzTransformToEmfxTransform(worldTransformNoScale));
+            const EMotionFX::Transform worldTransformNoScale(entityPosition, entityOrientation);
+            m_actorInstance->SetLocalSpaceTransform(worldTransformNoScale);
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -606,117 +636,18 @@ namespace EMotionFX
                 return;
             }
 
-            if (m_renderSkeleton)
+            if (m_renderActorInstance)
             {
-                ActorComponent::DrawSkeleton(m_actorInstance);
-            }
+                m_renderActorInstance->OnTick(deltaTime);
+                m_renderActorInstance->UpdateBounds();
 
-            if (m_renderBounds)
-            {
-                ActorComponent::DrawBounds(m_actorInstance);
-            }
-        }
-
-        //////////////////////////////////////////////////////////////////////////
-        void EditorActorComponent::SetMaterial(_smart_ptr<IMaterial> material)
-        {
-            ActorAsset* actor = m_actorAsset.GetAs<ActorAsset>();
-            if (!actor)
-            {
-                return;
-            }
-
-            // Set m_materialPerActor and m_materialPerLOD, which contains the material asset references
-            if (material)
-            {
-                if (material->IsSubMaterial())
-                {
-                    // Attempt to apply the parent material if material is a sub-material
-                    CMaterial* editorMaterial = static_cast<CMaterial*>(material->GetUserData());
-                    if (editorMaterial && editorMaterial->GetParent() && editorMaterial->GetParent()->GetMatInfo())
-                    {
-                        material = editorMaterial->GetParent()->GetMatInfo();
-                        AZ_Warning("EMotionFX", false, "Cannot apply a sub-material directly to an actor. Applying the parent material group '%s' instead.", material->GetName());
-                    }
-                    else
-                    {
-                        AZ_Error("EMotionFX", false, "Cannot apply sub-material '%s' directly to an actor. Try applying the parent material group instead.", material->GetName());
-                        return;
-                    }
-                }
-
-                // Apply the material to the actor
-                m_materialPerLOD.clear();
-                m_materialPerActor.SetAssetPath(material->GetName());
-            }
-            else
-            {
-                // If material is nullptr, re-set m_materialPerLOD to the default for this actor
-                m_materialPerLOD.clear();
-                m_materialPerActor.SetAssetPath("");
-                InitializeMaterial(*m_actorAsset.GetAs<ActorAsset>());
-            }
-
-            // Update the rendernode and the property grid
-            OnMaterialPerActorChanged();
-            AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
-                &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay,
-                AzToolsFramework::Refresh_AttributesAndValues);
-        }
-
-        //////////////////////////////////////////////////////////////////////////
-        _smart_ptr<IMaterial> EditorActorComponent::GetMaterial()
-        {
-            if (m_renderNode)
-            {
-                return m_renderNode->GetMaterial();
-            }
-
-            return nullptr;
-        }
-
-        //////////////////////////////////////////////////////////////////////////
-        AZ::Aabb EditorActorComponent::GetWorldBounds()
-        {
-            if (m_renderNode)
-            {
-                const AABB bbox = m_renderNode->GetBBox();
-                return AZ::Aabb::CreateFromMinMax(AZ::Vector3(bbox.min.x, bbox.min.y, bbox.min.z), AZ::Vector3(bbox.max.x, bbox.max.y, bbox.max.z));
-            }
-            else
-            {
-                return AZ::Aabb::CreateNull();
+                RenderActorInstance::DebugOptions debugOptions;
+                debugOptions.m_drawAABB = m_renderBounds;
+                debugOptions.m_drawSkeleton = m_renderSkeleton;
+                m_renderActorInstance->DebugDraw(debugOptions);
             }
         }
 
-        //////////////////////////////////////////////////////////////////////////
-        AZ::Aabb EditorActorComponent::GetLocalBounds()
-        {
-            if (m_renderNode)
-            {
-                AABB bbox;
-                m_renderNode->GetLocalBounds(bbox);
-                return AZ::Aabb::CreateFromMinMax(AZ::Vector3(bbox.min.x, bbox.min.y, bbox.min.z), AZ::Vector3(bbox.max.x, bbox.max.y, bbox.max.z));
-            }
-            else
-            {
-                return AZ::Aabb::CreateNull();
-            }
-        }
-
-        //////////////////////////////////////////////////////////////////////////
-        bool EditorActorComponent::GetVisibility()
-        {
-            return true;
-        }
-
-        //////////////////////////////////////////////////////////////////////////
-        void EditorActorComponent::SetVisibility(bool isVisible)
-        {
-            (void)isVisible;
-        }
-
-        //////////////////////////////////////////////////////////////////////////
         void EditorActorComponent::BuildGameEntity(AZ::Entity* gameEntity)
         {
             ActorComponent::Configuration cfg;
@@ -734,28 +665,20 @@ namespace EMotionFX
             gameEntity->AddComponent(aznew ActorComponent(&cfg));
         }
 
-        //////////////////////////////////////////////////////////////////////////
-        IRenderNode* EditorActorComponent::GetRenderNode()
-        {
-            return m_renderNode.get();
-        }
-
-        //////////////////////////////////////////////////////////////////////////
-        const float EditorActorComponent::s_renderNodeRequestBusOrder = 100.f;
-        float EditorActorComponent::GetRenderNodeRequestBusOrder() const
-        {
-            return s_renderNodeRequestBusOrder;
-        }
         AZ::EntityId EditorActorComponent::GetAttachedToEntityId() const
         {
             return m_attachmentTarget;
         }
 
-
         AZ::Aabb EditorActorComponent::GetEditorSelectionBoundsViewport(
             const AzFramework::ViewportInfo& /*viewportInfo*/)
         {
-            return GetWorldBounds();
+            if (m_renderActorInstance)
+            {
+                return m_renderActorInstance->GetWorldAABB();
+            }
+
+            return AZ::Aabb::CreateNull();
         }
 
         bool EditorActorComponent::EditorSelectionIntersectRayViewport(
@@ -770,7 +693,7 @@ namespace EMotionFX
             distance = std::numeric_limits<float>::max();
             bool isHit = false;
 
-            // Get the MCore::Ray used by EMotionFX::Mesh::Intersects
+            // Get the MCore::Ray used by Mesh::Intersects
             // Convert the input source + direction to make a line segment, since that's the format that is used for an MCore::Ray
             AZ::Vector3 dest = src + dir;
             MCore::Ray ray(src, dest);
@@ -779,19 +702,19 @@ namespace EMotionFX
             // animated by a motion component that is previewing the animation in the editor
             m_actorInstance->UpdateMeshDeformers(0.0f, true);
 
-            // Get the MCore::Matrix used by EmotionFX::Mesh::Intersects
-            const EMotionFX::TransformData* transformData = m_actorInstance->GetTransformData();
+            // Get the MCore::Matrix used by Mesh::Intersects
+            const TransformData* transformData = m_actorInstance->GetTransformData();
             const Pose* currentPose = transformData->GetCurrentPose();
 
             // Iterate through the meshes in the actor, looking for the closest hit
-            EMotionFX::Actor* actor = m_actorAsset.Get()->GetActor().get();
+            Actor* actor = m_actorAsset.Get()->GetActor().get();
             const uint32 numNodes = actor->GetNumNodes();
             const uint32 numLods = actor->GetNumLODLevels();
             for (uint32 lod = 0; lod < numLods; ++lod)
             {
                 for (uint32 nodeIndex = 0; nodeIndex < numNodes; ++nodeIndex)
                 {
-                    EMotionFX::Mesh* mesh = actor->GetMesh(lod, nodeIndex);
+                    Mesh* mesh = actor->GetMesh(lod, nodeIndex);
                     if (!mesh || mesh->GetIsCollisionMesh())
                     {
                         continue;
@@ -812,7 +735,7 @@ namespace EMotionFX
 
             return isHit;
         }
-        //////////////////////////////////////////////////////////////////////////
+
         // Check if the given attachment is valid.
         bool EditorActorComponent::IsValidAttachment(const AZ::EntityId& attachment, const AZ::EntityId& attachTo) const
         {
@@ -824,28 +747,28 @@ namespace EMotionFX
 
             // Detect if attachTo is already in another circular chain.
             auto AttachmentStep = [](AZ::EntityId attach, int stride) -> AZ::EntityId
-            {
-                AZ_Assert(stride > 0, "Stride value has to be greater than 0.");
+                {
+                    AZ_Assert(stride > 0, "Stride value has to be greater than 0.");
 
-                if (attach.IsValid())
-                {
-                    for (int i = 0; i < stride; ++i)
+                    if (attach.IsValid())
                     {
-                        AZ::EntityId next;
-                        EditorActorComponentRequestBus::EventResult(next, attach, &EditorActorComponentRequestBus::Events::GetAttachedToEntityId);
-                        if (!next.IsValid())
+                        for (int i = 0; i < stride; ++i)
                         {
-                            return next;
+                            AZ::EntityId next;
+                            EditorActorComponentRequestBus::EventResult(next, attach, &EditorActorComponentRequestBus::Events::GetAttachedToEntityId);
+                            if (!next.IsValid())
+                            {
+                                return next;
+                            }
+                            attach = next;
                         }
-                        attach = next;
+                        return attach;
                     }
-                    return attach;
-                }
-                else
-                {
-                    return attach;
-                }
-            };
+                    else
+                    {
+                        return attach;
+                    }
+                };
             AZ::EntityId slowWalker = attachTo;
             AZ::EntityId fastWalker = attachTo;
             while (fastWalker.IsValid())
@@ -878,8 +801,6 @@ namespace EMotionFX
             return true;
         }
 
-
-
         // The entity has attached to the target.
         void EditorActorComponent::OnAttached(AZ::EntityId targetId)
         {
@@ -898,23 +819,22 @@ namespace EMotionFX
                 return;
             }
 
-            EMotionFX::ActorInstance* targetActorInstance = nullptr;
+            ActorInstance* targetActorInstance = nullptr;
             ActorComponentRequestBus::EventResult(targetActorInstance, targetId, &ActorComponentRequestBus::Events::GetActorInstance);
 
             const char* jointName = nullptr;
             LmbrCentral::AttachmentComponentRequestBus::EventResult(jointName, GetEntityId(), &LmbrCentral::AttachmentComponentRequestBus::Events::GetJointName);
             if (targetActorInstance)
             {
-                EMotionFX::Node* node = jointName ? targetActorInstance->GetActor()->GetSkeleton()->FindNodeByName(jointName) : targetActorInstance->GetActor()->GetSkeleton()->GetNode(0);
+                Node* node = jointName ? targetActorInstance->GetActor()->GetSkeleton()->FindNodeByName(jointName) : targetActorInstance->GetActor()->GetSkeleton()->GetNode(0);
                 if (node)
                 {
                     const AZ::u32 jointIndex = node->GetNodeIndex();
-                    EMotionFX::Attachment* attachment = EMotionFX::AttachmentNode::Create(targetActorInstance, jointIndex, m_actorInstance.get(), true /* Managed externally, by this component. */);
+                    Attachment* attachment = AttachmentNode::Create(targetActorInstance, jointIndex, m_actorInstance.get(), true /* Managed externally, by this component. */);
                     targetActorInstance->AddAttachment(attachment);
                 }
             }
         }
-
 
         // The entity is detaching from the target.
         void EditorActorComponent::OnDetached(AZ::EntityId targetId)
@@ -931,7 +851,7 @@ namespace EMotionFX
                 return;
             }
 
-            EMotionFX::ActorInstance* targetActorInstance = nullptr;
+            ActorInstance* targetActorInstance = nullptr;
             ActorComponentRequestBus::EventResult(targetActorInstance, targetId, &ActorComponentRequestBus::Events::GetActorInstance);
             if (targetActorInstance)
             {

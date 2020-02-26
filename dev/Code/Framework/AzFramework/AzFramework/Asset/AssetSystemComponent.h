@@ -69,7 +69,8 @@ namespace AzFramework
             //////////////////////////////////////////////////////////////////////////
             // AssetSystemRequestBus::Handler overrides
             bool ConfigureSocketConnection(const AZStd::string& branch, const AZStd::string& platform, const AZStd::string& identifier) override;
-            bool Connect(const char* identifier) override;
+            bool Connect(const char* identifier) override;            
+            bool ConnectWithTimeout(const char* identifier, AZStd::chrono::duration<float> timeout) override;
             bool Disconnect() override;
             AssetStatus CompileAssetSync(const AZStd::string& assetPath) override;
             AssetStatus GetAssetStatus(const AZStd::string& assetPath) override;

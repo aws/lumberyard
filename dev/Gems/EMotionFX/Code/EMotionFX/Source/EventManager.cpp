@@ -18,6 +18,7 @@
 #include "AnimGraphStateMachine.h"
 #include "AnimGraph.h"
 #include <EMotionFX/Source/Allocators.h>
+#include <MCore/Source/LogManager.h>
 
 
 namespace EMotionFX

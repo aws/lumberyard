@@ -3273,7 +3273,7 @@ namespace AzFramework
                                 size_t jj = 1;
                                 for (size_t ii = i + 1; !bFailed && ii < firstPartDelimited.size(); ++ii)
                                 {
-                                    if (firstPartDelimited[ii].length() != secondPartDelimited[jj].length())
+                                    if (jj >= secondPartDelimited.size() || firstPartDelimited[ii].length() != secondPartDelimited[jj].length())
                                     {
                                         bFailed = true;
                                     }

@@ -12,6 +12,8 @@
 #include <Launcher_precompiled.h>
 #include <Launcher.h>
 
+#include <common/Launcher_host.h>
+
 #include <CryLibrary.h>
 #include <string.h>
 #define WIN32_LEAN_AND_MEAN
@@ -119,14 +121,19 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     using namespace LumberyardLauncher;
 
     PlatformMainInfo mainInfo;
+    mainInfo.m_appResourcesPath = GetAppResourcePathForHostPlatforms();
+    if (mainInfo.m_appResourcesPath[0] == '\0')
+    {
+        // Unable to resolve the application resource path because we cannot find the application descriptor (game.xml)
+        return static_cast<int>(ReturnCode::ErrAppDescriptor);
+    }
+
     mainInfo.m_instance = GetModuleHandle(0);
 
-    // The check for the presence of -load in the command line
-    // is to maintain the same behavior as the legacy launcher.
-    const bool commandLineContainsLoad = (strstr(lpCmdLine, " -load ") != nullptr);
-    bool ret = commandLineContainsLoad ?
-               mainInfo.CopyCommandLine(lpCmdLine) :
-               mainInfo.CopyCommandLine(GetCommandLineA());
+    extern int __argc;
+    extern char ** __argv;
+    
+    mainInfo.CopyCommandLine(__argc, __argv);
 
 #if defined(DEDICATED_SERVER)
     unsigned buf[4];
@@ -140,7 +147,12 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         }
     }
 
-    ret |= mainInfo.AddArgument(reinterpret_cast<char*>(buf));
+    if (!mainInfo.AddArgument(reinterpret_cast<char*>(buf)))
+    {
+        return static_cast<int>(ReturnCode::ErrCommandLine);
+    }
+
+
 #endif
 
     // Prevent allocator from growing in small chunks
@@ -150,9 +162,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     sysHeapDesc.m_heap.m_systemChunkSize = 64 * 1024 * 1024;
     AZ::AllocatorInstance<AZ::SystemAllocator>::Create(sysHeapDesc);
 
-    ReturnCode status = ret ? 
-        Run(mainInfo) : 
-        ReturnCode::ErrCommandLine;
+    ReturnCode status = Run(mainInfo);
 
 #if !defined(_RELEASE)
     bool noPrompt = (strstr(mainInfo.m_commandLine, "-noprompt") != nullptr);
@@ -166,7 +176,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     }
 
 #if !defined(AZ_MONOLITHIC_BUILD)
-    if (ret)
+
     {
         // HACK HACK HACK - is this still needed?!?!
         // CrySystem module can get loaded multiple times (even from within CrySystem itself)

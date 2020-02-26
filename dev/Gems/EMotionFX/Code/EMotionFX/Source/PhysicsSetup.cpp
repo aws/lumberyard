@@ -293,6 +293,14 @@ namespace EMotionFX
         }
     }
 
+    void PhysicsSetup::OptimizeForServer()
+    {
+        // The server only need hit detection colliders. We can remove all the other collider setup.
+        m_config.m_clothConfig.m_nodes.clear();
+        m_config.m_ragdollConfig.m_nodes.clear();
+        m_config.m_simulatedObjectColliderConfig.m_nodes.clear();
+    }
+
     void PhysicsSetup::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);

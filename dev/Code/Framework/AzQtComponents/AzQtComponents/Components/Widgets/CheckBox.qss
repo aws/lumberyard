@@ -14,54 +14,60 @@
 QCheckBox
 {
     font-size: 12px;
-    line-height: 18px;
-    color: rgb(204, 204, 204);
+    line-height: 16px;
     outline: 0;
 }
 
 QAbstractItemView::indicator,
-QCheckBox::indicator:!focus {
-    width: 14px;
-    height: 14px;
-    border: 1px solid white;
-    border-radius: 2px;
+QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
     margin: 2px;
 }
 
-QCheckBox::indicator:focus {
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgb(201, 170, 254);
-    border-radius: 4px;
-    margin: 0px;
-}
-
-QAbstractItemView::indicator:disabled,
-QCheckBox::indicator:disabled {
-    border-color: rgb(128, 128, 128);
-}
-
 QAbstractItemView::indicator:indeterminate,
-QCheckBox::indicator:indeterminate:!focus {
-    image: url(:/stylesheet/img/UI20/combo-tristate.png);
+QCheckBox::indicator:indeterminate{
+    image: url(:/stylesheet/img/UI20/checkbox/partial-selected.svg);
 }
 
+QAbstractItemView::indicator:indeterminate:focus,
 QCheckBox::indicator:indeterminate:focus {
-    image: url(:/stylesheet/img/UI20/combo-tristate-focus.png);
+    image: url(:/stylesheet/img/UI20/checkbox/partial-selected-focus.svg);
+}
+
+QAbstractItemView::indicator:indeterminate:disabled,
+QCheckBox::indicator:indeterminate:disabled {
+    image: url(:/stylesheet/img/UI20/checkbox/partial-selected-disabled.svg);
 }
 
 QAbstractItemView::indicator:checked,
-QCheckBox::indicator:checked:!focus {
-    image: url(:/stylesheet/img/UI20/combo-checked.png);
+QCheckBox::indicator:checked {
+    image: url(:/stylesheet/img/UI20/checkbox/on.svg);
 }
 
+QAbstractItemView::indicator:checked:focus,
 QCheckBox::indicator:checked:focus {
-    image: url(:/stylesheet/img/UI20/combo-checked-focus.png);
+    image: url(:/stylesheet/img/UI20/checkbox/on-focus.svg);
 }
 
 QAbstractItemView::indicator:checked:disabled,
 QCheckBox::indicator:checked:disabled {
-    image: url(:/stylesheet/img/UI20/combo-checked-disabled.png);
+    image: url(:/stylesheet/img/UI20/checkbox/on-disabled.svg);
+}
+
+QAbstractItemView::indicator:unchecked,
+QCheckBox::indicator:unchecked {
+    image: url(:/stylesheet/img/UI20/checkbox/off.svg);
+}
+
+QAbstractItemView::indicator:unchecked:focus,
+QCheckBox::indicator:unchecked:focus {
+    image: url(:/stylesheet/img/UI20/checkbox/off-focus.svg);
+}
+
+QAbstractItemView::indicator:unchecked:disabled,
+QCheckBox::indicator:unchecked:disabled {
+    image: url(:/stylesheet/img/UI20/checkbox/off-disabled.svg);
 }
 
 QCheckBox.ToggleSwitch::indicator
@@ -74,38 +80,38 @@ QCheckBox.ToggleSwitch::indicator
 
 QCheckBox.ToggleSwitch::indicator:Unchecked
 {
-    image: url(:/stylesheet/img/UI20/toggle-unchecked.png);
+    image: url(:/stylesheet/img/UI20/toggleswitch/unchecked.svg);
 }
 
 QCheckBox.ToggleSwitch::indicator:disabled
 {
-    image: url(:/stylesheet/img/UI20/toggle-unchecked-disabled.png);
+    image: url(:/stylesheet/img/UI20/toggleswitch/unchecked-disabled.svg);
 }
 
 QCheckBox.ToggleSwitch::indicator:Unchecked:focus
 {
-    width: 36px;
-    height: 20px;
+    width: 34px;
+    height: 18px;
     border-width: 0px;
-    margin: 0px;
-    image: url(:/stylesheet/img/UI20/toggle-unchecked-focus.png);
+    margin: 1px;
+    image: url(:/stylesheet/img/UI20/toggleswitch/unchecked-focus.svg);
 }
 
 QCheckBox.ToggleSwitch::indicator:Checked
 {
-    image: url(:/stylesheet/img/UI20/toggle-checked.png);
+    image: url(:/stylesheet/img/UI20/toggleswitch/checked.svg);
 }
 
 QCheckBox.ToggleSwitch::indicator:Checked:disabled
 {
-    image: url(:/stylesheet/img/UI20/toggle-checked-disabled.png);
+    image: url(:/stylesheet/img/UI20/toggleswitch/checked-disabled.svg);
 }
 
 QCheckBox.ToggleSwitch::indicator:Checked:focus
 {
-    width: 36px;
-    height: 20px;
+    width: 34px;
+    height: 18px;
     border-width: 0px;
-    margin: 0px;
-    image: url(:/stylesheet/img/UI20/toggle-checked-focus.png);
+    margin: 1px;
+    image: url(:/stylesheet/img/UI20/toggleswitch/checked-focus.svg);
 }

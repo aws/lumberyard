@@ -22,7 +22,6 @@ log = logging.getLogger(__name__)
 RESULT_XML_FILENAME = "pytest_results.xml"
 ARTIFACT_FOLDER = "pytest_results"
 
-
 def run_pytest(known_args, extra_args):
     """
     Triggers test discovery and execution through pytest
@@ -53,9 +52,36 @@ def run_pytest(known_args, extra_args):
 
 def _get_xunit_flags(output_path):
     timestamp = clean_timestamp(datetime.now().isoformat())
-    output_folder = os.path.join(output_path, timestamp, ARTIFACT_FOLDER)
+    current_folder = os.path.abspath(output_path)
+
+    output_folder = os.path.join(current_folder,  # Absolute path where lmbr_test command is invoked OR user defined path if using --output-path arg in cmd.
+                                 timestamp,  # Timestamp folder name in YYYY_MM_DDTHH_MM_SSSSS format.
+                                 ARTIFACT_FOLDER)
     results_file = os.path.join(output_folder, RESULT_XML_FILENAME)
 
     log.info("Setting results folder to {}".format(output_folder))
-    return ["--junitxml={}".format(results_file),
-            "--logs_path={}".format(output_folder)]
+
+    #Linux
+    if sys.platform == "linux" or sys.platform == "linux2":
+        lmbr_test_path = os.path.join(os.getcwd(), "lmbr_test.sh")
+    #OS X
+    elif sys.platform == "darwin":
+        lmbr_test_path = os.path.join(os.getcwd(), "lmbr_test.sh")
+    #Windows
+    elif sys.platform == "win32":
+        lmbr_test_path = os.path.join(os.getcwd(), "lmbr_test.cmd")
+
+    #replacing double backslash with single forward slash.
+    #python subprocess has a bug where it can't recognize file if path contains double backslash.
+    lmbr_test_path = lmbr_test_path.replace(os.sep, '/')
+    argument_call = [lmbr_test_path, "pysetup", "check", "ly_test_tools"]
+    process = subprocess_with_timeout(argument_call, 120)
+
+    #LyTestTools is installed if process returns 0.
+    if process == 0:
+        return ["--junitxml={}".format(results_file),
+                "--output-path={}".format(output_folder)]
+    else:
+        return ["--junitxml={}".format(results_file),
+                "--logs_path={}".format(output_folder)]
+

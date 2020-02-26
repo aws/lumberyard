@@ -29,16 +29,17 @@ def build(bld):
         file_list.append('cloudgemdefectreporter_dxdiag_null.waf_files')
         
     bld.DefineGem(
-        file_list = file_list,
-        win_file_list = 'cloudgemdefectreporter_windows.waf_files',
+        file_list           = file_list,
+        win_file_list       = 'cloudgemdefectreporter_windows.waf_files',
 
-        platforms = ['all'],
-        uselib = ['AWS_CPP_SDK_CORE'],
+        includes            = ['.',
+                               bld.Path('Code/CryEngine/CryCommon')] ,
 
-        use = ['CloudGemFramework.StaticLibrary'],
-        includes = [bld.Path('Code/CryEngine/CryCommon')
-                   ],
-        clang_cxxflags = ['-Wno-invalid-noreturn'],
-        restricted_script    = 'update_restricted_parameters',
-        platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)]
+        uselib              = ['AWS_CPP_SDK_CORE', 'BOOST'],
+
+        use                 = ['CloudGemFramework.StaticLibrary'],
+        
+        clang_cxxflags      = ['-Wno-invalid-noreturn'],
+        restricted_script   = 'update_restricted_parameters',
+        platform_roots      = [bld.PlatformRoot('Source/Platform', export_includes=False)]
     )

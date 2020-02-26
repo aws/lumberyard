@@ -74,7 +74,7 @@ namespace AZ
                 if (m_assetWriter->WriteSKIN(&cgfContent, m_convertContext, true))
                 {
                     static const AZ::Data::AssetType skinnedMeshAssetType("{C5D443E1-41FF-4263-8654-9438BC888CB7}"); // from MeshAsset.h
-                    context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), skinnedMeshAssetType, 0);
+                    context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), skinnedMeshAssetType, 0, AZStd::nullopt);
                 }
                 else
                 {

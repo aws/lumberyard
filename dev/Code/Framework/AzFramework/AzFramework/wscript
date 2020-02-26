@@ -32,5 +32,6 @@ def build(bld):
     
         # Compiler Specific
         msvc_cxxflags       = ['/W4'],
+        linux_enable_rtti  = True
     )
 

@@ -4435,6 +4435,16 @@ namespace GraphCanvas
 
     void GraphCanvasGraphicsScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
     {
+        QPointF scenePos = event->scenePos();
+        QPointF lastScenePos = event->lastScenePos();
+
+        // These events seem to fire off regardless of mouse input(so long as mouse is down) which causes weird behavior(broken ctrl+left selection).
+        // Only process these if there was actual movement.
+        if (scenePos == lastScenePos)
+        {
+            return;
+        }
+
         QGraphicsScene::mouseMoveEvent(event);
 
         if (m_scene.m_enableSpliceTracking)

@@ -134,7 +134,6 @@ namespace EMotionFX
         {
             // set the current value to the current input value
             UpdateAllIncomingNodes(animGraphInstance, 0.0f);
-            //      OutputIncomingNode( animGraphInstance, GetInputNode(INPUTPORT_DEST) );
             uniqueData->mCurrentValue = GetInputNumberAsFloat(animGraphInstance, INPUTPORT_DEST);
         }
     }
@@ -152,12 +151,9 @@ namespace EMotionFX
             uniqueData->mCurrentValue = 0.0f;//GetInputNumber( INPUTPORT_DEST );
         }
 
-        // set the source value to the current input destination value
-        //OutputIncomingNode( animGraphInstance, GetInputNode(INPUTPORT_DEST) );
-
         if (GetInputNode(INPUTPORT_DEST) == nullptr)
         {
-            uniqueData->mCurrentValue = 0.0f;//GetInputNumber( INPUTPORT_DEST );
+            uniqueData->mCurrentValue = 0.0f;
         }
     }
 
@@ -222,7 +218,7 @@ namespace EMotionFX
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
             ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
             ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-            ->DataElement(AZ::Edit::UIHandlers::Slider, &BlendTreeSmoothingNode::m_interpolationSpeed, "Interpolation Speed", "The interpolation speed where 0.0 means the value won't change at all and 1.0 means the input value will directly be mapped to the output value.")
+            ->DataElement(AZ::Edit::UIHandlers::Slider, &BlendTreeSmoothingNode::m_interpolationSpeed, "Interpolation Speed", "Specifies how fast the output value moves towards the input value. Higher values make it move faster.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
             ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeSmoothingNode::m_useStartValue, "Use Start Value", "Enable this to use the start value, otherwise the first input value will be used as start value.")

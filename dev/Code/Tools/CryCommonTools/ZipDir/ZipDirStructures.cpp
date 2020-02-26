@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "smartptr.h"
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Casting/numeric_cast.h>
@@ -521,7 +521,7 @@ uint64 ZipDir::FileEntry::GetModificationTime()
 }
 
 
-void ZipDir::FileEntry::SetFromFileTimeNTFS(__int64 timestamp)
+void ZipDir::FileEntry::SetFromFileTimeNTFS(int64 timestamp)
 {
 #if defined(AZ_PLATFORM_WINDOWS)
     FILETIME ft;
@@ -537,7 +537,7 @@ void ZipDir::FileEntry::SetFromFileTimeNTFS(__int64 timestamp)
     nNTFS_LastModifyTime = timestamp;
 }
 
-bool ZipDir::FileEntry::CompareFileTimeNTFS(__int64 timestamp)
+bool ZipDir::FileEntry::CompareFileTimeNTFS(int64 timestamp)
 {
 #if defined(AZ_PLATFORM_WINDOWS)
     FILETIME ft;

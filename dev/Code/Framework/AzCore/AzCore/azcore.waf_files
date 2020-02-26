@@ -255,6 +255,8 @@
             "Math/Crc.h",
             "Math/DocsMath.h",
             "Math/FourVector3.h",
+            "Math/Geometry2DUtils.cpp",
+            "Math/Geometry2DUtils.h",
             "Math/Guid.h",
             "Math/Internal/MathTypes.h",
             "Math/Internal/Matrix3x3Fpu.inl",
@@ -326,7 +328,7 @@
             "Math/ToString.h",
             "Math/ToString.cpp"
         ],
-      "Memory": [
+        "Memory": [
             "Memory/AllocationRecords.cpp",
             "Memory/AllocationRecords.h",
             "Memory/AllocatorBase.cpp",
@@ -363,6 +365,7 @@
             "Memory/OSAllocator.h",
             "Memory/OverrunDetectionAllocator.cpp",
             "Memory/OverrunDetectionAllocator.h",
+            "Memory/PlatformMemoryInstrumentation.h",
             "Memory/PoolAllocator.h",
             "Memory/PoolSchema.cpp",
             "Memory/PoolSchema.h",
@@ -470,7 +473,10 @@
             "Serialization/SerializeContextEnum.cpp",
             "Serialization/SerializeContextEnum.inl",
             "Serialization/DataPatch.h",
-            "Serialization/DataPatch.cpp"
+            "Serialization/DataPatch.cpp",
+            "Serialization/DataPatchBus.h",
+            "Serialization/DataPatchUpgradeManager.h",
+            "Serialization/DataPatchUpgradeManager.cpp"
         ],
         "Serialization/Json": [
             "Serialization/Json/BaseJsonSerializer.h",

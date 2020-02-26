@@ -1,0 +1,8 @@
+{
+    "none":
+    {
+        "FileWatcher": [
+            "native/FileWatcher/FileWatcher_linux.cpp"
+        ]
+    }
+}

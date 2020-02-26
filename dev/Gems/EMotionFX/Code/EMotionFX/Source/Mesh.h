@@ -21,7 +21,6 @@
 
 #include <MCore/Source/Vector.h>
 #include <MCore/Source/Array.h>
-#include <MCore/Source/Matrix4.h>
 #include <MCore/Source/Ray.h>
 #include <MCore/Source/Color.h>
 
@@ -65,14 +64,14 @@ namespace EMotionFX
          */
         enum
         {
-            ATTRIB_POSITIONS        = 0,    /**< Vertex positions. Typecast to AZ::PackedVector3f. Positions are always exist. */
-            ATTRIB_NORMALS          = 1,    /**< Vertex normals. Typecast to AZ::PackedVector3f. Normals are always exist. */
+            ATTRIB_POSITIONS        = 0,    /**< Vertex positions. Typecast to AZ::Vector3. Positions are always exist. */
+            ATTRIB_NORMALS          = 1,    /**< Vertex normals. Typecast to AZ::Vector3. Normals are always exist. */
             ATTRIB_TANGENTS         = 2,    /**< Vertex tangents. Typecast to <b> AZ::Vector4 </b>. */
             ATTRIB_UVCOORDS         = 3,    /**< Vertex uv coordinates. Typecast to AZ::Vector2. */
             ATTRIB_COLORS32         = 4,    /**< Vertex colors in 32-bits. Typecast to uint32. */
             ATTRIB_ORGVTXNUMBERS    = 5,    /**< Original vertex numbers. Typecast to uint32. Original vertex numbers always exist. */
             ATTRIB_COLORS128        = 6,    /**< Vertex colors in 128-bits. Typecast to MCore::RGBAColor. */
-            ATTRIB_BITANGENTS       = 7     /**< Vertex bitangents (aka binormal). Typecast to AZ::PackedVector3f. When tangents exists bitangents may still not exist! */
+            ATTRIB_BITANGENTS       = 7     /**< Vertex bitangents (aka binormal). Typecast to AZ::Vector3. When tangents exists bitangents may still not exist! */
         };
 
         /**

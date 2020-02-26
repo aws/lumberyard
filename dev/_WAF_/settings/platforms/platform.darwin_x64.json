@@ -100,7 +100,10 @@
         ],
         "CFLAGS,CXXFLAGS": [
             "-mmacosx-version-min=10.10",   # Set Minimum mac os version to 10.10
-            "-msse4.2"
+            "-msse4.2",
+            "-fno-rtti",                    # Disable RTTI
+            "-fno-exceptions"               # Disable Exceptions
+
         ],
         "LINKFLAGS": [
             "-mmacosx-version-min=10.10",   # Set Minimum mac os version to 10.10

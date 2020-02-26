@@ -107,7 +107,7 @@ TEST_F(SceneBuilderTests, Sanity)
 
 TEST_F(SceneBuilderTests, SceneBuilderWorker_ExportProductDependencies_NoDependencies)
 {
-    SceneAPI::Events::ExportProduct exportProduct("testExportFile", AZ::Uuid::CreateRandom(), AZ::Data::AssetType::CreateNull(), 0);
+    SceneAPI::Events::ExportProduct exportProduct("testExportFile", AZ::Uuid::CreateRandom(), AZ::Data::AssetType::CreateNull(), 0, AZStd::nullopt);
     TestSuccessCaseNoDependencies(exportProduct);
 }
 
@@ -116,7 +116,7 @@ TEST_F(SceneBuilderTests, SceneBuilderWorker_ExportProductDependencies_PathDepen
     const char* absolutePathToFile = "C:/some/test/file.mtl";
     AssetBuilderSDK::ProductPathDependency expectedPathDependency(absolutePathToFile, AssetBuilderSDK::ProductPathDependencyType::SourceFile);
     
-    SceneAPI::Events::ExportProduct product("testExportFile", AZ::Uuid::CreateRandom(), AZ::Data::AssetType::CreateNull(), 0);
+    SceneAPI::Events::ExportProduct product("testExportFile", AZ::Uuid::CreateRandom(), AZ::Data::AssetType::CreateNull(), 0, AZStd::nullopt);
     product.m_legacyPathDependencies.push_back(absolutePathToFile);
     TestSuccessCase(product, &expectedPathDependency);
 
@@ -135,7 +135,7 @@ TEST_F(SceneBuilderTests, SceneBuilderWorker_ExportProductDependencies_PathDepen
 
     AssetBuilderSDK::ProductPathDependency expectedPathDependency(relativeDependencyPathToFile, AssetBuilderSDK::ProductPathDependencyType::ProductFile);
     
-    SceneAPI::Events::ExportProduct product("testExportFile", AZ::Uuid::CreateRandom(), AZ::Data::AssetType::CreateNull(), 0);
+    SceneAPI::Events::ExportProduct product("testExportFile", AZ::Uuid::CreateRandom(), AZ::Data::AssetType::CreateNull(), 0, AZStd::nullopt);
     product.m_legacyPathDependencies.push_back(relativePathToFile.c_str());
 
     TestSuccessCase(product, &expectedPathDependency);
@@ -154,7 +154,7 @@ TEST_F(SceneBuilderTests, SceneBuilderWorker_ExportProductDependencies_PathDepen
 
     const char* absolutePathToFile = "C:/some/test/file.mtl";
 
-    SceneAPI::Events::ExportProduct exportProduct("testExportFile", AZ::Uuid::CreateRandom(), AZ::Data::AssetType::CreateNull(), 0);
+    SceneAPI::Events::ExportProduct exportProduct("testExportFile", AZ::Uuid::CreateRandom(), AZ::Data::AssetType::CreateNull(), 0, AZStd::nullopt);
     exportProduct.m_legacyPathDependencies.push_back(absolutePathToFile);
     exportProduct.m_legacyPathDependencies.push_back(relativePathToFile.c_str());
 
@@ -168,8 +168,8 @@ TEST_F(SceneBuilderTests, SceneBuilderWorker_ExportProductDependencies_PathDepen
 TEST_F(SceneBuilderTests, SceneBuilderWorker_ExportProductDependencies_ProductDependency)
 {
     AZ::Uuid dependencyId = AZ::Uuid::CreateRandom();
-    SceneAPI::Events::ExportProduct exportProduct("testExportFile", AZ::Uuid::CreateRandom(), AZ::Data::AssetType::CreateNull(), 0);
-    exportProduct.m_productDependencies.push_back(SceneAPI::Events::ExportProduct("testDependencyFile", dependencyId, AZ::Data::AssetType::CreateNull(), 0));
+    SceneAPI::Events::ExportProduct exportProduct("testExportFile", AZ::Uuid::CreateRandom(), AZ::Data::AssetType::CreateNull(), 0, AZStd::nullopt);
+    exportProduct.m_productDependencies.push_back(SceneAPI::Events::ExportProduct("testDependencyFile", dependencyId, AZ::Data::AssetType::CreateNull(), 0, AZStd::nullopt));
 
     TestSuccessCase(exportProduct, nullptr, &dependencyId);
 }
@@ -177,8 +177,8 @@ TEST_F(SceneBuilderTests, SceneBuilderWorker_ExportProductDependencies_ProductDe
 TEST_F(SceneBuilderTests, SceneBuilderWorker_ExportProductDependencies_ProductAndPathDependencies)
 {
     AZ::Uuid dependencyId = AZ::Uuid::CreateRandom();
-    SceneAPI::Events::ExportProduct exportProduct("testExportFile", AZ::Uuid::CreateRandom(), AZ::Data::AssetType::CreateNull(), 0);
-    exportProduct.m_productDependencies.push_back(SceneAPI::Events::ExportProduct("testDependencyFile", dependencyId, AZ::Data::AssetType::CreateNull(), 0));
+    SceneAPI::Events::ExportProduct exportProduct("testExportFile", AZ::Uuid::CreateRandom(), AZ::Data::AssetType::CreateNull(), 0, AZStd::nullopt);
+    exportProduct.m_productDependencies.push_back(SceneAPI::Events::ExportProduct("testDependencyFile", dependencyId, AZ::Data::AssetType::CreateNull(), 0, AZStd::nullopt));
 
     AZStd::string lastWorkingDirComponent;
     AZStd::string normalizedWorkingDir = m_workingDirectory;

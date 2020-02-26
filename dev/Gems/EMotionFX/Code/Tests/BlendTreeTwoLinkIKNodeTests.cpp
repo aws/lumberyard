@@ -160,15 +160,18 @@ namespace EMotionFX
             const float goalX = goalPosXYZ[0];
             const float goalY = goalPosXYZ[1];
             const float goalZ = goalPosXYZ[2];
-            ParamSetValue<MCore::AttributeVector3, AZ::PackedVector3f>("GoalPosParam", AZ::PackedVector3f(goalX, goalY, goalZ));
+            ParamSetValue<MCore::AttributeVector3, AZ::Vector3>("GoalPosParam", AZ::Vector3(goalX, goalY, goalZ));
 
-            GetEMotionFX().Update(1.0f / 60.0f);
+            GetEMotionFX().Update(5.0f / 60.0f);
             const AZ::Vector3& testJointNewPos = jackPose->GetModelSpaceTransform(testJointIndex).mPosition;
+            const AZ::Vector3& testJointNewPos2 = jackPose->GetWorldSpaceTransform(testJointIndex).mPosition;
 
             // Based on weight, check if position of node changes to reachable goal position
             if (weight)
             {
                 const AZ::Vector3 expectedPosition(goalX, goalY, goalZ);
+                const AZ::Vector3 dist = (expectedPosition - testJointNewPos).GetAbs();
+                const float length = dist.GetLength();
                 EXPECT_TRUE(PosePositionCompareClose(testJointNewPos, expectedPosition, 0.0001f))
                     << "Joint position should be similar to expected position.";
             }
@@ -249,7 +252,7 @@ namespace EMotionFX
             const float goalX = goalPosXYZ[0];
             const float goalY = goalPosXYZ[1];
             const float goalZ = goalPosXYZ[2];
-            ParamSetValue<MCore::AttributeVector3, AZ::PackedVector3f>("GoalPosParam", AZ::PackedVector3f(goalX, goalY, goalZ));
+            ParamSetValue<MCore::AttributeVector3, AZ::Vector3>("GoalPosParam", AZ::Vector3(goalX, goalY, goalZ));
 
             GetEMotionFX().Update(1.0f / 60.0f);
             const AZ::Vector3& testJointNewPos = jackPose->GetModelSpaceTransform(testJointIndex).mPosition;
@@ -286,27 +289,27 @@ namespace EMotionFX
         // Set up test joint position and weight
         const float weight = testing::get<0>(GetParam());
         ParamSetValue<MCore::AttributeFloat, float>("WeightParam", weight);
-        ParamSetValue<MCore::AttributeVector3, AZ::PackedVector3f>("GoalPosParam", AZ::PackedVector3f(0.0f, 1.0f, 1.0f));
+        ParamSetValue<MCore::AttributeVector3, AZ::Vector3>("GoalPosParam", AZ::Vector3(0.0f, 1.0f, 1.0f));
 
         const Pose* jackPose = m_actorInstance->GetTransformData()->GetCurrentPose();
         AZ::u32 testJointIndex;
         m_jackSkeleton->FindNodeAndIndexByName(m_param.testJointName, testJointIndex);
-        const MCore::Quaternion testJointRotation = jackPose->GetModelSpaceTransform(testJointIndex).mRotation;
+        const AZ::Quaternion testJointRotation = jackPose->GetModelSpaceTransform(testJointIndex).mRotation;
 
         for (std::vector<float> rotateXYZ : m_param.rotations)
         {
             const float rotateX = rotateXYZ[0];
             const float rotateY = rotateXYZ[1];
             const float rotateZ = rotateXYZ[2];
-            ParamSetValue<MCore::AttributeQuaternion, MCore::Quaternion>("RotationParam", MCore::Quaternion(rotateX, rotateY, rotateZ, 1.0f));
+            ParamSetValue<MCore::AttributeQuaternion, AZ::Quaternion>("RotationParam", AZ::Quaternion(rotateX, rotateY, rotateZ, 1.0f));
             
             GetEMotionFX().Update(1.0f / 60.0f);
-            const MCore::Quaternion testJointNewRotation = jackPose->GetModelSpaceTransform(testJointIndex).mRotation;
+            const AZ::Quaternion testJointNewRotation = jackPose->GetModelSpaceTransform(testJointIndex).mRotation;
 
             if (weight)
             {
-                const MCore::Quaternion goalRotation(rotateX, rotateY, rotateZ, 1.0f);
-                EXPECT_EQ(testJointNewRotation, goalRotation) << "Rotation of the test joint should be the same as the expected rotation.";
+                const AZ::Quaternion goalRotation(rotateX, rotateY, rotateZ, 1.0f);
+                EXPECT_EQ(testJointNewRotation, goalRotation.GetNormalizedExact()) << "Rotation of the test joint should be the same as the expected rotation.";
             }
             else
             {
@@ -332,7 +335,7 @@ namespace EMotionFX
         const float y = m_param.bendDirPosition[1];
         const float z = m_param.bendDirPosition[2];
         ParamSetValue<MCore::AttributeFloat, float>("WeightParam", weight);
-        ParamSetValue<MCore::AttributeVector3, AZ::PackedVector3f>("GoalPosParam", AZ::PackedVector3f(x, y, z));
+        ParamSetValue<MCore::AttributeVector3, AZ::Vector3>("GoalPosParam", AZ::Vector3(x, y, z));
         GetEMotionFX().Update(1.0f / 60.0f);
         
         Pose* jackPose = m_actorInstance->GetTransformData()->GetCurrentPose();
@@ -345,19 +348,19 @@ namespace EMotionFX
         const AZ::Vector3 testJointBendPos = jackPose->GetModelSpaceTransform(testBendJointIndex).mPosition;
 
         // Bend the test joint to opposite positions and check positions are opposite
-        ParamSetValue<MCore::AttributeVector3, AZ::PackedVector3f>("BendDirParam", AZ::PackedVector3f(1.0f, 0.0f, 0.0f));
+        ParamSetValue<MCore::AttributeVector3, AZ::Vector3>("BendDirParam", AZ::Vector3(1.0f, 0.0f, 0.0f));
         GetEMotionFX().Update(1.0f / 60.0f);
         const AZ::Vector3 testJointBendRightPos = jackPose->GetModelSpaceTransform(testBendJointIndex).mPosition;
 
-        ParamSetValue<MCore::AttributeVector3, AZ::PackedVector3f>("BendDirParam", AZ::PackedVector3f(-1.0f, 0.0f, 0.0f));
+        ParamSetValue<MCore::AttributeVector3, AZ::Vector3>("BendDirParam", AZ::Vector3(-1.0f, 0.0f, 0.0f));
         GetEMotionFX().Update(1.0f / 60.0f);
         const AZ::Vector3 testJointBendLeftPos = jackPose->GetModelSpaceTransform(testBendJointIndex).mPosition;
         
-        ParamSetValue<MCore::AttributeVector3, AZ::PackedVector3f>("BendDirParam", AZ::PackedVector3f(0.0f, 1.0f, 0.0f));
+        ParamSetValue<MCore::AttributeVector3, AZ::Vector3>("BendDirParam", AZ::Vector3(0.0f, 1.0f, 0.0f));
         GetEMotionFX().Update(1.0f / 60.0f);
         const AZ::Vector3 testJointBendDownPos = jackPose->GetModelSpaceTransform(testBendJointIndex).mPosition;
 
-        ParamSetValue<MCore::AttributeVector3, AZ::PackedVector3f>("BendDirParam", AZ::PackedVector3f(0.0f, -1.0f, 0.0f));
+        ParamSetValue<MCore::AttributeVector3, AZ::Vector3>("BendDirParam", AZ::Vector3(0.0f, -1.0f, 0.0f));
         GetEMotionFX().Update(1.0f / 60.0f);
         const AZ::Vector3 testJointBendUpPos = jackPose->GetModelSpaceTransform(testBendJointIndex).mPosition;
         
@@ -409,43 +412,43 @@ namespace EMotionFX
         const float posY = m_param.bendDirPosition[1];
         const float posZ = m_param.bendDirPosition[2];
         ParamSetValue<MCore::AttributeFloat, float>("WeightParam", weight);
-        ParamSetValue<MCore::AttributeVector3, AZ::PackedVector3f>("GoalPosParam", AZ::PackedVector3f(posX, posY, posZ));
+        ParamSetValue<MCore::AttributeVector3, AZ::Vector3>("GoalPosParam", AZ::Vector3(posX, posY, posZ));
         GetEMotionFX().Update(1.0f / 60.0f);
 
         // Add bend direction
         const AZ::Vector3 testJointBendPos = jackPose->GetModelSpaceTransform(testBendJointIndex).mPosition;
 
-        ParamSetValue<MCore::AttributeVector3, AZ::PackedVector3f>("BendDirParam", AZ::PackedVector3f(1.0f, 0.0f, 0.0f));
+        ParamSetValue<MCore::AttributeVector3, AZ::Vector3>("BendDirParam", AZ::Vector3(1.0f, 0.0f, 0.0f));
         GetEMotionFX().Update(1.0f / 60.0f);
         const AZ::Vector3 testJointBendRightPos = jackPose->GetModelSpaceTransform(testBendJointIndex).mPosition;
 
-        ParamSetValue<MCore::AttributeVector3, AZ::PackedVector3f>("BendDirParam", AZ::PackedVector3f(-1.0f, 0.0f, 0.0f));
+        ParamSetValue<MCore::AttributeVector3, AZ::Vector3>("BendDirParam", AZ::Vector3(-1.0f, 0.0f, 0.0f));
         GetEMotionFX().Update(1.0f / 60.0f);
         const AZ::Vector3 testJointBendLeftPos = jackPose->GetModelSpaceTransform(testBendJointIndex).mPosition;
 
-        ParamSetValue<MCore::AttributeVector3, AZ::PackedVector3f>("BendDirParam", AZ::PackedVector3f(0.0f, 1.0f, 0.0f));
+        ParamSetValue<MCore::AttributeVector3, AZ::Vector3>("BendDirParam", AZ::Vector3(0.0f, 1.0f, 0.0f));
         GetEMotionFX().Update(1.0f / 60.0f);
         const AZ::Vector3 testJointBendDownPos = jackPose->GetModelSpaceTransform(testBendJointIndex).mPosition;
 
-        ParamSetValue<MCore::AttributeVector3, AZ::PackedVector3f>("BendDirParam", AZ::PackedVector3f(0.0f, -1.0f, 0.0f));
+        ParamSetValue<MCore::AttributeVector3, AZ::Vector3>("BendDirParam", AZ::Vector3(0.0f, -1.0f, 0.0f));
         GetEMotionFX().Update(1.0f / 60.0f);
         const AZ::Vector3 testJointBendUpPos = jackPose->GetModelSpaceTransform(testBendJointIndex).mPosition;
 
         // Rotations with bent joint
-        const MCore::Quaternion testJointOriginalRotation = jackPose->GetModelSpaceTransform(testJointIndex).mRotation;
+        const AZ::Quaternion testJointOriginalRotation = jackPose->GetModelSpaceTransform(testJointIndex).mRotation;
         for (std::vector<float> rotateXYZ : m_param.rotations)
         {
             const float rotateX = rotateXYZ[0];
             const float rotateY = rotateXYZ[1];
             const float rotateZ = rotateXYZ[2];
-            ParamSetValue<MCore::AttributeQuaternion, MCore::Quaternion>("RotationParam", MCore::Quaternion(rotateX, rotateY, rotateZ, 1.0f));
+            ParamSetValue<MCore::AttributeQuaternion, AZ::Quaternion>("RotationParam", AZ::Quaternion(rotateX, rotateY, rotateZ, 1.0f));
             GetEMotionFX().Update(1.0f / 60.0f);
-            const MCore::Quaternion testJointNewRotation = jackPose->GetModelSpaceTransform(testJointIndex).mRotation;
+            const AZ::Quaternion testJointNewRotation = jackPose->GetModelSpaceTransform(testJointIndex).mRotation;
 
             if (weight)
             {
-                const MCore::Quaternion goalRotation(rotateX, rotateY, rotateZ, 1.0f);
-                EXPECT_EQ(testJointNewRotation, goalRotation) << "Rotation of the test joint should be the same as the expected rotation.";
+                const AZ::Quaternion goalRotation(rotateX, rotateY, rotateZ, 1.0f);
+                EXPECT_EQ(testJointNewRotation, goalRotation.GetNormalizedExact()) << "Rotation of the test joint should be the same as the expected rotation.";
             }
             else
             {

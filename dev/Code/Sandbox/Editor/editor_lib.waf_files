@@ -587,15 +587,12 @@
             "AzAssetBrowser/AzAssetBrowserWindow.h",
             "AzAssetBrowser/AzAssetBrowserWindow.ui"
         ],
-        "AzAssetBrowser/Dialog": [
-            "AzAssetBrowser/AzAssetBrowserDialog.cpp",
-            "AzAssetBrowser/AzAssetBrowserDialog.h",
-            "AzAssetBrowser/AzAssetBrowserDialog.ui"
-        ],
         "AzAssetBrowser/Preview": [
-            "AzAssetBrowser/Preview/PreviewWidget.cpp",
-            "AzAssetBrowser/Preview/PreviewWidget.h",
-            "AzAssetBrowser/Preview/PreviewWidget.ui"
+            "AzAssetBrowser/Preview/LegacyPreviewer.cpp",
+            "AzAssetBrowser/Preview/LegacyPreviewer.h",
+            "AzAssetBrowser/Preview/LegacyPreviewer.ui",
+            "AzAssetBrowser/Preview/LegacyPreviewerFactory.cpp",
+            "AzAssetBrowser/Preview/LegacyPreviewerFactory.h"
         ],
         "Thumbnails": [
             "Thumbnails/MaterialThumbnailRenderer.cpp",
@@ -1954,7 +1951,9 @@
             "Util/ColumnGroupItemDelegate.h",
             "Util/ColumnGroupItemDelegate.cpp",
             "Util/ColumnGroupTreeView.h",
-            "Util/ColumnGroupTreeView.cpp"
+            "Util/ColumnGroupTreeView.cpp",
+            "Util/ModalWindowDismisser.h",
+            "Util/ModalWindowDismisser.cpp"
         ],
         "Util/3DConnexion": [
             "Util/3DConnexionDriver.cpp",

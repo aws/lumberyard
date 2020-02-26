@@ -35,6 +35,8 @@
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
 #include <MathConversion.h>
 
+#include <AzFramework/Windowing/WindowBus.h>
+
 // forward declarations.
 class CBaseObject;
 class QMenu;
@@ -56,9 +58,11 @@ class SANDBOX_API CRenderViewport
     , public Camera::EditorCameraRequestBus::Handler
     , public AzToolsFramework::EditorEntityContextNotificationBus::Handler
     , public AzFramework::InputSystemCursorConstraintRequestBus::Handler
+    , public AzToolsFramework::ViewportInteraction::ViewportFreezeRequestBus::Handler
     , public AzToolsFramework::ViewportInteraction::ViewportInteractionRequestBus::Handler
     , public AzToolsFramework::ViewportInteraction::MainEditorViewportInteractionRequestBus::Handler
     , public AzToolsFramework::EditorEvents::Bus::Handler
+    , public AzFramework::WindowRequestBus::Handler
 {
     Q_OBJECT
 public:
@@ -175,6 +179,10 @@ public:
     float AngleStep() override;
     QPoint ViewportWorldToScreen(const AZ::Vector3& worldPosition) override;
 
+    // AzToolsFramework::ViewportFreezeRequestBus
+    bool IsViewportInputFrozen() override;
+    void FreezeViewportInput(bool freeze) override;
+
     // AzToolsFramework::MainEditorViewportInteractionRequestBus
     AZ::EntityId PickEntity(const QPoint& point) override;
     AZ::Vector3 PickTerrain(const QPoint& point) override;
@@ -184,6 +192,10 @@ public:
     QWidget* GetWidgetForViewportContextMenu() override;
     void BeginWidgetContext() override;
     void EndWidgetContext() override;
+
+    // WindowRequestBus::Handler...
+    void SetWindowTitle(const AZStd::string& title) override;
+    AzFramework::WindowSize GetClientAreaSize() const override;
 
     void ConnectViewportInteractionRequestBus();
     void DisconnectViewportInteractionRequestBus();
@@ -608,6 +620,7 @@ private:
 
     // Used to prevent circular set camera events
     bool m_ignoreSetViewFromEntityPerspective = false;
+    bool m_windowResizedEvent = false;
 };
 
 #endif // CRYINCLUDE_EDITOR_RENDERVIEWPORT_H

@@ -11,6 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
+#include "StdAfx.h"
 #include <platform.h>
 #include <ICryPak.h>
 #include <CryPath.h>

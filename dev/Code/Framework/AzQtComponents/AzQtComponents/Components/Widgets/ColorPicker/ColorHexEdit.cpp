@@ -67,7 +67,7 @@ ColorHexEdit::ColorHexEdit(QWidget* parent)
     , m_alpha(0)
 {
     auto layout = new QGridLayout(this);
-    layout->setMargin(0);
+    layout->setContentsMargins(0, 0, 0, 0);
 
     m_edit = new QLineEdit(QStringLiteral("000000"), this);
     m_edit->setValidator(new QRegExpValidator(QRegExp(QStringLiteral("^[0-9A-Fa-f]{0,6}$")), this));

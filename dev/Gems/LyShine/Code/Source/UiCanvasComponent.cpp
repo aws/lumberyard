@@ -2225,7 +2225,7 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
         // Texture Atlases
             ->Field("TextureAtlases", &UiCanvasComponent::m_atlasPathNames)
             ;
-        
+
         AZ::EditContext* ec = serializeContext->GetEditContext();
         if (ec)
         {
@@ -2333,6 +2333,7 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
             ->Event("GetHoverInteractable", &UiCanvasBus::Events::GetHoverInteractable)
             ->Event("ForceHoverInteractable", &UiCanvasBus::Events::ForceHoverInteractable)
             ->Event("ForceEnterInputEventOnInteractable", &UiCanvasBus::Events::ForceEnterInputEventOnInteractable);
+
 
         behaviorContext->EBus<UiCanvasNotificationBus>("UiCanvasNotificationBus")
             ->Handler<UiCanvasNotificationBusBehaviorHandler>();
@@ -3405,7 +3406,7 @@ void UiCanvasComponent::DeactivateElements()
         for (AZ::EntityId& entityId : entities)
         {
             // Look up the entity by ID, as sometimes one of the entities owns others
-            // that will be destroyed when it's destroyed. Since we store pointers, 
+            // that will be destroyed when it's destroyed. Since we store pointers,
             // those will point to freed memory.
             AZ::Entity* entity = nullptr;
             AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, entityId);
@@ -3642,7 +3643,7 @@ void UiCanvasComponent::RenderCanvasToTexture()
     if (system && !gEnv->IsDedicated())
     {
         GetUiRenderer()->BeginUiFrameRender();
-        
+
         gEnv->pRenderer->SetRenderTarget(m_renderTargetHandle, m_renderTargetDepthSurface);
 
         // clear the render target before rendering to it
@@ -3658,7 +3659,7 @@ void UiCanvasComponent::RenderCanvasToTexture()
         RenderCanvas(true, m_canvasSize);
 
         gEnv->pRenderer->SetRenderTarget(0); // restore render target
-        
+
         GetUiRenderer()->EndUiFrameRender();
     }
 }

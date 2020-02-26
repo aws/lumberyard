@@ -99,7 +99,7 @@ namespace AzQtComponents
     public:
         explicit OutlinerSearchItemDelegate(QWidget* parent = nullptr);
 
-        void PaintRichText(QPainter* painter, QStyleOptionViewItemV4& opt, QString& text) const;
+        void PaintRichText(QPainter* painter, QStyleOptionViewItem& opt, QString& text) const;
         void SetSelector(SearchTypeSelector* selector) { m_selector = selector; }
 
         // QStyleItemDelegate overrides.

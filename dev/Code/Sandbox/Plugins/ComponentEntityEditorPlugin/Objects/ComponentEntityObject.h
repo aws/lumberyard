@@ -45,6 +45,7 @@ class CComponentEntityObject
     , private AZ::EntityBus::Handler
 {
 public:
+    CComponentEntityObject();
     ~CComponentEntityObject();
 
     //////////////////////////////////////////////////////////////////////////
@@ -67,7 +68,6 @@ public:
     bool IsFrozen() const override;
     void SetFrozen(bool bFrozen) override;
     void SetHidden(bool bHidden, uint64 hiddenId = CBaseObject::s_invalidHiddenID, bool bAnimated = false) override;
-    void UpdateVisibility(bool bVisible) override;
     void SetSelected(bool bSelect) override;
     void SetHighlight(bool bHighlight) override;
     IRenderNode* GetEngineNode() const override;
@@ -125,7 +125,7 @@ public:
 
     //////////////////////////////////////////////////////////////////////////
     // AzToolsFramework::EditorVisibilityNotificationBus::Handler
-    void OnEntityVisibilityFlagChanged(bool flag) override;
+    void OnEntityVisibilityChanged(bool flag) override;
     //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////
@@ -156,7 +156,6 @@ public:
     void SetSandboxObjectAccent(AzToolsFramework::EntityAccentType accent) override;
     void SetSandBoxObjectIsolated(bool isIsolated) override;
     bool IsSandBoxObjectIsolated() override;
-
     void RefreshVisibilityAndLock() override;
     //////////////////////////////////////////////////////////////////////////
 
@@ -175,8 +174,6 @@ public:
 protected:
     friend class CTemplateObjectClassDesc<CComponentEntityObject>;
     friend class SandboxIntegrationManager;
-
-    CComponentEntityObject();
 
     static const GUID& GetClassID()
     {

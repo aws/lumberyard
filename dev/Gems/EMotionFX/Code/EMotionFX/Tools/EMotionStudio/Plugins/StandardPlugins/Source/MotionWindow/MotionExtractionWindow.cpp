@@ -20,6 +20,7 @@
 #include <QVBoxLayout>
 #include <QIcon>
 #include <QCheckBox>
+#include <MCore/Source/LogManager.h>
 #include <MysticQt/Source/ButtonGroup.h>
 #include <EMotionFX/CommandSystem/Source/MotionCommands.h>
 #include <EMotionFX/Source/MotionSystem.h>

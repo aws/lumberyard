@@ -18,9 +18,9 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/fixed_unordered_set.h>
 
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: class '...' needs to have dll-interface to be used by clients of class '...'
 #include <QSortFilterProxyModel>
 #include <QSharedPointer>
-AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QCollatorSortKey::d': class 'QSharedDataPointer<QCollatorSortKeyPrivate>' needs to have dll-interface to be used by clients of class 'QCollatorSortKey'
 #include <QCollator>
 AZ_POP_DISABLE_WARNING
 
@@ -63,9 +63,11 @@ namespace AzToolsFramework
             bool m_alreadyRecomputingFilters = false;
             //asset source name match filter
             FilterConstType m_filter;
+            AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: class '...' needs to have dll-interface to be used by clients of class '...'
             QWeakPointer<const StringFilter> m_stringFilter;
             QWeakPointer<const CompositeFilter> m_assetTypeFilter;
             QCollator m_collator;  // cache the collator as its somewhat expensive to constantly create and destroy one.
+            AZ_POP_DISABLE_WARNING
         };
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

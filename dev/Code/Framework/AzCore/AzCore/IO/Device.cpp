@@ -150,6 +150,7 @@ namespace AZ
             
             if (needsDecompression)
             {
+                AZ_Assert(request->m_compressionInfo.m_decompressor, "Compressed read request received by AZ::IO::Streamer without a decompressor callback.");
                 readRequest->CreateCompressedRead(nullptr, link, request->m_compressionInfo, request->m_buffer, request->m_byteOffset, request->m_byteSize);
             }
             else

@@ -18,7 +18,7 @@
 #include <AzCore/Math/Transform.h>
 #include <LmbrCentral/Dependency/DependencyNotificationBus.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
-#include <Vegetation/EBuses/AreaNotificationBus.h>
+#include <Vegetation/Ebuses/AreaNotificationBus.h>
 #include <Vegetation/Ebuses/BlockerRequestBus.h>
 #include <Vegetation/AreaComponentBase.h>
 

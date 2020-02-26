@@ -120,7 +120,6 @@ def test_replace_engine_path_and_tp_root_in_string_success(mocked_bld_a, string_
                  r'D:\workspace_b\dev\Code\Framework\AzCore\AzCore',
                  r'D:\workspace_b\3rdParty\boost\1.61.0-az.4',
                  r'D:\workspace_b\dev\Code\CryEngine\CryCommon',
-                 r'D:\workspace_b\dev\BinTemp\win_x64_vs2017_profile\Code\Framework\AzCore',
                  r'D:\workspace_b\dev\Code\Framework\AzCore',
                  r'D:\workspace_b\3rdParty\rapidjson\rapidjson-1.0.2.1\include',
              ],

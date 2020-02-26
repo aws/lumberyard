@@ -21,7 +21,7 @@
 #include <GradientSignal/GradientSampler.h>
 #include <GradientSignal/SmoothStep.h>
 #include <GradientSignal/ImageSettings.h>
-#include <GradientSignal/EBuses/GradientRequestBus.h>
+#include <GradientSignal/Ebuses/GradientRequestBus.h>
 
 namespace GradientSignal
 {

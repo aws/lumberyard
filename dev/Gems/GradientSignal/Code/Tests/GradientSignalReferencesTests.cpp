@@ -37,10 +37,12 @@ namespace UnitTest
                                         const AZStd::vector<float>& expectedOutput, GradientSignal::MixedGradientLayer::MixingOperation operation, float opacity)
         {
             auto mockLayer1 = CreateEntity();
-            MockGradientArrayRequestsBus mockLayer1GradientRequestsBus(mockLayer1->GetId(), layer1Data, dataSize);
+            const AZ::EntityId id1 = mockLayer1->GetId();
+            MockGradientArrayRequestsBus mockLayer1GradientRequestsBus(id1, layer1Data, dataSize);
 
             auto mockLayer2 = CreateEntity();
-            MockGradientArrayRequestsBus mockLayer2GradientRequestsBus(mockLayer2->GetId(), layer2Data, dataSize);
+            const AZ::EntityId id2 = mockLayer2->GetId();
+            MockGradientArrayRequestsBus mockLayer2GradientRequestsBus(id2, layer2Data, dataSize);
 
             GradientSignal::MixedGradientConfig config;
 
@@ -371,7 +373,8 @@ namespace UnitTest
         AZStd::vector<float> expectedOutput = inputData;
 
         auto mockReference = CreateEntity();
-        MockGradientArrayRequestsBus mockGradientRequestsBus(mockReference->GetId(), inputData, dataSize);
+        const AZ::EntityId id = mockReference->GetId();
+        MockGradientArrayRequestsBus mockGradientRequestsBus(id, inputData, dataSize);
 
         GradientSignal::ReferenceGradientConfig config;
         config.m_gradientSampler.m_gradientId = mockReference->GetId();

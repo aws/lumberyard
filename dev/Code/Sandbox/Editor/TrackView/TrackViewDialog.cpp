@@ -105,6 +105,7 @@ void CTrackViewDialog::RegisterViewClass()
         AzToolsFramework::ViewPaneOptions opts;
         opts.shortcut = QKeySequence(Qt::Key_T);
         opts.sendViewPaneNameBackToAmazonAnalyticsServers = true;
+        opts.isDisabledInSimMode = true;
 
         AzToolsFramework::RegisterViewPane<CTrackViewDialog>(LyViewPane::TrackView, LyViewPane::CategoryTools, opts);
         GetIEditor()->GetSettingsManager()->AddToolName(s_kTrackViewLayoutSection, LyViewPane::TrackView);
@@ -153,12 +154,7 @@ CTrackViewDialog::CTrackViewDialog(QWidget* pParent /*=NULL*/)
     m_defaultTracksForEntityNode.push_back(AnimParamType::Rotation);
 
     OnInitDialog();
-
-    GetIEditor()->RegisterNotifyListener(this);
-    GetIEditor()->GetObjectManager()->GetLayersManager()->AddUpdateListener(functor(*this, &CTrackViewDialog::OnLayerUpdate));
-    GetIEditor()->GetAnimation()->AddListener(this);
-    GetIEditor()->GetSequenceManager()->AddListener(this);
-    GetIEditor()->GetUndoManager()->AddListener(this);
+    AddDialogListeners();
 
     AZ::EntitySystemBus::Handler::BusConnect();
 }
@@ -180,20 +176,8 @@ CTrackViewDialog::~CTrackViewDialog()
 
     const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
     CTrackViewSequence* sequence = pSequenceManager->GetSequenceByEntityId(m_currentSequenceEntityId);
-    if (sequence)
-    {
-        sequence->RemoveListener(this);
-        sequence->RemoveListener(m_wndNodesCtrl);
-        sequence->RemoveListener(m_wndKeyProperties);
-        sequence->RemoveListener(m_wndCurveEditor);
-        sequence->RemoveListener(m_wndDopeSheet);
-    }
-
-    GetIEditor()->GetUndoManager()->RemoveListener(this);
-    GetIEditor()->GetSequenceManager()->RemoveListener(this);
-    GetIEditor()->GetAnimation()->RemoveListener(this);
-    GetIEditor()->UnregisterNotifyListener(this);
-    GetIEditor()->GetObjectManager()->GetLayersManager()->RemoveUpdateListener(functor(*this, &CTrackViewDialog::OnLayerUpdate));
+    RemoveSequenceListeners(sequence);
+    RemoveDialogListeners();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -857,14 +841,22 @@ void CTrackViewDialog::InvalidateDopeSheet()
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewDialog::Update()
 {
-    if (m_bNeedReloadSequence)
+    if (m_bNeedReloadSequence || m_needReAddListeners)
     {
-        m_bNeedReloadSequence = false;
         const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
         CTrackViewSequence* sequence = pSequenceManager->GetSequenceByEntityId(m_currentSequenceEntityId);
 
-        CAnimationContext* pAnimationContext = GetIEditor()->GetAnimation();
-        pAnimationContext->SetSequence(sequence, true, false);
+        if (m_bNeedReloadSequence)
+        {
+            m_bNeedReloadSequence = false;
+            CAnimationContext* pAnimationContext = GetIEditor()->GetAnimation();
+            pAnimationContext->SetSequence(sequence, true, false);
+        }
+        if (m_needReAddListeners)
+        {
+            m_needReAddListeners = false;
+            AddSequenceListeners(sequence);
+        }
     }
 
     CAnimationContext* pAnimationContext = GetIEditor()->GetAnimation();
@@ -1167,6 +1159,29 @@ void CTrackViewDialog::SetEditLock(bool bLock)
     m_wndCurveEditor->update();
 }
 
+void CTrackViewDialog::OnGameOrSimModeLock(bool lock)
+{
+    if (lock)
+    {
+        const CTrackViewSequenceManager* sequenceManager = GetIEditor()->GetSequenceManager();
+        CTrackViewSequence* sequence = sequenceManager->GetSequenceByEntityId(m_currentSequenceEntityId);
+
+        // Remove sequence listeners when switching modes to ensure they get removed
+        // They will fail to be removed if dialog is closed in sim mode
+        RemoveSequenceListeners(sequence);
+    }
+    else
+    {
+        // Mark to re-add listeners next frame after the mode switch
+        m_needReAddListeners = true;
+    }
+
+    SetEditLock(lock);
+    m_enteringGameOrSimModeLock = lock;
+    m_sequencesComboBox->setDisabled(lock);
+    UpdateActions();
+}
+
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewDialog::OnLayerUpdate(int event, CObjectLayer* pLayer)
 {
@@ -1258,14 +1273,7 @@ void CTrackViewDialog::OnSequenceChanged(CTrackViewSequence* sequence)
     // Remove listeners from previous sequence
     CTrackViewSequenceManager* sequenceManager = GetIEditor()->GetSequenceManager();
     CTrackViewSequence* prevSequence = sequenceManager->GetSequenceByEntityId(m_currentSequenceEntityId);
-    if (prevSequence)
-    {
-        prevSequence->RemoveListener(this);
-        prevSequence->RemoveListener(m_wndNodesCtrl);
-        prevSequence->RemoveListener(m_wndKeyProperties);
-        prevSequence->RemoveListener(m_wndCurveEditor);
-        prevSequence->RemoveListener(m_wndDopeSheet);
-    }
+    RemoveSequenceListeners(prevSequence);
 
     if (sequence)
     {
@@ -1297,11 +1305,7 @@ void CTrackViewDialog::OnSequenceChanged(CTrackViewSequence* sequence)
 
         sequence->ClearSelection();
 
-        sequence->AddListener(this);
-        sequence->AddListener(m_wndNodesCtrl);
-        sequence->AddListener(m_wndKeyProperties);
-        sequence->AddListener(m_wndCurveEditor);
-        sequence->AddListener(m_wndDopeSheet);
+        AddSequenceListeners(sequence);
     }
     else
     {
@@ -1482,10 +1486,7 @@ void CTrackViewDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
         m_bIgnoreUpdates = true;
         break;
     case eNotify_OnBeginGameMode:
-        SetEditLock(true);
-        m_enteringGameOrSimModeLock = true;
-        m_sequencesComboBox->setEnabled(false);
-        UpdateActions();
+        OnGameOrSimModeLock(true);
         m_bIgnoreUpdates = true;
         break;
     case eNotify_OnEndNewScene:
@@ -1498,10 +1499,7 @@ void CTrackViewDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
         break;
     case eNotify_OnEndGameMode:
         m_bIgnoreUpdates = false;
-        SetEditLock(false);
-        m_enteringGameOrSimModeLock = false;
-        m_sequencesComboBox->setEnabled(true);
-        UpdateActions();
+        OnGameOrSimModeLock(false);
         break;
     case eNotify_OnMissionChange:
         if (!m_bIgnoreUpdates)
@@ -1522,16 +1520,10 @@ void CTrackViewDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
         }
         break;
     case eNotify_OnBeginSimulationMode:
-        SetEditLock(true);
-        m_enteringGameOrSimModeLock = true;
-        m_sequencesComboBox->setEnabled(false);
-        UpdateActions();
+        OnGameOrSimModeLock(true);
         break;
     case eNotify_OnEndSimulationMode:
-        SetEditLock(false);
-        m_enteringGameOrSimModeLock = false;
-        m_sequencesComboBox->setEnabled(true);
-        UpdateActions();
+        OnGameOrSimModeLock(false);
         break;
     case eNotify_OnSelectionChange:
         UpdateActions();
@@ -2277,6 +2269,52 @@ void CTrackViewDialog::OnSequenceRemoved(CTrackViewSequence* sequence)
 {
     ReloadSequencesComboBox();
     UpdateActions();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTrackViewDialog::AddSequenceListeners(CTrackViewSequence* sequence)
+{
+    if (sequence)
+    {
+        sequence->AddListener(this);
+        sequence->AddListener(m_wndNodesCtrl);
+        sequence->AddListener(m_wndKeyProperties);
+        sequence->AddListener(m_wndCurveEditor);
+        sequence->AddListener(m_wndDopeSheet);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTrackViewDialog::RemoveSequenceListeners(CTrackViewSequence* sequence)
+{
+    if (sequence)
+    {
+        sequence->RemoveListener(m_wndDopeSheet);
+        sequence->RemoveListener(m_wndCurveEditor);
+        sequence->RemoveListener(m_wndKeyProperties);
+        sequence->RemoveListener(m_wndNodesCtrl);
+        sequence->RemoveListener(this);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTrackViewDialog::AddDialogListeners()
+{
+    GetIEditor()->RegisterNotifyListener(this);
+    GetIEditor()->GetObjectManager()->GetLayersManager()->AddUpdateListener(functor(*this, &CTrackViewDialog::OnLayerUpdate));
+    GetIEditor()->GetAnimation()->AddListener(this);
+    GetIEditor()->GetSequenceManager()->AddListener(this);
+    GetIEditor()->GetUndoManager()->AddListener(this);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTrackViewDialog::RemoveDialogListeners()
+{
+    GetIEditor()->GetUndoManager()->RemoveListener(this);
+    GetIEditor()->GetSequenceManager()->RemoveListener(this);
+    GetIEditor()->GetAnimation()->RemoveListener(this);
+    GetIEditor()->GetObjectManager()->GetLayersManager()->RemoveUpdateListener(functor(*this, &CTrackViewDialog::OnLayerUpdate));
+    GetIEditor()->UnregisterNotifyListener(this);
 }
 
 //////////////////////////////////////////////////////////////////////////

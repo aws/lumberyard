@@ -21,11 +21,10 @@ from resource_type_context import ResourceTypeContext
 from stack_info_manager_context import StackInfoManagerContext
 from hook import HookContext
 
-class Context(object):
 
+class Context(object):
     '''Aggregates objects that provide a context for performing Lumberyard resource management operations.'''
 
-    
     def __init__(self, metricsInterface, view_class=ViewContext):
         self.metrics = metricsInterface
         self.view = view_class(self)
@@ -39,14 +38,14 @@ class Context(object):
         self.resource_types = ResourceTypeContext(self)
         self.stack_info = StackInfoManagerContext(self)
 
-    #bootstrap order matters
+    # bootstrap order matters
     def bootstrap(self, args):
         self.view.bootstrap(args)
         self.config.bootstrap(args)
         self.gem.bootstrap(args)
         self.resource_group_controller.bootstrap(args)
 
-    #initialization order matters
+    # initialization order matters
     def initialize(self, args):
         self.view.initialize(args)
         self.aws.initialize(args)

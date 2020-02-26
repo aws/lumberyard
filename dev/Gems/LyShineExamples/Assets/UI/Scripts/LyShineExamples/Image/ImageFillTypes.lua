@@ -23,9 +23,11 @@ local ImageFillTypes =
 	},
 }
 
+
 function ImageFillTypes:OnActivate()
 	self.tickBusHandler = TickBus.Connect(self)
 	self.totalTime = 0
+	self.timeOverride = 0
 	
 	self.dropdownHandlers = {}
 	for i = 0, #self.Properties.Dropdowns do
@@ -35,10 +37,18 @@ function ImageFillTypes:OnActivate()
 	self.radialStartAngleSliderHandler = UiSliderNotificationBus.Connect(self, self.Properties.RadialStartAngleSlider)
 	
 	self.spriteRadioButtonGroupHandler = UiRadioButtonGroupNotificationBus.Connect(self, self.Properties.SpriteRadioButtonGroup)
+
+	self:InitAutomatedTestEvents()
 end
 
 function ImageFillTypes:OnTick(deltaTime, timePoint)
 	self.totalTime = self.totalTime + deltaTime
+
+	-- [Automated Testing] Overrides the fill value
+	if self.timeOverride > 0 then
+		self.totalTime = self.timeOverride
+	end
+
 	for i = 0, #self.Properties.FilledImages do
 		fillAmount = 1.0-((math.cos(self.totalTime)*0.5)+0.5) -- Scale cos output to the range [0,1]
 		UiImageBus.Event.SetFillAmount(self.Properties.FilledImages[i], fillAmount)
@@ -53,6 +63,8 @@ function ImageFillTypes:OnDeactivate()
 	end
 	self.radialStartAngleSliderHandler:Disconnect()
 	self.spriteRadioButtonGroupHandler:Disconnect()
+
+	self:DeInitAutomatedTestEvents()
 end
 
 function ImageFillTypes:OnDropdownValueChanged(entityId)
@@ -115,6 +127,27 @@ function ImageFillTypes:OnRadioButtonGroupStateChange(entityId)
 			UiImageBus.Event.SetFillCenter(self.Properties.FilledImages[i], false)
 		end				
 	end	
+end
+
+-- [Automated Testing] setup
+function ImageFillTypes:InitAutomatedTestEvents()
+	self.automatedTestSetFillValueId = GameplayNotificationId(EntityId(), "AutomatedTestSetFillValue", "float");
+	self.automatedTestSetFillValueHandler = GameplayNotificationBus.Connect(self, self.automatedTestSetFillValueId);
+end
+
+-- [Automated Testing] event handling
+function ImageFillTypes:OnEventBegin(value)
+	if (GameplayNotificationBus.GetCurrentBusId() == self.automatedTestSetFillValueId) then
+		self.timeOverride = value
+	end
+end
+
+-- [Automated Testing] teardown
+function ImageFillTypes:DeInitAutomatedTestEvents()
+	if (self.automatedTestSetFillValueHandler ~= nil) then
+		self.automatedTestSetFillValueHandler:Disconnect();
+		self.automatedTestSetFillValueHandler = nil;
+	end
 end
 
 return ImageFillTypes

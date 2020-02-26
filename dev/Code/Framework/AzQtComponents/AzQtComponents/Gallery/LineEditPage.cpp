@@ -14,8 +14,10 @@
 #include <Gallery/ui_LineEditPage.h>
 
 #include <QValidator>
+#include <QDoubleValidator>
 
 #include <AzQtComponents/Components/Widgets/LineEdit.h>
+#include <AzQtComponents/Components/Widgets/Text.h>
 
 class ErrorValidator : public QValidator
 {
@@ -34,25 +36,30 @@ LineEditPage::LineEditPage(QWidget* parent)
 {
     ui->setupUi(this);
 
-    ui->defaultWithHintText->setPlaceholderText("Hint text");
+    const auto titles = {ui->lineEditTitle, ui->searchBoxTitle, ui->examplesTitle};
+    for (auto title : titles)
+    {
+        AzQtComponents::Text::addTitleStyle(title);
+    }
 
-    ui->withData->setText("Filled in data");
     ui->withData->setToolTip("<b></b>This will be a very very long sentence with an end but not for a long time, spanning an entire screen. I said, spanning an entire screen. No really. An entire screen. A very long, very wide screen.");
-    ui->withData->setClearButtonEnabled(true);
 
     ui->error->setText("Error");
     ui->error->setValidator(new ErrorValidator(ui->error));
-    ui->error->setClearButtonEnabled(true);
 
-    ui->disabled->setDisabled(true);
-    ui->disabled->setText("Disabled");
+    auto validator = new QDoubleValidator(ui->longNumber);
+    validator->setNotation(QDoubleValidator::StandardNotation);
+    validator->setTop(4.0);
+    validator->setBottom(3.0);
+    ui->longNumber->setValidator(validator);
+    AzQtComponents::LineEdit::setErrorMessage(ui->longNumber, QStringLiteral("Value must be between 3.0 and 4.0"));
 
-    AzQtComponents::LineEdit::applySearchStyle(ui->searchBox);
-    ui->searchBox->setPlaceholderText("Search...");
-    ui->searchBox->setClearButtonEnabled(true);
-
-    ui->longSentence->setText("This will be a very very long sentence without end");
-    ui->longSentence->setClearButtonEnabled(true);
+    const auto searchBoxes = {ui->searchBox, ui->emptySearchBox};
+    for (auto searchBox : searchBoxes)
+    {
+        AzQtComponents::LineEdit::applySearchStyle(searchBox);
+        searchBox->setPlaceholderText("Search...");
+    }
 
     QString exampleText = R"(
 
@@ -81,6 +88,9 @@ AzQtComponents::LineEdit::applySearchStyle(ui->searchBox);
 
 // to indicate errors, set a QValidator subclass on the QLineEdit object:
 lineEdit->setValidator(new CustomValidator(lineEdit));
+
+// to set the error message
+AzQtComponents::LineEdit::setErrorMessage(lineEdit, QStringLiteral("Value must be between 3.0 and 4.0"));
 
 // You can also use pre-made validators for QDoubleValidator, QIntValidator, QRegularExpressionValidator
 

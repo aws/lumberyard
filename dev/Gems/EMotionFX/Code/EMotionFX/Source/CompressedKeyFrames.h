@@ -28,22 +28,22 @@ namespace EMotionFX
     //--------------------------------------------------------------------------------------
     // compress a quaternion
     template<>
-    MCORE_INLINE void KeyFrame<MCore::Quaternion, MCore::Compressed8BitQuaternion>::SetValue(const MCore::Quaternion& value)                                { mValue.FromQuaternion(value); }
+    MCORE_INLINE void KeyFrame<AZ::Quaternion, MCore::Compressed8BitQuaternion>::SetValue(const AZ::Quaternion& value)                                      { mValue.FromQuaternion(value); }
 
     // decompress into a quaternion
     template<>
-    MCORE_INLINE MCore::Quaternion KeyFrame<MCore::Quaternion, MCore::Compressed8BitQuaternion>::GetValue() const                                           { return mValue.ToQuaternion(); }
+    MCORE_INLINE AZ::Quaternion KeyFrame<AZ::Quaternion, MCore::Compressed8BitQuaternion>::GetValue() const                                                 { return mValue.ToQuaternion(); }
 
     // decompress into a quaternion (without return value)
     template<>
-    MCORE_INLINE void KeyFrame<MCore::Quaternion, MCore::Compressed8BitQuaternion>::GetValue(MCore::Quaternion* outValue)                                   { mValue.UnCompress(outValue); }
+    MCORE_INLINE void KeyFrame<AZ::Quaternion, MCore::Compressed8BitQuaternion>::GetValue(AZ::Quaternion* outValue)                                         { mValue.UnCompress(outValue); }
 
     // direct access to compressed values
     template<>
-    MCORE_INLINE void KeyFrame<MCore::Quaternion, MCore::Compressed8BitQuaternion>::SetStorageTypeValue(const MCore::Compressed8BitQuaternion& value)       { mValue = value; }
+    MCORE_INLINE void KeyFrame<AZ::Quaternion, MCore::Compressed8BitQuaternion>::SetStorageTypeValue(const MCore::Compressed8BitQuaternion& value)          { mValue = value; }
 
     template<>
-    MCORE_INLINE const MCore::Compressed8BitQuaternion& KeyFrame<MCore::Quaternion, MCore::Compressed8BitQuaternion>::GetStorageTypeValue() const           { return mValue; }
+    MCORE_INLINE const MCore::Compressed8BitQuaternion& KeyFrame<AZ::Quaternion, MCore::Compressed8BitQuaternion>::GetStorageTypeValue() const              { return mValue; }
 
 
     //--------------------------------------------------------------------------------------
@@ -53,22 +53,22 @@ namespace EMotionFX
     //--------------------------------------------------------------------------------------
     // compress a quaternion
     template<>
-    MCORE_INLINE void KeyFrame<MCore::Quaternion, MCore::Compressed16BitQuaternion>::SetValue(const MCore::Quaternion& value)                               { mValue.FromQuaternion(value); }
+    MCORE_INLINE void KeyFrame<AZ::Quaternion, MCore::Compressed16BitQuaternion>::SetValue(const AZ::Quaternion& value)                                     { mValue.FromQuaternion(value); }
 
     // decompress into a quaternion
     template<>
-    MCORE_INLINE MCore::Quaternion KeyFrame<MCore::Quaternion, MCore::Compressed16BitQuaternion>::GetValue() const                                          { return mValue.ToQuaternion(); }
+    MCORE_INLINE AZ::Quaternion KeyFrame<AZ::Quaternion, MCore::Compressed16BitQuaternion>::GetValue() const                                                { return mValue.ToQuaternion(); }
 
     // decompress into a quaternion
     template<>
-    MCORE_INLINE void KeyFrame<MCore::Quaternion, MCore::Compressed16BitQuaternion>::GetValue(MCore::Quaternion* outValue)                                  { return mValue.UnCompress(outValue); }
+    MCORE_INLINE void KeyFrame<AZ::Quaternion, MCore::Compressed16BitQuaternion>::GetValue(AZ::Quaternion* outValue)                                        { return mValue.UnCompress(outValue); }
 
     // direct access to compressed values
     template<>
-    MCORE_INLINE void KeyFrame<MCore::Quaternion, MCore::Compressed16BitQuaternion>::SetStorageTypeValue(const MCore::Compressed16BitQuaternion& value)     { mValue = value; }
+    MCORE_INLINE void KeyFrame<AZ::Quaternion, MCore::Compressed16BitQuaternion>::SetStorageTypeValue(const MCore::Compressed16BitQuaternion& value)        { mValue = value; }
 
     template<>
-    MCORE_INLINE const MCore::Compressed16BitQuaternion& KeyFrame<MCore::Quaternion, MCore::Compressed16BitQuaternion>::GetStorageTypeValue() const         { return mValue; }
+    MCORE_INLINE const MCore::Compressed16BitQuaternion& KeyFrame<AZ::Quaternion, MCore::Compressed16BitQuaternion>::GetStorageTypeValue() const            { return mValue; }
 
 
     //--------------------------------------------------------------------------------------
@@ -90,10 +90,10 @@ namespace EMotionFX
 
     // direct access to compressed values
     template<>
-    MCORE_INLINE void KeyFrame<MCore::Quaternion, MCore::Compressed8BitFloat>::SetStorageTypeValue(const MCore::Compressed8BitFloat& value)                 { mValue = value; }
+    MCORE_INLINE void KeyFrame<AZ::Quaternion, MCore::Compressed8BitFloat>::SetStorageTypeValue(const MCore::Compressed8BitFloat& value)                    { mValue = value; }
 
     template<>
-    MCORE_INLINE const MCore::Compressed8BitFloat& KeyFrame<MCore::Quaternion, MCore::Compressed8BitFloat>::GetStorageTypeValue() const                     { return mValue; }
+    MCORE_INLINE const MCore::Compressed8BitFloat& KeyFrame<AZ::Quaternion, MCore::Compressed8BitFloat>::GetStorageTypeValue() const                        { return mValue; }
 
 
     //--------------------------------------------------------------------------------------
@@ -115,9 +115,9 @@ namespace EMotionFX
 
     // direct access to compressed values
     template<>
-    MCORE_INLINE void KeyFrame<MCore::Quaternion, MCore::Compressed16BitFloat>::SetStorageTypeValue(const MCore::Compressed16BitFloat& value)               { mValue = value; }
+    MCORE_INLINE void KeyFrame<AZ::Quaternion, MCore::Compressed16BitFloat>::SetStorageTypeValue(const MCore::Compressed16BitFloat& value)                  { mValue = value; }
 
     template<>
-    MCORE_INLINE const MCore::Compressed16BitFloat& KeyFrame<MCore::Quaternion, MCore::Compressed16BitFloat>::GetStorageTypeValue() const                   { return mValue; }
+    MCORE_INLINE const MCore::Compressed16BitFloat& KeyFrame<AZ::Quaternion, MCore::Compressed16BitFloat>::GetStorageTypeValue() const                      { return mValue; }
 } // namespace EMotionFX
 

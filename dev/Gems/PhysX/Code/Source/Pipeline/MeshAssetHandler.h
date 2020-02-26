@@ -22,21 +22,7 @@ namespace PhysX
 {
     namespace Pipeline
     {
-        class MeshAssetCookedData
-        {
-        public:
-            AZ_TYPE_INFO(MeshAssetCookedData, "{82955F2F-4DA1-4AEF-ACEF-0AE16BA20EF4}");
 
-            MeshAssetCookedData() = default;
-            MeshAssetCookedData(const physx::PxDefaultMemoryOutputStream& cookedStream);
-
-            static void Reflect(AZ::ReflectContext* context);
-
-            bool m_isConvexMesh = true;
-            AZStd::vector<Physics::MaterialConfiguration> m_materialsData;
-            AZStd::vector<AZStd::string> m_materialSlots;
-            AZStd::vector<AZ::u8> m_cookedPxMeshData;
-        };
 
         /// Asset handler for loading and initializing PhysXMeshAsset assets.
         class MeshAssetHandler

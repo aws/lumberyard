@@ -47,7 +47,7 @@
 #include "../BlendTreeTwoLinkIKNode.h"
 #include "../BlendTreeLookAtNode.h"
 #include "../BlendTreeTransformNode.h"
-#include "../BlendTreeMaskNode.h"
+#include "../BlendTreeMaskLegacyNode.h"
 #include "../BlendTreePoseSwitchNode.h"
 #include "../BlendTreeVector2DecomposeNode.h"
 #include "../BlendTreeVector3DecomposeNode.h"
@@ -104,7 +104,7 @@ namespace EMotionFX
             case 0x00000012: return azrtti_typeid<BlendTreeFloatSwitchNode>(); break;
             case 0x00000011: return azrtti_typeid<BlendTreeBoolLogicNode>(); break;
             case 0x00000014: return azrtti_typeid<BlendTreePoseSwitchNode>(); break;
-            case 0x00000016: return azrtti_typeid<BlendTreeMaskNode>(); break;
+            case 0x00000016: return azrtti_typeid<BlendTreeMaskLegacyNode>(); break;
             case 0x00002445: return azrtti_typeid<BlendTreeMorphTargetNode>(); break;
             case 0x00000018: return azrtti_typeid<BlendTreeMotionFrameNode>(); break;
             case 0x00000020: return azrtti_typeid<BlendTreeVector3Math1Node>(); break;
@@ -155,7 +155,7 @@ namespace EMotionFX
             return *this;
         }
 
-        void SetRotation(const MCore::Quaternion& rotation)
+        void SetRotation(const AZ::Quaternion& rotation)
         {
             m_rotation = rotation;
         }
@@ -170,7 +170,7 @@ namespace EMotionFX
             m_order = order;
         }
 
-        const MCore::Quaternion& GetRotation() const
+        const AZ::Quaternion& GetRotation() const
         {
             return m_rotation;
         }
@@ -186,7 +186,7 @@ namespace EMotionFX
         }
 
     private:
-        MCore::Quaternion       m_rotation;  /**< The unit quaternion rotation. */
+        AZ::Quaternion          m_rotation;  /**< The unit quaternion rotation. */
         AZ::Vector3             m_degrees;   /**< The rotation angles. As programmer you don't need to setup these values. They are only to display in the GUI. */
         LegacyERotationOrder    m_order;     /**< The rotation order, which defaults to ZYX. */
     };
@@ -385,12 +385,12 @@ bool LegacyAttribute<LegacyAttributeRotation>::Parse(MCore::File* stream, MCore:
         }
 
         // Convert endian
-        MCore::Endian::ConvertVector3(&streamValue, endianType);
+        AZ::Vector3 value(streamValue);
+        MCore::Endian::ConvertVector3(&value, endianType);
 
         // Read only the degrees, automatically calculate the quaternion
-        m_value.SetDegrees(AZ::Vector3(streamValue));
-        MCore::Quaternion rotation;
-        rotation.SetEuler(MCore::Math::DegreesToRadians(streamValue.GetX()), MCore::Math::DegreesToRadians(streamValue.GetY()), MCore::Math::DegreesToRadians(streamValue.GetZ()));
+        m_value.SetDegrees(value);
+        const AZ::Quaternion rotation = MCore::AzEulerAnglesToAzQuat(MCore::Math::DegreesToRadians(value.GetX()), MCore::Math::DegreesToRadians(value.GetY()), MCore::Math::DegreesToRadians(value.GetZ()));
         m_value.SetRotation(rotation);
     }
     break;
@@ -403,11 +403,12 @@ bool LegacyAttribute<LegacyAttributeRotation>::Parse(MCore::File* stream, MCore:
         }
 
         // Convert endian
-        MCore::Endian::ConvertVector3(&streamValue, endianType);
-        m_value.SetDegrees(AZ::Vector3(streamValue));
+        AZ::Vector3 value(streamValue);
+        MCore::Endian::ConvertVector3(&value, endianType);
+        m_value.SetDegrees(value);
 
-        MCore::Quaternion streamValueQ;
-        if (stream->Read(&streamValueQ, sizeof(MCore::Quaternion)) != sizeof(MCore::Quaternion))
+        AZ::Quaternion streamValueQ;
+        if (stream->Read(&streamValueQ, sizeof(AZ::Quaternion)) != sizeof(AZ::Quaternion))
         {
             return false;
         }
@@ -427,12 +428,13 @@ bool LegacyAttribute<LegacyAttributeRotation>::Parse(MCore::File* stream, MCore:
         }
 
         // Convert endian
-        MCore::Endian::ConvertVector3(&streamValue, endianType);
-        m_value.SetDegrees(AZ::Vector3(streamValue));
+        AZ::Vector3 value(streamValue);
+        MCore::Endian::ConvertVector3(&value, endianType);
+        m_value.SetDegrees(value);
 
         // Read the quaternion
-        MCore::Quaternion streamValueQ;
-        if (stream->Read(&streamValueQ, sizeof(MCore::Quaternion)) != sizeof(MCore::Quaternion))
+        AZ::Quaternion streamValueQ;
+        if (stream->Read(&streamValueQ, sizeof(AZ::Quaternion)) != sizeof(AZ::Quaternion))
         {
             return false;
         }
@@ -481,9 +483,10 @@ bool LegacyAttribute<AZ::PackedVector3f>::Parse(MCore::File* stream, MCore::Endi
     }
 
     // Convert endian
-    MCore::Endian::ConvertVector3(&streamValue, endianType);
+    AZ::Vector3 value(streamValue);
+    MCore::Endian::ConvertVector3(&value, endianType);
 
-    m_value = streamValue;
+    m_value = AZ::PackedVector3f(value.GetX(), value.GetY(), value.GetZ());
     return true;
 }
 
@@ -1171,7 +1174,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeLookAtNode>(MCore
                     return false;
                 }
 
-                blendTreeLookAtNode.SetConstraintRotation(MCore::EmfxQuatToAzQuat(legacyAttribute.GetValue().GetRotation()));
+                blendTreeLookAtNode.SetConstraintRotation(legacyAttribute.GetValue().GetRotation());
             }
             break;
             case 4:
@@ -1182,7 +1185,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeLookAtNode>(MCore
                     return false;
                 }
 
-                blendTreeLookAtNode.SetPostRotation(MCore::EmfxQuatToAzQuat(legacyAttribute.GetValue().GetRotation()));
+                blendTreeLookAtNode.SetPostRotation(legacyAttribute.GetValue().GetRotation());
             }
             break;
             case 5:
@@ -2593,11 +2596,11 @@ bool LegacyAnimGraphNodeParser::ParseAnimGraphNodeChunk(MCore::File* file,
             return false;
         }
     }
-    else if (nodeType == azrtti_typeid<EMotionFX::BlendTreeMaskNode>())
+    else if (nodeType == azrtti_typeid<EMotionFX::BlendTreeMaskLegacyNode>())
     {
-        if (!LegacyAnimGraphNodeParser::ParseAnimGraphNode<BlendTreeMaskNode>(file, importParams, nodeName, nodeHeader, node))
+        if (!LegacyAnimGraphNodeParser::ParseAnimGraphNode<BlendTreeMaskLegacyNode>(file, importParams, nodeName, nodeHeader, node))
         {
-            AZ_Error("EMotionFX", false, "Unable to parse BlendTreeMaskNode");
+            AZ_Error("EMotionFX", false, "Unable to parse BlendTreeMaskLegacyNode");
             return false;
         }
     }
@@ -3368,14 +3371,14 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeBlendNNode>(MCore
 }
 
 template<>
-bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeMaskNode>(MCore::File* stream,
+bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeMaskLegacyNode>(MCore::File* stream,
      uint32 numAttributes,
      MCore::Endian::EEndianType endianType,
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
     AZ_UNUSED(importParams);
-    BlendTreeMaskNode& blendTreeMaskNode = static_cast<BlendTreeMaskNode&>(animGraphObject);
+    BlendTreeMaskLegacyNode& blendTreeMaskNode = static_cast<BlendTreeMaskLegacyNode&>(animGraphObject);
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
     {
         LegacyAttributeHeader legacyAttributeHeader;

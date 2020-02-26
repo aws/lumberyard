@@ -12,15 +12,17 @@
 
 def build(bld):
     bld.DefineGem(
-        includes = ['Include', 
-                    'Source',
-                    bld.Path('Code/CryEngine/CryCommon')
-                   ],
+        includes = ['.',
+                    bld.ThirdPartyPath('boost'),
+                    bld.Path('Code/CryEngine/CryCommon'),
+                    'Include',
+                    'Source'],
         editor = dict(
             defines = ['ROADS_RIVERS_EDITOR'],
             features = ['qt5', 'ExternalLyIdentity', 'ExternalLyMetrics'],
             use = ['AzToolsFramework', 'AzQtComponents'],
-            includes = [
+            includes = ['.',
+                        bld.ThirdPartyPath('boost'),
                         bld.Path('Code/CryEngine/CryCommon'),
                         bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                         bld.Path('Code/Sandbox'),

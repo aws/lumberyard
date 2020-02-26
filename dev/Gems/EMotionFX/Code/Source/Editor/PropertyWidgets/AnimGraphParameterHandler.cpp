@@ -23,9 +23,9 @@
 
 namespace EMotionFX
 {
-    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphParameterPicker, AZ::SystemAllocator, 0);
-    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphSingleParameterHandler, AZ::SystemAllocator, 0);
-    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphMultipleParameterHandler, AZ::SystemAllocator, 0);
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphParameterPicker, EditorAllocator, 0);
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphSingleParameterHandler, EditorAllocator, 0);
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphMultipleParameterHandler, EditorAllocator, 0);
 
     AnimGraphParameterPicker::AnimGraphParameterPicker(QWidget* parent, bool singleSelection, bool parameterMaskMode)
         : QWidget(parent)

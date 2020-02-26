@@ -136,8 +136,8 @@ namespace EMotionFX
          */
         struct EMFX_API BufferInfo
         {
-            MCore::Quaternion*  mUncompressedRotations; /**< The buffer with uncompressed rotations. */
-            AZ::PackedVector3f* mUncompressedVectors;   /**< The buffer with uncompressed Vector3's used for position and scale values. */
+            AZ::Quaternion*     mUncompressedRotations; /**< The buffer with uncompressed rotations. */
+            AZ::Vector3*        mUncompressedVectors;   /**< The buffer with uncompressed Vector3's used for position and scale values. */
             float*              mUncompressedMorphs;    /**< The buffer with uncompressed morph target weights. */
             float*              mCoeffBuffer;           /**< The buffer that holds the wavelet coefficients. */
             int16*              mQuantBuffer;           /**< The buffer that holds the quantized coefficient values. */

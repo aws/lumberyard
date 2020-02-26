@@ -70,6 +70,13 @@ namespace AZ
             return result;
         }
 
+        static AZ_MATH_FORCE_INLINE const Plane CreateFromVectorCoefficients(const Vector4& coefficients)
+        {
+            Plane result;
+            result.Set(coefficients);
+            return result;
+        }
+
         AZ_MATH_FORCE_INLINE void           Set(const Vector4& plane)               { m_plane = plane; }
         AZ_MATH_FORCE_INLINE void           Set(const Vector3& normal, float d)     { m_plane.Set(normal, d); }
         AZ_MATH_FORCE_INLINE void           Set(float a, float b, float c, float d) { m_plane.Set(a, b, c, d); }

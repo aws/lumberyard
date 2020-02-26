@@ -54,6 +54,7 @@ def build(bld):
 
         darwin_rpath    =         ['@executable_path', '@executable_path/qtlibs/lib'],
         darwin_frameworkpath    = [bld.ThirdPartyPath('qt', 'clang_64/lib')],
+        linux_rpath             = ['@executable_path', '@executable_path/qtlibs/lib'],
         clang_cxxflags          = [
             '-Wno-writable-strings',
         ]
@@ -102,6 +103,7 @@ def build(bld):
                                     'AWS_CPP_SDK_IDENTITY_MANAGEMENT' ],
         darwin_rpath    =         ['@executable_path', '@executable_path/qtlibs/lib'],
         darwin_frameworkpath    = [bld.ThirdPartyPath('qt', 'clang_64/lib')],
+        linux_rpath             = ['@executable_path', '@executable_path/qtlibs/lib'],
         clang_cxxflags          = [
             '-Wno-writable-strings',
             ],

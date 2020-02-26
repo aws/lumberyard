@@ -101,6 +101,7 @@ namespace PhysX
         void SetKinematic(bool kinematic) override;
         void SetKinematicTarget(const AZ::Transform& targetPosition) override;
 
+        bool IsGravityEnabled() const override;
         void SetGravityEnabled(bool enabled) override;
         void SetSimulationEnabled(bool enabled) override;
 

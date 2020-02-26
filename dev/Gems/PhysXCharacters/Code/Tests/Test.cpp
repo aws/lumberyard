@@ -26,6 +26,7 @@
 #include <AzFramework/IO/LocalFileIO.h>
 #include <AzFramework/Physics/SystemBus.h>
 #include <AzFramework/Physics/World.h>
+#include <AzFramework/Physics/Utils.h>
 #include <Physics/PhysicsTests.h>
 #include <Physics/PhysicsTests.inl>
 #include <AzCore/UnitTest/TestTypes.h>
@@ -48,6 +49,7 @@ namespace PhysXCharacters
         void SetupEnvironment() override;
         void TeardownEnvironment() override;
         void AddGemsAndComponents() override;
+        void PostCreateApplication() override;
 
         // DefaultWorldBus
         AZStd::shared_ptr<Physics::World> GetDefaultWorld() override
@@ -74,8 +76,7 @@ namespace PhysXCharacters
             PhysX::SystemRequestsBus::BroadcastResult(pvdConnectionSuccessful, &PhysX::SystemRequests::ConnectToPvd);
         }
 
-        Physics::SystemRequestBus::BroadcastResult(m_defaultWorld,
-            &Physics::SystemRequests::CreateWorld, Physics::DefaultPhysicsWorldId);
+        m_defaultWorld = AZ::Interface<Physics::System>::Get()->CreateWorld(Physics::DefaultPhysicsWorldId);
 
         Physics::DefaultWorldBus::Handler::BusConnect();
     }
@@ -90,6 +91,16 @@ namespace PhysXCharacters
             AzFramework::TransformComponent::CreateDescriptor()
             });
         AddRequiredComponents({ SystemComponent::TYPEINFO_Uuid() });
+    }
+
+    void PhysXCharactersTestEnvironment::PostCreateApplication()
+    {
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        if (serializeContext)
+        {
+            Physics::ReflectionUtils::ReflectPhysicsApi(serializeContext);
+        }
     }
 
     void PhysXCharactersTestEnvironment::TeardownEnvironment()

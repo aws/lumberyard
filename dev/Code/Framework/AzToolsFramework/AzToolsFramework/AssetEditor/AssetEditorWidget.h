@@ -102,7 +102,6 @@ namespace AzToolsFramework
             void OnAssetOpenedSignal(const AZ::Data::Asset<AZ::Data::AssetData>& asset);
 
         protected: // IPropertyEditorNotify
-
             void AfterPropertyModified(InstanceDataNode* /*node*/) override;
             void RequestPropertyContextMenu(InstanceDataNode*, const QPoint&) override;
 
@@ -116,13 +115,14 @@ namespace AzToolsFramework
             void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
 
         private:
-
             void DirtyAsset();
 
             void SetStatusText(const QString& assetStatus);
 
             void AddRecentPath(const AZStd::string& recentPath);
             void PopulateRecentMenu();
+
+            void UpdateMenusOnAssetOpen();
 
             AZStd::vector<AZ::Data::AssetType> m_genericAssetTypes;
             AZ::Data::AssetId                    m_sourceAssetId;

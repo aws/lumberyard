@@ -35,14 +35,11 @@
             "-Wno-nonportable-include-path",
 
             # Other
-            "-ffast-math",
             "-fvisibility=hidden",
             "-fvisibility-inlines-hidden"
         ],
         "CXXFLAGS": [
-            "-std=c++1z",           # C++17
-            "-fno-rtti",            # Disable RTTI
-            "-fno-exceptions"       # Disable Exceptions
+            "-std=c++1z"        # C++17
         ]
     },
     "env/debug": {

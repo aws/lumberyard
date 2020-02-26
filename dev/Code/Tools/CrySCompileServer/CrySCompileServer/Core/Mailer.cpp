@@ -97,7 +97,7 @@ namespace // helpers
     }
 }
 
-volatile AtomicCountType CSMTPMailer::ms_OpenSockets = 0;
+AZStd::atomic_long CSMTPMailer::ms_OpenSockets = {0};
 
 CSMTPMailer::CSMTPMailer(const tstr& username, const tstr& password, const tstr& server, int port)
     : m_server(server)
@@ -226,7 +226,7 @@ SOCKET CSMTPMailer::Open(const char* host, unsigned short port, sockaddr_in& ser
         return 0;
     }
 
-    InterlockedIncrement(&ms_OpenSockets);
+    ++ms_OpenSockets;
 
     serverAddress.sin_addr.s_addr = *((unsigned long*) hostEntry->h_addr);
     serverAddress.sin_family = AF_INET;
@@ -397,7 +397,7 @@ bool CSMTPMailer::Send(const tstr& from, const tstrcol& to, const tstrcol& cc, c
     }
 
     closesocket(connection);
-    InterlockedDecrement(&ms_OpenSockets);
+    --ms_OpenSockets;
 
     return true;
 }

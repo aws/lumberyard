@@ -15,7 +15,7 @@
 #include <AzFramework/Asset/AssetRegistry.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzFramework/IO/LocalFileIO.h>
-#include <AzTestShared/Utils/Utils.h>
+#include <Tests/AZTestShared/Utils/Utils.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
 #include <AzFramework/Platform/PlatformDefaults.h>
 #include <AzFramework/StringFunc/StringFunc.h>

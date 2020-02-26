@@ -887,6 +887,8 @@ namespace AZ
             behaviorContext->Constant("SystemEntityId", BehaviorConstant(SystemEntityId));
 
             behaviorContext->EBus<EntityBus>("EntityBus")
+                ->Attribute(AZ::Script::Attributes::Module, "entity")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Handler<BehaviorEntityBusHandler>()
                 ;
 

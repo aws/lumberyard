@@ -148,6 +148,7 @@ namespace PhysXCharacters
             controller->SetActorName(characterConfig.m_debugName);
             controller->SetMinimumMovementDistance(characterConfig.m_minimumMovementDistance);
             controller->CreateShadowBody(characterConfig, world);
+            controller->SetTag(characterConfig.m_colliderTag);
 
             return controller;
         }

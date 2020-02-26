@@ -612,6 +612,11 @@ namespace UnitTest
         {
             return m_GetFileName;
         }
+        string m_cgfNodeName;
+        const string& GetCGFNodeName() const override
+        {
+            return m_cgfNodeName;
+        }
         const char * GetFilePath() const override
         {
             return m_GetFileName.c_str();
@@ -933,6 +938,11 @@ namespace UnitTest
         }
         void CleanUnusedLods() override
         {
+        }
+        AZStd::vector<float> m_clothInverseMasses;
+        AZStd::vector<float>& GetClothInverseMasses() override
+        {
+            return m_clothInverseMasses;
         }
     };
 

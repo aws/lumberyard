@@ -45,6 +45,7 @@ namespace AzQtComponents
         void setSwatchSize(const QSize& size);
 
         int count() const;
+        bool isEmpty() const;
         QSharedPointer<PaletteCard> paletteCard(int index) const;
         int indexOf(const QSharedPointer<PaletteCard>& card) const;
 

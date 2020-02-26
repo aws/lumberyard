@@ -50,7 +50,7 @@ namespace EMotionFX
         AZ::TypeId GetParameterType() const;
 
         void SetTriggerValue(float value) { m_triggerValue = value; }
-        float GetTriggerValue(float value) const { return m_triggerValue; }
+        float GetTriggerValue() const { return m_triggerValue; }
 
         static void Reflect(AZ::ReflectContext* context);
 

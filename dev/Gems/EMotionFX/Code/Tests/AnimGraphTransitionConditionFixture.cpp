@@ -42,7 +42,7 @@ namespace EMotionFX
         Node* rootNode = Node::Create("rootNode", mActor->GetSkeleton());
         mActor->AddNode(rootNode);
         mActor->ResizeTransformData();
-        mActor->PostCreateInit();
+        mActor->PostCreateInit(/*makeGeomLodsCompatibleWithSkeletalLODs=*/false, /*generateOBBs=*/false, /*convertUnitType=*/false);
 
         mAnimGraph = aznew AnimGraph();
 

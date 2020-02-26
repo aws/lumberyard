@@ -10,54 +10,64 @@
 *
 */
 
-#include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <EMotionFX/Source/BlendTreeMaskNode.h>
-#include <EMotionFX/Source/AnimGraphInstance.h>
-#include <EMotionFX/Source/AnimGraphAttributeTypes.h>
+#include <AzCore/Serialization/SerializeContext.h>
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/ActorInstance.h>
-#include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/AnimGraphAttributeTypes.h>
+#include <EMotionFX/Source/AnimGraphInstance.h>
+#include <EMotionFX/Source/BlendTreeMaskNode.h>
 #include <EMotionFX/Source/EMotionFXManager.h>
-#include <EMotionFX/Source/Node.h>
-
 
 namespace EMotionFX
 {
-    size_t BlendTreeMaskNode::m_numMasks = 4;
-
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeMaskNode, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendTreeMaskNode::Mask, AnimGraphAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeMaskNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
+    const size_t BlendTreeMaskNode::s_numMasks = 4;
 
     BlendTreeMaskNode::BlendTreeMaskNode()
         : AnimGraphNode()
-        , m_outputEvents0(true)
-        , m_outputEvents1(true)
-        , m_outputEvents2(true)
-        , m_outputEvents3(true)
     {
-        // setup the input ports
-        InitInputPorts(static_cast<AZ::u32>(m_numMasks));
-        SetupInputPort("Pose 0", INPUTPORT_POSE_0, AttributePose::TYPE_ID, PORTID_INPUT_POSE_0);
-        SetupInputPort("Pose 1", INPUTPORT_POSE_1, AttributePose::TYPE_ID, PORTID_INPUT_POSE_1);
-        SetupInputPort("Pose 2", INPUTPORT_POSE_2, AttributePose::TYPE_ID, PORTID_INPUT_POSE_2);
-        SetupInputPort("Pose 3", INPUTPORT_POSE_3, AttributePose::TYPE_ID, PORTID_INPUT_POSE_3);
+        m_masks.resize(s_numMasks);
 
-        // setup the output ports
+        // Setup the input ports.
+        InitInputPorts(1 + static_cast<AZ::u32>(s_numMasks)); // Base pose and the input poses for the masks.
+        SetupInputPort("Base Pose", INPUTPORT_BASEPOSE, AttributePose::TYPE_ID, INPUTPORT_BASEPOSE);
+        for (size_t i = 0; i < s_numMasks; ++i)
+        {
+            const AZ::u32 portNr = static_cast<AZ::u32>(i + INPUTPORT_START);
+            SetupInputPort(
+                AZStd::string::format("Pose %d", i).c_str(),
+                portNr,
+                AttributePose::TYPE_ID,
+                portNr);
+        }
+
+        // Setup the output ports.
         InitOutputPorts(1);
         SetupOutputPortAsPose("Output Pose", OUTPUTPORT_RESULT, PORTID_OUTPUT_RESULT);
-    }
 
+        ActorNotificationBus::Handler::BusConnect();
+    }
 
     BlendTreeMaskNode::~BlendTreeMaskNode()
     {
+        ActorNotificationBus::Handler::BusDisconnect();
     }
-
 
     void BlendTreeMaskNode::Reinit()
     {
         AnimGraphNode::Reinit();
+
+        AZ::u8 maskCounter = 0;
+        for (Mask& mask : m_masks)
+        {
+            mask.m_maskIndex = maskCounter;
+            mask.m_parent = this;
+            maskCounter++;
+        }
 
         const size_t numAnimGraphInstances = mAnimGraph->GetNumAnimGraphInstances();
         for (size_t i = 0; i < numAnimGraphInstances; ++i)
@@ -74,7 +84,6 @@ namespace EMotionFX
         UpdateUniqueDatas();
     }
 
-
     bool BlendTreeMaskNode::InitAfterLoading(AnimGraph* animGraph)
     {
         if (!AnimGraphNode::InitAfterLoading(animGraph))
@@ -88,362 +97,335 @@ namespace EMotionFX
         return true;
     }
 
-
-    // get the palette name
-    const char* BlendTreeMaskNode::GetPaletteName() const
+    void BlendTreeMaskNode::OnMotionExtractionNodeChanged(Actor* actor, Node* newMotionExtractionNode)
     {
-        return "Pose Mask";
+        if (!mAnimGraph)
+        {
+            return;
+        }
+
+        bool needsReinit = false;
+        const size_t numAnimGraphInstances = mAnimGraph->GetNumAnimGraphInstances();
+        for (size_t i = 0; i < numAnimGraphInstances; ++i)
+        {
+            AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
+            if (actor == animGraphInstance->GetActorInstance()->GetActor())
+            {
+                needsReinit = true;
+                break;
+            }
+        }
+
+        if (needsReinit)
+        {
+            Reinit();
+        }
     }
 
-
-    // get the category
-    AnimGraphObject::ECategory BlendTreeMaskNode::GetPaletteCategory() const
-    {
-        return AnimGraphObject::CATEGORY_BLENDING;
-    }
-
-
-    // precreate the unique data object
     void BlendTreeMaskNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
     {
-        // find the unique data for this node, if it doesn't exist yet, create it
         UniqueData* uniqueData = static_cast<BlendTreeMaskNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (uniqueData == nullptr)
+        if (!uniqueData)
         {
             uniqueData = aznew UniqueData(this, animGraphInstance);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
 
-        uniqueData->mMasks.resize(m_numMasks);
         uniqueData->mMustUpdate = true;
         UpdateUniqueData(animGraphInstance, uniqueData);
     }
 
-
-    // perform the calculations / actions
     void BlendTreeMaskNode::Output(AnimGraphInstance* animGraphInstance)
     {
-        AnimGraphPose* outputPose;
-
-        // update the unique data if needed
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
         UpdateUniqueData(animGraphInstance, uniqueData);
 
-        // for all input ports
-        for (uint32 i = 0; i < m_numMasks; ++i)
-        {
-            // if there is no connection plugged in
-            if (mInputPorts[INPUTPORT_POSE_0 + i].mConnection == nullptr)
-            {
-                continue;
-            }
+        RequestPoses(animGraphInstance);
+        AnimGraphPose* outputAnimGraphPose = GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue();
+        Pose& outputPose = outputAnimGraphPose->GetPose();
 
-            // calculate output
-            OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_POSE_0 + i));
+        // Use the input base pose as starting pose to apply the masks onto.
+        AnimGraphNode* basePoseNode = GetInputNode(INPUTPORT_BASEPOSE);
+        if (basePoseNode)
+        {
+            OutputIncomingNode(animGraphInstance, basePoseNode);
+            *outputAnimGraphPose = *basePoseNode->GetMainOutputPose(animGraphInstance);
+        }
+        else
+        {
+            // Use bindpose in case no base pose node is connected.
+            outputAnimGraphPose->InitFromBindPose(animGraphInstance->GetActorInstance());
         }
 
-        // init the output pose with the bind pose for safety
-        RequestPoses(animGraphInstance);
-        outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue();
-        outputPose->InitFromBindPose(animGraphInstance->GetActorInstance());
-
-        for (uint32 i = 0; i < m_numMasks; ++i)
+        // Iterate over the non-empty masks and copy over its transforms.
+        for (const UniqueData::MaskInstance& maskInstance : uniqueData->m_maskInstances)
         {
-            // if there is no connection plugged in
-            if (mInputPorts[INPUTPORT_POSE_0 + i].mConnection == nullptr)
+            const AZ::u32 inputPortNr = maskInstance.m_inputPortNr;
+            AnimGraphNode* inputNode = GetInputNode(inputPortNr);
+            if (inputNode)
             {
-                continue;
-            }
+                OutputIncomingNode(animGraphInstance, inputNode);
+                const Pose& inputPose = GetInputPose(animGraphInstance, inputPortNr)->GetValue()->GetPose();
 
-            const AnimGraphPose* pose = GetInputPose(animGraphInstance, INPUTPORT_POSE_0 + i)->GetValue();
-
-            Pose& outputLocalPose = outputPose->GetPose();
-            const Pose& localPose = pose->GetPose();
-
-            // get the number of nodes inside the mask and default them to all nodes in the local pose in case there aren't any selected
-            const size_t numNodes = uniqueData->mMasks[i].size();
-            if (numNodes > 0)
-            {
-                // for all nodes in the mask, output their transforms
-                for (size_t n = 0; n < numNodes; ++n)
+                for (AZ::u32 jointIndex : maskInstance.m_jointIndices)
                 {
-                    const uint32 nodeIndex = uniqueData->mMasks[i][n];
-                    outputLocalPose.SetLocalSpaceTransform(nodeIndex, localPose.GetLocalSpaceTransform(nodeIndex));
+                    outputPose.SetLocalSpaceTransform(jointIndex, inputPose.GetLocalSpaceTransform(jointIndex));
                 }
             }
-            else
-            {
-                outputLocalPose = localPose;
-            }
         }
 
-        // visualize it
         if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
-            animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
+            animGraphInstance->GetActorInstance()->DrawSkeleton(outputAnimGraphPose->GetPose(), mVisualizeColor);
         }
     }
 
-
-    // update
     void BlendTreeMaskNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        // update all incoming nodes
-        UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
+        UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
 
-        // init the sync track etc to the first input
-        AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
-        AnimGraphNode* inputNode = GetInputNode(INPUTPORT_POSE_0);
-        if (inputNode)
+        AnimGraphNode* basePoseNode = GetInputNode(INPUTPORT_BASEPOSE);
+        if (basePoseNode)
         {
-            uniqueData->Init(animGraphInstance, inputNode);
+            basePoseNode->PerformUpdate(animGraphInstance, timePassedInSeconds);
+            uniqueData->Init(animGraphInstance, basePoseNode);
         }
         else
         {
             uniqueData->Clear();
         }
+
+        for (const UniqueData::MaskInstance& maskInstance : uniqueData->m_maskInstances)
+        {
+            AnimGraphNode* inputNode = GetInputNode(maskInstance.m_inputPortNr);
+            if (inputNode)
+            {
+                inputNode->PerformUpdate(animGraphInstance, timePassedInSeconds);
+            }
+        }
     }
 
-
-    // post update
     void BlendTreeMaskNode::PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        // post update all incoming nodes
-        for (uint32 i = 0; i < m_numMasks; ++i)
-        {
-            // if the port has no input, skip it
-            AnimGraphNode* inputNode = GetInputNode(INPUTPORT_POSE_0 + i);
-            if (inputNode == nullptr)
-            {
-                continue;
-            }
-
-            // post update the input node first
-            inputNode->PerformPostUpdate(animGraphInstance, timePassedInSeconds);
-        }
-
-        // request the reference counted data inside the unique data
         RequestRefDatas(animGraphInstance);
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
         AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
         data->ClearEventBuffer();
         data->ZeroTrajectoryDelta();
 
-        for (uint32 i = 0; i < m_numMasks; ++i)
+        AnimGraphNode* basePoseNode = GetInputNode(INPUTPORT_BASEPOSE);
+        if (basePoseNode)
         {
-            // if the port has no input, skip it
-            AnimGraphNode* inputNode = GetInputNode(INPUTPORT_POSE_0 + i);
-            if (inputNode == nullptr)
+            basePoseNode->PerformPostUpdate(animGraphInstance, timePassedInSeconds);
+
+            const AnimGraphNodeData* basePoseNodeUniqueData = basePoseNode->FindUniqueNodeData(animGraphInstance);
+            data->SetEventBuffer(basePoseNodeUniqueData->GetRefCountedData()->GetEventBuffer());
+        }
+
+        const size_t numMaskInstances = uniqueData->m_maskInstances.size();
+        for (size_t i = 0; i < numMaskInstances; ++i)
+        {
+            const UniqueData::MaskInstance& maskInstance = uniqueData->m_maskInstances[i];
+            const AZ::u32 inputPortNr = maskInstance.m_inputPortNr;
+            AnimGraphNode* inputNode = GetInputNode(inputPortNr);
+            if (!inputNode)
             {
                 continue;
             }
 
-            // get the number of nodes inside the mask and default them to all nodes in the local pose in case there aren't any selected
-            const size_t numNodes = uniqueData->mMasks[i].size();
-            if (numNodes > 0)
-            {
-                // for all nodes in the mask, output their transforms
-                for (size_t n = 0; n < numNodes; ++n)
-                {
-                    const uint32 nodeIndex = uniqueData->mMasks[i][n];
-                    if (nodeIndex == animGraphInstance->GetActorInstance()->GetActor()->GetMotionExtractionNodeIndex())
-                    {
-                        AnimGraphRefCountedData* sourceData = inputNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+            inputNode->PerformPostUpdate(animGraphInstance, timePassedInSeconds);
 
-                        data->SetTrajectoryDelta(sourceData->GetTrajectoryDelta());
-                        data->SetTrajectoryDeltaMirrored(sourceData->GetTrajectoryDeltaMirrored());
-                        break;
-                    }
-                }
+            // If we want to output events for this input, add the incoming events to the output event buffer.
+            if (GetOutputEvents(inputPortNr))
+            {
+                const AnimGraphEventBuffer& inputEventBuffer = inputNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData()->GetEventBuffer();
+
+                AnimGraphEventBuffer& outputEventBuffer = data->GetEventBuffer();
+                outputEventBuffer.AddAllEventsFrom(inputEventBuffer);
             }
-            else
+        }
+
+        // Apply motion extraction delta from either the base pose or one of the masks depending on if a mask has the joint set or not.
+        bool motionExtractionApplied = false;
+        if (uniqueData->m_motionExtractionInputPortNr.has_value())
+        {
+            AnimGraphNode* inputNode = GetInputNode(uniqueData->m_motionExtractionInputPortNr.value());
+            if (inputNode)
             {
                 AnimGraphRefCountedData* sourceData = inputNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
                 data->SetTrajectoryDelta(sourceData->GetTrajectoryDelta());
                 data->SetTrajectoryDeltaMirrored(sourceData->GetTrajectoryDeltaMirrored());
-            }
-
-            // if we want to output events for this input
-            // basically add the incoming events to the output event buffer
-            if (GetOutputEvents(i))
-            {
-                // get the input event buffer
-                const AnimGraphEventBuffer& inputEventBuffer = inputNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData()->GetEventBuffer();
-                AnimGraphEventBuffer& outputEventBuffer = data->GetEventBuffer();
-                const uint32 startIndex = outputEventBuffer.GetNumEvents();
-
-                // resize the buffer already, so that we don't do this for every event
-                outputEventBuffer.Resize(outputEventBuffer.GetNumEvents() + inputEventBuffer.GetNumEvents());
-
-                // copy over all the events
-                const uint32 numInputEvents = inputEventBuffer.GetNumEvents();
-                for (uint32 e = 0; e < numInputEvents; ++e)
-                {
-                    outputEventBuffer.SetEvent(startIndex + e, inputEventBuffer.GetEvent(e));
-                }
+                motionExtractionApplied = true;
             }
         }
-    }
 
-
-    bool BlendTreeMaskNode::GetOutputEvents(size_t index) const
-    {
-        switch (index)
+        // In case the motion extraction node is not part of any of the masks while the base pose is connected, use that as a fallback.
+        if (!motionExtractionApplied && basePoseNode)
         {
-        case 0:
-            return m_outputEvents0;
-        case 1:
-            return m_outputEvents1;
-        case 2:
-            return m_outputEvents2;
-        case 3:
-            return m_outputEvents3;
+            AnimGraphRefCountedData* sourceData = basePoseNode->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+            data->SetTrajectoryDelta(sourceData->GetTrajectoryDelta());
+            data->SetTrajectoryDeltaMirrored(sourceData->GetTrajectoryDeltaMirrored());
         }
-
-        return true;
     }
 
+    size_t BlendTreeMaskNode::GetNumUsedMasks() const
+    {
+        size_t result = 0;
+        for (const Mask& mask : m_masks)
+        {
+            if (!mask.m_jointNames.empty())
+            {
+                result++;
+            }
+        }
+        return result;
+    }
 
     void BlendTreeMaskNode::UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData)
     {
-        // Update only if needed.
         if (uniqueData->mMustUpdate)
         {
             Actor* actor = animGraphInstance->GetActorInstance()->GetActor();
+            const size_t numMaskInstances = GetNumUsedMasks();
+            uniqueData->m_maskInstances.resize(numMaskInstances);
+            AZ::u32 maskInstanceIndex = 0;
 
-            AnimGraphPropertyUtils::ReinitJointIndices(actor, m_mask0, uniqueData->mMasks[0]);
-            AnimGraphPropertyUtils::ReinitJointIndices(actor, m_mask1, uniqueData->mMasks[1]);
-            AnimGraphPropertyUtils::ReinitJointIndices(actor, m_mask2, uniqueData->mMasks[2]);
-            AnimGraphPropertyUtils::ReinitJointIndices(actor, m_mask3, uniqueData->mMasks[3]);
+            uniqueData->m_motionExtractionInputPortNr.reset();
+            const AZ::u32 motionExtractionJointIndex = animGraphInstance->GetActorInstance()->GetActor()->GetMotionExtractionNodeIndex();
+
+            const size_t numMasks = m_masks.size();
+            for (size_t i = 0; i < numMasks; ++i)
+            {
+                const Mask& mask = m_masks[i];
+                if (!mask.m_jointNames.empty())
+                {
+                    const AZ::u32 inputPortNr = INPUTPORT_START + static_cast<AZ::u32>(i);
+
+                    // Get the joint indices by joint names and cache them in the unique data
+                    // so that we don't have to look them up at runtime.
+                    UniqueData::MaskInstance& maskInstance = uniqueData->m_maskInstances[maskInstanceIndex];
+                    AnimGraphPropertyUtils::ReinitJointIndices(actor, mask.m_jointNames, maskInstance.m_jointIndices);
+                    maskInstance.m_inputPortNr = inputPortNr;
+
+                    // Check if the motion extraction node is part of this mask and cache the mask index in that case.
+                    for (AZ::u32 jointIndex : maskInstance.m_jointIndices)
+                    {
+                        if (jointIndex == motionExtractionJointIndex)
+                        {
+                            uniqueData->m_motionExtractionInputPortNr = inputPortNr;
+                            break;
+                        }
+                    }
+
+                    maskInstanceIndex++;
+                }
+            }
 
             // Don't update the next time again.
             uniqueData->mMustUpdate = false;
         }
     }
 
-
-    AZStd::string BlendTreeMaskNode::GetMask0JointName(int index) const
+    AZStd::string BlendTreeMaskNode::GetMaskJointName(size_t maskIndex, size_t jointIndex) const
     {
-        return m_mask0[index];
+        return m_masks[maskIndex].m_jointNames[jointIndex];
     }
 
-    AZStd::string BlendTreeMaskNode::GetMask1JointName(int index) const
+    bool BlendTreeMaskNode::GetOutputEvents(size_t inputPortNr) const
     {
-        return m_mask1[index];
+        if (inputPortNr > INPUTPORT_BASEPOSE)
+        {
+            return m_masks[inputPortNr - INPUTPORT_START].m_outputEvents;
+        }
+
+        return true;
     }
 
-    AZStd::string BlendTreeMaskNode::GetMask2JointName(int index) const
+    void BlendTreeMaskNode::SetMask(size_t maskIndex, const AZStd::vector<AZStd::string>& jointNames)
     {
-        return m_mask2[index];
+        m_masks[maskIndex].m_jointNames = jointNames;
     }
 
-    AZStd::string BlendTreeMaskNode::GetMask3JointName(int index) const
+    void BlendTreeMaskNode::SetOutputEvents(size_t maskIndex, bool outputEvents)
     {
-        return m_mask3[index];
+        m_masks[maskIndex].m_outputEvents = outputEvents;
     }
 
-
-    void BlendTreeMaskNode::SetMask0(const AZStd::vector<AZStd::string>& mask0)
+    void BlendTreeMaskNode::Mask::Reinit()
     {
-        m_mask0 = mask0;
+        if (m_parent)
+        {
+            m_parent->Reinit();
+        }
     }
 
-    void BlendTreeMaskNode::SetMask1(const AZStd::vector<AZStd::string>& mask1)
+    AZStd::string BlendTreeMaskNode::Mask::GetMaskName() const
     {
-        m_mask1 = mask1;
+        return AZStd::string::format("GetMask %d", m_maskIndex);
     }
 
-    void BlendTreeMaskNode::SetMask2(const AZStd::vector<AZStd::string>& mask2)
+    AZStd::string BlendTreeMaskNode::Mask::GetOutputEventsName() const
     {
-        m_mask2 = mask2;
+        return AZStd::string::format("Output Events %d", m_maskIndex);
     }
 
-    void BlendTreeMaskNode::SetMask3(const AZStd::vector<AZStd::string>& mask3)
+    void BlendTreeMaskNode::Mask::Reflect(AZ::ReflectContext* context)
     {
-        m_mask3 = mask3;
-    }
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (serializeContext)
+        {
+            serializeContext->Class<Mask>()
+                ->Version(1)
+                ->Field("jointNames", &BlendTreeMaskNode::Mask::m_jointNames)
+                ->Field("outputEvents", &BlendTreeMaskNode::Mask::m_outputEvents)
+                ;
 
-    void BlendTreeMaskNode::SetOutputEvents0(bool outputEvents0)
-    {
-        m_outputEvents0 = outputEvents0;
-    }
-
-    void BlendTreeMaskNode::SetOutputEvents1(bool outputEvents1)
-    {
-        m_outputEvents1 = outputEvents1;
-    }
-
-    void BlendTreeMaskNode::SetOutputEvents2(bool outputEvents2)
-    {
-        m_outputEvents2 = outputEvents2;
-    }
-
-    void BlendTreeMaskNode::SetOutputEvents3(bool outputEvents3)
-    {
-        m_outputEvents3 = outputEvents3;
+            AZ::EditContext* editContext = serializeContext->GetEditContext();
+            if (editContext)
+            {
+                editContext->Class<Mask>("Pose Hello", "Pose mark attributes")
+                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                    ->DataElement(AZ_CRC("ActorNodes", 0x70504714), &BlendTreeMaskNode::Mask::m_jointNames, "Mask", "The mask to apply.")
+                        ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
+                        ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &BlendTreeMaskNode::Mask::GetMaskName)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Mask::Reinit)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeMaskNode::Mask::m_outputEvents, "Output Events", "Output events.")
+                        ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &BlendTreeMaskNode::Mask::GetOutputEventsName)
+                    ;
+            }
+        }
     }
 
     void BlendTreeMaskNode::Reflect(AZ::ReflectContext* context)
     {
+        BlendTreeMaskNode::Mask::Reflect(context);
+
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-        if (!serializeContext)
+        if (serializeContext)
         {
-            return;
+            serializeContext->Class<BlendTreeMaskNode, AnimGraphNode>()
+                ->Version(1)
+                ->Field("masks", &BlendTreeMaskNode::m_masks)
+                ;
+
+            AZ::EditContext* editContext = serializeContext->GetEditContext();
+            if (editContext)
+            {
+                editContext->Class<BlendTreeMaskNode>("Pose Mask", "Pose mark attributes")
+                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeMaskNode::m_masks, "Masks", "The mask to apply on the Pose 1 input port.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
+                        ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                    ;
+            }
         }
-
-        serializeContext->Class<BlendTreeMaskNode, AnimGraphNode>()
-            ->Version(1)
-            ->Field("mask0", &BlendTreeMaskNode::m_mask0)
-            ->Field("mask1", &BlendTreeMaskNode::m_mask1)
-            ->Field("mask2", &BlendTreeMaskNode::m_mask2)
-            ->Field("mask3", &BlendTreeMaskNode::m_mask3)
-            ->Field("outputEvents0", &BlendTreeMaskNode::m_outputEvents0)
-            ->Field("outputEvents1", &BlendTreeMaskNode::m_outputEvents1)
-            ->Field("outputEvents2", &BlendTreeMaskNode::m_outputEvents2)
-            ->Field("outputEvents3", &BlendTreeMaskNode::m_outputEvents3)
-        ;
-
-
-        AZ::EditContext* editContext = serializeContext->GetEditContext();
-        if (!editContext)
-        {
-            return;
-        }
-
-        // clang-format off
-        editContext->Class<BlendTreeMaskNode>("Pose Mask", "Pose mark attributes")
-            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
-                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-            ->DataElement(AZ_CRC("ActorNodes", 0x70504714), &BlendTreeMaskNode::m_mask0, "Mask 1", "The mask to apply on the Pose 1 input port.")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
-                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-                ->Attribute(AZ::Edit::Attributes::IndexedChildNameLabelOverride, &BlendTreeMaskNode::GetMask0JointName)
-                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                ->ElementAttribute(AZ::Edit::Attributes::Handler, AZ_CRC("ActorJointElement", 0xedc8946c))
-            ->DataElement(AZ_CRC("ActorNodes", 0x70504714), &BlendTreeMaskNode::m_mask1, "Mask 2", "The mask to apply on the Pose 2 input port.")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
-                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-                ->Attribute(AZ::Edit::Attributes::IndexedChildNameLabelOverride, &BlendTreeMaskNode::GetMask1JointName)
-                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                ->ElementAttribute(AZ::Edit::Attributes::Handler, AZ_CRC("ActorJointElement", 0xedc8946c))
-            ->DataElement(AZ_CRC("ActorNodes", 0x70504714), &BlendTreeMaskNode::m_mask2, "Mask 3", "The mask to apply on the Pose 3 input port.")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
-                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-                ->Attribute(AZ::Edit::Attributes::IndexedChildNameLabelOverride, &BlendTreeMaskNode::GetMask2JointName)
-                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                ->ElementAttribute(AZ::Edit::Attributes::Handler, AZ_CRC("ActorJointElement", 0xedc8946c))
-            ->DataElement(AZ_CRC("ActorNodes", 0x70504714), &BlendTreeMaskNode::m_mask3, "Mask 4", "The mask to apply on the Pose 4 input port.")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
-                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-                ->Attribute(AZ::Edit::Attributes::IndexedChildNameLabelOverride, &BlendTreeMaskNode::GetMask3JointName)
-                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                ->ElementAttribute(AZ::Edit::Attributes::Handler, AZ_CRC("ActorJointElement", 0xedc8946c))
-            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeMaskNode::m_outputEvents0, "Output Events 1", "Output events of the first input port?")
-            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeMaskNode::m_outputEvents1, "Output Events 2", "Output events of the second input port?")
-            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeMaskNode::m_outputEvents2, "Output Events 3", "Output events of the third input port?")
-            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeMaskNode::m_outputEvents3, "Output Events 4", "Output events of the forth input port?")
-        ;
-        // clang-format on
     }
 } // namespace EMotionFX

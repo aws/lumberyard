@@ -461,7 +461,15 @@ def check_cpp_platform_tools(toolsetVer, platform_tool_name, vs2017vswhereOption
             vswhere_exe = find_vswhere()
             if vswhere_exe == '':
                 return False
+
+            vs2017vswhereOptionsBuildTools = vs2017vswhereOptions[:]
+            vs2017vswhereOptionsBuildTools.append('-products')
+            vs2017vswhereOptionsBuildTools.append('Microsoft.VisualStudio.Product.BuildTools')
+
             installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptions)
+            if not installation_path:
+                installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptionsBuildTools)
+
             if not installation_path:
                 try:
                     version_arg_index = vs2017vswhereOptions.index('-version')
@@ -470,8 +478,13 @@ def check_cpp_platform_tools(toolsetVer, platform_tool_name, vs2017vswhereOption
                     
                     # We could not find a min version of vs2017 based on the vswhere args (vs2017vswhereOptions) for vswhere, so try to find any version of 2017
                     vs2017vswhereOptions = ['-version', '[15.0,16.0)']
+                    vs2017vswhereOptionsBuildTools = vs2017vswhereOptions[:]
+                    vs2017vswhereOptionsBuildTools.append('-products')
+                    vs2017vswhereOptionsBuildTools.append('Microsoft.VisualStudio.Product.BuildTools')
                     
                     installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptions)
+                    if not installation_path:
+                        installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptionsBuildTools)
                 except ValueError:
                     pass
 

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>279</width>
-    <height>275</height>
+    <width>319</width>
+    <height>293</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -22,177 +22,185 @@
   <property name="styleSheet">
    <string notr="true"/>
   </property>
-  <widget class="QLabel" name="label">
-   <property name="geometry">
-    <rect>
-     <x>12</x>
-     <y>6</y>
-     <width>247</width>
-     <height>41</height>
-    </rect>
-   </property>
-   <property name="lineWidth">
-    <number>4</number>
-   </property>
-   <property name="text">
-    <string>You must provide the following fields to create your function.  &lt;a href=&quot;http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-function.html&quot;&gt;Learn more&lt;/a&gt; about Lambda.</string>
-   </property>
-   <property name="wordWrap">
-    <bool>true</bool>
-   </property>
-  </widget>
-  <widget class="QWidget" name="formLayoutWidget">
-   <property name="geometry">
-    <rect>
-     <x>6</x>
-     <y>54</y>
-     <width>263</width>
-     <height>211</height>
-    </rect>
-   </property>
-   <layout class="QFormLayout" name="formLayout">
-    <property name="fieldGrowthPolicy">
-     <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-    </property>
-    <item row="0" column="0">
-     <widget class="QLabel" name="label_2">
-      <property name="text">
-       <string>Name</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="1">
-     <widget class="QLineEdit" name="functionName">
-      <property name="whatsThis">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Testing..&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-      </property>
-     </widget>
-    </item>
-    <item row="1" column="0">
-     <widget class="QLabel" name="label_5">
-      <property name="text">
-       <string>Handler</string>
-      </property>
-     </widget>
-    </item>
-    <item row="1" column="1">
-     <widget class="QLineEdit" name="handler"/>
-    </item>
-    <item row="2" column="0">
-     <widget class="QLabel" name="label_6">
-      <property name="text">
-       <string>Accessible resources</string>
-      </property>
-     </widget>
-    </item>
-    <item row="2" column="1">
-     <widget class="QListWidget" name="resourceList">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-        <horstretch>0</horstretch>
-        <verstretch>1</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="horizontalScrollBarPolicy">
-       <enum>Qt::ScrollBarAlwaysOff</enum>
-      </property>
-      <property name="sizeAdjustPolicy">
-       <enum>QAbstractScrollArea::AdjustToContents</enum>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="0">
-     <widget class="QLabel" name="label_7">
-      <property name="text">
-       <string>Player invokable</string>
-      </property>
-     </widget>
-    </item>
-    <item row="4" column="0">
-     <widget class="QLabel" name="label_8">
-      <property name="text">
-       <string>Runtime</string>
-      </property>
-     </widget>
-    </item>
-    <item row="4" column="1">
-     <widget class="QComboBox" name="runtime">
-      <item>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="0" column="0">
+    <widget class="QLabel" name="label">
+     <property name="lineWidth">
+      <number>4</number>
+     </property>
+     <property name="text">
+      <string>You must provide the following fields to create your function.  &lt;a href=&quot;http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-function.html&quot;&gt;Learn more&lt;/a&gt; about Lambda.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <layout class="QFormLayout" name="formLayout">
+     <property name="fieldGrowthPolicy">
+      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+     </property>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_2">
        <property name="text">
-        <string>python2.7</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>java8</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>nodejs8.10</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>nodejs6.10</string>
-       </property>
-      </item>
-     </widget>
-    </item>
-    <item row="5" column="1">
-     <widget class="QDialogButtonBox" name="buttonBox">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="standardButtons">
-       <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="1">
-     <widget class="QGroupBox" name="groupBox">
-      <property name="enabled">
-       <bool>true</bool>
-      </property>
-      <property name="title">
-       <string/>
-      </property>
-      <property name="flat">
-       <bool>true</bool>
-      </property>
-      <widget class="QRadioButton" name="invokeYes">
-       <property name="geometry">
-        <rect>
-         <x>6</x>
-         <y>0</y>
-         <width>82</width>
-         <height>17</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>Yes</string>
+        <string>Name</string>
        </property>
       </widget>
-      <widget class="QRadioButton" name="invokeNo">
-       <property name="geometry">
-        <rect>
-         <x>48</x>
-         <y>0</y>
-         <width>82</width>
-         <height>17</height>
-        </rect>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLineEdit" name="functionName">
+       <property name="whatsThis">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Testing..&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_5">
        <property name="text">
-        <string>No</string>
+        <string>Handler</string>
        </property>
-       <property name="checked">
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="handler"/>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_6">
+       <property name="text">
+        <string>Accessible resources</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QListWidget" name="resourceList">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+         <horstretch>0</horstretch>
+         <verstretch>1</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="horizontalScrollBarPolicy">
+        <enum>Qt::ScrollBarAlwaysOff</enum>
+       </property>
+       <property name="sizeAdjustPolicy">
+        <enum>QAbstractScrollArea::AdjustToContents</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_7">
+       <property name="text">
+        <string>Player invokable</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="label_8">
+       <property name="text">
+        <string>Runtime</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QComboBox" name="runtime">
+       <item>
+        <property name="text">
+         <string>go1.x</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>java8</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>java11</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>dotnetcore2.1</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>nodejs10.x</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>nodejs12.x</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>python2.7</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>python3.8</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QDialogButtonBox" name="buttonBox">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="standardButtons">
+        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QGroupBox" name="groupBox">
+       <property name="enabled">
         <bool>true</bool>
        </property>
+       <property name="title">
+        <string/>
+       </property>
+       <property name="flat">
+        <bool>true</bool>
+       </property>
+       <widget class="QRadioButton" name="invokeYes">
+        <property name="geometry">
+         <rect>
+          <x>6</x>
+          <y>0</y>
+          <width>82</width>
+          <height>17</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Yes</string>
+        </property>
+       </widget>
+       <widget class="QRadioButton" name="invokeNo">
+        <property name="geometry">
+         <rect>
+          <x>48</x>
+          <y>0</y>
+          <width>82</width>
+          <height>17</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>No</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
       </widget>
-     </widget>
-    </item>
-   </layout>
-  </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
  </widget>
  <resources/>
  <connections>

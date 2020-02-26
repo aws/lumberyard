@@ -16,7 +16,8 @@ def build(bld):
         # Add custom build options here
         use         = ['GridMate','GameLift'],
         uselib      = ['OPENSSL'],
-        includes    = [bld.Path('Code/CryEngine/CryCommon'),
+        includes    = [bld.ThirdPartyPath('boost'),
+                       bld.Path('Code/CryEngine/CryCommon'),
                        bld.Path('Code/CryEngine/CryAction'),
                        bld.Path('Code/CryEngine/CryNetwork')
                       ],

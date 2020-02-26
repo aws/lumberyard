@@ -25,7 +25,7 @@ def build(bld):
         target                  = 'ResourceCompilerScene',
         vs_filter               = 'RC',
         file_list               = 'resourcecompilerscene.waf_files',
-        platforms               = ['win', 'darwin'],
+        platforms               = ['win', 'darwin', 'linux'],
         client_only             = True,
         exclude_monolithic      = True,
         includes                = ['.',
@@ -53,6 +53,9 @@ def build(bld):
 
         #Platform specific
         darwin_file_list        = darwinExportedSymbolFileList,
+
+        linux_rpath               = ['$ORIGIN/..'],
+        linux_linkflags           = ['-stdlib=libstdc++'],
 
         # Testing
         win_test_all_file_list    = 'resourcecompilerscene_tests.waf_files',

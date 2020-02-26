@@ -406,7 +406,7 @@ namespace AzToolsFramework
             const EditorLayer& loadedLayer,
             AZ::SliceComponent::SliceAssetToSliceInstancePtrs& sliceInstances,
             AZStd::unordered_map<AZ::EntityId, AZ::Entity*>& uniqueEntities)
-        {            
+        {
             // This tracks entities that are in this current layer, so duplicate entities in this layer can be cleaned up.
             AZStd::unordered_map<AZ::EntityId, AZStd::vector<AZ::Entity*>::iterator> layerEntityIdsToIterators;
 
@@ -1474,5 +1474,17 @@ namespace AzToolsFramework
 
             return LayerResult::CreateSuccess();
         }
-    }
-}
+
+        void EditorLayerComponent::SetLayerChildrenVisibility(const bool visible)
+        {
+            if (m_editableLayerProperties.m_isLayerVisible != visible)
+            {
+                m_editableLayerProperties.m_isLayerVisible = visible;
+
+                EditorEntityInfoNotificationBus::Broadcast(
+                    &EditorEntityInfoNotificationBus::Events::OnEntityInfoUpdatedVisibility,
+                    GetEntityId(), visible);
+            }
+        }
+    } // namespace Layers
+} // namespace AzToolsFramework

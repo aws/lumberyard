@@ -314,7 +314,7 @@ namespace
     {
         QtViewPaneManager::instance()->ClosePane(viewClassName);
     }
-    
+
     bool PyIsViewPaneVisible(const char* viewClassName)
     {
         return QtViewPaneManager::instance()->IsVisible(viewClassName);
@@ -462,6 +462,7 @@ public:
         layout->addWidget(m_spinBox);
 
         m_spinBox->setEnabled(defaultAction->isChecked());
+        m_spinBox->setMinimum(1e-2f);
 
         OnGridValuesUpdated();
 
@@ -2121,7 +2122,7 @@ void MainWindow::CGPMenuClicked()
     if (GetIEditor()->GetAWSResourceManager()->IsProjectInitialized()) {
         GetIEditor()->GetAWSResourceManager()->OpenCGP();
     }
-    else 
+    else
     {
         QMessageBox::critical(GetIEditor()->GetEditorMainWindow(), "Cloud Gem Portal", "Cloud Canvas is not yet initialized.   Please ensure the Cloud Gem Framework is enabled in your Project Configurator and has initialized.");
     }
@@ -2519,6 +2520,7 @@ void MainWindow::OnGameModeChanged(bool inGameMode)
     };
 
     menuBar()->setDisabled(inGameMode);
+    m_toolbarManager->SetEnabled(!inGameMode);
     setRollUpBarDisabled(inGameMode);
     QAction* action = m_actionManager->GetAction(ID_VIEW_SWITCHTOGAME);
     action->blockSignals(true); // avoid a loop
@@ -2560,6 +2562,27 @@ void MainWindow::OnEditorNotifyEvent(EEditorNotifyEvent ev)
         break;
     case eNotify_OnEndGameMode:
         OnGameModeChanged(false);
+        break;
+    // Remove track view option to avoid starting in bad state
+    case eNotify_OnBeginSimulationMode:
+        if (m_actionManager->HasAction(ID_OPEN_TRACKVIEW))
+        {
+            QAction* tvAction = m_actionManager->GetAction(ID_OPEN_TRACKVIEW);
+            if (tvAction)
+            {
+                tvAction->setVisible(false);
+            }
+        }
+        break;
+    case eNotify_OnEndSimulationMode:
+        if (m_actionManager->HasAction(ID_OPEN_TRACKVIEW))
+        {
+            QAction* tvAction = m_actionManager->GetAction(ID_OPEN_TRACKVIEW);
+            if (tvAction)
+            {
+                tvAction->setVisible(true);
+            }
+        }
         break;
     }
 

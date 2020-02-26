@@ -26,13 +26,11 @@ def build(bld):
 
     bld.DefineGem(
         # Add custom build options here
-        platforms = ['all'],
-        file_list = file_list,
+        file_list           = file_list,
+        includes            = ['.',
+                               bld.Path('Code/CryEngine/CryCommon')],
+    
+        uselib              = ['AWS_CPP_SDK_CORE', 'AWS_CPP_SDK_LAMBDA', 'BOOST'],
 
-        uselib = ['AWS_CPP_SDK_CORE', 'AWS_CPP_SDK_LAMBDA'],
-
-        restricted_script = 'update_restricted_parameters',
-
-        includes = [bld.Path('Code/CryEngine/CryCommon')
-                   ],
+        restricted_script   = 'update_restricted_parameters',
     )

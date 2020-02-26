@@ -998,6 +998,9 @@ def split_keywords_from_static_lib_definition_for_test(ctx, original_kw_dict):
             # We found the test file list (potentially platform restricted and/or with the 'all' aliase for test), set the flag and add it only to the test_shared kw dict
             has_test_filelist = True
             kw_for_test_shared[original_key] = copy.copy(original_value)
+        elif original_key.startswith('test_') and original_key.endswith('file_list'):
+            check_key = original_key[len('test_'):]
+            kw_for_test_shared[check_key] = copy.copy(original_value)
         elif original_key == 'test_platform_roots':
             # Special case: set the specific 'test_platform_roots' keyword as 'platform_roots' only in the shared (test) configuration. This is needed because 'platform_roots'
             # does not support platform or configuration keyword filtering, so we will manually do it at this point

@@ -30,7 +30,7 @@ namespace GraphCanvas
         virtual QModelIndex GetAssignedIndex() const = 0;
 
         // Returns the string used to display the currently selected value[Used in the non-editable format]
-        virtual const AZStd::string& GetDisplayString() const = 0;
+        virtual const AZStd::string GetDisplayString() const = 0;
 
         virtual void OnShowContextMenu(QWidget* nodePropertyDisplay, const QPoint& pos)
         {

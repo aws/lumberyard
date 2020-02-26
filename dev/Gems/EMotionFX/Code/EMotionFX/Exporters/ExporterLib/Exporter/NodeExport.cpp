@@ -15,7 +15,9 @@
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/NodeGroup.h>
 #include <EMotionFX/Source/Importer/ActorFileFormat.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/StringConversions.h>
+#include <MCore/Source/AzCoreConversions.h>
 
 
 namespace ExporterLib
@@ -34,8 +36,13 @@ namespace ExporterLib
         const uint32                numChilds           = node->GetNumChildNodes();
         const EMotionFX::Transform& transform           = actor->GetBindPose()->GetLocalSpaceTransform(nodeIndex);
         AZ::PackedVector3f          position            = AZ::PackedVector3f(transform.mPosition);
-        MCore::Quaternion           rotation            = transform.mRotation;
-        AZ::PackedVector3f          scale               = AZ::PackedVector3f(transform.mScale);
+        AZ::Quaternion              rotation            = transform.mRotation.GetNormalizedExact();;
+
+        #ifndef EMFX_SCALE_DISABLED
+            AZ::PackedVector3f scale = AZ::PackedVector3f(transform.mScale);
+        #else
+            AZ::PackedVector3f scale(1.0f, 1.0f, 1.0f);
+        #endif
 
         // create the node chunk and copy over the information
         EMotionFX::FileFormat::Actor_Node nodeChunk;
@@ -63,22 +70,38 @@ namespace ExporterLib
         // will this node be involved in the bounding volume calculations?
         if (node->GetIncludeInBoundsCalc())
         {
-            nodeChunk.mNodeFlags  |= (1 << 0);// first bit
+            nodeChunk.mNodeFlags |= EMotionFX::Node::ENodeFlags::FLAG_INCLUDEINBOUNDSCALC;// first bit
         }
         else
         {
-            nodeChunk.mNodeFlags  &= ~(1 << 0);
+            nodeChunk.mNodeFlags  &= ~EMotionFX::Node::ENodeFlags::FLAG_INCLUDEINBOUNDSCALC;
+        }
+
+        // Add an isCritical option in node flag so it won't be optimized out. 
+        if (node->GetIsCritical())
+        {
+            nodeChunk.mNodeFlags |= EMotionFX::Node::ENodeFlags::FLAG_CRITICAL; // third bit
+        }
+        else
+        {
+            nodeChunk.mNodeFlags &= ~EMotionFX::Node::ENodeFlags::FLAG_CRITICAL;
         }
 
         // OBB
         MCore::OBB obb = actor->GetNodeOBB(node->GetNodeIndex());
-        MCore::Matrix obbMatrix;
+        {
+            AZ::Transform obbMatrix = obb.GetTransformation();
+            obbMatrix.SetTranslation(obb.GetCenter());
 
-        obbMatrix = obb.GetTransformation();
-        obbMatrix.SetRow(3, obb.GetCenter());
-        obbMatrix.SetColumn(3, obb.GetExtents());
+            obbMatrix.Transpose();
 
-        MCore::MemCopy(nodeChunk.mOBB, &obbMatrix, sizeof(MCore::Matrix));
+            MCore::MemCopy(nodeChunk.mOBB, &obbMatrix, sizeof(AZ::Transform)); // Copies 12 floats
+            nodeChunk.mOBB[12] = 0.0f;
+            nodeChunk.mOBB[13] = 0.0f;
+            nodeChunk.mOBB[14] = 0.0f;
+            nodeChunk.mOBB[15] = 1.0f;
+        }
+
 
         // log the node chunk information
         MCore::LogDetailedInfo("- Node: name='%s' index=%i", actor->GetSkeleton()->GetNode(nodeIndex)->GetName(), nodeIndex);
@@ -93,10 +116,11 @@ namespace ExporterLib
         MCore::LogDetailedInfo("    + NumChilds: %i", nodeChunk.mNumChilds);
         MCore::LogDetailedInfo("    + Position: x=%f y=%f z=%f", nodeChunk.mLocalPos.mX, nodeChunk.mLocalPos.mY, nodeChunk.mLocalPos.mZ);
         MCore::LogDetailedInfo("    + Rotation: x=%f y=%f z=%f w=%f", nodeChunk.mLocalQuat.mX, nodeChunk.mLocalQuat.mY, nodeChunk.mLocalQuat.mZ, nodeChunk.mLocalQuat.mW);
+        const AZ::Vector3 euler = MCore::AzQuaternionToEulerAngles(rotation);
         MCore::LogDetailedInfo("    + Rotation Euler: x=%f y=%f z=%f",
-            float(rotation.ToEuler().GetX()) * 180.0 / MCore::Math::pi,
-            float(rotation.ToEuler().GetY()) * 180.0 / MCore::Math::pi,
-            float(rotation.ToEuler().GetZ()) * 180.0 / MCore::Math::pi);
+            float(euler.GetX()) * 180.0 / MCore::Math::pi,
+            float(euler.GetY()) * 180.0 / MCore::Math::pi,
+            float(euler.GetZ()) * 180.0 / MCore::Math::pi);
         MCore::LogDetailedInfo("    + Scale: x=%f y=%f z=%f", nodeChunk.mLocalScale.mX, nodeChunk.mLocalScale.mY, nodeChunk.mLocalScale.mZ);
         MCore::LogDetailedInfo("    + IncludeInBoundsCalc: %d", node->GetIncludeInBoundsCalc());
 

@@ -14,6 +14,7 @@
 #include "EMotionFX_precompiled.h"
 
 #include <AzCore/Component/ComponentApplication.h>
+#include <AzCore/Component/TransformBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -48,6 +49,7 @@
 #include <Integration/Assets/MotionAsset.h>
 #include <Integration/Assets/MotionSetAsset.h>
 #include <Integration/Assets/AnimGraphAsset.h>
+#include <Integration/Rendering/Cry/CryRenderBackend.h>
 
 #include <Integration/System/SystemComponent.h>
 
@@ -286,7 +288,7 @@ namespace EMotionFX
         };
 
         SystemComponent::~SystemComponent() = default;
-        
+
         int SystemComponent::emfx_updateEnabled = 1;
         int SystemComponent::emfx_actorRenderEnabled = 1;
 
@@ -457,9 +459,7 @@ namespace EMotionFX
         void SystemComponent::Activate()
         {
             // Start EMotionFX allocator.
-            EMotionFXAllocator::Descriptor allocatorDescriptor;
-            allocatorDescriptor.m_custom = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
-            AZ::AllocatorInstance<EMotionFXAllocator>::Create(allocatorDescriptor);
+            AZ::AllocatorInstance<EMotionFXAllocator>::Create();
 
             // Initialize MCore, which is EMotionFX's standard library of containers and systems.
             MCore::Initializer::InitSettings coreSettings;
@@ -500,6 +500,11 @@ namespace EMotionFX
             EMotionFXRequestBus::Handler::BusConnect();
             EnableRayRequests();
 
+            // Default to Cry render backend.
+            m_renderBackendManager = AZStd::make_unique<RenderBackendManager>();
+            CryRenderBackend* cryRenderBackend = aznew CryRenderBackend();
+            AZ::Interface<RenderBackendManager>::Get()->SetRenderBackend(cryRenderBackend);
+
 #if defined (EMOTIONFXANIMATION_EDITOR)
             AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
             AzToolsFramework::EditorAnimationSystemRequestsBus::Handler::BusConnect();
@@ -534,6 +539,8 @@ namespace EMotionFX
             AzToolsFramework::EditorAnimationSystemRequestsBus::Handler::BusDisconnect();
             AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
 #endif // EMOTIONFXANIMATION_EDITOR
+
+            m_renderBackendManager.reset();
 
             EMotionFX::GetEventManager().RemoveEventHandler(m_eventHandler.get());
             m_eventHandler.reset();
@@ -685,12 +692,13 @@ namespace EMotionFX
                         LmbrCentral::CryCharacterPhysicsRequestBus::EventResult(hasCryPhysicsController, entityId, &LmbrCentral::CryCharacterPhysicsRequests::IsCryCharacterControllerPresent);
 
                         // If we have a physics controller.
-                        AZ::TransformInterface* entityTransform = entity->GetTransform();
                         if (hasPhysicsController || hasCryPhysicsController)
                         {
                             const float deltaTimeInv = (timeDelta > 0.0f) ? (1.0f / timeDelta) : 0.0f;
 
-                            AZ::Transform currentTransform = entityTransform->GetWorldTM();
+                            AZ::Transform currentTransform = AZ::Transform::CreateIdentity();
+                            AZ::TransformBus::EventResult(currentTransform, entityId, &AZ::TransformBus::Events::GetWorldTM);
+
                             const AZ::Vector3 actorInstancePosition = actorInstance->GetWorldSpaceTransform().mPosition;
                             const AZ::Vector3 positionDelta = actorInstancePosition - currentTransform.GetPosition();
 
@@ -700,7 +708,7 @@ namespace EMotionFX
 
                                 // Some of the character controller implementations like the PhysX one directly adjust the entity position and are not
                                 // delaying the calculation until the next physics system update. Thus, we will need to get the updated current transform.
-                                currentTransform = entityTransform->GetWorldTM();
+                                AZ::TransformBus::EventResult(currentTransform, entityId, &AZ::TransformBus::Events::GetWorldTM);
                             }
                             else if (hasCryPhysicsController)
                             {
@@ -710,18 +718,18 @@ namespace EMotionFX
                             }
 
                             // Calculate the difference in rotation and apply that to the entity transform.
-                            const AZ::Quaternion actorInstanceRotation = MCore::EmfxQuatToAzQuat(actorInstance->GetWorldSpaceTransform().mRotation);
+                            const AZ::Quaternion actorInstanceRotation = actorInstance->GetWorldSpaceTransform().mRotation;
                             const AZ::Quaternion rotationDelta = AZ::Quaternion::CreateFromTransform(currentTransform).GetInverseFull() * actorInstanceRotation;
                             if (!rotationDelta.IsIdentity(AZ::g_fltEps))
                             {
                                 currentTransform = currentTransform * AZ::Transform::CreateFromQuaternion(rotationDelta);
-                                entityTransform->SetWorldTM(currentTransform);
+                                AZ::TransformBus::Event(entityId, &AZ::TransformBus::Events::SetWorldTM, currentTransform);
                             }
                         }
                         else // There is no physics controller, just use EMotion FX's actor instance transform directly.
-                        {                            
+                        {
                             const AZ::Transform newTransform = MCore::EmfxTransformToAzTransform(actorInstance->GetWorldSpaceTransform());
-                            entityTransform->SetWorldTM(newTransform);
+                            AZ::TransformBus::Event(entityId, &AZ::TransformBus::Events::SetWorldTM, newTransform);
                         }
                     }
                 }
@@ -831,9 +839,7 @@ namespace EMotionFX
             pluginManager->RegisterPlugin(new EMotionFX::HitDetectionJointInspectorPlugin());
             pluginManager->RegisterPlugin(new EMotionFX::SkeletonOutlinerPlugin());
             pluginManager->RegisterPlugin(new EMotionFX::RagdollNodeInspectorPlugin());
-#ifdef EMOTIONFX_ENABLE_CLOTH
             pluginManager->RegisterPlugin(new EMotionFX::ClothJointInspectorPlugin());
-#endif
             pluginManager->RegisterPlugin(new EMotionFX::SimulatedObjectWidget());
         }
 

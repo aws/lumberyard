@@ -11,6 +11,7 @@
 */
 
 #include "ButtonPage.h"
+#include "FixedStateButton.h"
 #include <Gallery/ui_ButtonPage.h>
 
 #include <AzQtComponents/Components/Widgets/PushButton.h>
@@ -24,6 +25,44 @@ ButtonPage::ButtonPage(QWidget* parent)
 {
     ui->setupUi(this);
 
+    const QStyle::State hoverState {QStyle::State_Enabled | QStyle::State_Raised | QStyle::State_Active | QStyle::State_MouseOver};
+    const QStyle::State pressedState {QStyle::State_Enabled | QStyle::State_Sunken | QStyle::State_Active | QStyle::State_MouseOver};
+    const QStyle::State focusState {QStyle::State_Enabled | QStyle::State_Raised | QStyle::State_Active | QStyle::State_HasFocus};
+
+    ui->primaryHover->setState(hoverState);
+    ui->primaryPressed->setState(pressedState);
+    ui->primaryFocused->setState(focusState);
+
+    ui->secondaryHover->setState(hoverState);
+    ui->secondaryPressed->setState(pressedState);
+    ui->secondaryFocused->setState(focusState);
+
+    QMenu* menu = new QMenu(this);
+    menu->addAction("Option");
+    auto selected = menu->addAction("Selected");
+    selected->setCheckable(true);
+    selected->setChecked(true);
+    menu->addAction("Hover");
+    menu->addAction("Option");
+
+    const QList<QPushButton*> menuButtons = {ui->dropdown, ui->dropdownHover, ui->dropdownPressed, ui->dropdownDisabled};
+
+    for (auto button : menuButtons)
+    {
+        button->setMenu(menu);
+    }
+
+    ui->dropdown->setMenu(menu);
+    ui->dropdownHover->setState(hoverState);
+    ui->dropdownPressed->setState(pressedState);
+
+    const QList<QToolButton*> menuToolButtons = {ui->toolButtonMenu, ui->toolButtonMenuHover, ui->toolButtonMenuDisabled};
+
+    for (auto button : menuToolButtons)
+    {
+        button->setMenu(menu);
+    }
+/*
     QIcon icon(":/stylesheet/img/question.png");
 
     ui->buttonWithIconEnabled->setIcon(icon);
@@ -56,6 +95,7 @@ ButtonPage::ButtonPage(QWidget* parent)
     ui->buttonWithDropDownAndIconDisabled->setMenu(menu);
     ui->buttonWithDropDownAndIconDisabled->setIcon(icon);
     AzQtComponents::PushButton::applySmallIconStyle(ui->buttonWithDropDownAndIconDisabled);
+*/
 
     QString exampleText = R"(
 

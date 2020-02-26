@@ -93,8 +93,9 @@ public:
 
     void            WaitForShutDownEvent(bool bValue);
 
-    static volatile AtomicCountType GetOpenSockets();
-
+    static long GetOpenSockets();
+    
+    
 private:
     struct Implementation;
     std::unique_ptr<Implementation> m_pImpl;

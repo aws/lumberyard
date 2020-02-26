@@ -15,6 +15,7 @@
 #include "CommandManager.h"
 #include <EMotionFX/Source/NodeGroup.h>
 #include <EMotionFX/Source/ActorManager.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/StringConversions.h>
 
 

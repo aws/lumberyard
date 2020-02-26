@@ -19,6 +19,7 @@
 #include <MCore/Source/Stream.h>
 #include <MCore/Source/CommandLine.h>
 #include <MCore/Source/Color.h>
+#include <MCore/Source/Array.h>
 #include <MCore/Source/Attribute.h>
 #include <MCore/Source/AttributeFloat.h>
 #include <MCore/Source/AttributeInt32.h>

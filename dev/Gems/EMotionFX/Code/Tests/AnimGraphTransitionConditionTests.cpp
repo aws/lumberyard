@@ -771,10 +771,24 @@ namespace EMotionFX
                 {29, {"testSkeletalMotion0"}},
                 {30, {"testSkeletalMotion0", "ChildStateMachine"}},
                 {59, {"testSkeletalMotion0", "ChildStateMachine"}},
-                {60, {"ChildStateMachine"}},
-                {89, {"ChildStateMachine"}},
-                {90, {"ChildStateMachine", "testSkeletalMotion1"}},
-                {119, {"ChildStateMachine", "testSkeletalMotion1"}},
+                // Before the state machine defer update changes.
+                //{60, {"ChildStateMachine"}},
+                //{89, {"ChildStateMachine"}},
+                //{90, {"ChildStateMachine", "testSkeletalMotion1"}},
+                //{119, {"ChildStateMachine", "testSkeletalMotion1"}},
+                // After the state machine defer update changes.
+#ifdef ENABLE_SINGLEFRAME_MULTISTATETRANSITIONING
+                {60, {"ChildStateMachine", "testSkeletalMotion1"}},
+#else
+                {61, {"ChildStateMachine", "testSkeletalMotion1"}},
+#endif
+                {89, {"ChildStateMachine", "testSkeletalMotion1"}},
+#ifdef ENABLE_SINGLEFRAME_MULTISTATETRANSITIONING
+                {90, {"testSkeletalMotion1"}},
+#else
+                {91, {"testSkeletalMotion1"}},
+#endif
+                {119, {"testSkeletalMotion1"}},
                 {120, {"testSkeletalMotion1"}}
             }
         },
@@ -795,9 +809,17 @@ namespace EMotionFX
                 // Even though ChildStateMachine is not yet to the exit state,
                 // the condition in the root state machine to leave that state
                 // is true, so the transition to testSkeletalMotion1 starts
+#ifdef ENABLE_SINGLEFRAME_MULTISTATETRANSITIONING
                 {60, {"ChildStateMachine", "testSkeletalMotion1"}},
+#else
+                {61, {"ChildStateMachine", "testSkeletalMotion1"}},
+#endif
                 {89, {"ChildStateMachine", "testSkeletalMotion1"}},
+#ifdef ENABLE_SINGLEFRAME_MULTISTATETRANSITIONING
                 {90, {"testSkeletalMotion1"}}
+#else
+                {91, {"testSkeletalMotion1"}}
+#endif
             }
         },
         {
@@ -817,9 +839,17 @@ namespace EMotionFX
                 // Even though ChildStateMachine is not yet to the exit state,
                 // the condition in the root state machine to leave that state
                 // is true, so the transition to testSkeletalMotion1 starts
+#ifdef ENABLE_SINGLEFRAME_MULTISTATETRANSITIONING
                 {60, {"ChildStateMachine", "testSkeletalMotion1"}},
+#else
+                {61, {"ChildStateMachine", "testSkeletalMotion1"}},
+#endif
                 {89, {"ChildStateMachine", "testSkeletalMotion1"}},
+#ifdef ENABLE_SINGLEFRAME_MULTISTATETRANSITIONING
                 {90, {"testSkeletalMotion1"}}
+#else
+                {91, {"testSkeletalMotion1"}}
+#endif
             }
         },
         {
@@ -839,9 +869,17 @@ namespace EMotionFX
                 // Even though ChildStateMachine is not yet to the exit state,
                 // the condition in the root state machine to leave that state
                 // is true, so the transition to testSkeletalMotion1 starts
+#ifdef ENABLE_SINGLEFRAME_MULTISTATETRANSITIONING
                 {60, {"ChildStateMachine", "testSkeletalMotion1"}},
+#else
+                {61, {"ChildStateMachine", "testSkeletalMotion1"}},
+#endif
                 {89, {"ChildStateMachine", "testSkeletalMotion1"}},
+#ifdef ENABLE_SINGLEFRAME_MULTISTATETRANSITIONING
                 {90, {"testSkeletalMotion1"}}
+#else
+                {91, {"testSkeletalMotion1"}}
+#endif
             }
         }
     };

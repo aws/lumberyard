@@ -27,8 +27,10 @@ def build(bld):
         platform_roots          = [bld.PlatformRoot('Platform', export_includes=False)],
     
         use                     = ['AzFramework'],
-        includes       = [bld.Path('Code/CryEngine/CryCommon')
-                         ],
+        includes                = ['.',
+                                   bld.ThirdPartyPath('boost'),
+                                   bld.Path('Code/CryEngine/CryCommon'),
+                                   ],
         export_includes         = ['Core'],
         
     )

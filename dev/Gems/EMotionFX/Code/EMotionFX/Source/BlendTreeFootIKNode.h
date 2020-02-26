@@ -240,7 +240,7 @@ namespace EMotionFX
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         bool InitLeg(LegId legId, const AZStd::string& footJointName, const AZStd::string& toeJointName, AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
         bool Solve2LinkIK(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& goal, const AZ::Vector3& bendDir, AZ::Vector3* outMidPos);
-        void CalculateMatrix(const AZ::Vector3& goal, const AZ::Vector3& bendDir, MCore::Matrix* outForward);
+        void CalculateMatrix(const AZ::Vector3& goal, const AZ::Vector3& bendDir, AZ::Matrix3x3* outForward);
         void Raycast(LegId legId, LegJointId joinId, AnimGraphInstance* animGraphInstance, UniqueData* uniqueData, const Pose& inputPose, RaycastResult& raycastResult);
         void SolveLegIK(LegId legId, const IKSolveParameters& solveParams);
         float AdjustHip(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData, Pose& inputPose, Pose& outputPose, IntersectionResults* intersectionResults, bool allowAdjust);
@@ -259,6 +259,7 @@ namespace EMotionFX
         float GetHipBlendSpeed(AnimGraphInstance* animGraphInstance) const;
         bool GetAdjustHip(AnimGraphInstance* animGraphInstance) const;
         bool GetFootLock(AnimGraphInstance* animGraphInstance) const;
+        float GetActorInstanceScale(const ActorInstance* actorInstance) const;
 
         static constexpr float s_ikSpeedMultiplier = 8.0f;
         static constexpr float s_visualizeFootPlaneScale = 0.15f;

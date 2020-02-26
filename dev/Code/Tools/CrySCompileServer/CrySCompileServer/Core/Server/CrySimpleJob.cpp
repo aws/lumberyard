@@ -26,13 +26,14 @@
 #include <sstream>
 #include <fstream>
 
-volatile AtomicCountType CCrySimpleJob::m_GlobalRequestNumber = 0;
+
+AZStd::atomic_long CCrySimpleJob::m_GlobalRequestNumber = {0};
 
 CCrySimpleJob::CCrySimpleJob(uint32_t requestIP)
     : m_State(ECSJS_NONE)
     , m_RequestIP(requestIP)
 {
-    InterlockedIncrement(&m_GlobalRequestNumber);
+    ++m_GlobalRequestNumber;
 }
 
 CCrySimpleJob::~CCrySimpleJob()

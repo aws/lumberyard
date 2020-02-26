@@ -79,6 +79,7 @@ namespace AzToolsFramework
             //////////////////////////////////////////////////////////////////////////
             AssetBrowserModel* GetAssetBrowserModel() override;
             bool AreEntriesReady() override;
+            void PickAssets(AssetSelectionModel& selection, QWidget* parent) override;
 
             //////////////////////////////////////////////////////////////////////////
             // AssetCatalogEventBus

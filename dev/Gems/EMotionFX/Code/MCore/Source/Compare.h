@@ -13,12 +13,9 @@
 #pragma once
 
 // include the required headers
+#include "StandardHeaders.h"
 #include <AzCore/Math/Vector2.h>
 #include <MCore/Source/AzCoreConversions.h>
-#include "StandardHeaders.h"
-#include "Vector.h"
-#include "Matrix4.h"
-#include "Quaternion.h"
 
 
 namespace MCore

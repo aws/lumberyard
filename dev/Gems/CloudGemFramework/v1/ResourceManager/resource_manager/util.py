@@ -22,16 +22,17 @@ from errors import HandledError
 from botocore.exceptions import ClientError
 from resource_manager_common import resource_type_info
 
+
 def default(value, default):
-    '''Returns a default value when a given value is None, otherwise returns the given value.'''
+    """Returns a default value when a given value is None, otherwise returns the given value."""
     if value is None:
         return default
     else:
         return value
 
-class Args(object):
 
-    '''An object that returns None for any undefined properties.'''
+class Args(object):
+    """An object that returns None for any undefined properties."""
 
     def __init__(self, **kwargs):
         if kwargs:
@@ -47,11 +48,13 @@ class Args(object):
         else:
             return None
 
+
 def replace_string_in_dict(dict, old, new):
     result = {}
     for k, v in dict.iteritems():
         result[k.replace(old, new)] = replace_string_in_value(v, old, new)
     return result
+
 
 def replace_string_in_value(value, old, new):
     if isinstance(value, basestring):
@@ -62,38 +65,41 @@ def replace_string_in_value(value, old, new):
         return replace_string_in_dict(value, old, new)
     return value
 
+
 def replace_string_in_list(list, old, new):
     result = []
     for entry in list:
         result.append(replace_string_in_value(entry, old, new))
     return result
 
+
 def load_template(context, template_path):
-    '''Reads template file content and returns it as a string.'''
+    """Reads template file content and returns it as a string."""
     try:
         return open(template_path, 'r').read()
     except IOError as e:
         raise HandledError('Could not read template from {0}.'.format(template_path))
 
-def validate_stack_name_length(check_name):
 
+def validate_stack_name_length(check_name):
     name_length = len(check_name)
 
     if name_length > 128:
         raise HandledError('Name is {} characters, limit 128: {}'.format(name_length, check_name))
 
-def validate_stack_name_format(check_name):
 
+def validate_stack_name_format(check_name):
     if not re.match('^[a-z][a-z0-9\-]*$', check_name, re.I):
         raise HandledError('Name can only consist of letters, numbers and hyphens and must start with a letter: {}'.format(check_name))
+
 
 def validate_stack_name_no_reserved_words(check_name):
     if check_name in resource_type_info.LAMBDA_TAGS:
         raise HandledError('Name must not be any of %s' % sorted(list(resource_type_info.LAMBDA_TAGS)))
 
-def validate_stack_name(check_name):
 
-    if check_name == None:
+def validate_stack_name(check_name):
+    if check_name is None:
         raise HandledError('No valid name provided')
 
     validate_stack_name_length(check_name)
@@ -102,8 +108,9 @@ def validate_stack_name(check_name):
 
     validate_stack_name_no_reserved_words(check_name)
 
+
 def validate_writable_list(context, write_check_list):
-    '''Prompts the user to make specified files writable.
+    """Prompts the user to make specified files writable.
 
     Arguments:
 
@@ -118,8 +125,8 @@ def validate_writable_list(context, write_check_list):
 
         The cli version raise HandledException instead of returning False.
 
-    '''
-    
+    """
+
     while True:
 
         fail_list = []
@@ -133,8 +140,8 @@ def validate_writable_list(context, write_check_list):
         if not context.view.confirm_writable_try_again(fail_list):
             return False
 
-def get_cloud_canvas_metadata(definition, metadata_name):
 
+def get_cloud_canvas_metadata(definition, metadata_name):
     metadata = definition.get('Metadata', None)
     if metadata is None: return None
 
@@ -143,21 +150,26 @@ def get_cloud_canvas_metadata(definition, metadata_name):
 
     return cloud_canvas_metadata.get(metadata_name, None)
 
+
 # Stack ARN format: arn:aws:cloudformation:{region}:{account}:stack/{name}/{guid}
 
 def get_stack_name_from_arn(arn):
     if arn is None: return None
     return arn.split('/')[1]
 
+
 def get_region_from_arn(arn):
     if arn is None: return None
     return arn.split(':')[3]
+
 
 def get_account_id_from_arn(arn):
     if arn is None: return None
     return arn.split(':')[4]
 
+
 ID_DATA_MARKER = '::'
+
 
 def get_data_from_custom_physical_resource_id(physical_resource_id):
     if physical_resource_id:
@@ -174,6 +186,7 @@ def get_data_from_custom_physical_resource_id(physical_resource_id):
         id_data = {}
     return id_data
 
+
 def trim_at(s, c):
     i = s.find(c)
     if i == -1:
@@ -181,13 +194,15 @@ def trim_at(s, c):
     else:
         return s[:i]
 
+
 def dict_get_or_add(dict, name, default):
     if name not in dict:
         dict[name] = default
     return dict[name]
 
+
 def save_json(path, data):
-    '''Writes a dictionary to a file on disk using the JSON format.'''
+    """Writes a dictionary to a file on disk using the JSON format."""
     try:
         dir = os.path.dirname(path)
         if not os.path.exists(dir):
@@ -200,8 +215,9 @@ def save_json(path, data):
         raise HandledError('Could not save {}.'.format(path), e)
         return False
 
-def load_json(path, default = None, optional = True):
-    '''Reads JSON format data from a file on disk and returns it as dictionary.'''
+
+def load_json(path, default=None, optional=True):
+    """Reads JSON format data from a file on disk and returns it as dictionary."""
     try:
         if os.path.isfile(path):
             with open(path, 'r') as file:
@@ -219,8 +235,9 @@ def load_json(path, default = None, optional = True):
     except Exception as e:
         raise HandledError('Could not load {}.'.format(path), e)
 
+
 def json_parse(str, default):
-    '''Reads JSON format data from a file on disk and returns it as dictionary.'''
+    """Reads JSON format data from a file on disk and returns it as dictionary."""
     try:
         if str:
             json.load(str);
@@ -231,7 +248,6 @@ def json_parse(str, default):
 
 
 def delete_bucket_contents(context, stack_name, logical_bucket_id, physical_bucket_id):
-
     s3 = context.aws.client('s3')
     try:
         list_res = s3.list_object_versions(Bucket=physical_bucket_id, MaxKeys=500)
@@ -261,13 +277,12 @@ def delete_bucket_contents(context, stack_name, logical_bucket_id, physical_buck
                 })
 
         if delete_list:
-
             count = len(delete_list)
             total += count
 
             context.view.deleting_bucket_contents(stack_name, logical_bucket_id, count, total)
 
-            s3.delete_objects(Bucket=physical_bucket_id, Delete={ 'Objects': delete_list, 'Quiet': True })
+            s3.delete_objects(Bucket=physical_bucket_id, Delete={'Objects': delete_list, 'Quiet': True})
 
         if 'NextKeyMarker' not in list_res or 'NextVersionIdMarker' not in list_res:
             if total and not did_final_list:
@@ -279,11 +294,5 @@ def delete_bucket_contents(context, stack_name, logical_bucket_id, physical_buck
 
             break
 
-        list_res = s3.list_object_versions(Bucket=physical_bucket_id, MaxKeys=500, KeyMarker=list_res['NextKeyMarker'], VersionIdMarker=list_res['NextVersionIdMarker'])
-
-
-
-
-
-
-
+        list_res = s3.list_object_versions(Bucket=physical_bucket_id, MaxKeys=500, KeyMarker=list_res['NextKeyMarker'],
+                                           VersionIdMarker=list_res['NextVersionIdMarker'])

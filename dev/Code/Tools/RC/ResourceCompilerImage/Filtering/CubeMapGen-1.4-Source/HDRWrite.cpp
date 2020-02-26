@@ -8,6 +8,9 @@
 //--------------------------------------------------------------------------------------
 // modifications by Crytek GmbH
 
+// Modifications copyright Amazon.com, Inc. or its affiliates.
+
+#include "StdAfx.h"
 #include "HDRWrite.h"
 #include <math.h>
 #include <platform.h>

@@ -14,8 +14,12 @@ def build(bld):
     bld.DefineGem(
         # General
         disable_pch             = True,
+        vs_filter               = 'Gems/PlatformServices',
         file_list               = ['localuser.waf_files'],
-        
+        includes                = ['.',
+                                   bld.ThirdPartyPath('boost'),
+                                   bld.Path('Code/CryEngine/CryCommon')],
+
         # Testing
         test_all_file_list      = ['localuser_tests.waf_files'],
 

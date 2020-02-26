@@ -16,7 +16,7 @@
 #include "StandardHeaders.h"
 #include "Vector.h"
 #include "AABB.h"
-#include "Array.h"
+#include <AzCore/std/containers/vector.h>
 
 
 namespace MCore
@@ -176,7 +176,7 @@ namespace MCore
          * @param pointsOut The array of clipped points (and edges). Note that (pointsOut.GetLength() > pointsIn.GetLength()) can be true.
          * @result Returns true when the points have been clipped. False is returned when the clipping resulted in 0 output points.
          */
-        bool Clip(const Array<AZ::Vector3>& pointsIn, Array<AZ::Vector3>& pointsOut) const;
+        bool Clip(const AZStd::vector<AZ::Vector3>& pointsIn, AZStd::vector<AZ::Vector3>& pointsOut) const;
 
         /**
          * Clip a set of 3D points to this plane.
@@ -186,7 +186,7 @@ namespace MCore
          * @param points The set of points (or edges) to clip. When done, points contains the clipped points.
          * @result Returns true when the points have been clipped. False is returned when the clipping resulted in 0 points. In that last case 'points' won't be effected and contains just the original input points.
          */
-        bool Clip(Array<AZ::Vector3>& points) const;
+        bool Clip(AZStd::vector<AZ::Vector3>& points) const;
 
         /**
          * Project a vector onto the plane.

@@ -169,10 +169,18 @@ namespace AzToolsFramework
     void SetEntityVisibility(AZ::EntityId entityId, bool visible);
     void ToggleEntityVisibility(AZ::EntityId entityId);
 
-    /// Determine if an Entity is visible or not in the Editor.
+    /// Determine if an Entity is set to visible or not in the Editor.
     /// This call looks at the visibility flag of the entity (GetVisibilityFlag)
     /// or the state of the layer (AreLayerChildrenVisible) if this entity is a layer.
     bool IsEntitySetToBeVisible(AZ::EntityId entityId);
+    /// Is the entity visible based on layer state as well as individual state.
+    bool IsEntityVisible(AZ::EntityId entityId);
+
+    /// Determine if an Entity is set to locked or not in the Editor.
+    /// This call looks at the lock state/flag of the entity (GetLocked).
+    bool IsEntitySetToBeLocked(AZ::EntityId entityId);
+    /// Is the entity locked based on layer state as well as individual state.
+    bool IsEntityLocked(AZ::EntityId entityId);
 
     /// Wrap EBus GetWorldTranslation call.
     AZ::Vector3 GetWorldTranslation(AZ::EntityId entityId);

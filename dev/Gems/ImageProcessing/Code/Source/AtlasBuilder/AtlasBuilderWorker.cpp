@@ -37,7 +37,7 @@
 #include <BuilderSettings/BuilderSettingManager.h>
 
 #include <qimage.h>
-#include <qstring>
+#include <QString>
 #include <QDir>
 #include <qfileinfo.h>
 
@@ -78,7 +78,7 @@ namespace TextureAtlasBuilder
         // "./" or "../" somewhere other than the beginning of the path
 
         // Normalize path
-        AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePath, curPath);
+        AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePathKeepCase, curPath);
 
         const AZStd::string slash("/");
 
@@ -135,7 +135,7 @@ namespace TextureAtlasBuilder
             absoluteSourcePathOut = AZStd::string::format("%s/%s", watchFolder.c_str(), info.m_relativePath.c_str());
 
             // Normalize path
-            AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePath, absoluteSourcePathOut);
+            AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePathKeepCase, absoluteSourcePathOut);
         }
         return result;
     }
@@ -365,7 +365,7 @@ namespace TextureAtlasBuilder
             else
             {
                 // Add image files
-                AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePath, line);
+                AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePathKeepCase, line);
                 bool duplicate = false;
                 if (line.find('*') != -1)
                 {
@@ -456,7 +456,7 @@ namespace TextureAtlasBuilder
                     for (const QFileInfo& entry : entries)
                     {
                         AZStd::string child = (entry.filePath().toStdString()).c_str();
-                        AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePath, child);
+                        AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePathKeepCase, child);
                         if (DoesPathnameMatchWildCard(compare, child))
                         {
                             nextCandidates.push_back(child);
@@ -590,7 +590,7 @@ namespace TextureAtlasBuilder
                 }
                 else if (ImageProcessing::IsExtensionSupported(ext.c_str()) && ext != "dds")
                 {
-                    AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePath, child);
+                    AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePathKeepCase, child);
                     bool duplicate = false;
                     for (size_t i = 0; i < paths.size() && !duplicate; ++i)
                     {
@@ -830,7 +830,7 @@ namespace TextureAtlasBuilder
             filePath = info.m_relativePath.substr(0, info.m_relativePath.find_last_of('.'));
 
             // Normalize path
-            AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePath, filePath);
+            AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePathKeepCase, filePath);
         }
 
         // Add white texture if we need to

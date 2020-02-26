@@ -10,21 +10,15 @@
 #
 # $Revision$
 
-import boto3
-
-import uploader
-import copy
 import os
-import common_code
-import file_util
 import zipfile
 
 from errors import HandledError
 
-
 from resource_manager_common import constant
 
 UPLOADED_FILE_FORMAT = "{}-lambda-code.zip"
+
 
 class LambdaCodePackageValidator(object):
     def __init__(self, context, function_name):
@@ -41,6 +35,10 @@ class LambdaCodePackageValidator(object):
 
         if os.path.exists(zip_path):
             self.local_zip_path = zip_path
+            return True
+        else:
+            print("WARNING: Unable to find expected lambda zip file at {}".format(zip_path))
+            return False
 
     def _get_single_code_path(self, code_paths, allow_multiple_paths=False):
         if len(code_paths) > 1 and not allow_multiple_paths:
@@ -49,14 +47,16 @@ class LambdaCodePackageValidator(object):
 
     def upload(self, uploader):
         if not self.local_zip_path:
-            raise HandledError("A local zip was not found")
+            raise HandledError("A local zip was not found for {}".format(self.function_name))
         print "uploading {}".format(self.local_zip_path)
         return uploader.upload_file(UPLOADED_FILE_FORMAT.format(self.function_name), self.local_zip_path)["key"]
+
 
 class NodeLambdaPackageValidator(LambdaCodePackageValidator):
     def __init__(self, context, function_name):
         super(NodeLambdaPackageValidator, self).__init__(context, function_name)
         self.runtime = "node.js"
+
 
 class JavaCodePackageValidator(LambdaCodePackageValidator):
     def __init__(self, context, function_name):
@@ -68,24 +68,25 @@ class JavaCodePackageValidator(LambdaCodePackageValidator):
         source_directory_path = self._get_single_code_path(code_paths)
 
         # check for .jar
-        jar_path = os.path.join(
-            source_directory_path, constant.LAMBDA_CODE_DIRECTORY_NAME, self.function_name + '.jar')
+        jar_path = os.path.join(source_directory_path, constant.LAMBDA_CODE_DIRECTORY_NAME, self.function_name + '.jar')
         if os.path.exists(jar_path):
             self.local_zip_path = jar_path
-            return
+            return True
+        else:
+            print("WARNING: Unable to find expected lambda jar file at {}".format(jar_path))
 
         # Eclipse using maven spits it out as <project>-SNAPSHOT.jar no reason not to support this
-        jar_path = os.path.join(
-            source_directory_path, constant.LAMBDA_CODE_DIRECTORY_NAME, self.function_name + '-SNAPSHOT.jar ')
+        jar_path = os.path.join(source_directory_path, constant.LAMBDA_CODE_DIRECTORY_NAME, self.function_name + '-SNAPSHOT.jar ')
         if os.path.exists(jar_path):
             self.local_zip_path = jar_path
-            return
-        
-        zip_path = os.path.join(
-            source_directory_path, constant.LAMBDA_CODE_DIRECTORY_NAME, self.function_name + '.zip')
+            return True
+
+        zip_path = os.path.join(source_directory_path, constant.LAMBDA_CODE_DIRECTORY_NAME, self.function_name + '.zip')
 
         if not os.path.exists(zip_path):
-            return
+            print("WARNING: Unable to find expected lambda zip file at {}".format(zip_path))
+            return False
+
         self.local_zip_path = zip_path
 
         zf = zipfile.ZipFile(zip_path)
@@ -96,11 +97,13 @@ class JavaCodePackageValidator(LambdaCodePackageValidator):
             - All compiled class files and resource files at the root level.
             - All required jars to run the code in the /lib directory.
         '''
+        valid_zip = len(file_list) > 0      # Zip must be non-empty
         for file_name in file_list:
             if file_name.endswith(".jar"):
                 if file_name.split("/")[1] != "lib":
                     raise HandledError(
                         "Java package {} does not follow the structure rule: All required jars to run the code in the /lib directory.".format(zip_path))
+        return valid_zip
 
 
 class DotNetCodePackageValidator(LambdaCodePackageValidator):
@@ -112,11 +115,12 @@ class DotNetCodePackageValidator(LambdaCodePackageValidator):
         code_paths = additional_info["codepaths"]
         source_directory_path = self._get_single_code_path(code_paths)
 
-        zip_path = os.path.join(
-            source_directory_path, constant.LAMBDA_CODE_DIRECTORY_NAME, self.function_name + '.zip')
+        zip_path = os.path.join(source_directory_path, constant.LAMBDA_CODE_DIRECTORY_NAME, self.function_name + '.zip')
 
         if not os.path.exists(zip_path):
-            return
+            print("WARNING: Unable to find expected lambda code file at {}".format(zip_path))
+            return False
+
         self.local_zip_path = zip_path
 
         zf = zipfile.ZipFile(zip_path)
@@ -138,9 +142,10 @@ class DotNetCodePackageValidator(LambdaCodePackageValidator):
         if not has_deps_file:
             raise HandledError("Missing deps.json file")
 
+        return has_deps_file
+
+
 class GolangCodePackageValidator(LambdaCodePackageValidator):
     def __init__(self, context, function_name):
         super(GolangCodePackageValidator, self).__init__(context, function_name)
         self.runtime = "Go"
-
-

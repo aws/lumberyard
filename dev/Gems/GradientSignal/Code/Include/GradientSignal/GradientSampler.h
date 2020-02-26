@@ -16,8 +16,8 @@
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Outcome/Outcome.h>
 #include <AzCore/Memory/Memory.h>
-#include <AzCore/Rtti/ReflectContext.h>
-#include <AzCore/Rtti/Rtti.h>
+#include <AzCore/RTTI/ReflectContext.h>
+#include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Serialization/EditContextConstants.inl>
 #include <GradientSignal/Ebuses/GradientRequestBus.h>
 #include <GradientSignal/Ebuses/GradientTransformRequestBus.h>

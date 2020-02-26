@@ -11,11 +11,11 @@
 */
 
 #include <AzToolsFramework/PropertyTreeEditor/PropertyTreeEditor.h>
-#include <AzToolsFramework/UI/UiCore/WidgetHelpers.h>
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
 
-#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Component/ComponentApplicationBus.h> 
 #include <AzCore/Asset/AssetManager.h>
 #include <AzFramework/Asset/SimpleAsset.h>
 #include <AzCore/Asset/AssetManagerBus.h>

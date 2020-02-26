@@ -199,7 +199,7 @@ def update_3rd_party_libs_to_use_rpath(self):
 
     if self.env['COPY_3RD_PARTY_ARTIFACTS']:
         # only interested in shared libraries that are being copied
-        third_party_artifacts = [artifact for artifact in self.env['COPY_3RD_PARTY_ARTIFACTS'] if "dylib" in artifact.name]
+        third_party_artifacts = [artifact for artifact in self.env['COPY_3RD_PARTY_ARTIFACTS'] if not isinstance(artifact,tuple) and "dylib" in artifact.name]
 
     if third_party_artifacts:
 

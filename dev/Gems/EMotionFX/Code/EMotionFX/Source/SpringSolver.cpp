@@ -20,8 +20,6 @@
 #include <EMotionFX/Source/SpringSolver.h>
 #include <EMotionFX/Source/TransformData.h>
 
-#include <MCore/Source/AzCoreConversions.h>
-
 namespace EMotionFX
 {
     //------------------------------------------------------------------------
@@ -358,7 +356,7 @@ namespace EMotionFX
         const size_t numRootJoints = m_simulatedObject->GetNumSimulatedRootJoints();
         if (numRootJoints == 0)
         {
-            AZ_Warning("EMotionFX", false, "Simulated object '%s' in simulation '%s' has a simulated object without any joints. A minimum of two joints per chain is required.", m_simulatedObject->GetName().c_str(), m_name.c_str());
+            //AZ_Warning("EMotionFX", false, "Simulated object '%s' in simulation '%s' has a simulated object without any joints. A minimum of two joints per chain is required.", m_simulatedObject->GetName().c_str(), m_name.c_str());
             return false;
         }
 
@@ -478,7 +476,7 @@ namespace EMotionFX
                 const float radius = particle.m_joint->GetCollisionRadius() * scaleFactor;
                 if (radius > 0.0f)
                 {
-                    const AZ::Quaternion jointRotation = MCore::EmfxQuatToAzQuat(pose.GetWorldSpaceTransform(particle.m_joint->GetSkeletonJointIndex()).mRotation);
+                    const AZ::Quaternion& jointRotation = pose.GetWorldSpaceTransform(particle.m_joint->GetSkeletonJointIndex()).mRotation;
                     drawData->DrawWireframeSphere(particle.m_pos, radius, AZ::Color(0.3f, 0.3f, 0.3f, 1.0f), jointRotation, 12, 12);
                 }
             }
@@ -491,7 +489,7 @@ namespace EMotionFX
             {
                 if (collider.GetType() == CollisionObject::CollisionType::Sphere)
                 {
-                    const AZ::Quaternion jointRotation = MCore::EmfxQuatToAzQuat(pose.GetWorldSpaceTransform(collider.m_jointIndex).mRotation);
+                    const AZ::Quaternion& jointRotation = pose.GetWorldSpaceTransform(collider.m_jointIndex).mRotation;
                     drawData->DrawWireframeSphere(collider.m_globalStart, collider.m_scaledRadius, color * 0.65f, jointRotation, 16, 16);
                 }
                 else if (collider.GetType() == CollisionObject::CollisionType::Capsule)
@@ -508,17 +506,6 @@ namespace EMotionFX
         }
 
         drawData->Unlock();
-    }
-
-    void SpringSolver::SetFixedTimeStep(double timeStep)
-    {
-        AZ_Assert(timeStep > 0.0001, "Fixed time step cannot be this small.");
-        m_fixedTimeStep = timeStep;
-    }
-
-    double SpringSolver::GetFixedTimeStep() const
-    {
-        return m_fixedTimeStep;
     }
 
     void SpringSolver::SetNumIterations(size_t numIterations)
@@ -711,13 +698,18 @@ namespace EMotionFX
 
     float SpringSolver::GetScaleFactor() const
     {
-        float scaleFactor = m_actorInstance->GetWorldSpaceTransform().mScale.GetX();
-        if (AZ::IsClose(scaleFactor, 0.0f, AZ::g_fltEps))
-        {
-            return AZ::g_fltEps;
-        }
+        #ifndef EMFX_SCALE_DISABLED
+            float scaleFactor = m_actorInstance->GetWorldSpaceTransform().mScale.GetX();
+            if (AZ::IsClose(scaleFactor, 0.0f, AZ::g_fltEps))
+            {
+                return AZ::g_fltEps;
+            }
 
-        return scaleFactor;
+            return scaleFactor;
+
+        #else
+            return 1.0f;           
+        #endif
     }
 
     void SpringSolver::CalcForces(const Pose& pose, float scaleFactor)
@@ -740,12 +732,12 @@ namespace EMotionFX
                     const AZ::Vector3 force = (jointWorldTransform.mPosition - particle.m_pos) + particle.m_externalForce;
                     particle.m_force += force * stiffnessFactor;
                 }
-            }
 
-            // Apply gravity.
-            const float gravityFactor = joint->GetGravityFactor() * globalGravityFactor;
-            particle.m_force += gravityFactor * m_gravity;
-            particle.m_force *= joint->GetMass();
+                // Apply gravity.
+                const float gravityFactor = joint->GetGravityFactor() * globalGravityFactor;
+                particle.m_force += gravityFactor * m_gravity;
+                particle.m_force *= joint->GetMass();
+            }
         }
     }
 
@@ -797,8 +789,8 @@ namespace EMotionFX
             {
                 Particle& particleA = m_particles[spring.m_particleA];
                 Particle& particleB = m_particles[spring.m_particleB];
-                const Transform worldTransformA = inputPose.GetWorldSpaceTransform(particleA.m_joint->GetSkeletonJointIndex());
-                const Transform worldTransformB = inputPose.GetWorldSpaceTransform(particleB.m_joint->GetSkeletonJointIndex());
+                const Transform& worldTransformA = inputPose.GetWorldSpaceTransform(particleA.m_joint->GetSkeletonJointIndex());
+                const Transform& worldTransformB = inputPose.GetWorldSpaceTransform(particleB.m_joint->GetSkeletonJointIndex());
 
                 // Try to maintain the rest length by applying correctional forces.
                 const AZ::Vector3 delta = particleB.m_pos - particleA.m_pos;
@@ -904,85 +896,19 @@ namespace EMotionFX
         }
     }
 
-    void SpringSolver::UpdateCurrentState()
-    {
-        const size_t numParticles = m_particles.size();
-        const size_t numCollisionObjects = m_collisionObjects.size();
-        m_currentState.m_particles.resize(numParticles);
-        m_currentState.m_collisionObjects.resize(numCollisionObjects);
-        for (size_t i = 0; i < numParticles; ++i)
-        {
-            const Particle& particle = m_particles[i];
-            ParticleState& particleState = m_currentState.m_particles[i];
-            particleState.m_oldPos = particle.m_oldPos;
-            particleState.m_pos = particle.m_pos;
-            particleState.m_force = particle.m_force;
-            particleState.m_limitDir = particle.m_limitDir;
-        }
-
-        for (size_t i = 0; i < numCollisionObjects; ++i)
-        {
-            const CollisionObject& colObject = m_collisionObjects[i];
-            CollisionObjectState& curState = m_currentState.m_collisionObjects[i];
-            curState.m_start = colObject.m_start;
-            curState.m_end = colObject.m_end;
-            curState.m_globalStart = colObject.m_globalStart;
-            curState.m_globalEnd = colObject.m_globalEnd;
-        }
-    }
-
-    void SpringSolver::InterpolateState(float alpha)
-    {
-        const size_t numParticles = m_particles.size();
-        for (size_t i = 0; i < numParticles; ++i)
-        {
-            Particle& particle = m_particles[i];
-            const ParticleState& curParticleState = m_currentState.m_particles[i];
-            const ParticleState& prevParticleState = m_prevState.m_particles[i];
-
-            particle.m_pos = prevParticleState.m_pos.Lerp(curParticleState.m_pos, alpha);
-            particle.m_oldPos = prevParticleState.m_oldPos.Lerp(curParticleState.m_oldPos, alpha);
-            particle.m_force = prevParticleState.m_force.Lerp(curParticleState.m_force, alpha);
-            particle.m_limitDir = prevParticleState.m_limitDir.Lerp(curParticleState.m_limitDir, alpha).GetNormalizedSafeExact();
-        }
-
-        const size_t numCollisionObjects = m_collisionObjects.size();
-        for (size_t i = 0; i < numCollisionObjects; ++i)
-        {
-            CollisionObject& colObject = m_collisionObjects[i];
-            const CollisionObjectState& curState = m_currentState.m_collisionObjects[i];
-            const CollisionObjectState& prevState = m_prevState.m_collisionObjects[i];
-
-            colObject.m_start = prevState.m_start.Lerp(curState.m_start, alpha);
-            colObject.m_end = prevState.m_end.Lerp(curState.m_end, alpha);
-            colObject.m_globalStart = prevState.m_globalStart.Lerp(curState.m_globalStart, alpha);
-            colObject.m_globalEnd = prevState.m_globalEnd.Lerp(curState.m_globalEnd, alpha);
-        }
-    }
-
     void SpringSolver::Stabilize()
     {
         m_stabilize = true;
     }
 
     void SpringSolver::Stabilize(const Pose& inputPose, Pose& pose, size_t numFrames)
-    {       
-        for (Particle& particle : m_particles)
-        {
-            particle.m_pos = inputPose.GetWorldSpaceTransform(particle.m_joint->GetSkeletonJointIndex()).mPosition;
-            particle.m_oldPos = particle.m_pos;
-            particle.m_force = AZ::Vector3::CreateZero();
-        }
-
+    {
         InitCollidersFromColliderSetupShapes();
         const float scaleFactor = GetScaleFactor();
-        UpdateFixedParticles(inputPose);
 
         for (size_t i = 0; i < numFrames; ++i)
         {
-            m_prevState = m_currentState;
             Simulate(static_cast<float>(1.0f/60.0f), inputPose, pose, scaleFactor);
-            UpdateCurrentState();
         }
     }
 
@@ -1000,45 +926,14 @@ namespace EMotionFX
             m_stabilize = false;
         }
 
-        // Make sure we don't update with too small stepsize, as that can cause issues.
-        double stepSize = m_fixedTimeStep;
-        if (stepSize < 0.005)
-        {
-            stepSize = 0.005;
-        }
-
+        // Resize the colliders, based on the current collider setup sizes.
         InitCollidersFromColliderSetupShapes();
 
+        // Perform a simulation step, with the number of iterations we want.
         const float scaleFactor = GetScaleFactor();
+        const float stepSize = AZ::GetClamp(timePassedInSeconds, 1.0f / 140.0f, 1.0f / 30.0f); // Make sure we don't update with too small stepsize, as that can cause issues.
 
-        // Perform fixed time step updates.
-        m_timeAccumulation += timePassedInSeconds;
-        while (m_timeAccumulation >= stepSize)
-        {
-            m_prevState = m_currentState;
-            Simulate(static_cast<float>(stepSize), inputPose, pose, scaleFactor);
-            UpdateCurrentState();
-            m_timeAccumulation -= stepSize;
-        }
-
-        // Make sure we update the states when the sizes need to be updated.
-        if (m_currentState.m_particles.size() != m_particles.size() || 
-            m_prevState.m_particles.size() != m_currentState.m_particles.size() ||
-            m_currentState.m_collisionObjects.size() != m_collisionObjects.size() ||
-            m_prevState.m_collisionObjects.size() != m_currentState.m_collisionObjects.size())
-        {
-            UpdateCurrentState();
-            m_prevState = m_currentState;
-        }
-
-        // Interpolate between the last physics state and the current state.
-        const float alpha = static_cast<float>(m_timeAccumulation / stepSize);
-        InterpolateState(alpha);
-
-        // Update the joint transforms and colliders again.
-        UpdateFixedParticles(inputPose);
-        UpdateJointTransforms(pose, weight);
-        UpdateCollisionObjects(pose, scaleFactor);
+        Simulate(stepSize, inputPose, pose, scaleFactor);
     }
 
     void SpringSolver::AdjustParticles(const ParticleAdjustFunction& func)
@@ -1065,39 +960,40 @@ namespace EMotionFX
 
             const Particle& particleA = m_particles[spring.m_particleA];
             const Particle& particleB = m_particles[spring.m_particleB];
-            Transform globalTransformB = pose.GetWorldSpaceTransform(particleB.m_joint->GetSkeletonJointIndex());
-            const Transform globalTransformA = pose.GetWorldSpaceTransform(particleA.m_joint->GetSkeletonJointIndex());
-            const AZ::Vector3 oldDir = (globalTransformA.mPosition - globalTransformB.mPosition).GetNormalizedSafeExact();
-            const AZ::Vector3 newDir = (particleA.m_pos - particleB.m_pos).GetNormalizedSafeExact();
+            Transform modelTransformB = pose.GetModelSpaceTransform(particleB.m_joint->GetSkeletonJointIndex());
+            const Transform& modelTransformA = pose.GetModelSpaceTransform(particleA.m_joint->GetSkeletonJointIndex());
+            const AZ::Vector3 oldDir = (modelTransformA.mPosition - modelTransformB.mPosition).GetNormalizedSafeExact();
+            const AZ::Vector3 newDir = m_actorInstance->GetWorldSpaceTransformInversed().TransformVector(particleA.m_pos - particleB.m_pos).GetNormalizedSafeExact();
 
             if (weight > 0.9999f)
             {
-                globalTransformB.mRotation.RotateFromTo(oldDir, newDir);
+                modelTransformB.mRotation = AZ::Quaternion::CreateShortestArc(oldDir, newDir).GetNormalizedExact() * modelTransformB.mRotation;
+                modelTransformB.mRotation.NormalizeExact();
             }
             else
             {
-                MCore::Quaternion targetRot = globalTransformB.mRotation;
-                targetRot.RotateFromTo(oldDir, newDir);
-                globalTransformB.mRotation = globalTransformB.mRotation.NLerp(targetRot, weight);
+                const AZ::Quaternion targetRot = AZ::Quaternion::CreateShortestArc(oldDir, newDir) * modelTransformB.mRotation;
+                modelTransformB.mRotation = modelTransformB.mRotation.NLerp(targetRot, weight);
             }
 
             if (spring.m_allowStretch)
             {
-                globalTransformB.mPosition = globalTransformB.mPosition.Lerp(particleB.m_pos, weight);
+                modelTransformB.mPosition = modelTransformB.mPosition.Lerp(particleB.m_pos, weight);
             }
 
-            pose.SetWorldSpaceTransform(particleB.m_joint->GetSkeletonJointIndex(), globalTransformB);
+            pose.SetModelSpaceTransform(particleB.m_joint->GetSkeletonJointIndex(), modelTransformB);
         }
     }
 
     void SpringSolver::Integrate(float timeDelta)
     {
-        const float timeDeltaSq = timeDelta * timeDelta;
-        //const float timeCorrect = (m_lastTimeDelta > MCore::Math::epsilon) ? (timeDelta / static_cast<float>(m_lastTimeDelta)) : 1.0f;    // Used only for time corrected Verlet.
+        //const float timeDeltaSq = timeDelta * timeDelta;
+        const float timeCorrect = (m_lastTimeDelta > MCore::Math::epsilon) ? (timeDelta / static_cast<float>(m_lastTimeDelta)) : 1.0f;    // Used only for time corrected Verlet.
         const float globalDampingFactor = m_simulatedObject->GetDampingFactor() * m_dampingFactor;
 
         for (Particle& particle : m_particles)
         {
+            // Limit the velocity, making things slightly more stable.
             const float maxVelocity = timeDelta * 10.0f; // 10 is the number of units per second.
             AZ::Vector3 direction = particle.m_pos - particle.m_oldPos;
             if (direction.GetLength() > maxVelocity)
@@ -1111,14 +1007,14 @@ namespace EMotionFX
             particle.m_oldPos = pos;
 
             // Do the Vertlet integration step.
+            // Choose either standard Verlet or Time Corrected Verlet. We comment out one of them.
             const SimulatedJoint* joint = particle.m_joint;
             const float damping = joint->GetDamping() * globalDampingFactor;
-            particle.m_pos = ((2.0f - damping) * pos - (1.0f - damping) * oldPos) + (particle.m_force * timeDeltaSq);
+            //particle.m_pos = ((2.0f - damping) * pos - (1.0f - damping) * oldPos) + (particle.m_force * timeDeltaSq); // Standard Verlet integration.
 
-            // Correct time corrected verlet: xi+1 = xi + (xi - xi-1) * (dti / dti-1) + (a * dti) * (dti + dti-1) / 2.0
-            // This only makes sense to use if you don't use fixed time steps.
-            // Keeping this comment in, in case we need it later.
-            //particle.m_pos = pos + (pos - oldPos) * timeCorrect * (1.0f-damping) + (particle.m_force * timeDelta) * (timeDelta + static_cast<float>(m_lastTimeDelta)) / 2.0f;
+            // Corrected time corrected verlet: xi+1 = xi + (xi - xi-1) * (dti / dti-1) + (a * dti) * (dti + dti-1) / 2.0
+            // This is a more stable version of verlet when using non-fixed time deltas. It is a corrected version of the time corrected verlet integration.
+            particle.m_pos = pos + (pos - oldPos) * timeCorrect * (1.0f - damping) + (particle.m_force * timeDelta) * (timeDelta + static_cast<float>(m_lastTimeDelta)) / 2.0f;
         }
 
         m_lastTimeDelta = timeDelta;

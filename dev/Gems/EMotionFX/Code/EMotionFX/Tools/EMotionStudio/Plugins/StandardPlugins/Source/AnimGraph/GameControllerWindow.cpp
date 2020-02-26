@@ -1456,8 +1456,8 @@ namespace EMStudio
                         // only process in case the parameter info is enabled
                         if (settingsInfo->m_enabled)
                         {
-                            MCore::Quaternion localRot = actorInstance->GetLocalSpaceTransform().mRotation;
-                            localRot = localRot * MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), value * timeDelta * 3.0f);
+                            AZ::Quaternion localRot = actorInstance->GetLocalSpaceTransform().mRotation;
+                            localRot = localRot * MCore::CreateFromAxisAndAngle(AZ::Vector3(0.0f, 0.0f, 1.0f), value * timeDelta * 3.0f);
                             actorInstance->SetLocalSpaceRotation(localRot);
                         }
                     }
@@ -1612,8 +1612,8 @@ namespace EMStudio
                         // only process in case the parameter info is enabled
                         if (settingsInfo->m_enabled)
                         {
-                            MCore::Quaternion localRot = actorInstance->GetLocalSpaceTransform().mRotation;
-                            localRot = localRot * MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), value.GetX() * timeDelta * 3.0f);
+                            AZ::Quaternion localRot = actorInstance->GetLocalSpaceTransform().mRotation;
+                            localRot = localRot * MCore::CreateFromAxisAndAngle(AZ::Vector3(0.0f, 0.0f, 1.0f), value.GetX() * timeDelta * 3.0f);
                             actorInstance->SetLocalSpaceRotation(localRot);
                         }
                     }

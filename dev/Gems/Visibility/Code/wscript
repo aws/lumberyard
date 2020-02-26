@@ -16,7 +16,10 @@ def build(bld):
         #==============================
         # Common
         #==============================
-        includes    = [ 'Include' ,
+        includes    = [ '.',
+                        bld.ThirdPartyPath('boost'),
+                        bld.Path('Code/CryEngine/CryCommon'),
+                        'Include' ,
                         bld.Path('Code/CryEngine/CryCommon'),
                         bld.Path('Code/CryEngine/CryAction'),
                         bld.Path('Gems/LmbrCentral/Code/include')
@@ -25,7 +28,10 @@ def build(bld):
         editor = dict(
             defines     = ['VISIBILITY_EDITOR', 'EDITOR_COMMON_IMPORTS'],
             use         = ['EditorCommon', 'EditorCore'],
-            includes    = ['Include',
+            includes    = ['.',
+                           bld.ThirdPartyPath('boost'),
+                           bld.Path('Code/CryEngine/CryCommon'),
+                           'Include',
                            bld.Path('Code/CryEngine/CryCommon'),
                            bld.Path('Code/CryEngine/CryAction'),
                            bld.Path('Gems/LmbrCentral/Code/include'),

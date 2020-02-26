@@ -90,7 +90,6 @@ namespace AzQtComponents
         m_backgroundLayout = new QHBoxLayout(m_backgroundFrame);
         m_backgroundLayout->setSizeConstraint(QLayout::SetMinimumSize);
         m_backgroundLayout->setSpacing(0);
-        m_backgroundLayout->setMargin(0);
         m_backgroundLayout->setContentsMargins(0, 0, 0, 0);
         m_backgroundLayout->addWidget(m_expanderButton);
         m_backgroundLayout->addWidget(m_iconLabel);
@@ -104,10 +103,8 @@ namespace AzQtComponents
         m_mainLayout = new QVBoxLayout(this);
         m_mainLayout->setSizeConstraint(QLayout::SetMinimumSize);
         m_mainLayout->setSpacing(0);
-        m_mainLayout->setMargin(0);
         m_mainLayout->setContentsMargins(0, 0, 0, 0);
         m_mainLayout->addWidget(m_backgroundFrame);
-        setLayout(m_mainLayout);
 
         setExpanded(true);
         setWarning(false);
@@ -281,10 +278,10 @@ namespace AzQtComponents
         QDesktopServices::openUrl(QUrl(m_helpUrl));
     }
 
-    void CardHeader::setHelpURL(QString url)
+    void CardHeader::setHelpURL(const QString& url)
     {
         m_helpUrl = url;
-        m_helpButton->setVisible(m_helpUrl.length() > 0);
+        m_helpButton->setVisible(!m_helpUrl.isEmpty());
     }
 
     void CardHeader::clearHelpURL()

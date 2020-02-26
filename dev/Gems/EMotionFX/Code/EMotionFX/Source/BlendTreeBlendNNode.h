@@ -18,13 +18,10 @@
 #include <AzCore/std/utils.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
-
 namespace EMotionFX
 {
     // forward declarations
     class ActorInstance;
-
-
 
     class BlendNParamWeight
     {
@@ -105,7 +102,7 @@ namespace EMotionFX
         };
 
         BlendTreeBlendNNode();
-        ~BlendTreeBlendNNode();
+        ~BlendTreeBlendNNode() = default;
 
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
@@ -139,9 +136,8 @@ namespace EMotionFX
         void TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
 
-
         ESyncMode                                   m_syncMode;
         EEventMode                                  m_eventMode;
         AZStd::vector<BlendNParamWeight>            m_paramWeights;
     };
-}   // namespace EMotionFX
+} // namespace EMotionFX

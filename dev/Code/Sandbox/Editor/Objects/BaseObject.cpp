@@ -2211,9 +2211,14 @@ bool CBaseObject::IsHidden() const
     {
         return false;
     }
+
+#ifndef AZ_TESTS_ENABLED
     return (CheckFlags(OBJFLAG_HIDDEN)) ||
            ((m_layer && !m_layer->IsVisible())) ||
            (gSettings.objectHideMask & GetType());
+#else
+    return CheckFlags(OBJFLAG_HIDDEN);
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3477,7 +3482,11 @@ void CBaseObject::UpdateVisibility(bool bVisible)
     bool bVisibleWithSpec = bVisible && !IsHiddenBySpec();
     if (bVisible == CheckFlags(OBJFLAG_INVISIBLE))
     {
-        GetObjectManager()->InvalidateVisibleList();
+        if (IObjectManager* objectManager = GetObjectManager())
+        {
+            objectManager->InvalidateVisibleList();
+        }
+
         if (!bVisible)
         {
             m_flags |= OBJFLAG_INVISIBLE;

@@ -770,13 +770,17 @@ namespace AZ
                     AZ_Assert(classData->m_serializer, "Asset references should always have a serializer defined");
 
                     // Intercept asset references so we can forward asset load filter information.
-                    static_cast<AssetSerializer*>(classData->m_serializer.get())->LoadWithFilter(
+                    bool loaded = static_cast<AssetSerializer*>(classData->m_serializer.get())->LoadWithFilter(
                         dataAddress,
                         *element.m_stream,
                         element.m_version,
                         m_filterDesc.m_assetCB,
                         element.m_dataType == SerializeContext::DataElement::DT_BINARY_BE);
 
+                    if (!loaded)
+                    {
+                        result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);
+                    }
                 }
                 // Serializable leaf element.
                 else if (classData->m_serializer)
@@ -797,7 +801,11 @@ namespace AZ
                     if (dataAddress == nullptr || 
                         !classData->m_serializer->Load(dataAddress, *currentStream, element.m_version, element.m_dataType == SerializeContext::DataElement::DT_BINARY_BE))
                     {
+                        AZStd::string error = AZStd::string::format("Serializer failed for %s '%s'(0x%x).", 
+                            classData->m_name, element.m_name ? element.m_name : "NULL", element.m_nameCrc);
+
                         result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
+                        m_errorLogger.ReportError(error.c_str());
                     }
                 }
 

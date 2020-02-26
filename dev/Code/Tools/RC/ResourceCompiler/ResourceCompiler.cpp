@@ -70,10 +70,13 @@
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/parallel/binary_semaphore.h>
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/Utils/Utils.h>
+
 #include <QSettings>
 #include <QThread>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzCore/Memory/AllocatorManager.h>
+#include <AzCore/Math/Sfmt.h>
 
 #if AZ_TRAIT_OS_PLATFORM_APPLE
 #include <mach-o/dyld.h>  // Needed for _NSGetExecutablePath
@@ -906,7 +909,9 @@ void ThreadFunc(ResourceCompiler::RcCompileFileInfo* data)
         EResult eResult;
 
         const RcFile& fileToConvert = data->pFilesToConvert->m_inputFiles.back();
+#if !defined(AZ_PLATFORM_LINUX) // Exception handling not enabled on linux builds
         try
+#endif // !defined(AZ_PLATFORM_LINUX)
         {
             if (data->rc->CompileFile())
             {
@@ -917,16 +922,19 @@ void ThreadFunc(ResourceCompiler::RcCompileFileInfo* data)
                 eResult = eResult_Error;
             }
         }
+#if !defined(AZ_PLATFORM_LINUX) // Exception handling not enabled on linux builds
         catch (std::bad_alloc&)
         {
             eResult = eResult_OutOfMemory;
         }
+#endif // !defined(AZ_PLATFORM_LINUX)
         // Any other exception should be uncaught and allowed to go to the unhandled exception handler,
         // which will actually record useful data
         //catch (...)
         //{
         //  eResult = eResult_Exception;
         //}
+
 
         data->pFilesToConvert->m_inputFiles.pop_back();
 
@@ -1041,7 +1049,7 @@ bool ResourceCompiler::CompileFile()
     pCC->SetSourceFileNameOnly(PathHelpers::GetFilename(sourceFullFileName));
     pCC->SetSourceFolder(PathHelpers::GetDirectory(PathHelpers::GetAbsoluteAsciiPath(sourceFullFileName)));
 
-    const string outputFolder = PathHelpers::GetAbsoluteAsciiPath(targetFullFileName);
+    const string outputFolder = PathHelpers::GetAbsoluteAsciiPath(targetFullFileName.c_str());
     pCC->SetOutputFolder(outputFolder);
 
     if (!FileUtil::EnsureDirectoryExists(outputFolder.c_str()))
@@ -1405,7 +1413,7 @@ static bool RegisterConvertors(ResourceCompiler* pRc)
             return true;
         }
 
-        
+
         FnRegisterConvertors fnRegister =
             hPlugin ? (FnRegisterConvertors)CryGetProcAddress(hPlugin, "RegisterConvertors") : NULL;
         if (!fnRegister)
@@ -1760,7 +1768,7 @@ void GetCommandLineArguments(std::vector<string>& resArgs, int argc, char** argv
 
 void AddCommandLineArgumentsFromFile(std::vector<string>& args, const char* const pFilename)
 {
-    FILE* f = nullptr; 
+    FILE* f = nullptr;
     azfopen(&f, pFilename, "rt");
     if (!f)
     {
@@ -1797,7 +1805,7 @@ static void GetFileSizeAndCrc32(int64& size, uint32& crc32, const char* pFilenam
         return;
     }
 
-    FILE* f = nullptr; 
+    FILE* f = nullptr;
     azfopen(&f, pFilename, "rb");
     if (!f)
     {
@@ -1860,7 +1868,7 @@ std::unique_ptr<QCoreApplication> CreateQApplication(int &argc, char** argv)
     cmdLine.Parse(argc, argv);
     bool userDialog = cmdLine.HasSwitch("userdialog") &&
         ((cmdLine.GetNumSwitchValues("userdialog") == 0) || (cmdLine.GetSwitchValue("userdialog", 0) == "1"));
-    
+
     std::unique_ptr<QCoreApplication> qApplication = userDialog? std::make_unique<QApplication>(argc, argv) : std::make_unique<QCoreApplication>(argc, argv);
 
     // now that QT is initialized, we can use its path manip to set the rest up:
@@ -2173,7 +2181,7 @@ int rcmain(int argc, char** argv, char** envp)
             logDir = "@log@/";
         }
         string logFile = logDir + "Log.txt";
-        
+
         const char* configSearchPaths[] =
         {
             ".",
@@ -2353,7 +2361,10 @@ int __cdecl main(int argc, char** argv, char** envp)
         return AzMainUnitTests();
     }
 #endif // AZ_TESTS_ENABLED
-    AZ::AllocatorInstance<AZ::SystemAllocator>::Create();    
+
+    AZ::Sfmt::Create();
+
+    AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
     AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
     AZ::AllocatorInstance<CryStringAllocator>::Create();
 
@@ -2368,6 +2379,8 @@ int __cdecl main(int argc, char** argv, char** envp)
     AZ::AllocatorInstance<CryStringAllocator>::Destroy();
     AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
     AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
+
+    AZ::Sfmt::Destroy();
 
     //////////////////////////////////////////////////////////////////////////
     AZ::AllocatorManager::Destroy();
@@ -2457,30 +2470,28 @@ string ResourceCompiler::GetAppRootPathFromGameRoot(const string& gameRootPath)
 //////////////////////////////////////////////////////////////////////////
 void ResourceCompiler::QueryVersionInfo()
 {
-#if defined(AZ_PLATFORM_WINDOWS)
-    wchar_t moduleNameW[MAX_PATH];
+
+    char moduleName[AZ_MAX_PATH_LEN] = {'\0'};
+
+    AZ::Utils::GetExecutablePathReturnType executablePathResult =  AZ::Utils::GetExecutablePath(moduleName,AZ_ARRAY_SIZE(moduleName));
+    switch (executablePathResult.m_pathStored)
     {
-        const int bufferCharCount = sizeof(moduleNameW) / sizeof(moduleNameW[0]);
-        const int charCount = GetModuleFileNameW(NULL, moduleNameW, bufferCharCount);
-        if (charCount <= 0 || charCount >= bufferCharCount)
-        {
+        case AZ::Utils::ExecutablePathResult::BufferSizeNotLargeEnough:
+            printf("RC QueryVersionInfo(): Buffer size not large enough to store module path");
+            exit(eRcExitCode_FatalError);
+
+        case AZ::Utils::ExecutablePathResult::GeneralError:
             printf("RC QueryVersionInfo(): fatal error");
             exit(eRcExitCode_FatalError);
-        }
-        moduleNameW[charCount] = 0;
-    }
-    m_exePath = PathHelpers::GetAbsoluteAsciiPath(moduleNameW);
-#elif AZ_TRAIT_OS_PLATFORM_APPLE
-    char moduleName[MAX_PATH];
-    uint32_t bufferCharCount = sizeof(moduleName) / sizeof(moduleName[0]);
-    if (_NSGetExecutablePath(moduleName, &bufferCharCount))
-    {
-        printf("RC QueryVersionInfo(): fatal error");
-        exit(eRcExitCode_FatalError);
-    }
-    m_exePath = moduleName;
-#endif
 
+        case AZ::Utils::ExecutablePathResult::Success:
+            m_exePath = moduleName;
+            break;
+
+        default:
+            printf("RC QueryVersionInfo(): unknown error");
+            exit(eRcExitCode_FatalError);
+    }
 
     if (m_exePath.empty())
     {
@@ -2490,12 +2501,14 @@ void ResourceCompiler::QueryVersionInfo()
     m_exePath = PathHelpers::AddSeparator(PathHelpers::GetDirectory(m_exePath));
 
 #if defined(AZ_PLATFORM_WINDOWS)
+
     DWORD handle;
     char ver[1024 * 8];
-    const int verSize = GetFileVersionInfoSizeW(moduleNameW, &handle);
+    const int verSize = GetFileVersionInfoSizeA(moduleName, &handle);
+
     if (verSize > 0 && verSize <= sizeof(ver))
     {
-        GetFileVersionInfoW(moduleNameW, 0, sizeof(ver), ver);
+        GetFileVersionInfoA(moduleName, 0, sizeof(ver), ver);
         VS_FIXEDFILEINFO* vinfo;
         UINT len;
         VerQueryValue(ver, "\\", (void**)&vinfo, &len);
@@ -3268,7 +3281,7 @@ void ResourceCompiler::CopyFiles(const std::vector<RcFile>& files, bool bNoOverw
 
             if (srcMaxSize >= 0)
             {
-                const __int64 fileSize = FileUtil::GetFileSize(srcFilename);
+                const int64 fileSize = FileUtil::GetFileSize(srcFilename);
                 if (fileSize > srcMaxSize)
                 {
                     ++numFilesSkipped;
@@ -3301,7 +3314,7 @@ void ResourceCompiler::CopyFiles(const std::vector<RcFile>& files, bool bNoOverw
                     }
                 }
             }
-            
+
             if (!didAttemptRecompress)
             {
                 AZ::IO::LocalFileIO localFileIO;
@@ -3560,7 +3573,7 @@ void ResourceCompiler::SaveAssetReferences(const std::vector<string>& references
     std::vector<string> excludeMasks;
     StringHelpers::Split(excludeMasksStr, ";", false, excludeMasks);
 
-    FILE* f = nullptr; 
+    FILE* f = nullptr;
     azfopen(&f, filename.c_str(), "wt");
     if (!f)
     {
@@ -3707,7 +3720,7 @@ void ResourceCompiler::CleanTargetFolder(bool bUseOnlyInputFiles)
         const string filename = FormLogFileName(m_filenameDeletedFileList);
         RCLog("Saving %s", filename.c_str());
 
-        FILE* f = nullptr; 
+        FILE* f = nullptr;
         azfopen(&f, filename.c_str(), "wt");
         if (f)
         {

@@ -1,0 +1,7 @@
+{
+  "c_compiler": "vs2017",
+  "openssl": "1.1.1",
+  "cxx_compiler": "vs2017",
+  "vc": "14",
+  "sqlite": "3"
+}

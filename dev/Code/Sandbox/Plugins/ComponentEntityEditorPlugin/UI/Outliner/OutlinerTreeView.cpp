@@ -24,68 +24,19 @@
 #include <QDrag>
 #include <QPainter>
 #include <QHeaderView>
-#include <QProxyStyle>
-
-class OutlinerTreeViewProxyStyle : public QProxyStyle
-{
-public:
-    OutlinerTreeViewProxyStyle()
-        : QProxyStyle()
-        , m_linePen(QColor("#FFFFFF"), 1)
-        , m_rectPen(QColor("#B48BFF"), 1)
-    {
-        AzQtComponents::Style::fixProxyStyle(this, qApp->style());
-    }
-
-    void drawPrimitive(PrimitiveElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const
-    {
-        // FIXME: Move to AzQtComponents Style.cpp
-        //draw custom drop target art
-        if (element == QStyle::PE_IndicatorItemViewItemDrop)
-        {
-            painter->save();
-            painter->setRenderHint(QPainter::Antialiasing, true);
-
-            if (option->rect.height() == 0)
-            {
-                //draw circle followed by line for drops between items
-                painter->setPen(m_linePen);
-                painter->drawEllipse(option->rect.topLeft(), 3, 3);
-                painter->drawLine(QPoint(option->rect.topLeft().x() + 3, option->rect.topLeft().y()), option->rect.topRight());
-            }
-            else
-            {
-                //draw a rounded box for drops on items
-                painter->setPen(m_rectPen);
-                painter->drawRoundedRect(option->rect, 3, 3);
-            }
-            painter->restore();
-            return;
-        }
-
-        QProxyStyle::drawPrimitive(element, option, painter, widget);
-    }
-
-private:
-    QPen m_linePen;
-    QPen m_rectPen;
-};
-
 
 OutlinerTreeView::OutlinerTreeView(QWidget* pParent)
     : QTreeView(pParent)
     , m_queuedMouseEvent(nullptr)
     , m_draggingUnselectedItem(false)
-    , m_mousePressedPos()
 {
-    setStyle(new OutlinerTreeViewProxyStyle());
-
     setUniformRowHeights(true);
     setHeaderHidden(true);
 }
 
 OutlinerTreeView::~OutlinerTreeView()
 {
+    ClearQueuedMouseEvent();
 }
 
 void OutlinerTreeView::setAutoExpandDelay(int delay)
@@ -109,7 +60,6 @@ void OutlinerTreeView::mousePressEvent(QMouseEvent* event)
     //this is to support drag/drop of non-selected items
     ClearQueuedMouseEvent();
     m_queuedMouseEvent = new QMouseEvent(*event);
-    m_mousePressedPos = event->pos();
 }
 
 void OutlinerTreeView::mouseReleaseEvent(QMouseEvent* event)
@@ -125,10 +75,10 @@ void OutlinerTreeView::mouseReleaseEvent(QMouseEvent* event)
         //treat this as a mouse pressed event to process selection etc
         processQueuedMousePressedEvent(m_queuedMouseEvent);
 
-        ClearQueuedMouseEvent();
-
         QAbstractItemView::setState(stateBefore);
     }
+
+    ClearQueuedMouseEvent();
     m_draggingUnselectedItem = false;
 
     QTreeView::mouseReleaseEvent(event);
@@ -145,6 +95,12 @@ void OutlinerTreeView::mouseMoveEvent(QMouseEvent* event)
 {
     if (m_queuedMouseEvent)
     {
+        //only trigger this if the mouse cursor was indeed moved
+        if ((event->pos() - m_queuedMouseEvent->pos()).manhattanLength() < QApplication::startDragDistance())
+        {
+            return;
+        }
+
         //disable selection for the pending click if the mouse moved so selection is maintained for dragging
         QAbstractItemView::SelectionMode selectionModeBefore = selectionMode();
         setSelectionMode(QAbstractItemView::NoSelection);
@@ -152,10 +108,10 @@ void OutlinerTreeView::mouseMoveEvent(QMouseEvent* event)
         //treat this as a mouse pressed event to process everything but selection, but use the position data from the mousePress message
         processQueuedMousePressedEvent(m_queuedMouseEvent);
 
+        ClearQueuedMouseEvent();
+
         //restore selection state
         setSelectionMode(selectionModeBefore);
-
-        ClearQueuedMouseEvent();
     }
 
     //process mouse movement as normal, potentially triggering drag and drop
@@ -180,16 +136,19 @@ void OutlinerTreeView::startDrag(Qt::DropActions supportedActions)
 {
     //if we are attempting to drag an unselected item then we must special case drag and drop logic
     //QAbstractItemView::startDrag only supports selected items
-    QModelIndex index = indexAt(m_mousePressedPos);
-    if (!index.isValid() || index.column() != 0)
+    if (m_queuedMouseEvent)
     {
-        return;
-    }
+        QModelIndex index = indexAt(m_queuedMouseEvent->pos());
+        if (!index.isValid() || index.column() != 0)
+        {
+            return;
+        }
 
-    if (!selectionModel()->isSelected(index))
-    {
-        startCustomDrag({ index }, supportedActions);
-        return;
+        if (!selectionModel()->isSelected(index))
+        {
+            startCustomDrag({ index }, supportedActions);
+            return;
+        }
     }
 
     if (!selectionModel()->selectedIndexes().empty())
@@ -213,6 +172,8 @@ void OutlinerTreeView::dropEvent(QDropEvent* event)
 {
     emit ItemDropped();
     QTreeView::dropEvent(event);
+
+    m_draggingUnselectedItem = false;
 }
 
 QColor GetHierarchyLineColor(bool isSliceEntity, bool isSelected)

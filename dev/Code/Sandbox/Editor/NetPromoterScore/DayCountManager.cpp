@@ -13,8 +13,11 @@
 #include "StdAfx.h"
 #include "DayCountManager.h"
 #include "NetPromoterScoreDialog.h"
-#include <QVersionNumber>
 #include <AzQtComponents/Utilities/AutoSettingsGroup.h>
+
+AZ_PUSH_DISABLE_WARNING(4244, "-Wunknown-warning-option") // C4244: '=': conversion from 'int' to 'qint8', possible loss of data
+#include <QVersionNumber>
+AZ_POP_DISABLE_WARNING
 
 // constant variables for updating the registry data
 const char* g_netPromoterScore = "NetPromoterScore";

@@ -14,9 +14,9 @@
 // this creates an invalid box (with negative extents) so the IsValid method will return false
 MCORE_INLINE void OBB::Init()
 {
-	mCenter.Set(0.0f, 0.0f, 0.0f);
-	mExtents.Set(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-	mRotation.Identity();
+    mCenter = AZ::Vector3::CreateZero();
+    mExtents.Set(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+    mRotation = AZ::Transform::CreateIdentity();
 }
 
 
@@ -35,6 +35,6 @@ MCORE_INLINE bool OBB::CheckIfIsValid() const
     {
         return false;
     }
-	return true;
+    return true;
 }
 

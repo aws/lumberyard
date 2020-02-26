@@ -144,7 +144,7 @@ namespace EMotionFX
         m_calculateFunc(x, y, &vectorResult, &floatResult);
 
         // update the output value
-        GetOutputVector3(animGraphInstance, OUTPUTPORT_RESULT_VECTOR3)->SetValue(AZ::PackedVector3f(vectorResult));
+        GetOutputVector3(animGraphInstance, OUTPUTPORT_RESULT_VECTOR3)->SetValue(vectorResult);
         GetOutputFloat(animGraphInstance, OUTPUTPORT_RESULT_FLOAT)->SetValue(floatResult);
     }
 

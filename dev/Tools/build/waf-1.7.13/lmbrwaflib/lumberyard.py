@@ -112,7 +112,8 @@ LMBR_WAFLIB_MODULES = [
         # Visual Studio support
         'msvs_override_handling:win32',
         'msvc_helper:win32',
-        'vscode:win32',
+
+        'vscode',
 
         'xcode:darwin',
         'eclipse:linux',
@@ -254,7 +255,7 @@ def load_lmbr_data_driven_modules(conf):
             base_dir = os.path.dirname(additional_module_to_load)
             module_name = os.path.basename(additional_module_to_load)
             tool_dir = os.path.normpath(os.path.join(WAF_TOOL_ROOT_DIR, base_dir))
-            conf.load(module_name, tooldir=tool_dir)
+            conf.load(module_name, tooldir=[tool_dir])
         else:
             conf.load(additional_module_to_load)
         
@@ -1617,3 +1618,12 @@ def multi_conf(f):
         setattr(k, f.__name__, fun)
         
     return f
+
+
+@conf
+def should_build_experimental_targets(ctx):
+    """
+    Determine the eligibility of building experimental targets
+    """
+    
+    return ctx.engine_root_version == '0.0.0.0' or ctx.options.enable_experimental_features.lower() == 'true'

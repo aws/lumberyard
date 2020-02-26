@@ -15,6 +15,8 @@
 // include the required headers
 #include "StandardHeaders.h"
 #include "Attribute.h"
+#include <MCore/Source/LogManager.h>
+
 
 namespace MCore
 {

@@ -15,7 +15,6 @@
 // include the required files
 #include "EMotionFXConfig.h"
 #include "ConstraintTransform.h"
-#include <MCore/Source/Matrix4.h>
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Color.h>
 #include <Source/Integration/System/SystemCommon.h>
@@ -23,6 +22,7 @@
 namespace AZ
 {
     class ReflectContext;
+    class Transform;
 }
 
 namespace EMotionFX
@@ -59,7 +59,7 @@ namespace EMotionFX
         const char* GetTypeString() const override;
         void Execute() override;
 
-        void DebugDraw(ActorInstance* actorInstance, const MCore::Matrix& offset, const AZ::Color& color, float radius) const;
+        void DebugDraw(ActorInstance* actorInstance, const AZ::Transform& offset, const AZ::Color& color, float radius) const;
 
         void SetMinRotationAngles(const AZ::Vector2& minSwingDegrees);
         void SetMaxRotationAngles(const AZ::Vector2& maxSwingDegrees);
@@ -84,7 +84,7 @@ namespace EMotionFX
         float           mMaxTwist;                  ///< The maximum twist angle, actually the precalculated sin(halfAngleRadians).
         EAxis           mTwistAxis;                 ///< The twist axis index, which has to be either 0, 1 or 2 (default=AXIS_X, which equals 0).
 
-        void DrawSphericalLine(ActorInstance* actorInstance, const AZ::Vector2& start, const AZ::Vector2& end, uint32 numSteps, const AZ::Color& color, float radius, const MCore::Matrix& offset) const;
+        void DrawSphericalLine(ActorInstance* actorInstance, const AZ::Vector2& start, const AZ::Vector2& end, uint32 numSteps, const AZ::Color& color, float radius, const AZ::Transform& offset) const;
         AZ::Vector3 GetSphericalPos(float x, float y) const;
     };
 } // namespace EMotionFX

@@ -64,7 +64,7 @@
 #include <Editor/View/Widgets/UnitTestPanel/UnitTestDockWidget.h>
 #include <Editor/View/Widgets/ValidationPanel/GraphValidationDockWidget.h>
 
-#include <Editor/View/Windows/ui_MainWindow.h>
+#include <Editor/View/Windows/ui_mainwindow.h>
 #include <Editor/View/Windows/Tools/BatchConverter/BatchConverter.h>
 
 #include <Editor/Model/EntityMimeDataHandler.h>

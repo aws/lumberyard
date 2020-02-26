@@ -42,7 +42,7 @@ AZ_POP_DISABLE_WARNING
 #include <QtCore/qbasictimer.h>
 #include <QtCore/qobjectdefs.h>
 
-#ifdef Q_OS_MACOS
+#if defined(AZ_PLATFORM_APPLE_OSX) || defined(AZ_PLATFORM_LINUX)
 typedef void* HWND;
 typedef void* HMODULE;
 typedef quint32 DWORD;

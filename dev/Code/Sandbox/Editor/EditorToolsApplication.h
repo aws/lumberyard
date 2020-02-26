@@ -26,6 +26,8 @@ namespace EditorInternal
     class EditorToolsApplication : public AzToolsFramework::ToolsApplication
     {
     public:
+        EditorToolsApplication(int* argc, char*** argv);
+
         bool OnFailedToFindConfiguration(const char* configFilePath) override;
 
         bool IsStartupAborted() const;
@@ -37,7 +39,12 @@ namespace EditorInternal
         void StartCommon(AZ::Entity* systemEntity) override;
 
         using AzToolsFramework::ToolsApplication::Start;
-        bool Start(int argc, char* argv[]);
+        bool Start();
+
+        //////////////////////////////////////////////////////////////////////////
+        // AzFramework::ApplicationRequests::Bus
+        void QueryApplicationType(AzFramework::ApplicationTypeQuery& appType) const override;
+        //////////////////////////////////////////////////////////////////////////
 
     private:
         bool m_StartupAborted = false;

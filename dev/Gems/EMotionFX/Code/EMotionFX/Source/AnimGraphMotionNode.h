@@ -111,6 +111,7 @@ namespace EMotionFX
         void UpdatePlayBackInfo(AnimGraphInstance* animGraphInstance);
 
         float ExtractCustomPlaySpeed(AnimGraphInstance* animGraphInstance) const;
+        void PickNewActiveMotion(AnimGraphInstance* animGraphInstance);
         void PickNewActiveMotion(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
 
         size_t GetNumMotions() const;
@@ -125,6 +126,7 @@ namespace EMotionFX
         bool GetEmitEvents() const                  { return m_emitEvents; }
         bool GetMirrorMotion() const                { return m_mirrorMotion; }
         bool GetIsMotionExtraction() const          { return m_motionExtraction; }
+        float GetDefaultPlaySpeed() const { return m_playSpeed; }
 
         void SetMotionIds(const AZStd::vector<AZStd::string>& motionIds);
         void SetLoop(bool loop);

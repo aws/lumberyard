@@ -17,6 +17,7 @@
 #include "MorphSetup.h"
 #include <MCore/Source/Random.h>
 #include <EMotionFX/Source/Allocators.h>
+#include <MCore/Source/LogManager.h>
 
 namespace EMotionFX
 {

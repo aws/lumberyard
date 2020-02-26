@@ -351,7 +351,7 @@ namespace AZ
             using FunctionPointer = R(*)(Args...);
             typedef void ClassType;
 
-            AZ_CLASS_ALLOCATOR(BehaviorMethodImpl<R(Args...)>, AZ::SystemAllocator, 0);
+            AZ_CLASS_ALLOCATOR(BehaviorMethodImpl, AZ::SystemAllocator, 0);
 
             static const int s_startArgumentIndex = 1; // +1 for result type
             static const int s_startNamedArgumentIndex = s_startArgumentIndex; // +1 for result type
@@ -385,6 +385,20 @@ namespace AZ
             BehaviorParameter m_parameters[sizeof...(Args)+s_startNamedArgumentIndex];
             AZStd::array<BehaviorParameterMetadata, sizeof...(Args)+s_startNamedArgumentIndex> m_metadataParameters; ///< Stores the per parameter metadata which is used to add names, tooltips, trait, default values, etc... to the parameters
         };
+        
+#if __cpp_noexcept_function_type
+        // C++17 makes exception specifications as part of the type in paper P0012R1
+        // Therefore noexcept overloads must be distinguished from non-noexcept overloads
+        template<class R, class... Args>
+        class BehaviorMethodImpl<R(Args...) noexcept>
+            : public BehaviorMethodImpl<R(Args...)>
+        {
+            using base_type = BehaviorMethodImpl<R(Args...)>;
+        public:
+            using base_type::base_type;
+            using FunctionPointer = R(*)(Args...) noexcept;
+        };
+#endif
 
         template<class R, class C, class... Args>
         class BehaviorMethodImpl<R(C::*)(Args...)> : public BehaviorMethod
@@ -427,6 +441,21 @@ namespace AZ
             BehaviorParameter m_parameters[sizeof...(Args)+s_startNamedArgumentIndex];
             AZStd::array<BehaviorParameterMetadata, sizeof...(Args)+s_startNamedArgumentIndex> m_metadataParameters; ///< Stores the per parameter metadata which is used to add names, tooltips, trait, default values, etc... to the parameters
         };
+
+ #if __cpp_noexcept_function_type
+        // C++17 makes exception specifications as part of the type in paper P0012R1
+        // Therefore noexcept overloads must be distinguished from non-noexcept overloads
+        template<class R, class C, class... Args>
+        class BehaviorMethodImpl<R(C::*)(Args...) noexcept>
+            : public BehaviorMethodImpl<R(C::*)(Args...)>
+        {
+            using base_type = BehaviorMethodImpl<R(C::*)(Args...)>;
+        public:
+            using base_type::base_type;
+            using FunctionPointer = R(C::*)(Args...) noexcept;
+            using FunctionPointerConst = R(C::*)(Args...) const noexcept;
+        };
+#endif
 
         enum BehaviorEventType
         {
@@ -573,6 +602,21 @@ namespace AZ
             AZStd::array<BehaviorParameterMetadata, sizeof...(Args)+s_startNamedArgumentIndex> m_metadataParameters; ///< Stores the per parameter metadata which is used to add names, tooltips, trait, default values, etc... to the parameters
         };
 
+#if __cpp_noexcept_function_type
+        // C++17 makes exception specifications as part of the type in paper P0012R1
+        // Therefore noexcept overloads must be distinguished from non-noexcept overloads
+        template<class EBus, BehaviorEventType EventType, class R, class C, class... Args>
+        class BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...) noexcept>
+            : public BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>
+        {
+            using base_type = BehaviorEBusEvent<EBus, EventType, R(C::*)(Args...)>;
+        public:
+            using base_type::base_type;
+            using FunctionPointer = R(C::*)(Args...) noexcept;
+            using FunctionPointerConst = R(C::*)(Args...) const noexcept;
+        };
+#endif
+
         template<class F>
         struct SetFunctionParameters;
 
@@ -583,6 +627,14 @@ namespace AZ
             static bool Check(AZStd::vector<BehaviorParameter>& source);
         };
 
+#if __cpp_noexcept_function_type
+        // C++17 makes exception specifications as part of the type in paper P0012R1
+        // Therefore noexcept overloads must be distinguished from non-noexcept overloads
+        template<class R, class... Args>
+        struct SetFunctionParameters<R(Args...) noexcept>
+            : SetFunctionParameters<R(Args...)>
+        {};
+#endif
         template<class R, class C, class... Args>
         struct SetFunctionParameters<R(C::*)(Args...)>
         {
@@ -590,6 +642,14 @@ namespace AZ
             static bool Check(AZStd::vector<BehaviorParameter>& source);
         };
 
+#if __cpp_noexcept_function_type
+        // C++17 makes exception specifications as part of the type in paper P0012R1
+        // Therefore noexcept overloads must be distinguished from non-noexcept overloads
+        template<class R, class C, class... Args>
+        struct SetFunctionParameters<R(C::*)(Args...) noexcept>
+            : SetFunctionParameters<R(C::*)(Args...)>
+        {};
+#endif
         
         template<class FunctionType>
         struct BehaviorOnDemandReflectHelper;
@@ -615,6 +675,15 @@ namespace AZ
                 }
             }
         };
+
+#if __cpp_noexcept_function_type
+        // C++17 makes exception specifications as part of the type in paper P0012R1
+        // Therefore noexcept overloads must be distinguished from non-noexcept overloads
+        template<class R, class... Args>
+        struct BehaviorOnDemandReflectHelper<R(*)(Args...) noexcept>
+            : BehaviorOnDemandReflectHelper<R(*)(Args...)>
+        {};
+#endif
 
         template<class... Functions>
         void OnDemandReflectFunctions(OnDemandReflectionOwner* onDemandReflection, AZStd::Internal::pack_traits_arg_sequence<Functions...>);
@@ -3494,7 +3563,7 @@ namespace AZ
                 }
                 if (setter->m_broadcast->GetNumArguments() != 1)
                 {
-                    AZ_Error("BehaviorContext", false, "EBus %s, VirtualProperty %s getter %s can have only one argument", m_ebus->m_name.c_str(), name, setterEvent);
+                    AZ_Error("BehaviorContext", false, "EBus %s, VirtualProperty %s setter %s can have only one argument", m_ebus->m_name.c_str(), name, setterEvent);
                     return this;
                 }
             }

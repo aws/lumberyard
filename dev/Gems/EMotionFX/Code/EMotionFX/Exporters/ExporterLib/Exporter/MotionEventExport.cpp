@@ -17,6 +17,7 @@
 #include <EMotionFX/Source/EventManager.h>
 #include <EMotionFX/Source/MotionEventTable.h>
 #include <EMotionFX/Source/Motion.h>
+#include <MCore/Source/LogManager.h>
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Serialization/Utils.h>

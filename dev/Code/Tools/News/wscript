@@ -26,7 +26,7 @@ def build(bld):
         vs_filter       = 'Tools/News',
         file_list       = 'news_shared.waf_files',
         export_includes = '.',
-        platforms       = ['win', 'darwin'],
+        platforms       = ['win', 'darwin', 'linux'],
         client_only     = True,
         exclude_monolithic = True,
         features        = ['qt5'],

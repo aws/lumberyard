@@ -37,6 +37,7 @@
 #include "EditorDefs.h"
 
 #ifdef _DEBUG
+#if !defined(AZ_PLATFORM_LINUX)
 #ifdef assert
 #undef assert
 #if defined(USE_AZ_ASSERT)
@@ -44,6 +45,7 @@
 #else
 #define assert CRY_ASSERT
 #endif
+#endif // !defined(AZ_PLATFORM_LINUX)
 #endif
 #endif
 

@@ -14,7 +14,7 @@
 def build(bld):
     bld.DefineGem(
         # General
-        includes                = [ '.',
+        includes                = [ bld.ThirdPartyPath('boost'),
                                     bld.Path('Code/CryEngine/CryCommon'),
                                     bld.Path('Code/CryEngine/CryAction')
                                   ],

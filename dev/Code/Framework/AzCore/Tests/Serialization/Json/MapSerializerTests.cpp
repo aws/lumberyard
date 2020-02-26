@@ -246,6 +246,8 @@ namespace JsonSerializationTests
             const void* inputValue, const void* defaultValue, const AZ::Uuid& valueTypeId,
             AZ::StackedString& path, const AZ::JsonSerializerSettings& settings)
         {
+            AZ_UNUSED(valueTypeId);
+
             using namespace AZ::JsonSerializationResult;
             const AZStd::string* inputString = reinterpret_cast<const AZStd::string*>(inputValue);
             const AZStd::string* defaultString = reinterpret_cast<const AZStd::string*>(defaultValue);
@@ -411,6 +413,9 @@ namespace JsonSerializationTests
         auto reporting = [&counter](AZStd::string_view message, ResultCode result,
             AZStd::string_view path) -> ResultCode
         {
+            AZ_UNUSED(message);
+            AZ_UNUSED(path);
+
             return ++counter == 2
                 ? ResultCode(result.GetTask(), Outcomes::Catastrophic)
                 : result;

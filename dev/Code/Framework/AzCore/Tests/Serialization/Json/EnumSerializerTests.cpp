@@ -96,7 +96,7 @@ namespace JsonSerializationTests
 
     enum class ScopedEnumBitFlagsS64 : int64_t
     {
-        BitFlagNegative = 0b1000'0000'0000'0000'0000'0000'0000'0100'0000'0001'0000'0000'0000'0000'0000'0000,
+        BitFlagNegative = static_cast<int64_t>(0b1000'0000'0000'0000'0000'0000'0000'0100'0000'0001'0000'0000'0000'0000'0000'0000),
         BitFlag0 = 0,
         BitFlag1 = 0b1,
         BitFlag2 = 0b10,
@@ -190,7 +190,6 @@ namespace JsonSerializationTests
     {
         using namespace AZ::JsonSerializationResult;
 
-        AZ::SerializeContext* serializeContext = this->m_deserializationSettings.m_serializeContext;
         rapidjson::Value testValue(rapidjson::kArrayType);
         TypeParam convertedValue{};
 
@@ -205,12 +204,11 @@ namespace JsonSerializationTests
     {
         using namespace AZ::JsonSerializationResult;
 
-        AZ::SerializeContext* serializeContext = this->m_deserializationSettings.m_serializeContext;
         TypeParam testValue{};
 
         rapidjson::Value outputValue;
-        Result loadResult = this->m_serializer->Store(outputValue, m_jsonDocument->GetAllocator(), &testValue, nullptr,
-            azrtti_typeid<decltype(testValue)>(), this->m_path, m_serializationSettings);
+        Result loadResult = this->m_serializer->Store(outputValue, this->m_jsonDocument->GetAllocator(), &testValue, nullptr,
+            azrtti_typeid<decltype(testValue)>(), this->m_path, this->m_serializationSettings);
         ResultCode resultCode = loadResult.GetResultCode();
         EXPECT_EQ(Outcomes::Unsupported, resultCode.GetOutcome());
         EXPECT_EQ(rapidjson::kNullType, outputValue.GetType());

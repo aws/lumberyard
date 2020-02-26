@@ -13,10 +13,10 @@
 #ifndef __MCOMMON_CAMERA_H
 #define __MCOMMON_CAMERA_H
 
+#include <AzCore/Math/Matrix4x4.h>
 #include <AzCore/Math/Vector2.h>
 // include the Core system
 #include <MCore/Source/Vector.h>
-#include <MCore/Source/Matrix4.h>
 #include <MCore/Source/Frustum.h>
 #include <MCore/Source/Ray.h>
 #include "MCommonConfig.h"
@@ -159,21 +159,24 @@ namespace MCommon
          * The projection matrix will be calculated every Update().
          * @return The projection matrix.
          */
-        MCORE_INLINE MCore::Matrix& GetProjectionMatrix();
+        MCORE_INLINE AZ::Matrix4x4& GetProjectionMatrix() { return mProjectionMatrix; }
+        MCORE_INLINE const AZ::Matrix4x4& GetProjectionMatrix() const { return mProjectionMatrix; }
 
         /**
          * Get the view matrix of the camera.
          * The view matrix will be calculated every Update().
          * @return The view matrix.
          */
-        MCORE_INLINE MCore::Matrix& GetViewMatrix();
+        MCORE_INLINE AZ::Matrix4x4& GetViewMatrix() { return mViewMatrix; }
+        MCORE_INLINE const AZ::Matrix4x4& GetViewMatrix() const { return mViewMatrix; }
 
         /**
          * Get the precalculated viewMatrix * projectionMatrix of the camera.
          * The viewproj matrix will be calculated every Update().
          * @return The precalculated matrix containing the result of viewMatrix * projectionMatrix.
          */
-        MCORE_INLINE MCore::Matrix& GetViewProjMatrix();
+        MCORE_INLINE AZ::Matrix4x4& GetViewProjMatrix() { return mViewProjMatrix; }
+        MCORE_INLINE const AZ::Matrix4x4& GetViewProjMatrix() const { return mViewProjMatrix; }
 
         /**
          * Get the translation speed.
@@ -269,9 +272,9 @@ namespace MCommon
         virtual void AutoUpdateLimits() {}
 
     protected:
-        MCore::Matrix           mProjectionMatrix;          /**< The projection matrix. */
-        MCore::Matrix           mViewMatrix;                /**< The view matrix. */
-        MCore::Matrix           mViewProjMatrix;            /**< ViewMatrix * projectionMatrix. Will be recalculated every update call. */
+        AZ::Matrix4x4           mProjectionMatrix;          /**< The projection matrix. */
+        AZ::Matrix4x4           mViewMatrix;                /**< The view matrix. */
+        AZ::Matrix4x4           mViewProjMatrix;            /**< ViewMatrix * projectionMatrix. Will be recalculated every update call. */
         MCore::ViewFrustum      mFrustum;                   /**< The camera view frustum. */
         AZ::Vector3             mPosition;                  /**< The camera position. */
         AZ::Vector2             mOrthoClipDimensions;       /**< A two component vector which defines the distance to the left (x component) and to the top (y component) from the view origin. */

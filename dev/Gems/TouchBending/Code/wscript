@@ -73,7 +73,7 @@ def build(bld):
 
         # Section to control the editor (things related with asset pipeline, etc) build.
         Editor = dict(
-            platforms           = ['win', 'darwin'],
+            platforms           = ['win', 'darwin', 'linux'],
 
             # General
             file_list           = touchbending_file_list_editor,
@@ -85,9 +85,10 @@ def build(bld):
 
             # Additional options to override for the editor module, for example,
             defines             = ["TOUCHBENDING_EDITOR"],
-            includes            = [bld.Path('Code/Tools'),
-                                   bld.Path('Code/CryEngine/CryCommon')
-                                  ],
+            includes            = ['.',
+                                   bld.ThirdPartyPath('boost'),
+                                   bld.Path('Code/CryEngine/CryCommon'),
+                                   bld.Path('Code/Tools')],
 
             pch                 = pch_file,
             use                 = ['AzFramework','SceneCore', 'SceneData'],

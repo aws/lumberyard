@@ -14,6 +14,8 @@
 #include <AzToolsFramework/Debug/TraceContext.h>
 #include <SceneAPI/SceneCore/Containers/SceneGraph.h>
 #include <Editor/PropertyWidgets/LODTreeSelectionHandler.h>
+#include <Editor/PropertyWidgets/PropertyWidgetAllocator.h>
+
 
 namespace EMotionFX
 {
@@ -21,7 +23,7 @@ namespace EMotionFX
     {
         namespace UI
         {
-            AZ_CLASS_ALLOCATOR_IMPL(LODTreeSelectionHandler, AZ::SystemAllocator, 0)
+            AZ_CLASS_ALLOCATOR_IMPL(LODTreeSelectionHandler, PropertyWidgetAllocator, 0)
 
             QWidget* LODTreeSelectionHandler::CreateGUI(QWidget* parent)
             {

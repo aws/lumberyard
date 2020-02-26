@@ -14,7 +14,7 @@
 
 #include <AzCore/PlatformDef.h>
 
-#if defined(AZ_MONOLITHIC_BUILD)
+#if defined(AZ_MONOLITHIC_BUILD) || defined(FBX_SCENE_BUILDER_STATIC) || defined(AZ_PLATFORM_LINUX)
     #define FBX_SCENE_BUILDER_API
 #else
     #ifdef FBX_SCENE_BUILDER_EXPORTS

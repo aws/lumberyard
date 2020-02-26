@@ -512,11 +512,13 @@ bool CActionGame::Init(const SGameStartParams* pGameStartParams)
     m_pPhysicalWorld = gEnv->pPhysicalWorld;
 
     // Create Physics API World
-    Physics::SystemRequestBus::BroadcastResult(m_physicalWorld,
-        &Physics::SystemRequests::CreateWorld, Physics::DefaultPhysicsWorldId);
-    if (m_physicalWorld)
+    if (auto physicsSystem = AZ::Interface<Physics::System>::Get())
     {
-        m_physicalWorld->SetEventHandler(this);
+        m_physicalWorld = physicsSystem->CreateWorld(Physics::DefaultPhysicsWorldId);
+        if (m_physicalWorld)
+        {
+            m_physicalWorld->SetEventHandler(this);
+        }
     }
 
     m_pFreeCHSlot0 = m_pCHSlotPool = new SEntityCollHist[32];

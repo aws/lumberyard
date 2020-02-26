@@ -24,7 +24,7 @@ FilteredSearchWidgetPage::FilteredSearchWidgetPage(QWidget* parent)
     for (const auto fruit : fruitList)
     {
         ui->filteredSearchWidget->AddTypeFilter(category, fruit);
-        ui->enabledFilteredSearchWidget->AddTypeFilter(category, fruit);
+        ui->enabledFilteredSearchWidget->AddTypeFilter(category, fruit, {}, -1, AzQtComponents::FilterCriteriaButton::ExtraButtonType::Visible);
         ui->shortFilteredSearchWidget->AddTypeFilter(category, fruit);
         ui->shortEnabledFilteredSearchWidget->AddTypeFilter(category, fruit);
     }

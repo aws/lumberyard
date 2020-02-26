@@ -24,6 +24,7 @@
 #include <MCore/Source/ReflectionSerializer.h>
 #include <Tests/AnimGraphFixture.h>
 
+
 namespace EMotionFX
 {
     class AnimGraphSimpleCopyPasteFixture
@@ -57,6 +58,14 @@ namespace EMotionFX
             m_rootStateMachine->AddChildNode(m_stateC);
 
             m_transition = AddTransition(m_stateA, m_stateB, 1.0f);
+        }
+
+        bool CompareParameterAction(AnimGraphTriggerAction* actionA, AnimGraphTriggerAction* actionB)
+        {
+            AnimGraphParameterAction* paramterActionA = static_cast<AnimGraphParameterAction*>(actionA);
+            AnimGraphParameterAction* paramterActionB = static_cast<AnimGraphParameterAction*>(actionB);
+            return (paramterActionA->GetTriggerValue() == paramterActionB->GetTriggerValue())
+                && (paramterActionA->GetParameterName() == paramterActionB->GetParameterName());
         }
 
         AnimGraphNode* m_stateA = nullptr;
@@ -264,6 +273,73 @@ namespace EMotionFX
             EXPECT_EQ(4, m_rootStateMachine->GetNumChildNodes());
             EXPECT_EQ(1, m_rootStateMachine->GetNumTransitions());
             EXPECT_EQ(8, m_rootStateMachine->RecursiveCalcNumNodes());
+        }
+    }
+
+    TEST_P(AnimGraphSimpleCopyPasteFixture, AnimGraphCopyPasteTests_TriggerActions)
+    {
+        CommandSystem::CommandManager commandManager;
+        AZStd::string result;
+        MCore::CommandGroup commandGroup;
+        const bool cutMode = GetParam();
+        const AnimGraphConnectionId oldtransitionId = m_transition->GetId();
+
+        // Add transition actions to the node.
+        AnimGraphParameterAction* action1 = aznew AnimGraphParameterAction();
+        action1->SetParameterName("action1Param");
+        action1->SetTriggerValue(5.8f);
+
+        AnimGraphParameterAction* action2 = aznew AnimGraphParameterAction();
+        action2->SetParameterName("action2Param");
+        action2->SetTriggerValue(8.5f);
+
+        TriggerActionSetup& actionSetup = m_stateA->GetTriggerActionSetup();
+        actionSetup.AddAction(action1);
+        actionSetup.AddAction(action2);
+        m_stateA->InitTriggerActions();
+
+        AZStd::vector<EMotionFX::AnimGraphNode*> nodesToCopy;
+        nodesToCopy.emplace_back(m_stateA);
+
+        CommandSystem::AnimGraphCopyPasteData copyPasteData;
+        CommandSystem::ConstructCopyAnimGraphNodesCommandGroup(&commandGroup,
+            /*targetParentNode=*/m_rootStateMachine,
+            nodesToCopy,
+            /*posX=*/0,
+            /*posY=*/0,
+            /*cutMode=*/cutMode,
+            copyPasteData,
+            /*ignoreTopLevelConnections=*/false);
+        EXPECT_TRUE(CommandSystem::GetCommandManager()->ExecuteCommandGroup(commandGroup, result));
+
+        if (cutMode)
+        {
+            EXPECT_EQ(3, m_rootStateMachine->GetNumChildNodes()) << "After the cut + copy, the total node number remain the same.";
+
+            AnimGraphNode* copiedNode = m_rootStateMachine->GetChildNode(2);
+
+            const TriggerActionSetup& actionSetup = copiedNode->GetTriggerActionSetup();
+            EXPECT_EQ(2, actionSetup.GetNumActions());
+            AnimGraphParameterAction* action1 = static_cast<AnimGraphParameterAction*>(actionSetup.GetAction(0));
+            AnimGraphParameterAction* action2 = static_cast<AnimGraphParameterAction*>(actionSetup.GetAction(1));
+
+            EXPECT_TRUE(action1 && action2) << "After cut/copy, the new action setup should has two parameter actions.";
+            EXPECT_TRUE(action1->GetParameterName() == "action1Param");
+            EXPECT_EQ(action1->GetTriggerValue(), 5.8f);
+            EXPECT_TRUE(action2->GetParameterName() == "action2Param");
+            EXPECT_EQ(action2->GetTriggerValue(), 8.5f);
+        }
+        else
+        {
+            EXPECT_EQ(4, m_rootStateMachine->GetNumChildNodes()) << "After the copy, the total node number should increase by one.";
+
+            AnimGraphNode* copiedNode = m_rootStateMachine->GetChildNode(3);
+            EXPECT_NE(copiedNode, m_stateA) << "Make sure the fourth node is the newly copied node, not the original node.";
+
+            const TriggerActionSetup& actionSetup = copiedNode->GetTriggerActionSetup();
+            EXPECT_EQ(2, actionSetup.GetNumActions());
+            EXPECT_TRUE(CompareParameterAction(actionSetup.GetAction(0), action1)) << "After copy, the action should be the same as the original node.";
+            EXPECT_TRUE(CompareParameterAction(actionSetup.GetAction(1), action2)) << "After copy, the action should be the same as the original node.";
         }
     }
 

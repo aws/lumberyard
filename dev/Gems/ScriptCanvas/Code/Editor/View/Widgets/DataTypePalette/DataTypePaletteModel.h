@@ -11,9 +11,9 @@
 */
 #pragma once
 
-#include <qabstractitemmodel.h>
-#include <QSortFilterProxyModel.h>
-#include <QTableView.h>
+#include <QAbstractItemModel>
+#include <QSortFilterProxyModel>
+#include <QTableView>
 
 #include <AzCore/Memory/SystemAllocator.h>
 

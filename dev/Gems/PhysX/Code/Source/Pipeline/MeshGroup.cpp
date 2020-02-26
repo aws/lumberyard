@@ -114,6 +114,7 @@ namespace PhysX
                     ->Field("GaussMapLimit", &MeshGroup::m_gaussMapLimit)
 
                 // trimesh params
+                    ->Field("MergeMeshes", &MeshGroup::m_mergeMeshes)
                     ->Field("WeldVertices", &MeshGroup::m_weldVertices)
                     ->Field("DisableCleanMesh", &MeshGroup::m_disableCleanMesh)
                     ->Field("Force32BitIndices", &MeshGroup::m_force32BitIndices)
@@ -186,6 +187,10 @@ namespace PhysX
                         ->Attribute(AZ::Edit::Attributes::Visibility, &MeshGroup::GetExportAsConvex)
 
                     // trimesh params
+                        ->DataElement(AZ_CRC("MergeMeshes", 0x118c4a63), &MeshGroup::m_mergeMeshes, "Merge Meshes", "<span>When set, all selected nodes will be merged into a single collision mesh. "
+                            "Otherwise they will be exported as separate shapes. Typically it is more efficient to have a single mesh, however if you have game code handling specific "
+                            "shapes differently, you want to avoid merging them together.</span>")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &MeshGroup::GetExportAsTriMesh)
                         ->DataElement(AZ_CRC("WeldVertices", 0xe4e0c33c), &MeshGroup::m_weldVertices, "Weld Vertices", "<span>When set, mesh welding is performed. Clean mesh must be enabled.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &MeshGroup::GetExportAsTriMesh)
                         ->DataElement(AZ_CRC("DisableCleanMesh", 0xc720ef8e), &MeshGroup::m_disableCleanMesh, "Disable Clean Mesh",
@@ -292,6 +297,16 @@ namespace PhysX
         AZ::u32 MeshGroup::GetGaussMapLimit() const
         {
             return m_gaussMapLimit;
+        }
+
+        bool MeshGroup::GetMergeMeshes() const
+        {
+            return m_mergeMeshes;
+        }
+        
+        void MeshGroup::SetMergeMeshes(bool mergeMeshes)
+        {
+            m_mergeMeshes = mergeMeshes;
         }
 
         bool MeshGroup::GetWeldVertices() const

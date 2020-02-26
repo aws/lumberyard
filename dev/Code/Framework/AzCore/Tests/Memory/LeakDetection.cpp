@@ -127,7 +127,7 @@ namespace UnitTest
         ~TestAllocator() override = default;
     };
 
-    class AllocatorsTestFixtureLeakDetectionDeathTest
+    class AllocatorsTestFixtureLeakDetectionDeathTest_SKIPCODECOVERAGE
         : public ::testing::Test
     {
     public:
@@ -145,7 +145,7 @@ namespace UnitTest
         }
     };
    
-    TEST_F(AllocatorsTestFixtureLeakDetectionDeathTest, AllocatorLeak)
+    TEST_F(AllocatorsTestFixtureLeakDetectionDeathTest_SKIPCODECOVERAGE, AllocatorLeak)
     {
         // testing that the TraceBusHook will fail on cause the test to die
         EXPECT_DEATH(TestAllocatorLeak(), "");

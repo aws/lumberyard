@@ -129,7 +129,7 @@ namespace ScriptCanvasEditor
             return m_comboBoxModel.GetDefaultIndex();
         }
 
-        const AZStd::string& GetDisplayString() const override
+        const AZStd::string GetDisplayString() const override
         {
             const ScriptCanvas::Datum* object = GetSlotObject();
             
@@ -147,7 +147,6 @@ namespace ScriptCanvasEditor
                     }
                 }
             }
-            
             return "";
         }
         ////

@@ -31,14 +31,12 @@ from util import Args, load_template
 from uploader import ProjectUploader
 from resource_manager_common import constant
 from resource_manager_common import resource_type_info
-from copy import deepcopy
-import security
 import time
 import re
 
-def create_stack(context, args):
 
-    '''Implements the lmbr_aws initialze-project command.'''
+def create_stack(context, args):
+    """Implements the lmbr_aws initialize-project command."""
 
     # Supported region?
     supported_regions = __get_region_list()
@@ -47,7 +45,7 @@ def create_stack(context, args):
 
     # Initialize AWS directory if needed.
     context.config.initialize_aws_directory()
-    if(args.files_only):
+    if (args.files_only):
         return
 
     # Already initialized?
@@ -60,10 +58,11 @@ def create_stack(context, args):
     # Is it ok to do this?
     pending_resource_status = __get_pending_resource_status(context)
     if not re.match('^[a-z](?:[a-z0-9]*[\-]?[a-z0-9]+)*$', args.stack_name, re.I):
-        raise HandledError('Project stack name can only consist of letters, numbers, non-repeating hyphens and must start with a letter: {}'.format(args.stack_name))
+        raise HandledError(
+            'Project stack name can only consist of letters, numbers, non-repeating hyphens and must start with a letter: {}'.format(args.stack_name))
 
     capabilities = context.stack.confirm_stack_operation(
-        context.config.get_pending_project_stack_id(), # may be None, which is ok
+        context.config.get_pending_project_stack_id(),  # may be None, which is ok
         'project',
         args,
         pending_resource_status
@@ -78,20 +77,21 @@ def create_stack(context, args):
 
         # Does a stack with the name already exist?
         if context.stack.name_exists(args.stack_name, args.region):
-            message = 'An AWS Cloud Formation stack with the name {} already exists in region {}. Use the --stack-name option to provide a different name.'.format(args.stack_name, args.region)
+            message = 'An AWS Cloud Formation stack with the name {} already exists in region {}. Use the --stack-name option to provide a different name.'.format(
+                args.stack_name, args.region)
             raise HandledError(message)
 
         # Is the stack name valid?
         util.validate_stack_name(args.stack_name)
 
-        # Create stack using the boostrapping template.
+        # Create stack using the bootstrapping template.
         context.stack.create_using_template(
             args.stack_name,
             bootstrap_template,
             args.region,
             created_callback=lambda id: context.config.set_pending_project_stack_id(id),
-            capabilities = capabilities,
-            timeoutinminutes = 30
+            capabilities=capabilities,
+            timeoutinminutes=30
         )
 
     # Create initial project settings.
@@ -106,21 +106,21 @@ def create_stack(context, args):
 
 
 def update_framework_version(context, args):
-
     current_framework_version = context.config.framework_version
     if context.gem.framework_gem.version == current_framework_version:
-        raise HandledError('The framework version used by the project is already {}, the same version as the enabled CloudGemFramework gem.'.format(current_framework_version))
+        raise HandledError(
+            'The framework version used by the project is already {}, the same version as the enabled CloudGemFramework gem.'.format(current_framework_version))
 
     # Project settings writable?
 
-    writable_file_paths = set( [ context.config.local_project_settings.path ] )
+    writable_file_paths = set([context.config.local_project_settings.path])
     context.hooks.call_module_handlers('resource-manager-code/update.py', 'add_framework_version_update_writable_files',
-        kwargs={
-            'from_version': current_framework_version,
-            'to_version': context.gem.framework_gem.version,
-            'writable_file_paths': writable_file_paths
-        }
-    )
+                                       kwargs={
+                                           'from_version': current_framework_version,
+                                           'to_version': context.gem.framework_gem.version,
+                                           'writable_file_paths': writable_file_paths
+                                       }
+                                       )
 
     if not util.validate_writable_list(context, writable_file_paths):
         return
@@ -129,14 +129,13 @@ def update_framework_version(context, args):
     context.config.set_pending_framework_version(context.gem.framework_gem.version)
 
     context.hooks.call_module_handlers('resource-manager-code/update.py', 'before_framework_version_updated',
-        kwargs={
-            'from_version': current_framework_version,
-            'to_version': context.gem.framework_gem.version
-        }
-    )
+                                       kwargs={
+                                           'from_version': current_framework_version,
+                                           'to_version': context.gem.framework_gem.version
+                                       }
+                                       )
 
     if context.config.project_initialized:
-
         # Is it ok to do this?
         pending_resource_status = __get_pending_resource_status(context)
         capabilities = context.stack.confirm_stack_operation(
@@ -149,11 +148,11 @@ def update_framework_version(context, args):
         __update_project_stack(context, pending_resource_status, capabilities, args)
 
     context.hooks.call_module_handlers('resource-manager-code/update.py', 'after_framework_version_updated',
-        kwargs={
-            'from_version': current_framework_version,
-            'to_version': context.gem.framework_gem.version
-        }
-    )
+                                       kwargs={
+                                           'from_version': current_framework_version,
+                                           'to_version': context.gem.framework_gem.version
+                                       }
+                                       )
 
     context.config.save_pending_framework_version()
 
@@ -215,12 +214,10 @@ def __update_project_stack(context, pending_resource_status, capabilities, args)
     project_uploader.execute_uploader_pre_hooks()
 
     kwargs = {
-            'project_uploader': project_uploader,
-            'args': args
-        }
-    context.hooks.call_module_handlers('resource-manager-code/update.py', 'before_project_updated',
-        kwargs=kwargs
-    )
+        'project_uploader': project_uploader,
+        'args': args
+    }
+    context.hooks.call_module_handlers('resource-manager-code/update.py', 'before_project_updated', kwargs=kwargs)
 
     # wait a bit for S3 to help insure that templates can be read by cloud formation
     time.sleep(constant.STACK_UPDATE_DELAY_TIME)
@@ -240,7 +237,7 @@ def __update_project_stack(context, pending_resource_status, capabilities, args)
     time.sleep(constant.STACK_UPDATE_DELAY_TIME)
 
     # Project is fully initialized only after the first successful update
-    # Project resource intialization is based on having a ProjectStackId in your local-project-settings.json
+    # Project resource initialization is based on having a ProjectStackId in your local-project-settings.json
     # Post hooks could be dependant on the availability of project_resources
     # So we save the pending stack id which is used during Project stack creation
     # Then we reinitialize the config.__project_resources to make the project_resources available to hooks even during a project stack creation
@@ -252,8 +249,8 @@ def __update_project_stack(context, pending_resource_status, capabilities, args)
     project_uploader.execute_uploader_post_hooks()
 
     context.hooks.call_module_handlers('resource-manager-code/update.py', 'after_project_updated',
-        kwargs=kwargs
-    )
+                                       kwargs=kwargs
+                                       )
 
 
 def __record_cognito_pools(context):
@@ -263,12 +260,11 @@ def __record_cognito_pools(context):
 
     for resource_name, definition in context.config.project_resources.iteritems():
         if definition["ResourceType"] in ["Custom::CognitoIdentityPool", "Custom::CognitoUserPool"]:
-                pools["Project"][resource_name] = {
-                    "PhysicalResourceId": custom_resource_utils.get_embedded_physical_id(definition['PhysicalResourceId']),
-                    "Type": definition["ResourceType"]
-                }
+            pools["Project"][resource_name] = {
+                "PhysicalResourceId": custom_resource_utils.get_embedded_physical_id(definition['PhysicalResourceId']),
+                "Type": definition["ResourceType"]
+            }
     cognito_pools.write_to_project_file(context, pools)
-
 
 
 def __zip_individual_lambda_code_folders(context, uploader):
@@ -277,7 +273,7 @@ def __zip_individual_lambda_code_folders(context, uploader):
 
     # Iterating over LambdaConfiguration resources first, as the lambdas without them are special cases.
     # Just future proofing against further specialization on ProjectResourceHandler code
-    for name, description in  resources.iteritems():
+    for name, description in resources.iteritems():
         if not description["Type"] == "Custom::LambdaConfiguration":
             continue
         function_name = description["Properties"]["FunctionName"]
@@ -287,9 +283,9 @@ def __zip_individual_lambda_code_folders(context, uploader):
         uploader.upload_lambda_function_code(function_name, function_runtime=description["Properties"]["Runtime"], source_gem=context.gem.get_by_name(
             source_gem_name))
 
-    # There's some untagling needed to allow uploading ProjectResourceHandler without a LambdaConfiguration
+    # There's some untangling needed to allow uploading ProjectResourceHandler without a LambdaConfiguration
     # We should generally avoid adding any more functions like this to the project stack and eventually do away with it.
-    for name, description in  resources.iteritems():
+    for name, description in resources.iteritems():
         aggregated_directories = None
         if not description["Type"] == "AWS::Lambda::Function":
             continue
@@ -304,7 +300,6 @@ def __zip_individual_lambda_code_folders(context, uploader):
 
 
 def __get_plugin_project_code_paths(context):
-
     plugin_project_code_paths = {}
 
     for group in context.resource_groups.values():
@@ -328,7 +323,6 @@ def __get_parameters(context, uploader):
 
 
 def __get_pending_resource_status(context, deleting=False):
-
     stack_id = context.config.project_stack_id
     if not stack_id:
         stack_id = context.config.get_pending_project_stack_id()
@@ -343,7 +337,7 @@ def __get_pending_resource_status(context, deleting=False):
     lambda_function_content_paths = []
 
     resources = context.config.project_template_aggregator.effective_template.get("Resources", {})
-    for name, description in  resources.iteritems():
+    for name, description in resources.iteritems():
         if not description["Type"] == "AWS::Lambda::Function":
             continue
 
@@ -359,16 +353,16 @@ def __get_pending_resource_status(context, deleting=False):
             lambda_function_content_paths.extend(__get_plugin_project_code_paths(context).values())
 
     # TODO: need to support swagger.json IN the lambda directory.
-    service_api_content_paths = [ os.path.join(context.config.framework_aws_directory_path, 'swagger.json') ]
+    service_api_content_paths = [os.path.join(context.config.framework_aws_directory_path, 'swagger.json')]
 
     # TODO: get_pending_resource_status's new_content_paths parameter needs to support
     # a per-resource mapping instead of an per-type mapping. As is, a change in any lambda
     # directory makes all lambdas look like they need to be updated.
     return context.stack.get_pending_resource_status(
         stack_id,
-        new_template = template,
-        new_parameter_values = parameters,
-        new_content_paths = {
+        new_template=template,
+        new_parameter_values=parameters,
+        new_content_paths={
             'AWS::Lambda::Function': lambda_function_content_paths,
             'Custom::ServiceApi': service_api_content_paths
         }
@@ -376,7 +370,6 @@ def __get_pending_resource_status(context, deleting=False):
 
 
 def delete_stack(context, args):
-
     if context.config.project_stack_id is None:
         raise HandledError("Project stack does not exist.")
 
@@ -388,7 +381,8 @@ def delete_stack(context, args):
     if context.stack.id_exists(context.config.project_stack_id):
 
         retained_bucket_names = ["Configuration", "Logs"]
-        retained_bucket_ids = [context.stack.get_physical_resource_id(context.config.project_stack_id, name, optional=True, expected_type='AWS::S3::Bucket') for name in retained_bucket_names]
+        retained_bucket_ids = [context.stack.get_physical_resource_id(context.config.project_stack_id, name, optional=True, expected_type='AWS::S3::Bucket') for
+                               name in retained_bucket_names]
 
         pending_resource_status = __get_pending_resource_status(context, deleting=True)
         context.stack.confirm_stack_operation(
@@ -398,7 +392,7 @@ def delete_stack(context, args):
             pending_resource_status
         )
 
-        context.stack.delete(context.config.project_stack_id, pending_resource_status = pending_resource_status)
+        context.stack.delete(context.config.project_stack_id, pending_resource_status=pending_resource_status)
 
         __delete_custom_resource_lambdas(context, args)
 
@@ -499,9 +493,9 @@ def clean_custom_resource_handlers(context, args):
                 versions.extend([entry['Version'] for entry in result['Versions']])
 
             # Walk through all versions older than the current version, and delete them if they are not in use
-            assert(len(versions) >= 2)
-            assert(versions[0] == "$LATEST")
-            assert(int(versions[-1]) == max([int(x) for x in versions[1:]]))  # Last entry should be greatest version
+            assert (len(versions) >= 2)
+            assert (versions[0] == "$LATEST")
+            assert (int(versions[-1]) == max([int(x) for x in versions[1:]]))  # Last entry should be greatest version
             in_use_versions = resource_types_used_versions.get(resource_type_name, set())
 
             for version in versions[1:-1]:
@@ -526,7 +520,6 @@ def deprecated_list_resources(context, args):
 
 
 def list_project_resources(context, args):
-
     # Assume role explicitly because we don't read any project config, and
     # that is what usually triggers it (project config must be read before
     # assuming the role).
@@ -539,8 +532,7 @@ def list_project_resources(context, args):
 
 
 def describe(context, args):
-
-    '''Provides information about the project. Used by the GUI.'''
+    """Provides information about the project. Used by the GUI."""
 
     # Initialize AWS directory if needed.
     context.config.initialize_aws_directory()
@@ -549,7 +541,7 @@ def describe(context, args):
         'ProjectInitialized': context.config.project_initialized,
         'ProjectInitializing': not context.config.project_initialized and context.config.get_pending_project_stack_id() is not None,
         'HasAWSDirectoryContent': context.config.has_aws_directory_content,
-        'ProjectSettingsFilePath' : context.config.local_project_settings.path,
+        'ProjectSettingsFilePath': context.config.local_project_settings.path,
         'UserSettingsFilePath': context.config.user_settings_path,
         'ProjectTemplateFilePath': context.config.project_template_aggregator.extension_file_path,
         'DeploymentTemplateFilePath': context.config.deployment_template_aggregator.extension_file_path,
@@ -584,17 +576,18 @@ def get_regions(context, args):
 
     context.view.supported_region_list(supported_regions)
 
+
 def __get_region_list():
     s = Session()
-    core_services = ['cognito-identity', 'cognito-idp', 'dynamodb','kinesis', 'lambda', 's3', 'sns', 'sqs', 'sts']
+    core_services = ['cognito-identity', 'cognito-idp', 'dynamodb', 'kinesis', 'lambda', 's3', 'sns', 'sqs', 'sts']
     supported_regions = s.get_available_regions('cloudformation')
     for core_service in core_services:
         supported_regions = list(set(supported_regions) & set(s.get_available_regions(core_service)))
 
     return supported_regions
 
-def __find_existing_files(src_path, dst_path):
 
+def __find_existing_files(src_path, dst_path):
     list = []
 
     for root, dirs, files in os.walk(src_path):
@@ -616,15 +609,14 @@ def __find_existing_files(src_path, dst_path):
 
 
 def __filter_writeable_files(input_list):
-        filtered_list = []
-        for file_path in input_list:
-            if not os.access(file_path, os.W_OK):
-                filtered_list.append(file_path)
-        return filtered_list
+    filtered_list = []
+    for file_path in input_list:
+        if not os.access(file_path, os.W_OK):
+            filtered_list.append(file_path)
+    return filtered_list
 
 
 def create_extension_template(context, args):
-
     if args.project:
         context.config.project_template_aggregator.save_extension_template()
 

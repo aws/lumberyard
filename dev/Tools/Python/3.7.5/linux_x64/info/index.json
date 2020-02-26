@@ -1,0 +1,23 @@
+{
+  "arch": "x86_64",
+  "build": "h0371630_0",
+  "build_number": 0,
+  "depends": [
+    "libffi >=3.2.1,<4.0a0",
+    "libgcc-ng >=7.3.0",
+    "libstdcxx-ng >=7.3.0",
+    "ncurses >=6.1,<7.0a0",
+    "openssl >=1.1.1d,<1.1.2a",
+    "readline >=7.0,<8.0a0",
+    "sqlite >=3.30.1,<4.0a0",
+    "tk >=8.6.8,<8.7.0a0",
+    "xz >=5.2.4,<6.0a0",
+    "zlib >=1.2.11,<1.3.0a0"
+  ],
+  "license": "PSF",
+  "name": "python",
+  "platform": "linux",
+  "subdir": "linux-64",
+  "timestamp": 1572019430090,
+  "version": "3.7.5"
+}

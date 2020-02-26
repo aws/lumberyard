@@ -127,7 +127,7 @@ namespace AzQtComponents
         config.title.visibleWhenSimple = false;
 
         config.buttons.showDividerButtons = false;
-        config.buttons.spacing = 12;
+        config.buttons.spacing = 8;
 
         return config;
     }
@@ -865,7 +865,8 @@ namespace AzQtComponents
     {
         // This is rect() - the button rect, so we can enable aero-snap dragging in that space
         QRect r = rect();
-        r.setWidth(m_firstButton->x() - layout()->spacing());
+        const QPoint firstButtonPos = mapFromGlobal(m_firstButton->mapToGlobal(m_firstButton->pos()));
+        r.setWidth(firstButtonPos.x() - layout()->spacing());
         return r;
     }
 

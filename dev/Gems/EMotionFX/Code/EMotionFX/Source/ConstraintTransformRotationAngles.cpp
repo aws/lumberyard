@@ -116,10 +116,10 @@ namespace EMotionFX
     // The main execution function, which performs the actual constraint.
     void ConstraintTransformRotationAngles::Execute()
     {
-        MCore::Quaternion q = mTransform.mRotation;
+        AZ::Quaternion q = mTransform.mRotation;
 
         // Always keep w positive.
-        if (q.w < 0.0f)
+        if (q.GetW() < 0.0f)
         {
             q = -q;
         }
@@ -154,27 +154,28 @@ namespace EMotionFX
         }
 
         // Calculate the twist quaternion, based on over which axis we assume there is twist.
-        MCore::Quaternion twist;
-        const float s = q[mTwistAxis] * q[mTwistAxis] + q.w * q.w;
+        AZ::Quaternion twist;
+        const float twistAngle = q.GetElement(mTwistAxis);
+        const float s = twistAngle * twistAngle + q.GetW() * q.GetW();
         if (!MCore::Math::IsFloatZero(s))
         {
             const float r = MCore::Math::InvSqrt(s);
-            twist[swingX] = 0.0f;
-            twist[swingY] = 0.0f;
-            twist[mTwistAxis] = MCore::Clamp(q[mTwistAxis] * r, mMinTwist, mMaxTwist);
-            twist.w = MCore::Math::Sqrt(MCore::Max<float>(0.0f, 1.0f - twist[mTwistAxis] * twist[mTwistAxis]));
+            twist.SetElement(swingX, 0.0f);
+            twist.SetElement(swingY, 0.0f);
+            twist.SetElement(mTwistAxis, MCore::Clamp(twistAngle * r, mMinTwist, mMaxTwist));
+            twist.SetW(MCore::Math::Sqrt(MCore::Max<float>(0.0f, 1.0f - twist.GetElement(mTwistAxis) * twist.GetElement(mTwistAxis))));
         }
         else
         {
-            twist.Identity();
+            twist = AZ::Quaternion::CreateIdentity();
         }
 
         // Remove the twist from the input rotation so that we are left with a swing and then limit the swing.
-        MCore::Quaternion swing = q * twist.Conjugated();
-        swing[swingX] = MCore::Clamp(swing[swingX], mMinRotationAngles.GetX(), mMaxRotationAngles.GetX());
-        swing[swingY] = MCore::Clamp(swing[swingY], mMinRotationAngles.GetY(), mMaxRotationAngles.GetY());
-        swing[mTwistAxis] = 0.0f;
-        swing.w = MCore::Math::Sqrt(MCore::Max<float>(0.0f, 1.0f - swing[swingX] * swing[swingX] - swing[swingY] * swing[swingY]));
+        AZ::Quaternion swing = q * twist.GetConjugate();
+        swing.SetElement(swingX, MCore::Clamp(static_cast<float>(swing.GetElement(swingX)), mMinRotationAngles.GetX(), mMaxRotationAngles.GetX()));
+        swing.SetElement(swingY, MCore::Clamp(static_cast<float>(swing.GetElement(swingY)), mMinRotationAngles.GetY(), mMaxRotationAngles.GetY()));
+        swing.SetElement(mTwistAxis, 0.0f);
+        swing.SetW(MCore::Math::Sqrt(MCore::Max<float>(0.0f, 1.0f - swing.GetElement(swingX) * swing.GetElement(swingX) - swing.GetElement(swingY) * swing.GetElement(swingY))));
 
         // Combine the limited swing and twist again into a final rotation.
         mTransform.mRotation = swing * twist;
@@ -192,7 +193,7 @@ namespace EMotionFX
         return pos;
     }
 
-    void ConstraintTransformRotationAngles::DrawSphericalLine(ActorInstance* actorInstance, const AZ::Vector2& start, const AZ::Vector2& end, uint32 numSteps, const AZ::Color& color, float radius, const MCore::Matrix& offset) const
+    void ConstraintTransformRotationAngles::DrawSphericalLine(ActorInstance* actorInstance, const AZ::Vector2& start, const AZ::Vector2& end, uint32 numSteps, const AZ::Color& color, float radius, const AZ::Transform& offset) const
     {
         const AZ::Vector2 totalVector = end - start;
         const AZ::Vector2 stepVector = totalVector / static_cast<float>(numSteps);
@@ -209,7 +210,7 @@ namespace EMotionFX
 
             AZ::Vector3 pos = GetSphericalPos(current.GetX(), -current.GetY());
             pos *= radius;
-            pos = pos * offset;
+            pos = offset * pos;
 
             drawData->DrawLine(lastPos, pos, color);
             lastPos = pos;
@@ -218,7 +219,7 @@ namespace EMotionFX
         drawData->Unlock();
     }
 
-    void ConstraintTransformRotationAngles::DebugDraw(ActorInstance* actorInstance, const MCore::Matrix& offset, const AZ::Color& color, float radius) const
+    void ConstraintTransformRotationAngles::DebugDraw(ActorInstance* actorInstance, const AZ::Transform& offset, const AZ::Color& color, float radius) const
     {
         const uint32 numSegments = 64;
         const AZ::Vector2 minValues = GetMinRotationAnglesRadians();

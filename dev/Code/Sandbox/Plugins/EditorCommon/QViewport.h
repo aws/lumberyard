@@ -19,6 +19,8 @@
 #include "EditorCommonAPI.h"
 #include "QViewportEvents.h"
 
+#include <AzFramework/Windowing/WindowBus.h>
+
 class CImageEx;
 struct DisplayContext;
 class CCamera;
@@ -40,7 +42,7 @@ struct SViewportSettings;
 struct SViewportState;
 class QElapsedTimer;
 
-class QViewport;
+class EDITOR_COMMON_API QViewport;
 struct SRenderContext
 {
     CCamera* camera;
@@ -58,9 +60,11 @@ enum class CameraControlMode
     ORBIT
 };
 
+
 class QViewportConsumer;
 class EDITOR_COMMON_API QViewport
     : public QWidget
+    , public AzFramework::WindowRequestBus::Handler
 {
     Q_OBJECT
 public:
@@ -71,7 +75,7 @@ public:
     };
 
     explicit QViewport(QWidget* parent, StartupMode startupMode = StartupMode_Immediate);
-    ~QViewport();
+    virtual ~QViewport();
     void Startup();
 
     void AddConsumer(QViewportConsumer* consumer);
@@ -80,24 +84,28 @@ public:
     void CaptureMouse();
     void ReleaseMouse();
     void SetForegroundUpdateMode(bool foregroundUpdate);
-    CCamera* Camera() const { return m_camera.get(); }
+    CCamera* Camera() const;
     void ResetCamera();
     void Serialize(IArchive& ar);
 
     void SetUseArrowsForNavigation(bool useArrowsForNavigation);
-    void SetSceneDimensions(const Vec3& size) { m_sceneDimensions = size; }
+    void SetSceneDimensions(const Vec3& size);
     void SetSettings(const SViewportSettings& settings);
-    const SViewportSettings& GetSettings() const {return *m_settings; }
+    const SViewportSettings& GetSettings() const;
     void SetState(const SViewportState& state);
-    const SViewportState& GetState() const {return *m_state; }
+    const SViewportState& GetState() const;
     bool ScreenToWorldRay(Ray* ray, int x, int y);
     QPoint ProjectToScreen(const Vec3& point);
     void LookAt(const Vec3& target, float radius, bool snap);
 
     int Width() const;
     int Height() const;
-    void SetSize(const QSize& size){ m_width = size.width(); m_height = size.height(); }
+    void SetSize(const QSize& size);
     void GetImageOffscreen(CImageEx& image, const QSize& customSize);
+
+    // WindowRequestBus::Handler...
+    void SetWindowTitle(const AZStd::string& title) override;
+    AzFramework::WindowSize GetClientAreaSize() const override;
 
 public slots:
     void Update();
@@ -126,7 +134,7 @@ protected:
 
     void CameraMoved(QuatT qt, bool snap); //Confetti: Jurecka ... making this protected so can adjust camera to focus on items in derived class.
 
-    float GetLastFrameTime() { return m_lastFrameTime; }
+    float GetLastFrameTime();
 private:
     struct SPrivate;
 
@@ -181,4 +189,7 @@ private:
     std::unique_ptr<SViewportSettings> m_settings;
     std::unique_ptr<SViewportState> m_state;
     std::vector<QViewportConsumer*> m_consumers;
+
+    HWND m_lastHwnd = 0;
+    bool m_resizeWindowEvent = false;
 };

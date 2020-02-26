@@ -288,6 +288,7 @@ class CD3D9Renderer
     : public CRenderer
     , public IWindowMessageHandler
     , AZ::RenderNotificationsBus::Handler
+    , AZ::RenderScreenshotRequestBus::Handler
 {
     friend struct SPixFormat;
     friend class CD3DStereoRenderer;
@@ -1289,8 +1290,17 @@ public:
     //
     void CaptureFrameBufferPrepare(void);
 
+    //////////////////////////////////////////////////////////////////////
+    // RenderScreenshot request bus
+    virtual void WriteScreenshotToFile(const char* filepath) override;
+    virtual void WriteScreenshotToBuffer() override;
+    virtual bool CopyScreenshotToBuffer(unsigned char* imageBuffer, unsigned int width, unsigned int height) override;
+
     //misc
-    virtual bool ScreenShot(const char* filename = NULL, int width = 0);
+    bool ScreenShotInternal(const char* filename = nullptr, int width = 0);
+    virtual bool ScreenShot(const char* filename, int width = 0);
+    virtual bool ScreenShot();
+
     virtual void UnloadOldTextures(){};
 
     virtual void Set2DMode(uint32 orthoX, uint32 orthoY, TransformationMatrices& backupMatrices, float znear = -1e10f, float zfar = 1e10f);
@@ -1368,7 +1378,7 @@ public:
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
-    bool BakeMesh(const SMeshBakingInputParams* pInputParams, SMeshBakingOutput* pReturnValues);
+    virtual bool BakeMesh(const SMeshBakingInputParams* pInputParams, SMeshBakingOutput* pReturnValues);
 #endif
 
     virtual int GetOcclusionBuffer(uint16* pOutOcclBuffer, Matrix44* pmCamBuffer);
@@ -2005,7 +2015,6 @@ public:
     bool FX_ObjectChange(CShader* Shader, CShaderResources* pRes, CRenderObject* pObject, IRenderElement* pRE);
 
 private:
-    bool ScreenShotInternal(const char* filename, int width);       //Helper method for Screenshot to reduce stack usage
     void UpdateNearestChange(int flags);                            //Helper method for FX_ObjectChange to avoid I-cache misses
     void HandleDefaultObject();                                     //Helper method for FX_ObjectChange to avoid I-cache misses
     bool IsVelocityPassEnabled() const;                             //Helper method to detect if we should enable the velocity pass. Its needed to MB and TAA
@@ -2018,6 +2027,8 @@ private:
 
     bool InternalSaveToTIFF(ID3D11Texture2D* backBuffer, const char* filePath);
 
+    // The cached screenshot path for screenshot request bus.
+    char m_screenshotFilepathCache[AZ_MAX_PATH_LEN];
 public:
     void EF_DrawDebugTools(SViewport& VP, const SRenderingPassInfo& passInfo);
 
@@ -2202,8 +2213,8 @@ public:
         }
     }
 
-    virtual const RPProfilerStats* GetRPPStats(ERenderPipelineProfilerStats eStat, bool bCalledFromMainThread = true) { return m_pPipelineProfiler ? &m_pPipelineProfiler->GetBasicStats(eStat, bCalledFromMainThread ? m_RP.m_nFillThreadID : m_RP.m_nProcessThreadID) : NULL; }
-    virtual const RPProfilerStats* GetRPPStatsArray(bool bCalledFromMainThread = true) { return m_pPipelineProfiler ? m_pPipelineProfiler->GetBasicStatsArray(bCalledFromMainThread ? m_RP.m_nFillThreadID : m_RP.m_nProcessThreadID) : NULL; }
+    virtual const RPProfilerStats* GetRPPStats(ERenderPipelineProfilerStats eStat, bool bCalledFromMainThread = true) const { return m_pPipelineProfiler ? &m_pPipelineProfiler->GetBasicStats(eStat, bCalledFromMainThread ? m_RP.m_nFillThreadID : m_RP.m_nProcessThreadID) : nullptr; }
+    virtual const RPProfilerStats* GetRPPStatsArray(bool bCalledFromMainThread = true) const { return m_pPipelineProfiler ? m_pPipelineProfiler->GetBasicStatsArray(bCalledFromMainThread ? m_RP.m_nFillThreadID : m_RP.m_nProcessThreadID) : nullptr; }
 
     virtual int GetPolygonCountByType(uint32 EFSList, EVertexCostTypes vct, uint32 z, bool bCalledFromMainThread = true)
     {
@@ -2282,6 +2293,35 @@ private:
     int m_nScreenCaptureRequestFrame[RT_COMMAND_BUF_COUNT];
     int m_screenCapTexHandle[RT_COMMAND_BUF_COUNT];
 #endif
+
+    class FrameBufferDescription
+    {
+    public:
+
+        ~FrameBufferDescription();
+
+        byte* pDest = nullptr;
+        ID3D11Texture2D* pBackBufferTex = nullptr;
+        ID3D11Texture2D* pTmpTexture = nullptr;
+        ID3D11Texture2D* tempZtex = nullptr;
+        float* depthData = nullptr;
+
+        D3D11_TEXTURE2D_DESC backBufferDesc;
+        D3D11_MAPPED_SUBRESOURCE resource;
+
+        bool includeAlpha = false;
+
+        //size information
+        int outputBytesPerPixel;
+        int texSize;
+
+        const static int inputBytesPerPixel = 4;
+    };
+
+    FrameBufferDescription* m_frameBufDesc = nullptr;
+
+    bool PrepFrameCapture(FrameBufferDescription& frameBufDesc, CTexture* pRenderTarget = 0);
+    void FillFrameBuffer(FrameBufferDescription& frameBufDesc, bool redBlueSwap);
 
     bool CaptureFrameBufferToFile(const char* pFilePath, CTexture* pRenderTarget = 0);
     // Store local pointers to CVars used for capturing

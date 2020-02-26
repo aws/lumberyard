@@ -117,6 +117,8 @@ namespace AzFramework
          */
         void Stop();
 
+        void DestroyAllocator() override;
+
         void SaveConfiguration();
 
         virtual void CalculateAppRoot(const char* appRootOverride = nullptr);
@@ -151,6 +153,8 @@ namespace AzFramework
         bool WasExitMainLoopRequested() override { return m_exitMainLoopRequested; }
         void TerminateOnError(int errorCode) override;
         AZ::Uuid GetComponentTypeId(const AZ::EntityId& entityId, const AZ::ComponentId& componentId) override;
+
+        virtual void QueryApplicationType(ApplicationTypeQuery& appType) const override;
         //////////////////////////////////////////////////////////////////////////
 
         // Convenience function that should be called instead of the standard exit() function to ensure platform requirements are met.

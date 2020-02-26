@@ -87,9 +87,7 @@ namespace EMotionFX
 
         filterWidget->AddTypeFilter(s_simulationCategory, s_ragdollNodesFilterName);
         filterWidget->AddTypeFilter(s_simulationCategory, s_hitDetectionNodesFilterName);
-#ifdef EMOTIONFX_ENABLE_CLOTH
         filterWidget->AddTypeFilter(s_simulationCategory, s_clothFilterName);
-#endif
 
         connect(filterWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &SkeletonSortFilterProxyModel::OnTextFilterChanged);
         connect(filterWidget, &AzQtComponents::FilteredSearchWidget::TypeFilterChanged, this, &SkeletonSortFilterProxyModel::OnTypeFilterChanged);

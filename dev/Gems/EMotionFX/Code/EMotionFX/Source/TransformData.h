@@ -16,8 +16,6 @@
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
 #include "Pose.h"
-//#include "Node.h"
-#include <MCore/Source/Matrix4.h>
 
 
 namespace EMotionFX
@@ -70,14 +68,14 @@ namespace EMotionFX
          * The size of the returned array is equal to the amount of nodes in the actor or the value returned by GetNumTransforms()
          * @result The array of skinning matrices.
          */
-        MCORE_INLINE MCore::Matrix* GetSkinningMatrices() { return mSkinningMatrices; }
+        MCORE_INLINE AZ::Transform* GetSkinningMatrices() { return mSkinningMatrices; }
 
         /**
          * Get the skinning matrices (offset from the pose), in read-only (const) mode.
          * The size of the returned array is equal to the amount of nodes in the actor or the value returned by GetNumTransforms()
          * @result The array of skinning matrices.
          */
-        MCORE_INLINE const MCore::Matrix* GetSkinningMatrices() const { return mSkinningMatrices; }
+        MCORE_INLINE const AZ::Transform* GetSkinningMatrices() const { return mSkinningMatrices; }
 
         MCORE_INLINE Pose* GetBindPose() const                                                          { return mBindPose; }
         MCORE_INLINE const Pose* GetCurrentPose() const                                                 { return &mPose; }
@@ -117,7 +115,7 @@ namespace EMotionFX
     private:
         Pose            mPose;                  /**< The current pose. */
         Pose*           mBindPose;              /**< The bind pose, which can be unique or point to the bind pose in the actor. */
-        MCore::Matrix*  mSkinningMatrices;      /**< The matrices used for skinning. They are the offset to the bind pose. */
+        AZ::Transform*  mSkinningMatrices;      /**< The matrices used for skinning. They are the offset to the bind pose. */
         uint32          mNumTransforms;         /**< The number of transforms, which is equal to the number of nodes in the linked actor instance. */
         bool            mHasUniqueBindPose;     /**< Do we have a unique bind pose (when set to true) or do we use the one from the Actor object (when set to false)? */
 

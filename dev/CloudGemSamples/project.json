@@ -10,11 +10,5 @@
         "version_number" : 1,
         "version_name" : "1.0.0.0",
         "orientation" : "landscape"
-    },
-
-    "xenia_settings" : {
-    },
-
-    "provo_settings": {
     }
 }

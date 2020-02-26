@@ -591,8 +591,12 @@ namespace CommandSystem
 
             actorInstance->GetTransformData()->ResetToBindPoseTransformations();
             actorInstance->SetLocalSpacePosition(AZ::Vector3::CreateZero());
-            actorInstance->SetLocalSpaceRotation(MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
-            actorInstance->SetLocalSpaceScale(AZ::Vector3(1.0f, 1.0f, 1.0f));
+            actorInstance->SetLocalSpaceRotation(AZ::Quaternion::CreateIdentity());
+
+            EMFX_SCALECODE
+            (
+                actorInstance->SetLocalSpaceScale(AZ::Vector3::CreateOne());
+            )
         }
 
         return true;

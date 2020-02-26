@@ -24,6 +24,11 @@ namespace AzGameFramework
     GameApplication::GameApplication()
     {
     }
+ 
+    GameApplication::GameApplication(int* argc, char*** argv)
+        : Application(argc, argv)
+    {
+    }
 
     GameApplication::~GameApplication()
     {
@@ -60,4 +65,10 @@ namespace AzGameFramework
         // have to let the metrics system know that it's ok to send back the name of the DrillerNetworkAgentComponent to Amazon as plain text, without hashing
         EBUS_EVENT(AzFramework::MetricsPlainTextNameRegistrationBus, RegisterForNameSending, AZStd::vector<AZ::Uuid>{ azrtti_typeid<AzFramework::DrillerNetworkAgentComponent>() });
     }
+
+    void  GameApplication::QueryApplicationType(AzFramework::ApplicationTypeQuery& appType) const
+    { 
+        appType.m_maskValue = AzFramework::ApplicationTypeQuery::Masks::Game;
+    };
+
 } // namespace AzGameFramework

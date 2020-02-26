@@ -118,6 +118,8 @@ namespace HttpRequestor
 
         auto httpRequest = Aws::Http::CreateHttpRequest(httpRequestParameters.GetURI(), httpRequestParameters.GetMethod(), Aws::Utils::Stream::DefaultResponseStreamFactoryMethod);
 
+        AZ_Assert(httpRequest, "HttpRequest not created!");
+
         for (const auto & it : httpRequestParameters.GetHeaders())
         {
             httpRequest->SetHeaderValue(it.first.c_str(), it.second.c_str());

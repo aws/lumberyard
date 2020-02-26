@@ -5628,6 +5628,7 @@ float CEntityObject::GetEntityPropertyFloat(const char* name) const
 //////////////////////////////////////////////////////////////////////////
 QString CEntityObject::GetMouseOverStatisticsText() const
 {
+#if defined(EDITOR_PCDEBUGCODE)
     if (m_pEntity)
     {
         QString statsText;
@@ -5726,6 +5727,7 @@ QString CEntityObject::GetMouseOverStatisticsText() const
         return statsText;
     }
 
+#endif //defined EDITOR_PCDEBUGCODE
     return "";
 }
 

@@ -148,6 +148,7 @@ namespace AZ
 
             const char* gameFolder = AZ::IO::FileIOBase::GetInstance()->GetAlias("@devassets@");
             AZStd::string configPath = AZStd::string::format("%s/Config/Editor.xml", gameFolder);
+            AzFramework::StringFunc::Path::Normalize(configPath);
             AZ_TraceContext("Gem config file", configPath);
 
             RCToolApplication application;
@@ -430,9 +431,9 @@ namespace AZ
             //      uber-fbx files that contain hundreds of meshes that need to be split into individual mesh objects as an example.
             u32 id = static_cast<u32>(product.m_id.GetHash());
 
-            if (product.m_lod != SceneAPI::Events::ExportProduct::s_LodNotUsed)
+            if (product.m_lod.has_value())
             {
-                u8 lod = static_cast<u8>(product.m_lod);
+                AZ::u8 lod = product.m_lod.value();
                 if (lod > 0xF)
                 {
                     AZ_TracePrintf(SceneAPI::Utilities::WarningWindow, "%i is too large to fit in the allotted bits for LOD.\n", static_cast<u32>(lod));

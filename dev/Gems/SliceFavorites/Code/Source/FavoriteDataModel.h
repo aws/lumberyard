@@ -161,6 +161,9 @@ namespace SliceFavorites
 
         QModelIndex GetModelIndexForParent(const FavoriteData* child) const;
         QModelIndex GetModelIndexForFavorite(const FavoriteData* favorite) const;
+
+        bool IsDescendentOf(QModelIndex index, QModelIndex potentialAncestor);
+
         FavoriteData* GetFavoriteDataFromModelIndex(const QModelIndex& modelIndex) const;
 
         void CountFoldersAndFavoritesFromIndices(const QModelIndexList& indices, int& numFolders, int& numFavorites);

@@ -19,6 +19,7 @@ from cgf_utils import json_utils
 
 
 def success_response(data, physical_resource_id):
+    print 'success_response -- data: {} -- physical_resource_id: {}'.format(data, physical_resource_id)
     return {
         'Success': True,
         'Data': data,
@@ -27,6 +28,7 @@ def success_response(data, physical_resource_id):
 
 
 def failure_response(reason):
+    print 'failure_response -- reason: {}'.format(reason)
     return {
         'Success': False,
         'Reason': reason
@@ -65,9 +67,11 @@ def fail(event, context, reason):
         }
     )
 
+
 BACKOFF_BASE_SECONDS = 0.25
 BACKOFF_MAX_SECONDS = 60.0
 BACKOFF_MAX_TRYS = 15
+
 
 def __send(event, context, body):
 

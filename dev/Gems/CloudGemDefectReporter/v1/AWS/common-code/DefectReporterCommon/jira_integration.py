@@ -30,6 +30,8 @@ STANDARD_FIELD_TYPES = {'number': [int, long, float, complex], 'boolean': [bool]
 CREDENTIAL_KEYS = ['userName', 'password', 'server']
 EMBEDDED_MAP_ENTRY_PATTERN = "\[\s*\w*\s*\]"
 
+_default_jira_session_timeout = 5  # Default Jira session timeout in secs
+
 def jira_credentials_status():
     jira_credentials = __get_credentials()
 
@@ -248,7 +250,8 @@ def update_occurance_count(issue_id):
 def get_jira_client():
     jira_credentials = __get_credentials()
     jira_options = {'server':jira_credentials.get('server', '')}
-    jira_client = JIRA(options=jira_options, basic_auth=(jira_credentials.get('userName', ''),jira_credentials.get('password', '')))
+    # Setting session timeout to avoid Jira requests being non responsive in ServiceLambda
+    jira_client = JIRA(options=jira_options, basic_auth=(jira_credentials.get('userName', ''),jira_credentials.get('password', '')), timeout=_default_jira_session_timeout)
 
     return jira_client
 

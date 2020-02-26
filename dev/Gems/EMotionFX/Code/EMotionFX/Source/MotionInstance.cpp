@@ -1552,13 +1552,13 @@ namespace EMotionFX
 
             // calculate the relative transforms
             outTransform->mPosition = curNodeTransform.mPosition - oldNodeTransform.mPosition;
-            outTransform->mRotation = curNodeTransform.mRotation * oldNodeTransform.mRotation.Conjugated();
+            outTransform->mRotation = curNodeTransform.mRotation * oldNodeTransform.mRotation.GetConjugate();
             outTransform->mRotation.Normalize();
         }
         else // doesn't support CalcNodeTranform
         {
             outTransform->mPosition.Set(0.0f, 0.0f, 0.0f);
-            outTransform->mRotation.Identity();
+            outTransform->mRotation = AZ::Quaternion::CreateIdentity();
         }
     }
 
@@ -1647,10 +1647,10 @@ namespace EMotionFX
         // Calculate the difference between the first frame of the motion and the bind pose transform.
         TransformData* transformData = mActorInstance->GetTransformData();
         const Pose* bindPose = transformData->GetBindPose();
-        MCore::Quaternion permBindPoseRotDiff = firstFrameTransform.mRotation * bindPose->GetLocalSpaceTransform(motionExtractionNodeIndex).mRotation.Conjugated();
+        AZ::Quaternion permBindPoseRotDiff = firstFrameTransform.mRotation * bindPose->GetLocalSpaceTransform(motionExtractionNodeIndex).mRotation.GetConjugate();
         AZ::Vector3 permBindPosePosDiff = bindPose->GetLocalSpaceTransform(motionExtractionNodeIndex).mPosition - firstFrameTransform.mPosition;
-        permBindPoseRotDiff.x = 0.0f;
-        permBindPoseRotDiff.y = 0.0f;
+        permBindPoseRotDiff.SetX(0.0f);
+        permBindPoseRotDiff.SetY(0.0f);
         permBindPoseRotDiff.Normalize();
 
         if (!(mMotion->GetMotionExtractionFlags() & MOTIONEXTRACT_CAPTURE_Z))
@@ -1659,7 +1659,7 @@ namespace EMotionFX
         }
 
         // If this is the first frame's motion extraction switch turn that flag off.
-        MCore::Quaternion bindPoseRotDiff(0.0f, 0.0f, 0.0f, 1.0f);
+        AZ::Quaternion bindPoseRotDiff(0.0f, 0.0f, 0.0f, 1.0f);
         AZ::Vector3 bindPosePosDiff(0.0f, 0.0f, 0.0f);
         if (mBoolFlags & MotionInstance::BOOL_ISFIRSTREPOSUPDATE)
         {
@@ -1670,14 +1670,14 @@ namespace EMotionFX
         // Capture rotation around the up axis only.
         trajectoryDelta.ApplyMotionExtractionFlags(mMotion->GetMotionExtractionFlags());
 
-        MCore::Quaternion removeRot = currentFrameTransform.mRotation * firstFrameTransform.mRotation.Conjugated();
-        removeRot.x = 0.0f;
-        removeRot.y = 0.0f;
+        AZ::Quaternion removeRot = currentFrameTransform.mRotation * firstFrameTransform.mRotation.GetConjugate();
+        removeRot.SetX(0.0f);
+        removeRot.SetY(0.0f);
         removeRot.Normalize();
 
-        MCore::Quaternion rotation = removeRot.Conjugated() * trajectoryDelta.mRotation * permBindPoseRotDiff.Conjugated();
-        rotation.x = 0.0f;
-        rotation.y = 0.0f;
+        AZ::Quaternion rotation = removeRot.GetConjugate() * trajectoryDelta.mRotation * permBindPoseRotDiff.GetConjugate();
+        rotation.SetX(0.0f);
+        rotation.SetY(0.0f);
         rotation.Normalize();
 
         AZ::Vector3 rotatedPos = rotation * (trajectoryDelta.mPosition - bindPosePosDiff);
@@ -1685,6 +1685,7 @@ namespace EMotionFX
         // Calculate the real trajectory delta, taking into account the actor instance rotation.
         outTrajectoryDelta.mPosition = mActorInstance->GetLocalSpaceTransform().mRotation * rotatedPos;
         outTrajectoryDelta.mRotation = trajectoryDelta.mRotation * bindPoseRotDiff;
+        outTrajectoryDelta.mRotation.NormalizeExact();
 
         if (mBoolFlags & MotionInstance::BOOL_ISFIRSTREPOSUPDATE)
         {

@@ -61,6 +61,8 @@ namespace AZ
             switch (request->GetOperationType())
             {
             case FileRequest::Operation::CompressedRead:
+                AZ_Assert(request->GetCompressedReadData().m_compressionInfo.m_decompressor,
+                    "Preparing FileRequest for FullFileDecompressor that's missing a decompression callback.");
                 m_pendingRequests.push_back(request);
                 break;
             default:
@@ -230,7 +232,7 @@ namespace AZ
 
                 double totalBytesDecompressedMB = m_bytesDecompressed.GetTotal() * bytesToMB;
                 double totalDecompressionTimeSec = m_decompressionDurationMicroSec.GetTotal() * usToSec;
-                statistics.push_back(Statistic::CreateFloat(m_name, "Decompression Speed (avg. mbps)", totalBytesDecompressedMB / totalDecompressionTimeSec));
+                statistics.push_back(Statistic::CreateFloat(m_name, "Decompression Speed per job (avg. mbps)", totalBytesDecompressedMB / totalDecompressionTimeSec));
 
 #if AZ_STREAMER_ADD_EXTRA_PROFILING_INFO
                 statistics.push_back(Statistic::CreatePercentage(m_name, "Decompression bound (percentage)", m_decompressionBound.CalculateAverage()));
@@ -261,6 +263,7 @@ namespace AZ
                 {
                     FileRequest::CompressedReadData& data = compressedReadRequest->GetCompressedReadData();
                     CompressionInfo& info = data.m_compressionInfo;
+                    AZ_Assert(info.m_decompressor, "FullFileDecompressor is planning to a queue a request for reading but couldn't find a decompressor.");
                     m_readBuffers[i] = Buffer(new u8[data.m_compressionInfo.m_compressedSize]);
                     m_memoryUsage += data.m_compressionInfo.m_compressedSize;
 
@@ -277,7 +280,7 @@ namespace AZ
                     return;
                 }
             }
-            AZ_Assert(false, "m_numInFlightReads (%u) indicates read slots are available, but none were found.", m_numInFlightReads);
+            AZ_Assert(false, "%u of %u read slots are use in the FullFileDecompressor, but no empty slot was found.", m_numInFlightReads, m_maxNumReads);
         }
 
         void FullFileDecompressor::FinishReadFile(FileRequest* readRequest)
@@ -299,7 +302,9 @@ namespace AZ
             if (readRequest->GetStatus() == FileRequest::Status::Completed)
             {
                 m_readBufferStatus[readSlot] = ReadBufferStatus::PendingDecompression;
-                
+
+                // Add this wait so the compressed request isn't fully completed yet as only the read part is done. The
+                // job thread will finish this wait, which in turn will trigger this function again on the main streaming thread.
                 FileRequest* waitRequest = m_context->GetNewInternalRequest();
                 waitRequest->CreateWait(this, compressedRequest);
                 m_readRequests[readSlot] = waitRequest;
@@ -312,7 +317,8 @@ namespace AZ
                 m_readBuffers[readSlot].release();
                 m_readRequests[readSlot] = nullptr;
                 m_readBufferStatus[readSlot] = ReadBufferStatus::Unused;
-                AZ_Assert(m_numInFlightReads > 0, "Trying to decrement a read request after was canceled or failed in FullFileDecompressor, but no read requests are supposed to be queued.");
+                AZ_Assert(m_numInFlightReads > 0,
+                    "Trying to decrement a read request after it was canceled or failed in FullFileDecompressor, but no read requests are supposed to be queued.");
                 m_numInFlightReads--;
             }
         }
@@ -338,11 +344,9 @@ namespace AZ
                     }
                     
                     FileRequest* waitRequest = m_readRequests[readSlot];
+                    AZ_Assert(waitRequest->GetOperationType() == FileRequest::Operation::Wait, "File request waiting for decompression wasn't marked as being a wait operation.");
                     FileRequest* compressedRequest = waitRequest->GetParent();
                     AZ_Assert(compressedRequest, "Read requests started by FullFileDecompressor is missing a parent request.");
-
-                    // Add this wait so the compressed request isn't fully completed yet as only the read part is now done. The
-                    // job thread will finish this wait, which in turn will trigger this function again on the main streaming thread.
 
                     DecompressionInformation& info = m_processingJobs[jobSlot];
                     info.m_compressedData = AZStd::move(m_readBuffers[readSlot]);
@@ -352,6 +356,7 @@ namespace AZ
 
                     AZ::Job* decompressionJob;
                     FileRequest::CompressedReadData& data = compressedRequest->GetCompressedReadData();
+                    AZ_Assert(data.m_compressionInfo.m_decompressor, "FullFileDecompressor is queuing a decompression job but couldn't find a decompressor.");
                     if (data.m_readOffset == 0 && data.m_readSize == data.m_compressionInfo.m_uncompressedSize)
                     {
                         auto job = [this, &info]()
@@ -429,7 +434,8 @@ namespace AZ
             AZ_Assert(compressedRequest, "A wait request attached to FullFileDecompressor was completed but didn't have a parent compressed request.");
             FileRequest::CompressedReadData& request = compressedRequest->GetCompressedReadData();
             CompressionInfo& compressionInfo = request.m_compressionInfo;
-            
+            AZ_Assert(compressionInfo.m_decompressor, "Full decompressor job started, but there's no decompressor callback assigned.");
+
             AZ_Assert(request.m_readOffset == 0, "FullFileDecompressor is doing a full decompression on a file request with an offset (%zu).", 
                 request.m_readOffset);
             AZ_Assert(compressionInfo.m_uncompressedSize == request.m_readSize,
@@ -452,6 +458,7 @@ namespace AZ
             AZ_Assert(compressedRequest, "A wait request attached to FullFileDecompressor was completed but didn't have a parent compressed request.");
             FileRequest::CompressedReadData& request = compressedRequest->GetCompressedReadData();
             CompressionInfo& compressionInfo = request.m_compressionInfo;
+            AZ_Assert(compressionInfo.m_decompressor, "Partial decompressor job started, but there's no decompressor callback assigned.");
 
             Buffer decompressionBuffer = Buffer(new u8[compressionInfo.m_uncompressedSize]);
             bool success = compressionInfo.m_decompressor(compressionInfo, info.m_compressedData.get(), compressionInfo.m_compressedSize,

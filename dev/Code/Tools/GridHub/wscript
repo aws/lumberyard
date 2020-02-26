@@ -19,7 +19,7 @@ def build(bld):
         target                      = 'GridHub',
         vs_filter                   = 'Tools',
         file_list                   = ['gridhub.waf_files'],
-        platforms                   = ['win','darwin'],
+        platforms                   = ['win','darwin', 'linux'],
         client_only                 = True,
         exclude_monolithic          = True,
         disable_pch                 = True,
@@ -41,7 +41,8 @@ def build(bld):
         darwin_rpath        = ["@executable_path", "@executable_path/../../..", "@executable_path/qtlibs/lib", "@executable_path/../../../qtlibs/lib"],
         darwin_file_list    = ['gridhub_darwin.waf_files'],
         darwin_xcassets     = 'Code/Tools/GridHub/GridHub/Images.xcassets',
-        win_lib             = [ 'shell32','ole32','uuid','shlwapi' ]
+        win_lib             = [ 'shell32','ole32','uuid','shlwapi' ],
+        linux_rpath         = ["@executable_path", "@executable_path/qtlibs/lib"],
     )
 
 

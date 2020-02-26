@@ -1,0 +1,13 @@
+{
+    "none": {
+        "Source": [
+            "Source/NvClothUnsupported_precompiled.cpp",
+            "Source/NvClothUnsupported_precompiled.h"
+        ]
+    },
+    "auto": {
+        "Source": [
+            "Source/ModuleUnsupported.cpp"
+        ]
+    }
+}

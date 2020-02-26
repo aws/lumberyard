@@ -34,7 +34,7 @@
 #include <SceneAPIExt/Behaviors/ActorGroupBehavior.h>
 #include <SceneAPIExt/Behaviors/MeshRuleBehavior.h>
 #include <SceneAPIExt/Behaviors/SkinRuleBehavior.h>
-#include <SceneAPIExt/Behaviors/LODRuleBehavior.h>
+#include <SceneAPIExt/Behaviors/LodRuleBehavior.h>
 #include <SceneAPIExt/Rules/ActorPhysicsSetupRule.h>
 #include <SceneAPIExt/Rules/SimulatedObjectSetupRule.h>
 #include <SceneAPIExt/Rules/ActorScaleRule.h>
@@ -44,6 +44,7 @@
 #include <SceneAPIExt/Rules/CoordinateSystemRule.h>
 #include <SceneAPIExt/Rules/MorphTargetRule.h>
 #include <SceneAPIExt/Rules/LodRule.h>
+#include <SceneAPIExt/Rules/SkeletonOptimizationRule.h>
 
 namespace EMotionFX
 {
@@ -63,6 +64,7 @@ namespace EMotionFX
                 Rule::CoordinateSystemRule::Reflect(context);
                 Rule::MorphTargetRule::Reflect(context);
                 Rule::LodRule::Reflect(context);
+                Rule::SkeletonOptimizationRule::Reflect(context);
 
                 AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
                 if (serializeContext)
@@ -126,9 +128,9 @@ namespace EMotionFX
                     {
                         modifiers.push_back(Rule::CoordinateSystemRule::TYPEINFO_Uuid());
                     }
-                    if (existingRules.find(Rule::LodRule::TYPEINFO_Uuid()) == existingRules.end())
+                    if (existingRules.find(Rule::SkeletonOptimizationRule::TYPEINFO_Uuid()) == existingRules.end())
                     {
-                        modifiers.push_back(Rule::LodRule::TYPEINFO_Uuid());
+                        modifiers.push_back(Rule::SkeletonOptimizationRule::TYPEINFO_Uuid());
                     }
                     if (existingRules.find(Rule::MorphTargetRule::TYPEINFO_Uuid()) == existingRules.end())
                     {
@@ -277,6 +279,8 @@ namespace EMotionFX
                     }
 
                     const AZ::SceneAPI::Containers::RuleContainer& rules = group.GetRuleContainer();
+
+                    // Update LOD rule
                     const AZStd::shared_ptr<Rule::LodRule> lodRule = rules.FindFirstByType<Rule::LodRule>();
                     if (lodRule)
                     {

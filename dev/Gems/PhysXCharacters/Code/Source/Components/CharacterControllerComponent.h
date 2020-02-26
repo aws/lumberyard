@@ -14,6 +14,7 @@
 #include <AzCore/Component/Component.h>
 #include <AzFramework/Physics/CharacterBus.h>
 #include <AzFramework/Physics/SystemBus.h>
+#include <AzFramework/Physics/CollisionBus.h>
 #include <API/CharacterController.h>
 #include <AzCore/Component/TransformBus.h>
 #include <PhysXCharacters/CharacterControllerBus.h>
@@ -30,6 +31,7 @@ namespace PhysXCharacters
         , public Physics::CharacterRequestBus::Handler
         , public AZ::TransformNotificationBus::Handler
         , public CharacterControllerRequestBus::Handler
+        , public Physics::CollisionFilteringRequestBus::Handler
     {
     public:
         AZ_COMPONENT(CharacterControllerComponent, "{BCBD8448-2FFC-450D-B82F-7C297D2F0C8C}");
@@ -99,6 +101,13 @@ namespace PhysXCharacters
 
         // TransformNotificationBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
+
+        // CollisionFilteringRequestBus
+        void SetCollisionLayer(const AZStd::string& layerName, const AZ::Crc32& colliderTag) override;
+        AZStd::string GetCollisionLayerName() override;
+        void SetCollisionGroup(const AZStd::string& groupName, const AZ::Crc32& colliderTag) override;
+        AZStd::string GetCollisionGroupName() override;
+        void ToggleCollisionLayer(const AZStd::string& layerName, const AZ::Crc32& colliderTag, bool enabled) override;
 
     private:
         void AttachColliders(Physics::Character& character);

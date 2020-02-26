@@ -34,7 +34,7 @@ namespace EMotionFX
             AZStd::string m_joint;
 
             AZ_RTTI(EditorAudioTriggerEvent, "{AA4D9F3A-F6C1-4E92-961F-E1D9DE11AD06}");
-            AZ_CLASS_ALLOCATOR(EditorAudioTriggerEvent, AZ::SystemAllocator, 0);
+            AZ_CLASS_ALLOCATOR(EditorAudioTriggerEvent, EMotionFXAllocator, 0);
 
             EditorAudioTriggerEvent()
             {

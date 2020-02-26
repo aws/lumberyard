@@ -73,4 +73,28 @@ namespace LumberyardLauncher
         return (IncreaseResourceLimit(RLIMIT_CORE, IncreaseMaxToInfinity)
             && IncreaseResourceLimit(RLIMIT_STACK, IncreaseCurrentToMax));
     }
+
+    const char* GetAbsolutePath(char* absolutePathBuffer, size_t absolutePathBufferSize, const char* inputPath)
+    {
+        // Normalize the path
+        AZ_Assert(absolutePathBufferSize>0,"Input buffer size for absolutePathBuffer must be greater than zero.");
+
+        char normalizedFullPathBuffer[PATH_MAX];
+        const char* normalizedFullPath = NULL;
+        if (strlen(inputPath)>0)
+        {
+            normalizedFullPath = realpath(inputPath, normalizedFullPathBuffer);
+        }
+        if (normalizedFullPath == NULL)
+        {
+            // Unable to resolve the absolute path, set the buffer to blank
+            absolutePathBuffer[0] = '\0';
+        }
+        else
+        {
+            // The path was resolved to an absolute path, copy to the input buffer the result
+            azstrncpy(absolutePathBuffer, absolutePathBufferSize, normalizedFullPath,strlen(normalizedFullPath)+1);
+        }
+        return absolutePathBuffer;
+    }
 }

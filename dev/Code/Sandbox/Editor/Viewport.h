@@ -506,6 +506,7 @@ protected:
     void AssignConstructionPlane(const Vec3& p1, const Vec3& p2, const Vec3& p3);
     HWND renderOverlayHWND() const;
     void setRenderOverlayVisible(bool);
+    bool isRenderOverlayVisible() const;
 
     // called to process mouse callback inside the viewport.
     virtual bool MouseCallback(EMouseEvent event, const QPoint& point, Qt::KeyboardModifiers modifiers, Qt::MouseButtons buttons = Qt::NoButton);

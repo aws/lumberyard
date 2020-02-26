@@ -334,7 +334,10 @@ namespace AZStd
             return value;
         }
 
-        AZ_FORCE_INLINE AZStd::size_t size()                    {   return NumBits; }
+        constexpr AZStd::size_t size() const
+        {
+            return NumBits;
+        }
 
         AZ_FORCE_INLINE bool operator==(const this_type& rhs) const
         {

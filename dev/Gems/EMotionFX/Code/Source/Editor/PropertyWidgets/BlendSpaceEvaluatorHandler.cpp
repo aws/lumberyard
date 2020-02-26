@@ -11,6 +11,7 @@
 */
 
 #include <Editor/PropertyWidgets/BlendSpaceEvaluatorHandler.h>
+#include <Editor/PropertyWidgets/PropertyWidgetAllocator.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/BlendSpaceManager.h>
 #include <EMotionFX/Source/EMotionFXManager.h>
@@ -20,8 +21,8 @@
 
 namespace EMotionFX
 {
-    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceEvaluatorPicker, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceEvaluatorHandler, AZ::SystemAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceEvaluatorPicker, PropertyWidgetAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendSpaceEvaluatorHandler,PropertyWidgetAllocator, 0)
 
     BlendSpaceEvaluatorPicker::BlendSpaceEvaluatorPicker(QWidget* parent)
         : QComboBox(parent)

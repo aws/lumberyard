@@ -825,6 +825,12 @@ bool QtViewPaneManager::ClosePane(QtViewPane* pane, QtViewPane::CloseModes close
 {
     if (pane)
     {
+        // Don't allow a dock widget to be closed if it is being dragged for docking
+        if (m_advancedDockManager && m_advancedDockManager->IsDockWidgetBeingDragged(pane->m_dockWidget))
+        {
+            return false;
+        }
+
         return pane->Close(closeModes | QtViewPane::CloseMode::Force);
     }
 

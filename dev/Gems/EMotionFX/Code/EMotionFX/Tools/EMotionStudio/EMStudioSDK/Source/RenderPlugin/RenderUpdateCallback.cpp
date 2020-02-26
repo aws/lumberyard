@@ -85,7 +85,7 @@ namespace EMStudio
             {
                 // get access to the world space matrix of the trajectory
                 EMotionFX::TransformData* transformData = actorInstance->GetTransformData();
-                MCore::Matrix globalTM = transformData->GetCurrentPose()->GetWorldSpaceTransform(motionExtractionNode->GetNodeIndex()).ProjectedToGroundPlane().ToMatrix();
+                const EMotionFX::Transform globalTM = transformData->GetCurrentPose()->GetWorldSpaceTransform(motionExtractionNode->GetNodeIndex()).ProjectedToGroundPlane();
 
                 bool distanceTraveledEnough = false;
                 if (trajectoryPath->mTraceParticles.GetIsEmpty())
@@ -95,13 +95,13 @@ namespace EMStudio
                 else
                 {
                     const uint32 numParticles = trajectoryPath->mTraceParticles.GetLength();
-                    MCore::Matrix oldGlobalTM = trajectoryPath->mTraceParticles[numParticles - 1].mWorldTM;
+                    const EMotionFX::Transform& oldGlobalTM = trajectoryPath->mTraceParticles[numParticles - 1].mWorldTM;
 
-                    AZ::Vector3 oldPos = oldGlobalTM.GetTranslation();
-                    MCore::Quaternion oldRot(oldGlobalTM.Normalized());
-                    MCore::Quaternion rotation(globalTM.Normalized());
+                    const AZ::Vector3& oldPos = oldGlobalTM.mPosition;
+                    const AZ::Quaternion& oldRot = oldGlobalTM.mRotation;
+                    const AZ::Quaternion rotation = globalTM.mRotation.GetNormalizedExact();
 
-                    AZ::Vector3 deltaPos = globalTM.GetTranslation() - oldPos;
+                    const AZ::Vector3 deltaPos = globalTM.mPosition - oldPos;
                     float deltaRot = MCore::Math::Abs(rotation.Dot(oldRot));
 
                     if (MCore::SafeLength(deltaPos) > 0.0001f || deltaRot < 0.99f)
@@ -232,7 +232,7 @@ namespace EMStudio
                 EMotionFX::Node*    node            = emstudioActor->mActor->GetSkeleton()->GetNode(actorInstance->GetEnabledNode(i));
                 EMotionFX::Mesh*    mesh            = emstudioActor->mActor->GetMesh(geomLODLevel, node->GetNodeIndex());
                 //EMotionFX::Mesh*  collisionMesh   = emstudioActor->mActor->GetCollisionMesh( geomLODLevel, node->GetNodeIndex() );
-                MCore::Matrix       globalTM        = pose->GetWorldSpaceTransform(node->GetNodeIndex()).ToMatrix();
+                const AZ::Transform globalTM        = pose->GetWorldSpaceTransform(node->GetNodeIndex()).ToAZTransform();
 
                 renderUtil->ResetCurrentMesh();
 

@@ -12,6 +12,7 @@
 
 #include "Exporter.h"
 #include <MCore/Source/IDGenerator.h>
+#include <MCore/Source/LogManager.h>
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/MorphTargetStandard.h>
 #include <EMotionFX/Source/Importer/SharedFileFormatStructs.h>

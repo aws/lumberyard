@@ -30,7 +30,9 @@
 AZ_PUSH_DISABLE_WARNING(4068 4273 4828 5033, "-Wregister")
 AZ_PUSH_DISABLE_WARNING(, "-Wunused-local-typedef")
 AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
+AZ_PUSH_DISABLE_WARNING(, "-Wmacro-redefined")
 #include <boost/python.hpp>
+AZ_POP_DISABLE_WARNING
 AZ_POP_DISABLE_WARNING
 AZ_POP_DISABLE_WARNING
 AZ_POP_DISABLE_WARNING
@@ -276,7 +278,7 @@ private:
     QString m_matPath;
     QString m_matShader;
     QString m_matSurfaceType;
-    AZStd::unordered_map<ResourceSlotIndex, pPyGameTexture>	m_matTextures;  // map by texture slot id
+    AZStd::unordered_map<ResourceSlotIndex, pPyGameTexture> m_matTextures;  // map by texture slot id
     std::map<QString, pSPyWrappedProperty>  m_matParams;
 };
 typedef boost::shared_ptr<PyGameSubMaterial> pPyGameSubMaterial;

@@ -13,7 +13,7 @@
 #pragma once
 
 #include "native/tests/AssetProcessorTest.h"
-#include <QCoreApplication.h>
+#include <QCoreApplication>
 #include "native/assetprocessor.h"
 #include <AzFramework/Asset/AssetSystemTypes.h>
 

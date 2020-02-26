@@ -164,9 +164,14 @@ namespace EMotionFX
             inputTransform.Identity();
         }
 
-        GetOutputVector3(animGraphInstance, OUTPUTPORT_TRANSLATION)->SetValue(AZ::PackedVector3f(inputTransform.mPosition.GetX(), inputTransform.mPosition.GetY(), inputTransform.mPosition.GetZ()));
+        GetOutputVector3(animGraphInstance, OUTPUTPORT_TRANSLATION)->SetValue(inputTransform.mPosition);
         GetOutputQuaternion(animGraphInstance, OUTPUTPORT_ROTATION)->SetValue(inputTransform.mRotation);
-        GetOutputVector3(animGraphInstance, OUTPUTPORT_SCALE)->SetValue(AZ::PackedVector3f(inputTransform.mScale.GetX(), inputTransform.mScale.GetY(), inputTransform.mScale.GetZ()));
+
+        #ifndef EMFX_SCALE_DISABLED
+            GetOutputVector3(animGraphInstance, OUTPUTPORT_SCALE)->SetValue(inputTransform.mScale);
+        #else
+            GetOutputVector3(animGraphInstance, OUTPUTPORT_SCALE)->SetValue(AZ::Vector3::CreateOne());
+        #endif
     }
 
 

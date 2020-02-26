@@ -13,6 +13,7 @@
 #include "AnimGraphConnectionCommands.h"
 #include "AnimGraphNodeCommands.h"
 #include "CommandManager.h"
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/ReflectionSerializer.h>
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/AnimGraph.h>

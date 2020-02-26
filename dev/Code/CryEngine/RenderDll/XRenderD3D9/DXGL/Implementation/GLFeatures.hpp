@@ -86,6 +86,14 @@
 #   endif
 #endif
 
+#if defined(AZ_PLATFORM_LINUX)
+    // The X11 library, which is included by GLAD, defines some macros that we use as function names in the Linux implementation.
+    static const int X11_Success = Success;
+    static const int X11_None = None;
+    #undef Success
+    #undef None
+#endif
+
 #include <Common/RenderCapabilities.h>
 
 #define DXGL_SUPPORT_INDEXED_BOOL_STATE             (DXGL_REQUIRED_VERSION >= DXGL_VERSION_32 || DXGLES_REQUIRED_VERSION >= DXGLES_VERSION_30)

@@ -65,17 +65,17 @@ void CTextureManager::ReleaseTextures()
 //------------------------------------------------------------------------------
 void CTextureManager::LoadDefaultTextures()
 {
-    struct textureEntry
+    struct TextureEntry
     {
         const char* szTextureName;
         const char* szFileName;
         uint32 flags;
-    }
+    };
 
     // The following texture names are the name by which the texture pointers will 
     // be indexed.    Notice that they match to the previously stored textures with
     // name pattern removing 's_ptex'[Name]. Example: 's_ptexWhite' will now be 'White'
-    texturesFromFile[] =
+    const TextureEntry texturesFromFileLegacy[] =
     {
         {"NoTextureCM",                 "EngineAssets/TextureMsg/ReplaceMeCM.dds",                 FT_DONT_RELEASE | FT_DONT_STREAM },
         {"White",                       "EngineAssets/Textures/White.dds",                         FT_DONT_RELEASE | FT_DONT_STREAM },
@@ -129,18 +129,20 @@ void CTextureManager::LoadDefaultTextures()
 #endif
     };
 
-    for ( textureEntry& entry : texturesFromFile)
+
+    for (const TextureEntry& entry : texturesFromFileLegacy)
     {
-        CTexture*       pNewTexture = CTexture::ForName(entry.szFileName, entry.flags, eTF_Unknown);
+        // We use CTexture::ForName rather than EF_LoadTexture because in the NULL renderer EF_LoadTexture always returns m_texNoTexture
+        CTexture* pNewTexture = CTexture::ForName(entry.szFileName, entry.flags, eTF_Unknown);
         if (pNewTexture)
         {
-            CCryNameTSCRC   texEntry(entry.szTextureName);
+            CCryNameTSCRC texEntry(entry.szTextureName);
             m_DefaultTextures[texEntry] = pNewTexture;
         }
         else
         {
-            AZ_Assert(false, "Error - CTextureManager failed to load default texture" );
-            AZ_Warning("[Shaders System]", false, "Error - CTextureManager failed to load default texture" );
+            AZ_Assert(false, "Error - CTextureManager failed to load default texture %s", entry.szFileName);
+            AZ_Warning("[Shaders System]", false, "Error - CTextureManager failed to load default texture %s", entry.szFileName);
         }
     }
 

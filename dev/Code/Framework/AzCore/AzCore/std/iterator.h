@@ -757,6 +757,137 @@ namespace AZStd
     }
     //////////////////////////////////////////////////////////////////////////
 
+    //////////////////////////////////////////////////////////////////////////
+    //  begin end utils
+    template<class Container>
+    typename Container::iterator begin(Container& container)
+    {
+        return container.begin();
+    }
+
+    template<class Container>
+    typename Container::const_iterator begin(const Container& container)
+    {
+        return container.begin();
+    }
+
+    template<class Container>
+    typename Container::iterator end(Container& container)
+    {
+        return container.end();
+    }
+
+    template<class Container>
+    typename Container::const_iterator end(const Container& container)
+    {
+        return container.end();
+    }
+
+    template<class T, size_t SizeT>
+    constexpr T* begin(T(&_Array)[SizeT]) noexcept
+    {
+        return _Array;
+    }
+
+    template<class T, size_t SizeT>
+    constexpr T* end(T(&_Array)[SizeT]) noexcept
+    {
+        return _Array + SizeT;
+    }
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    //  cbegin cend utils
+    template<class Container>
+    typename Container::const_iterator cbegin(const Container& container)
+    {
+        return begin(container);
+    }
+
+    template<class Container>
+    typename Container::const_iterator cend(const Container& container)
+    {
+        return end(container);
+    }
+
+    template<class T, size_t SizeT>
+    constexpr const T* cbegin(const T(&_Array)[SizeT]) noexcept
+    {
+        return begin(_Array);
+    }
+
+    template<class T, size_t SizeT>
+    constexpr const T* cend(const T(&_Array)[SizeT]) noexcept
+    {
+        return end(_Array);
+    }
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    // rbegin rend utils
+    template<class Container>
+    typename Container::reverse_iterator rbegin(Container& container)
+    {
+        return container.rbegin();
+    }
+
+    template<class Container>
+    typename Container::const_reverse_iterator rbegin(const Container& container)
+    {
+        return container.rbegin();
+    }
+
+    template<class Container>
+    typename Container::reverse_iterator rend(Container& container)
+    {
+        return container.rend();
+    }
+
+    template<class Container>
+    typename Container::const_reverse_iterator rend(const Container& container)
+    {
+        return container.rend();
+    }
+
+    template<class T, size_t SizeT>
+    constexpr reverse_iterator<T*> rbegin(T(&_Array)[SizeT])
+    {
+        return reverse_iterator<T*>(_Array + SizeT);
+    }
+
+    template<class T, size_t SizeT>
+    constexpr reverse_iterator<T*> rend(T(&_Array)[SizeT])
+    {
+        return reverse_iterator<T*>(_Array);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    //  crbegin crend utils
+    template<class Container>
+    typename Container::const_reverse_iterator crbegin(const Container& container)
+    {
+        return rbegin(container);
+    }
+
+    template<class Container>
+    typename Container::const_reverse_iterator crend(const Container& container)
+    {
+        return rend(container);
+    }
+
+    template<class T, size_t SizeT>
+    constexpr reverse_iterator<const T*> crbegin(const T(&_Array)[SizeT])
+    {
+        return rbegin(_Array);
+    }
+
+    template<class T, size_t SizeT>
+    constexpr reverse_iterator<const T*> crend(const T(&_Array)[SizeT])
+    {
+        return rend(_Array);
+    }
+    //////////////////////////////////////////////////////////////////////////
+
     // Some iterator category check helpers
     //  AZSTD_TYPE_TRAIT_BOOL_DEF1(is_continuous_random_access_iterator_cat,Category,false);
     template< typename Category >

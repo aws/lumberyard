@@ -26,12 +26,12 @@ namespace AzQtComponents
     {
         Q_OBJECT
 
-        Q_PROPERTY(Mode mode READ mode WRITE setMode NOTIFY modeChanged);
-        Q_PROPERTY(qreal red READ red WRITE setRed NOTIFY redChanged);
-        Q_PROPERTY(qreal green READ green WRITE setGreen NOTIFY greenChanged);
-        Q_PROPERTY(qreal blue READ blue WRITE setBlue NOTIFY blueChanged);
-        Q_PROPERTY(qreal alpha READ alpha WRITE setAlpha NOTIFY alphaChanged);
-        Q_PROPERTY(bool readOnly READ isReadOnly WRITE setReadOnly NOTIFY readOnlyChanged);
+        Q_PROPERTY(Mode mode READ mode WRITE setMode NOTIFY modeChanged)
+        Q_PROPERTY(qreal red READ red WRITE setRed NOTIFY redChanged)
+        Q_PROPERTY(qreal green READ green WRITE setGreen NOTIFY greenChanged)
+        Q_PROPERTY(qreal blue READ blue WRITE setBlue NOTIFY blueChanged)
+        Q_PROPERTY(qreal alpha READ alpha WRITE setAlpha NOTIFY alphaChanged)
+        Q_PROPERTY(bool readOnly READ isReadOnly WRITE setReadOnly NOTIFY readOnlyChanged)
 
     public:
         enum class Mode

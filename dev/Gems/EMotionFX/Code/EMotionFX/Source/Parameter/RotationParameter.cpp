@@ -76,7 +76,7 @@ namespace EMotionFX
     {
         if (attribute->GetType() == MCore::AttributeQuaternion::TYPE_ID)
         {
-            static_cast<MCore::AttributeQuaternion*>(attribute)->SetValue(MCore::Quaternion(m_defaultValue.GetX(), m_defaultValue.GetY(), m_defaultValue.GetZ(), m_defaultValue.GetW()));
+            static_cast<MCore::AttributeQuaternion*>(attribute)->SetValue(m_defaultValue);
             return true;
         }
         else
@@ -89,7 +89,7 @@ namespace EMotionFX
     {
         if (attribute->GetType() == MCore::AttributeQuaternion::TYPE_ID)
         {
-            SetDefaultValue(MCore::EmfxQuatToAzQuat(static_cast<MCore::AttributeQuaternion*>(attribute)->GetValue()));
+            SetDefaultValue(static_cast<MCore::AttributeQuaternion*>(attribute)->GetValue());
             return true;
         }
         else
@@ -102,7 +102,7 @@ namespace EMotionFX
     {
         if (attribute->GetType() == MCore::AttributeQuaternion::TYPE_ID)
         {
-            SetMinValue(MCore::EmfxQuatToAzQuat(static_cast<MCore::AttributeQuaternion*>(attribute)->GetValue()));
+            SetMinValue(static_cast<MCore::AttributeQuaternion*>(attribute)->GetValue());
             return true;
         }
         else
@@ -115,7 +115,7 @@ namespace EMotionFX
     {
         if (attribute->GetType() == MCore::AttributeQuaternion::TYPE_ID)
         {
-            SetMaxValue(MCore::EmfxQuatToAzQuat(static_cast<MCore::AttributeQuaternion*>(attribute)->GetValue()));
+            SetMaxValue(static_cast<MCore::AttributeQuaternion*>(attribute)->GetValue());
             return true;
         }
         else

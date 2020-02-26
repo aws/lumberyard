@@ -51,9 +51,15 @@ namespace SliceBuilder
         AzToolsFramework::Fingerprinting::TypeFingerprint allComponents = fingerprinter.GenerateFingerprintForAllTypes(types);
         AZStd::string builderAnalysisFingerprint = AZStd::string::format("%llu", allComponents);
 
+        // Include slice builder settings in the fingerprint so changes trigger job reruns
+        if (!m_sliceBuilder->SliceUpgradesAllowed())
+        {
+            builderAnalysisFingerprint.append("|UpgradeDisabled");
+        }
+
         AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
         builderDescriptor.m_name = "Slice Builder";
-        builderDescriptor.m_version = 3;
+        builderDescriptor.m_version = 4;
         builderDescriptor.m_analysisFingerprint = builderAnalysisFingerprint;
         builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern(AZ::SliceAsset::GetFileFilter(), AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_busId = SliceBuilderWorker::GetUUID();
@@ -77,6 +83,8 @@ namespace SliceBuilder
 
     void BuilderPluginComponent::Reflect(AZ::ReflectContext* context)
     {
+        SliceBuilderSettings::Reflect(context);
+
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<BuilderPluginComponent, AZ::Component>()

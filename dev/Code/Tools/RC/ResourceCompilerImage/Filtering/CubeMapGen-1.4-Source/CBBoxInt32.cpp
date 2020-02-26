@@ -7,6 +7,9 @@
 //=============================================================================
 // modifications by Crytek GmbH
 
+// Modifications copyright Amazon.com, Inc. or its affiliates.
+
+#include "StdAfx.h"
 #include "CBBoxInt32.h"
 
 #define CP_MIN_INT32 0x80000000

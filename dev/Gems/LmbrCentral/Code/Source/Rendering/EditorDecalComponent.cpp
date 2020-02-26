@@ -20,6 +20,7 @@
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Asset/AssetManagerBus.h>
 
+#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <IEditor.h>
 #include <I3DEngine.h>
@@ -272,11 +273,12 @@ namespace LmbrCentral
         }
 
         // take the entity's visibility into account
-        bool entityVisibility = true;
-        AzToolsFramework::EditorVisibilityRequestBus::EventResult(entityVisibility, GetEntityId(), &AzToolsFramework::EditorVisibilityRequestBus::Events::GetCurrentVisibility);
+        bool visible = false;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(
+            visible, GetEntityId(), &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsVisible);
 
         const int configSpec = gEnv->pSystem->GetConfigSpec(true);
-        if (!entityVisibility || !m_configuration.m_visible || static_cast<AZ::u32>(configSpec) < static_cast<AZ::u32>(m_configuration.m_minSpec))
+        if (!visible || !m_configuration.m_visible || static_cast<AZ::u32>(configSpec) < static_cast<AZ::u32>(m_configuration.m_minSpec))
         {
             m_renderFlags |= ERF_HIDDEN;
         }

@@ -22,7 +22,7 @@ class UiImageInterface
 {
 public: // types
 
-    enum class ImageType
+    enum class ImageType : int32_t
     {
         Stretched,      //!< the texture is stretched to fit the rect without maintaining aspect ratio
         Sliced,         //!< the texture is sliced such that center stretches and the edges do not
@@ -32,13 +32,13 @@ public: // types
         StretchedToFill //!< the texture is scaled to fill the rect while maintaining aspect ratio
     };
 
-    enum class SpriteType
+    enum class SpriteType : int32_t
     {
         SpriteAsset,
         RenderTarget,
     };
 
-    enum class FillType
+    enum class FillType : int32_t
     {
         None,           //!< the image is displayed fully filled
         Linear,         //!< the image is filled linearly from one edge to the opposing edge
@@ -47,7 +47,7 @@ public: // types
         RadialEdge,     //!< the image is filled radially around the midpoint of an edge
     };
 
-    enum class FillCornerOrigin
+    enum class FillCornerOrigin : int32_t
     {
         TopLeft,
         TopRight,
@@ -55,7 +55,7 @@ public: // types
         BottomLeft,
     };
 
-    enum class FillEdgeOrigin
+    enum class FillEdgeOrigin : int32_t
     {
         Left,
         Top,

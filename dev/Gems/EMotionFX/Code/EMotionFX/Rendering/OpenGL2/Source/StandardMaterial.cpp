@@ -15,6 +15,7 @@
 #include "GraphicsManager.h"
 #include "glactor.h"
 #include <EMotionFX/Source/TransformData.h>
+#include <MCore/Source/AzCoreConversions.h>
 
 
 namespace RenderGL
@@ -75,8 +76,8 @@ namespace RenderGL
             static size_t offsetOfWeights  = static_cast<size_t>((reinterpret_cast<char*>(&static_cast<SkinnedVertex*>(0)->mWeights)) - structStart);
             static size_t offsetOfBoneIndices = static_cast<size_t>((reinterpret_cast<char*>(&static_cast<SkinnedVertex*>(0)->mBoneIndices)) - structStart);
 
-            mActiveShader->SetAttribute("inPosition", 3, GL_FLOAT, stride, 0);
-            mActiveShader->SetAttribute("inNormal",  3, GL_FLOAT, stride, offsetOfNormal);
+            mActiveShader->SetAttribute("inPosition", 4, GL_FLOAT, stride, 0);
+            mActiveShader->SetAttribute("inNormal",  4, GL_FLOAT, stride, offsetOfNormal);
             mActiveShader->SetAttribute("inTangent", 4, GL_FLOAT, stride, offsetOfTangent);
             mActiveShader->SetAttribute("inUV", 2, GL_FLOAT, stride, offsetOfUV);
 
@@ -96,15 +97,15 @@ namespace RenderGL
             //      if (mAttributes[LIGHTING])
             {
                 AZ::Vector3 mainLightDir(0.0f, -1.0f, 0.0f);
-                mainLightDir *= MCore::Matrix::RotationMatrixZ(MCore::Math::DegreesToRadians(gfx->GetMainLightAngleA())) * MCore::Matrix::RotationMatrixX(MCore::Math::DegreesToRadians(gfx->GetMainLightAngleB()));
+                mainLightDir = AZ::Matrix3x3::CreateRotationX(MCore::Math::DegreesToRadians(gfx->GetMainLightAngleB())) * AZ::Matrix3x3::CreateRotationZ(MCore::Math::DegreesToRadians(gfx->GetMainLightAngleA())) * mainLightDir;
                 mainLightDir.Normalize();
                 mActiveShader->SetUniform("mainLightDir", mainLightDir);
                 mActiveShader->SetUniform("skyColor", mActor->GetSkyColor() * gfx->GetMainLightIntensity());
                 mActiveShader->SetUniform("groundColor", mActor->GetGroundColor());
                 mActiveShader->SetUniform("eyePoint", camera->GetPosition());
 
-                AZ::Vector3 rimLightDir = camera->GetViewMatrix().GetUp();
-                rimLightDir *= MCore::Matrix::RotationMatrixZ(MCore::Math::DegreesToRadians(gfx->GetRimAngle()));
+                AZ::Vector3 rimLightDir = MCore::GetUp(camera->GetViewMatrix());
+                rimLightDir = AZ::Matrix3x3::CreateRotationZ(MCore::Math::DegreesToRadians(gfx->GetRimAngle())) * rimLightDir;
                 rimLightDir.Normalize();
                 mActiveShader->SetUniform("rimLightDir", rimLightDir);
 
@@ -266,26 +267,26 @@ namespace RenderGL
 
         if (mAttributes[SKINNING])
         {
-            const MCore::Matrix* skinningMatrices = transformData->GetSkinningMatrices();
+            const AZ::Transform* skinningMatrices = transformData->GetSkinningMatrices();
 
             // multiple each transform by its inverse bind pose
             const uint32 numBones = primitive->mBoneNodeIndices.GetLength();
             for (uint32 i = 0; i < numBones; ++i)
             {
                 const uint32 nodeNr = primitive->mBoneNodeIndices[i];
-                mBoneMatrices[i] = skinningMatrices[nodeNr];
+                const AZ::Transform& skinTransform = skinningMatrices[nodeNr];
+                mBoneMatrices[i] = AZ::Matrix4x4::CreateFromRows(skinTransform.GetRow(0), skinTransform.GetRow(1), skinTransform.GetRow(2), AZ::Vector4(0.0f, 0.0f, 0.0f, 1.0f));
             }
 
             mActiveShader->SetUniform("matBones", mBoneMatrices, numBones);
         }
 
-        MCommon::Camera*    camera         = GetGraphicsManager()->GetCamera();
-        MCore::Matrix       world          = actorInstance->GetWorldSpaceTransform().ToMatrix();;
-        MCore::Matrix       worldView      = world * camera->GetViewMatrix();
-        MCore::Matrix       worldViewProj  = world * camera->GetViewProjMatrix();
-        MCore::Matrix       worldIT        = world;
-        worldIT.Inverse();
-        worldIT.Transpose();
+        const MCommon::Camera*    camera         = GetGraphicsManager()->GetCamera();
+        const AZ::Transform       worldTransform = actorInstance->GetWorldSpaceTransform().ToAZTransform();
+        const AZ::Matrix4x4       world          = AZ::Matrix4x4::CreateFromRows(worldTransform.GetRow(0), worldTransform.GetRow(1), worldTransform.GetRow(2), AZ::Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+        const AZ::Matrix4x4       worldView      = camera->GetViewMatrix() * world;
+        const AZ::Matrix4x4       worldViewProj  = camera->GetViewProjMatrix() * world;
+        const AZ::Matrix4x4       worldIT        = world.GetInverseFull().GetTranspose();
 
         mActiveShader->SetUniform("matWorld", world);
         mActiveShader->SetUniform("matWorldIT", worldIT);

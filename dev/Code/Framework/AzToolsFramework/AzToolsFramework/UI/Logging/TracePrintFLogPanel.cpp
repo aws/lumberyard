@@ -192,6 +192,7 @@ namespace AzToolsFramework
 
         AZTracePrintFLogTab::~AZTracePrintFLogTab()
         {
+            AZ::SystemTickBus::Handler::BusDisconnect();
             AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
             // qt autodeletes any qt  objects.
         }

@@ -14,6 +14,7 @@
 
 #include <AzCore/Math/Random.h>
 #include <AzCore/std/parallel/lock.h>
+#include <AzCore/Module/Environment.h>
 
 #include <string.h> // for memset
 
@@ -307,10 +308,36 @@ using namespace AZ;
 //////////////////////////////////////////////////////////////////////////
 // Statics
 //////////////////////////////////////////////////////////////////////////
+
+
+static EnvironmentVariable<AZ::Sfmt> s_sfmt;
+static const char* s_globalSfmtName = "GlobalSfmt";
+
 Sfmt& Sfmt::GetInstance()
 {
-    static AZStd::static_storage<Sfmt, AZStd::no_delete<Sfmt>> s_default;  ///< A Global default random number generator, init with time(NULL) seed!
-    return s_default;
+    if (!s_sfmt)
+    {
+        s_sfmt = AZ::Environment::FindVariable<Sfmt>(s_globalSfmtName);
+        if (!s_sfmt)
+        {
+            Sfmt::Create();
+        }
+    }
+
+    return s_sfmt.Get();
+}
+
+void Sfmt::Create()
+{
+    if (!s_sfmt)
+    {
+        s_sfmt = AZ::Environment::CreateVariable<AZ::Sfmt>(s_globalSfmtName);
+    }
+}
+
+void Sfmt::Destroy()
+{
+    s_sfmt.Reset();
 }
 
 //=========================================================================
@@ -537,7 +564,7 @@ AZ::u64 Sfmt::Rand64()
         // try again, with the new table
         return Rand64();
     }
-    
+
     AZ::u64 r;
     r = m_psfmt64[index / 2];
     return r;

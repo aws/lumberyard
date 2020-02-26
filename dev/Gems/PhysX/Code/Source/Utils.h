@@ -19,6 +19,7 @@
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzFramework/Physics/Material.h>
+#include <AzFramework/Physics/Shape.h>
 #include <AzFramework/Physics/ShapeConfiguration.h>
 
 #include <PxPhysicsAPI.h>
@@ -46,7 +47,7 @@ namespace PhysX
 
     namespace Pipeline
     {
-        class MeshAssetCookedData;
+        class MeshAssetData;
     }
 
     namespace Utils
@@ -64,7 +65,9 @@ namespace PhysX
         AZStd::string ConvexCookingResultToString(physx::PxConvexMeshCookingResult::Enum convexCookingResultCode);
         AZStd::string TriMeshCookingResultToString(physx::PxTriangleMeshCookingResult::Enum triangleCookingResultCode);
 
-        bool WriteCookedMeshToFile(const AZStd::string& filePath, const Pipeline::MeshAssetCookedData& cookedMesh);
+        bool WriteCookedMeshToFile(const AZStd::string& filePath, const Pipeline::MeshAssetData& assetData);
+        bool WriteCookedMeshToFile(const AZStd::string& filePath, const AZStd::vector<AZ::u8>& physxData, 
+            Physics::CookedMeshShapeConfiguration::MeshType meshType);
 
         bool CookConvexToPxOutputStream(const AZ::Vector3* vertices, AZ::u32 vertexCount, physx::PxOutputStream& stream);
 
@@ -121,6 +124,14 @@ namespace PhysX
             , const ::Physics::ColliderConfiguration& colliderConfiguration);
 
         bool TriggerColliderExists(AZ::EntityId entityId);
+
+        void GetShapesFromAsset(const Physics::PhysicsAssetShapeConfiguration& assetConfiguration,
+            const Physics::ColliderConfiguration& masterColliderConfiguration,
+            AZStd::vector<AZStd::shared_ptr<Physics::Shape>>& resultingShapes);
+
+        void GetColliderShapeConfigsFromAsset(const Physics::PhysicsAssetShapeConfiguration& assetConfiguration,
+            const Physics::ColliderConfiguration& masterColliderConfiguration,
+            Physics::ShapeConfigurationList& resultingColliderShapes);
 
         /// Logs a warning if there is more than one connected bus of the particular type.
         template<typename BusT>

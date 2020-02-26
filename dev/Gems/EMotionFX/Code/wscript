@@ -35,13 +35,17 @@ def make_emfx_copyfiles(self):
         outFolders = self.bld.get_output_folders(platform, configuration, self)
         for outFolder in outFolders:
             # Get the location of the source file relative to the output folder
-            target = outFolder.make_node(source.relpath())
+            target = outFolder.make_node(source.nice_path())
             self.create_copy_task(source, target)
 
 def build(bld):
 
     msvc_cxx_flags = [
-        '/W4', # warning level
+        '/wd4251', # warning caused by Qt library when class needs to have dll-interface to be used by clients
+    ]
+
+    shared_defines = [
+        #'ENABLE_SINGLEFRAME_MULTISTATETRANSITIONING' # Experimental feature: Allow multiple state transitions within a single frame.
     ]
 
     debug_defines = [
@@ -76,8 +80,9 @@ def build(bld):
                                       ],
         use                         = ['AzFramework'],
         win_features                = ['crcfix'],
-        #msvc_cxxflags               = msvc_cxx_flags,
-        includes                    = ['./Include',
+        includes                    = [bld.ThirdPartyPath('boost'),
+                                       bld.Path('Code/CryEngine/CryCommon'),
+                                       './Include',
                                        './Source',
                                        './',
                                        bld.Path('Gems/LmbrCentral/Code/include'),        # Not the right way, use_required_gems should be used, but can't because of an issue (LY-51626).
@@ -87,13 +92,13 @@ def build(bld):
         disable_pch                 = True,
         pch                         = '',
 
-        profile_defines             = list(development_defines),
-        profile_dedicated_defines   = list(development_defines),
-        debug_defines               = list(development_defines) + list(debug_defines),
-        debug_dedicated_defines     = list(development_defines) + list(debug_defines),
-        release_defines             = list(shipping_defines),
-        release_dedicated_defines   = list(shipping_defines),
-        test_all_defines            = list(development_defines),
+        profile_defines             = list(shared_defines) + list(development_defines),
+        profile_dedicated_defines   = list(shared_defines) + list(development_defines),
+        debug_defines               = list(shared_defines) + list(development_defines) + list(debug_defines),
+        debug_dedicated_defines     = list(shared_defines) + list(development_defines) + list(debug_defines),
+        release_defines             = list(shared_defines) + list(shipping_defines),
+        release_dedicated_defines   = list(shared_defines) + list(shipping_defines),
+        test_all_defines            = list(shared_defines) + list(development_defines),
         platform_roots              = [bld.PlatformRoot('Platform', export_includes=False)]
     )
 
@@ -107,7 +112,9 @@ def build(bld):
         features                    = ['emfx_copyfiles'],
         win_features                = ['crcfix'],
         #msvc_cxxflags               = msvc_cxx_flags,
-        includes                    = ['./Include',
+        includes                    = [bld.ThirdPartyPath('boost'),
+                                       bld.Path('Code/CryEngine/CryCommon'),
+                                       './Include',
                                        './Source',
                                        './',
                                        bld.Path('Code/CryEngine/CryCommon')
@@ -116,19 +123,19 @@ def build(bld):
         disable_pch                 = True,
         pch                         = '',
 
-        profile_defines             = list(development_defines),
-        profile_dedicated_defines   = list(development_defines),
-        debug_defines               = list(development_defines) + list(debug_defines),
-        debug_dedicated_defines     = list(development_defines) + list(debug_defines),
-        release_defines             = list(shipping_defines),
-        release_dedicated_defines   = list(shipping_defines),
-        test_all_defines            = list(development_defines),
+        profile_defines             = list(shared_defines) + list(development_defines),
+        profile_dedicated_defines   = list(shared_defines) + list(development_defines),
+        debug_defines               = list(shared_defines) + list(development_defines) + list(debug_defines),
+        debug_dedicated_defines     = list(shared_defines) + list(development_defines) + list(debug_defines),
+        release_defines             = list(shared_defines) + list(shipping_defines),
+        release_dedicated_defines   = list(shared_defines) + list(shipping_defines),
+        test_all_defines            = list(shared_defines) + list(development_defines),
 
         win_x64_clang_test_all_enable_rtti = True,
 
         # Editor module - Includes pulls in EmotionFX tools code, and has a dependencies on AzToolsFramework and the EMotionFXStaticLib gem shared library.
         editor = dict(
-            platforms       = ['win', 'darwin'],
+            platforms       = ['win', 'darwin', 'linux'],
             configurations  = ['all'],
             exclude_monolithic = True,
             client_only     = True,
@@ -154,12 +161,14 @@ def build(bld):
             features        = ['ExternalLyMetrics', 'ExternalLyIdentity'],
             uselib          = ['QT5OPENGL',
                                'AWS_CPP_SDK_CORE',
-                               'AWS_CPP_SDK_COGNITO_IDENTITY_STATIC',
+                               'AWS_CPP_SDK_COGNITO_IDENTITY',
                                'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
                                'AWS_CPP_SDK_MOBILEANALYTICS',
                                'GLEW'
                               ],
-            includes        = ['./Include',
+            includes        = [bld.ThirdPartyPath('boost'),
+                               bld.Path('Code/CryEngine/CryCommon'),
+                               './Include',
                                './Source',
                                './EMotionFX/Tools',
                                './EMotionFX/Pipeline',
@@ -173,13 +182,13 @@ def build(bld):
             disable_pch     = True,
             pch             = '',
 
-            debug_defines   = list(editor_defines) + list(debug_defines),
-            debug_test_defines = list(editor_defines) + list(debug_defines),
-            profile_defines = list(editor_defines),
-            profile_test_defines = list(editor_defines),
+            debug_defines   = list(shared_defines) + list(editor_defines) + list(debug_defines),
+            debug_test_defines = list(shared_defines) + list(editor_defines) + list(debug_defines),
+            profile_defines = list(shared_defines) + list(editor_defines),
+            profile_test_defines = list(shared_defines) + list(editor_defines),
 
             win_lib         = ['opengl32', 'dxguid', 'dinput8'],
-            #msvc_cxxflags   = msvc_cxx_flags,,
+            msvc_cxxflags   = msvc_cxx_flags,
             platform_roots = [bld.PlatformRoot('Editor/Platform', export_includes=False)]
         )
     )

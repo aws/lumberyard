@@ -698,6 +698,7 @@ bool Streamer::ResolveRequestPath(RequestPath& resolvedPath, bool& isArchivedFil
 {
     if (AZ::IO::CompressionUtils::FindCompressionInfo(foundCompressionInfo, fileName))
     {
+        AZ_Assert(foundCompressionInfo.m_decompressor, "Streamer::ResolveRequestPath found a compressed file, but no decompressor to decompress with.");
         isArchivedFile = true;
         if (foundCompressionInfo.m_conflictResolution != ConflictResolution::UseArchiveOnly)
         {

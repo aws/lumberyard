@@ -18,7 +18,7 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
 #include <QCoreApplication>
-#include "AZTestShared/Utils/Utils.h"
+#include <Tests/AZTestShared/Utils/Utils.h>
 #include "AzCore/Slice/SliceAssetHandler.h"
 
 using namespace LevelBuilder;

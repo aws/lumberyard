@@ -26,6 +26,7 @@ def build(bld):
         configurations      = ['all'],
         pch                 = 'StdAfx.cpp',
         use                 = ['AzCore'],
+        
         includes            = [bld.Path('Code/CryEngine/CryCommon')
                               ],
         defines             = ['ENGINE_EXPORTS', 'USE_CRY_NEW_AND_DELETE'],
@@ -54,7 +55,7 @@ def build(bld):
         vs_filter          = 'RC',
         copyright_org      = 'Amazon-CryTek',
         file_list          = 'cryphysics.waf_files',
-        platforms          = ['win', 'darwin'],
+        platforms          = ['win', 'darwin', 'linux'],
         configurations     = ['all'],
         exclude_monolithic = True,
         use                = ['AzCore'],

@@ -1298,15 +1298,16 @@ namespace UnitTest
         test_atomic_integral_variations<AZStd::atomic_llong, long long>();
         test_atomic_integral_variations<AZStd::atomic_ullong, unsigned long long>();
 
-        test_atomic_integral_variations<volatile AZStd::atomic_char, char>();
-        test_atomic_integral_variations<volatile AZStd::atomic_uchar, unsigned char>();
-        test_atomic_integral_variations<volatile AZStd::atomic_short, short>();
-        test_atomic_integral_variations<volatile AZStd::atomic_ushort, unsigned short>();
-        test_atomic_integral_variations<volatile AZStd::atomic_int, int>();
-        test_atomic_integral_variations<volatile AZStd::atomic_uint, unsigned int>();
-        test_atomic_integral_variations<volatile AZStd::atomic_long, long>();
-        test_atomic_integral_variations<volatile AZStd::atomic_ulong, unsigned long>();
-        test_atomic_integral_variations<volatile AZStd::atomic_llong, long long>();
-        test_atomic_integral_variations<volatile AZStd::atomic_ullong, unsigned long long>();
+        test_atomic_integral_variations<AZStd::atomic_size_t, size_t>();
+        test_atomic_integral_variations<AZStd::atomic_ptrdiff_t, ptrdiff_t>();
+
+        test_atomic_integral_variations<AZStd::atomic_int8_t, int8_t>();
+        test_atomic_integral_variations<AZStd::atomic_uint8_t, uint8_t>();
+        test_atomic_integral_variations<AZStd::atomic_int16_t, int16_t>();
+        test_atomic_integral_variations<AZStd::atomic_uint16_t, uint16_t>();
+        test_atomic_integral_variations<AZStd::atomic_int32_t, int32_t>();
+        test_atomic_integral_variations<AZStd::atomic_uint32_t, uint32_t>();
+        test_atomic_integral_variations<AZStd::atomic_int64_t, int64_t>();
+        test_atomic_integral_variations<AZStd::atomic_uint64_t, uint64_t>();
     }
 }

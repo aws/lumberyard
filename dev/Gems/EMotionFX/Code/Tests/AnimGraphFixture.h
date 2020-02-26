@@ -40,6 +40,8 @@ namespace EMotionFX
         // machine created
         virtual void ConstructGraph();
 
+        virtual void ConstructActor();
+
         AZStd::string SerializeAnimGraph() const;
 
         // Evaluates the graph

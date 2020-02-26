@@ -37,9 +37,8 @@ namespace Physics
     /// -------------------------
     /// Create new material using Physics::SystemRequestBus and Physics::MaterialConfiguration:
     ///
-    ///     AZStd::shared_ptr<Physics::Material> newMaterial;
     ///     Physics::MaterialConfiguration materialProperties;
-    ///     Physics::SystemRequestBus::BroadcastResult(newMaterial, &Physics::SystemRequests::CreateMaterial, materialProperties);
+    ///     AZStd::shared_ptr<Physics::Material> newMaterial = AZ::Interface<Physics::System>::Get()->CreateMaterial(materialProperties);
     ///
     /// To get PxMaterial use GetNativePointer function
     ///

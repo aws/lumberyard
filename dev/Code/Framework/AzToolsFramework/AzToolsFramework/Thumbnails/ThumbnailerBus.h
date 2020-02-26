@@ -30,6 +30,12 @@ namespace AzToolsFramework
             //! Add thumbnail context
             virtual void RegisterContext(const char* contextName, int thumbnailSize) = 0;
 
+            //! Remove thumbnail context and all associated ThumbnailProviders
+            virtual void UnregisterContext(const char* contextName) = 0;
+
+            //! Return whether a given ThumbnailContext has been registered
+            virtual bool HasContext(const char* contextName) const = 0;
+
             //! Add new thumbnail provider to ThumbnailContext
             virtual void RegisterThumbnailProvider(SharedThumbnailProvider provider, const char* contextName) = 0;
 

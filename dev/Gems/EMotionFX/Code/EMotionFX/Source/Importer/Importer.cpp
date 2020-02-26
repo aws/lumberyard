@@ -15,6 +15,7 @@
 
 #include <MCore/Source/File.h>
 #include <MCore/Source/DiskFile.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/MemoryFile.h>
 
 #include "Importer.h"
@@ -426,6 +427,11 @@ namespace EMotionFX
             actorSettings = *settings;
         }
 
+        if (actorSettings.mOptimizeForServer)
+        {
+            actorSettings.OptimizeForServer();
+        }
+
         // fix any possible conflicting settings
         ValidateActorSettings(&actorSettings);
 
@@ -453,6 +459,12 @@ namespace EMotionFX
             actor->SetFileName(filename);
         }
 
+        // Generate an optimized version of skeleton for server.
+        if (actorSettings.mOptimizeForServer && actor->GetOptimizeSkeleton())
+        {
+            actor->GenerateOptimizedSkeleton();
+        }
+        
         // post create init
         actor->PostCreateInit(actorSettings.mMakeGeomLODsCompatibleWithSkeletalLODs, false, actorSettings.mUnitTypeConvert);
 
@@ -1123,6 +1135,7 @@ namespace EMotionFX
         RegisterChunkProcessor(aznew ChunkProcessorActorGenericMaterial());
         RegisterChunkProcessor(aznew ChunkProcessorActorInfo());
         RegisterChunkProcessor(aznew ChunkProcessorActorInfo2());
+        RegisterChunkProcessor(aznew ChunkProcessorActorInfo3());
         RegisterChunkProcessor(aznew ChunkProcessorActorMeshLOD());
         RegisterChunkProcessor(aznew ChunkProcessorActorProgMorphTarget());
         RegisterChunkProcessor(aznew ChunkProcessorActorNodeGroups());
@@ -1227,7 +1240,8 @@ namespace EMotionFX
                     (actorSettings->mLoadLimits                 == false && chunk.mChunkID == FileFormat::ACTOR_CHUNK_LIMIT) ||
                     (actorSettings->mLoadMorphTargets           == false && chunk.mChunkID == FileFormat::ACTOR_CHUNK_STDPROGMORPHTARGET) ||
                     (actorSettings->mLoadMorphTargets           == false && chunk.mChunkID == FileFormat::ACTOR_CHUNK_STDPMORPHTARGETS) ||
-                    (actorSettings->mLoadGeometryLODs           == false && chunk.mChunkID == FileFormat::ACTOR_CHUNK_MESHLODLEVELS))
+                    (actorSettings->mLoadGeometryLODs           == false && chunk.mChunkID == FileFormat::ACTOR_CHUNK_MESHLODLEVELS) ||
+                    (actorSettings->mLoadSimulatedObjects       == false && chunk.mChunkID == FileFormat::ACTOR_CHUNK_SIMULATEDOBJECTSETUP))
                 {
                     mustSkip = true;
                 }
@@ -1357,7 +1371,7 @@ namespace EMotionFX
         case Mesh::ATTRIB_NORMALS:
         case Mesh::ATTRIB_POSITIONS:
         {
-            AZ::PackedVector3f* data = (AZ::PackedVector3f*)layer->GetOriginalData();
+            AZ::Vector3* data = (AZ::Vector3*)layer->GetOriginalData();
             const uint32 numAttribs = layer->GetNumAttributes();
             ChunkProcessor::ConvertVector3(data, sourceEndianType, numAttribs);
             return true;
@@ -1383,7 +1397,7 @@ namespace EMotionFX
             const uint32 numAttribs = layer->GetNumAttributes();
             for (uint32 i = 0; i < numAttribs; ++i)
             {
-                AZ::PackedVector3f tangent(data[i].GetX(), data[i].GetY(), data[i].GetZ());
+                AZ::Vector3 tangent(data[i].GetX(), data[i].GetY(), data[i].GetZ());
                 MCore::Endian::ConvertVector3(&tangent, sourceEndianType);      // convert the endian of the Vector3 part
                 data[i].SetX(tangent.GetX());
                 data[i].SetY(tangent.GetY());
@@ -1423,11 +1437,11 @@ namespace EMotionFX
         // bitangents (Vector3)
         case Mesh::ATTRIB_BITANGENTS:
         {
-            AZ::PackedVector3f* data = (AZ::PackedVector3f*)layer->GetOriginalData();
+            AZ::Vector3* data = (AZ::Vector3*)layer->GetOriginalData();
             const uint32 numAttribs = layer->GetNumAttributes();
             for (uint32 i = 0; i < numAttribs; ++i)
             {
-                AZ::PackedVector3f bitangent(data[i].GetX(), data[i].GetY(), data[i].GetZ());
+                AZ::Vector3 bitangent(data[i].GetX(), data[i].GetY(), data[i].GetZ());
                 MCore::Endian::ConvertVector3(&bitangent, sourceEndianType);      // convert the endian of the Vector3 part
                 data[i] = bitangent;
             }

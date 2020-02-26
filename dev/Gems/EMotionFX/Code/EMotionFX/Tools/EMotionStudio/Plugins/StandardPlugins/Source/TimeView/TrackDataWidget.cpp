@@ -589,8 +589,6 @@ namespace EMStudio
     // paint the node history
     void TrackDataWidget::PaintRecorderNodeHistory(QPainter& painter, const QRect& rect, const EMotionFX::Recorder::ActorInstanceData* actorInstanceData)
     {
-        MCORE_UNUSED(rect);
-
         EMotionFX::Recorder& recorder = EMotionFX::GetRecorder();
 
         const double animationLength = recorder.GetRecordTime();
@@ -600,7 +598,7 @@ namespace EMStudio
         }
 
         // skip the complete rendering of the node history data when its bounds are not inside view
-        if (geometry().intersects(mNodeHistoryRect) == false)
+        if (!rect.intersects(mNodeHistoryRect))
         {
             return;
         }
@@ -638,7 +636,7 @@ namespace EMStudio
             itemRect.setTop((mNodeRectsStartHeight + (trackIndex * (mNodeHistoryItemHeight + 3)) + 3) /* - mPlugin->mScrollY*/);
             itemRect.setBottom(itemRect.top() + mNodeHistoryItemHeight);
 
-            if (geometry().intersects(itemRect.toRect()) == false)
+            if (!rect.intersects(itemRect.toRect()))
             {
                 continue;
             }

@@ -20,11 +20,11 @@
 
 namespace EMotionFX
 {
-    AZ_CLASS_ALLOCATOR_IMPL(BlendNParamWeightContainerWidget, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(BlendNParamWeightsHandler, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(BlendNParamWeightElementWidget, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(BlendNParamWeightElementHandler, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(BlendNParamWeightGuiEntry, AZ::SystemAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendNParamWeightContainerWidget, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendNParamWeightsHandler, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendNParamWeightElementWidget, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendNParamWeightElementHandler, EditorAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(BlendNParamWeightGuiEntry, EditorAllocator, 0)
 
 
     const int BlendNParamWeightElementWidget::s_decimalPlaces = 2;

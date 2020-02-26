@@ -323,6 +323,8 @@ CD3D9Renderer::CD3D9Renderer()
     , m_nConnectedMonitors(1)
 #endif // defined(WIN32)
 {
+    m_screenshotFilepathCache[0] = '\0';
+
     m_bDraw2dImageStretchMode = false;
     m_techShadowGen = CCryNameTSCRC("ShadowGen");
 
@@ -515,6 +517,13 @@ void CD3D9Renderer::InitRenderer()
 
     m_gmemDepthStencilMode = eGDSM_Invalid;
     AZ::RenderNotificationsBus::Handler::BusConnect();
+    AZ::RenderScreenshotRequestBus::Handler::BusConnect();
+
+    // Ensure tiled shading is disabled on initialization for OpenGL as HLSLcc does not properly support our tiled lighting shaders
+    if (gRenDev->GetRenderType() == eRT_OpenGL)
+    {
+        gRenDev->CV_r_DeferredShadingTiled = 0;
+    }
 }
 
 CD3D9Renderer::~CD3D9Renderer()
@@ -533,6 +542,7 @@ void CD3D9Renderer::Release()
 {
 
     AZ::RenderNotificationsBus::Handler::BusDisconnect();
+    AZ::RenderScreenshotRequestBus::Handler::BusDisconnect();
     //FreeResources(FRR_ALL);
     ShutDown();
 
@@ -1802,8 +1812,173 @@ void CD3D9Renderer::FlushHardware(bool bIssueBeforeSync)
     }
 }
 
+bool CD3D9Renderer::PrepFrameCapture(FrameBufferDescription& frameBufDesc, CTexture* pRenderTarget)
+{
+    assert(m_pBackBuffer);
+    assert(!IsEditorMode() || (m_CurrContext && m_CurrContext->m_pBackBuffer == m_pBackBuffer));
+
+    ID3D11Resource* pBackBufferRsrc(0);
+
+    if (!pRenderTarget)
+    {
+        m_pBackBuffer->GetResource(&pBackBufferRsrc);
+    }
+    else
+    {
+        D3DSurface* pSurface = pRenderTarget->GetSurface(0, 0);
+        assert(pSurface);
+        pSurface->GetResource(&pBackBufferRsrc);
+    }
+
+    frameBufDesc.pBackBufferTex = (ID3D11Texture2D*)pBackBufferRsrc;
+
+    if (!frameBufDesc.pBackBufferTex)
+    {
+        return false;
+    }
+        
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    //get size of image
+    frameBufDesc.pBackBufferTex->GetDesc(&frameBufDesc.backBufferDesc);
+    if (frameBufDesc.backBufferDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
+        || (m_CurrContext
+            && (m_CurrContext->m_nSSSamplesX > 1
+                || m_CurrContext->m_nSSSamplesY > 1)))
+    {
+        const int nResolvedWidth = m_width / m_CurrContext->m_nSSSamplesX;
+        const int nResolvedHeight = m_height / m_CurrContext->m_nSSSamplesY;
+        frameBufDesc.backBufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        frameBufDesc.backBufferDesc.Width = nResolvedWidth;
+        frameBufDesc.backBufferDesc.Height = nResolvedHeight;
+        ID3D11Texture2D* pTempCopyTex = NULL;
+        if (SUCCEEDED(GetDevice().CreateTexture2D(&frameBufDesc.backBufferDesc, 0, &pTempCopyTex)))
+        {
+            D3D11_BOX srcRegion;
+            srcRegion.left = 0;
+            srcRegion.right = nResolvedWidth;
+            srcRegion.top = 0;
+            srcRegion.bottom = nResolvedHeight;
+            srcRegion.front = 0;
+            srcRegion.back = 1;
+            // copy resolved part of backbuffer to temporary target
+            GetDeviceContext().CopySubresourceRegion(pTempCopyTex, 0, 0, 0, 0, frameBufDesc.pBackBufferTex, 0, &srcRegion);
+            frameBufDesc.pBackBufferTex->Release();
+            frameBufDesc.pBackBufferTex = pTempCopyTex;
+        }
+    }
+    
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    // set up resources and textures for generating alpha channel from ZTarget texture, if needed
+    ID3D11RenderTargetView* rtv = CTexture::s_ptexZTarget->GetSurface(0, 0);
+    ID3D11Resource* zResource = nullptr;
+    rtv->GetResource(&zResource);
+    ID3D11Texture2D* zTargetTex = static_cast<ID3D11Texture2D*>(zResource);
+
+    D3D11_TEXTURE2D_DESC zDesc;
+    zTargetTex->GetDesc(&zDesc);
+
+    D3D11_TEXTURE2D_DESC tmpZdesc = zDesc;
+    tmpZdesc.Usage = D3D11_USAGE_STAGING;
+    tmpZdesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    tmpZdesc.BindFlags = 0;
+
+
+    HRESULT hrZ = GetDevice().CreateTexture2D(&tmpZdesc, NULL, &frameBufDesc.tempZtex);
+    D3D11_MAPPED_SUBRESOURCE zMappedResource;
+    
+    frameBufDesc.includeAlpha = ((CV_capture_buffer->GetIVal() == ICaptureKey::ColorWithAlpha) && frameBufDesc.tempZtex && (tmpZdesc.Width == frameBufDesc.backBufferDesc.Width) && (tmpZdesc.Height == frameBufDesc.backBufferDesc.Height));
+
+    if (frameBufDesc.includeAlpha)
+    {
+        gcpRendD3D->GetDeviceContext().CopyResource(frameBufDesc.tempZtex, zTargetTex);
+        hrZ = gcpRendD3D->GetDeviceContext().Map(frameBufDesc.tempZtex, 0, D3D11_MAP_READ, 0, &zMappedResource);
+
+        frameBufDesc.depthData = reinterpret_cast<float*>(zMappedResource.pData);
+        if (!frameBufDesc.depthData)
+        {
+            SAFE_RELEASE(frameBufDesc.tempZtex);
+            frameBufDesc.includeAlpha = false;
+        }
+    }
+
+    SAFE_RELEASE(zResource);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    // set up resources and textures for backbuffer - uses passed in pointer
+    D3D11_TEXTURE2D_DESC tmpDesc = frameBufDesc.backBufferDesc;
+    tmpDesc.Usage = D3D11_USAGE_STAGING;
+    tmpDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    tmpDesc.BindFlags = 0;
+
+    
+    HRESULT hr = GetDevice().CreateTexture2D(&tmpDesc, NULL, &frameBufDesc.pTmpTexture);
+    if (!frameBufDesc.pTmpTexture)
+    {
+        return false;
+    }
+
+    gcpRendD3D->GetDeviceContext().CopyResource(frameBufDesc.pTmpTexture, frameBufDesc.pBackBufferTex);
+
+    hr = gcpRendD3D->GetDeviceContext().Map(frameBufDesc.pTmpTexture, 0, D3D11_MAP_READ, 0, &frameBufDesc.resource);
+    
+    frameBufDesc.outputBytesPerPixel = frameBufDesc.includeAlpha ? 4 : 3;
+    frameBufDesc.texSize = frameBufDesc.backBufferDesc.Width * frameBufDesc.backBufferDesc.Height * frameBufDesc.outputBytesPerPixel;
+
+    
+    assert(frameBufDesc.pDest == nullptr);
+    frameBufDesc.pDest = new byte[frameBufDesc.texSize + sizeof(uint32)];  // Extra space required since we always copy 32 bits
+    assert(frameBufDesc.pDest);
+
+    return(SUCCEEDED(hr));
+}
+
+void CD3D9Renderer::FillFrameBuffer(FrameBufferDescription& frameBufDesc, bool redBlueSwap)
+{
+    // copy, flip red with blue if needed
+    byte* dst = frameBufDesc.pDest;
+    const byte* pSrc = reinterpret_cast<const byte*>(frameBufDesc.resource.pData);
+
+    for (int i = 0; i < frameBufDesc.backBufferDesc.Height; i++)
+    {
+        for (int j = 0; j < frameBufDesc.backBufferDesc.Width; j++)
+        {
+            *(uint32*)&dst[j * frameBufDesc.outputBytesPerPixel] = *(uint32*)&pSrc[j * frameBufDesc.inputBytesPerPixel];
+        }
+        if (redBlueSwap)
+        {
+            PREFAST_ASSUME(texsize == frameBufDesc.backBufferDesc.Width * 4);
+            for (int j = 0; j < frameBufDesc.backBufferDesc.Width; j++)
+            {
+                Exchange(dst[j * frameBufDesc.outputBytesPerPixel + 0], dst[j * frameBufDesc.outputBytesPerPixel + 2]);
+            }
+        }
+        pSrc += frameBufDesc.resource.RowPitch;
+        dst += frameBufDesc.backBufferDesc.Width * frameBufDesc.outputBytesPerPixel;
+    }
+
+    // re-loop over the image to process Alpha, if needed
+    if (frameBufDesc.includeAlpha)
+    {
+        dst = frameBufDesc.pDest;
+        const int numPx = frameBufDesc.backBufferDesc.Height * frameBufDesc.backBufferDesc.Width;
+
+        const int alphaIDX = 3;
+        const byte alphaOn = 255;
+        const byte alphaOff = 0;
+
+        for (int px = 0; px < numPx; px++)
+        {
+            // depthData is normalized - set alpha to 0 where depthData is 1.0f, 255 otherwise
+            dst[px *  frameBufDesc.outputBytesPerPixel + alphaIDX] = (AZ::IsClose(frameBufDesc.depthData[px], 1.0f, FLT_EPSILON) ? alphaOff : alphaOn);
+        }
+    }
+}
+
+
+
 bool CD3D9Renderer::CaptureFrameBufferToFile(const char* pFilePath, CTexture* pRenderTarget)
 {
+    //file prep
     assert(pFilePath);
     if (!pFilePath)
     {
@@ -1860,201 +2035,56 @@ bool CD3D9Renderer::CaptureFrameBufferToFile(const char* pFilePath, CTexture* pR
         return false;
     }
 
-    assert(m_pBackBuffer);
-    assert(!IsEditorMode() || (m_CurrContext && m_CurrContext->m_pBackBuffer == m_pBackBuffer));
+    //prep frame Buffer
+    FrameBufferDescription frameBufDesc;
+    bool framePrepSuccessful = PrepFrameCapture(frameBufDesc, pRenderTarget);
+    bool writeToDiskSuccessful = false;
 
-    bool frameCaptureSuccessful(false);
-    ID3D11Resource* pBackBufferRsrc(0);
-    if (!pRenderTarget)
+    if (!framePrepSuccessful)
     {
-        m_pBackBuffer->GetResource(&pBackBufferRsrc);
-    }
-    else
-    {
-        D3DSurface* pSurface = pRenderTarget->GetSurface(0, 0);
-        assert(pSurface);
-        pSurface->GetResource(&pBackBufferRsrc);
+        return writeToDiskSuccessful;
     }
 
-    ID3D11Texture2D* pBackBufferTex = (ID3D11Texture2D*)pBackBufferRsrc;
-    if (pBackBufferTex)
-    {
-        D3D11_TEXTURE2D_DESC bbDesc;
-        pBackBufferTex->GetDesc(&bbDesc);
-        if (bbDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
-            || (m_CurrContext
-                && (m_CurrContext->m_nSSSamplesX > 1
-                    || m_CurrContext->m_nSSSamplesY > 1)))
-        {
-            const int nResolvedWidth = m_width / m_CurrContext->m_nSSSamplesX;
-            const int nResolvedHeight = m_height / m_CurrContext->m_nSSSamplesY;
-            bbDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-            bbDesc.Width = nResolvedWidth;
-            bbDesc.Height = nResolvedHeight;
-            ID3D11Texture2D* pTempCopyTex = NULL;
-            if (SUCCEEDED(GetDevice().CreateTexture2D(&bbDesc, 0, &pTempCopyTex)))
-            {
-                D3D11_BOX srcRegion;
-                srcRegion.left = 0;
-                srcRegion.right = nResolvedWidth;
-                srcRegion.top = 0;
-                srcRegion.bottom = nResolvedHeight;
-                srcRegion.front = 0;
-                srcRegion.back = 1;
-                // copy resolved part of backbuffer to temporary target
-                GetDeviceContext().CopySubresourceRegion(pTempCopyTex, 0, 0, 0, 0, pBackBufferTex, 0, &srcRegion);
-                pBackBufferTex->Release();
-                pBackBufferTex = pTempCopyTex;
-            }
-        }
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////////
-        // set up resources and textures for generating alpha channel from ZTarget texture, if needed
-        const int ALPHA_IDX = 3;
-        const byte ALPHA_ON = 255;
-        const byte ALPHA_OFF = 0;
-        ID3D11RenderTargetView* rtv = CTexture::s_ptexZTarget->GetSurface(0, 0);
-        ID3D11Resource* zResource = nullptr;
-        rtv->GetResource(&zResource);
-        ID3D11Texture2D* zTargetTex = static_cast<ID3D11Texture2D*>(zResource);
-
-        D3D11_TEXTURE2D_DESC zDesc;
-        zTargetTex->GetDesc(&zDesc);
-
-        D3D11_TEXTURE2D_DESC tmpZdesc = zDesc;
-        tmpZdesc.Usage = D3D11_USAGE_STAGING;
-        tmpZdesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-        tmpZdesc.BindFlags = 0;
-
-        ID3D11Texture2D* tempZtex = NULL;
-        HRESULT hrZ = GetDevice().CreateTexture2D(&tmpZdesc, NULL, &tempZtex);
-        D3D11_MAPPED_SUBRESOURCE zMappedResource;
-        float* depthData = nullptr;
-        bool includeAlpha = ((CV_capture_buffer->GetIVal() == ICaptureKey::ColorWithAlpha) && tempZtex && (tmpZdesc.Width == bbDesc.Width) && (tmpZdesc.Height == bbDesc.Height));
-
-        if (includeAlpha)
-        {
-            gcpRendD3D->GetDeviceContext().CopyResource(tempZtex, zTargetTex);
-            hrZ = gcpRendD3D->GetDeviceContext().Map(tempZtex, 0, D3D11_MAP_READ, 0, &zMappedResource);
-
-            depthData = reinterpret_cast<float*>(zMappedResource.pData);
-            if (!depthData)
-            {
-                SAFE_RELEASE(tempZtex);
-                includeAlpha = false;
-            }
-        }
-
-        SAFE_RELEASE(zResource);
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////////
-        // set up resources and textures for backbuffer
-        D3D11_TEXTURE2D_DESC tmpDesc = bbDesc;
-        tmpDesc.Usage = D3D11_USAGE_STAGING;
-        tmpDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-        tmpDesc.BindFlags = 0;
-
-        ID3D11Texture2D* pTmpTexture = NULL;
-        HRESULT hr = GetDevice().CreateTexture2D(&tmpDesc, NULL, &pTmpTexture);
-        if (!pTmpTexture)
-        {
-            return false;
-        }
-
-        D3D11_MAPPED_SUBRESOURCE resource;
-        gcpRendD3D->GetDeviceContext().CopyResource(pTmpTexture, pBackBufferTex);
-
-        hr = gcpRendD3D->GetDeviceContext().Map(pTmpTexture, 0, D3D11_MAP_READ, 0, &resource);
-        const byte* pSrc = reinterpret_cast<const byte*>(resource.pData);
-
-        const int INPUT_BYTES_PER_PIXEL = 4;
-        const int OUTPUT_BYTES_PER_PIXEL = includeAlpha ? 4 : 3;
-        const int texsize =  bbDesc.Width * bbDesc.Height * OUTPUT_BYTES_PER_PIXEL;
-        byte* pDest = new byte[texsize + sizeof(uint32)];  // Extra space required since we always copy 32 bits
-        assert(pDest);
-
+    //console code
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DRIVERD3D_CPP_SECTION_8
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/DriverD3D_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/DriverD3D_cpp_provo.inl"
+#if defined(AZ_PLATFORM_XENIA)
+#include "Xenia/DriverD3D_cpp_xenia.inl"
+#elif defined(AZ_PLATFORM_PROVO)
+#include "Provo/DriverD3D_cpp_provo.inl"
     #elif defined(AZ_PLATFORM_SALEM)
         #include "Salem/DriverD3D_cpp_salem.inl"
-    #endif
+#endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
-        bool formatBGRA = false;
+    bool formatBGRA = false;
 #endif
-        bool needRBSwap = captureFormats[fmtIdx].fmt == EFF_FILE_TGA ? !formatBGRA : formatBGRA;
 
-        // copy, flip red with blue if needed
-        byte* dst = pDest;
-        const byte* src = pSrc;
-        for (int i = 0; i < bbDesc.Height; i++)
-        {
-            for (int j = 0; j < bbDesc.Width; j++)
-            {
-                *(uint32*)&dst[j * OUTPUT_BYTES_PER_PIXEL] = *(uint32*)&src[j * INPUT_BYTES_PER_PIXEL];
-            }
-            if (needRBSwap)
-            {
-                PREFAST_ASSUME(texsize == bbDesc.Width * 4);
-                for (int j = 0; j < bbDesc.Width; j++)
-                {
-                    Exchange(dst[j * OUTPUT_BYTES_PER_PIXEL + 0], dst[j * OUTPUT_BYTES_PER_PIXEL + 2]);
-                }
-            }
-            src += resource.RowPitch;
-            dst += bbDesc.Width * OUTPUT_BYTES_PER_PIXEL;
-        }
+    bool needRBSwap = captureFormats[fmtIdx].fmt == EFF_FILE_TGA ? !formatBGRA : formatBGRA;
 
-        // re-loop over the image to process Alpha, if needed
-        if (includeAlpha)
-        {
-            dst = pDest;
-            const int numPx = bbDesc.Height * bbDesc.Width;
-            for (int px = 0; px < numPx; px++)
-            {
-                // depthData is normalized - set alpha to 0 where depthData is 1.0f, 255 otherwise
-                dst[px * OUTPUT_BYTES_PER_PIXEL + ALPHA_IDX] = (AZ::IsClose(depthData[px], 1.0f, FLT_EPSILON) ? ALPHA_OFF : ALPHA_ON);
-            }
-        }
+    //copy the frame buffer
+    FillFrameBuffer(frameBufDesc, needRBSwap);
 
-        if (captureFormats[fmtIdx].fmt == EFF_FILE_TGA)
-        {
-            frameCaptureSuccessful = ::WriteTGA(pDest, bbDesc.Width, bbDesc.Height, pFilePath, 8 * OUTPUT_BYTES_PER_PIXEL, 8 * OUTPUT_BYTES_PER_PIXEL);
-        }
-        else if (captureFormats[fmtIdx].fmt == EFF_FILE_JPG)
-        {
-            frameCaptureSuccessful = ::WriteJPG(pDest, bbDesc.Width, bbDesc.Height, pFilePath, 8 * OUTPUT_BYTES_PER_PIXEL, 90);
-        }
-        else
-        {
-            //If saving as tiff use our built in tiff saver.
-            CRY_ASSERT_MESSAGE(captureFormats[fmtIdx].fmt == EFF_FILE_TIF, ("Error - unknown image extension"));
-            frameCaptureSuccessful = InternalSaveToTIFF(pBackBufferTex, pFilePath);
-        }
 
-        delete[] pDest;
-
-        if (includeAlpha)
-        {
-            gcpRendD3D->GetDeviceContext().Unmap(tempZtex, 0);
-        }
-        SAFE_RELEASE(tempZtex);
-
-        gcpRendD3D->GetDeviceContext().Unmap(pTmpTexture, 0);
-        SAFE_RELEASE(pTmpTexture);
-
-        frameCaptureSuccessful = SUCCEEDED(hr);
+    //file capture
+    if (captureFormats[fmtIdx].fmt == EFF_FILE_TGA)
+    {
+        writeToDiskSuccessful = ::WriteTGA(frameBufDesc.pDest, frameBufDesc.backBufferDesc.Width, frameBufDesc.backBufferDesc.Height, pFilePath, 8 * frameBufDesc.outputBytesPerPixel, 8 * frameBufDesc.outputBytesPerPixel);
+    }
+    else if (captureFormats[fmtIdx].fmt == EFF_FILE_JPG)
+    {
+        writeToDiskSuccessful = ::WriteJPG(frameBufDesc.pDest, frameBufDesc.backBufferDesc.Width, frameBufDesc.backBufferDesc.Height, pFilePath, 8 * frameBufDesc.outputBytesPerPixel, 90);
+    }
+    else
+    {
+        //If saving as tiff use our built in tiff saver.
+        CRY_ASSERT_MESSAGE(captureFormats[fmtIdx].fmt == EFF_FILE_TIF, ("Error - unknown image extension"));
+        writeToDiskSuccessful = InternalSaveToTIFF(frameBufDesc.pBackBufferTex, pFilePath);
     }
 
-    SAFE_RELEASE(pBackBufferTex);
-
-    return frameCaptureSuccessful;
+    return writeToDiskSuccessful;
 }
 
 bool CD3D9Renderer::InternalSaveToTIFF(ID3D11Texture2D* backBuffer, const char* filePath)
@@ -4833,8 +4863,19 @@ void CD3D9Renderer::RT_EndFrame(bool isLoading)
 #if !defined(_RELEASE) || defined(WIN32) || defined(WIN64) || defined(ENABLE_LW_PROFILERS)
     if (CV_r_GetScreenShot)
     {
-        ScreenShot();
-        CV_r_GetScreenShot = 0;
+        if (CV_r_GetScreenShot == static_cast<int>(ScreenshotType::NormalToBuffer))
+        {
+            ScreenShot();
+        }
+        else if (CV_r_GetScreenShot == static_cast<int>(ScreenshotType::NormalWithFilepath))
+        {
+            ScreenShot(m_screenshotFilepathCache);
+        }
+        else
+        {
+            ScreenShot(nullptr);
+        }
+        CV_r_GetScreenShot = static_cast<int>(ScreenshotType::None);
     }
 #endif
 #ifndef CONSOLE_CONST_CVAR_MODE
@@ -4965,6 +5006,38 @@ void CD3D9Renderer::RT_PresentFast()
     FX_SetActiveRenderTargets(true);
 
     m_RP.m_TI[m_RP.m_nProcessThreadID].m_nFrameUpdateID++;
+}
+
+void CD3D9Renderer::WriteScreenshotToFile(const char* filepath)
+{
+    CV_r_GetScreenShot = static_cast<int>(ScreenshotType::NormalWithFilepath);
+    // If filepath is a nullptr, m_screenshotFilepathCache will be empty string.
+    cry_strcpy(m_screenshotFilepathCache, filepath);
+}
+
+void CD3D9Renderer::WriteScreenshotToBuffer()
+{
+    CV_r_GetScreenShot = static_cast<int>(ScreenshotType::NormalToBuffer);
+}
+
+bool CD3D9Renderer::CopyScreenshotToBuffer(unsigned char* imageBuffer, unsigned int width, unsigned int height)
+{
+    AZ_Assert(m_frameBufDesc, "Frame Buffer Description is nullptr");
+    AZ_Assert(imageBuffer, "Image Buffer is nullptr");
+
+    if (!(m_frameBufDesc->pDest))
+    {
+        return false;
+    }
+
+    if ((width != m_frameBufDesc->backBufferDesc.Width) || (height != m_frameBufDesc->backBufferDesc.Height))
+    {
+        return false;
+    }
+
+    memcpy(imageBuffer, m_frameBufDesc->pDest, m_frameBufDesc->texSize);
+
+    return true;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -5124,7 +5197,50 @@ bool CD3D9Renderer::ScreenShotInternal(const char* filename, int iPreWidth)
 
 bool CD3D9Renderer::ScreenShot(const char* filename, int iPreWidth)
 {
+#if defined(AZ_PLATFORM_LINUX)
+    // TODO Linux: Development hack for the time being.
+    // The screenshot system works with absolute paths, which crypak tries to lower case by default.
+    // This breaks any root paths that have upper case letters.
+    // There are many path casing issues though, so somewhere we are probably missing some code to handle this properly on linux.
+    // Ensure we preserve all file casing for the screenshot system to work properly.
+    ICVar* pCaseSensitivityCVar = gEnv->pConsole->GetCVar("sys_FilesystemCaseSensitivity");
+    int previousCasingValue = 0;
+    if (pCaseSensitivityCVar)
+    {
+        previousCasingValue = pCaseSensitivityCVar->GetIVal();
+        pCaseSensitivityCVar->Set(1);
+    }
+    bool res = ScreenShotInternal(filename, iPreWidth);
+
+    if (pCaseSensitivityCVar)
+    {
+        pCaseSensitivityCVar->Set(previousCasingValue);
+    }
+    return res;
+#else
     return ScreenShotInternal(filename, iPreWidth);
+#endif
+}
+
+bool CD3D9Renderer::ScreenShot()
+{
+    FrameBufferDescription frameBufDesc;
+    m_frameBufDesc = &frameBufDesc;  //set the pointer so GetScreenshot has access later
+
+    bool framePrepSuccessful = PrepFrameCapture(frameBufDesc);
+
+    if (!framePrepSuccessful)
+    {
+        return false;
+    }
+
+    FillFrameBuffer(frameBufDesc, false);
+
+    AZ::RenderScreenshotNotificationBus::Broadcast(&AZ::RenderScreenshotNotifications::OnScreenshotReady);
+
+    m_frameBufDesc = nullptr;
+
+    return true;
 }
 
 int CD3D9Renderer::CreateRenderTarget(const char* name, int nWidth, int nHeight, const ColorF& clearColor, ETEX_Format eTF)
@@ -8176,3 +8292,28 @@ IHWMouseCursor* CD3D9Renderer::GetIHWMouseCursor()
 
 #endif
 
+CD3D9Renderer::FrameBufferDescription::~FrameBufferDescription()
+{
+    if (pDest)
+    {
+        delete[] pDest;
+    }
+
+    if (includeAlpha)
+    {
+        if (tempZtex)
+        {
+            gcpRendD3D->GetDeviceContext().Unmap(tempZtex, 0);
+        } 
+    }
+    SAFE_RELEASE(tempZtex);
+
+    if (pTmpTexture)
+    {
+        gcpRendD3D->GetDeviceContext().Unmap(pTmpTexture, 0);
+    }
+    
+    SAFE_RELEASE(pTmpTexture);
+
+    SAFE_RELEASE(pBackBufferTex);
+}

@@ -147,6 +147,11 @@ namespace AzQtComponents
         return m_paletteCards.count();
     }
 
+    bool PaletteCardCollection::isEmpty() const
+    {
+        return m_paletteCards.isEmpty();
+    }
+
     QSharedPointer<PaletteCard> PaletteCardCollection::paletteCard(int index) const
     {
         return m_paletteCards[index];

@@ -204,7 +204,7 @@ typedef uint32 vtx_idx;
     #define FMOD_STREAMING_DEBUGGING 1
 #endif
 
-#if defined(WIN32) || defined(WIN64) || defined(APPLE)
+#if defined(WIN32) || defined(WIN64) || defined(APPLE) || defined(AZ_PLATFORM_LINUX)
 #define FLARES_SUPPORT_EDITING
 #endif
 

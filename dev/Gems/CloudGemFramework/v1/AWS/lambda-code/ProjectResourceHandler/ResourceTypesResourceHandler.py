@@ -26,7 +26,6 @@ from resource_manager_common import constant
 from resource_manager_common import resource_type_info
 from resource_manager_common import stack_info
 
-
 s3_client = aws_utils.ClientWrapper(boto3.client("s3"))
 iam_client = aws_utils.ClientWrapper(boto3.client("iam"))
 
@@ -48,8 +47,24 @@ _lambda_base_policy = {
     ]
 }
 
+# Default custom resource lambda timeout in MB
+_default_lambda_memory = 128
+
+# Default custom resource lambda timeout in Seconds, can be between 3-900 as per Lambda spec
+_default_lambda_timeout = 10  # Seconds
+
+# Schema for _handler_properties_configuration
+# Set these values to increase memory and timeout values for a given custom resource Lambda
+# These are mostly Lambda configuration properties and should follow existing names and restrictions
+_handler_properties_configuration = {
+    'MemorySize': properties.Integer(default=_default_lambda_memory),  # MB: Must be a multiple of 64MB as per Lambda spec
+    'Timeout': properties.Integer(default=_default_lambda_timeout),  # Seconds: Must be between 3-900 as per Lambda spec
+}
+
+# Schema for ArnHandler or FunctionHandlers for core resource types
 _handler_schema = {
     'Function': properties.String(""),
+    'HandlerFunctionConfiguration': properties.Object(default={}, schema=_handler_properties_configuration),
     'PolicyStatement': properties.ObjectOrListOfObject(default=[], schema={
         'Sid': properties.String(""),
         'Action': properties.StringOrListOfString(),
@@ -58,9 +73,14 @@ _handler_schema = {
     })
 }
 
+# Schema for the CoreResourceTypes custom CloudFormation resources.
+# Note: LambdaConfiguration and LambdaTimeout are globally applied to all custom resource Lambdas.  To change Memory and Timeout for a given Lambda
+# use a HandlerFunctionConfiguration which overides the global lambda configs
+#
+# Note: Need to define expected fields here to avoid "Property not supported" failures during definition validation
 _schema = {
     'LambdaConfiguration': properties.Dictionary(default={}),
-    'LambdaTimeout': properties.Integer(default=10),
+    'LambdaTimeout': properties.Integer(default=_default_lambda_timeout),
     'Definitions': properties.Object(default=None, schema={
         '*': properties.Object(default={}, schema={
             'PermissionMetadata': properties.Object(default={}, schema={
@@ -80,6 +100,8 @@ _schema = {
     })
 }
 
+# First entry in all arrays below is for the arn lambda, second is for the handler function created for custom resources
+# All arrays below need to have have the same number of items to use with zip
 _lambda_fields = ["ArnFunction", "HandlerFunction"]
 _lambda_tags = [resource_type_info.ARN_LAMBDA_TAG, resource_type_info.CUSTOM_RESOURCE_LAMBDA_TAG]
 _lambda_descriptions = ["Fetches the ARN for the %s resource type.", "Handles create/update/delete for the %s resource type."]
@@ -96,7 +118,7 @@ def handler(event, context):
     source_resource_name = event['LogicalResourceId']
     props = properties.load(event, _schema)
     definitions_src = event['ResourceProperties']['Definitions']
-    lambda_client = aws_utils.ClientWrapper(boto3.client("lambda", aws_utils.get_region_from_stack_arn(stack_arn)))
+    lambda_client = _create_lambda_client(stack_arn)
     created_or_updated_lambdas = {}
     lambda_roles = []
 
@@ -160,8 +182,7 @@ def handler(event, context):
                 lambda_function_name = type_info.get_lambda_function_name(tag)
                 role_name = role_utils.sanitize_role_name(lambda_function_name)
                 role_path = "/%s/%s/" % (type_info.stack_name, type_info.source_resource_name)
-                assume_role_policy_document = role_utils.get_assume_role_policy_document_for_service(
-                    "lambda.amazonaws.com")
+                assume_role_policy_document = role_utils.get_assume_role_policy_document_for_service("lambda.amazonaws.com")
 
                 try:
                     res = iam_client.create_role(
@@ -183,13 +204,23 @@ def handler(event, context):
 
                 # Record this role and the type_info so we can create a lambda for it
                 lambda_roles.append(role_name)
-                lambdas_to_create.append({
+
+                lambda_info = {
                     'role_arn': role_arn,
                     'type_info': type_info,
                     'lambda_function_name': lambda_function_name,
                     'handler': "resource_types." + function_handler,
                     'description': description
-                })
+                }
+
+                # Merge in any lambda specific configs overrides
+                if 'HandlerFunctionConfiguration' in function_info:
+                    lambda_override = function_info['HandlerFunctionConfiguration']
+                    if lambda_override:
+                        print "Found LambdaConfiguration override {}".format(lambda_override)
+                        lambda_info['lambda_config_overrides'] = lambda_override
+
+                lambdas_to_create.append(lambda_info)
 
         # We create the lambdas in a separate pass because role-propagation to lambda takes a while, and we don't want
         # to have to delay multiple times for each role/lambda pair
@@ -230,6 +261,20 @@ def handler(event, context):
     custom_resource_response.succeed(event, context, data, physical_resource_id)
 
 
+def _create_lambda_client(stack_arn):
+    """Create new lambda client to use. This is to support patching while testing"""
+    return aws_utils.ClientWrapper(boto3.client("lambda", aws_utils.get_region_from_stack_arn(stack_arn)))
+
+
+def _apply_custom_lambda_overrides(lambda_config, info):
+    """Ensure that we apply any overrides to the standard lambda config for a custom resource"""
+    if 'lambda_config_overrides' in info:
+        if 'Timeout' in info['lambda_config_overrides']:
+            lambda_config.update({'Timeout': int(info['lambda_config_overrides']['Timeout'])})
+        if 'MemorySize' in info['lambda_config_overrides']:
+            lambda_config.update({'MemorySize': int(info['lambda_config_overrides']['MemorySize'])})
+
+
 def _create_or_update_lambda_function(lambda_client, timeout, lambda_config_src, info, existing_lambdas):
     type_info = info['type_info']
     if lambda_config_src is None:
@@ -258,13 +303,14 @@ def _create_or_update_lambda_function(lambda_client, timeout, lambda_config_src,
                 'Publish': True
             }
         )
+
+        _apply_custom_lambda_overrides(lambda_config, info)
         result = lambda_client.create_function(**lambda_config)
 
     arn = result.get('FunctionArn', None)
     version = result.get('Version', None)
 
     if arn is None or version is None:
-        raise RuntimeError("Unable to create the lambda for type '%s' in resource '%s'" % (
-            type_info.resource_type_name, type_info.source_resource_name))
+        raise RuntimeError("Unable to create the lambda for type '{}' in resource '{}'".format(type_info.resource_type_name, type_info.source_resource_name))
 
     return arn, version

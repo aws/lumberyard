@@ -564,7 +564,7 @@ void CObjectLayerManager::Serialize(CObjectArchive& ar)
         CFileUtil::ForEach(layerPath, [&externalLayers](const QString& filepath)
         {
             // ignore if this is not a layer file
-            if (Path::GetExt(filepath).compare(LAYER_FILE_EXTENSION + 1, Qt::CaseInsensitive) != 0)
+            if (Path::GetExt(filepath).compare(&LAYER_FILE_EXTENSION[1], Qt::CaseInsensitive) != 0)
             {
                 return;
             }

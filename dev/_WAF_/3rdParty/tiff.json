@@ -3,7 +3,7 @@
     "source": "@3P:tiff@",
     "description": "Tiff Library",
     "includes": [
-        "."
+        "include"
     ],
     "defines": [],
     "lib_required": "True"

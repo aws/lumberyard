@@ -90,8 +90,7 @@ namespace EMotionFX
 
     void AnimGraphEntryNode::Output(AnimGraphInstance* animGraphInstance)
     {
-        RequestPoses(animGraphInstance);
-        AnimGraphPose* outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue();
+        AnimGraphPose* outputPose = nullptr;
 
         // we only need to get the pose from the source node for the cases where the source node is valid (not null) and 
         // is not the parent node (since the source of the parent state machine is the binding pose)
@@ -104,6 +103,9 @@ namespace EMotionFX
             }
 
             OutputIncomingNode(animGraphInstance, sourceNode);
+
+            RequestPoses(animGraphInstance);
+            outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue();
             *outputPose = *sourceNode->GetMainOutputPose(animGraphInstance);
         }
         else
@@ -113,6 +115,8 @@ namespace EMotionFX
                 SetHasError(animGraphInstance, true);
             }
 
+            RequestPoses(animGraphInstance);
+            outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue();
             outputPose->InitFromBindPose(animGraphInstance->GetActorInstance());
         }
 
@@ -120,7 +124,7 @@ namespace EMotionFX
         // passes the state machine is doing, the entry node is transitioned over while we never reach the decrease ref point.
         //sourceNode->DecreaseRef(animGraphInstance);
 
-        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
+        if (outputPose && GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }

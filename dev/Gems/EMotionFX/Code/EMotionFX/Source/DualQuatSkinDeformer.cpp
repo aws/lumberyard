@@ -89,11 +89,11 @@ namespace EMotionFX
 
         AZ::Vector3  newPos, newNormal, newTangent, newBitangent;
         AZ::Vector3  vtxPos, normal, tangent, bitangent;
-        AZ::PackedVector3f* positions   = static_cast<AZ::PackedVector3f*>(mMesh->FindVertexData(Mesh::ATTRIB_POSITIONS));
-        AZ::PackedVector3f* normals     = static_cast<AZ::PackedVector3f*>(mMesh->FindVertexData(Mesh::ATTRIB_NORMALS));
-        AZ::Vector4*        tangents    = static_cast<AZ::Vector4*>(mMesh->FindVertexData(Mesh::ATTRIB_TANGENTS));
-        AZ::PackedVector3f* bitangents  = static_cast<AZ::PackedVector3f*>(mMesh->FindVertexData(Mesh::ATTRIB_BITANGENTS));
-        AZ::u32*            orgVerts    = static_cast<AZ::u32*>(mMesh->FindVertexData(Mesh::ATTRIB_ORGVTXNUMBERS));
+        AZ::Vector3* positions   = static_cast<AZ::Vector3*>(mMesh->FindVertexData(Mesh::ATTRIB_POSITIONS));
+        AZ::Vector3* normals     = static_cast<AZ::Vector3*>(mMesh->FindVertexData(Mesh::ATTRIB_NORMALS));
+        AZ::Vector4* tangents    = static_cast<AZ::Vector4*>(mMesh->FindVertexData(Mesh::ATTRIB_TANGENTS));
+        AZ::Vector3* bitangents  = static_cast<AZ::Vector3*>(mMesh->FindVertexData(Mesh::ATTRIB_BITANGENTS));
+        AZ::u32*     orgVerts    = static_cast<AZ::u32*>(mMesh->FindVertexData(Mesh::ATTRIB_ORGVTXNUMBERS));
 
         // precalc the skinning matrices
         const uint32 numBones = mBones.GetLength();
@@ -144,10 +144,8 @@ namespace EMotionFX
                     const MCore::DualQuaternion& pivotQuat = mBones[ layer->GetInfluence(orgVertex, 0)->GetBoneNr() ].mDualQuat;
 
                     // our skinning dual quaternion
-                    MCore::DualQuaternion skinQuat(MCore::Quaternion(0, 0, 0, 0), MCore::Quaternion(0, 0, 0, 0));
+                    MCore::DualQuaternion skinQuat(AZ::Quaternion(0, 0, 0, 0), AZ::Quaternion(0, 0, 0, 0));
 
-                    MCore::Matrix scaleMatrix;
-                    MCore::MemSet(scaleMatrix.m16, 0, sizeof(float) * 16);
                     for (uint32 i = 0; i < numInfluences; ++i)
                     {
                         // get the influence
@@ -227,10 +225,8 @@ namespace EMotionFX
                     const MCore::DualQuaternion& pivotQuat = mBones[ layer->GetInfluence(orgVertex, 0)->GetBoneNr() ].mDualQuat;
 
                     // our skinning dual quaternion
-                    MCore::DualQuaternion skinQuat(MCore::Quaternion(0, 0, 0, 0), MCore::Quaternion(0, 0, 0, 0));
+                    MCore::DualQuaternion skinQuat(AZ::Quaternion(0, 0, 0, 0), AZ::Quaternion(0, 0, 0, 0));
 
-                    MCore::Matrix scaleMatrix;
-                    MCore::MemSet(scaleMatrix.m16, 0, sizeof(float) * 16);
                     for (uint32 i = 0; i < numInfluences; ++i)
                     {
                         // get the influence
@@ -304,7 +300,7 @@ namespace EMotionFX
                     const MCore::DualQuaternion& pivotQuat = mBones[ layer->GetInfluence(orgVertex, 0)->GetBoneNr() ].mDualQuat;
 
                     // our skinning dual quaternion
-                    MCore::DualQuaternion skinQuat(MCore::Quaternion(0, 0, 0, 0), MCore::Quaternion(0, 0, 0, 0));
+                    MCore::DualQuaternion skinQuat(AZ::Quaternion(0, 0, 0, 0), AZ::Quaternion(0, 0, 0, 0));
 
                     for (uint32 i = 0; i < numInfluences; ++i)
                     {
@@ -394,7 +390,6 @@ namespace EMotionFX
                     BoneInfo& lastBone = mBones.GetLast();
                     lastBone.mNodeNr = influence->GetNodeNr();
                     lastBone.mDualQuat.Identity();
-                    ////lastBone.mScaleMatrix.Identity();
                     boneIndex = mBones.GetLength() - 1;
                 }
 

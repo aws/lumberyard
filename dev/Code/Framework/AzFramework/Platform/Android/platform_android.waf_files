@@ -62,6 +62,10 @@
         "Input/Devices/VirtualKeyboard/Platform/Android":
         [
             "AzFramework/Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_Android.cpp"
+        ],
+        "Windowing":
+        [
+            "AzFramework/Windowing/NativeWindow_Android.cpp"
         ]
     }
 }

@@ -99,6 +99,11 @@ typedef float FLOAT;
 #define MM_TRACE_ADDRS 1
 #endif
 
+#ifndef STDMETHODCALLTYPE_DEFINED
+#define STDMETHODCALLTYPE_DEFINED
+#define STDMETHODCALLTYPE
+#endif
+
 #define _ALIGN(num) __attribute__ ((aligned(num)))
 #define _PACK __attribute__ ((packed))
 
@@ -152,6 +157,22 @@ typedef WCHAR* LPUWSTR, * PUWSTR;
 typedef const WCHAR* LPCWSTR, * PCWSTR;
 typedef const WCHAR* LPCUWSTR, * PCUWSTR;
 
+#ifdef UNICODE
+typedef LPCWSTR LPCTSTR;
+typedef LPWSTR LPTSTR;
+#else
+typedef LPCSTR LPCTSTR;
+typedef LPSTR LPTSTR;
+#endif
+typedef char TCHAR;
+
+typedef DWORD COLORREF;
+#define RGB(r,g,b) ((COLORREF)(((BYTE)(r)|((WORD)((BYTE)(g))<<8))|(((DWORD)(BYTE)(b))<<16)))
+
+#define GetRValue(rgb)  (LOBYTE(rgb))
+#define GetGValue(rgb)  (LOBYTE(((WORD)(rgb)) >> 8))
+#define GetBValue(rgb)  (LOBYTE((rgb)>>16))
+
 #define MAKEFOURCC(ch0, ch1, ch2, ch3)                \
     ((DWORD)(BYTE)(ch0) | ((DWORD)(BYTE)(ch1) << 8) | \
      ((DWORD)(BYTE)(ch2) << 16) | ((DWORD)(BYTE)(ch3) << 24))
@@ -162,6 +183,15 @@ typedef int32_t                 LONG;
 typedef uint32_t            ULONG;
 typedef int                         HRESULT;
 
+#define BST_UNCHECKED   0x0000
+
+#ifndef MAXUINT
+#define MAXUINT ((uint) ~((uint)0))
+#endif
+
+#ifndef MAXINT
+#define MAXINT ((int)(MAXUINT >> 1))
+#endif
 
 #if !defined(__clang__)
 typedef int32 __int32;
@@ -260,6 +290,95 @@ typedef union _LARGE_INTEGER
 #define VK_LEFT         0
 #define VK_CONTROL  0
 #define VK_SCROLL       0
+
+enum
+{
+    IDOK        = 1,
+    IDCANCEL    = 2,
+    IDABORT     = 3,
+    IDRETRY     = 4,
+    IDIGNORE    = 5,
+    IDYES       = 6,
+    IDNO        = 7,
+    IDTRYAGAIN  = 10,
+    IDCONTINUE  = 11
+};
+
+#define ES_MULTILINE    0x0004L
+#define ES_AUTOVSCROLL  0x0040L
+#define ES_AUTOHSCROLL  0x0080L
+#define ES_WANTRETURN   0x1000L
+
+#define LB_ERR  (-1)
+
+#define LB_ADDSTRING    0x0180
+#define LB_GETCOUNT     0x018B
+#define LB_SETTOPINDEX  0x0197
+
+#define MB_OK                0x00000000L
+#define MB_OKCANCEL          0x00000001L
+#define MB_ABORTRETRYIGNORE  0x00000002L
+#define MB_YESNOCANCEL       0x00000003L
+#define MB_YESNO             0x00000004L
+#define MB_RETRYCANCEL       0x00000005L
+#define MB_CANCELTRYCONTINUE 0x00000006L
+
+#define MB_ICONQUESTION     0x00000020L
+#define MB_ICONEXCLAMATION  0x00000030L
+    
+#define MB_ICONERROR        0x00000010L
+#define MB_ICONWARNING      0x00000030L
+#define MB_ICONINFORMATION  0x00000040L
+
+#define MB_SETFOREGROUND    0x00010000L
+
+#define MB_APPLMODAL    0x00000000L
+
+#define MF_STRING   0x00000000L
+
+#define MK_LBUTTON  0x0001
+#define MK_RBUTTON  0x0002
+#define MK_SHIFT    0x0004
+#define MK_CONTROL  0x0008
+#define MK_MBUTTON  0x0010
+
+#define MK_ALT  ( 0x20 )
+
+#define SM_MOUSEPRESENT 0x00000000L
+
+#define SM_CMOUSEBUTTONS    43
+
+#define USER_TIMER_MINIMUM  0x0000000A
+
+#define VK_TAB      0x09
+#define VK_SHIFT    0x10
+#define VK_MENU     0x12
+#define VK_ESCAPE   0x1B
+#define VK_SPACE    0x20
+#define VK_DELETE   0x2E
+
+#define VK_NUMPAD1  0x61
+#define VK_NUMPAD2  0x62
+#define VK_NUMPAD3  0x63
+#define VK_NUMPAD4  0x64
+
+#define VK_OEM_COMMA    0xBC   // ',' any country
+#define VK_OEM_PERIOD   0xBE   // '.' any country
+#define VK_OEM_3        0xC0   // '`~' for US
+#define VK_OEM_4        0xDB  //  '[{' for US
+#define VK_OEM_6        0xDD  //  ']}' for US
+
+#define WAIT_TIMEOUT 258L    // dderror
+
+#define WM_MOVE 0x0003
+#define WM_USER 0x0400
+
+#define WHEEL_DELTA 120
+
+#define WS_CHILD    0x40000000L
+#define WS_VISIBLE  0x10000000L
+
+#define CB_ERR  (-1)
 
 // io.h stuff
 typedef unsigned int _fsize_t;
@@ -404,6 +523,13 @@ typedef CHandle<int, (int) - 1l> HANDLE;
 typedef HANDLE EVENT_HANDLE;
 typedef pid_t THREAD_HANDLE;
 
+typedef HANDLE HKEY;
+// typedef HANDLE HDC;
+
+typedef HANDLE HBITMAP;
+
+typedef HANDLE HMENU;
+
 inline int64 CryGetTicks()
 {
     LARGE_INTEGER counter;
@@ -452,6 +578,17 @@ inline int WSAGetLastError()
     return errno;
 }
 
+template <typename T, size_t N>
+char (*RtlpNumberOf( T (&)[N] ))[N];
+
+#define RTL_NUMBER_OF_V2(A) (sizeof(*RtlpNumberOf(A)))
+
+#define ARRAYSIZE(A) RTL_NUMBER_OF_V2(A)
+
+#undef SUCCEEDED
+#define SUCCEEDED(x) ((x) >= 0)
+#undef FAILED
+#define FAILED(x) (!(SUCCEEDED(x)))
 
 #endif // CRYINCLUDE_CRYCOMMON_LINUXSPECIFIC_H
 

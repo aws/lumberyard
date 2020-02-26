@@ -869,9 +869,13 @@ void ScriptSystemComponent::Reflect(ReflectContext* reflection)
 
         behaviorContext->EBus<TickBus>("TickBus")
             ->Handler<TickBusBehaviorHandler>()
+            ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+            ->Attribute(AZ::Script::Attributes::Module, "components")
             ;
 
         behaviorContext->EBus<TickRequestBus>("TickRequestBus")
+            ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+            ->Attribute(AZ::Script::Attributes::Module, "components")
             ->Event("GetTickDeltaTime", &TickRequestBus::Events::GetTickDeltaTime)
             ->Event("GetTimeAtCurrentTick", &TickRequestBus::Events::GetTimeAtCurrentTick)
             ;

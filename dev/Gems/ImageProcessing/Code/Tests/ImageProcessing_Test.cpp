@@ -92,6 +92,10 @@ protected:
         // Adding this handler to allow utility functions access the serialize context
         AZ::ComponentApplicationBus::Handler::BusConnect();
 
+        // Prepare Qt paths to correctly load image format plugins
+        // (Has to be done before the coreApplication is reset)
+        AzQtComponents::PrepareQtPaths();
+
         //load qt plugins for some image file formats support
         int argc = 0;
         char** argv = nullptr;

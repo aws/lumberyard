@@ -37,20 +37,20 @@ namespace MCommon
             mActorInstance  = actorInstance;
             mOldValueVec    = oldValue;
             mCurrValueVec   = oldValue;
-            mCurrValueQuat  = MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f);
-            mOldValueQuat   = MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f);
+            mCurrValueQuat  = AZ::Quaternion::CreateIdentity();
+            mOldValueQuat   = AZ::Quaternion::CreateIdentity();
         }
 
         /**
          * Constructor for quaternions.
          */
-        ManipulatorCallback(EMotionFX::ActorInstance* actorInstance, const MCore::Quaternion& oldValue)
+        ManipulatorCallback(EMotionFX::ActorInstance* actorInstance, const AZ::Quaternion& oldValue)
         {
             mActorInstance  = actorInstance;
             mOldValueQuat   = oldValue;
             mCurrValueQuat  = oldValue;
-            mOldValueVec = AZ::Vector3::CreateZero();
-            mCurrValueVec = AZ::Vector3::CreateZero();
+            mOldValueVec    = AZ::Vector3::CreateZero();
+            mCurrValueVec   = AZ::Vector3::CreateZero();
         }
 
         /**
@@ -62,7 +62,7 @@ namespace MCommon
          * Update the actor instance.
          */
         virtual void Update(const AZ::Vector3& value)           { mCurrValueVec = value; }
-        virtual void Update(const MCore::Quaternion& value)     { mCurrValueQuat = value; }
+        virtual void Update(const AZ::Quaternion& value)     { mCurrValueQuat = value; }
 
         /**
          * Update old transformation values of the callback
@@ -74,14 +74,14 @@ namespace MCommon
          * @return the position/scale/rotation of the actor instance.
          */
         virtual AZ::Vector3 GetCurrValueVec()           { return mCurrValueVec; }
-        virtual MCore::Quaternion GetCurrValueQuat()    { return mCurrValueQuat; }
+        virtual AZ::Quaternion GetCurrValueQuat()       { return mCurrValueQuat; }
 
         /**
          * Return the old value.
          * @return the old value.
          */
-        const AZ::Vector3& GetOldValueVec() const           { return mOldValueVec; }
-        const MCore::Quaternion& GetOldValueQuat() const    { return mOldValueQuat; }
+        const AZ::Vector3& GetOldValueVec() const       { return mOldValueVec; }
+        const AZ::Quaternion& GetOldValueQuat() const   { return mOldValueQuat; }
 
         /**
          * Apply transformation.
@@ -97,8 +97,8 @@ namespace MCommon
         virtual bool GetResetFollowMode() const             { return false; }
 
     protected:
-        MCore::Quaternion           mOldValueQuat;
-        MCore::Quaternion           mCurrValueQuat;
+        AZ::Quaternion              mOldValueQuat;
+        AZ::Quaternion              mCurrValueQuat;
         AZ::Vector3                 mOldValueVec;
         AZ::Vector3                 mCurrValueVec;
         EMotionFX::ActorInstance*   mActorInstance;

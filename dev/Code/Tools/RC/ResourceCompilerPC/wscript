@@ -22,7 +22,8 @@ def build(bld):
         vs_filter               = 'RC',
         copyright_org           = 'Amazon-CryTek',
         file_list               = 'resourcecompilerpc.waf_files',
-        platforms               = ['win', 'darwin'],
+        pch                     = 'PCH/StdAfx.cpp',
+        platforms               = ['win', 'darwin', 'linux'],
         client_only             = True,
         exclude_monolithic      = True,
         use                     = ['AzToolsFramework',
@@ -33,6 +34,8 @@ def build(bld):
                                    'QT5WIDGETS',
                                    'AWS_CPP_SDK_CORE'],
         includes                = ['.',
+                                   './PCH',
+                                   bld.ThirdPartyPath('boost'),
                                    bld.Path('Code/CryEngine/CryCommon'),
                                    bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                                    bld.ThirdPartyPath('mikkt'),
@@ -54,7 +57,8 @@ def build(bld):
         release_dedicated_defines       = [ 'LY_IGNORE_METRICS' ],
         darwin_defines                  = [ 'LY_IGNORE_METRICS' ],
         darwin_test_defines             = [ 'CGF_PHYSX_COMPILER' ],
-        
+        linux_defines                   = ['LY_IGNORE_METRICS'],
+
         enable_rtti             = True,
 
         win_x64_clang_cxxflags  = ['-fexceptions', '-Wno-nonportable-include-path', '-Wno-format'],
@@ -65,6 +69,8 @@ def build(bld):
                                     'Ole32'],
         win_features            = ['ExternalLyMetrics' ],
         win_use                 = bld.make_aws_library_task_list(['LyMetricsProducer']),
+
+        linux_rpath             = ['$ORIGIN/..'],
         
         
         # Testing

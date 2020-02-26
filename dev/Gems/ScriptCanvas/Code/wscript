@@ -122,7 +122,11 @@ def build(bld):
         debug_dedicated_defines     = list(DEBUG_DEBUGGER_DEFINES + EXECUTION_NOTIFICATION_DEFINES),
         test_all_defines            = list(DEBUG_DEBUGGER_DEFINES + EXECUTION_NOTIFICATION_DEFINES),
 
-        includes        = ['Include', 'Include/ScriptCanvas'],
+        includes        = ['.',
+                           bld.ThirdPartyPath('boost'),
+                           bld.Path('Code/CryEngine/CryCommon'),
+                           'Include',
+                           'Include/ScriptCanvas'],
         use             = ['AzCore', 'AzFramework', 'ScriptEventsStatic','ScriptCanvasDebugger'],
         features        = ['az_code_gen'],
         win_features    = ['crcfix'],
@@ -154,7 +158,11 @@ def build(bld):
         debug_dedicated_defines     = list(DEBUG_DEBUGGER_DEFINES + EXECUTION_NOTIFICATION_DEFINES),
         test_all_defines            = list(DEBUG_DEBUGGER_DEFINES + EXECUTION_NOTIFICATION_DEFINES),
 
-        includes        = ['Include', 'Include/ScriptCanvas'],
+        includes        = ['.',
+                           bld.ThirdPartyPath('boost'),
+                           bld.Path('Code/CryEngine/CryCommon'),
+                           'Include',
+                           'Include/ScriptCanvas'],
         use             = ['AzCore', 'AzFramework'],
         win_features    = ['crcfix'],
         vs_filter       = 'Gems/ScriptCanvas',
@@ -168,7 +176,7 @@ def build(bld):
 
         target          = 'ScriptCanvasEditor',
 
-        platforms       = ['win', 'darwin'],
+        platforms       = ['win', 'darwin', 'linux'],
         configurations  = ['debug', 'profile','debug_test', 'profile_test'],
         file_list       = ['scriptcanvasgem_editor_static.waf_files'],
         defines         = ['SCRIPTCANVAS_EDITOR'] + COMMON_DEFINES,
@@ -190,10 +198,13 @@ def build(bld):
 
     bld.DefineGem(
 
-        includes           = [ '.' , '..', 
-                                'Include',
-                                'Include/ScriptCanvas'
-                                ],
+        includes           = [ '.',
+                               '..',
+                               bld.ThirdPartyPath('boost'),
+                               bld.Path('Code/CryEngine/CryCommon') ,
+                               'Include',
+                               'Include/ScriptCanvas'
+                               ],
         export_includes     = [ '.', 'Include/ScriptCanvas', 'Editor/Include' ],
 
         defines             = COMMON_DEFINES,
@@ -210,6 +221,7 @@ def build(bld):
         file_list           = ['scriptcanvasgem_game.waf_files' ],
         test_all_file_list = ['scriptcanvasgem_tests.waf_files'],
         vs_filter           = 'Gems/ScriptCanvas',
+        linux_rpath = ['$ORIGIN'],
 
         ########################################
         # Editor Gem configuration
@@ -218,7 +230,7 @@ def build(bld):
             export_defines  = [ 'SCRIPTCANVAS_ERRORS_ENABLED'],
 
             features        = ['qt5','az_code_gen'],
-            platforms       = ['win', 'darwin'],
+            platforms       = ['win', 'darwin', 'linux'],
             exclude_monolithic = True,
             client_only     = True,
 
@@ -231,6 +243,7 @@ def build(bld):
                                 'Include/ScriptCanvas',
                                 'Editor/Include',
                                 'Source',
+                                bld.ThirdPartyPath('boost'),
                                 bld.Path('Code/CryEngine/CryCommon'),
                                 bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                                 bld.Path('Code/Sandbox/Editor'),

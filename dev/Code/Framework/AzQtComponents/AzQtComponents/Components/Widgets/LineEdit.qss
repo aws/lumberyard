@@ -15,27 +15,43 @@
 QLineEdit
 {
     height: 16px;
-    padding-left: 8px;
+    /* 4px padding already applied*/
+    padding-left: 0px;
+    /* 14px padding applied by default: 14 - 10 = 4 */
+    padding-right: -10px;
     border-width: 2px;
     border-style: solid;
 }
 
-QLineEdit[HasSearchAction=true] {
-    padding-left: 4px;
+QLineEdit[HasSearchAction=true]
+{
+    /* 10px padding already applied: 10 - 6 = 4 */
+    padding-left: -6px;
 }
 
-QLineEdit:focus
+QLineEdit[HasError]
 {
-    background-color: #FFFFFF;
+    /* 18px padding applied by default */
+    /* 2px internal padding of icon */
+    /* (18 - 16) + 2 = 4px */
+    padding-right: -16px;
 }
 
 QLineEdit:disabled
 {
     background-color: #777777;
-    color: #999999;
+    color: #AAAAAA;
 }
 
 QAbstractItemView QLineEdit
 {
     qproperty-frame: true;
+}
+
+QLineEdit QToolButton
+{
+    max-width: 16px;
+    min-width: 16px;
+    max-height: 16px;
+    min-height: 16px;
 }

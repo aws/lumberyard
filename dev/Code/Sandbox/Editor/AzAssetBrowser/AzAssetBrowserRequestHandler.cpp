@@ -13,6 +13,7 @@
 #include "StdAfx.h"
 
 #include <Editor/AzAssetBrowser/AzAssetBrowserRequestHandler.h>
+#include <Editor/AzAssetBrowser/Preview/LegacyPreviewerFactory.h>
 
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Serialization/Utils.h>
@@ -46,6 +47,7 @@
 
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/AssetEditor/AssetEditorBus.h>
+#include <AzToolsFramework/AssetBrowser/Previewer/PreviewerBus.h>
 
 #include <AzQtComponents/DragAndDrop/ViewportDragAndDrop.h>
 
@@ -245,13 +247,18 @@ namespace AzAssetBrowserRequestHandlerPrivate
 }
 
 AzAssetBrowserRequestHandler::AzAssetBrowserRequestHandler()
+    : m_previewerFactory(aznew LegacyPreviewerFactory)
 {
-    AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusConnect();
+    using namespace AzToolsFramework::AssetBrowser;
+
+    AssetBrowserInteractionNotificationBus::Handler::BusConnect();
     AzQtComponents::DragAndDropEventsBus::Handler::BusConnect(AzQtComponents::DragAndDropContexts::EditorViewport);
+    AzToolsFramework::AssetBrowser::PreviewerRequestBus::Handler::BusConnect();
 }
 
 AzAssetBrowserRequestHandler::~AzAssetBrowserRequestHandler()
 {
+    AzToolsFramework::AssetBrowser::PreviewerRequestBus::Handler::BusDisconnect();
     AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusDisconnect();
     AzQtComponents::DragAndDropEventsBus::Handler::BusDisconnect();
 }
@@ -490,6 +497,15 @@ void AzAssetBrowserRequestHandler::Drop(QDropEvent* event, AzQtComponents::DragA
     {
         ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::SetSelectedEntities, spawnedEntities);
     }
+}
+
+const AzToolsFramework::AssetBrowser::PreviewerFactory* AzAssetBrowserRequestHandler::GetPreviewerFactory(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) const
+{
+    if (m_previewerFactory->IsEntrySupported(entry))
+    {
+        return m_previewerFactory.get();
+    }
+    return nullptr;
 }
 
 void AzAssetBrowserRequestHandler::AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUUID, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers)

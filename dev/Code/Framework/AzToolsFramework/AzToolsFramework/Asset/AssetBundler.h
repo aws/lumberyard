@@ -13,7 +13,7 @@
 
 #include <AzCore/std/string/string.h>
 #include <AzCore/RTTI/TypeInfo.h>
-#include <AzCore/OutCome/OutCome.h>
+#include <AzCore/Outcome/Outcome.h>
 #include <AzToolsFramework/Asset/AssetSeedManager.h>
 #include <AzFramework/Asset/AssetBundleManifest.h>
 

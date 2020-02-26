@@ -198,7 +198,7 @@ namespace AzFramework
     {
         @autoreleasepool
         {
-            NSEvent* event = [NSApp nextEventMatchingMask: NSAnyEventMask
+            NSEvent* event = [NSApp nextEventMatchingMask: NSEventMaskAny
                                     untilDate: [NSDate distantPast]
                                     inMode: NSDefaultRunLoopMode
                                     dequeue: YES];

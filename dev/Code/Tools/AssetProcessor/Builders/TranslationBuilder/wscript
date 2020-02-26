@@ -19,18 +19,19 @@ def build(bld):
         target             = 'TranslationBuilder',
         vs_filter          = 'Tools/AssetProcessor/Builders',
         file_list          = ['translationbuilder.waf_files'],
-        platforms          = ['win', 'darwin'],
+        platforms          = ['win', 'darwin', 'linux'],
         configurations     = ['all'],
         exclude_monolithic = True,
         disable_pch        = True,
         
         # Necessary to add the uselib here to avoid linker errors on Uber builds.
-        uselib          = ['QT5CORE',
-                           'QT5GUI',
-                           'QT5WIDGETS'],
-        win_features        = ['crcfix'],
+        uselib             = ['QT5CORE',
+                              'QT5GUI',
+                              'QT5WIDGETS'],
+        win_features       = ['crcfix'],
         includes           = ['..'], #so that we can specify the module name of TranslationBuilder in the include statements.
         test_all_file_list = ['translationbuilder_tests.waf_files'],
+        linux_rpath        = ['$ORIGIN/..']
     )
 
 

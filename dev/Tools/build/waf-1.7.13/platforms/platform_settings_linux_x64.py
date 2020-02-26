@@ -23,13 +23,37 @@ PLATFORM = 'linux_x64'
 def load_linux_x64_common_settings(ctx):
 
     env = ctx.env
-    
-    # Setup Tools for CLang Toolchain (simply used system installed version)
-    env['AR'] = 'ar'
-    env['CC'] = 'clang'
-    env['CXX'] = 'clang++'
-    env['LINK'] = env['LINK_CC'] = env['LINK_CXX'] = 'clang++'
-    
+
+    platform_settings = ctx.get_platform_settings(PLATFORM)
+
+    default_bin_search_paths = ['/usr/bin']
+
+    cc_compiler = platform_settings.attributes.get('cc_compiler', 'clang')
+    cxx_compiler = platform_settings.attributes.get('cxx_compiler', 'clang++')
+    compiler_bin_search_paths = platform_settings.attributes.get('compiler_search_paths', default_bin_search_paths)
+
+    error_message_fmt = "Unable to detect '%s' in search paths: %s. Make sure it is installed on this system"
+
+    ctx.find_program('ar',
+                     path_list=default_bin_search_paths,
+                     var='AR',
+                     errmsg=error_message_fmt % ('ar', ','.join(default_bin_search_paths)),
+                     silent_output=False)
+
+    ctx.find_program(cc_compiler,
+                     path_list=compiler_bin_search_paths,
+                     var='CC',
+                     errmsg=error_message_fmt % (cc_compiler, ','.join(compiler_bin_search_paths)),
+                     silent_output=False)
+
+    ctx.find_program(cxx_compiler,
+                     path_list=compiler_bin_search_paths,
+                     var='CXX',
+                     errmsg=error_message_fmt % (cxx_compiler, ','.join(compiler_bin_search_paths)),
+                     silent_output=False)
+
+    env['LINK'] = env['LINK_CC'] = env['LINK_CXX'] = env['CXX']
+
     # Pattern to transform outputs
     env['cprogram_PATTERN']   = '%s'
     env['cxxprogram_PATTERN'] = '%s'

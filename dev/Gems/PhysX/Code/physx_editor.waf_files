@@ -1,7 +1,6 @@
 {
     "auto": {
         "Include": [
-            "Include/PhysX/EditorRigidBodyRequestBus.h",
             "Include/PhysX/EditorColliderComponentRequestBus.h"
         ],
         "Source/Components": [
@@ -84,7 +83,9 @@
             "Editor/ColliderAssetScaleMode.h",
             "Editor/ColliderAssetScaleMode.cpp",
             "Editor/DebugDraw.cpp",
-            "Editor/DebugDraw.h"
+            "Editor/DebugDraw.h",
+            "Editor/PolygonPrismMeshUtils.cpp",
+            "Editor/PolygonPrismMeshUtils.h"
         ]
     }
 }

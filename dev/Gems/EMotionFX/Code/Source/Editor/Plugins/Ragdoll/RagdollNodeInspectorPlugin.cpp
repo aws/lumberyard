@@ -377,9 +377,14 @@ namespace EMotionFX
     void RagdollNodeInspectorPlugin::Render(EMStudio::RenderPlugin* renderPlugin, RenderInfo* renderInfo)
     {
         EMStudio::RenderViewWidget* activeViewWidget = renderPlugin->GetActiveViewWidget();
+        if (!activeViewWidget)
+        {
+            return;
+        }
+
         const bool renderColliders = activeViewWidget->GetRenderFlag(EMStudio::RenderViewWidget::RENDER_RAGDOLL_COLLIDERS);
         const bool renderJointLimits = activeViewWidget->GetRenderFlag(EMStudio::RenderViewWidget::RENDER_RAGDOLL_JOINTLIMITS);
-        if (!activeViewWidget || (!renderColliders && !renderJointLimits))
+        if (!renderColliders && !renderJointLimits)
         {
             return;
         }
@@ -493,8 +498,8 @@ namespace EMotionFX
         const AZ::u32 parentNodeIndex = parentNode->GetNodeIndex();
         const Transform& actorInstanceWorldTransform = actorInstance->GetWorldSpaceTransform();
         const Pose* currentPose = actorInstance->GetTransformData()->GetCurrentPose();
-        const AZ::Quaternion& parentOrientation = MCore::EmfxQuatToAzQuat(currentPose->GetModelSpaceTransform(parentNodeIndex).mRotation);
-        const AZ::Quaternion& childOrientation = MCore::EmfxQuatToAzQuat(currentPose->GetModelSpaceTransform(nodeIndex).mRotation);
+        const AZ::Quaternion& parentOrientation = currentPose->GetModelSpaceTransform(parentNodeIndex).mRotation;
+        const AZ::Quaternion& childOrientation = currentPose->GetModelSpaceTransform(nodeIndex).mRotation;
 
         m_vertexBuffer.clear();
         m_indexBuffer.clear();
@@ -506,7 +511,7 @@ namespace EMotionFX
 
         Transform jointModelSpaceTransform = currentPose->GetModelSpaceTransform(parentNodeIndex);
         jointModelSpaceTransform.mPosition = currentPose->GetModelSpaceTransform(nodeIndex).mPosition;
-        const MCore::Matrix jointGlobalTransformNoScale = (jointModelSpaceTransform * actorInstanceWorldTransform).ToMatrix();
+        const Transform jointGlobalTransformNoScale = jointModelSpaceTransform * actorInstanceWorldTransform;
 
         MCommon::RenderUtil* renderUtil = renderInfo->mRenderUtil;
         const size_t numLineBufferEntries = m_lineBuffer.size();
@@ -518,8 +523,8 @@ namespace EMotionFX
 
         for (size_t i = 0; i < numLineBufferEntries; i += 2)
         {
-            renderUtil->RenderLine(m_lineBuffer[i] * jointGlobalTransformNoScale,
-                m_lineBuffer[i + 1] * jointGlobalTransformNoScale, m_lineValidityBuffer[i / 2] ? color : violatedColor);
+            renderUtil->RenderLine(jointGlobalTransformNoScale.TransformPoint(m_lineBuffer[i]),
+                jointGlobalTransformNoScale.TransformPoint(m_lineBuffer[i + 1]), m_lineValidityBuffer[i / 2] ? color : violatedColor);
         }
     }
 
@@ -534,10 +539,10 @@ namespace EMotionFX
 
         const Transform& actorInstanceWorldSpaceTransform = actorInstance->GetWorldSpaceTransform();
         const Pose* currentPose = actorInstance->GetTransformData()->GetCurrentPose();
-        const Transform childJointLocalSpaceTransform(AZ::Vector3::CreateZero(), MCore::AzQuatToEmfxQuat(configuration.m_childLocalRotation));
+        const Transform childJointLocalSpaceTransform(AZ::Vector3::CreateZero(), configuration.m_childLocalRotation);
         const Transform childModelSpaceTransform = childJointLocalSpaceTransform * currentPose->GetModelSpaceTransform(node->GetNodeIndex());
-        const MCore::Matrix jointChildWorldSpaceTransformNoScale = (childModelSpaceTransform * actorInstanceWorldSpaceTransform).ToMatrix();
+        const Transform jointChildWorldSpaceTransformNoScale = (childModelSpaceTransform * actorInstanceWorldSpaceTransform);
 
-        renderInfo->mRenderUtil->RenderArrow(0.1f, jointChildWorldSpaceTransformNoScale.GetTranslation(), jointChildWorldSpaceTransformNoScale.GetRight(), color);
+        renderInfo->mRenderUtil->RenderArrow(0.1f, jointChildWorldSpaceTransformNoScale.mPosition, MCore::GetRight(jointChildWorldSpaceTransformNoScale.ToAZTransform()), color);
     }
 } // namespace EMotionFX

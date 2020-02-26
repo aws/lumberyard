@@ -182,7 +182,7 @@ protected:
         rows    = (DataType***)AZ_OS_MALLOC(sizeof(DataType * *) * planes + rowblocksize * planes, 16);
 
         /* ensure the blocks are aligned */
-        assert(((__int64)buffers % 16) == 0);
+        assert(((uint64)buffers % 16) == 0);
         /* ensure the planes concat aligned */
         assert((planesize % 16) == 0);
 

@@ -120,7 +120,7 @@ void AssetBuilderApplication::StartCommon(AZ::Entity* systemEntity)
         fileIO->SetAlias("@devassets@", gameRoot.c_str());
     }
 
-    AzFramework::StringFunc::Path::Join(gameRoot.c_str(), "config/editor.xml", configFilePath);
+    AzFramework::StringFunc::Path::Join(gameRoot.c_str(), "Config/Editor.xml", configFilePath);
     ReflectModulesFromAppDescriptor(configFilePath.c_str());
 
     // once we load all the modules from the app descriptor, create an entity with the builders inside gems

@@ -467,17 +467,47 @@ namespace AZStd
         typedef R(type)(Args...);
     };
 
+#if __cpp_noexcept_function_type
+    // C++17 makes exception specifications as part of the type in paper P0012R1
+    // Therefore noexcept overloads must distinguished from non-noexcept overloads
+    template<class R, class... Args>
+    struct RemoveFunctionConst<R(Args...) noexcept>
+    {
+        typedef R(type)(Args...) noexcept;
+    };
+#endif
+
     template<class R, class C, class... Args>
     struct RemoveFunctionConst<R(C::*)(Args...)>
     {
         using type = R(C::*)(Args...);
     };
 
+#if __cpp_noexcept_function_type
+    // C++17 makes exception specifications as part of the type in paper P0012R1
+    // Therefore noexcept overloads must distinguished from non-noexcept overloads
+    template<class R, class C, class... Args>
+    struct RemoveFunctionConst<R(C::*)(Args...) noexcept>
+    {
+        using type = R(C::*)(Args...) noexcept;
+    };
+#endif
+
     template<class R, class C, class... Args>
     struct RemoveFunctionConst<R(C::*)(Args...) const>
     {
         using type = R(C::*)(Args...);
     };
+
+#if __cpp_noexcept_function_type
+    // C++17 makes exception specifications as part of the type in paper P0012R1
+    // Therefore noexcept overloads must distinguished from non-noexcept overloads
+    template<class R, class C, class... Args>
+    struct RemoveFunctionConst<R(C::*)(Args...) const noexcept>
+    {
+        using type = R(C::*)(Args...) noexcept;
+    };
+#endif
 
     template <class T>
     typename AZStd::add_rvalue_reference<T>::type declval();

@@ -306,6 +306,11 @@ namespace LmbrCentral
             AZ::TransformNotificationBus::Handler::BusDisconnect(m_renderOptions.m_attachedToEntityId);
         }
 
+        if (m_modificationHelper.IsConnected())
+        {
+            m_modificationHelper.Disconnect();
+        }
+
         if (id.IsValid())
         {
             if (!AZ::TransformNotificationBus::Handler::BusIsConnectedId(id))
@@ -316,6 +321,8 @@ namespace LmbrCentral
             AZ::Transform entityTransform = AZ::Transform::CreateIdentity();
             EBUS_EVENT_ID_RESULT(entityTransform, id, AZ::TransformBus, GetWorldTM);
             UpdateWorldTransform(entityTransform);
+
+            m_modificationHelper.Connect(id);
         }
 
         m_renderOptions.m_attachedToEntityId = id;
@@ -424,8 +431,12 @@ namespace LmbrCentral
 
     void MeshComponentRenderNode::SetMeshAsset(const AZ::Data::AssetId& id)
     {
-        m_meshAsset.Create(id);
-        OnAssetPropertyChanged();
+        AZ::Data::Asset<MeshAsset> asset = AZ::Data::AssetManager::Instance().GetAsset<MeshAsset>(id, false);
+        if (asset)
+        {
+            m_meshAsset = asset;
+            OnAssetPropertyChanged();
+        }
     }
 
     void MeshComponentRenderNode::GetMemoryUsage(class ICrySizer* pSizer) const
@@ -473,9 +484,7 @@ namespace LmbrCentral
         if (asset == m_meshAsset)
         {
             m_meshAsset = asset;
-            m_statObj = m_meshAsset.Get()->m_statObj;
-
-
+            BuildRenderMesh();
 
             if (HasMesh())
             {
@@ -511,7 +520,7 @@ namespace LmbrCentral
                 RegisterWithRenderer(true);
 
                 // Inform listeners that the mesh has been changed
-                EBUS_EVENT_ID(m_renderOptions.m_attachedToEntityId, MeshComponentNotificationBus, OnMeshCreated, asset);
+                LmbrCentral::MeshComponentNotificationBus::Event(m_renderOptions.m_attachedToEntityId, &LmbrCentral::MeshComponentNotifications::OnMeshCreated, asset);
             }
         }
     }
@@ -525,9 +534,12 @@ namespace LmbrCentral
             // Since the new asset passed in has zero refCount. The assigning will clear the refCount of the old m_meshAsset
             // and set the refCount of the new asset to 1, otherwise it will be unloaded.
             m_meshAsset = asset;
-            m_statObj = m_meshAsset.Get()->m_statObj;
+            BuildRenderMesh();
 
             RefreshRenderState();
+
+            // Inform listeners that the mesh has been changed
+            LmbrCentral::MeshComponentNotificationBus::Event(m_renderOptions.m_attachedToEntityId, &LmbrCentral::MeshComponentNotifications::OnMeshCreated, asset);
         }
     }
 
@@ -773,6 +785,49 @@ namespace LmbrCentral
             return;
         }
 
+        IStatObj* obj = GetEntityStatObj();
+
+        for (const LmbrCentral::MeshModificationRequestHelper::MeshLODPrimIndex& meshIndices : m_modificationHelper.MeshesToEdit())
+        {
+            if (meshIndices.lodIndex != 0)
+            {
+                continue;
+            }
+
+            int subObjectCount = obj->GetSubObjectCount();
+            if (subObjectCount == 0)
+            {
+                if (meshIndices.primitiveIndex > 0)
+                {
+                    AZ_Warning("MeshComponentRenderNode", false, "Mesh indices out of range");
+                    continue;
+                }
+
+                MeshModificationNotificationBus::Event(
+                    GetEntityId(),
+                    &MeshModificationNotificationBus::Events::ModifyMesh,
+                    meshIndices.lodIndex,
+                    meshIndices.primitiveIndex,
+                    obj->GetRenderMesh());
+            }
+            else
+            {
+                if (meshIndices.primitiveIndex >= subObjectCount)
+                {
+                    AZ_Warning("MeshComponentRenderNode", false, "Mesh indices out of range");
+                    continue;
+                }
+
+                IStatObj* childObj = obj->GetSubObject(meshIndices.primitiveIndex)->pStatObj;
+                MeshModificationNotificationBus::Event(
+                    GetEntityId(),
+                    &MeshModificationNotificationBus::Events::ModifyMesh,
+                    meshIndices.lodIndex,
+                    meshIndices.primitiveIndex,
+                    childObj->GetRenderMesh());
+            }
+        }
+
         SRendParams rParams(inRenderParams);
 
         // Assign a unique pInstance pointer, otherwise effects involving SRenderObjData will not work for this object.  CEntityObject::Render does this for legacy entities.
@@ -861,7 +916,8 @@ namespace LmbrCentral
     {
         return !m_renderOptions.m_dynamicMesh 
             && !m_renderOptions.m_receiveWind 
-            && (!m_deformNode || !m_deformNode->HasDeformableData());
+            && (!m_deformNode || !m_deformNode->HasDeformableData())
+            && m_modificationHelper.MeshesToEdit().empty();
     }
 
     /*IRenderNode*/ const char* MeshComponentRenderNode::GetName() const
@@ -1129,5 +1185,45 @@ namespace LmbrCentral
     void MeshComponent::SetVisibility(bool isVisible)
     {
         m_meshRenderNode.SetVisible(isVisible);
+    }
+
+    void MeshComponentRenderNode::BuildRenderMesh()
+    {
+        m_statObj = nullptr; // Release smart pointer
+
+        MeshAsset* data = m_meshAsset.Get();
+        if (!data || !data->m_statObj)
+        {
+            return;
+        }
+
+        // Populate m_statObj. If the mesh doesn't require to be unique, we reuse the render mesh from the asset. If the
+        // mesh requires to be unique, we create a copy of the asset's render mesh since it will be modified.
+
+        bool hasClothInverseMasses = !data->m_statObj->GetClothInverseMasses().empty();
+        const int subObjectCount = data->m_statObj->GetSubObjectCount();
+        for (int i = 0; i < subObjectCount && !hasClothInverseMasses; ++i)
+        {
+            IStatObj::SSubObject* subObject = data->m_statObj->GetSubObject(i);
+            if (subObject &&
+                subObject->pStatObj &&
+                !subObject->pStatObj->GetClothInverseMasses().empty())
+            {
+                hasClothInverseMasses = true;
+            }
+        }
+
+        bool useUniqueMesh = hasClothInverseMasses;
+
+        if (useUniqueMesh)
+        {
+            // Create a copy since each mesh can be deforming differently and we need to send different meshes to render
+            m_statObj = data->m_statObj->Clone( /*bCloneGeometry*/ true, /*bCloneChildren*/ true, /*bMeshesOnly*/ false);
+        }
+        else
+        {
+            // Reuse the same render mesh
+            m_statObj = data->m_statObj;
+        }
     }
 } // namespace LmbrCentral

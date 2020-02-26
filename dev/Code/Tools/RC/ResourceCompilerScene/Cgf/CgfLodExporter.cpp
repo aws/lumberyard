@@ -102,7 +102,7 @@ namespace AZ
                         static const AZ::Data::AssetType staticMeshLodsAssetType("{9AAE4926-CB6A-4C60-9948-A1A22F51DB23}");
                         // Using the same guid as the parent group/cgf as this needs to be a lod of that cgf.
                         // Setting the lod to index+1 as 0 means the base mesh and 1-6 are lod levels 0-5.
-                        AZ::SceneAPI::Events::ExportProduct& lodProduct = context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), staticMeshLodsAssetType, index + 1);
+                        AZ::SceneAPI::Events::ExportProduct& lodProduct = context.m_products.AddProduct(AZStd::move(filename), context.m_group.GetId(), staticMeshLodsAssetType, index + 1, AZStd::nullopt);
 
                         // Add this LOD as a dependency to the base CGF
                         context.m_products.AddDependencyToProduct(baseCGFfilename, lodProduct);

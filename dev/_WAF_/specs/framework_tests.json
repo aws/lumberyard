@@ -12,6 +12,7 @@
     [
         "AzCore",
         "AzCoreTestDLL",
+        "AzCoreTests",
         "GridMate",
         "AzFramework",
         "AzToolsFramework",

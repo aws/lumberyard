@@ -31,7 +31,7 @@
 #include <CloudGemMetric/MetricsSettings.h>
 #include <CloudGemMetric/MetricsConfigurations.h>
 #include <CloudGemMetric/DefaultAttributesGenerator.h>
-#include "AWS/ServiceAPI/CloudGemMetricClientComponent.h"
+#include "AWS/ServiceApi/CloudGemMetricClientComponent.h"
 
 /*
 Metrics manager handles direct or batch sending metrics to backend
@@ -64,7 +64,7 @@ namespace CloudGemMetric
 
         // flush all metrics buffered in memory and on file
         void SendBufferedMetrics();
-        
+
         void OnTick(float deltaTime, AZ::ScriptTimePoint& time);
 
         static AZ::IO::FileIOBase* GetFileIO();
@@ -92,11 +92,11 @@ namespace CloudGemMetric
 
         bool CreateMetricsDirIfNotExists();
         const char* GetMetricsDir() const;
-        const char* GetMetricsFilePath() const;        
+        const char* GetMetricsFilePath() const;
         const char* GetLiveUpdateMetricsConfigsFilePath() const;
-        const char* GetDefaultMetricsConfigsFilePath() const;        
+        const char* GetDefaultMetricsConfigsFilePath() const;
         const char* GetDefaultStaticMetricsConfigsFilePath() const;
-        
+
         void SetEventParameters(ServiceAPI::SendMetricToSQSRequest::Parameters& jobParameters, const AZStd::vector<MetricsEventParameter>& metricsParameters) const;
 
         // returns true if this metrics should be filtered, false otherwise and outMetrics will be populated with correct attributes after filtering
@@ -106,13 +106,13 @@ namespace CloudGemMetric
     private:
         ////////////////////////////////////////////
         // these data are protected by m_metricsMutex
-        AZStd::mutex m_metricsMutex;        
+        AZStd::mutex m_metricsMutex;
         AZStd::chrono::system_clock::time_point m_lastFlushToFileTime;
         AZStd::chrono::system_clock::time_point m_lastSendMetricsTime;
         MetricsQueue m_metricsQueue;
         ////////////////////////////////////////////
-                
-        AZStd::mutex m_metricsFileMutex;        
+
+        AZStd::mutex m_metricsFileMutex;
 
         AZStd::unique_ptr<DefaultAttributesGenerator> m_defaultAttributesGenerator;
 

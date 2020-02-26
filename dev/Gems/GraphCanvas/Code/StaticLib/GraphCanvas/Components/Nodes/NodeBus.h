@@ -47,7 +47,7 @@ namespace GraphCanvas
         virtual void SetTranslationKeyedTooltip(const TranslationKeyedString&) = 0;
 
         //! Get the tooltip that is currently set for the node.
-        virtual const AZStd::string& GetTooltip() const = 0;
+        virtual const AZStd::string GetTooltip() const = 0;
 
         //! Sets whether or not the given node will display in the outliner.
         virtual void SetShowInOutliner(bool showInOutliner) = 0;

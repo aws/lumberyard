@@ -435,6 +435,9 @@ namespace NRemoteCompiler
         case AZ::PLATFORM_APPLE_TV:
             platformName = "iOS";
             break;
+        case AZ::PLATFORM_LINUX_64:
+            platformName = "Linux";
+            break;
         default:
             AZ_Assert(false, "Unknown shader platform");
             break;

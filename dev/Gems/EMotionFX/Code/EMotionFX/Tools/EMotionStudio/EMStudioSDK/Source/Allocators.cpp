@@ -14,13 +14,8 @@
 
 namespace EMStudio
 {
-    const char* UIAllocator::GetName() const
+    UIAllocator::UIAllocator() 
+        : UIAllocator::Base("UIAllocator", "EMotion FX UI memory allocator")
     {
-        return "UIAllocator";
-    }
-    
-    const char* UIAllocator::GetDescription() const
-    {
-        return "EMotion FX UI memory allocator";
     }
 }

@@ -84,6 +84,22 @@ namespace AZ
          */
         int ToString(char* output, int outputSize, bool isBrackets = true, bool isDashes = true) const;
 
+        /**
+         * Outputs to a string in one of the following formats
+         * 0123456789abcdef0123456789abcdef
+         * 01234567-89ab-cdef-0123-456789abcdef
+         * {01234567-89ab-cdef-0123-456789abcdef}
+         * {0123456789abcdef0123456789abcdef}
+         * \returns if positive number of characters written to the buffer (including terminate)
+         * if negative the the number of characters required for output (nothing is writen to the output),
+         * including terminating character.
+         */
+        template<size_t SizeT>
+        int ToString(char(&output)[SizeT], bool isBrackets = true, bool isDashes = true) const
+        {
+            return ToString(output, SizeT, isBrackets, isDashes);
+        }
+
         /// The only requirements is that StringType can be constructed from char* and it can copied.
         template<class StringType>
         inline StringType ToString(bool isBrackets = true, bool isDashes = true) const

@@ -33,6 +33,7 @@ def build(bld):
         linux_file_list     = 'aztestscanner_linux.waf_files',
         darwin_file_list    = 'aztestscanner_osx.waf_files',
         darwin_rpath        = ['@executable_path', '@executable_path/rc', '@executable_path/qtlibs/lib'],
+        linux_rpath         = ['@executable_path', '@executable_path/rc', '@executable_path/qtlibs/lib']
     )
 
     bld.recurse(SUBFOLDERS, mandatory=False)

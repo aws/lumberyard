@@ -36,9 +36,10 @@ namespace SceneLoggingExample
             // The SceneAPI libraries require specialized initialization. As early as possible, be 
             // sure to repeat the following two lines for any SceneAPI you want to use. Omitting these 
             // calls or making them too late can cause problems such as missing EBus events.
+#if !defined(SCENE_CORE_STATIC)
             m_sceneCoreModule = AZ::DynamicModuleHandle::Create("SceneCore");
             m_sceneCoreModule->Load(true);
-            
+#endif // !defined(SCENE_CORE_STATIC)
             m_descriptors.insert(m_descriptors.end(), 
             {
                 LoggingGroupBehavior::CreateDescriptor(),
@@ -57,7 +58,9 @@ namespace SceneLoggingExample
         }
 
     private:
+#if !defined(SCENE_CORE_STATIC)
         AZStd::unique_ptr<AZ::DynamicModuleHandle> m_sceneCoreModule;
+#endif // !defined(SCENE_CORE_STATIC)
     };
 } // namespace SceneLoggingExample
 

@@ -3,7 +3,7 @@
     "source": "@3P:tiff@",
     "description": "Tiff Library (static runtime)",
     "includes": [
-        "libtiff"
+        "include/libtiff"
     ],
     "defines": [],
     "lib_required": "True",

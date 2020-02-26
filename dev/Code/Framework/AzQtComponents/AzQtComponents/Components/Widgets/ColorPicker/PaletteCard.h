@@ -16,7 +16,6 @@
 #include <AzQtComponents/Components/Widgets/ColorPicker/Palette.h>
 
 class QUndoStack;
-class QMenu;
 class QMargins;
 class QLayout;
 
@@ -34,7 +33,7 @@ namespace AzQtComponents
         : public QWidget
     {
         Q_OBJECT
-        Q_PROPERTY(QSharedPointer<Palette> palette READ palette);
+        Q_PROPERTY(QSharedPointer<Palette> palette READ palette)
 
     public:
         QSharedPointer<Palette> palette() const;
@@ -66,8 +65,8 @@ namespace AzQtComponents
         : public PaletteCardBase
     {
         Q_OBJECT
-        Q_PROPERTY(QString title READ title WRITE setTitle NOTIFY titleChanged);
-        Q_PROPERTY(bool modified READ modified WRITE setModified NOTIFY modifiedChanged);
+        Q_PROPERTY(QString title READ title WRITE setTitle NOTIFY titleChanged)
+        Q_PROPERTY(bool modified READ modified WRITE setModified NOTIFY modifiedChanged)
 
     public:
         PaletteCard(QSharedPointer<Palette> palette, Internal::ColorController* controller, QUndoStack* undoStack, QWidget* parent = nullptr);

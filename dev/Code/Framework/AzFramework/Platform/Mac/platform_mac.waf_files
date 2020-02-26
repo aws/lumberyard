@@ -62,6 +62,10 @@
         "Input/Devices/VirtualKeyboard/Platform/Mac":
         [
             "../Common/Unimplemented/AzFramework/Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard_Unimplemented.cpp"
+        ],
+        "Windowing":
+        [
+            "AzFramework/Windowing/NativeWindow_Mac.mm"
         ]
     }
 }

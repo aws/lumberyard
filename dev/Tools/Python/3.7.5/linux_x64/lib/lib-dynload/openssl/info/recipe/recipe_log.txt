@@ -1,0 +1,528 @@
+commit b681f1e69bc9452b5efda55b05154fb3d24e5f35
+Author: Forrest Waters <fwaters@anaconda.com>
+Date:   Mon Sep 30 07:22:55 2019 -0500
+
+    make openssl tests work with py27
+
+commit 8562f50502d1c091251cc5046385c7ee673bb98e
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Thu Sep 12 13:15:58 2019 +0200
+
+    Fix detect_binary_files_with_prefix
+
+commit 85a46cbe794603a09952330b2fd7a179ae7e1f47
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Thu Sep 12 10:46:23 2019 +0100
+
+    (WIP) fix and test for SSL cert path in Python
+
+commit de9cf2fe0c9ec2e1b70df756e29cb4c29c462795
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Thu Sep 12 10:14:55 2019 +0100
+
+    Added python downstream test
+
+commit 06e7778d0e410a10b23f3d19b1f4011faa12ab3d
+Author: Kai Tietz <ktietz@anaconda.com>
+Date:   Wed Sep 11 10:45:50 2019 +0200
+
+    fix patch
+
+commit 3237e837bd6a6464c663afd5478570d52e8deff5
+Author: Kai Tietz <ktietz@anaconda.com>
+Date:   Wed Sep 11 10:24:13 2019 +0200
+
+    Updated recipe and patch to 1.1.1d
+
+commit dbd757e8ee38a19000c843e8e4cda1473115b46b
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Fri May 31 10:47:21 2019 +0200
+
+    (--binary_prefix) (WIP) disable detect_binary_files_with_prefix
+
+commit f9240f14fef908e1e8808459b7543df51e468a5f
+Merge: 04ab29d f989e89
+Author: Sophia Castellarin <scastellarin@anaconda.com>
+Date:   Thu May 30 10:24:44 2019 -0500
+
+    Merge pull request #2 from AnacondaRecipes/add-patch
+    
+    Add patch
+
+commit f989e896a70d2da4d64471ca929006ad45231977
+Author: Sophia Castellarin <scastellarin@anaconda.com>
+Date:   Wed May 29 11:17:18 2019 -0500
+
+    1.1.1c
+
+commit eb86e622423e1bdc47fa489359fdfdf59c9db01e
+Author: Sophia Castellarin <scastellarin@anaconda.com>
+Date:   Tue May 28 13:58:14 2019 -0500
+
+    1.1.1c
+
+commit 04ab29d380981c157daba98842e20710b11fc9bf
+Author: Jonathan Helmus <jjhelmus@gmail.com>
+Date:   Thu Mar 7 10:34:20 2019 -0600
+
+    install_ssldirs as well as install_sw
+    
+    See https://github.com/conda-forge/openssl-feedstock/pull/41
+
+commit 7b4faa635c5217b6f230c368329174324bdf82e8
+Author: Jonathan Helmus <jjhelmus@gmail.com>
+Date:   Tue Feb 26 09:59:41 2019 -0600
+
+    sync with conda-forge recipe
+    
+    * add carlodri as maintainer
+    * add support for aarch64
+    * make grep test more forgiving
+
+commit b1cd9bcde89eb4f14154a2669a46fe185da97999
+Author: Jonathan Helmus <jjhelmus@gmail.com>
+Date:   Tue Feb 26 09:59:34 2019 -0600
+
+    use install_sw target to skip installation of man pages
+
+commit 8014cd8aebd04c96e0eba7e1f0b9eece2007d73c
+Author: Jonathan Helmus <jjhelmus@gmail.com>
+Date:   Tue Feb 26 09:58:55 2019 -0600
+
+    remove unused patches
+
+commit 00d615a072400332ea9ddffd5d8a60fa72ef40b5
+Author: Jonathan Helmus <jjhelmus@gmail.com>
+Date:   Tue Feb 26 09:58:37 2019 -0600
+
+    update recipe to 1.1.1b
+
+commit 261eeef66d7e97278f276783fa0a7db370ec9f13
+Author: Jonathan Helmus <jjhelmus@gmail.com>
+Date:   Tue Feb 26 09:41:53 2019 -0600
+
+    1.1.1a
+
+commit 3cfaa6fef568ea316c951209dbaa14b8c29c2e89
+Author: Michael Sarahan <msarahan@gmail.com>
+Date:   Mon Dec 17 15:10:19 2018 -0600
+
+    fix doc url to point to 1.1.1
+
+commit 6e4e06c169dcd0326c9ae997516e1df02429b51a
+Author: Michael Sarahan <msarahan@gmail.com>
+Date:   Sun Oct 28 20:50:31 2018 -0400
+
+    remove yasm compatibility patch
+
+commit 02454cc8b6c552bb8278f95439b4db7ed9ec2ad0
+Author: Nehal J Wani <nehaljw.kkd1@gmail.com>
+Date:   Fri Oct 26 15:02:31 2018 -0500
+
+    Add patch for vc<14
+    
+    xref: https://github.com/openssl/openssl/pull/7193
+
+commit 47ee98578098ce7b7f102ec2c69237b766c35ddc
+Author: Michael Sarahan <msarahan@gmail.com>
+Date:   Thu Oct 25 07:50:17 2018 -0500
+
+    update to 1.1.1
+
+commit d594020bee31bcd37efa81c199d933aa6756a593
+Author: Nehal J Wani <nehaljw.kkd1@gmail.com>
+Date:   Tue Aug 14 09:16:51 2018 -0500
+
+    Bump version to 1.0.2p
+
+commit 17bff5d164272bc4366226269e33a672cd6e51e2
+Merge: 4b7d685 528a3b9
+Author: Jonathan J. Helmus <jjhelmus@gmail.com>
+Date:   Thu Aug 2 15:52:19 2018 -0500
+
+    Merge pull request #1 from jjhelmus/cve_2018_0737
+    
+    apply patch for CVE-2018-0737
+
+commit 528a3b961bd0a7c55aeb5dfcbf33ee18ac6b480e
+Author: Jonathan Helmus <jjhelmus@gmail.com>
+Date:   Thu Aug 2 12:33:43 2018 -0500
+
+    add comments about CVE patch
+
+commit ce4aef227735c205ae99c6809bb5a2fa60b859ef
+Author: Jonathan Helmus <jjhelmus@gmail.com>
+Date:   Thu Aug 2 12:33:09 2018 -0500
+
+    use perl in build prefix
+
+commit 6a41447ba49e5954a2f3e0dc238822770f2ab3ea
+Author: Jonathan Helmus <jjhelmus@gmail.com>
+Date:   Thu Aug 2 12:19:11 2018 -0500
+
+    apply patch for CVE-2018-0737
+
+commit 4b7d685f6d2c488716afeaf84d60e489abc18d77
+Author: Jonathan Helmus <jjhelmus@gmail.com>
+Date:   Tue Mar 27 10:54:17 2018 -0500
+
+    update to version 1.0.2o
+
+commit 27c818b5c125a90029ebafd5cd6c54a1b9a35b7c
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Thu Jan 4 21:33:51 2018 +0000
+
+    Removal of LDFLAGS_CC on macOS
+
+commit 0de9693e54dd08d6583acddd295a77d39879d3dd
+Author: Jonathan Helmus <jjhelmus@gmail.com>
+Date:   Thu Dec 7 10:32:26 2017 -0600
+
+    update to version 1.0.2n
+
+commit c096952d40b6d249eb86edb2353ae5e876f04e7a
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Mon Dec 4 05:05:51 2017 -0500
+
+    Add ppc64le support
+
+commit 0b97947e6025bedb9415063c38e5f0362fb0d6cc
+Author: Michael Sarahan <msarahan@gmail.com>
+Date:   Tue Nov 14 15:41:14 2017 -0600
+
+    remove vc feature
+
+commit 01ff9818c4cd1c9442bcdb4b602cb9960e08375c
+Author: Jonathan Helmus <jjhelmus@gmail.com>
+Date:   Fri Nov 3 12:59:46 2017 -0500
+
+    update recipe to version 1.0.2m
+    
+    1.0.2m includes fixed for CVE-2017-3736 and CVE-2017-3735
+    
+    https://www.openssl.org/news/secadv/20171102.txt
+
+commit d1ef59c0c9c038712a61188f0bb4c6e201d4e9cb
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Mon Oct 16 16:16:44 2017 +0100
+
+    Disable executable stack
+    
+    Fixes: https://github.com/ContinuumIO/anaconda-issues/issues/6424
+
+commit a7d65b67a1a4622a04954843432a49dfeaaf86be
+Author: Michael Sarahan <msarahan@gmail.com>
+Date:   Mon Oct 9 12:26:48 2017 -0500
+
+    add run_exports
+
+commit bfa1bed569c6981133d7d68b632a32c37230ffd5
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Wed Sep 20 01:06:26 2017 +0000
+
+    Bump openssl build (needs a new conda-build)
+
+commit 7281a30c5f534c018fefa4db25801cf5b2e69cef
+Author: Michael Sarahan <msarahan@gmail.com>
+Date:   Mon Sep 18 13:09:02 2017 -0500
+
+    cb3 simplification
+
+commit fe9dbdf0498d342e0ebff00ebec802a8e137b939
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Sun Sep 17 15:59:18 2017 +0100
+
+    Version bump to stay ahead of the old repo
+
+commit 50ace22bf8a5463a33ad3437911c5cc657e52c6d
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Sat Sep 16 11:11:33 2017 -0700
+
+    Use yasm for win32
+
+commit d57d6dbc0be70b72e82ed23594697610a2d8296d
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Sat Sep 16 12:34:22 2017 +0100
+
+    Fix stray %
+
+commit e59a2981a18d2f2eed5c80483f01a46f28736087
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Sat Sep 16 11:55:33 2017 +0100
+
+    Fix patch
+
+commit 47bca3c42e224d112eb16fc291fa682597c20887
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Sat Sep 16 03:53:05 2017 -0700
+
+    Fixing patch
+
+commit c88588de0ce0d9997801008f4b060b3b08e7205f
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Sat Sep 16 03:20:38 2017 -0700
+
+    Add 32-bit yasm compatibility
+
+commit ab9955427e6e62497430ba2ec46e7593d477cf0e
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Sun Aug 27 17:29:59 2017 +0100
+
+    Generalize logging
+
+commit d581b53173587b2676e966b9f11444f58645ed24
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Sun Aug 27 02:36:25 2017 +0100
+
+    Remove circular python test/requires dependency
+
+commit e00f8b01568b3f2f43b3ff2ec651bd6b6101774a
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Sun Aug 20 14:29:44 2017 +0100
+
+    Darwin cross-compilation fixes and testing fixes
+    
+    The openssl testsuite returns 2 despite ALL TESTS SUCCESSFUL so
+    check for that instead.
+
+commit 8594ab299410002c0e4d707c04e867ff1a9c6a53
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Sun Apr 9 12:07:42 2017 +0100
+
+    Allow bootstrapping, add cross-compilation and hardening support
+    
+    Also contains some work for building in parallel. To finish this
+    a working replacement for makedepend (from X11) is needed.
+    
+    We now depend on a conda perl package rather than the system one.
+
+commit a5c64b87d61cf393df324d2cd1f51a29ce6841f2
+Author: Ray Donnelly <mingw.android@gmail.com>
+Date:   Wed Jul 5 23:44:46 2017 +0100
+
+    Revert "Stricter perl pin"
+    
+    This reverts commit 22bf05c9496778447e0358c6150a291f0ed7205c.
+
+commit 86bc5c8a72b3505210d611dffb93ffaec81b10a4
+Author: Julien Schueller <schueller@phimeca.com>
+Date:   Wed Jun 21 23:53:51 2017 +0200
+
+    Update to 1.0.2l
+
+commit 4854bb324a349d5d38a5015d66625aa70ba837ac
+Merge: 51bb284 caf43c4
+Author: Jonathan J. Helmus <jjhelmus@gmail.com>
+Date:   Mon Apr 10 09:28:56 2017 -0500
+
+    Merge pull request #12 from pmlandwehr/master
+    
+    Update template, tick version to k, rerender
+
+commit caf43c4dfcc8abd197fe4888dbc2480efce6aada
+Author: Peter Landwehr <pmlandwehr@gmail.com>
+Date:   Thu Apr 6 22:18:45 2017 -0700
+
+    MNT: Re-rendered with conda-smithy 2.2.2
+
+commit 22bf05c9496778447e0358c6150a291f0ed7205c
+Author: Peter Landwehr <pmlandwehr@gmail.com>
+Date:   Thu Apr 6 22:17:33 2017 -0700
+
+    Stricter perl pin
+
+commit 70bf7bb0b4282fa22a68d7ed7f52002621a737ee
+Author: Peter Landwehr <pmlandwehr@gmail.com>
+Date:   Thu Apr 6 21:34:09 2017 -0700
+
+    MNT: Re-rendered with conda-smithy 2.2.2
+
+commit 625d0277921141482a7d64f040f0c287fa4b36c4
+Author: Peter Landwehr <pmlandwehr@gmail.com>
+Date:   Thu Apr 6 21:31:19 2017 -0700
+
+    skip py36 and win
+
+commit 1ce2026d2b254bf8f1d61b40dbd55c0b19168b05
+Author: Peter Landwehr <pmlandwehr@gmail.com>
+Date:   Thu Apr 6 21:30:04 2017 -0700
+
+    Update perl
+
+commit f1941128b3254c30547e9bddbf34aa0e7b0c5408
+Author: Peter Landwehr <pmlandwehr@gmail.com>
+Date:   Thu Apr 6 21:04:37 2017 -0700
+
+    MNT: Re-rendered with conda-smithy 2.2.2
+
+commit aaf916b6cac0f2a759f5c32fb5245dc302d6ac93
+Author: Peter Landwehr <pmlandwehr@gmail.com>
+Date:   Thu Apr 6 20:59:04 2017 -0700
+
+    Pin perl req, update lice, fix win p36 vc
+
+commit f1ce1f19b3007b997f200c463110e7482d92db9d
+Author: Peter Landwehr <pmlandwehr@gmail.com>
+Date:   Thu Apr 6 17:43:02 2017 -0700
+
+    MNT: Re-rendered with conda-smithy 2.2.2
+
+commit 50e668d3705e1ef43b129be0796208d7ee700781
+Author: Peter Landwehr <pmlandwehr@gmail.com>
+Date:   Thu Apr 6 17:42:33 2017 -0700
+
+    Tick version: j -> k
+
+commit 3a275a5587424a3e33329bc02f1a174018ce172a
+Author: Peter M. Landwehr <plandweh@cs.cmu.edu>
+Date:   Thu Apr 6 17:39:05 2017 -0700
+
+    Update template
+
+commit 51bb284aa2e1154a2343cdbe7ea8bd4732264daa
+Merge: 2234844 5441cd9
+Author: Jonathan J. Helmus <jjhelmus@gmail.com>
+Date:   Tue Jan 10 19:51:41 2017 -0600
+
+    Merge pull request #10 from jakirkham/fix_license_lint
+    
+    Fix license lint
+
+commit 5441cd906a9f6e2b4b75bd970f7ffc6f3fe2c461
+Author: Jonathan Helmus <jjhelmus@gmail.com>
+Date:   Tue Nov 29 10:52:43 2016 -0600
+
+    Build long prefix package using conda-build 2.x
+
+commit 55a4da82d86573d6c9b05c9baea06ab7369c668d
+Author: John Kirkham <kirkhamj@janelia.hhmi.org>
+Date:   Tue Jan 3 02:31:20 2017 -0500
+
+    MNT: Re-rendered with conda-smithy 1.7.0
+    
+    Re-render to propagate updated license metadata.
+
+commit 96f89a4a0d08279db0fe8dd2daad66fb7a783407
+Author: John Kirkham <kirkhamj@janelia.hhmi.org>
+Date:   Tue Jan 3 02:30:34 2017 -0500
+
+    Drop license link as the license file is included.
+
+commit 223484461eb872cc3f9bccbd68b77229c1497cd9
+Merge: 8375d03 7e9277b
+Author: Jonathan J. Helmus <jjhelmus@gmail.com>
+Date:   Wed Nov 30 07:44:07 2016 -0600
+
+    Merge pull request #8 from jjhelmus/long_prefix
+    
+    Build long prefix package using conda-build 2.x
+
+commit 7e9277bf3ef2b6fd05e27df1aef87518d550356e
+Author: Jonathan Helmus <jjhelmus@gmail.com>
+Date:   Tue Nov 29 10:52:43 2016 -0600
+
+    Build long prefix package using conda-build 2.x
+
+commit ee3ba968c8f7279673451c9649f2893547abf743
+Author: Jonathan Helmus <jjhelmus@gmail.com>
+Date:   Tue Nov 29 10:40:06 2016 -0600
+
+    MNT: Re-rendered with conda-smithy 1.6.0
+
+commit 8375d03a797823bf18c62bd720eae33b1a09d7ad
+Merge: d06c6bb e1c96e0
+Author: jakirkham <jakirkham@gmail.com>
+Date:   Tue Oct 18 23:21:09 2016 -0400
+
+    Merge pull request #7 from jakirkham/re-render_master_1.3.3
+    
+    MNT: Re-rendered with conda-smithy 1.3.3 [ci skip]
+
+commit e1c96e07fe49934d4661c97ea0340f1c2a9884f0
+Author: John Kirkham <kirkhamj@janelia.hhmi.org>
+Date:   Tue Oct 18 20:37:34 2016 -0400
+
+    MNT: Re-rendered with conda-smithy 1.3.3
+
+commit d06c6bbe5f707749513b6c919b12c1338f4da995
+Merge: 3752e65 84f2a8b
+Author: Jonathan J. Helmus <jjhelmus@gmail.com>
+Date:   Mon Jul 25 11:51:11 2016 -0500
+
+    Merge pull request #4 from jakirkham/win_openssl_exe
+    
+    Install Windows openssl executable
+
+commit 84f2a8b178196646476abc1082640b82d3879800
+Author: John Kirkham <kirkhamj@janelia.hhmi.org>
+Date:   Sun Jul 24 20:51:27 2016 -0400
+
+    recipe Bump build number to 2.
+
+commit 92278b35e84facc63c8b8d5a83719ce81ebddcd9
+Author: John Kirkham <kirkhamj@janelia.hhmi.org>
+Date:   Sun Jul 24 17:37:01 2016 -0400
+
+    recipe: Add a test for the `openssl` executable.
+
+commit dd22c0293df554c259d9a90b260011d67ae9510f
+Author: jakirkham <jakirkham@gmail.com>
+Date:   Fri Jul 22 02:56:30 2016 -0400
+
+    recipe: Install openssl executable on Windows.
+
+commit 3752e650334c42a858fcc0625b6bdaa301e1dcb7
+Merge: f4c5cd3 4042b08
+Author: Jonathan J. Helmus <jjhelmus@gmail.com>
+Date:   Sun Jul 24 16:28:45 2016 -0500
+
+    Merge pull request #5 from jakirkham/add_perl
+    
+    Add perl
+
+commit 4042b08b8aa0d03005f50d9221a16e89ee793842
+Author: John Kirkham <kirkhamj@janelia.hhmi.org>
+Date:   Fri Jul 22 11:30:04 2016 -0400
+
+    recipe: Bump build number to 1.
+
+commit 43c9f0e068f0083365d90bb4ecf2994a73797027
+Author: John Kirkham <kirkhamj@janelia.hhmi.org>
+Date:   Fri Jul 22 11:29:10 2016 -0400
+
+    Re-render with conda-smithy version 0.10.5 to handle perl.
+
+commit 10bf4b292879950e230f5f305e9d57e6389f3a0b
+Author: John Kirkham <kirkhamj@janelia.hhmi.org>
+Date:   Fri Jul 22 11:26:51 2016 -0400
+
+    recipe: Add perl for builds on all platforms. Drop version constraint.
+
+commit f4c5cd32cae236a3726a4340635610b97cb0a673
+Merge: e3ef0ba 07719db
+Author: Phil Elson <pelson.pub@gmail.com>
+Date:   Sat May 14 11:37:16 2016 +0100
+
+    Merge pull request #1 from conda-forge-admin/feedstock_rerender_master
+    
+    MNT: Re-render the feedstock
+
+commit 07719dbcf728e413c059a96a812a50f9c7803e38
+Author: conda-forge-admin <pelson.pub+conda-forge@gmail.com>
+Date:   Sat May 14 02:43:34 2016 +0000
+
+    MNT: Updated the feedstock for conda-smithy version 0.10.3.
+    
+    [ci skip]
+
+commit e3ef0ba61bb217ae38adeb6f3eddd430baa70bfd
+Author: Travis-CI on github.com/conda-forge/staged-recipes <conda-forge@googlegroups.com>
+Date:   Tue May 10 10:39:12 2016 +0000
+
+    Re-render the feedstock after CI registration.
+
+commit 7c460edd8a984880c78f5822a0594e93c0a0b40f
+Author: Travis-CI on github.com/conda-forge/staged-recipes <conda-forge@googlegroups.com>
+Date:   Tue May 10 10:37:57 2016 +0000
+
+    Initial commit of the openssl feedstock.

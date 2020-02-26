@@ -367,8 +367,9 @@ void CTrackViewTrackPropsDlg::OnUpdateTime()
                 CTrackViewKeyHandle existingKey = track->GetKeyByTime(time);
 
                 // If there is an existing key at this time, remove it so the 
-                // new key at this time is the only one here.
-                if (existingKey.IsValid())
+                // new key at this time is the only one here. Make sure it's actually a different
+                // key, because time can "change" but then be quantized (or snapped) to the same time by track->GetKeyByTime(time).
+                if (existingKey.IsValid() && (existingKey.GetIndex() != m_keyHandle.GetIndex()))
                 {
                     // Save the old time before we set the new time so we
                     // can reselect the m_keyHandle after the Delete. 

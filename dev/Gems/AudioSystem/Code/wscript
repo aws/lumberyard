@@ -56,7 +56,7 @@ def build(bld):
         # Platform Roots
         platform_roots      = [bld.PlatformRoot('Platform', export_includes=False)],
 
-        platforms           = ['win', 'darwin'],
+        platforms           = ['win', 'darwin', 'linux'],
 
         use                 = ['AzToolsFramework', 'EditorCommon'],
         uselib              = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS'],
@@ -118,7 +118,7 @@ def build(bld):
         Editor = dict(
             disable_pch = True,
             file_list = ['audiosystem_stub.waf_files'],
-            platforms = ['win', 'darwin'],
+            platforms = ['win', 'darwin', 'linux'],
             disable_tests = True,
         )
     )

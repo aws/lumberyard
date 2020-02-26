@@ -101,9 +101,10 @@ namespace AzToolsFramework
         const AZ::Transform localFromWorld = worldFromLocal.GetInverseFast();
 
         // convert to local space - snap if enabled
-        const AZ::Vector3 localFinalSurfacePosition = GridSnapping(viewportId)
+        const GridSnapParameters gridSnapParams = GridSnapSettings(viewportId);
+        const AZ::Vector3 localFinalSurfacePosition = gridSnapParams.m_gridSnap
             ? CalculateSnappedTerrainPosition(
-                worldSurfacePosition, worldFromLocal, viewportId, GridSize(viewportId))
+                worldSurfacePosition, worldFromLocal, viewportId, gridSnapParams.m_gridSize)
             : localFromWorld * worldSurfacePosition;
 
         SetSelectedPosition(localFinalSurfacePosition);

@@ -5,7 +5,9 @@
         [
             "Launcher_Windows.cpp",
             "Launcher_Traits_Windows.h",
-            "Launcher_Traits_Platform.h"
+            "Launcher_Traits_Platform.h",
+            "../../common/Launcher_host.cpp",
+            "../../common/Launcher_host.h"
         ]
     }
 }

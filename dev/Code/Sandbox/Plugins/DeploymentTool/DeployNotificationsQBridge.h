@@ -13,7 +13,7 @@
 
 #include "DeployNotificationsBus.h"
 
-#include <QObject.h>
+#include <QObject>
 
 
 namespace DeployTool

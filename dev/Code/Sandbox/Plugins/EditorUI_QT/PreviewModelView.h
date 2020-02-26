@@ -20,6 +20,8 @@
 //Local
 #include "api.h"
 
+#include <Cry_Color.h>
+
 struct IStatObj;
 struct ICharacterInstance;
 struct SRenderingPassInfo;

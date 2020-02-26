@@ -123,6 +123,8 @@ namespace AZ
                     fbxMaterial->GetTextureFileName(FbxSDKWrapper::FbxMaterialWrapper::MaterialMapType::Specular).c_str());
                 material->SetTexture(DataTypes::IMaterialData::TextureMapType::Bump,
                     fbxMaterial->GetTextureFileName(FbxSDKWrapper::FbxMaterialWrapper::MaterialMapType::Bump).c_str());
+                material->SetTexture(DataTypes::IMaterialData::TextureMapType::Normal,
+                    fbxMaterial->GetTextureFileName(FbxSDKWrapper::FbxMaterialWrapper::MaterialMapType::Normal).c_str());
                 material->SetDiffuseColor(fbxMaterial->GetDiffuseColor());
                 material->SetSpecularColor(fbxMaterial->GetSpecularColor());
                 material->SetEmissiveColor(fbxMaterial->GetEmissiveColor());
@@ -139,6 +141,7 @@ namespace AZ
                 }
                 material->SetOpacity(opacity);
 
+                material->SetUniqueId(fbxMaterial->GetUniqueId());
                 return material;
             }
         } // namespace FbxSceneBuilder

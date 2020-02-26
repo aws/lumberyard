@@ -61,7 +61,7 @@ namespace PakHelpers
         }
 
         RcFile m_rcFile;
-        __int64 m_sourceFileSize;
+        int64 m_sourceFileSize;
         bool m_bIsLastMip;
 
         string m_streamingSuffix;

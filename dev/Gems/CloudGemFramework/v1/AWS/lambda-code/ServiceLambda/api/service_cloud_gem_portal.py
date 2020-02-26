@@ -25,36 +25,40 @@ REGION = os.environ.get('AWS_REGION')
 DEPENDENCY_REGEX_PATTERN = "System\.import\(dependencies\)"
 APP_REGEX_PATTERN = "System\.import\(app\)"
 
+
 @api
-def open(request):    
-    s3_client = boto3.client('s3', REGION, config=Config(region_name=REGION,signature_version='s3v4', s3={'addressing_style': 'virtual'}))
-    
+def open(request):
+    s3_client = boto3.client('s3', REGION, config=Config(region_name=REGION, signature_version='s3v4', s3={'addressing_style': 'virtual'}))
+
     content = get_index(s3_client)
     content = content.replace(get_match_group(DEPENDENCY_REGEX_PATTERN, content),
                               "System.import('{}')".format(get_presigned_url(s3_client, PROJECT_CGP_DEPENDENCY_FILE)))
     content = content.replace(get_match_group(APP_REGEX_PATTERN, content),
-                              "System.import('{}')".format(get_presigned_url(s3_client, PROJECT_CGP_APP_FILE)))        
+                              "System.import('{}')".format(get_presigned_url(s3_client, PROJECT_CGP_APP_FILE)))
     print content
     return content
-    
+
+
 def get_index(s3_client):
     # Request the index file
     try:
         s3_index_obj_request = s3_client.get_object(Bucket=BUCKET_ID, Key=PROJECT_CGP_ROOT_FILE)
     except ClientError as e:
         print e
-        raise errors.ClientError("Could not read from the key '{}' in the S3 bucket '{}'.".format(PROJECT_CGP_ROOT_FILE, BUCKET_ID), e)
+        raise errors.ClientError("Could not read from the key '{}' in the S3 bucket '{}'. Failed with: {}".format(PROJECT_CGP_ROOT_FILE, BUCKET_ID, e.message))
 
     # Does the lambda have access to it?
-    if s3_index_obj_request['ResponseMetadata']['HTTPStatusCode'] != 200:        
+    if s3_index_obj_request['ResponseMetadata']['HTTPStatusCode'] != 200:
         raise errors.ClientError("The user does not have access to the file index.html file.")
 
-    content = s3_index_obj_request['Body'].read().decode('utf-8')    
+    content = s3_index_obj_request['Body'].read().decode('utf-8')
     return content
 
-def get_match_group(pattern, content):    
+
+def get_match_group(pattern, content):
     match = re.search(pattern, content, re.M | re.I)
     return match.group()
-    
+
+
 def get_presigned_url(s3_client, key):
     return s3_client.generate_presigned_url('get_object', Params={'Bucket': BUCKET_ID, 'Key': key}, ExpiresIn=2000, HttpMethod="GET")

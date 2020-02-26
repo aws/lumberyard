@@ -23,9 +23,12 @@
 #include <AzQtComponents/Components/Widgets/ColorPicker/PaletteCard.h>
 #include <AzQtComponents/Components/Widgets/ColorPicker/PaletteCardCollection.h>
 #include <AzQtComponents/Components/Widgets/ColorPicker/ColorWarning.h>
+#include <AzQtComponents/Components/Widgets/ColorPicker/GammaEdit.h>
 #include <AzQtComponents/Components/Widgets/Eyedropper.h>
 #include <AzQtComponents/Components/ConfigHelpers.h>
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/Widgets/SpinBox.h>
+#include <AzQtComponents/Components/Widgets/CheckBox.h>
 #include <AzQtComponents/Utilities/Conversions.h>
 #include <AzQtComponents/Utilities/ColorUtilities.h>
 
@@ -38,6 +41,7 @@
 #include <QHBoxLayout>
 #include <QDialogButtonBox>
 #include <QMenu>
+#include <QCheckBox>
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QScopedValueRollback>
@@ -641,11 +645,20 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, const QString
         savePalette(palette, true);
     });
     connect(m_paletteCardCollection, &PaletteCardCollection::paletteCountChanged, this, [this] {
-        const bool visible = m_paletteCardCollection->count() > 0;
+        const bool visible = !m_paletteCardCollection->isEmpty();
         m_paletteCardSeparator->setVisible(visible);
         m_paletteCardCollection->setVisible(visible);
     });
     containerLayout->addWidget(m_paletteCardCollection);
+
+    // Gamma
+    m_gammaSeparator = makePaddedSeparator(this);
+    containerLayout->addWidget(m_gammaSeparator);
+
+    m_gammaEdit = new GammaEdit(this);
+    connect(m_gammaEdit, &GammaEdit::toggled, m_preview, &ColorPreview::setGammaEnabled);
+    connect(m_gammaEdit, &GammaEdit::gammaChanged, m_preview, &ColorPreview::setGamma);
+    containerLayout->addWidget(m_gammaEdit);
 
     // buttons
 

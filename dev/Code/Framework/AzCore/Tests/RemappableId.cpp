@@ -78,6 +78,23 @@ namespace UnitTest
             AZ_TYPE_INFO(RemapUuidAndEntityIdData, "{6951A116-505C-47E0-9310-2E60D040F390}");
             AZ_CLASS_ALLOCATOR(RemapUuidAndEntityIdData, AZ::SystemAllocator, 0);
 
+            // copying entities is forbidden.
+            RemapUuidAndEntityIdData()
+            {
+            }
+
+            RemapUuidAndEntityIdData(const RemapUuidAndEntityIdData& other)
+            {
+                m_remappableUuid = other.m_remappableUuid;
+                m_uuid1 = other.m_uuid1;
+                m_uuid2 = other.m_uuid2;
+                m_remappableEntityId = other.m_remappableEntityId;
+                m_entityId1 = other.m_entityId1;
+                m_entityId2 = other.m_entityId2;
+                m_entity.SetId(other.m_entity.GetId()); // for this test, we only copy the ID.
+                m_entityRef = other.m_entityRef;
+            }
+
             static void Reflect(AZ::SerializeContext& serializeContext)
             {
                 serializeContext.Class<RemapUuidAndEntityIdData>()

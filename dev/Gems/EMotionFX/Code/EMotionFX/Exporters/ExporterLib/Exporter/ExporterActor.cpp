@@ -22,6 +22,7 @@
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/EventManager.h>
 #include <EMotionFX/Source/Importer/ActorFileFormat.h>
+#include <MCore/Source/LogManager.h>
 
 
 //#define EMFX_DETAILED_SAVING_PERFORMANCESTATS
@@ -141,7 +142,7 @@ namespace ExporterLib
         SaveActorHeader(file, targetEndianType);
 
         // save actor info
-        SaveActorFileInfo(file, actor->GetNumLODLevels(), actor->GetMotionExtractionNodeIndex(), actor->GetRetargetRootNodeIndex(), "", "", actor->GetName(), actor->GetUnitType(), targetEndianType);
+        SaveActorFileInfo(file, actor->GetNumLODLevels(), actor->GetMotionExtractionNodeIndex(), actor->GetRetargetRootNodeIndex(), "", "", actor->GetName(), actor->GetUnitType(), targetEndianType, actor->GetOptimizeSkeleton());
 
         // save nodes
         EMotionFX::GetEventManager().OnSubProgressText("Saving nodes");

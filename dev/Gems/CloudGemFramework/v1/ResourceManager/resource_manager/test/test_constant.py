@@ -13,6 +13,7 @@
 # Testing
 TEST_CONTEXT_FILE = "tmp_last_running_{}_{}.json"
 DEPLOYMENT_NAME = "TestDeployment1"
+RELEASE_DEPLOYMENT_NAME = "Release1"
 PROJECT_STACK_NAME = "Test"
 STATE_RAN = 1
 TEST_NAME_PREFIX = "cctest"

@@ -400,6 +400,11 @@ namespace ScriptCanvas
                     AZ_Error("Script Canvas", false, "The ebus %s has no destroy handler!", ebusName.data());
                 }
 
+                if (m_ebus->m_name.compare(m_ebusName) != 0)
+                {
+                    m_ebusName = m_ebus->m_name;
+                }
+
                 AZ_Verify(m_ebus->m_createHandler->InvokeResult(m_handler), "Ebus handler creation failed %s", ebusName.data());
                 AZ_Assert(m_handler, "Ebus create handler failed %s", ebusName.data());
 

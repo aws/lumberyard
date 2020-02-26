@@ -207,17 +207,30 @@ namespace AssetProcessor
         int portNumber = 0;
         ApplicationServerBus::BroadcastResult(portNumber, &ApplicationServerBus::Events::GetServerListeningPort);
 
+        #if !AZ_TRAIT_OS_PLATFORM_APPLE && !AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+        auto params = AZStd::string::format(R"(-task=%s -id="%s" -gamename="%s" -gamecache="%s" -gameroot="%s" -port %d)",
+                task, builderGuid.c_str(), gameName.toUtf8().constData(), projectCacheRoot.absolutePath().toUtf8().constData(), gameRoot.toUtf8().constData(), portNumber);
+        #else
         auto params = AZStd::string::format(R"(-task=%s -id="%s" -gamename="\"%s\"" -gamecache="\"%s\"" -gameroot="\"%s\"" -port %d)",
                 task, builderGuid.c_str(), gameName.toUtf8().constData(), projectCacheRoot.absolutePath().toUtf8().constData(), gameRoot.toUtf8().constData(), portNumber);
+        #endif // !AZ_TRAIT_OS_PLATFORM_APPLE && !AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
 
         if (moduleFilePath && moduleFilePath[0])
         {
+        #if !AZ_TRAIT_OS_PLATFORM_APPLE && !AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+            params.append(AZStd::string::format(R"( -module="%s")", moduleFilePath).c_str());
+        #else
             params.append(AZStd::string::format(R"( -module="\"%s\"")", moduleFilePath).c_str());
+        #endif // !AZ_TRAIT_OS_PLATFORM_APPLE && !AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
         }
 
         if (!jobDescriptionFile.empty() && !jobResponseFile.empty())
         {
+        #if !AZ_TRAIT_OS_PLATFORM_APPLE && !AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+            params = AZStd::string::format(R"(%s -input="%s" -output="%s")", params.c_str(), jobDescriptionFile.c_str(), jobResponseFile.c_str());
+        #else
             params = AZStd::string::format(R"(%s -input="\"%s\"" -output="\"%s\"")", params.c_str(), jobDescriptionFile.c_str(), jobResponseFile.c_str());
+        #endif // !AZ_TRAIT_OS_PLATFORM_APPLE && !AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
         }
 
         return params;

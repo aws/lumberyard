@@ -97,6 +97,8 @@ namespace AZ
 
         if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context))
         {
+            serializeContext->RegisterGenericType<Data::Asset<Data::AssetData>>();
+
             serializeContext->Class<AssetManagerComponent, AZ::Component>()
                 ->Version(1)
                 ;

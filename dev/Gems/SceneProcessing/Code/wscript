@@ -12,11 +12,17 @@
 
 def build(bld):
     bld.DefineGem (
-        includes            = [ bld.Path('Code/Tools') ],
+        includes            = ['.',
+                               bld.ThirdPartyPath('boost'),
+                               bld.Path('Code/CryEngine/CryCommon'),
+                               bld.Path('Code/Tools') ],
         disable_pch         = True,
 
         editor              = dict(
-            includes        = [ bld.Path('Code/Tools') ],
+            includes        = ['.',
+                               bld.ThirdPartyPath('boost'),
+                               bld.Path('Code/CryEngine/CryCommon'),
+                               bld.Path('Code/Tools') ],
             use             = ['SceneCore',
                                'SceneData',
                                'FbxSceneBuilder',
@@ -24,6 +30,7 @@ def build(bld):
             disable_pch     = True,
             features        = ['crcfix', 'qt5'],
             uselib          = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS', 'MIKKT'],
+            linux_linkflags = ['-stdlib=libstdc++'],
             defines         = ['SCENE_PROCESSING_EDITOR']
             )
     )

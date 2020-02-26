@@ -104,8 +104,8 @@ namespace EMotionFX
          */
         struct EMFX_API MCORE_ALIGN_PRE(16) Transformation
         {
-            MCore::Quaternion   mRotation;          /**< The rotation as absolute value. So not a delta value, but a target (absolute) rotation. */
-            MCore::Quaternion   mScaleRotation;     /**< The scale rotation, as absolute value. */
+            AZ::Quaternion      mRotation;          /**< The rotation as absolute value. So not a delta value, but a target (absolute) rotation. */
+            AZ::Quaternion      mScaleRotation;     /**< The scale rotation, as absolute value. */
             AZ::Vector3         mPosition;          /**< The position as a delta, so the difference between the original and target position. */
             AZ::Vector3         mScale;             /**< The scale as a delta, so the difference between the original and target scale. */
             uint32              mNodeIndex;         /**< The node number to apply this on. */
@@ -169,7 +169,7 @@ namespace EMotionFX
          * @param scale The input scale to which relative adjustments will be applied.
          * @param weight The absolute weight value.
          */
-        void ApplyTransformation(ActorInstance* actorInstance, uint32 nodeIndex, AZ::Vector3& position, MCore::Quaternion& rotation, AZ::Vector3& scale, float weight) override;
+        void ApplyTransformation(ActorInstance* actorInstance, uint32 nodeIndex, AZ::Vector3& position, AZ::Quaternion& rotation, AZ::Vector3& scale, float weight) override;
 
         /**
          * Checks if this morph target would influence the given node.

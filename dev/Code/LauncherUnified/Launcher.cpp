@@ -200,24 +200,6 @@ namespace
     };
 #endif // AZ_TRAIT_LAUNCHER_USE_CRY_DYNAMIC_MODULE_HANDLE
 
-    struct CryAllocatorsRAII
-    {
-        CryAllocatorsRAII()
-        {
-            AZ_Assert(!AZ::AllocatorInstance<AZ::LegacyAllocator>::IsReady(), "Expected allocator to not be initialized, hunt down the static that is initializing it");
-            AZ_Assert(!AZ::AllocatorInstance<CryStringAllocator>::IsReady(), "Expected allocator to not be initialized, hunt down the static that is initializing it");
-
-            AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
-            AZ::AllocatorInstance<CryStringAllocator>::Create();
-        }
-
-        ~CryAllocatorsRAII()
-        {
-            AZ::AllocatorInstance<CryStringAllocator>::Destroy();
-            AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
-        }
-    };
-
     void RunMainLoop(AzGameFramework::GameApplication& gameApplication)
     {
         // Ideally we'd just call GameApplication::RunMainLoop instead, but
@@ -278,32 +260,6 @@ namespace
 
 namespace LumberyardLauncher
 {
-    bool PlatformMainInfo::CopyCommandLine(const char* commandLine)
-    {
-        if (!commandLine)
-        {
-            return false;
-        }
-
-        const size_t commandLineLen = strlen(commandLine) + 1; // +1 for the null terminator
-        if (commandLineLen >= AZ_COMMAND_LINE_LEN)
-        {
-            return false;
-        }
-        auto ret = azstrncpy(m_commandLine, AZ_COMMAND_LINE_LEN, commandLine, commandLineLen);
-        bool commandLineCopied = false;
-    #if AZ_TRAIT_USE_SECURE_CRT_FUNCTIONS
-        commandLineCopied = (ret == 0);
-    #else
-        commandLineCopied = (ret != nullptr);
-    #endif
-        if (commandLineCopied)
-        {
-            m_commandLineLen = commandLineLen;
-        }
-        return commandLineCopied;
-    }
-
     bool PlatformMainInfo::CopyCommandLine(int argc, char** argv)
     {
         for (int argIndex = 0; argIndex < argc; ++argIndex)
@@ -345,6 +301,14 @@ namespace LumberyardLauncher
             AZ_COMMAND_LINE_LEN - m_commandLineLen,
             needsQuote ? "\"%s\"" : "%s",
             arg);
+
+        // Inject the argmument in the argument buffer to preserve/replicate argC and argV
+        azstrncpy(&m_commandLineArgBuffer[m_nextCommandLineArgInsertPoint],
+            AZ_COMMAND_LINE_LEN - m_nextCommandLineArgInsertPoint,
+            arg,
+            argLen+1);
+        m_argV[m_argC++] = &m_commandLineArgBuffer[m_nextCommandLineArgInsertPoint];
+        m_nextCommandLineArgInsertPoint += argLen + 1;
 
         m_commandLineLen = pendingLen;
         return true;
@@ -431,13 +395,34 @@ namespace LumberyardLauncher
     #endif // AZ_TRAIT_LAUNCHER_LOWER_CASE_PATHS
 
         // Game Application (AzGameFramework)
-        AzGameFramework::GameApplication gameApplication;
+        int     gameArgC = mainInfo.m_argC;
+        char**  gameArgV = const_cast<char**>(mainInfo.m_argV);
+        int*    argCParam = (gameArgC > 0) ? &gameArgC : nullptr;
+        char*** argVParam = (gameArgC > 0) ? &gameArgV : nullptr;
+
+        AzGameFramework::GameApplication gameApplication(argCParam, argVParam);
         {
-            char pathToGameDescriptorFile[AZ_MAX_PATH_LEN] = { 0 };
-            AzGameFramework::GameApplication::GetGameDescriptorPath(pathToGameDescriptorFile, engineConfig.m_gameFolder);
 
         #if AZ_TRAIT_LAUNCHER_LOWER_CASE_PATHS
-            AZStd::to_lower(pathToGameDescriptorFile, pathToGameDescriptorFile + strlen(pathToGameDescriptorFile));
+            char pathToGameDescriptorFileLower[AZ_MAX_PATH_LEN] = { 0 };
+            AzGameFramework::GameApplication::GetGameDescriptorPath(pathToGameDescriptorFileLower, engineConfig.m_gameFolder);
+            AZStd::to_lower(pathToGameDescriptorFileLower, pathToGameDescriptorFileLower + strlen(pathToGameDescriptorFileLower));
+
+            const char* pathsToGameDescriptorFile[] = {
+                pathToGameDescriptorFileLower
+            };
+        #else
+            char pathToGameDescriptorFileOriginal[AZ_MAX_PATH_LEN] = { 0 };
+            AzGameFramework::GameApplication::GetGameDescriptorPath(pathToGameDescriptorFileOriginal, engineConfig.m_gameFolder);
+
+            char pathToGameDescriptorFileLower[AZ_MAX_PATH_LEN] = { 0 };
+            AzGameFramework::GameApplication::GetGameDescriptorPath(pathToGameDescriptorFileLower, engineConfig.m_gameFolder);
+            AZStd::to_lower(pathToGameDescriptorFileLower, pathToGameDescriptorFileLower + strlen(pathToGameDescriptorFileLower));
+
+            const char* pathsToGameDescriptorFile[] = {
+                pathToGameDescriptorFileOriginal,
+                pathToGameDescriptorFileLower
+            };
         #endif // AZ_TRAIT_LAUNCHER_LOWER_CASE_PATHS
 
             // this is mostly to account for an oddity on Android when the assets are packed inside the APK,
@@ -450,9 +435,17 @@ namespace LumberyardLauncher
             }
 
             char fullPathToGameDescriptorFile[AZ_MAX_PATH_LEN] = { 0 };
-            azsnprintf(fullPathToGameDescriptorFile, AZ_MAX_PATH_LEN, "%s%s%s", pathToAssets, pathSep, pathToGameDescriptorFile);
-
-            if (!AZ::IO::SystemFile::Exists(fullPathToGameDescriptorFile))
+            bool descriptorFound = false;
+            for (const char* pathToGameDescriptorFile : pathsToGameDescriptorFile)
+            {
+                azsnprintf(fullPathToGameDescriptorFile, AZ_MAX_PATH_LEN, "%s%s%s", pathToAssets, pathSep, pathToGameDescriptorFile);
+                if (AZ::IO::SystemFile::Exists(fullPathToGameDescriptorFile))
+                {
+                    descriptorFound = true;
+                    break;
+                }
+            }
+            if (!descriptorFound)
             {
                 AZ_Error("Launcher", false, "Application descriptor file not found: %s", fullPathToGameDescriptorFile);
                 return ReturnCode::ErrAppDescriptor;
@@ -534,12 +527,13 @@ namespace LumberyardLauncher
         }
         else
         {
-            AZ_TracePrintf("Launcher", "Application is configured to use device local files at %s", systemInitParams.rootPath);
-            AZ_TracePrintf("Launcher", "Log and cache files will be written to device storage");
+            AZ_TracePrintf("Launcher", "Application is configured to use device local files at %s\n", systemInitParams.rootPath);
+            AZ_TracePrintf("Launcher", "Log and cache files will be written to device storage\n");
 
             const char* writeStorage = mainInfo.m_appWriteStoragePath;
             if (writeStorage)
             {
+                AZ_TracePrintf("Launcher", "User Storage will be set to %s/user\n", writeStorage);
                 azsnprintf(systemInitParams.userPath, AZ_MAX_PATH_LEN, "%s/user", writeStorage);
             }
         }

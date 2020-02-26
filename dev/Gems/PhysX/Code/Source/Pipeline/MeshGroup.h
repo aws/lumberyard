@@ -13,7 +13,7 @@
 #pragma once
 
 #include <AzCore/Memory/Memory.h>
-#include <AzCore/RTTI/Rtti.h>
+#include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <SceneAPI/SceneCore/Containers/RuleContainer.h>
 #include <SceneAPI/SceneCore/DataTypes/Groups/ISceneNodeGroup.h>
@@ -68,6 +68,8 @@ namespace PhysX
             AZ::u32 GetGaussMapLimit() const;
 
             // TriMesh only params
+            bool GetMergeMeshes() const;
+            void SetMergeMeshes(bool mergeMeshes);
             bool GetWeldVertices() const;
             void SetWeldVertices(bool weldVertices);
             bool GetDisableCleanMesh() const;
@@ -98,6 +100,7 @@ namespace PhysX
             AZ::u32 m_gaussMapLimit;
 
             // TriMesh parameters
+            bool m_mergeMeshes = true;
             bool m_weldVertices;
             bool m_disableCleanMesh;
             bool m_force32BitIndices;

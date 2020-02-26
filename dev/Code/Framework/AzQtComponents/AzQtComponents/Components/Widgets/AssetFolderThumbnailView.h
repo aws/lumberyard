@@ -73,7 +73,7 @@ namespace AzQtComponents
         static Config defaultConfig();
 
         explicit AssetFolderThumbnailView(QWidget* parent = nullptr);
-        virtual ~AssetFolderThumbnailView() override;
+        ~AssetFolderThumbnailView() override;
 
         enum class ThumbnailSize
         {

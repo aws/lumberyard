@@ -30,6 +30,20 @@ namespace AzQtComponents
 {
     class Style;
 
+    class CustomSlider
+        : public QSlider
+    {
+        Q_OBJECT
+    public:
+        explicit CustomSlider(Qt::Orientation orientation, QWidget* parent);
+    protected:
+        void mousePressEvent(QMouseEvent* ev) override;
+        void mouseReleaseEvent(QMouseEvent* ev) override;
+
+    Q_SIGNALS:
+        void moveSlider(bool moving);
+    };
+
     /**
      * Custom slider control, wrapping Lumberyard functionality.
      * Also provides all of the painting code for LY's sliders.
@@ -70,7 +84,8 @@ namespace AzQtComponents
                 QColor colorDisabled;
 
                 int size;
-                int disabledMargin;
+                int hoverSize;
+                int sizeMinusMargin;
             };
 
             struct GrooveConfig
@@ -107,6 +122,8 @@ namespace AzQtComponents
         void setOrientation(Qt::Orientation orientation);
         Qt::Orientation orientation() const;
 
+        void sliderIsInMoving(bool b);
+
         QPoint toolTipOffset() const { return m_toolTipOffset; }
         void setToolTipOffset(const QPoint& toolTipOffset) { m_toolTipOffset = toolTipOffset; }
 
@@ -125,12 +142,12 @@ namespace AzQtComponents
          * slider->setToolTipFormatting("", "%");
          * 
          */
-        void setToolTipFormatting(QString prefix, QString postFix);
+        void setToolTipFormatting(const QString& prefix, const QString& postFix);
 
         /*!
          * Shows a hover tooltip with the right positioning on top of a slider
          */
-        static void showHoverToolTip(QString toolTipText, const QPoint& globalPosition, QSlider* slider, QWidget* toolTipParentWidget, int width, int height, const QPoint& toolTipOffset);
+        static void showHoverToolTip(const QString& toolTipText, const QPoint& globalPosition, QSlider* slider, QWidget* toolTipParentWidget, int width, int height, const QPoint& toolTipOffset);
 
         /*!
          * Returns the value along the slider (between min and max) corresponding to the input pos
@@ -151,7 +168,7 @@ namespace AzQtComponents
          * Returns default button config data.
          */
         static Config defaultConfig();
-
+        static void initStaticVars(const QPoint& verticalToolTipOffset, const QPoint& horizontalToolTipOffset);
     Q_SIGNALS:
         void sliderPressed();
         void sliderMoved(int position);
@@ -164,7 +181,7 @@ namespace AzQtComponents
 
         bool eventFilter(QObject* watched, QEvent* event) override;
 
-        QSlider* m_slider = nullptr;
+        CustomSlider* m_slider = nullptr;
         QString m_toolTipPrefix;
         QString m_toolTipPostfix;
 
@@ -174,7 +191,7 @@ namespace AzQtComponents
         static int sliderThickness(const Style* style, const QStyleOption* option, const QWidget* widget, const Config& config);
         static int sliderLength(const Style* style, const QStyleOption* option, const QWidget* widget, const Config& config);
 
-        static QRect sliderHandleRect(const Style* style, const QStyleOptionSlider* option, const QWidget* widget, const Config& config);
+        static QRect sliderHandleRect(const Style* style, const QStyleOptionSlider* option, const QWidget* widget, const Config& config, bool isHovered = true);
         static QRect sliderGrooveRect(const Style* style, const QStyleOptionSlider* option, const QWidget* widget, const Config& config);
 
         // methods used by Style
@@ -193,6 +210,7 @@ namespace AzQtComponents
         QPoint m_mousePos;
 
         QPoint m_toolTipOffset;
+        bool m_moveSlider = false;
     };
 
 
@@ -243,7 +261,7 @@ namespace AzQtComponents
         Q_PROPERTY(double maximum READ maximum WRITE setMaximum)
         Q_PROPERTY(int numSteps READ numSteps WRITE setNumSteps)
         Q_PROPERTY(double value READ value WRITE setValue NOTIFY valueChanged USER true)
-        Q_PROPERTY(int decimals READ decimals WRITE setDecimals);
+        Q_PROPERTY(int decimals READ decimals WRITE setDecimals)
 
     public:
         SliderDouble(QWidget* parent = nullptr);

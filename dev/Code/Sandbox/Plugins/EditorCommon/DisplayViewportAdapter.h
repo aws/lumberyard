@@ -22,7 +22,7 @@
 //Local
 #include "EditorCommonAPI.h"
 
-class QViewport;
+class EDITOR_COMMON_API QViewport;
 
 class EDITOR_COMMON_API CDisplayViewportAdapter
     : public ::IDisplayViewport

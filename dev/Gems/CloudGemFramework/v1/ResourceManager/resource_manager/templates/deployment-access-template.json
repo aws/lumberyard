@@ -70,11 +70,14 @@
                             "Sid": "ReadProjectDeploymentAndResourceGroupStackState",
                             "Effect": "Allow",
                             "Action": [
+                                "cloudformation:DescribeStacks",
                                 "cloudformation:DescribeStackResources",
-                                "cloudformation:DescribeStackResource"
+                                "cloudformation:DescribeStackResource",
+                                "cloudformation:ListStackResources"
                             ],
                             "Resource": [
                                 { "Fn::Join": [ "", [ "arn:aws:cloudformation:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":stack/", { "Ref": "ProjectStack" }, "/*" ]] },
+                                { "Fn::Join": [ "", [ "arn:aws:cloudformation:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":stack/", { "Ref": "ProjectStack" }, "-*" ]] },
                                 { "Fn::Join": [ "", [ "arn:aws:cloudformation:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":stack/", { "Ref": "DeploymentStack" }, "/*" ]] },
                                 { "Fn::Join": [ "", [ "arn:aws:cloudformation:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":stack/", { "Ref": "DeploymentStack" }, "-*" ]] }
                             ]
@@ -289,6 +292,7 @@
                             "Effect": "Allow",
                             "Action": [
                                 "iam:PassRole",
+                                "iam:GetRole",
                                 "iam:GetRolePolicy",
                                 "iam:ListRolePolicies"
                             ],
@@ -310,12 +314,23 @@
                             "Sid": "UpdateDeploymentAndResourceGroupStacks",
                             "Effect": "Allow",
                             "Action": [
-                                "cloudformation:DescribeStacks",
                                 "cloudformation:DescribeStackEvents",
                                 "cloudformation:GetTemplate",
                                 "cloudformation:UpdateStack"
                             ],
                             "Resource": [
+                                { "Fn::Join": [ "", [ "arn:aws:cloudformation:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":stack/", { "Ref": "DeploymentStack" }, "/*" ]] },
+                                { "Fn::Join": [ "", [ "arn:aws:cloudformation:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":stack/", { "Ref": "DeploymentStack" }, "-*" ]] }
+                            ]
+                        },
+                        {
+                            "Sid": "DescribeProjectDeploymentAndResourceGroupStacks",
+                            "Effect": "Allow",
+                            "Action": [
+                                "cloudformation:DescribeStacks"
+                            ],
+                            "Resource": [
+                                { "Fn::Join": [ "", [ "arn:aws:cloudformation:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":stack/", { "Ref": "ProjectStack" } ]] },
                                 { "Fn::Join": [ "", [ "arn:aws:cloudformation:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":stack/", { "Ref": "DeploymentStack" }, "/*" ]] },
                                 { "Fn::Join": [ "", [ "arn:aws:cloudformation:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":stack/", { "Ref": "DeploymentStack" }, "-*" ]] }
                             ]

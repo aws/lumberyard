@@ -272,6 +272,8 @@ TEST_F(SaveDataTest, SaveDataBufferUsingDataBufferDeleterAzFree)
 class TestObject
 {
 public:
+    virtual ~TestObject() = default;
+
     static constexpr const char* DataBufferName = "TestSaveObject";
 
     AZ_TYPE_INFO(TestObject, "{9CE29971-8FE2-41FF-AD5B-CB15F1B92834}");

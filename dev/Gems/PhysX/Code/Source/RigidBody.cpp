@@ -415,6 +415,11 @@ namespace PhysX
         }
     }
 
+    bool RigidBody::IsGravityEnabled() const
+    {
+        return m_pxRigidActor->getActorFlags().isSet(physx::PxActorFlag::eDISABLE_GRAVITY) == false;
+    }
+
     void RigidBody::SetGravityEnabled(bool enabled)
     {
         m_pxRigidActor->setActorFlag(physx::PxActorFlag::eDISABLE_GRAVITY, enabled == false);

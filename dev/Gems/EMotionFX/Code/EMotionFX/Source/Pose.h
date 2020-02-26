@@ -14,8 +14,6 @@
 
 #include <AzCore/std/containers/unordered_map.h>
 #include <MCore/Source/AlignedArray.h>
-#include <MCore/Source/Vector.h>
-#include <MCore/Source/Quaternion.h>
 #include <EMotionFX/Source/PoseData.h>
 #include <EMotionFX/Source/Transform.h>
 

@@ -426,6 +426,7 @@ void CFragmentEditorPage::OnToggleTimelineUnits()
 //////////////////////////////////////////////////////////////////////////
 void CFragmentEditorPage::OnReloadAnimations()
 {
+#ifdef EDITOR_PCDEBUGCODE
     if (m_modelViewport == NULL)
     {
         return;
@@ -451,6 +452,7 @@ void CFragmentEditorPage::OnReloadAnimations()
         }
     }
     SetTime(0.0f);
+#endif // EDITOR_PCDEBUGCODE
 }
 
 //////////////////////////////////////////////////////////////////////////

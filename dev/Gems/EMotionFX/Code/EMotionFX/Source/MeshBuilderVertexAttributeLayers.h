@@ -15,6 +15,7 @@
 // include required headers
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
+#include <AzCore/Math/Vector2.h>
 #include <AzCore/std/string/string.h>
 #include <MCore/Source/Array.h>
 #include <MCore/Source/Endian.h>
@@ -170,7 +171,7 @@ namespace EMotionFX
 
     // some standard layer types
     DECLARE_MESHBUILDERATTRIBUTELAYER(MeshBuilderVertexAttributeLayerVector2,      AZ::Vector2)
-    DECLARE_MESHBUILDERATTRIBUTELAYER(MeshBuilderVertexAttributeLayerVector3,      AZ::PackedVector3f)
+    DECLARE_MESHBUILDERATTRIBUTELAYER(MeshBuilderVertexAttributeLayerVector3,      AZ::Vector3)
     DECLARE_MESHBUILDERATTRIBUTELAYER(MeshBuilderVertexAttributeLayerVector4,      AZ::Vector4)
     DECLARE_MESHBUILDERATTRIBUTELAYER(MeshBuilderVertexAttributeLayerUInt32,       uint32)
     DECLARE_MESHBUILDERATTRIBUTELAYER(MeshBuilderVertexAttributeLayerFloat,        float)

@@ -42,12 +42,7 @@ namespace AZ
     void UserSettingsComponent::Deactivate()
     {
         UserSettingsComponentRequestBus::Handler::BusDisconnect();
-
-        if (m_saveOnShutdown)
-        {
-            Save();
-        }
-
+        // We specifically avoid auto-saving user settings here because that could cause crashes on shutdown since the module that created the user settings may be unloaded at this point
         m_provider.Deactivate();
     }
 
@@ -87,7 +82,6 @@ namespace AZ
             Save();
         }
         m_provider.Deactivate();
-        m_saveOnShutdown = false;
     }
 
     //-----------------------------------------------------------------------------

@@ -18,6 +18,7 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/unordered_set.h>
 #include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/parallel/atomic.h>
 #include <string>
 #include <vector>
 
@@ -112,7 +113,7 @@ private:
 
 class CCrySimpleServer
 {
-    static volatile AtomicCountType             ms_ExceptionCount;
+    static AZStd::atomic_long             ms_ExceptionCount;
     CCrySimpleSock*                     m_pServerSocket;
     void            Init();
 public:
@@ -120,7 +121,7 @@ public:
     CCrySimpleServer();
 
 
-    static AtomicCountType          GetExceptionCount() { return ms_ExceptionCount; }
+    static long          GetExceptionCount() { return ms_ExceptionCount; }
     static void                             IncrementExceptionCount();
 };
 

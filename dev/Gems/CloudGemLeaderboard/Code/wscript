@@ -28,10 +28,11 @@ def build(bld):
         file_list = file_list,
 
         platforms = ['all'],
+        includes  = [ '.',
+                      bld.ThirdPartyPath('boost'),
+                      bld.Path('Code/CryEngine/CryCommon')],
         uselib = ['AWS_CPP_SDK_CORE', 'AWS_CPP_SDK_LAMBDA'],
         shared_settings = ['awsgem.json'],
-
+        
         restricted_script = 'update_restricted_parameters',
-        includes = [bld.Path('Code/CryEngine/CryCommon')
-                   ],
     )

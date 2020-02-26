@@ -14,6 +14,7 @@
 #include "MotionInstancePool.h"
 #include "MotionInstance.h"
 #include <EMotionFX/Source/Allocators.h>
+#include <MCore/Source/LogManager.h>
 
 
 namespace EMotionFX

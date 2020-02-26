@@ -24,17 +24,36 @@ apt-get install -y gcc # Internal Developers Only
 apt-get install -y binutils-2.26
 apt-get install -y libc++-dev # required for clang to work
 apt-get install -y libc++abi-dev
-apt-get install -y clang-3.8
+apt-get install -y clang
 apt-get install -y uuid-dev
 apt-get install -y python-tk
 # apt-get install -y qt-sdk
 apt-get install -y openjdk-7-jre
 apt-get install -y libncurses5-dev
 apt-get install -y helix-cli
+apt-get install -y libcurl3
 apt-get install -y libcurl4-openssl-dev
 apt-get install -y python-pip
 apt-get install -y zlib1g-dev # required for AZCG
+apt-get install -y libjpeg-dev
+apt-get install -y libjbig-dev
+apt-get install -y libsdl2-dev # Needed for WWise
+apt-get install -y libcurl3-nss # required by libaws-cpp-sdk-core.so
 pip install awscli
+
+# Graphics packages
+apt-get install -y libx11-dev
+apt-get install -y mesa-common-dev
+
+# Qt 5.12 dependencies
+apt-get install -y libopus-dev
+apt-get install -y libwebpmux3
+apt-get install -y libwebpdemux2
+apt-get install -y libwebp-dev
+
+# Create a symlink to libGL and libEGL so we can link with them.
+ln -s /usr/lib/x86_64-linux-gnu/libGL.so.1 /usr/lib/libGL.so
+ln -s /usr/lib/x86_64-linux-gnu/libEGL.so.1 /usr/lib/libEGL.so
 
 # Configuration
 # mv /usr/bin/ld /usr/bin/ld.bak
@@ -62,6 +81,10 @@ echo "python-pip                   | 8.1.1                | `dpkg -l python-pip 
 echo "python-tk                    | 2.7.11               | `dpkg -l python-tk | grep -E "^ii" | tr -s ' ' | cut -d' ' -f3`"
 echo "ubuntu-release-upgrader-core | 16.04.22             | `dpkg -l ubuntu-release-upgrader-core | grep -E "^ii" | tr -s ' ' | cut -d' ' -f3`"
 echo "uuid-dev                     | 2.27.1               | `dpkg -l uuid-dev | grep -E "^ii" | tr -s ' ' | cut -d' ' -f3`"
+echo "libopus-dev                  | 1.1.2-1ubuntu1       | `dpkg -l libopus-dev | grep -E "^ii" | tr -s ' ' | cut -d' ' -f3`"
+echo "libwebpmux3                  | 0.6.1-2              | `dpkg -l libwebpmux3 | grep -E "^ii" | tr -s ' ' | cut -d' ' -f3`"
+echo "libwebpdemux2                | 0.6.1-2              | `dpkg -l libwebpdemux2 | grep -E "^ii" | tr -s ' ' | cut -d' ' -f3`"
+echo "libwebp-dev                  | 0.6.1-2              | `dpkg -l libwebp-dev | grep -E "^ii" | tr -s ' ' | cut -d' ' -f3`"
 echo "=============================|======================|============================"
 echo
 echo

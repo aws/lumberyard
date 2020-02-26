@@ -26,51 +26,6 @@ namespace PhysX
         {
             return Physics::CapsuleShapeConfiguration(inputCapsuleConfig.m_height, inputCapsuleConfig.m_radius);
         }
-
-        AZStd::shared_ptr<Physics::ShapeConfiguration> CreateScaledShapeConfig(AZ::EntityId entityId)
-        {
-            AZ::Crc32 shapeType;
-            LmbrCentral::ShapeComponentRequestsBus::EventResult(shapeType, entityId,
-                &LmbrCentral::ShapeComponentRequests::GetShapeType);
-
-            // all currently supported shape types scale uniformly based on the largest element of the non-uniform scale
-            AZ::Vector3 nonUniformScale = AZ::Vector3::CreateOne();
-            AZ::TransformBus::EventResult(nonUniformScale, entityId, &AZ::TransformBus::Events::GetLocalScale);
-            AZ::Vector3 uniformScale = AZ::Vector3(nonUniformScale.GetMaxElement());
-
-            if (shapeType == ShapeConstants::Box)
-            {
-                AZ::Vector3 boxDimensions = AZ::Vector3::CreateZero();
-                LmbrCentral::BoxShapeComponentRequestsBus::EventResult(boxDimensions, entityId,
-                    &LmbrCentral::BoxShapeComponentRequests::GetBoxDimensions);
-                auto boxShapeConfig = AZStd::make_shared<Physics::BoxShapeConfiguration>(boxDimensions);
-                boxShapeConfig->m_scale = uniformScale;
-                return boxShapeConfig;
-            }
-
-            else if (shapeType == ShapeConstants::Capsule)
-            {
-                LmbrCentral::CapsuleShapeConfig lmbrCentralCapsuleShapeConfig;
-                LmbrCentral::CapsuleShapeComponentRequestsBus::EventResult(lmbrCentralCapsuleShapeConfig, entityId,
-                    &LmbrCentral::CapsuleShapeComponentRequests::GetCapsuleConfiguration);
-                Physics::CapsuleShapeConfiguration capsuleShapeConfig =
-                    Utils::ConvertFromLmbrCentralCapsuleConfig(lmbrCentralCapsuleShapeConfig);
-                capsuleShapeConfig.m_scale = uniformScale;
-                return AZStd::make_shared<Physics::CapsuleShapeConfiguration>(capsuleShapeConfig);
-            }
-
-            else if (shapeType == ShapeConstants::Sphere)
-            {
-                float radius = 0.0f;
-                LmbrCentral::SphereShapeComponentRequestsBus::EventResult(radius, entityId,
-                    &LmbrCentral::SphereShapeComponentRequests::GetRadius);
-                auto sphereShapeConfig = AZStd::make_shared<Physics::SphereShapeConfiguration>(radius);
-                sphereShapeConfig->m_scale = uniformScale;
-                return sphereShapeConfig;
-            }
-
-            return nullptr;
-        }
     } // namespace Utils
 
     void ShapeColliderComponent::Reflect(AZ::ReflectContext* context)
@@ -86,20 +41,17 @@ namespace PhysX
     // BaseColliderComponent
     void ShapeColliderComponent::UpdateScaleForShapeConfigs()
     {
-        if (m_shapeConfigList.size() != 1)
-        {
-            AZ_Error("PhysX Shape Collider Component", false,
-                "Expected exactly one collider/shape configuration for entity \"%s\".", GetEntity()->GetName().c_str());
-            return;
-        }
+        // all currently supported shape types scale uniformly based on the largest element of the non-uniform scale
+        AZ::Vector3 nonUniformScale = AZ::Vector3::CreateOne();
+        AZ::TransformBus::EventResult(nonUniformScale, GetEntityId(), &AZ::TransformBus::Events::GetLocalScale);
+        AZ::Vector3 uniformScale = AZ::Vector3(nonUniformScale.GetMaxElement());
 
-        if (m_shapeConfigList[0].second)
+        for (auto& shapeConfigPair : m_shapeConfigList)
         {
-            // all currently supported shape types scale uniformly based on the largest element of the non-uniform scale
-            AZ::Vector3 nonUniformScale = AZ::Vector3::CreateOne();
-            AZ::TransformBus::EventResult(nonUniformScale, GetEntityId(), &AZ::TransformBus::Events::GetLocalScale);
-            AZ::Vector3 uniformScale = AZ::Vector3(nonUniformScale.GetMaxElement());
-            m_shapeConfigList[0].second->m_scale = uniformScale;
+            if (shapeConfigPair.second)
+            {
+                shapeConfigPair.second->m_scale = uniformScale;
+            }
         }
     }
 } // namespace PhysX

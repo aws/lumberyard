@@ -10,6 +10,11 @@
 *
 */
 
+AzQtComponents--SegmentBar
+{
+    margin-bottom: 15px;
+}
+
 AzQtComponents--SegmentBar QAbstractButton
 {
     background-color: #333333;
@@ -25,16 +30,30 @@ AzQtComponents--SegmentBar QAbstractButton
 
     margin-left: 0px;
 
-    margin-bottom: 15px;
-
     min-width: 68px; /* 100 - (padding-left + padding-right) */
 
     padding-left: 16px;
     padding-right: 16px;
 }
 
-AzQtComponents--SegmentBar[orientation="1"] QAbstractButton.TabMiddle,
 AzQtComponents--SegmentBar[orientation="1"] QAbstractButton.TabLast
+{
+    margin-left: -1px;
+    border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
+    border-top-right-radius: 3px;
+    border-bottom-right-radius: 3px;
+}
+
+AzQtComponents--SegmentBar[orientation="1"] QAbstractButton.TabFirst
+{
+    border-top-left-radius: 3px;
+    border-bottom-left-radius: 3px;
+    border-top-right-radius: 0px;
+    border-bottom-right-radius: 0px;
+}
+
+AzQtComponents--SegmentBar[orientation="1"] QAbstractButton.TabMiddle
 {
     margin-left: -1px;
 }
@@ -52,7 +71,7 @@ AzQtComponents--SegmentBar[orientation="2"] QAbstractButton.TabLast
 
 AzQtComponents--SegmentBar QAbstractButton:checked
 {
-    background-color: #222222;
+    background-color: #555555;
 }
 
 AzQtComponents--SegmentBar QAbstractButton:hover:!checked,

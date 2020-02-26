@@ -80,7 +80,7 @@ namespace EMotionFX
         m_getTransformNode->OnUpdateUniqueData(m_animGraphInstance);
         m_setTransformNode->OnUpdateUniqueData(m_animGraphInstance);
 
-        MCore::Quaternion expectedRotation(0.0f, MCore::Math::pi * 0.25f, 0.0f);
+        AZ::Quaternion expectedRotation = AZ::Quaternion::CreateRotationY(MCore::Math::pi * 0.25f);
 
         m_rotationMathNode->SetDefaultValue(expectedRotation);
 
@@ -89,22 +89,22 @@ namespace EMotionFX
         Transform expected;
         expected.Identity();
         expected.Set(AZ::Vector3::CreateZero(), expectedRotation);
-        bool success = AZ::IsClose(expected.mRotation.w, outputRoot.mRotation.w, 0.0001f);
-        success = success && AZ::IsClose(expected.mRotation.x, outputRoot.mRotation.x, 0.0001f);
-        success = success && AZ::IsClose(expected.mRotation.y, outputRoot.mRotation.y, 0.0001f);
-        success = success && AZ::IsClose(expected.mRotation.z, outputRoot.mRotation.z, 0.0001f);
+        bool success = AZ::IsClose(expected.mRotation.GetW(), outputRoot.mRotation.GetW(), 0.0001f);
+        success = success && AZ::IsClose(expected.mRotation.GetX(), outputRoot.mRotation.GetX(), 0.0001f);
+        success = success && AZ::IsClose(expected.mRotation.GetY(), outputRoot.mRotation.GetY(), 0.0001f);
+        success = success && AZ::IsClose(expected.mRotation.GetZ(), outputRoot.mRotation.GetZ(), 0.0001f);
 
         m_rotationMathNode->SetMathFunction(EMotionFX::BlendTreeRotationMath2Node::MATHFUNCTION_INVERSE_MULTIPLY);
         
-        expectedRotation.Inverse();
+        expectedRotation = expectedRotation.GetInverseFull();
         Evaluate();
         outputRoot = GetOutputTransform();
         expected.Identity();
         expected.Set(AZ::Vector3::CreateZero(), expectedRotation);
-        success = success && AZ::IsClose(expected.mRotation.w, outputRoot.mRotation.w, 0.0001f);
-        success = success && AZ::IsClose(expected.mRotation.x, outputRoot.mRotation.x, 0.0001f);
-        success = success && AZ::IsClose(expected.mRotation.y, outputRoot.mRotation.y, 0.0001f);
-        success = success && AZ::IsClose(expected.mRotation.z, outputRoot.mRotation.z, 0.0001f);
+        success = success && AZ::IsClose(expected.mRotation.GetW(), outputRoot.mRotation.GetW(), 0.0001f);
+        success = success && AZ::IsClose(expected.mRotation.GetX(), outputRoot.mRotation.GetX(), 0.0001f);
+        success = success && AZ::IsClose(expected.mRotation.GetY(), outputRoot.mRotation.GetY(), 0.0001f);
+        success = success && AZ::IsClose(expected.mRotation.GetZ(), outputRoot.mRotation.GetZ(), 0.0001f);
 
 
         ASSERT_TRUE(success);

@@ -27,7 +27,6 @@
 #include <LmbrCentral/Geometry/GeometrySystemComponentBus.h>
 #include <LmbrCentral/Shape/BoxShapeComponentBus.h>
 #include <PhysX/ConfigurationBus.h>
-#include <PhysX/EditorRigidBodyRequestBus.h>
 #include <Source/BoxColliderComponent.h>
 #include <Source/CapsuleColliderComponent.h>
 #include <Source/EditorColliderComponent.h>
@@ -302,8 +301,6 @@ namespace PhysX
         UpdateShapeConfigurationScale();
         CreateStaticEditorCollider();
 
-        PhysX::EditorRigidBodyRequestBus::Event(GetEntityId(), &PhysX::EditorRigidBodyRequests::RefreshEditorRigidBody);
-
         ColliderComponentEventBus::Event(GetEntityId(), &ColliderComponentEvents::OnColliderChanged);
     }
 
@@ -347,8 +344,7 @@ namespace PhysX
         UpdateShapeConfigurationScale();
         CreateStaticEditorCollider();
 
-        m_colliderDebugDraw.SetMeshDirty();
-        PhysX::EditorRigidBodyRequestBus::Event(GetEntityId(), &PhysX::EditorRigidBodyRequests::RefreshEditorRigidBody);
+        m_colliderDebugDraw.ClearCachedGeometry();
 
         ColliderComponentEventBus::Event(GetEntityId(), &ColliderComponentEvents::OnColliderChanged);
 
@@ -391,6 +387,10 @@ namespace PhysX
             colliderComponent = gameEntity->CreateComponent<MeshColliderComponent>();
             colliderComponent->SetShapeConfigurationList({ AZStd::make_pair(sharedColliderConfig,
                 AZStd::make_shared<Physics::PhysicsAssetShapeConfiguration>(m_shapeConfiguration.m_physicsAsset.m_configuration)) });
+
+            AZ_Warning("PhysX", m_shapeConfiguration.m_physicsAsset.m_pxAsset.GetId().IsValid(),
+                "EditorColliderComponent::BuildGameEntity. No asset assigned to Collider Component. Entity: %s",
+                GetEntity()->GetName().c_str());
             break;
         }
     }
@@ -428,7 +428,7 @@ namespace PhysX
             AZ::Data::AssetBus::MultiHandler::BusConnect(m_shapeConfiguration.m_physicsAsset.m_pxAsset.GetId());
             m_shapeConfiguration.m_physicsAsset.m_pxAsset.QueueLoad();
             m_shapeConfiguration.m_physicsAsset.m_configuration.m_asset = m_shapeConfiguration.m_physicsAsset.m_pxAsset;
-            m_colliderDebugDraw.SetMeshDirty();
+            m_colliderDebugDraw.ClearCachedGeometry();
         }
 
         UpdateMaterialSlotsFromMeshAsset();
@@ -463,17 +463,31 @@ namespace PhysX
             configuration.m_entityId = GetEntityId();
             configuration.m_debugName = GetEntity()->GetName();
 
-            Physics::SystemRequestBus::BroadcastResult(m_editorBody, &Physics::SystemRequests::CreateStaticRigidBody, configuration);
+            m_editorBody = AZ::Interface<Physics::System>::Get()->CreateStaticRigidBody(configuration);
 
-            AZStd::shared_ptr<Physics::Shape> shape;
-            auto& shapeConfiguration = m_shapeConfiguration.GetCurrent();
-            Physics::SystemRequestBus::BroadcastResult(shape, &Physics::SystemRequests::CreateShape, m_configuration, shapeConfiguration);
+            if (m_shapeConfiguration.IsAssetConfig())
+            {
+                AZStd::vector<AZStd::shared_ptr<Physics::Shape>> shapes;
+                Utils::GetShapesFromAsset(m_shapeConfiguration.m_physicsAsset.m_configuration, m_configuration, shapes);
+                
+                for (const auto& shape : shapes)
+                {
+                    m_editorBody->AddShape(shape);
+                }
+            }
+            else
+            {
+                const auto& shapeConfiguration = m_shapeConfiguration.GetCurrent();
+                AZStd::shared_ptr<Physics::Shape> shape = AZ::Interface<Physics::System>::Get()->CreateShape(
+                    m_configuration, shapeConfiguration);
 
-            m_editorBody->AddShape(shape);
+                m_editorBody->AddShape(shape);
+            }
+
             editorWorld->AddBody(*m_editorBody);
         }
 
-        m_colliderDebugDraw.SetMeshDirty();
+        m_colliderDebugDraw.ClearCachedGeometry();
     }
 
     AZ::Data::Asset<Pipeline::MeshAsset> EditorColliderComponent::GetMeshAsset() const
@@ -488,21 +502,46 @@ namespace PhysX
 
         if (isStatic)
         {
-            AZ_Warning("PhysX", verts.empty() && indices.empty(), "Existing vertex and index data will be lost. Is this a duplicate model instance?");
+            AZ_Warning("PhysX", verts.empty() && indices.empty(), 
+                "Existing vertex and index data will be lost. Is this a duplicate model instance?");
 
-            // We have to rebuild the mesh in case the world matrix changes.
-            m_colliderDebugDraw.BuildMeshes(m_shapeConfiguration.GetCurrent(), m_shapeConfiguration.m_physicsAsset.m_pxAsset);
+            BuildDebugDrawMesh();
 
-            indices = m_colliderDebugDraw.GetIndices();
+            AZ::u32 numShapes = m_colliderDebugDraw.GetNumShapes();
+            AZ_Warning("PhysX", numShapes > 0, 
+                "GetStaticWorldSpaceMeshTriangles: No debug draw geometry found. "
+                "Please make sure the collision geometry is loaded. Entity: %s",
+                GetEntity()->GetName().c_str());
 
-            const AZStd::vector<AZ::Vector3>& debugDrawVerts = m_colliderDebugDraw.GetVerts();
+            indices.clear();
             verts.clear();
-            verts.reserve(debugDrawVerts.size());
+
             AZ::Transform overallTM = GetWorldTM() * GetColliderLocalTransform();
 
-            for (const auto& vert : debugDrawVerts)
+            // Vertices can be added directly but indices need to be incremented
+            // by the amount of vertices already added in the last iteration
+            for (AZ::u32 shapeIndex = 0; shapeIndex < numShapes; shapeIndex++)
             {
-                verts.push_back(overallTM * vert);
+                const AZStd::vector<AZ::u32>& shapeIndices = m_colliderDebugDraw.GetIndices(shapeIndex);
+                const AZStd::vector<AZ::Vector3>& shapeVerts = m_colliderDebugDraw.GetVerts(shapeIndex);
+
+                AZ::u32 startingIndex = static_cast<AZ::u32>(verts.size());
+                
+                indices.reserve(indices.size() + shapeIndices.size());
+
+                AZStd::transform(shapeIndices.begin(), shapeIndices.end(), AZStd::back_inserter(indices), 
+                    [startingIndex](AZ::u32 index)
+                {
+                    return index + startingIndex;
+                });
+
+                verts.reserve(verts.size() + shapeVerts.size());
+
+                AZStd::transform(shapeVerts.begin(), shapeVerts.end(), AZStd::back_inserter(verts), 
+                    [&overallTM](const AZ::Vector3& vertex)
+                {
+                    return overallTM * vertex;
+                });
             }
         }
     }
@@ -519,7 +558,7 @@ namespace PhysX
             m_shapeConfiguration.m_shapeType = Physics::ShapeType::PhysicsAsset;
             m_shapeConfiguration.m_physicsAsset.m_pxAsset.Create(id);
             UpdateMeshAsset();
-            m_colliderDebugDraw.SetMeshDirty();
+            m_colliderDebugDraw.ClearCachedGeometry();
         }
     }
 
@@ -539,6 +578,41 @@ namespace PhysX
             m_shapeConfiguration.GetCurrent(), m_configuration);
 
         AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(&AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay, AzToolsFramework::Refresh_EntireTree);
+
+        ValidateMaterialSurfaces();
+    }
+
+    void EditorColliderComponent::ValidateMaterialSurfaces()
+    {
+        const AZ::Data::Asset<Pipeline::MeshAsset>& physicsAsset = m_shapeConfiguration.m_physicsAsset.m_pxAsset;
+
+        if (!IsAssetConfig() || !physicsAsset.IsReady())
+        {
+            return;
+        }
+
+        // Here we check the material indices assigned to every shape and validate that every index is used at least once.
+        // It's not an error if the validation fails here but something we want to let the designers know about.
+        size_t surfacesNum = physicsAsset->m_assetData.m_surfaceNames.size();
+        const AZStd::vector<AZ::u16>& indexPerShape = physicsAsset->m_assetData.m_materialIndexPerShape;
+
+        AZStd::unordered_set<AZ::u16> usedIndices;
+
+        for (AZ::u16 index : indexPerShape)
+        {
+            if (index == Pipeline::MeshAssetData::TriangleMeshMaterialIndex)
+            {
+                // Triangle mesh indices are cooked into binary data, pass the validation in this case.
+                return;
+            }
+
+            usedIndices.insert(index);
+        }
+
+        AZ_Warning("PhysX", usedIndices.size() == surfacesNum,
+            "EditorColliderComponent::ValidateMaterialSurfaces. Entity: %s. Number of surfaces used by the shape (%d) does not match the "
+            "total number of surfaces in the asset (%d). Please check that there are no convex meshes with per-face materials. Asset: %s",
+            GetEntity()->GetName().c_str(), usedIndices.size(), surfacesNum, physicsAsset.GetHint().c_str())
     }
 
     void EditorColliderComponent::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
@@ -550,6 +624,12 @@ namespace PhysX
 
             UpdateMaterialSlotsFromMeshAsset();
             CreateStaticEditorCollider();
+
+            // Invalidate debug draw cached data
+            m_colliderDebugDraw.ClearCachedGeometry();
+
+            // Notify about the data update of the collider
+            ColliderComponentEventBus::Event(GetEntityId(), &ColliderComponentEvents::OnColliderChanged);
         }
         else
         {
@@ -563,10 +643,43 @@ namespace PhysX
         OnAssetReady(asset);
     }
 
-    void EditorColliderComponent::Display(AzFramework::DebugDisplayRequests& debugDisplay) const
+    void EditorColliderComponent::BuildDebugDrawMesh() const
     {
-        m_colliderDebugDraw.BuildMeshes(m_shapeConfiguration.GetCurrent(), m_shapeConfiguration.m_physicsAsset.m_pxAsset);
+        if (m_shapeConfiguration.IsAssetConfig())
+        {
+            const AZ::Data::Asset<Pipeline::MeshAsset>& physicsAsset = m_shapeConfiguration.m_physicsAsset.m_pxAsset;
+            const Physics::PhysicsAssetShapeConfiguration& physicsAssetConfiguration = m_shapeConfiguration.m_physicsAsset.m_configuration;
 
+            if (!physicsAsset.IsReady())
+            {
+                // Skip processing if the asset isn't ready
+                return;
+            }
+
+            Physics::ShapeConfigurationList shapeConfigList;
+            Utils::GetColliderShapeConfigsFromAsset(physicsAssetConfiguration, m_configuration, shapeConfigList);
+
+            for (size_t shapeIndex = 0; shapeIndex < shapeConfigList.size(); shapeIndex++)
+            {
+                const Physics::ShapeConfiguration* shapeConfiguration = shapeConfigList[shapeIndex].second.get();
+                AZ_Assert(shapeConfiguration, "BuildDebugDrawMesh: Invalid shape configuration");
+
+                if (shapeConfiguration)
+                {
+                    m_colliderDebugDraw.BuildMeshes(*shapeConfiguration, shapeIndex);
+                }
+            }
+        }
+        else
+        {
+            const AZ::u32 shapeIndex = 0; // There's only one mesh gets built from the primitive collider, hence use geomIndex 0.
+            m_colliderDebugDraw.BuildMeshes(m_shapeConfiguration.GetCurrent(), shapeIndex);
+        }
+    }
+
+
+    void EditorColliderComponent::DisplayPrimitiveCollider(AzFramework::DebugDisplayRequests& debugDisplay) const
+    {
         switch (m_shapeConfiguration.m_shapeType)
         {
         case Physics::ShapeType::Sphere:
@@ -581,9 +694,94 @@ namespace PhysX
             m_colliderDebugDraw.DrawCapsule(debugDisplay, m_configuration, m_shapeConfiguration.m_capsule,
                 GetCapsuleScale());
             break;
-        case Physics::ShapeType::PhysicsAsset:
-            m_colliderDebugDraw.DrawMesh(debugDisplay, m_configuration, m_shapeConfiguration.m_physicsAsset.m_configuration, m_shapeConfiguration.m_physicsAsset.m_pxAsset);
-            break;
+        }
+    }
+
+    void EditorColliderComponent::DisplayMeshCollider(AzFramework::DebugDisplayRequests& debugDisplay) const
+    {
+        if (!m_colliderDebugDraw.HasCachedGeometry())
+        {
+            return;
+        }
+
+        const AZ::Data::Asset<Pipeline::MeshAsset>& physicsAsset = m_shapeConfiguration.m_physicsAsset.m_pxAsset;
+        const Physics::PhysicsAssetShapeConfiguration& physicsAssetConfiguration = m_shapeConfiguration.m_physicsAsset.m_configuration;
+
+        Physics::ShapeConfigurationList shapeConfigList;
+        Utils::GetColliderShapeConfigsFromAsset(physicsAssetConfiguration, m_configuration, shapeConfigList);
+
+        const AZ::Vector3& assetScale = physicsAssetConfiguration.m_assetScale;
+
+        for (size_t shapeIndex = 0; shapeIndex < shapeConfigList.size(); shapeIndex++)
+        {
+            const Physics::ColliderConfiguration* colliderConfiguration = shapeConfigList[shapeIndex].first.get();
+            const Physics::ShapeConfiguration* shapeConfiguration = shapeConfigList[shapeIndex].second.get();
+
+            AZ_Assert(shapeConfiguration && colliderConfiguration, "DisplayMeshCollider: Invalid shape-collider configuration pair");
+
+            switch (shapeConfiguration->GetShapeType())
+            {
+            case Physics::ShapeType::CookedMesh:
+            {
+                const Physics::CookedMeshShapeConfiguration* cookedMeshShapeConfiguration =
+                    static_cast<const Physics::CookedMeshShapeConfiguration*>(shapeConfiguration);
+
+                m_colliderDebugDraw.DrawMesh(debugDisplay, *colliderConfiguration, *cookedMeshShapeConfiguration,
+                    assetScale, shapeIndex);
+                break;
+            }
+            case Physics::ShapeType::Sphere:
+            {
+                const Physics::SphereShapeConfiguration* sphereShapeConfiguration
+                    = static_cast<const Physics::SphereShapeConfiguration*>(shapeConfiguration);
+
+                m_colliderDebugDraw.DrawSphere(debugDisplay, *colliderConfiguration, *sphereShapeConfiguration,
+                    AZ::Vector3(GetUniformScale() * assetScale.GetMaxElement()));
+                break;
+            }
+            case Physics::ShapeType::Box:
+            {
+                const Physics::BoxShapeConfiguration* boxShapeConfiguration =
+                    static_cast<const Physics::BoxShapeConfiguration*>(shapeConfiguration);
+                m_colliderDebugDraw.DrawBox(debugDisplay, *colliderConfiguration, *boxShapeConfiguration,
+                    GetNonUniformScale() * assetScale);
+                break;
+            }
+            case Physics::ShapeType::Capsule:
+            {
+                const Physics::CapsuleShapeConfiguration* capsuleShapeConfiguration =
+                    static_cast<const Physics::CapsuleShapeConfiguration*>(shapeConfiguration);
+                m_colliderDebugDraw.DrawCapsule(debugDisplay, *colliderConfiguration, *capsuleShapeConfiguration,
+                    GetCapsuleScale() * assetScale.GetMaxElement());
+                break;
+            }
+            default:
+            {
+                AZ_Error("EditorColliderComponent", false, "DisplayMeshCollider: Unsupported ShapeType %d. Entity %s, ID: %llu",
+                    static_cast<AZ::u32>(shapeConfiguration->GetShapeType()), GetEntity()->GetName().c_str(), GetEntityId());
+                break;
+            }
+            }
+        }
+    }
+
+    void EditorColliderComponent::Display(AzFramework::DebugDisplayRequests& debugDisplay) const
+    {
+        if (!m_colliderDebugDraw.HasCachedGeometry())
+        {
+            BuildDebugDrawMesh();
+        }
+
+        if (m_colliderDebugDraw.HasCachedGeometry())
+        {
+            if (m_shapeConfiguration.IsAssetConfig())
+            {
+                DisplayMeshCollider(debugDisplay);
+            }
+            else
+            {
+                DisplayPrimitiveCollider(debugDisplay);
+            }
         }
     }
 
@@ -645,7 +843,7 @@ namespace PhysX
     {
         auto& shapeConfiguration = m_shapeConfiguration.GetCurrent();
         shapeConfiguration.m_scale = GetWorldTM().ExtractScale();
-        m_colliderDebugDraw.SetMeshDirty();
+        m_colliderDebugDraw.ClearCachedGeometry();
     }
 
     bool EditorColliderComponent::IsTrigger()

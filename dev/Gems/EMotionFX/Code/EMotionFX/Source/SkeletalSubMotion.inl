@@ -10,20 +10,20 @@
 *
 */
 
-MCORE_INLINE KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>* SkeletalSubMotion::GetPosTrack() const
+MCORE_INLINE KeyTrackLinear<AZ::Vector3, AZ::Vector3>* SkeletalSubMotion::GetPosTrack() const
 {
     return mPosTrack;
 }
 
 
-MCORE_INLINE KeyTrackLinear<MCore::Quaternion, MCore::Compressed16BitQuaternion>* SkeletalSubMotion::GetRotTrack() const
+MCORE_INLINE KeyTrackLinear<AZ::Quaternion, MCore::Compressed16BitQuaternion>* SkeletalSubMotion::GetRotTrack() const
 {
     return mRotTrack;
 }
 
 
 #ifndef EMFX_SCALE_DISABLED
-MCORE_INLINE KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>* SkeletalSubMotion::GetScaleTrack() const
+MCORE_INLINE KeyTrackLinear<AZ::Vector3, AZ::Vector3>* SkeletalSubMotion::GetScaleTrack() const
 {
     return mScaleTrack;
 }
@@ -47,7 +47,7 @@ MCORE_INLINE const AZ::Vector3& SkeletalSubMotion::GetPosePos() const
 }
 
 
-MCORE_INLINE MCore::Quaternion SkeletalSubMotion::GetPoseRot() const
+MCORE_INLINE AZ::Quaternion SkeletalSubMotion::GetPoseRot() const
 {
     return mPoseRot.ToQuaternion();
 }
@@ -73,7 +73,7 @@ MCORE_INLINE void SkeletalSubMotion::SetPosePos(const AZ::Vector3& pos)
 }
 
 
-MCORE_INLINE void SkeletalSubMotion::SetPoseRot(const MCore::Quaternion& rot)
+MCORE_INLINE void SkeletalSubMotion::SetPoseRot(const AZ::Quaternion& rot)
 {
     mPoseRot.FromQuaternion(rot);
 }
@@ -98,7 +98,7 @@ MCORE_INLINE const AZ::Vector3& SkeletalSubMotion::GetBindPosePos() const
 }
 
 
-MCORE_INLINE MCore::Quaternion SkeletalSubMotion::GetBindPoseRot() const
+MCORE_INLINE AZ::Quaternion SkeletalSubMotion::GetBindPoseRot() const
 {
     return mBindPoseRot.ToQuaternion();
 }
@@ -123,7 +123,7 @@ MCORE_INLINE void SkeletalSubMotion::SetBindPosePos(const AZ::Vector3& pos)
 }
 
 
-MCORE_INLINE void SkeletalSubMotion::SetBindPoseRot(const MCore::Quaternion& rot)
+MCORE_INLINE void SkeletalSubMotion::SetBindPoseRot(const AZ::Quaternion& rot)
 {
     mBindPoseRot.FromQuaternion(rot);
 }

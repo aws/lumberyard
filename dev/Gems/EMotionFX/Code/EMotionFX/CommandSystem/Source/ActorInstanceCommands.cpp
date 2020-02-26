@@ -14,6 +14,7 @@
 #include "ActorInstanceCommands.h"
 #include <EMotionFX/Source/Attachment.h>
 #include <EMotionFX/Source/ActorManager.h>
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/StringConversions.h>
 #include "CommandManager.h"
 
@@ -84,7 +85,7 @@ namespace CommandSystem
             scale = AZ::Vector3::CreateOne();
         }
 
-        MCore::Quaternion rot(rotV4.GetX(), rotV4.GetY(), rotV4.GetZ(), rotV4.GetW());
+        AZ::Quaternion rot(rotV4.GetX(), rotV4.GetY(), rotV4.GetZ(), rotV4.GetW());
 
         // check if we have to select the new actor instances created by this command automatically
         const bool select = parameters.GetValueAsBool("autoSelect", this);
@@ -135,7 +136,11 @@ namespace CommandSystem
         }
         newInstance->SetLocalSpacePosition(newPos);
         newInstance->SetLocalSpaceRotation(rot);
-        newInstance->SetLocalSpaceScale(scale);
+
+        EMFX_SCALECODE
+        (
+            newInstance->SetLocalSpaceScale(scale);
+        )
 
         // add the actor instance to the selection
         if (select)
@@ -282,16 +287,19 @@ namespace CommandSystem
         {
             AZ::Vector4 value   = parameters.GetValueAsVector4("rot", this);
             mOldRotation        = actorInstance->GetLocalSpaceTransform().mRotation;
-            actorInstance->SetLocalSpaceRotation(MCore::Quaternion(value.GetX(), value.GetY(), value.GetZ(), value.GetW()));
+            actorInstance->SetLocalSpaceRotation(AZ::Quaternion(value.GetX(), value.GetY(), value.GetZ(), value.GetW()));
         }
 
         // set the scale
-        if (parameters.CheckIfHasParameter("scale"))
-        {
-            AZ::Vector3 value       = parameters.GetValueAsVector3("scale", this);
-            mOldScale               = actorInstance->GetLocalSpaceTransform().mScale;
-            actorInstance->SetLocalSpaceScale(value);
-        }
+        EMFX_SCALECODE
+        (
+            if (parameters.CheckIfHasParameter("scale"))
+            {
+                AZ::Vector3 value       = parameters.GetValueAsVector3("scale", this);
+                mOldScale               = actorInstance->GetLocalSpaceTransform().mScale;
+                actorInstance->SetLocalSpaceScale(value);
+            }
+        )
 
         // set the LOD level
         if (parameters.CheckIfHasParameter("lodLevel"))
@@ -351,10 +359,13 @@ namespace CommandSystem
         }
 
         // set the scale
-        if (parameters.CheckIfHasParameter("scale"))
-        {
-            actorInstance->SetLocalSpaceScale(mOldScale);
-        }
+        EMFX_SCALECODE
+        (
+            if (parameters.CheckIfHasParameter("scale"))
+            {
+                actorInstance->SetLocalSpaceScale(mOldScale);
+            }
+        )
 
         // set the LOD level
         if (parameters.CheckIfHasParameter("lodLevel"))
@@ -435,7 +446,10 @@ namespace CommandSystem
         // store the old values before removing the instance
         mOldPosition            = actorInstance->GetLocalSpaceTransform().mPosition;
         mOldRotation            = actorInstance->GetLocalSpaceTransform().mRotation;
-        mOldScale               = actorInstance->GetLocalSpaceTransform().mScale;
+        EMFX_SCALECODE
+        (
+            mOldScale = actorInstance->GetLocalSpaceTransform().mScale;
+        )
         mOldLODLevel            = actorInstance->GetLODLevel();
         mOldIsVisible           = actorInstance->GetIsVisible();
         mOldDoRender            = actorInstance->GetRender();
@@ -482,15 +496,15 @@ namespace CommandSystem
         commandString = AZStd::string::format("CreateActorInstance -actorID %i -actorInstanceID %i", mOldActorID, actorInstanceID);
         commandGroup.AddCommandString(commandString.c_str());
 
-        commandString = AZStd::string::format("AdjustActorInstance -actorInstanceID %i -pos \"%s\" -rot \"%s\" -scale \"%s\" -lodLevel %d -isVisible \"%s\" -doRender \"%s\"",
-                actorInstanceID,
-                AZStd::to_string(mOldPosition).c_str(),
-                AZStd::to_string(AZ::Vector4(mOldRotation.x, mOldRotation.y, mOldRotation.z, mOldRotation.w)).c_str(),
-                AZStd::to_string(mOldScale).c_str(),
-                mOldLODLevel,
-                AZStd::to_string(mOldIsVisible).c_str(),
-                AZStd::to_string(mOldDoRender).c_str()                
-                );
+        commandString = AZStd::string::format("AdjustActorInstance -actorInstanceID %i -pos \"%s\" -rot \"%s\" -scale \"%s\" -lodLevel %d -isVisible \"%s\" -doRender \"%s\" -attachmentFastUpdate \"%s\"",
+            actorInstanceID,
+            AZStd::to_string(mOldPosition).c_str(),
+            AZStd::to_string(mOldRotation).c_str(),
+            AZStd::to_string(mOldScale).c_str(),
+            mOldLODLevel,
+            AZStd::to_string(mOldIsVisible).c_str(),
+            AZStd::to_string(mOldDoRender).c_str()
+            );
         commandGroup.AddCommandString(commandString);
 
         // execute the command group
@@ -522,39 +536,27 @@ namespace CommandSystem
     //-------------------------------------------------------------------------------------
     void CloneActorInstance(EMotionFX::ActorInstance* actorInstance, MCore::CommandGroup* commandGroup)
     {
-        // return if actorinstance was not set
-        if (actorInstance == nullptr)
+        if (!actorInstance)
         {
-            MCore::LogError("Actor instance was not set. Unable to generate new instance.");
+            AZ_Error("EMotionFX", false, "Cannot clone invalid instance.");
             return;
         }
 
-        // get the transformation values
-        const AZ::Vector3& pos              = actorInstance->GetLocalSpaceTransform().mPosition;
-        const AZ::Vector3& scale            = actorInstance->GetLocalSpaceTransform().mScale;
-        const MCore::Quaternion& rotQuat    = actorInstance->GetLocalSpaceTransform().mRotation;
-        const AZ::Vector4 rot               = AZ::Vector4(rotQuat.x, rotQuat.y, rotQuat.z, rotQuat.w);
+        const AZ::Vector3& pos = actorInstance->GetLocalSpaceTransform().mPosition;
+        const AZ::Quaternion& rot = actorInstance->GetLocalSpaceTransform().mRotation;
+        #ifndef EMFX_SCALE_DISABLED
+            const AZ::Vector3& scale = actorInstance->GetLocalSpaceTransform().mScale;
+        #else
+            const AZ::Vector3 scale = AZ::Vector3::CreateOne();
+        #endif
 
-        // create the command
         const AZStd::string command = AZStd::string::format("CreateActorInstance -actorID %i -xPos %f -yPos %f -zPos %f -xScale %f -yScale %f -zScale %f -rot \"%s\"",
-                actorInstance->GetActor()->GetID(),
-                static_cast<float>(pos.GetX()), static_cast<float>(pos.GetY()), static_cast<float>(pos.GetZ()),
-                static_cast<float>(scale.GetX()), static_cast<float>(scale.GetY()), static_cast<float>(scale.GetZ()),
-                AZStd::to_string(rot).c_str());
+            actorInstance->GetActor()->GetID(),
+            static_cast<float>(pos.GetX()), static_cast<float>(pos.GetY()), static_cast<float>(pos.GetZ()),
+            static_cast<float>(scale.GetX()), static_cast<float>(scale.GetY()), static_cast<float>(scale.GetZ()),
+            AZStd::to_string(rot).c_str());
 
-        // execute the command or add it to the given command group
-        if (commandGroup == nullptr)
-        {
-            AZStd::string outResult;
-            if (GetCommandManager()->ExecuteCommand(command, outResult) == false)
-            {
-                MCore::LogError(outResult.c_str());
-            }
-        }
-        else
-        {
-            commandGroup->AddCommandString(command);
-        }
+        CommandSystem::GetCommandManager()->ExecuteCommandOrAddToGroup(command, commandGroup, /*executeInsideCommand=*/false);
     }
 
 

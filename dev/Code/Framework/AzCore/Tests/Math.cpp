@@ -397,6 +397,49 @@ namespace UnitTest
         AZ_TEST_ASSERT(!Vector2(infinity, infinity).IsFinite());
     }
 
+    TEST(MATH_Vector2, Angle_Test)
+    {
+        using Vec2CalcFunc = float(Vector2::*)(const Vector2&) const;
+        auto angleTest = [](Vec2CalcFunc func, const Vector2& self, const Vector2& other, const float target)
+        {
+            const float epsilon = 0.01f;
+            float value = (self.*func)(other);
+            AZ_TEST_ASSERT(IsClose(value, target, epsilon));
+        };
+
+        const Vec2CalcFunc angleFuncs[2] = { &Vector2::Angle, &Vector2::AngleSafe };
+        for (Vec2CalcFunc angleFunc : angleFuncs)
+        {
+            angleTest(angleFunc, Vector2{ 1.0f, 0.0f }, Vector2{ 0.0f, 1.0f }, AZ::Constants::HalfPi);
+            angleTest(angleFunc, Vector2{ 42.0f, 0.0f }, Vector2{ 0.0f, 23.0f }, AZ::Constants::HalfPi);
+            angleTest(angleFunc, Vector2{ 1.0f, 0.0f }, Vector2{ -1.0f, 0.0f }, AZ::Constants::Pi);
+            angleTest(angleFunc, Vector2{ 1.0f, 0.0f }, Vector2{ 1.0f, 1.0f }, AZ::Constants::QuarterPi);
+            angleTest(angleFunc, Vector2{ 1.0f, 0.0f }, Vector2{ 1.0f, 0.0f }, 0.f);
+            angleTest(angleFunc, Vector2{ 1.0f, 1.0f }, Vector2{ -1.0f, -1.0f }, AZ::Constants::Pi);
+        }
+
+        const Vec2CalcFunc angleDegFuncs[2] = { &Vector2::AngleDeg, &Vector2::AngleSafeDeg };
+        for (Vec2CalcFunc angleDegFunc : angleDegFuncs)
+        {
+            angleTest(angleDegFunc, Vector2{ 1.0f, 0.0f }, Vector2{ 0.0f, 1.0f }, 90.f);
+            angleTest(angleDegFunc, Vector2{ 42.0f, 0.0f }, Vector2{ 0.0f, 23.0f }, 90.f);
+            angleTest(angleDegFunc, Vector2{ 1.0f, 0.0f }, Vector2{ -1.0f, 0.0f }, 180.f);
+            angleTest(angleDegFunc, Vector2{ 1.0f, 0.0f }, Vector2{ 1.0f, 1.0f }, 45.f);
+            angleTest(angleDegFunc, Vector2{ 1.0f, 0.0f }, Vector2{ 1.0f, 0.0f }, 0.f);
+            angleTest(angleDegFunc, Vector2{ 1.0f, 1.0f }, Vector2{ -1.0f, -1.0f }, 180.f);
+        }
+
+        const Vec2CalcFunc angleSafeFuncs[2] = { &Vector2::AngleSafe, &Vector2::AngleSafeDeg };
+        for (Vec2CalcFunc angleSafeFunc : angleSafeFuncs)
+        {
+            angleTest(angleSafeFunc, Vector2{ 0.0f, 0.0f }, Vector2{ 0.0f, 1.0f }, 0.f);
+            angleTest(angleSafeFunc, Vector2{ 0.0f, 0.0f }, Vector2{ 0.0f, 0.0f }, 0.f);
+            angleTest(angleSafeFunc, Vector2{ 1.0f, 0.0f }, Vector2{ 0.0f, 0.0f }, 0.f);
+            angleTest(angleSafeFunc, Vector2{ 0.0f, 0.0f }, Vector2{ 0.0f, 323432.0f }, 0.f);
+            angleTest(angleSafeFunc, Vector2{ 323432.0f, 0.0f }, Vector2{ 0.0f, 0.0f }, 0.f);
+        }
+    }
+
     TEST(MATH_Vector3, Test)
     {
         //constructors
@@ -696,6 +739,49 @@ namespace UnitTest
         //v1.SwapEndian();
         //v1.SwapEndian();
         //AZ_TEST_ASSERT(v1==Vector3(1.0f,2.0f,3.0f));
+    }
+
+    TEST(MATH_Vector3, Angle_Test)
+    {
+        using Vec3CalcFunc = VectorFloat(Vector3::*)(const Vector3&) const;
+        auto angleTest = [](Vec3CalcFunc func, const Vector3& self, const Vector3& other, const VectorFloat target)
+        {
+            const float epsilon = 0.01f;
+            VectorFloat value = (self.*func)(other);
+            AZ_TEST_ASSERT(IsClose(value, target, epsilon));
+        };
+
+        const Vec3CalcFunc angleFuncs[2] = { &Vector3::Angle, &Vector3::AngleSafe };
+        for (Vec3CalcFunc angleFunc : angleFuncs)
+        {
+            angleTest(angleFunc, Vector3{ 1.0f, 0.0f, 0.0f }, Vector3{ 0.0f, 1.0f, 0.0f }, AZ::Constants::HalfPi);
+            angleTest(angleFunc, Vector3{ 42.0f, 0.0f, 0.0f }, Vector3{ 0.0f, 23.0f, 0.0f }, AZ::Constants::HalfPi);
+            angleTest(angleFunc, Vector3{ 1.0f, 0.0f, 0.0f }, Vector3{ -1.0f, 0.0f, 0.0f }, AZ::Constants::Pi);
+            angleTest(angleFunc, Vector3{ 1.0f, 0.0f, 0.0f }, Vector3{ 1.0f, 1.0f, 0.0f }, AZ::Constants::QuarterPi);
+            angleTest(angleFunc, Vector3{ 1.0f, 0.0f, 0.0f }, Vector3{ 1.0f, 0.0f, 0.0f }, 0.f);
+            angleTest(angleFunc, Vector3{ 1.0f, 1.0f, 0.0f }, Vector3{ -1.0f, -1.0f, 0.0f }, AZ::Constants::Pi);
+        }
+
+        const Vec3CalcFunc angleDegFuncs[2] = { &Vector3::AngleDeg, &Vector3::AngleSafeDeg };
+        for (Vec3CalcFunc angleDegFunc : angleDegFuncs)
+        {
+            angleTest(angleDegFunc, Vector3{ 1.0f, 0.0f, 0.0f }, Vector3{ 0.0f, 1.0f, 0.0f }, 90.f);
+            angleTest(angleDegFunc, Vector3{ 42.0f, 0.0f, 0.0f }, Vector3{ 0.0f, 23.0f, 0.0f }, 90.f);
+            angleTest(angleDegFunc, Vector3{ 1.0f, 0.0f, 0.0f }, Vector3{ -1.0f, 0.0f, 0.0f }, 180.f);
+            angleTest(angleDegFunc, Vector3{ 1.0f, 0.0f, 0.0f }, Vector3{ 1.0f, 1.0f, 0.0f }, 45.f);
+            angleTest(angleDegFunc, Vector3{ 1.0f, 0.0f, 0.0f }, Vector3{ 1.0f, 0.0f, 0.0f }, 0.f);
+            angleTest(angleDegFunc, Vector3{ 1.0f, 1.0f, 0.0f }, Vector3{ -1.0f, -1.0f, 0.0f }, 180.f);
+        }
+
+        const Vec3CalcFunc angleSafeFuncs[2] = { &Vector3::AngleSafe, &Vector3::AngleSafeDeg };
+        for (Vec3CalcFunc angleSafeFunc : angleSafeFuncs)
+        {
+            angleTest(angleSafeFunc, Vector3{ 0.0f, 0.0f, 0.0f }, Vector3{ 0.0f, 1.0f, 0.0f }, 0.f);
+            angleTest(angleSafeFunc, Vector3{ 0.0f, 0.0f, 0.0f }, Vector3{ 0.0f, 0.0f, 0.0f }, 0.f);
+            angleTest(angleSafeFunc, Vector3{ 1.0f, 0.0f, 0.0f }, Vector3{ 0.0f, 0.0f, 0.0f }, 0.f);
+            angleTest(angleSafeFunc, Vector3{ 0.0f, 0.0f, 0.0f }, Vector3{ 0.0f, 323432.0f, 0.0f }, 0.f);
+            angleTest(angleSafeFunc, Vector3{ 323432.0f, 0.0f, 0.0f }, Vector3{ 0.0f, 0.0f, 0.0f }, 0.f);
+        }
     }
 
     TEST(MATH_Vector3, CompareTest)
@@ -2274,6 +2360,16 @@ namespace UnitTest
         const float infinity = std::numeric_limits<float>::infinity();
         pl.Set(infinity, infinity, infinity, infinity);
         AZ_TEST_ASSERT(!pl.IsFinite());
+    }
+
+    TEST(MATH_Plane, CreateFromVectorCoefficients_IsEquivalentToCreateFromCoefficients)
+    {
+        Plane planeFromCoefficients = Plane::CreateFromCoefficients(1.0, 2.0, 3.0, 4.0);
+
+        Vector4 coefficients(1.0, 2.0, 3.0, 4.0);
+        Plane planeFromVectorCoefficients = Plane::CreateFromVectorCoefficients(coefficients);
+
+        EXPECT_EQ(planeFromVectorCoefficients, planeFromCoefficients);
     }
 
     TEST(MATH_Intersection, ClosestSegmentSegment)

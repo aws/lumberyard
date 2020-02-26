@@ -1126,15 +1126,15 @@ struct IRenderer
     virtual const AZStd::string& GetApiVersion() const = 0;
     virtual const AZStd::string& GetAdapterDescription() const = 0;
     virtual void GetVideoMemoryUsageStats(size_t& vidMemUsedThisFrame, size_t& vidMemUsedRecently, bool bGetPoolsSizes = false) = 0;
-    virtual int GetNumGeomInstances() = 0;
-    virtual int GetNumGeomInstanceDrawCalls() = 0;
-    virtual int GetCurrentNumberOfDrawCalls() = 0;
-    virtual void GetCurrentNumberOfDrawCalls(int& nGeneral, int& nShadowGen) = 0;
+    virtual int GetNumGeomInstances() const = 0;
+    virtual int GetNumGeomInstanceDrawCalls() const = 0;
+    virtual int GetCurrentNumberOfDrawCalls() const = 0;
+    virtual void GetCurrentNumberOfDrawCalls(int& nGeneral, int& nShadowGen) const = 0;
     //Sums DIP counts for the EFSLIST_* passes that match the submitted mask.
     //Compose the mask with bitwise arithmetic, use (1 << EFSLIST_*) per list.
     //e.g. to sum general and transparent, pass in ( (1 << EFSLIST_GENERAL) | (1 << EFSLIST_TRANSP) )
-    virtual int GetCurrentNumberOfDrawCalls(const uint32 EFSListMask) = 0;
-    virtual float GetCurrentDrawCallRTTimes(const uint32 EFSListMask) = 0;
+    virtual int GetCurrentNumberOfDrawCalls(const uint32 EFSListMask) const = 0;
+    virtual float GetCurrentDrawCallRTTimes(const uint32 EFSListMask) const = 0;
 
     virtual void SetDebugRenderNode(IRenderNode* pRenderNode) = 0;
     virtual bool IsDebugRenderNode(IRenderNode* pRenderNode) const = 0;
@@ -1658,8 +1658,8 @@ struct IRenderer
 
     // Remarks:
     //  For stats.
-    virtual int  GetPolyCount() = 0;
-    virtual void GetPolyCount(int& nPolygons, int& nShadowVolPolys) = 0;
+    virtual int  GetPolyCount() const = 0;
+    virtual void GetPolyCount(int& nPolygons, int& nShadowVolPolys) const = 0;
 
     // Note:
     //  3d engine set this color to fog color.
@@ -1975,8 +1975,8 @@ struct IRenderer
 
     virtual void EnableGPUTimers2(bool bEnabled) = 0;
     virtual void AllowGPUTimers2(bool bAllow) = 0;
-    virtual const RPProfilerStats* GetRPPStats(ERenderPipelineProfilerStats eStat, bool bCalledFromMainThread = true) = 0;
-    virtual const RPProfilerStats* GetRPPStatsArray(bool bCalledFromMainThread = true) = 0;
+    virtual const RPProfilerStats* GetRPPStats(ERenderPipelineProfilerStats eStat, bool bCalledFromMainThread = true) const = 0;
+    virtual const RPProfilerStats* GetRPPStatsArray(bool bCalledFromMainThread = true) const = 0;
 
     virtual int GetPolygonCountByType(uint32 EFSList, EVertexCostTypes vct, uint32 z, bool bCalledFromMainThread = true) = 0;
 

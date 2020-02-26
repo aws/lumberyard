@@ -25,6 +25,7 @@
 #include <QScopedPointer>
 #include <QWidget>
 #include <SceneAPI/SceneUI/CommonWidgets/OverlayWidget.h>
+#include <QSortFilterProxyModel>
 
 class QCloseEvent;
 class QLabel;
@@ -54,6 +55,29 @@ namespace AZ
             namespace Ui
             {
                 class ProcessingOverlayWidget;
+            }
+
+            namespace Internal
+            {
+                // This QSortFilterProxyModel filters out an erroneous message.
+                // ResourceCompiler loads all gems. There are some gems which depend on
+                // EditorLib, which loads QtWebEngineWidgets. QtWebEngineWidgets prints a
+                // warning if it is loaded after a QCoreApplication has been instantiated,
+                // but no QOpenGLContext exists, which is always the case with
+                // ResourceCompiler.
+                // The correct fix would be to remove all dependencies on EditorLib from
+                // gems.
+                class QtWebEngineMessageFilter
+                    : public QSortFilterProxyModel
+                {
+                    Q_OBJECT
+                public:
+                    explicit QtWebEngineMessageFilter(QObject* parent = nullptr);
+                    ~QtWebEngineMessageFilter() override;
+
+                protected:
+                    bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override;
+                };
             }
 
             class ProcessingHandler;

@@ -21,6 +21,7 @@
 #include "TransformData.h"
 #include "ActorInstance.h"
 #include <EMotionFX/Source/Allocators.h>
+#include <MCore/Source/AzCoreConversions.h>
 
 
 namespace EMotionFX
@@ -31,16 +32,14 @@ namespace EMotionFX
     SoftSkinDeformer::SoftSkinDeformer(Mesh* mesh)
         : MeshDeformer(mesh)
     {
-        mNodeNumbers.SetMemoryCategory(EMFX_MEMCATEGORY_GEOMETRY_DEFORMERS);
-        mBoneMatrices.SetMemoryCategory(EMFX_MEMCATEGORY_GEOMETRY_DEFORMERS);
     }
 
 
     // destructor
     SoftSkinDeformer::~SoftSkinDeformer()
     {
-        mNodeNumbers.Clear();
-        mBoneMatrices.Clear();
+        mNodeNumbers.clear();
+        mBoneMatrices.clear();
     }
 
 
@@ -88,11 +87,11 @@ namespace EMotionFX
 
         // get some vars
         const TransformData* transformData = actorInstance->GetTransformData();
-        const MCore::Matrix* skinningMatrices = transformData->GetSkinningMatrices();
+        const AZ::Transform* skinningMatrices = transformData->GetSkinningMatrices();
 
         // precalc the skinning matrices
-        const uint32 numBones = mBoneMatrices.GetLength();
-        for (uint32 i = 0; i < numBones; i++)
+        const size_t numBones = mBoneMatrices.size();
+        for (size_t i = 0; i < numBones; i++)
         {
             const uint32 nodeIndex = mNodeNumbers[i];
             mBoneMatrices[i] = skinningMatrices[nodeIndex];
@@ -103,16 +102,16 @@ namespace EMotionFX
         AZ_Assert(layer, "Cannot find skinning info");
 
         // Perform the skinning.
-        AZ::PackedVector3f* __restrict positions    = static_cast<AZ::PackedVector3f*>(mMesh->FindVertexData(Mesh::ATTRIB_POSITIONS));
-        AZ::PackedVector3f* __restrict normals      = static_cast<AZ::PackedVector3f*>(mMesh->FindVertexData(Mesh::ATTRIB_NORMALS));
-        AZ::Vector4*        __restrict tangents     = static_cast<AZ::Vector4*>(mMesh->FindVertexData(Mesh::ATTRIB_TANGENTS));
-        AZ::PackedVector3f* __restrict bitangents   = static_cast<AZ::PackedVector3f*>(mMesh->FindVertexData(Mesh::ATTRIB_BITANGENTS));
-        AZ::u32*            __restrict orgVerts     = static_cast<AZ::u32*>(mMesh->FindVertexData(Mesh::ATTRIB_ORGVTXNUMBERS));
+        AZ::Vector3* __restrict positions    = static_cast<AZ::Vector3*>(mMesh->FindVertexData(Mesh::ATTRIB_POSITIONS));
+        AZ::Vector3* __restrict normals      = static_cast<AZ::Vector3*>(mMesh->FindVertexData(Mesh::ATTRIB_NORMALS));
+        AZ::Vector4* __restrict tangents     = static_cast<AZ::Vector4*>(mMesh->FindVertexData(Mesh::ATTRIB_TANGENTS));
+        AZ::Vector3* __restrict bitangents   = static_cast<AZ::Vector3*>(mMesh->FindVertexData(Mesh::ATTRIB_BITANGENTS));
+        AZ::u32*     __restrict orgVerts     = static_cast<AZ::u32*>(mMesh->FindVertexData(Mesh::ATTRIB_ORGVTXNUMBERS));
         SkinVertexRange(0, mMesh->GetNumVertices(), positions, normals, tangents, bitangents, orgVerts, layer);
     }
 
 
-    void SoftSkinDeformer::SkinVertexRange(uint32 startVertex, uint32 endVertex, AZ::PackedVector3f* positions, AZ::PackedVector3f* normals, AZ::Vector4* tangents, AZ::PackedVector3f* bitangents, uint32* orgVerts, SkinningInfoVertexAttributeLayer* layer)
+    void SoftSkinDeformer::SkinVertexRange(uint32 startVertex, uint32 endVertex, AZ::Vector3* positions, AZ::Vector3* normals, AZ::Vector4* tangents, AZ::Vector3* bitangents, uint32* orgVerts, SkinningInfoVertexAttributeLayer* layer)
     {
         AZ::Vector3 newPos, newNormal;
         AZ::Vector3 vtxPos, normal;
@@ -129,26 +128,26 @@ namespace EMotionFX
                 newTangent = AZ::Vector4::CreateZero();
                 newBitangent = AZ::Vector3::CreateZero();
 
-                vtxPos  = AZ::Vector3(positions[v]);
-                normal  = AZ::Vector3(normals[v]);
+                vtxPos  = positions[v];
+                normal  = normals[v];
                 tangent = tangents[v];
-                bitangent = AZ::Vector3(bitangents[v]);
+                bitangent = bitangents[v];
 
                 const uint32 orgVertex = orgVerts[v]; // get the original vertex number
                 const uint32 numInfluences = layer->GetNumInfluences(orgVertex);
                 for (uint32 i = 0; i < numInfluences; ++i)
                 {
                     const SkinInfluence* influence = layer->GetInfluence(orgVertex, i);
-                    mBoneMatrices[influence->GetBoneNr()].Skin(&vtxPos, &normal, &tangent, &bitangent, &newPos, &newNormal, &newTangent, &newBitangent, influence->GetWeight());
+                    MCore::Skin(mBoneMatrices[influence->GetBoneNr()], &vtxPos, &normal, &tangent, &bitangent, &newPos, &newNormal, &newTangent, &newBitangent, influence->GetWeight());
                 }
 
                 newTangent.SetW(tangents[v].GetW());
 
                 // output the skinned values
-                positions[v]    = AZ::PackedVector3f(newPos);
-                normals[v]      = AZ::PackedVector3f(newNormal);
+                positions[v]    = newPos;
+                normals[v]      = newNormal;
                 tangents[v]     = newTangent;
-                bitangents[v]   = AZ::PackedVector3f(newBitangent);
+                bitangents[v]   = newBitangent;
             }
         }
         else if (tangents) // only tangents but no bitangents
@@ -159,8 +158,8 @@ namespace EMotionFX
                 newNormal = AZ::Vector3::CreateZero();
                 newTangent = AZ::Vector4::CreateZero();
 
-                vtxPos  = AZ::Vector3(positions[v]);
-                normal  = AZ::Vector3(normals[v]);
+                vtxPos  = positions[v];
+                normal  = normals[v];
                 tangent = tangents[v];
 
                 const uint32 orgVertex = orgVerts[v]; // get the original vertex number
@@ -168,14 +167,14 @@ namespace EMotionFX
                 for (uint32 i = 0; i < numInfluences; ++i)
                 {
                     const SkinInfluence* influence = layer->GetInfluence(orgVertex, i);
-                    mBoneMatrices[influence->GetBoneNr()].Skin(&vtxPos, &normal, &tangent, &newPos, &newNormal, &newTangent, influence->GetWeight());
+                    MCore::Skin(mBoneMatrices[influence->GetBoneNr()], &vtxPos, &normal, &tangent, &newPos, &newNormal, &newTangent, influence->GetWeight());
                 }
 
                 newTangent.SetW(tangents[v].GetW());
 
                 // output the skinned values
-                positions[v]    = AZ::PackedVector3f(newPos);
-                normals[v]      = AZ::PackedVector3f(newNormal);
+                positions[v]    = newPos;
+                normals[v]      = newNormal;
                 tangents[v]     = newTangent;
             }
         }
@@ -186,8 +185,8 @@ namespace EMotionFX
                 newPos = AZ::Vector3::CreateZero();
                 newNormal = AZ::Vector3::CreateZero();
 
-                vtxPos  = AZ::Vector3(positions[v]);
-                normal  = AZ::Vector3(normals[v]);
+                vtxPos  = positions[v];
+                normal  = normals[v];
 
                 // skin the vertex
                 const uint32 orgVertex = orgVerts[v]; // get the original vertex number
@@ -195,12 +194,12 @@ namespace EMotionFX
                 for (uint32 i = 0; i < numInfluences; ++i)
                 {
                     const SkinInfluence* influence = layer->GetInfluence(orgVertex, i);
-                    mBoneMatrices[influence->GetBoneNr()].Skin(&vtxPos, &normal, &newPos, &newNormal, influence->GetWeight());
+                    MCore::Skin(mBoneMatrices[influence->GetBoneNr()], &vtxPos, &normal, &newPos, &newNormal, influence->GetWeight());
                 }
 
                 // output the skinned values
-                positions[v]    = AZ::PackedVector3f(newPos);
-                normals[v]      = AZ::PackedVector3f(newNormal);
+                positions[v]    = newPos;
+                normals[v]      = newNormal;
             }
         }
     }
@@ -213,9 +212,9 @@ namespace EMotionFX
         MCORE_UNUSED(node);
         MCORE_UNUSED(lodLevel);
 
-        // clear the bone information array, but don't free the currently allocated/reserved memory
-        mBoneMatrices.Clear(false);
-        mNodeNumbers.Clear(false);
+        // clear the bone information array
+        mBoneMatrices.clear();
+        mNodeNumbers.clear();
 
         // if there is no mesh
         if (mMesh == nullptr)
@@ -237,8 +236,8 @@ namespace EMotionFX
             // now we have located the skinning information for this vertex, we can see if our bones array
             // already contains the bone it uses by traversing all influences for this vertex, and checking
             // if the bone of that influence already is in the array with used bones
-            MCore::Matrix mat;
-            mat.Identity();
+            const AZ::Transform mat = AZ::Transform::CreateIdentity();
+
             const uint32 numInfluences = skinningLayer->GetNumInfluences(i);
             for (uint32 a = 0; a < numInfluences; ++a)
             {
@@ -251,9 +250,9 @@ namespace EMotionFX
                 if (boneIndex == MCORE_INVALIDINDEX32)
                 {
                     // add the bone to the array of bones in this deformer
-                    mNodeNumbers.Add(influence->GetNodeNr());
-                    mBoneMatrices.Add(mat);
-                    boneIndex = mBoneMatrices.GetLength() - 1;
+                    mNodeNumbers.emplace_back(influence->GetNodeNr());
+                    mBoneMatrices.emplace_back(mat);
+                    boneIndex = static_cast<uint32>(mBoneMatrices.size()) - 1;
                 }
 
                 // set the bone number in the influence

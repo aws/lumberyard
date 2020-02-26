@@ -14,11 +14,12 @@
 #define __RENDERGL_SHADER__H
 
 #include <MCore/Source/Color.h>
-#include <MCore/Source/Matrix4.h>
 #include "RenderGLConfig.h"
+#include <AzCore/Math/PackedVector3.h>
 
 namespace AZ
 {
+    class Matrix4x4;
     class Vector2;
 }
 
@@ -47,12 +48,11 @@ namespace RenderGL
         virtual void SetUniform(const char* name, const AZ::Vector2& vector) = 0;
         virtual void SetUniform(const char* name, const AZ::Vector3& vector) = 0;
         virtual void SetUniform(const char* name, const AZ::Vector4& vector) = 0;
-        virtual void SetUniform(const char* name, const MCore::Matrix& matrix) = 0;
-        virtual void SetUniform(const char* name, const MCore::Matrix& matrix, bool transpose) = 0;
-        virtual void SetUniform(const char* name, const MCore::Matrix* matrices, uint32 count) = 0;
+        virtual void SetUniform(const char* name, const AZ::Matrix4x4& matrix) = 0;
+        virtual void SetUniform(const char* name, const AZ::Matrix4x4& matrix, bool transpose) = 0;
+        virtual void SetUniform(const char* name, const AZ::Matrix4x4* matrices, uint32 count) = 0;
         virtual void SetUniform(const char* name, Texture* texture) = 0;
         virtual void SetUniform(const char* name, const float* values, uint32 numFloats) = 0;
-        virtual void SetUniform(const char* name, const AZ::PackedVector3f* values, uint32 numVectors) = 0;
     };
 }
 

@@ -11,6 +11,7 @@
 */
 
 #include "FirstPersonCamera.h"
+#include <MCore/Source/AzCoreConversions.h>
 
 
 namespace MCommon
@@ -45,10 +46,10 @@ namespace MCommon
         }
 
         // calculate the camera direction vector based on the yaw and pitch
-        AZ::Vector3 direction = (AZ::Vector3(0.0f, 0.0f, 1.0f) * (MCore::Matrix::RotationMatrixX(MCore::Math::DegreesToRadians(mPitch)) * MCore::Matrix::RotationMatrixY(MCore::Math::DegreesToRadians(mYaw)))).GetNormalized();
+        AZ::Vector3 direction = (AZ::Matrix4x4::CreateRotationX(MCore::Math::DegreesToRadians(mPitch)) * AZ::Matrix4x4::CreateRotationY(MCore::Math::DegreesToRadians(mYaw))) * (AZ::Vector3(0.0f, 0.0f, 1.0f)).GetNormalized();
 
         // look from the camera position into the newly calculated direction
-        mViewMatrix.LookAt(mPosition, mPosition + direction * 10.0f, AZ::Vector3(0.0f, 1.0f, 0.0f));
+        MCore::LookAt(mViewMatrix, mPosition, mPosition + direction * 10.0f, AZ::Vector3(0.0f, 1.0f, 0.0f));
 
         // update our base camera
         Camera::Update();
@@ -65,34 +66,34 @@ namespace MCommon
 
         EKeyboardButtonState buttonState = (EKeyboardButtonState)keyboardKeyFlags;
 
-        MCore::Matrix transposedViewMatrix(mViewMatrix);
+        AZ::Matrix4x4 transposedViewMatrix(mViewMatrix);
         transposedViewMatrix.Transpose();
 
         // get the movement direction vector based on the keyboard input
         AZ::Vector3 deltaMovement(0.0f, 0.0f, 0.0f);
         if (buttonState & FORWARD)
         {
-            deltaMovement += transposedViewMatrix.GetForward();
+            deltaMovement += MCore::GetForward(transposedViewMatrix);
         }
         if (buttonState & BACKWARD)
         {
-            deltaMovement -= transposedViewMatrix.GetForward();
+            deltaMovement -= MCore::GetForward(transposedViewMatrix);
         }
         if (buttonState & RIGHT)
         {
-            deltaMovement += transposedViewMatrix.GetRight();
+            deltaMovement += MCore::GetRight(transposedViewMatrix);
         }
         if (buttonState & LEFT)
         {
-            deltaMovement -= transposedViewMatrix.GetRight();
+            deltaMovement -= MCore::GetRight(transposedViewMatrix);
         }
         if (buttonState & UP)
         {
-            deltaMovement += transposedViewMatrix.GetUp();
+            deltaMovement += MCore::GetUp(transposedViewMatrix);
         }
         if (buttonState & DOWN)
         {
-            deltaMovement -= transposedViewMatrix.GetUp();
+            deltaMovement -= MCore::GetUp(transposedViewMatrix);
         }
 
         // only move the camera when the delta movement is not the zero vector

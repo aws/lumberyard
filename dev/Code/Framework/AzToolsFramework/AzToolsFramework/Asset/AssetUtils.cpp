@@ -22,7 +22,7 @@
 #include <GemRegistry/IGemRegistry.h>
 AZ_PUSH_DISABLE_WARNING(4127 4251 4800, "-Wunknown-warning-option")
 #include <QDir>
-#include <QFile.h>
+#include <QFile>
 #include <QSettings>
 #include <QDirIterator>
 AZ_POP_DISABLE_WARNING

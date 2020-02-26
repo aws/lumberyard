@@ -15,6 +15,7 @@
 #include "ActorManager.h"
 #include "ActorInstance.h"
 #include "MultiThreadScheduler.h"
+#include <MCore/Source/LogManager.h>
 #include <MCore/Source/StringConversions.h>
 #include <EMotionFX/Source/Allocators.h>
 

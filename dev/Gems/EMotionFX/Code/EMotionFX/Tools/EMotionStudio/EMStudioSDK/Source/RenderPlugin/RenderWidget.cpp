@@ -24,6 +24,7 @@
 #include <EMotionFX/Source/TransformData.h>
 #include "../EMStudioManager.h"
 #include "../MainWindow.h"
+#include <MCore/Source/AzCoreConversions.h>
 #include <MysticQt/Source/KeyboardShortcutManager.h>
 
 
@@ -177,20 +178,20 @@ namespace EMStudio
             case CAMMODE_FRONT:
             case CAMMODE_BOTTOM:
                 // -(scale.x)
-                camDist *= (-2.0 / mCamera->GetViewProjMatrix().m16[0]);
+                camDist *= (-2.0 / static_cast<float>(mCamera->GetViewProjMatrix().GetElement(0, 0)));
                 break;
             case CAMMODE_BACK:
             case CAMMODE_TOP:
                 // scale.x
-                camDist *= (2.0 / mCamera->GetViewProjMatrix().m16[0]);
+                camDist *= (2.0 / static_cast<float>(mCamera->GetViewProjMatrix().GetElement(0, 0)));
                 break;
             case CAMMODE_LEFT:
                 // -(scale.y)
-                camDist *= (-2.0 / mCamera->GetViewProjMatrix().m16[4]);
+                camDist *= (-2.0 / static_cast<float>(mCamera->GetViewProjMatrix().GetElement(0, 1)));
                 break;
             case CAMMODE_RIGHT:
                 // scale.y
-                camDist *= (2.0 / mCamera->GetViewProjMatrix().m16[4]);
+                camDist *= (2.0 / static_cast<float>(mCamera->GetViewProjMatrix().GetElement(0, 1)));
                 break;
             default:
                 break;
@@ -932,26 +933,25 @@ namespace EMStudio
             MCORE_ASSERT(false);
         }
 
-        const AZ::Vector3 axisPosition = UnprojectOrtho(originScreenX, originScreenY, mWidth, mHeight, 0.0f, camera->GetProjectionMatrix(), camera->GetViewMatrix());
-        //const MCore::Vector3 axisPosition = Unproject( originScreenX, originScreenY, mWidth, mHeight, camera->GetNearClipDistance(), camera->GetProjectionMatrix().Inversed(), camera->GetViewMatrix().Inversed());
+        const AZ::Vector3 axisPosition = MCore::UnprojectOrtho(originScreenX, originScreenY, mWidth, mHeight, 0.0f, camera->GetProjectionMatrix(), camera->GetViewMatrix());
 
-        MCore::Matrix inverseCameraMatrix = camera->GetViewMatrix();
-        inverseCameraMatrix.Inverse();
+        AZ::Matrix4x4 inverseCameraMatrix = camera->GetViewMatrix();
+        inverseCameraMatrix.InvertFull();
 
-        MCore::Matrix worldTM;
-        worldTM.SetTranslationMatrix(axisPosition);
+        AZ::Transform worldTM = AZ::Transform::CreateIdentity();
+        worldTM.SetTranslation(axisPosition);
 
         axisRenderingSettings.mSize             = size;
         axisRenderingSettings.mWorldTM          = worldTM;
-        axisRenderingSettings.mCameraRight      = inverseCameraMatrix.GetRight().GetNormalized();
-        axisRenderingSettings.mCameraUp         = inverseCameraMatrix.GetUp().GetNormalized();
+        axisRenderingSettings.mCameraRight      = MCore::GetRight(inverseCameraMatrix).GetNormalized();
+        axisRenderingSettings.mCameraUp         = MCore::GetUp(inverseCameraMatrix).GetNormalized();
         axisRenderingSettings.mRenderXAxisName  = true;
         axisRenderingSettings.mRenderYAxisName  = true;
         axisRenderingSettings.mRenderZAxisName  = true;
 
         // render directly as we have to disable the depth test, hope the additional render call won't slow down so much
         renderUtil->RenderLineAxis(axisRenderingSettings);
-        ((MCommon::RenderUtil*)renderUtil)->RenderLines();
+        renderUtil->RenderLines();
 
         // set the adjusted attributes back to the original values and reset the used camera
         camera->SetProjectionMode(oldProjectionMode);
@@ -1008,7 +1008,11 @@ namespace EMStudio
                     RenderPlugin::EMStudioRenderActor* emstudioActor = mPlugin->FindEMStudioActor(followActor);
                     if (emstudioActor)
                     {
-                        const float scaledOffsetFromTrajectoryNode = followInstance->GetWorldSpaceTransform().mScale.GetZ() * emstudioActor->mOffsetFromTrajectoryNode;
+                        #ifndef EMFX_SCALE_DISABLED
+                            const float scaledOffsetFromTrajectoryNode = followInstance->GetWorldSpaceTransform().mScale.GetZ() * emstudioActor->mOffsetFromTrajectoryNode;
+                        #else
+                            const float scaledOffsetFromTrajectoryNode = 1.0f;
+                        #endif
                         actorInstancePos.SetZ(actorInstancePos.GetZ() + scaledOffsetFromTrajectoryNode);
                     }
                 }
@@ -1282,11 +1286,11 @@ namespace EMStudio
             {
             case CAMMODE_LEFT:
             case CAMMODE_RIGHT:
-                gridNormal = mCamera->GetViewMatrix().GetForward();
+                gridNormal = MCore::GetForward(mCamera->GetViewMatrix());
                 break;
 
             default:
-                gridNormal = mCamera->GetViewMatrix().GetUp();
+                gridNormal = MCore::GetUp(mCamera->GetViewMatrix());
             }
             gridNormal.Normalize();
         }

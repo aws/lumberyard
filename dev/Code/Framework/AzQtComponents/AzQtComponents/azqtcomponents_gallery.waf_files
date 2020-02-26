@@ -47,6 +47,9 @@
             "Gallery/FilteredSearchWidgetPage.cpp",
             "Gallery/FilteredSearchWidgetPage.h",
 
+            "Gallery/FixedStateButton.h",
+            "Gallery/FixedStateButton.cpp",
+
             "Gallery/GradientSliderPage.ui",
             "Gallery/GradientSliderPage.cpp",
             "Gallery/GradientSliderPage.h",
@@ -56,6 +59,10 @@
             "Gallery/LineEditPage.h",
 
             "Gallery/main.cpp",
+
+            "Gallery/MenuPage.ui",
+            "Gallery/MenuPage.cpp",
+            "Gallery/MenuPage.h",
 
             "Gallery/ProgressIndicatorPage.ui",
             "Gallery/ProgressIndicatorPage.cpp",
@@ -67,6 +74,10 @@
 
             "Gallery/resources.qrc",
 
+            "Gallery/ScrollBarPage.ui",
+            "Gallery/ScrollBarPage.cpp",
+            "Gallery/ScrollBarPage.h",
+
             "Gallery/SegmentControlPage.ui",
             "Gallery/SegmentControlPage.cpp",
             "Gallery/SegmentControlPage.h",
@@ -74,6 +85,10 @@
             "Gallery/SliderPage.ui",
             "Gallery/SliderPage.cpp",
             "Gallery/SliderPage.h",
+
+            "Gallery/SliderComboPage.ui",
+            "Gallery/SliderComboPage.cpp",
+            "Gallery/SliderComboPage.h",
 
             "Gallery/SpinBoxPage.ui",
             "Gallery/SpinBoxPage.cpp",

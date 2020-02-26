@@ -47,6 +47,11 @@ namespace AzToolsFramework
             GenericComponentWrapper(const AZ::SerializeContext::ClassData* templateClassData);
             GenericComponentWrapper(AZ::Component* templateClass);
             ~GenericComponentWrapper();
+            GenericComponentWrapper(const GenericComponentWrapper& RHS);
+            GenericComponentWrapper(GenericComponentWrapper&& RHS);
+
+            GenericComponentWrapper& operator=(const GenericComponentWrapper& RHS);
+            GenericComponentWrapper& operator=(GenericComponentWrapper&& RHS);
 
             const char* GetDisplayName();
             const char* GetDisplayDescription();

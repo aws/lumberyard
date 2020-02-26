@@ -17,7 +17,7 @@ def build(bld):
         target                  = 'AzCoreTestDLL',
         vs_filter               = 'AZ Framework/TestSuites',
         file_list               = 'azcoretestdll.waf_files',
-        platforms               = ['win', 'darwin'],
+        platforms               = ['win', 'darwin', 'linux'],
         configurations          = ['all'],
         test_only               = True,
         use                     = ['AzTest', 'AzCore'],

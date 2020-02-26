@@ -111,7 +111,7 @@ namespace EMotionFX
         testVector2Parameter->SetValue(AZ::Vector2(-1.0f, 0.5f));
 
         MCore::AttributeVector3* testVector3Parameter = static_cast<MCore::AttributeVector3*>(m_animGraphInstance->GetParameterValue(static_cast<uint32>(vector3ParamIndexOutcome.GetValue())));
-        testVector3Parameter->SetValue(AZ::PackedVector3f(1.0f, 2.5f, 3.5f));
+        testVector3Parameter->SetValue(AZ::Vector3(1.0f, 2.5f, 3.5f));
 
         Evaluate();
 

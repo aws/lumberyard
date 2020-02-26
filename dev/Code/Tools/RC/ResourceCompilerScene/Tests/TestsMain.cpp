@@ -15,6 +15,7 @@
 #include <AzCore/Module/Environment.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
+#include <SceneAPI/SceneCore/SceneCore.h>
 
 class ResourceCompilerSceneTestEnvironment
     : public AZ::Test::ITestEnvironment
@@ -32,6 +33,9 @@ protected:
             m_hasLocalMemoryAllocator = true;
         }
 
+#if defined(AZ_PLATFORM_LINUX)
+        AZ::SceneCore::SceneCore::Initialize();
+#else
         sceneCoreModule = AZ::DynamicModuleHandle::Create("SceneCore");
         AZ_Assert(sceneCoreModule, "ResourceCompilerScene unit tests failed to create SceneCore module.");
         bool loaded = sceneCoreModule->Load(false);
@@ -39,7 +43,7 @@ protected:
         auto init = sceneCoreModule->GetFunction<AZ::InitializeDynamicModuleFunction>(AZ::InitializeDynamicModuleFunctionName);
         AZ_Assert(init, "ResourceCompilerScene unit tests failed to find the initialization function the SceneCore module.");
         (*init)(AZ::Environment::GetInstance());
-
+#endif // defined(AZ_PLATFORM_LINUX)
         sceneDataModule = AZ::DynamicModuleHandle::Create("SceneData");
         AZ_Assert(sceneDataModule, "ResourceCompilerScene unit tests failed to create SceneData module.");
         loaded = sceneDataModule->Load(false);
@@ -63,11 +67,14 @@ protected:
         (*uninit)();
         sceneDataModule.reset();
 
+#if defined(AZ_PLATFORM_LINUX)
+        AZ::SceneCore::SceneCore::Uninitialize();
+#else
         uninit = sceneCoreModule->GetFunction<AZ::UninitializeDynamicModuleFunction>(AZ::UninitializeDynamicModuleFunctionName);
         AZ_Assert(uninit, "FbxSceneBuilder unit tests failed to find the uninitialization function the SceneCore module.");
         (*uninit)();
         sceneCoreModule.reset();
-
+#endif // defined(AZ_PLATFORM_LINUX)
         if (m_hasLocalMemoryAllocator)
         {
             AZ::AllocatorInstance<AZ::SystemAllocator>().Destroy();
@@ -76,7 +83,9 @@ protected:
 
 private:
     bool m_hasLocalMemoryAllocator = false;
+#if !defined(AZ_PLATFORM_LINUX)
     AZStd::unique_ptr<AZ::DynamicModuleHandle> sceneCoreModule;
+#endif // defined(AZ_PLATFORM_LINUX)
     AZStd::unique_ptr<AZ::DynamicModuleHandle> sceneDataModule;
     AZStd::unique_ptr<AZ::DynamicModuleHandle> fbxSceneBuilderModule;
 };

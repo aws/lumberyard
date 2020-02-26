@@ -132,8 +132,8 @@ namespace EMotionFX
         }
 
         // Test motion extraction with rotation
-        const MCore::Quaternion actorRotation(0.0f, 0.0f, -1.0f, 1.0f);
-        m_actorInstance->SetLocalSpaceRotation(actorRotation.Normalized());
+        const AZ::Quaternion actorRotation(0.0f, 0.0f, -1.0f, 1.0f);
+        m_actorInstance->SetLocalSpaceRotation(actorRotation.GetNormalized());
         GetEMotionFX().Update(0.0f);
         for (AZ::u32 paramIndex = 0; paramIndex < m_param.durationMultipliers.size(); paramIndex++)
         {
@@ -160,8 +160,8 @@ namespace EMotionFX
         const float expectedDeltaY = 0.97622f;
 
         // Use m_reverse to decide rotating diagonally to the left(0.5) or right(-0.5)
-        const MCore::Quaternion diagonalRotation = m_reverse ? MCore::Quaternion(0.0f, 0.0f, 0.5f, 1.0f) : MCore::Quaternion(0.0f, 0.0f, -0.5f, 1.0f);
-        m_actorInstance->SetLocalSpaceRotation(diagonalRotation.Normalized());
+        const AZ::Quaternion diagonalRotation = m_reverse ? AZ::Quaternion(0.0f, 0.0f, 0.5f, 1.0f) : AZ::Quaternion(0.0f, 0.0f, -0.5f, 1.0f);
+        m_actorInstance->SetLocalSpaceRotation(diagonalRotation.GetNormalized());
         GetEMotionFX().Update(0.0f);
         for (AZ::u32 paramIndex = 0; paramIndex < m_param.durationMultipliers.size(); paramIndex++)
         {

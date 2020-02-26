@@ -101,10 +101,11 @@ namespace AZ
                 newAlignment = sizeof(void*) * 2;
             }
 
+            AZ_MEMORY_PROFILE(ProfileReallocationBegin(ptr, newSize));
             AZ_PROFILE_MEMORY_FREE_EX(AZ::Debug::ProfileCategory::MemoryReserved, file, line, ptr);
             pointer_type newPtr = m_schema->ReAllocate(ptr, newSize, newAlignment);
             AZ_PROFILE_MEMORY_ALLOC_EX(AZ::Debug::ProfileCategory::MemoryReserved, file, line, newPtr, newSize, "LegacyAllocator Realloc");
-            AZ_MEMORY_PROFILE(ProfileReallocation(ptr, newPtr, newSize, newAlignment));
+            AZ_MEMORY_PROFILE(ProfileReallocationEnd(ptr, newPtr, newSize, newAlignment));
             AZ_Assert(newPtr || newSize == 0, "OOM - Failed to reallocate %zu bytes from LegacyAllocator", newSize);
             return newPtr;
         }
@@ -124,8 +125,9 @@ namespace AZ
                 newAlignment = sizeof(void*) * 2;
             }
 
+            AZ_MEMORY_PROFILE(ProfileReallocationBegin(ptr, newSize));
             pointer_type newPtr = Base::ReAllocate(ptr, newSize, newAlignment);
-            AZ_MEMORY_PROFILE(ProfileReallocation(ptr, newPtr, newSize, newAlignment));
+            AZ_MEMORY_PROFILE(ProfileReallocationEnd(ptr, newPtr, newSize, newAlignment));
             AZ_Assert(newPtr || newSize == 0, "OOM - Failed to reallocate %zu bytes from LegacyAllocator", newSize);
             return newPtr;
         }

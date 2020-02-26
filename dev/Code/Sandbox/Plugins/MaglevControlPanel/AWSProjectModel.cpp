@@ -619,7 +619,9 @@ public:
         auto resourceGroupStatusModel = ProjectModel()->ResourceGroupStatusModel(index());
         if (resourceGroupStatusModel)
         {
-            resourceGroupStatusModel->Refresh();
+            // If file contents have changed force refresh update on the model. This will update the
+            // resource group detail widget immediately. Avoid bugs caused by inconsistent UI state.
+            resourceGroupStatusModel->Refresh(true);
         }
         ParseResourceNodes();
     }

@@ -14,6 +14,8 @@
 #include <IConfig.h>
 #include <SceneConfig.h>
 #include <AzToolsFramework/Debug/TraceContext.h>
+#include <SceneAPI/SceneCore/SceneCore.h>
+#include <SceneAPI/FbxSceneBuilder/FbxSceneBuilder.h>
 #include <SceneAPI/FbxSceneBuilder/FbxSceneSystem.h>
 
 // Hack to force loading of FbxSceneBuilder library at load time
@@ -30,8 +32,14 @@ namespace AZ
     {
         SceneConfig::SceneConfig()
         {
+#if !defined(AZ_PLATFORM_LINUX)
             LoadSceneLibrary("SceneCore");
             LoadSceneLibrary("FbxSceneBuilder"); // Still needs to be explicitly loaded in order to be able to get the supported file extensions.
+#else
+            AZ::SceneAPI::SceneCore::Initialize();
+            AZ::SceneAPI::FbxSceneBuilder::Initialize();
+
+#endif // !defined(AZ_PLATFORM_LINUX)
         }
 
         SceneConfig::~SceneConfig()
@@ -45,6 +53,10 @@ namespace AZ
                     (*uninit)();
                 }
             }
+#if defined(AZ_PLATFORM_LINUX)
+            AZ::SceneAPI::FbxSceneBuilder::Uninitialize();
+            AZ::SceneAPI::SceneCore::Uninitialize();
+#endif  // defined(AZ_PLATFORM_LINUX)
         }
 
         void SceneConfig::LoadSceneLibrary(const char* name)

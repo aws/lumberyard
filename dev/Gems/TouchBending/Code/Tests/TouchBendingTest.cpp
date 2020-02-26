@@ -28,6 +28,7 @@
 #include <AzFramework/Physics/SystemBus.h>
 #include <AzFramework/Physics/World.h>
 #include <AzFramework/Physics/WorldEventhandler.h>
+#include <AzFramework/Physics/Utils.h>
 #include <PxPhysicsAPI.h>
 #include <Physics/PhysicsTests.h>
 #include <Physics/PhysicsTests.inl>
@@ -94,6 +95,7 @@ namespace TouchBending
         void SetupEnvironment() override;
         void TeardownEnvironment() override;
         void AddGemsAndComponents() override;
+        void PostCreateApplication() override;
 
         // DefaultWorldBus
         AZStd::shared_ptr<Physics::World> GetDefaultWorld() override
@@ -120,8 +122,7 @@ namespace TouchBending
             PhysX::SystemRequestsBus::BroadcastResult(pvdConnectionSuccessful, &PhysX::SystemRequests::ConnectToPvd);
         }
 
-        Physics::SystemRequestBus::BroadcastResult(m_defaultWorld,
-            &Physics::SystemRequests::CreateWorld, Physics::DefaultPhysicsWorldId);
+        m_defaultWorld = AZ::Interface<Physics::System>::Get()->CreateWorld(Physics::DefaultPhysicsWorldId);
 
         Physics::DefaultWorldBus::Handler::BusConnect();
     }
@@ -131,6 +132,16 @@ namespace TouchBending
         AddDynamicModulePaths({ "Gem.PhysX.4e08125824434932a0fe3717259caa47.v0.1.0" });
         AddComponentDescriptors({ Simulation::PhysicsComponent::CreateDescriptor() });
         AddRequiredComponents({ Simulation::PhysicsComponent::TYPEINFO_Uuid() });
+    }
+
+    void TouchBendingTestEnvironment::PostCreateApplication()
+    {
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        if (serializeContext)
+        {
+            Physics::ReflectionUtils::ReflectPhysicsApi(serializeContext);
+        }
     }
 
     void TouchBendingTestEnvironment::TeardownEnvironment()
@@ -533,12 +544,9 @@ namespace TouchBending
             AZ::u32 touchCount = 0;
             Physics::TouchBendingBus::Broadcast(&Physics::TouchBendingRequest::SetTouchBendingSkeletonVisibility, testState.m_physicalizedSkeleton, true, boneCount, touchCount);
 
-            const AZ::u32 expectedTouchCount = 1;
-            if (touchCount != expectedTouchCount)
-            {
-                AZ_Error(TOUCH_BENDING_TEST_WINDOW, false, "touchCount=%u, was expecting %u", touchCount, expectedTouchCount);
-                return false;
-            }
+            //No need to check for "touchCount". it can be 0, or 1 depending on the current compute load of the machine
+            //where this test is running from. What truly matters (and is guaranteed) is that this function is called after the proximity box was touched
+            //at least once.
 
             const AZ::u32 expectedMinimumBoneCount = 1;
             if (boneCount < expectedMinimumBoneCount)

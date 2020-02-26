@@ -14,6 +14,11 @@
 #include "stdafx.h"
 #include "DBAManager.h"
 
+#include <AzCore/PlatformDef.h>
+#if defined (AZ_PLATFORM_LINUX)
+#include "Linux64Specific.h"
+#endif // defined (AZ_PLATFORM_LINUX)
+
 #include "../../../CryXML/IXMLSerializer.h"
 #include "../../../CryXML/ICryXML.h"
 #include "FileUtil.h"

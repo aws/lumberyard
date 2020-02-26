@@ -135,8 +135,13 @@ namespace PhysXCharacters
         rigidBodyConfig.m_kinematic = true;
         rigidBodyConfig.m_debugName = configuration.m_debugName + " (Shadow)";
         rigidBodyConfig.m_entityId = configuration.m_entityId;
-        Physics::SystemRequestBus::BroadcastResult(m_shadowBody, &Physics::SystemRequests::CreateRigidBody, rigidBodyConfig);
+        m_shadowBody = AZ::Interface<Physics::System>::Get()->CreateRigidBody(rigidBodyConfig);
         world.AddBody(*m_shadowBody);
+    }
+
+    void CharacterController::SetTag(const AZStd::string& tag)
+    {
+        m_colliderTag = AZ::Crc32(tag);
     }
 
     CharacterController::~CharacterController()
@@ -285,6 +290,55 @@ namespace PhysXCharacters
         }
 
         return m_observedVelocity;
+    }
+
+    void CharacterController::SetCollisionLayer(const Physics::CollisionLayer& layer)
+    {
+        if (!m_shape)
+        {
+            AZ_Error("PhysX Character Controller", false, "Attempting to access null shape on character controller.");
+            return;
+        }
+        
+        m_shape->SetCollisionLayer(layer);
+    }
+
+    void CharacterController::SetCollisionGroup(const Physics::CollisionGroup& group)
+    {
+        if (!m_shape)
+        {
+            AZ_Error("PhysX Character Controller", false, "Attempting to access null shape on character controller.");
+            return;
+        }
+
+        m_shape->SetCollisionGroup(group);
+    }
+
+    Physics::CollisionLayer CharacterController::GetCollisionLayer() const
+    {
+        if (!m_shape)
+        {
+            AZ_Error("PhysX Character Controller", false, "Attempting to access null shape on character controller.");
+            return Physics::CollisionLayer::Default;
+        }
+
+        return m_shape->GetCollisionLayer();
+    }
+
+    Physics::CollisionGroup CharacterController::GetCollisionGroup() const
+    {
+        if (!m_shape)
+        {
+            AZ_Error("PhysX Character Controller", false, "Attempting to access null shape on character controller.");
+            return Physics::CollisionGroup::All;
+        }
+
+        return m_shape->GetCollisionGroup();
+    }
+
+    AZ::Crc32 CharacterController::GetColliderTag() const
+    {
+        return m_colliderTag;
     }
 
     AZ::Vector3 CharacterController::TryRelativeMove(const AZ::Vector3& deltaPosition, float deltaTime)

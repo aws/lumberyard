@@ -198,4 +198,15 @@ namespace GradientSignal
             m_refreshInProgress = false;
         }
     }
+
+    void GradientPreviewDataWidget::CancelRefresh()
+    {
+        for (GradientPreviewWidget* previewer : { m_preview, m_previewWindow })
+        {
+            if (previewer)
+            {
+                previewer->CancelRefresh();
+            }
+        }
+    }
 } //namespace GradientSignal

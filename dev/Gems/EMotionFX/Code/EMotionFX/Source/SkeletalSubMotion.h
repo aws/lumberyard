@@ -53,7 +53,7 @@ namespace EMotionFX
          * If no keytrack exists yet, you can create it with the CreatePosTrack() method.
          * @result The position keyframing track, which can be nullptr.
          */
-        MCORE_INLINE KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>* GetPosTrack() const;
+        MCORE_INLINE KeyTrackLinear<AZ::Vector3, AZ::Vector3>* GetPosTrack() const;
 
         /**
          * Returns the rotation keyframing track.
@@ -61,7 +61,7 @@ namespace EMotionFX
          * If no keytrack exists yet, you can create it with the CreateRotTrack() method.
          * @result The rotation keyframing track, which can be nullptr.
          */
-        MCORE_INLINE KeyTrackLinear<MCore::Quaternion, MCore::Compressed16BitQuaternion>* GetRotTrack() const;
+        MCORE_INLINE KeyTrackLinear<AZ::Quaternion, MCore::Compressed16BitQuaternion>* GetRotTrack() const;
 
         #ifndef EMFX_SCALE_DISABLED
         /**
@@ -70,7 +70,7 @@ namespace EMotionFX
          * If no keytrack exists yet, you can create it with the CreateScaleTrack() method.
          * @result The scaling keyframing track, which can be nullptr.
          */
-        MCORE_INLINE KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>* GetScaleTrack() const;
+        MCORE_INLINE KeyTrackLinear<AZ::Vector3, AZ::Vector3>* GetScaleTrack() const;
         #endif
 
         /**
@@ -95,7 +95,7 @@ namespace EMotionFX
          * Get the rotation at the first frame of the motion, in local space (relative to the parent).
          * @result The rotation at the first frame of the motion.
          */
-        MCORE_INLINE MCore::Quaternion GetPoseRot() const;
+        MCORE_INLINE AZ::Quaternion GetPoseRot() const;
 
         /**
          * Get the rotation at the first frame of the motion, in local space (relative to the parent).
@@ -121,7 +121,7 @@ namespace EMotionFX
          * Set the rotation at the first frame of the motion, in local space (relative to the parent).
          * @param rot The rotation at the first frame of the motion.
          */
-        MCORE_INLINE void SetPoseRot(const MCore::Quaternion& rot);
+        MCORE_INLINE void SetPoseRot(const AZ::Quaternion& rot);
 
         /**
          * Set the rotation at the first frame of the motion, in local space (relative to the parent).
@@ -147,7 +147,7 @@ namespace EMotionFX
          * Get the bind pose rotation, in local space (relative to parent).
          * @result The bind pose rotation quaternion.
          */
-        MCORE_INLINE MCore::Quaternion GetBindPoseRot() const;
+        MCORE_INLINE AZ::Quaternion GetBindPoseRot() const;
 
         /**
          * Get the bind pose rotation, in local space (relative to parent).
@@ -173,7 +173,7 @@ namespace EMotionFX
          * Set the bind pose rotation quaternion, in local space (relative to parent).
          * @param rot The quaternion representing the bind pose rotation.
          */
-        MCORE_INLINE void SetBindPoseRot(const MCore::Quaternion& rot);
+        MCORE_INLINE void SetBindPoseRot(const AZ::Quaternion& rot);
 
         /**
          * Set the bind pose rotation quaternion, in local space (relative to parent).
@@ -255,8 +255,8 @@ namespace EMotionFX
 
 
     private:
-        KeyTrackLinear<MCore::Quaternion, MCore::Compressed16BitQuaternion>*        mRotTrack;          /**< The rotation key track. */
-        KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>*                     mPosTrack;          /**< The position key track. */
+        KeyTrackLinear<AZ::Quaternion, MCore::Compressed16BitQuaternion>*           mRotTrack;          /**< The rotation key track. */
+        KeyTrackLinear<AZ::Vector3, AZ::Vector3>*                                   mPosTrack;          /**< The position key track. */
         MCore::Compressed16BitQuaternion                                            mPoseRot;           /**< The original base pose rotation on the first frame, uncompressed for faster performance. */
         AZ::Vector3                                                                 mPosePos;           /**< The original base pose position on the first frame. */
         AZ::Vector3                                                                 mBindPosePos;       /**< The bind pose position in local space. */
@@ -265,7 +265,7 @@ namespace EMotionFX
         #ifndef EMFX_SCALE_DISABLED
         AZ::Vector3                                                                 mPoseScale;             /**< The original base pose scale on the first frame. */
         AZ::Vector3                                                                 mBindPoseScale;         /**< The bind pose scale in local space. */
-        KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>*                     mScaleTrack;            /**< The scale key track. */
+        KeyTrackLinear<AZ::Vector3, AZ::Vector3>*                                   mScaleTrack;            /**< The scale key track. */
         #endif
 
         uint32                                                                      mNameID;            /**< The unique ID, based on the name. */

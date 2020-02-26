@@ -121,30 +121,12 @@ namespace PhysX
             AZ::SerializeContext* serializeContext = nullptr;
             AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
 
-            MeshAssetCookedData cookedMeshAsset;
-            if (!AZ::Utils::LoadObjectFromStreamInPlace(*stream, cookedMeshAsset, serializeContext))
+            if (!AZ::Utils::LoadObjectFromStreamInPlace(*stream, meshAsset->m_assetData, serializeContext))
             {
                 return false;
             }
 
-            physx::PxU8* cookedMeshBuffer = cookedMeshAsset.m_cookedPxMeshData.data();
-            physx::PxU32 cookedMeshBufferSize = static_cast<physx::PxU32>(cookedMeshAsset.m_cookedPxMeshData.size());
-            
-            physx::PxDefaultMemoryInputData inpStream(cookedMeshBuffer, cookedMeshBufferSize);
-
-            if (cookedMeshAsset.m_isConvexMesh)
-            {
-                meshAsset->m_meshData = PxGetPhysics().createConvexMesh(inpStream);
-            }
-            else
-            {
-                meshAsset->m_meshData = PxGetPhysics().createTriangleMesh(inpStream);
-            }
-
-            meshAsset->m_materials = AZStd::move(cookedMeshAsset.m_materialsData);
-            meshAsset->m_materialSlots = AZStd::move(cookedMeshAsset.m_materialSlots);
-
-            return meshAsset->m_meshData != nullptr;
+            return true;
         }
 
         bool MeshAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& assetLoadFilterCB)
@@ -171,24 +153,75 @@ namespace PhysX
             assetTypes.push_back(AZ::AzTypeInfo<MeshAsset>::Uuid());
         }
 
-        MeshAssetCookedData::MeshAssetCookedData(const physx::PxDefaultMemoryOutputStream& cookedStream)
+        void MeshAssetData::Reflect(AZ::ReflectContext* context)
         {
-            m_cookedPxMeshData.insert( m_cookedPxMeshData.begin(), cookedStream.getData(), cookedStream.getData() + cookedStream.getSize());
-        }
-
-        void MeshAssetCookedData::Reflect(AZ::ReflectContext* context)
-        {
-            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-            if (serializeContext)
+            if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
-                serializeContext->Class<MeshAssetCookedData>()
-                    ->Version(3)
-                    ->Field("Convexity", &MeshAssetCookedData::m_isConvexMesh)
-                    ->Field("Materials", &MeshAssetCookedData::m_materialsData)
-                    ->Field("MaterialSlots", &MeshAssetCookedData::m_materialSlots)
-                    ->Field("CookedPxData", &MeshAssetCookedData::m_cookedPxMeshData)
+                serializeContext->ClassDeprecate("MeshAssetCookedData", "{82955F2F-4DA1-4AEF-ACEF-0AE16BA20EF4}");
+
+                serializeContext->Class<MeshAssetData>()
+                    ->Field("ColliderShapes", &MeshAssetData::m_colliderShapes)
+                    ->Field("SurfaceNames", &MeshAssetData::m_surfaceNames)
+                    ->Field("MaterialNames", &MeshAssetData::m_materialNames)
+                    ->Field("MaterialIndexPerShape", &MeshAssetData::m_materialIndexPerShape)
                     ;
             }
         }
+
+        void AssetColliderConfiguration::Reflect(AZ::ReflectContext* context)
+        {
+            if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+            {
+                serializeContext->Class<AssetColliderConfiguration>()
+                    ->Field("CollisionLayer", &AssetColliderConfiguration::m_collisionLayer)
+                    ->Field("CollisionGroupId", &AssetColliderConfiguration::m_collisionGroupId)
+                    ->Field("isTrigger", &AssetColliderConfiguration::m_isTrigger)
+                    ->Field("Transform", &AssetColliderConfiguration::m_transform)
+                    ->Field("Tag", &AssetColliderConfiguration::m_tag)
+                    ;
+            }
+        }
+
+        void AssetColliderConfiguration::UpdateColliderConfiguration(Physics::ColliderConfiguration& colliderConfiguration) const
+        {
+            if (m_collisionLayer)
+            {
+                colliderConfiguration.m_collisionLayer = *m_collisionLayer;
+            }
+
+            if (m_collisionGroupId)
+            {
+                colliderConfiguration.m_collisionGroupId = *m_collisionGroupId;
+            }
+
+            if (m_isTrigger)
+            {
+                colliderConfiguration.m_isTrigger = *m_isTrigger;
+            }
+
+            if (m_transform)
+            {
+                // Apply the local shape transform to the collider one
+                AZ::Transform existingTransform = 
+                    AZ::Transform::CreateFromQuaternionAndTranslation(colliderConfiguration.m_rotation, colliderConfiguration.m_position);
+
+                AZ::Transform shapeTransform = *m_transform;
+                shapeTransform.ExtractScaleExact();
+
+                shapeTransform = existingTransform * shapeTransform;
+
+                colliderConfiguration.m_position = shapeTransform.GetTranslation();
+
+                colliderConfiguration.m_rotation = AZ::Quaternion::CreateFromTransform(shapeTransform);
+                colliderConfiguration.m_rotation.Normalize();
+            }
+
+            if (m_tag)
+            {
+                colliderConfiguration.m_tag = *m_tag;
+            }
+        }
+
+
 } //namespace Pipeline
 } // namespace PhysX

@@ -163,6 +163,10 @@ namespace AzToolsFramework
         /// Is this entity component pair currently being tracked by this manipulator.
         bool HasEntityComponentIdPair(const AZ::EntityComponentIdPair& entityComponentIdPair) const;
 
+        /// Forward a mouse over event in a case where we need the manipulator to immediately refresh.
+        /// @note Only call this when a mouse over event has just happened.
+        void ForwardMouseOverEvent(const ViewportInteraction::MouseInteraction& interaction);
+
         static const AZ::Color s_defaultMouseOverColor;
 
     protected:
@@ -233,13 +237,7 @@ namespace AzToolsFramework
             const ViewportInteraction::MouseInteraction& /*interaction*/, float /*rayIntersectionDistance*/) = nullptr;
 
         /// Update the mouseOver state for this manipulator.
-        void UpdateMouseOver(const ManipulatorId manipulatorId)
-        {
-            if (!PerformingAction())
-            {
-                m_mouseOver = (m_manipulatorId == manipulatorId);
-            }
-        }
+        void UpdateMouseOver(const ManipulatorId manipulatorId);
 
         /// Manage correctly ending the undo batch.
         void EndUndoBatch();

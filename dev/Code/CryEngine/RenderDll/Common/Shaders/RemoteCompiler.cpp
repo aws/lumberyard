@@ -1135,7 +1135,7 @@ namespace NRemoteCompiler
             size_t nUncompressedLen = (size_t)nSrcUncompressedLen;
 
             // Maximum size allowed for a shader in bytes
-            static const size_t maxShaderSize = 1*(1024*1024); // 1 MB
+            static const size_t maxShaderSize = 10*(1024*1024); // 10 MB. Uncompressed shader list usually is bigger than 1MB
 
             if (nUncompressedLen > maxShaderSize)
             {

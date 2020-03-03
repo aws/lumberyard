@@ -40,13 +40,18 @@ namespace ScriptCanvasEditor
 
             if (object && object->GetAs<AZ::Crc32>())
             {
-                AZ::Crc32 crcValue = (*object->GetAs<AZ::Crc32>());
+                const AZ::Crc32* pCrcValue = object->GetAs<AZ::Crc32>();
+                
+                if(pCrcValue)
+                {
+                    AZ::Crc32 crcValue = (*pCrcValue);
                 EditorGraphRequestBus::EventResult(retVal, GetScriptCanvasGraphEntityId(), &EditorGraphRequests::DecodeCrc, crcValue);
 
                 if (retVal.empty() && crcValue != AZ::Crc32())
                 {
                     AZ_Warning("ScriptCanvas", false, "Unknown CRC value. Cannot display cached string.");
                     retVal = AZStd::string::format("0x%X", crcValue);
+                    }
                 }
             }
 

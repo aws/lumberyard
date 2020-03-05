@@ -213,11 +213,9 @@ public:
     void clear()
     {
         // Destroy all elements, in reverse order
-        for (Node* p = m_pTail; p != NULL; )
+        while (m_pTail)
         {
-            Node* pPrev = p->pPrev;
-            destroy(p);
-            p = pPrev;
+            erase(m_pTail);
         }
         reset();
     }

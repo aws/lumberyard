@@ -1,6 +1,13 @@
 {
     "none": 
     {
+        "std/_Debugging": [
+            "debugger tools/smartdebug/azcore.natvis",
+            "debugger tools/smartdebug/azcore_vs2013.natvis",
+            "debugger tools/smartdebug/azcore_vs2015.natvis",
+            "debugger tools/smartdebug/azcore.natjmc",
+            "debugger tools/smartdebug/azcore.natstepfilter"
+        ],
         "std":
         [
             "algorithm.h",

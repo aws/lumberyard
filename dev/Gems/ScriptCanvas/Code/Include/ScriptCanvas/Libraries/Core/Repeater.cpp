@@ -39,7 +39,7 @@ namespace ScriptCanvas
 
                 AZStd::string GetDelaySlotName(Repeater::DelayUnits delayUnits)
                 {
-                    AZStd::string stringifiedUnits = StringifyUnits(delayUnits).c_str();
+                    const char* stringifiedUnits = StringifyUnits(delayUnits).c_str();
                     return AZStd::string::format("Delay (%s)", stringifiedUnits);
                 }
             }

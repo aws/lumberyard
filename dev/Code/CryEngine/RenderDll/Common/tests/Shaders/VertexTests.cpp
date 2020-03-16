@@ -47,8 +47,69 @@ int32 m_cSizeVF[eVF_Max] =
     sizeof(SVF_P2S_N4B_C4B_T1F),
     sizeof(SVF_P3F_C4B_T2S),
 
-    sizeof(SVF_P2F_C4B_T2F_F4B),    
-    sizeof(SVF_P3F_C4B)
+    sizeof(SVF_P2F_C4B_T2F_F4B),
+    sizeof(SVF_P3F_C4B),
+
+#ifdef POPCORNFX_PARTICLES
+    // PopcornFX - Base
+    sizeof(SVF_P3F_C4F_T2F),
+    sizeof(SVF_P3F_C4F_T2F_T3F),
+    sizeof(SVF_P3F_C4F_T2F_T3F_T3F),
+    sizeof(SVF_P3F_C4F_T2F_T1F),
+    sizeof(SVF_P3F_C4F_T2F_T1F_T3F),
+    sizeof(SVF_P3F_C4F_T2F_T1F_T3F_T3F),
+    sizeof(SVF_P3F_C4F_T4F_T2F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T3F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T3F_T3F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T1F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T3F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T3F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F),
+    // PopcornFX - Input0
+    sizeof(SVF_P3F_C4F_T2F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T3F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T1F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T1F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F),
+    // PopcornFX - Input0 Input1
+    sizeof(SVF_P3F_C4F_T2F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T3F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T1F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T1F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F_T4F),
+    sizeof(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F_T4F),
+#endif
+
 };
 
 // Legacy table copied from RenderMesh.cpp
@@ -164,6 +225,281 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
         OOFS(SVF_P3F_C4B, color.dcolor),
         -1
     },
+#ifdef POPCORNFX_PARTICLES
+    // PopcornFX - Base
+    {
+        OOFS(SVF_P3F_C4F_T2F, uv),
+        OOFS(SVF_P3F_C4F_T2F, color),
+        -1
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T3F, uv),
+        OOFS(SVF_P3F_C4F_T2F_T3F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T3F_T3F, uv),
+        OOFS(SVF_P3F_C4F_T2F_T3F_T3F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T1F, uv),
+        OOFS(SVF_P3F_C4F_T2F_T1F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F, uv),
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T3F, uv),
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T3F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T4F_T2F, uvScaleAndOffset),
+        OOFS(SVF_P3F_C4F_T4F_T2F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F, uvScaleAndOffset),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T3F, uvScaleAndOffset),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T3F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F, uvScaleAndOffset),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F, uvScaleAndOffset),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F, uvScaleAndOffset),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F, uv0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F, uv0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F, uv0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F, uv0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F, uv0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F, uv0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F, color),
+        -1,
+    },
+    // PopcornFX - Input0
+    {
+        OOFS(SVF_P3F_C4F_T2F_T4F, uv),
+        OOFS(SVF_P3F_C4F_T2F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T3F_T4F, uv),
+        OOFS(SVF_P3F_C4F_T2F_T3F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T3F_T3F_T4F, uv),
+        OOFS(SVF_P3F_C4F_T2F_T3F_T3F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T1F_T4F, uv),
+        OOFS(SVF_P3F_C4F_T2F_T1F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T4F, uv),
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F, uv),
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T4F_T2F_T4F, uvScaleAndOffset),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T4F, uvScaleAndOffset),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F, uvScaleAndOffset),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F, uvScaleAndOffset),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F, uvScaleAndOffset),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F, uvScaleAndOffset),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T4F, uv0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F, uv0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F, uv0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F, uv0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F, uv0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F, uv0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F, color),
+        -1,
+    },
+    // PopcornFX - Input0 Input1
+    {
+        OOFS(SVF_P3F_C4F_T2F_T4F_T4F, uv),
+        OOFS(SVF_P3F_C4F_T2F_T4F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T3F_T4F_T4F, uv),
+        OOFS(SVF_P3F_C4F_T2F_T3F_T4F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T3F_T3F_T4F_T4F, uv),
+        OOFS(SVF_P3F_C4F_T2F_T3F_T3F_T4F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T1F_T4F_T4F, uv),
+        OOFS(SVF_P3F_C4F_T2F_T1F_T4F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T4F_T4F, uv),
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T4F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F_T4F, uv),
+        OOFS(SVF_P3F_C4F_T2F_T1F_T3F_T3F_T4F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T4F_T2F_T4F_T4F, uvScaleAndOffset),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T4F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T4F_T4F, uvScaleAndOffset),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T4F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F_T4F, uvScaleAndOffset),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T3F_T3F_T4F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T4F_T4F, uvScaleAndOffset),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T4F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F_T4F, uvScaleAndOffset),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T4F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F_T4F, uvScaleAndOffset),
+        OOFS(SVF_P3F_C4F_T4F_T2F_T1F_T3F_T3F_T4F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T4F_T4F, uv0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T4F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F_T4F, uv0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T4F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F_T4F, uv0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T3F_T3F_T4F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F_T4F, uv0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T4F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F_T4F, uv0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T4F_T4F, color),
+        -1,
+    },
+    {
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F_T4F, uv0),
+        OOFS(SVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F_T4F, color),
+        -1,
+    },
+#endif
 };
 #undef OOFS
 
@@ -482,7 +818,12 @@ TEST_P(VertexFormatTest, D3DVertexDeclarations_MatchesLegacy)
     // ignore these cases
     // Also ignore eVF_P2S_N4B_C4B_T1F: the T1F attribute has a POSITION semantic name in the legacy declaration, even though both the engine and shader treat it as a TEXCOORD (despite the fact that it is eventually used for a position)
     // eVF_P3F_C4B_T2F_T2F, eVF_P3S_C4B_T2S_T2S, and eVF_P2F_C4B_T2F_F4B are all new
-    if (eVF != eVF_W4B_I4S && eVF != eVF_C4B_C4B && eVF != eVF_P3F_P3F_I4B && eVF != eVF_P2F_T4F_T4F_C4F && eVF != eVF_P2S_N4B_C4B_T1F && eVF != eVF_P2F_C4B_T2F_F4B && eVF != eVF_P3F_C4B_T2F_T2F && eVF != eVF_P3S_C4B_T2S_T2S)
+    if (eVF != eVF_W4B_I4S && eVF != eVF_C4B_C4B && eVF != eVF_P3F_P3F_I4B && eVF != eVF_P2F_T4F_T4F_C4F && eVF != eVF_P2S_N4B_C4B_T1F && eVF != eVF_P2F_C4B_T2F_F4B && eVF != eVF_P3F_C4B_T2F_T2F && eVF != eVF_P3S_C4B_T2S_T2S
+#ifdef POPCORNFX_PARTICLES
+        && (eVF < eVF_P3F_C4F_T2F || eVF > eVF_P3F_C4F_T2F_T2F_T1F_T1F_T3F_T3F_T4F_T4F)) //ignore PopcornFX formats
+#else
+        )
+#endif
     {
         AZStd::vector<D3D11_INPUT_ELEMENT_DESC> actual = GetD3D11Declaration(AZ::Vertex::Format(eVF));
         matchesLegacy = DeclarationsAreEqual(actual, expected);

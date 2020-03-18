@@ -19,16 +19,16 @@ import os
 
 import resource_group
 import mappings
-import project
 import stack
 import cognito_pools
 from cgf_utils import custom_resource_utils
 
 from botocore.exceptions import NoCredentialsError
 
-from uploader import ProjectUploader, Phase, Uploader
+from uploader import ProjectUploader, Uploader
 from resource_manager_common import constant
 from resource_manager_common import stack_info
+import security
 
 PENDING_CREATE_REASON = 'The deployment''s resource group defined resources have not yet been created in AWS.'
 ACCESS_PENDING_CREATE_REASON = 'The deployment''s access control resources have not been created in AWS.'
@@ -250,7 +250,7 @@ def create_stack(context, args):
         access_template_url = deployment_uploader.upload_content(
             constant.DEPLOYMENT_ACCESS_TEMPLATE_FILENAME,
             json.dumps(context.config.deployment_access_template_aggregator.effective_template, indent=4, sort_keys=True),
-            'processed deployment access temmplate')
+            'processed deployment access template')
 
         access_stack_parameters = __get_access_stack_parameters(
             context,
@@ -831,6 +831,9 @@ def after_update(context, deployment_uploader, record_pools):
                                        args=[deployment_uploader.deployment_name, None],
                                        deprecated=True)
 
+    security.run_project_patcher_internal(context, identifier=security.DEFAULT_PATCH_IDENTIFIER,
+                                          dry_run=False, should_log=True, deployment_name=deployment_uploader.deployment_name)
+
 
 def __record_cognito_pools(context, deployment_uploader):
     access_stack_arn = context.config.get_deployment_access_stack_id(
@@ -870,30 +873,30 @@ def tags(context, args):
 
 
 def clear_tags(context, deployment):
-    if not constant.DEPLOYMENT_TAGS in context.config.local_project_settings:
+    if constant.DEPLOYMENT_TAGS not in context.config.local_project_settings:
         return
     context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment] = []
     context.config.local_project_settings.save()
 
 
 def add_tags(context, deployment, tags):
-    if not constant.DEPLOYMENT_TAGS in context.config.local_project_settings:
+    if constant.DEPLOYMENT_TAGS not in context.config.local_project_settings:
         context.config.local_project_settings[constant.DEPLOYMENT_TAGS] = {}
-    if not deployment in context.config.local_project_settings[constant.DEPLOYMENT_TAGS]:
+    if deployment not in context.config.local_project_settings[constant.DEPLOYMENT_TAGS]:
         context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment] = []
     for tag in tags:
-        if not tag in context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment]:
+        if tag not in context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment]:
             context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment].append(tag)
     context.config.local_project_settings.save()
 
 
 def delete_tags(context, deployment, tags):
-    if not constant.DEPLOYMENT_TAGS in context.config.local_project_settings:
+    if constant.DEPLOYMENT_TAGS not in context.config.local_project_settings:
         context.config.local_project_settings[constant.DEPLOYMENT_TAGS] = {}
-    if not deployment in context.config.local_project_settings[constant.DEPLOYMENT_TAGS]:
+    if deployment not in context.config.local_project_settings[constant.DEPLOYMENT_TAGS]:
         context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment] = []
     for tag in tags:
-        if not tag in context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment]:
+        if tag not in context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment]:
             context.view._output_message("Tried to delete tag {}, but it was not found on the deployment {}".format(tag, deployment))
         else:
             context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment].remove(tag)
@@ -901,9 +904,9 @@ def delete_tags(context, deployment, tags):
 
 
 def list_tags(context, deployment):
-    if not constant.DEPLOYMENT_TAGS in context.config.local_project_settings:
+    if constant.DEPLOYMENT_TAGS not in context.config.local_project_settings:
         return []
-    if not deployment in context.config.local_project_settings[constant.DEPLOYMENT_TAGS]:
+    if deployment not in context.config.local_project_settings[constant.DEPLOYMENT_TAGS]:
         return []
     return json.dumps(context.config.local_project_settings[constant.DEPLOYMENT_TAGS][deployment])
 
@@ -988,15 +991,15 @@ def _get_deployment_stack_description(context, deployment_name):
                     # deployment stack exists but wasn't created successfully
 
                     description_update['StackStatus'] = context.stack.STATUS_CREATE_FAILED
-                    description_update[
-                        'StackStatusReason'] = 'The creation of the stack for the deployment has failed. You can delete the deployment or attempt to create it again.'
+                    description_update['StackStatusReason'] = \
+                        'The creation of the stack for the deployment has failed. You can delete the deployment or attempt to create it again.'
 
                 elif description_update.get('StackStatus', None) in [context.stack.STATUS_CREATE_COMPLETE, context.stack.STATUS_UPDATE_COMPLETE]:
 
                     # The deployment stack exists, isn't in an error state and isn't currently
                     # being updated. Use the status of the access stack instead.
                     #
-                    # TODO: change the ui to have a seperate table access stack status. This
+                    # TODO: change the ui to have a separate table access stack status. This
                     # will be a lot simpler then.
 
                     deployment_access_stack_id = _get_effective_access_stack_id(context, deployment_name)
@@ -1025,8 +1028,8 @@ def _get_deployment_stack_description(context, deployment_name):
                         # Creating the access stack failed.
 
                         description_update['StackStatus'] = context.stack.STATUS_CREATE_FAILED
-                        description_update[
-                            'StackStatusReason'] = 'The creation of the access control stack for the deployment has failed. You can delete the deployment or attempt to create it again.'
+                        description_update['StackStatusReason'] = \
+                            'The creation of the access control stack for the deployment has failed. You can delete the deployment or attempt to create it again.'
 
                     elif deployment_access_stack_status not in [context.stack.STATUS_CREATE_COMPLETE, context.stack.STATUS_UPDATE_COMPLETE]:
 
@@ -1070,7 +1073,7 @@ def list_deployment_resources(context, args):
             raise HandledError('No deployment was specified and there is no default deployment configured.')
         deployment_name = context.config.default_deployment
 
-    # TODO: change the ui to have a seperate table for access stack resources
+    # TODO: change the ui to have a separate table for access stack resources
 
     pending_resource_status = __get_pending_combined_resource_status(context, deployment_name)
 
@@ -1189,7 +1192,7 @@ def __check_custom_definitions(context, pending_resources):
             continue
         if not __resource_handler_exists(stack, resource_info["ResourceType"]):
             raise HandledError(
-                "The project stack has no definition for resource type {} to stand up resource {} " \
+                "The project stack has no definition for resource type {} to stand up resource {} "
                 "Update your project stack to add new custom resource handlers".format(resource_info["ResourceType"], resource_name))
 
 

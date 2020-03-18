@@ -402,10 +402,15 @@
                     "Version": "2012-10-17",
                     "Statement": [
                         {
-                            "Effect": "Allow",
+                            "Effect": "Deny",
                             "Action": "sts:AssumeRoleWithWebIdentity",
                             "Principal": {
                                 "Federated": "cognito-identity.amazonaws.com"
+                            },
+                            "Condition": {
+                                "ForAnyValue:StringLike": {
+                                    "cognito-identity.amazonaws.com:amr": "unauthenticated"
+                                }
                             }
                         },
                         {
@@ -428,6 +433,7 @@
                 }
             }
         },
+
         "AuthenticatedPlayer": {
             "Type": "AWS::IAM::Role",
             "Properties": {
@@ -436,10 +442,15 @@
                     "Version": "2012-10-17",
                     "Statement": [
                         {
-                            "Effect": "Allow",
+                            "Effect": "Deny",
                             "Action": "sts:AssumeRoleWithWebIdentity",
                             "Principal": {
                                 "Federated": "cognito-identity.amazonaws.com"
+                            },
+                            "Condition": {
+                                "ForAnyValue:StringLike": {
+                                    "cognito-identity.amazonaws.com:amr": "authenticated"
+                                }
                             }
                         },
                         {
@@ -507,10 +518,15 @@
                     "Version": "2012-10-17",
                     "Statement": [
                         {
-                            "Effect": "Allow",
+                            "Effect": "Deny",
                             "Action": "sts:AssumeRoleWithWebIdentity",
                             "Principal": {
                                 "Federated": "cognito-identity.amazonaws.com"
+                            },
+                            "Condition": {
+                                "ForAnyValue:StringLike": {
+                                    "cognito-identity.amazonaws.com:amr": "unauthenticated"
+                                }
                             }
                         }
                     ]

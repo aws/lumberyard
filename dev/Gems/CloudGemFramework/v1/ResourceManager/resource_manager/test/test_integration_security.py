@@ -18,6 +18,10 @@ import lmbr_aws_test_support
 import mock_specification
 
 from cgf_utils import aws_utils
+from cgf_utils import aws_sts
+from cgf_utils import aws_iam_role
+from resource_manager.security import IdentityPoolUtils
+
 
 class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_support.lmbr_aws_TestCase):
     OTHER_CONTEXT = 'OtherContext'
@@ -213,6 +217,34 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
 
         res = self.aws_cloudformation.describe_stacks(StackName=project_stack_arn)
         self.assertNotEqual(timestamp_before_update, res['Stacks'][0]['LastUpdatedTime'], 'update-project-stack did not update the stack')
+
+    def __validate_project_identity_roles_are_configured(self, project_stack_arn):
+        identity_pool_id = json.loads(self.get_stack_resource_physical_id(project_stack_arn, "ProjectIdentityPool"))["id"]
+
+        roles = IdentityPoolUtils.get_identity_pool_roles(identity_pool_id, self.aws_cognito_identity)
+        roles.append(self.get_stack_resource_physical_id(project_stack_arn, 'CloudGemPortalUserRole'))
+        roles.append(self.get_stack_resource_physical_id(project_stack_arn, 'CloudGemPortalAdministratorRole'))
+
+        policy_documents = []
+        for role in roles:
+            iam_role = aws_iam_role.IAMRole.factory(role_name=role, iam_client=self.aws_iam)
+
+            # Skip complexity of simulate policy here as its doesn't handle sign-in and federation well
+            pool_ids, condition_statement, aud_key = IdentityPoolUtils.find_existing_pool_ids_references_in_assume_role_policy(iam_role.assume_role_policy)
+            print(condition_statement)
+            self.assertIsNotNone(condition_statement, "Did not find Cognito Federation Statement with expected Condition")
+            self.assertIsNotNone(aud_key, "Expected IAM condition key for Cognito statements is missing")
+            self.assertIn(identity_pool_id, pool_ids, "Did not find pool id in existing pool ids")
+
+    def __174_validate_project_identity_roles_are_configured(self):
+        project_stack_arn = self.get_project_stack_arn()
+        self.__validate_project_identity_roles_are_configured(project_stack_arn)
+
+    def __175_validate_other_project_identity_roles_are_configured(self):
+        # iterate over project stacks, get identity pools
+        with self.alternate_context(self.OTHER_CONTEXT):
+            other_project_stack_arn = self.get_project_stack_arn()
+            self.__validate_project_identity_roles_are_configured(other_project_stack_arn)
 
     def __185_add_resource_group(self):
         self.lmbr_aws(

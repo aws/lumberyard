@@ -19,6 +19,8 @@ import deployment
 import resource_group
 import util
 import cognito_pools
+import time
+import re
 
 from botocore.exceptions import ClientError
 from boto3.session import Session
@@ -31,10 +33,9 @@ from util import Args, load_template
 from uploader import ProjectUploader
 from resource_manager_common import constant
 from resource_manager_common import resource_type_info
-import time
-import re
+import security
 
-
+CREATE_ADMIN_ROLE_PARAM_NAME = 'CreateAdminRoles'
 def create_stack(context, args):
     """Implements the lmbr_aws initialize-project command."""
 
@@ -244,6 +245,8 @@ def __update_project_stack(context, pending_resource_status, capabilities, args)
     context.config.save_pending_project_stack_id()
     if args.record_cognito_pools:
         __record_cognito_pools(context)
+    __post_update_security_hooks(context)
+
     # Deprecated in 1.9. TODO: remove
     # Now all the stack resources should be available to the hooks
     project_uploader.execute_uploader_post_hooks()
@@ -253,7 +256,7 @@ def __update_project_stack(context, pending_resource_status, capabilities, args)
                                        )
 
 
-def __record_cognito_pools(context):
+def __find_cognito_pools(context):
     pools = {
         "Project": {}
     }
@@ -264,7 +267,13 @@ def __record_cognito_pools(context):
                 "PhysicalResourceId": custom_resource_utils.get_embedded_physical_id(definition['PhysicalResourceId']),
                 "Type": definition["ResourceType"]
             }
+    return pools
+
+
+def __record_cognito_pools(context):
+    pools = __find_cognito_pools(context)
     cognito_pools.write_to_project_file(context, pools)
+    return pools
 
 
 def __zip_individual_lambda_code_folders(context, uploader):
@@ -614,6 +623,12 @@ def __filter_writeable_files(input_list):
         if not os.access(file_path, os.W_OK):
             filtered_list.append(file_path)
     return filtered_list
+
+
+def __post_update_security_hooks(context):
+    # Run any post-deployment clean-up here
+    security.run_project_patcher_internal(context, identifier=security.DEFAULT_PATCH_IDENTIFIER,
+                                          dry_run=False, should_log=True, deployment_name=None)
 
 
 def create_extension_template(context, args):

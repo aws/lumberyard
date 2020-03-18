@@ -431,6 +431,8 @@ class lmbr_aws_TestCase(unittest.TestCase):
         self.__copy_root_dir_file(temp_dir, 'engine.json')
         self.__copy_root_dir_file(temp_dir, 'engineroot.txt')
         self.__copy_root_dir_file(temp_dir, 'LyzardConfig.xml')
+        # Ensure project templates are available for Lyzard execution during gem creation
+        self.__make_root_dir_link(temp_dir, 'ProjectTemplates')
         # Link both VS 2015 and 2017 potential outputs
         self.__make_root_dir_link(temp_dir, 'Bin64vc141.Debug.Test')
         self.__make_root_dir_link(temp_dir, 'Bin64vc141.Debug')
@@ -439,7 +441,6 @@ class lmbr_aws_TestCase(unittest.TestCase):
         self.__make_file(game_dir, 'project.json', PROJECT_JSON_CONTENT)
         self.__make_game_config_file(game_dir, 'Editor.xml', EDITOR_XML_CONTENT)
         self.__make_game_config_file(game_dir, 'Game.xml', GAME_XML_CONTENT)
-
         lmbr_path = GemContext.get_lmbr_exe_path_from_root(temp_dir)
 
         if not lmbr_path:

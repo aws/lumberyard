@@ -44,14 +44,14 @@ namespace AzFramework
             if (!fileIo->Open(jsonFilePath.c_str(), AZ::IO::OpenMode::ModeRead, fileHandle))
             {
                 fileIo->Close(fileHandle);
-                return AZ::Failure(AZStd::string("Failed to open."));
+                return AZ::Failure(AZStd::string::format("Failed to open file %s.", jsonFilePath.c_str()));
             }
 
             AZ::u64 fileSize = 0;
             if (!fileIo->Size(fileHandle, fileSize))
             {
                 fileIo->Close(fileHandle);
-                return AZ::Failure(AZStd::string::format("Failed to read size of file."));
+                return AZ::Failure(AZStd::string::format("Failed to read size of file %s.", jsonFilePath.c_str()));
             }
 
             AZStd::string jsonText;
@@ -59,7 +59,7 @@ namespace AzFramework
             if (!fileIo->Read(fileHandle, jsonText.data(), fileSize, true))
             {
                 fileIo->Close(fileHandle);
-                return AZ::Failure(AZStd::string::format("Failed to read file."));
+                return AZ::Failure(AZStd::string::format("Failed to read file %s.", jsonFilePath.c_str()));
             }
             fileIo->Close(fileHandle);
 

@@ -31,7 +31,7 @@ namespace AzToolsFramework
         {
             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
-                serializeContext->Class<EditorComponentAPIComponent>();
+                serializeContext->Class<EditorComponentAPIComponent, AZ::Component>();
 
                 serializeContext->RegisterGenericType<AZStd::vector<AZ::EntityComponentIdPair>>();
             }

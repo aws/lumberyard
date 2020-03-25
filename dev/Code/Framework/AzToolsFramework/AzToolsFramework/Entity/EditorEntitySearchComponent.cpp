@@ -29,7 +29,7 @@ namespace AzToolsFramework
         {
             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
-                serializeContext->Class<EditorEntitySearchComponent>();
+                serializeContext->Class<EditorEntitySearchComponent, AZ::Component>();
 
                 serializeContext->Class<EntitySearchFilter>()
                     ->Version(1)

@@ -23,7 +23,7 @@ namespace AzToolsFramework
         {
             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
-                serializeContext->Class<PropertyTreeEditorComponent>();
+                serializeContext->Class<PropertyTreeEditorComponent, AZ::Component>();
             }
 
             if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))

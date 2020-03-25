@@ -445,7 +445,7 @@ int main_wrapped(int argc, char* argv[])
 
     if (pISystem)
     {
-        pISystem->Release();
+        pISystem->Quit();
     }
     pISystem = nullptr;
 
@@ -465,9 +465,13 @@ int main(int argc, char* argv[])
     app.Start(descriptor, startupParams);
     AcquireCryMemoryManager();
 
+    AZ::Debug::Trace::Instance().Init();
+
     int returncode = main_wrapped(argc, argv);
 
     app.Stop();
+
+    AZ::Debug::Trace::Instance().Init();
     
     ReleaseCryMemoryManager();
     AZ::AllocatorInstance<CryStringAllocator>::Destroy();
